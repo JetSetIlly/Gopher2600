@@ -1,0 +1,234 @@
+# instructions are defined with the following fields: 
+#
+# opcode, mnemonic, cycles, addressing mode, page sensitivity, [effect category]
+#
+#
+# effect category can be one of three types (READ is the default if no effect category is given)
+#
+# 1. READ					(instruction only reads from memory - or not at all in the case of IMPLIED instructions
+# 2. WRITE				(instruction changes memory)
+# 3. RMW					(instruction reads, modifies and writes to memory)
+# 4. FLOW					(instruction explicitely affects the program counter)
+# 5. SUB-ROUTINE	(like FLOW but also writes to the stack)
+#
+# in the 6502 all instructions are considered to read from memory, even register only
+# instructions (the IMPLIED addressing mode). in the hardware, this meant that the chip could forego
+# a "read" pin - the electrical connection that switched on access to memory - and thereby save
+# on manufacturing costs.
+# 
+# only some instructions however, ever *write* to memory. in the 6502 this is accomplished with a
+# "read/write" pin - an electrical connection to memory that causes bits to be written
+# as well as read. in our emulation, we mark the instructions that write to memory by specifying
+# the WRITE effect category
+# 
+# a small class of instructions read AND write to memory (using the same address), these
+# are the RMW class of instructions.
+# 
+#
+# note that the addressing mode /implies/ the number of bytes each instruction requires:
+# (including the 1 byte required for the opcode)
+#
+#		IMPLIED = 1
+#		IMMEDIATE = 2
+#		ZERO PAGE = 2
+#		all others = 3
+#
+#	TODO: maybe the number of cycles can be inferred in a similar way
+
+# no operation
+0xea, NOP, 2, IMPLIED, False
+0x04, NOP, 3, ZERO_PAGE, False
+
+# status flags
+0x58, CLI, 2, IMPLIED, False
+0x78, SEI, 2, IMPLIED, False
+0x18, CLC, 2, IMPLIED, False
+0x38, SEC, 2, IMPLIED, False
+0xd8, CLD, 2, IMPLIED, False
+0xf8, SED, 2, IMPLIED, False
+0xb8, CLV, 2, IMPLIED, False
+
+# stack
+0x48, PHA, 2, IMPLIED, False, WRITE
+0x68, PLA, 3, IMPLIED, False
+0x08, PHP, 2, IMPLIED, False, WRITE
+0x28, PLP, 3, IMPLIED, False
+
+# register transfer
+0x8a, TXA, 2, IMPLIED, False
+0xaa, TAX, 2, IMPLIED, False
+0xa8, TAY, 2, IMPLIED, False
+0x98, TYA, 2, IMPLIED, False
+0xba, TSX, 2, IMPLIED, False
+0x9a, TXS, 2, IMPLIED, False
+
+# bitwise operations
+0x49, EOR, 2, IMMEDIATE, False
+0x45, EOR, 3, ZERO_PAGE, False
+0x55, EOR, 4, INDEXED_ZERO_PAGE_X, False
+0x4d, EOR, 4, ABSOLUTE, False
+0x5d, EOR, 4, ABSOLUTE_INDEXED_X, True
+0x59, EOR, 4, ABSOLUTE_INDEXED_Y, True
+0x41, EOR, 6, PRE_INDEX_INDIRECT, False
+0x51, EOR, 5, POST_INDEX_INDIRECT, True
+
+0x09, ORA, 2, IMMEDIATE, False
+0x05, ORA, 3, ZERO_PAGE, False
+0x15, ORA, 4, INDEXED_ZERO_PAGE_X, False
+0x0d, ORA, 4, ABSOLUTE, False
+0x1d, ORA, 4, ABSOLUTE_INDEXED_X, True
+0x10, ORA, 4, ABSOLUTE_INDEXED_Y, True
+0x01, ORA, 6, PRE_INDEX_INDIRECT, False
+0x11, ORA, 5, POST_INDEX_INDIRECT, True
+
+0x29, AND, 2, IMMEDIATE, False
+0x25, AND, 3, ZERO_PAGE, False
+0x35, AND, 4, INDEXED_ZERO_PAGE_X, False
+0x2d, AND, 4, ABSOLUTE, False
+0x3d, AND, 4, ABSOLUTE_INDEXED_X, True
+0x39, AND, 4, ABSOLUTE_INDEXED_Y, True
+0x21, AND, 6, PRE_INDEX_INDIRECT, False
+0x31, AND, 5, POST_INDEX_INDIRECT, True
+
+# load register
+0xa9, LDA, 2, IMMEDIATE, False
+0xa5, LDA, 3, ZERO_PAGE, False
+0xb5, LDA, 4, INDEXED_ZERO_PAGE_X, False
+0xad, LDA, 4, ABSOLUTE, False
+0xbd, LDA, 4, ABSOLUTE_INDEXED_X, True
+0xb9, LDA, 4, ABSOLUTE_INDEXED_Y, True
+0xa1, LDA, 6, PRE_INDEX_INDIRECT, False
+0xb1, LDA, 5, POST_INDEX_INDIRECT, True
+
+0xa2, LDX, 2, IMMEDIATE, False
+0xa6, LDX, 3, ZERO_PAGE, False
+0xb6, LDX, 4, INDEXED_ZERO_PAGE_Y, False
+0xae, LDX, 4, ABSOLUTE, False
+0xbe, LDX, 4, ABSOLUTE_INDEXED_Y, True
+
+0xa0, LDY, 2, IMMEDIATE, False
+0xa4, LDY, 3, ZERO_PAGE, False
+0xb4, LDY, 4, INDEXED_ZERO_PAGE_X, False
+0xac, LDY, 4, ABSOLUTE, False
+0xbc, LDY, 4, ABSOLUTE_INDEXED_X, True
+
+# register operations
+0xe8, INX, 2, IMPLIED, False
+0xc8, INY, 2, IMPLIED, False
+0xca, DEX, 2, IMPLIED, False
+0x88, DEY, 2, IMPLIED, False
+
+0x0a, ASL, 2, IMPLIED, False
+0x06, ASL, 5, ZERO_PAGE, False
+0x16, ASL, 6, INDEXED_ZERO_PAGE_X, False
+0x0e, ASL, 6, ABSOLUTE, False
+0x1e, ASL, 7, ABSOLUTE_INDEXED_X, False
+
+0x4a, LSR, 2, IMPLIED, False
+0x46, LSR, 5, ZERO_PAGE, False
+0x56, LSR, 6, INDEXED_ZERO_PAGE_X, False
+0x4e, LSR, 6, ABSOLUTE, False
+0x5e, LSR, 7, ABSOLUTE_INDEXED_X, False
+
+0x69, ADC, 2, IMMEDIATE, False
+0x65, ADC, 3, ZERO_PAGE, False
+0x75, ADC, 4, INDEXED_ZERO_PAGE_X, False
+0x6d, ADC, 4, ABSOLUTE, False
+0x7d, ADC, 4, ABSOLUTE_INDEXED_X, True
+0x79, ADC, 4, ABSOLUTE_INDEXED_Y, True
+0x61, ADC, 6, PRE_INDEX_INDIRECT, False
+0x71, ADC, 5, POST_INDEX_INDIRECT, True
+
+0xe9, SBC, 2, IMMEDIATE, False
+0xe5, SBC, 3, ZERO_PAGE, False
+0xf5, SBC, 4, INDEXED_ZERO_PAGE_X, False
+0xed, SBC, 4, ABSOLUTE, False
+0xfd, SBC, 4, ABSOLUTE_INDEXED_X, True
+0xf9, SBC, 4, ABSOLUTE_INDEXED_Y, True
+0xe1, SBC, 6, PRE_INDEX_INDIRECT, False
+0xf1, SBC, 5, POST_INDEX_INDIRECT, True
+
+0x6a, ROR, 2, IMPLIED, False
+0x66, ROR, 5, ZERO_PAGE, False
+0x76, ROR, 6, INDEXED_ZERO_PAGE_X, False
+0x6e, ROR, 6, ABSOLUTE, False
+0x7e, ROR, 7, ABSOLUTE_INDEXED_X, False
+
+0x2a, ROL, 2, IMPLIED, False
+0x26, ROL, 5, ZERO_PAGE, False
+0x36, ROL, 6, INDEXED_ZERO_PAGE_X, False
+0x2e, ROL, 6, ABSOLUTE, False
+0x3e, ROL, 7, ABSOLUTE_INDEXED_X, False
+
+# compare instructions
+0xc9, CMP, 3, IMMEDIATE, False
+0xc5, CMP, 3, ZERO_PAGE, False
+0xd5, CMP, 4, INDEXED_ZERO_PAGE_X, False
+0xcd, CMP, 4, ABSOLUTE, False
+0xdd, CMP, 4, ABSOLUTE_INDEXED_X, True
+0xd9, CMP, 4, ABSOLUTE_INDEXED_Y, True
+0xc1, CMP, 6, PRE_INDEX_INDIRECT, False
+0xd1, CMP, 5, POST_INDEX_INDIRECT, True
+
+0xe0, CPX, 2, IMMEDIATE, False
+0xe4, CPX, 3, ZERO_PAGE, False
+0xec, CPX, 4, ABSOLUTE, False
+
+0xc0, CPY, 2, IMMEDIATE, False
+0xc4, CPY, 3, ZERO_PAGE, False
+0xcc, CPY, 4, ABSOLUTE, False
+
+0x24, BIT, 3, ZERO_PAGE, False
+0x2c, BIT, 4, ABSOLUTE, False
+
+# store register
+0x85, STA, 3, ZERO_PAGE, False, WRITE
+0x95, STA, 4, INDEXED_ZERO_PAGE_X, False, WRITE
+0x8d, STA, 4, ABSOLUTE, False, WRITE
+0x9d, STA, 5, ABSOLUTE_INDEXED_X, False, WRITE
+0x99, STA, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+0x81, STA, 6, PRE_INDEX_INDIRECT, False, WRITE
+0x91, STA, 6, POST_INDEX_INDIRECT, False, WRITE
+
+0x86, STX, 3, ZERO_PAGE, False, WRITE
+0x96, STX, 4, INDEXED_ZERO_PAGE_Y, False, WRITE
+0x8e, STX, 4, ABSOLUTE, False, WRITE
+
+0x84, STY, 3, ZERO_PAGE, False, WRITE
+0x94, STY, 4, INDEXED_ZERO_PAGE_X, False, WRITE
+0x8c, STY, 4, ABSOLUTE, False, WRITE
+
+# memory instructions
+0xe6, INC, 5, ZERO_PAGE, False, RMW
+0xf6, INC, 6, INDEXED_ZERO_PAGE_X, False, RMW
+0xee, INC, 6, ABSOLUTE, False, RMW
+0xfe, INC, 7, ABSOLUTE_INDEXED_X, False, RMW
+
+0xc6, DEC, 5, ZERO_PAGE, False, RMW
+0xd6, DEC, 6, INDEXED_ZERO_PAGE_X, False, RMW
+0xce, DEC, 6, ABSOLUTE, False, RMW
+0xde, DEC, 7, ABSOLUTE_INDEXED_X, False, RMW
+
+# flow control
+0x4c, JMP, 3, ABSOLUTE, False, FLOW
+0x6c, JMP, 5, INDIRECT, False, FLOW
+
+# flow control (branch instructions) -- machine cycles count column is the fail count
+# ie. when the branch condition isfalse and the PC allowed to advance as normal. if the
+# branch succeeds then the PC is adjusted, taking an additional cycle.
+0x90, BCC, 2, RELATIVE, False, FLOW
+0xb0, BCS, 2, RELATIVE, False, FLOW
+0xf0, BEQ, 2, RELATIVE, False, FLOW
+0x30, BMI, 2, RELATIVE, False, FLOW
+0xd0, BNE, 2, RELATIVE, False, FLOW
+0x10, BPL, 2, RELATIVE, False, FLOW
+0x50, BVC, 2, RELATIVE, False, FLOW
+0x70, BVS, 2, RELATIVE, False, FLOW
+
+0x20, JSR, 2, ABSOLUTE, False, SUB-ROUTINE
+0x60, RTS, 3, IMPLIED, False, SUB-ROUTINE
+
+# interrupts
+0x00, BRK, 7, IMPLIED, False, WRITE
+0x40, RTI, 6, IMPLIED, False
+
