@@ -5,18 +5,21 @@ package cpu_test
 //
 // o assert - used to test for equality between values
 //
-// o MockMem - a simple memory implementation satisfying the memory.Memory interface
-//	- includes putInstructions(), a variadic function to place a sequence of bytes
-//	into memory
-//	- a clear method and and an assert method
+// o MockMem - implementation of memory.Bus
+//	- embeds the VCS implementation of memory.Bus for convenience
+//	- plus:
+//		- putInstructions(), a variadic function to place a sequence of bytes into memory
+//		- an assert method
 
 import (
 	"fmt"
 	"headless/hardware/cpu"
+	"headless/hardware/memory"
 	"testing"
 )
 
 func assert(t *testing.T, r, x interface{}) {
+	t.Helper()
 	switch r := r.(type) {
 	case cpu.StatusRegister:
 		if fmt.Sprintf("%s", r) != x.(string) {
@@ -44,65 +47,29 @@ func assert(t *testing.T, r, x interface{}) {
 	}
 }
 
+// MockMem is an extenstion of the memory.Bus interface
 type MockMem struct {
-	data []uint8
-}
-
-func (mem *MockMem) String() string {
-	s := "0000  "
-	i := 0
-	j := 16
-	for _, d := range mem.data {
-		s = fmt.Sprintf("%s%02x ", s, d)
-		i++
-		if i == 16 {
-			s = fmt.Sprintf("%s\n%04d  ", s, j)
-			i = 0
-			j += 16
-		}
-	}
-	return s
+	memory.Bus
 }
 
 func NewMockMem() *MockMem {
-	mock := new(MockMem)
-	mock.data = make([]uint8, 512)
-	return mock
-}
-
-func (mem *MockMem) Read(address uint16) (uint8, error) {
-	if int(address) > len(mem.data) {
-		return 0, fmt.Errorf("address out of range (%d)", address)
-	}
-	return mem.data[address], nil
-}
-
-func (mem *MockMem) Write(address uint16, data uint8) error {
-	if int(address) > len(mem.data) {
-		return fmt.Errorf("address out of range (%d)", address)
-	}
-	mem.data[address] = data
-	return nil
-}
-
-func (mem *MockMem) clear() uint16 {
-	fmt.Println("\nclearing memory\n---------------")
-	for i := 0; i < len(mem.data); i++ {
-		mem.data[i] = 0x00
-	}
-	return 0
+	mem := new(MockMem)
+	// use the memory.VCS implementation of memory.Bus
+	mem.Bus = memory.NewVCSMemory()
+	return mem
 }
 
 func (mem *MockMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	for i, b := range bytes {
-		mem.data[i+int(origin)] = b
+		mem.Bus.Write(uint16(i)+origin, b)
 	}
 	return origin + uint16(len(bytes))
 }
 
 func (mem *MockMem) assert(t *testing.T, address uint16, value uint8) {
 	t.Helper()
-	if mem.data[address] != value {
-		t.Errorf("assertMockMem failed (%v  - wanted %v at address %04x", mem.data[address], value, address)
+	d, _ := mem.Bus.Read(address)
+	if d != value {
+		t.Errorf("assertMockMem failed (%v  - wanted %v at address %04x", d, value, address)
 	}
 }

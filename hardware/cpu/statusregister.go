@@ -54,6 +54,10 @@ func (sr StatusRegister) String() string {
 	return v
 }
 
+func (sr *StatusRegister) reset() {
+	sr.FromUint8(0)
+}
+
 // ToUint8 converts the StatusRegister struct into a value suitable for pushing
 // onto the stack
 func (sr *StatusRegister) ToUint8() uint8 {
@@ -80,6 +84,10 @@ func (sr *StatusRegister) ToUint8() uint8 {
 	if sr.Carry {
 		v |= 0x01
 	}
+
+	// unused bit in the status register is always 1. this doesn't matter when
+	// we're in normal form but it does matter in uint8 context
+	v |= 0x20
 
 	return v
 }
