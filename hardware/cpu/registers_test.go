@@ -1,7 +1,7 @@
 package cpu_test
 
 import (
-	"headless/hardware/cpu"
+	"headlessVCS/hardware/cpu"
 	"testing"
 )
 

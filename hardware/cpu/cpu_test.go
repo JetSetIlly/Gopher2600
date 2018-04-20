@@ -2,7 +2,7 @@ package cpu_test
 
 import (
 	"fmt"
-	"headless/hardware/cpu"
+	"headlessVCS/hardware/cpu"
 	"testing"
 )
 

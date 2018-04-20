@@ -7,7 +7,8 @@ package cpu
 
 import (
 	"fmt"
-	"headless/hardware/memory"
+	"headlessVCS/hardware/cpu/definitions"
+	"headlessVCS/hardware/memory"
 	"log"
 	"runtime"
 )
@@ -21,8 +22,8 @@ type CPU struct {
 	SP     Register
 	Status StatusRegister
 
-	memory  memory.Bus
-	opCodes definitionsTable
+	memory  memory.CPUBus
+	opCodes map[uint8]definitions.InstructionDefinition
 
 	// channels communicating success and error of each cycle
 	stepResult chan InstructionResult
@@ -42,31 +43,30 @@ type CPU struct {
 }
 
 // NewCPU is the constructor for the CPU type
-func NewCPU(memory memory.Bus) *CPU {
-	cpu := new(CPU)
-	cpu.memory = memory
+func NewCPU(memory memory.CPUBus) *CPU {
+	mc := new(CPU)
+	mc.memory = memory
 
-	cpu.stepResult = make(chan InstructionResult)
-	cpu.stepError = make(chan error)
-	cpu.stepNext = make(chan bool)
+	mc.stepResult = make(chan InstructionResult)
+	mc.stepError = make(chan error)
+	mc.stepNext = make(chan bool)
+
+	mc.PC = make(Register, 16)
+	mc.A = make(Register, 8)
+	mc.X = make(Register, 8)
+	mc.Y = make(Register, 8)
+	mc.SP = make(Register, 8)
+	mc.Status = *new(StatusRegister)
 
 	var err error
-
-	cpu.opCodes, err = getInstructionDefinitions()
+	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	cpu.PC = make(Register, 16)
-	cpu.A = make(Register, 8)
-	cpu.X = make(Register, 8)
-	cpu.Y = make(Register, 8)
-	cpu.SP = make(Register, 8)
-	cpu.Status = *new(StatusRegister)
+	mc.Reset()
 
-	cpu.Reset()
-
-	return cpu
+	return mc
 }
 
 func (mc *CPU) endStep(result *InstructionResult) {
@@ -223,12 +223,12 @@ func (mc *CPU) executeInstruction() {
 	// the InstructionData value for the StepResult and whether a page fault has
 	// occured
 	switch defn.AddressingMode {
-	case Implied:
+	case definitions.Implied:
 		// phantom read
 		// +1 cycle
 		mc.read8Bit(mc.PC.ToUint16())
 
-	case Immediate:
+	case definitions.Immediate:
 		// for immediate mode, the value is the next byte in the program
 		// therefore, we don't set the address and we read the value through the PC
 
@@ -236,7 +236,7 @@ func (mc *CPU) executeInstruction() {
 		value = mc.read8BitPC()
 		result.InstructionData = value
 
-	case Relative:
+	case definitions.Relative:
 		// relative addressing is only used for branch instructions, the address
 		// is an offset value from the current PC position
 
@@ -244,19 +244,19 @@ func (mc *CPU) executeInstruction() {
 		address = uint16(mc.read8BitPC())
 		result.InstructionData = address
 
-	case Absolute:
-		if defn.Effect != Subroutine {
+	case definitions.Absolute:
+		if defn.Effect != definitions.Subroutine {
 			// +2 cycles
 			address = mc.read16BitPC()
 			result.InstructionData = address
 		}
 
-	case ZeroPage:
+	case definitions.ZeroPage:
 		// +1 cycle
 		address = uint16(mc.read8BitPC())
 		result.InstructionData = address
 
-	case Indirect:
+	case definitions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
 
 		// +2 cycles
@@ -293,7 +293,7 @@ func (mc *CPU) executeInstruction() {
 			result.InstructionData = indirectAddress
 		}
 
-	case PreIndexedIndirect:
+	case definitions.PreIndexedIndirect:
 		// +1 cycle
 		indirectAddress := mc.read8BitPC()
 
@@ -313,7 +313,7 @@ func (mc *CPU) executeInstruction() {
 		// never a page fault wth pre-index indirect addressing
 		result.InstructionData = indirectAddress
 
-	case PostIndexedIndirect:
+	case definitions.PostIndexedIndirect:
 		// +1 cycle
 		indirectAddress := mc.read8BitPC()
 
@@ -341,7 +341,7 @@ func (mc *CPU) executeInstruction() {
 
 		result.InstructionData = indirectAddress
 
-	case AbsoluteIndexedX:
+	case definitions.AbsoluteIndexedX:
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
@@ -368,7 +368,7 @@ func (mc *CPU) executeInstruction() {
 
 		result.InstructionData = indirectAddress
 
-	case AbsoluteIndexedY:
+	case definitions.AbsoluteIndexedY:
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
@@ -395,7 +395,7 @@ func (mc *CPU) executeInstruction() {
 
 		result.InstructionData = indirectAddress
 
-	case IndexedZeroPageX:
+	case definitions.IndexedZeroPageX:
 		// +1 cycles
 		indirectAddress := mc.read8BitPC()
 		adder, err := generateRegister(indirectAddress, 8)
@@ -409,7 +409,7 @@ func (mc *CPU) executeInstruction() {
 		// +1 cycle
 		mc.endCycle()
 
-	case IndexedZeroPageY:
+	case definitions.IndexedZeroPageY:
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
@@ -436,11 +436,11 @@ func (mc *CPU) executeInstruction() {
 	// b) instruction is 'Read' OR 'ReadWrite'
 	//  - for write modes, we only use the address to write a value we already have
 	//  - for flow modes, the use of the address is very specific
-	if !(defn.AddressingMode == Implied || defn.AddressingMode == Immediate) {
-		if defn.Effect == Read {
+	if !(defn.AddressingMode == definitions.Implied || defn.AddressingMode == definitions.Immediate) {
+		if defn.Effect == definitions.Read {
 			// +1 cycle
 			value = mc.read8Bit(address)
-		} else if defn.Effect == RMW {
+		} else if defn.Effect == definitions.RMW {
 			// +1 cycle
 			value = mc.read8Bit(address)
 
@@ -611,7 +611,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Carry = mc.A.ASL()
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		if defn.Effect == RMW {
+		if defn.Effect == definitions.RMW {
 			value = mc.A.ToUint8()
 		}
 
@@ -619,7 +619,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Carry = mc.A.LSR()
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		if defn.Effect == RMW {
+		if defn.Effect == definitions.RMW {
 			value = mc.A.ToUint8()
 		}
 
@@ -637,7 +637,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Carry = mc.A.ROR(mc.Status.Carry)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		if defn.Effect == RMW {
+		if defn.Effect == definitions.RMW {
 			value = mc.A.ToUint8()
 		}
 
@@ -645,7 +645,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Carry = mc.A.ROL(mc.Status.Carry)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		if defn.Effect == RMW {
+		if defn.Effect == definitions.RMW {
 			value = mc.A.ToUint8()
 		}
 
@@ -800,7 +800,7 @@ func (mc *CPU) executeInstruction() {
 	}
 
 	// write altered value back to memory for RMW instructions
-	if defn.Effect == RMW {
+	if defn.Effect == definitions.RMW {
 		err = mc.memory.Write(address, value)
 		if err != nil {
 			mc.endStepInError(err)
@@ -811,7 +811,7 @@ func (mc *CPU) executeInstruction() {
 	}
 
 	// consume an extra cycle for the extra memory access for Write instructions
-	if defn.Effect == Write {
+	if defn.Effect == definitions.Write {
 		// +1 cycle
 		mc.endCycle()
 	}

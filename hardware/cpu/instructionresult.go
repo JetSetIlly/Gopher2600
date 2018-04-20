@@ -2,13 +2,14 @@ package cpu
 
 import (
 	"fmt"
+	"headlessVCS/hardware/cpu/definitions"
 	"reflect"
 )
 
 // InstructionResult contains all the interesting information from a CPU step.
 type InstructionResult struct {
 	ProgramCounter  uint16
-	Defn            InstructionDefinition
+	Defn            definitions.InstructionDefinition
 	InstructionData interface{}
 	ActualCycles    int
 
@@ -37,25 +38,25 @@ func (result *InstructionResult) String() string {
 	}
 
 	switch result.Defn.AddressingMode {
-	case Implied:
-	case Immediate:
+	case definitions.Implied:
+	case definitions.Immediate:
 		data = fmt.Sprintf("#%s", data)
-	case Relative:
-	case Absolute:
-	case ZeroPage:
-	case Indirect:
+	case definitions.Relative:
+	case definitions.Absolute:
+	case definitions.ZeroPage:
+	case definitions.Indirect:
 		data = fmt.Sprintf("(%s)", data)
-	case PreIndexedIndirect:
+	case definitions.PreIndexedIndirect:
 		data = fmt.Sprintf("(%s,X)", data)
-	case PostIndexedIndirect:
+	case definitions.PostIndexedIndirect:
 		data = fmt.Sprintf("(%s),Y", data)
-	case AbsoluteIndexedX:
+	case definitions.AbsoluteIndexedX:
 		data = fmt.Sprintf("%s,X", data)
-	case AbsoluteIndexedY:
+	case definitions.AbsoluteIndexedY:
 		data = fmt.Sprintf("%s,Y", data)
-	case IndexedZeroPageX:
+	case definitions.IndexedZeroPageX:
 		data = fmt.Sprintf("%s,X", data)
-	case IndexedZeroPageY:
+	case definitions.IndexedZeroPageY:
 		data = fmt.Sprintf("%s,Y", data)
 	default:
 	}
@@ -95,7 +96,7 @@ func (result *InstructionResult) IsValid() error {
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.Bug != "" {
-		if result.Defn.AddressingMode == Relative {
+		if result.Defn.AddressingMode == definitions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
 				return fmt.Errorf("number of cycles wrong (%d instead of %d, %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2)
 			}

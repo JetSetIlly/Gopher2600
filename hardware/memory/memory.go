@@ -1,95 +1,137 @@
 package memory
 
-import (
-	"fmt"
-)
+import "fmt"
 
-// Bus defines the operations for a memory system
-type Bus interface {
+// CPUBus defines the operations for the memory system when accessed from the CPU
+// All memory areas implement this interface because they are all accessible
+// from the CPU (compare to ChipBus). The VCSMemory type also implements this
+// interface and maps the read/write address to the correct memory area --
+// meaning that CPU access need not care which part of memory it is writing to
+type CPUBus interface {
 	Clear()
 	Read(address uint16) (uint8, error)
 	Write(address uint16, data uint8) error
 }
 
-const (
-	originTIA  = 0x0000
-	memtopTIA  = 0x003f
-	originRAM  = 0x0080
-	memtopRAM  = 0x00ff
-	originRIOT = 0x0280
-	memtopRIOT = 0x0287
-	originCart = 0x1000
-	memtopCart = 0x1fff
+// ChipBus defines the operations for the memory system when accessed from the
+// VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
+type ChipBus interface {
+}
 
-	memtopInternal = 0x287
-)
+// Area defines the meta-operations for all memory areas. Think of these
+// functions as "debugging" functions, that is operations outside of the normal
+// operation of the machine. We also use this interface as a "generic" type
+// when we need to store collections of different types of memory areas (see
+// VCSMemory.memmap)
+type Area interface {
+	Label() string
+}
 
-// VCSMemory is the implementation of Memory for the VCSMemory
+// AreaInfo provides the basic info needed to define a memory area. All memory
+// areas embed AreaInfo alongside the implementation of the Area interface
+type AreaInfo struct {
+	label  string
+	origin uint16
+	memtop uint16
+}
+
+// VCSMemory presents a monolithic representation of system memory to the CPU
+// Other parts of the system access ChipMemory directly
 type VCSMemory struct {
-	internal  []uint8
-	cartridge []uint8
+	CPUBus
+	memmap map[uint16]Area
+	riot   *ChipMemory
+	tia    *ChipMemory
+	pia    *PIA
+	Cart   *Cartridge
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
 func NewVCSMemory() *VCSMemory {
 	mem := new(VCSMemory)
-	mem.internal = make([]uint8, memtopInternal)
+	mem.memmap = make(map[uint16]Area)
+	mem.riot = NewRIOT()
+	mem.tia = NewTIA()
+	mem.pia = NewPIA()
+	mem.Cart = NewCart()
+
+	// create the memory map; each address in the memory map points to the
+	// memory area it resides in. we only record 'primary' addresses; all
+	// addresses should be  passed through the MapAddress() function in order
+	// to iron out any mirrors
+
+	var i uint16
+
+	for i = mem.tia.origin; i <= mem.tia.memtop; i++ {
+		mem.memmap[i] = mem.tia
+	}
+
+	for i = mem.pia.origin; i <= mem.pia.memtop; i++ {
+		mem.memmap[i] = mem.pia
+	}
+
+	for i = mem.riot.origin; i <= mem.riot.memtop; i++ {
+		mem.memmap[i] = mem.riot
+	}
+
+	for i = mem.Cart.origin; i <= mem.Cart.memtop; i++ {
+		mem.memmap[i] = mem.Cart
+	}
+
 	return mem
 }
 
-// Clear sets all bytes in memory to zero
-func (mem *VCSMemory) Clear() {
-	for i := 0; i < len(mem.internal); i++ {
-		a, _ := mem.MapAddress(uint16(i))
-		mem.internal[a] = 0
-	}
-}
+// MapAddress translates the quoted address from mirror space to primary space.
+// Generally, all access to the different memory areas should be passed through
+// this function. Any other information about an address can be accessed
+// through mem.memmap[mappedAddress]
+func (mem *VCSMemory) MapAddress(address uint16) uint16 {
 
-// MapAddress translates a "real" address from mirror space to primary space
-func (mem *VCSMemory) MapAddress(address uint16) (uint16, string) {
+	// note that the order of these filters is important
+
 	// cartridge addresses
-	if address&originCart == originCart {
-		address &= memtopCart
-		return address, "Cartridge"
+	if address&mem.Cart.origin == mem.Cart.origin {
+		return address & mem.Cart.memtop
 	}
 
 	// RIOT addresses
-	if address&originRIOT == originRIOT {
-		address &= memtopRIOT
-		return address, "RIOT"
+	if address&mem.riot.origin == mem.riot.origin {
+		return address & mem.riot.memtop
 	}
 
-	// PIA addresses
-	if address&originRAM == originRAM {
-		address &= memtopRAM
-		return address, "PIA RAM"
+	// PIA RAM addresses
+	if address&mem.pia.origin == mem.pia.origin {
+		return address & mem.pia.memtop
 	}
 
 	// everything else is in TIA space
-
-	address &= memtopTIA
-	return address, "TIA"
+	return address & mem.tia.memtop
 }
 
+// Clear is an implementation of CPUBus.Clear
+func (mem *VCSMemory) Clear() {
+	mem.riot.Clear()
+	mem.tia.Clear()
+	mem.pia.Clear()
+	mem.Cart.Clear()
+}
+
+// Implementation of CPUBus.Read
 func (mem *VCSMemory) Read(address uint16) (uint8, error) {
-	address, _ = mem.MapAddress(address)
-
-	if int(address) > len(mem.internal) {
-		return 0, fmt.Errorf("address out of range (%d)", address)
+	ma := mem.MapAddress(address)
+	area, present := mem.memmap[ma]
+	if !present {
+		return 0, fmt.Errorf("%04x not mapped correctly", address)
 	}
-	return mem.internal[address], nil
+	return area.(CPUBus).Read(ma)
 }
 
+// Implementation of CPUBus.Write
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
-	address, _ = mem.MapAddress(address)
-
-	if int(address) > len(mem.internal) {
-		return fmt.Errorf("address out of range (%d)", address)
+	ma := mem.MapAddress(address)
+	area, present := mem.memmap[ma]
+	if !present {
+		return fmt.Errorf("%04x not mapped correctly", address)
 	}
-	mem.internal[address] = data
-	return nil
-}
-
-// AttachCartridge maps a file to the cartridge addresses
-func (mem *VCSMemory) AttachCartridge() {
+	return area.(CPUBus).Write(ma, data)
 }
