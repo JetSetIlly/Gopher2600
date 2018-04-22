@@ -66,14 +66,16 @@ func (r Register) ToUint8() uint8 {
 	return uint8(r.ToUint())
 }
 
-// generateRegister is used to create a register using a value (v) to initialise it
-// v can be another register or an integer type (int) or uint8 or uint16. if v is nil
-// then a unitialised register of length bitlen is created; although it is suggested that
-// a plain "make(Register, bitlen)" is used instead
+// generateRegister is used to create a register of bit length bitlen, using a
+// value (v) to initialise it v can be another register or an integer type
+// (int, uint8 or uint16). if v is nil then a unitialised register of length
+// bitlen is created; although, if this is the effect you want, then it is
+// suggested that a plain "make(Register, bitlen)" is used instead
 //
-// when a register is supplied, the register will be reused unless the bit length is wrong
-// a pointer to a register indicates that you definitely want a new copy of the register
-// regardless of bit length
+// when a register is supplied, the register will be reused unless the bit
+// length is wrong, in which case a copy is made. a pointer to a register
+// indicates that you definitely want a new copy of the register regardless of
+// bit length
 func generateRegister(v interface{}, bitlen int) (Register, error) {
 	var r Register
 	var val uint16
@@ -95,25 +97,27 @@ func generateRegister(v interface{}, bitlen int) (Register, error) {
 			return v, nil
 		}
 
-		// if register is not of length 'bitlen' then recurse this with a the numeric value of 'v'
-		// this will create a register of the correct length
-		r = make(Register, max(16, bitlen))
+		if len(v) > bitlen {
+			return nil, fmt.Errorf("[0] value is too big (%d) for bit length of register (%d)", v.ToUint16(), bitlen)
+		}
+
 		val = v.ToUint16()
+		r = make(Register, max(16, bitlen))
 	case uint16:
 		if int(v) >= bitVals[bitlen] {
-			return nil, fmt.Errorf("(1) value is too big (%d) for bit length of register (%d)", v, bitlen)
+			return nil, fmt.Errorf("[1] value is too big (%d) for bit length of register (%d)", v, bitlen)
 		}
 		val = uint16(v)
 		r = make(Register, max(16, bitlen))
 	case uint8:
 		if int(v) >= bitVals[bitlen] {
-			return nil, fmt.Errorf("(2) value is too big (%d) for bit length of register (%d)", v, bitlen)
+			return nil, fmt.Errorf("[2] value is too big (%d) for bit length of register (%d)", v, bitlen)
 		}
 		val = uint16(v)
 		r = make(Register, max(8, bitlen))
 	case int:
 		if v >= bitVals[bitlen] {
-			return nil, fmt.Errorf("(3) value is too big (%d) for bit length of register (%d)", v, bitlen)
+			return nil, fmt.Errorf("[3] value is too big (%d) for bit length of register (%d)", v, bitlen)
 		}
 		val = uint16(v)
 		r = make(Register, max(8, bitlen))

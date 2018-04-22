@@ -1,7 +1,5 @@
 package memory
 
-import "fmt"
-
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
 type ChipMemory struct {
@@ -42,7 +40,8 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	rl := area.readAddresses[oa]
 	if rl == "" {
-		return 0, fmt.Errorf("%04x is not readable", address)
+		// silently ignore illegal reads
+		return 0, nil
 	}
 
 	return area.memory[oa], nil
@@ -52,9 +51,10 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 func (area *ChipMemory) Write(address uint16, data uint8) error {
 	oa := address - area.origin
 
-	rl := area.readAddresses[oa]
+	rl := area.writeAddresses[oa]
 	if rl == "" {
-		return fmt.Errorf("%04x is not writable", address)
+		// silently ignore illegal writes
+		return nil
 	}
 
 	area.memory[oa] = data

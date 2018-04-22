@@ -19,7 +19,7 @@ type Register []bit
 // pageFault = indexedAddress & 0xFF00 != preIndexedAddress & 0xFF00
 
 func (r Register) String() string {
-	return fmt.Sprintf("%s (%d)", r.ToBits(), r.ToUint())
+	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToBits(), r.ToUint(), r.ToUint())
 }
 
 // Load value into register

@@ -324,6 +324,9 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 }
 
 func testBranching(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+	// TODO: test page faults
+	// TODO: test backwards branching
+
 	var origin uint16
 	mem.Clear()
 	mc.Reset()

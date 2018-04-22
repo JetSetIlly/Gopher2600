@@ -69,25 +69,16 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	return mc
 }
 
-func (mc *CPU) endStep(result *InstructionResult) {
-	result.Final = true
-	mc.endCycle = nil
-	mc.stepResult <- *result
-}
-
-func (mc *CPU) endStepInError(err error) {
-	mc.endCycle = nil
-	mc.stepError <- err
-	runtime.Goexit()
-}
-
 // IsRunning is true if CPU is in the middle of executing an instruction
 func (mc *CPU) IsRunning() bool {
 	return mc.endCycle != nil
 }
 
-// Reset reinitialises all registers
+// Reset reinitialises all registers. Also stops any current instruction cycle
 func (mc *CPU) Reset() {
+	// make sure there are no outstanding cycles from a previous instruction
+	_, _ = mc.drainCycles()
+
 	mc.PC.Load(0)
 	mc.A.Load(0)
 	mc.X.Load(0)
@@ -98,6 +89,22 @@ func (mc *CPU) Reset() {
 	mc.Status.Sign = mc.A.IsNegative()
 	mc.Status.InterruptDisable = true
 	mc.Status.Break = true
+	mc.endCycle = nil
+}
+
+// LoadPC loads the contents of indirectAddress into the PC
+func (mc *CPU) LoadPC(indirectAddress uint16) {
+	// make sure there are no outstanding cycles from a previous instruction
+	_, _ = mc.drainCycles()
+
+	// we don't want to trigger an endCycle because when we call mc.read16Bit
+	// (the task will probably just deadlock - depending on when we're calling
+	// it) so temporarily change the contents of endCycle to the empty function
+	// (a value of nil will just cause a panic)
+	f := mc.endCycle
+	mc.endCycle = func() {}
+	mc.PC.Load(mc.read16Bit(indirectAddress))
+	mc.endCycle = f
 }
 
 func (mc *CPU) read8Bit(address uint16) uint8 {
@@ -143,10 +150,17 @@ func (mc *CPU) read16BitPC() uint16 {
 }
 
 func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
-	if flag == true {
-		// note that we've taken the branching path
-		result.ActualCycles++
+	// in the case of branchng (relative addressing) we've read an 8bit value
+	// rather than a 16bit value to use as the "address". we do this kind of
+	// thing all over the place and it normally doesn't matter but because we'll
+	// sometimes be doing subtractions with this value we need to make sure the
+	// sign bit of the 8bit value has been propogated into the most-significant
+	// bits of the 16bit value.
+	if address&0x0080 == 0x0080 {
+		address |= 0xff00
+	}
 
+	if flag == true {
 		// phantom read
 		// +1 cycle
 		mc.read8Bit(mc.PC.ToUint16())
@@ -155,21 +169,31 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
 		oldPC := mc.PC.ToUint16()
 
 		// add LSB to PC
-		// +1 cycle
-		mc.PC.Add(address&0x00ff, false)
+		// this is a bit wierd but without implementing the PC differently (with
+		// two 8bit bytes perhaps) this is the only way I can see how to do it with
+		// the desired cycle accuracy:
+		//  o Add full (sign extended) 16bit address to PC
+		//  o note whether a page fault has occurred
+		//  o restore the MSB of the PC using the MSB of the old PC value
+		mc.PC.Add(address, false)
+		result.PageFault = oldPC&0xff00 != mc.PC.ToUint16()&0xff00
+		mc.PC.Load(oldPC&0xff00 | mc.PC.ToUint16()&0x00ff)
 
 		// check to see whether branching has crossed a page
-		if oldPC&0xff00 != mc.PC.ToUint16()&0xff00 {
+		if result.PageFault {
 			// phantom read
 			// +1 cycle
 			mc.read8Bit(mc.PC.ToUint16())
 
 			// correct program counter
-			mc.PC.Add(address&0xff00, false)
+			if address&0xff00 == 0xff00 {
+				mc.PC.Add(0xff00, false)
+			} else {
+				mc.PC.Add(0x0100, false)
+			}
 
 			// note that we've triggered a page fault
 			result.PageFault = true
-			result.ActualCycles++
 		}
 	}
 }
@@ -817,4 +841,16 @@ func (mc *CPU) executeInstruction() {
 	}
 
 	mc.endStep(result)
+}
+
+func (mc *CPU) endStep(result *InstructionResult) {
+	result.Final = true
+	mc.endCycle = nil
+	mc.stepResult <- *result
+}
+
+func (mc *CPU) endStepInError(err error) {
+	mc.endCycle = nil
+	mc.stepError <- err
+	runtime.Goexit()
 }

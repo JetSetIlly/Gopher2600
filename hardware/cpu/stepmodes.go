@@ -1,13 +1,23 @@
 package cpu
 
-import (
-	"fmt"
-)
+func (mc *CPU) drainCycles() (*InstructionResult, error) {
+	var res *InstructionResult
+	var err error
+	for mc.IsRunning() {
+		res, err = mc.StepCycle()
+		if err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
 
 // StepInstruction executes the next instruction in the program
 func (mc *CPU) StepInstruction() (*InstructionResult, error) {
-	if mc.IsRunning() {
-		return nil, fmt.Errorf("instruction is already running")
+	// drain previous instruction if it is mid cycle
+	res, err := mc.drainCycles()
+	if err != nil || res != nil {
+		return res, err
 	}
 
 	go mc.executeInstruction()
