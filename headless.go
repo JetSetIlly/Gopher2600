@@ -47,7 +47,7 @@ func NewDebugger() *Debugger {
 
 func (dbg *Debugger) fps() {
 	const cyclesPerFrame = 19912
-	const numOfFrames = 50
+	const numOfFrames = 60
 
 	f, err := os.Create("cpu.profile")
 	if err != nil {

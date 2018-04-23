@@ -1,9 +1,13 @@
 package cpu
 
+// drainCycles is used to align cpu execution to the next instruction point.
+// this is a belt & braces function - ideally, the body of the for loop will
+// never run - but switching between StepCycle and StepInstruction in a
+// debugger may require it
 func (mc *CPU) drainCycles() (*InstructionResult, error) {
 	var res *InstructionResult
 	var err error
-	for mc.IsRunning() {
+	for mc.IsExecutingInstruction() {
 		res, err = mc.StepCycle()
 		if err != nil {
 			return res, err
@@ -19,8 +23,6 @@ func (mc *CPU) StepInstruction() (*InstructionResult, error) {
 	if err != nil || res != nil {
 		return res, err
 	}
-
-	go mc.executeInstruction()
 
 	for {
 		mc.stepNext <- true
@@ -39,10 +41,6 @@ func (mc *CPU) StepInstruction() (*InstructionResult, error) {
 // StepCycle runs the next cycle in an instruction, starting a new instruction
 // if necessary
 func (mc *CPU) StepCycle() (*InstructionResult, error) {
-	if !mc.IsRunning() {
-		go mc.executeInstruction()
-	}
-
 	mc.stepNext <- true
 
 	select {

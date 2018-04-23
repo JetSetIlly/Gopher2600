@@ -1,7 +1,6 @@
 package cpu_test
 
 import (
-	"fmt"
 	"headlessVCS/hardware/cpu"
 	"testing"
 )
@@ -14,8 +13,6 @@ func stepIns(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
 	err = result.IsValid()
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
-	} else {
-		fmt.Println(result)
 	}
 	return result
 }
@@ -38,8 +35,6 @@ func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
 			}
 		}
 
-		fmt.Println(result)
-
 		running = !result.Final
 	}
 
@@ -50,8 +45,6 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nStatus Instructions\n-----")
 
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
@@ -92,8 +85,6 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	mem.Clear()
 	mc.Reset()
 
-	fmt.Println("\nRegister Arithmetic\n-----")
-
 	// LDA immediate; ADC immediate
 	origin = mem.putInstructions(origin, 0xa9, 1, 0x69, 10)
 	step(t, mc) // LDA #1
@@ -111,8 +102,6 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nRegister Bitwise Instructions\n-----")
 
 	// ORA immediate; EOR immediate; AND immediate
 	origin = mem.putInstructions(origin, 0x09, 0xff, 0x49, 0xf0, 0x29, 0x01)
@@ -156,8 +145,6 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nImmediate/Implied Addressing\n-----")
 
 	// LDX immediate; INX; DEX
 	origin = mem.putInstructions(origin, 0xa2, 5, 0xe8, 0xca)
@@ -210,8 +197,6 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nOther Addressing Modes\n-----")
 
 	mem.putInstructions(0x0100, 123, 43)
 	mem.putInstructions(0x01a2, 47)
@@ -292,8 +277,6 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	mem.Clear()
 	mc.Reset()
 
-	fmt.Println("\nStorage Instructions\n-----")
-
 	// LDA immediate; STA absolute
 	origin = mem.putInstructions(origin, 0xa9, 0x54, 0x8d, 0x00, 0x01)
 	step(t, mc) // LDA 0x54
@@ -330,8 +313,6 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nBranching\n-----")
 
 	origin = 0
 	mem.Clear()
@@ -398,8 +379,6 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	mem.Clear()
 	mc.Reset()
 
-	fmt.Println("\nJumps\n-----")
-
 	// JMP absolute
 	origin = mem.putInstructions(origin, 0x4c, 0x00, 0x01)
 	step(t, mc) // JMP $100
@@ -431,8 +410,6 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nComparison instructions\n-----")
 
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
@@ -478,8 +455,6 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
-
-	fmt.Println("\nSubroutines\n-----")
 
 	// JSR absolute
 	origin = mem.putInstructions(origin, 0x20, 0x00, 0x01)

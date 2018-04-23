@@ -18,6 +18,21 @@ func max(a int, b int) int {
 	return a
 }
 
+// ToBits returns the register as bit pattern (of '0' and '1')
+func (r Register) ToBits() string {
+	s := make([]string, len(r))
+	i := 0
+	for i < len(r) {
+		if r[i] {
+			s[i] = "1"
+		} else {
+			s[i] = "0"
+		}
+		i++
+	}
+	return strings.Join(s, "")
+}
+
 // ToUint returns value as type uint, regardless of register size
 func (r Register) ToUint() uint {
 	var v uint
@@ -33,21 +48,6 @@ func (r Register) ToUint() uint {
 	}
 
 	return v
-}
-
-// ToBits returns the register as bit pattern (of '0' and '1')
-func (r Register) ToBits() string {
-	s := make([]string, len(r))
-	i := 0
-	for i < len(r) {
-		if r[i] {
-			s[i] = "1"
-		} else {
-			s[i] = "0"
-		}
-		i++
-	}
-	return strings.Join(s, "")
 }
 
 // ToUint16 returns value of size uint16, regardless of register size
@@ -88,39 +88,64 @@ func generateRegister(v interface{}, bitlen int) (Register, error) {
 	switch v := v.(type) {
 	default:
 		return nil, fmt.Errorf("value is of an unsupported type")
+
 	case *Register:
+		// make a copy of the register
+		if len(*v) > bitlen {
+			return nil, fmt.Errorf("value is too big (%d) for bit length of register (%d)", v.ToUint16(), bitlen)
+		}
 		r = make(Register, bitlen)
-		val = v.ToUint16()
+
+		// we may be copying a smaller register into a larger register so we need
+		// to account for the difference
+		copy(r[bitlen-len(*v):], *v)
+
+		return r, nil
+
 	case Register:
 		// reuse register if possible
 		if len(v) == bitlen {
 			return v, nil
 		}
 
+		// otherwise make a copy
 		if len(v) > bitlen {
-			return nil, fmt.Errorf("[0] value is too big (%d) for bit length of register (%d)", v.ToUint16(), bitlen)
+			return nil, fmt.Errorf("value is too big (%d) for bit length of register (%d)", v.ToUint16(), bitlen)
 		}
 
-		val = v.ToUint16()
-		r = make(Register, max(16, bitlen))
+		r = make(Register, bitlen)
+
+		// we may be copying a smaller register into a larger register so we need
+		// to account for the difference
+		copy(r[bitlen-len(v):], v)
+
+		return r, nil
+
 	case uint16:
-		if int(v) >= bitVals[bitlen] {
-			return nil, fmt.Errorf("[1] value is too big (%d) for bit length of register (%d)", v, bitlen)
+		if bitlen == 16 {
+			r = make(Register, 16)
+			copy(r, bitPatterns16b[v])
+			return r, nil
 		}
 		val = uint16(v)
 		r = make(Register, max(16, bitlen))
+
 	case uint8:
-		if int(v) >= bitVals[bitlen] {
-			return nil, fmt.Errorf("[2] value is too big (%d) for bit length of register (%d)", v, bitlen)
+		if bitlen == 8 {
+			r = make(Register, 8)
+			copy(r, bitPatterns8b[v])
+			return r, nil
 		}
 		val = uint16(v)
 		r = make(Register, max(8, bitlen))
+
 	case int:
 		if v >= bitVals[bitlen] {
-			return nil, fmt.Errorf("[3] value is too big (%d) for bit length of register (%d)", v, bitlen)
+			return nil, fmt.Errorf("value is too big (%d) for bit length of register (%d)", v, bitlen)
 		}
-		val = uint16(v)
+
 		r = make(Register, max(8, bitlen))
+		val = uint16(v)
 	}
 
 	// create bit pattern
@@ -138,7 +163,7 @@ func generateRegister(v interface{}, bitlen int) (Register, error) {
 
 	// belt & braces test
 	if val != 0 {
-		return nil, fmt.Errorf("(2) value is too big (%d) for bit length of register (%d)", v, bitlen)
+		return nil, fmt.Errorf("value is too big (%d) for bit length of register (%d)", v, bitlen)
 	}
 
 	return r, nil
