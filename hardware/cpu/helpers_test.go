@@ -14,6 +14,7 @@ package cpu_test
 import (
 	"fmt"
 	"headlessVCS/hardware/cpu"
+	"headlessVCS/hardware/cpu/registers"
 	"headlessVCS/hardware/memory"
 	"testing"
 )
@@ -25,15 +26,15 @@ func assert(t *testing.T, r, x interface{}) {
 		if fmt.Sprintf("%s", r) != x.(string) {
 			t.Errorf("assert StatusRegister failed (%s  - wanted %s)", r, x.(string))
 		}
-	case cpu.Register:
+	case registers.Bits:
 		switch x := x.(type) {
 		case int:
 			if r.ToUint16() != uint16(x) {
 				t.Errorf("assert Register failed (%d  - wanted %d", r.ToUint16(), x)
 			}
 		case string:
-			if r.ToBits() != x {
-				t.Errorf("assert Register failed (%s  - wanted %s", r.ToBits(), x)
+			if r.ToString() != x {
+				t.Errorf("assert Register failed (%s  - wanted %s", r.ToString(), x)
 			}
 		}
 	case bool:

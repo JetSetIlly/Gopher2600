@@ -1,13 +1,13 @@
-package cpu_test
+package registers_test
 
 import (
-	"headlessVCS/hardware/cpu"
+	"headlessVCS/hardware/cpu/registers"
 	"testing"
 )
 
 func TestRegister(t *testing.T) {
-	r8 := make(cpu.Register, 8)
-	r16 := make(cpu.Register, 16)
+	r8 := make(registers.Bits, 8)
+	r16 := make(registers.Bits, 16)
 
 	var carry, overflow bool
 
@@ -86,7 +86,7 @@ func TestRegister(t *testing.T) {
 	r8.ROR(false)
 	assert(t, r8, "01000001")
 
-	// cpu flags
+	// flags
 	assert(t, r8.IsZero(), false)
 	assert(t, r8.IsNegative(), false)
 	r8.ROL(false)

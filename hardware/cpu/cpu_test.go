@@ -21,6 +21,8 @@ func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
 	var result *cpu.InstructionResult
 	var err error
 
+	t.Helper()
+
 	running := true
 	for running {
 		result, err = mc.StepCycle()

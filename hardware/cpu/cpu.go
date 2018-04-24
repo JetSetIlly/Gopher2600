@@ -8,6 +8,7 @@ package cpu
 import (
 	"fmt"
 	"headlessVCS/hardware/cpu/definitions"
+	"headlessVCS/hardware/cpu/registers"
 	"headlessVCS/hardware/memory"
 	"log"
 	"runtime"
@@ -15,11 +16,11 @@ import (
 
 // CPU is the main container structure for the package
 type CPU struct {
-	PC     Register
-	A      Register
-	X      Register
-	Y      Register
-	SP     Register
+	PC     registers.Bits
+	A      registers.Bits
+	X      registers.Bits
+	Y      registers.Bits
+	SP     registers.Bits
 	Status StatusRegister
 
 	memory  memory.CPUBus
@@ -42,10 +43,10 @@ type CPU struct {
 	endCycle func()
 
 	// we use some numbers a lot
-	one16b     Register
-	two16b     Register
-	one8b      Register
-	minusOne8b Register
+	one16b     registers.Bits
+	two16b     registers.Bits
+	one8b      registers.Bits
+	minusOne8b registers.Bits
 }
 
 // NewCPU is the constructor for the CPU type
@@ -57,11 +58,11 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	mc.stepError = make(chan error)
 	mc.stepNext = make(chan bool)
 
-	mc.PC = make(Register, 16)
-	mc.A = make(Register, 8)
-	mc.X = make(Register, 8)
-	mc.Y = make(Register, 8)
-	mc.SP = make(Register, 8)
+	mc.PC = make(registers.Bits, 16)
+	mc.A = make(registers.Bits, 8)
+	mc.X = make(registers.Bits, 8)
+	mc.Y = make(registers.Bits, 8)
+	mc.SP = make(registers.Bits, 8)
 	mc.Status = *new(StatusRegister)
 
 	var err error
@@ -70,19 +71,19 @@ func NewCPU(memory memory.CPUBus) *CPU {
 		log.Fatalln(err)
 	}
 
-	mc.one16b, err = generateRegister(1, 16)
+	mc.one16b, err = registers.Generate(1, 16)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	mc.two16b, err = generateRegister(2, 16)
+	mc.two16b, err = registers.Generate(2, 16)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	mc.one8b, err = generateRegister(1, 8)
+	mc.one8b, err = registers.Generate(1, 8)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	mc.minusOne8b, err = generateRegister(255, 8)
+	mc.minusOne8b, err = registers.Generate(255, 8)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -336,7 +337,7 @@ func (mc *CPU) executeInstruction() {
 		indirectAddress := mc.read8BitPC()
 
 		// using 8bit addition because we don't want a page-fault
-		adder, err := generateRegister(mc.X, 8)
+		adder, err := registers.Generate(mc.X, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -358,7 +359,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indexedAddress := mc.read16Bit(uint16(indirectAddress))
 
-		adder, err := generateRegister(mc.Y, 16)
+		adder, err := registers.Generate(mc.Y, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -383,7 +384,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
-		adder, err := generateRegister(&mc.X, 16)
+		adder, err := registers.Generate(mc.X, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -410,7 +411,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
-		adder, err := generateRegister(&mc.Y, 16)
+		adder, err := registers.Generate(mc.Y, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -436,7 +437,7 @@ func (mc *CPU) executeInstruction() {
 	case definitions.IndexedZeroPageX:
 		// +1 cycles
 		indirectAddress := mc.read8BitPC()
-		adder, err := generateRegister(indirectAddress, 8)
+		adder, err := registers.Generate(indirectAddress, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -452,7 +453,7 @@ func (mc *CPU) executeInstruction() {
 
 		// +1 cycles
 		indirectAddress := mc.read8BitPC()
-		adder, err := generateRegister(indirectAddress, 8)
+		adder, err := registers.Generate(indirectAddress, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -688,7 +689,7 @@ func (mc *CPU) executeInstruction() {
 		}
 
 	case "INC":
-		r, err := generateRegister(value, 8)
+		r, err := registers.Generate(value, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -698,7 +699,7 @@ func (mc *CPU) executeInstruction() {
 		value = r.ToUint8()
 
 	case "DEC":
-		r, err := generateRegister(value, 8)
+		r, err := registers.Generate(value, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -708,7 +709,7 @@ func (mc *CPU) executeInstruction() {
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp, err := generateRegister(&mc.A, len(mc.A))
+		cmp, err := registers.Generate(mc.A, len(mc.A))
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -717,7 +718,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp, err := generateRegister(&mc.X, len(mc.X))
+		cmp, err := registers.Generate(mc.X, len(mc.X))
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -726,7 +727,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp, err := generateRegister(&mc.Y, len(mc.Y))
+		cmp, err := registers.Generate(mc.Y, len(mc.Y))
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -735,7 +736,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := generateRegister(&mc.A, len(mc.A))
+		cmp, err := registers.Generate(mc.A, len(mc.A))
 		if err != nil {
 			mc.endStepInError(err)
 		}
