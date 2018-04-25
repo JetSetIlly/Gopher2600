@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"headlessVCS/hardware/cpu/definitions"
 	"headlessVCS/hardware/cpu/registers"
+	"headlessVCS/hardware/cpu/registers/r16bit"
+	"headlessVCS/hardware/cpu/registers/rbits"
 	"headlessVCS/hardware/memory"
 	"log"
 	"runtime"
@@ -16,11 +18,11 @@ import (
 
 // CPU is the main container structure for the package
 type CPU struct {
-	PC     registers.Bits
-	A      registers.Bits
-	X      registers.Bits
-	Y      registers.Bits
-	SP     registers.Bits
+	PC     r16bit.Register
+	A      rbits.Register
+	X      rbits.Register
+	Y      rbits.Register
+	SP     rbits.Register
 	Status StatusRegister
 
 	memory  memory.CPUBus
@@ -29,7 +31,7 @@ type CPU struct {
 	// channels communicating success and error of each cycle. note that
 	// stepResult returns a valid InstructionResult after every cycle and that
 	// the "Final" property will be true at the *end* of an instruction.
-	stepResult chan InstructionResult
+	stepResult chan *InstructionResult
 	stepError  chan error
 
 	// stepNext stops the processor continuing with the instruction execution
@@ -41,12 +43,6 @@ type CPU struct {
 	// if it is undefined then no execution is currently being executed
 	// (see IsExecutingInstruction method)
 	endCycle func()
-
-	// we use some numbers a lot
-	one16b     registers.Bits
-	two16b     registers.Bits
-	one8b      registers.Bits
-	minusOne8b registers.Bits
 }
 
 // NewCPU is the constructor for the CPU type
@@ -54,36 +50,43 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	mc := new(CPU)
 	mc.memory = memory
 
-	mc.stepResult = make(chan InstructionResult)
+	mc.stepResult = make(chan *InstructionResult)
 	mc.stepError = make(chan error)
 	mc.stepNext = make(chan bool)
 
-	mc.PC = make(registers.Bits, 16)
-	mc.A = make(registers.Bits, 8)
-	mc.X = make(registers.Bits, 8)
-	mc.Y = make(registers.Bits, 8)
-	mc.SP = make(registers.Bits, 8)
+	r, err := registers.Generate(0, 16)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	mc.PC = r.(r16bit.Register)
+
+	r, err = registers.Generate(0, 8)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	mc.A = r.(rbits.Register)
+
+	r, err = registers.Generate(0, 8)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	mc.X = r.(rbits.Register)
+
+	r, err = registers.Generate(0, 8)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	mc.Y = r.(rbits.Register)
+
+	r, err = registers.Generate(0, 8)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	mc.SP = r.(rbits.Register)
+
 	mc.Status = *new(StatusRegister)
 
-	var err error
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	mc.one16b, err = registers.Generate(1, 16)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	mc.two16b, err = registers.Generate(2, 16)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	mc.one8b, err = registers.Generate(1, 8)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	mc.minusOne8b, err = registers.Generate(255, 8)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -93,6 +96,10 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	go mc.executeInstructionLoop()
 
 	return mc
+}
+
+func (mc *CPU) String() string {
+	return fmt.Sprintf("PC: %v\n A: %v\n X: %v\n Y: %v\nSP: %v\nST: %v\n", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
 // Reset reinitialises all registers. Also stops any current instruction cycle
@@ -160,13 +167,13 @@ func (mc *CPU) read16Bit(address uint16) uint16 {
 
 func (mc *CPU) read8BitPC() uint8 {
 	op := mc.read8Bit(mc.PC.ToUint16())
-	mc.PC.Add(mc.one16b, false)
+	mc.PC.Add(1, false)
 	return op
 }
 
 func (mc *CPU) read16BitPC() uint16 {
 	val := mc.read16Bit(mc.PC.ToUint16())
-	mc.PC.Add(mc.two16b, false)
+	mc.PC.Add(2, false)
 	return val
 }
 
@@ -219,22 +226,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
 	}
 }
 
-func (mc *CPU) executeInstruction() {
-	// prepare StepResult structure
-	result := new(InstructionResult)
-	result.ProgramCounter = mc.PC.ToUint16()
-
-	// create endCycle function
-	mc.endCycle = func() {
-		result.ActualCycles++
-		mc.stepResult <- *result
-		cont := <-mc.stepNext
-		if cont == false {
-			mc.endCycle = nil
-			runtime.Goexit()
-		}
-	}
-
+func (mc *CPU) executeInstruction(result *InstructionResult) {
 	// read next instruction (end cycle part of read8BitPC)
 	// +1 cycle
 	operator := mc.read8BitPC()
@@ -337,7 +329,7 @@ func (mc *CPU) executeInstruction() {
 		indirectAddress := mc.read8BitPC()
 
 		// using 8bit addition because we don't want a page-fault
-		adder, err := registers.Generate(mc.X, 8)
+		adder, err := rbits.Generate(mc.X, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -359,7 +351,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indexedAddress := mc.read16Bit(uint16(indirectAddress))
 
-		adder, err := registers.Generate(mc.Y, 16)
+		adder, err := rbits.Generate(mc.Y, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -384,7 +376,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
-		adder, err := registers.Generate(mc.X, 16)
+		adder, err := rbits.Generate(mc.X, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -411,7 +403,7 @@ func (mc *CPU) executeInstruction() {
 		// +2 cycles
 		indirectAddress := mc.read16BitPC()
 
-		adder, err := registers.Generate(mc.Y, 16)
+		adder, err := rbits.Generate(mc.Y, 16)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -437,7 +429,7 @@ func (mc *CPU) executeInstruction() {
 	case definitions.IndexedZeroPageX:
 		// +1 cycles
 		indirectAddress := mc.read8BitPC()
-		adder, err := registers.Generate(indirectAddress, 8)
+		adder, err := rbits.Generate(indirectAddress, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -453,7 +445,7 @@ func (mc *CPU) executeInstruction() {
 
 		// +1 cycles
 		indirectAddress := mc.read8BitPC()
-		adder, err := registers.Generate(indirectAddress, 8)
+		adder, err := rbits.Generate(indirectAddress, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -524,11 +516,11 @@ func (mc *CPU) executeInstruction() {
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		mc.SP.Add(mc.minusOne8b, false)
+		mc.SP.Add(255, false)
 
 	case "PLA":
 		// +1 cycle
-		mc.SP.Add(mc.one8b, false)
+		mc.SP.Add(1, false)
 		mc.endCycle()
 		// +1 cycle
 		value = mc.read8Bit(mc.SP.ToUint16())
@@ -539,11 +531,11 @@ func (mc *CPU) executeInstruction() {
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		mc.SP.Add(mc.minusOne8b, false)
+		mc.SP.Add(255, false)
 
 	case "PLP":
 		// +1 cycle
-		mc.SP.Add(mc.one8b, false)
+		mc.SP.Add(1, false)
 		mc.endCycle()
 		// +1 cycle
 		value = mc.read8Bit(mc.SP.ToUint16())
@@ -627,22 +619,22 @@ func (mc *CPU) executeInstruction() {
 		}
 
 	case "INX":
-		mc.X.Add(mc.one8b, false)
+		mc.X.Add(1, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
 	case "INY":
-		mc.Y.Add(mc.one8b, false)
+		mc.Y.Add(1, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "DEX":
-		mc.X.Add(mc.minusOne8b, false)
+		mc.X.Add(255, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
 	case "DEY":
-		mc.Y.Add(mc.minusOne8b, false)
+		mc.Y.Add(255, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
@@ -689,27 +681,27 @@ func (mc *CPU) executeInstruction() {
 		}
 
 	case "INC":
-		r, err := registers.Generate(value, 8)
+		r, err := rbits.Generate(value, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		r.Add(mc.one8b, false)
+		r.Add(1, false)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 		value = r.ToUint8()
 
 	case "DEC":
-		r, err := registers.Generate(value, 8)
+		r, err := rbits.Generate(value, 8)
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		r.Add(mc.minusOne8b, false)
+		r.Add(255, false)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp, err := registers.Generate(mc.A, len(mc.A))
+		cmp, err := rbits.Generate(mc.A, mc.A.Size())
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -718,7 +710,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp, err := registers.Generate(mc.X, len(mc.X))
+		cmp, err := rbits.Generate(mc.X, mc.X.Size())
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -727,7 +719,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp, err := registers.Generate(mc.Y, len(mc.Y))
+		cmp, err := rbits.Generate(mc.Y, mc.Y.Size())
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -736,7 +728,7 @@ func (mc *CPU) executeInstruction() {
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := registers.Generate(mc.A, len(mc.A))
+		cmp, err := rbits.Generate(mc.A, mc.A.Size())
 		if err != nil {
 			mc.endStepInError(err)
 		}
@@ -790,7 +782,7 @@ func (mc *CPU) executeInstruction() {
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		mc.SP.Add(mc.minusOne8b, false)
+		mc.SP.Add(255, false)
 		mc.endCycle()
 
 		// push LSB of PC onto stack, and decrement SP
@@ -799,7 +791,7 @@ func (mc *CPU) executeInstruction() {
 		if err != nil {
 			mc.endStepInError(err)
 		}
-		mc.SP.Add(mc.minusOne8b, false)
+		mc.SP.Add(255, false)
 		mc.endCycle()
 
 		// perform jump
@@ -813,16 +805,16 @@ func (mc *CPU) executeInstruction() {
 
 	case "RTS":
 		// +1 cycle
-		mc.SP.Add(mc.one8b, false)
+		mc.SP.Add(1, false)
 		mc.endCycle()
 
 		// +2 cycles
 		rtsAddress := mc.read16Bit(mc.SP.ToUint16())
-		mc.SP.Add(mc.one8b, false)
+		mc.SP.Add(1, false)
 
 		// load and correct PC
 		mc.PC.Load(rtsAddress)
-		mc.PC.Add(mc.one8b, false)
+		mc.PC.Add(1, false)
 
 		// +1 cycle
 		mc.endCycle()
@@ -861,7 +853,7 @@ func (mc *CPU) executeInstruction() {
 func (mc *CPU) endStep(result *InstructionResult) {
 	result.Final = true
 	mc.endCycle = nil
-	mc.stepResult <- *result
+	mc.stepResult <- result
 }
 
 func (mc *CPU) endStepInError(err error) {
@@ -870,13 +862,30 @@ func (mc *CPU) endStepInError(err error) {
 }
 
 func (mc *CPU) executeInstructionLoop() {
+	var result *InstructionResult
 	for {
 		cont := <-mc.stepNext
 		if cont == false {
 			mc.endCycle = nil
 			runtime.Goexit()
 		}
-		mc.executeInstruction()
+
+		// prepare StepResult structure
+		result = new(InstructionResult)
+		result.ProgramCounter = mc.PC.ToUint16()
+
+		// create endCycle function
+		mc.endCycle = func() {
+			result.ActualCycles++
+			mc.stepResult <- result
+			cont := <-mc.stepNext
+			if cont == false {
+				mc.endCycle = nil
+				runtime.Goexit()
+			}
+		}
+
+		mc.executeInstruction(result)
 	}
 }
 

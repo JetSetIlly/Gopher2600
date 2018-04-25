@@ -1,4 +1,4 @@
-package registers
+package rbits
 
 import (
 	"fmt"
@@ -8,15 +8,35 @@ import (
 // implementing bit as a simple boolean
 type bit bool
 
-// Bits is an array of of type bit, used for register representation
-type Bits []bit
+// Register is an array of of type bit, used for register representation
+type Register []bit
 
-func (r Bits) String() string {
+// Size returns the number of bits in register
+func (r Register) Size() int {
+	return len(r)
+}
+
+func (r Register) String() string {
 	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToString(), r.ToUint(), r.ToUint())
 }
 
+// IsNegative checks the sign bit of the register
+func (r Register) IsNegative() bool {
+	return bool(r[0])
+}
+
+// IsZero checks if register is all zero bits
+func (r Register) IsZero() bool {
+	for b := range r {
+		if r[b] == true {
+			return false
+		}
+	}
+	return true
+}
+
 // Load value into register
-func (r Bits) Load(v interface{}) {
+func (r Register) Load(v interface{}) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -26,7 +46,7 @@ func (r Bits) Load(v interface{}) {
 }
 
 // Add value to register. Returns carry and overflow states
-func (r Bits) Add(v interface{}, carry bool) (bool, bool) {
+func (r Register) Add(v interface{}, carry bool) (bool, bool) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -36,6 +56,7 @@ func (r Bits) Add(v interface{}, carry bool) (bool, bool) {
 
 	i := len(b) - 1
 
+	// ripple adder
 	for i >= 0 {
 		if r[i] == false && b[i] == false && carry == false { // 0 0 0
 			r[i] = false
@@ -75,7 +96,7 @@ func (r Bits) Add(v interface{}, carry bool) (bool, bool) {
 //
 // Note that carry flag is opposite of what you might expect when subtracting
 // on the 6502/6507
-func (r Bits) Subtract(v interface{}, carry bool) (bool, bool) {
+func (r Register) Subtract(v interface{}, carry bool) (bool, bool) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -93,7 +114,7 @@ func (r Bits) Subtract(v interface{}, carry bool) (bool, bool) {
 }
 
 // EOR - XOR Register with value
-func (r Bits) EOR(v interface{}) {
+func (r Register) EOR(v interface{}) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -107,7 +128,7 @@ func (r Bits) EOR(v interface{}) {
 }
 
 // ORA - OR Register with value
-func (r Bits) ORA(v interface{}) {
+func (r Register) ORA(v interface{}) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -121,7 +142,7 @@ func (r Bits) ORA(v interface{}) {
 }
 
 // AND register with value
-func (r Bits) AND(v interface{}) {
+func (r Register) AND(v interface{}) {
 	b, err := Generate(v, len(r))
 	if err != nil {
 		log.Fatalln(err)
@@ -135,7 +156,7 @@ func (r Bits) AND(v interface{}) {
 }
 
 // ROR rotates register 1 bit to the right. Returns new carry status.
-func (r Bits) ROR(carry bool) bool {
+func (r Register) ROR(carry bool) bool {
 	rcarry := bool(r[len(r)-1])
 	copy(r[1:], r[:len(r)-1])
 	r[0] = bit(carry)
@@ -143,7 +164,7 @@ func (r Bits) ROR(carry bool) bool {
 }
 
 // ROL rotates register 1 bit to the left. Returns new carry status.
-func (r Bits) ROL(carry bool) bool {
+func (r Register) ROL(carry bool) bool {
 	rcarry := bool(r[0])
 	copy(r[:len(r)-1], r[1:])
 	r[len(r)-1] = bit(carry)
@@ -153,7 +174,7 @@ func (r Bits) ROL(carry bool) bool {
 // ASL (Arithmetic shift Left) shifts register one bit to the left. Returns
 // the most significant bit as it was before the shift. If we think of the
 // ASL operation as a multiply by two then the return value is the carry bit.
-func (r Bits) ASL() bool {
+func (r Register) ASL() bool {
 	rcarry := bool(r[0])
 	copy(r[:len(r)-1], r[1:])
 	r[len(r)-1] = bit(false)
@@ -163,24 +184,9 @@ func (r Bits) ASL() bool {
 // LSR (Logical Shift Right) shifts register one bit to the rigth.
 // the least significant bit as it was before the shift. If we think of
 // the ASL operation as a division by two then the return value is the carry bit.
-func (r Bits) LSR() bool {
+func (r Register) LSR() bool {
 	rcarry := bool(r[len(r)-1])
 	copy(r[1:], r[:len(r)-1])
 	r[0] = bit(false)
 	return rcarry
-}
-
-// IsNegative checks the sign bit of the register
-func (r Bits) IsNegative() bool {
-	return bool(r[0])
-}
-
-// IsZero checks if register is all zero bits
-func (r Bits) IsZero() bool {
-	for b := range r {
-		if r[b] == true {
-			return false
-		}
-	}
-	return true
 }

@@ -1,52 +1,10 @@
 package cpu_test
 
-// helpers_test.go contains the all the support code required for the cpu_test package
-// it includes:
-//
-// o assert - used to test for equality between values
-//
-// o MockMem - implementation of memory.Bus
-//	- embeds the VCS implementation of memory.Bus for convenience
-//	- plus:
-//		- putInstructions(), a variadic function to place a sequence of bytes into memory
-//		- an assert method
-
 import (
 	"fmt"
-	"headlessVCS/hardware/cpu"
-	"headlessVCS/hardware/cpu/registers"
 	"headlessVCS/hardware/memory"
 	"testing"
 )
-
-func assert(t *testing.T, r, x interface{}) {
-	t.Helper()
-	switch r := r.(type) {
-	case cpu.StatusRegister:
-		if fmt.Sprintf("%s", r) != x.(string) {
-			t.Errorf("assert StatusRegister failed (%s  - wanted %s)", r, x.(string))
-		}
-	case registers.Bits:
-		switch x := x.(type) {
-		case int:
-			if r.ToUint16() != uint16(x) {
-				t.Errorf("assert Register failed (%d  - wanted %d", r.ToUint16(), x)
-			}
-		case string:
-			if r.ToString() != x {
-				t.Errorf("assert Register failed (%s  - wanted %s", r.ToString(), x)
-			}
-		}
-	case bool:
-		if r != x.(bool) {
-			t.Errorf("assert Bool failed (%v  - wanted %v", r, x.(bool))
-		}
-	case int:
-		if r != x.(int) {
-			t.Errorf("assert Int failed (%d  - wanted %d)", r, x.(int))
-		}
-	}
-}
 
 type MockMem struct {
 	internal []uint8

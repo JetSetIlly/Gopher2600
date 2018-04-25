@@ -23,7 +23,7 @@ type InstructionResult struct {
 	Final bool
 }
 
-func (result *InstructionResult) String() string {
+func (result InstructionResult) String() string {
 	var data string
 	var pf, bug string
 

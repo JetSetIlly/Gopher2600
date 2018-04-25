@@ -30,7 +30,7 @@ func (mc *CPU) StepInstruction() (*InstructionResult, error) {
 		select {
 		case result := <-mc.stepResult:
 			if result.Final {
-				return &result, nil
+				return result, nil
 			}
 		case err := <-mc.stepError:
 			return nil, err
@@ -45,7 +45,7 @@ func (mc *CPU) StepCycle() (*InstructionResult, error) {
 
 	select {
 	case result := <-mc.stepResult:
-		return &result, nil
+		return result, nil
 	case err := <-mc.stepError:
 		return nil, err
 	}

@@ -2,70 +2,56 @@ package main
 
 import (
 	"fmt"
+	"headlessVCS/debugger"
 	"headlessVCS/hardware"
-	"log"
 	"os"
 	"runtime/pprof"
 	"time"
 )
 
 func main() {
-	dbg := NewDebugger()
-
-	err := dbg.vcs.AttachCartridge("flappy.bin")
+	dbg := debugger.NewDebugger()
+	err := dbg.Start("flappy.bin")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(10)
 	}
-
-	dbg.fps()
-	dbg.vcs.Reset()
-
 	/*
-		err = dbg.inputLoop()
+		err := fps()
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(10)
 		}
 	*/
 }
 
-// Debugger is the basic debugging frontend for the emulation
-type Debugger struct {
-	vcs       *hardware.VCS
-	running   bool
-	inputBuff []byte
-}
+func fps() error {
+	vcs := hardware.NewVCS()
+	err := vcs.AttachCartridge("flappy.bin")
+	if err != nil {
+		return err
+	}
 
-// NewDebugger is the preferred method of initialisation for the Debugger structure
-func NewDebugger() *Debugger {
-	dbg := new(Debugger)
-	dbg.vcs = hardware.NewVCS()
-	dbg.inputBuff = make([]byte, 255)
-	return dbg
-}
-
-func (dbg *Debugger) fps() {
 	const cyclesPerFrame = 19912
 	const numOfFrames = 60
 
 	f, err := os.Create("cpu.profile")
 	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
+		return err
 	}
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		return err
 	}
 	defer pprof.StopCPUProfile()
 
 	cycles := cyclesPerFrame * numOfFrames
 	startTime := time.Now()
 	for cycles > 0 {
-		result, err := dbg.vcs.Step()
+		result, err := vcs.Step()
 		if err != nil {
 			fmt.Println(err)
 			fmt.Printf("%d cycles completed\n", cycles)
-			return
+			return nil
 		}
 		if result.Final {
 			cycles -= result.ActualCycles
@@ -73,33 +59,6 @@ func (dbg *Debugger) fps() {
 	}
 
 	fmt.Printf("%f fps\n", float64(numOfFrames)/time.Since(startTime).Seconds())
-}
-
-func (dbg *Debugger) inputLoop() error {
-	breakpoint := true
-
-	dbg.running = true
-	for dbg.running == true {
-		if breakpoint {
-			fmt.Printf("> ")
-			_, err := os.Stdin.Read(dbg.inputBuff)
-			if err != nil {
-				return err
-			}
-			breakpoint = false
-
-			// TODO: parse user input
-		}
-
-		result, err := dbg.vcs.Step()
-		if err != nil {
-			return err
-		}
-		fmt.Println(result)
-
-		// TODO: check for breakpoints
-		breakpoint = true
-	}
 
 	return nil
 }

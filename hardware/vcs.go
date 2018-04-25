@@ -32,9 +32,23 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	return nil
 }
 
-// Step the emulator state one CPU insruction
+// Step the emulator state one CPU instruction
 func (vcs *VCS) Step() (*cpu.InstructionResult, error) {
-	return vcs.MC.StepInstruction()
+	var r *cpu.InstructionResult
+	var err error
+
+	for {
+		r, err = vcs.MC.StepCycle()
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: update rest of VCS
+
+		if r.Final == true {
+			return r, err
+		}
+	}
 }
 
 // Reset emulates the reset switch on the console panel
