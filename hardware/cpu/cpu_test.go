@@ -7,7 +7,7 @@ import (
 )
 
 func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
-	result, err := mc.StepInstruction()
+	result, err := mc.ExecuteInstruction(func() {})
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}
@@ -15,32 +15,6 @@ func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}
-	return result
-}
-
-func stepCycle(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
-	var result *cpu.InstructionResult
-	var err error
-
-	t.Helper()
-
-	running := true
-	for running {
-		result, err = mc.StepCycle()
-		if err != nil {
-			t.Fatalf("error during CPU step (%v)\n", err)
-		}
-
-		if result.Final {
-			err = result.IsValid()
-			if err != nil {
-				t.Fatalf("error during CPU step (%v)\n", err)
-			}
-		}
-
-		running = !result.Final
-	}
-
 	return result
 }
 

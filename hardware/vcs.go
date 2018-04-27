@@ -28,7 +28,10 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	if err != nil {
 		return err
 	}
-	vcs.Reset()
+	err = vcs.Reset()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -38,7 +41,7 @@ func (vcs *VCS) Step() (*cpu.InstructionResult, error) {
 	var err error
 
 	for {
-		r, err = vcs.MC.StepCycle()
+		r, err = vcs.MC.ExecuteInstruction(func() {})
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +55,11 @@ func (vcs *VCS) Step() (*cpu.InstructionResult, error) {
 }
 
 // Reset emulates the reset switch on the console panel
-func (vcs *VCS) Reset() {
+func (vcs *VCS) Reset() error {
 	vcs.MC.Reset()
-	vcs.MC.LoadPC(addressReset)
+	err := vcs.MC.LoadPC(addressReset)
+	if err != nil {
+		return err
+	}
+	return nil
 }

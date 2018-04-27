@@ -13,7 +13,6 @@ import (
 	"headlessVCS/hardware/cpu/registers/rbits"
 	"headlessVCS/hardware/memory"
 	"log"
-	"runtime"
 )
 
 // CPU is the main container structure for the package
@@ -28,17 +27,6 @@ type CPU struct {
 	memory  memory.CPUBus
 	opCodes map[uint8]definitions.InstructionDefinition
 
-	// channels communicating success and error of each cycle. note that
-	// stepResult returns a valid InstructionResult after every cycle and that
-	// the "Final" property will be true at the *end* of an instruction.
-	stepResult chan *InstructionResult
-	stepError  chan error
-
-	// stepNext stops the processor continuing with the instruction execution
-	// until we signal with a true. false will cause the execution to halt (which
-	// will leave the cpu in an untested state)
-	stepNext chan bool
-
 	// endCycle is a closure that contains details of the current instruction
 	// if it is undefined then no execution is currently being executed
 	// (see IsExecutingInstruction method)
@@ -50,13 +38,9 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	mc := new(CPU)
 	mc.memory = memory
 
-	mc.stepResult = make(chan *InstructionResult)
-	mc.stepError = make(chan error)
-	mc.stepNext = make(chan bool)
-
 	r, err := registers.Generate(0, 16)
 	if err != nil {
-		log.Fatalln(err)
+		return nil
 	}
 	mc.PC = r.(r16bit.Register)
 
@@ -68,19 +52,19 @@ func NewCPU(memory memory.CPUBus) *CPU {
 
 	r, err = registers.Generate(0, 8)
 	if err != nil {
-		log.Fatalln(err)
+		return nil
 	}
 	mc.X = r.(rbits.Register)
 
 	r, err = registers.Generate(0, 8)
 	if err != nil {
-		log.Fatalln(err)
+		return nil
 	}
 	mc.Y = r.(rbits.Register)
 
 	r, err = registers.Generate(0, 8)
 	if err != nil {
-		log.Fatalln(err)
+		return nil
 	}
 	mc.SP = r.(rbits.Register)
 
@@ -88,12 +72,10 @@ func NewCPU(memory memory.CPUBus) *CPU {
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
-		log.Fatalln(err)
+		return nil
 	}
 
 	mc.Reset()
-
-	go mc.executeInstructionLoop()
 
 	return mc
 }
@@ -102,11 +84,17 @@ func (mc *CPU) String() string {
 	return fmt.Sprintf("PC: %v\n A: %v\n X: %v\n Y: %v\nSP: %v\nST: %v\n", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
-// Reset reinitialises all registers. Also stops any current instruction cycle
-func (mc *CPU) Reset() {
-	// make sure there are no outstanding cycles from a previous instruction
-	_, _ = mc.drainCycles()
+// IsExecuting returns true if it is called during an ExecuteInstruction() callback
+func (mc *CPU) IsExecuting() bool {
+	return mc.endCycle != nil
+}
 
+// Reset reinitialises all registers
+func (mc *CPU) Reset() {
+	// sanity check
+	if mc.IsExecuting() {
+		panic(fmt.Errorf("can't call cpu.Reset() in the middle of cpu.ExecuteInstruction()"))
+	}
 	mc.PC.Load(0)
 	mc.A.Load(0)
 	mc.X.Load(0)
@@ -121,40 +109,45 @@ func (mc *CPU) Reset() {
 }
 
 // LoadPC loads the contents of indirectAddress into the PC
-func (mc *CPU) LoadPC(indirectAddress uint16) {
-	// make sure there are no outstanding cycles from a previous instruction
-	_, _ = mc.drainCycles()
+func (mc *CPU) LoadPC(indirectAddress uint16) error {
+	// sanity check
+	if mc.IsExecuting() {
+		panic(fmt.Errorf("can't call cpu.LoadPC() in the middle of cpu.ExecuteInstruction()"))
+	}
 
-	// we don't want to trigger an endCycle because when we call mc.read16Bit
-	// (the task will probably just deadlock - depending on when we're calling
-	// it) so temporarily change the contents of endCycle to the empty function
-	// (a value of nil will just cause a panic)
-	f := mc.endCycle
 	mc.endCycle = func() {}
-	mc.PC.Load(mc.read16Bit(indirectAddress))
-	mc.endCycle = f
+	defer func() {
+		mc.endCycle = nil
+	}()
+
+	val, err := mc.read16Bit(indirectAddress)
+	if err != nil {
+		return err
+	}
+	mc.PC.Load(val)
+
+	return nil
 }
 
-func (mc *CPU) read8Bit(address uint16) uint8 {
+func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.memory.Read(address)
 	if err != nil {
-		mc.endStepInError(err)
 	}
 	mc.endCycle()
 
-	return val
+	return val, nil
 }
 
-func (mc *CPU) read16Bit(address uint16) uint16 {
+func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.memory.Read(address)
 	if err != nil {
-		mc.endStepInError(err)
+		return 0, err
 	}
 	mc.endCycle()
 
 	hi, err := mc.memory.Read(address + 1)
 	if err != nil {
-		mc.endStepInError(err)
+		return 0, err
 	}
 	mc.endCycle()
 
@@ -162,22 +155,28 @@ func (mc *CPU) read16Bit(address uint16) uint16 {
 	val = uint16(hi) << 8
 	val |= uint16(lo)
 
-	return val
+	return val, nil
 }
 
-func (mc *CPU) read8BitPC() uint8 {
-	op := mc.read8Bit(mc.PC.ToUint16())
+func (mc *CPU) read8BitPC() (uint8, error) {
+	op, err := mc.read8Bit(mc.PC.ToUint16())
+	if err != nil {
+		return 0, err
+	}
 	mc.PC.Add(1, false)
-	return op
+	return op, nil
 }
 
-func (mc *CPU) read16BitPC() uint16 {
-	val := mc.read16Bit(mc.PC.ToUint16())
+func (mc *CPU) read16BitPC() (uint16, error) {
+	val, err := mc.read16Bit(mc.PC.ToUint16())
+	if err != nil {
+		return 0, err
+	}
 	mc.PC.Add(2, false)
-	return val
+	return val, nil
 }
 
-func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
+func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) error {
 	// in the case of branchng (relative addressing) we've read an 8bit value
 	// rather than a 16bit value to use as the "address". we do this kind of
 	// thing all over the place and it normally doesn't matter but because we'll
@@ -191,7 +190,10 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
 	if flag == true {
 		// phantom read
 		// +1 cycle
-		mc.read8Bit(mc.PC.ToUint16())
+		_, err := mc.read8Bit(mc.PC.ToUint16())
+		if err != nil {
+			return err
+		}
 
 		// note current PC for reference
 		oldPC := mc.PC.ToUint16()
@@ -211,7 +213,10 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
-			mc.read8Bit(mc.PC.ToUint16())
+			_, err := mc.read8Bit(mc.PC.ToUint16())
+			if err != nil {
+				return err
+			}
 
 			// correct program counter
 			if address&0xff00 == 0xff00 {
@@ -224,15 +229,43 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) {
 			result.PageFault = true
 		}
 	}
+
+	return nil
 }
 
-func (mc *CPU) executeInstruction(result *InstructionResult) {
+// ExecuteInstruction steps CPU forward one instruction, calling
+// cycleCallback() after every cycle. note that the CPU will panic if a CPU
+// method is called during a callback.
+func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, error) {
+	// sanity check
+	if mc.IsExecuting() {
+		panic(fmt.Errorf("calling ExecuteInstruction() before previous call to this function has completed"))
+	}
+
+	// prepare StepResult structure
+	result := new(InstructionResult)
+	result.ProgramCounter = mc.PC.ToUint16()
+
+	// register end cycle callback
+	mc.endCycle = func() {
+		result.ActualCycles++
+		cycleCallback()
+	}
+	defer func() {
+		mc.endCycle = nil
+	}()
+
+	var err error
+
 	// read next instruction (end cycle part of read8BitPC)
 	// +1 cycle
-	operator := mc.read8BitPC()
+	operator, err := mc.read8BitPC()
+	if err != nil {
+		return nil, err
+	}
 	defn, found := mc.opCodes[operator]
 	if !found {
-		mc.endStepInError(fmt.Errorf("unimplemented instruction (0x%x)", operator))
+		return nil, fmt.Errorf("unimplemented instruction (0x%x)", operator)
 	}
 	result.Defn = defn
 
@@ -246,8 +279,6 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	// change during execution and be used to write back to memory
 	var value uint8
 
-	var err error
-
 	// get address to use when reading/writing from/to memory (note that in the
 	// case of immediate addressing, we are actually getting the value to use in
 	// the instruction, not the address). we also take the opportuinity to set
@@ -257,14 +288,20 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case definitions.Implied:
 		// phantom read
 		// +1 cycle
-		mc.read8Bit(mc.PC.ToUint16())
+		_, err := mc.read8Bit(mc.PC.ToUint16())
+		if err != nil {
+			return nil, err
+		}
 
 	case definitions.Immediate:
 		// for immediate mode, the value is the next byte in the program
 		// therefore, we don't set the address and we read the value through the PC
 
 		// +1 cycle
-		value = mc.read8BitPC()
+		value, err = mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 		result.InstructionData = value
 
 	case definitions.Relative:
@@ -272,32 +309,46 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		// is an offset value from the current PC position
 
 		// +1 cycle
-		address = uint16(mc.read8BitPC())
+		value, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+		address = uint16(value)
 		result.InstructionData = address
 
 	case definitions.Absolute:
 		if defn.Effect != definitions.Subroutine {
 			// +2 cycles
-			address = mc.read16BitPC()
+			address, err = mc.read16BitPC()
+			if err != nil {
+				return nil, err
+			}
 			result.InstructionData = address
 		}
 
 	case definitions.ZeroPage:
 		// +1 cycle
-		address = uint16(mc.read8BitPC())
+		value, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+		address = uint16(value)
 		result.InstructionData = address
 
 	case definitions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
 
 		// +2 cycles
-		indirectAddress := mc.read16BitPC()
+		indirectAddress, err := mc.read16BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		// implement NMOS 6502 Indirect JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
 			lo, err := mc.memory.Read(indirectAddress)
 			if err != nil {
-				mc.endStepInError(err)
+				return nil, err
 			}
 
 			// +1 cycle
@@ -305,7 +356,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 
 			hi, err := mc.memory.Read(indirectAddress & 0xff00)
 			if err != nil {
-				mc.endStepInError(err)
+				return nil, err
 			}
 			address = uint16(hi) << 8
 			address |= uint16(lo)
@@ -320,18 +371,24 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 			// normal, non-buggy behaviour
 
 			// +2 cycles
-			address = mc.read16Bit(indirectAddress)
+			address, err = mc.read16Bit(indirectAddress)
+			if err != nil {
+				return nil, err
+			}
 			result.InstructionData = indirectAddress
 		}
 
 	case definitions.PreIndexedIndirect:
 		// +1 cycle
-		indirectAddress := mc.read8BitPC()
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		// using 8bit addition because we don't want a page-fault
 		adder, err := rbits.Generate(mc.X, 8)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		adder.Add(indirectAddress, false)
 
@@ -339,21 +396,30 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.endCycle()
 
 		// +2 cycles
-		address = mc.read16Bit(adder.ToUint16())
+		address, err = mc.read16Bit(adder.ToUint16())
+		if err != nil {
+			return nil, err
+		}
 
 		// never a page fault wth pre-index indirect addressing
 		result.InstructionData = indirectAddress
 
 	case definitions.PostIndexedIndirect:
 		// +1 cycle
-		indirectAddress := mc.read8BitPC()
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		// +2 cycles
-		indexedAddress := mc.read16Bit(uint16(indirectAddress))
+		indexedAddress, err := mc.read16Bit(uint16(indirectAddress))
+		if err != nil {
+			return nil, err
+		}
 
 		adder, err := rbits.Generate(mc.Y, 16)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		adder.Add(indexedAddress&0x00ff, false)
 		address = adder.ToUint16()
@@ -363,7 +429,10 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
-			mc.read8Bit(address)
+			_, err := mc.read8Bit(address)
+			if err != nil {
+				return nil, err
+			}
 			result.ActualCycles++
 
 			adder.Add(indexedAddress&0xff00, false)
@@ -374,11 +443,14 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 
 	case definitions.AbsoluteIndexedX:
 		// +2 cycles
-		indirectAddress := mc.read16BitPC()
+		indirectAddress, err := mc.read16BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		adder, err := rbits.Generate(mc.X, 16)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 
 		// add index to LSB of address
@@ -390,7 +462,10 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
-			mc.read8Bit(address)
+			_, err := mc.read8Bit(address)
+			if err != nil {
+				return nil, err
+			}
 			result.ActualCycles++
 
 			adder.Add(indirectAddress&0xff00, false)
@@ -401,11 +476,14 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 
 	case definitions.AbsoluteIndexedY:
 		// +2 cycles
-		indirectAddress := mc.read16BitPC()
+		indirectAddress, err := mc.read16BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		adder, err := rbits.Generate(mc.Y, 16)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 
 		// add index to LSB of address
@@ -417,7 +495,10 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
-			mc.read8Bit(address)
+			_, err := mc.read8Bit(address)
+			if err != nil {
+				return nil, err
+			}
 			result.ActualCycles++
 
 			adder.Add(indirectAddress&0xff00, false)
@@ -428,10 +509,13 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 
 	case definitions.IndexedZeroPageX:
 		// +1 cycles
-		indirectAddress := mc.read8BitPC()
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 		adder, err := rbits.Generate(indirectAddress, 8)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
@@ -444,10 +528,13 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
-		indirectAddress := mc.read8BitPC()
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 		adder, err := rbits.Generate(indirectAddress, 8)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
@@ -470,16 +557,22 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	if !(defn.AddressingMode == definitions.Implied || defn.AddressingMode == definitions.Immediate) {
 		if defn.Effect == definitions.Read {
 			// +1 cycle
-			value = mc.read8Bit(address)
+			value, err = mc.read8Bit(address)
+			if err != nil {
+				return nil, err
+			}
 		} else if defn.Effect == definitions.RMW {
 			// +1 cycle
-			value = mc.read8Bit(address)
+			value, err = mc.read8Bit(address)
+			if err != nil {
+				return nil, err
+			}
 
 			// phantom write
 			// +1 cycle
 			err = mc.memory.Write(address, value)
 			if err != nil {
-				mc.endStepInError(err)
+				return nil, err
 			}
 			mc.endCycle()
 		}
@@ -514,7 +607,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "PHA":
 		err = mc.memory.Write(mc.SP.ToUint16(), mc.A.ToUint8())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 
@@ -523,13 +616,16 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.SP.Add(1, false)
 		mc.endCycle()
 		// +1 cycle
-		value = mc.read8Bit(mc.SP.ToUint16())
+		value, err = mc.read8Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
 		mc.A.Load(value)
 
 	case "PHP":
 		err = mc.memory.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 
@@ -538,7 +634,10 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.SP.Add(1, false)
 		mc.endCycle()
 		// +1 cycle
-		value = mc.read8Bit(mc.SP.ToUint16())
+		value, err = mc.read8Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
 		mc.Status.FromUint8(value)
 
 	case "TXA":
@@ -603,19 +702,19 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "STA":
 		err = mc.memory.Write(address, mc.A.ToUint8())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 
 	case "STX":
 		err = mc.memory.Write(address, mc.X.ToUint8())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 
 	case "STY":
 		err = mc.memory.Write(address, mc.Y.ToUint8())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 
 	case "INX":
@@ -683,7 +782,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "INC":
 		r, err := rbits.Generate(value, 8)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		r.Add(1, false)
 		mc.Status.Zero = mc.A.IsZero()
@@ -693,7 +792,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "DEC":
 		r, err := rbits.Generate(value, 8)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		r.Add(255, false)
 		mc.Status.Zero = mc.A.IsZero()
@@ -703,7 +802,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "CMP":
 		cmp, err := rbits.Generate(mc.A, mc.A.Size())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
@@ -712,7 +811,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "CPX":
 		cmp, err := rbits.Generate(mc.X, mc.X.Size())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
@@ -721,7 +820,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "CPY":
 		cmp, err := rbits.Generate(mc.Y, mc.Y.Size())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
@@ -730,7 +829,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	case "BIT":
 		cmp, err := rbits.Generate(mc.A, mc.A.Size())
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		cmp.AND(value)
 		mc.Status.Zero = cmp.IsZero()
@@ -741,32 +840,59 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.PC.Load(address)
 
 	case "BCC":
-		mc.branch(!mc.Status.Carry, address, result)
+		err := mc.branch(!mc.Status.Carry, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BCS":
-		mc.branch(mc.Status.Carry, address, result)
+		err := mc.branch(mc.Status.Carry, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BEQ":
-		mc.branch(mc.Status.Zero, address, result)
+		err := mc.branch(mc.Status.Zero, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BMI":
-		mc.branch(mc.Status.Sign, address, result)
+		err := mc.branch(mc.Status.Sign, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BNE":
-		mc.branch(!mc.Status.Zero, address, result)
+		err := mc.branch(!mc.Status.Zero, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BPL":
-		mc.branch(!mc.Status.Sign, address, result)
+		err := mc.branch(!mc.Status.Sign, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BVC":
-		mc.branch(!mc.Status.Overflow, address, result)
+		err := mc.branch(!mc.Status.Overflow, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "BVS":
-		mc.branch(mc.Status.Overflow, address, result)
+		err := mc.branch(mc.Status.Overflow, address, result)
+		if err != nil {
+			return nil, err
+		}
 
 	case "JSR":
 		// +1 cycle
-		lsb := mc.read8BitPC()
+		lsb, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 
 		// the current value of the PC is now correct, even though we've only read
 		// one byte of the address so far. remember, RTS increments the PC when
@@ -780,7 +906,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		// +1 cycle
 		err = mc.memory.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 		mc.endCycle()
@@ -789,13 +915,16 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		// +1 cycle
 		err = mc.memory.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 		mc.endCycle()
 
 		// perform jump
-		msb := mc.read8BitPC()
+		msb, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
 		address = (uint16(msb) << 8) | uint16(lsb)
 		mc.PC.Load(address)
 
@@ -809,7 +938,10 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.endCycle()
 
 		// +2 cycles
-		rtsAddress := mc.read16Bit(mc.SP.ToUint16())
+		rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
 		mc.SP.Add(1, false)
 
 		// load and correct PC
@@ -834,7 +966,7 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 	if defn.Effect == definitions.RMW {
 		err = mc.memory.Write(address, value)
 		if err != nil {
-			mc.endStepInError(err)
+			return nil, err
 
 		}
 		// +1 cycle
@@ -847,49 +979,8 @@ func (mc *CPU) executeInstruction(result *InstructionResult) {
 		mc.endCycle()
 	}
 
-	mc.endStep(result)
-}
-
-func (mc *CPU) endStep(result *InstructionResult) {
+	// finalise result
 	result.Final = true
-	mc.endCycle = nil
-	mc.stepResult <- result
-}
 
-func (mc *CPU) endStepInError(err error) {
-	mc.endCycle = nil
-	mc.stepError <- err
-}
-
-func (mc *CPU) executeInstructionLoop() {
-	var result *InstructionResult
-	for {
-		cont := <-mc.stepNext
-		if cont == false {
-			mc.endCycle = nil
-			runtime.Goexit()
-		}
-
-		// prepare StepResult structure
-		result = new(InstructionResult)
-		result.ProgramCounter = mc.PC.ToUint16()
-
-		// create endCycle function
-		mc.endCycle = func() {
-			result.ActualCycles++
-			mc.stepResult <- result
-			cont := <-mc.stepNext
-			if cont == false {
-				mc.endCycle = nil
-				runtime.Goexit()
-			}
-		}
-
-		mc.executeInstruction(result)
-	}
-}
-
-// IsExecutingInstruction is true if CPU is in the middle of executing an instruction
-func (mc *CPU) IsExecutingInstruction() bool {
-	return mc.endCycle != nil
+	return result, nil
 }

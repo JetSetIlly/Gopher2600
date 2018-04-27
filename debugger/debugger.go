@@ -138,7 +138,10 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 
 	case "RESET":
 		dbg.print("* machine reset\n")
-		dbg.vcs.Reset()
+		err := dbg.vcs.Reset()
+		if err != nil {
+			return false, err
+		}
 
 	case "RUN":
 		dbg.runUntilBreak = true
