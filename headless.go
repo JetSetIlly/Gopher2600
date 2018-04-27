@@ -1,27 +1,41 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"headlessVCS/debugger"
 	"headlessVCS/hardware"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"time"
 )
 
 func main() {
-	dbg := debugger.NewDebugger()
-	err := dbg.Start("flappy.bin")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(10)
-	}
-	/*
+	var mode = flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, DISASM")
+	flag.Parse()
+
+	switch strings.ToUpper(*mode) {
+	case "DEBUG":
+		dbg := debugger.NewDebugger()
+		err := dbg.Start("flappy.bin")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(10)
+		}
+	case "FPS":
 		err := fps()
 		if err != nil {
 			fmt.Println(err)
 		}
-	*/
+	case "DISASM":
+		fmt.Printf("* not yet implemented")
+		os.Exit(10)
+	default:
+		fmt.Printf("* unknown mode (-mode %s)\n", strings.ToUpper(*mode))
+		os.Exit(10)
+	}
+
 }
 
 func fps() error {
