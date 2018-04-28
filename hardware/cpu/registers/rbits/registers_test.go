@@ -7,8 +7,14 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	r8 := make(rbits.Register, 8)
-	r16 := make(rbits.Register, 16)
+	r8, err := rbits.Generate(0, 8, "test 8bit")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	r16, err := rbits.Generate(0, 16, "test 16bit")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
 	var carry, overflow bool
 

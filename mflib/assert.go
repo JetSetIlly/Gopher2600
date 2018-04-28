@@ -1,7 +1,6 @@
 package mflib
 
 import (
-	"fmt"
 	"headlessVCS/hardware/cpu"
 	"headlessVCS/hardware/cpu/registers/r16bit"
 	"headlessVCS/hardware/cpu/registers/rbits"
@@ -19,8 +18,8 @@ func Assert(t *testing.T, r, x interface{}) {
 		t.Errorf("assert failed (unknown type [%s])", reflect.TypeOf(r))
 
 	case cpu.StatusRegister:
-		if fmt.Sprintf("%s", r) != x.(string) {
-			t.Errorf("assert StatusRegister failed (%s  - wanted %s)", r, x.(string))
+		if r.ToBits() != x.(string) {
+			t.Errorf("assert StatusRegister failed (%s  - wanted %s)", r.ToBits(), x.(string))
 		}
 
 	case r16bit.Register:

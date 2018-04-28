@@ -14,15 +14,16 @@ type breakpoints struct {
 
 // breaker defines a specific break condition
 type breaker struct {
-	targetName string
-	target     breakTarget
-	value      uint
+	target breakTarget
+	value  uint
 }
 
-// breakTarget defines what is and isn't allowed to cause an execution break
+// breakTarget defines what objects can and cannot cause an execution break
 type breakTarget interface {
+	ToString(interface{}) string
 	ToUint() uint
 	Size() int
+	Label() string
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
@@ -39,7 +40,7 @@ func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool 
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToUint() == bp.breaks[i].value {
-			dbg.print("break on %s = %s", bp.breaks[i].targetName, bp.breaks[i].valueString())
+			dbg.print("break on %v\n", bp.breaks[i].valueString())
 			broken = true
 		}
 	}
@@ -55,38 +56,32 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 			dbg.print("breakpoints\n")
 			dbg.print("-----------\n")
 			for i := range bp.breaks {
-				dbg.print("%s: %s", bp.breaks[i].targetName, bp.breaks[i].valueString())
+				dbg.print("%s\n", bp.breaks[i].valueString())
 			}
 		}
 	}
 
 	var target breakTarget
 	target = &dbg.vcs.MC.PC
-	targetName := "PC"
 
 	for i := 1; i < len(parts); i++ {
 		val, err := strconv.ParseUint(parts[i], 0, 16)
 		if err == nil {
-			bp.breaks = append(bp.breaks, breaker{targetName: targetName, target: target, value: uint(val)})
+			bp.breaks = append(bp.breaks, breaker{target: target, value: uint(val)})
 		} else {
 			switch parts[i] {
 			default:
 				return fmt.Errorf("unrecognised target (%s) for %s command", parts[i], parts[0])
 			case "PC":
 				target = &dbg.vcs.MC.PC
-				targetName = "PC"
 			case "A":
 				target = &dbg.vcs.MC.A
-				targetName = "A"
 			case "X":
 				target = &dbg.vcs.MC.X
-				targetName = "X"
 			case "Y":
 				target = &dbg.vcs.MC.Y
-				targetName = "Y"
 			case "SP":
 				target = &dbg.vcs.MC.SP
-				targetName = "SP"
 			}
 		}
 	}
@@ -95,8 +90,5 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 }
 
 func (bk *breaker) valueString() string {
-	if bk.target.Size() == 8 {
-		return fmt.Sprintf("%d [0x%02x]\n", bk.value, bk.value)
-	}
-	return fmt.Sprintf("%d [0x%04x]\n", bk.value, bk.value)
+	return bk.target.ToString(bk.value)
 }

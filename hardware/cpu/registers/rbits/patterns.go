@@ -4,14 +4,15 @@ import (
 	"log"
 )
 
-// rather than make the bit pattern every time we can look up the pattern in
-// the following slices
-var bitPatterns8b []Register
-var bitPatterns16b []Register
+// rather than generating a bit pattern every time we can look up the pattern
+// in the following slices
+
+var bitPatterns8b [][]bit
+var bitPatterns16b [][]bit
 
 func init() {
 	var err error
-	bitPatterns8b = make([]Register, 256)
+	bitPatterns8b = make([][]bit, 256)
 	for i := 0; i < 256; i++ {
 		bitPatterns8b[i] = createBitPattern(i, 8)
 		if err != nil {
@@ -19,7 +20,7 @@ func init() {
 		}
 	}
 
-	bitPatterns16b = make([]Register, 65536)
+	bitPatterns16b = make([][]bit, 65536)
 	for i := 0; i < 65536; i++ {
 		bitPatterns16b[i] = createBitPattern(i, 16)
 		if err != nil {
@@ -28,8 +29,8 @@ func init() {
 	}
 }
 
-func createBitPattern(val int, bitlen int) Register {
-	r := make(Register, bitlen)
+func createBitPattern(val int, bitlen int) []bit {
+	r := make([]bit, bitlen)
 	i := 0
 	j := bitlen - 1
 	for j >= 0 {

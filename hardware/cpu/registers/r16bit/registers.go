@@ -6,48 +6,60 @@ import (
 )
 
 // Register is an array of of type bit, used for register representation
-type Register uint16
+type Register struct {
+	value uint16
+	label string
+}
 
 // Size returns the number of bits in register
 func (r Register) Size() int {
 	return 16
 }
 
-func (r Register) String() string {
-	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToBits(), r.ToUint(), r.ToUint())
-}
-
-// ToUint returns value of type uint, regardless of register size
-func (r Register) ToUint() uint {
-	return uint(r)
-}
-
-// ToUint16 returns value of type uint16, regardless of register size
-func (r Register) ToUint16() uint16 {
-	return uint16(r)
-}
-
-// ToBits returns the register as bit pattern (of '0' and '1')
-func (r Register) ToBits() string {
-	return fmt.Sprintf("%016b", r)
+// Label returns the label assigned to the register
+func (r Register) Label() string {
+	return r.label
 }
 
 // Load value into register
 func (r *Register) Load(v interface{}) {
-	b, err := Generate(v, 16)
+	b, err := Generate(v, 16, "")
 	if err != nil {
 		log.Fatalln(err)
 	}
-	*r = b
+	r.value = b.value
 }
 
 // Add value to register. Returns carry and overflow states -- for this native
 // implementation, carry flag is ignored and return values are undefined
 func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
-	b, err := Generate(v, 16)
+	b, err := Generate(v, 16, "")
 	if err != nil {
 		log.Fatalln(err)
 	}
-	*r += b
+	r.value += b.value
 	return false, false
+}
+
+// IsNegative checks the sign bit of the register
+func (r Register) IsNegative() bool {
+	return r.value&0x8000 == 0x8000
+}
+
+// IsZero checks if register is zero
+func (r Register) IsZero() bool {
+	return r.value == 0
+}
+
+func (r Register) String() string {
+	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+}
+
+// ToString returns the string representation of an aribtrary value
+func (r Register) ToString(v interface{}) string {
+	vr, err := Generate(v, r.Size(), r.Label())
+	if err != nil {
+		return err.Error()
+	}
+	return fmt.Sprintf("%v", vr)
 }

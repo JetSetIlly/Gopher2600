@@ -1,7 +1,10 @@
 package cpu
 
+import "fmt"
+
 // StatusRegister is the special purpose register that stores the flags of the CPU
 type StatusRegister struct {
+	label            string
 	Sign             bool
 	Overflow         bool
 	Break            bool
@@ -11,7 +14,25 @@ type StatusRegister struct {
 	Carry            bool
 }
 
+// NewStatusRegister is the preferred method of initialisation for the status
+// register
+func NewStatusRegister(label string) StatusRegister {
+	sr := new(StatusRegister)
+	sr.label = label
+	return *sr
+}
+
+// Label returns the label assigned to the status register
+func (sr StatusRegister) Label() string {
+	return sr.label
+}
+
 func (sr StatusRegister) String() string {
+	return fmt.Sprintf("%s: %v", sr.label, sr.ToBits())
+}
+
+// ToBits returns the register as a labelled bit pattern
+func (sr StatusRegister) ToBits() string {
 	var v string
 
 	if sr.Sign {

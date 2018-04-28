@@ -90,7 +90,7 @@ func (dbg *Debugger) inputLoop() error {
 		}
 
 		// check for breakpoint
-		breakpoint = dbg.breakpoints.check(dbg, result) || !dbg.runUntilBreak
+		breakpoint = (next && dbg.breakpoints.check(dbg, result)) || !dbg.runUntilBreak
 	}
 
 	return nil

@@ -38,37 +38,37 @@ func NewCPU(memory memory.CPUBus) *CPU {
 	mc := new(CPU)
 	mc.memory = memory
 
-	r, err := registers.Generate(0, 16)
+	r, err := registers.Generate(0, 16, "PC")
 	if err != nil {
 		return nil
 	}
 	mc.PC = r.(r16bit.Register)
 
-	r, err = registers.Generate(0, 8)
+	r, err = registers.Generate(0, 8, "A")
 	if err != nil {
 		log.Fatalln(err)
 	}
 	mc.A = r.(rbits.Register)
 
-	r, err = registers.Generate(0, 8)
+	r, err = registers.Generate(0, 8, "X")
 	if err != nil {
 		return nil
 	}
 	mc.X = r.(rbits.Register)
 
-	r, err = registers.Generate(0, 8)
+	r, err = registers.Generate(0, 8, "Y")
 	if err != nil {
 		return nil
 	}
 	mc.Y = r.(rbits.Register)
 
-	r, err = registers.Generate(0, 8)
+	r, err = registers.Generate(0, 8, "SP")
 	if err != nil {
 		return nil
 	}
 	mc.SP = r.(rbits.Register)
 
-	mc.Status = *new(StatusRegister)
+	mc.Status = NewStatusRegister("ST")
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
@@ -81,7 +81,7 @@ func NewCPU(memory memory.CPUBus) *CPU {
 }
 
 func (mc *CPU) String() string {
-	return fmt.Sprintf("PC: %v\n A: %v\n X: %v\n Y: %v\nSP: %v\nST: %v\n", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
+	return fmt.Sprintf("%v\n%v\n%v\n%v\n%v\n%v\n", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
 // IsExecuting returns true if it is called during an ExecuteInstruction() callback
@@ -386,7 +386,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		}
 
 		// using 8bit addition because we don't want a page-fault
-		adder, err := rbits.Generate(mc.X, 8)
+		adder, err := rbits.Generate(mc.X, 8, "")
 		if err != nil {
 			return nil, err
 		}
@@ -417,7 +417,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 			return nil, err
 		}
 
-		adder, err := rbits.Generate(mc.Y, 16)
+		adder, err := rbits.Generate(mc.Y, 16, "")
 		if err != nil {
 			return nil, err
 		}
@@ -448,7 +448,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 			return nil, err
 		}
 
-		adder, err := rbits.Generate(mc.X, 16)
+		adder, err := rbits.Generate(mc.X, 16, "")
 		if err != nil {
 			return nil, err
 		}
@@ -481,7 +481,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 			return nil, err
 		}
 
-		adder, err := rbits.Generate(mc.Y, 16)
+		adder, err := rbits.Generate(mc.Y, 16, "")
 		if err != nil {
 			return nil, err
 		}
@@ -513,7 +513,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		if err != nil {
 			return nil, err
 		}
-		adder, err := rbits.Generate(indirectAddress, 8)
+		adder, err := rbits.Generate(indirectAddress, 8, "")
 		if err != nil {
 			return nil, err
 		}
@@ -532,7 +532,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		if err != nil {
 			return nil, err
 		}
-		adder, err := rbits.Generate(indirectAddress, 8)
+		adder, err := rbits.Generate(indirectAddress, 8, "")
 		if err != nil {
 			return nil, err
 		}
@@ -780,7 +780,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		}
 
 	case "INC":
-		r, err := rbits.Generate(value, 8)
+		r, err := rbits.Generate(value, 8, "")
 		if err != nil {
 			return nil, err
 		}
@@ -790,7 +790,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		value = r.ToUint8()
 
 	case "DEC":
-		r, err := rbits.Generate(value, 8)
+		r, err := rbits.Generate(value, 8, "")
 		if err != nil {
 			return nil, err
 		}
@@ -800,7 +800,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp, err := rbits.Generate(mc.A, mc.A.Size())
+		cmp, err := rbits.Generate(mc.A, mc.A.Size(), "")
 		if err != nil {
 			return nil, err
 		}
@@ -809,7 +809,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp, err := rbits.Generate(mc.X, mc.X.Size())
+		cmp, err := rbits.Generate(mc.X, mc.X.Size(), "")
 		if err != nil {
 			return nil, err
 		}
@@ -818,7 +818,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp, err := rbits.Generate(mc.Y, mc.Y.Size())
+		cmp, err := rbits.Generate(mc.Y, mc.Y.Size(), "")
 		if err != nil {
 			return nil, err
 		}
@@ -827,14 +827,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := rbits.Generate(mc.A, mc.A.Size())
+		cmp, err := rbits.Generate(mc.A, mc.A.Size(), "")
 		if err != nil {
 			return nil, err
 		}
 		cmp.AND(value)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
-		mc.Status.Overflow = bool(cmp[1])
+		mc.Status.Overflow = cmp.IsOverflow()
 
 	case "JMP":
 		mc.PC.Load(address)
