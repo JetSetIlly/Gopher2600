@@ -33,8 +33,8 @@ func Assert(t *testing.T, r, x interface{}) {
 				t.Errorf("assert Register failed (%d  - wanted %d", r.ToUint16(), x)
 			}
 		case string:
-			if r.ToString() != x {
-				t.Errorf("assert Register failed (%s  - wanted %s", r.ToString(), x)
+			if r.ToBits() != x {
+				t.Errorf("assert Register failed (%s  - wanted %s", r.ToBits(), x)
 			}
 		}
 
@@ -49,8 +49,8 @@ func Assert(t *testing.T, r, x interface{}) {
 				t.Errorf("assert Register failed (%d  - wanted %d", r.ToUint16(), x)
 			}
 		case string:
-			if r.ToString() != x {
-				t.Errorf("assert Register failed (%s  - wanted %s", r.ToString(), x)
+			if r.ToBits() != x {
+				t.Errorf("assert Register failed (%s  - wanted %s", r.ToBits(), x)
 			}
 		}
 	case bool:

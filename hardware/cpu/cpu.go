@@ -33,7 +33,7 @@ type CPU struct {
 	endCycle func()
 }
 
-// NewCPU is the constructor for the CPU type
+// NewCPU is the preferred method of initialisation for the CPU structure
 func NewCPU(memory memory.CPUBus) *CPU {
 	mc := new(CPU)
 	mc.memory = memory

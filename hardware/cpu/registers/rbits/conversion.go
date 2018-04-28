@@ -15,8 +15,8 @@ func max(a int, b int) int {
 	return a
 }
 
-// ToString returns the register as bit pattern (of '0' and '1')
-func (r Register) ToString() string {
+// ToBits returns the register as bit pattern (of '0' and '1')
+func (r Register) ToBits() string {
 	s := make([]string, len(r))
 	i := 0
 	for i < len(r) {

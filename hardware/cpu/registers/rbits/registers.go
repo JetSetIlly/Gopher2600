@@ -17,7 +17,7 @@ func (r Register) Size() int {
 }
 
 func (r Register) String() string {
-	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToString(), r.ToUint(), r.ToUint())
+	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToBits(), r.ToUint(), r.ToUint())
 }
 
 // IsNegative checks the sign bit of the register

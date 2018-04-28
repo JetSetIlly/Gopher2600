@@ -14,7 +14,7 @@ func (r Register) Size() int {
 }
 
 func (r Register) String() string {
-	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToString(), r.ToUint(), r.ToUint())
+	return fmt.Sprintf("%s (%d) [0x%04x]", r.ToBits(), r.ToUint(), r.ToUint())
 }
 
 // ToUint returns value of type uint, regardless of register size
@@ -27,8 +27,8 @@ func (r Register) ToUint16() uint16 {
 	return uint16(r)
 }
 
-// ToString returns the register as bit pattern (of '0' and '1')
-func (r Register) ToString() string {
+// ToBits returns the register as bit pattern (of '0' and '1')
+func (r Register) ToBits() string {
 	return fmt.Sprintf("%016b", r)
 }
 

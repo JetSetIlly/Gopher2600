@@ -90,7 +90,7 @@ func (dbg *Debugger) inputLoop() error {
 		}
 
 		// check for breakpoint
-		breakpoint = !dbg.runUntilBreak || dbg.breakpoints.check(dbg.vcs, result)
+		breakpoint = dbg.breakpoints.check(dbg, result) || !dbg.runUntilBreak
 	}
 
 	return nil
@@ -103,11 +103,14 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 		return true, nil
 	}
 
-	// divide user input into parts -- Go's strings.Split() command appends an empty
-	// string for every additional space in the input. the for-loop is a little
-	// post processing to sanitise the parts array.
-	// TODO: maybe better to write our own Split() function
-	parts := strings.Split(input, " ")
+	// divide user input into parts and convert to upper-case for easy parsing
+	// input is unchanged in case we need the original user-case
+	parts := strings.Split(strings.ToUpper(input), " ")
+
+	// Go's strings.Split() command appends an empty string for every additional
+	// space in the input. the for-loop is a little post processing to sanitise
+	// the parts array.
+	// TODO: perhaps it would be better to write our own Split() function
 	partsb := make([]string, 0)
 	for i := 0; i < len(parts); i++ {
 		if parts[i] != "" {
@@ -120,18 +123,18 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 	stepNext := false
 
 	// first entry in parts is the debugging command. switch on this value
-	switch strings.ToUpper(parts[0]) {
+	switch parts[0] {
 	default:
-		return false, fmt.Errorf("%s is not a debugging command", strings.ToUpper(parts[0]))
+		return false, fmt.Errorf("%s is not a debugging command", parts[0])
 
 	case "BREAK":
-		err := dbg.breakpoints.add(parts)
+		err := dbg.breakpoints.parseUserInput(dbg, parts)
 		if err != nil {
 			return false, err
 		}
 
 	case "CPU":
-		dbg.print("%v\n", dbg.vcs.MC)
+		dbg.print("%v", dbg.vcs.MC)
 
 	case "QUIT":
 		dbg.running = false
