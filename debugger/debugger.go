@@ -5,6 +5,7 @@ import (
 	"headlessVCS/hardware"
 	"headlessVCS/hardware/cpu"
 	"os"
+	"os/signal"
 	"strings"
 )
 
@@ -52,8 +53,23 @@ func (dbg *Debugger) Start(filename string) error {
 func (dbg *Debugger) inputLoop() error {
 	var err error
 	var result *cpu.InstructionResult
+
 	breakpoint := true
 	next := true
+
+	ctrlC := make(chan os.Signal)
+	signal.Notify(ctrlC, os.Interrupt)
+	go func() {
+		for dbg.running {
+			<-ctrlC
+			if dbg.runUntilBreak == true {
+				dbg.runUntilBreak = false
+			} else {
+				// TODO: interrupt os.Stdin.Read()
+				dbg.running = false
+			}
+		}
+	}()
 
 	dbg.running = true
 	for dbg.running {
