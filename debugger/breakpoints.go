@@ -62,7 +62,7 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 	}
 
 	var target breakTarget
-	target = &dbg.vcs.MC.PC
+	target = dbg.vcs.MC.PC
 
 	for i := 1; i < len(parts); i++ {
 		val, err := strconv.ParseUint(parts[i], 0, 16)
@@ -73,15 +73,15 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 			default:
 				return fmt.Errorf("unrecognised target (%s) for %s command", parts[i], parts[0])
 			case "PC":
-				target = &dbg.vcs.MC.PC
+				target = dbg.vcs.MC.PC
 			case "A":
-				target = &dbg.vcs.MC.A
+				target = dbg.vcs.MC.A
 			case "X":
-				target = &dbg.vcs.MC.X
+				target = dbg.vcs.MC.X
 			case "Y":
-				target = &dbg.vcs.MC.Y
+				target = dbg.vcs.MC.Y
 			case "SP":
-				target = &dbg.vcs.MC.SP
+				target = dbg.vcs.MC.SP
 			}
 		}
 	}

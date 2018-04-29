@@ -65,7 +65,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	// LDA immediate; ADC immediate
 	origin = mem.putInstructions(origin, 0xa9, 1, 0x69, 10)
 	step(t, mc) // LDA #1
-	step(t, mc) // ADC #1
+	step(t, mc) // ADC #10
 	mflib.Assert(t, mc.A, 11)
 
 	// SEC; SBC immediate
