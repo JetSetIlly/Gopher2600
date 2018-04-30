@@ -27,7 +27,7 @@ func NewCart() *Cartridge {
 }
 
 // Label is an implementation of Area.Label
-func (cart *Cartridge) Label() string {
+func (cart Cartridge) Label() string {
 	return cart.label
 }
 
@@ -38,7 +38,7 @@ func (cart *Cartridge) Clear() {
 }
 
 // Implementation of CPUBus.Read
-func (cart *Cartridge) Read(address uint16) (uint8, error) {
+func (cart Cartridge) Read(address uint16) (uint8, error) {
 	if len(cart.memory) == 0 {
 		return 0, fmt.Errorf("no cartridge attached")
 	}

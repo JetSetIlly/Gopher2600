@@ -2,7 +2,7 @@ package cpu_test
 
 import (
 	"fmt"
-	"headlessVCS/hardware/memory"
+	"gopher2600/hardware/memory"
 	"testing"
 )
 
@@ -23,7 +23,7 @@ func (mem *MockMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	return origin + uint16(len(bytes))
 }
 
-func (mem *MockMem) assert(t *testing.T, address uint16, value uint8) {
+func (mem MockMem) assert(t *testing.T, address uint16, value uint8) {
 	t.Helper()
 	d, _ := mem.Read(address)
 	if d != value {
@@ -38,7 +38,7 @@ func (mem *MockMem) Clear() {
 	}
 }
 
-func (mem *MockMem) Read(address uint16) (uint8, error) {
+func (mem MockMem) Read(address uint16) (uint8, error) {
 	if int(address) > len(mem.internal) {
 		return 0, fmt.Errorf("address out of range (%d)", address)
 	}
@@ -72,7 +72,7 @@ func (mem *MockVCSMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	return origin + uint16(len(bytes))
 }
 
-func (mem *MockVCSMem) assert(t *testing.T, address uint16, value uint8) {
+func (mem MockVCSMem) assert(t *testing.T, address uint16, value uint8) {
 	t.Helper()
 	d, _ := mem.CPUBus.Read(address)
 	if d != value {

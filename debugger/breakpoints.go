@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"headlessVCS/hardware/cpu"
+	"gopher2600/hardware/cpu"
 	"strconv"
 )
 

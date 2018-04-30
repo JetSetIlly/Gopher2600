@@ -2,7 +2,7 @@ package cpu
 
 import (
 	"fmt"
-	"headlessVCS/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/definitions"
 	"reflect"
 )
 
@@ -76,7 +76,7 @@ func (result InstructionResult) String() string {
 //
 // Intended to be used during development of the CPU pacakge, to make sure
 // implementation hasn't gone off the rails.
-func (result *InstructionResult) IsValid() error {
+func (result InstructionResult) IsValid() error {
 	if !result.Final {
 		return fmt.Errorf("not checking an unfinalised InstructionResult")
 	}

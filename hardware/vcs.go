@@ -1,8 +1,8 @@
 package hardware
 
 import (
-	"headlessVCS/hardware/cpu"
-	"headlessVCS/hardware/memory"
+	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/memory"
 )
 
 const addressReset = 0xFFFC

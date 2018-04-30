@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"headlessVCS/debugger"
-	"headlessVCS/hardware"
+	"gopher2600/debugger"
+	"gopher2600/hardware"
 	"os"
 	"runtime/pprof"
 	"strings"

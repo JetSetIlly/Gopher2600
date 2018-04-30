@@ -5,7 +5,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"headlessVCS/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/definitions"
 	"io"
 	"os"
 	"path"

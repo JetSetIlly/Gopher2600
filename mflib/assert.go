@@ -1,8 +1,8 @@
 package mflib
 
 import (
-	"headlessVCS/hardware/cpu"
-	"headlessVCS/hardware/cpu/register"
+	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/register"
 	"reflect"
 	"testing"
 )

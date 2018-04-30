@@ -1,8 +1,8 @@
 package register_test
 
 import (
-	"headlessVCS/hardware/cpu/register"
-	"headlessVCS/mflib"
+	"gopher2600/hardware/cpu/register"
+	"gopher2600/mflib"
 	"testing"
 )
 

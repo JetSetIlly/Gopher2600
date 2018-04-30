@@ -3,10 +3,8 @@ package memory
 import "fmt"
 
 // MemoryMap returns the VCS memory map as a string
-func (mem *VCSMemory) MemoryMap() string {
-
-	mm := fmt.Sprintf("VCS Memory Map\n----------\n")
-
+func (mem VCSMemory) MemoryMap() string {
+	var mm string
 	var areaLabel string
 	var sr, er uint16
 

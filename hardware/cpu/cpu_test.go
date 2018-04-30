@@ -1,8 +1,8 @@
 package cpu_test
 
 import (
-	"headlessVCS/hardware/cpu"
-	"headlessVCS/mflib"
+	"gopher2600/hardware/cpu"
+	"gopher2600/mflib"
 	"testing"
 )
 

@@ -7,9 +7,9 @@ package cpu
 
 import (
 	"fmt"
-	"headlessVCS/hardware/cpu/definitions"
-	"headlessVCS/hardware/cpu/register"
-	"headlessVCS/hardware/memory"
+	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/register"
+	"gopher2600/hardware/memory"
 	"log"
 )
 

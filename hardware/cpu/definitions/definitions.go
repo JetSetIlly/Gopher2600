@@ -34,7 +34,7 @@ const (
 	Subroutine
 )
 
-// InstructionDefinition type is the property list for each instruction
+// InstructionDefinition - defines each instruction in the instruction set; one per instruction
 type InstructionDefinition struct {
 	ObjectCode     uint8
 	Mnemonic       string

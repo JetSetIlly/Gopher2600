@@ -81,7 +81,7 @@ func (sr *StatusRegister) reset() {
 
 // ToUint8 converts the StatusRegister struct into a value suitable for pushing
 // onto the stack
-func (sr *StatusRegister) ToUint8() uint8 {
+func (sr StatusRegister) ToUint8() uint8 {
 	var v uint8
 
 	if sr.Sign {

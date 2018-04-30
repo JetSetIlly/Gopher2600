@@ -22,7 +22,7 @@ type ChipMemory struct {
 }
 
 // Label is an implementation of Area.Label
-func (area *ChipMemory) Label() string {
+func (area ChipMemory) Label() string {
 	return area.label
 }
 
@@ -34,7 +34,7 @@ func (area *ChipMemory) Clear() {
 }
 
 // Implementation of CPUBus.Read
-func (area *ChipMemory) Read(address uint16) (uint8, error) {
+func (area ChipMemory) Read(address uint16) (uint8, error) {
 	oa := address - area.origin
 	oa &= area.readMask
 

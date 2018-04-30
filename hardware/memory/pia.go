@@ -20,7 +20,7 @@ func NewPIA() *PIA {
 }
 
 // Label is an implementation of Area.Label
-func (pia *PIA) Label() string {
+func (pia PIA) Label() string {
 	return pia.label
 }
 
@@ -32,7 +32,7 @@ func (pia *PIA) Clear() {
 }
 
 // Implementation of CPUBus.Read
-func (pia *PIA) Read(address uint16) (uint8, error) {
+func (pia PIA) Read(address uint16) (uint8, error) {
 	oa := address - pia.origin
 	return pia.memory[oa], nil
 }

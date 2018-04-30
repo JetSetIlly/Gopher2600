@@ -2,8 +2,8 @@ package debugger
 
 import (
 	"fmt"
-	"headlessVCS/hardware"
-	"headlessVCS/hardware/cpu"
+	"gopher2600/hardware"
+	"gopher2600/hardware/cpu"
 	"os"
 	"os/signal"
 	"strings"
@@ -151,6 +151,9 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 
 	case "CPU":
 		dbg.print("%v", dbg.vcs.MC)
+
+	case "MEMMAP":
+		dbg.print("%v", dbg.vcs.Mem.MemoryMap())
 
 	case "QUIT":
 		dbg.running = false
