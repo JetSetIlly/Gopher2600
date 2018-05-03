@@ -22,24 +22,32 @@ type Register struct {
 // NewRegister is the preferred method of initialisation for Register
 func NewRegister(value interface{}, size int, label string) (*Register, error) {
 	if size != 8 && size != 16 {
-		return nil, fmt.Errorf("unsupport bit size (%d)", size)
+		return nil, fmt.Errorf("can't create register (%s) - unsupported bit size (%d)", label, size)
 	}
 
 	r := new(Register)
+	if r == nil {
+		return nil, fmt.Errorf("can't allocate memory for CPU register (%s)", label)
+	}
+
 	switch value := value.(type) {
 	case *Register:
 		r.value = value.value
 	case int:
+		r.value = uint32(value)
+	case uint:
 		r.value = uint32(value)
 	case uint8:
 		r.value = uint32(value)
 	case uint16:
 		r.value = uint32(value)
 	default:
-		return nil, fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(value))
+		return nil, fmt.Errorf("can't create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value))
 	}
+
 	r.size = uint(size)
 	r.label = label
+
 	if size == 8 {
 		r.signBit = 0x00000080
 		r.vbit = 0x00000040
@@ -53,6 +61,7 @@ func NewRegister(value interface{}, size int, label string) (*Register, error) {
 		r.hexformat = "0x%04x"
 		r.binformat = "%016b"
 	}
+
 	return r, nil
 }
 

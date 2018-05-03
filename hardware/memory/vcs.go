@@ -18,7 +18,7 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
 	if mem == nil {
-		return nil, fmt.Errorf("can't allocate VCSMemory")
+		return nil, fmt.Errorf("can't allocate memory for VCS")
 	}
 
 	mem.memmap = make(map[uint16]Area)
@@ -28,7 +28,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 	mem.Cart = NewCart()
 
 	if mem.memmap == nil || mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
-		return nil, fmt.Errorf("can't allocate VCSMemory")
+		return nil, fmt.Errorf("can't allocate memory for VCS")
 	}
 
 	// create the memory map; each address in the memory map points to the

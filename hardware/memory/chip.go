@@ -1,5 +1,7 @@
 package memory
 
+import "fmt"
+
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
 type ChipMemory struct {
@@ -19,6 +21,12 @@ type ChipMemory struct {
 
 	// additional mask to further reduce address space when read from the CPU
 	readMask uint16
+
+	// when the CPU writes to chip memory it is not just writing to memory in the
+	// way we might expect. instead we note the address that has been written to,
+	// and a boolean true to indicate that a write has been performed by the CPU
+	lastWriteAddress uint16 // normalised
+	writeSignal      bool
 }
 
 // Label is an implementation of Area.Label
@@ -40,7 +48,8 @@ func (area ChipMemory) Read(address uint16) (uint8, error) {
 
 	rl := area.readAddresses[oa]
 	if rl == "" {
-		// silently ignore illegal reads
+		// silently ignore illegal reads (we're definitely reading from the correct
+		// memory space but some registers are not readable)
 		return 0, nil
 	}
 
@@ -49,17 +58,40 @@ func (area ChipMemory) Read(address uint16) (uint8, error) {
 
 // Implementation of CPUBus.Write
 func (area *ChipMemory) Write(address uint16, data uint8) error {
-	oa := address - area.origin
-
-	rl := area.writeAddresses[oa]
-	if rl == "" {
-		// silently ignore illegal writes
-		return nil
+	// check that the last write to this memory area has been serviced TODO:
+	// we'll only be notified of an unserviced write signal if the chip memory is
+	// written to again. byt the CPU theoretically, this may never happen so we
+	// should consider implementing a "tick" function that is called every
+	// machine cycle to perform the sanity check. on the other hand it does seem
+	// unlikely for a program never to write to chip memory on a more-or-less
+	// frequent basis
+	if area.writeSignal != false {
+		panic(fmt.Sprintf("chip memory write signal has not been serviced since previous write [%s]", area.writeAddresses[area.lastWriteAddress]))
 	}
 
+	oa := address - area.origin
+	rl := area.writeAddresses[oa]
+	if rl == "" {
+		// silently ignore illegal reads (we're definitely writing to the correct
+		// memory space but some registers are not writable)
+		return nil
+	}
 	area.memory[oa] = data
 
+	// note address of write
+	area.lastWriteAddress = oa
+	area.writeSignal = true
+
 	return nil
+}
+
+// ChipRead is an implementation of ChipBus.ChipRead
+func (area *ChipMemory) ChipRead() (bool, string, uint8) {
+	if area.writeSignal == true {
+		area.writeSignal = false
+		return true, area.writeAddresses[area.lastWriteAddress], area.memory[area.lastWriteAddress]
+	}
+	return false, "", 0
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT memory area

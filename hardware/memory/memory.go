@@ -14,6 +14,7 @@ type CPUBus interface {
 // ChipBus defines the operations for the memory system when accessed from the
 // VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
 type ChipBus interface {
+	ChipRead() (bool, string, uint8)
 }
 
 // Area defines the meta-operations for all memory areas. Think of these

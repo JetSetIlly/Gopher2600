@@ -2,121 +2,93 @@ package polycounter
 
 import (
 	"fmt"
-	"math"
 )
 
-var polycounter6bits []string
+// MaxPhase is the maximum value attainable by Polycounter.Phase
+const MaxPhase = 3
+
+// initialise the 6 bit table representing the polycounter sequence. we use to
+// match the current count with the correct polycounter pattern. this is
+// currently used only in the String()/ToString() functions for presentation
+// purposes and when specifying the reset pattern in the call to Reset()
+var table6bits []string
 
 func init() {
-	polycounter6bits = make([]string, 64)
-	var p uint32
-	polycounter6bits[0] = "000000"
-	for i := 1; i < len(polycounter6bits); i++ {
-		p = tick(p, 0x3f)
-		polycounter6bits[i] = fmt.Sprintf("%06b", p)
+	table6bits = make([]string, 64)
+	var p int
+	table6bits[0] = "000000"
+	for i := 1; i < len(table6bits); i++ {
+		p = ((p & (0x3f - 1)) >> 1) | (((p&1)^((p>>1)&1))^0x3f)<<5
+		p = p & 0x3f
+		table6bits[i] = fmt.Sprintf("%06b", p)
 	}
-	if polycounter6bits[63] != "000000" {
+	if table6bits[63] != "000000" {
 		panic("error during 6 bit polycounter generation")
 	}
 
-	// for the sake of accuracy, force the final value to be the "error value"
-	// this is an invalid value and the counter will cycle when we reach it
-	polycounter6bits[63] = "111111"
+	// force the final value to be the invalid polycounter value. this is only
+	// ever useful for specifying the reset pattern
+	table6bits[63] = "111111"
 }
 
-// tick returns the next value on from the "val" argument
-func tick(val uint32, mask uint32) uint32 {
-	val = ((val & (mask - 1)) >> 1) | (((val&1)^((val>>1)&1))^mask)<<5
-	return val & mask
-}
-
-// Polycounter implements the VCS method of counting.
+// Polycounter implements the VCS method of counting. It is best used when
+// embedded into another structure, not used directly.
 type Polycounter struct {
-	count uint32
-	phase int
+	// this implementation of the VCS polycounter uses a regular go-integer
+	Count      int
+	ResetPoint int
 
-	resetPoint uint32
+	// the phase ranges from 0 and MaxPhase
+	Phase int
+}
 
-	numBits   int
-	numPhases int
-
-	mask      uint32
-	binformat string
+// SetResetPattern specifies the pattern at which the polycounter automatically
+// resets during a Tick(). this should be called at least once or the reset
+// pattern will be "000000" which is probably not what you want
+func (pk *Polycounter) SetResetPattern(resetPattern string) {
+	for i := 0; i < len(table6bits); i++ {
+		if table6bits[i] == resetPattern {
+			pk.ResetPoint = i
+			return
+		}
+	}
+	panic("couldn't find reset pattern in polycounter table")
 }
 
 func (pk Polycounter) String() string {
-	var polycountStr string
-	if pk.numBits == 6 {
-		polycountStr = polycounter6bits[pk.count]
-	} else {
-		var val uint32
-
-		if pk.count == 0 {
-			val = pk.mask
-		} else {
-			val = pk.count - 1
-		}
-
-		polycountStr = fmt.Sprintf(pk.binformat, tick(val, pk.mask))
-	}
-
-	return fmt.Sprintf("%s/%d (%d/%d)", polycountStr, pk.phase, pk.count, pk.phase)
+	return pk.ToString()
 }
 
-// NewPolycounter is the preferred method of initialisation for polycounters
-// -- use New6BitPolycounter if possible (always possible in the VCS)
-func NewPolycounter(numBits int, numPhases int) *Polycounter {
-	pk := new(Polycounter)
-	if pk == nil {
-		return nil
-	}
-	pk.numBits = numBits
-	pk.mask = uint32(math.Pow(2.0, float64(pk.numBits)) - 1)
-	pk.resetPoint = pk.mask
-	pk.binformat = fmt.Sprintf("%%0%db", pk.numBits)
-	pk.numPhases = numPhases
-	return pk
+// ToString returns a string representation of the polycounter's current state
+func (pk Polycounter) ToString() string {
+	return fmt.Sprintf("%s/%d", table6bits[pk.Count], pk.Phase)
 }
 
-// New6BitPolycounter is the preferred method of initialisation for 6bit
-// polycounters. the cyclePattern argument allows you to specify the count
-// at which the counter resets.
-func New6BitPolycounter(cyclePattern string) *Polycounter {
-	pk := new(Polycounter)
-
-	pk.numBits = 6
-	pk.mask = 0x3f
-	pk.binformat = "%06b"
-	pk.numPhases = 4
-
-	// find cyclePattern in polycounter6bits
-	for i := 1; i < len(polycounter6bits); i++ {
-		if polycounter6bits[i] == cyclePattern {
-			pk.resetPoint = uint32(i)
-			break
-		}
-	}
-
-	return pk
+// ResetPhase resets the phase *only*
+func (pk *Polycounter) ResetPhase() {
+	pk.Phase = 0
 }
 
-// Reset leaves the polycounter in its "zero" state
+// Reset leaves the polycounter in its "zero" state. resetPattern
 func (pk *Polycounter) Reset() {
-	pk.count = 0
-	pk.phase = 0
+	pk.Count = 0
+	pk.Phase = 0
 }
 
 // Tick advances the count to the next state - returns true if counter has
-// reset
-func (pk *Polycounter) Tick() bool {
-	pk.phase++
-	if pk.phase == pk.numPhases {
-		pk.phase = 0
-		pk.count++
-		if pk.count == pk.resetPoint {
-			pk.count = 0
-			return true
-		}
+// reset. the force argument allows the function to be called and for the reset
+// to definitely take place. we use this in the VCS during for the RSYNC check
+func (pk *Polycounter) Tick(force bool) bool {
+	if force || pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
+		pk.Reset()
+		return true
 	}
+
+	pk.Phase++
+	if pk.Phase > MaxPhase {
+		pk.ResetPhase()
+		pk.Count++
+	}
+
 	return false
 }

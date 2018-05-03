@@ -1,4 +1,4 @@
-package mflib
+package assert
 
 import (
 	"gopher2600/hardware/cpu"
@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// Assert can be used to test equality between one value and another. no return
-// value but Go testing harness will raise an Error is assertion fails
-func Assert(t *testing.T, r, x interface{}) {
+// CheckValueVCS can be used to test equality between one value and another.
+// includes VCS specific types.
+func CheckValueVCS(t *testing.T, r, x interface{}) {
 	t.Helper()
 	switch r := r.(type) {
 

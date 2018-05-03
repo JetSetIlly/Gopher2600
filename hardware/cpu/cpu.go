@@ -22,21 +22,25 @@ type CPU struct {
 	SP     *register.Register
 	Status StatusRegister
 
-	memory  memory.CPUBus
+	mem     memory.CPUBus
 	opCodes map[uint8]definitions.InstructionDefinition
 
 	// endCycle is a closure that contains details of the current instruction
 	// if it is undefined then no execution is currently being executed
 	// (see IsExecutingInstruction method)
 	endCycle func()
+
+	// controls whether cpu is execute a cycle when it receives a clock tick (pin
+	// 3 of the 6507)
+	RdyFlg bool
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure
-func NewCPU(memory memory.CPUBus) (*CPU, error) {
+func NewCPU(mem memory.CPUBus) (*CPU, error) {
 	var err error
 
 	mc := new(CPU)
-	mc.memory = memory
+	mc.mem = mem
 
 	mc.PC, err = register.NewRegister(0, 16, "PC")
 	if err != nil {
@@ -101,6 +105,7 @@ func (mc *CPU) Reset() {
 	mc.Status.InterruptDisable = true
 	mc.Status.Break = true
 	mc.endCycle = nil
+	mc.RdyFlg = true
 }
 
 // LoadPC loads the contents of indirectAddress into the PC
@@ -110,6 +115,9 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 		panic(fmt.Errorf("can't call cpu.LoadPC() in the middle of cpu.ExecuteInstruction()"))
 	}
 
+	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
+	// cycle we need to make sure endCycle() is in a valid state for the duration
+	// of the function
 	mc.endCycle = func() {}
 	defer func() {
 		mc.endCycle = nil
@@ -125,7 +133,7 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 }
 
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
-	val, err := mc.memory.Read(address)
+	val, err := mc.mem.Read(address)
 	if err != nil {
 	}
 	mc.endCycle()
@@ -134,13 +142,13 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 }
 
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
-	lo, err := mc.memory.Read(address)
+	lo, err := mc.mem.Read(address)
 	if err != nil {
 		return 0, err
 	}
 	mc.endCycle()
 
-	hi, err := mc.memory.Read(address + 1)
+	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
 		return 0, err
 	}
@@ -235,6 +243,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 	// sanity check
 	if mc.IsExecuting() {
 		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
+	}
+
+	// do nothing and return nothing if ready flag is false
+	if mc.RdyFlg == false {
+		cycleCallback()
+		return nil, nil
 	}
 
 	// prepare StepResult structure
@@ -341,7 +355,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 		// implement NMOS 6502 Indirect JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
-			lo, err := mc.memory.Read(indirectAddress)
+			lo, err := mc.mem.Read(indirectAddress)
 			if err != nil {
 				return nil, err
 			}
@@ -349,7 +363,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 			// +1 cycle
 			mc.endCycle()
 
-			hi, err := mc.memory.Read(indirectAddress & 0xff00)
+			hi, err := mc.mem.Read(indirectAddress & 0xff00)
 			if err != nil {
 				return nil, err
 			}
@@ -539,7 +553,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.endCycle()
 
 	default:
-		log.Printf("unknown addressing mode for %s", defn.Mnemonic)
+		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)
 	}
 
 	// read value from memory using address found in AddressingMode switch above only when:
@@ -565,7 +579,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 			// phantom write
 			// +1 cycle
-			err = mc.memory.Write(address, value)
+			err = mc.mem.Write(address, value)
 			if err != nil {
 				return nil, err
 			}
@@ -600,7 +614,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.Status.Overflow = false
 
 	case "PHA":
-		err = mc.memory.Write(mc.SP.ToUint16(), mc.A.ToUint8())
+		err = mc.mem.Write(mc.SP.ToUint16(), mc.A.ToUint8())
 		if err != nil {
 			return nil, err
 		}
@@ -618,7 +632,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.A.Load(value)
 
 	case "PHP":
-		err = mc.memory.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
+		err = mc.mem.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
 		if err != nil {
 			return nil, err
 		}
@@ -695,19 +709,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "STA":
-		err = mc.memory.Write(address, mc.A.ToUint8())
+		err = mc.mem.Write(address, mc.A.ToUint8())
 		if err != nil {
 			return nil, err
 		}
 
 	case "STX":
-		err = mc.memory.Write(address, mc.X.ToUint8())
+		err = mc.mem.Write(address, mc.X.ToUint8())
 		if err != nil {
 			return nil, err
 		}
 
 	case "STY":
-		err = mc.memory.Write(address, mc.Y.ToUint8())
+		err = mc.mem.Write(address, mc.Y.ToUint8())
 		if err != nil {
 			return nil, err
 		}
@@ -899,7 +913,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 		// push MSB of PC onto stack, and decrement SP
 		// +1 cycle
-		err = mc.memory.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
+		err = mc.mem.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
 		if err != nil {
 			return nil, err
 		}
@@ -908,7 +922,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 		// push LSB of PC onto stack, and decrement SP
 		// +1 cycle
-		err = mc.memory.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
+		err = mc.mem.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
 		if err != nil {
 			return nil, err
 		}
@@ -959,7 +973,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 	// write altered value back to memory for RMW instructions
 	if defn.Effect == definitions.RMW {
-		err = mc.memory.Write(address, value)
+		err = mc.mem.Write(address, value)
 		if err != nil {
 			return nil, err
 

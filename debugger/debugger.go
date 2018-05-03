@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
+	"gopher2600/television"
 	"os"
 	"os/signal"
 	"strings"
@@ -15,6 +16,7 @@ type Debugger struct {
 	running bool
 	input   []byte
 
+	verbose       bool
 	breakpoints   *breakpoints
 	runUntilBreak bool
 
@@ -27,7 +29,12 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
-	dbg.vcs, err = hardware.NewVCS()
+	tv := new(television.DummyTV)
+	if tv == nil {
+		return nil, fmt.Errorf("error creating television for debugger")
+	}
+
+	dbg.vcs, err = hardware.NewVCS(tv)
 	if err != nil {
 		return nil, err
 	}
@@ -105,15 +112,23 @@ func (dbg *Debugger) inputLoop() error {
 
 		// move emulation on one step
 		if next {
-			result, err = dbg.vcs.Step()
+			_, result, err = dbg.vcs.Step()
 			if err != nil {
 				return err
 			}
+
 			dbg.print("%v\n", result)
+
+			if !dbg.runUntilBreak {
+				if dbg.verbose {
+					_, _ = dbg.parseInput("TIA")
+				}
+			}
 		}
 
 		// check for breakpoint
 		breakpoint = (next && dbg.breakpoints.check(dbg, result)) || !dbg.runUntilBreak
+
 	}
 
 	return nil
@@ -141,6 +156,14 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 		}
 	}
 	parts = partsb
+
+	// normalise variations in syntax
+	for i := 0; i < len(parts); i++ {
+		// normalise hex notation
+		if parts[i][0] == '$' {
+			parts[i] = fmt.Sprintf("0x%s", parts[i][1:])
+		}
+	}
 
 	// most commands do not cause the emulator to step forward
 	stepNext := false
@@ -178,6 +201,10 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 
 	case "TIA":
 		dbg.print("%v", dbg.vcs.TIA)
+
+	case "VERBOSE":
+		dbg.verbose = !dbg.verbose
+		dbg.print("%s %v\n", parts[0], dbg.verbose)
 	}
 
 	return stepNext, nil
