@@ -20,6 +20,9 @@ type Cartridge struct {
 // NewCart is the preferred method of initialisation for the cartridges
 func NewCart() *Cartridge {
 	cart := new(Cartridge)
+	if cart == nil {
+		return nil
+	}
 	cart.label = "Cartridge"
 	cart.origin = 0x1000
 	cart.memtop = 0x1fff

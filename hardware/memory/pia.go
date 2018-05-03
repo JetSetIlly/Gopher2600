@@ -12,6 +12,9 @@ type PIA struct {
 // NewPIA is the preferred method of initialisation for the PIA pia memory area
 func NewPIA() *PIA {
 	pia := new(PIA)
+	if pia == nil {
+		return nil
+	}
 	pia.label = "PIA RAM"
 	pia.origin = 0x0080
 	pia.memtop = 0x00ff

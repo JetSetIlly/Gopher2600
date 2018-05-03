@@ -10,7 +10,11 @@ const (
 )
 
 func TestMemory(t *testing.T) {
-	mem := memory.NewVCSMemory()
+	mem, err := memory.NewVCSMemory()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
 	mem.Clear()
 
 	if mem.MemoryMap() != validMemMap {

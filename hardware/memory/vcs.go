@@ -8,20 +8,28 @@ import "fmt"
 type VCSMemory struct {
 	CPUBus
 	memmap map[uint16]Area
-	riot   *ChipMemory
-	tia    *ChipMemory
-	pia    *PIA
+	RIOT   *ChipMemory
+	TIA    *ChipMemory
+	PIA    *PIA
 	Cart   *Cartridge
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
-func NewVCSMemory() *VCSMemory {
+func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
+	if mem == nil {
+		return nil, fmt.Errorf("can't allocate VCSMemory")
+	}
+
 	mem.memmap = make(map[uint16]Area)
-	mem.riot = NewRIOT()
-	mem.tia = NewTIA()
-	mem.pia = NewPIA()
+	mem.RIOT = NewRIOT()
+	mem.TIA = NewTIA()
+	mem.PIA = NewPIA()
 	mem.Cart = NewCart()
+
+	if mem.memmap == nil || mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
+		return nil, fmt.Errorf("can't allocate VCSMemory")
+	}
 
 	// create the memory map; each address in the memory map points to the
 	// memory area it resides in. we only record 'primary' addresses; all
@@ -30,23 +38,23 @@ func NewVCSMemory() *VCSMemory {
 
 	var i uint16
 
-	for i = mem.tia.origin; i <= mem.tia.memtop; i++ {
-		mem.memmap[i] = mem.tia
+	for i = mem.TIA.origin; i <= mem.TIA.memtop; i++ {
+		mem.memmap[i] = mem.TIA
 	}
 
-	for i = mem.pia.origin; i <= mem.pia.memtop; i++ {
-		mem.memmap[i] = mem.pia
+	for i = mem.PIA.origin; i <= mem.PIA.memtop; i++ {
+		mem.memmap[i] = mem.PIA
 	}
 
-	for i = mem.riot.origin; i <= mem.riot.memtop; i++ {
-		mem.memmap[i] = mem.riot
+	for i = mem.RIOT.origin; i <= mem.RIOT.memtop; i++ {
+		mem.memmap[i] = mem.RIOT
 	}
 
 	for i = mem.Cart.origin; i <= mem.Cart.memtop; i++ {
 		mem.memmap[i] = mem.Cart
 	}
 
-	return mem
+	return mem, nil
 }
 
 func (mem VCSMemory) String() string {
@@ -58,7 +66,6 @@ func (mem VCSMemory) String() string {
 // this function. Any other information about an address can be accessed
 // through mem.memmap[mappedAddress]
 func (mem VCSMemory) MapAddress(address uint16) uint16 {
-
 	// note that the order of these filters is important
 
 	// cartridge addresses
@@ -67,24 +74,24 @@ func (mem VCSMemory) MapAddress(address uint16) uint16 {
 	}
 
 	// RIOT addresses
-	if address&mem.riot.origin == mem.riot.origin {
-		return address & mem.riot.memtop
+	if address&mem.RIOT.origin == mem.RIOT.origin {
+		return address & mem.RIOT.memtop
 	}
 
 	// PIA RAM addresses
-	if address&mem.pia.origin == mem.pia.origin {
-		return address & mem.pia.memtop
+	if address&mem.PIA.origin == mem.PIA.origin {
+		return address & mem.PIA.memtop
 	}
 
 	// everything else is in TIA space
-	return address & mem.tia.memtop
+	return address & mem.TIA.memtop
 }
 
 // Clear is an implementation of CPUBus.Clear
 func (mem *VCSMemory) Clear() {
-	mem.riot.Clear()
-	mem.tia.Clear()
-	mem.pia.Clear()
+	mem.RIOT.Clear()
+	mem.TIA.Clear()
+	mem.PIA.Clear()
 	mem.Cart.Clear()
 }
 

@@ -32,7 +32,7 @@ type CPU struct {
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure
-func NewCPU(memory memory.CPUBus) *CPU {
+func NewCPU(memory memory.CPUBus) (*CPU, error) {
 	var err error
 
 	mc := new(CPU)
@@ -40,39 +40,39 @@ func NewCPU(memory memory.CPUBus) *CPU {
 
 	mc.PC, err = register.NewRegister(0, 16, "PC")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mc.A, err = register.NewRegister(0, 8, "A")
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	mc.X, err = register.NewRegister(0, 8, "X")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mc.Y, err = register.NewRegister(0, 8, "Y")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mc.SP, err = register.NewRegister(0, 8, "SP")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mc.Status = NewStatusRegister("ST")
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mc.Reset()
 
-	return mc
+	return mc, nil
 }
 
 func (mc *CPU) String() string {
@@ -234,7 +234,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) erro
 func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, error) {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("calling ExecuteInstruction() before previous call to this function has completed"))
+		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
 	}
 
 	// prepare StepResult structure

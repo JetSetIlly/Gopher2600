@@ -17,8 +17,13 @@ func main() {
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
-		dbg := debugger.NewDebugger()
-		err := dbg.Start("flappy.bin")
+		dbg, err := debugger.NewDebugger()
+		if err != nil {
+			fmt.Printf("* error starting debugger (%s)\n", err)
+			os.Exit(10)
+		}
+
+		err = dbg.Start("flappy.bin")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
@@ -39,8 +44,13 @@ func main() {
 }
 
 func fps() error {
-	vcs := hardware.NewVCS()
-	err := vcs.AttachCartridge("flappy.bin")
+	vcs, err := hardware.NewVCS()
+	if err != nil {
+		fmt.Printf("* error starting FPS profiler (%s)\n", err)
+		os.Exit(10)
+	}
+
+	err = vcs.AttachCartridge("flappy.bin")
 	if err != nil {
 		return err
 	}

@@ -36,7 +36,7 @@ func NewRegister(value interface{}, size int, label string) (*Register, error) {
 	case uint16:
 		r.value = uint32(value)
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(value)))
+		return nil, fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(value))
 	}
 	r.size = uint(size)
 	r.label = label

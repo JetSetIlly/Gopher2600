@@ -22,9 +22,16 @@ type Debugger struct {
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
-func NewDebugger() *Debugger {
+func NewDebugger() (*Debugger, error) {
+	var err error
+
 	dbg := new(Debugger)
-	dbg.vcs = hardware.NewVCS()
+
+	dbg.vcs, err = hardware.NewVCS()
+	if err != nil {
+		return nil, err
+	}
+
 	dbg.input = make([]byte, 255)
 	dbg.breakpoints = newBreakpoints()
 
@@ -32,7 +39,7 @@ func NewDebugger() *Debugger {
 		fmt.Printf(s, output...)
 	}
 
-	return dbg
+	return dbg, nil
 }
 
 // Start the main debugger sequence
@@ -169,6 +176,8 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 		dbg.runUntilBreak = true
 		stepNext = true
 
+	case "TIA":
+		dbg.print("%v", dbg.vcs.TIA)
 	}
 
 	return stepNext, nil

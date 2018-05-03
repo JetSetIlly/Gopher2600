@@ -58,11 +58,18 @@ type MockVCSMem struct {
 	memory.CPUBus
 }
 
-func NewMockVCSMem() *MockVCSMem {
+func NewMockVCSMem() (*MockVCSMem, error) {
+	var err error
+
 	mem := new(MockVCSMem)
+
 	// use the memory.VCS implementation of memory.Bus
-	mem.CPUBus = memory.NewVCSMemory()
-	return mem
+	mem.CPUBus, err = memory.NewVCSMemory()
+	if err != nil {
+		return nil, err
+	}
+
+	return mem, nil
 }
 
 func (mem *MockVCSMem) putInstructions(origin uint16, bytes ...uint8) uint16 {

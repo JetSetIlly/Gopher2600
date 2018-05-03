@@ -65,6 +65,9 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 // NewRIOT is the preferred method of initialisation for the RIOT memory area
 func NewRIOT() *ChipMemory {
 	chip := new(ChipMemory)
+	if chip == nil {
+		return nil
+	}
 	chip.label = "RIOT"
 	chip.origin = 0x0280
 	chip.memtop = 0x0287
@@ -78,6 +81,9 @@ func NewRIOT() *ChipMemory {
 // NewTIA is the preferred method of initialisation for the TIA memory area
 func NewTIA() *ChipMemory {
 	chip := new(ChipMemory)
+	if chip == nil {
+		return nil
+	}
 	chip.label = "TIA"
 	chip.origin = 0x0000
 	chip.memtop = 0x003f

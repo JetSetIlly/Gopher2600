@@ -3,23 +3,41 @@ package hardware
 import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/tia"
 )
 
-const addressReset = 0xFFFC
-const addressIRQ = 0xFFFE
+const addressReset = 0xfffc
+const addressIRQ = 0xfffe
 
 // VCS struct is the main container for the emulated components of the VCS
 type VCS struct {
 	MC  *cpu.CPU
 	Mem *memory.VCSMemory
+	TIA *tia.TIA
 }
 
 // NewVCS is the preferred method of initialisation for the VCS structure
-func NewVCS() *VCS {
+func NewVCS() (*VCS, error) {
+	var err error
+
 	vcs := new(VCS)
-	vcs.Mem = memory.NewVCSMemory()
-	vcs.MC = cpu.NewCPU(vcs.Mem)
-	return vcs
+
+	vcs.Mem, err = memory.NewVCSMemory()
+	if err != nil {
+		return nil, err
+	}
+
+	vcs.MC, err = cpu.NewCPU(vcs.Mem)
+	if err != nil {
+		return nil, err
+	}
+
+	vcs.TIA = tia.NewTIA(vcs.Mem)
+	if vcs.TIA == nil {
+		return nil, nil
+	}
+
+	return vcs, nil
 }
 
 // AttachCartridge loads a cartridge (a file) into the emulators memory
@@ -41,7 +59,12 @@ func (vcs *VCS) Step() (*cpu.InstructionResult, error) {
 	var err error
 
 	for {
-		r, err = vcs.MC.ExecuteInstruction(func() {})
+		r, err = vcs.MC.ExecuteInstruction(func() {
+			// three video cycles per cpu cycle
+			vcs.TIA.StepVideoCycle()
+			vcs.TIA.StepVideoCycle()
+			vcs.TIA.StepVideoCycle()
+		})
 		if err != nil {
 			return nil, err
 		}
