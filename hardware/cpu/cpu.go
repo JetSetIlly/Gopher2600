@@ -79,8 +79,14 @@ func NewCPU(mem memory.CPUBus) (*CPU, error) {
 	return mc, nil
 }
 
+// StringTerse returns the cpu information in terse format
+func (mc *CPU) StringTerse() string {
+	return fmt.Sprintf("%s %s %s %s %s %s", mc.PC.StringTerse(), mc.A.StringTerse(), mc.X.StringTerse(), mc.Y.StringTerse(), mc.SP.StringTerse(), mc.Status.StringTerse())
+}
+
+// String returns the cpu information in verbose format
 func (mc *CPU) String() string {
-	return fmt.Sprintf("%v\n%v\n%v\n%v\n%v\n%v\n", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
+	return fmt.Sprintf("%v%v%v%v%v%v", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
 // IsExecuting returns true if it is called during an ExecuteInstruction() callback

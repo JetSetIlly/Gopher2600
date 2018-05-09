@@ -94,12 +94,19 @@ func (r Register) IsBitV() bool {
 	return r.value&r.vbit == r.vbit
 }
 
-func (r Register) String() string {
-	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+// StringTerse returns the register information in terse format
+func (r Register) StringTerse() string {
+	return fmt.Sprintf("%s=%s", r.label, r.ToHex())
 }
 
-// ToString returns the string representation of an aribtrary value
-func (r Register) ToString(v interface{}) string {
+// String returns the register information in verbose format
+func (r Register) String() string {
+	return fmt.Sprintf("%s: %d [%s] %s\n", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+}
+
+// AsString returns the (verbose) string representation of an aribtrary value when
+// expressed as a register
+func (r Register) AsString(v interface{}) string {
 	vr, err := NewRegister(v, r.Size(), r.Label())
 	if err != nil {
 		return err.Error()

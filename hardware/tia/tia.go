@@ -33,8 +33,14 @@ type TIA struct {
 	wsync  bool
 }
 
+// StringTerse returns the TIA information in terse format
+func (tia TIA) StringTerse() string {
+	return fmt.Sprintf("%s %s %s", tia.colorClock.StringTerse(), tia.rsync.StringTerse(), tia.hmove.StringTerse())
+}
+
+// String returns the TIA information in verbose format
 func (tia TIA) String() string {
-	return fmt.Sprintf("%s\n%s\n%s\nWSYNC: %v\n", tia.colorClock, tia.rsync, tia.hmove, tia.wsync)
+	return fmt.Sprintf("%v%v%v", tia.colorClock, tia.rsync, tia.hmove)
 }
 
 // NewTIA is the preferred method of initialisation for the TIA structure

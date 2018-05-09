@@ -10,9 +10,9 @@ const correctSequence = "000000/0000000/1000000/2000000/3100000/0100000/1100000/
 
 func TestPolycounter(t *testing.T) {
 	pk := new(polycounter.Polycounter)
-	pk.Reset("111111")
+	pk.SetResetPattern("111111")
 	s := fmt.Sprintf("%s", pk)
-	for pk.Tick() == false {
+	for pk.Tick(false) == false {
 		s = fmt.Sprintf("%s%s", s, pk)
 	}
 	if s != correctSequence {

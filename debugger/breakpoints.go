@@ -20,7 +20,7 @@ type breaker struct {
 
 // breakTarget defines what objects can and cannot cause an execution break
 type breakTarget interface {
-	ToString(interface{}) string
+	AsString(interface{}) string
 	ToUint() uint
 	Size() int
 	Label() string
@@ -90,5 +90,5 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 }
 
 func (bk *breaker) valueString() string {
-	return bk.target.ToString(bk.value)
+	return bk.target.AsString(bk.value)
 }

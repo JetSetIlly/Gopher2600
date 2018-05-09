@@ -16,9 +16,16 @@ type Debugger struct {
 	running bool
 	input   []byte
 
-	verbose       bool
 	breakpoints   *breakpoints
 	runUntilBreak bool
+
+	// commandOnHalt says whether an sequence of commands should run automatically
+	// when emulation halts
+	commandOnHalt bool
+
+	// verbose controls the verbosity of commands that echo machine state
+	// TODO: not implemented fully
+	verbose bool
 
 	print func(string, ...interface{})
 }
@@ -29,9 +36,9 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
-	tv := new(television.DummyTV)
-	if tv == nil {
-		return nil, fmt.Errorf("error creating television for debugger")
+	tv, err := television.NewHeadlessTV("NTSC")
+	if err != nil {
+		return nil, err
 	}
 
 	dbg.vcs, err = hardware.NewVCS(tv)
@@ -41,6 +48,9 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg.input = make([]byte, 255)
 	dbg.breakpoints = newBreakpoints()
+
+	// default verbosity of true -- terse output is for black-belts
+	dbg.verbose = true
 
 	dbg.print = func(s string, output ...interface{}) {
 		fmt.Printf(s, output...)
@@ -118,25 +128,55 @@ func (dbg *Debugger) inputLoop() error {
 			}
 
 			dbg.print("%v\n", result)
+		}
 
-			if !dbg.runUntilBreak {
-				if dbg.verbose {
-					_, _ = dbg.parseInput("TIA")
-				}
+		// check for breakpoint. breakpoint check echos the break condition if it
+		// matches
+		breakpoint = (next && dbg.breakpoints.check(dbg, result))
+
+		// if haltCommand mode and if run state is correct that print haltCommand
+		// command(s)
+		if dbg.commandOnHalt {
+			if (next && !dbg.runUntilBreak) || breakpoint {
+				_, _ = dbg.parseInput("CPU; TIA; TV")
 			}
 		}
 
-		// check for breakpoint
-		breakpoint = (next && dbg.breakpoints.check(dbg, result)) || !dbg.runUntilBreak
-
+		// expand breakpoint to include step-once/many flag
+		breakpoint = breakpoint || !dbg.runUntilBreak
 	}
 
 	return nil
 }
 
+// parseInput splits the input into individual commands. each command is then
+// passed to parseCommand for final processing
 func (dbg *Debugger) parseInput(input string) (bool, error) {
-	// make sure the user has inputted something
+	var cont bool
+	var err error
+
+	commands := strings.Split(strings.ToUpper(input), ";")
+	for i := 0; i < len(commands); i++ {
+		cont, err = dbg.parseCommand(commands[i])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return cont, nil
+}
+
+// parseCommand scans user input for valid commands and acts upon it. commands
+// that cause the emulation to move forward (RUN, STEP) return true for the
+// first return value. other commands return false and act upon the command
+// immediately. note that the empty string is the same as the STEP command
+func (dbg *Debugger) parseCommand(input string) (bool, error) {
+
+	// remove leading/trailing space
 	input = strings.TrimSpace(input)
+
+	// if the input is empty then return true, indicating that the emulation
+	// should "step" forward once
 	if input == "" {
 		return true, nil
 	}
@@ -173,14 +213,17 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 	default:
 		return false, fmt.Errorf("%s is not a debugging command", parts[0])
 
+	// control of the debugger
+
 	case "BREAK":
 		err := dbg.breakpoints.parseUserInput(dbg, parts)
 		if err != nil {
 			return false, err
 		}
 
-	case "CPU":
-		dbg.print("%v", dbg.vcs.MC)
+	case "ONHALT":
+		dbg.commandOnHalt = !dbg.commandOnHalt
+		dbg.print("command on halt: %v\n", dbg.commandOnHalt)
 
 	case "MEMMAP":
 		dbg.print("%v", dbg.vcs.Mem.MemoryMap())
@@ -199,12 +242,27 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 		dbg.runUntilBreak = true
 		stepNext = true
 
-	case "TIA":
-		dbg.print("%v", dbg.vcs.TIA)
+	case "STEP":
+		stepNext = true
+
+	case "TERSE":
+		dbg.verbose = false
+		dbg.print("verbose: %v\n", dbg.verbose)
 
 	case "VERBOSE":
-		dbg.verbose = !dbg.verbose
-		dbg.print("%s %v\n", parts[0], dbg.verbose)
+		dbg.verbose = true
+		dbg.print("verbose: %v\n", dbg.verbose)
+
+	// information about the machine
+
+	case "CPU":
+		dbg.printMachineInfo(dbg.vcs.MC)
+
+	case "TIA":
+		dbg.printMachineInfo(dbg.vcs.TIA)
+
+	case "TV":
+		dbg.printMachineInfo(dbg.vcs.TV)
 	}
 
 	return stepNext, nil

@@ -20,7 +20,7 @@ type VCS struct {
 	RIOT *riot.RIOT
 
 	// tv is not part of the VCS but is attached to it
-	tv television.Television
+	TV television.Television
 }
 
 // NewVCS is the preferred method of initialisation for the VCS structure
@@ -28,7 +28,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
 	vcs := new(VCS)
-	vcs.tv = tv
+	vcs.TV = tv
 
 	vcs.Mem, err = memory.NewVCSMemory()
 	if err != nil {
@@ -40,7 +40,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	vcs.TIA = tia.NewTIA(vcs.tv, vcs.Mem.TIA)
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS TIA")
 	}

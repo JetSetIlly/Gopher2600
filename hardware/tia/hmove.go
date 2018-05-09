@@ -23,11 +23,20 @@ func newHmove(cc *colorClock) *hmove {
 	return hm
 }
 
+// String returns the HMOVE information in verbose format
+func (hm hmove) StringTerse() string {
+	if hm.isActive() {
+		return fmt.Sprintf("HM=%d", hm.count)
+	}
+	return "HM=-"
+}
+
+// String returns the HMOVE information in verbose format
 func (hm hmove) String() string {
 	if hm.isActive() {
-		return fmt.Sprintf("HMOVE -> %d more tick(s)", hm.count)
+		return fmt.Sprintf("HMOVE -> %d more tick(s)\n", hm.count)
 	}
-	return "HMOVE -> no movement"
+	return "HMOVE -> no movement\n"
 }
 
 func (hm hmove) isActive() bool {

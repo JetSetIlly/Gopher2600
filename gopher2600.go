@@ -39,7 +39,7 @@ func main() {
 		fmt.Printf("* not yet implemented")
 		os.Exit(10)
 	default:
-		fmt.Printf("* unknown mode (-mode %s)\n", strings.ToUpper(*mode))
+		fmt.Printf("* unknown mode (%s)\n", strings.ToUpper(*mode))
 		os.Exit(10)
 	}
 

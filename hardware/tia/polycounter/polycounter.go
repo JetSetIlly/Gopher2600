@@ -55,12 +55,13 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 	panic("couldn't find reset pattern in polycounter table")
 }
 
-func (pk Polycounter) String() string {
-	return pk.ToString()
+// StringTerse returns the polycounter information in terse format
+func (pk Polycounter) StringTerse() string {
+	return fmt.Sprintf("%d/%d", pk.Count, pk.Phase)
 }
 
-// ToString returns a string representation of the polycounter's current state
-func (pk Polycounter) ToString() string {
+// String returns the polycounter information in verbose format
+func (pk Polycounter) String() string {
 	return fmt.Sprintf("%s/%d", table6bits[pk.Count], pk.Phase)
 }
 

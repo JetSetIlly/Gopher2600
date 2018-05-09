@@ -5,8 +5,8 @@ import (
 	"gopher2600/hardware/tia/polycounter"
 )
 
-// rsync is tricky but I've inpterpreted the various literature to in the
-// following way:
+// rsync is tricky but I've inpterpreted the various literature (and
+// observation of the Stella emulator) in the following way:
 //  - color clock phase is reset to 0 when RSYNC is triggered (see tia.go)
 //	- we note that rsync is now active (active flag below)
 //  - when the color clock phase reaches the end of it's phase cycle start
@@ -27,11 +27,24 @@ func newRsync(cc *colorClock) *rsync {
 	return rs
 }
 
+// StringTerse returns the RSYNC information in verbose format
+func (rs rsync) StringTerse() string {
+	if rs.isActive() {
+		return fmt.Sprintf("RS=%d", rs.remainingCycles())
+	}
+	return "RS=-"
+}
+
+// String returns the RSYNC information in verbose format
 func (rs rsync) String() string {
 	if rs.isActive() {
-		return fmt.Sprintf("RSYNC -> reset in %d cycle(s)", polycounter.MaxPhase-rs.colorClock.Phase+1)
+		return fmt.Sprintf("RSYNC -> reset in %d cycle(s)\n", rs.remainingCycles())
 	}
-	return "RSYNC -> not set"
+	return "RSYNC -> not set\n"
+}
+
+func (rs rsync) remainingCycles() int {
+	return polycounter.MaxPhase - rs.colorClock.Phase + 1
 }
 
 func (rs rsync) isActive() bool {
