@@ -40,7 +40,7 @@ func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool 
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToUint() == bp.breaks[i].value {
-			dbg.print("break on %v\n", bp.breaks[i].valueString())
+			dbg.print("break on %v", bp.breaks[i].valueString())
 			broken = true
 		}
 	}

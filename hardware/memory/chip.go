@@ -94,8 +94,8 @@ func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	return false, "", 0
 }
 
-// NewRIOT is the preferred method of initialisation for the RIOT memory area
-func NewRIOT() *ChipMemory {
+// newRIOT is the preferred method of initialisation for the RIOT memory area
+func newRIOT() *ChipMemory {
 	chip := new(ChipMemory)
 	if chip == nil {
 		return nil
@@ -110,8 +110,8 @@ func NewRIOT() *ChipMemory {
 	return chip
 }
 
-// NewTIA is the preferred method of initialisation for the TIA memory area
-func NewTIA() *ChipMemory {
+// newTIA is the preferred method of initialisation for the TIA memory area
+func newTIA() *ChipMemory {
 	chip := new(ChipMemory)
 	if chip == nil {
 		return nil

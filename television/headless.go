@@ -2,6 +2,7 @@ package television
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/video"
 	"strings"
 )
 
@@ -70,7 +71,7 @@ func (tv HeadlessTV) String() string {
 }
 
 // Signal is how the VCS communicates with the televsion
-func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color int) {
+func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {
 
 	// check that hsync signal is within the specification
 	if hsync && !tv.prevHsync {

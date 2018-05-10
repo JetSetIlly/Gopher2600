@@ -9,8 +9,8 @@ type RIOT struct {
 	mem memory.ChipBus
 }
 
-// NewRIOT is the preferred method of initialisation for the PIA structure
-func NewRIOT(mem memory.ChipBus) *RIOT {
+// New is the preferred method of initialisation for the PIA structure
+func New(mem memory.ChipBus) *RIOT {
 	riot := new(RIOT)
 	if riot == nil {
 		return nil

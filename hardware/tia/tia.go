@@ -3,6 +3,8 @@ package tia
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
 )
 
@@ -16,10 +18,7 @@ type TIA struct {
 	tv  television.Television
 	mem memory.ChipBus
 
-	video *Video
-	// TODO: audio
-
-	colorClock *colorClock
+	colorClock *colorclock.ColorClock
 	hmove      *hmove
 	rsync      *rsync
 
@@ -31,6 +30,9 @@ type TIA struct {
 	hblank bool
 	hsync  bool
 	wsync  bool
+
+	video *video.Video
+	// TODO: audio
 }
 
 // StringTerse returns the TIA information in terse format
@@ -43,8 +45,8 @@ func (tia TIA) String() string {
 	return fmt.Sprintf("%v%v%v", tia.colorClock, tia.rsync, tia.hmove)
 }
 
-// NewTIA is the preferred method of initialisation for the TIA structure
-func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
+// New is the preferred method of initialisation for the TIA structure
+func New(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := new(TIA)
 	if tia == nil {
 		return nil
@@ -53,14 +55,9 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.tv = tv
 	tia.mem = mem
 
-	tia.video = NewVideo(tia)
-	if tia.video == nil {
-		return nil
-	}
-
 	// TODO: audio
 
-	tia.colorClock = newColorClock()
+	tia.colorClock = colorclock.New()
 	if tia.colorClock == nil {
 		return nil
 	}
@@ -77,6 +74,13 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
+	tia.video = video.New(tia.colorClock, &tia.hblank)
+	if tia.video == nil {
+		return nil
+	}
+
+	// TODO: audio
+
 	return tia
 }
 
@@ -86,7 +90,7 @@ func (tia *TIA) ReadTIAMemory() {
 	if service {
 		serviced := tia.serviceTIAMemory(register, value)
 		if !serviced {
-			serviced = tia.video.serviceTIAMemory(register, value)
+			serviced = tia.video.ServiceTIAMemory(register, value)
 			if !serviced {
 				// TODO: audio
 				if !serviced {
@@ -97,6 +101,8 @@ func (tia *TIA) ReadTIAMemory() {
 	}
 }
 
+// serviceTIAMemory checks the TIA memory for changes to registers that are
+// interesting to the top-level TIA sub-system
 func (tia *TIA) serviceTIAMemory(register string, value uint8) bool {
 	switch register {
 	case "VSYNC":
@@ -126,26 +132,23 @@ func (tia *TIA) StepVideoCycle() bool {
 	frontPorch := false
 	cburst := false
 
-	// TODO: complete color implementation
-	color := -1
-
-	if tia.colorClock.match(16) && !tia.hmove.isActive() {
+	if tia.colorClock.Match(16) && !tia.hmove.isActive() {
 		// HBLANK off (early)
 		// 011100
 		tia.hblank = false
-	} else if tia.colorClock.match(18) && tia.hmove.isActive() {
+	} else if tia.colorClock.Match(18) && tia.hmove.isActive() {
 		// HBLANK off (late)
 		// 010111
 		tia.hblank = false
-	} else if tia.colorClock.match(4) {
+	} else if tia.colorClock.Match(4) {
 		// HSYNC on
 		// 111100
 		tia.hsync = true
-	} else if tia.colorClock.match(8) {
+	} else if tia.colorClock.Match(8) {
 		// HSYNC off
 		// 110111
 		tia.hsync = false
-	} else if tia.colorClock.match(12) {
+	} else if tia.colorClock.Match(12) {
 		// color burst
 		// 001111
 		cburst = true
@@ -165,15 +168,17 @@ func (tia *TIA) StepVideoCycle() bool {
 	// TODO: complete clock stuffing
 	//tia.hmove.tick()
 
-	// TODO: tick playfield
+	tia.video.TickPlayfield()
 
 	if !tia.hblank {
-		// TODO: tick gfx objects
-		// TODO: prioritise gfx objects and get pixel
-		// TODO: color
+		// tick all sprites and send pixel color to television
+		tia.video.TickSprites()
+		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.video.PixelColor())
+	} else {
+		// we're in the hblank state so do not tick the sprites and send the null
+		// pixel color to the television
+		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, video.NoColor)
 	}
-
-	tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, color)
 
 	return !tia.wsync
 }

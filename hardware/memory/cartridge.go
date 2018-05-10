@@ -17,8 +17,8 @@ type Cartridge struct {
 	bank   uint16
 }
 
-// NewCart is the preferred method of initialisation for the cartridges
-func NewCart() *Cartridge {
+// newCart is the preferred method of initialisation for the cartridges
+func newCart() *Cartridge {
 	cart := new(Cartridge)
 	if cart == nil {
 		return nil

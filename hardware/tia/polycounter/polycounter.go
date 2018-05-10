@@ -31,8 +31,18 @@ func init() {
 	table6bits[63] = "111111"
 }
 
-// Polycounter implements the VCS method of counting. It is best used when
-// embedded into another structure, not used directly.
+// LookupPattern returns the index of the specified pattern
+func LookupPattern(pattern string) (int, error) {
+	for i := 0; i < len(table6bits); i++ {
+		if table6bits[i] == pattern {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("could not find pattern (%s) in 6 bit lookup table", pattern)
+}
+
+// Polycounter implements the VCS method of counting. It is doesn't require
+// special initialisation so is a good candidate for struct embedding
 type Polycounter struct {
 	// this implementation of the VCS polycounter uses a regular go-integer
 	Count      int
@@ -46,23 +56,21 @@ type Polycounter struct {
 // resets during a Tick(). this should be called at least once or the reset
 // pattern will be "000000" which is probably not what you want
 func (pk *Polycounter) SetResetPattern(resetPattern string) {
-	for i := 0; i < len(table6bits); i++ {
-		if table6bits[i] == resetPattern {
-			pk.ResetPoint = i
-			return
-		}
+	i, err := LookupPattern(resetPattern)
+	if err != nil {
+		panic("couldn't find reset pattern in polycounter table")
 	}
-	panic("couldn't find reset pattern in polycounter table")
+	pk.ResetPoint = i
 }
 
 // StringTerse returns the polycounter information in terse format
 func (pk Polycounter) StringTerse() string {
-	return fmt.Sprintf("%d/%d", pk.Count, pk.Phase)
+	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
 }
 
 // String returns the polycounter information in verbose format
 func (pk Polycounter) String() string {
-	return fmt.Sprintf("%s/%d", table6bits[pk.Count], pk.Phase)
+	return fmt.Sprintf("%s@%d", table6bits[pk.Count], pk.Phase)
 }
 
 // ResetPhase resets the phase *only*
@@ -77,7 +85,7 @@ func (pk *Polycounter) Reset() {
 }
 
 // Tick advances the count to the next state - returns true if counter has
-// reset. the force argument allows the function to be called and for the reset
+// looped. the force argument allows the function to be called and for the loop
 // to definitely take place. we use this in the VCS during for the RSYNC check
 func (pk *Polycounter) Tick(force bool) bool {
 	if force || pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
@@ -92,4 +100,9 @@ func (pk *Polycounter) Tick(force bool) bool {
 	}
 
 	return false
+}
+
+// Match checks whether colorClock is at the *end* of the given count
+func (pk Polycounter) Match(count int) bool {
+	return pk.Count == count && pk.Phase == 3
 }

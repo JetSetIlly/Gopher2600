@@ -15,7 +15,7 @@ func r16(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r16, err := register.NewRegister(0, 16, "TEST")
+	r16, err := register.New(0, 16, "TEST")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -37,7 +37,7 @@ func r16(t *testing.T) {
 	assert.CheckValueVCS(t, r16.IsZero(), true)
 
 	// register operand
-	r16b, err := register.NewRegister(10, 16, "TEST B")
+	r16b, err := register.New(10, 16, "TEST B")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -89,7 +89,7 @@ func r8(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r8, err := register.NewRegister(0, 8, "TEST")
+	r8, err := register.New(0, 8, "TEST")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -111,7 +111,7 @@ func r8(t *testing.T) {
 	assert.CheckValueVCS(t, r8.IsZero(), true)
 
 	// register operand
-	r8b, err := register.NewRegister(10, 8, "TEST B")
+	r8b, err := register.New(10, 8, "TEST B")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

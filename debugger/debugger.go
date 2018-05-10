@@ -21,7 +21,7 @@ type Debugger struct {
 
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts
-	commandOnHalt bool
+	commandOnHalt string
 
 	// verbose controls the verbosity of commands that echo machine state
 	// TODO: not implemented fully
@@ -41,7 +41,7 @@ func NewDebugger() (*Debugger, error) {
 		return nil, err
 	}
 
-	dbg.vcs, err = hardware.NewVCS(tv)
+	dbg.vcs, err = hardware.New(tv)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +136,9 @@ func (dbg *Debugger) inputLoop() error {
 
 		// if haltCommand mode and if run state is correct that print haltCommand
 		// command(s)
-		if dbg.commandOnHalt {
+		if dbg.commandOnHalt != "" {
 			if (next && !dbg.runUntilBreak) || breakpoint {
-				_, _ = dbg.parseInput("CPU; TIA; TV")
+				_, _ = dbg.parseInput(dbg.commandOnHalt)
 			}
 		}
 
@@ -222,8 +222,13 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case "ONHALT":
-		dbg.commandOnHalt = !dbg.commandOnHalt
-		dbg.print("command on halt: %v\n", dbg.commandOnHalt)
+		if dbg.commandOnHalt == "" {
+			dbg.commandOnHalt = "CPU; TIA; TV"
+			dbg.print("auto-command on halt: %s\n", dbg.commandOnHalt)
+		} else {
+			dbg.commandOnHalt = ""
+			dbg.print("no auto-command on halt\n")
+		}
 
 	case "MEMMAP":
 		dbg.print("%v", dbg.vcs.Mem.MemoryMap())
@@ -247,11 +252,11 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case "TERSE":
 		dbg.verbose = false
-		dbg.print("verbose: %v\n", dbg.verbose)
+		dbg.print("verbosity: terse\n")
 
 	case "VERBOSE":
 		dbg.verbose = true
-		dbg.print("verbose: %v\n", dbg.verbose)
+		dbg.print("verbosity: verbose\n")
 
 	// information about the machine
 

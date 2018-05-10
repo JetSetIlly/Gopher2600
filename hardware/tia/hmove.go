@@ -1,6 +1,9 @@
 package tia
 
-import "fmt"
+import (
+	"fmt"
+	"gopher2600/hardware/tia/colorclock"
+)
 
 // according to TIA_HW_Notes.txt the hardware equivalent of _HMOVE is a ripple
 // counter that counts from 15 to zero every 4 clocks. we've interpreted this
@@ -10,10 +13,10 @@ import "fmt"
 type hmove struct {
 	count      int
 	phase      int
-	colorClock *colorClock
+	colorClock *colorclock.ColorClock
 }
 
-func newHmove(cc *colorClock) *hmove {
+func newHmove(cc *colorclock.ColorClock) *hmove {
 	hm := new(hmove)
 	if hm == nil {
 		return nil

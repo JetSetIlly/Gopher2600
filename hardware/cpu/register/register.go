@@ -19,8 +19,8 @@ type Register struct {
 	binformat string
 }
 
-// NewRegister is the preferred method of initialisation for Register
-func NewRegister(value interface{}, size int, label string) (*Register, error) {
+// New is the preferred method of initialisation for Register
+func New(value interface{}, size int, label string) (*Register, error) {
 	if size != 8 && size != 16 {
 		return nil, fmt.Errorf("can't create register (%s) - unsupported bit size (%d)", label, size)
 	}
@@ -107,7 +107,7 @@ func (r Register) String() string {
 // AsString returns the (verbose) string representation of an aribtrary value when
 // expressed as a register
 func (r Register) AsString(v interface{}) string {
-	vr, err := NewRegister(v, r.Size(), r.Label())
+	vr, err := New(v, r.Size(), r.Label())
 	if err != nil {
 		return err.Error()
 	}

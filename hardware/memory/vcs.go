@@ -14,18 +14,18 @@ type VCSMemory struct {
 	Cart   *Cartridge
 }
 
-// NewVCSMemory is the preferred method of initialisation for VCSMemory
-func NewVCSMemory() (*VCSMemory, error) {
+// New is the preferred method of initialisation for VCSMemory
+func New() (*VCSMemory, error) {
 	mem := new(VCSMemory)
 	if mem == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS")
 	}
 
 	mem.memmap = make(map[uint16]Area)
-	mem.RIOT = NewRIOT()
-	mem.TIA = NewTIA()
-	mem.PIA = NewPIA()
-	mem.Cart = NewCart()
+	mem.RIOT = newRIOT()
+	mem.TIA = newTIA()
+	mem.PIA = newPIA()
+	mem.Cart = newCart()
 
 	if mem.memmap == nil || mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS")

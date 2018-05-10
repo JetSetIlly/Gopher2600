@@ -451,7 +451,7 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 
 func TestCPU(t *testing.T) {
 	mem := NewMockMem()
-	mc, err := cpu.NewCPU(mem)
+	mc, err := cpu.New(mem)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

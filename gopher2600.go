@@ -51,7 +51,7 @@ func fps() error {
 		return fmt.Errorf("error creating television for fps profiler")
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.New(tv)
 	if err != nil {
 		return fmt.Errorf("error starting fps profiler (%s)", err)
 	}

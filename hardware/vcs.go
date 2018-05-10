@@ -23,29 +23,29 @@ type VCS struct {
 	TV television.Television
 }
 
-// NewVCS is the preferred method of initialisation for the VCS structure
-func NewVCS(tv television.Television) (*VCS, error) {
+// New is the preferred method of initialisation for the VCS structure
+func New(tv television.Television) (*VCS, error) {
 	var err error
 
 	vcs := new(VCS)
 	vcs.TV = tv
 
-	vcs.Mem, err = memory.NewVCSMemory()
+	vcs.Mem, err = memory.New()
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.MC, err = cpu.NewCPU(vcs.Mem)
+	vcs.MC, err = cpu.New(vcs.Mem)
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
+	vcs.TIA = tia.New(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS TIA")
 	}
 
-	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
+	vcs.RIOT = riot.New(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS RIOT")
 	}

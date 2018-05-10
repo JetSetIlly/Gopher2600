@@ -9,8 +9,8 @@ type PIA struct {
 	memory []uint8
 }
 
-// NewPIA is the preferred method of initialisation for the PIA pia memory area
-func NewPIA() *PIA {
+// newPIA is the preferred method of initialisation for the PIA pia memory area
+func newPIA() *PIA {
 	pia := new(PIA)
 	if pia == nil {
 		return nil

@@ -1,8 +1,10 @@
 package television
 
+import "gopher2600/hardware/tia/video"
+
 // Television represents the television. not part of the VCS but attached to it
 type Television interface {
-	Signal(vsync, vblank, frontPorch, hsync, cburst bool, color int)
+	Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color)
 	StringTerse() string
 	String() string
 }
@@ -13,7 +15,7 @@ type DummyTV struct{}
 
 // Signal (with DummyTV reciever) is the minimalist implementation for the
 // television interface
-func (tv *DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color int) {}
+func (tv *DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {}
 
 // StringTerse returns the television information in terse format
 func (tv DummyTV) StringTerse() string {
