@@ -19,6 +19,8 @@ func newDelayCounter(label string) *delayCounter {
 	if dc == nil {
 		return nil
 	}
+	dc.count = -1
+	dc.Value = true
 	dc.label = label
 	return dc
 }
@@ -43,8 +45,13 @@ func (dc delayCounter) isRunning() bool {
 
 // tick moves the delay counter on one step
 func (dc *delayCounter) tick() bool {
-	if dc.count > -1 {
+	if dc.count == 0 {
+		dc.count--
+		return true
+	}
+
+	if dc.isRunning() {
 		dc.count--
 	}
-	return dc.isRunning()
+	return false
 }

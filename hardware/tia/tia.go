@@ -168,11 +168,17 @@ func (tia *TIA) StepVideoCycle() bool {
 	// TODO: complete clock stuffing
 	//tia.hmove.tick()
 
+	// note that tick playfield occurs regardless of the state of hblank
 	tia.video.TickPlayfield()
 
+	// at the end of the video cycle we want to finally 'send' information to the
+	// televison. what we 'send' depends on the state of hblank.
 	if !tia.hblank {
-		// tick all sprites and send pixel color to television
+		// tick all sprites -- this is distinct from the sprite ticking we did
+		// above when clock stuffing for HMOVE
 		tia.video.TickSprites()
+
+		// send pixel color to television
 		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.video.PixelColor())
 	} else {
 		// we're in the hblank state so do not tick the sprites and send the null

@@ -19,9 +19,9 @@ type Debugger struct {
 	breakpoints   *breakpoints
 	runUntilBreak bool
 
-	// commandOnHalt says whether an sequence of commands should run automatically
+	// commandOnBreak says whether an sequence of commands should run automatically
 	// when emulation halts
-	commandOnHalt string
+	commandOnBreak string
 
 	// verbose controls the verbosity of commands that echo machine state
 	// TODO: not implemented fully
@@ -36,7 +36,7 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
-	tv, err := television.NewHeadlessTV("NTSC")
+	tv, err := television.NewSDLTV("NTSC", 3)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +98,12 @@ func (dbg *Debugger) inputLoop() error {
 	dbg.running = true
 	for dbg.running {
 		if breakpoint {
+			// force update of tv image on break
+			err = dbg.vcs.TV.ForceUpdate()
+			if err != nil {
+				return err
+			}
+
 			// reset run until break condition
 			dbg.runUntilBreak = false
 
@@ -136,9 +142,9 @@ func (dbg *Debugger) inputLoop() error {
 
 		// if haltCommand mode and if run state is correct that print haltCommand
 		// command(s)
-		if dbg.commandOnHalt != "" {
+		if dbg.commandOnBreak != "" {
 			if (next && !dbg.runUntilBreak) || breakpoint {
-				_, _ = dbg.parseInput(dbg.commandOnHalt)
+				_, _ = dbg.parseInput(dbg.commandOnBreak)
 			}
 		}
 
@@ -221,12 +227,12 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			return false, err
 		}
 
-	case "ONHALT":
-		if dbg.commandOnHalt == "" {
-			dbg.commandOnHalt = "CPU; TIA; TV"
-			dbg.print("auto-command on halt: %s\n", dbg.commandOnHalt)
+	case "ONBREAK":
+		if dbg.commandOnBreak == "" {
+			dbg.commandOnBreak = "CPU; TIA; TV"
+			dbg.print("auto-command on halt: %s\n", dbg.commandOnBreak)
 		} else {
-			dbg.commandOnHalt = ""
+			dbg.commandOnBreak = ""
 			dbg.print("no auto-command on halt\n")
 		}
 
@@ -268,6 +274,19 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case "TV":
 		dbg.printMachineInfo(dbg.vcs.TV)
+
+	// tv control
+	case "SHOW":
+		err := dbg.vcs.TV.SetVisibility(true)
+		if err != nil {
+			return false, err
+		}
+
+	case "HIDE":
+		err := dbg.vcs.TV.SetVisibility(false)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	return stepNext, nil

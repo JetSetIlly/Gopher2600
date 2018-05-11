@@ -71,17 +71,18 @@ func (vcs *VCS) Step() (int, *cpu.InstructionResult, error) {
 	var r *cpu.InstructionResult
 	var err error
 
-	// the number of CPU cycles elapsed before we return control to the calling
-	// function. note this is *not* the same as Instructionresult.ActualCycles
-	// because in the event of a WSYNC, this function will continue until the
-	// WSYNC has completed
+	// the number of CPU cycles that have elapsed.  note this is *not* the same
+	// as Instructionresult.ActualCycles because in the event of a WSYNC
+	// cpuCycles will continue to accumulate to the WSYNC has been resolved.
 	cpuCycles := 0
 
-	// cycle the VCS hardware whenever this function is called -- defined to be
-	// run once per CPU cycle
-	// TODO: allow debugger to take control after every color clock
+	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
+	// defines the order of operation for the rest of the VCS for every CPU
+	// cycle.
 	cycleVCS := func() {
 		cpuCycles++
+
+		// TODO: allow debugger to take control after every color clock
 
 		// three color clocks per CPU cycle:
 

@@ -8,7 +8,7 @@ import (
 // according to TIA_HW_Notes.txt the hardware equivalent of _HMOVE is a ripple
 // counter that counts from 15 to zero every 4 clocks. we've interpreted this
 // latter point to mean 4 clocks counted from the phase that the HMOVE was
-// triggered (represented by 'phase' property)
+// triggered (represented by 'phase' field)
 
 type hmove struct {
 	count      int

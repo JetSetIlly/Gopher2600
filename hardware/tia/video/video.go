@@ -67,9 +67,6 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	vd.colorClock = colorClock
 	vd.hblank = hblank
 
-	// TODO: remove this tempory setting of color
-	vd.colupf = 0xff
-
 	// sprite objects
 	vd.player0 = newSprite("player0")
 	if vd.player0 == nil {
@@ -154,6 +151,11 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "RESM0":
 	case "RESM1":
 	case "RESBL":
+		if *vd.hblank {
+			vd.ball.resetDelay.set(2, true)
+		} else {
+			vd.ball.resetDelay.set(4, true)
+		}
 	case "GRP0":
 	case "GRP1":
 	case "ENAM0":

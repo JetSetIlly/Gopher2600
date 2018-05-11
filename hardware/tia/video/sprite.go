@@ -113,7 +113,6 @@ func (ps position) match(count int) bool {
 type drawSig struct {
 	count        int
 	delayedReset bool
-	stopped      bool
 }
 
 func newDrawSig() *drawSig {
@@ -150,5 +149,4 @@ func (ds *drawSig) confirm() {
 func (ds *drawSig) reset() {
 	ds.count = 0
 	ds.delayedReset = false
-	ds.stopped = false
 }

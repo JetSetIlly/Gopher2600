@@ -15,15 +15,16 @@ type breakpoints struct {
 // breaker defines a specific break condition
 type breaker struct {
 	target breakTarget
-	value  uint
+	value  int
 }
 
-// breakTarget defines what objects can and cannot cause an execution break
+// breakTarget defines what objects can and cannot cause an execution break.
+// known implementations of breakTarget:
+//  1. register
+//  2. tvstate
 type breakTarget interface {
 	AsString(interface{}) string
-	ToUint() uint
-	Size() int
-	Label() string
+	ToInt() int
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
@@ -39,8 +40,8 @@ func newBreakpoints() *breakpoints {
 func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool {
 	broken := false
 	for i := range bp.breaks {
-		if bp.breaks[i].target.ToUint() == bp.breaks[i].value {
-			dbg.print("break on %v", bp.breaks[i].valueString())
+		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
+			dbg.print("break on %v\n", bp.breaks[i].valueString())
 			broken = true
 		}
 	}
@@ -67,8 +68,14 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 	for i := 1; i < len(parts); i++ {
 		val, err := strconv.ParseUint(parts[i], 0, 16)
 		if err == nil {
-			bp.breaks = append(bp.breaks, breaker{target: target, value: uint(val)})
+			bp.breaks = append(bp.breaks, breaker{target: target, value: int(val)})
 		} else {
+
+			// TODO: namespaces so we can do things like "BREAK TV COLOR RED" without
+			// our breakpoints code knowing anything about it. GetTVState() will
+			// return a TVState if the television implementation understands the
+			// request
+
 			switch parts[i] {
 			default:
 				return fmt.Errorf("unrecognised target (%s) for %s command", parts[i], parts[0])
@@ -82,6 +89,21 @@ func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
 				target = dbg.vcs.MC.Y
 			case "SP":
 				target = dbg.vcs.MC.SP
+			case "FRAMENUM", "FRAME", "FR":
+				target, err = dbg.vcs.TV.GetTVState("FRAMENUM")
+				if err != nil {
+					return err
+				}
+			case "SCANLINE", "SL":
+				target, err = dbg.vcs.TV.GetTVState("SCANLINE")
+				if err != nil {
+					return err
+				}
+			case "HORIZPOS", "HP":
+				target, err = dbg.vcs.TV.GetTVState("HORIZPOS")
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

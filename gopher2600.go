@@ -24,7 +24,7 @@ func main() {
 			os.Exit(10)
 		}
 
-		err = dbg.Start("flappy.bin")
+		err = dbg.Start("roms/ball_test_card.bin")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
@@ -56,7 +56,7 @@ func fps() error {
 		return fmt.Errorf("error starting fps profiler (%s)", err)
 	}
 
-	err = vcs.AttachCartridge("flappy.bin")
+	err = vcs.AttachCartridge("roms/flappy.bin")
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package television
 
 type specification struct {
 	clocksPerHblank   int
+	clocksPerVisible  int
 	clocksPerScanline int
 
 	vsyncClocks int
@@ -21,6 +22,7 @@ func init() {
 		panic("error during initialisation of NTSC specification")
 	}
 	specNTSC.clocksPerHblank = 68
+	specNTSC.clocksPerVisible = 160
 	specNTSC.clocksPerScanline = 228
 	specNTSC.vsyncClocks = 3
 	specNTSC.scanlinesPerVBlank = 37
@@ -30,9 +32,10 @@ func init() {
 
 	specPAL = new(specification)
 	if specPAL == nil {
-		panic("error during initialisation of NTSC specification")
+		panic("error during initialisation of PAL specification")
 	}
 	specPAL.clocksPerHblank = 68
+	specPAL.clocksPerVisible = 160
 	specPAL.clocksPerScanline = 228
 	specPAL.vsyncClocks = 3
 	specPAL.scanlinesPerVBlank = 45

@@ -104,14 +104,13 @@ func (r Register) String() string {
 	return fmt.Sprintf("%s: %d [%s] %s\n", r.label, r.ToUint(), r.ToHex(), r.ToBits())
 }
 
-// AsString returns the (verbose) string representation of an aribtrary value when
-// expressed as a register
+// AsString returns the (terse) string representation of an aribtrary value
 func (r Register) AsString(v interface{}) string {
 	vr, err := New(v, r.Size(), r.Label())
 	if err != nil {
 		return err.Error()
 	}
-	return fmt.Sprintf("%v", vr)
+	return fmt.Sprintf("%s", vr.StringTerse())
 }
 
 // ToBits returns the register as bit pattern (of '0' and '1')
@@ -122,6 +121,11 @@ func (r Register) ToBits() string {
 // ToHex returns value as hexidecimal string
 func (r Register) ToHex() string {
 	return fmt.Sprintf(r.hexformat, r.ToUint())
+}
+
+// ToInt returns value of type int, regardless of register size
+func (r Register) ToInt() int {
+	return int(r.value)
 }
 
 // ToUint returns value of type uint, regardless of register size

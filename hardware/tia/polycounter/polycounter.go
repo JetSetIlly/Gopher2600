@@ -104,5 +104,5 @@ func (pk *Polycounter) Tick(force bool) bool {
 
 // Match checks whether colorClock is at the *end* of the given count
 func (pk Polycounter) Match(count int) bool {
-	return pk.Count == count && pk.Phase == 3
+	return pk.Count == count && pk.Phase == MaxPhase
 }
