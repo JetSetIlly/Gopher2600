@@ -27,6 +27,10 @@ type ChipMemory struct {
 	// and a boolean true to indicate that a write has been performed by the CPU
 	lastWriteAddress uint16 // normalised
 	writeSignal      bool
+
+	// lastReadRegister works slightly different that lastWriteAddress. it stores
+	// the register name of the last memory location *read* by the CPU
+	lastReadRegister string
 }
 
 // Label is an implementation of Area.Label
@@ -42,9 +46,12 @@ func (area *ChipMemory) Clear() {
 }
 
 // Implementation of CPUBus.Read
-func (area ChipMemory) Read(address uint16) (uint8, error) {
+func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	oa := address - area.origin
 	oa &= area.readMask
+
+	// note the name of the register that we are reading
+	area.lastReadRegister = area.readAddresses[oa]
 
 	rl := area.readAddresses[oa]
 	if rl == "" {
@@ -92,6 +99,24 @@ func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 		return true, area.writeAddresses[area.lastWriteAddress], area.memory[area.lastWriteAddress]
 	}
 	return false, "", 0
+}
+
+// ChipLastRegisterReadByCPU returns the register name of the last memory
+// location *read* by the CPU
+func (area ChipMemory) ChipLastRegisterReadByCPU() string {
+	return area.lastReadRegister
+}
+
+// ChipWrite writes the data to the memory area's address specified by
+// registerName
+func (area *ChipMemory) ChipWrite(registerName string, data uint8) error {
+	for i := 0; i < len(area.readAddresses); i++ {
+		if area.readAddresses[i] == registerName {
+			area.memory[i] = data
+			return nil
+		}
+	}
+	return fmt.Errorf("can't find register name (%s) in list of read addreses in %s memory", registerName, area.label)
 }
 
 // newRIOT is the preferred method of initialisation for the RIOT memory area

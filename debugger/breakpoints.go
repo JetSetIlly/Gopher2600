@@ -30,8 +30,12 @@ type breakTarget interface {
 // newBreakpoints is the preferred method of initialisation for breakpoins
 func newBreakpoints() *breakpoints {
 	bp := new(breakpoints)
-	bp.breaks = make([]breaker, 0, 10)
+	bp.clear()
 	return bp
+}
+
+func (bp *breakpoints) clear() {
+	bp.breaks = make([]breaker, 0, 10)
 }
 
 // check compares the current state of the emulation with every break

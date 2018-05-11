@@ -75,9 +75,9 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	tv.forceUpdate = func() error { return nil }
 
 	// initialise TVState
-	tv.horizPos = &TVState{label: "Horiz Pos", shortLabel: "hp", value: -tv.spec.clocksPerHblank, valueFormat: "%d"}
-	tv.frameNum = &TVState{label: "Frame", shortLabel: "fr", value: 0, valueFormat: "%d"}
-	tv.scanline = &TVState{label: "Scanline", shortLabel: "sl", value: 0, valueFormat: "%d"}
+	tv.horizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: 0, valueFormat: "%d"}
+	tv.frameNum = &TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
+	tv.scanline = &TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
 
 	return nil
 }

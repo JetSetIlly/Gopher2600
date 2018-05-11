@@ -82,11 +82,9 @@ func (vcs *VCS) Step() (int, *cpu.InstructionResult, error) {
 	cycleVCS := func() {
 		cpuCycles++
 
+		// three color clocks per CPU cycle:
 		// TODO: allow debugger to take control after every color clock
 
-		// three color clocks per CPU cycle:
-
-		// two color clocks to begin...
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		vcs.RIOT.StepVideoCycle()
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
@@ -96,7 +94,6 @@ func (vcs *VCS) Step() (int, *cpu.InstructionResult, error) {
 		vcs.TIA.ReadTIAMemory()
 		vcs.RIOT.ReadRIOTMemory()
 
-		// ... final color clock
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		vcs.RIOT.StepVideoCycle()
 	}

@@ -24,7 +24,6 @@ type Debugger struct {
 	commandOnBreak string
 
 	// verbose controls the verbosity of commands that echo machine state
-	// TODO: not implemented fully
 	verbose bool
 
 	print func(string, ...interface{})
@@ -48,9 +47,6 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg.input = make([]byte, 255)
 	dbg.breakpoints = newBreakpoints()
-
-	// default verbosity of true -- terse output is for black-belts
-	dbg.verbose = true
 
 	dbg.print = func(s string, output ...interface{}) {
 		fmt.Printf(s, output...)
@@ -225,6 +221,18 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		err := dbg.breakpoints.parseUserInput(dbg, parts)
 		if err != nil {
 			return false, err
+		}
+
+	case "CLEAR":
+		if len(parts) < 2 {
+			return false, fmt.Errorf("not enough arguments for %s command", parts[0])
+		}
+		switch parts[1] {
+		default:
+			return false, fmt.Errorf("%s is not a valid %s command", parts[1], parts[0])
+		case "BREAKS":
+			dbg.breakpoints.clear()
+			dbg.print("breakpoints cleared\n")
 		}
 
 	case "ONBREAK":
