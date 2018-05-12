@@ -77,7 +77,7 @@ func fps() error {
 	cycles := cyclesPerFrame * numOfFrames
 	startTime := time.Now()
 	for cycles > 0 {
-		stepCycles, _, err := vcs.Step()
+		stepCycles, _, err := vcs.Step(hardware.NullVideoCycleCallback)
 		if err != nil {
 			fmt.Println(err)
 			fmt.Printf("%d cycles completed\n", cycles)

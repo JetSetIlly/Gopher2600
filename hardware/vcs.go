@@ -66,8 +66,14 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	return nil
 }
 
+// NullVideoCycleCallback can be used when calling Step() when no special
+// behaviour is required
+func NullVideoCycleCallback() error {
+	return nil
+}
+
 // Step the emulator state one CPU instruction
-func (vcs *VCS) Step() (int, *cpu.InstructionResult, error) {
+func (vcs *VCS) Step(videoCycleCallback func() error) (int, *cpu.InstructionResult, error) {
 	var r *cpu.InstructionResult
 	var err error
 
@@ -87,15 +93,19 @@ func (vcs *VCS) Step() (int, *cpu.InstructionResult, error) {
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		vcs.RIOT.StepVideoCycle()
+		videoCycleCallback()
+
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		vcs.RIOT.StepVideoCycle()
+		videoCycleCallback()
 
-		// ... check for side effects from the CPU operation ...
+		// check for side effects from the CPU operation
 		vcs.TIA.ReadTIAMemory()
 		vcs.RIOT.ReadRIOTMemory()
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		vcs.RIOT.StepVideoCycle()
+		videoCycleCallback()
 	}
 
 	// TODO: controllers
