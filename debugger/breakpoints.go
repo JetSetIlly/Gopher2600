@@ -45,23 +45,23 @@ func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool 
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
-			dbg.print("break on %v\n", bp.breaks[i].valueString())
+			dbg.print(Feedback, "break on %v\n", bp.breaks[i].valueString())
 			broken = true
 		}
 	}
 	return broken
 }
 
-func (bp *breakpoints) parseUserInput(dbg *Debugger, parts []string) error {
+func (bp *breakpoints) parseBreakpoint(dbg *Debugger, parts []string) error {
 	if len(parts) == 1 {
 
 		if len(bp.breaks) == 0 {
-			dbg.print("no breakpoints\n")
+			dbg.print(Feedback, "no breakpoints\n")
 		} else {
-			dbg.print("breakpoints\n")
-			dbg.print("-----------\n")
+			dbg.print(Feedback, "breakpoints\n")
+			dbg.print(Feedback, "-----------\n")
 			for i := range bp.breaks {
-				dbg.print("%s\n", bp.breaks[i].valueString())
+				dbg.print(Feedback, "%s\n", bp.breaks[i].valueString())
 			}
 		}
 	}

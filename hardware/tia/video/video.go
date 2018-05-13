@@ -14,7 +14,7 @@ type Video struct {
 	player1  *sprite
 	missile0 *sprite
 	missile1 *sprite
-	ball     *sprite
+	Ball     *sprite
 
 	// colors
 	colup0 Color
@@ -54,7 +54,12 @@ type Video struct {
 	vdelp1 bool
 	vdelbl bool
 
-	// TODO: horizontal movement
+	// horizontal movement
+	hmp0 int
+	hmp1 int
+	hmm0 int
+	hmm1 int
+	hmbl int
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -84,8 +89,8 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	if vd.missile1 == nil {
 		return nil
 	}
-	vd.ball = newSprite("ball")
-	if vd.ball == nil {
+	vd.Ball = newSprite("ball")
+	if vd.Ball == nil {
 		return nil
 	}
 
@@ -115,6 +120,25 @@ func (vd *Video) TickPlayfield() {
 func (vd *Video) TickSprites() {
 	// TODO: tick other sprites
 	vd.TickBall()
+}
+
+// TickSpritesForHMOVE moves sprite elements if horiz movement value is in range
+func (vd *Video) TickSpritesForHMOVE(count int) {
+	if count == 0 {
+		return
+	}
+
+	if vd.hmp0 >= count {
+	}
+	if vd.hmp1 >= count {
+	}
+	if vd.hmm0 >= count {
+	}
+	if vd.hmm1 >= count {
+	}
+	if vd.hmbl >= count {
+		vd.TickBall()
+	}
 }
 
 // PixelColor returns the color of the pixel at the current time
@@ -152,9 +176,9 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "RESM1":
 	case "RESBL":
 		if *vd.hblank {
-			vd.ball.resetDelay.set(2, true)
+			vd.Ball.resetDelay.set(2, true)
 		} else {
-			vd.ball.resetDelay.set(4, true)
+			vd.Ball.resetDelay.set(4, true)
 		}
 	case "GRP0":
 	case "GRP1":

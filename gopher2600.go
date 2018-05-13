@@ -6,6 +6,7 @@ import (
 	"gopher2600/debugger"
 	"gopher2600/hardware"
 	"gopher2600/television"
+	"gopher2600/ui"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -13,7 +14,7 @@ import (
 )
 
 func main() {
-	var mode = flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, DISASM")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, DISASM")
 	flag.Parse()
 
 	switch strings.ToUpper(*mode) {
@@ -23,6 +24,8 @@ func main() {
 			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
 		}
+
+		ui.SetupTerminal(dbg)
 
 		err = dbg.Start("roms/ball_test_card.bin")
 		if err != nil {
@@ -38,6 +41,7 @@ func main() {
 	case "DISASM":
 		fmt.Printf("* not yet implemented")
 		os.Exit(10)
+
 	default:
 		fmt.Printf("* unknown mode (%s)\n", strings.ToUpper(*mode))
 		os.Exit(10)

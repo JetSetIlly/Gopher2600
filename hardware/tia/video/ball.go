@@ -3,16 +3,16 @@ package video
 // TickBall moves the counters along for the ball sprite
 func (vd *Video) TickBall() {
 	// tick
-	if vd.ball.position.tick() == true {
-		vd.ball.drawSig.reset()
+	if vd.Ball.position.tick() == true {
+		vd.Ball.drawSig.reset()
 	} else {
-		vd.ball.drawSig.tick()
+		vd.Ball.drawSig.tick()
 	}
 
 	// reset
-	if vd.ball.resetDelay.tick() == true {
-		vd.ball.position.synchronise(vd.colorClock)
-		vd.ball.drawSig.reset()
+	if vd.Ball.resetDelay.tick() == true {
+		vd.Ball.position.synchronise(vd.colorClock)
+		vd.Ball.drawSig.reset()
 	}
 
 	// enable
@@ -29,8 +29,8 @@ func (vd *Video) PixelBall() Color {
 	//  o ball is enabled and vertical delay is not enabled
 	//  o OR ball was previously enabled and vertical delay is enabled
 	//  o AND a reset signal (RESBL) has not recently been triggered
-	if (!vd.vdelbl && vd.enabl) || (vd.vdelbl && vd.enablPrev) && !vd.ball.resetDelay.isRunning() {
-		switch vd.ball.drawSig.count {
+	if (!vd.vdelbl && vd.enabl) || (vd.vdelbl && vd.enablPrev) && !vd.Ball.resetDelay.isRunning() {
+		switch vd.Ball.drawSig.count {
 		case 0:
 			return vd.colupf
 		case 1:

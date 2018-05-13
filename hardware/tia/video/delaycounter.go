@@ -27,9 +27,9 @@ func newDelayCounter(label string) *delayCounter {
 
 func (dc delayCounter) String() string {
 	if dc.isRunning() {
-		return fmt.Sprintf(" %s in %d cycles(s)", dc.label, dc.count)
+		return fmt.Sprintf(" %s in %d cycles(s)\n", dc.label, dc.count)
 	}
-	return fmt.Sprintf(" [no %s pending]", dc.label)
+	return fmt.Sprintf(" [no %s pending]\n", dc.label)
 }
 
 // set the amount of delay and the delayed value

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/colorclock"
 	"gopher2600/hardware/tia/polycounter"
+	"strings"
 )
 
 // the sprite type is used for those video elements that move about - players,
@@ -47,7 +48,14 @@ func newSprite(label string) *sprite {
 }
 
 func (sp sprite) String() string {
-	return fmt.Sprintf("%v\n%v\n%v\n", sp.position, sp.drawSig, sp.resetDelay)
+	return fmt.Sprintf("%v%v%v", sp.position, sp.drawSig, sp.resetDelay)
+}
+
+func (sp sprite) StringTerse() string {
+	// TODO: terse is same as verbose for now. change it
+	s := fmt.Sprintf("%v%v%v", sp.position, sp.drawSig, sp.resetDelay)
+	// trimming additional newline for terse
+	return strings.TrimRight(s, "\n")
 }
 
 // the position type is only used by the sprite type
@@ -71,11 +79,11 @@ func newPosition() *position {
 
 func (ps position) String() string {
 	if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing in %d", ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
+		return fmt.Sprintf("position: %s <- drawing in %d\n", ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
 	} else if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing start", ps.polycounter)
+		return fmt.Sprintf("position: %s <- drawing start\n", ps.polycounter)
 	}
-	return fmt.Sprintf("position: %s", ps.polycounter)
+	return fmt.Sprintf("position: %s\n", ps.polycounter)
 }
 
 func (ps *position) synchronise(cc *colorclock.ColorClock) {
@@ -84,10 +92,7 @@ func (ps *position) synchronise(cc *colorclock.ColorClock) {
 }
 
 func (ps *position) tick() bool {
-	if ps.polycounter.Tick(false) == true {
-		return true
-	}
-	return false
+	return ps.polycounter.Tick(false)
 }
 
 func (ps *position) tickAndTriggerList(triggerList []int) bool {
@@ -111,6 +116,7 @@ func (ps position) match(count int) bool {
 // the drawSig type is only used by the sprite type
 
 type drawSig struct {
+	maxCount     int
 	count        int
 	delayedReset bool
 }
@@ -120,19 +126,20 @@ func newDrawSig() *drawSig {
 	if ds == nil {
 		return nil
 	}
-	ds.count = 8
+	ds.maxCount = 8
+	ds.count = ds.maxCount
 	return ds
 }
 
 func (ds drawSig) isRunning() bool {
-	return ds.count < 8
+	return ds.count <= ds.maxCount
 }
 
 func (ds drawSig) String() string {
 	if ds.isRunning() {
-		return fmt.Sprintf(" drawsig: inactive")
+		return fmt.Sprintf(" drawsig: inactive\n")
 	}
-	return fmt.Sprintf(" drawsig: %d cycle(s) remaining", 8-ds.count+1)
+	return fmt.Sprintf(" drawsig: %d cycle(s) remaining\n", ds.maxCount-ds.count)
 }
 
 func (ds *drawSig) tick() {

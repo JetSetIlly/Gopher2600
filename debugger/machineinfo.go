@@ -11,8 +11,8 @@ type machineInfo interface {
 
 func (dbg Debugger) printMachineInfo(mi machineInfo) {
 	if dbg.verbose {
-		dbg.print("%v", mi)
+		dbg.print(MachineInfo, "%v", mi)
 	} else {
-		dbg.print("%s\n", mi.StringTerse())
+		dbg.print(MachineInfo, "%s\n", mi.StringTerse())
 	}
 }

@@ -28,16 +28,22 @@ type Debugger struct {
 	// verbose controls the verbosity of commands that echo machine state
 	verbose bool
 
-	// definable function for printing to the screen. can be used by derived
-	// Debugger types to improve user interface over the plain terminal
-	print func(string, ...interface{})
-
 	// input loop fields. we're storing these here because inputLoop can be
 	// called from within another input loop (via a video step callback) and we
 	// want these properties to persist
 	inputloopBreakpoint bool
 	inputloopNext       bool
 	inputloopVideoStep  bool
+
+	/* user interface */
+
+	// UserPrint is a definable function for printing to the screen. ie. the
+	// function that presents the string to the user. note that the debugger
+	// calls UserPrint via the dbg.print function
+	UserPrint func(PrintProfile, string, ...interface{})
+
+	// UserRead gets the next line of input from the user
+	UserRead func([]byte) (int, error)
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
@@ -46,25 +52,28 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
+	// prepare hardware
 	tv, err := television.NewSDLTV("NTSC", 3)
 	if err != nil {
 		return nil, err
 	}
-
 	dbg.vcs, err = hardware.New(tv)
 	if err != nil {
 		return nil, err
 	}
 
+	// allocate memory for user input
 	dbg.input = make([]byte, 255)
-	dbg.breakpoints = newBreakpoints()
 
-	dbg.print = func(s string, output ...interface{}) {
-		fmt.Printf(s, output...)
-	}
+	// set up breakpoints
+	dbg.breakpoints = newBreakpoints()
 
 	// default ONHALT command squence
 	dbg.commandOnHaltStored = "CPU; TIA; TV"
+
+	// default commands to user interface callbacks
+	dbg.UserPrint = plainPrint
+	dbg.UserRead = plainRead
 
 	return dbg, nil
 }
@@ -103,7 +112,7 @@ func (dbg *Debugger) Start(filename string) error {
 }
 
 // videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
-func (dbg *Debugger) videCycleInputLoop() error {
+func (dbg *Debugger) videoCycleInputLoop() error {
 	return dbg.inputLoop(false)
 }
 
@@ -148,8 +157,8 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			dbg.runUntilBreak = false
 
 			// get user input
-			dbg.print("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
-			n, err := os.Stdin.Read(dbg.input)
+			dbg.print(Prompt, "[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+			n, err := dbg.UserRead(dbg.input)
 			if err != nil {
 				return err
 			}
@@ -157,7 +166,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// parse user input
 			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]))
 			if err != nil {
-				dbg.print("* %s\n", err)
+				dbg.print(Error, "%s\n", err)
 			}
 
 			// prepare for next loop
@@ -167,11 +176,11 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// move emulation on one step if user has requested/implied it
 		if dbg.inputloopNext {
 			if mainLoop {
-				_, result, err = dbg.vcs.Step(dbg.videCycleInputLoop)
+				_, result, err = dbg.vcs.Step(dbg.videoCycleInputLoop)
 				if err != nil {
 					return err
 				}
-				dbg.print("%v\n", result)
+				dbg.print(StepResult, "%v\n", result)
 			} else {
 				return nil
 			}
@@ -248,7 +257,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// control of the debugger
 
 	case "BREAK":
-		err := dbg.breakpoints.parseUserInput(dbg, parts)
+		err := dbg.breakpoints.parseBreakpoint(dbg, parts)
 		if err != nil {
 			return false, err
 		}
@@ -262,7 +271,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			return false, fmt.Errorf("%s is not a valid %s command", parts[1], parts[0])
 		case "BREAKS":
 			dbg.breakpoints.clear()
-			dbg.print("breakpoints cleared\n")
+			dbg.print(Feedback, "breakpoints cleared\n")
 		}
 
 	case "ONHALT":
@@ -271,7 +280,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		} else {
 			if parts[1] == "OFF" {
 				dbg.commandOnHalt = ""
-				dbg.print("no auto-command on halt\n")
+				dbg.print(Feedback, "no auto-command on halt\n")
 				return false, nil
 			}
 
@@ -289,16 +298,16 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
-		dbg.print("auto-command on halt: %s\n", dbg.commandOnHalt)
+		dbg.print(Feedback, "auto-command on halt: %s\n", dbg.commandOnHalt)
 
 	case "MEMMAP":
-		dbg.print("%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case "QUIT":
 		dbg.running = false
 
 	case "RESET":
-		dbg.print("* machine reset\n")
+		dbg.print(Feedback, "machine reset\n")
 		err := dbg.vcs.Reset()
 		if err != nil {
 			return false, err
@@ -321,13 +330,14 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case "TERSE":
 		dbg.verbose = false
-		dbg.print("verbosity: terse\n")
+		dbg.print(Feedback, "verbosity: terse\n")
 
 	case "VERBOSE":
 		dbg.verbose = true
-		dbg.print("verbosity: verbose\n")
+		dbg.print(Feedback, "verbosity: verbose\n")
 
 	// information about the machine (chips)
+
 	case "CPU":
 		dbg.printMachineInfo(dbg.vcs.MC)
 
@@ -337,7 +347,13 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	case "TV":
 		dbg.printMachineInfo(dbg.vcs.TV)
 
+	// information about the machine (sprites)
+
+	case "BALL":
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
+
 	// tv control
+
 	case "SHOW":
 		err := dbg.vcs.TV.SetVisibility(true)
 		if err != nil {

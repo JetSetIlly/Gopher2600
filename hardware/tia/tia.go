@@ -31,7 +31,7 @@ type TIA struct {
 	hsync  bool
 	wsync  bool
 
-	video *video.Video
+	Video *video.Video
 	// TODO: audio
 }
 
@@ -74,8 +74,8 @@ func New(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.video = video.New(tia.colorClock, &tia.hblank)
-	if tia.video == nil {
+	tia.Video = video.New(tia.colorClock, &tia.hblank)
+	if tia.Video == nil {
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func (tia *TIA) ReadTIAMemory() {
 	if service {
 		serviced := tia.serviceTIAMemory(register, value)
 		if !serviced {
-			serviced = tia.video.ServiceTIAMemory(register, value)
+			serviced = tia.Video.ServiceTIAMemory(register, value)
 			if !serviced {
 				// TODO: audio
 				if !serviced {
@@ -165,21 +165,20 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// HMOVE clock stuffing
-	// TODO: complete clock stuffing
-	//tia.hmove.tick()
+	tia.Video.TickSpritesForHMOVE(tia.hmove.tick())
 
 	// note that tick playfield occurs regardless of the state of hblank
-	tia.video.TickPlayfield()
+	tia.Video.TickPlayfield()
 
 	// at the end of the video cycle we want to finally 'send' information to the
 	// televison. what we 'send' depends on the state of hblank.
 	if !tia.hblank {
 		// tick all sprites -- this is distinct from the sprite ticking we did
 		// above when clock stuffing for HMOVE
-		tia.video.TickSprites()
+		tia.Video.TickSprites()
 
 		// send pixel color to television
-		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.video.PixelColor())
+		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.Video.PixelColor())
 	} else {
 		// we're in the hblank state so do not tick the sprites and send the null
 		// pixel color to the television
