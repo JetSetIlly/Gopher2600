@@ -48,12 +48,12 @@ func newSprite(label string) *sprite {
 
 // MachineInfoTerse returns the sprite information in terse format
 func (sp sprite) MachineInfoTerse() string {
-	return sp.MachineInfo()
+	return fmt.Sprintf("%s: %s %s %s", sp.label, sp.position.MachineInfoTerse(), sp.drawSig.MachineInfoTerse(), sp.resetDelay.MachineInfoTerse())
 }
 
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
-	return fmt.Sprintf("%v\n%v\n%v", sp.position, sp.drawSig, sp.resetDelay)
+	return fmt.Sprintf("%s:\n %v\n %v\n %v", sp.label, sp.position, sp.drawSig, sp.resetDelay)
 }
 
 // map String to MachineInfo
@@ -82,7 +82,7 @@ func newPosition() *position {
 
 // MachineInfoTerse returns the position information in terse format
 func (ps position) MachineInfoTerse() string {
-	return ps.MachineInfo()
+	return fmt.Sprintf("pos=%s", ps.polycounter.MachinInfoTerse())
 }
 
 // MachineInfo returns the position information in verbose format
@@ -151,15 +151,18 @@ func (ds drawSig) isRunning() bool {
 
 // MachineInfoTerse returns the draw signal information in terse format
 func (ds drawSig) MachineInfoTerse() string {
-	return ds.MachineInfo()
+	if ds.isRunning() {
+		return fmt.Sprintf("dsig=%d", ds.maxCount-ds.count)
+	}
+	return "dsig=-"
 }
 
 // MachineInfo returns the draw signal information in verbose format
 func (ds drawSig) MachineInfo() string {
 	if ds.isRunning() {
-		return fmt.Sprintf(" drawsig: inactive")
+		return fmt.Sprintf("drawsig: %d cycle(s) remaining", ds.maxCount-ds.count)
 	}
-	return fmt.Sprintf(" drawsig: %d cycle(s) remaining", ds.maxCount-ds.count)
+	return fmt.Sprintf("drawsig: inactive")
 }
 
 // map String to MachineInfo

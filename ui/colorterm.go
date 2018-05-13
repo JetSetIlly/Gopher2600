@@ -3,20 +3,18 @@ package ui
 import (
 	"fmt"
 	"gopher2600/debugger"
+	"os"
 )
 
-// SetupTerminal figures out the capabilities of the terminal and changes the
-// UI callbacks in the debugger accordingly
-func SetupTerminal(dbg *debugger.Debugger) {
-	// TODO: test for color capabilities
-	dbg.UserPrint = colorPrint
-
-	// TODO: change UserRead callback if possible
+// ColorTerminal implements debugger UI interface
+type ColorTerminal struct {
+	prevProfile debugger.PrintProfile
 }
 
-// colorPrint routine -- alternative to default plainPrint routiner in debugger
-// package
-func colorPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
+// no NewColorTerminal() function currently
+
+// UserPrint implementation for debugger.UI interface
+func (ct *ColorTerminal) UserPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
 	switch pp {
 	case debugger.StepResult:
 		fmt.Print(ansiYellow)
@@ -36,6 +34,17 @@ func colorPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
 
 	fmt.Printf(s, a...)
 	fmt.Print(ansiOff)
+
+	ct.prevProfile = pp
+}
+
+// UserRead implementation for debugger.UI interface
+func (ct *ColorTerminal) UserRead(input []byte) (int, error) {
+	n, err := os.Stdin.Read(input)
+	if err != nil {
+		return n, err
+	}
+	return n, nil
 }
 
 const ansiOff = "\033[0m"

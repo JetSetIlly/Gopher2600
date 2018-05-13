@@ -27,15 +27,18 @@ func newDelayCounter(label string) *delayCounter {
 
 // MachineInfoTerse returns the delay counter information in terse format
 func (dc delayCounter) MachineInfoTerse() string {
-	return dc.MachineInfo()
+	if dc.isRunning() {
+		return fmt.Sprintf("%s=%d", dc.label, dc.count)
+	}
+	return fmt.Sprintf("%s=-", dc.label)
 }
 
 // MachineInfo returns the delay counter information in verbose format
 func (dc delayCounter) MachineInfo() string {
 	if dc.isRunning() {
-		return fmt.Sprintf(" %s in %d cycles(s)", dc.label, dc.count)
+		return fmt.Sprintf("%s in %d cycles(s)", dc.label, dc.count)
 	}
-	return fmt.Sprintf(" [no %s pending]", dc.label)
+	return fmt.Sprintf("[no %s pending]", dc.label)
 }
 
 // map String to Machine Info

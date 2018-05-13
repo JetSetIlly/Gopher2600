@@ -35,19 +35,12 @@ type Debugger struct {
 	inputloopNext       bool
 	inputloopVideoStep  bool
 
-	/* user interface */
-
-	// UserPrint is a definable function for printing to the screen. ie. the
-	// function that presents the string to the user. note that the debugger
-	// calls UserPrint via the dbg.print function
-	UserPrint func(PrintProfile, string, ...interface{})
-
-	// UserRead gets the next line of input from the user
-	UserRead func([]byte) (int, error)
+	// user interface
+	ui UI
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
-func NewDebugger() (*Debugger, error) {
+func NewDebugger(ui UI) (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
@@ -62,6 +55,16 @@ func NewDebugger() (*Debugger, error) {
 		return nil, err
 	}
 
+	// prepare user interface
+	if ui == nil {
+		dbg.ui = new(plainUI)
+		if dbg.ui == nil {
+			return nil, fmt.Errorf("error allocationg memory for UI")
+		}
+	} else {
+		dbg.ui = ui
+	}
+
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
@@ -70,10 +73,6 @@ func NewDebugger() (*Debugger, error) {
 
 	// default ONHALT command squence
 	dbg.commandOnHaltStored = "CPU; TIA; TV"
-
-	// default commands to user interface callbacks
-	dbg.UserPrint = plainPrint
-	dbg.UserRead = plainRead
 
 	return dbg, nil
 }
@@ -158,7 +157,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			// get user input
 			dbg.print(Prompt, "[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
-			n, err := dbg.UserRead(dbg.input)
+			n, err := dbg.ui.UserRead(dbg.input)
 			if err != nil {
 				return err
 			}

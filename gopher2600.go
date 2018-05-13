@@ -19,13 +19,11 @@ func main() {
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
-		dbg, err := debugger.NewDebugger()
+		dbg, err := debugger.NewDebugger(new(ui.ColorTerminal))
 		if err != nil {
 			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
 		}
-
-		ui.SetupTerminal(dbg)
 
 		err = dbg.Start("roms/ball_test_card.bin")
 		if err != nil {
