@@ -27,14 +27,19 @@ func (sr StatusRegister) Label() string {
 	return sr.label
 }
 
-// StringTerse returns the status register information in terse format
-func (sr StatusRegister) StringTerse() string {
+// MachineInfoTerse returns the status register information in terse format
+func (sr StatusRegister) MachineInfoTerse() string {
 	return fmt.Sprintf("%s=%s", sr.label, sr.ToBits())
 }
 
-// String returns the status register information in verbose format
+// MachineInfo returns the status register information in verbose format
+func (sr StatusRegister) MachineInfo() string {
+	return fmt.Sprintf("%s: %v", sr.label, sr.ToBits())
+}
+
+// map String to MachineInfo
 func (sr StatusRegister) String() string {
-	return fmt.Sprintf("%s: %v\n", sr.label, sr.ToBits())
+	return sr.MachineInfo()
 }
 
 // ToBits returns the register as a labelled bit pattern

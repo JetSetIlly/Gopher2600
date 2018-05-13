@@ -17,15 +17,20 @@ type TVState struct {
 	valueFormat string
 }
 
-// StringTerse returns the TVState in terse format
-func (ts TVState) StringTerse() string {
+// MachineInfoTerse returns the TVState in terse format
+func (ts TVState) MachineInfoTerse() string {
 	return ts.AsString(ts.value)
 }
 
-// String returns the TVState in verbose format
-func (ts TVState) String() string {
+// MachineInfo returns the TVState in verbose format
+func (ts TVState) MachineInfo() string {
 	v := fmt.Sprintf(ts.valueFormat, ts.value)
-	return fmt.Sprintf("%s=%s\n", ts.label, v)
+	return fmt.Sprintf("%s=%s", ts.label, v)
+}
+
+// map String to MachineInfo
+func (ts TVState) String() string {
+	return ts.MachineInfo()
 }
 
 // AsString returns the (terse) string representation of an aribtrary value

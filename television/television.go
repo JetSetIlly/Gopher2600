@@ -8,8 +8,8 @@ import (
 // Television defines the operations that can be performed on the television
 type Television interface {
 	Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color)
-	StringTerse() string
-	String() string
+	MachineInfoTerse() string
+	MachineInfo() string
 	GetTVState(string) (*TVState, error)
 	ForceUpdate() error
 	SetVisibility(visible bool) error
@@ -22,14 +22,19 @@ type DummyTV struct{ Television }
 // Signal (with DummyTV reciever) is the null implementation
 func (tv *DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {}
 
-// StringTerse (with DummyTV reciever) is the null implementation
-func (tv DummyTV) StringTerse() string {
+// MachineInfoTerse (with DummyTV reciever) is the null implementation
+func (tv DummyTV) MachineInfoTerse() string {
 	return ""
 }
 
-// String (with DummyTV reciever) is the null implementation
-func (tv DummyTV) String() string {
+// MachineInfo (with DummyTV reciever) is the null implementation
+func (tv DummyTV) MachineInfo() string {
 	return ""
+}
+
+// map String to MachinInfo
+func (tv DummyTV) String() string {
+	return tv.MachineInfo()
 }
 
 // GetTVState (with dummyTV reciever) is the null implementation

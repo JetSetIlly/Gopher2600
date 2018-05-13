@@ -35,14 +35,19 @@ type TIA struct {
 	// TODO: audio
 }
 
-// StringTerse returns the TIA information in terse format
-func (tia TIA) StringTerse() string {
-	return fmt.Sprintf("%s %s %s", tia.colorClock.StringTerse(), tia.rsync.StringTerse(), tia.hmove.StringTerse())
+// MachineInfoTerse returns the TIA information in terse format
+func (tia TIA) MachineInfoTerse() string {
+	return fmt.Sprintf("%s %s %s", tia.colorClock.MachineInfoTerse(), tia.rsync.MachineInfoTerse(), tia.hmove.MachineInfoTerse())
 }
 
-// String returns the TIA information in verbose format
+// MachineInfo returns the TIA information in verbose format
+func (tia TIA) MachineInfo() string {
+	return fmt.Sprintf("%v\n%v\n%v", tia.colorClock, tia.rsync, tia.hmove)
+}
+
+// map String to MachineInfo
 func (tia TIA) String() string {
-	return fmt.Sprintf("%v%v%v", tia.colorClock, tia.rsync, tia.hmove)
+	return tia.MachineInfo()
 }
 
 // New is the preferred method of initialisation for the TIA structure

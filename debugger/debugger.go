@@ -53,7 +53,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg := new(Debugger)
 
 	// prepare hardware
-	tv, err := television.NewSDLTV("NTSC", 3)
+	tv, err := television.NewSDLTV("NTSC", 3.0)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// parse user input
 			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]))
 			if err != nil {
-				dbg.print(Error, "%s\n", err)
+				dbg.print(Error, "%s", err)
 			}
 
 			// prepare for next loop
@@ -180,7 +180,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if err != nil {
 					return err
 				}
-				dbg.print(StepResult, "%v\n", result)
+				dbg.print(StepResult, "%v", result)
 			} else {
 				return nil
 			}
@@ -271,7 +271,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			return false, fmt.Errorf("%s is not a valid %s command", parts[1], parts[0])
 		case "BREAKS":
 			dbg.breakpoints.clear()
-			dbg.print(Feedback, "breakpoints cleared\n")
+			dbg.print(Feedback, "breakpoints cleared")
 		}
 
 	case "ONHALT":
@@ -280,7 +280,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		} else {
 			if parts[1] == "OFF" {
 				dbg.commandOnHalt = ""
-				dbg.print(Feedback, "no auto-command on halt\n")
+				dbg.print(Feedback, "no auto-command on halt")
 				return false, nil
 			}
 
@@ -298,7 +298,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
-		dbg.print(Feedback, "auto-command on halt: %s\n", dbg.commandOnHalt)
+		dbg.print(Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
 	case "MEMMAP":
 		dbg.print(MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
@@ -307,7 +307,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.running = false
 
 	case "RESET":
-		dbg.print(Feedback, "machine reset\n")
+		dbg.print(Feedback, "machine reset")
 		err := dbg.vcs.Reset()
 		if err != nil {
 			return false, err
@@ -330,11 +330,11 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case "TERSE":
 		dbg.verbose = false
-		dbg.print(Feedback, "verbosity: terse\n")
+		dbg.print(Feedback, "verbosity: terse")
 
 	case "VERBOSE":
 		dbg.verbose = true
-		dbg.print(Feedback, "verbosity: verbose\n")
+		dbg.print(Feedback, "verbosity: verbose")
 
 	// information about the machine (chips)
 

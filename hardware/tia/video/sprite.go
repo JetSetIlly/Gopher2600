@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/colorclock"
 	"gopher2600/hardware/tia/polycounter"
-	"strings"
 )
 
 // the sprite type is used for those video elements that move about - players,
@@ -47,15 +46,19 @@ func newSprite(label string) *sprite {
 	return sp
 }
 
-func (sp sprite) String() string {
-	return fmt.Sprintf("%v%v%v", sp.position, sp.drawSig, sp.resetDelay)
+// MachineInfoTerse returns the sprite information in terse format
+func (sp sprite) MachineInfoTerse() string {
+	return sp.MachineInfo()
 }
 
-func (sp sprite) StringTerse() string {
-	// TODO: terse is same as verbose for now. change it
-	s := fmt.Sprintf("%v%v%v", sp.position, sp.drawSig, sp.resetDelay)
-	// trimming additional newline for terse
-	return strings.TrimRight(s, "\n")
+// MachineInfo returns the Video information in verbose format
+func (sp sprite) MachineInfo() string {
+	return fmt.Sprintf("%v\n%v\n%v", sp.position, sp.drawSig, sp.resetDelay)
+}
+
+// map String to MachineInfo
+func (sp sprite) String() string {
+	return sp.MachineInfo()
 }
 
 // the position type is only used by the sprite type
@@ -77,13 +80,24 @@ func newPosition() *position {
 	return ps
 }
 
-func (ps position) String() string {
+// MachineInfoTerse returns the position information in terse format
+func (ps position) MachineInfoTerse() string {
+	return ps.MachineInfo()
+}
+
+// MachineInfo returns the position information in verbose format
+func (ps position) MachineInfo() string {
 	if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing in %d\n", ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
+		return fmt.Sprintf("position: %s <- drawing in %d", ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
 	} else if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing start\n", ps.polycounter)
+		return fmt.Sprintf("position: %s <- drawing start", ps.polycounter)
 	}
-	return fmt.Sprintf("position: %s\n", ps.polycounter)
+	return fmt.Sprintf("position: %s", ps.polycounter)
+}
+
+// map String to Machine Info
+func (ps position) String() string {
+	return ps.MachineInfo()
 }
 
 func (ps *position) synchronise(cc *colorclock.ColorClock) {
@@ -135,11 +149,22 @@ func (ds drawSig) isRunning() bool {
 	return ds.count <= ds.maxCount
 }
 
-func (ds drawSig) String() string {
+// MachineInfoTerse returns the draw signal information in terse format
+func (ds drawSig) MachineInfoTerse() string {
+	return ds.MachineInfo()
+}
+
+// MachineInfo returns the draw signal information in verbose format
+func (ds drawSig) MachineInfo() string {
 	if ds.isRunning() {
-		return fmt.Sprintf(" drawsig: inactive\n")
+		return fmt.Sprintf(" drawsig: inactive")
 	}
-	return fmt.Sprintf(" drawsig: %d cycle(s) remaining\n", ds.maxCount-ds.count)
+	return fmt.Sprintf(" drawsig: %d cycle(s) remaining", ds.maxCount-ds.count)
+}
+
+// map String to MachineInfo
+func (ds drawSig) String() string {
+	return ds.MachineInfo()
 }
 
 func (ds *drawSig) tick() {

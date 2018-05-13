@@ -5,14 +5,14 @@ package debugger
 // the more terse equivalent.
 
 type machineInfo interface {
-	String() string
-	StringTerse() string
+	MachineInfo() string
+	MachineInfoTerse() string
 }
 
 func (dbg Debugger) printMachineInfo(mi machineInfo) {
 	if dbg.verbose {
-		dbg.print(MachineInfo, "%v", mi)
+		dbg.print(MachineInfo, "%s", mi.MachineInfo())
 	} else {
-		dbg.print(MachineInfo, "%s\n", mi.StringTerse())
+		dbg.print(MachineInfo, "%s", mi.MachineInfoTerse())
 	}
 }

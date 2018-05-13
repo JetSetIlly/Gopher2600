@@ -94,14 +94,19 @@ func (r Register) IsBitV() bool {
 	return r.value&r.vbit == r.vbit
 }
 
-// StringTerse returns the register information in terse format
-func (r Register) StringTerse() string {
+// MachineInfoTerse returns the register information in terse format
+func (r Register) MachineInfoTerse() string {
 	return fmt.Sprintf("%s=%s", r.label, r.ToHex())
 }
 
-// String returns the register information in verbose format
+// MachineInfo returns the register information in verbose format
+func (r Register) MachineInfo() string {
+	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+}
+
+// map String to MachineInfo
 func (r Register) String() string {
-	return fmt.Sprintf("%s: %d [%s] %s\n", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+	return r.MachineInfo()
 }
 
 // AsString returns the (terse) string representation of an aribtrary value
@@ -110,7 +115,7 @@ func (r Register) AsString(v interface{}) string {
 	if err != nil {
 		return err.Error()
 	}
-	return fmt.Sprintf("%s", vr.StringTerse())
+	return fmt.Sprintf("%s", vr.MachineInfoTerse())
 }
 
 // ToBits returns the register as bit pattern (of '0' and '1')

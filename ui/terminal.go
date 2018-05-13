@@ -24,10 +24,14 @@ func colorPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
 		fmt.Print(ansiCyan)
 	case debugger.Error:
 		fmt.Print(ansiRed)
-		fmt.Sprintf("* %s", s)
+		s = fmt.Sprintf("* %s", s)
 	case debugger.Feedback:
 		fmt.Print(ansiGray)
 	case debugger.Prompt:
+	}
+
+	if pp != debugger.Prompt {
+		s = fmt.Sprintf("%s\n", s)
 	}
 
 	fmt.Printf(s, a...)

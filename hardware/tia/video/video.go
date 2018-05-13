@@ -111,6 +111,21 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	return vd
 }
 
+// MachineInfoTerse returns the Video information in terse format
+func (vd Video) MachineInfoTerse() string {
+	return ""
+}
+
+// MachineInfo returns the Video information in verbose format
+func (vd Video) MachineInfo() string {
+	return ""
+}
+
+// map String to MachineInfo
+func (vd Video) String() string {
+	return vd.MachineInfo()
+}
+
 // TickPlayfield moves playfield on one video cycle
 func (vd *Video) TickPlayfield() {
 	// TODO: tick playfield

@@ -82,14 +82,19 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	return nil
 }
 
-// StringTerse returns the television information in terse format
-func (tv HeadlessTV) StringTerse() string {
-	return fmt.Sprintf("%s %s %s", tv.frameNum.StringTerse(), tv.scanline.StringTerse(), tv.horizPos.StringTerse())
+// MachineInfoTerse returns the television information in terse format
+func (tv HeadlessTV) MachineInfoTerse() string {
+	return fmt.Sprintf("%s %s %s", tv.frameNum.MachineInfoTerse(), tv.scanline.MachineInfoTerse(), tv.horizPos.MachineInfoTerse())
 }
 
-// String returns the television information in verbose format
+// MachineInfo returns the television information in verbose format
+func (tv HeadlessTV) MachineInfo() string {
+	return fmt.Sprintf("%v\n%v\n%v", tv.frameNum, tv.scanline, tv.horizPos)
+}
+
+// map String to MachineInfo
 func (tv HeadlessTV) String() string {
-	return fmt.Sprintf("%v%v%v", tv.frameNum, tv.scanline, tv.horizPos)
+	return tv.MachineInfo()
 }
 
 // GetTVState returns the TVState object for the named state

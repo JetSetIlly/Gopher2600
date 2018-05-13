@@ -63,14 +63,19 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 	pk.ResetPoint = i
 }
 
-// StringTerse returns the polycounter information in terse format
-func (pk Polycounter) StringTerse() string {
+// MachinInfoTerse returns the polycounter information in terse format
+func (pk Polycounter) MachinInfoTerse() string {
 	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
 }
 
-// String returns the polycounter information in verbose format
-func (pk Polycounter) String() string {
+// MachineInfo returns the polycounter information in verbose format
+func (pk Polycounter) MachineInfo() string {
 	return fmt.Sprintf("%s@%d", table6bits[pk.Count], pk.Phase)
+}
+
+// map String to MachineInfo
+func (pk Polycounter) String() string {
+	return pk.MachineInfo()
 }
 
 // ResetPhase resets the phase *only*
