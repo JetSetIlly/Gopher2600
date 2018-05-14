@@ -54,7 +54,7 @@ func (dc *delayCounter) set(count int, value interface{}) {
 
 // isRunning returns true if delay counter is still running
 func (dc delayCounter) isRunning() bool {
-	return dc.count > -1
+	return dc.count >= 0
 }
 
 // tick moves the delay counter on one step

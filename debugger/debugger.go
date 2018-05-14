@@ -69,7 +69,7 @@ func NewDebugger(ui UI) (*Debugger, error) {
 	dbg.input = make([]byte, 255)
 
 	// set up breakpoints
-	dbg.breakpoints = newBreakpoints()
+	dbg.breakpoints = newBreakpoints(dbg)
 
 	// default ONHALT command squence
 	dbg.commandOnHaltStored = "CPU; TIA; TV"
@@ -256,21 +256,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// control of the debugger
 
 	case "BREAK":
-		err := dbg.breakpoints.parseBreakpoint(dbg, parts)
+		err := dbg.breakpoints.parseBreakpoint(parts)
 		if err != nil {
 			return false, err
-		}
-
-	case "CLEAR":
-		if len(parts) < 2 {
-			return false, fmt.Errorf("not enough arguments for %s command", parts[0])
-		}
-		switch parts[1] {
-		default:
-			return false, fmt.Errorf("%s is not a valid %s command", parts[1], parts[0])
-		case "BREAKS":
-			dbg.breakpoints.clear()
-			dbg.print(Feedback, "breakpoints cleared")
 		}
 
 	case "ONHALT":
@@ -353,17 +341,19 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	// tv control
 
-	case "SHOW":
-		err := dbg.vcs.TV.SetVisibility(true)
+	case "DISPLAY":
+		visibility := true
+		if len(parts) > 1 {
+			switch parts[1] {
+			case "OFF":
+				visibility = false
+			}
+		}
+		err := dbg.vcs.TV.SetVisibility(visibility)
 		if err != nil {
 			return false, err
 		}
 
-	case "HIDE":
-		err := dbg.vcs.TV.SetVisibility(false)
-		if err != nil {
-			return false, err
-		}
 	}
 
 	return stepNext, nil

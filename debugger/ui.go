@@ -17,7 +17,7 @@ type plainUI struct {
 	UI
 }
 
-// no newPlainUI() function currently
+// no newPlainUI() function currently required
 
 // minimalist print routine -- default assignment to UserPrint
 func (ui plainUI) UserPrint(pp PrintProfile, s string, a ...interface{}) {

@@ -160,7 +160,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	if tia.colorClock.Tick(tia.rsync.check()) == true {
-		// set up new scanline if colorClock ticks its way to its reset point or if
+		// set up new scanline if colorClock has ticked its way to the reset point or if
 		// an rsync has matured (see rsync.go commentary)
 		frontPorch = true
 		tia.wsync = false
@@ -183,7 +183,7 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.Video.TickSprites()
 
 		// send pixel color to television
-		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.Video.PixelColor())
+		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, tia.Video.GetPixel())
 	} else {
 		// we're in the hblank state so do not tick the sprites and send the null
 		// pixel color to the television

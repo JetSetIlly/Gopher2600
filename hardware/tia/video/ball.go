@@ -22,14 +22,14 @@ func (vd *Video) TickBall() {
 	}
 }
 
-// PixelBall returns the color of the ball at the current time. NO_COLOR if
-// ball is not to be seen at the current point
+// PixelBall returns the color of the ball at the current time. returns NoColor
+// if ball is not to be seen at the current point
 func (vd *Video) PixelBall() Color {
 	// ball should be pixelled if:
 	//  o ball is enabled and vertical delay is not enabled
 	//  o OR ball was previously enabled and vertical delay is enabled
 	//  o AND a reset signal (RESBL) has not recently been triggered
-	if (!vd.vdelbl && vd.enabl) || (vd.vdelbl && vd.enablPrev) && !vd.Ball.resetDelay.isRunning() {
+	if ((!vd.vdelbl && vd.enabl) || (vd.vdelbl && vd.enablPrev)) && !vd.Ball.resetDelay.isRunning() {
 		switch vd.Ball.drawSig.count {
 		case 0:
 			return vd.colupf

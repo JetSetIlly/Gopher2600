@@ -53,7 +53,7 @@ func (sp sprite) MachineInfoTerse() string {
 
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
-	return fmt.Sprintf("%s:\n %v\n %v\n %v", sp.label, sp.position, sp.drawSig, sp.resetDelay)
+	return fmt.Sprintf("%s: %v\n %v\n %v", sp.label, sp.position, sp.drawSig, sp.resetDelay)
 }
 
 // map String to MachineInfo
@@ -82,17 +82,18 @@ func newPosition() *position {
 
 // MachineInfoTerse returns the position information in terse format
 func (ps position) MachineInfoTerse() string {
-	return fmt.Sprintf("pos=%s", ps.polycounter.MachinInfoTerse())
+	return fmt.Sprintf("pos=%d", ps.coarsePixel)
 }
 
 // MachineInfo returns the position information in verbose format
 func (ps position) MachineInfo() string {
+	s := fmt.Sprintf("reset at pixel %d", ps.coarsePixel)
 	if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing in %d", ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
+		return fmt.Sprintf("%s\nposition: %s <- drawing in %d", s, ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
 	} else if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("position: %s <- drawing start", ps.polycounter)
+		return fmt.Sprintf("%s\nposition: %s <- drawing start", s, ps.polycounter)
 	}
-	return fmt.Sprintf("position: %s", ps.polycounter)
+	return fmt.Sprintf("%s\nposition: %s", s, ps.polycounter)
 }
 
 // map String to Machine Info

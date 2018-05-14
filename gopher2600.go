@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"gopher2600/debugger"
+	"gopher2600/debugger/colorterm"
 	"gopher2600/hardware"
 	"gopher2600/television"
-	"gopher2600/ui"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -19,7 +19,7 @@ func main() {
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
-		dbg, err := debugger.NewDebugger(new(ui.ColorTerminal))
+		dbg, err := debugger.NewDebugger(new(colorterm.ColorTerminal))
 		if err != nil {
 			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)

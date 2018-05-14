@@ -156,8 +156,8 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 }
 
-// PixelColor returns the color of the pixel at the current time
-func (vd Video) PixelColor() Color {
+// GetPixel returns the color of the pixel at the current time
+func (vd Video) GetPixel() Color {
 	col := vd.colubk
 	if vd.ctrlpfPriority {
 		// TODO: complete priority pixel ordering
