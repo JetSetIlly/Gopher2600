@@ -204,3 +204,8 @@ func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, colo
 func (tv HeadlessTV) SetVisibility(visible bool) error {
 	return nil
 }
+
+// SetActivity does nothing for the HeadlessTV
+func (tv HeadlessTV) SetActivity(visible bool) error {
+	return nil
+}

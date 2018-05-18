@@ -11,8 +11,8 @@ type Television interface {
 	MachineInfoTerse() string
 	MachineInfo() string
 	GetTVState(string) (*TVState, error)
-	ForceUpdate() error
 	SetVisibility(visible bool) error
+	SetPause(pause bool) error
 }
 
 // DummyTV is the null implementation of the television interface. useful
@@ -42,12 +42,12 @@ func (tv DummyTV) GetTVState(state string) (*TVState, error) {
 	return nil, fmt.Errorf("dummy tv doesn't have that tv state (%s)", state)
 }
 
-// ForceUpdate (with dummyTV reciever) is the null implementation
-func (tv DummyTV) ForceUpdate() error {
+// SetVisibility (with dummyTV reciever) is the null implementation
+func (tv DummyTV) SetVisibility(visible bool) error {
 	return nil
 }
 
-// SetVisibility (with dummyTV reciever) is the null implementation
-func (tv DummyTV) SetVisibility(visible bool) error {
+// SetPause (with dummyTV reciever) is the null implementation
+func (tv DummyTV) SetPause(pause bool) error {
 	return nil
 }

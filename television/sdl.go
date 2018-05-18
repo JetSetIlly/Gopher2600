@@ -17,10 +17,17 @@ type SDLTV struct {
 
 	pixelWidth int
 
-	window   *sdl.Window
-	renderer *sdl.Renderer
-	texture  *sdl.Texture
-	pixels   []byte
+	window        *sdl.Window
+	renderer      *sdl.Renderer
+	screenTexture *sdl.Texture
+	fadeTexture   *sdl.Texture
+
+	pixelsScreen []byte
+	pixelsFade   []byte
+	pixels0      []byte
+	pixels1      []byte
+
+	paused bool
 }
 
 // NewSDLTV is the preferred method for initalising an SDL TV
@@ -43,11 +50,15 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		if err != nil {
 			return err
 		}
-		tv.clear()
+
+		// swap which pixel buffer we're using
+		swp := tv.pixelsScreen
+		tv.pixelsScreen = tv.pixelsFade
+		tv.pixelsFade = swp
+
+		tv.clearScreen()
+
 		return nil
-	}
-	tv.forceUpdate = func() error {
-		return tv.update()
 	}
 
 	// image dimensions
@@ -65,11 +76,15 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	// for the renderer
 	tv.pixelWidth = 2
 
+	// SDL initialisation
+
+	// SDL window
 	tv.window, err = sdl.CreateWindow("Gopher2600", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, int32(float32(tv.width)*scale*float32(tv.pixelWidth)), int32(float32(tv.height)*scale), sdl.WINDOW_HIDDEN)
 	if err != nil {
 		return nil, err
 	}
 
+	// SDL renderer
 	tv.renderer, err = sdl.CreateRenderer(tv.window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
 		return nil, err
@@ -84,17 +99,33 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	// number of bytes per pixel (indicating PIXELFORMAT)
 	tv.pixelDepth = 4
 
-	tv.texture, err = tv.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STREAMING, tv.width, tv.height)
+	// screen texture is used to draw the pixels onto the sdl window (by the
+	// renderer). it is used evey frame, whether the tv is paused or unpaused
+	tv.screenTexture, err = tv.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STREAMING, tv.width, tv.height)
 	if err != nil {
 		return nil, err
 	}
+	tv.screenTexture.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	// fade texture is only used when the tv is paused. it is used to display
+	// the previous frame as a guide, in case the current frame is not completely
+	// rendered
+	tv.fadeTexture, err = tv.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STREAMING, tv.width, tv.height)
+	if err != nil {
+		return nil, err
+	}
+	tv.fadeTexture.SetBlendMode(sdl.BLENDMODE_BLEND)
+	tv.fadeTexture.SetAlphaMod(50)
 
 	// our acutal screen data
-	tv.pixels = make([]byte, tv.width*tv.height*tv.pixelDepth)
+	tv.pixels0 = make([]byte, tv.width*tv.height*tv.pixelDepth)
+	tv.pixels1 = make([]byte, tv.width*tv.height*tv.pixelDepth)
+	tv.pixelsScreen = tv.pixels0
+	tv.pixelsFade = tv.pixels1
 
 	// finish up by updating the tv with a black image
 	// -- note that we've elected not to show the window on startup
-	tv.clear()
+	tv.clearScreen()
 	err = tv.update()
 	if err != nil {
 		return nil, err
@@ -108,7 +139,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 func (tv *SDLTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {
 	tv.HeadlessTV.Signal(vsync, vblank, frontPorch, hsync, cburst, color)
 	r, g, b := tv.decodeColor(color)
-	tv.setPixel(int32(tv.pixelX()), int32(tv.pixelY()), r, g, b, tv.pixels)
+	tv.setPixel(int32(tv.pixelX()), int32(tv.pixelY()), r, g, b, tv.pixelsScreen)
 }
 
 func (tv SDLTV) decodeColor(color video.Color) (byte, byte, byte) {
@@ -119,10 +150,14 @@ func (tv SDLTV) decodeColor(color video.Color) (byte, byte, byte) {
 	return 255, 255, 0
 }
 
-func (tv *SDLTV) clear() {
+func (tv *SDLTV) clearScreen() {
 	for y := int32(0); y < tv.height; y++ {
 		for x := int32(0); x < tv.width; x++ {
-			tv.setPixel(x, y, 0, 0, 0, tv.pixels)
+			i := (y*tv.width + x) * tv.pixelDepth
+			tv.pixelsScreen[i] = 0
+			tv.pixelsScreen[i+1] = 0
+			tv.pixelsScreen[i+2] = 0
+			tv.pixelsScreen[i+3] = 0
 		}
 	}
 }
@@ -138,31 +173,36 @@ func (tv *SDLTV) setPixel(x, y int32, red, green, blue byte, pixels []byte) {
 }
 
 func (tv *SDLTV) update() error {
-	err := tv.texture.Update(nil, tv.pixels, int(tv.width*tv.pixelDepth))
-	if err != nil {
-		return err
-	}
-	err = tv.renderer.Copy(tv.texture, nil, nil)
+	var err error
+
+	// clear image from rendered
+	tv.renderer.SetDrawColor(5, 5, 5, 255)
+	tv.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+	err = tv.renderer.Clear()
 	if err != nil {
 		return err
 	}
 
-	// single pixel marker overlay
-	tv.renderer.SetDrawColor(40, 40, 0, 10)
-	for i := 0; i < int(tv.width); i += 2 {
-		tv.renderer.DrawRect(&sdl.Rect{int32(i), 0, 1, int32(tv.spec.scanlinesTotal)})
-	}
-	for i := 0; i < int(tv.height); i += 2 {
-		tv.renderer.DrawRect(&sdl.Rect{0, int32(i), int32(tv.spec.clocksPerScanline), 1})
+	// if tv is paused then show the previous frame's faded image
+	if tv.paused {
+		err := tv.fadeTexture.Update(nil, tv.pixelsFade, int(tv.width*tv.pixelDepth))
+		if err != nil {
+			return err
+		}
+		err = tv.renderer.Copy(tv.fadeTexture, nil, nil)
+		if err != nil {
+			return err
+		}
 	}
 
-	// tens-pixel marker overlay
-	tv.renderer.SetDrawColor(40, 40, 0, 25)
-	for i := 0; i < int(tv.width); i += 20 {
-		tv.renderer.DrawRect(&sdl.Rect{int32(i), int32(tv.spec.scanlinesPerVBlank) - 1, 10, 1})
+	// show current frame's pixels
+	err = tv.screenTexture.Update(nil, tv.pixelsScreen, int(tv.width*tv.pixelDepth))
+	if err != nil {
+		return err
 	}
-	for i := 0; i < int(tv.height); i += 20 {
-		tv.renderer.DrawRect(&sdl.Rect{int32(tv.spec.clocksPerHblank) - 1, int32(i), 1, 10})
+	err = tv.renderer.Copy(tv.screenTexture, nil, nil)
+	if err != nil {
+		return err
 	}
 
 	// add screen boundary overlay
@@ -172,27 +212,44 @@ func (tv *SDLTV) update() error {
 	tv.renderer.FillRect(&sdl.Rect{0, 0, int32(tv.spec.clocksPerScanline), int32(tv.spec.scanlinesPerVBlank)})
 	tv.renderer.FillRect(&sdl.Rect{0, int32(tv.spec.scanlinesTotal - tv.spec.scanlinesPerOverscan), int32(tv.spec.clocksPerScanline), int32(tv.spec.scanlinesPerOverscan)})
 
-	// add cursor overlay
-	tv.renderer.SetDrawColor(255, 255, 255, 100)
-	cursorX := tv.pixelX()
-	cursorY := tv.pixelY()
-	if cursorX >= tv.spec.clocksPerScanline+tv.spec.clocksPerHblank {
-		cursorX = 0
-		cursorY++
+	// add cursor overlay only if tv is paused
+	if tv.paused {
+		tv.renderer.SetDrawColor(255, 255, 255, 100)
+		tv.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+		cursorX := tv.pixelX()
+		cursorY := tv.pixelY()
+		if cursorX >= tv.spec.clocksPerScanline+tv.spec.clocksPerHblank {
+			cursorX = 0
+			cursorY++
+		}
+		tv.renderer.DrawRect(&sdl.Rect{int32(cursorX), int32(cursorY), 2, 2})
 	}
-	tv.renderer.SetDrawBlendMode(sdl.BLENDMODE_ADD)
-	tv.renderer.DrawRect(&sdl.Rect{int32(cursorX), int32(cursorY), 2, 2})
 
+	// finalise updating of screen
 	tv.renderer.Present()
+
 	return nil
 }
 
 // SetVisibility toggles the visiblity of the SDLTV window
-func (tv SDLTV) SetVisibility(visible bool) error {
+func (tv *SDLTV) SetVisibility(visible bool) error {
 	if visible == true {
 		tv.window.Show()
 	} else {
 		tv.window.Hide()
+	}
+	return nil
+}
+
+// SetPause toggles whether the tv is currently being updated. we can use
+// this when we pause the emulation to make sure aren't left with a blank
+// screen
+func (tv *SDLTV) SetPause(pause bool) error {
+	if pause {
+		tv.paused = true
+		tv.update()
+	} else {
+		tv.paused = false
 	}
 	return nil
 }

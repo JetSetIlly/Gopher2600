@@ -155,8 +155,8 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		dbg.inputloopBreakpoint = dbg.inputloopBreakpoint || !dbg.runUntilBreak
 
 		if dbg.inputloopBreakpoint {
-			// force update of tv image on break
-			err = dbg.vcs.TV.ForceUpdate()
+			// pause tv when emulation has halted
+			err = dbg.vcs.TV.SetPause(true)
 			if err != nil {
 				return err
 			}
@@ -179,6 +179,14 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			// prepare for next loop
 			dbg.inputloopBreakpoint = false
+
+			// make sure tv is unpaused if emulation is about to resume
+			if dbg.inputloopNext {
+				err = dbg.vcs.TV.SetPause(false)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		// move emulation on one step if user has requested/implied it
