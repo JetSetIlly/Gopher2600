@@ -5,8 +5,8 @@ import "fmt"
 // delayCounter is a general purpose counter that can be labelled. it is used
 // in the sprite class and for delaying enabling signals
 type delayCounter struct {
-	count int
-	Value interface{}
+	count        int
+	payloadValue interface{}
 
 	// because we use the delayCounter type in more than one context we need some
 	// way of providing the String() output with a helpful label
@@ -20,7 +20,7 @@ func newDelayCounter(label string) *delayCounter {
 		return nil
 	}
 	dc.count = -1
-	dc.Value = true
+	dc.payloadValue = true
 	dc.label = label
 	return dc
 }
@@ -46,15 +46,15 @@ func (dc delayCounter) String() string {
 	return dc.MachineInfo()
 }
 
-// set the amount of delay and the delayed value
-func (dc *delayCounter) set(count int, value interface{}) {
+// start the counter with the specified delay count and the delayed value
+func (dc *delayCounter) start(count int, value interface{}) {
 	dc.count = count
-	dc.Value = value
+	dc.payloadValue = value
 }
 
 // isRunning returns true if delay counter is still running
 func (dc delayCounter) isRunning() bool {
-	return dc.count >= 0
+	return dc.count > -1
 }
 
 // tick moves the delay counter on one step

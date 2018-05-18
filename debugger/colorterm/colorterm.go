@@ -16,8 +16,10 @@ type ColorTerminal struct {
 // UserPrint implementation for debugger.UI interface
 func (ct *ColorTerminal) UserPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
 	switch pp {
-	case debugger.StepResult:
+	case debugger.CPUStep:
 		fmt.Print(pens["yellow"])
+	case debugger.VideoStep:
+		fmt.Print(dimPens["yellow"])
 	case debugger.MachineInfo:
 		fmt.Print(pens["cyan"])
 	case debugger.Error:
@@ -28,7 +30,8 @@ func (ct *ColorTerminal) UserPrint(pp debugger.PrintProfile, s string, a ...inte
 		fmt.Print(pens["red"])
 	case debugger.Feedback:
 		fmt.Print(dimPens["white"])
-	case debugger.Prompt:
+	case debugger.Script:
+		fmt.Print("> ")
 	}
 
 	fmt.Printf(s, a...)

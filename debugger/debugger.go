@@ -22,21 +22,23 @@ type Debugger struct {
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
 	// used when ONHALT is called with no arguments
+	// halt is a breakpoint or user intervention (ie. ctrl-c)
 	commandOnHalt       string
 	commandOnHaltStored string
 
-	// verbose controls the verbosity of commands that echo machine state
-	verbose bool
+	// machineInfoVerbose controls the verbosity of commands that echo machine state
+	machineInfoVerbose bool
 
 	// input loop fields. we're storing these here because inputLoop can be
 	// called from within another input loop (via a video step callback) and we
 	// want these properties to persist
-	inputloopBreakpoint bool
-	inputloopNext       bool
-	inputloopVideoStep  bool
+	inputloopBreakpoint bool // whether to halt the current execution loop
+	inputloopNext       bool // execute a step once user input has returned a result
+	inputloopVideoStep  bool // step mode
 
 	// user interface
-	ui UI
+	ui       UI
+	uiSilent bool // controls whether UI is to remain silent
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
@@ -57,7 +59,7 @@ func NewDebugger(ui UI) (*Debugger, error) {
 
 	// prepare user interface
 	if ui == nil {
-		dbg.ui = new(plainUI)
+		dbg.ui = new(PlainTerminal)
 		if dbg.ui == nil {
 			return nil, fmt.Errorf("error allocationg memory for UI")
 		}
@@ -85,6 +87,7 @@ func (dbg *Debugger) Start(filename string) error {
 	}
 
 	// register ctrl-c handler
+	// TODO: move this into ui implementation
 	ctrlC := make(chan os.Signal)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
@@ -100,8 +103,6 @@ func (dbg *Debugger) Start(filename string) error {
 	}()
 
 	// prepare and run main input loop
-	dbg.inputloopBreakpoint = true
-	dbg.inputloopNext = true
 	dbg.running = true
 	err = dbg.inputLoop(true)
 	if err != nil {
@@ -111,7 +112,10 @@ func (dbg *Debugger) Start(filename string) error {
 }
 
 // videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
-func (dbg *Debugger) videoCycleInputLoop() error {
+func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
+	if dbg.inputloopVideoStep {
+		dbg.print(VideoStep, "%v", result)
+	}
 	return dbg.inputLoop(false)
 }
 
@@ -126,7 +130,10 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	for dbg.running {
 		// return immediately if we're in a mid-cycle input loop and we don't want
 		// to be
-		if !mainLoop && !dbg.inputloopVideoStep {
+		//
+		// the extra condition (dbg.inputLoopNext) is to prevent execution
+		// continuing if we call "stepmode cpu" in the middle of a cpu-cycle
+		if !mainLoop && !dbg.inputloopVideoStep && dbg.inputloopNext {
 			return nil
 		}
 
@@ -138,6 +145,8 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// command(s)
 		if dbg.commandOnHalt != "" {
 			if (dbg.inputloopNext && !dbg.runUntilBreak) || dbg.inputloopBreakpoint {
+				// note this is parsing input, not reading input. we're passing the
+				// parse function a prepared command sequence.
 				_, _ = dbg.parseInput(dbg.commandOnHalt)
 			}
 		}
@@ -179,7 +188,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if err != nil {
 					return err
 				}
-				dbg.print(StepResult, "%v", result)
+				dbg.print(CPUStep, "%v", result)
 			} else {
 				return nil
 			}
@@ -211,6 +220,8 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 // first return value. other commands return false and act upon the command
 // immediately. note that the empty string is the same as the STEP command
 func (dbg *Debugger) parseCommand(input string) (bool, error) {
+	// TODO: generate errors for commands with too many arguments
+	// TODO: categorise commands into script-safe and non-script-safe
 
 	// remove leading/trailing space
 	input = strings.TrimSpace(input)
@@ -223,19 +234,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	// divide user input into parts and convert to upper-case for easy parsing
 	// input is unchanged in case we need the original user-case
-	parts := strings.Split(strings.ToUpper(input), " ")
-
-	// Go's strings.Split() command appends an empty string for every additional
-	// space in the input. the for-loop is a little post processing to sanitise
-	// the parts array.
-	// TODO: perhaps it would be better to write our own Split() function
-	partsb := make([]string, 0)
-	for i := 0; i < len(parts); i++ {
-		if parts[i] != "" {
-			partsb = append(partsb, parts[i])
-		}
-	}
-	parts = partsb
+	parts := strings.Fields(strings.ToUpper(input))
 
 	// normalise variations in syntax
 	for i := 0; i < len(parts); i++ {
@@ -248,7 +247,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// most commands do not cause the emulator to step forward
 	stepNext := false
 
-	// first entry in parts is the debugging command. switch on this value
+	// first entry in "parts" is the debugging command. switch on this value
 	switch parts[0] {
 	default:
 		return false, fmt.Errorf("%s is not a debugging command", parts[0])
@@ -274,7 +273,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			// TODO: implement syntax checking when specifying ONHALT commands before
 			// committing to the new sequnce
 
-			// use remaininder of command line to form the ONHALt command sequence
+			// use remaininder of command line to form the ONHALT command sequence
 			dbg.commandOnHalt = strings.Join(parts[1:], " ")
 
 			// we can't use semi-colons when specifying the sequence so allow use of
@@ -315,18 +314,53 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 		}
 
+	case "STEPMODE":
+		if len(parts) > 1 {
+			switch parts[1] {
+			case "CPU":
+				dbg.inputloopVideoStep = false
+			case "VIDEO":
+				dbg.inputloopVideoStep = true
+			default:
+				return false, fmt.Errorf("unknown step mode (%s)", parts[1])
+			}
+		}
+		var stepMode = ""
+		if dbg.inputloopVideoStep == true {
+			stepMode = "video"
+		} else {
+			stepMode = "cpu"
+		}
+		dbg.print(Feedback, "step mode: %s", stepMode)
+
 	case "TERSE":
-		dbg.verbose = false
+		dbg.machineInfoVerbose = false
 		dbg.print(Feedback, "verbosity: terse")
 
 	case "VERBOSE":
-		dbg.verbose = true
+		dbg.machineInfoVerbose = true
 		dbg.print(Feedback, "verbosity: verbose")
+
+	case "VERBOSITY":
+		if dbg.machineInfoVerbose == true {
+			dbg.print(Feedback, "verbosity: verbose")
+		} else {
+			dbg.print(Feedback, "verbosity: terse")
+		}
+
+	case "DEBUGGERSTATE":
+		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT")
+		if err != nil {
+			return false, err
+		}
 
 	// information about the machine (chips)
 
 	case "CPU":
 		dbg.printMachineInfo(dbg.vcs.MC)
+
+	case "RIOT":
+		dbg.printMachineInfo(dbg.vcs.RIOT)
 
 	case "TIA":
 		dbg.printMachineInfo(dbg.vcs.TIA)

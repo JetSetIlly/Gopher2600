@@ -250,7 +250,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) erro
 // ExecuteInstruction steps CPU forward one instruction, calling
 // cycleCallback() after every cycle. note that the CPU will panic if a CPU
 // method is called during a callback.
-func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, error) {
+func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*InstructionResult, error) {
 	// sanity check
 	if mc.IsExecuting() {
 		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
@@ -258,7 +258,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 
 	// do nothing and return nothing if ready flag is false
 	if mc.RdyFlg == false {
-		cycleCallback()
+		cycleCallback(nil)
 		return nil, nil
 	}
 
@@ -269,7 +269,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 	// register end cycle callback
 	mc.endCycle = func() {
 		result.ActualCycles++
-		cycleCallback()
+		cycleCallback(result)
 	}
 	defer func() {
 		mc.endCycle = nil
@@ -345,6 +345,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 			}
 			result.InstructionData = address
 		}
+		// else... for JSR, addresses are read slightly differently so we defer
+		// this part of the operation to the mnemonic switch below
 
 	case definitions.ZeroPage:
 		// +1 cycle
@@ -598,7 +600,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		}
 	}
 
-	// actually perform instruction based on mnemonic
+	// actually perform instruction based on mnemonic group
 	switch defn.Mnemonic {
 	case "NOP":
 		// does nothing
@@ -948,8 +950,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func()) (*InstructionResult, err
 		address = (uint16(msb) << 8) | uint16(lsb)
 		mc.PC.Load(address)
 
-		// we would normally store the InstructionData in the addressing mode
-		// switch but JSR bypasses all that so we'll do it here
+		// store address in theInstructionData field of result
+		//
+		// we would normally do this in the addressing mode switch above. however,
+		// JSR uses absolute addressing and we deliberately do nothing in that
+		// switch for 'sub-routine' commands
 		result.InstructionData = address
 
 	case "RTS":

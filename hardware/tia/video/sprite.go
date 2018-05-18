@@ -9,6 +9,13 @@ import (
 // the sprite type is used for those video elements that move about - players,
 // missiles and the ball. the VCS doesn't really have anything called a sprite
 // but we all know what it means
+//
+// two functions for the sprite type which would be undoubtedly be useful would
+// be Tick() and Pixel(). however, each sprite in the VCS reacts slightly
+// differently to draw signals and reset delays. we abbrogate responsibility
+// for sprite-level ticking therefore, to functions not attached to the sprite
+// class. For example, see TickBall() and PixelBall(); TickPlayer() and
+// PixelPlayer(); and TickMissile() and PixelMissile()
 
 type sprite struct {
 	position   *position
@@ -18,15 +25,22 @@ type sprite struct {
 	// because we use the sprite type in more than one context we need some way
 	// of providing String() output with a helpful label
 	label string
+
+	enableFlag *bool
 }
 
-func newSprite(label string) *sprite {
+// newSprite takes an optional argument, enableFlag. this is a pointer to the
+// boolean flag that controls the presence of the sprite on screen. if the
+// sprite does not have an enableFlag (player sprites) then pass a nil
+// pointer
+func newSprite(label string, enableFlag *bool) *sprite {
 	sp := new(sprite)
 	if sp == nil {
 		return nil
 	}
 
 	sp.label = label
+	sp.enableFlag = enableFlag
 
 	sp.position = newPosition()
 	if sp.position == nil {
@@ -48,12 +62,24 @@ func newSprite(label string) *sprite {
 
 // MachineInfoTerse returns the sprite information in terse format
 func (sp sprite) MachineInfoTerse() string {
-	return fmt.Sprintf("%s: %s %s %s", sp.label, sp.position.MachineInfoTerse(), sp.drawSig.MachineInfoTerse(), sp.resetDelay.MachineInfoTerse())
+	enableStr := ""
+	if sp.enableFlag != nil && *sp.enableFlag == true {
+		enableStr = "(+)"
+	} else if sp.enableFlag != nil && *sp.enableFlag == false {
+		enableStr = "(-)"
+	}
+	return fmt.Sprintf("%s%s: %s %s %s", sp.label, enableStr, sp.position.MachineInfoTerse(), sp.drawSig.MachineInfoTerse(), sp.resetDelay.MachineInfoTerse())
 }
 
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
-	return fmt.Sprintf("%s: %v\n %v\n %v", sp.label, sp.position, sp.drawSig, sp.resetDelay)
+	enableStr := ""
+	if sp.enableFlag != nil && *sp.enableFlag == true {
+		enableStr = "enabled"
+	} else if sp.enableFlag != nil && *sp.enableFlag == false {
+		enableStr = "disabled"
+	}
+	return fmt.Sprintf("%s: %s, %v\n %v\n %v", sp.label, enableStr, sp.position, sp.drawSig, sp.resetDelay)
 }
 
 // map String to MachineInfo
@@ -88,11 +114,6 @@ func (ps position) MachineInfoTerse() string {
 // MachineInfo returns the position information in verbose format
 func (ps position) MachineInfo() string {
 	s := fmt.Sprintf("reset at pixel %d", ps.coarsePixel)
-	if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("%s\nposition: %s <- drawing in %d", s, ps.polycounter, polycounter.MaxPhase-ps.polycounter.Phase+1)
-	} else if ps.polycounter.Count == ps.polycounter.ResetPoint {
-		return fmt.Sprintf("%s\nposition: %s <- drawing start", s, ps.polycounter)
-	}
 	return fmt.Sprintf("%s\nposition: %s", s, ps.polycounter)
 }
 
@@ -101,38 +122,35 @@ func (ps position) String() string {
 	return ps.MachineInfo()
 }
 
-func (ps *position) synchronise(cc *colorclock.ColorClock) {
+func (ps *position) resetPosition(cc *colorclock.ColorClock) {
 	ps.polycounter.Reset()
 	ps.coarsePixel = cc.Pixel()
 }
 
-func (ps *position) tick() bool {
-	return ps.polycounter.Tick(false)
-}
-
-func (ps *position) tickAndTriggerList(triggerList []int) bool {
+func (ps *position) tick(triggerList []int) bool {
 	if ps.polycounter.Tick(false) == true {
 		return true
 	}
 
-	for _, v := range triggerList {
-		if v == ps.polycounter.Count && ps.polycounter.Phase == 0 {
-			return true
+	if triggerList != nil {
+		for _, v := range triggerList {
+			if v == ps.polycounter.Count && ps.polycounter.Phase == 0 {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-func (ps position) match(count int) bool {
-	return ps.polycounter.Match(count)
-}
-
 // the drawSig type is only used by the sprite type
 
 type drawSig struct {
-	maxCount     int
-	count        int
+	// the direction of count and maxCount is important - don't monkey with it
+	// the value is used in Pixel*() functions to determine which pixel to check
+	maxCount int
+	count    int
+
 	delayedReset bool
 }
 
@@ -142,26 +160,22 @@ func newDrawSig() *drawSig {
 		return nil
 	}
 	ds.maxCount = 8
-	ds.count = ds.maxCount
+	ds.count = ds.maxCount + 1
 	return ds
-}
-
-func (ds drawSig) isRunning() bool {
-	return ds.count <= ds.maxCount
 }
 
 // MachineInfoTerse returns the draw signal information in terse format
 func (ds drawSig) MachineInfoTerse() string {
-	if ds.isRunning() {
-		return fmt.Sprintf("dsig=%d", ds.maxCount-ds.count)
+	if ds.isActive() {
+		return fmt.Sprintf("dsig=%d", ds.maxCount-ds.count+1)
 	}
 	return "dsig=-"
 }
 
 // MachineInfo returns the draw signal information in verbose format
 func (ds drawSig) MachineInfo() string {
-	if ds.isRunning() {
-		return fmt.Sprintf("drawsig: %d cycle(s) remaining", ds.maxCount-ds.count)
+	if ds.isActive() {
+		return fmt.Sprintf("drawsig: pixel %d", ds.maxCount-ds.count+1)
 	}
 	return fmt.Sprintf("drawsig: inactive")
 }
@@ -171,18 +185,23 @@ func (ds drawSig) String() string {
 	return ds.MachineInfo()
 }
 
+func (ds drawSig) isActive() bool {
+	return ds.count <= ds.maxCount
+}
+
 func (ds *drawSig) tick() {
-	if ds.isRunning() && !ds.delayedReset {
+	if ds.isActive() && !ds.delayedReset {
 		ds.count++
 	}
 }
 
-// confirm that the reset has been delayed
-func (ds *drawSig) confirm() {
+// confirmDelay confirms that the reset has been delayed
+func (ds *drawSig) confirmDelay() {
 	ds.delayedReset = true
 }
 
-func (ds *drawSig) reset() {
+// start begins the draw signal
+func (ds *drawSig) start() {
 	ds.count = 0
 	ds.delayedReset = false
 }

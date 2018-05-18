@@ -10,7 +10,7 @@ type machineInfo interface {
 }
 
 func (dbg Debugger) printMachineInfo(mi machineInfo) {
-	if dbg.verbose {
+	if dbg.machineInfoVerbose {
 		dbg.print(MachineInfo, "%s", mi.MachineInfo())
 	} else {
 		dbg.print(MachineInfo, "%s", mi.MachineInfoTerse())

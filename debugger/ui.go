@@ -11,28 +11,33 @@ type UI interface {
 	UserRead([]byte) (int, error)
 }
 
-/* plain UI is the default, most basic terminal interface */
-
-type plainUI struct {
+// PlainTerminal is the default, most basic terminal interface
+type PlainTerminal struct {
 	UI
 }
 
 // no newPlainUI() function currently required
 
-// minimalist print routine -- default assignment to UserPrint
-func (ui plainUI) UserPrint(pp PrintProfile, s string, a ...interface{}) {
-	if pp == Error {
+// UserPrint is the plain terminal print routine
+func (ui PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
+	switch pp {
+	case Error:
 		s = fmt.Sprintf("* %s", s)
-	}
-
-	if pp != Prompt {
-		s = fmt.Sprintf("%s\n", s)
+	case Prompt:
+		s = fmt.Sprintf("%s", s)
+	case Script:
+		s = fmt.Sprintf("> %s", s)
 	}
 
 	fmt.Printf(s, a...)
+
+	if pp != Prompt {
+		fmt.Println("")
+	}
 }
 
-func (ui plainUI) UserRead(input []byte) (int, error) {
+// UserRead is the plain terminal read routine
+func (ui PlainTerminal) UserRead(input []byte) (int, error) {
 	n, err := os.Stdin.Read(input)
 	if err != nil {
 		return n, err

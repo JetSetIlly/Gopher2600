@@ -24,17 +24,34 @@ type InstructionResult struct {
 }
 
 func (result InstructionResult) String() string {
-	var data string
-	var pf, bug string
+	var programCounter string
+	var mnemonic, data string
+	var pf, bug, cycles string
 
-	if !result.Final {
-		return "*"
+	if result.Final {
+		programCounter = fmt.Sprintf("0x%04x", result.ProgramCounter)
+	} else {
+		programCounter = "      "
 	}
 
 	if result.Defn.Bytes == 2 {
-		data = fmt.Sprintf("$%02x", result.InstructionData)
+		if result.InstructionData == nil {
+			data = "??"
+		} else {
+			data = fmt.Sprintf("$%02x", result.InstructionData)
+		}
 	} else if result.Defn.Bytes == 3 {
-		data = fmt.Sprintf("$%04x", result.InstructionData)
+		if result.InstructionData == nil {
+			data = "????"
+		} else {
+			data = fmt.Sprintf("$%04x", result.InstructionData)
+		}
+	}
+
+	if result.Defn.Mnemonic == "" {
+		mnemonic = "???"
+	} else {
+		mnemonic = result.Defn.Mnemonic
 	}
 
 	switch result.Defn.AddressingMode {
@@ -61,6 +78,12 @@ func (result InstructionResult) String() string {
 	default:
 	}
 
+	if result.Final {
+		cycles = fmt.Sprintf("[%d]", result.ActualCycles)
+	} else {
+		cycles = "[v]"
+	}
+
 	if result.PageFault {
 		pf = " page-fault"
 	}
@@ -69,7 +92,8 @@ func (result InstructionResult) String() string {
 		bug = fmt.Sprintf(" * %s *", result.Bug)
 	}
 
-	return fmt.Sprintf("0x%04x\t%s\t%s\t[%d]%s%s", result.ProgramCounter, result.Defn.Mnemonic, data, result.ActualCycles, pf, bug)
+	s := fmt.Sprintf("%s\t%s\t%s\t%s%s%s", programCounter, mnemonic, data, cycles, pf, bug)
+	return s
 }
 
 // IsValid checks whether the instance of StepResult contains consistent data.

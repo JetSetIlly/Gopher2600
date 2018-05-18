@@ -75,7 +75,7 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	tv.forceUpdate = func() error { return nil }
 
 	// initialise TVState
-	tv.horizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: 0, valueFormat: "%d"}
+	tv.horizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.spec.clocksPerHblank, valueFormat: "%d"}
 	tv.frameNum = &TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
 	tv.scanline = &TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
 
@@ -84,17 +84,35 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 
 // MachineInfoTerse returns the television information in terse format
 func (tv HeadlessTV) MachineInfoTerse() string {
-	return fmt.Sprintf("%s %s %s", tv.frameNum.MachineInfoTerse(), tv.scanline.MachineInfoTerse(), tv.horizPos.MachineInfoTerse())
+	specExclaim := ""
+	if tv.outOfSpec {
+		specExclaim = " !!"
+	}
+	return fmt.Sprintf("%s %s %s%s", tv.frameNum.MachineInfoTerse(), tv.scanline.MachineInfoTerse(), tv.horizPos.MachineInfoTerse(), specExclaim)
 }
 
 // MachineInfo returns the television information in verbose format
 func (tv HeadlessTV) MachineInfo() string {
-	return fmt.Sprintf("%v\n%v\n%v", tv.frameNum, tv.scanline, tv.horizPos)
+	specExclaim := ""
+	if tv.outOfSpec {
+		specExclaim = "!!"
+	}
+	return fmt.Sprintf("%v\n%v\n%v%s\nPixel: %d", tv.frameNum, tv.scanline, tv.horizPos, specExclaim, tv.pixelX())
 }
 
 // map String to MachineInfo
 func (tv HeadlessTV) String() string {
 	return tv.MachineInfo()
+}
+
+// pixelX returns the adjusted value for horizPos
+func (tv HeadlessTV) pixelX() int {
+	return tv.horizPos.value + tv.spec.clocksPerHblank
+}
+
+// pixelY returns the current y offset (which is just the scanl
+func (tv HeadlessTV) pixelY() int {
+	return tv.scanline.value
 }
 
 // GetTVState returns the TVState object for the named state
@@ -146,7 +164,7 @@ func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, colo
 	if vsync {
 		tv.vsyncCount++
 	} else {
-		if tv.vsyncCount > tv.spec.vsyncClocks {
+		if tv.vsyncCount >= tv.spec.vsyncClocks {
 			tv.outOfSpec = false
 			tv.frameNum.value++
 			tv.scanline.value = 0

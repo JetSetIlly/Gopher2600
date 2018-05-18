@@ -19,12 +19,23 @@ func main() {
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
+		// create a new debugger with the choice of terminal
+		// TODO: implement flag for plain terminal
 		dbg, err := debugger.NewDebugger(new(colorterm.ColorTerminal))
 		if err != nil {
 			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
 		}
 
+		// run initialisation script
+		err = dbg.RunScript(".gopher2600/debuggerInit", true)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(10)
+		}
+
+		// start debugger with choice of cartridge
+		// TODO: implement command line selection of cartridge
 		err = dbg.Start("roms/ball_test_card.bin")
 		if err != nil {
 			fmt.Println(err)

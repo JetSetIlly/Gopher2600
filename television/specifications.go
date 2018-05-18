@@ -24,7 +24,7 @@ func init() {
 	specNTSC.clocksPerHblank = 68
 	specNTSC.clocksPerVisible = 160
 	specNTSC.clocksPerScanline = 228
-	specNTSC.vsyncClocks = 3
+	specNTSC.vsyncClocks = 3 * specNTSC.clocksPerScanline
 	specNTSC.scanlinesPerVBlank = 37
 	specNTSC.scanlinesPerVisible = 228
 	specNTSC.scanlinesPerOverscan = 30
@@ -37,7 +37,7 @@ func init() {
 	specPAL.clocksPerHblank = 68
 	specPAL.clocksPerVisible = 160
 	specPAL.clocksPerScanline = 228
-	specPAL.vsyncClocks = 3
+	specPAL.vsyncClocks = 3 * specPAL.clocksPerScanline
 	specPAL.scanlinesPerVBlank = 45
 	specPAL.scanlinesPerVisible = 228
 	specPAL.scanlinesPerOverscan = 36

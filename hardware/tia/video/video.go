@@ -72,28 +72,6 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	vd.colorClock = colorClock
 	vd.hblank = hblank
 
-	// sprite objects
-	vd.player0 = newSprite("player0")
-	if vd.player0 == nil {
-		return nil
-	}
-	vd.player1 = newSprite("player1")
-	if vd.player1 == nil {
-		return nil
-	}
-	vd.missile0 = newSprite("missile0")
-	if vd.missile0 == nil {
-		return nil
-	}
-	vd.missile1 = newSprite("missile1")
-	if vd.missile1 == nil {
-		return nil
-	}
-	vd.Ball = newSprite("ball")
-	if vd.Ball == nil {
-		return nil
-	}
-
 	// missile/ball enabling
 	vd.enam0Delay = newDelayCounter("(dis/en)abling")
 	if vd.enam0Delay == nil {
@@ -105,6 +83,28 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	}
 	vd.enablDelay = newDelayCounter("(dis/en)abling")
 	if vd.enablDelay == nil {
+		return nil
+	}
+
+	// sprite objects
+	vd.player0 = newSprite("player0", nil)
+	if vd.player0 == nil {
+		return nil
+	}
+	vd.player1 = newSprite("player1", nil)
+	if vd.player1 == nil {
+		return nil
+	}
+	vd.missile0 = newSprite("missile0", &vd.enam0)
+	if vd.missile0 == nil {
+		return nil
+	}
+	vd.missile1 = newSprite("missile1", &vd.enam1)
+	if vd.missile1 == nil {
+		return nil
+	}
+	vd.Ball = newSprite("ball", &vd.enabl)
+	if vd.Ball == nil {
 		return nil
 	}
 
@@ -190,17 +190,17 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "RESM0":
 	case "RESM1":
 	case "RESBL":
-		if *vd.hblank {
-			vd.Ball.resetDelay.set(2, true)
+		if *vd.hblank == true {
+			vd.Ball.resetDelay.start(2, true)
 		} else {
-			vd.Ball.resetDelay.set(4, true)
+			vd.Ball.resetDelay.start(4, true)
 		}
 	case "GRP0":
 	case "GRP1":
 	case "ENAM0":
 	case "ENAM1":
 	case "ENABL":
-		vd.enablDelay.set(1, value&0x20 == 0x20)
+		vd.enablDelay.start(1, value&0x20 == 0x20)
 	case "HMP0":
 	case "HMP1":
 	case "HMM0":

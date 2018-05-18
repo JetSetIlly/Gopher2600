@@ -53,7 +53,7 @@ func New(tv television.Television) (*VCS, error) {
 	return vcs, nil
 }
 
-// AttachCartridge loads a cartridge (a file) into the emulators memory
+// AttachCartridge loads a cartridge (given by filename) into the emulators memory
 func (vcs *VCS) AttachCartridge(filename string) error {
 	err := vcs.Mem.Cart.Attach(filename)
 	if err != nil {
@@ -68,12 +68,12 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 
 // NullVideoCycleCallback can be used when calling Step() when no special
 // behaviour is required
-func NullVideoCycleCallback() error {
+func NullVideoCycleCallback(*cpu.InstructionResult) error {
 	return nil
 }
 
 // Step the emulator state one CPU instruction
-func (vcs *VCS) Step(videoCycleCallback func() error) (int, *cpu.InstructionResult, error) {
+func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int, *cpu.InstructionResult, error) {
 	var r *cpu.InstructionResult
 	var err error
 
@@ -85,43 +85,48 @@ func (vcs *VCS) Step(videoCycleCallback func() error) (int, *cpu.InstructionResu
 	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
 	// defines the order of operation for the rest of the VCS for every CPU
 	// cycle.
-	cycleVCS := func() {
+	cycleVCS := func(r *cpu.InstructionResult) {
 		cpuCycles++
 
-		// three color clocks per CPU cycle:
-		// TODO: allow debugger to take control after every color clock
+		// run riot only once per CPU cycle
+		// TODO: not sure when in the video cycle sequence it should be run
+		// TODO: is this something that can drift, thereby causing subtly different
+		// results / graphical effects? is this what RSYNC is for?
+		vcs.RIOT.ReadRIOTMemory()
+		vcs.RIOT.Step()
+
+		// three color clocks per CPU cycle so we run video cycle three times
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		vcs.RIOT.StepVideoCycle()
-		videoCycleCallback()
+		if vcs.MC.RdyFlg == true {
+			videoCycleCallback(r)
+		}
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		vcs.RIOT.StepVideoCycle()
-		videoCycleCallback()
+		if vcs.MC.RdyFlg == true {
+			videoCycleCallback(r)
+		}
 
 		// check for side effects from the CPU operation
 		vcs.TIA.ReadTIAMemory()
-		vcs.RIOT.ReadRIOTMemory()
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		vcs.RIOT.StepVideoCycle()
-		videoCycleCallback()
+		if vcs.MC.RdyFlg == true {
+			videoCycleCallback(r)
+		}
 	}
 
 	// TODO: controllers
 
-	// loop until we have a completed instruction result
-	for r == nil || r.Final == false {
-		r, err = vcs.MC.ExecuteInstruction(cycleVCS)
-		if err != nil {
-			return cpuCycles, nil, err
-		}
+	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
+	if err != nil {
+		return cpuCycles, nil, err
 	}
 
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
 	for vcs.MC.RdyFlg == false {
-		cycleVCS()
+		cycleVCS(r)
 	}
 
 	return cpuCycles, r, nil
