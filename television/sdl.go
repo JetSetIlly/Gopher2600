@@ -2,7 +2,6 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/video"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -136,18 +135,17 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 // Signal is principle method of communication between the VCS and televsion
 // -- note that most of the work is done in the embedded HeadlessTV instance
-func (tv *SDLTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {
-	tv.HeadlessTV.Signal(vsync, vblank, frontPorch, hsync, cburst, color)
-	r, g, b := tv.decodeColor(color)
-	tv.setPixel(int32(tv.pixelX()), int32(tv.pixelY()), r, g, b, tv.pixelsScreen)
-}
+func (tv *SDLTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {
+	tv.HeadlessTV.Signal(vsync, vblank, frontPorch, hsync, cburst, pixel)
 
-func (tv SDLTV) decodeColor(color video.Color) (byte, byte, byte) {
-	if color == video.NoColor {
-		return 0, 0, 0
+	// decode color
+	r, g, b := byte(0), byte(0), byte(0)
+	col, present := tv.spec.colors[pixel]
+	if present {
+		r, g, b = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 	}
-	// TODO: color decoding
-	return 255, 255, 0
+
+	tv.setPixel(int32(tv.pixelX()), int32(tv.pixelY()), r, g, b, tv.pixelsScreen)
 }
 
 func (tv *SDLTV) clearScreen() {

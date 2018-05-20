@@ -2,7 +2,6 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/video"
 	"strings"
 )
 
@@ -136,7 +135,7 @@ func (tv HeadlessTV) ForceUpdate() error {
 }
 
 // Signal is principle method of communication between the VCS and televsion
-func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {
+func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {
 
 	// check that hsync signal is within the specification
 	if hsync && !tv.prevHsync {

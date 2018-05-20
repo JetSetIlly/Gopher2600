@@ -2,12 +2,11 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/video"
 )
 
 // Television defines the operations that can be performed on the television
 type Television interface {
-	Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color)
+	Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal)
 	MachineInfoTerse() string
 	MachineInfo() string
 	GetTVState(string) (*TVState, error)
@@ -20,7 +19,7 @@ type Television interface {
 type DummyTV struct{ Television }
 
 // Signal (with DummyTV reciever) is the null implementation
-func (tv *DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, color video.Color) {}
+func (tv *DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {}
 
 // MachineInfoTerse (with DummyTV reciever) is the null implementation
 func (tv DummyTV) MachineInfoTerse() string {

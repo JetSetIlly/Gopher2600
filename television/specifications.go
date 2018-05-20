@@ -11,6 +11,8 @@ type specification struct {
 	scanlinesPerVisible  int
 	scanlinesPerOverscan int
 	scanlinesTotal       int
+
+	colors map[PixelSignal]color
 }
 
 var specNTSC *specification
@@ -29,6 +31,7 @@ func init() {
 	specNTSC.scanlinesPerVisible = 228
 	specNTSC.scanlinesPerOverscan = 30
 	specNTSC.scanlinesTotal = 298
+	specNTSC.colors = ntscColors
 
 	specPAL = new(specification)
 	if specPAL == nil {
@@ -42,4 +45,8 @@ func init() {
 	specPAL.scanlinesPerVisible = 228
 	specPAL.scanlinesPerOverscan = 36
 	specPAL.scanlinesTotal = 312
+
+	// use NTSC colors for PAL specification for now
+	// TODO: implement PAL colors
+	specPAL.colors = ntscColors
 }

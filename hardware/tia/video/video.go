@@ -17,10 +17,10 @@ type Video struct {
 	Ball     *sprite
 
 	// colors
-	colup0 Color
-	colup1 Color
-	colupf Color
-	colubk Color
+	colup0 uint8
+	colup1 uint8
+	colupf uint8
+	colubk uint8
 
 	// TODO: player sprite data
 	// TODO: playfield
@@ -156,15 +156,17 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 }
 
-// GetPixel returns the color of the pixel at the current time
-func (vd Video) GetPixel() Color {
+// GetPixel returns the color of the pixel at the current time. it will default
+// to returning background color if no sprite or playfield pixel is present -
+// it should not be called therefore unless a VCS pixel is to be displayed
+func (vd Video) GetPixel() uint8 {
 	col := vd.colubk
 	if vd.ctrlpfPriority {
 		// TODO: complete priority pixel ordering
-		col = vd.PixelBall()
+		_, col = vd.PixelBall()
 	} else {
 		// TODO: complete non-priority pixel ordering
-		col = vd.PixelBall()
+		_, col = vd.PixelBall()
 	}
 	return col
 }
@@ -178,6 +180,7 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "COLUP0":
 	case "COLUP1":
 	case "COLUPF":
+		vd.colupf = value & 0xfe
 	case "COLUBK":
 	case "CTRLPF":
 	case "REFP0":
