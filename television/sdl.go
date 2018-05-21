@@ -84,7 +84,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	}
 
 	// SDL renderer
-	tv.renderer, err = sdl.CreateRenderer(tv.window, -1, sdl.RENDERER_ACCELERATED)
+	tv.renderer, err = sdl.CreateRenderer(tv.window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
 	if err != nil {
 		return nil, err
 	}

@@ -30,13 +30,15 @@ type Video struct {
 	ctrlpfReflection bool
 	ctrlpfPriority   bool
 	ctrlpfScoremode  bool
-	ctrlpfBallSize   int
+	ctrlpfBallSize   uint8
 
 	// TODO: player/missile number & spacing
 	// TODO: trigger lists
 	// TODO: missile/ball size
 
-	// TODO: player reflection
+	// player reflection
+	refp0 bool
+	refp1 bool
 
 	// missile/ball enabling
 	enam0      bool
@@ -55,11 +57,11 @@ type Video struct {
 	vdelbl bool
 
 	// horizontal movement
-	hmp0 int
-	hmp1 int
-	hmm0 int
-	hmm1 int
-	hmbl int
+	hmp0 uint8
+	hmp1 uint8
+	hmm0 uint8
+	hmm1 uint8
+	hmbl uint8
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -108,6 +110,13 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 		return nil
 	}
 
+	// horizontal movment
+	vd.hmp0 = 0x08
+	vd.hmp1 = 0x08
+	vd.hmm0 = 0x08
+	vd.hmm1 = 0x08
+	vd.hmbl = 0x08
+
 	return vd
 }
 
@@ -143,15 +152,15 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 		return
 	}
 
-	if vd.hmp0 >= count {
+	if vd.hmp0 >= uint8(count) {
 	}
-	if vd.hmp1 >= count {
+	if vd.hmp1 >= uint8(count) {
 	}
-	if vd.hmm0 >= count {
+	if vd.hmm0 >= uint8(count) {
 	}
-	if vd.hmm1 >= count {
+	if vd.hmm1 >= uint8(count) {
 	}
-	if vd.hmbl >= count {
+	if vd.hmbl >= uint8(count) {
 		vd.TickBall()
 	}
 }
@@ -178,13 +187,22 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "NUSIZ0":
 	case "NUSIZ1":
 	case "COLUP0":
+		vd.colup0 = value & 0xfe
 	case "COLUP1":
+		vd.colup1 = value & 0xfe
 	case "COLUPF":
 		vd.colupf = value & 0xfe
 	case "COLUBK":
+		vd.colubk = value & 0xfe
 	case "CTRLPF":
+		vd.ctrlpfBallSize = (value & 0x30) >> 4
+		vd.ctrlpfReflection = value&0x01 == 0x01
+		vd.ctrlpfScoremode = value&0x02 == 0x02
+		vd.ctrlpfPriority = value&0x04 == 0x04
 	case "REFP0":
+		vd.refp0 = value&0x40 == 0x40
 	case "REFP1":
+		vd.refp1 = value&0x40 == 0x40
 	case "PF0":
 	case "PF1":
 	case "PF2":
@@ -209,12 +227,21 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "HMM0":
 	case "HMM1":
 	case "HMBL":
+		vd.hmbl = (value ^ 0x80) >> 4
 	case "VDELP0":
+		vd.vdelp0 = value&0x01 == 0x01
 	case "VDELP1":
+		vd.vdelp1 = value&0x01 == 0x01
 	case "VDELBL":
+		vd.vdelbl = value&0x01 == 0x01
 	case "RESMP0":
 	case "RESMP1":
 	case "HMCLR":
+		vd.hmp0 = 0x08
+		vd.hmp1 = 0x08
+		vd.hmm0 = 0x08
+		vd.hmm1 = 0x08
+		vd.hmbl = 0x08
 	case "CXCLR":
 	}
 

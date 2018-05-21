@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, DISASM")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, TVFPS, DISASM")
 	flag.Parse()
 
 	switch strings.ToUpper(*mode) {
@@ -36,13 +36,19 @@ func main() {
 
 		// start debugger with choice of cartridge
 		// TODO: implement command line selection of cartridge
-		err = dbg.Start("roms/ball_test_card.bin")
+		err = dbg.Start("roms/ball/positioning.bin")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
 		}
 	case "FPS":
-		err := fps()
+		err := fps(true)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(10)
+		}
+	case "TVFPS":
+		err := fps(false)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
@@ -58,10 +64,21 @@ func main() {
 
 }
 
-func fps() error {
-	tv := new(television.DummyTV)
-	if tv == nil {
-		return fmt.Errorf("error creating television for fps profiler")
+func fps(justTheVCS bool) error {
+	var tv television.Television
+	var err error
+
+	if justTheVCS {
+		tv = new(television.DummyTV)
+		if tv == nil {
+			return fmt.Errorf("error creating television for fps profiler")
+		}
+	} else {
+		tv, err = television.NewSDLTV("NTSC", 3.0)
+		if err != nil {
+			return fmt.Errorf("error creating television for fps profiler")
+		}
+		tv.SetVisibility(true)
 	}
 
 	vcs, err := hardware.New(tv)
@@ -69,7 +86,7 @@ func fps() error {
 		return fmt.Errorf("error starting fps profiler (%s)", err)
 	}
 
-	err = vcs.AttachCartridge("roms/flappy.bin")
+	err = vcs.AttachCartridge("roms/ball/positioning.bin")
 	if err != nil {
 		return err
 	}
