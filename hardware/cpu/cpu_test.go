@@ -7,7 +7,7 @@ import (
 )
 
 func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
-	result, err := mc.ExecuteInstruction(func() {})
+	result, err := mc.ExecuteInstruction(func(*cpu.InstructionResult) {})
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}
