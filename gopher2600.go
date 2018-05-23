@@ -17,6 +17,13 @@ func main() {
 	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, TVFPS, DISASM")
 	flag.Parse()
 
+	if len(flag.Args()) != 1 {
+		fmt.Println("* no cartridge specified")
+		os.Exit(10)
+	}
+
+	cartridgeFile := flag.Args()[0]
+
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
 		// create a new debugger with the choice of terminal
@@ -36,19 +43,19 @@ func main() {
 
 		// start debugger with choice of cartridge
 		// TODO: implement command line selection of cartridge
-		err = dbg.Start("roms/ball/positioning.bin")
+		err = dbg.Start(cartridgeFile)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
 		}
 	case "FPS":
-		err := fps(true)
+		err := fps(cartridgeFile, true)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
 		}
 	case "TVFPS":
-		err := fps(false)
+		err := fps(cartridgeFile, false)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
@@ -64,7 +71,7 @@ func main() {
 
 }
 
-func fps(justTheVCS bool) error {
+func fps(cartridgeFile string, justTheVCS bool) error {
 	var tv television.Television
 	var err error
 
@@ -86,7 +93,7 @@ func fps(justTheVCS bool) error {
 		return fmt.Errorf("error starting fps profiler (%s)", err)
 	}
 
-	err = vcs.AttachCartridge("roms/ball/positioning.bin")
+	err = vcs.AttachCartridge(cartridgeFile)
 	if err != nil {
 		return err
 	}
