@@ -178,7 +178,11 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// prepare for next loop
+			//  o forget about current break state
+			//  o make a copy of current break matches - we won't break on breaks
+			//		that are already in breakstate
 			dbg.inputloopBreakpoint = false
+			dbg.breakpoints.storeBreakState()
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {

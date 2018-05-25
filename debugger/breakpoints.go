@@ -9,8 +9,9 @@ import (
 // breakpoints keeps track of all the currently defined breakers and any
 // other special conditions that may interrupt execution
 type breakpoints struct {
-	dbg    *Debugger
-	breaks []breaker
+	dbg               *Debugger
+	breaks            []breaker
+	storedBreakStates map[breakTarget]int
 }
 
 // breaker defines a specific break condition
@@ -40,6 +41,14 @@ func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
+// storeBreakState stores the current value of all current break targets
+func (bp *breakpoints) storeBreakState() {
+	bp.storedBreakStates = make(map[breakTarget]int, len(bp.breaks))
+	for _, b := range bp.breaks {
+		bp.storedBreakStates[b.target] = b.target.ToInt()
+	}
+}
+
 // check compares the current state of the emulation with every break
 // condition. it lists every condition that applies, not just the first
 // condition it encounters.
@@ -47,8 +56,11 @@ func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool 
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
-			dbg.print(Feedback, "break on %v", bp.breaks[i].valueString())
-			broken = true
+			// make sure that we're not breaking on a state already broken upon
+			if bp.breaks[i].target.ToInt() != bp.storedBreakStates[bp.breaks[i].target] {
+				dbg.print(Feedback, "break on %v", bp.breaks[i].valueString())
+				broken = true
+			}
 		}
 	}
 	return broken
