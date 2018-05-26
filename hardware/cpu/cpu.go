@@ -447,7 +447,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		address = adder.ToUint16()
 
 		// check for page fault
-		result.PageFault = defn.PageSensitive && (address&0xff00 != indexedAddress&0xff00)
+		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
@@ -456,10 +456,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 				return nil, err
 			}
 			result.ActualCycles++
-
-			adder.Add(indexedAddress&0xff00, false)
-			address = adder.ToUint16()
 		}
+
+		adder.Add(indexedAddress&0xff00, false)
+		address = adder.ToUint16()
 
 		result.InstructionData = indirectAddress
 
@@ -480,7 +480,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		address = adder.ToUint16()
 
 		// check for page fault
-		result.PageFault = defn.PageSensitive && (address&0xff00 != indirectAddress&0xff00)
+		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
@@ -488,11 +488,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			if err != nil {
 				return nil, err
 			}
-			result.ActualCycles++
-
-			adder.Add(indirectAddress&0xff00, false)
-			address = adder.ToUint16()
 		}
+
+		adder.Add(indirectAddress&0xff00, false)
+		address = adder.ToUint16()
 
 		result.InstructionData = indirectAddress
 
@@ -513,7 +512,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		address = adder.ToUint16()
 
 		// check for page fault
-		result.PageFault = defn.PageSensitive && (address&0xFF00 != indirectAddress&0xFF00)
+		result.PageFault = defn.PageSensitive && (address&0xFF00 == 0x0100)
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
@@ -521,11 +520,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			if err != nil {
 				return nil, err
 			}
-			result.ActualCycles++
-
-			adder.Add(indirectAddress&0xff00, false)
-			address = adder.ToUint16()
 		}
+
+		adder.Add(indirectAddress&0xff00, false)
+		address = adder.ToUint16()
 
 		result.InstructionData = indirectAddress
 
