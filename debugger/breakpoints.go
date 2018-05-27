@@ -9,24 +9,17 @@ import (
 // breakpoints keeps track of all the currently defined breakers and any
 // other special conditions that may interrupt execution
 type breakpoints struct {
-	dbg               *Debugger
-	breaks            []breaker
-	storedBreakStates map[breakTarget]int
+	dbg    *Debugger
+	breaks []breaker
+
+	// ignore certain target values
+	ignoredBreakerStates map[target]int
 }
 
 // breaker defines a specific break condition
 type breaker struct {
-	target breakTarget
+	target target
 	value  int
-}
-
-// breakTarget defines what objects can and cannot cause an execution break.
-// known implementations of breakTarget:
-//  1. register
-//  2. tvstate
-type breakTarget interface {
-	AsString(interface{}) string
-	ToInt() int
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
@@ -41,11 +34,25 @@ func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
-// storeBreakState stores the current value of all current break targets
-func (bp *breakpoints) storeBreakState() {
-	bp.storedBreakStates = make(map[breakTarget]int, len(bp.breaks))
+// prepareBreakpoints prepares for next breakpoint by storing the current state
+// of all Targets. we can then use these stored values to know what to
+// ignore. used primarily so that we're not breaking immediately on a previous
+// breakstate.
+//
+// one possible flaw in the current implementation of this idea is that the
+// emulation will not honour new breaks until the value has cycled back to the
+// break value:
+//
+//    A == v
+//		break A v
+//    A == v -> no break
+//    A == w -> no break
+//		A == v -> breaks
+//
+func (bp *breakpoints) prepareBreakpoints() {
+	bp.ignoredBreakerStates = make(map[target]int, len(bp.breaks))
 	for _, b := range bp.breaks {
-		bp.storedBreakStates[b.target] = b.target.ToInt()
+		bp.ignoredBreakerStates[b.target] = b.target.ToInt()
 	}
 }
 
@@ -56,13 +63,26 @@ func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool 
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
-			// make sure that we're not breaking on a state already broken upon
-			if bp.breaks[i].target.ToInt() != bp.storedBreakStates[bp.breaks[i].target] {
+			// make sure that we're not breaking on an ignore state
+			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
+			if !prs || prs && bp.breaks[i].target.ToInt() != bv {
 				dbg.print(Feedback, "break on %v", bp.breaks[i].valueString())
 				broken = true
 			}
 		}
 	}
+
+	// remove ignoreBreakerState if the break target has changed from its
+	// ignored value
+	if broken == false {
+		for i := range bp.breaks {
+			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
+			if prs && bp.breaks[i].target.ToInt() != bv {
+				delete(bp.ignoredBreakerStates, bp.breaks[i].target)
+			}
+		}
+	}
+
 	return broken
 }
 
@@ -81,7 +101,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 		bp.list()
 	}
 
-	var target breakTarget
+	var target target
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
 	// being set on the PC. breaking on PC is probably the most common type of
@@ -90,7 +110,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 	target = bp.dbg.vcs.MC.PC
 
 	// loop over parts. if part is a number then add the breakpoint for the
-	// current target. if it is not a number, look for a command ro try to change
+	// current target. if it is not a number, look for a keyword that changes
 	// the target (or run a BREAK meta-command)
 	//
 	// note that this method of looping allows the user to chain break commands
@@ -118,43 +138,21 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			// return a TVState if the television implementation understands the
 			// request
 
+			// commands
 			switch parts[i] {
-			default:
-				return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
-
-				// comands
 			case "CLEAR":
 				bp.clear()
 				bp.dbg.print(Feedback, "breakpoints cleared")
+				return nil
 			case "LIST":
 				bp.list()
+				return nil
+			}
 
-				// targets
-			case "PC":
-				target = bp.dbg.vcs.MC.PC
-			case "A":
-				target = bp.dbg.vcs.MC.A
-			case "X":
-				target = bp.dbg.vcs.MC.X
-			case "Y":
-				target = bp.dbg.vcs.MC.Y
-			case "SP":
-				target = bp.dbg.vcs.MC.SP
-			case "FRAMENUM", "FRAME", "FR":
-				target, err = bp.dbg.vcs.TV.GetTVState("FRAMENUM")
-				if err != nil {
-					return err
-				}
-			case "SCANLINE", "SL":
-				target, err = bp.dbg.vcs.TV.GetTVState("SCANLINE")
-				if err != nil {
-					return err
-				}
-			case "HORIZPOS", "HP":
-				target, err = bp.dbg.vcs.TV.GetTVState("HORIZPOS")
-				if err != nil {
-					return err
-				}
+			// defer parsing of other keywords to parseTargets()
+			target = parseTarget(bp.dbg.vcs, parts[i])
+			if target == nil {
+				return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
 			}
 		}
 	}
