@@ -31,9 +31,9 @@ func (cc ColorClock) MachineInfo() string {
 	return fmt.Sprintf("CCLOCK: %v [%dpx]", cc.Polycounter, cc.Pixel())
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (cc ColorClock) String() string {
-	return cc.MachineInfoTerse()
+	return cc.MachineInfo()
 }
 
 // Pixel returns the color clock when expressed a pixel

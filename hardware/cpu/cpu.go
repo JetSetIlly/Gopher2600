@@ -89,9 +89,9 @@ func (mc *CPU) MachineInfo() string {
 	return fmt.Sprintf("%v\n%v\n%v\n%v\n%v\n%v", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (mc *CPU) String() string {
-	return mc.MachineInfoTerse()
+	return mc.MachineInfo()
 }
 
 // IsExecuting returns true if it is called during an ExecuteInstruction() callback
@@ -146,6 +146,7 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 	if err != nil {
+		return 0, err
 	}
 	mc.endCycle()
 
@@ -165,8 +166,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	}
 	mc.endCycle()
 
-	var val uint16
-	val = uint16(hi) << 8
+	val := uint16(hi) << 8
 	val |= uint16(lo)
 
 	return val, nil
@@ -201,7 +201,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) erro
 		address |= 0xff00
 	}
 
-	if flag == true {
+	if flag {
 		// phantom read
 		// +1 cycle
 		_, err := mc.read8Bit(mc.PC.ToUint16())
@@ -257,7 +257,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 	}
 
 	// do nothing and return nothing if ready flag is false
-	if mc.RdyFlg == false {
+	if !mc.RdyFlg {
 		cycleCallback(nil)
 		return nil, nil
 	}

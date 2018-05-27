@@ -41,9 +41,9 @@ func (dc delayCounter) MachineInfo() string {
 	return fmt.Sprintf("[no %s pending]", dc.label)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (dc delayCounter) String() string {
-	return dc.MachineInfoTerse()
+	return dc.MachineInfo()
 }
 
 // start the counter with the specified delay count and the delayed value

@@ -45,9 +45,9 @@ func (tia TIA) MachineInfo() string {
 	return fmt.Sprintf("%v\n%v\n%v", tia.colorClock, tia.rsync, tia.hmove)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (tia TIA) String() string {
-	return tia.MachineInfoTerse()
+	return tia.MachineInfo()
 }
 
 // New is the preferred method of initialisation for the TIA structure
@@ -159,7 +159,7 @@ func (tia *TIA) StepVideoCycle() bool {
 		cburst = true
 	}
 
-	if tia.colorClock.Tick(tia.rsync.check()) == true {
+	if tia.colorClock.Tick(tia.rsync.check()) {
 		// set up new scanline if colorClock has ticked its way to the reset point or if
 		// an rsync has matured (see rsync.go commentary)
 		frontPorch = true

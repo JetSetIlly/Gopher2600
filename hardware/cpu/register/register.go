@@ -119,17 +119,17 @@ func (r Register) ShortLabel() string {
 
 // MachineInfoTerse returns the register information in terse format
 func (r Register) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
+	return fmt.Sprintf("%s=%d", r.shortLabel, r.value)
 }
 
 // MachineInfo returns the register information in verbose format
 func (r Register) MachineInfo() string {
-	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.ToUint(), r.ToHex(), r.ToBits())
+	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.value, r.ToHex(), r.ToBits())
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (r Register) String() string {
-	return r.MachineInfoTerse()
+	return r.MachineInfo()
 }
 
 // ToBits returns the register as bit pattern (of '0' and '1')
@@ -187,26 +187,26 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 	switch v := v.(type) {
 	case *Register:
 		r.value += v.value
-		if carry == true {
+		if carry {
 			r.value++
 		}
 
 		postNeg = v.IsNegative()
 	case int:
 		r.value += uint32(v)
-		if carry == true {
+		if carry {
 			r.value++
 		}
 		postNeg = uint32(v)&r.signBit == r.signBit
 	case uint8:
 		r.value += uint32(v)
-		if carry == true {
+		if carry {
 			r.value++
 		}
 		postNeg = uint32(v)&r.signBit == r.signBit
 	case uint16:
 		r.value += uint32(v)
-		if carry == true {
+		if carry {
 			r.value++
 		}
 		postNeg = uint32(v)&r.signBit == r.signBit
@@ -315,7 +315,7 @@ func (r *Register) ORA(v interface{}) {
 func (r *Register) ROL(carry bool) bool {
 	retCarry := r.IsNegative()
 	r.value <<= 1
-	if carry == true {
+	if carry {
 		r.value |= 1
 	}
 	r.value &= r.mask
@@ -326,7 +326,7 @@ func (r *Register) ROL(carry bool) bool {
 func (r *Register) ROR(carry bool) bool {
 	retCarry := r.value&1 == 1
 	r.value >>= 1
-	if carry == true {
+	if carry {
 		r.value |= r.signBit
 	}
 	r.value &= r.mask

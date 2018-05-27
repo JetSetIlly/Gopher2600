@@ -29,7 +29,7 @@ const (
 // directives such as the silent directive without passing the burden onto UI
 // implementors
 func (dbg Debugger) print(pp PrintProfile, s string, a ...interface{}) {
-	if dbg.uiSilent == true && pp != Error {
+	if dbg.uiSilent && pp != Error {
 		return
 	}
 

@@ -34,9 +34,9 @@ func (sr StatusRegister) MachineInfo() string {
 	return fmt.Sprintf("%s: %v", sr.label, sr.ToBits())
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (sr StatusRegister) String() string {
-	return sr.MachineInfoTerse()
+	return sr.MachineInfo()
 }
 
 // ToBits returns the register as a labelled bit pattern

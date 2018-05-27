@@ -72,7 +72,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// machine cycle to perform the sanity check. on the other hand it does seem
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
-	if area.writeSignal != false {
+	if area.writeSignal {
 		panic(fmt.Sprintf("chip memory write signal has not been serviced since previous write [%s]", area.writeAddresses[area.lastWriteAddress]))
 	}
 
@@ -94,7 +94,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 // ChipRead is an implementation of ChipBus.ChipRead
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
-	if area.writeSignal == true {
+	if area.writeSignal {
 		area.writeSignal = false
 		return true, area.writeAddresses[area.lastWriteAddress], area.memory[area.lastWriteAddress]
 	}

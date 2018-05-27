@@ -96,7 +96,7 @@ func (dbg *Debugger) Start(filename string) error {
 	go func() {
 		for dbg.running {
 			<-ctrlC
-			if dbg.runUntilHalt == true {
+			if dbg.runUntilHalt {
 				dbg.runUntilHalt = false
 			} else {
 				// TODO: interrupt os.Stdin.Read()
@@ -349,8 +349,8 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 				return false, fmt.Errorf("unknown step mode (%s)", parts[1])
 			}
 		}
-		var stepMode = ""
-		if dbg.inputloopVideoClock == true {
+		var stepMode string
+		if dbg.inputloopVideoClock {
 			stepMode = "video"
 		} else {
 			stepMode = "cpu"
@@ -366,7 +366,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(Feedback, "verbosity: verbose")
 
 	case "VERBOSITY":
-		if dbg.machineInfoVerbose == true {
+		if dbg.machineInfoVerbose {
 			dbg.print(Feedback, "verbosity: verbose")
 		} else {
 			dbg.print(Feedback, "verbosity: terse")

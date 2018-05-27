@@ -55,9 +55,9 @@ func (riot RIOT) MachineInfo() string {
 	return fmt.Sprintf("%s\nINTIM: %d (%02x)\nINTIM clocks = %d (%02x)", riot.timerRegister, riot.timerINTIM, riot.timerINTIM, riot.timerCycles, riot.timerCycles)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (riot RIOT) String() string {
-	return riot.MachineInfoTerse()
+	return riot.MachineInfo()
 }
 
 // ReadRIOTMemory checks for side effects to the RIOT sub-system

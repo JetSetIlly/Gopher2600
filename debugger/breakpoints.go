@@ -5,8 +5,7 @@ import (
 	"strconv"
 )
 
-// breakpoints keeps track of all the currently defined breakers and any
-// other special conditions that may interrupt execution
+// breakpoints keeps track of all the currently defined breaker
 type breakpoints struct {
 	dbg    *Debugger
 	breaks []breaker
@@ -73,7 +72,7 @@ func (bp *breakpoints) check() bool {
 
 	// remove ignoreBreakerState if the break target has changed from its
 	// ignored value
-	if broken == false {
+	if !broken {
 		for i := range bp.breaks {
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
 			if prs && bp.breaks[i].target.ToInt() != bv {
@@ -97,16 +96,16 @@ func (bp breakpoints) list() {
 
 func (bp *breakpoints) parseBreakpoint(parts []string) error {
 	if len(parts) == 1 {
-		bp.list()
+		return fmt.Errorf("not enough arguments for %s", parts[0])
 	}
 
-	var target target
+	var tgt target
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
 	// being set on the PC. breaking on PC is probably the most common type of
 	// breakpoint. the target will change value when the input string sees
 	// something appropriate
-	target = bp.dbg.vcs.MC.PC
+	tgt = bp.dbg.vcs.MC.PC
 
 	// loop over parts. if part is a number then add the breakpoint for the
 	// current target. if it is not a number, look for a keyword that changes
@@ -120,14 +119,14 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			// check to see if breakpoint already exists
 			addNewBreak := true
 			for _, mv := range bp.breaks {
-				if mv.target == target && mv.value == int(val) {
+				if mv.target == tgt && mv.value == int(val) {
 					addNewBreak = false
 					bp.dbg.print(Feedback, "breakpoint already exists")
 					break // for loop
 				}
 			}
 			if addNewBreak {
-				bp.breaks = append(bp.breaks, breaker{target: target, value: int(val)})
+				bp.breaks = append(bp.breaks, breaker{target: tgt, value: int(val)})
 			}
 
 		} else {
@@ -149,8 +148,8 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			}
 
 			// defer parsing of other keywords to parseTargets()
-			target = parseTarget(bp.dbg.vcs, parts[i])
-			if target == nil {
+			tgt = parseTarget(bp.dbg.vcs, parts[i])
+			if tgt == nil {
 				return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
 			}
 		}

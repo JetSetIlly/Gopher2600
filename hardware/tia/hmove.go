@@ -42,9 +42,9 @@ func (hm hmove) MachineInfo() string {
 	return "HMOVE -> no movement"
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (hm hmove) String() string {
-	return hm.MachineInfoTerse()
+	return hm.MachineInfo()
 }
 
 func (hm hmove) isActive() bool {

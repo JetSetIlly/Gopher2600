@@ -63,9 +63,9 @@ func newSprite(label string, enableFlag *bool) *sprite {
 // MachineInfoTerse returns the sprite information in terse format
 func (sp sprite) MachineInfoTerse() string {
 	enableStr := ""
-	if sp.enableFlag != nil && *sp.enableFlag == true {
+	if sp.enableFlag != nil && *sp.enableFlag {
 		enableStr = "(+)"
-	} else if sp.enableFlag != nil && *sp.enableFlag == false {
+	} else if sp.enableFlag != nil && !*sp.enableFlag {
 		enableStr = "(-)"
 	}
 	return fmt.Sprintf("%s%s: %s %s %s", sp.label, enableStr, sp.position.MachineInfoTerse(), sp.drawSig.MachineInfoTerse(), sp.resetDelay.MachineInfoTerse())
@@ -74,17 +74,17 @@ func (sp sprite) MachineInfoTerse() string {
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
 	enableStr := ""
-	if sp.enableFlag != nil && *sp.enableFlag == true {
+	if sp.enableFlag != nil && *sp.enableFlag {
 		enableStr = "enabled"
-	} else if sp.enableFlag != nil && *sp.enableFlag == false {
+	} else if sp.enableFlag != nil && !*sp.enableFlag {
 		enableStr = "disabled"
 	}
 	return fmt.Sprintf("%s: %s, %v\n %v\n %v", sp.label, enableStr, sp.position, sp.drawSig, sp.resetDelay)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (sp sprite) String() string {
-	return sp.MachineInfoTerse()
+	return sp.MachineInfo()
 }
 
 // the position type is only used by the sprite type
@@ -128,15 +128,13 @@ func (ps *position) resetPosition(cc *colorclock.ColorClock) {
 }
 
 func (ps *position) tick(triggerList []int) bool {
-	if ps.polycounter.Tick(false) == true {
+	if ps.polycounter.Tick(false) {
 		return true
 	}
 
-	if triggerList != nil {
-		for _, v := range triggerList {
-			if v == ps.polycounter.Count && ps.polycounter.Phase == 0 {
-				return true
-			}
+	for _, v := range triggerList {
+		if v == ps.polycounter.Count && ps.polycounter.Phase == 0 {
+			return true
 		}
 	}
 

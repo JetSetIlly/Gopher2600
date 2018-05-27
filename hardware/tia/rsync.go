@@ -44,9 +44,9 @@ func (rs rsync) MachineInfo() string {
 	return "RSYNC -> not set"
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (rs rsync) String() string {
-	return rs.MachineInfoTerse()
+	return rs.MachineInfo()
 }
 
 func (rs rsync) remainingCycles() int {

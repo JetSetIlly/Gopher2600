@@ -31,9 +31,9 @@ func (DummyTV) MachineInfo() string {
 	return ""
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (tv DummyTV) String() string {
-	return tv.MachineInfoTerse()
+	return tv.MachineInfo()
 }
 
 // GetTVState (with dummyTV reciever) is the null implementation

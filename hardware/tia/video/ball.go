@@ -3,20 +3,20 @@ package video
 // TickBall moves the counters along for the ball sprite
 func (vd *Video) TickBall() {
 	// position
-	if vd.Ball.position.tick(nil) == true {
+	if vd.Ball.position.tick(nil) {
 		vd.Ball.drawSig.start()
 	} else {
 		vd.Ball.drawSig.tick()
 	}
 
 	// reset
-	if vd.Ball.resetDelay.tick() == true {
+	if vd.Ball.resetDelay.tick() {
 		vd.Ball.position.resetPosition(vd.colorClock)
 		vd.Ball.drawSig.start()
 	}
 
 	// enable
-	if vd.enablDelay.tick() == true {
+	if vd.enablDelay.tick() {
 		vd.enablPrev = vd.enabl
 		vd.enabl = vd.enablDelay.payloadValue.(bool)
 	}

@@ -73,9 +73,9 @@ func (pk Polycounter) MachineInfo() string {
 	return fmt.Sprintf("%s@%d", table6bits[pk.Count], pk.Phase)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (pk Polycounter) String() string {
-	return pk.MachineInfoTerse()
+	return pk.MachineInfo()
 }
 
 // ResetPhase resets the phase *only*

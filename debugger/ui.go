@@ -23,8 +23,6 @@ func (ui PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 	switch pp {
 	case Error:
 		s = fmt.Sprintf("* %s", s)
-	case Prompt:
-		s = fmt.Sprintf("%s", s)
 	case Script:
 		s = fmt.Sprintf("> %s", s)
 	}

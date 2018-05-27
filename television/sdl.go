@@ -230,7 +230,7 @@ func (tv *SDLTV) update() error {
 
 	// for windowed SDL, attempt to synchronise to 60fps (VSYNC hint only seems
 	// to work if window is in full screen mode)
-	time.Sleep(16666*time.Microsecond - time.Now().Sub(tv.lastFrameRender))
+	time.Sleep(16666*time.Microsecond - time.Since(tv.lastFrameRender))
 	tv.renderer.Present()
 	tv.lastFrameRender = time.Now()
 
@@ -239,7 +239,7 @@ func (tv *SDLTV) update() error {
 
 // SetVisibility toggles the visiblity of the SDLTV window
 func (tv *SDLTV) SetVisibility(visible bool) error {
-	if visible == true {
+	if visible {
 		tv.window.Show()
 	} else {
 		tv.window.Hide()

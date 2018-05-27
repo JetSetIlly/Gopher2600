@@ -7,30 +7,31 @@ import (
 
 // ansi color
 const (
-	black   = 0
-	red     = 1
-	green   = 2
-	yellow  = 3
-	blue    = 4
-	magenta = 5
-	cyan    = 6
-	white   = 7
+	colBlack   = 0
+	colRed     = 1
+	colGreen   = 2
+	colYelow   = 3
+	colBlue    = 4
+	colMagenta = 5
+	colCyan    = 6
+	colWhite   = 7
+	colDefault = 9
 )
 
 // ansi target
 const (
-	pen         = 3
-	paper       = 4
-	brightPen   = 9
-	brightPaper = 10
+	targetPen         = 3
+	targetPaper       = 4
+	targetBrightPen   = 9
+	targetBrightPaper = 10
 )
 
 // ansi attribute
 const (
-	bold      = 1
-	underline = 4
-	inverse   = 7
-	strike    = 8
+	attrBold      = 1
+	attrUnderline = 4
+	attrInverse   = 7
+	attrStrike    = 8
 )
 
 var pens map[string]string
@@ -85,27 +86,30 @@ func ansiBuild(pen, paper, attribute string, brightPen, brightPaper bool) (strin
 
 	// pen
 	if pen != "" {
-		penType := 3
+		penType := targetPen
 		if brightPen {
-			penType = 9
+			penType = targetBrightPen
 		}
-		switch strings.ToUpper(pen)[0] {
-		case 'R':
-			s = fmt.Sprintf("%s%d%d", s, penType, red)
-		case 'G':
-			s = fmt.Sprintf("%s%d%d", s, penType, green)
-		case 'Y':
-			s = fmt.Sprintf("%s%d%d", s, penType, yellow)
-		case 'B':
-			s = fmt.Sprintf("%s%d%d", s, penType, blue)
-		case 'M':
-			s = fmt.Sprintf("%s%d%d", s, penType, magenta)
-		case 'C':
-			s = fmt.Sprintf("%s%d%d", s, penType, cyan)
-		case 'W':
-			s = fmt.Sprintf("%s%d%d", s, penType, white)
-		case 'D', 'N':
-			s = fmt.Sprintf("%s%d9", s, penType)
+		switch strings.ToUpper(pen) {
+		case "BLACK":
+			s = fmt.Sprintf("%s%d%d", s, penType, colBlack)
+		case "RED":
+			s = fmt.Sprintf("%s%d%d", s, penType, colRed)
+		case "GREEN":
+			s = fmt.Sprintf("%s%d%d", s, penType, colGreen)
+		case "YELLOW":
+			s = fmt.Sprintf("%s%d%d", s, penType, colYelow)
+		case "BLUE":
+			s = fmt.Sprintf("%s%d%d", s, penType, colBlue)
+		case "MAGENTA":
+			s = fmt.Sprintf("%s%d%d", s, penType, colMagenta)
+		case "CYAN":
+			s = fmt.Sprintf("%s%d%d", s, penType, colCyan)
+		case "WHITE":
+			s = fmt.Sprintf("%s%d%d", s, penType, colWhite)
+		case "NORMAL":
+			s = fmt.Sprintf("%s%d%d", s, penType, colDefault)
+		case "":
 		default:
 			return "", fmt.Errorf("unknown ANSI pen (%s)", pen)
 		}
@@ -117,27 +121,30 @@ func ansiBuild(pen, paper, attribute string, brightPen, brightPaper bool) (strin
 			s = fmt.Sprintf("%s;", s)
 		}
 		// paper
-		paperType := 4
+		paperType := targetPaper
 		if brightPaper {
-			paperType = 10
+			paperType = targetBrightPaper
 		}
-		switch strings.ToUpper(paper)[0] {
-		case 'R':
-			s = fmt.Sprintf("%s%d%d", s, paperType, red)
-		case 'G':
-			s = fmt.Sprintf("%s%d%d", s, paperType, green)
-		case 'Y':
-			s = fmt.Sprintf("%s%d%d", s, paperType, yellow)
-		case 'B':
-			s = fmt.Sprintf("%s%d%d", s, paperType, blue)
-		case 'M':
-			s = fmt.Sprintf("%s%d%d", s, paperType, magenta)
-		case 'C':
-			s = fmt.Sprintf("%s%d%d", s, paperType, cyan)
-		case 'W':
-			s = fmt.Sprintf("%s%d%d", s, paperType, white)
-		case 'D', 'N':
-			s = fmt.Sprintf("%s%d9", s, paperType)
+		switch strings.ToUpper(paper) {
+		case "BLACK":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colBlack)
+		case "RED":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colRed)
+		case "GREEN":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colGreen)
+		case "YELLOW":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colYelow)
+		case "BLUE":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colBlue)
+		case "MAGENTA":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colMagenta)
+		case "CYAN":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colCyan)
+		case "WHITE":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colWhite)
+		case "NORMAL":
+			s = fmt.Sprintf("%s%d%d", s, paperType, colDefault)
+		case "":
 		default:
 			return "", fmt.Errorf("unknown ANSI paper (%s)", paper)
 		}
@@ -148,17 +155,17 @@ func ansiBuild(pen, paper, attribute string, brightPen, brightPaper bool) (strin
 		if len(s) > 2 {
 			s = fmt.Sprintf("%s;", s)
 		}
-		switch strings.ToUpper(attribute)[0] {
-		case 'B':
-			s = fmt.Sprintf("%s%d", s, bold)
-		case 'U':
-			s = fmt.Sprintf("%s%d", s, underline)
-		case 'I':
-			s = fmt.Sprintf("%s%d", s, inverse)
-		case 'S':
-			s = fmt.Sprintf("%s%d", s, strike)
-		case 'D', 'N', 'P':
-			s = fmt.Sprintf("%s", s)
+		switch strings.ToUpper(attribute) {
+		case "BOLD": // bold
+			s = fmt.Sprintf("%s%d", s, attrBold)
+		case "UNDERLINE": // underline
+			s = fmt.Sprintf("%s%d", s, attrUnderline)
+		case "ITALIC": // italic
+			s = fmt.Sprintf("%s%d", s, attrInverse)
+		case "STRIKE": // strikethrough
+			s = fmt.Sprintf("%s%d", s, attrStrike)
+		case "NORMAL": // normal
+		case "":
 		default:
 			return "", fmt.Errorf("unknown ANSI attribute (%s)", attribute)
 		}

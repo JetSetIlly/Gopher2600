@@ -61,14 +61,14 @@ func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 	// parse each line as user input
 	for i := 0; i < len(lines); i++ {
 		if strings.Trim(lines[i], " ") != "" {
-			if silent == false {
+			if !silent {
 				dbg.print(Script, lines[i])
 			}
 			next, err := dbg.parseInput(lines[i])
 			if err != nil {
 				dbg.print(Error, fmt.Sprintf("script error (%s): %s", scriptfile, err.Error()))
 			}
-			if next == true {
+			if next {
 				dbg.print(Error, fmt.Sprintf("script error (%s): use of '%s' is not recommended in scripts", scriptfile, lines[i]))
 
 				// make sure run state is still sane

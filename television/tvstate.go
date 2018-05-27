@@ -39,9 +39,9 @@ func (ts TVState) MachineInfo() string {
 	return fmt.Sprintf("%s=%s", ts.label, s)
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (ts TVState) String() string {
-	return ts.MachineInfoTerse()
+	return ts.MachineInfo()
 }
 
 // ToInt returns the value as an integer

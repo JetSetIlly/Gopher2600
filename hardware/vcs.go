@@ -98,12 +98,12 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 		// three color clocks per CPU cycle so we run video cycle three times
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg == true {
+		if vcs.MC.RdyFlg {
 			videoCycleCallback(r)
 		}
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg == true {
+		if vcs.MC.RdyFlg {
 			videoCycleCallback(r)
 		}
 
@@ -111,7 +111,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 		vcs.TIA.ReadTIAMemory()
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg == true {
+		if vcs.MC.RdyFlg {
 			videoCycleCallback(r)
 		}
 	}
@@ -129,7 +129,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
-	for vcs.MC.RdyFlg == false {
+	for !vcs.MC.RdyFlg {
 		cycleVCS(r)
 	}
 

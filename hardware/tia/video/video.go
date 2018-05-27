@@ -137,9 +137,9 @@ func (vd Video) MachineInfo() string {
 	return ""
 }
 
-// map String to MachineInfoTerse
+// map String to MachineInfo
 func (vd Video) String() string {
-	return vd.MachineInfoTerse()
+	return vd.MachineInfo()
 }
 
 // TickSprites moves sprite elements on one video cycle
@@ -260,7 +260,7 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "RESM0":
 	case "RESM1":
 	case "RESBL":
-		if *vd.hblank == true {
+		if *vd.hblank {
 			vd.Ball.resetDelay.start(2, true)
 		} else {
 			vd.Ball.resetDelay.start(4, true)

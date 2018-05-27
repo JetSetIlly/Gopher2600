@@ -4,20 +4,19 @@ import (
 	"fmt"
 )
 
-// breakpoints keeps track of all the currently defined breakers and any
-// other special conditions that may interrupt execution
+// traps keeps track of all the currently defined trappers
 type traps struct {
 	dbg   *Debugger
 	traps []trapper
 }
 
-// breaker defines a specific break condition
+// trapper defines a specific trap
 type trapper struct {
 	target    target
 	origValue int
 }
 
-// newBreakpoints is the preferred method of initialisation for breakpoins
+// newTraps is the preferred method of initialisation for traps
 func newTraps(dbg *Debugger) *traps {
 	tr := new(traps)
 	tr.dbg = dbg
@@ -29,17 +28,18 @@ func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
-// check compares the current state of the emulation with every break
+// check compares the current state of the emulation with every trap
 // condition. it lists every condition that applies, not just the first
 // condition it encounters.
 func (tr *traps) check() bool {
 	trapped := false
 	for i := range tr.traps {
-		trapped = tr.traps[i].target.ToInt() != tr.traps[i].origValue
-		if trapped {
+		ntr := tr.traps[i].target.ToInt() != tr.traps[i].origValue
+		if ntr {
 			tr.traps[i].origValue = tr.traps[i].target.ToInt()
 			tr.dbg.print(Feedback, "trap on %s", tr.traps[i].target.ShortLabel())
 		}
+		trapped = ntr || trapped
 	}
 
 	return trapped
@@ -61,7 +61,7 @@ func (tr traps) list() {
 
 func (tr *traps) parseTrap(parts []string) error {
 	if len(parts) == 1 {
-		tr.list()
+		return fmt.Errorf("not enough arguments for %s", parts[0])
 	}
 
 	// loop over parts, allowing multiple traps to be applied
