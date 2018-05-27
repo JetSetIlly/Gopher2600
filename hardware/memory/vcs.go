@@ -114,3 +114,20 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	}
 	return area.(CPUBus).Write(ma, data)
 }
+
+// Peek returns the contents of the memory address, without triggering any side
+// effects. returns:
+//  o value
+//  o mapped address
+//  o area name
+//  o address label (internal label only TODO: think about program symbols)
+//  o error
+func (mem VCSMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
+	ma := mem.MapAddress(address)
+	area, present := mem.memmap[ma]
+	if !present {
+		return 0, 0, area.Label(), "", fmt.Errorf("%04x not mapped correctly", address)
+	}
+	v, label, err := area.(Area).Peek(ma)
+	return v, ma, area.Label(), label, err
+}

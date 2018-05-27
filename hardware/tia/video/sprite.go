@@ -82,9 +82,9 @@ func (sp sprite) MachineInfo() string {
 	return fmt.Sprintf("%s: %s, %v\n %v\n %v", sp.label, enableStr, sp.position, sp.drawSig, sp.resetDelay)
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (sp sprite) String() string {
-	return sp.MachineInfo()
+	return sp.MachineInfoTerse()
 }
 
 // the position type is only used by the sprite type

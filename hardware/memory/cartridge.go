@@ -99,3 +99,13 @@ func (cart *Cartridge) Attach(filename string) error {
 func (cart *Cartridge) Eject() {
 	cart.memory = make([]uint8, 0)
 }
+
+// Peek is the implementation of Area.Peek
+func (cart Cartridge) Peek(address uint16) (uint8, string, error) {
+	if len(cart.memory) == 0 {
+		return 0, "", fmt.Errorf("no cartridge attached")
+	}
+	oa := address - cart.origin
+	oa += cart.bank * bankSize
+	return cart.memory[oa], "", nil
+}

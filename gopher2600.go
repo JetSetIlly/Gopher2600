@@ -63,12 +63,10 @@ func main() {
 	case "DISASM":
 		fmt.Printf("* not yet implemented")
 		os.Exit(10)
-
 	default:
 		fmt.Printf("* unknown mode (%s)\n", strings.ToUpper(*mode))
 		os.Exit(10)
 	}
-
 }
 
 func fps(cartridgeFile string, justTheVCS bool) error {
@@ -85,8 +83,8 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 		if err != nil {
 			return fmt.Errorf("error creating television for fps profiler")
 		}
-		tv.SetVisibility(true)
 	}
+	tv.SetVisibility(true)
 
 	vcs, err := hardware.New(tv)
 	if err != nil {

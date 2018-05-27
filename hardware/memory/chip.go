@@ -148,5 +148,18 @@ func newTIA() *ChipMemory {
 	chip.writeAddresses = []string{"VSYNC", "VBLANK", "WSYNC", "RSYNC", "NUSIZ0", "NUSIZ1", "COLUP0", "COLUP1", "COLUPF", "COLUBK", "CTRLPF", "REFP0", "REFP1", "PF0", "PF1", "PF2", "RESP0", "RESP1", "RESM0", "RESM1", "RESBL", "AUDC0", "AUDC1", "AUDF0", "AUDF1", "AUDV0", "AUDV1", "GRP0", "GRP1", "ENAM0", "ENAM1", "ENABL", "HMP0", "HMP1", "HMM0", "HMM1", "HMBL", "VDELP0", "VDELP1", "VDELBL", "RESMP0", "RESMP1", "HMOVE", "HMCLR", "CXCLR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""}
 	chip.readAddresses = []string{"CXM0P", "CXM1P", "CXP0FB", "CXP1FB", "CXM0FB", "CXM1FB", "CXBLPF", "CXPPMM", "INPT0", "INPT1", "INPT2", "INPT3", "INPT4", "INPT5", "", ""}
 	chip.readMask = 0x000f
+
 	return chip
+}
+
+// Peek is the implementation of Area.Peek
+func (area ChipMemory) Peek(address uint16) (uint8, string, error) {
+	oa := address - area.origin
+	oa &= area.readMask
+
+	rl := area.readAddresses[oa]
+	if rl == "" {
+		return 0, "", fmt.Errorf("memory location is not really readable")
+	}
+	return area.memory[oa], rl, nil
 }

@@ -2,7 +2,6 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/hardware/cpu"
 	"strconv"
 )
 
@@ -59,14 +58,14 @@ func (bp *breakpoints) prepareBreakpoints() {
 // check compares the current state of the emulation with every break
 // condition. it lists every condition that applies, not just the first
 // condition it encounters.
-func (bp *breakpoints) check(dbg *Debugger, result *cpu.InstructionResult) bool {
+func (bp *breakpoints) check() bool {
 	broken := false
 	for i := range bp.breaks {
 		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
 			// make sure that we're not breaking on an ignore state
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
 			if !prs || prs && bp.breaks[i].target.ToInt() != bv {
-				dbg.print(Feedback, "break on %v", bp.breaks[i].valueString())
+				bp.dbg.print(Feedback, "break on %s=%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
 				broken = true
 			}
 		}
@@ -91,7 +90,7 @@ func (bp breakpoints) list() {
 		bp.dbg.print(Feedback, "no breakpoints")
 	} else {
 		for i := range bp.breaks {
-			bp.dbg.print(Feedback, "%s", bp.breaks[i].valueString())
+			bp.dbg.print(Feedback, "%s->%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
 		}
 	}
 }
@@ -123,7 +122,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			for _, mv := range bp.breaks {
 				if mv.target == target && mv.value == int(val) {
 					addNewBreak = false
-					bp.dbg.print(Feedback, "breakpoint (%s) already exists", target.AsString(int(val)))
+					bp.dbg.print(Feedback, "breakpoint already exists")
 					break // for loop
 				}
 			}
@@ -158,8 +157,4 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 	}
 
 	return nil
-}
-
-func (bk *breaker) valueString() string {
-	return bk.target.AsString(bk.value)
 }

@@ -7,6 +7,7 @@ import (
 	"gopher2600/television"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 )
 
@@ -16,8 +17,9 @@ type Debugger struct {
 	running bool
 	input   []byte
 
-	breakpoints   *breakpoints
-	runUntilBreak bool
+	breakpoints  *breakpoints
+	traps        *traps
+	runUntilHalt bool
 
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
@@ -32,9 +34,9 @@ type Debugger struct {
 	// input loop fields. we're storing these here because inputLoop can be
 	// called from within another input loop (via a video step callback) and we
 	// want these properties to persist
-	inputloopBreakpoint bool // whether to halt the current execution loop
+	inputloopHalt       bool // whether to halt the current execution loop
 	inputloopNext       bool // execute a step once user input has returned a result
-	inputloopVideoStep  bool // step mode
+	inputloopVideoClock bool // step mode
 
 	// user interface
 	ui       UI
@@ -70,8 +72,9 @@ func NewDebugger(ui UI) (*Debugger, error) {
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
-	// set up breakpoints
+	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
+	dbg.traps = newTraps(dbg)
 
 	// default ONHALT command squence
 	dbg.commandOnHaltStored = "CPU; TIA; TV"
@@ -93,8 +96,8 @@ func (dbg *Debugger) Start(filename string) error {
 	go func() {
 		for dbg.running {
 			<-ctrlC
-			if dbg.runUntilBreak == true {
-				dbg.runUntilBreak = false
+			if dbg.runUntilHalt == true {
+				dbg.runUntilHalt = false
 			} else {
 				// TODO: interrupt os.Stdin.Read()
 				dbg.running = false
@@ -113,7 +116,7 @@ func (dbg *Debugger) Start(filename string) error {
 
 // videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
 func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
-	if dbg.inputloopVideoStep {
+	if dbg.inputloopVideoClock {
 		dbg.print(VideoStep, "%v", result)
 	}
 	return dbg.inputLoop(false)
@@ -133,18 +136,22 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		//
 		// the extra condition (dbg.inputLoopNext) is to prevent execution
 		// continuing if we call "stepmode cpu" in the middle of a cpu-cycle
-		if !mainLoop && !dbg.inputloopVideoStep && dbg.inputloopNext {
+		if !mainLoop && !dbg.inputloopVideoClock && dbg.inputloopNext {
 			return nil
 		}
 
-		// check for breakpoint. breakpoint check echos the break condition if it
-		// matches
-		dbg.inputloopBreakpoint = (dbg.inputloopNext && dbg.breakpoints.check(dbg, result))
+		// check for breakpoints and traps. check() functions echo all the
+		// conditions that match
+		if dbg.inputloopNext {
+			bpCheck := dbg.breakpoints.check()
+			trCheck := dbg.traps.check()
+			dbg.inputloopHalt = bpCheck || trCheck
+		}
 
 		// if haltCommand mode and if run state is correct that print haltCommand
 		// command(s)
 		if dbg.commandOnHalt != "" {
-			if (dbg.inputloopNext && !dbg.runUntilBreak) || dbg.inputloopBreakpoint {
+			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
 				// note this is parsing input, not reading input. we're passing the
 				// parse function a prepared command sequence.
 				_, _ = dbg.parseInput(dbg.commandOnHalt)
@@ -152,9 +159,9 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		}
 
 		// expand breakpoint to include step-once/many flag
-		dbg.inputloopBreakpoint = dbg.inputloopBreakpoint || !dbg.runUntilBreak
+		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
 
-		if dbg.inputloopBreakpoint {
+		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
 			err = dbg.vcs.TV.SetPause(true)
 			if err != nil {
@@ -162,7 +169,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// reset run until break condition
-			dbg.runUntilBreak = false
+			dbg.runUntilHalt = false
 
 			// get user input
 			dbg.print(Prompt, "[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
@@ -180,7 +187,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// prepare for next loop
 			//  o forget about current break state
 			//  o prepare for matching on next breakpoint
-			dbg.inputloopBreakpoint = false
+			dbg.inputloopHalt = false
 			dbg.breakpoints.prepareBreakpoints()
 
 			// make sure tv is unpaused if emulation is about to resume
@@ -271,6 +278,12 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			return false, err
 		}
 
+	case "TRAP":
+		err := dbg.traps.parseTrap(parts)
+		if err != nil {
+			return false, err
+		}
+
 	case "ONHALT":
 		if len(parts) < 2 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
@@ -311,7 +324,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case "RUN":
-		dbg.runUntilBreak = true
+		dbg.runUntilHalt = true
 		stepNext = true
 
 	case "STEP":
@@ -319,9 +332,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if len(parts) > 1 {
 			switch parts[1] {
 			case "CPU":
-				dbg.inputloopVideoStep = false
+				dbg.inputloopVideoClock = false
 			case "VIDEO":
-				dbg.inputloopVideoStep = true
+				dbg.inputloopVideoClock = true
 			}
 		}
 
@@ -329,15 +342,15 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if len(parts) > 1 {
 			switch parts[1] {
 			case "CPU":
-				dbg.inputloopVideoStep = false
+				dbg.inputloopVideoClock = false
 			case "VIDEO":
-				dbg.inputloopVideoStep = true
+				dbg.inputloopVideoClock = true
 			default:
 				return false, fmt.Errorf("unknown step mode (%s)", parts[1])
 			}
 		}
 		var stepMode = ""
-		if dbg.inputloopVideoStep == true {
+		if dbg.inputloopVideoClock == true {
 			stepMode = "video"
 		} else {
 			stepMode = "cpu"
@@ -369,6 +382,37 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case "CPU":
 		dbg.printMachineInfo(dbg.vcs.MC)
+
+	case "PEEK":
+		if len(parts) < 1 {
+			return false, fmt.Errorf("PEEK requires a memory address")
+		}
+
+		for i := 1; i < len(parts); i++ {
+			addr, err := strconv.ParseUint(parts[i], 0, 16)
+			if err != nil {
+				dbg.print(Error, "bad argument to PEEK (%s)", parts[i])
+				continue
+			}
+
+			// peform peek
+			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(uint16(addr))
+			if err != nil {
+				dbg.print(Error, "%s", err)
+				continue
+			}
+
+			// format results
+			s := fmt.Sprintf("0x%04x", addr)
+			if uint64(mappedAddress) != addr {
+				s = fmt.Sprintf("%s =0x%04x", s, mappedAddress)
+			}
+			s = fmt.Sprintf("%s -> 0x%02x :: %s", s, val, areaName)
+			if addressLabel != "" {
+				s = fmt.Sprintf("%s [%s]", s, addressLabel)
+			}
+			dbg.print(MachineInfo, s)
+		}
 
 	case "RIOT":
 		dbg.printMachineInfo(dbg.vcs.RIOT)

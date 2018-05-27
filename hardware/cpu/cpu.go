@@ -42,32 +42,32 @@ func New(mem memory.CPUBus) (*CPU, error) {
 	mc := new(CPU)
 	mc.mem = mem
 
-	mc.PC, err = register.New(0, 16, "PC")
+	mc.PC, err = register.New(0, 16, "PC", "PC")
 	if err != nil {
 		return nil, err
 	}
 
-	mc.A, err = register.New(0, 8, "A")
+	mc.A, err = register.New(0, 8, "A", "A")
 	if err != nil {
 		return nil, err
 	}
 
-	mc.X, err = register.New(0, 8, "X")
+	mc.X, err = register.New(0, 8, "X", "X")
 	if err != nil {
 		return nil, err
 	}
 
-	mc.Y, err = register.New(0, 8, "Y")
+	mc.Y, err = register.New(0, 8, "Y", "Y")
 	if err != nil {
 		return nil, err
 	}
 
-	mc.SP, err = register.New(0, 8, "SP")
+	mc.SP, err = register.New(0, 8, "SP", "SP")
 	if err != nil {
 		return nil, err
 	}
 
-	mc.Status = NewStatusRegister("ST")
+	mc.Status = NewStatusRegister("Status", "SR")
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
@@ -89,9 +89,9 @@ func (mc *CPU) MachineInfo() string {
 	return fmt.Sprintf("%v\n%v\n%v\n%v\n%v\n%v", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (mc *CPU) String() string {
-	return mc.MachineInfo()
+	return mc.MachineInfoTerse()
 }
 
 // IsExecuting returns true if it is called during an ExecuteInstruction() callback
@@ -408,7 +408,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		}
 
 		// using 8bit addition because we don't want a page-fault
-		adder, err := register.New(mc.X, 8, "")
+		adder, err := register.NewAnonymous(mc.X, 8)
 		if err != nil {
 			return nil, err
 		}
@@ -439,7 +439,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			return nil, err
 		}
 
-		adder, err := register.New(mc.Y, 16, "")
+		adder, err := register.NewAnonymous(mc.Y, 16)
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +470,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			return nil, err
 		}
 
-		adder, err := register.New(mc.X, 16, "")
+		adder, err := register.NewAnonymous(mc.X, 16)
 		if err != nil {
 			return nil, err
 		}
@@ -502,7 +502,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			return nil, err
 		}
 
-		adder, err := register.New(mc.Y, 16, "")
+		adder, err := register.NewAnonymous(mc.Y, 16)
 		if err != nil {
 			return nil, err
 		}
@@ -533,7 +533,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		if err != nil {
 			return nil, err
 		}
-		adder, err := register.New(indirectAddress, 8, "")
+		adder, err := register.NewAnonymous(indirectAddress, 8)
 		if err != nil {
 			return nil, err
 		}
@@ -552,7 +552,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		if err != nil {
 			return nil, err
 		}
-		adder, err := register.New(indirectAddress, 8, "")
+		adder, err := register.NewAnonymous(indirectAddress, 8)
 		if err != nil {
 			return nil, err
 		}
@@ -800,7 +800,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		}
 
 	case "INC":
-		r, err := register.New(value, 8, "")
+		r, err := register.NewAnonymous(value, 8)
 		if err != nil {
 			return nil, err
 		}
@@ -810,7 +810,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		value = r.ToUint8()
 
 	case "DEC":
-		r, err := register.New(value, 8, "")
+		r, err := register.NewAnonymous(value, 8)
 		if err != nil {
 			return nil, err
 		}
@@ -820,7 +820,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp, err := register.New(mc.A, mc.A.Size(), "")
+		cmp, err := register.NewAnonymous(mc.A, mc.A.Size())
 		if err != nil {
 			return nil, err
 		}
@@ -829,7 +829,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp, err := register.New(mc.X, mc.X.Size(), "")
+		cmp, err := register.NewAnonymous(mc.X, mc.X.Size())
 		if err != nil {
 			return nil, err
 		}
@@ -838,7 +838,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp, err := register.New(mc.Y, mc.Y.Size(), "")
+		cmp, err := register.NewAnonymous(mc.Y, mc.Y.Size())
 		if err != nil {
 			return nil, err
 		}
@@ -847,7 +847,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := register.New(mc.A, mc.A.Size(), "")
+		cmp, err := register.NewAnonymous(mc.A, mc.A.Size())
 		if err != nil {
 			return nil, err
 		}

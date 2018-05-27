@@ -17,29 +17,35 @@ type TVState struct {
 	valueFormat string
 }
 
+// Label returns the verbose label of the TVState
+func (ts TVState) Label() string {
+	return ts.label
+}
+
+// ShortLabel returns the terse label of the TVState
+func (ts TVState) ShortLabel() string {
+	return ts.shortLabel
+}
+
 // MachineInfoTerse returns the TVState in terse format
 func (ts TVState) MachineInfoTerse() string {
-	return ts.AsString(ts.value)
+	s := fmt.Sprintf(ts.valueFormat, ts.value)
+	return fmt.Sprintf("%s=%s", ts.shortLabel, s)
 }
 
 // MachineInfo returns the TVState in verbose format
 func (ts TVState) MachineInfo() string {
-	v := fmt.Sprintf(ts.valueFormat, ts.value)
-	return fmt.Sprintf("%s=%s", ts.label, v)
+	s := fmt.Sprintf(ts.valueFormat, ts.value)
+	return fmt.Sprintf("%s=%s", ts.label, s)
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (ts TVState) String() string {
-	return ts.MachineInfo()
+	return ts.MachineInfoTerse()
 }
 
-// AsString returns the (terse) string representation of an aribtrary value
-func (ts TVState) AsString(v interface{}) string {
-	val := fmt.Sprintf(ts.valueFormat, v.(int))
-	return fmt.Sprintf("%s=%s", ts.shortLabel, val)
-}
-
-// ToInt returns the value as an unsigned integer
+// ToInt returns the value as an integer
+// (implements debugger.target)
 func (ts TVState) ToInt() int {
 	return ts.value
 }

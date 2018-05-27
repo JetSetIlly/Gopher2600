@@ -64,7 +64,7 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 }
 
 // MachinInfoTerse returns the polycounter information in terse format
-func (pk Polycounter) MachinInfoTerse() string {
+func (pk Polycounter) MachineInfoTerse() string {
 	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
 }
 
@@ -73,9 +73,9 @@ func (pk Polycounter) MachineInfo() string {
 	return fmt.Sprintf("%s@%d", table6bits[pk.Count], pk.Phase)
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (pk Polycounter) String() string {
-	return pk.MachineInfo()
+	return pk.MachineInfoTerse()
 }
 
 // ResetPhase resets the phase *only*
@@ -107,7 +107,12 @@ func (pk *Polycounter) Tick(force bool) bool {
 	return false
 }
 
-// Match checks whether colorClock is at the *end* of the given count
-func (pk Polycounter) Match(count int) bool {
+// MatchEnd checks whether colorClock is at the *end* (ie. last phase) of the given count
+func (pk Polycounter) MatchEnd(count int) bool {
 	return pk.Count == count && pk.Phase == MaxPhase
+}
+
+// MatchBeginning checks whether colorClock is at the *beginning* (ie. first phase) of the given count
+func (pk Polycounter) MatchBeginning(count int) bool {
+	return pk.Count == count && pk.Phase == 0
 }

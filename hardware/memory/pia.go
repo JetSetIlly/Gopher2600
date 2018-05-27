@@ -46,3 +46,9 @@ func (pia *PIA) Write(address uint16, data uint8) error {
 	pia.memory[oa] = data
 	return nil
 }
+
+// Peek is the implementation of Area.Peek
+func (pia PIA) Peek(address uint16) (uint8, string, error) {
+	oa := address - pia.origin
+	return pia.memory[oa], "", nil
+}

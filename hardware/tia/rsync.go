@@ -36,17 +36,17 @@ func (rs rsync) MachineInfoTerse() string {
 	return "RS=-"
 }
 
-// map String to MachineInfo
-func (rs rsync) String() string {
-	return rs.MachineInfo()
-}
-
 // MachineInfo returns the RSYNC information in verbose format
 func (rs rsync) MachineInfo() string {
 	if rs.isActive() {
 		return fmt.Sprintf("RSYNC -> reset in %d cycle(s)", rs.remainingCycles())
 	}
 	return "RSYNC -> not set"
+}
+
+// map String to MachineInfoTerse
+func (rs rsync) String() string {
+	return rs.MachineInfoTerse()
 }
 
 func (rs rsync) remainingCycles() int {

@@ -7,9 +7,10 @@ import (
 
 // Register is an array of of type bit, used for register representation
 type Register struct {
-	value uint32
-	size  uint
-	label string
+	value      uint32
+	size       int
+	label      string
+	shortLabel string
 
 	signBit uint32
 	vbit    uint32
@@ -19,8 +20,13 @@ type Register struct {
 	binformat string
 }
 
+// NewAnonymous initialises a new register without a name
+func NewAnonymous(value interface{}, size int) (*Register, error) {
+	return New(value, size, "", "")
+}
+
 // New is the preferred method of initialisation for Register
-func New(value interface{}, size int, label string) (*Register, error) {
+func New(value interface{}, size int, label string, shortLabel string) (*Register, error) {
 	if size != 8 && size != 16 {
 		return nil, fmt.Errorf("can't create register (%s) - unsupported bit size (%d)", label, size)
 	}
@@ -45,8 +51,9 @@ func New(value interface{}, size int, label string) (*Register, error) {
 		return nil, fmt.Errorf("can't create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value))
 	}
 
-	r.size = uint(size)
+	r.size = size
 	r.label = label
+	r.shortLabel = shortLabel
 
 	if size == 8 {
 		r.signBit = 0x00000080
@@ -70,11 +77,6 @@ func (r Register) Size() int {
 	return 8
 }
 
-// Label returns the label assigned to the register
-func (r Register) Label() string {
-	return r.label
-}
-
 // IsNegative checks the sign bit of the register
 func (r Register) IsNegative() bool {
 	return r.value&r.signBit == r.signBit
@@ -94,9 +96,30 @@ func (r Register) IsBitV() bool {
 	return r.value&r.vbit == r.vbit
 }
 
+// FromInt returns the string representation of an arbitrary integer
+func (r Register) FromInt(v interface{}) string {
+	switch v.(type) {
+	case int:
+		tr, _ := New(v, r.size, r.label, r.shortLabel)
+		return fmt.Sprintf("%s=%s", tr.shortLabel, tr.ToHex())
+	default:
+		return r.shortLabel
+	}
+}
+
+// Label returns the verbose label of the register
+func (r Register) Label() string {
+	return r.label
+}
+
+// ShortLabel returns the terse labelname of the register
+func (r Register) ShortLabel() string {
+	return r.shortLabel
+}
+
 // MachineInfoTerse returns the register information in terse format
 func (r Register) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", r.label, r.ToHex())
+	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
 }
 
 // MachineInfo returns the register information in verbose format
@@ -104,18 +127,9 @@ func (r Register) MachineInfo() string {
 	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.ToUint(), r.ToHex(), r.ToBits())
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (r Register) String() string {
-	return r.MachineInfo()
-}
-
-// AsString returns the (terse) string representation of an aribtrary value
-func (r Register) AsString(v interface{}) string {
-	vr, err := New(v, r.Size(), r.Label())
-	if err != nil {
-		return err.Error()
-	}
-	return fmt.Sprintf("%s", vr.MachineInfoTerse())
+	return r.MachineInfoTerse()
 }
 
 // ToBits returns the register as bit pattern (of '0' and '1')
@@ -272,7 +286,7 @@ func (r *Register) EOR(v interface{}) {
 	r.value &= r.mask
 }
 
-// LSR (logical shift right) shifts register one bit to the rigth.
+// LSR (logical shift right) shifts register one bit to the right.
 // the least significant bit as it was before the shift. If we think of
 // the ASL operation as a division by two then the return value is the carry bit.
 func (r *Register) LSR() bool {

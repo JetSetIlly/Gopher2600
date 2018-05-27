@@ -23,7 +23,14 @@ type Video struct {
 	colubk uint8
 
 	// TODO: player sprite data
+
 	// TODO: playfield
+	pf0         uint8
+	pf1         uint8
+	pf2         uint8
+	pf          [20]bool
+	pfTickPhase int
+	pfTickCt    int
 
 	// playfield control
 	// -- including ball size
@@ -130,14 +137,9 @@ func (vd Video) MachineInfo() string {
 	return ""
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (vd Video) String() string {
-	return vd.MachineInfo()
-}
-
-// TickPlayfield moves playfield on one video cycle
-func (vd *Video) TickPlayfield() {
-	// TODO: tick playfield
+	return vd.MachineInfoTerse()
 }
 
 // TickSprites moves sprite elements on one video cycle
@@ -170,13 +172,37 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 // it should not be called therefore unless a VCS pixel is to be displayed
 func (vd Video) GetPixel() uint8 {
 	col := vd.colubk
+
+	// TODO: complete pixel ordering
 	if vd.ctrlpfPriority {
-		// TODO: complete priority pixel ordering
-		_, col = vd.PixelBall()
+		// player 1
+		// missile 1
+		// player 0
+		// missile 0
+		use, c := vd.PixelPlayfield()
+		if use {
+			col = c
+		}
+		use, c = vd.PixelBall()
+		if use {
+			col = c
+		}
+
 	} else {
-		// TODO: complete non-priority pixel ordering
-		_, col = vd.PixelBall()
+		use, c := vd.PixelBall()
+		if use {
+			col = c
+		}
+		use, c = vd.PixelPlayfield()
+		if use {
+			col = c
+		}
+		// player 1
+		// missile 1
+		// player 0
+		// missile 0
 	}
+
 	return col
 }
 
@@ -204,8 +230,31 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "REFP1":
 		vd.refp1 = value&0x40 == 0x40
 	case "PF0":
+		vd.pf0 = value & 0xF0
+		vd.pf[0] = vd.pf0&0x10 == 0x10
+		vd.pf[1] = vd.pf0&0x20 == 0x20
+		vd.pf[2] = vd.pf0&0x40 == 0x40
+		vd.pf[3] = vd.pf0&0x80 == 0x80
 	case "PF1":
+		vd.pf1 = value
+		vd.pf[4] = vd.pf1&0x80 == 0x80
+		vd.pf[5] = vd.pf1&0x40 == 0x40
+		vd.pf[6] = vd.pf1&0x20 == 0x20
+		vd.pf[7] = vd.pf1&0x10 == 0x10
+		vd.pf[8] = vd.pf1&0x08 == 0x08
+		vd.pf[9] = vd.pf1&0x04 == 0x04
+		vd.pf[10] = vd.pf1&0x02 == 0x02
+		vd.pf[11] = vd.pf1&0x01 == 0x01
 	case "PF2":
+		vd.pf2 = value
+		vd.pf[12] = vd.pf2&0x01 == 0x01
+		vd.pf[13] = vd.pf2&0x02 == 0x02
+		vd.pf[15] = vd.pf2&0x04 == 0x04
+		vd.pf[15] = vd.pf2&0x08 == 0x08
+		vd.pf[16] = vd.pf2&0x10 == 0x10
+		vd.pf[17] = vd.pf2&0x20 == 0x20
+		vd.pf[18] = vd.pf2&0x40 == 0x40
+		vd.pf[19] = vd.pf2&0x80 == 0x80
 	case "RESP0":
 	case "RESP1":
 	case "RESM0":

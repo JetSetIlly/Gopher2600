@@ -99,9 +99,9 @@ func (tv HeadlessTV) MachineInfo() string {
 	return fmt.Sprintf("%v\n%v\n%v%s\nPixel: %d", tv.frameNum, tv.scanline, tv.horizPos, specExclaim, tv.pixelX())
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (tv HeadlessTV) String() string {
-	return tv.MachineInfo()
+	return tv.MachineInfoTerse()
 }
 
 // pixelX returns the adjusted value for horizPos

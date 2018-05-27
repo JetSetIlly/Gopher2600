@@ -72,7 +72,7 @@ func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 				dbg.print(Error, fmt.Sprintf("script error (%s): use of '%s' is not recommended in scripts", scriptfile, lines[i]))
 
 				// make sure run state is still sane
-				dbg.runUntilBreak = false
+				dbg.runUntilHalt = false
 			}
 		}
 	}

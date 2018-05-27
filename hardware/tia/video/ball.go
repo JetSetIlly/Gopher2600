@@ -22,8 +22,8 @@ func (vd *Video) TickBall() {
 	}
 }
 
-// PixelBall returns the color of the ball at the current time. returns NoColor
-// if ball is not to be seen at the current point
+// PixelBall returns the color of the ball at the current time.  returns
+// (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (vd *Video) PixelBall() (bool, uint8) {
 	// ball should be pixelled if:
 	//  o ball is enabled and vertical delay is not enabled

@@ -45,9 +45,9 @@ func (tia TIA) MachineInfo() string {
 	return fmt.Sprintf("%v\n%v\n%v", tia.colorClock, tia.rsync, tia.hmove)
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (tia TIA) String() string {
-	return tia.MachineInfo()
+	return tia.MachineInfoTerse()
 }
 
 // New is the preferred method of initialisation for the TIA structure
@@ -137,23 +137,23 @@ func (tia *TIA) StepVideoCycle() bool {
 	frontPorch := false
 	cburst := false
 
-	if tia.colorClock.Match(16) && !tia.hmove.isActive() {
+	if tia.colorClock.MatchEnd(16) && !tia.hmove.isActive() {
 		// HBLANK off (early)
 		// 011100
 		tia.hblank = false
-	} else if tia.colorClock.Match(18) && tia.hmove.isActive() {
+	} else if tia.colorClock.MatchEnd(18) && tia.hmove.isActive() {
 		// HBLANK off (late)
 		// 010111
 		tia.hblank = false
-	} else if tia.colorClock.Match(4) {
+	} else if tia.colorClock.MatchEnd(4) {
 		// HSYNC on
 		// 111100
 		tia.hsync = true
-	} else if tia.colorClock.Match(8) {
+	} else if tia.colorClock.MatchEnd(8) {
 		// HSYNC off
 		// 110111
 		tia.hsync = false
-	} else if tia.colorClock.Match(12) {
+	} else if tia.colorClock.MatchEnd(12) {
 		// color burst
 		// 001111
 		cburst = true

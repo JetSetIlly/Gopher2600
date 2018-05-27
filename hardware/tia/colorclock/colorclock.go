@@ -22,7 +22,7 @@ func New() *ColorClock {
 
 // MachineInfoTerse returns the color clock information in terse format
 func (cc ColorClock) MachineInfoTerse() string {
-	return fmt.Sprintf("CC=%s", cc.Polycounter.MachinInfoTerse())
+	return fmt.Sprintf("CC=%s", cc.Polycounter.MachineInfoTerse())
 }
 
 // MachineInfo returns the color clock information in verbose format
@@ -31,9 +31,9 @@ func (cc ColorClock) MachineInfo() string {
 	return fmt.Sprintf("CCLOCK: %v [%dpx]", cc.Polycounter, cc.Pixel())
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (cc ColorClock) String() string {
-	return cc.MachineInfo()
+	return cc.MachineInfoTerse()
 }
 
 // Pixel returns the color clock when expressed a pixel

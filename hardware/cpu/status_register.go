@@ -5,6 +5,7 @@ import "fmt"
 // StatusRegister is the special purpose register that stores the flags of the CPU
 type StatusRegister struct {
 	label            string
+	shortLabel       string
 	Sign             bool
 	Overflow         bool
 	Break            bool
@@ -16,20 +17,16 @@ type StatusRegister struct {
 
 // NewStatusRegister is the preferred method of initialisation for the status
 // register
-func NewStatusRegister(label string) StatusRegister {
+func NewStatusRegister(label string, shortLabel string) StatusRegister {
 	sr := new(StatusRegister)
 	sr.label = label
+	sr.shortLabel = shortLabel
 	return *sr
-}
-
-// Label returns the label assigned to the status register
-func (sr StatusRegister) Label() string {
-	return sr.label
 }
 
 // MachineInfoTerse returns the status register information in terse format
 func (sr StatusRegister) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", sr.label, sr.ToBits())
+	return fmt.Sprintf("%s=%s", sr.shortLabel, sr.ToBits())
 }
 
 // MachineInfo returns the status register information in verbose format
@@ -37,9 +34,9 @@ func (sr StatusRegister) MachineInfo() string {
 	return fmt.Sprintf("%s: %v", sr.label, sr.ToBits())
 }
 
-// map String to MachineInfo
+// map String to MachineInfoTerse
 func (sr StatusRegister) String() string {
-	return sr.MachineInfo()
+	return sr.MachineInfoTerse()
 }
 
 // ToBits returns the register as a labelled bit pattern

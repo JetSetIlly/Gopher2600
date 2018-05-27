@@ -2,6 +2,7 @@ package television
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -21,12 +22,14 @@ type SDLTV struct {
 	screenTexture *sdl.Texture
 	fadeTexture   *sdl.Texture
 
-	pixelsScreen []byte
+	pixelsScreen []byte // screen buffer
 	pixelsFade   []byte
 	pixels0      []byte
 	pixels1      []byte
 
 	paused bool
+
+	lastFrameRender time.Time
 }
 
 // NewSDLTV is the preferred method for initalising an SDL TV
@@ -55,7 +58,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		tv.pixelsScreen = tv.pixelsFade
 		tv.pixelsFade = swp
 
-		tv.clearScreen()
+		tv.clearScreenBuffer()
 
 		return nil
 	}
@@ -124,7 +127,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 	// finish up by updating the tv with a black image
 	// -- note that we've elected not to show the window on startup
-	tv.clearScreen()
+	tv.clearScreenBuffer()
 	err = tv.update()
 	if err != nil {
 		return nil, err
@@ -148,7 +151,7 @@ func (tv *SDLTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel Pix
 	tv.setPixel(int32(tv.pixelX()), int32(tv.pixelY()), r, g, b, tv.pixelsScreen)
 }
 
-func (tv *SDLTV) clearScreen() {
+func (tv *SDLTV) clearScreenBuffer() {
 	for y := int32(0); y < tv.height; y++ {
 		for x := int32(0); x < tv.width; x++ {
 			i := (y*tv.width + x) * tv.pixelDepth
@@ -224,7 +227,12 @@ func (tv *SDLTV) update() error {
 	}
 
 	// finalise updating of screen
+
+	// for windowed SDL, attempt to synchronise to 60fps (VSYNC hint only seems
+	// to work if window is in full screen mode)
+	time.Sleep(16666*time.Microsecond - time.Now().Sub(tv.lastFrameRender))
 	tv.renderer.Present()
+	tv.lastFrameRender = time.Now()
 
 	return nil
 }

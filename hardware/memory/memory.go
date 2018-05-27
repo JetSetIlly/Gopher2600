@@ -26,6 +26,9 @@ type ChipBus interface {
 // VCSMemory.memmap)
 type Area interface {
 	Label() string
+
+	// peek returns value, label (if any), and any error (which may not be fatal)
+	Peek(address uint16) (uint8, string, error)
 }
 
 // AreaInfo provides the basic info needed to define a memory area. All memory

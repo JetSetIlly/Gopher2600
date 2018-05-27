@@ -4,7 +4,8 @@ import "gopher2600/hardware"
 
 // defines which types are valid targets
 type target interface {
-	AsString(interface{}) string
+	Label() string
+	ShortLabel() string
 	ToInt() int
 }
 
