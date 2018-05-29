@@ -5,21 +5,40 @@ import (
 	"os"
 )
 
-// UI defines the user interface operations required by the debugger
-type UI interface {
+// UserInterface defines the user interface operations required by the debugger
+type UserInterface interface {
+	Initialise() error
+	CleanUp()
 	UserPrint(PrintProfile, string, ...interface{})
-	UserRead([]byte) (int, error)
+	UserRead([]byte, string) (int, error)
+}
+
+// UserInterrupt can be returned by UserRead() when user has cause an
+// interrupt (ie. CTRL-C)
+type UserInterrupt struct {
+	Message string
+}
+
+// implement Error interface for UserInterrupt
+func (intr UserInterrupt) Error() string {
+	return intr.Message
 }
 
 // PlainTerminal is the default, most basic terminal interface
 type PlainTerminal struct {
-	UI
 }
 
-// no newPlainUI() function currently required
+// Initialise perfoms any setting up required for the terminal
+func (pt *PlainTerminal) Initialise() error {
+	return nil
+}
+
+// CleanUp perfoms any cleaning up required for the terminal
+func (pt *PlainTerminal) CleanUp() {
+}
 
 // UserPrint is the plain terminal print routine
-func (ui PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
+func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 	switch pp {
 	case Error:
 		s = fmt.Sprintf("* %s", s)
@@ -35,7 +54,9 @@ func (ui PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 }
 
 // UserRead is the plain terminal read routine
-func (ui PlainTerminal) UserRead(input []byte) (int, error) {
+func (pt PlainTerminal) UserRead(input []byte, prompt string) (int, error) {
+	pt.UserPrint(Prompt, prompt)
+
 	n, err := os.Stdin.Read(input)
 	if err != nil {
 		return n, err

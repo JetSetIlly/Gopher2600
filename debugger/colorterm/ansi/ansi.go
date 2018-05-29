@@ -1,4 +1,4 @@
-package colorterm
+package ansi
 
 import (
 	"fmt"
@@ -34,54 +34,46 @@ const (
 	attrStrike    = 8
 )
 
-var pens map[string]string
-var dimPens map[string]string
-var penStyles map[string]string
-var ansiOff string
+// PenColor is the table of colors to be used for text
+var PenColor map[string]string
+
+// DimPens is the table of pastel colors to be used for text
+var DimPens map[string]string
+
+// PenStyles is the table of styles to be used for text
+var PenStyles map[string]string
+
+// NormalPen is the CSI sequence for regular text
+var NormalPen string
 
 func init() {
-	pens = make(map[string]string)
-	dimPens = make(map[string]string)
-	penStyles = make(map[string]string)
+	PenColor = make(map[string]string)
+	DimPens = make(map[string]string)
+	PenStyles = make(map[string]string)
 
-	ansiOff, _ = ansiBuild("", "", "", false, false)
+	NormalPen, _ = colorBuild("", "", "", false, false)
 
-	pens["red"], _ = ansiBuild("red", "normal", "", true, false)
-	pens["green"], _ = ansiBuild("green", "normal", "", true, false)
-	pens["yellow"], _ = ansiBuild("yellow", "normal", "", true, false)
-	pens["blue"], _ = ansiBuild("blue", "normal", "", true, false)
-	pens["magenta"], _ = ansiBuild("magenta", "normal", "", true, false)
-	pens["cyan"], _ = ansiBuild("cyan", "normal", "", true, false)
-	pens["white"], _ = ansiBuild("white", "normal", "", true, false)
+	PenColor["red"], _ = colorBuild("red", "normal", "", true, false)
+	PenColor["green"], _ = colorBuild("green", "normal", "", true, false)
+	PenColor["yellow"], _ = colorBuild("yellow", "normal", "", true, false)
+	PenColor["blue"], _ = colorBuild("blue", "normal", "", true, false)
+	PenColor["magenta"], _ = colorBuild("magenta", "normal", "", true, false)
+	PenColor["cyan"], _ = colorBuild("cyan", "normal", "", true, false)
+	PenColor["white"], _ = colorBuild("white", "normal", "", true, false)
 
-	dimPens["red"], _ = ansiBuild("red", "normal", "", false, false)
-	dimPens["green"], _ = ansiBuild("green", "normal", "", false, false)
-	dimPens["yellow"], _ = ansiBuild("yellow", "normal", "", false, false)
-	dimPens["blue"], _ = ansiBuild("blue", "normal", "", false, false)
-	dimPens["magenta"], _ = ansiBuild("magenta", "normal", "", false, false)
-	dimPens["cyan"], _ = ansiBuild("cyan", "normal", "", false, false)
-	dimPens["white"], _ = ansiBuild("white", "normal", "", false, false)
+	DimPens["red"], _ = colorBuild("red", "normal", "", false, false)
+	DimPens["green"], _ = colorBuild("green", "normal", "", false, false)
+	DimPens["yellow"], _ = colorBuild("yellow", "normal", "", false, false)
+	DimPens["blue"], _ = colorBuild("blue", "normal", "", false, false)
+	DimPens["magenta"], _ = colorBuild("magenta", "normal", "", false, false)
+	DimPens["cyan"], _ = colorBuild("cyan", "normal", "", false, false)
+	DimPens["white"], _ = colorBuild("white", "normal", "", false, false)
 
-	penStyles["bold"], _ = ansiBuild("", "", "bold", false, false)
-	penStyles["underline"], _ = ansiBuild("", "", "underline", false, false)
+	PenStyles["bold"], _ = colorBuild("", "", "bold", false, false)
+	PenStyles["underline"], _ = colorBuild("", "", "underline", false, false)
 }
 
-func printAnsiTable() {
-	for k, v := range pens {
-		fmt.Printf("%s%s = <esc>%s\n", v, k, v[1:])
-		fmt.Print(ansiOff)
-	}
-	for k, v := range dimPens {
-		fmt.Printf("%s%s = <esc>%s\n", v, k, v[1:])
-		fmt.Print(ansiOff)
-	}
-	for k, v := range penStyles {
-		fmt.Printf("%s%s = <esc>%s\n", v, k, v[1:])
-		fmt.Print(ansiOff)
-	}
-}
-
-func ansiBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
+func colorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
 	s := "\033["
 
 	// pen
@@ -175,4 +167,33 @@ func ansiBuild(pen, paper, attribute string, brightPen, brightPaper bool) (strin
 	s = fmt.Sprintf("%sm", s)
 
 	return s, nil
+}
+
+// ClearLine is the CSI sequence to clear the entire of the current line
+const ClearLine = "\033[2K"
+
+// CursorStore if the CSI sequence to store the current cursor position
+const CursorStore = "\033[s"
+
+// CursorRestore if the CSI sequence to restore the cursor position to a
+// previous store
+const CursorRestore = "\033[u"
+
+// CursorForwardOne is the CSI sequence to move the cursor forward (to the right
+// for latin fonts) one character
+const CursorForwardOne = "\033[1C"
+
+// CursorBackwardOne is the CSI sequence to move the cursor backward (to the left
+// for latin fonts) one character
+const CursorBackwardOne = "\033[1D"
+
+// CursorMove is the CSI sequence to move the cursor n characters forward
+// (positive numbers) or n characters backwards (negative numbers)
+func CursorMove(n int) string {
+	if n < 0 {
+		return fmt.Sprintf("\033[%dD", -n)
+	} else if n > 0 {
+		return fmt.Sprintf("\033[%dC", n)
+	}
+	return ""
 }

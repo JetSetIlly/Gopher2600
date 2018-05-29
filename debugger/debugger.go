@@ -39,12 +39,12 @@ type Debugger struct {
 	inputloopVideoClock bool // step mode
 
 	// user interface
-	ui       UI
+	ui       UserInterface
 	uiSilent bool // controls whether UI is to remain silent
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
-func NewDebugger(ui UI) (*Debugger, error) {
+func NewDebugger() (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
@@ -57,16 +57,6 @@ func NewDebugger(ui UI) (*Debugger, error) {
 	dbg.vcs, err = hardware.New(tv)
 	if err != nil {
 		return nil, err
-	}
-
-	// prepare user interface
-	if ui == nil {
-		dbg.ui = new(PlainTerminal)
-		if dbg.ui == nil {
-			return nil, fmt.Errorf("error allocationg memory for UI")
-		}
-	} else {
-		dbg.ui = ui
 	}
 
 	// allocate memory for user input
@@ -83,8 +73,24 @@ func NewDebugger(ui UI) (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(filename string) error {
-	err := dbg.vcs.AttachCartridge(filename)
+func (dbg *Debugger) Start(ui UserInterface, filename string) error {
+	// prepare user interface
+	if ui == nil {
+		dbg.ui = new(PlainTerminal)
+		if dbg.ui == nil {
+			return fmt.Errorf("error allocationg memory for UI")
+		}
+	} else {
+		dbg.ui = ui
+	}
+
+	err := dbg.ui.Initialise()
+	if err != nil {
+		return err
+	}
+	defer dbg.ui.CleanUp()
+
+	err = dbg.vcs.AttachCartridge(filename)
 	if err != nil {
 		return err
 	}
@@ -172,10 +178,16 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			dbg.runUntilHalt = false
 
 			// get user input
-			dbg.print(Prompt, "[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
-			n, err := dbg.ui.UserRead(dbg.input)
+			prompt := fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+			n, err := dbg.ui.UserRead(dbg.input, prompt)
 			if err != nil {
-				return err
+				switch err.(type) {
+				case *UserInterrupt:
+					dbg.print(Feedback, err.Error())
+					return nil
+				default:
+					return err
+				}
 			}
 
 			// parse user input
@@ -442,7 +454,6 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-
 	}
 
 	return stepNext, nil

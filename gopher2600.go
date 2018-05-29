@@ -15,6 +15,7 @@ import (
 
 func main() {
 	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, TVFPS, DISASM")
+	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -26,9 +27,7 @@ func main() {
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
-		// create a new debugger with the choice of terminal
-		// TODO: implement flag for plain terminal
-		dbg, err := debugger.NewDebugger(new(colorterm.ColorTerminal))
+		dbg, err := debugger.NewDebugger()
 		if err != nil {
 			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
@@ -41,9 +40,20 @@ func main() {
 			os.Exit(10)
 		}
 
-		// start debugger with choice of cartridge
-		// TODO: implement command line selection of cartridge
-		err = dbg.Start(cartridgeFile)
+		// start debugger with choice of interface and cartridge
+		var term debugger.UserInterface
+
+		switch strings.ToUpper(*termType) {
+		case "COLOR":
+			term = new(colorterm.ColorTerminal)
+		default:
+			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
+			fallthrough
+		case "PLAIN":
+			term = new(debugger.PlainTerminal)
+		}
+
+		err = dbg.Start(term, cartridgeFile)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(10)
