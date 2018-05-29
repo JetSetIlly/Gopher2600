@@ -100,11 +100,12 @@ func (mc *CPU) IsExecuting() bool {
 }
 
 // Reset reinitialises all registers
-func (mc *CPU) Reset() {
+func (mc *CPU) Reset() error {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("can't call cpu.Reset() in the middle of cpu.ExecuteInstruction()"))
+		return fmt.Errorf("can't reset CPU in the middle of an instruction")
 	}
+
 	mc.PC.Load(0)
 	mc.A.Load(0)
 	mc.X.Load(0)
@@ -117,13 +118,15 @@ func (mc *CPU) Reset() {
 	mc.Status.Break = true
 	mc.endCycle = nil
 	mc.RdyFlg = true
+
+	return nil
 }
 
 // LoadPC loads the contents of indirectAddress into the PC
 func (mc *CPU) LoadPC(indirectAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("can't call cpu.LoadPC() in the middle of cpu.ExecuteInstruction()"))
+		return fmt.Errorf("can't alter program counter in the middle of an instruction")
 	}
 
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()

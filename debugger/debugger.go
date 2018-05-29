@@ -329,11 +329,11 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.running = false
 
 	case "RESET":
-		dbg.print(Feedback, "machine reset")
 		err := dbg.vcs.Reset()
 		if err != nil {
 			return false, err
 		}
+		dbg.print(Feedback, "machine reset")
 
 	case "RUN":
 		dbg.runUntilHalt = true

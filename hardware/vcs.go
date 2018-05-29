@@ -140,7 +140,9 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 //  - reset the CPU
 //  - reload reset address into the PC
 func (vcs *VCS) Reset() error {
-	vcs.MC.Reset()
+	if err := vcs.MC.Reset(); err != nil {
+		return err
+	}
 	err := vcs.MC.LoadPC(addressReset)
 	if err != nil {
 		return err
