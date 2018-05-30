@@ -7,6 +7,8 @@ package easyterm
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -28,32 +30,87 @@ type TermGeometry struct {
 // Terminal is the main container for posix terminals. usually embedded in
 // other struct types
 type Terminal struct {
-	inputFd  uintptr
-	outputFd uintptr
+	input  *os.File
+	output *os.File
 
 	Geometry TermGeometry
 
 	canAttr syscall.Termios
 	rawAttr syscall.Termios
+
+	// sig/ack channels to control signal handler
+	terminateHandlerSig chan bool
+	terminateHandlerAck chan bool
+
+	// public functions that are  called from the signal handler are prefaced
+	// with (to prevent race conditions, or worse):
+	// 		pt.mu.Lock()
+	// 		defer pt.mu.Unlock()
+	mu sync.Mutex
 }
 
 // Initialise the fields in the Terminal struct
 func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
-	if inputFile != nil {
-		pt.inputFd = inputFile.Fd()
+	// not which files we're using for input and output
+	if inputFile == nil {
+		return fmt.Errorf("easyterm Terminal requires an input file")
 	}
-	if outputFile != nil {
-		pt.outputFd = outputFile.Fd()
+	if outputFile == nil {
+		return fmt.Errorf("easyterm Terminal requires an output file")
 	}
-	termios.Tcgetattr(pt.inputFd, &pt.canAttr)
+
+	pt.input = inputFile
+	pt.output = outputFile
+
+	// prepare the attributes for the different terminal modes we'll be using
+	termios.Tcgetattr(pt.input.Fd(), &pt.canAttr)
 	termios.Cfmakecbreak(&pt.rawAttr)
+
+	// set up sig/ack channels for signal handler
+	pt.terminateHandlerSig = make(chan bool)
+	pt.terminateHandlerAck = make(chan bool)
+
+	// kickstart signal handler (it is so cool that this works so easily with
+	// go channels)
+	go func() {
+		sigwinch := make(chan os.Signal, 1)
+		signal.Notify(sigwinch, syscall.SIGWINCH)
+		defer func() {
+			pt.terminateHandlerAck <- true
+		}()
+
+		for {
+			select {
+			case <-sigwinch:
+				_ = pt.UpdateGeometry()
+			case <-pt.terminateHandlerSig:
+				return
+			}
+		}
+	}()
+
 	return nil
+}
+
+// CleanUp closes resources created in the Initialise() function
+func (pt *Terminal) CleanUp() {
+	pt.terminateHandlerSig <- true
+	<-pt.terminateHandlerAck
+}
+
+// Print writes the formatted string to the output file
+// TODO: expand the functionality of easyterm Print()
+func (pt *Terminal) Print(s string, a ...interface{}) {
+	pt.output.WriteString(fmt.Sprintf(s, a...))
 }
 
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
 // output terminal
 func (pt *Terminal) UpdateGeometry() error {
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, pt.outputFd, uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&pt.Geometry)))
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, pt.output.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&pt.Geometry)))
 	if errno != 0 {
 		return fmt.Errorf("error updating terminal geometry information (%d)", errno)
 	}
@@ -62,22 +119,20 @@ func (pt *Terminal) UpdateGeometry() error {
 
 // CanonicalMode puts terminal into normal, everyday canonical mode
 func (pt Terminal) CanonicalMode() {
-	termios.Tcsetattr(pt.inputFd, termios.TCIFLUSH, &pt.canAttr)
+	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.canAttr)
 }
 
 // RawMode puts terminal into raw mode
 func (pt Terminal) RawMode() {
-	termios.Tcsetattr(pt.inputFd, termios.TCIFLUSH, &pt.rawAttr)
+	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.rawAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty
 func (pt Terminal) Flush() error {
-	err := termios.Tcflush(pt.inputFd, termios.TCIFLUSH)
-	if err != nil {
+	if err := termios.Tcflush(pt.input.Fd(), termios.TCIFLUSH); err != nil {
 		return err
 	}
-	err = termios.Tcflush(pt.outputFd, termios.TCOFLUSH)
-	if err != nil {
+	if err := termios.Tcflush(pt.output.Fd(), termios.TCOFLUSH); err != nil {
 		return err
 	}
 	return nil

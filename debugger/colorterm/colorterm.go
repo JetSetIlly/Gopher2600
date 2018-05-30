@@ -2,7 +2,6 @@ package colorterm
 
 import (
 	"bufio"
-	"fmt"
 	"gopher2600/debugger"
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/debugger/colorterm/easyterm"
@@ -38,43 +37,44 @@ func (ct *ColorTerminal) Initialise() error {
 
 // CleanUp perfoms any cleaning up required for the terminal
 func (ct *ColorTerminal) CleanUp() {
-	fmt.Print("\r")
+	ct.Print("\r")
 	_ = ct.Flush()
+	ct.Terminal.CleanUp()
 }
 
 // UserPrint implementation for debugger.UI interface
 func (ct *ColorTerminal) UserPrint(pp debugger.PrintProfile, s string, a ...interface{}) {
 	if pp != debugger.Input {
-		fmt.Print("\r")
+		ct.Print("\r")
 	}
 
 	switch pp {
 	case debugger.CPUStep:
-		fmt.Print(ansi.PenColor["yellow"])
+		ct.Print(ansi.PenColor["yellow"])
 	case debugger.VideoStep:
-		fmt.Print(ansi.DimPens["yellow"])
+		ct.Print(ansi.DimPens["yellow"])
 	case debugger.MachineInfo:
-		fmt.Print(ansi.PenColor["cyan"])
+		ct.Print(ansi.PenColor["cyan"])
 	case debugger.Error:
-		fmt.Print(ansi.PenColor["red"])
-		fmt.Print(ansi.PenColor["bold"])
-		fmt.Print("* ")
-		fmt.Print(ansi.NormalPen)
-		fmt.Print(ansi.PenColor["red"])
+		ct.Print(ansi.PenColor["red"])
+		ct.Print(ansi.PenColor["bold"])
+		ct.Print("* ")
+		ct.Print(ansi.NormalPen)
+		ct.Print(ansi.PenColor["red"])
 	case debugger.Feedback:
-		fmt.Print(ansi.DimPens["white"])
+		ct.Print(ansi.DimPens["white"])
 	case debugger.Script:
-		fmt.Print("> ")
+		ct.Print("> ")
 	case debugger.Prompt:
-		fmt.Print(ansi.PenStyles["bold"])
+		ct.Print(ansi.PenStyles["bold"])
 	}
 
-	fmt.Printf(s, a...)
-	fmt.Print(ansi.NormalPen)
+	ct.Print(s, a...)
+	ct.Print(ansi.NormalPen)
 
 	// add a newline if print profile is anything other than prompt
 	if pp != debugger.Prompt && pp != debugger.Input {
-		fmt.Println("")
+		ct.Print("\n")
 	}
 }
 
@@ -105,13 +105,13 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 	//		6. restore the cursor position
 	//
 	// for this to work we need to place the cursor in it's initial position,
-	fmt.Printf("\r%s", ansi.CursorMove(len(prompt)))
+	ct.Print("\r%s", ansi.CursorMove(len(prompt)))
 
 	for {
-		fmt.Print(ansi.CursorStore)
+		ct.Print(ansi.CursorStore)
 		ct.UserPrint(debugger.Prompt, "%s%s", ansi.ClearLine, prompt)
 		ct.UserPrint(debugger.Input, string(input[:n]))
-		fmt.Print(ansi.CursorRestore)
+		ct.Print(ansi.CursorRestore)
 
 		r, _, err := ct.reader.ReadRune()
 		if err != nil {
@@ -119,12 +119,14 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 		}
 
 		switch r {
-		case 3:
+		case easyterm.KeyCtrlC:
 			// CTRL-C
-			fmt.Print("\n")
+			ct.Print("\n")
 			return n + 1, &debugger.UserInterrupt{Message: "user interrupt: CTRL-C"}
 
-		case 13:
+		case easyterm.KeyTab:
+
+		case easyterm.KeyCarriageReturn:
 			// CARRIAGE RETURN
 
 			// check to see if input is the same as the last history entry
@@ -153,17 +155,17 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 				ct.commandHistory = append(ct.commandHistory, command{input: nh})
 			}
 
-			fmt.Print("\n")
+			ct.Print("\n")
 			return n + 1, nil
 
-		case 27:
+		case easyterm.KeyEsc:
 			// ESCAPE SEQUENCE BEGIN
 			r, _, err := ct.reader.ReadRune()
 			if err != nil {
 				return n, err
 			}
 			switch r {
-			case 91:
+			case easyterm.EscCursor:
 				// CURSOR KEY
 				r, _, err := ct.reader.ReadRune()
 				if err != nil {
@@ -171,7 +173,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 				}
 
 				switch r {
-				case 'A':
+				case easyterm.CursorUp:
 					// move up through command history
 					if len(ct.commandHistory) > 0 {
 						// if we're at the end of the command history then store
@@ -185,41 +187,41 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 							history--
 							copy(input, ct.commandHistory[history].input)
 							n = len(ct.commandHistory[history].input)
-							fmt.Print(ansi.CursorMove(n - cursor))
+							ct.Print(ansi.CursorMove(n - cursor))
 							cursor = n
 						}
 					}
-				case 'B':
+				case easyterm.CursorDown:
 					// move down through command history
 					if len(ct.commandHistory) > 0 {
 						if history < len(ct.commandHistory)-1 {
 							history++
 							copy(input, ct.commandHistory[history].input)
 							n = len(ct.commandHistory[history].input)
-							fmt.Print(ansi.CursorMove(n - cursor))
+							ct.Print(ansi.CursorMove(n - cursor))
 							cursor = n
 						} else if history == len(ct.commandHistory)-1 {
 							history++
 							copy(input, buffInput)
 							n = buffN
-							fmt.Print(ansi.CursorMove(n - cursor))
+							ct.Print(ansi.CursorMove(n - cursor))
 							cursor = n
 						}
 					}
-				case 'C':
+				case easyterm.CursorForward:
 					// move forward through current command input
 					if cursor < n {
-						fmt.Print(ansi.CursorForwardOne)
+						ct.Print(ansi.CursorForwardOne)
 						cursor++
 					}
-				case 'D':
+				case easyterm.CursorBackward:
 					// move backward through current command input
 					if cursor > 0 {
-						fmt.Print(ansi.CursorBackwardOne)
+						ct.Print(ansi.CursorBackwardOne)
 						cursor--
 					}
 
-				case 51:
+				case easyterm.EscDelete:
 					// DELETE
 					if cursor < n {
 						copy(input[cursor:], input[cursor+1:])
@@ -230,11 +232,11 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 				}
 			}
 
-		case 127:
+		case easyterm.KeyBackspace:
 			// BACKSPACE
 			if cursor > 0 {
 				copy(input[cursor-1:], input[cursor:])
-				fmt.Print(ansi.CursorBackwardOne)
+				ct.Print(ansi.CursorBackwardOne)
 				cursor--
 				n--
 				history = len(ct.commandHistory)
@@ -242,7 +244,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 
 		default:
 			if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
-				fmt.Printf("%c", r)
+				ct.Print("%c", r)
 				m := utf8.EncodeRune(er, r)
 				copy(input[cursor+m:], input[cursor:])
 				copy(input[cursor:], er[:m])
