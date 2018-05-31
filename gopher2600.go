@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gopher2600/debugger"
 	"gopher2600/debugger/colorterm"
+	"gopher2600/debugger/ui"
 	"gopher2600/hardware"
 	"gopher2600/television"
 	"os"
@@ -41,7 +42,7 @@ func main() {
 		}
 
 		// start debugger with choice of interface and cartridge
-		var term debugger.UserInterface
+		var term ui.UserInterface
 
 		switch strings.ToUpper(*termType) {
 		case "COLOR":
@@ -50,7 +51,7 @@ func main() {
 			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
 			fallthrough
 		case "PLAIN":
-			term = new(debugger.PlainTerminal)
+			term = new(ui.PlainTerminal)
 		}
 
 		err = dbg.Start(term, cartridgeFile)

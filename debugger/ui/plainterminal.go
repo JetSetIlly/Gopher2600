@@ -1,28 +1,9 @@
-package debugger
+package ui
 
 import (
 	"fmt"
 	"os"
 )
-
-// UserInterface defines the user interface operations required by the debugger
-type UserInterface interface {
-	Initialise() error
-	CleanUp()
-	UserPrint(PrintProfile, string, ...interface{})
-	UserRead([]byte, string) (int, error)
-}
-
-// UserInterrupt can be returned by UserRead() when user has cause an
-// interrupt (ie. CTRL-C)
-type UserInterrupt struct {
-	Message string
-}
-
-// implement Error interface for UserInterrupt
-func (intr UserInterrupt) Error() string {
-	return intr.Message
-}
 
 // PlainTerminal is the default, most basic terminal interface
 type PlainTerminal struct {
@@ -35,6 +16,10 @@ func (pt *PlainTerminal) Initialise() error {
 
 // CleanUp perfoms any cleaning up required for the terminal
 func (pt *PlainTerminal) CleanUp() {
+}
+
+// RegisterTabCompleter adds an implementation of TabCompleter to the terminal
+func (pt *PlainTerminal) RegisterTabCompleter(tc TabCompleter) {
 }
 
 // UserPrint is the plain terminal print routine

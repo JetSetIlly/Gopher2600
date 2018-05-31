@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/ui"
 	"strconv"
 )
 
@@ -64,7 +65,7 @@ func (bp *breakpoints) check() bool {
 			// make sure that we're not breaking on an ignore state
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
 			if !prs || prs && bp.breaks[i].target.ToInt() != bv {
-				bp.dbg.print(Feedback, "break on %s=%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
+				bp.dbg.print(ui.Feedback, "break on %s=%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
 				broken = true
 			}
 		}
@@ -86,10 +87,10 @@ func (bp *breakpoints) check() bool {
 
 func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
-		bp.dbg.print(Feedback, "no breakpoints")
+		bp.dbg.print(ui.Feedback, "no breakpoints")
 	} else {
 		for i := range bp.breaks {
-			bp.dbg.print(Feedback, "%s->%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
+			bp.dbg.print(ui.Feedback, "%s->%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
 		}
 	}
 }
@@ -121,7 +122,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			for _, mv := range bp.breaks {
 				if mv.target == tgt && mv.value == int(val) {
 					addNewBreak = false
-					bp.dbg.print(Feedback, "breakpoint already exists")
+					bp.dbg.print(ui.Feedback, "breakpoint already exists")
 					break // for loop
 				}
 			}
@@ -140,7 +141,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			switch parts[i] {
 			case "CLEAR":
 				bp.clear()
-				bp.dbg.print(Feedback, "breakpoints cleared")
+				bp.dbg.print(ui.Feedback, "breakpoints cleared")
 				return nil
 			case "LIST":
 				bp.list()

@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/ui"
 	"os"
 	"strings"
 )
@@ -62,14 +63,14 @@ func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 	for i := 0; i < len(lines); i++ {
 		if strings.Trim(lines[i], " ") != "" {
 			if !silent {
-				dbg.print(Script, lines[i])
+				dbg.print(ui.Script, lines[i])
 			}
 			next, err := dbg.parseInput(lines[i])
 			if err != nil {
-				dbg.print(Error, fmt.Sprintf("script error (%s): %s", scriptfile, err.Error()))
+				dbg.print(ui.Error, fmt.Sprintf("script error (%s): %s", scriptfile, err.Error()))
 			}
 			if next {
-				dbg.print(Error, fmt.Sprintf("script error (%s): use of '%s' is not recommended in scripts", scriptfile, lines[i]))
+				dbg.print(ui.Error, fmt.Sprintf("script error (%s): use of '%s' is not recommended in scripts", scriptfile, lines[i]))
 
 				// make sure run state is still sane
 				dbg.runUntilHalt = false

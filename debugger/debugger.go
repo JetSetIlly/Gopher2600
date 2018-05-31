@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/ui"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
 	"gopher2600/television"
@@ -39,7 +40,7 @@ type Debugger struct {
 	inputloopVideoClock bool // step mode
 
 	// user interface
-	ui       UserInterface
+	ui       ui.UserInterface
 	uiSilent bool // controls whether UI is to remain silent
 }
 
@@ -73,15 +74,15 @@ func NewDebugger() (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(ui UserInterface, filename string) error {
+func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	// prepare user interface
-	if ui == nil {
-		dbg.ui = new(PlainTerminal)
+	if interf == nil {
+		dbg.ui = new(ui.PlainTerminal)
 		if dbg.ui == nil {
 			return fmt.Errorf("error allocationg memory for UI")
 		}
 	} else {
-		dbg.ui = ui
+		dbg.ui = interf
 	}
 
 	err := dbg.ui.Initialise()
@@ -89,6 +90,8 @@ func (dbg *Debugger) Start(ui UserInterface, filename string) error {
 		return err
 	}
 	defer dbg.ui.CleanUp()
+
+	dbg.ui.RegisterTabCompleter(dbg)
 
 	err = dbg.vcs.AttachCartridge(filename)
 	if err != nil {
@@ -123,7 +126,7 @@ func (dbg *Debugger) Start(ui UserInterface, filename string) error {
 // videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
 func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
 	if dbg.inputloopVideoClock {
-		dbg.print(VideoStep, "%v", result)
+		dbg.print(ui.VideoStep, "%v", result)
 	}
 	return dbg.inputLoop(false)
 }
@@ -182,8 +185,8 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			n, err := dbg.ui.UserRead(dbg.input, prompt)
 			if err != nil {
 				switch err.(type) {
-				case *UserInterrupt:
-					dbg.print(Feedback, err.Error())
+				case *ui.UserInterrupt:
+					dbg.print(ui.Feedback, err.Error())
 					return nil
 				default:
 					return err
@@ -193,7 +196,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// parse user input
 			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]))
 			if err != nil {
-				dbg.print(Error, "%s", err)
+				dbg.print(ui.Error, "%s", err)
 			}
 
 			// prepare for next loop
@@ -218,7 +221,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if err != nil {
 					return err
 				}
-				dbg.print(CPUStep, "%v", result)
+				dbg.print(ui.CPUStep, "%v", result)
 			} else {
 				return nil
 			}
@@ -302,7 +305,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		} else {
 			if parts[1] == "OFF" {
 				dbg.commandOnHalt = ""
-				dbg.print(Feedback, "no auto-command on halt")
+				dbg.print(ui.Feedback, "no auto-command on halt")
 				return false, nil
 			}
 
@@ -320,10 +323,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
-		dbg.print(Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
 	case "MEMMAP":
-		dbg.print(MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case "QUIT":
 		dbg.running = false
@@ -333,7 +336,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		dbg.print(Feedback, "machine reset")
+		dbg.print(ui.Feedback, "machine reset")
 
 	case "RUN":
 		dbg.runUntilHalt = true
@@ -367,21 +370,21 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		} else {
 			stepMode = "cpu"
 		}
-		dbg.print(Feedback, "step mode: %s", stepMode)
+		dbg.print(ui.Feedback, "step mode: %s", stepMode)
 
 	case "TERSE":
 		dbg.machineInfoVerbose = false
-		dbg.print(Feedback, "verbosity: terse")
+		dbg.print(ui.Feedback, "verbosity: terse")
 
 	case "VERBOSE":
 		dbg.machineInfoVerbose = true
-		dbg.print(Feedback, "verbosity: verbose")
+		dbg.print(ui.Feedback, "verbosity: verbose")
 
 	case "VERBOSITY":
 		if dbg.machineInfoVerbose {
-			dbg.print(Feedback, "verbosity: verbose")
+			dbg.print(ui.Feedback, "verbosity: verbose")
 		} else {
-			dbg.print(Feedback, "verbosity: terse")
+			dbg.print(ui.Feedback, "verbosity: terse")
 		}
 
 	case "DEBUGGERSTATE":
@@ -403,14 +406,14 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		for i := 1; i < len(parts); i++ {
 			addr, err := strconv.ParseUint(parts[i], 0, 16)
 			if err != nil {
-				dbg.print(Error, "bad argument to PEEK (%s)", parts[i])
+				dbg.print(ui.Error, "bad argument to PEEK (%s)", parts[i])
 				continue
 			}
 
 			// peform peek
 			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(uint16(addr))
 			if err != nil {
-				dbg.print(Error, "%s", err)
+				dbg.print(ui.Error, "%s", err)
 				continue
 			}
 
@@ -423,7 +426,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			if addressLabel != "" {
 				s = fmt.Sprintf("%s [%s]", s, addressLabel)
 			}
-			dbg.print(MachineInfo, s)
+			dbg.print(ui.MachineInfo, s)
 		}
 
 	case "RIOT":
@@ -457,4 +460,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	}
 
 	return stepNext, nil
+}
+
+// GuessWord implements tabcompletion.TabCompleter interface
+func (dbg *Debugger) GuessWord(input string) string {
+	return input
 }

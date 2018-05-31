@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/ui"
 )
 
 // traps keeps track of all the currently defined trappers
@@ -37,7 +38,7 @@ func (tr *traps) check() bool {
 		ntr := tr.traps[i].target.ToInt() != tr.traps[i].origValue
 		if ntr {
 			tr.traps[i].origValue = tr.traps[i].target.ToInt()
-			tr.dbg.print(Feedback, "trap on %s", tr.traps[i].target.ShortLabel())
+			tr.dbg.print(ui.Feedback, "trap on %s", tr.traps[i].target.ShortLabel())
 		}
 		trapped = ntr || trapped
 	}
@@ -47,7 +48,7 @@ func (tr *traps) check() bool {
 
 func (tr traps) list() {
 	if len(tr.traps) == 0 {
-		tr.dbg.print(Feedback, "no traps")
+		tr.dbg.print(ui.Feedback, "no traps")
 	} else {
 		s := ""
 		sep := ""
@@ -55,7 +56,7 @@ func (tr traps) list() {
 			s = fmt.Sprintf("%s%s%s", s, sep, tr.traps[i].target.ShortLabel())
 			sep = ", "
 		}
-		tr.dbg.print(Feedback, s)
+		tr.dbg.print(ui.Feedback, s)
 	}
 }
 
@@ -70,7 +71,7 @@ func (tr *traps) parseTrap(parts []string) error {
 		switch parts[i] {
 		case "CLEAR":
 			tr.clear()
-			tr.dbg.print(Feedback, "traps cleared")
+			tr.dbg.print(ui.Feedback, "traps cleared")
 			return nil
 		case "LIST":
 			tr.list()
