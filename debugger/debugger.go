@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commands"
 	"gopher2600/debugger/ui"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
@@ -91,7 +92,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	}
 	defer dbg.ui.CleanUp()
 
-	dbg.ui.RegisterTabCompleter(dbg)
+	dbg.ui.RegisterTabCompleter(commands.NewTabCompletion())
 
 	err = dbg.vcs.AttachCartridge(filename)
 	if err != nil {
@@ -285,21 +286,21 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	default:
 		return false, fmt.Errorf("%s is not a debugging command", parts[0])
 
-	// control of the debugger
+		// control of the debugger
 
-	case "BREAK":
+	case commands.KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(parts)
 		if err != nil {
 			return false, err
 		}
 
-	case "TRAP":
+	case commands.KeywordTrap:
 		err := dbg.traps.parseTrap(parts)
 		if err != nil {
 			return false, err
 		}
 
-	case "ONHALT":
+	case commands.KeywordOnHalt:
 		if len(parts) < 2 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 		} else {
@@ -325,24 +326,24 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
-	case "MEMMAP":
+	case commands.KeywordMemMap:
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
-	case "QUIT":
+	case commands.KeywordQuit:
 		dbg.running = false
 
-	case "RESET":
+	case commands.KeywordReset:
 		err := dbg.vcs.Reset()
 		if err != nil {
 			return false, err
 		}
 		dbg.print(ui.Feedback, "machine reset")
 
-	case "RUN":
+	case commands.KeywordRun:
 		dbg.runUntilHalt = true
 		stepNext = true
 
-	case "STEP":
+	case commands.KeywordStep:
 		stepNext = true
 		if len(parts) > 1 {
 			switch parts[1] {
@@ -353,7 +354,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 		}
 
-	case "STEPMODE":
+	case commands.KeywordStepMode:
 		if len(parts) > 1 {
 			switch parts[1] {
 			case "CPU":
@@ -372,22 +373,22 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 		dbg.print(ui.Feedback, "step mode: %s", stepMode)
 
-	case "TERSE":
+	case commands.KeywordTerse:
 		dbg.machineInfoVerbose = false
 		dbg.print(ui.Feedback, "verbosity: terse")
 
-	case "VERBOSE":
+	case commands.KeywordVerbose:
 		dbg.machineInfoVerbose = true
 		dbg.print(ui.Feedback, "verbosity: verbose")
 
-	case "VERBOSITY":
+	case commands.KeywordVerbosity:
 		if dbg.machineInfoVerbose {
 			dbg.print(ui.Feedback, "verbosity: verbose")
 		} else {
 			dbg.print(ui.Feedback, "verbosity: terse")
 		}
 
-	case "DEBUGGERSTATE":
+	case commands.KeywordDebuggerState:
 		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT")
 		if err != nil {
 			return false, err
@@ -395,10 +396,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	// information about the machine (chips)
 
-	case "CPU":
+	case commands.KeywordCPU:
 		dbg.printMachineInfo(dbg.vcs.MC)
 
-	case "PEEK":
+	case commands.KeywordPeek:
 		if len(parts) < 1 {
 			return false, fmt.Errorf("PEEK requires a memory address")
 		}
@@ -429,23 +430,23 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			dbg.print(ui.MachineInfo, s)
 		}
 
-	case "RIOT":
+	case commands.KeywordRIOT:
 		dbg.printMachineInfo(dbg.vcs.RIOT)
 
-	case "TIA":
+	case commands.KeywordTIA:
 		dbg.printMachineInfo(dbg.vcs.TIA)
 
-	case "TV":
+	case commands.KeywordTV:
 		dbg.printMachineInfo(dbg.vcs.TV)
 
 	// information about the machine (sprites)
 
-	case "BALL":
+	case commands.KeywordBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
 
 	// tv control
 
-	case "DISPLAY":
+	case commands.KeywordDisplay:
 		visibility := true
 		if len(parts) > 1 {
 			switch parts[1] {
@@ -460,9 +461,4 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	}
 
 	return stepNext, nil
-}
-
-// GuessWord implements tabcompletion.TabCompleter interface
-func (dbg *Debugger) GuessWord(input string) string {
-	return input
 }

@@ -63,7 +63,7 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 	pk.ResetPoint = i
 }
 
-// MachinInfoTerse returns the polycounter information in terse format
+// MachineInfoTerse returns the polycounter information in terse format
 func (pk Polycounter) MachineInfoTerse() string {
 	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
 }

@@ -1,10 +1,12 @@
 package ui
 
+import "gopher2600/debugger/commands"
+
 // UserInterface defines the user interface operations required by the debugger
 type UserInterface interface {
 	Initialise() error
 	CleanUp()
-	RegisterTabCompleter(TabCompleter)
+	RegisterTabCompleter(*commands.TabCompletion)
 	UserPrint(PrintProfile, string, ...interface{})
 	UserRead([]byte, string) (int, error)
 }

@@ -49,17 +49,31 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 		}
 
 		switch r {
+		case easyterm.KeyTab:
+			if ct.tabCompleter != nil {
+				s := ct.tabCompleter.GuessWord(string(input[:cursor]))
+
+				// the difference in the length of the new input and the old
+				// input
+				d := len(s) - cursor
+
+				// append everythin after the cursor to the new string and copy
+				// into input array
+				s += string(input[cursor:])
+				copy(input, []byte(s))
+
+				// advance character to end of completed word
+				ct.Print(ansi.CursorMove(d))
+				cursor += d
+
+				// note new used-length of input array
+				n += d
+			}
+
 		case easyterm.KeyCtrlC:
 			// CTRL-C
 			ct.Print("\n")
 			return n + 1, &ui.UserInterrupt{Message: "user interrupt: CTRL-C"}
-
-		case easyterm.KeyTab:
-			if ct.tabCompleter != nil {
-				s := ct.tabCompleter.GuessWord(string(input[:n]))
-				n = len(s)
-				copy(input, []byte(s))
-			}
 
 		case easyterm.KeyCarriageReturn:
 			// CARRIAGE RETURN

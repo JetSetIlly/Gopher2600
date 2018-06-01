@@ -1,5 +1,6 @@
 package easyterm
 
+// list of ASCII codes for non-alphanumeric characters
 const (
 	KeyCtrlC          = 3
 	KeyTab            = 9
@@ -8,11 +9,13 @@ const (
 	KeyBackspace      = 127
 )
 
+// list of ASCII code for characters that can follow KeyEsc
 const (
 	EscDelete = 51
 	EscCursor = 91
 )
 
+// list of ASCII code for characters that can follow EscCursor
 const (
 	CursorUp       = 'A'
 	CursorDown     = 'B'
