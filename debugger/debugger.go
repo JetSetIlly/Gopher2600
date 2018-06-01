@@ -287,6 +287,19 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		return false, fmt.Errorf("%s is not a debugging command", parts[0])
 
 		// control of the debugger
+	case commands.KeywordHelp:
+		if len(parts) == 1 {
+			for _, k := range commands.TopLevel {
+				dbg.print(ui.Help, k)
+			}
+		} else {
+			txt, prs := commands.Help[parts[1]]
+			if prs == false {
+				dbg.print(ui.Help, "no help for %s", parts[1])
+			} else {
+				dbg.print(ui.Help, txt)
+			}
+		}
 
 	case commands.KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(parts)

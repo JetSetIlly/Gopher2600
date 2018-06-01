@@ -51,29 +51,31 @@ func init() {
 	DimPens = make(map[string]string)
 	PenStyles = make(map[string]string)
 
-	NormalPen, _ = colorBuild("", "", "", false, false)
+	NormalPen, _ = ColorBuild("", "", "", false, false)
 
-	PenColor["red"], _ = colorBuild("red", "normal", "", true, false)
-	PenColor["green"], _ = colorBuild("green", "normal", "", true, false)
-	PenColor["yellow"], _ = colorBuild("yellow", "normal", "", true, false)
-	PenColor["blue"], _ = colorBuild("blue", "normal", "", true, false)
-	PenColor["magenta"], _ = colorBuild("magenta", "normal", "", true, false)
-	PenColor["cyan"], _ = colorBuild("cyan", "normal", "", true, false)
-	PenColor["white"], _ = colorBuild("white", "normal", "", true, false)
+	PenColor["red"], _ = ColorBuild("red", "normal", "", true, false)
+	PenColor["green"], _ = ColorBuild("green", "normal", "", true, false)
+	PenColor["yellow"], _ = ColorBuild("yellow", "normal", "", true, false)
+	PenColor["blue"], _ = ColorBuild("blue", "normal", "", true, false)
+	PenColor["magenta"], _ = ColorBuild("magenta", "normal", "", true, false)
+	PenColor["cyan"], _ = ColorBuild("cyan", "normal", "", true, false)
+	PenColor["white"], _ = ColorBuild("white", "normal", "", true, false)
 
-	DimPens["red"], _ = colorBuild("red", "normal", "", false, false)
-	DimPens["green"], _ = colorBuild("green", "normal", "", false, false)
-	DimPens["yellow"], _ = colorBuild("yellow", "normal", "", false, false)
-	DimPens["blue"], _ = colorBuild("blue", "normal", "", false, false)
-	DimPens["magenta"], _ = colorBuild("magenta", "normal", "", false, false)
-	DimPens["cyan"], _ = colorBuild("cyan", "normal", "", false, false)
-	DimPens["white"], _ = colorBuild("white", "normal", "", false, false)
+	DimPens["red"], _ = ColorBuild("red", "normal", "", false, false)
+	DimPens["green"], _ = ColorBuild("green", "normal", "", false, false)
+	DimPens["yellow"], _ = ColorBuild("yellow", "normal", "", false, false)
+	DimPens["blue"], _ = ColorBuild("blue", "normal", "", false, false)
+	DimPens["magenta"], _ = ColorBuild("magenta", "normal", "", false, false)
+	DimPens["cyan"], _ = ColorBuild("cyan", "normal", "", false, false)
+	DimPens["white"], _ = ColorBuild("white", "normal", "", false, false)
 
-	PenStyles["bold"], _ = colorBuild("", "", "bold", false, false)
-	PenStyles["underline"], _ = colorBuild("", "", "underline", false, false)
+	PenStyles["bold"], _ = ColorBuild("", "", "bold", false, false)
+	PenStyles["underline"], _ = ColorBuild("", "", "underline", false, false)
 }
 
-func colorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
+// ColorBuild creates the ANSI sequence to create the pen with the correct
+// foreground/background color and attribute
+func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
 	s := "\033["
 
 	// pen

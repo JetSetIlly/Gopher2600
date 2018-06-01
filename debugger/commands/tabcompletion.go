@@ -23,7 +23,7 @@ type TabCompletion struct {
 // NewTabCompletion is the preferred method of initialisation for TabCompletion
 func NewTabCompletion() *TabCompletion {
 	tc := new(TabCompletion)
-	tc.options = make([]string, 0, len(keywords))
+	tc.options = make([]string, 0, len(TopLevel))
 	return tc
 }
 
@@ -65,9 +65,9 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		tc.lastOption = 0
 
 		// build a list of options
-		for i := 0; i < len(keywords); i++ {
-			if len(trigger) <= len(keywords[i]) && trigger == keywords[i][:len(trigger)] {
-				tc.options = append(tc.options, keywords[i])
+		for i := 0; i < len(TopLevel); i++ {
+			if len(trigger) <= len(TopLevel[i]) && trigger == TopLevel[i][:len(trigger)] {
+				tc.options = append(tc.options, TopLevel[i])
 			}
 		}
 	}

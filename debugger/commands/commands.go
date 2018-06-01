@@ -2,6 +2,7 @@ package commands
 
 // keywords
 const (
+	KeywordHelp          = "HELP"
 	KeywordBreak         = "BREAK"
 	KeywordTrap          = "TRAP"
 	KeywordOnHalt        = "ONHALT"
@@ -24,4 +25,5 @@ const (
 	KeywordDisplay       = "DISPLAY"
 )
 
-var keywords = []string{"BREAK", "TRAP", "ONHALT", "MEMMAP", "QUIT", "RESET", "RUN", "STEP", "STEPMODE", "TERSE", "VERBOSE", "VERBOSITY", "DEBUGGERSTATE", "CPU", "PEEK", "RIOT", "TIA", "TV", "BALL", "DISPLAY"}
+// TopLevel is the list of top-level commands
+var TopLevel = []string{"HELP", "BREAK", "TRAP", "ONHALT", "MEMMAP", "QUIT", "RESET", "RUN", "STEP", "STEPMODE", "TERSE", "VERBOSE", "VERBOSITY", "DEBUGGERSTATE", "CPU", "PEEK", "RIOT", "TIA", "TV", "BALL", "DISPLAY"}

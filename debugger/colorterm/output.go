@@ -24,6 +24,9 @@ func (ct *ColorTerminal) UserPrint(pp ui.PrintProfile, s string, a ...interface{
 		ct.Print("* ")
 		ct.Print(ansi.NormalPen)
 		ct.Print(ansi.PenColor["red"])
+	case ui.Help:
+		ct.Print(ansi.DimPens["white"])
+		ct.Print("  ")
 	case ui.Feedback:
 		ct.Print(ansi.DimPens["white"])
 	case ui.Script:

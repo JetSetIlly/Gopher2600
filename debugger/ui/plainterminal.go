@@ -30,6 +30,8 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 		s = fmt.Sprintf("* %s", s)
 	case Script:
 		s = fmt.Sprintf("> %s", s)
+	case Help:
+		s = fmt.Sprintf("  %s", s)
 	}
 
 	fmt.Printf(s, a...)

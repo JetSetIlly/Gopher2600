@@ -15,6 +15,7 @@ const (
 	Feedback
 	Prompt
 	Script
+	Help
 
 	// user input (not used by all user interface types [eg. echoing terminals])
 	Input
