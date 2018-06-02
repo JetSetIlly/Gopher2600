@@ -192,7 +192,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 			}
 
 		default:
-			if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
+			if unicode.IsPrint(r) {
 				ct.Print("%c", r)
 				m := utf8.EncodeRune(er, r)
 				copy(input[cursor+m:], input[cursor:])

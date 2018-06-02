@@ -23,7 +23,8 @@ const (
 	KeywordTV            = "TV"
 	KeywordBall          = "BALL"
 	KeywordDisplay       = "DISPLAY"
+	KeywordScript        = "SCRIPT"
 )
 
 // TopLevel is the list of top-level commands
-var TopLevel = []string{"HELP", "BREAK", "TRAP", "ONHALT", "MEMMAP", "QUIT", "RESET", "RUN", "STEP", "STEPMODE", "TERSE", "VERBOSE", "VERBOSITY", "DEBUGGERSTATE", "CPU", "PEEK", "RIOT", "TIA", "TV", "BALL", "DISPLAY"}
+var TopLevel = []string{"HELP", "BREAK", "TRAP", "ONHALT", "MEMMAP", "QUIT", "RESET", "RUN", "STEP", "STEPMODE", "TERSE", "VERBOSE", "VERBOSITY", "DEBUGGERSTATE", "CPU", "PEEK", "RIOT", "TIA", "TV", "BALL", "DISPLAY", "SCRIPT"}

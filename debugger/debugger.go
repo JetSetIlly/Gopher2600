@@ -51,6 +51,11 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
+	dbg.ui = new(ui.PlainTerminal)
+	if dbg.ui == nil {
+		return nil, fmt.Errorf("error allocationg memory for UI")
+	}
+
 	// prepare hardware
 	tv, err := television.NewSDLTV("NTSC", 3.0)
 	if err != nil {
@@ -77,12 +82,7 @@ func NewDebugger() (*Debugger, error) {
 // Start the main debugger sequence
 func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	// prepare user interface
-	if interf == nil {
-		dbg.ui = new(ui.PlainTerminal)
-		if dbg.ui == nil {
-			return fmt.Errorf("error allocationg memory for UI")
-		}
-	} else {
+	if interf != nil {
 		dbg.ui = interf
 	}
 
@@ -100,7 +100,6 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	}
 
 	// register ctrl-c handler
-	// TODO: move this into ui implementation
 	ctrlC := make(chan os.Signal)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
@@ -238,7 +237,7 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 	var cont bool
 	var err error
 
-	commands := strings.Split(strings.ToUpper(input), ";")
+	commands := strings.Split(input, ";")
 	for i := 0; i < len(commands); i++ {
 		cont, err = dbg.parseCommand(commands[i])
 		if err != nil {
@@ -268,7 +267,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	// divide user input into parts and convert to upper-case for easy parsing
 	// input is unchanged in case we need the original user-case
-	parts := strings.Fields(strings.ToUpper(input))
+	parts := strings.Fields(input)
 
 	// normalise variations in syntax
 	for i := 0; i < len(parts); i++ {
@@ -282,8 +281,13 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	stepNext := false
 
 	// first entry in "parts" is the debugging command. switch on this value
-	switch parts[0] {
+	switch strings.ToUpper(parts[0]) {
 	default:
+		for _, k := range commands.TopLevel {
+			if k == parts[0] {
+				return false, fmt.Errorf("%s is not yet implemented", parts[0])
+			}
+		}
 		return false, fmt.Errorf("%s is not a debugging command", parts[0])
 
 		// control of the debugger
@@ -299,6 +303,15 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			} else {
 				dbg.print(ui.Help, txt)
 			}
+		}
+
+	case commands.KeywordScript:
+		if len(parts) < 2 {
+			return false, fmt.Errorf("file required for %s", parts[0])
+		}
+		err := dbg.RunScript(parts[1], false)
+		if err != nil {
+			return false, err
 		}
 
 	case commands.KeywordBreak:

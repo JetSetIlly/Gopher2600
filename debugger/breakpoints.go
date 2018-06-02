@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/ui"
 	"strconv"
+	"strings"
 )
 
 // breakpoints keeps track of all the currently defined breaker
@@ -114,6 +115,7 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 	//
 	// note that this method of looping allows the user to chain break commands
 	for i := 1; i < len(parts); i++ {
+		parts[i] = strings.ToUpper(parts[i])
 
 		val, err := strconv.ParseUint(parts[i], 0, 16)
 		if err == nil {

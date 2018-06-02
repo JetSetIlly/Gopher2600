@@ -51,7 +51,7 @@ func main() {
 			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
 			fallthrough
 		case "PLAIN":
-			term = new(ui.PlainTerminal)
+			term = nil
 		}
 
 		err = dbg.Start(term, cartridgeFile)

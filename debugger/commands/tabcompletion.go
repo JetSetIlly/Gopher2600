@@ -32,6 +32,7 @@ func NewTabCompletion() *TabCompletion {
 // returns: the input with the completed word; the number of characters by
 // which the cursor should be transformed (may be a negative number when
 // cycling through a list of options)
+// TODO: filename completion for commands that need it (eg. script)
 func (tc *TabCompletion) GuessWord(input string) string {
 	// split input into words
 	p := strings.Split(input, " ")
@@ -70,6 +71,11 @@ func (tc *TabCompletion) GuessWord(input string) string {
 				tc.options = append(tc.options, TopLevel[i])
 			}
 		}
+	}
+
+	// no completion options - return input unchanged
+	if len(tc.options) == 0 {
+		return input
 	}
 
 	// change the last word in the supplied input to the chosen option

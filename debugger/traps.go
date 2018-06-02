@@ -3,6 +3,7 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/ui"
+	"strings"
 )
 
 // traps keeps track of all the currently defined trappers
@@ -67,6 +68,8 @@ func (tr *traps) parseTrap(parts []string) error {
 
 	// loop over parts, allowing multiple traps to be applied
 	for i := 1; i < len(parts); i++ {
+		parts[i] = strings.ToUpper(parts[i])
+
 		// commands
 		switch parts[i] {
 		case "CLEAR":
