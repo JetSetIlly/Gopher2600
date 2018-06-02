@@ -24,7 +24,7 @@ type Video struct {
 
 	// TODO: player sprite data
 
-	// TODO: playfield
+	// playfield
 	pf0         uint8
 	pf1         uint8
 	pf2         uint8

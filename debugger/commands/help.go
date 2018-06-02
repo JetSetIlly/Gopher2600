@@ -2,7 +2,8 @@ package commands
 
 // Help contains the help text for the debugger's top level commands
 var Help = map[string]string{
-	KeywordHelp:          "Lists commands abd provides help for individual debugger commands",
+	KeywordHelp:          "Lists commands and provides help for individual debugger commands",
+	KeywordInsert:        "Insert cartridge into emulation (from file)",
 	KeywordBreak:         "Cause emulator to halt when conditions are met",
 	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
 	KeywordOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",

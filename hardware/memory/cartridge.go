@@ -5,6 +5,14 @@ import (
 	"os"
 )
 
+// MissingCartridgeError returned by those functions that really require a
+// cartridge to be inserted.
+type MissingCartridgeError struct{}
+
+func (MissingCartridgeError) Error() string {
+	return "no cartridge attached"
+}
+
 const bankSize = 4096
 
 // Cartridge defines the information and operations for a VCS cartridge
@@ -43,7 +51,7 @@ func (cart *Cartridge) Clear() {
 // Implementation of CPUBus.Read
 func (cart Cartridge) Read(address uint16) (uint8, error) {
 	if len(cart.memory) == 0 {
-		return 0, fmt.Errorf("no cartridge attached")
+		return 0, new(MissingCartridgeError)
 	}
 	oa := address - cart.origin
 	oa += cart.bank * bankSize
@@ -103,7 +111,7 @@ func (cart *Cartridge) Eject() {
 // Peek is the implementation of Area.Peek
 func (cart Cartridge) Peek(address uint16) (uint8, string, error) {
 	if len(cart.memory) == 0 {
-		return 0, "", fmt.Errorf("no cartridge attached")
+		return 0, "", new(MissingCartridgeError)
 	}
 	oa := address - cart.origin
 	oa += cart.bank * bankSize

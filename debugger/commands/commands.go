@@ -3,6 +3,7 @@ package commands
 // keywords
 const (
 	KeywordHelp          = "HELP"
+	KeywordInsert        = "INSERT"
 	KeywordBreak         = "BREAK"
 	KeywordTrap          = "TRAP"
 	KeywordOnHalt        = "ONHALT"
@@ -26,5 +27,42 @@ const (
 	KeywordScript        = "SCRIPT"
 )
 
-// TopLevel is the list of top-level commands
-var TopLevel = []string{"HELP", "BREAK", "TRAP", "ONHALT", "MEMMAP", "QUIT", "RESET", "RUN", "STEP", "STEPMODE", "TERSE", "VERBOSE", "VERBOSITY", "DEBUGGERSTATE", "CPU", "PEEK", "RIOT", "TIA", "TV", "BALL", "DISPLAY", "SCRIPT"}
+// DebuggerCommand is the list of top-level commands
+var DebuggerCommand = []string{
+	KeywordHelp,
+	KeywordInsert,
+	KeywordBreak,
+	KeywordTrap,
+	KeywordOnHalt,
+	KeywordMemMap,
+	KeywordQuit,
+	KeywordReset,
+	KeywordRun,
+	KeywordStep,
+	KeywordStepMode,
+	KeywordTerse,
+	KeywordVerbose,
+	KeywordVerbosity,
+	KeywordDebuggerState,
+	KeywordCPU,
+	KeywordPeek,
+	KeywordRIOT,
+	KeywordTIA,
+	KeywordTV,
+	KeywordBall,
+	KeywordDisplay,
+	KeywordScript}
+
+type completionArg int
+
+const (
+	compArgDebuggerCommand completionArg = iota
+	compArgFile
+)
+
+// CompletionsOpts defines how tab completion should work for each argument of a
+// TopLevel command
+var completionsOpts = map[string]completionArg{
+	KeywordHelp:   compArgDebuggerCommand,
+	KeywordInsert: compArgFile,
+	KeywordScript: compArgFile}

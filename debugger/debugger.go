@@ -94,9 +94,16 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 
 	dbg.ui.RegisterTabCompleter(commands.NewTabCompletion())
 
-	err = dbg.vcs.AttachCartridge(filename)
-	if err != nil {
-		return err
+	if filename != "" {
+		err = dbg.vcs.AttachCartridge(filename)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = dbg.vcs.Reset()
+		if err != nil {
+			return err
+		}
 	}
 
 	// register ctrl-c handler
@@ -283,7 +290,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// first entry in "parts" is the debugging command. switch on this value
 	switch strings.ToUpper(parts[0]) {
 	default:
-		for _, k := range commands.TopLevel {
+		for _, k := range commands.DebuggerCommand {
 			if k == parts[0] {
 				return false, fmt.Errorf("%s is not yet implemented", parts[0])
 			}
@@ -293,21 +300,32 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		// control of the debugger
 	case commands.KeywordHelp:
 		if len(parts) == 1 {
-			for _, k := range commands.TopLevel {
+			for _, k := range commands.DebuggerCommand {
 				dbg.print(ui.Help, k)
 			}
 		} else {
-			txt, prs := commands.Help[parts[1]]
+			s := strings.ToUpper(parts[1])
+			txt, prs := commands.Help[s]
 			if prs == false {
-				dbg.print(ui.Help, "no help for %s", parts[1])
+				dbg.print(ui.Help, "no help for %s", s)
 			} else {
 				dbg.print(ui.Help, txt)
 			}
 		}
 
+	case commands.KeywordInsert:
+		if len(parts) < 2 {
+			return false, fmt.Errorf("filename required for %s", parts[0])
+		}
+		err := dbg.vcs.AttachCartridge(parts[1])
+		if err != nil {
+			return false, err
+		}
+		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", parts[1])
+
 	case commands.KeywordScript:
 		if len(parts) < 2 {
-			return false, fmt.Errorf("file required for %s", parts[0])
+			return false, fmt.Errorf("filename required for %s", parts[0])
 		}
 		err := dbg.RunScript(parts[1], false)
 		if err != nil {

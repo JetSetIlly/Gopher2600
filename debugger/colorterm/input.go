@@ -174,7 +174,6 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 					// DELETE
 					if cursor < n {
 						copy(input[cursor:], input[cursor+1:])
-						cursor--
 						n--
 						history = len(ct.commandHistory)
 					}
@@ -192,7 +191,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 			}
 
 		default:
-			if unicode.IsPrint(r) {
+			if unicode.IsDigit(r) || unicode.IsLetter(r) || unicode.IsSpace(r) || unicode.IsPunct(r) || unicode.IsSymbol(r) {
 				ct.Print("%c", r)
 				m := utf8.EncodeRune(er, r)
 				copy(input[cursor+m:], input[cursor:])

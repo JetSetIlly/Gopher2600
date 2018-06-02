@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-const cycleDuration = 1500 * time.Millisecond
+const cycleDuration = 500 * time.Millisecond
 
 // TabCompletion keeps track of the most recent tab completion attempt
 type TabCompletion struct {
@@ -23,16 +23,12 @@ type TabCompletion struct {
 // NewTabCompletion is the preferred method of initialisation for TabCompletion
 func NewTabCompletion() *TabCompletion {
 	tc := new(TabCompletion)
-	tc.options = make([]string, 0, len(TopLevel))
+	tc.options = make([]string, 0, len(DebuggerCommand))
 	return tc
 }
 
-// GuessWord transforms the input such that the word nearest the cursor is
-// expanded to meet the closest match in the list of allowed strings
-// returns: the input with the completed word; the number of characters by
-// which the cursor should be transformed (may be a negative number when
-// cycling through a list of options)
-// TODO: filename completion for commands that need it (eg. script)
+// GuessWord transforms the input such that the last word in the input is
+// expanded to meet the closest match in the list of allowed strings.
 func (tc *TabCompletion) GuessWord(input string) string {
 	// split input into words
 	p := strings.Split(input, " ")
@@ -50,10 +46,10 @@ func (tc *TabCompletion) GuessWord(input string) string {
 			return input
 		}
 
-		// undo previous tab completion
+		// there is more than one completion option, so shorten the input by
+		// one word (getting rid of the last completion effort) and step to
+		// next option
 		p = p[:len(p)-1]
-
-		// step to next option; we'll build the complete return string below
 		tc.lastOption++
 		if tc.lastOption >= len(tc.options) {
 			tc.lastOption = 0
@@ -61,21 +57,30 @@ func (tc *TabCompletion) GuessWord(input string) string {
 
 	} else {
 		// this is a new tabcompletion session
-		trigger := strings.ToUpper(p[len(p)-1])
 		tc.options = tc.options[:0]
 		tc.lastOption = 0
 
-		// build a list of options
-		for i := 0; i < len(TopLevel); i++ {
-			if len(trigger) <= len(TopLevel[i]) && trigger == TopLevel[i][:len(trigger)] {
-				tc.options = append(tc.options, TopLevel[i])
-			}
-		}
-	}
+		context := completionsOpts[strings.ToUpper(p[0])]
 
-	// no completion options - return input unchanged
-	if len(tc.options) == 0 {
-		return input
+		if len(p) == 0 || context == compArgDebuggerCommand {
+			trigger := strings.ToUpper(p[len(p)-1])
+			// if this is the first word in the input or if the completion is
+			// otherwise suitable, build a list of options formed from the list of
+			// debugger commands
+			for i := 0; i < len(DebuggerCommand); i++ {
+				if len(trigger) <= len(DebuggerCommand[i]) && trigger == DebuggerCommand[i][:len(trigger)] {
+					tc.options = append(tc.options, DebuggerCommand[i])
+				}
+			}
+		} else if context == compArgFile {
+			// TODO: filename completion
+			tc.options = append(tc.options, "<TODO: file-completion>")
+		}
+
+		// no completion options - return input unchanged
+		if len(tc.options) == 0 {
+			return input
+		}
 	}
 
 	// change the last word in the supplied input to the chosen option

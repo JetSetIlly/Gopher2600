@@ -178,6 +178,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// at the end of the video cycle we want to finally 'send' information to the
 	// televison. what we 'send' depends on the state of hblank.
 	if !tia.hblank {
+
 		// tick all sprites -- this is distinct from the sprite ticking we did
 		// above when clock stuffing for HMOVE
 		tia.Video.TickSprites()

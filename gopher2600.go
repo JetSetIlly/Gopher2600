@@ -19,12 +19,13 @@ func main() {
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
-		fmt.Println("* no cartridge specified")
+	cartridgeFile := ""
+	if len(flag.Args()) == 1 {
+		cartridgeFile = flag.Args()[0]
+	} else if len(flag.Args()) > 1 {
+		fmt.Println("* too many arguments")
 		os.Exit(10)
 	}
-
-	cartridgeFile := flag.Args()[0]
 
 	switch strings.ToUpper(*mode) {
 	case "DEBUG":
@@ -37,7 +38,7 @@ func main() {
 		// run initialisation script
 		err = dbg.RunScript(".gopher2600/debuggerInit", true)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
 		}
 
@@ -56,19 +57,19 @@ func main() {
 
 		err = dbg.Start(term, cartridgeFile)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("* error starting debugger (%s)\n", err)
 			os.Exit(10)
 		}
 	case "FPS":
 		err := fps(cartridgeFile, true)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("* error starting FPS profiler (%s)\n", err)
 			os.Exit(10)
 		}
 	case "TVFPS":
 		err := fps(cartridgeFile, false)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("* error starting TVFPS profiler (%s)\n", err)
 			os.Exit(10)
 		}
 	case "DISASM":
