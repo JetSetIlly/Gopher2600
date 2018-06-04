@@ -25,12 +25,7 @@ type Video struct {
 	// TODO: player sprite data
 
 	// playfield
-	pf0         uint8
-	pf1         uint8
-	pf2         uint8
-	pf          [20]bool
-	pfTickPhase int
-	pfTickCt    int
+	Playfield *playfield
 
 	// playfield control
 	// -- including ball size
@@ -80,6 +75,9 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 
 	vd.colorClock = colorClock
 	vd.hblank = hblank
+
+	// playfield
+	vd.Playfield = newPlayfield()
 
 	// missile/ball enabling
 	vd.enam0Delay = newDelayCounter("(dis/en)abling")
@@ -230,31 +228,11 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 	case "REFP1":
 		vd.refp1 = value&0x40 == 0x40
 	case "PF0":
-		vd.pf0 = value & 0xF0
-		vd.pf[0] = vd.pf0&0x10 == 0x10
-		vd.pf[1] = vd.pf0&0x20 == 0x20
-		vd.pf[2] = vd.pf0&0x40 == 0x40
-		vd.pf[3] = vd.pf0&0x80 == 0x80
+		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf0(value) })
 	case "PF1":
-		vd.pf1 = value
-		vd.pf[4] = vd.pf1&0x80 == 0x80
-		vd.pf[5] = vd.pf1&0x40 == 0x40
-		vd.pf[6] = vd.pf1&0x20 == 0x20
-		vd.pf[7] = vd.pf1&0x10 == 0x10
-		vd.pf[8] = vd.pf1&0x08 == 0x08
-		vd.pf[9] = vd.pf1&0x04 == 0x04
-		vd.pf[10] = vd.pf1&0x02 == 0x02
-		vd.pf[11] = vd.pf1&0x01 == 0x01
+		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf1(value) })
 	case "PF2":
-		vd.pf2 = value
-		vd.pf[12] = vd.pf2&0x01 == 0x01
-		vd.pf[13] = vd.pf2&0x02 == 0x02
-		vd.pf[15] = vd.pf2&0x04 == 0x04
-		vd.pf[15] = vd.pf2&0x08 == 0x08
-		vd.pf[16] = vd.pf2&0x10 == 0x10
-		vd.pf[17] = vd.pf2&0x20 == 0x20
-		vd.pf[18] = vd.pf2&0x40 == 0x40
-		vd.pf[19] = vd.pf2&0x80 == 0x80
+		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf2(value) })
 	case "RESP0":
 	case "RESP1":
 	case "RESM0":

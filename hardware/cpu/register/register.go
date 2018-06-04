@@ -119,7 +119,7 @@ func (r Register) ShortLabel() string {
 
 // MachineInfoTerse returns the register information in terse format
 func (r Register) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%d", r.shortLabel, r.value)
+	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
 }
 
 // MachineInfo returns the register information in verbose format

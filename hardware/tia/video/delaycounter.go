@@ -5,7 +5,9 @@ import "fmt"
 // delayCounter is a general purpose counter that can be labelled. it is used
 // in the sprite class and for delaying enabling signals
 type delayCounter struct {
-	count        int
+	count int
+
+	// the value that is to be the result of the delay counter
 	payloadValue interface{}
 
 	// because we use the delayCounter type in more than one context we need some

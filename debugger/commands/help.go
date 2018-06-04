@@ -23,5 +23,6 @@ var Help = map[string]string{
 	KeywordTIA:           "Display current state of the TIA",
 	KeywordTV:            "Display the current TV state",
 	KeywordBall:          "Display the current state of the Ball sprite",
+	KeywordPlayfield:     "Display the current playfield data",
 	KeywordDisplay:       "Display the TV image",
 	KeywordScript:        "Run commands from specified file"}

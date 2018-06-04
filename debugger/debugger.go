@@ -40,6 +40,10 @@ type Debugger struct {
 	inputloopNext       bool // execute a step once user input has returned a result
 	inputloopVideoClock bool // step mode
 
+	// the last result from vcs.Step() - could be a complete result or an
+	// intermediate result if step-mode is video
+	lastResult *cpu.InstructionResult
+
 	// user interface
 	ui       ui.UserInterface
 	uiSilent bool // controls whether UI is to remain silent
@@ -132,6 +136,8 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 
 // videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
 func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
+	dbg.lastResult = result
+
 	if dbg.inputloopVideoClock {
 		dbg.print(ui.VideoStep, "%v", result)
 	}
@@ -144,7 +150,6 @@ func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
 // to implement video stepping.
 func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	var err error
-	var result *cpu.InstructionResult
 
 	for dbg.running {
 		// return immediately if we're in a mid-cycle input loop and we don't want
@@ -188,12 +193,22 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			dbg.runUntilHalt = false
 
 			// get user input
-			prompt := fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+			prompt := ""
+			if mainLoop {
+				prompt = fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+			} else {
+				if dbg.lastResult.Final {
+					prompt = fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+				} else {
+					prompt = fmt.Sprintf("[0x%04x] > ", dbg.lastResult.ProgramCounter)
+				}
+			}
 			n, err := dbg.ui.UserRead(dbg.input, prompt)
 			if err != nil {
 				switch err.(type) {
 				case *ui.UserInterrupt:
 					dbg.print(ui.Feedback, err.Error())
+					dbg.running = false
 					return nil
 				default:
 					return err
@@ -224,11 +239,11 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// move emulation on one step if user has requested/implied it
 		if dbg.inputloopNext {
 			if mainLoop {
-				_, result, err = dbg.vcs.Step(dbg.videoCycleInputLoop)
+				_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleInputLoop)
 				if err != nil {
 					return err
 				}
-				dbg.print(ui.CPUStep, "%v", result)
+				dbg.print(ui.CPUStep, "%v", dbg.lastResult)
 			} else {
 				return nil
 			}
@@ -400,7 +415,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case commands.KeywordStepMode:
 		if len(parts) > 1 {
-			switch parts[1] {
+			switch strings.ToUpper(parts[1]) {
 			case "CPU":
 				dbg.inputloopVideoClock = false
 			case "VIDEO":
@@ -483,10 +498,13 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	case commands.KeywordTV:
 		dbg.printMachineInfo(dbg.vcs.TV)
 
-	// information about the machine (sprites)
+	// information about the machine (sprites, playfield)
 
 	case commands.KeywordBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
+
+	case commands.KeywordPlayfield:
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Playfield)
 
 	// tv control
 

@@ -23,6 +23,7 @@ const (
 	KeywordTIA           = "TIA"
 	KeywordTV            = "TV"
 	KeywordBall          = "BALL"
+	KeywordPlayfield     = "PLAYFIELD"
 	KeywordDisplay       = "DISPLAY"
 	KeywordScript        = "SCRIPT"
 )
@@ -50,6 +51,7 @@ var DebuggerCommand = []string{
 	KeywordTIA,
 	KeywordTV,
 	KeywordBall,
+	KeywordPlayfield,
 	KeywordDisplay,
 	KeywordScript}
 
