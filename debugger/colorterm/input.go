@@ -177,6 +177,9 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 						n--
 						history = len(ct.commandHistory)
 					}
+
+					// eat the third character in the sequence
+					ct.reader.ReadRune()
 				}
 			}
 

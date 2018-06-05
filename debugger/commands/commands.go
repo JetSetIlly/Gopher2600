@@ -55,6 +55,8 @@ var DebuggerCommand = []string{
 	KeywordDisplay,
 	KeywordScript}
 
+// completionArg and associated constants definitions, are used to inform what
+// tab-completion style is expected for each command's argument
 type completionArg int
 
 const (

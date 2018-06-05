@@ -8,20 +8,21 @@ type playfield struct {
 	// state of the playfield control bits
 	data [20]bool
 
-	// data is a combination of three registers: pf0, pf1 and pf2. how these
-	// are combined is not obvious
+	// the data field is a combination of three registers: pf0, pf1 and pf2.
+	// how these are combined is not obvious; writePf0(), writePf1() and
+	// writePf2() handle the details
 	pf0 uint8
 	pf1 uint8
 	pf2 uint8
-
-	tickCount int
-	tickPhase int
 
 	// there's a slight delay when writing to playfield registers. note that we
 	// use the same delayCounter for all playfield registers. this is okay
 	// because the delay is so short there is no chance of another write being
 	// requested before the previous request has been resolved
 	writeDelay *delayCounter
+
+	tickCount int
+	tickPhase int
 }
 
 func newPlayfield() *playfield {

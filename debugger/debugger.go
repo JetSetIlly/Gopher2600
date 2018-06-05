@@ -41,7 +41,7 @@ type Debugger struct {
 	inputloopVideoClock bool // step mode
 
 	// the last result from vcs.Step() - could be a complete result or an
-	// intermediate result if step-mode is video
+	// intermediate result when video-stepping
 	lastResult *cpu.InstructionResult
 
 	// user interface
@@ -200,7 +200,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if dbg.lastResult.Final {
 					prompt = fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
 				} else {
-					prompt = fmt.Sprintf("[0x%04x] > ", dbg.lastResult.ProgramCounter)
+					prompt = fmt.Sprintf("[0x%04x+] > ", dbg.lastResult.ProgramCounter)
 				}
 			}
 			n, err := dbg.ui.UserRead(dbg.input, prompt)
