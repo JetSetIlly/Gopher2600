@@ -118,17 +118,17 @@ func (pt *Terminal) UpdateGeometry() error {
 }
 
 // CanonicalMode puts terminal into normal, everyday canonical mode
-func (pt Terminal) CanonicalMode() {
+func (pt *Terminal) CanonicalMode() {
 	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.canAttr)
 }
 
 // RawMode puts terminal into raw mode
-func (pt Terminal) RawMode() {
+func (pt *Terminal) RawMode() {
 	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.rawAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty
-func (pt Terminal) Flush() error {
+func (pt *Terminal) Flush() error {
 	if err := termios.Tcflush(pt.input.Fd(), termios.TCIFLUSH); err != nil {
 		return err
 	}

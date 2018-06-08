@@ -45,11 +45,14 @@ func LookupPattern(pattern string) (int, error) {
 // special initialisation so is a good candidate for struct embedding
 type Polycounter struct {
 	// this implementation of the VCS polycounter uses a regular go-integer
-	Count      int
-	ResetPoint int
+	Count int
 
 	// the phase ranges from 0 and MaxPhase
 	Phase int
+
+	// reset point is the value of count at which the polycounter should reset
+	// to 0
+	resetPoint int
 }
 
 // SetResetPattern specifies the pattern at which the polycounter automatically
@@ -60,7 +63,7 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 	if err != nil {
 		panic("couldn't find reset pattern in polycounter table")
 	}
-	pk.ResetPoint = i
+	pk.resetPoint = i
 }
 
 // MachineInfoTerse returns the polycounter information in terse format
@@ -93,7 +96,7 @@ func (pk *Polycounter) Reset() {
 // looped. the force argument allows the function to be called and for the loop
 // to definitely take place. we use this in the VCS during for the RSYNC check
 func (pk *Polycounter) Tick(force bool) bool {
-	if force || pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
+	if force || pk.Count == pk.resetPoint && pk.Phase == MaxPhase {
 		pk.Reset()
 		return true
 	}
@@ -107,12 +110,17 @@ func (pk *Polycounter) Tick(force bool) bool {
 	return false
 }
 
-// MatchEnd checks whether colorClock is at the *end* (ie. last phase) of the given count
+// Match check whether polycounter is at the given count, any phase
+func (pk Polycounter) Match(count int) bool {
+	return pk.Count == count
+}
+
+// MatchEnd checks whether polycounter is at the *end* (ie. last phase) of the given count
 func (pk Polycounter) MatchEnd(count int) bool {
 	return pk.Count == count && pk.Phase == MaxPhase
 }
 
-// MatchBeginning checks whether colorClock is at the *beginning* (ie. first phase) of the given count
+// MatchBeginning checks whether polycounter is at the *beginning* (ie. first phase) of the given count
 func (pk Polycounter) MatchBeginning(count int) bool {
 	return pk.Count == count && pk.Phase == 0
 }

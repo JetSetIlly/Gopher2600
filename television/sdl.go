@@ -209,9 +209,9 @@ func (tv *SDLTV) update() error {
 	// add screen boundary overlay
 	tv.renderer.SetDrawColor(100, 100, 100, 25)
 	tv.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
-	tv.renderer.FillRect(&sdl.Rect{0, 0, int32(tv.spec.clocksPerHblank), int32(tv.spec.scanlinesTotal)})
-	tv.renderer.FillRect(&sdl.Rect{0, 0, int32(tv.spec.clocksPerScanline), int32(tv.spec.scanlinesPerVBlank)})
-	tv.renderer.FillRect(&sdl.Rect{0, int32(tv.spec.scanlinesTotal - tv.spec.scanlinesPerOverscan), int32(tv.spec.clocksPerScanline), int32(tv.spec.scanlinesPerOverscan)})
+	tv.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(tv.spec.clocksPerHblank), H: int32(tv.spec.scanlinesTotal)})
+	tv.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(tv.spec.clocksPerScanline), H: int32(tv.spec.scanlinesPerVBlank)})
+	tv.renderer.FillRect(&sdl.Rect{X: 0, Y: int32(tv.spec.scanlinesTotal - tv.spec.scanlinesPerOverscan), W: int32(tv.spec.clocksPerScanline), H: int32(tv.spec.scanlinesPerOverscan)})
 
 	// add cursor overlay only if tv is paused
 	if tv.paused {
@@ -223,7 +223,7 @@ func (tv *SDLTV) update() error {
 			cursorX = 0
 			cursorY++
 		}
-		tv.renderer.DrawRect(&sdl.Rect{int32(cursorX), int32(cursorY), 2, 2})
+		tv.renderer.DrawRect(&sdl.Rect{X: int32(cursorX), Y: int32(cursorY), W: 2, H: 2})
 	}
 
 	// finalise updating of screen

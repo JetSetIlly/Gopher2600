@@ -9,54 +9,15 @@ type Video struct {
 	colorClock *colorclock.ColorClock
 	hblank     *bool
 
-	// sprite objects
-	player0  *sprite
-	player1  *sprite
-	missile0 *sprite
-	missile1 *sprite
-	Ball     *sprite
-
-	// colors
-	colup0 uint8
-	colup1 uint8
-	colupf uint8
-	colubk uint8
-
-	// TODO: player sprite data
-
 	// playfield
 	Playfield *playfield
 
-	// playfield control
-	// -- including ball size
-	ctrlpfReflection bool
-	ctrlpfPriority   bool
-	ctrlpfScoremode  bool
-	ctrlpfBallSize   uint8
-
-	// TODO: player/missile number & spacing
-	// TODO: trigger lists
-	// TODO: missile/ball size
-
-	// player reflection
-	refp0 bool
-	refp1 bool
-
-	// missile/ball enabling
-	enam0      bool
-	enam1      bool
-	enabl      bool
-	enam0Delay *delayCounter
-	enam1Delay *delayCounter
-	enablDelay *delayCounter
-	enam0Prev  bool
-	enam1Prev  bool
-	enablPrev  bool
-
-	// vertical delay
-	vdelp0 bool
-	vdelp1 bool
-	vdelbl bool
+	// sprite objects
+	Player0  *playerSprite
+	Player1  *playerSprite
+	Missile0 *missileSprite
+	Missile1 *missileSprite
+	Ball     *ballSprite
 
 	// horizontal movement
 	hmp0 uint8
@@ -64,6 +25,8 @@ type Video struct {
 	hmm0 uint8
 	hmm1 uint8
 	hmbl uint8
+
+	// TODO: player/missile number & spacing; trigger lists
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -77,40 +40,26 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	vd.hblank = hblank
 
 	// playfield
-	vd.Playfield = newPlayfield()
-
-	// missile/ball enabling
-	vd.enam0Delay = newDelayCounter("(dis/en)abling")
-	if vd.enam0Delay == nil {
-		return nil
-	}
-	vd.enam1Delay = newDelayCounter("(dis/en)abling")
-	if vd.enam1Delay == nil {
-		return nil
-	}
-	vd.enablDelay = newDelayCounter("(dis/en)abling")
-	if vd.enablDelay == nil {
-		return nil
-	}
+	vd.Playfield = newPlayfield(vd.colorClock)
 
 	// sprite objects
-	vd.player0 = newSprite("player0", nil)
-	if vd.player0 == nil {
+	vd.Player0 = newPlayerSprite("player0", vd.colorClock)
+	if vd.Player0 == nil {
 		return nil
 	}
-	vd.player1 = newSprite("player1", nil)
-	if vd.player1 == nil {
+	vd.Player1 = newPlayerSprite("player1", vd.colorClock)
+	if vd.Player1 == nil {
 		return nil
 	}
-	vd.missile0 = newSprite("missile0", &vd.enam0)
-	if vd.missile0 == nil {
+	vd.Missile0 = newMissileSprite("missile0", vd.colorClock)
+	if vd.Missile0 == nil {
 		return nil
 	}
-	vd.missile1 = newSprite("missile1", &vd.enam1)
-	if vd.missile1 == nil {
+	vd.Missile1 = newMissileSprite("missile1", vd.colorClock)
+	if vd.Missile1 == nil {
 		return nil
 	}
-	vd.Ball = newSprite("ball", &vd.enabl)
+	vd.Ball = newBallSprite("ball", vd.colorClock)
 	if vd.Ball == nil {
 		return nil
 	}
@@ -125,25 +74,16 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	return vd
 }
 
-// MachineInfoTerse returns the Video information in terse format
-func (vd Video) MachineInfoTerse() string {
-	return ""
-}
-
-// MachineInfo returns the Video information in verbose format
-func (vd Video) MachineInfo() string {
-	return ""
-}
-
-// map String to MachineInfo
-func (vd Video) String() string {
-	return vd.MachineInfo()
-}
-
-// TickSprites moves sprite elements on one video cycle
-func (vd *Video) TickSprites() {
-	// TODO: tick other sprites
-	vd.TickBall()
+// Tick moves all video elements on one video cycle
+func (vd *Video) Tick() {
+	vd.Playfield.tick()
+	if !*vd.hblank {
+		vd.Player0.tick()
+		vd.Player1.tick()
+		vd.Missile0.tick()
+		vd.Missile1.tick()
+		vd.Ball.tick()
+	}
 }
 
 // TickSpritesForHMOVE moves sprite elements if horiz movement value is in range
@@ -153,124 +93,156 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 
 	if vd.hmp0 >= uint8(count) {
+		vd.Player0.tick()
 	}
 	if vd.hmp1 >= uint8(count) {
+		vd.Player1.tick()
 	}
 	if vd.hmm0 >= uint8(count) {
+		vd.Missile0.tick()
 	}
 	if vd.hmm1 >= uint8(count) {
+		vd.Missile1.tick()
 	}
 	if vd.hmbl >= uint8(count) {
-		vd.TickBall()
+		vd.Ball.tick()
 	}
 }
 
 // GetPixel returns the color of the pixel at the current time. it will default
-// to returning background color if no sprite or playfield pixel is present -
-// it should not be called therefore unless a VCS pixel is to be displayed
+// to returning the background color if no sprite or playfield pixel is present
+// - it need not be called therefore during VBLANK or HBLANK
 func (vd Video) GetPixel() uint8 {
-	col := vd.colubk
-
-	// TODO: complete pixel ordering
-	if vd.ctrlpfPriority {
-		// player 1
-		// missile 1
-		// player 0
-		// missile 0
-		use, c := vd.PixelPlayfield()
-		if use {
-			col = c
+	if vd.Playfield.priority {
+		// priority 1
+		if use, c := vd.Player0.pixel(); use {
+			return c
 		}
-		use, c = vd.PixelBall()
-		if use {
-			col = c
+		if use, c := vd.Missile0.pixel(); use {
+			return c
+		}
+
+		// priority 2
+		if use, c := vd.Player1.pixel(); use {
+			return c
+		}
+		if use, c := vd.Missile1.pixel(); use {
+			return c
+		}
+
+		// priority 3
+		if use, c := vd.Playfield.pixel(); use {
+			return c
+		}
+		if use, c := vd.Ball.pixel(); use {
+			return c
 		}
 
 	} else {
-		use, c := vd.PixelBall()
-		if use {
-			col = c
+		// priority 1
+		if use, c := vd.Playfield.pixel(); use {
+			return c
 		}
-		use, c = vd.PixelPlayfield()
-		if use {
-			col = c
+		if use, c := vd.Ball.pixel(); use {
+			return c
 		}
-		// player 1
-		// missile 1
-		// player 0
-		// missile 0
+
+		// priority 2
+		if use, c := vd.Player1.pixel(); use {
+			return c
+		}
+		if use, c := vd.Missile1.pixel(); use {
+			return c
+		}
+
+		// priority 3
+		if use, c := vd.Player0.pixel(); use {
+			return c
+		}
+		if use, c := vd.Missile0.pixel(); use {
+			return c
+		}
 	}
 
-	return col
+	// priority 4
+	return vd.Playfield.backgroundColor
 }
 
 // ReadVideoMemory checks the TIA memory for changes to registers that are
-// interesting to the video sub-system
+// interesting to the video sub-system. all changes happen immediately except
+// for those where a *.schedule*() function is called.
 func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":
+		vd.Missile0.size = (value & 0x30) >> 4
+		// TODO: player width & trigger lists
 	case "NUSIZ1":
+		vd.Missile1.size = (value & 0x30) >> 4
+		// TODO: player width & trigger lists
 	case "COLUP0":
-		vd.colup0 = value & 0xfe
+		vd.Player0.color = value & 0xfe
+		vd.Missile0.color = value & 0xfe
 	case "COLUP1":
-		vd.colup1 = value & 0xfe
+		vd.Player1.color = value & 0xfe
+		vd.Missile1.color = value & 0xfe
 	case "COLUPF":
-		vd.colupf = value & 0xfe
+		vd.Playfield.foregroundColor = value & 0xfe
+		vd.Ball.color = value & 0xfe
 	case "COLUBK":
-		vd.colubk = value & 0xfe
+		vd.Playfield.backgroundColor = value & 0xfe
 	case "CTRLPF":
-		vd.ctrlpfBallSize = (value & 0x30) >> 4
-		vd.ctrlpfReflection = value&0x01 == 0x01
-		vd.ctrlpfScoremode = value&0x02 == 0x02
-		vd.ctrlpfPriority = value&0x04 == 0x04
+		vd.Ball.size = (value & 0x30) >> 4
+		vd.Playfield.reflected = value&0x01 == 0x01
+		vd.Playfield.scoremode = value&0x02 == 0x02
+		vd.Playfield.priority = value&0x04 == 0x04
 	case "REFP0":
-		vd.refp0 = value&0x40 == 0x40
+		vd.Player0.reflection = value&0x40 == 0x40
 	case "REFP1":
-		vd.refp1 = value&0x40 == 0x40
-
-		// delay of 5 video cycles for playfield writes seems correct - 1
-		// entire CPU cycle plus one remaining cycle from the current
-		// instruction
-		//
-		// there may be instances when there is more than one remaining video
-		// cycle from the current instruction
-		//
-		// but then again, maybe the delay is 5 video cycles in all instances
+		vd.Player1.reflection = value&0x40 == 0x40
 	case "PF0":
-		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf0(value) })
+		vd.Playfield.scheduleWrite(0, value)
 	case "PF1":
-		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf1(value) })
+		vd.Playfield.scheduleWrite(1, value)
 	case "PF2":
-		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf2(value) })
-
+		vd.Playfield.scheduleWrite(2, value)
 	case "RESP0":
+		vd.Player0.scheduleReset(vd.hblank)
 	case "RESP1":
+		vd.Player1.scheduleReset(vd.hblank)
 	case "RESM0":
+		vd.Missile0.scheduleReset(vd.hblank)
 	case "RESM1":
+		vd.Missile1.scheduleReset(vd.hblank)
 	case "RESBL":
-		if *vd.hblank {
-			vd.Ball.resetDelay.start(2, true)
-		} else {
-			vd.Ball.resetDelay.start(4, true)
-		}
+		vd.Ball.scheduleReset(vd.hblank)
 	case "GRP0":
+		vd.Player0.gfxDataPrev = vd.Player0.gfxData
+		vd.Player0.gfxData = value
 	case "GRP1":
+		vd.Player1.gfxDataPrev = vd.Player1.gfxData
+		vd.Player1.gfxData = value
 	case "ENAM0":
+		vd.Missile0.scheduleEnable(value)
 	case "ENAM1":
+		vd.Missile1.scheduleEnable(value)
 	case "ENABL":
-		vd.enablDelay.start(1, value&0x20 == 0x20)
+		vd.Ball.scheduleEnable(value)
 	case "HMP0":
+		vd.hmp0 = (value ^ 0x80) >> 4
 	case "HMP1":
+		vd.hmp1 = (value ^ 0x80) >> 4
 	case "HMM0":
+		vd.hmm0 = (value ^ 0x80) >> 4
 	case "HMM1":
+		vd.hmm1 = (value ^ 0x80) >> 4
 	case "HMBL":
 		vd.hmbl = (value ^ 0x80) >> 4
 	case "VDELP0":
-		vd.vdelp0 = value&0x01 == 0x01
+		vd.Player0.verticalDelay = value&0x01 == 0x01
 	case "VDELP1":
-		vd.vdelp1 = value&0x01 == 0x01
+		vd.Player1.verticalDelay = value&0x01 == 0x01
 	case "VDELBL":
-		vd.vdelbl = value&0x01 == 0x01
+		vd.Ball.verticalDelay = value&0x01 == 0x01
 	case "RESMP0":
 	case "RESMP1":
 	case "HMCLR":

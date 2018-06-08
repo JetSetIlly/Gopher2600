@@ -499,6 +499,15 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.TV)
 
 	// information about the machine (sprites, playfield)
+	case commands.KeywordPlayer:
+		// TODO: argument to print either player 0 or player 1
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+
+	case commands.KeywordMissile:
+		// TODO: argument to print either missile 0 or missile 1
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
 
 	case commands.KeywordBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)

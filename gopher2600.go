@@ -168,6 +168,4 @@ func run(cartridgeFile string) error {
 			return nil
 		}
 	}
-
-	return nil
 }

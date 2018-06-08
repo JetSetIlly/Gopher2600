@@ -22,6 +22,8 @@ const (
 	KeywordRIOT          = "RIOT"
 	KeywordTIA           = "TIA"
 	KeywordTV            = "TV"
+	KeywordPlayer        = "PLAYER"
+	KeywordMissile       = "MISSILE"
 	KeywordBall          = "BALL"
 	KeywordPlayfield     = "PLAYFIELD"
 	KeywordDisplay       = "DISPLAY"
@@ -50,6 +52,8 @@ var DebuggerCommand = []string{
 	KeywordRIOT,
 	KeywordTIA,
 	KeywordTV,
+	KeywordPlayer,
+	KeywordMissile,
 	KeywordBall,
 	KeywordPlayfield,
 	KeywordDisplay,

@@ -22,6 +22,8 @@ var Help = map[string]string{
 	KeywordRIOT:          "Display the current state of the RIOT",
 	KeywordTIA:           "Display current state of the TIA",
 	KeywordTV:            "Display the current TV state",
+	KeywordPlayer:        "Display the current state of the Player 0/1 sprite",
+	KeywordMissile:       "Display the current state of the Missile 0/1 sprite",
 	KeywordBall:          "Display the current state of the Ball sprite",
 	KeywordPlayfield:     "Display the current playfield data",
 	KeywordDisplay:       "Display the TV image",
