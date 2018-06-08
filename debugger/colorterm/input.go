@@ -34,7 +34,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 	//		5. output the input buffer
 	//		6. restore the cursor position
 	//
-	// for this to work we need to place the cursor in it's initial position,
+	// for this to work we need to place the cursor in it's initial position
+	// before we begin the loop
 	ct.Print("\r%s", ansi.CursorMove(len(prompt)))
 
 	for {

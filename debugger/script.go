@@ -44,7 +44,7 @@ func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
 // RunScript uses a text file as a source for a sequence of commands
 func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 
-	// the silent flag passed to this functin is meant to silence commands for
+	// the silent flag passed to this function is meant to silence commands for
 	// the duration of the script only. store existing state of dbg.silent so we
 	// can restore it when script has concluded
 	uiSilentRestore := dbg.uiSilent

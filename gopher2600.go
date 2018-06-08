@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, FPS, TVFPS, DISASM")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, RUN, FPS, TVFPS, DISASM")
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
@@ -72,6 +72,12 @@ func main() {
 			fmt.Printf("* error starting TVFPS profiler (%s)\n", err)
 			os.Exit(10)
 		}
+	case "RUN":
+		err := run(cartridgeFile)
+		if err != nil {
+			fmt.Printf("* error running emulator (%s)\n", err)
+			os.Exit(10)
+		}
 	case "DISASM":
 		fmt.Printf("* not yet implemented")
 		os.Exit(10)
@@ -126,14 +132,42 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	for cycles > 0 {
 		stepCycles, _, err := vcs.Step(hardware.NullVideoCycleCallback)
 		if err != nil {
-			fmt.Println(err)
-			fmt.Printf("%d cycles completed\n", cycles)
-			return nil
+			return err
 		}
 		cycles -= stepCycles
 	}
 
 	fmt.Printf("%f fps\n", float64(numOfFrames)/time.Since(startTime).Seconds())
+
+	return nil
+}
+
+func run(cartridgeFile string) error {
+	var tv television.Television
+	var err error
+
+	tv, err = television.NewSDLTV("NTSC", 3.0)
+	if err != nil {
+		return fmt.Errorf("error creating television for fps profiler")
+	}
+	tv.SetVisibility(true)
+
+	vcs, err := hardware.New(tv)
+	if err != nil {
+		return fmt.Errorf("error starting fps profiler (%s)", err)
+	}
+
+	err = vcs.AttachCartridge(cartridgeFile)
+	if err != nil {
+		return err
+	}
+
+	for {
+		_, _, err := vcs.Step(hardware.NullVideoCycleCallback)
+		if err != nil {
+			return nil
+		}
+	}
 
 	return nil
 }

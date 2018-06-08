@@ -21,8 +21,15 @@ type playfield struct {
 	// requested before the previous request has been resolved
 	writeDelay *delayCounter
 
-	tickCount int
-	tickPhase int
+	// screenRegion keeps track of which part of the screen we're currently in
+	//  0 -> hblank
+	//  1 -> left half
+	//  2 -> right half
+	screenRegion int
+
+	// idx is the index into the data field - interpreted depending on
+	// screenRegion and reflection settings
+	idx int
 }
 
 func newPlayfield() *playfield {
@@ -79,7 +86,7 @@ func (pf *playfield) writePf2(value uint8) {
 	pf.pf2 = value
 	pf.data[12] = pf.pf2&0x01 == 0x01
 	pf.data[13] = pf.pf2&0x02 == 0x02
-	pf.data[15] = pf.pf2&0x04 == 0x04
+	pf.data[14] = pf.pf2&0x04 == 0x04
 	pf.data[15] = pf.pf2&0x08 == 0x08
 	pf.data[16] = pf.pf2&0x10 == 0x10
 	pf.data[17] = pf.pf2&0x20 == 0x20
@@ -95,24 +102,24 @@ func (vd *Video) TickPlayfield() {
 	}
 
 	if vd.colorClock.MatchBeginning(17) {
-		vd.Playfield.tickPhase = 1
-		vd.Playfield.tickCount = 0
+		vd.Playfield.screenRegion = 1
+		vd.Playfield.idx = 0
 	} else if vd.colorClock.MatchBeginning(37) {
-		vd.Playfield.tickPhase = 2
-		vd.Playfield.tickCount = 0
+		vd.Playfield.screenRegion = 2
+		vd.Playfield.idx = 0
 	} else if vd.colorClock.MatchBeginning(0) {
-		vd.Playfield.tickPhase = 0
-	} else if vd.Playfield.tickPhase != 0 && vd.colorClock.Phase == 0 {
-		vd.Playfield.tickCount++
+		vd.Playfield.screenRegion = 0
+	} else if vd.Playfield.screenRegion != 0 && vd.colorClock.Phase == 0 {
+		vd.Playfield.idx++
 	}
 }
 
 // PixelPlayfield returns the color of the playfield at the current time.
 // returns (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (vd *Video) PixelPlayfield() (bool, uint8) {
-	if vd.Playfield.tickPhase != 0 {
-		if vd.Playfield.tickPhase == 1 || !vd.ctrlpfReflection {
-			if vd.Playfield.data[vd.Playfield.tickCount] {
+	if vd.Playfield.screenRegion != 0 {
+		if vd.Playfield.screenRegion == 1 || !vd.ctrlpfReflection {
+			if vd.Playfield.data[vd.Playfield.idx] {
 				return true, vd.colupf
 			}
 		} else {

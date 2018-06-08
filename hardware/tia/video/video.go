@@ -204,9 +204,9 @@ func (vd Video) GetPixel() uint8 {
 	return col
 }
 
-// ServiceTIAMemory checks the TIA memory for changes to registers that are
+// ReadVideoMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system
-func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
+func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":
 	case "NUSIZ1":
@@ -227,12 +227,22 @@ func (vd *Video) ServiceTIAMemory(register string, value uint8) bool {
 		vd.refp0 = value&0x40 == 0x40
 	case "REFP1":
 		vd.refp1 = value&0x40 == 0x40
+
+		// delay of 5 video cycles for playfield writes seems correct - 1
+		// entire CPU cycle plus one remaining cycle from the current
+		// instruction
+		//
+		// there may be instances when there is more than one remaining video
+		// cycle from the current instruction
+		//
+		// but then again, maybe the delay is 5 video cycles in all instances
 	case "PF0":
-		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf0(value) })
+		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf0(value) })
 	case "PF1":
-		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf1(value) })
+		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf1(value) })
 	case "PF2":
-		vd.Playfield.writeDelay.start(1, func() { vd.Playfield.writePf2(value) })
+		vd.Playfield.writeDelay.start(5, func() { vd.Playfield.writePf2(value) })
+
 	case "RESP0":
 	case "RESP1":
 	case "RESM0":

@@ -195,12 +195,12 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// get user input
 			prompt := ""
 			if mainLoop {
-				prompt = fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+				prompt = fmt.Sprintf("[%#04x] > ", dbg.vcs.MC.PC.ToUint16())
 			} else {
 				if dbg.lastResult.Final {
-					prompt = fmt.Sprintf("[0x%04x] > ", dbg.vcs.MC.PC.ToUint16())
+					prompt = fmt.Sprintf("[%#04x] > ", dbg.vcs.MC.PC.ToUint16())
 				} else {
-					prompt = fmt.Sprintf("[0x%04x+] > ", dbg.lastResult.ProgramCounter)
+					prompt = fmt.Sprintf("[%#04x+] > ", dbg.lastResult.ProgramCounter)
 				}
 			}
 			n, err := dbg.ui.UserRead(dbg.input, prompt)

@@ -92,42 +92,39 @@ func New(tv television.Television, mem memory.ChipBus) *TIA {
 // ReadTIAMemory checks for side effects in the TIA sub-system
 func (tia *TIA) ReadTIAMemory() {
 	service, register, value := tia.mem.ChipRead()
-	if service {
-		serviced := tia.serviceTIAMemory(register, value)
-		if !serviced {
-			serviced = tia.Video.ServiceTIAMemory(register, value)
-			if !serviced {
-				// TODO: audio
-				if !serviced {
-					// TODO: complain that register has not been serviced
-				}
-			}
-		}
+	if !service {
+		return
 	}
-}
 
-// serviceTIAMemory checks the TIA memory for changes to registers that are
-// interesting to the top-level TIA sub-system
-func (tia *TIA) serviceTIAMemory(register string, value uint8) bool {
 	switch register {
 	case "VSYNC":
 		tia.vsync = value&vsyncMask == vsyncMask
 		// TODO: do something with controller settings below
 		_ = value&vsyncLatchTriggerMask == vsyncLatchTriggerMask
 		_ = value&vsyncGroundedPaddleMask == vsyncGroundedPaddleMask
+		service = false
 	case "VBLANK":
 		tia.vblank = value&vblankMask == vblankMask
+		service = false
 	case "WSYNC":
 		tia.wsync = true
+		service = false
 	case "RSYNC":
 		tia.colorClock.ResetPhase()
 		tia.rsync.set()
+		service = false
 	case "HMOVE":
 		tia.hmove.set()
-	default:
-		return false
+		service = false
 	}
-	return true
+
+	if !service {
+		return
+	}
+
+	service = !tia.Video.ReadVideoMemory(register, value)
+
+	// TODO: TIA audio memory
 }
 
 // StepVideoCycle moves the state of the tia forward one video cycle

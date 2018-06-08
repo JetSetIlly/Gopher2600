@@ -82,6 +82,9 @@ func (tr *traps) parseTrap(parts []string) error {
 		}
 
 		target := parseTarget(tr.dbg.vcs, parts[i])
+		if target == nil {
+			return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
+		}
 		tr.traps = append(tr.traps, trapper{target: target, origValue: target.ToInt()})
 	}
 

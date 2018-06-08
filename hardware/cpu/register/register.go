@@ -59,13 +59,13 @@ func New(value interface{}, size int, label string, shortLabel string) (*Registe
 		r.signBit = 0x00000080
 		r.vbit = 0x00000040
 		r.mask = 0x000000FF
-		r.hexformat = "0x%02x"
+		r.hexformat = "%#02x"
 		r.binformat = "%08b"
 	} else if size == 16 {
 		r.signBit = 0x00008000
 		r.vbit = 0x00004000
 		r.mask = 0x0000FFFF
-		r.hexformat = "0x%04x"
+		r.hexformat = "%#04x"
 		r.binformat = "%016b"
 	}
 

@@ -25,7 +25,10 @@ type CPU struct {
 	mem     memory.CPUBus
 	opCodes map[uint8]definitions.InstructionDefinition
 
-	// endCycle is a closure that contains details of the current instruction
+	// endCycle is called at the end of the imaginary CPU cycle. for example,
+	// reading a byte from memory takes one cycle and so the emulation will
+	// call endCycle at that point. ExecuteInstruction accepts an argument
+	// cycleCallback which in turn is called by endCycle
 	// if it is undefined then no execution is currently being executed
 	// (see IsExecutingInstruction method)
 	endCycle func()
@@ -761,20 +764,28 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "ASL":
-		mc.Status.Carry = mc.A.ASL()
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			value = mc.A.ToUint8()
+			r, err = register.NewAnonymous(value, mc.A.Size())
+		} else {
+			r = mc.A
 		}
+		mc.Status.Carry = r.ASL()
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+		value = r.ToUint8()
 
 	case "LSR":
-		mc.Status.Carry = mc.A.LSR()
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			value = mc.A.ToUint8()
+			r, err = register.NewAnonymous(value, mc.A.Size())
+		} else {
+			r = mc.A
 		}
+		mc.Status.Carry = r.LSR()
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+		value = r.ToUint8()
 
 	case "ADC":
 		mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
@@ -787,20 +798,28 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = mc.A.IsNegative()
 
 	case "ROR":
-		mc.Status.Carry = mc.A.ROR(mc.Status.Carry)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			value = mc.A.ToUint8()
+			r, err = register.NewAnonymous(value, mc.A.Size())
+		} else {
+			r = mc.A
 		}
+		mc.Status.Carry = r.ROR(mc.Status.Carry)
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+		value = r.ToUint8()
 
 	case "ROL":
-		mc.Status.Carry = mc.A.ROL(mc.Status.Carry)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			value = mc.A.ToUint8()
+			r, err = register.NewAnonymous(value, mc.A.Size())
+		} else {
+			r = mc.A
 		}
+		mc.Status.Carry = r.ROL(mc.Status.Carry)
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+		value = r.ToUint8()
 
 	case "INC":
 		r, err := register.NewAnonymous(value, 8)
