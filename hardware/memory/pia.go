@@ -27,13 +27,6 @@ func (pia PIA) Label() string {
 	return pia.label
 }
 
-// Clear is an implementation of CPUBus.Clear
-func (pia *PIA) Clear() {
-	for i := range pia.memory {
-		pia.memory[i] = 0
-	}
-}
-
 // Implementation of CPUBus.Read
 func (pia PIA) Read(address uint16) (uint8, error) {
 	oa := address - pia.origin

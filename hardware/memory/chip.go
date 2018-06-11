@@ -12,24 +12,36 @@ type ChipMemory struct {
 
 	memory []uint8
 
+	// additional mask to further reduce address space when read from the CPU
+	readMask uint16
+
 	// read and write addresses from the perspective of the CPU
 	// - links address locations to 'register' names
 	// - must be the same length as ChipMemory.memory
 	// - empty string means the address is not readable/writable
-	readAddresses  []string
-	writeAddresses []string
+	cpuReadRegisters  []string
+	cpuWriteRegisters []string
 
-	// additional mask to further reduce address space when read from the CPU
-	readMask uint16
+	// write addresses from the perspective of the VCS Chips
+	// - so we can write chipWrite() by specifying name rather than a numerical
+	// 	 address. this makes the implementation of TIA and RIOT a little easier
+	// 	 to maintain
+	// - the keys correspond to the values in cpuReadAddresses
+	// - should be created from cpuReadRegisters
+	chipWriteRegisters map[string]int
 
+	// there is no corresponding chipReadAddresses field because we never need
+	// to read an arbitrary address from the chips. instead, we get told what
+	// to respond to with the help of the following two fields...
+	//
 	// when the CPU writes to chip memory it is not just writing to memory in the
 	// way we might expect. instead we note the address that has been written to,
 	// and a boolean true to indicate that a write has been performed by the CPU
-	lastWriteAddress uint16 // normalised
+	lastWriteAddress uint16 // mapped from 16bit to chip address length
 	writeSignal      bool
 
 	// lastReadRegister works slightly different that lastWriteAddress. it stores
-	// the register name of the last memory location *read* by the CPU
+	// the register *name* of the last memory location *read* by the CPU
 	lastReadRegister string
 }
 
@@ -38,22 +50,15 @@ func (area ChipMemory) Label() string {
 	return area.label
 }
 
-// Clear is an implementation of CPUBus.Clear
-func (area *ChipMemory) Clear() {
-	for i := range area.memory {
-		area.memory[i] = 0
-	}
-}
-
 // Implementation of CPUBus.Read
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	oa := address - area.origin
 	oa &= area.readMask
 
 	// note the name of the register that we are reading
-	area.lastReadRegister = area.readAddresses[oa]
+	area.lastReadRegister = area.cpuReadRegisters[oa]
 
-	rl := area.readAddresses[oa]
+	rl := area.cpuReadRegisters[oa]
 	if rl == "" {
 		// silently ignore illegal reads (we're definitely reading from the correct
 		// memory space but some registers are not readable)
@@ -73,13 +78,13 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
 	if area.writeSignal {
-		panic(fmt.Sprintf("chip memory write signal has not been serviced since previous write [%s]", area.writeAddresses[area.lastWriteAddress]))
+		panic(fmt.Sprintf("chip memory write signal has not been serviced since previous write [%s]", area.cpuWriteRegisters[area.lastWriteAddress]))
 	}
 
 	oa := address - area.origin
-	rl := area.writeAddresses[oa]
+	rl := area.cpuWriteRegisters[oa]
 	if rl == "" {
-		// silently ignore illegal reads (we're definitely writing to the correct
+		// silently ignore illegal writes (we're definitely writing to the correct
 		// memory space but some registers are not writable)
 		return nil
 	}
@@ -92,74 +97,45 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	return nil
 }
 
-// ChipRead is an implementation of ChipBus.ChipRead
+// ChipRead is an implementation of ChipBus.ChipRead. returns:
+// - whether a chip was last written to
+// - the CPU name of the address that was written to
+// - the written value
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, area.writeAddresses[area.lastWriteAddress], area.memory[area.lastWriteAddress]
+		return true, area.cpuWriteRegisters[area.lastWriteAddress], area.memory[area.lastWriteAddress]
 	}
 	return false, "", 0
 }
 
-// ChipLastRegisterReadByCPU returns the register name of the last memory
+// ChipWrite writes the data to the memory area's address specified by
+// registerName
+func (area *ChipMemory) ChipWrite(registerName string, data uint8) {
+	address, ok := area.chipWriteRegisters[registerName]
+	if !ok {
+		panic(fmt.Errorf("can't find register name (%s) in list of read addreses in %s memory", registerName, area.label))
+	}
+	area.memory[address] = data
+}
+
+// LastReadRegister returns the register name of the last memory
 // location *read* by the CPU
-func (area ChipMemory) ChipLastRegisterReadByCPU() string {
+func (area ChipMemory) LastReadRegister() string {
 	return area.lastReadRegister
 }
 
-// ChipWrite writes the data to the memory area's address specified by
-// registerName
-func (area *ChipMemory) ChipWrite(registerName string, data uint8) error {
-	for i := 0; i < len(area.readAddresses); i++ {
-		if area.readAddresses[i] == registerName {
-			area.memory[i] = data
-			return nil
-		}
-	}
-	return fmt.Errorf("can't find register name (%s) in list of read addreses in %s memory", registerName, area.label)
-}
-
-// newRIOT is the preferred method of initialisation for the RIOT memory area
-func newRIOT() *ChipMemory {
-	chip := new(ChipMemory)
-	if chip == nil {
-		return nil
-	}
-	chip.label = "RIOT"
-	chip.origin = 0x0280
-	chip.memtop = 0x0287
-	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
-	chip.writeAddresses = []string{"SWCHA", "SWACNT", "", "", "TIM1T", "TIM8T", "TIM64T", "TIM1024"}
-	chip.readAddresses = []string{"SWCHA", "SWACNT", "SWCHB", "SWBCNT", "INTIM", "", "", ""}
-	chip.readMask = 0xffff
-	return chip
-}
-
-// newTIA is the preferred method of initialisation for the TIA memory area
-func newTIA() *ChipMemory {
-	chip := new(ChipMemory)
-	if chip == nil {
-		return nil
-	}
-	chip.label = "TIA"
-	chip.origin = 0x0000
-	chip.memtop = 0x003f
-	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
-	chip.writeAddresses = []string{"VSYNC", "VBLANK", "WSYNC", "RSYNC", "NUSIZ0", "NUSIZ1", "COLUP0", "COLUP1", "COLUPF", "COLUBK", "CTRLPF", "REFP0", "REFP1", "PF0", "PF1", "PF2", "RESP0", "RESP1", "RESM0", "RESM1", "RESBL", "AUDC0", "AUDC1", "AUDF0", "AUDF1", "AUDV0", "AUDV1", "GRP0", "GRP1", "ENAM0", "ENAM1", "ENABL", "HMP0", "HMP1", "HMM0", "HMM1", "HMBL", "VDELP0", "VDELP1", "VDELBL", "RESMP0", "RESMP1", "HMOVE", "HMCLR", "CXCLR", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""}
-	chip.readAddresses = []string{"CXM0P", "CXM1P", "CXP0FB", "CXP1FB", "CXM0FB", "CXM1FB", "CXBLPF", "CXPPMM", "INPT0", "INPT1", "INPT2", "INPT3", "INPT4", "INPT5", "", ""}
-	chip.readMask = 0x000f
-
-	return chip
-}
-
-// Peek is the implementation of Area.Peek
+// Peek is the implementation of Area.Peek. returns:
+// - the value in memory
+// - the register name of the address
+// - any errors
 func (area ChipMemory) Peek(address uint16) (uint8, string, error) {
 	oa := address - area.origin
 	oa &= area.readMask
 
-	rl := area.readAddresses[oa]
+	rl := area.cpuReadRegisters[oa]
 	if rl == "" {
-		return 0, "", fmt.Errorf("memory location is not really readable")
+		return 0, "", fmt.Errorf("memory location is not readable")
 	}
 	return area.memory[oa], rl, nil
 }

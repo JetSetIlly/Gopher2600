@@ -96,7 +96,7 @@ func (riot *RIOT) Step() {
 	// *read* then the decrement reverts to once per timer interval. this won't
 	// have any discernable effect unless the timer interval has been flipped to
 	// 1 when INTIM cycles back to 255
-	if riot.mem.ChipLastRegisterReadByCPU() == "INTIM" {
+	if riot.mem.LastReadRegister() == "INTIM" {
 		switch riot.timerRegister {
 		case "TIM1T":
 			riot.timerInterval = 1

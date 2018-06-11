@@ -120,7 +120,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 	// two joystick controllers
 	vcs.Mem.TIA.ChipWrite("INPT4", 0x80)
 	vcs.Mem.TIA.ChipWrite("INPT5", 0x80)
-	vcs.Mem.TIA.ChipWrite("SWCHA", 0xFF)
+	vcs.Mem.RIOT.ChipWrite("SWCHA", 0xFF)
 
 	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
 	if err != nil {

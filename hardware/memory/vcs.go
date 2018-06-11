@@ -87,14 +87,6 @@ func (mem VCSMemory) MapAddress(address uint16) uint16 {
 	return address & mem.TIA.memtop
 }
 
-// Clear is an implementation of CPUBus.Clear
-func (mem *VCSMemory) Clear() {
-	mem.RIOT.Clear()
-	mem.TIA.Clear()
-	mem.PIA.Clear()
-	mem.Cart.Clear()
-}
-
 // Implementation of CPUBus.Read
 func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address)

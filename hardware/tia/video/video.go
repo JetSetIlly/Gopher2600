@@ -170,7 +170,7 @@ func (vd Video) GetPixel() uint8 {
 
 // ReadVideoMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
-// for those where a *.schedule*() function is called.
+// for those where a "schedule" function is called.
 func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":

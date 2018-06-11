@@ -31,7 +31,7 @@ type sprite struct {
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
 	// matches the colorClock polycounter, but differenct sprite types handle
-	// this differently
+	// this differently in certain circumstances
 	drawSigMax   int
 	drawSigCount int
 }

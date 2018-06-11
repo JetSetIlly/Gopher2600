@@ -6,7 +6,6 @@ package memory
 // interface and maps the read/write address to the correct memory area --
 // meaning that CPU access need not care which part of memory it is writing to
 type CPUBus interface {
-	Clear()
 	Read(address uint16) (uint8, error)
 	Write(address uint16, data uint8) error
 }
@@ -15,8 +14,8 @@ type CPUBus interface {
 // VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
 type ChipBus interface {
 	ChipRead() (bool, string, uint8)
-	ChipWrite(registerName string, data uint8) error
-	ChipLastRegisterReadByCPU() string
+	ChipWrite(registerName string, data uint8)
+	LastReadRegister() string
 }
 
 // Area defines the meta-operations for all memory areas. Think of these
