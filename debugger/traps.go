@@ -62,24 +62,9 @@ func (tr traps) list() {
 }
 
 func (tr *traps) parseTrap(parts []string) error {
-	if len(parts) == 1 {
-		return fmt.Errorf("not enough arguments for %s", parts[0])
-	}
-
 	// loop over parts, allowing multiple traps to be applied
 	for i := 1; i < len(parts); i++ {
 		parts[i] = strings.ToUpper(parts[i])
-
-		// commands
-		switch parts[i] {
-		case "CLEAR":
-			tr.clear()
-			tr.dbg.print(ui.Feedback, "traps cleared")
-			return nil
-		case "LIST":
-			tr.list()
-			return nil
-		}
 
 		target := parseTarget(tr.dbg.vcs, parts[i])
 		if target == nil {

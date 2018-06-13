@@ -97,10 +97,6 @@ func (bp breakpoints) list() {
 }
 
 func (bp *breakpoints) parseBreakpoint(parts []string) error {
-	if len(parts) == 1 {
-		return fmt.Errorf("not enough arguments for %s", parts[0])
-	}
-
 	var tgt target
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
@@ -133,23 +129,6 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			}
 
 		} else {
-
-			// TODO: namespaces so we can do things like "BREAK TV COLOR RED" without
-			// our breakpoints code knowing anything about it. GetTVState() will
-			// return a TVState if the television implementation understands the
-			// request
-
-			// commands
-			switch parts[i] {
-			case "CLEAR":
-				bp.clear()
-				bp.dbg.print(ui.Feedback, "breakpoints cleared")
-				return nil
-			case "LIST":
-				bp.list()
-				return nil
-			}
-
 			// defer parsing of other keywords to parseTargets()
 			tgt = parseTarget(bp.dbg.vcs, parts[i])
 			if tgt == nil {

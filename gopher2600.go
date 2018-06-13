@@ -38,7 +38,7 @@ func main() {
 		// run initialisation script
 		err = dbg.RunScript(".gopher2600/debuggerInit", true)
 		if err != nil {
-			fmt.Printf("* error starting debugger (%s)\n", err)
+			fmt.Printf("* error running debugger initialisation script (%s)\n", err)
 			os.Exit(10)
 		}
 
@@ -57,7 +57,7 @@ func main() {
 
 		err = dbg.Start(term, cartridgeFile)
 		if err != nil {
-			fmt.Printf("* error starting debugger (%s)\n", err)
+			fmt.Printf("* error running debugger (%s)\n", err)
 			os.Exit(10)
 		}
 	case "FPS":

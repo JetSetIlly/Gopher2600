@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"gopher2600/debugger/commands"
+	"gopher2600/debugger/parser"
 	"os"
 )
 
@@ -20,7 +20,7 @@ func (pt *PlainTerminal) CleanUp() {
 }
 
 // RegisterTabCompleter adds an implementation of TabCompleter to the terminal
-func (pt *PlainTerminal) RegisterTabCompleter(tc *commands.TabCompletion) {
+func (pt *PlainTerminal) RegisterTabCompleter(tc *parser.TabCompletion) {
 }
 
 // UserPrint is the plain terminal print routine

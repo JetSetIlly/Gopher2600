@@ -3,7 +3,7 @@ package colorterm
 import (
 	"bufio"
 	"gopher2600/debugger/colorterm/easyterm"
-	"gopher2600/debugger/commands"
+	"gopher2600/debugger/parser"
 	"os"
 )
 
@@ -14,7 +14,7 @@ type ColorTerminal struct {
 	reader         *bufio.Reader
 	commandHistory []command
 
-	tabCompleter *commands.TabCompletion
+	tabCompleter *parser.TabCompletion
 }
 
 type command struct {
@@ -43,6 +43,6 @@ func (ct *ColorTerminal) CleanUp() {
 
 // RegisterTabCompleter adds an implementation of TabCompleter to the
 // ColorTerminal
-func (ct *ColorTerminal) RegisterTabCompleter(tc *commands.TabCompletion) {
+func (ct *ColorTerminal) RegisterTabCompleter(tc *parser.TabCompletion) {
 	ct.tabCompleter = tc
 }

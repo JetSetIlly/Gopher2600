@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/commands"
+	"gopher2600/debugger/parser"
 	"gopher2600/debugger/ui"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
@@ -96,7 +96,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	}
 	defer dbg.ui.CleanUp()
 
-	dbg.ui.RegisterTabCompleter(commands.NewTabCompletion())
+	dbg.ui.RegisterTabCompleter(parser.NewTabCompletion(DebuggerCommands))
 
 	if filename != "" {
 		err = dbg.vcs.AttachCartridge(filename)
@@ -144,10 +144,9 @@ func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
 	return dbg.inputLoop(false)
 }
 
-// inputLoop has two modes, defined by the mainLoop argument. a value of false
-// (ie not a mainLoop) cases the function to return in those situations when
-// the main loop (value of true) would carry on. a mainLoop of false helps us
-// to implement video stepping.
+// inputLoop has two modes, defined by the mainLoop argument. when inputLoop is
+// not a "mainLoop", the function will only loop for the duration of one cpu
+// step. this is used to implement video-stepping.
 func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	var err error
 
@@ -275,7 +274,6 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 // first return value. other commands return false and act upon the command
 // immediately. note that the empty string is the same as the STEP command
 func (dbg *Debugger) parseCommand(input string) (bool, error) {
-	// TODO: generate errors for commands with too many arguments
 	// TODO: categorise commands into script-safe and non-script-safe
 
 	// remove leading/trailing space
@@ -299,28 +297,30 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 	}
 
+	// normalise case of first entry in parts list (the command)
+	parts[0] = strings.ToUpper(parts[0])
+
+	if err := DebuggerCommands.CheckCommandInput(parts); err != nil {
+		return false, err
+	}
+
 	// most commands do not cause the emulator to step forward
 	stepNext := false
 
-	// first entry in "parts" is the debugging command. switch on this value
-	switch strings.ToUpper(parts[0]) {
+	// implement debugging command
+	switch parts[0] {
 	default:
-		for _, k := range commands.DebuggerCommand {
-			if k == parts[0] {
-				return false, fmt.Errorf("%s is not yet implemented", parts[0])
-			}
-		}
-		return false, fmt.Errorf("%s is not a debugging command", parts[0])
+		return false, fmt.Errorf("%s is not yet implemented", parts[0])
 
 		// control of the debugger
-	case commands.KeywordHelp:
+	case KeywordHelp:
 		if len(parts) == 1 {
-			for _, k := range commands.DebuggerCommand {
+			for k := range DebuggerCommands {
 				dbg.print(ui.Help, k)
 			}
 		} else {
 			s := strings.ToUpper(parts[1])
-			txt, prs := commands.Help[s]
+			txt, prs := Help[s]
 			if prs == false {
 				dbg.print(ui.Help, "no help for %s", s)
 			} else {
@@ -328,38 +328,54 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 		}
 
-	case commands.KeywordInsert:
-		if len(parts) < 2 {
-			return false, fmt.Errorf("filename required for %s", parts[0])
-		}
+	case KeywordInsert:
 		err := dbg.vcs.AttachCartridge(parts[1])
 		if err != nil {
 			return false, err
 		}
 		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", parts[1])
 
-	case commands.KeywordScript:
-		if len(parts) < 2 {
-			return false, fmt.Errorf("filename required for %s", parts[0])
-		}
+	case KeywordScript:
 		err := dbg.RunScript(parts[1], false)
 		if err != nil {
 			return false, err
 		}
 
-	case commands.KeywordBreak:
+	case KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(parts)
 		if err != nil {
 			return false, err
 		}
 
-	case commands.KeywordTrap:
+	case KeywordTrap:
 		err := dbg.traps.parseTrap(parts)
 		if err != nil {
 			return false, err
 		}
 
-	case commands.KeywordOnHalt:
+	case KeywordList:
+		if len(parts) > 1 {
+			switch parts[1] {
+			case "BREAKS":
+				dbg.breakpoints.list()
+			case "TRAPS":
+				dbg.traps.list()
+			}
+		}
+
+	case KeywordClear:
+		if len(parts) > 1 {
+			switch parts[1] {
+			case "BREAKS":
+				dbg.breakpoints.clear()
+				dbg.print(ui.Feedback, "breakpoints cleared")
+			case "TRAPS":
+				dbg.traps.clear()
+				dbg.print(ui.Feedback, "traps cleared")
+			}
+		}
+
+	case KeywordOnHalt:
 		if len(parts) < 2 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 		} else {
@@ -385,24 +401,24 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
-	case commands.KeywordMemMap:
+	case KeywordMemMap:
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
-	case commands.KeywordQuit:
+	case KeywordQuit:
 		dbg.running = false
 
-	case commands.KeywordReset:
+	case KeywordReset:
 		err := dbg.vcs.Reset()
 		if err != nil {
 			return false, err
 		}
 		dbg.print(ui.Feedback, "machine reset")
 
-	case commands.KeywordRun:
+	case KeywordRun:
 		dbg.runUntilHalt = true
 		stepNext = true
 
-	case commands.KeywordStep:
+	case KeywordStep:
 		stepNext = true
 		if len(parts) > 1 {
 			switch parts[1] {
@@ -413,7 +429,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 		}
 
-	case commands.KeywordStepMode:
+	case KeywordStepMode:
 		if len(parts) > 1 {
 			switch strings.ToUpper(parts[1]) {
 			case "CPU":
@@ -432,22 +448,22 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 		dbg.print(ui.Feedback, "step mode: %s", stepMode)
 
-	case commands.KeywordTerse:
+	case KeywordTerse:
 		dbg.machineInfoVerbose = false
 		dbg.print(ui.Feedback, "verbosity: terse")
 
-	case commands.KeywordVerbose:
+	case KeywordVerbose:
 		dbg.machineInfoVerbose = true
 		dbg.print(ui.Feedback, "verbosity: verbose")
 
-	case commands.KeywordVerbosity:
+	case KeywordVerbosity:
 		if dbg.machineInfoVerbose {
 			dbg.print(ui.Feedback, "verbosity: verbose")
 		} else {
 			dbg.print(ui.Feedback, "verbosity: terse")
 		}
 
-	case commands.KeywordDebuggerState:
+	case KeywordDebuggerState:
 		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT")
 		if err != nil {
 			return false, err
@@ -455,14 +471,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	// information about the machine (chips)
 
-	case commands.KeywordCPU:
+	case KeywordCPU:
 		dbg.printMachineInfo(dbg.vcs.MC)
 
-	case commands.KeywordPeek:
-		if len(parts) < 1 {
-			return false, fmt.Errorf("PEEK requires a memory address")
-		}
-
+	case KeywordPeek:
 		for i := 1; i < len(parts); i++ {
 			addr, err := strconv.ParseUint(parts[i], 0, 16)
 			if err != nil {
@@ -489,35 +501,35 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			dbg.print(ui.MachineInfo, s)
 		}
 
-	case commands.KeywordRIOT:
+	case KeywordRIOT:
 		dbg.printMachineInfo(dbg.vcs.RIOT)
 
-	case commands.KeywordTIA:
+	case KeywordTIA:
 		dbg.printMachineInfo(dbg.vcs.TIA)
 
-	case commands.KeywordTV:
+	case KeywordTV:
 		dbg.printMachineInfo(dbg.vcs.TV)
 
 	// information about the machine (sprites, playfield)
-	case commands.KeywordPlayer:
+	case KeywordPlayer:
 		// TODO: argument to print either player 0 or player 1
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
 
-	case commands.KeywordMissile:
+	case KeywordMissile:
 		// TODO: argument to print either missile 0 or missile 1
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
 
-	case commands.KeywordBall:
+	case KeywordBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
 
-	case commands.KeywordPlayfield:
+	case KeywordPlayfield:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Playfield)
 
 	// tv control
 
-	case commands.KeywordDisplay:
+	case KeywordDisplay:
 		visibility := true
 		if len(parts) > 1 {
 			switch parts[1] {

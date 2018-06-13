@@ -1,4 +1,4 @@
-package commands
+package parser
 
 import (
 	"strings"
@@ -9,6 +9,8 @@ const cycleDuration = 500 * time.Millisecond
 
 // TabCompletion keeps track of the most recent tab completion attempt
 type TabCompletion struct {
+	baseOptions Commands
+
 	options    []string
 	lastOption int
 
@@ -21,9 +23,10 @@ type TabCompletion struct {
 }
 
 // NewTabCompletion is the preferred method of initialisation for TabCompletion
-func NewTabCompletion() *TabCompletion {
+func NewTabCompletion(baseOptions Commands) *TabCompletion {
 	tc := new(TabCompletion)
-	tc.options = make([]string, 0, len(DebuggerCommand))
+	tc.baseOptions = baseOptions
+	tc.options = make([]string, 0, len(tc.baseOptions))
 	return tc
 }
 
@@ -31,7 +34,7 @@ func NewTabCompletion() *TabCompletion {
 // expanded to meet the closest match in the list of allowed strings.
 func (tc *TabCompletion) GuessWord(input string) string {
 	// split input into words
-	p := strings.Split(input, " ")
+	p := strings.Fields(input)
 	if len(p) == 0 {
 		return input
 	}
@@ -60,19 +63,49 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		tc.options = tc.options[:0]
 		tc.lastOption = 0
 
-		context := completionsOpts[strings.ToUpper(p[0])]
+		// get args for command
+		var arg Arg
 
-		if len(p) == 0 || context == compArgDebuggerCommand {
-			trigger := strings.ToUpper(p[len(p)-1])
-			// if this is the first word in the input or if the completion is
-			// otherwise suitable, build a list of options formed from the list of
-			// debugger commands
-			for i := 0; i < len(DebuggerCommand); i++ {
-				if len(trigger) <= len(DebuggerCommand[i]) && trigger == DebuggerCommand[i][:len(trigger)] {
-					tc.options = append(tc.options, DebuggerCommand[i])
-				}
+		argList, ok := tc.baseOptions[strings.ToUpper(p[0])]
+		if ok {
+			if len(p)-1 > len(argList) {
+				return input
 			}
-		} else if context == compArgFile {
+
+			if len(p) == 1 {
+				arg = argList[len(p)-1]
+			} else {
+				arg = argList[len(p)-2]
+			}
+		} else {
+			arg.Typ = ArgKeyword
+			arg.Vals = &tc.baseOptions
+		}
+
+		switch arg.Typ {
+		case ArgKeyword:
+			// trigger is the word we're trying to complete on
+			trigger := strings.ToUpper(p[len(p)-1])
+			p = p[:len(p)-1]
+
+			switch kw := arg.Vals.(type) {
+			case *Commands:
+				for k := range *kw {
+					if len(trigger) <= len(k) && trigger == k[:len(trigger)] {
+						tc.options = append(tc.options, k)
+					}
+				}
+			case Keywords:
+				for _, k := range kw {
+					if len(trigger) <= len(k) && trigger == k[:len(trigger)] {
+						tc.options = append(tc.options, k)
+					}
+				}
+			default:
+				tc.options = append(tc.options, "unhandled argument type")
+			}
+
+		case ArgFile:
 			// TODO: filename completion
 			tc.options = append(tc.options, "<TODO: file-completion>")
 		}
@@ -81,12 +114,11 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		if len(tc.options) == 0 {
 			return input
 		}
+
 	}
 
-	// change the last word in the supplied input to the chosen option
-	p[len(p)-1] = tc.options[tc.lastOption]
-
-	// rejoin all parts of the input along with the altered last word
+	// add guessed word to end of input-list and rejoin to form the output
+	p = append(p, tc.options[tc.lastOption])
 	tc.lastGuess = strings.Join(p, " ") + " "
 
 	// note current time. we'll use this to help decide whether to cycle
