@@ -36,6 +36,8 @@ const (
 
 	SubKeywordBreaks = "BREAKS"
 	SubKeywordTraps  = "TRAPS"
+	SubKeywordVideo  = "VIDEO"
+	SubKeywordCPU    = "CPU"
 )
 
 // DebuggerCommands provides:
@@ -44,7 +46,7 @@ const (
 var DebuggerCommands = parser.Commands{
 	KeywordInsert:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
 	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgNumber, Req: true}},
-	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgNumber, Req: true}},
+	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}},
 	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
 	KeywordList:          parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
 	KeywordClear:         parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
@@ -53,7 +55,7 @@ var DebuggerCommands = parser.Commands{
 	KeywordReset:         parser.CommandArgs{},
 	KeywordRun:           parser.CommandArgs{},
 	KeywordStep:          parser.CommandArgs{},
-	KeywordStepMode:      parser.CommandArgs{},
+	KeywordStepMode:      parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: false, Vals: parser.Keywords{SubKeywordCPU, SubKeywordVideo}}},
 	KeywordTerse:         parser.CommandArgs{},
 	KeywordVerbose:       parser.CommandArgs{},
 	KeywordVerbosity:     parser.CommandArgs{},

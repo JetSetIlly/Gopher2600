@@ -12,6 +12,7 @@ type missileSprite struct {
 	size         uint8
 	enable       bool
 	futureEnable *future
+	triggerList  []int
 
 	lateStartDraw bool
 }
@@ -61,7 +62,7 @@ func (ms missileSprite) MachineInfo() string {
 // tick moves the counters along for the missile sprite
 func (ms *missileSprite) tick() {
 	// position
-	if ms.tickPosition(nil) {
+	if ms.tickPosition(ms.triggerList) {
 		if ms.futureReset.isScheduled() {
 			ms.stopDrawing()
 			ms.lateStartDraw = true

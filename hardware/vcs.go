@@ -92,28 +92,23 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 		// TODO: not sure when in the video cycle sequence it should be run
 		// TODO: is this something that can drift, thereby causing subtly different
 		// results / graphical effects? is this what RSYNC is for?
+
 		vcs.RIOT.ReadRIOTMemory()
 		vcs.RIOT.Step()
 
 		// three color clocks per CPU cycle so we run video cycle three times
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg {
-			videoCycleCallback(r)
-		}
+		videoCycleCallback(r)
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg {
-			videoCycleCallback(r)
-		}
+		videoCycleCallback(r)
 
 		// check for side effects from the CPU operation
 		vcs.TIA.ReadTIAMemory()
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		if vcs.MC.RdyFlg {
-			videoCycleCallback(r)
-		}
+		videoCycleCallback(r)
 	}
 
 	// TODO: full controller support -- this is emulating the rest state for the

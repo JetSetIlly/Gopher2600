@@ -25,15 +25,19 @@ type sprite struct {
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
 	// circulates to 0000000
-	position           polycounter.Polycounter
+	position polycounter.Polycounter
+
+	// reset position of the sprite -- does not take horizonal movement into
+	// account
 	positionResetPixel int
 
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
 	// matches the colorClock polycounter, but differenct sprite types handle
 	// this differently in certain circumstances
-	drawSigMax   int
 	drawSigCount int
+	drawSigMax   int
+	drawSigOff   int
 }
 
 func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
@@ -55,7 +59,8 @@ func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 	// the direction of count and max is important - don't monkey with it
 	// the value is used in Pixel*() functions to determine which pixel to check
 	sp.drawSigMax = 8
-	sp.drawSigCount = sp.drawSigMax + 1
+	sp.drawSigOff = sp.drawSigMax + 1
+	sp.drawSigCount = sp.drawSigOff
 
 	return sp
 }
@@ -120,7 +125,7 @@ func (sp *sprite) startDrawing() {
 
 // stopDrawing is used to stop the draw signal prematurely
 func (sp *sprite) stopDrawing() {
-	sp.drawSigCount = sp.drawSigMax + 1
+	sp.drawSigCount = sp.drawSigOff
 }
 
 func (sp *sprite) isDrawing() bool {

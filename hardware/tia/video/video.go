@@ -25,8 +25,6 @@ type Video struct {
 	hmm0 uint8
 	hmm1 uint8
 	hmbl uint8
-
-	// TODO: player/missile number & spacing; trigger lists
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -115,10 +113,10 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 func (vd Video) GetPixel() uint8 {
 	if vd.Playfield.priority {
 		// priority 1
-		if use, c := vd.Player0.pixel(); use {
+		if use, c := vd.Playfield.pixel(); use {
 			return c
 		}
-		if use, c := vd.Missile0.pixel(); use {
+		if use, c := vd.Ball.pixel(); use {
 			return c
 		}
 
@@ -131,19 +129,18 @@ func (vd Video) GetPixel() uint8 {
 		}
 
 		// priority 3
-		if use, c := vd.Playfield.pixel(); use {
+		if use, c := vd.Player0.pixel(); use {
 			return c
 		}
-		if use, c := vd.Ball.pixel(); use {
+		if use, c := vd.Missile0.pixel(); use {
 			return c
 		}
-
 	} else {
 		// priority 1
-		if use, c := vd.Playfield.pixel(); use {
+		if use, c := vd.Player0.pixel(); use {
 			return c
 		}
-		if use, c := vd.Ball.pixel(); use {
+		if use, c := vd.Missile0.pixel(); use {
 			return c
 		}
 
@@ -156,16 +153,35 @@ func (vd Video) GetPixel() uint8 {
 		}
 
 		// priority 3
-		if use, c := vd.Player0.pixel(); use {
+		if use, c := vd.Playfield.pixel(); use {
 			return c
 		}
-		if use, c := vd.Missile0.pixel(); use {
+		if use, c := vd.Ball.pixel(); use {
 			return c
 		}
 	}
 
 	// priority 4
 	return vd.Playfield.backgroundColor
+}
+
+func createTriggerList(playerSize uint8) []int {
+	var triggerList []int
+	switch playerSize {
+	case 0x0, 0x05, 0x07:
+		// empty trigger list
+	case 0x01:
+		triggerList = []int{4} // 111100
+	case 0x02:
+		triggerList = []int{8} // 110111
+	case 0x03:
+		triggerList = []int{4, 8} // 111100, 110111
+	case 0x04:
+		triggerList = []int{4} // 110111
+	case 0x06:
+		triggerList = []int{8, 16} // 110111, 011100
+	}
+	return triggerList
 }
 
 // ReadVideoMemory checks the TIA memory for changes to registers that are
@@ -175,10 +191,14 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":
 		vd.Missile0.size = (value & 0x30) >> 4
-		// TODO: player width & trigger lists
+		vd.Player0.size = value & 0x07
+		vd.Player0.triggerList = createTriggerList(vd.Player0.size)
+		vd.Missile0.triggerList = vd.Player0.triggerList
 	case "NUSIZ1":
 		vd.Missile1.size = (value & 0x30) >> 4
-		// TODO: player width & trigger lists
+		vd.Player1.size = value & 0x07
+		vd.Player1.triggerList = createTriggerList(vd.Player1.size)
+		vd.Missile1.triggerList = vd.Player1.triggerList
 	case "COLUP0":
 		vd.Player0.color = value & 0xfe
 		vd.Missile0.color = value & 0xfe
@@ -196,9 +216,9 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "REFP0":
-		vd.Player0.reflection = value&0x40 == 0x40
+		vd.Player0.reflected = value&0x04 == 0x04
 	case "REFP1":
-		vd.Player1.reflection = value&0x40 == 0x40
+		vd.Player1.reflected = value&0x04 == 0x04
 	case "PF0":
 		vd.Playfield.scheduleWrite(0, value)
 	case "PF1":
