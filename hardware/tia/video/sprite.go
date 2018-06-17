@@ -70,7 +70,7 @@ func (sp sprite) MachineInfoTerse() string {
 	pos := fmt.Sprintf("pos=%d", sp.positionResetPixel)
 	sig := "dsig=-"
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("dsig=%d", sp.drawSigMax-sp.drawSigCount+1)
+		sig = fmt.Sprintf("dsig=%d", sp.drawSigMax-sp.drawSigCount)
 	}
 	res := "reset=-"
 	if sp.futureReset.isScheduled() {

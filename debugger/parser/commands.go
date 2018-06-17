@@ -12,7 +12,7 @@ const (
 	ArgKeyword ArgType = iota
 	ArgFile
 	ArgTarget
-	ArgNumber
+	ArgValue
 	ArgAddress
 	ArgIndeterminate
 )
@@ -86,7 +86,7 @@ func (options Commands) CheckCommandInput(input []string) error {
 			return fmt.Errorf("address required for %s", input[0])
 		case ArgTarget:
 			return fmt.Errorf("emulation target required for %s", input[0])
-		case ArgNumber:
+		case ArgValue:
 			return fmt.Errorf("numeric argument required for %s", input[0])
 		default:
 			return fmt.Errorf("too few arguments for %s", input[0])

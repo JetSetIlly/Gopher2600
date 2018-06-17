@@ -59,6 +59,10 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		}
 
 	} else {
+		if strings.HasSuffix(input, " ") {
+			return input
+		}
+
 		// this is a new tabcompletion session
 		tc.options = tc.options[:0]
 		tc.lastOption = 0
@@ -67,16 +71,11 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		var arg Arg
 
 		argList, ok := tc.baseOptions[strings.ToUpper(p[0])]
-		if ok {
-			if len(p)-1 > len(argList) {
+		if ok && len(input) > len(p[0]) {
+			if len(argList) == 0 {
 				return input
 			}
-
-			if len(p) == 1 {
-				arg = argList[len(p)-1]
-			} else {
-				arg = argList[len(p)-2]
-			}
+			arg = argList[len(p)-2]
 		} else {
 			arg.Typ = ArgKeyword
 			arg.Vals = &tc.baseOptions

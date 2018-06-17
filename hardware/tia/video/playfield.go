@@ -107,8 +107,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 			}
 		} else {
 			// reflected playfield
-			// TODO: test reflected playfield
-			if pf.data[len(pf.data)-pf.idx] {
+			if pf.data[len(pf.data)-pf.idx-1] {
 				return true, pf.foregroundColor
 			}
 		}

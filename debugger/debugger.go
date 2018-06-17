@@ -355,7 +355,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordList:
 		if len(parts) > 1 {
-			switch parts[1] {
+			switch strings.ToUpper(parts[1]) {
 			case "BREAKS":
 				dbg.breakpoints.list()
 			case "TRAPS":
@@ -365,7 +365,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordClear:
 		if len(parts) > 1 {
-			switch parts[1] {
+			switch strings.ToUpper(parts[1]) {
 			case "BREAKS":
 				dbg.breakpoints.clear()
 				dbg.print(ui.Feedback, "breakpoints cleared")
@@ -379,7 +379,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if len(parts) < 2 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 		} else {
-			if parts[1] == "OFF" {
+			if strings.ToUpper(parts[1]) == "OFF" {
 				dbg.commandOnHalt = ""
 				dbg.print(ui.Feedback, "no auto-command on halt")
 				return false, nil

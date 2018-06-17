@@ -45,7 +45,7 @@ const (
 //  - the tab completion method for each argument for each command
 var DebuggerCommands = parser.Commands{
 	KeywordInsert:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
-	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgNumber, Req: true}},
+	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}},
 	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}},
 	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
 	KeywordList:          parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
@@ -61,7 +61,7 @@ var DebuggerCommands = parser.Commands{
 	KeywordVerbosity:     parser.CommandArgs{},
 	KeywordDebuggerState: parser.CommandArgs{},
 	KeywordCPU:           parser.CommandArgs{},
-	KeywordPeek:          parser.CommandArgs{parser.Arg{Typ: parser.ArgAddress, Req: true}},
+	KeywordPeek:          parser.CommandArgs{parser.Arg{Typ: parser.ArgValue, Req: true}},
 	KeywordRIOT:          parser.CommandArgs{},
 	KeywordTIA:           parser.CommandArgs{},
 	KeywordTV:            parser.CommandArgs{},
