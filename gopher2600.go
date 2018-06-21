@@ -6,6 +6,8 @@ import (
 	"gopher2600/debugger"
 	"gopher2600/debugger/colorterm"
 	"gopher2600/debugger/ui"
+	"gopher2600/disassembly"
+	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/television"
 	"os"
@@ -15,7 +17,7 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, RUN, FPS, TVFPS, DISASM")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, FPS, TVFPS")
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
@@ -60,6 +62,20 @@ func main() {
 			fmt.Printf("* error running debugger (%s)\n", err)
 			os.Exit(10)
 		}
+	case "DISASM":
+		dsm, err := disassembly.NewDisassembly(cartridgeFile)
+		if err != nil {
+			switch err.(type) {
+			case errors.GopherError:
+				// print what disassembly output we do have
+				if dsm != nil {
+					fmt.Println(dsm.Dump())
+				}
+			}
+			fmt.Printf("* error during disassembly (%s)\n", err)
+			os.Exit(10)
+		}
+		fmt.Println(dsm.Dump())
 	case "FPS":
 		err := fps(cartridgeFile, true)
 		if err != nil {
@@ -78,9 +94,6 @@ func main() {
 			fmt.Printf("* error running emulator (%s)\n", err)
 			os.Exit(10)
 		}
-	case "DISASM":
-		fmt.Printf("* not yet implemented")
-		os.Exit(10)
 	default:
 		fmt.Printf("* unknown mode (%s)\n", strings.ToUpper(*mode))
 		os.Exit(10)

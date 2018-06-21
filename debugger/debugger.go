@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"gopher2600/debugger/parser"
 	"gopher2600/debugger/ui"
+	"gopher2600/disassembly"
+	"gopher2600/disassembly/symbols"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
 	"gopher2600/television"
@@ -18,6 +20,8 @@ type Debugger struct {
 	vcs     *hardware.VCS
 	running bool
 	input   []byte
+
+	disasm disassembly.Disassembly
 
 	breakpoints  *breakpoints
 	traps        *traps
@@ -99,7 +103,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	dbg.ui.RegisterTabCompleter(parser.NewTabCompletion(DebuggerCommands))
 
 	if filename != "" {
-		err = dbg.vcs.AttachCartridge(filename)
+		err = dbg.loadCartridge(filename)
 		if err != nil {
 			return err
 		}
@@ -134,14 +138,40 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 	return nil
 }
 
-// videoCycleInputLoop is a wrapper function to be used when calling vcs.Step()
-func (dbg *Debugger) videoCycleInputLoop(result *cpu.InstructionResult) error {
-	dbg.lastResult = result
-
-	if dbg.inputloopVideoClock {
-		dbg.print(ui.VideoStep, "%v", result)
+// loadCartridge makes sure that the cartridge loaded into vcs memory and the
+// available disassembly/symbols are in sync. *never call vcs.AttachCartridge
+// except through this funtion*
+func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
+	err := dbg.vcs.AttachCartridge(cartridgeFilename)
+	if err != nil {
+		return err
 	}
+
+	symbols, err := symbols.NewTable(cartridgeFilename)
+	if err != nil {
+		dbg.print(ui.Error, "%s", err)
+	}
+
+	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symbols)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// videoCycleCallback() and noVideoCycleCallback() are wrapper functions to be
+// used when calling vcs.Step() -- video stepping uses the former and cpu
+// stepping uses the latter
+
+func (dbg *Debugger) videoCycleCallback(result *cpu.InstructionResult) error {
+	dbg.lastResult = result
+	dbg.print(ui.VideoStep, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
 	return dbg.inputLoop(false)
+}
+
+func (dbg *Debugger) noVideoCycleCallback(result *cpu.InstructionResult) error {
+	return nil
 }
 
 // inputLoop has two modes, defined by the mainLoop argument. when inputLoop is
@@ -191,17 +221,21 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// reset run until break condition
 			dbg.runUntilHalt = false
 
-			// get user input
-			prompt := ""
-			if mainLoop {
-				prompt = fmt.Sprintf("[%#04x] > ", dbg.vcs.MC.PC.ToUint16())
+			// build prompt
+			// - different prompt depending on whether a valid disassembly is available
+			var prompt string
+			if p, ok := dbg.disasm.Program[dbg.vcs.MC.PC.ToUint16()]; ok {
+				prompt = strings.Trim(p.GetString(dbg.disasm.Symbols, symbols.StyleBrief), " ")
+				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
-				if dbg.lastResult.Final {
-					prompt = fmt.Sprintf("[%#04x] > ", dbg.vcs.MC.PC.ToUint16())
-				} else {
-					prompt = fmt.Sprintf("[%#04x+] > ", dbg.lastResult.ProgramCounter)
-				}
+				prompt = fmt.Sprintf("[ %#04x ] > ", dbg.vcs.MC.PC.ToUint16())
 			}
+			// - additional annotation if we're not showing the prompt in the main loop
+			if !mainLoop && !dbg.lastResult.Final {
+				prompt = fmt.Sprintf("+ %s", prompt)
+			}
+
+			// get user input
 			n, err := dbg.ui.UserRead(dbg.input, prompt)
 			if err != nil {
 				switch err.(type) {
@@ -238,11 +272,15 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// move emulation on one step if user has requested/implied it
 		if dbg.inputloopNext {
 			if mainLoop {
-				_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleInputLoop)
+				if dbg.inputloopVideoClock {
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleCallback)
+				} else {
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.noVideoCycleCallback)
+				}
 				if err != nil {
 					return err
 				}
-				dbg.print(ui.CPUStep, "%v", dbg.lastResult)
+				dbg.print(ui.CPUStep, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
 			} else {
 				return nil
 			}
@@ -329,7 +367,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordInsert:
-		err := dbg.vcs.AttachCartridge(parts[1])
+		err := dbg.loadCartridge(parts[1])
 		if err != nil {
 			return false, err
 		}

@@ -42,6 +42,16 @@ func (cart Cartridge) Label() string {
 	return cart.label
 }
 
+// Origin is an implementation of Area.Origin
+func (cart Cartridge) Origin() uint16 {
+	return cart.origin
+}
+
+// Memtop is an implementation of Area.Memtop
+func (cart Cartridge) Memtop() uint16 {
+	return cart.memtop
+}
+
 // Clear is an implementation of CPUBus.Clear
 func (cart *Cartridge) Clear() {
 	// clearing cartridge memory is semantically the same as ejecting the cartridge

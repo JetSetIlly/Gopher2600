@@ -9,8 +9,12 @@ import (
 	"gopher2600/television"
 )
 
-const addressReset = 0xfffc
-const addressIRQ = 0xfffe
+// AddressReset is the address where the reset address is stored
+// - used by VCS.Reset() and Disassembly module
+const AddressReset = 0xfffc
+
+// AddressIRQ is the address where the interrupt address is stored
+const AddressIRQ = 0xfffe
 
 // VCS struct is the main container for the emulated components of the VCS
 type VCS struct {
@@ -138,7 +142,7 @@ func (vcs *VCS) Reset() error {
 	if err := vcs.MC.Reset(); err != nil {
 		return err
 	}
-	err := vcs.MC.LoadPC(addressReset)
+	err := vcs.MC.LoadPC(AddressReset)
 	if _, ok := err.(*memory.MissingCartridgeError); !ok {
 		return err
 	}

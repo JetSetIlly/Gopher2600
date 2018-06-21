@@ -2,13 +2,15 @@ package cpu
 
 import (
 	"fmt"
+	"gopher2600/disassembly/symbols"
 	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/register"
 	"reflect"
 )
 
 // InstructionResult contains all the interesting information from a CPU step.
 type InstructionResult struct {
-	ProgramCounter  uint16
+	Address         uint16
 	Defn            definitions.InstructionDefinition
 	InstructionData interface{}
 	ActualCycles    int
@@ -16,7 +18,7 @@ type InstructionResult struct {
 	// whether an extra cycle was required because of 8 bit adder overflow
 	PageFault bool
 
-	// whether a buggy (CPU) code path was triggered
+	// whether a known buggy code path (int the emulated CPU) was triggered
 	Bug string
 
 	// whether this data has been finalised
@@ -24,75 +26,180 @@ type InstructionResult struct {
 }
 
 func (result InstructionResult) String() string {
-	var programCounter string
-	var mnemonic, data string
-	var pf, bug, cycles string
+	return result.GetString(nil, 0)
+}
+
+func columnise(s string, width int) string {
+	if width > len(s) {
+		t := make([]byte, width-len(s))
+		for i := 0; i < len(t); i++ {
+			t[i] = ' '
+		}
+		s = fmt.Sprintf("%s%s", s, t)
+	} else if width < len(s) {
+		s = s[:width]
+	}
+	return s
+}
+
+// GetString returns a human readable version of InstructionResult, addresses
+// replaced with symbols if supplied symbols argument is not null. prefer this
+// function to implicit calls to String()
+func (result InstructionResult) GetString(symtable *symbols.Table, style symbols.Style) string {
+	// columns
+	var label, programCounter string
+	var operator, operand string
+	var notes string
 
 	if result.Final {
-		programCounter = fmt.Sprintf("0x%04x", result.ProgramCounter)
-	} else {
-		programCounter = "      "
-	}
-
-	if result.Defn.Bytes == 2 {
-		if result.InstructionData == nil {
-			data = "??"
-		} else {
-			data = fmt.Sprintf("$%02x", result.InstructionData)
-		}
-	} else if result.Defn.Bytes == 3 {
-		if result.InstructionData == nil {
-			data = "????"
-		} else {
-			data = fmt.Sprintf("$%04x", result.InstructionData)
+		programCounter = fmt.Sprintf("0x%04x", result.Address)
+		if symtable != nil && style.Has(symbols.StyleFlagLocation) {
+			if v, ok := symtable.Locations[result.Address]; ok {
+				label = v
+			}
 		}
 	}
 
+	// use mnemonic if specified in instruciton result
 	if result.Defn.Mnemonic == "" {
-		mnemonic = "???"
+		operator = "???"
 	} else {
-		mnemonic = result.Defn.Mnemonic
+		operator = result.Defn.Mnemonic
 	}
 
+	// parse instrution result data ...
+	var idx uint16
+	switch result.InstructionData.(type) {
+	case uint8:
+		idx = uint16(result.InstructionData.(uint8))
+		operand = fmt.Sprintf("$%02x", idx)
+	case uint16:
+		idx = uint16(result.InstructionData.(uint16))
+		operand = fmt.Sprintf("$%04x", idx)
+	case nil:
+		if result.Defn.Bytes == 2 {
+			operand = "??"
+		} else if result.Defn.Bytes == 3 {
+			operand = "????"
+		}
+	}
+
+	// ... and use assembler symbol for the operand if available/appropriate
+	if symtable != nil && style.Has(symbols.StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
+		if result.Defn.AddressingMode != definitions.Immediate {
+
+			switch result.Defn.Effect {
+			case definitions.Flow:
+				if result.Defn.AddressingMode == definitions.Relative {
+					// relative labels. to get the correct label we have to
+					// simulate what a successful branch instruction would do:
+
+					// 	-- we create a mock register with the instruction's
+					// 	address as the initial value
+					pc, _ := register.NewAnonymous(result.Address, 16)
+
+					// -- add the number of instruction bytes to get the PC as
+					// it would be at the end of the instruction
+					pc.Add(uint8(result.Defn.Bytes), false)
+
+					// -- because we're doing 16 bit arithmetic with an 8bit
+					// value, we need to make sure the sign bit has been
+					// propogated to the more-significant bits
+					if idx&0x0080 == 0x0080 {
+						idx |= 0xff00
+					}
+
+					// -- add the 2s-complement value to the mock program
+					// counter
+					pc.Add(idx, false)
+
+					// -- look up mock program counter value in symbol table
+					if v, ok := symtable.Locations[pc.ToUint16()]; ok {
+						operand = v
+					}
+
+				} else {
+					if v, ok := symtable.Locations[idx]; ok {
+						operand = v
+					}
+				}
+			case definitions.Read:
+				if v, ok := symtable.ReadSymbols[idx]; ok {
+					operand = v
+				}
+			case definitions.Write:
+				fallthrough
+			case definitions.RMW:
+				if v, ok := symtable.WriteSymbols[idx]; ok {
+					operand = v
+				}
+			}
+		}
+	}
+
+	// decorate operand with addressing mode indicators
 	switch result.Defn.AddressingMode {
 	case definitions.Implied:
 	case definitions.Immediate:
-		data = fmt.Sprintf("#%s", data)
+		operand = fmt.Sprintf("#%s", operand)
 	case definitions.Relative:
 	case definitions.Absolute:
 	case definitions.ZeroPage:
 	case definitions.Indirect:
-		data = fmt.Sprintf("(%s)", data)
+		operand = fmt.Sprintf("(%s)", operand)
 	case definitions.PreIndexedIndirect:
-		data = fmt.Sprintf("(%s,X)", data)
+		operand = fmt.Sprintf("(%s,X)", operand)
 	case definitions.PostIndexedIndirect:
-		data = fmt.Sprintf("(%s),Y", data)
+		operand = fmt.Sprintf("(%s),Y", operand)
 	case definitions.AbsoluteIndexedX:
-		data = fmt.Sprintf("%s,X", data)
+		operand = fmt.Sprintf("%s,X", operand)
 	case definitions.AbsoluteIndexedY:
-		data = fmt.Sprintf("%s,Y", data)
+		operand = fmt.Sprintf("%s,Y", operand)
 	case definitions.IndexedZeroPageX:
-		data = fmt.Sprintf("%s,X", data)
+		operand = fmt.Sprintf("%s,X", operand)
 	case definitions.IndexedZeroPageY:
-		data = fmt.Sprintf("%s,Y", data)
+		operand = fmt.Sprintf("%s,Y", operand)
 	default:
 	}
 
-	if result.Final {
-		cycles = fmt.Sprintf("[%d]", result.ActualCycles)
-	} else {
-		cycles = "[v]"
+	// cycles annotation depends on whether the result is in its final form
+	if style.Has(symbols.StyleFlagNotes) {
+		if result.Final {
+			notes = fmt.Sprintf("[%d]", result.ActualCycles)
+		} else {
+			notes = "[v]"
+		}
+
+		// add annotation for page-faults and known CPU bugs
+		if result.PageFault {
+			notes += " page-fault"
+		}
+		if result.Bug != "" {
+			notes += fmt.Sprintf(" * %s *", result.Bug)
+		}
 	}
 
-	if result.PageFault {
-		pf = " page-fault"
+	// force column widths
+	if style.Has(symbols.StyleFlagColumns) {
+		programCounter = columnise(programCounter, 6)
+		operator = columnise(operator, 3)
+		if symtable != nil {
+			label = columnise(label, symtable.MaxLocationWidth)
+			operand = columnise(operand, symtable.MaxSymbolWidth)
+		} else {
+			label = columnise(label, 10)
+			operand = columnise(operand, 10)
+		}
 	}
 
-	if result.Bug != "" {
-		bug = fmt.Sprintf(" * %s *", result.Bug)
-	}
+	// build final string
+	s := fmt.Sprintf("%s %s %s %s %s",
+		label,
+		programCounter,
+		operator,
+		operand,
+		notes)
 
-	s := fmt.Sprintf("%s\t%s\t%s\t%s%s%s", programCounter, mnemonic, data, cycles, pf, bug)
 	return s
 }
 

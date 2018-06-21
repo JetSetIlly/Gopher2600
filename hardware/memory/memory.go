@@ -25,6 +25,8 @@ type ChipBus interface {
 // VCSMemory.memmap)
 type Area interface {
 	Label() string
+	Origin() uint16
+	Memtop() uint16
 
 	// peek returns value, label (if any), and any error (which may not be fatal)
 	Peek(address uint16) (uint8, string, error)

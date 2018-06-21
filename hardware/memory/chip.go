@@ -1,6 +1,8 @@
 package memory
 
-import "fmt"
+import (
+	"gopher2600/errors"
+)
 
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
@@ -50,6 +52,16 @@ func (area ChipMemory) Label() string {
 	return area.label
 }
 
+// Origin is an implementation of Area.Origin
+func (area ChipMemory) Origin() uint16 {
+	return area.origin
+}
+
+// Memtop is an implementation of Area.Memtop
+func (area ChipMemory) Memtop() uint16 {
+	return area.memtop
+}
+
 // Implementation of CPUBus.Read
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	oa := address - area.origin
@@ -78,7 +90,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
 	if area.writeSignal {
-		panic(fmt.Sprintf("chip memory write signal has not been serviced since previous write [%s]", area.cpuWriteRegisters[area.lastWriteAddress]))
+		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{area.cpuWriteRegisters[area.lastWriteAddress]}}
 	}
 
 	oa := address - area.origin
@@ -114,7 +126,7 @@ func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 func (area *ChipMemory) ChipWrite(registerName string, data uint8) {
 	address, ok := area.chipWriteRegisters[registerName]
 	if !ok {
-		panic(fmt.Errorf("can't find register name (%s) in list of read addreses in %s memory", registerName, area.label))
+		panic(errors.GopherError{errors.UnknownRegisterName, errors.Values{registerName, area.label}})
 	}
 	area.memory[address] = data
 }
@@ -135,7 +147,7 @@ func (area ChipMemory) Peek(address uint16) (uint8, string, error) {
 
 	rl := area.cpuReadRegisters[oa]
 	if rl == "" {
-		return 0, "", fmt.Errorf("memory location is not readable")
+		return 0, "", errors.GopherError{errors.UnreadableAddress, nil}
 	}
 	return area.memory[oa], rl, nil
 }

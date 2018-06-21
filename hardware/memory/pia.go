@@ -27,6 +27,16 @@ func (pia PIA) Label() string {
 	return pia.label
 }
 
+// Origin is an implementation of Area.Origin
+func (pia PIA) Origin() uint16 {
+	return pia.origin
+}
+
+// Memtop is an implementation of Area.Memtop
+func (pia PIA) Memtop() uint16 {
+	return pia.memtop
+}
+
 // Implementation of CPUBus.Read
 func (pia PIA) Read(address uint16) (uint8, error) {
 	oa := address - pia.origin

@@ -7,6 +7,7 @@ package cpu
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/memory"
@@ -36,6 +37,11 @@ type CPU struct {
 	// controls whether cpu is execute a cycle when it receives a clock tick (pin
 	// 3 of the 6507)
 	RdyFlg bool
+
+	// it is somtimes useful to ignore branching instructions and other
+	// side-effects. we use this in the disassembly package to make sure
+	// we reach every part of the program
+	NoSideEffects bool
 }
 
 // New is the preferred method of initialisation for the CPU structure
@@ -197,6 +203,11 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 }
 
 func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) error {
+	// return early if IgnoreBranching flag is turned on
+	if mc.NoSideEffects {
+		return nil
+	}
+
 	// in the case of branchng (relative addressing) we've read an 8bit value
 	// rather than a 16bit value to use as the "address". we do this kind of
 	// thing all over the place and it normally doesn't matter but because we'll
@@ -270,7 +281,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 
 	// prepare StepResult structure
 	result := new(InstructionResult)
-	result.ProgramCounter = mc.PC.ToUint16()
+	result.Address = mc.PC.ToUint16()
 
 	// register end cycle callback
 	mc.endCycle = func() {
@@ -291,7 +302,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 	}
 	defn, found := mc.opCodes[operator]
 	if !found {
-		return nil, fmt.Errorf("unimplemented instruction (0x%x)", operator)
+		if operator == 0xff {
+			return nil, errors.GopherError{errors.NullInstruction, nil}
+		}
+		return nil, errors.GopherError{errors.UnimplementedInstruction, errors.Values{operator}}
 	}
 	result.Defn = defn
 
@@ -339,8 +353,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = value
 		address = uint16(value)
-		result.InstructionData = address
 
 	case definitions.Absolute:
 		if defn.Effect != definitions.Subroutine {
@@ -596,9 +610,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 
 			// phantom write
 			// +1 cycle
-			err = mc.mem.Write(address, value)
-			if err != nil {
-				return nil, err
+			if !mc.NoSideEffects {
+				err = mc.mem.Write(address, value)
+
+				if err != nil {
+					return nil, err
+				}
 			}
 			mc.endCycle()
 		}
@@ -631,9 +648,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Overflow = false
 
 	case "PHA":
-		err = mc.mem.Write(mc.SP.ToUint16(), mc.A.ToUint8())
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(mc.SP.ToUint16(), mc.A.ToUint8())
+			if err != nil {
+				return nil, err
+			}
 		}
 		mc.SP.Add(255, false)
 
@@ -649,9 +668,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.A.Load(value)
 
 	case "PHP":
-		err = mc.mem.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
+			if err != nil {
+				return nil, err
+			}
 		}
 		mc.SP.Add(255, false)
 
@@ -726,21 +747,27 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "STA":
-		err = mc.mem.Write(address, mc.A.ToUint8())
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(address, mc.A.ToUint8())
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	case "STX":
-		err = mc.mem.Write(address, mc.X.ToUint8())
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(address, mc.X.ToUint8())
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	case "STY":
-		err = mc.mem.Write(address, mc.Y.ToUint8())
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(address, mc.Y.ToUint8())
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	case "INX":
@@ -879,7 +906,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Overflow = cmp.IsBitV()
 
 	case "JMP":
-		mc.PC.Load(address)
+		if !mc.NoSideEffects {
+			mc.PC.Load(address)
+		}
 
 	case "BCC":
 		err := mc.branch(!mc.Status.Carry, address, result)
@@ -944,57 +973,62 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		// +1 cycle
 		mc.endCycle()
 
-		// push MSB of PC onto stack, and decrement SP
-		// +1 cycle
-		err = mc.mem.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
-		if err != nil {
-			return nil, err
-		}
-		mc.SP.Add(255, false)
-		mc.endCycle()
+		if !mc.NoSideEffects {
 
-		// push LSB of PC onto stack, and decrement SP
-		// +1 cycle
-		err = mc.mem.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
-		if err != nil {
-			return nil, err
-		}
-		mc.SP.Add(255, false)
-		mc.endCycle()
+			// push MSB of PC onto stack, and decrement SP
+			// +1 cycle
+			err = mc.mem.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
+			if err != nil {
+				return nil, err
+			}
+			mc.SP.Add(255, false)
+			mc.endCycle()
 
-		// perform jump
-		msb, err := mc.read8BitPC()
-		if err != nil {
-			return nil, err
-		}
-		address = (uint16(msb) << 8) | uint16(lsb)
-		mc.PC.Load(address)
+			// push LSB of PC onto stack, and decrement SP
+			// +1 cycle
+			err = mc.mem.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
+			if err != nil {
+				return nil, err
+			}
+			mc.SP.Add(255, false)
+			mc.endCycle()
 
-		// store address in theInstructionData field of result
-		//
-		// we would normally do this in the addressing mode switch above. however,
-		// JSR uses absolute addressing and we deliberately do nothing in that
-		// switch for 'sub-routine' commands
-		result.InstructionData = address
+			// perform jump
+			msb, err := mc.read8BitPC()
+			if err != nil {
+				return nil, err
+			}
+			address = (uint16(msb) << 8) | uint16(lsb)
+			mc.PC.Load(address)
+
+			// store address in theInstructionData field of result
+			//
+			// we would normally do this in the addressing mode switch above. however,
+			// JSR uses absolute addressing and we deliberately do nothing in that
+			// switch for 'sub-routine' commands
+			result.InstructionData = address
+		}
 
 	case "RTS":
-		// +1 cycle
-		mc.SP.Add(1, false)
-		mc.endCycle()
+		if !mc.NoSideEffects {
+			// +1 cycle
+			mc.SP.Add(1, false)
+			mc.endCycle()
 
-		// +2 cycles
-		rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
-		if err != nil {
-			return nil, err
+			// +2 cycles
+			rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
+			if err != nil {
+				return nil, err
+			}
+			mc.SP.Add(1, false)
+
+			// load and correct PC
+			mc.PC.Load(rtsAddress)
+			mc.PC.Add(1, false)
+
+			// +1 cycle
+			mc.endCycle()
 		}
-		mc.SP.Add(1, false)
-
-		// load and correct PC
-		mc.PC.Load(rtsAddress)
-		mc.PC.Add(1, false)
-
-		// +1 cycle
-		mc.endCycle()
 
 	case "BRK":
 		// TODO: implement BRK
@@ -1009,10 +1043,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 
 	// write altered value back to memory for RMW instructions
 	if defn.Effect == definitions.RMW {
-		err = mc.mem.Write(address, value)
-		if err != nil {
-			return nil, err
+		if !mc.NoSideEffects {
+			err = mc.mem.Write(address, value)
+			if err != nil {
+				return nil, err
 
+			}
 		}
 		// +1 cycle
 		mc.endCycle()
