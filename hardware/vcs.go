@@ -2,6 +2,7 @@ package hardware
 
 import (
 	"fmt"
+	"gopher2600/hardware/controller"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/riot"
@@ -25,6 +26,8 @@ type VCS struct {
 
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
+
+	controller *controller.Stick
 }
 
 // New is the preferred method of initialisation for the VCS structure
@@ -53,6 +56,13 @@ func New(tv television.Television) (*VCS, error) {
 	if vcs.RIOT == nil {
 		return nil, fmt.Errorf("can't allocate memory for VCS RIOT")
 	}
+
+	// TODO: better contoller support
+	vcs.controller = controller.NewStick(vcs.Mem.TIA)
+
+	// TODO: console switch support
+	// - set colour switch bit
+	vcs.Mem.RIOT.ChipWrite("SWCHB", 0x08)
 
 	return vcs, nil
 }
@@ -114,12 +124,6 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
 	}
-
-	// TODO: full controller support -- this is emulating the rest state for the
-	// two joystick controllers
-	vcs.Mem.TIA.ChipWrite("INPT4", 0x80)
-	vcs.Mem.TIA.ChipWrite("INPT5", 0x80)
-	vcs.Mem.RIOT.ChipWrite("SWCHA", 0xFF)
 
 	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
 	if err != nil {

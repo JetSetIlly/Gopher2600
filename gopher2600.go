@@ -110,7 +110,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 			return fmt.Errorf("error creating television for fps profiler")
 		}
 	} else {
-		tv, err = television.NewSDLTV("NTSC", 3.0)
+		tv, err = television.NewSDLTV("NTSC", television.IdealScale)
 		if err != nil {
 			return fmt.Errorf("error creating television for fps profiler")
 		}
@@ -159,7 +159,7 @@ func run(cartridgeFile string) error {
 	var tv television.Television
 	var err error
 
-	tv, err = television.NewSDLTV("NTSC", 3.0)
+	tv, err = television.NewSDLTV("NTSC", television.IdealScale)
 	if err != nil {
 		return fmt.Errorf("error creating television for fps profiler")
 	}

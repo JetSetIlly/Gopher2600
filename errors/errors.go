@@ -4,26 +4,41 @@ import "fmt"
 
 // list of sub-systems used when defining errors
 const (
-	CategoryDebugger = 0
-	CategoryVCS      = 64
-	CategoryCPU      = 128
-	CategoryMemory   = 192
-	CategoryTIA      = 256
-	CategoryRIOT     = 320
-	CategoryTV       = 384
+	CategoryDebugger   = 0
+	CategoryVCS        = 64
+	CategoryCPU        = 128
+	CategoryMemory     = 192
+	CategoryTIA        = 256
+	CategoryRIOT       = 320
+	CategoryTV         = 384
+	CategoryController = 448
 )
 
 // list of error numbers
 const (
+	// Debugger
 	NoSymbolsFile = CategoryDebugger + iota
 	SymbolsFileError
 
+	// VCS
+
+	// CPU
 	UnimplementedInstruction = CategoryCPU + iota
 	NullInstruction
 
+	// Memory
 	UnservicedChipWrite = CategoryMemory + iota
 	UnknownRegisterName
 	UnreadableAddress
+
+	// TIA
+
+	// RIOT
+
+	// TV
+
+	// Controller
+	NoControllersFound = CategoryController + iota
 )
 
 var messages = map[int]string{
@@ -47,6 +62,9 @@ var messages = map[int]string{
 	// RIOT
 
 	// TV
+
+	// Controller
+	NoControllersFound: "no controllers found",
 }
 
 // Values is the type used to specify arguments for a GopherError
@@ -64,6 +82,9 @@ func (er GopherError) Error() string {
 
 // Category returns the broad categorisation of a GopherError
 func (er GopherError) Category() int {
+	if er.Errno >= CategoryController {
+		return CategoryController
+	}
 	if er.Errno >= CategoryTV {
 		return CategoryTV
 	}

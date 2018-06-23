@@ -65,7 +65,7 @@ func NewDebugger() (*Debugger, error) {
 	}
 
 	// prepare hardware
-	tv, err := television.NewSDLTV("NTSC", 3.0)
+	tv, err := television.NewSDLTV("NTSC", television.IdealScale)
 	if err != nil {
 		return nil, err
 	}

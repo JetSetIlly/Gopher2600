@@ -32,6 +32,9 @@ type SDLTV struct {
 	lastFrameRender time.Time
 }
 
+// IdealScale is the suggested scaling for the screen
+const IdealScale = 2.0
+
 // NewSDLTV is the preferred method for initalising an SDL TV
 func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	var err error
