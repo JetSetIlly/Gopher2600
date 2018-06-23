@@ -1,7 +1,3 @@
-// the sprite type is used for those video elements that move about - players,
-// missiles and the ball. the VCS doesn't really have anything called a sprite
-// but we all know what it means
-
 package video
 
 import (
@@ -10,6 +6,9 @@ import (
 	"gopher2600/hardware/tia/polycounter"
 )
 
+// the sprite type is used for those video elements that move about - players,
+// missiles and the ball. the VCS doesn't really have anything called a sprite
+// but we all know what it means
 type sprite struct {
 	// label is the name of a particular instance of a sprite (eg. player0 or
 	// missile 1)
@@ -58,7 +57,7 @@ func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 
 	// the direction of count and max is important - don't monkey with it
 	// the value is used in Pixel*() functions to determine which pixel to check
-	sp.drawSigMax = 8
+	sp.drawSigMax = 7
 	sp.drawSigOff = sp.drawSigMax + 1
 	sp.drawSigCount = sp.drawSigOff
 

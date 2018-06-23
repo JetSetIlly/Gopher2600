@@ -239,6 +239,11 @@ func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
 		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 
+	// no need to do anything if operand is zero
+	if val == 0 {
+		return carry, false
+	}
+
 	val = ^val
 	val++
 	val &= int(r.mask)

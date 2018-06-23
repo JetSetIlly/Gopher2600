@@ -11,8 +11,13 @@ package video
 // of a current instance of future type
 
 const (
-	delayEnableSprite            = 1
-	delayResetSprite             = 4
-	delayResetSpriteDuringHBLANK = 2
-	delayPlayfieldWrite          = 5
+	delayEnableBall         = 1
+	delayEnableMissile      = 1
+	delayResetBall          = 4
+	delayResetBallHBLANK    = 2
+	delayResetMissile       = 4
+	delayResetMissileHBLANK = 2
+	delayResetPlayer        = 5
+	delayResetPlayerHBLANK  = 3
+	delayPlayfieldWrite     = 5
 )

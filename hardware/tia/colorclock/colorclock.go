@@ -16,7 +16,9 @@ func New() *ColorClock {
 	if cc == nil {
 		return nil
 	}
-	cc.SetResetPattern("010100")
+
+	cc.SetResetPattern("010100") // count==56,
+
 	return cc
 }
 

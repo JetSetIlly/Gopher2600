@@ -3,7 +3,7 @@ package cpu
 // TODO List
 // ---------
 // . NMOS indexed addressing extra read when crossing page boundaries
-// . Binary Decimal Mode
+// . does decimal mode only apply to ADC/SBC/CMP
 
 import (
 	"fmt"
@@ -198,7 +198,11 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	// strictly, PC should be incremented by one after reading the lo byte of
+	// the next instruction but I don't believe this has any side-effects
 	mc.PC.Add(2, false)
+
 	return val, nil
 }
 
@@ -532,7 +536,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		address = adder.ToUint16()
 
 		// check for page fault
-		result.PageFault = defn.PageSensitive && (address&0xFF00 == 0x0100)
+		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
 		if result.PageFault {
 			// phantom read
 			// +1 cycle
@@ -815,12 +819,22 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		value = r.ToUint8()
 
 	case "ADC":
-		mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
+		if mc.Status.DecimalMode {
+			mc.Status.Carry = mc.A.AddDecimal(value, mc.Status.Carry)
+			// decimal mode doesn't affect overflow flag (yet?)
+		} else {
+			mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
+		}
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
 	case "SBC":
-		mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
+		if mc.Status.DecimalMode {
+			mc.Status.Carry = mc.A.SubtractDecimal(value, mc.Status.Carry)
+			// decimal mode doesn't affect overflow flag (yet?)
+		} else {
+			mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
+		}
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
@@ -873,6 +887,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		if err != nil {
 			return nil, err
 		}
+
+		// maybe surprisingly, CMP can be implemented with binary subtract even
+		// if decimal mode is active (the meaning is the same)
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()

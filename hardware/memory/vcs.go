@@ -14,6 +14,8 @@ type VCSMemory struct {
 	Cart   *Cartridge
 }
 
+// TODO: allow reading only when 02 clock is high and writing when it is low
+
 // New is the preferred method of initialisation for VCSMemory
 func New() (*VCSMemory, error) {
 	mem := new(VCSMemory)

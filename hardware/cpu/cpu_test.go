@@ -391,7 +391,7 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
 	step(t, mc) // CMP $00
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-BdIZC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0xf6, 0xc9, 0x18)

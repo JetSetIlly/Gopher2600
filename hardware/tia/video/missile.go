@@ -138,12 +138,12 @@ func (ms *missileSprite) scheduleReset(hblank *bool) {
 	}
 
 	if *hblank {
-		ms.futureReset.schedule(delayResetSpriteDuringHBLANK, true)
+		ms.futureReset.schedule(delayResetMissileHBLANK, true)
 	} else {
-		ms.futureReset.schedule(delayResetSprite, true)
+		ms.futureReset.schedule(delayResetMissile, true)
 	}
 }
 
 func (ms *missileSprite) scheduleEnable(value uint8) {
-	ms.futureEnable.schedule(delayEnableSprite, value&0x02 == 0x02)
+	ms.futureEnable.schedule(delayEnableMissile, value&0x02 == 0x02)
 }

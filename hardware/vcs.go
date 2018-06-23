@@ -60,9 +60,12 @@ func New(tv television.Television) (*VCS, error) {
 	// TODO: better contoller support
 	vcs.controller = controller.NewStick(vcs.Mem.TIA)
 
-	// TODO: console switch support
-	// - set colour switch bit
+	// initialise memory
+	// - colour switch bit
 	vcs.Mem.RIOT.ChipWrite("SWCHB", 0x08)
+	// TODO: more initialisation
+
+	// TODO: console switch support
 
 	return vcs, nil
 }
@@ -93,12 +96,12 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 
 	// the number of CPU cycles that have elapsed.  note this is *not* the same
 	// as Instructionresult.ActualCycles because in the event of a WSYNC
-	// cpuCycles will continue to accumulate to the WSYNC has been resolved.
+	// cpuCycles will continue to accumulate until the WSYNC has been resolved.
 	cpuCycles := 0
 
 	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
-	// defines the order of operation for the rest of the VCS for every CPU
-	// cycle.
+	// function defines the order of operation for the rest of the VCS for
+	// every CPU cycle.
 	cycleVCS := func(r *cpu.InstructionResult) {
 		cpuCycles++
 

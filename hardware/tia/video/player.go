@@ -57,6 +57,9 @@ func (ps playerSprite) MachineInfoTerse() string {
 		ref = "r"
 	}
 
+	// NOTE that because of the delay in starting pixel output with player
+	// sprites we are adding one to our reported pixel start position (with
+	// additional pixels for the larger player sizes)
 	pix := ps.positionResetPixel + 1
 	if ps.size == 0x05 || ps.size == 0x07 {
 		pix++
@@ -145,7 +148,12 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 
 	// player sprites are unusual in that the first tick of the draw signal is
 	// discounted
-	if ps.drawSigCount > 0 && ps.drawSigCount <= ps.drawSigMax {
+	// NOTE: we are not drawing a pixel on drawSigCount of 0, like we would
+	// with the ball and player sprites. in actuallity, I think the VCS delays
+	// the start of the draw signal by one clock but rather than introduce a
+	// new 'future' instance we simply start outputting pixels one drawSigCount
+	// (or one clock) later
+	if ps.drawSigCount >= 0 && ps.drawSigCount <= ps.drawSigMax {
 		if gfxData>>(uint8(ps.drawSigMax)-uint8(ps.drawSigCount))&0x01 == 0x01 {
 			return true, ps.color
 		}
@@ -156,9 +164,9 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 
 func (ps *playerSprite) scheduleReset(hblank *bool) {
 	if *hblank {
-		ps.futureReset.schedule(delayResetSpriteDuringHBLANK, true)
+		ps.futureReset.schedule(delayResetPlayerHBLANK, true)
 	} else {
-		ps.futureReset.schedule(delayResetSprite, true)
+		ps.futureReset.schedule(delayResetPlayer, true)
 	}
 
 	// if drawing is currently in progress when reset is scheduled we need to

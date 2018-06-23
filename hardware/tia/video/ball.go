@@ -110,12 +110,12 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 
 func (bs *ballSprite) scheduleReset(hblank *bool) {
 	if *hblank {
-		bs.futureReset.schedule(delayResetSpriteDuringHBLANK, true)
+		bs.futureReset.schedule(delayResetBallHBLANK, true)
 	} else {
-		bs.futureReset.schedule(delayResetSprite, true)
+		bs.futureReset.schedule(delayResetBall, true)
 	}
 }
 
 func (bs *ballSprite) scheduleEnable(value uint8) {
-	bs.futureEnable.schedule(delayEnableSprite, value&0x20 == 0x20)
+	bs.futureEnable.schedule(delayEnableBall, value&0x20 == 0x20)
 }
