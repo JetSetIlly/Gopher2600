@@ -17,9 +17,7 @@ type missileSprite struct {
 	// if any of the sprite's draw positions are reached but a reset position
 	// signal has been scheduled, then we need to delay the start of the
 	// sprite's drawing process. the drawing actually commences when the reset
-	// actually takes place
-	//
-	// (concept shared with player sprite)
+	// actually takes place (concept shared with player sprite)
 	deferDrawSig bool
 }
 

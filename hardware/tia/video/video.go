@@ -72,7 +72,7 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	return vd
 }
 
-// Tick moves all video elements on one video cycle
+// Tick moves all video elements forward one video cycle
 func (vd *Video) Tick() {
 	vd.Playfield.tick()
 	if !*vd.hblank {
@@ -236,11 +236,9 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "RESBL":
 		vd.Ball.scheduleReset(vd.hblank)
 	case "GRP0":
-		vd.Player0.gfxDataPrev = vd.Player0.gfxData
-		vd.Player0.gfxData = value
+		vd.Player0.setData(value)
 	case "GRP1":
-		vd.Player1.gfxDataPrev = vd.Player1.gfxData
-		vd.Player1.gfxData = value
+		vd.Player1.setData(value)
 	case "ENAM0":
 		vd.Missile0.scheduleEnable(value)
 	case "ENAM1":

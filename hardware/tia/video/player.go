@@ -21,24 +21,8 @@ type playerSprite struct {
 	// if any of the sprite's draw positions are reached but a reset position
 	// signal has been scheduled, then we need to delay the start of the
 	// sprite's drawing process. the drawing actually commences when the reset
-	// actually takes place
-	//
-	// (concept shared with missile sprite)
+	// actually takes place (concept shared with missile sprite)
 	deferDrawSig bool
-
-	// the size of the player sprite is implemented by smearing the draw signal
-	// over several clock ticks. the draw signal is actually ticked only on
-	// certain clock phases, the precise phase is based on when the sprite's
-	// position was reset
-	resetPhase int
-
-	// if the sprite is currently being drawn when a reset is triggered, we
-	// need to delay when the new resetPhase comes into effect. the
-	// delayResetPhase flag is set under such circumstances and the
-	// resetPhasePrev value used to tick the draw signal until the drawing has
-	// completed
-	delayResetPhase bool
-	resetPhasePrev  int
 }
 
 func newPlayerSprite(label string, colorClock *colorclock.ColorClock) *playerSprite {
@@ -60,12 +44,12 @@ func (ps playerSprite) MachineInfoTerse() string {
 	// NOTE that because of the delay in starting pixel output with player
 	// sprites we are adding one to our reported pixel start position (with
 	// additional pixels for the larger player sizes)
-	pix := ps.positionResetPixel + 1
+	visPix := ps.positionResetPixel + 1
 	if ps.size == 0x05 || ps.size == 0x07 {
-		pix++
+		visPix++
 	}
 
-	return fmt.Sprintf("%s (vis: %d) gfx: %s %08b", ps.sprite.MachineInfoTerse(), pix, ref, gfxData)
+	return fmt.Sprintf("%s (vis: %d) gfx: %s %08b", ps.sprite.MachineInfoTerse(), visPix, ref, gfxData)
 }
 
 // MachineInfo returns the missile sprite information in verbose format
@@ -91,24 +75,12 @@ func (ps *playerSprite) tick() {
 		// pixels are smeared over additional cycles in order to create the
 		// double and quadruple sized sprites
 		if ps.size == 0x05 {
-			if ps.delayResetPhase {
-				if ps.colorClock.Phase == ps.resetPhasePrev || ps.colorClock.Phase == ps.resetPhasePrev+2 || ps.colorClock.Phase == ps.resetPhasePrev-2 {
-					ps.tickDrawSig()
-				}
-			} else {
-				if ps.colorClock.Phase == ps.resetPhase || ps.colorClock.Phase == ps.resetPhase+2 || ps.colorClock.Phase == ps.resetPhase-2 {
-					ps.tickDrawSig()
-				}
+			if ps.colorClock.Phase == 0 || ps.colorClock.Phase == 2 {
+				ps.tickDrawSig()
 			}
 		} else if ps.size == 0x07 {
-			if ps.delayResetPhase {
-				if ps.colorClock.Phase == ps.resetPhasePrev {
-					ps.tickDrawSig()
-				}
-			} else {
-				if ps.colorClock.Phase == ps.resetPhase {
-					ps.tickDrawSig()
-				}
+			if ps.colorClock.Phase == 2 {
+				ps.tickDrawSig()
 			}
 		} else {
 			ps.tickDrawSig()
@@ -122,15 +94,7 @@ func (ps *playerSprite) tick() {
 			ps.startDrawing()
 			ps.deferDrawSig = false
 		}
-
-		// pixel smearing requires we record the phase on which the actual
-		// reset occurs.
-		ps.resetPhase = ps.colorClock.Phase
 	}
-
-	// turn off the flag that controls which resetPhase value to use when there
-	// is no drawing taking place
-	ps.delayResetPhase = ps.delayResetPhase && ps.isDrawing()
 }
 
 // pixel returns the color of the player at the current time.  returns
@@ -149,11 +113,10 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	// player sprites are unusual in that the first tick of the draw signal is
 	// discounted
 	// NOTE: we are not drawing a pixel on drawSigCount of 0, like we would
-	// with the ball and player sprites. in actuallity, I think the VCS delays
-	// the start of the draw signal by one clock but rather than introduce a
-	// new 'future' instance we simply start outputting pixels one drawSigCount
-	// (or one clock) later
-	if ps.drawSigCount >= 0 && ps.drawSigCount <= ps.drawSigMax {
+	// with the ball and player sprites. rather than introduce a new 'future'
+	// instance we simply start outputting pixels one drawSigCount (or one
+	// clock) later
+	if ps.drawSigCount > 0 && ps.drawSigCount <= ps.drawSigMax {
 		if gfxData>>(uint8(ps.drawSigMax)-uint8(ps.drawSigCount))&0x01 == 0x01 {
 			return true, ps.color
 		}
@@ -168,11 +131,9 @@ func (ps *playerSprite) scheduleReset(hblank *bool) {
 	} else {
 		ps.futureReset.schedule(delayResetPlayer, true)
 	}
+}
 
-	// if drawing is currently in progress when reset is scheduled we need to
-	// delay the setting of resetPhase until drawing has finished
-	if ps.isDrawing() {
-		ps.delayResetPhase = true
-		ps.resetPhasePrev = ps.resetPhase
-	}
+func (ps *playerSprite) setData(data uint8) {
+	ps.gfxDataPrev = ps.gfxData
+	ps.gfxData = data
 }

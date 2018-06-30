@@ -3,7 +3,6 @@ package cpu
 // TODO List
 // ---------
 // . NMOS indexed addressing extra read when crossing page boundaries
-// . does decimal mode only apply to ADC/SBC/CMP
 
 import (
 	"fmt"
@@ -868,8 +867,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			return nil, err
 		}
 		r.Add(1, false)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "DEC":
@@ -878,8 +877,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 			return nil, err
 		}
 		r.Add(255, false)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "CMP":

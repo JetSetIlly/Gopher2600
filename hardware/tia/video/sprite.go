@@ -57,7 +57,7 @@ func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 
 	// the direction of count and max is important - don't monkey with it
 	// the value is used in Pixel*() functions to determine which pixel to check
-	sp.drawSigMax = 7
+	sp.drawSigMax = 8
 	sp.drawSigOff = sp.drawSigMax + 1
 	sp.drawSigCount = sp.drawSigOff
 

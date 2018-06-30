@@ -17,7 +17,7 @@ const (
 	delayResetBallHBLANK    = 2
 	delayResetMissile       = 4
 	delayResetMissileHBLANK = 2
-	delayResetPlayer        = 5
-	delayResetPlayerHBLANK  = 3
+	delayResetPlayer        = 4
+	delayResetPlayerHBLANK  = 2
 	delayPlayfieldWrite     = 5
 )
