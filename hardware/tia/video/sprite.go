@@ -37,6 +37,9 @@ type sprite struct {
 	drawSigCount int
 	drawSigMax   int
 	drawSigOff   int
+
+	// the amount of horizontal movement for the sprite
+	horizMovement uint8
 }
 
 func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {

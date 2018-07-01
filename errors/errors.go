@@ -19,12 +19,14 @@ const (
 	// Debugger
 	NoSymbolsFile = CategoryDebugger + iota
 	SymbolsFileError
+	UnknownSymbol
 
 	// VCS
 
 	// CPU
 	UnimplementedInstruction = CategoryCPU + iota
 	NullInstruction
+	ProgramCounterCycled
 
 	// Memory
 	UnservicedChipWrite = CategoryMemory + iota
@@ -45,12 +47,14 @@ var messages = map[int]string{
 	// Debugger
 	NoSymbolsFile:    "no symbols file for %s",
 	SymbolsFileError: "error processing symbols file (%s)",
+	UnknownSymbol:    "unrecognised symbol (%s)",
 
 	// VCS
 
 	// CPU
-	UnimplementedInstruction: "unimplemented instruction (%0#x)",
+	UnimplementedInstruction: "unimplemented instruction (%0#x) at (%#04x)",
 	NullInstruction:          "unimplemented instruction (0xff)",
+	ProgramCounterCycled:     "program counter cycled back to 0x0000",
 
 	// Memory
 	UnservicedChipWrite: "chip memory write signal has not been serviced since previous write (%s)",

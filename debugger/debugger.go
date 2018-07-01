@@ -6,6 +6,7 @@ import (
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/disassembly/symbols"
+	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
 	"gopher2600/television"
@@ -378,6 +379,20 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+	case KeywordSymbol:
+		address, err := dbg.disasm.Symbols.SearchLocation(parts[1])
+		if err != nil {
+			switch err := err.(type) {
+			case errors.GopherError:
+				if err.Errno == errors.UnknownSymbol {
+					dbg.print(ui.Feedback, "%s -> not found", parts[1])
+					return false, nil
+				}
+			}
+			return false, err
+		}
+		dbg.print(ui.Feedback, "%s -> %#04x", parts[1], address)
 
 	case KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(parts)

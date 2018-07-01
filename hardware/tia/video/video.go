@@ -18,13 +18,6 @@ type Video struct {
 	Missile0 *missileSprite
 	Missile1 *missileSprite
 	Ball     *ballSprite
-
-	// horizontal movement
-	hmp0 uint8
-	hmp1 uint8
-	hmm0 uint8
-	hmm1 uint8
-	hmbl uint8
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -62,12 +55,9 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 		return nil
 	}
 
-	// horizontal movment
-	vd.hmp0 = 0x08
-	vd.hmp1 = 0x08
-	vd.hmm0 = 0x08
-	vd.hmm1 = 0x08
-	vd.hmbl = 0x08
+	// connect player 0 and player 1 to each other (via the vertical delay bit)
+	vd.Player0.gfxDataDelay = &vd.Player1.gfxDataPrev
+	vd.Player1.gfxDataDelay = &vd.Player0.gfxDataPrev
 
 	return vd
 }
@@ -90,19 +80,19 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 		return
 	}
 
-	if vd.hmp0 >= uint8(count) {
+	if vd.Player0.horizMovement >= uint8(count) {
 		vd.Player0.tick()
 	}
-	if vd.hmp1 >= uint8(count) {
+	if vd.Player1.horizMovement >= uint8(count) {
 		vd.Player1.tick()
 	}
-	if vd.hmm0 >= uint8(count) {
+	if vd.Missile0.horizMovement >= uint8(count) {
 		vd.Missile0.tick()
 	}
-	if vd.hmm1 >= uint8(count) {
+	if vd.Missile1.horizMovement >= uint8(count) {
 		vd.Missile1.tick()
 	}
-	if vd.hmbl >= uint8(count) {
+	if vd.Ball.horizMovement >= uint8(count) {
 		vd.Ball.tick()
 	}
 }
@@ -236,9 +226,11 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "RESBL":
 		vd.Ball.scheduleReset(vd.hblank)
 	case "GRP0":
-		vd.Player0.setData(value)
+		vd.Player0.gfxDataPrev = vd.Player1.gfxData
+		vd.Player0.gfxData = value
 	case "GRP1":
-		vd.Player1.setData(value)
+		vd.Player1.gfxDataPrev = vd.Player0.gfxData
+		vd.Player1.gfxData = value
 	case "ENAM0":
 		vd.Missile0.scheduleEnable(value)
 	case "ENAM1":
@@ -246,15 +238,15 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "ENABL":
 		vd.Ball.scheduleEnable(value)
 	case "HMP0":
-		vd.hmp0 = (value ^ 0x80) >> 4
+		vd.Player0.horizMovement = (value ^ 0x80) >> 4
 	case "HMP1":
-		vd.hmp1 = (value ^ 0x80) >> 4
+		vd.Player1.horizMovement = (value ^ 0x80) >> 4
 	case "HMM0":
-		vd.hmm0 = (value ^ 0x80) >> 4
+		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
 	case "HMM1":
-		vd.hmm1 = (value ^ 0x80) >> 4
+		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
 	case "HMBL":
-		vd.hmbl = (value ^ 0x80) >> 4
+		vd.Ball.horizMovement = (value ^ 0x80) >> 4
 	case "VDELP0":
 		vd.Player0.verticalDelay = value&0x01 == 0x01
 	case "VDELP1":
@@ -264,11 +256,11 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "RESMP0":
 	case "RESMP1":
 	case "HMCLR":
-		vd.hmp0 = 0x08
-		vd.hmp1 = 0x08
-		vd.hmm0 = 0x08
-		vd.hmm1 = 0x08
-		vd.hmbl = 0x08
+		vd.Player0.horizMovement = 0x08
+		vd.Player1.horizMovement = 0x08
+		vd.Missile0.horizMovement = 0x08
+		vd.Missile1.horizMovement = 0x08
+		vd.Ball.horizMovement = 0x08
 	case "CXCLR":
 	}
 

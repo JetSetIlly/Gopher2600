@@ -13,6 +13,7 @@ type playerSprite struct {
 	color         uint8
 	gfxData       uint8
 	gfxDataPrev   uint8
+	gfxDataDelay  *uint8
 	size          uint8
 	reflected     bool
 	verticalDelay bool
@@ -33,8 +34,10 @@ func newPlayerSprite(label string, colorClock *colorclock.ColorClock) *playerSpr
 
 func (ps playerSprite) MachineInfoTerse() string {
 	gfxData := ps.gfxData
+	vdel := ""
 	if ps.verticalDelay {
-		gfxData = ps.gfxDataPrev
+		gfxData = *ps.gfxDataDelay
+		vdel = " v"
 	}
 	ref := " "
 	if ps.reflected {
@@ -49,7 +52,7 @@ func (ps playerSprite) MachineInfoTerse() string {
 		visPix++
 	}
 
-	return fmt.Sprintf("%s (vis: %d) gfx: %s %08b", ps.sprite.MachineInfoTerse(), visPix, ref, gfxData)
+	return fmt.Sprintf("%s (vis: %d, hm: %d) gfx: %s %08b%s", ps.sprite.MachineInfoTerse(), visPix, ps.horizMovement-8, ref, gfxData, vdel)
 }
 
 // MachineInfo returns the missile sprite information in verbose format
@@ -103,9 +106,10 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	// vertical delay
 	gfxData := ps.gfxData
 	if ps.verticalDelay {
-		gfxData = ps.gfxDataPrev
+		gfxData = *ps.gfxDataDelay
 	}
 
+	// reflection
 	if ps.reflected {
 		gfxData = bits.Reverse8(gfxData)
 	}
@@ -131,9 +135,4 @@ func (ps *playerSprite) scheduleReset(hblank *bool) {
 	} else {
 		ps.futureReset.schedule(delayResetPlayer, true)
 	}
-}
-
-func (ps *playerSprite) setData(data uint8) {
-	ps.gfxDataPrev = ps.gfxData
-	ps.gfxData = data
 }

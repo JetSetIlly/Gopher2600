@@ -51,6 +51,8 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	var operator, operand string
 	var notes string
 
+	// include instruction address (and label) if this is the final result for
+	// this particular instruction
 	if result.Final {
 		programCounter = fmt.Sprintf("0x%04x", result.Address)
 		if symtable != nil && style.Has(symbols.StyleFlagLocation) {
@@ -67,7 +69,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 		operator = result.Defn.Mnemonic
 	}
 
-	// parse instrution result data ...
+	// parse instruction result data ...
 	var idx uint16
 	switch result.InstructionData.(type) {
 	case uint8:
@@ -85,7 +87,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	}
 
 	// ... and use assembler symbol for the operand if available/appropriate
-	if symtable != nil && style.Has(symbols.StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
+	if symtable.Valid && style.Has(symbols.StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
 		if result.Defn.AddressingMode != definitions.Immediate {
 
 			switch result.Defn.Effect {
@@ -183,12 +185,12 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	if style.Has(symbols.StyleFlagColumns) {
 		programCounter = columnise(programCounter, 6)
 		operator = columnise(operator, 3)
-		if symtable != nil {
+		if symtable.Valid {
 			label = columnise(label, symtable.MaxLocationWidth)
 			operand = columnise(operand, symtable.MaxSymbolWidth)
 		} else {
-			label = columnise(label, 10)
-			operand = columnise(operand, 10)
+			label = columnise(label, 0)
+			operand = columnise(operand, 7)
 		}
 	}
 

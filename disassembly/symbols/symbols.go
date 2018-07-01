@@ -18,6 +18,8 @@ type Table struct {
 
 	MaxLocationWidth int
 	MaxSymbolWidth   int
+
+	Valid bool
 }
 
 // NewTable is the preferred method of initialisation for Table type
@@ -120,6 +122,9 @@ func NewTable(cartridgeFilename string) (*Table, error) {
 			table.MaxSymbolWidth = len(s)
 		}
 	}
+
+	// indicate that symbol table should be used
+	table.Valid = true
 
 	return table, nil
 }

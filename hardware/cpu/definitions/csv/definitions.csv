@@ -36,8 +36,8 @@
 #	TODO: maybe the number of cycles can be inferred in a similar way
 
 # no operation
+# (also see the undocuemted instruction, DOP)
 0xea, NOP, 2, IMPLIED, False
-0x04, NOP, 3, ZERO_PAGE, False
 
 # status flags
 0x58, CLI, 2, IMPLIED, False
@@ -232,3 +232,6 @@
 0x00, BRK, 7, IMPLIED, False
 0x40, RTI, 6, IMPLIED, False
 
+# undocumented instructions
+0x04, dop, 3, ZERO_PAGE, False
+0xa7, lax, 4, ABSOLUTE, False

@@ -178,7 +178,7 @@ func run(cartridgeFile string) error {
 	for {
 		_, _, err := vcs.Step(hardware.NullVideoCycleCallback)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 }

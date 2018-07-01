@@ -7,6 +7,7 @@ import "gopher2600/debugger/parser"
 const (
 	KeywordHelp          = "HELP"
 	KeywordInsert        = "INSERT"
+	KeywordSymbol        = "SYMBOL"
 	KeywordBreak         = "BREAK"
 	KeywordTrap          = "TRAP"
 	KeywordList          = "LIST"
@@ -45,6 +46,7 @@ const (
 //  - the tab completion method for each argument for each command
 var DebuggerCommands = parser.Commands{
 	KeywordInsert:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
+	KeywordSymbol:        parser.CommandArgs{parser.Arg{Typ: parser.ArgString, Req: true}},
 	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}},
 	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}},
 	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
@@ -84,6 +86,7 @@ func init() {
 var Help = map[string]string{
 	KeywordHelp:          "Lists commands and provides help for individual debugger commands",
 	KeywordInsert:        "Insert cartridge into emulation (from file)",
+	KeywordSymbol:        "Search for the address label symbol in disassembly. returns address",
 	KeywordBreak:         "Cause emulator to halt when conditions are met",
 	KeywordList:          "List current entries for BREAKS and TRAPS",
 	KeywordClear:         "Clear all entries in BREAKS and TRAPS",

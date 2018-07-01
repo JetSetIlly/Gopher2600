@@ -188,7 +188,10 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	if err != nil {
 		return 0, err
 	}
-	mc.PC.Add(1, false)
+	carry, _ := mc.PC.Add(1, false)
+	if carry {
+		return 0, errors.GopherError{errors.ProgramCounterCycled, nil}
+	}
 	return op, nil
 }
 
@@ -200,7 +203,10 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 
 	// strictly, PC should be incremented by one after reading the lo byte of
 	// the next instruction but I don't believe this has any side-effects
-	mc.PC.Add(2, false)
+	carry, _ := mc.PC.Add(2, false)
+	if carry {
+		return 0, errors.GopherError{errors.ProgramCounterCycled, nil}
+	}
 
 	return val, nil
 }
@@ -308,7 +314,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		if operator == 0xff {
 			return nil, errors.GopherError{errors.NullInstruction, nil}
 		}
-		return nil, errors.GopherError{errors.UnimplementedInstruction, errors.Values{operator}}
+		return nil, errors.GopherError{errors.UnimplementedInstruction, errors.Values{operator, mc.PC.ToUint16() - 1}}
 	}
 	result.Defn = defn
 
@@ -1051,6 +1057,17 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 
 	case "RTI":
 		// TODO: implement RTI
+
+	// undocumented instructions
+
+	case "dop":
+		// does nothing
+
+	case "lax":
+		mc.A.Load(value)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
+		mc.X.Load(value)
 
 	default:
 		// this should never, ever happen

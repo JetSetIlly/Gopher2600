@@ -117,5 +117,5 @@ func (bs *ballSprite) scheduleReset(hblank *bool) {
 }
 
 func (bs *ballSprite) scheduleEnable(value uint8) {
-	bs.futureEnable.schedule(delayEnableBall, value&0x20 == 0x20)
+	bs.futureEnable.schedule(delayEnableBall, value&0x02 == 0x02)
 }

@@ -38,7 +38,6 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symbols *symbols.T
 	mc.NoSideEffects = true
 	mc.LoadPC(hardware.AddressReset)
 
-	// loop over memory until we encounter a NullInstruction
 	for {
 		ir, err := mc.ExecuteInstruction(func(ir *cpu.InstructionResult) {})
 
@@ -47,14 +46,15 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symbols *symbols.T
 			switch err := err.(type) {
 			case errors.GopherError:
 				switch err.Errno {
-				case errors.NullInstruction:
-					// we've encountered a null instruction, which means we've come
-					// to the end of the program code
+				case errors.ProgramCounterCycled:
+					// reached end of memory, exit loop with no errors
+					// TODO: handle multi-bank ROMS
 					return nil
+				case errors.NullInstruction:
+					// we've encountered a null instruction. ignore
+					continue
 				case errors.UnimplementedInstruction:
 					// ignore unimplemented instructions
-					// TODO: we need a more sophisticated method of ignoring
-					// data segments / unreachable code
 					continue
 				default:
 					return err

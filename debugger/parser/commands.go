@@ -13,6 +13,7 @@ const (
 	ArgFile
 	ArgTarget
 	ArgValue
+	ArgString
 	ArgAddress
 	ArgIndeterminate
 )
@@ -88,6 +89,8 @@ func (options Commands) CheckCommandInput(input []string) error {
 			return fmt.Errorf("emulation target required for %s", input[0])
 		case ArgValue:
 			return fmt.Errorf("numeric argument required for %s", input[0])
+		case ArgString:
+			return fmt.Errorf("string argument required for %s", input[0])
 		default:
 			return fmt.Errorf("too few arguments for %s", input[0])
 		}

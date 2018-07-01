@@ -167,7 +167,9 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// HMOVE clock stuffing
-	tia.Video.TickSpritesForHMOVE(tia.hmove.tick())
+	if ct, ok := tia.hmove.tick(); ok {
+		tia.Video.TickSpritesForHMOVE(ct)
+	}
 
 	// tick all video elements
 	tia.Video.Tick()

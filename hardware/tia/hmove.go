@@ -61,13 +61,13 @@ func (hm *hmove) set() {
 	hm.phase = hm.colorClock.Phase
 }
 
-func (hm *hmove) tick() int {
+func (hm *hmove) tick() (ct int, tick bool) {
 	// if hmove is active, when color clock phase cycles to where it was when
 	// hmove.set() was called reduce the hmove count
-	ct := 0
 	if hm.count > 0 && hm.phase == hm.colorClock.Phase {
 		ct = hm.count
 		hm.count--
+		tick = true
 	}
-	return ct
+	return ct, tick
 }
