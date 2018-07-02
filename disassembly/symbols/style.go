@@ -18,7 +18,7 @@ const (
 // compound styles
 const (
 	StyleBrief = StyleFlagSymbols
-	StyleFull  = StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns | StyleFlagNotes
+	StyleFull  = StyleFlagHex | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns | StyleFlagNotes
 )
 
 // Has tests to see if style has the supplied flag in its definition

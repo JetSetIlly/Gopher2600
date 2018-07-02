@@ -1,5 +1,10 @@
 package memory
 
+import (
+	"fmt"
+	"strings"
+)
+
 // PIA defines the information for and operation allowed for PIA PIA
 type PIA struct {
 	CPUBus
@@ -54,4 +59,26 @@ func (pia *PIA) Write(address uint16, data uint8) error {
 func (pia PIA) Peek(address uint16) (uint8, string, error) {
 	oa := address - pia.origin
 	return pia.memory[oa], "", nil
+}
+
+// MachineInfoTerse returns the RIOT information in terse format
+func (pia PIA) MachineInfoTerse() string {
+	return pia.MachineInfo()
+}
+
+// MachineInfo returns the RIOT information in verbose format
+func (pia PIA) MachineInfo() string {
+	s := ""
+	for y := 0; y < 8; y++ {
+		for x := 0; x < 16; x++ {
+			s = fmt.Sprintf("%s %02x", s, pia.memory[uint16((y*16)+x)])
+		}
+		s = fmt.Sprintf("%s\n", s)
+	}
+	return strings.Trim(s, "\n")
+}
+
+// map String to MachineInfo
+func (pia PIA) String() string {
+	return pia.MachineInfo()
 }

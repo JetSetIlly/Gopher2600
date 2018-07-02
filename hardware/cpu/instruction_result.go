@@ -47,6 +47,7 @@ func columnise(s string, width int) string {
 // function to implicit calls to String()
 func (result InstructionResult) GetString(symtable *symbols.Table, style symbols.Style) string {
 	// columns
+	var hex string
 	var label, programCounter string
 	var operator, operand string
 	var notes string
@@ -83,6 +84,21 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 			operand = "??"
 		} else if result.Defn.Bytes == 3 {
 			operand = "????"
+		}
+	}
+
+	if style.Has(symbols.StyleFlagHex) {
+		switch result.Defn.Bytes {
+		case 3:
+			hex = fmt.Sprintf("%02x", idx&0xff00>>8)
+			fallthrough
+		case 2:
+			hex = fmt.Sprintf("%02x %s", idx&0x00ff, hex)
+			fallthrough
+		case 1:
+			hex = fmt.Sprintf("%02x %s", result.Defn.ObjectCode, hex)
+		default:
+			panic("unsupported number of bytes in instruction")
 		}
 	}
 
@@ -183,6 +199,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 
 	// force column widths
 	if style.Has(symbols.StyleFlagColumns) {
+		hex = columnise(hex, 8)
 		programCounter = columnise(programCounter, 6)
 		operator = columnise(operator, 3)
 		if symtable.Valid {
@@ -195,7 +212,8 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	}
 
 	// build final string
-	s := fmt.Sprintf("%s %s %s %s %s",
+	s := fmt.Sprintf("%s %s %s %s %s %s",
+		hex,
 		label,
 		programCounter,
 		operator,

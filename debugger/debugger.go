@@ -454,6 +454,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
+		// run the new onhalt command(s)
+		_, _ = dbg.parseInput(dbg.commandOnHalt)
+
 	case KeywordMemMap:
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
@@ -553,6 +556,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 			dbg.print(ui.MachineInfo, s)
 		}
+
+	case KeywordRAM:
+		dbg.printMachineInfo(dbg.vcs.Mem.PIA)
 
 	case KeywordRIOT:
 		dbg.printMachineInfo(dbg.vcs.RIOT)

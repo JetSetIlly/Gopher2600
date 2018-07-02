@@ -25,6 +25,7 @@ const (
 	KeywordDebuggerState = "DEBUGGERSTATE"
 	KeywordCPU           = "CPU"
 	KeywordPeek          = "PEEK"
+	KeywordRAM           = "RAM"
 	KeywordRIOT          = "RIOT"
 	KeywordTIA           = "TIA"
 	KeywordTV            = "TV"
@@ -64,6 +65,7 @@ var DebuggerCommands = parser.Commands{
 	KeywordDebuggerState: parser.CommandArgs{},
 	KeywordCPU:           parser.CommandArgs{},
 	KeywordPeek:          parser.CommandArgs{parser.Arg{Typ: parser.ArgValue, Req: true}},
+	KeywordRAM:           parser.CommandArgs{},
 	KeywordRIOT:          parser.CommandArgs{},
 	KeywordTIA:           parser.CommandArgs{},
 	KeywordTV:            parser.CommandArgs{},
@@ -104,6 +106,7 @@ var Help = map[string]string{
 	KeywordDebuggerState: "Display summary of debugger options",
 	KeywordCPU:           "Display the current state of the CPU",
 	KeywordPeek:          "Inspect an individual memory address",
+	KeywordRAM:           "Display the current contents of PIA RAM",
 	KeywordRIOT:          "Display the current state of the RIOT",
 	KeywordTIA:           "Display current state of the TIA",
 	KeywordTV:            "Display the current TV state",
