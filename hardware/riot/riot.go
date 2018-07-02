@@ -86,7 +86,6 @@ func (riot *RIOT) ReadRIOTMemory() {
 			riot.timerINTIM = value
 			riot.timerCycles = 2
 		}
-		// TODO: implement ports
 	}
 }
 

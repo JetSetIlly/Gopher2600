@@ -58,14 +58,13 @@ func New(tv television.Television) (*VCS, error) {
 	}
 
 	// TODO: better contoller support
-	vcs.controller = controller.NewStick(vcs.Mem.TIA)
+	vcs.controller = controller.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT)
 
 	// initialise memory
-	// - colour switch bit
-	vcs.Mem.RIOT.ChipWrite("SWCHB", 0x08)
 	// TODO: more initialisation
-
 	// TODO: console switch support
+	vcs.Mem.RIOT.ChipWrite("SWCHB", 0x0f)
+	vcs.Mem.RIOT.ChipWrite("SWCHA", 0xff)
 
 	return vcs, nil
 }

@@ -14,7 +14,7 @@ type Stick struct {
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
-func NewStick(tia *memory.ChipMemory) *Stick {
+func NewStick(tia *memory.ChipMemory, riot *memory.ChipMemory) *Stick {
 	stick := new(Stick)
 
 	// there is a flaw (either in splace/joysticks or somewehere else lower
@@ -33,6 +33,7 @@ func NewStick(tia *memory.ChipMemory) *Stick {
 		// get/assign channels for specific events
 		buttonPress := stick.device.OnClose(1)
 		buttonRelease := stick.device.OnOpen(1)
+		stickMove := stick.device.OnMove(1)
 
 		// start feeding OS events onto the event channels.
 		go stick.device.ParcelOutEvents()
@@ -44,6 +45,21 @@ func NewStick(tia *memory.ChipMemory) *Stick {
 				tia.ChipWrite("INPT4", 0x00)
 			case <-buttonRelease:
 				tia.ChipWrite("INPT4", 0x80)
+			case ev := <-stickMove:
+				swcha := uint8(0xff)
+				x := ev.(joysticks.CoordsEvent).X
+				y := ev.(joysticks.CoordsEvent).Y
+				if x < -0.5 {
+					swcha &= 0xbf
+				} else if x > 0.5 {
+					swcha &= 0x7f
+				}
+				if y < -0.5 {
+					swcha &= 0xef
+				} else if y > 0.5 {
+					swcha &= 0xdf
+				}
+				riot.ChipWrite("SWCHA", swcha)
 			}
 		}
 	}()

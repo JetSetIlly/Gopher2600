@@ -206,9 +206,9 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "REFP0":
-		vd.Player0.reflected = value&0x04 == 0x04
+		vd.Player0.reflected = value&0x08 == 0x08
 	case "REFP1":
-		vd.Player1.reflected = value&0x04 == 0x04
+		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
 		vd.Playfield.scheduleWrite(0, value)
 	case "PF1":
