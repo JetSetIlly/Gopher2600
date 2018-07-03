@@ -187,14 +187,14 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// set collision registers
-	tia.mem.ChipWrite("CXM0P", tia.Video.Coll.CXm0p)
-	tia.mem.ChipWrite("CXM1P", tia.Video.Coll.CXm1p)
-	tia.mem.ChipWrite("CXP0FB", tia.Video.Coll.CXp0fb)
-	tia.mem.ChipWrite("CXP1FB", tia.Video.Coll.CXp1fb)
-	tia.mem.ChipWrite("CXM0FB", tia.Video.Coll.CXm0fb)
-	tia.mem.ChipWrite("CXM1FB", tia.Video.Coll.CXm1fb)
-	tia.mem.ChipWrite("CXBLPF", tia.Video.Coll.CXblpf)
-	tia.mem.ChipWrite("CXPPMM", tia.Video.Coll.CXppmm)
+	tia.mem.ChipWrite(memory.CXM0P, tia.Video.Coll.CXm0p)
+	tia.mem.ChipWrite(memory.CXM1P, tia.Video.Coll.CXm1p)
+	tia.mem.ChipWrite(memory.CXP0FB, tia.Video.Coll.CXp0fb)
+	tia.mem.ChipWrite(memory.CXP1FB, tia.Video.Coll.CXp1fb)
+	tia.mem.ChipWrite(memory.CXM0FB, tia.Video.Coll.CXm0fb)
+	tia.mem.ChipWrite(memory.CXM1FB, tia.Video.Coll.CXm1fb)
+	tia.mem.ChipWrite(memory.CXBLPF, tia.Video.Coll.CXblpf)
+	tia.mem.ChipWrite(memory.CXPPMM, tia.Video.Coll.CXppmm)
 
 	return !tia.wsync
 }

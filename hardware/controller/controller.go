@@ -42,9 +42,9 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus) *Stick {
 		for {
 			select {
 			case <-buttonPress:
-				tia.ChipWrite("INPT4", 0x00)
+				tia.ChipWrite(memory.INPT4, 0x00)
 			case <-buttonRelease:
-				tia.ChipWrite("INPT4", 0x80)
+				tia.ChipWrite(memory.INPT4, 0x80)
 			case ev := <-stickMove:
 				swcha := uint8(0xff)
 				x := ev.(joysticks.CoordsEvent).X
@@ -59,7 +59,7 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus) *Stick {
 				} else if y > 0.5 {
 					swcha &= 0xdf
 				}
-				riot.ChipWrite("SWCHA", swcha)
+				riot.ChipWrite(memory.SWCHA, swcha)
 			}
 		}
 	}()

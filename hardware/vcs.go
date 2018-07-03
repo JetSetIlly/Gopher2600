@@ -63,8 +63,8 @@ func New(tv television.Television) (*VCS, error) {
 	// initialise memory
 	// TODO: more initialisation
 	// TODO: console switch support
-	vcs.Mem.RIOT.ChipWrite("SWCHB", 0x0f)
-	vcs.Mem.RIOT.ChipWrite("SWCHA", 0xff)
+	vcs.Mem.RIOT.ChipWrite(memory.SWCHB, 0x0f)
+	vcs.Mem.RIOT.ChipWrite(memory.SWCHA, 0xff)
 
 	return vcs, nil
 }

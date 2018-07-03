@@ -24,21 +24,13 @@ type ChipMemory struct {
 	cpuReadRegisters  []string
 	cpuWriteRegisters []string
 
-	// write addresses from the perspective of the VCS Chips
-	// - so we can write chipWrite() by specifying name rather than a numerical
-	// 	 address. this makes the implementation of TIA and RIOT a little easier
-	// 	 to maintain
-	// - the keys correspond to the values in cpuReadAddresses
-	// - should be created from cpuReadRegisters
-	chipWriteRegisters map[string]int
+	// write addresses from the perspective of the VCS Chips should use the
+	// chip area specific enumerations
 
-	// there is no corresponding chipReadAddresses field because we never need
-	// to read an arbitrary address from the chips. instead, we get told what
-	// to respond to with the help of the following two fields...
-	//
-	// when the CPU writes to chip memory it is not just writing to memory in the
-	// way we might expect. instead we note the address that has been written to,
-	// and a boolean true to indicate that a write has been performed by the CPU
+	// when the CPU writes to chip memory it is not writing to memory in the
+	// way we might expect. instead we note the address that has been written
+	// to, and a boolean true to indicate that a write has been performed by
+	// the CPU
 	lastWriteAddress uint16 // mapped from 16bit to chip address length
 	writeData        uint8
 	writeSignal      bool
@@ -126,12 +118,7 @@ func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 
 // ChipWrite writes the data to the memory area's address specified by
 // registerName
-func (area *ChipMemory) ChipWrite(registerName string, data uint8) {
-	address, ok := area.chipWriteRegisters[registerName]
-	if !ok {
-		panic(errors.GopherError{errors.UnknownRegisterName, errors.Values{registerName, area.label}})
-	}
-
+func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
 	area.memory[address] = data
 }
 

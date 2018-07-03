@@ -14,7 +14,7 @@ type CPUBus interface {
 // VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
 type ChipBus interface {
 	ChipRead() (bool, string, uint8)
-	ChipWrite(registerName string, data uint8)
+	ChipWrite(address uint16, data uint8)
 	LastReadRegister() string
 }
 

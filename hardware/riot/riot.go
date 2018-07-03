@@ -120,7 +120,7 @@ func (riot *RIOT) Step() {
 			} else {
 				riot.timerINTIM--
 			}
-			riot.mem.ChipWrite("INTIM", riot.timerINTIM)
+			riot.mem.ChipWrite(memory.INTIM, riot.timerINTIM)
 			riot.timerCycles = riot.timerInterval
 		}
 	}
