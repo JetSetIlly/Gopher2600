@@ -16,6 +16,9 @@ import (
 	"strings"
 )
 
+const defaultOnHalt = "CPU; TV"
+const defaultOnStep = "LAST"
+
 // Debugger is the basic debugging frontend for the emulation
 type Debugger struct {
 	vcs     *hardware.VCS
@@ -34,6 +37,11 @@ type Debugger struct {
 	// halt is a breakpoint or user intervention (ie. ctrl-c)
 	commandOnHalt       string
 	commandOnHaltStored string
+
+	// similarly, commandOnStep is the sequence of commands to run afer ever
+	// cpu/video cycle
+	commandOnStep       string
+	commandOnStepStored string
 
 	// machineInfoVerbose controls the verbosity of commands that echo machine state
 	machineInfoVerbose bool
@@ -83,7 +91,11 @@ func NewDebugger() (*Debugger, error) {
 	dbg.traps = newTraps(dbg)
 
 	// default ONHALT command squence
-	dbg.commandOnHaltStored = "CPU; TIA; TV"
+	dbg.commandOnHaltStored = defaultOnHalt
+
+	// default ONSTEP command sequnce
+	dbg.commandOnStep = defaultOnStep
+	dbg.commandOnStepStored = dbg.commandOnStep
 
 	return dbg, nil
 }
@@ -103,16 +115,9 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 
 	dbg.ui.RegisterTabCompleter(parser.NewTabCompletion(DebuggerCommands))
 
-	if filename != "" {
-		err = dbg.loadCartridge(filename)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = dbg.vcs.Reset()
-		if err != nil {
-			return err
-		}
+	err = dbg.loadCartridge(filename)
+	if err != nil {
+		return err
 	}
 
 	// register ctrl-c handler
@@ -167,7 +172,12 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 
 func (dbg *Debugger) videoCycleCallback(result *cpu.InstructionResult) error {
 	dbg.lastResult = result
-	dbg.print(ui.VideoStep, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
+	if dbg.commandOnStep != "" {
+		_, err := dbg.parseInput(dbg.commandOnStep)
+		if err != nil {
+			dbg.print(ui.Error, "%s", err)
+		}
+	}
 	return dbg.inputLoop(false)
 }
 
@@ -281,7 +291,13 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if err != nil {
 					return err
 				}
-				dbg.print(ui.CPUStep, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
+
+				if dbg.commandOnStep != "" {
+					_, err := dbg.parseInput(dbg.commandOnStep)
+					if err != nil {
+						dbg.print(ui.Error, "%s", err)
+					}
+				}
 			} else {
 				return nil
 			}
@@ -438,9 +454,6 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 				return false, nil
 			}
 
-			// TODO: implement syntax checking when specifying ONHALT commands before
-			// committing to the new sequnce
-
 			// use remaininder of command line to form the ONHALT command sequence
 			dbg.commandOnHalt = strings.Join(parts[1:], " ")
 
@@ -455,7 +468,46 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
 		// run the new onhalt command(s)
-		_, _ = dbg.parseInput(dbg.commandOnHalt)
+		_, err := dbg.parseInput(dbg.commandOnHalt)
+		return false, err
+
+	case KeywordOnStep:
+		if len(parts) < 2 {
+			dbg.commandOnStep = dbg.commandOnStepStored
+		} else {
+			if strings.ToUpper(parts[1]) == "OFF" {
+				dbg.commandOnStep = ""
+				dbg.print(ui.Feedback, "no auto-command on step")
+				return false, nil
+			}
+
+			// use remaininder of command line to form the ONSTEP command sequence
+			dbg.commandOnStep = strings.Join(parts[1:], " ")
+
+			// we can't use semi-colons when specifying the sequence so allow use of
+			// commas to act as an alternative
+			dbg.commandOnStep = strings.Replace(dbg.commandOnStep, ",", ";", -1)
+
+			// store the new command so we can reuse it
+			dbg.commandOnStepStored = dbg.commandOnStep
+		}
+
+		dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+
+		// run the new onstep command(s)
+		_, err := dbg.parseInput(dbg.commandOnStep)
+		return false, err
+
+	case KeywordLast:
+		if dbg.lastResult != nil {
+			var printTag ui.PrintProfile
+			if dbg.lastResult.Final {
+				printTag = ui.CPUStep
+			} else {
+				printTag = ui.VideoStep
+			}
+			dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
+		}
 
 	case KeywordMemMap:
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())

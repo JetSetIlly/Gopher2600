@@ -71,11 +71,15 @@ func New(tv television.Television) (*VCS, error) {
 
 // AttachCartridge loads a cartridge (given by filename) into the emulators memory
 func (vcs *VCS) AttachCartridge(filename string) error {
-	err := vcs.Mem.Cart.Attach(filename)
-	if err != nil {
-		return err
+	if filename == "" {
+		vcs.Mem.Cart.Eject()
+	} else {
+		err := vcs.Mem.Cart.Attach(filename)
+		if err != nil {
+			return err
+		}
 	}
-	err = vcs.Reset()
+	err := vcs.Reset()
 	if err != nil {
 		return err
 	}

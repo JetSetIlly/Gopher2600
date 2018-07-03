@@ -87,7 +87,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 		}
 	}
 
-	if style.Has(symbols.StyleFlagHex) {
+	if result.Final && style.Has(symbols.StyleFlagHex) {
 		switch result.Defn.Bytes {
 		case 3:
 			hex = fmt.Sprintf("%02x", idx&0xff00>>8)
@@ -199,7 +199,9 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 
 	// force column widths
 	if style.Has(symbols.StyleFlagColumns) {
-		hex = columnise(hex, 8)
+		if style.Has(symbols.StyleFlagHex) {
+			hex = columnise(hex, 8)
+		}
 		programCounter = columnise(programCounter, 6)
 		operator = columnise(operator, 3)
 		if symtable.Valid {

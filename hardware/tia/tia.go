@@ -182,9 +182,19 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, television.VideoBlack)
 	} else {
 		// send pixel color to television
-		pixel := television.PixelSignal(tia.Video.GetPixel())
+		pixel := television.PixelSignal(tia.Video.Pixel())
 		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, pixel)
 	}
+
+	// set collision registers
+	tia.mem.ChipWrite("CXM0P", tia.Video.Coll.CXm0p)
+	tia.mem.ChipWrite("CXM1P", tia.Video.Coll.CXm1p)
+	tia.mem.ChipWrite("CXP0FB", tia.Video.Coll.CXp0fb)
+	tia.mem.ChipWrite("CXP1FB", tia.Video.Coll.CXp1fb)
+	tia.mem.ChipWrite("CXM0FB", tia.Video.Coll.CXm0fb)
+	tia.mem.ChipWrite("CXM1FB", tia.Video.Coll.CXm1fb)
+	tia.mem.ChipWrite("CXBLPF", tia.Video.Coll.CXblpf)
+	tia.mem.ChipWrite("CXPPMM", tia.Video.Coll.CXppmm)
 
 	return !tia.wsync
 }

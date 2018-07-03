@@ -918,14 +918,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := register.NewAnonymous(mc.A, mc.A.Size())
+		cmp, err := register.NewAnonymous(value, mc.A.Size())
 		if err != nil {
 			return nil, err
 		}
-		cmp.AND(value)
-		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
 		mc.Status.Overflow = cmp.IsBitV()
+		cmp.AND(mc.A)
+		mc.Status.Zero = cmp.IsZero()
 
 	case "JMP":
 		if !mc.NoSideEffects {

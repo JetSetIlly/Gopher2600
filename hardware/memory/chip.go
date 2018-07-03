@@ -40,6 +40,7 @@ type ChipMemory struct {
 	// way we might expect. instead we note the address that has been written to,
 	// and a boolean true to indicate that a write has been performed by the CPU
 	lastWriteAddress uint16 // mapped from 16bit to chip address length
+	writeData        uint8
 	writeSignal      bool
 
 	// lastReadRegister works slightly different that lastWriteAddress. it stores
@@ -100,11 +101,13 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 		// memory space but some registers are not writable)
 		return nil
 	}
-	area.memory[oa] = data
 
 	// note address of write
 	area.lastWriteAddress = oa
 	area.writeSignal = true
+	area.writeData = data
+
+	//area.memory[oa] = data
 
 	return nil
 }
@@ -116,7 +119,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, area.cpuWriteRegisters[area.lastWriteAddress], area.memory[area.lastWriteAddress]
+		return true, area.cpuWriteRegisters[area.lastWriteAddress], area.writeData
 	}
 	return false, "", 0
 }
@@ -128,6 +131,7 @@ func (area *ChipMemory) ChipWrite(registerName string, data uint8) {
 	if !ok {
 		panic(errors.GopherError{errors.UnknownRegisterName, errors.Values{registerName, area.label}})
 	}
+
 	area.memory[address] = data
 }
 

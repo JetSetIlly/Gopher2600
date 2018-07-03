@@ -14,7 +14,7 @@ type Stick struct {
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
-func NewStick(tia *memory.ChipMemory, riot *memory.ChipMemory) *Stick {
+func NewStick(tia memory.ChipBus, riot memory.ChipBus) *Stick {
 	stick := new(Stick)
 
 	// there is a flaw (either in splace/joysticks or somewehere else lower

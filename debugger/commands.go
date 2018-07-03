@@ -13,6 +13,8 @@ const (
 	KeywordList          = "LIST"
 	KeywordClear         = "CLEAR"
 	KeywordOnHalt        = "ONHALT"
+	KeywordOnStep        = "ONSTEP"
+	KeywordLast          = "LAST"
 	KeywordMemMap        = "MEMMAP"
 	KeywordQuit          = "QUIT"
 	KeywordReset         = "RESET"
@@ -50,9 +52,11 @@ var DebuggerCommands = parser.Commands{
 	KeywordSymbol:        parser.CommandArgs{parser.Arg{Typ: parser.ArgString, Req: true}},
 	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}},
 	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}},
-	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
 	KeywordList:          parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
 	KeywordClear:         parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
+	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
+	KeywordOnStep:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate, Req: false}},
+	KeywordLast:          parser.CommandArgs{},
 	KeywordMemMap:        parser.CommandArgs{},
 	KeywordQuit:          parser.CommandArgs{},
 	KeywordReset:         parser.CommandArgs{},
@@ -94,6 +98,8 @@ var Help = map[string]string{
 	KeywordClear:         "Clear all entries in BREAKS and TRAPS",
 	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
 	KeywordOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
+	KeywordOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
+	KeywordLast:          "Prints the result of the last cpu/video cycle",
 	KeywordMemMap:        "Display high-levl VCS memory map",
 	KeywordQuit:          "Exits the emulator",
 	KeywordReset:         "Rest the emulation to its initial state",

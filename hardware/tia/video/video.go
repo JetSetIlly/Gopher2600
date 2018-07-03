@@ -18,6 +18,9 @@ type Video struct {
 	Missile0 *missileSprite
 	Missile1 *missileSprite
 	Ball     *ballSprite
+
+	// collision matrix
+	Coll collisions
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -97,57 +100,121 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 }
 
-// GetPixel returns the color of the pixel at the current time. it will default
-// to returning the background color if no sprite or playfield pixel is present
+// Pixel returns the color of the pixel at the current time. it will default
+// to returning the background color if no sprite or playfield pixel is
+// present. it also sets the collision registers
 // - it need not be called therefore during VBLANK or HBLANK
-func (vd Video) GetPixel() uint8 {
+func (vd *Video) Pixel() uint8 {
+	pfu, pfc := vd.Playfield.pixel()
+	blu, blc := vd.Ball.pixel()
+	p0u, p0c := vd.Player0.pixel()
+	p1u, p1c := vd.Player1.pixel()
+	m0u, m0c := vd.Missile0.pixel()
+	m1u, m1c := vd.Missile1.pixel()
+
+	// collisions
+	if m0u && p1u {
+		vd.Coll.CXm0p |= 0x80
+	}
+	if m0u && p0u {
+		vd.Coll.CXm0p |= 0x40
+	}
+
+	if m1u && p0u {
+		vd.Coll.CXm1p |= 0x80
+	}
+	if m1u && p1u {
+		vd.Coll.CXm1p |= 0x40
+	}
+
+	if p0u && pfu {
+		vd.Coll.CXp0fb |= 0x80
+	}
+	if p0u && blu {
+		vd.Coll.CXp0fb |= 0x40
+	}
+
+	if p1u && pfu {
+		vd.Coll.CXp1fb |= 0x80
+	}
+	if p1u && blu {
+		vd.Coll.CXp1fb |= 0x40
+	}
+
+	if m0u && pfu {
+		vd.Coll.CXm0fb |= 0x80
+	}
+	if m0u && blu {
+		vd.Coll.CXm0fb |= 0x40
+	}
+
+	if m1u && pfu {
+		vd.Coll.CXm1fb |= 0x80
+	}
+	if m1u && blu {
+		vd.Coll.CXm1fb |= 0x40
+	}
+
+	if blu && pfu {
+		vd.Coll.CXblpf |= 0x80
+	}
+	// no bit 6 for CXBLPF
+
+	if p0u && p1u {
+		vd.Coll.CXppmm |= 0x80
+	}
+	if m0u && m1u {
+		vd.Coll.CXppmm |= 0x40
+	}
+
+	// apply priorities to get pixel color
 	if vd.Playfield.priority {
 		// priority 1
-		if use, c := vd.Playfield.pixel(); use {
-			return c
+		if pfu {
+			return pfc
 		}
-		if use, c := vd.Ball.pixel(); use {
-			return c
+		if blu {
+			return blc
 		}
 
 		// priority 2
-		if use, c := vd.Player1.pixel(); use {
-			return c
+		if p1u {
+			return p1c
 		}
-		if use, c := vd.Missile1.pixel(); use {
-			return c
+		if m1u {
+			return m1c
 		}
 
 		// priority 3
-		if use, c := vd.Player0.pixel(); use {
-			return c
+		if p0u {
+			return p0c
 		}
-		if use, c := vd.Missile0.pixel(); use {
-			return c
+		if m0u {
+			return m0c
 		}
 	} else {
 		// priority 1
-		if use, c := vd.Player0.pixel(); use {
-			return c
+		if p0u {
+			return p0c
 		}
-		if use, c := vd.Missile0.pixel(); use {
-			return c
+		if m0u {
+			return m0c
 		}
 
 		// priority 2
-		if use, c := vd.Player1.pixel(); use {
-			return c
+		if p1u {
+			return p1c
 		}
-		if use, c := vd.Missile1.pixel(); use {
-			return c
+		if m1u {
+			return m1c
 		}
 
 		// priority 3
-		if use, c := vd.Playfield.pixel(); use {
-			return c
+		if pfu {
+			return pfc
 		}
-		if use, c := vd.Ball.pixel(); use {
-			return c
+		if blu {
+			return blc
 		}
 	}
 
@@ -262,6 +329,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
 	case "CXCLR":
+		vd.Coll.clear()
 	}
 
 	return false

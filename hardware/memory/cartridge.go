@@ -113,9 +113,11 @@ func (cart *Cartridge) Attach(filename string) error {
 	return nil
 }
 
-// Eject removes memory from cartridge space
+// Eject removes memory from cartridge space and unlike the real hardware,
+// attaches a bank of empty memory - for convenience of the debugger
 func (cart *Cartridge) Eject() {
-	cart.memory = make([]uint8, 0)
+	cart.memory = make([]uint8, 4096)
+	cart.bank = 0
 }
 
 // Peek is the implementation of Area.Peek

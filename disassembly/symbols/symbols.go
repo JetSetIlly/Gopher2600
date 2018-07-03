@@ -40,6 +40,11 @@ func NewTable(cartridgeFilename string) (*Table, error) {
 
 	sf, err := os.Open(symFilename)
 	if err != nil {
+		// if this is the empty cartridge then this error is expected. return
+		// the empty symbol table
+		if cartridgeFilename == "" {
+			return table, nil
+		}
 		return table, &errors.GopherError{errors.NoSymbolsFile, errors.Values{cartridgeFilename}}
 	}
 	defer func() {

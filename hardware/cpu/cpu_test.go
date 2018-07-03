@@ -422,10 +422,10 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	step(t, mc) // BIT $01
 	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
 
-	// BIT zero page
-	origin = mem.putInstructions(origin, 0x24, 0x0e)
+	// BIT immediate
+	origin = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
 }
 
 func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
