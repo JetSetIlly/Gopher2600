@@ -179,22 +179,15 @@ func (tia *TIA) StepVideoCycle() bool {
 	if tia.hblank {
 		// we're in the hblank state so do not tick the sprites and send the null
 		// pixel color to the television
-		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, television.VideoBlack)
+		tia.tv.Signal(television.SignalAttributes{tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, television.VideoBlack})
 	} else {
 		// send pixel color to television
 		pixel := television.PixelSignal(tia.Video.Pixel())
-		tia.tv.Signal(tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, pixel)
+		tia.tv.Signal(television.SignalAttributes{tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, pixel})
 	}
 
 	// set collision registers
-	tia.mem.ChipWrite(memory.CXM0P, tia.Video.Coll.CXm0p)
-	tia.mem.ChipWrite(memory.CXM1P, tia.Video.Coll.CXm1p)
-	tia.mem.ChipWrite(memory.CXP0FB, tia.Video.Coll.CXp0fb)
-	tia.mem.ChipWrite(memory.CXP1FB, tia.Video.Coll.CXp1fb)
-	tia.mem.ChipWrite(memory.CXM0FB, tia.Video.Coll.CXm0fb)
-	tia.mem.ChipWrite(memory.CXM1FB, tia.Video.Coll.CXm1fb)
-	tia.mem.ChipWrite(memory.CXBLPF, tia.Video.Coll.CXblpf)
-	tia.mem.ChipWrite(memory.CXPPMM, tia.Video.Coll.CXppmm)
+	tia.Video.Collisions.SetMemory(tia.mem)
 
 	return !tia.wsync
 }

@@ -1,23 +1,36 @@
 package video
 
+import "gopher2600/hardware/memory"
+
 type collisions struct {
-	CXm0p  uint8
-	CXm1p  uint8
-	CXp0fb uint8
-	CXp1fb uint8
-	CXm0fb uint8
-	CXm1fb uint8
-	CXblpf uint8
-	CXppmm uint8
+	cxm0p  uint8
+	cxm1p  uint8
+	cxp0fb uint8
+	cxp1fb uint8
+	cxm0fb uint8
+	cxm1fb uint8
+	cxblpf uint8
+	cxppmm uint8
 }
 
-func (coll *collisions) clear() {
-	coll.CXm0p = 0
-	coll.CXm1p = 0
-	coll.CXp0fb = 0
-	coll.CXp1fb = 0
-	coll.CXm0fb = 0
-	coll.CXm1fb = 0
-	coll.CXblpf = 0
-	coll.CXppmm = 0
+func (col *collisions) clear() {
+	col.cxm0p = 0
+	col.cxm1p = 0
+	col.cxp0fb = 0
+	col.cxp1fb = 0
+	col.cxm0fb = 0
+	col.cxm1fb = 0
+	col.cxblpf = 0
+	col.cxppmm = 0
+}
+
+func (col *collisions) SetMemory(mem memory.ChipBus) {
+	mem.ChipWrite(memory.CXM0P, col.cxm0p)
+	mem.ChipWrite(memory.CXM1P, col.cxm1p)
+	mem.ChipWrite(memory.CXP0FB, col.cxp0fb)
+	mem.ChipWrite(memory.CXP1FB, col.cxp1fb)
+	mem.ChipWrite(memory.CXM0FB, col.cxm0fb)
+	mem.ChipWrite(memory.CXM1FB, col.cxm1fb)
+	mem.ChipWrite(memory.CXBLPF, col.cxblpf)
+	mem.ChipWrite(memory.CXPPMM, col.cxppmm)
 }

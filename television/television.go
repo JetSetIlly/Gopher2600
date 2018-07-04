@@ -4,9 +4,15 @@ import (
 	"fmt"
 )
 
+// SignalAttributes represents the data sent to the television
+type SignalAttributes struct {
+	VSync, VBlank, FrontPorch, HSync, CBurst bool
+	Pixel                                    PixelSignal
+}
+
 // Television defines the operations that can be performed on the television
 type Television interface {
-	Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal)
+	Signal(SignalAttributes)
 	MachineInfoTerse() string
 	MachineInfo() string
 	GetTVState(string) (*TVState, error)
@@ -19,7 +25,7 @@ type Television interface {
 type DummyTV struct{ Television }
 
 // Signal (with DummyTV reciever) is the null implementation
-func (DummyTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {}
+func (DummyTV) Signal(SignalAttributes) {}
 
 // MachineInfoTerse (with DummyTV reciever) is the null implementation
 func (DummyTV) MachineInfoTerse() string {

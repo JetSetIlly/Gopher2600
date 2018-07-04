@@ -141,13 +141,13 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 // Signal is principle method of communication between the VCS and televsion
 // -- note that most of the work is done in the embedded HeadlessTV instance
-func (tv *SDLTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {
-	tv.HeadlessTV.Signal(vsync, vblank, frontPorch, hsync, cburst, pixel)
+func (tv *SDLTV) Signal(attr SignalAttributes) {
+	tv.HeadlessTV.Signal(attr)
 
 	// decode color
 	r, g, b := byte(0), byte(0), byte(0)
-	col, present := tv.spec.colors[pixel]
-	if present {
+	if attr.Pixel <= 256 {
+		col := tv.spec.colors[attr.Pixel]
 		r, g, b = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 	}
 

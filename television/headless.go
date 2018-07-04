@@ -25,8 +25,8 @@ type HeadlessTV struct {
 	vsyncCount int
 
 	// records of signal information from the last call to Signal()
-	prevHsync  bool
-	prevCburst bool
+	prevHSync  bool
+	prevCBurst bool
 
 	// if the signals we've received do not match what we expect then outOfSpec
 	// will be false for the duration of the rest of the frame. this is useful
@@ -135,32 +135,32 @@ func (tv HeadlessTV) ForceUpdate() error {
 }
 
 // Signal is principle method of communication between the VCS and televsion
-func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixel PixelSignal) {
+func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 
 	// check that hsync signal is within the specification
-	if hsync && !tv.prevHsync {
+	if attr.HSync && !tv.prevHSync {
 		if tv.horizPos.value < -52 || tv.horizPos.value > -49 {
 			tv.outOfSpec = true
 		}
-	} else if !hsync && tv.prevHsync {
+	} else if !attr.HSync && tv.prevHSync {
 		if tv.horizPos.value < -36 || tv.horizPos.value > -33 {
 			tv.outOfSpec = true
 		}
 	}
 
 	// check that color burst signal is within the specification
-	if cburst && !tv.prevCburst {
+	if attr.CBurst && !tv.prevCBurst {
 		if tv.horizPos.value < -28 || tv.horizPos.value > -17 {
 			tv.outOfSpec = true
 		}
-	} else if !cburst && tv.prevCburst {
+	} else if !attr.CBurst && tv.prevCBurst {
 		if tv.horizPos.value < -19 || tv.horizPos.value > -16 {
 			tv.outOfSpec = true
 		}
 	}
 
 	// simple implementation of vsync
-	if vsync {
+	if attr.VSync {
 		tv.vsyncCount++
 	} else {
 		if tv.vsyncCount >= tv.spec.vsyncClocks {
@@ -173,7 +173,7 @@ func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixe
 	}
 
 	// start a new scanline if a frontporch signal has been received
-	if frontPorch {
+	if attr.FrontPorch {
 		tv.horizPos.value = -tv.spec.clocksPerHblank
 		tv.scanline.value++
 		tv.newScanline()
@@ -196,7 +196,7 @@ func (tv *HeadlessTV) Signal(vsync, vblank, frontPorch, hsync, cburst bool, pixe
 	// (eg. color decoding)
 
 	// record the current signal settings so they can be used for reference
-	tv.prevHsync = hsync
+	tv.prevHSync = attr.HSync
 }
 
 // SetVisibility does nothing for the HeadlessTV

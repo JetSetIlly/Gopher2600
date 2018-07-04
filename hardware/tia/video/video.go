@@ -20,7 +20,7 @@ type Video struct {
 	Ball     *ballSprite
 
 	// collision matrix
-	Coll collisions
+	Collisions collisions
 }
 
 // New is the preferred method of initialisation for the Video structure
@@ -114,57 +114,57 @@ func (vd *Video) Pixel() uint8 {
 
 	// collisions
 	if m0u && p1u {
-		vd.Coll.CXm0p |= 0x80
+		vd.Collisions.cxm0p |= 0x80
 	}
 	if m0u && p0u {
-		vd.Coll.CXm0p |= 0x40
+		vd.Collisions.cxm0p |= 0x40
 	}
 
 	if m1u && p0u {
-		vd.Coll.CXm1p |= 0x80
+		vd.Collisions.cxm1p |= 0x80
 	}
 	if m1u && p1u {
-		vd.Coll.CXm1p |= 0x40
+		vd.Collisions.cxm1p |= 0x40
 	}
 
 	if p0u && pfu {
-		vd.Coll.CXp0fb |= 0x80
+		vd.Collisions.cxp0fb |= 0x80
 	}
 	if p0u && blu {
-		vd.Coll.CXp0fb |= 0x40
+		vd.Collisions.cxp0fb |= 0x40
 	}
 
 	if p1u && pfu {
-		vd.Coll.CXp1fb |= 0x80
+		vd.Collisions.cxp1fb |= 0x80
 	}
 	if p1u && blu {
-		vd.Coll.CXp1fb |= 0x40
+		vd.Collisions.cxp1fb |= 0x40
 	}
 
 	if m0u && pfu {
-		vd.Coll.CXm0fb |= 0x80
+		vd.Collisions.cxm0fb |= 0x80
 	}
 	if m0u && blu {
-		vd.Coll.CXm0fb |= 0x40
+		vd.Collisions.cxm0fb |= 0x40
 	}
 
 	if m1u && pfu {
-		vd.Coll.CXm1fb |= 0x80
+		vd.Collisions.cxm1fb |= 0x80
 	}
 	if m1u && blu {
-		vd.Coll.CXm1fb |= 0x40
+		vd.Collisions.cxm1fb |= 0x40
 	}
 
 	if blu && pfu {
-		vd.Coll.CXblpf |= 0x80
+		vd.Collisions.cxblpf |= 0x80
 	}
 	// no bit 6 for CXBLPF
 
 	if p0u && p1u {
-		vd.Coll.CXppmm |= 0x80
+		vd.Collisions.cxppmm |= 0x80
 	}
 	if m0u && m1u {
-		vd.Coll.CXppmm |= 0x40
+		vd.Collisions.cxppmm |= 0x40
 	}
 
 	// apply priorities to get pixel color
@@ -329,7 +329,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
 	case "CXCLR":
-		vd.Coll.clear()
+		vd.Collisions.clear()
 	}
 
 	return false

@@ -12,7 +12,7 @@ type specification struct {
 	scanlinesPerOverscan int
 	scanlinesTotal       int
 
-	colors map[PixelSignal]color
+	colors []color
 }
 
 var specNTSC *specification
