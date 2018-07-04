@@ -1,4 +1,4 @@
-package symbols
+package result
 
 // Style is the type used to specify what to include in a disassembly string
 type Style int

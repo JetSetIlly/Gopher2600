@@ -121,11 +121,11 @@ func (cart *Cartridge) Eject() {
 }
 
 // Peek is the implementation of Area.Peek
-func (cart Cartridge) Peek(address uint16) (uint8, string, error) {
+func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error) {
 	if len(cart.memory) == 0 {
-		return 0, "", new(MissingCartridgeError)
+		return 0, 0, "", "", new(MissingCartridgeError)
 	}
 	oa := address - cart.origin
 	oa += cart.bank * bankSize
-	return cart.memory[oa], "", nil
+	return cart.memory[oa], address, cart.Label(), "", nil
 }

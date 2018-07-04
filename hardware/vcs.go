@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"gopher2600/hardware/controller"
 	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
+	"gopher2600/symbols"
 	"gopher2600/television"
 )
 
@@ -63,8 +65,8 @@ func New(tv television.Television) (*VCS, error) {
 	// initialise memory
 	// TODO: more initialisation
 	// TODO: console switch support
-	vcs.Mem.RIOT.ChipWrite(memory.SWCHB, 0x0f)
-	vcs.Mem.RIOT.ChipWrite(memory.SWCHA, 0xff)
+	vcs.Mem.RIOT.ChipWrite(symbols.SWCHB, 0x0f)
+	vcs.Mem.RIOT.ChipWrite(symbols.SWCHA, 0xff)
 
 	return vcs, nil
 }
@@ -88,13 +90,13 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 
 // NullVideoCycleCallback can be used when calling Step() when no special
 // behaviour is required
-func NullVideoCycleCallback(*cpu.InstructionResult) error {
+func NullVideoCycleCallback(*result.Instruction) error {
 	return nil
 }
 
 // Step the emulator state one CPU instruction
-func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int, *cpu.InstructionResult, error) {
-	var r *cpu.InstructionResult
+func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *result.Instruction, error) {
+	var r *result.Instruction
 	var err error
 
 	// the number of CPU cycles that have elapsed.  note this is *not* the same
@@ -105,7 +107,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*cpu.InstructionResult) error) (int
 	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
 	// function defines the order of operation for the rest of the VCS for
 	// every CPU cycle.
-	cycleVCS := func(r *cpu.InstructionResult) {
+	cycleVCS := func(r *result.Instruction) {
 		cpuCycles++
 
 		// run riot only once per CPU cycle

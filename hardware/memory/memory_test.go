@@ -15,8 +15,6 @@ func TestMemory(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	mem.Clear()
-
 	if mem.MemoryMap() != validMemMap {
 		t.Fatalf("memory map is invalid")
 	}

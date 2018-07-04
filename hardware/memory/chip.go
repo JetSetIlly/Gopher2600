@@ -2,6 +2,7 @@ package memory
 
 import (
 	"gopher2600/errors"
+	"gopher2600/symbols"
 )
 
 // ChipMemory defines the information for and operations allowed for those
@@ -17,16 +18,6 @@ type ChipMemory struct {
 	// additional mask to further reduce address space when read from the CPU
 	readMask uint16
 
-	// read and write addresses from the perspective of the CPU
-	// - links address locations to 'register' names
-	// - must be the same length as ChipMemory.memory
-	// - empty string means the address is not readable/writable
-	cpuReadRegisters  []string
-	cpuWriteRegisters []string
-
-	// write addresses from the perspective of the VCS Chips should use the
-	// chip area specific enumerations
-
 	// when the CPU writes to chip memory it is not writing to memory in the
 	// way we might expect. instead we note the address that has been written
 	// to, and a boolean true to indicate that a write has been performed by
@@ -39,6 +30,10 @@ type ChipMemory struct {
 	// the register *name* of the last memory location *read* by the CPU
 	lastReadRegister string
 }
+
+// note that all the symbols used are the standard VCS symbol names, as defined
+// in the symbols package. this may be confusing if the cartridge has a symbols
+// file that does not use standard names, but this seems unlikely.
 
 // Label is an implementation of Area.Label
 func (area ChipMemory) Label() string {
@@ -57,20 +52,19 @@ func (area ChipMemory) Memtop() uint16 {
 
 // Implementation of CPUBus.Read
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
-	oa := address - area.origin
-	oa &= area.readMask
+	address &= area.readMask
 
 	// note the name of the register that we are reading
-	area.lastReadRegister = area.cpuReadRegisters[oa]
+	area.lastReadRegister = symbols.VCSReadSymbols[address]
 
-	rl := area.cpuReadRegisters[oa]
-	if rl == "" {
+	sym := symbols.VCSReadSymbols[address]
+	if sym == "" {
 		// silently ignore illegal reads (we're definitely reading from the correct
 		// memory space but some registers are not readable)
 		return 0, nil
 	}
 
-	return area.memory[oa], nil
+	return area.memory[address-area.origin], nil
 }
 
 // Implementation of CPUBus.Write
@@ -83,23 +77,20 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
 	if area.writeSignal {
-		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{area.cpuWriteRegisters[area.lastWriteAddress]}}
+		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{symbols.VCSWriteSymbols[area.lastWriteAddress]}}
 	}
 
-	oa := address - area.origin
-	rl := area.cpuWriteRegisters[oa]
-	if rl == "" {
+	sym := symbols.VCSWriteSymbols[address]
+	if sym == "" {
 		// silently ignore illegal writes (we're definitely writing to the correct
 		// memory space but some registers are not writable)
 		return nil
 	}
 
 	// note address of write
-	area.lastWriteAddress = oa
+	area.lastWriteAddress = address
 	area.writeSignal = true
 	area.writeData = data
-
-	//area.memory[oa] = data
 
 	return nil
 }
@@ -111,7 +102,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, area.cpuWriteRegisters[area.lastWriteAddress], area.writeData
+		return true, symbols.VCSWriteSymbols[area.lastWriteAddress], area.writeData
 	}
 	return false, "", 0
 }
@@ -129,16 +120,10 @@ func (area ChipMemory) LastReadRegister() string {
 }
 
 // Peek is the implementation of Area.Peek. returns:
-// - the value in memory
-// - the register name of the address
-// - any errors
-func (area ChipMemory) Peek(address uint16) (uint8, string, error) {
-	oa := address - area.origin
-	oa &= area.readMask
-
-	rl := area.cpuReadRegisters[oa]
-	if rl == "" {
-		return 0, "", errors.GopherError{errors.UnreadableAddress, nil}
+func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
+	sym := symbols.VCSReadSymbols[address&area.readMask]
+	if sym == "" {
+		return 0, 0, "", "", errors.GopherError{errors.UnreadableAddress, nil}
 	}
-	return area.memory[oa], rl, nil
+	return area.memory[address-area.origin], address & area.readMask, area.Label(), sym, nil
 }

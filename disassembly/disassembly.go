@@ -2,17 +2,18 @@ package disassembly
 
 import (
 	"fmt"
-	"gopher2600/disassembly/symbols"
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
+	"gopher2600/symbols"
 )
 
 // Disassembly represents the annotated disassembly of a 6502 binary
 type Disassembly struct {
 	// symbols used to build disassembly output
-	Symbols *symbols.Table
+	Symtable *symbols.Table
 
 	// SequencePoints contains the list of program counter values. listed in
 	// order so can be used to index program map to produce complete
@@ -20,14 +21,14 @@ type Disassembly struct {
 	SequencePoints []uint16
 
 	// table of instruction results. index with contents of sequencePoints
-	Program map[uint16]*cpu.InstructionResult
+	Program map[uint16]*result.Instruction
 }
 
 // ParseMemory disassembles an existing memory instance. uses a new cpu
 // instance which has no side effects, so it's safe to use with "live" memory
 func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.Table) error {
-	dsm.Symbols = symtable
-	dsm.Program = make(map[uint16]*cpu.InstructionResult)
+	dsm.Symtable = symtable
+	dsm.Program = make(map[uint16]*result.Instruction)
 	dsm.SequencePoints = make([]uint16, 0, memory.Cart.Memtop()-memory.Cart.Origin())
 
 	// create a new non-branching CPU to disassemble memory
@@ -39,7 +40,7 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.
 	mc.LoadPC(hardware.AddressReset)
 
 	for {
-		ir, err := mc.ExecuteInstruction(func(ir *cpu.InstructionResult) {})
+		ir, err := mc.ExecuteInstruction(func(ir *result.Instruction) {})
 
 		// filter out some errors
 		if err != nil {
@@ -81,12 +82,11 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
 		fmt.Println(err)
-		symtable, err = symbols.StandardSymbols()
+		symtable, err = symbols.StandardSymbolTable()
 		if err != nil {
 			return nil, err
 		}
 	}
-	fmt.Println(symtable.ReadSymbols)
 
 	mem, err := memory.New()
 	if err != nil {
@@ -110,7 +110,7 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 // Dump returns the entire disassembly as a string
 func (dsm *Disassembly) Dump() (s string) {
 	for _, pc := range dsm.SequencePoints {
-		s = fmt.Sprintf("%s\n%s", s, dsm.Program[pc].GetString(dsm.Symbols, symbols.StyleFull))
+		s = fmt.Sprintf("%s\n%s", s, dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull))
 	}
 	return s
 }

@@ -1,6 +1,9 @@
 package memory
 
-import "fmt"
+import (
+	"fmt"
+	"gopher2600/symbols"
+)
 
 // VCSMemory presents a monolithic representation of system memory to the CPU -
 // the CPU only ever access memory through an instance of this structure.
@@ -35,7 +38,7 @@ func New() (*VCSMemory, error) {
 
 	// create the memory map; each address in the memory map points to the
 	// memory area it resides in. we only record 'primary' addresses; all
-	// addresses should be  passed through the MapAddress() function in order
+	// addresses should be passed through the MapAddress() function in order
 	// to iron out any mirrors
 
 	var i uint16
@@ -114,14 +117,29 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 //  o value
 //  o mapped address
 //  o area name
-//  o address label (internal label only TODO: think about program symbols)
+//  o address label
 //  o error
-func (mem VCSMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
-	ma := mem.MapAddress(address)
+func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, error) {
+	var ma uint16
+	switch address := address.(type) {
+	case uint16:
+		ma = mem.MapAddress(uint16(address))
+	case string:
+		// search for symbolic address in standard vcs read symbols
+		// TODO: peeking of cartridge specific symbols
+		for a, sym := range symbols.VCSReadSymbols {
+			if sym == address {
+				ma = a
+			}
+		}
+	default:
+		return 0, 0, "", "", fmt.Errorf("unrecognised address (%v)", address)
+	}
+
 	area, present := mem.memmap[ma]
 	if !present {
 		return 0, 0, area.Label(), "", fmt.Errorf("%04x not mapped correctly", address)
 	}
-	v, label, err := area.(Area).Peek(ma)
-	return v, ma, area.Label(), label, err
+
+	return area.(Area).Peek(ma)
 }

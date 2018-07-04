@@ -22,12 +22,12 @@ type Table struct {
 	Valid bool
 }
 
-// StandardSymbols initialises a symbols table using the standard VCS symbols
-func StandardSymbols() (*Table, error) {
+// StandardSymbolTable initialises a symbols table using the standard VCS symbols
+func StandardSymbolTable() (*Table, error) {
 	table := new(Table)
-	table.ReadSymbols = vcsReadSymbols
-	table.WriteSymbols = vcsWriteSymbols
-	table.MaxSymbolWidth = vcsMaxSymbolWidth
+	table.ReadSymbols = VCSReadSymbols
+	table.WriteSymbols = VCSWriteSymbols
+	table.MaxSymbolWidth = MaxVCSSymbolWidth
 	table.Valid = true
 	return table, nil
 }
@@ -111,11 +111,11 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		}
 	}
 
-	// prioritise symbols with reference symbols for the selected system
-	for k, v := range vcsReadSymbols {
+	// prioritise symbols with reference symbols for the VCS
+	for k, v := range VCSReadSymbols {
 		table.ReadSymbols[k] = v
 	}
-	for k, v := range vcsWriteSymbols {
+	for k, v := range VCSWriteSymbols {
 		table.WriteSymbols[k] = v
 	}
 

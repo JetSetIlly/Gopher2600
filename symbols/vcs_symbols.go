@@ -1,8 +1,11 @@
 package symbols
 
-const vcsMaxSymbolWidth = 7
+// MaxVCSSymbolWidth is the maxiumum number of characters in the standard
+// symbol tables below. provided for convenience.
+const MaxVCSSymbolWidth = 7
 
-var vcsReadSymbols = map[uint16]string{
+// VCSReadSymbols are the canonical names for VCS read addresses
+var VCSReadSymbols = map[uint16]string{
 	0x00:  "CXM0P",
 	0x01:  "CXM1P",
 	0x02:  "CXP0F",
@@ -24,7 +27,8 @@ var vcsReadSymbols = map[uint16]string{
 	0x284: "INTIM",
 }
 
-var vcsWriteSymbols = map[uint16]string{
+// VCSWriteSymbols are the canonical names for VCS write addresses
+var VCSWriteSymbols = map[uint16]string{
 	0x00:  "VSYNC",
 	0x01:  "VBLANK",
 	0x02:  "WSYNC",
@@ -77,3 +81,30 @@ var vcsWriteSymbols = map[uint16]string{
 	0x286: "TIM64T",
 	0x287: "TIM1024",
 }
+
+// tia write registers
+const (
+	CXM0P uint16 = iota
+	CXM1P
+	CXP0FB
+	CXP1FB
+	CXM0FB
+	CXM1FB
+	CXBLPF
+	CXPPMM
+	INPT0
+	INPT1
+	INPT2
+	INPT3
+	INPT4
+	INPT5
+)
+
+// riot write registers
+const (
+	SWCHA uint16 = iota
+	SWACNT
+	SWCHB
+	SWBCNT
+	INTIM
+)

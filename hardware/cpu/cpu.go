@@ -9,6 +9,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/register"
+	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"log"
 )
@@ -211,7 +212,7 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	return val, nil
 }
 
-func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) error {
+func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) error {
 	// return early if IgnoreBranching flag is turned on
 	if mc.NoSideEffects {
 		return nil
@@ -276,7 +277,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *InstructionResult) erro
 // ExecuteInstruction steps CPU forward one instruction, calling
 // cycleCallback() after every cycle. note that the CPU will panic if a CPU
 // method is called during a callback.
-func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*InstructionResult, error) {
+func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*result.Instruction, error) {
 	// sanity check
 	if mc.IsExecuting() {
 		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
@@ -289,7 +290,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 	}
 
 	// prepare StepResult structure
-	result := new(InstructionResult)
+	result := new(result.Instruction)
 	result.Address = mc.PC.ToUint16()
 
 	// register end cycle callback

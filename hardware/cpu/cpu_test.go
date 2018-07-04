@@ -3,11 +3,12 @@ package cpu_test
 import (
 	"gopher2600/assert"
 	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/result"
 	"testing"
 )
 
-func step(t *testing.T, mc *cpu.CPU) *cpu.InstructionResult {
-	result, err := mc.ExecuteInstruction(func(*cpu.InstructionResult) {})
+func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
+	result, err := mc.ExecuteInstruction(func(*result.Instruction) {})
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}

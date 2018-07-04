@@ -12,17 +12,5 @@ func newRIOT() *ChipMemory {
 	area.memory = make([]uint8, area.memtop-area.origin+1)
 	area.readMask = 0xffff
 
-	area.cpuWriteRegisters = []string{"SWCHA", "SWACNT", "", "", "TIM1T", "TIM8T", "TIM64T", "TIM1024"}
-	area.cpuReadRegisters = []string{"SWCHA", "SWACNT", "SWCHB", "SWBCNT", "INTIM", "", "", ""}
-
 	return area
 }
-
-// chip write registers
-const (
-	SWCHA uint16 = iota
-	SWACNT
-	SWCHB
-	SWBCNT
-	INTIM
-)

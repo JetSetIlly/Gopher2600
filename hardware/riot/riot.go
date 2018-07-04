@@ -3,6 +3,7 @@ package riot
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
+	"gopher2600/symbols"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
@@ -17,9 +18,9 @@ type RIOT struct {
 	// descreases
 	timerInterval int
 
-	// timerINTIM is the current timer value and is reflected in the INTIM
+	// timerINTIMvalue is the current timer value and is reflected in the INTIM
 	// register (RIOT memory)
-	timerINTIM uint8
+	timerINTIMvalue uint8
 
 	// timerCycles is the number of CPU cycles remainng before INTIM is decreased
 	// when a new time is started, timerCycles is always set to two (decrease
@@ -47,12 +48,12 @@ func New(mem memory.ChipBus) *RIOT {
 
 // MachineInfoTerse returns the RIOT information in terse format
 func (riot RIOT) MachineInfoTerse() string {
-	return fmt.Sprintf("INTIM=%d clks=%d (%s)", riot.timerINTIM, riot.timerCycles, riot.timerRegister)
+	return fmt.Sprintf("INTIM=%d clks=%d (%s)", riot.timerINTIMvalue, riot.timerCycles, riot.timerRegister)
 }
 
 // MachineInfo returns the RIOT information in verbose format
 func (riot RIOT) MachineInfo() string {
-	return fmt.Sprintf("%s\nINTIM: %d (%02x)\nINTIM clocks = %d (%02x)", riot.timerRegister, riot.timerINTIM, riot.timerINTIM, riot.timerCycles, riot.timerCycles)
+	return fmt.Sprintf("%s\nINTIM: %d (%02x)\nINTIM clocks = %d (%02x)", riot.timerRegister, riot.timerINTIMvalue, riot.timerINTIMvalue, riot.timerCycles, riot.timerCycles)
 }
 
 // map String to MachineInfo
@@ -68,23 +69,25 @@ func (riot *RIOT) ReadRIOTMemory() {
 		case "TIM1T":
 			riot.timerRegister = register
 			riot.timerInterval = 1
-			riot.timerINTIM = value
+			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		case "TIM8T":
 			riot.timerRegister = register
 			riot.timerInterval = 8
-			riot.timerINTIM = value
+			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		case "TIM64T":
 			riot.timerRegister = register
 			riot.timerInterval = 64
-			riot.timerINTIM = value
+			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		case "TIM1024":
 			riot.timerRegister = register
 			riot.timerInterval = 1024
-			riot.timerINTIM = value
+			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
+		default:
+			panic(fmt.Errorf("unknown timer register (%s)", register))
 		}
 	}
 }
@@ -111,16 +114,16 @@ func (riot *RIOT) Step() {
 	if riot.timerRegister != "no timer" {
 		riot.timerCycles--
 		if riot.timerCycles == 0 {
-			if riot.timerINTIM == 0 {
+			if riot.timerINTIMvalue == 0 {
 				// reset INTIM value
-				riot.timerINTIM = 255
+				riot.timerINTIMvalue = 255
 
 				// because INTIM value has cycled we flip timer interval to 1
 				riot.timerInterval = 1
 			} else {
-				riot.timerINTIM--
+				riot.timerINTIMvalue--
 			}
-			riot.mem.ChipWrite(memory.INTIM, riot.timerINTIM)
+			riot.mem.ChipWrite(symbols.INTIM, riot.timerINTIMvalue)
 			riot.timerCycles = riot.timerInterval
 		}
 	}

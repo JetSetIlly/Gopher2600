@@ -1,15 +1,15 @@
-package cpu
+package result
 
 import (
 	"fmt"
-	"gopher2600/disassembly/symbols"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/register"
+	"gopher2600/symbols"
 	"reflect"
 )
 
-// InstructionResult contains all the interesting information from a CPU step.
-type InstructionResult struct {
+// Instruction contains all the interesting information from a CPU step.
+type Instruction struct {
 	Address         uint16
 	Defn            definitions.InstructionDefinition
 	InstructionData interface{}
@@ -25,27 +25,14 @@ type InstructionResult struct {
 	Final bool
 }
 
-func (result InstructionResult) String() string {
+func (result Instruction) String() string {
 	return result.GetString(nil, 0)
-}
-
-func columnise(s string, width int) string {
-	if width > len(s) {
-		t := make([]byte, width-len(s))
-		for i := 0; i < len(t); i++ {
-			t[i] = ' '
-		}
-		s = fmt.Sprintf("%s%s", s, t)
-	} else if width < len(s) {
-		s = s[:width]
-	}
-	return s
 }
 
 // GetString returns a human readable version of InstructionResult, addresses
 // replaced with symbols if supplied symbols argument is not null. prefer this
 // function to implicit calls to String()
-func (result InstructionResult) GetString(symtable *symbols.Table, style symbols.Style) string {
+func (result Instruction) GetString(symtable *symbols.Table, style Style) string {
 	// columns
 	var hex string
 	var label, programCounter string
@@ -56,7 +43,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	// this particular instruction
 	if result.Final {
 		programCounter = fmt.Sprintf("0x%04x", result.Address)
-		if symtable != nil && style.Has(symbols.StyleFlagLocation) {
+		if symtable != nil && style.Has(StyleFlagLocation) {
 			if v, ok := symtable.Locations[result.Address]; ok {
 				label = v
 			}
@@ -87,7 +74,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 		}
 	}
 
-	if result.Final && style.Has(symbols.StyleFlagHex) {
+	if result.Final && style.Has(StyleFlagHex) {
 		switch result.Defn.Bytes {
 		case 3:
 			hex = fmt.Sprintf("%02x", idx&0xff00>>8)
@@ -103,7 +90,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	}
 
 	// ... and use assembler symbol for the operand if available/appropriate
-	if symtable.Valid && style.Has(symbols.StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
+	if symtable.Valid && style.Has(StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
 		if result.Defn.AddressingMode != definitions.Immediate {
 
 			switch result.Defn.Effect {
@@ -181,7 +168,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	}
 
 	// cycles annotation depends on whether the result is in its final form
-	if style.Has(symbols.StyleFlagNotes) {
+	if style.Has(StyleFlagNotes) {
 		if result.Final {
 			notes = fmt.Sprintf("[%d]", result.ActualCycles)
 		} else {
@@ -198,8 +185,8 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 	}
 
 	// force column widths
-	if style.Has(symbols.StyleFlagColumns) {
-		if style.Has(symbols.StyleFlagHex) {
+	if style.Has(StyleFlagColumns) {
+		if style.Has(StyleFlagHex) {
 			hex = columnise(hex, 8)
 		}
 		programCounter = columnise(programCounter, 6)
@@ -232,7 +219,7 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 //
 // Intended to be used during development of the CPU pacakge, to make sure
 // implementation hasn't gone off the rails.
-func (result InstructionResult) IsValid() error {
+func (result Instruction) IsValid() error {
 	if !result.Final {
 		return fmt.Errorf("not checking an unfinalised InstructionResult")
 	}

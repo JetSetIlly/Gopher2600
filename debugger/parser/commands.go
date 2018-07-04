@@ -9,7 +9,7 @@ type ArgType int
 
 // the possible values for ArgType
 const (
-	ArgKeyword ArgType = iota
+	ArgKeyword ArgType = 1 << iota
 	ArgFile
 	ArgTarget
 	ArgValue
@@ -42,10 +42,8 @@ func (a CommandArgs) maxLen() int {
 	if len(a) == 0 {
 		return 0
 	}
-	if len(a) == 1 {
-		if a[0].Typ == ArgIndeterminate {
-			return int(^uint(0) >> 1)
-		}
+	if a[len(a)-1].Typ == ArgIndeterminate {
+		return int(^uint(0) >> 1)
 	}
 	return len(a)
 }
@@ -92,6 +90,8 @@ func (options Commands) CheckCommandInput(input []string) error {
 		case ArgString:
 			return fmt.Errorf("string argument required for %s", input[0])
 		default:
+			// TODO: argument types can be OR'd together. breakdown these types
+			// to give more useful information
 			return fmt.Errorf("too few arguments for %s", input[0])
 		}
 	}

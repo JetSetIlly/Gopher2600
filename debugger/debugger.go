@@ -5,10 +5,10 @@ import (
 	"gopher2600/debugger/parser"
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
-	"gopher2600/disassembly/symbols"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/result"
+	"gopher2600/symbols"
 	"gopher2600/television"
 	"os"
 	"os/signal"
@@ -55,7 +55,7 @@ type Debugger struct {
 
 	// the last result from vcs.Step() - could be a complete result or an
 	// intermediate result when video-stepping
-	lastResult *cpu.InstructionResult
+	lastResult *result.Instruction
 
 	// user interface
 	ui       ui.UserInterface
@@ -153,12 +153,16 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 		return err
 	}
 
-	symbols, err := symbols.ReadSymbolsFile(cartridgeFilename)
+	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
 		dbg.print(ui.Error, "%s", err)
+		symtable, err = symbols.StandardSymbolTable()
+		if err != nil {
+			return err
+		}
 	}
 
-	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symbols)
+	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symtable)
 	if err != nil {
 		return err
 	}
@@ -170,7 +174,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 // used when calling vcs.Step() -- video stepping uses the former and cpu
 // stepping uses the latter
 
-func (dbg *Debugger) videoCycleCallback(result *cpu.InstructionResult) error {
+func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
 	dbg.lastResult = result
 	if dbg.commandOnStep != "" {
 		_, err := dbg.parseInput(dbg.commandOnStep)
@@ -181,7 +185,7 @@ func (dbg *Debugger) videoCycleCallback(result *cpu.InstructionResult) error {
 	return dbg.inputLoop(false)
 }
 
-func (dbg *Debugger) noVideoCycleCallback(result *cpu.InstructionResult) error {
+func (dbg *Debugger) noVideoCycleCallback(result *result.Instruction) error {
 	return nil
 }
 
@@ -236,7 +240,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// - different prompt depending on whether a valid disassembly is available
 			var prompt string
 			if p, ok := dbg.disasm.Program[dbg.vcs.MC.PC.ToUint16()]; ok {
-				prompt = strings.Trim(p.GetString(dbg.disasm.Symbols, symbols.StyleBrief), " ")
+				prompt = strings.Trim(p.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
 				prompt = fmt.Sprintf("[ %#04x ] > ", dbg.vcs.MC.PC.ToUint16())
@@ -397,7 +401,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordSymbol:
-		address, err := dbg.disasm.Symbols.SearchLocation(parts[1])
+		address, err := dbg.disasm.Symtable.SearchLocation(parts[1])
 		if err != nil {
 			switch err := err.(type) {
 			case errors.GopherError:
@@ -506,7 +510,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			} else {
 				printTag = ui.VideoStep
 			}
-			dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symbols, symbols.StyleFull))
+			dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
 		}
 
 	case KeywordMemMap:
@@ -584,29 +588,36 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordPeek:
 		for i := 1; i < len(parts); i++ {
+			var addr interface{}
+			var msg string
+
 			addr, err := strconv.ParseUint(parts[i], 0, 16)
 			if err != nil {
-				dbg.print(ui.Error, "bad argument to PEEK (%s)", parts[i])
-				continue
+				// argument is not a number so argument must be a string
+				addr = strings.ToUpper(parts[i])
+				msg = addr.(string)
+			} else {
+				// convert number to type suitable for Peek command
+				addr = uint16(addr.(uint64))
+				msg = fmt.Sprintf("%#04x", addr)
 			}
 
 			// peform peek
-			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(uint16(addr))
+			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(addr)
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 				continue
 			}
 
 			// format results
-			s := fmt.Sprintf("0x%04x", addr)
 			if uint64(mappedAddress) != addr {
-				s = fmt.Sprintf("%s =0x%04x", s, mappedAddress)
+				msg = fmt.Sprintf("%s = %#04x", msg, mappedAddress)
 			}
-			s = fmt.Sprintf("%s -> 0x%02x :: %s", s, val, areaName)
+			msg = fmt.Sprintf("%s -> 0x%02x :: %s", msg, val, areaName)
 			if addressLabel != "" {
-				s = fmt.Sprintf("%s [%s]", s, addressLabel)
+				msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
 			}
-			dbg.print(ui.MachineInfo, s)
+			dbg.print(ui.MachineInfo, msg)
 		}
 
 	case KeywordRAM:
