@@ -206,7 +206,10 @@ func (result InstructionResult) GetString(symtable *symbols.Table, style symbols
 		operator = columnise(operator, 3)
 		if symtable.Valid {
 			label = columnise(label, symtable.MaxLocationWidth)
-			operand = columnise(operand, symtable.MaxSymbolWidth)
+
+			// +3 to MaxSymbolWidth so that additional notation (parenthesis,
+			// etc.) isn't cropped off.
+			operand = columnise(operand, symtable.MaxSymbolWidth+3)
 		} else {
 			label = columnise(label, 0)
 			operand = columnise(operand, 7)

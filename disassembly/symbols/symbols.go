@@ -22,8 +22,19 @@ type Table struct {
 	Valid bool
 }
 
-// NewTable is the preferred method of initialisation for Table type
-func NewTable(cartridgeFilename string) (*Table, error) {
+// StandardSymbols initialises a symbols table using the standard VCS symbols
+func StandardSymbols() (*Table, error) {
+	table := new(Table)
+	table.ReadSymbols = vcsReadSymbols
+	table.WriteSymbols = vcsWriteSymbols
+	table.MaxSymbolWidth = vcsMaxSymbolWidth
+	table.Valid = true
+	return table, nil
+}
+
+// ReadSymbolsFile initialises a symbols table from the symbols file for the
+// specified cartridge
+func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	table := new(Table)
 	table.Locations = make(map[uint16]string)
 	table.ReadSymbols = make(map[uint16]string)

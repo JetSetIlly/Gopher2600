@@ -153,7 +153,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 		return err
 	}
 
-	symbols, err := symbols.NewTable(cartridgeFilename)
+	symbols, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
 		dbg.print(ui.Error, "%s", err)
 	}

@@ -996,40 +996,44 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*InstructionResult)) (*Inst
 		mc.endCycle()
 
 		if !mc.NoSideEffects {
-
 			// push MSB of PC onto stack, and decrement SP
 			// +1 cycle
 			err = mc.mem.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
 			if err != nil {
 				return nil, err
 			}
-			mc.SP.Add(255, false)
-			mc.endCycle()
+		}
+		mc.SP.Add(255, false)
+		mc.endCycle()
 
+		if !mc.NoSideEffects {
 			// push LSB of PC onto stack, and decrement SP
 			// +1 cycle
 			err = mc.mem.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
 			if err != nil {
 				return nil, err
 			}
-			mc.SP.Add(255, false)
-			mc.endCycle()
-
-			// perform jump
-			msb, err := mc.read8BitPC()
-			if err != nil {
-				return nil, err
-			}
-			address = (uint16(msb) << 8) | uint16(lsb)
-			mc.PC.Load(address)
-
-			// store address in theInstructionData field of result
-			//
-			// we would normally do this in the addressing mode switch above. however,
-			// JSR uses absolute addressing and we deliberately do nothing in that
-			// switch for 'sub-routine' commands
-			result.InstructionData = address
 		}
+		mc.SP.Add(255, false)
+		mc.endCycle()
+
+		// perform jump
+		msb, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+
+		address = (uint16(msb) << 8) | uint16(lsb)
+		if !mc.NoSideEffects {
+			mc.PC.Load(address)
+		}
+
+		// store address in theInstructionData field of result
+		//
+		// we would normally do this in the addressing mode switch above. however,
+		// JSR uses absolute addressing and we deliberately do nothing in that
+		// switch for 'sub-routine' commands
+		result.InstructionData = address
 
 	case "RTS":
 		if !mc.NoSideEffects {

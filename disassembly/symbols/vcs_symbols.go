@@ -1,5 +1,7 @@
 package symbols
 
+const vcsMaxSymbolWidth = 7
+
 var vcsReadSymbols = map[uint16]string{
 	0x00:  "CXM0P",
 	0x01:  "CXM1P",

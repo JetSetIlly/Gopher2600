@@ -25,8 +25,8 @@ type Disassembly struct {
 
 // ParseMemory disassembles an existing memory instance. uses a new cpu
 // instance which has no side effects, so it's safe to use with "live" memory
-func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symbols *symbols.Table) error {
-	dsm.Symbols = symbols
+func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.Table) error {
+	dsm.Symbols = symtable
 	dsm.Program = make(map[uint16]*cpu.InstructionResult)
 	dsm.SequencePoints = make([]uint16, 0, memory.Cart.Memtop()-memory.Cart.Origin())
 
@@ -78,7 +78,15 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symbols *symbols.T
 // disassemblies, like the gopher2600 "disasm" mode
 func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	// ignore errors caused by loading of symbols table
-	symbols, _ := symbols.NewTable(cartridgeFilename)
+	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
+	if err != nil {
+		fmt.Println(err)
+		symtable, err = symbols.StandardSymbols()
+		if err != nil {
+			return nil, err
+		}
+	}
+	fmt.Println(symtable.ReadSymbols)
 
 	mem, err := memory.New()
 	if err != nil {
@@ -91,7 +99,7 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	}
 
 	dsm := new(Disassembly)
-	err = dsm.ParseMemory(mem, symbols)
+	err = dsm.ParseMemory(mem, symtable)
 	if err != nil {
 		return dsm, err
 	}
