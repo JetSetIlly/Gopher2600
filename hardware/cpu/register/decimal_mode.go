@@ -26,11 +26,6 @@ func (r *Register) AddDecimal(v interface{}, carry bool) (rcarry bool) {
 		panic(fmt.Sprintf("decimal mode addition only supported for uint8 values with 8 bit registers"))
 	}
 
-	// no need to do anything if operand is zero
-	if val == 0 {
-		return carry
-	}
-
 	runits := uint8(r.value) & 0x0f
 	rtens := (uint8(r.value) & 0xf0) >> 4
 
@@ -67,11 +62,6 @@ func (r *Register) SubtractDecimal(v interface{}, carry bool) (rcarry bool) {
 	val, ok := v.(uint8)
 	if !ok {
 		panic(fmt.Sprintf("decimal mode subtraction only supported for uint8 values with 8 bit registers"))
-	}
-
-	// no need to do anything if operand is zero
-	if val == 0 {
-		return carry
 	}
 
 	runits := int(r.value) & 0x0f

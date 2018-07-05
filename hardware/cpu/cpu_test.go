@@ -450,6 +450,19 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.SP, 255)
 }
 
+func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+	var origin uint16
+	mem.Clear()
+	mc.Reset()
+
+	origin = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
+	step(t, mc) // SED
+	step(t, mc) // LDA #$20
+	step(t, mc) // SEC
+	step(t, mc) // SBC #$00
+	assert.CheckValueVCS(t, mc.A, 0x19)
+}
+
 func TestCPU(t *testing.T) {
 	mem := NewMockMem()
 	mc, err := cpu.New(mem)
@@ -467,4 +480,5 @@ func TestCPU(t *testing.T) {
 	testJumps(t, mc, mem)
 	testComparisonInstructions(t, mc, mem)
 	testSubroutineInstructions(t, mc, mem)
+	testDecimalMode(t, mc, mem)
 }
