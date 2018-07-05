@@ -1,11 +1,7 @@
-package symbols
+package vcssymbols
 
-// MaxVCSSymbolWidth is the maxiumum number of characters in the standard
-// symbol tables below. provided for convenience.
-const MaxVCSSymbolWidth = 7
-
-// VCSReadSymbols are the canonical names for VCS read addresses
-var VCSReadSymbols = map[uint16]string{
+// ReadSymbols are the canonical names for VCS read addresses
+var ReadSymbols = map[uint16]string{
 	0x00:  "CXM0P",
 	0x01:  "CXM1P",
 	0x02:  "CXP0F",
@@ -27,8 +23,8 @@ var VCSReadSymbols = map[uint16]string{
 	0x284: "INTIM",
 }
 
-// VCSWriteSymbols are the canonical names for VCS write addresses
-var VCSWriteSymbols = map[uint16]string{
+// WriteSymbols are the canonical names for VCS write addresses
+var WriteSymbols = map[uint16]string{
 	0x00:  "VSYNC",
 	0x01:  "VBLANK",
 	0x02:  "WSYNC",

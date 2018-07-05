@@ -3,7 +3,7 @@ package riot
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
-	"gopher2600/symbols"
+	"gopher2600/hardware/memory/vcssymbols"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
@@ -123,7 +123,7 @@ func (riot *RIOT) Step() {
 			} else {
 				riot.timerINTIMvalue--
 			}
-			riot.mem.ChipWrite(symbols.INTIM, riot.timerINTIMvalue)
+			riot.mem.ChipWrite(vcssymbols.INTIM, riot.timerINTIMvalue)
 			riot.timerCycles = riot.timerInterval
 		}
 	}

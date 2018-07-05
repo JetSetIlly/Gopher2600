@@ -2,7 +2,7 @@ package memory
 
 import (
 	"gopher2600/errors"
-	"gopher2600/symbols"
+	"gopher2600/hardware/memory/vcssymbols"
 )
 
 // ChipMemory defines the information for and operations allowed for those
@@ -55,9 +55,9 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	address &= area.readMask
 
 	// note the name of the register that we are reading
-	area.lastReadRegister = symbols.VCSReadSymbols[address]
+	area.lastReadRegister = vcssymbols.ReadSymbols[address]
 
-	sym := symbols.VCSReadSymbols[address]
+	sym := vcssymbols.ReadSymbols[address]
 	if sym == "" {
 		// silently ignore illegal reads (we're definitely reading from the correct
 		// memory space but some registers are not readable)
@@ -77,10 +77,10 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
 	if area.writeSignal {
-		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{symbols.VCSWriteSymbols[area.lastWriteAddress]}}
+		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{vcssymbols.WriteSymbols[area.lastWriteAddress]}}
 	}
 
-	sym := symbols.VCSWriteSymbols[address]
+	sym := vcssymbols.WriteSymbols[address]
 	if sym == "" {
 		// silently ignore illegal writes (we're definitely writing to the correct
 		// memory space but some registers are not writable)
@@ -102,7 +102,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, symbols.VCSWriteSymbols[area.lastWriteAddress], area.writeData
+		return true, vcssymbols.WriteSymbols[area.lastWriteAddress], area.writeData
 	}
 	return false, "", 0
 }
@@ -121,7 +121,7 @@ func (area ChipMemory) LastReadRegister() string {
 
 // Peek is the implementation of Area.Peek. returns:
 func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
-	sym := symbols.VCSReadSymbols[address&area.readMask]
+	sym := vcssymbols.ReadSymbols[address&area.readMask]
 	if sym == "" {
 		return 0, 0, "", "", errors.GopherError{errors.UnreadableAddress, nil}
 	}

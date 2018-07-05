@@ -2,7 +2,7 @@ package memory
 
 import (
 	"fmt"
-	"gopher2600/symbols"
+	"gopher2600/hardware/memory/vcssymbols"
 )
 
 // VCSMemory presents a monolithic representation of system memory to the CPU -
@@ -10,11 +10,16 @@ import (
 // Other parts of the system access ChipMemory directly
 type VCSMemory struct {
 	CPUBus
+
+	// memmap is a hash for every address in the VCS address space, returning
+	// one of the four memory areas
 	memmap map[uint16]Area
-	RIOT   *ChipMemory
-	TIA    *ChipMemory
-	PIA    *PIA
-	Cart   *Cartridge
+
+	// the four memory areas
+	RIOT *ChipMemory
+	TIA  *ChipMemory
+	PIA  *PIA
+	Cart *Cartridge
 }
 
 // TODO: allow reading only when 02 clock is high and writing when it is low
@@ -127,7 +132,7 @@ func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, e
 	case string:
 		// search for symbolic address in standard vcs read symbols
 		// TODO: peeking of cartridge specific symbols
-		for a, sym := range symbols.VCSReadSymbols {
+		for a, sym := range vcssymbols.ReadSymbols {
 			if sym == address {
 				ma = a
 			}

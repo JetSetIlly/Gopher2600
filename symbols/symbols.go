@@ -3,6 +3,7 @@ package symbols
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware/memory/vcssymbols"
 	"os"
 	"path"
 	"strconv"
@@ -25,9 +26,9 @@ type Table struct {
 // StandardSymbolTable initialises a symbols table using the standard VCS symbols
 func StandardSymbolTable() (*Table, error) {
 	table := new(Table)
-	table.ReadSymbols = VCSReadSymbols
-	table.WriteSymbols = VCSWriteSymbols
-	table.MaxSymbolWidth = MaxVCSSymbolWidth
+	table.ReadSymbols = vcssymbols.ReadSymbols
+	table.WriteSymbols = vcssymbols.WriteSymbols
+	table.maxWidth()
 	table.Valid = true
 	return table, nil
 }
@@ -112,13 +113,22 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	}
 
 	// prioritise symbols with reference symbols for the VCS
-	for k, v := range VCSReadSymbols {
+	for k, v := range vcssymbols.ReadSymbols {
 		table.ReadSymbols[k] = v
 	}
-	for k, v := range VCSWriteSymbols {
+	for k, v := range vcssymbols.WriteSymbols {
 		table.WriteSymbols[k] = v
 	}
 
+	table.maxWidth()
+
+	// indicate that symbol table should be used
+	table.Valid = true
+
+	return table, nil
+}
+
+func (table *Table) maxWidth() {
 	// get max width of symbol in each list -- it may seem that we could keep
 	// track of these width values as we go along but we can't really because
 	// the overwriting of previous symbols, during the loops over
@@ -138,9 +148,4 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 			table.MaxSymbolWidth = len(s)
 		}
 	}
-
-	// indicate that symbol table should be used
-	table.Valid = true
-
-	return table, nil
 }

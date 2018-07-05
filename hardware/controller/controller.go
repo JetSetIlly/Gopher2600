@@ -3,7 +3,7 @@ package controller
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
-	"gopher2600/symbols"
+	"gopher2600/hardware/memory/vcssymbols"
 
 	"github.com/splace/joysticks"
 )
@@ -43,9 +43,9 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus) *Stick {
 		for {
 			select {
 			case <-buttonPress:
-				tia.ChipWrite(symbols.INPT4, 0x00)
+				tia.ChipWrite(vcssymbols.INPT4, 0x00)
 			case <-buttonRelease:
-				tia.ChipWrite(symbols.INPT4, 0x80)
+				tia.ChipWrite(vcssymbols.INPT4, 0x80)
 			case ev := <-stickMove:
 				swcha := uint8(0xff)
 				x := ev.(joysticks.CoordsEvent).X
@@ -60,7 +60,7 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus) *Stick {
 				} else if y > 0.5 {
 					swcha &= 0xdf
 				}
-				riot.ChipWrite(symbols.SWCHA, swcha)
+				riot.ChipWrite(vcssymbols.SWCHA, swcha)
 			}
 		}
 	}()

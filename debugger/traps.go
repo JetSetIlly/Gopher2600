@@ -66,11 +66,23 @@ func (tr *traps) parseTrap(parts []string) error {
 	for i := 1; i < len(parts); i++ {
 		parts[i] = strings.ToUpper(parts[i])
 
-		target := parseTarget(tr.dbg.vcs, parts[i])
-		if target == nil {
+		tgt := parseTarget(tr.dbg.vcs, parts[i])
+		if tgt == nil {
 			return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
 		}
-		tr.traps = append(tr.traps, trapper{target: target, origValue: target.ToInt()})
+
+		addNewTrap := true
+		for _, t := range tr.traps {
+			if t.target == tgt {
+				addNewTrap = false
+				tr.dbg.print(ui.Feedback, "trap already exists")
+				break // for loop
+			}
+		}
+
+		if addNewTrap {
+			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.ToInt()})
+		}
 	}
 
 	return nil

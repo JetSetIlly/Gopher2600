@@ -6,9 +6,9 @@ import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/vcssymbols"
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
-	"gopher2600/symbols"
 	"gopher2600/television"
 )
 
@@ -65,8 +65,8 @@ func New(tv television.Television) (*VCS, error) {
 	// initialise memory
 	// TODO: more initialisation
 	// TODO: console switch support
-	vcs.Mem.RIOT.ChipWrite(symbols.SWCHB, 0x0f)
-	vcs.Mem.RIOT.ChipWrite(symbols.SWCHA, 0xff)
+	vcs.Mem.RIOT.ChipWrite(vcssymbols.SWCHB, 0x0f)
+	vcs.Mem.RIOT.ChipWrite(vcssymbols.SWCHA, 0xff)
 
 	return vcs, nil
 }
