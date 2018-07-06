@@ -6,7 +6,7 @@ import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/panel"
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
 	"gopher2600/television"
@@ -29,6 +29,7 @@ type VCS struct {
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
+	panel      *panel.Panel
 	controller *controller.Stick
 }
 
@@ -59,14 +60,16 @@ func New(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't allocate memory for VCS RIOT")
 	}
 
-	// TODO: better contoller support
-	vcs.controller = controller.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT)
+	vcs.panel = panel.New(vcs.Mem.RIOT)
+	if vcs.panel == nil {
+		return nil, fmt.Errorf("can't create console control panel")
+	}
 
-	// initialise memory
-	// TODO: more initialisation
-	// TODO: console switch support
-	vcs.Mem.RIOT.ChipWrite(vcssymbols.SWCHB, 0x0f)
-	vcs.Mem.RIOT.ChipWrite(vcssymbols.SWCHA, 0xff)
+	// TODO: better contoller support
+	vcs.controller = controller.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
+	if vcs.panel == nil {
+		return nil, fmt.Errorf("can't create new stick controller")
+	}
 
 	return vcs, nil
 }
@@ -120,15 +123,15 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 
 		// three color clocks per CPU cycle so we run video cycle three times
 
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		videoCycleCallback(r)
-
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		videoCycleCallback(r)
-
-		// check for side effects from the CPU operation
 		vcs.TIA.ReadTIAMemory()
+		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		videoCycleCallback(r)
 
+		vcs.TIA.ReadTIAMemory()
+		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		videoCycleCallback(r)
+
+		vcs.TIA.ReadTIAMemory()
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
 	}
