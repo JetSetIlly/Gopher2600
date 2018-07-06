@@ -21,15 +21,16 @@ const defaultOnStep = "LAST"
 
 // Debugger is the basic debugging frontend for the emulation
 type Debugger struct {
-	vcs     *hardware.VCS
-	running bool
-	input   []byte
-
+	vcs    *hardware.VCS
 	disasm disassembly.Disassembly
 
-	breakpoints  *breakpoints
-	traps        *traps
+	// repeat execution loop until a halt condition is encountered
 	runUntilHalt bool
+
+	// halt conditions
+	// note that the UI probably allows the user to halt (eg. ctrl-c)
+	breakpoints *breakpoints
+	traps       *traps
 
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
@@ -60,6 +61,12 @@ type Debugger struct {
 	// user interface
 	ui       ui.UserInterface
 	uiSilent bool // controls whether UI is to remain silent
+
+	// whether the debugger is to continue with the debugging loop
+	running bool
+
+	// buffer for user input
+	input []byte
 }
 
 // NewDebugger is the preferred method of initialisation for the Debugger structure
@@ -83,9 +90,6 @@ func NewDebugger() (*Debugger, error) {
 		return nil, err
 	}
 
-	// allocate memory for user input
-	dbg.input = make([]byte, 255)
-
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
 	dbg.traps = newTraps(dbg)
@@ -97,11 +101,14 @@ func NewDebugger() (*Debugger, error) {
 	dbg.commandOnStep = defaultOnStep
 	dbg.commandOnStepStored = dbg.commandOnStep
 
+	// allocate memory for user input
+	dbg.input = make([]byte, 255)
+
 	return dbg, nil
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
+func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript string) error {
 	// prepare user interface
 	if interf != nil {
 		dbg.ui = interf
@@ -135,7 +142,16 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string) error {
 		}
 	}()
 
-	// prepare and run main input loop
+	// run initialisation script
+	if initScript != "" {
+		err = dbg.RunScript(initScript, true)
+		if err != nil {
+			dbg.print(ui.Error, "* error running debugger initialisation script (%s)\n", err)
+		}
+	}
+
+	// prepare and run main input loop. inputLoop will not return until
+	// debugger is to exit
 	dbg.running = true
 	err = dbg.inputLoop(true)
 	if err != nil {

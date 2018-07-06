@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const initScript = ".gopher2600/debuggerInit"
+
 func main() {
 	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, FPS, TVFPS")
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
@@ -37,13 +39,6 @@ func main() {
 			os.Exit(10)
 		}
 
-		// run initialisation script
-		err = dbg.RunScript(".gopher2600/debuggerInit", true)
-		if err != nil {
-			fmt.Printf("* error running debugger initialisation script (%s)\n", err)
-			os.Exit(10)
-		}
-
 		// start debugger with choice of interface and cartridge
 		var term ui.UserInterface
 
@@ -57,7 +52,7 @@ func main() {
 			term = nil
 		}
 
-		err = dbg.Start(term, cartridgeFile)
+		err = dbg.Start(term, cartridgeFile, initScript)
 		if err != nil {
 			fmt.Printf("* error running debugger (%s)\n", err)
 			os.Exit(10)
