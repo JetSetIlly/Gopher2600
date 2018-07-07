@@ -64,7 +64,7 @@ func (bs *ballSprite) tick() {
 	if bs.tickPosition(nil) {
 		bs.startDrawing()
 	} else {
-		bs.tickDrawSig()
+		bs.tickGraphicsScan()
 	}
 
 	// reset
@@ -88,7 +88,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	//  o OR ball was previously enabled and vertical delay is enabled
 	//  o AND a reset signal (RESBL) has not recently been triggered
 	if ((!bs.verticalDelay && bs.enable) || (bs.verticalDelay && bs.enablePrev)) && !bs.futureReset.isScheduled() {
-		switch bs.drawSigCount {
+		switch bs.graphicsScanCounter {
 		case 0:
 			return true, bs.color
 		case 1:

@@ -69,8 +69,8 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 func (vd *Video) Tick() {
 	vd.Playfield.tick()
 	if !*vd.hblank {
-		vd.Player0.tick()
-		vd.Player1.tick()
+		vd.Player0.tick(false)
+		vd.Player1.tick(false)
 		vd.Missile0.tick()
 		vd.Missile1.tick()
 		vd.Ball.tick()
@@ -84,10 +84,10 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 
 	if vd.Player0.horizMovement >= uint8(count) {
-		vd.Player0.tick()
+		vd.Player0.tick(true)
 	}
 	if vd.Player1.horizMovement >= uint8(count) {
-		vd.Player1.tick()
+		vd.Player1.tick(true)
 	}
 	if vd.Missile0.horizMovement >= uint8(count) {
 		vd.Missile0.tick()

@@ -21,9 +21,17 @@ type playerSprite struct {
 
 	// if any of the sprite's draw positions are reached but a reset position
 	// signal has been scheduled, then we need to delay the start of the
-	// sprite's drawing process. the drawing actually commences when the reset
+	// sprite's graphics scan. the drawing actually commences when the reset
 	// actually takes place (concept shared with missile sprite)
-	deferDrawSig bool
+	deferDrawStart bool
+
+	// unlike missile and ball sprites, the player sprite does not always allow
+	// its graphics scan counter to tick. for double and quadruple width player
+	// sprites, it ticks only evey other and every fourth color clock
+	// respectively. the graphicsScanFilter field is ticked every time the
+	// sprite is ticked but the graphics scan counter is ticked only when
+	// (depending on size) mod 1, mod 2 or mod 4 equals 0
+	graphicsScanFilter int
 }
 
 func newPlayerSprite(label string, colorClock *colorclock.ColorClock) *playerSprite {
@@ -62,14 +70,15 @@ func (ps playerSprite) MachineInfo() string {
 }
 
 // tick moves the counters along for the player sprite
-func (ps *playerSprite) tick() {
+func (ps *playerSprite) tick(hmove bool) {
 	// position
 	if ps.tickPosition(ps.triggerList) {
 		if ps.futureReset.isScheduled() {
 			ps.stopDrawing()
-			ps.deferDrawSig = true
+			ps.deferDrawStart = true
 		} else {
 			ps.startDrawing()
+			ps.graphicsScanFilter = 3
 		}
 	} else {
 		// if player.position.tick() has not caused the position counter to
@@ -78,24 +87,25 @@ func (ps *playerSprite) tick() {
 		// pixels are smeared over additional cycles in order to create the
 		// double and quadruple sized sprites
 		if ps.size == 0x05 {
-			if ps.colorClock.Phase == 0 || ps.colorClock.Phase == 2 {
-				ps.tickDrawSig()
+			if ps.graphicsScanFilter%2 == 0 {
+				ps.tickGraphicsScan()
 			}
 		} else if ps.size == 0x07 {
-			if ps.colorClock.Phase == 2 {
-				ps.tickDrawSig()
+			if ps.graphicsScanFilter%4 == 0 {
+				ps.tickGraphicsScan()
 			}
 		} else {
-			ps.tickDrawSig()
+			ps.tickGraphicsScan()
 		}
+		ps.graphicsScanFilter++
 	}
 
 	// reset
 	if ps.futureReset.tick() {
 		ps.resetPosition()
-		if ps.deferDrawSig {
+		if ps.deferDrawStart {
 			ps.startDrawing()
-			ps.deferDrawSig = false
+			ps.deferDrawStart = false
 		}
 	}
 }
@@ -120,8 +130,8 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	// with the ball and player sprites. rather than introduce a new 'future'
 	// instance we simply start outputting pixels one drawSigCount (or one
 	// clock) later
-	if ps.drawSigCount > 0 && ps.drawSigCount <= ps.drawSigMax {
-		if gfxData>>(uint8(ps.drawSigMax)-uint8(ps.drawSigCount))&0x01 == 0x01 {
+	if ps.graphicsScanCounter > 0 && ps.graphicsScanCounter <= ps.graphicsScanMax {
+		if gfxData>>(uint8(ps.graphicsScanMax)-uint8(ps.graphicsScanCounter))&0x01 == 0x01 {
 			return true, ps.color
 		}
 	}

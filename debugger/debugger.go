@@ -128,7 +128,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 	}
 
 	// register ctrl-c handler
-	ctrlC := make(chan os.Signal)
+	ctrlC := make(chan os.Signal, 10)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
 		for dbg.running {

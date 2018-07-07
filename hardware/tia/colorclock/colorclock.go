@@ -19,12 +19,6 @@ func New() *ColorClock {
 
 	cc.SetResetPattern("010100") // count==56,
 
-	// not sure why we have to do this but if we don't do this then output is
-	// not quite correct until RSYNC has been strobed. advancing the colorclock
-	// count to the end of its sequence seems to have the same effect (visual
-	// observation of Stella emulator)
-	cc.Count = cc.ResetPoint
-
 	return cc
 }
 

@@ -87,7 +87,7 @@ func (riot *RIOT) ReadRIOTMemory() {
 			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		default:
-			panic(fmt.Errorf("unknown timer register (%s)", register))
+			fmt.Printf("unserviced RIOT register", register)
 		}
 	}
 }

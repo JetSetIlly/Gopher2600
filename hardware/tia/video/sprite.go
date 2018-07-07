@@ -34,9 +34,9 @@ type sprite struct {
 	// generally, the draw signal is activated when the position polycounter
 	// matches the colorClock polycounter, but differenct sprite types handle
 	// this differently in certain circumstances
-	drawSigCount int
-	drawSigMax   int
-	drawSigOff   int
+	graphicsScanCounter int
+	graphicsScanMax     int
+	graphicsScanOff     int
 
 	// the amount of horizontal movement for the sprite
 	horizMovement uint8
@@ -60,9 +60,9 @@ func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 
 	// the direction of count and max is important - don't monkey with it
 	// the value is used in Pixel*() functions to determine which pixel to check
-	sp.drawSigMax = 8
-	sp.drawSigOff = sp.drawSigMax + 1
-	sp.drawSigCount = sp.drawSigOff
+	sp.graphicsScanMax = 8
+	sp.graphicsScanOff = sp.graphicsScanMax + 1
+	sp.graphicsScanCounter = sp.graphicsScanOff
 
 	return sp
 }
@@ -72,7 +72,7 @@ func (sp sprite) MachineInfoTerse() string {
 	pos := fmt.Sprintf("pos=%d", sp.positionResetPixel)
 	sig := "dsig=-"
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("dsig=%d", sp.drawSigMax-sp.drawSigCount)
+		sig = fmt.Sprintf("dsig=%d", sp.graphicsScanMax-sp.graphicsScanCounter)
 	}
 	res := "reset=-"
 	if sp.futureReset.isScheduled() {
@@ -84,9 +84,9 @@ func (sp sprite) MachineInfoTerse() string {
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
 	pos := fmt.Sprintf("reset at pixel %d\nposition: %s", sp.positionResetPixel, sp.position)
-	sig := fmt.Sprintf("drawsig: inactive")
+	sig := fmt.Sprintf("drawing: inactive")
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("drawsig: pixel %d", sp.drawSigMax-sp.drawSigCount+1)
+		sig = fmt.Sprintf("drawing : from pixel %d", sp.graphicsScanMax-sp.graphicsScanCounter+1)
 	}
 	res := "reset: none scheduled"
 	if sp.futureReset.isScheduled() {
@@ -122,20 +122,20 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 }
 
 func (sp *sprite) startDrawing() {
-	sp.drawSigCount = 0
+	sp.graphicsScanCounter = 0
 }
 
 // stopDrawing is used to stop the draw signal prematurely
 func (sp *sprite) stopDrawing() {
-	sp.drawSigCount = sp.drawSigOff
+	sp.graphicsScanCounter = sp.graphicsScanOff
 }
 
 func (sp *sprite) isDrawing() bool {
-	return sp.drawSigCount <= sp.drawSigMax
+	return sp.graphicsScanCounter <= sp.graphicsScanMax
 }
 
-func (sp *sprite) tickDrawSig() {
+func (sp *sprite) tickGraphicsScan() {
 	if sp.isDrawing() {
-		sp.drawSigCount++
+		sp.graphicsScanCounter++
 	}
 }

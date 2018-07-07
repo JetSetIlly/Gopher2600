@@ -79,7 +79,7 @@ func (ms *missileSprite) tick() {
 		// first two cycles of a reset request , unless the reset is scheduled
 		// during a HBLANK
 		if ms.futureReset.remainingCycles <= 2 {
-			ms.tickDrawSig()
+			ms.tickGraphicsScan()
 		}
 	}
 
@@ -102,7 +102,7 @@ func (ms *missileSprite) tick() {
 // (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (ms *missileSprite) pixel() (bool, uint8) {
 	if ms.enable {
-		switch ms.drawSigCount {
+		switch ms.graphicsScanCounter {
 		case 0:
 			return true, ms.color
 		case 1:
@@ -132,7 +132,7 @@ func (ms *missileSprite) scheduleReset(hblank *bool) {
 	// this doesn't smell right TODO: see if we can remove this (what appears
 	// to be) special case code for missile sprites
 	if ms.position.Match(1) || ms.position.MatchBeginning(0) {
-		ms.tickDrawSig()
+		ms.tickGraphicsScan()
 	}
 
 	if *hblank {
