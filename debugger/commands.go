@@ -37,6 +37,7 @@ const (
 	KeywordPlayfield     = "PLAYFIELD"
 	KeywordDisplay       = "DISPLAY"
 	KeywordScript        = "SCRIPT"
+	KeywordDisassemble   = "DISASSEMBLE"
 
 	SubKeywordBreaks = "BREAKS"
 	SubKeywordTraps  = "TRAPS"
@@ -79,6 +80,7 @@ var DebuggerCommands = parser.Commands{
 	KeywordPlayfield:     parser.CommandArgs{},
 	KeywordDisplay:       parser.CommandArgs{},
 	KeywordScript:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
+	KeywordDisassemble:   parser.CommandArgs{},
 }
 
 func init() {
@@ -121,4 +123,6 @@ var Help = map[string]string{
 	KeywordBall:          "Display the current state of the Ball sprite",
 	KeywordPlayfield:     "Display the current playfield data",
 	KeywordDisplay:       "Display the TV image",
-	KeywordScript:        "Run commands from specified file"}
+	KeywordScript:        "Run commands from specified file",
+	KeywordDisassemble:   "Print the full cartridge disassembly",
+}

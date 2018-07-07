@@ -416,6 +416,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			return false, err
 		}
 
+	case KeywordDisassemble:
+		dbg.print(ui.CPUStep, dbg.disasm.Dump())
+
 	case KeywordSymbol:
 		address, err := dbg.disasm.Symtable.SearchLocation(parts[1])
 		if err != nil {

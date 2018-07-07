@@ -109,6 +109,8 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 
 // Dump returns the entire disassembly as a string
 func (dsm *Disassembly) Dump() (s string) {
+	// TODO: buffered output - it can take too long to build the string if the
+	// disassembly is too long
 	for _, pc := range dsm.SequencePoints {
 		s = fmt.Sprintf("%s\n%s", s, dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull))
 	}
