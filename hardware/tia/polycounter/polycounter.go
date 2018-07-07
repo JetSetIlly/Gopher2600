@@ -52,7 +52,7 @@ type Polycounter struct {
 
 	// reset point is the value of count at which the polycounter should reset
 	// to 0
-	resetPoint int
+	ResetPoint int
 }
 
 // SetResetPattern specifies the pattern at which the polycounter automatically
@@ -63,7 +63,7 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 	if err != nil {
 		panic("couldn't find reset pattern in polycounter table")
 	}
-	pk.resetPoint = i
+	pk.ResetPoint = i
 }
 
 // MachineInfoTerse returns the polycounter information in terse format
@@ -96,7 +96,7 @@ func (pk *Polycounter) Reset() {
 // looped. the force argument allows the function to be called and for the loop
 // to definitely take place. we use this in the VCS during for the RSYNC check
 func (pk *Polycounter) Tick(force bool) bool {
-	if force || pk.Count == pk.resetPoint && pk.Phase == MaxPhase {
+	if force || pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
 		pk.Reset()
 		return true
 	}

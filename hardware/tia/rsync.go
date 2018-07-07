@@ -23,7 +23,6 @@ func newRsync(cc *colorclock.ColorClock) *rsync {
 	if rs == nil {
 		return nil
 	}
-	rs.reset()
 	rs.colorClock = cc
 	return rs
 }

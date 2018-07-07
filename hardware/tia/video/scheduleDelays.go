@@ -11,13 +11,19 @@ package video
 // of a current instance of future type
 
 const (
-	delayEnableBall         = 1
-	delayEnableMissile      = 1
-	delayResetBall          = 4
+	delayEnableBall     = 1
+	delayEnableMissile  = 1
+	delayPlayfieldWrite = 5
+
+	delayResetBall    = 4
+	delayResetMissile = 4
+	delayResetPlayer  = 4
+
+	// the document, "Atari 2600 TIA Hardware Notes" by Andrew Towers, talks
+	// about something called a motion clock which, according to the document,
+	// is an "inverted (out of phase) CLK signal". rather than emulate the
+	// motion clock, I think the following delays have the same effect
 	delayResetBallHBLANK    = 2
-	delayResetMissile       = 4
 	delayResetMissileHBLANK = 2
-	delayResetPlayer        = 4
 	delayResetPlayerHBLANK  = 2
-	delayPlayfieldWrite     = 5
 )
