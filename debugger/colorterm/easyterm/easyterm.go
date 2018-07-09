@@ -35,8 +35,9 @@ type Terminal struct {
 
 	Geometry TermGeometry
 
-	canAttr syscall.Termios
-	rawAttr syscall.Termios
+	canAttr    syscall.Termios
+	rawAttr    syscall.Termios
+	cbreakAttr syscall.Termios
 
 	// sig/ack channels to control signal handler
 	terminateHandlerSig chan bool
@@ -64,7 +65,8 @@ func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
 
 	// prepare the attributes for the different terminal modes we'll be using
 	termios.Tcgetattr(pt.input.Fd(), &pt.canAttr)
-	termios.Cfmakecbreak(&pt.rawAttr)
+	termios.Cfmakecbreak(&pt.cbreakAttr)
+	termios.Cfmakeraw(&pt.rawAttr)
 
 	// set up sig/ack channels for signal handler
 	pt.terminateHandlerSig = make(chan bool)
@@ -126,6 +128,11 @@ func (pt *Terminal) CanonicalMode() {
 // RawMode puts terminal into raw mode
 func (pt *Terminal) RawMode() {
 	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.rawAttr)
+}
+
+// CBreakMode puts terminal into cbreak mode
+func (pt *Terminal) CBreakMode() {
+	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.cbreakAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty

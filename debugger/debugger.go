@@ -127,8 +127,15 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 		return err
 	}
 
-	// register ctrl-c handler
-	ctrlC := make(chan os.Signal, 10)
+	// make sure we've indicated that the debugger is running before we start
+	// the ctrl-c handler. it'll return immediately if we don't
+	dbg.running = true
+
+	// register ctrl-c handler: note that depending on the terminal being used,
+	// some ctrl-c events may be handled by the UserRead() function this signal
+	// handler however, will always be used to interrupt the emulation when it
+	// is running
+	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
 		for dbg.running {
@@ -136,7 +143,8 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 			if dbg.runUntilHalt {
 				dbg.runUntilHalt = false
 			} else {
-				// TODO: interrupt os.Stdin.Read()
+				// TODO: interrupt os.stdin.Read() in plain terminal, so that
+				// the user doesn't have to press return after a ctrl-c press
 				dbg.running = false
 			}
 		}
@@ -152,7 +160,6 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 
 	// prepare and run main input loop. inputLoop will not return until
 	// debugger is to exit
-	dbg.running = true
 	err = dbg.inputLoop(true)
 	if err != nil {
 		return err
