@@ -7,7 +7,6 @@ import (
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
 	colorClock *colorclock.ColorClock
-	hblank     *bool
 
 	// playfield
 	Playfield *playfield
@@ -24,14 +23,13 @@ type Video struct {
 }
 
 // New is the preferred method of initialisation for the Video structure
-func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
+func New(colorClock *colorclock.ColorClock) *Video {
 	vd := new(Video)
 	if vd == nil {
 		return nil
 	}
 
 	vd.colorClock = colorClock
-	vd.hblank = hblank
 
 	// playfield
 	vd.Playfield = newPlayfield(vd.colorClock)
@@ -65,16 +63,20 @@ func New(colorClock *colorclock.ColorClock, hblank *bool) *Video {
 	return vd
 }
 
+// TickPlayfield moves the playfield on one clock
+// -- playfield ticks every video clock, regardless of the current HBLANK and
+// HMOVE state
+func (vd *Video) TickPlayfield() {
+	vd.Playfield.tick()
+}
+
 // Tick moves all video elements forward one video cycle
 func (vd *Video) Tick() {
-	vd.Playfield.tick()
-	if !*vd.hblank {
-		vd.Player0.tick(false)
-		vd.Player1.tick(false)
-		vd.Missile0.tick()
-		vd.Missile1.tick()
-		vd.Ball.tick()
-	}
+	vd.Player0.tick()
+	vd.Player1.tick()
+	vd.Missile0.tick()
+	vd.Missile1.tick()
+	vd.Ball.tick()
 }
 
 // TickSpritesForHMOVE moves sprite elements if horiz movement value is in range
@@ -84,10 +86,10 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 	}
 
 	if vd.Player0.horizMovement >= uint8(count) {
-		vd.Player0.tick(true)
+		vd.Player0.tick()
 	}
 	if vd.Player1.horizMovement >= uint8(count) {
-		vd.Player1.tick(true)
+		vd.Player1.tick()
 	}
 	if vd.Missile0.horizMovement >= uint8(count) {
 		vd.Missile0.tick()
@@ -244,7 +246,7 @@ func createTriggerList(playerSize uint8) []int {
 // ReadVideoMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
 // for those where a "schedule" function is called.
-func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
+func (vd *Video) ReadVideoMemory(register string, value uint8, hblank bool) bool {
 	switch register {
 	case "NUSIZ0":
 		vd.Missile0.size = (value & 0x30) >> 4
@@ -283,15 +285,15 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "PF2":
 		vd.Playfield.scheduleWrite(2, value)
 	case "RESP0":
-		vd.Player0.scheduleReset(vd.hblank)
+		vd.Player0.scheduleReset(hblank)
 	case "RESP1":
-		vd.Player1.scheduleReset(vd.hblank)
+		vd.Player1.scheduleReset(hblank)
 	case "RESM0":
-		vd.Missile0.scheduleReset(vd.hblank)
+		vd.Missile0.scheduleReset(hblank)
 	case "RESM1":
-		vd.Missile1.scheduleReset(vd.hblank)
+		vd.Missile1.scheduleReset(hblank)
 	case "RESBL":
-		vd.Ball.scheduleReset(vd.hblank)
+		vd.Ball.scheduleReset(hblank)
 	case "GRP0":
 		vd.Player0.gfxDataPrev = vd.Player1.gfxData
 		vd.Player0.gfxData = value

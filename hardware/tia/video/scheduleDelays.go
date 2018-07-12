@@ -21,11 +21,11 @@ const (
 	delayEnableMissile  = 1
 	delayPlayfieldWrite = 7
 
-	delayResetBall    = 6
-	delayResetMissile = 6
-	delayResetPlayer  = 6
+	delayResetBall    = 4
+	delayResetMissile = 4
+	delayResetPlayer  = 4
 
-	delayResetBallHBLANK    = 4
-	delayResetMissileHBLANK = 4
-	delayResetPlayerHBLANK  = 5
+	delayResetBallHBLANK    = 2
+	delayResetMissileHBLANK = 2
+	delayResetPlayerHBLANK  = 2
 )

@@ -79,7 +79,7 @@ func New(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.New(tia.colorClock, &tia.hblank)
+	tia.Video = video.New(tia.colorClock)
 	if tia.Video == nil {
 		return nil
 	}
@@ -121,7 +121,7 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	}
 
-	service = !tia.Video.ReadVideoMemory(register, value)
+	service = !tia.Video.ReadVideoMemory(register, value, tia.hblank)
 
 	// TODO: TIA audio memory
 }
@@ -135,23 +135,15 @@ func (tia *TIA) StepVideoCycle() bool {
 
 	if tia.colorClock.MatchEnd(16) && !tia.hmove.isActive() {
 		// HBLANK off (early)
-		// 011100
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(18) && tia.hmove.isActive() {
 		// HBLANK off (late)
-		// 010111
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(4) {
-		// HSYNC on
-		// 111100
 		tia.hsync = true
 	} else if tia.colorClock.MatchEnd(8) {
-		// HSYNC off
-		// 110111
 		tia.hsync = false
 	} else if tia.colorClock.MatchEnd(12) {
-		// color burst
-		// 001111
 		cburst = true
 	}
 
@@ -165,13 +157,18 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.rsync.reset()
 	}
 
+	// playfield always ticks
+	tia.Video.TickPlayfield()
+
 	// HMOVE clock stuffing
 	if ct, ok := tia.hmove.tick(); ok {
 		tia.Video.TickSpritesForHMOVE(ct)
 	}
 
 	// tick all video elements
-	tia.Video.Tick()
+	if !tia.hblank {
+		tia.Video.Tick()
+	}
 
 	// at the end of the video cycle we want to finally 'send' information to the
 	// televison. what we 'send' depends on the state of hblank.

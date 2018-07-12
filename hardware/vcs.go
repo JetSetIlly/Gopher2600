@@ -127,11 +127,9 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
 
-		vcs.TIA.ReadTIAMemory()
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
 
-		vcs.TIA.ReadTIAMemory()
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
 	}

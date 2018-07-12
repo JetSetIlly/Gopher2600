@@ -70,7 +70,7 @@ func (ps playerSprite) MachineInfo() string {
 }
 
 // tick moves the counters along for the player sprite
-func (ps *playerSprite) tick(hmove bool) {
+func (ps *playerSprite) tick() {
 	// position
 	if ps.tickPosition(ps.triggerList) {
 		if ps.futureReset.isScheduled() {
@@ -139,10 +139,10 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (ps *playerSprite) scheduleReset(hblank *bool) {
-	if *hblank {
-		ps.futureReset.schedule(delayResetPlayerHBLANK, true)
-	} else {
+func (ps *playerSprite) scheduleReset(hblank bool) {
+	if !hblank {
 		ps.futureReset.schedule(delayResetPlayer, true)
+	} else {
+		ps.futureReset.schedule(delayResetPlayerHBLANK, true)
 	}
 }

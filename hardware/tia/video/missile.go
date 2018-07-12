@@ -122,7 +122,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (ms *missileSprite) scheduleReset(hblank *bool) {
+func (ms *missileSprite) scheduleReset(hblank bool) {
 	// consume an extra draw sig cycle if the reset is encountered
 	// during the first phase of position 000000 or anywhere in 100000. I have no
 	// idea why this should be the case but we need to consume an extra
@@ -135,10 +135,10 @@ func (ms *missileSprite) scheduleReset(hblank *bool) {
 		ms.tickGraphicsScan()
 	}
 
-	if *hblank {
-		ms.futureReset.schedule(delayResetMissileHBLANK, true)
-	} else {
+	if !hblank {
 		ms.futureReset.schedule(delayResetMissile, true)
+	} else {
+		ms.futureReset.schedule(delayResetMissileHBLANK, true)
 	}
 }
 

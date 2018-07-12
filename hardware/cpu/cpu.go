@@ -28,13 +28,14 @@ type CPU struct {
 
 	// endCycle is called at the end of the imaginary CPU cycle. for example,
 	// reading a byte from memory takes one cycle and so the emulation will
-	// call endCycle at that point. ExecuteInstruction accepts an argument
-	// cycleCallback which in turn is called by endCycle
-	// if it is undefined then no execution is currently being executed
-	// (see IsExecutingInstruction method)
+	// call endCycle() at that point. ExecuteInstruction() accepts an argument
+	// cycleCallback which is called by endCycle for additional functionality
+	//
+	// by definition: if it is undefined then no execution is currently being
+	// executed (see IsExecutingInstruction method)
 	endCycle func()
 
-	// controls whether cpu is execute a cycle when it receives a clock tick (pin
+	// controls whether cpu executes a cycle when it receives a clock tick (pin
 	// 3 of the 6507)
 	RdyFlg bool
 

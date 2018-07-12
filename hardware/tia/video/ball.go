@@ -108,11 +108,11 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (bs *ballSprite) scheduleReset(hblank *bool) {
-	if *hblank {
-		bs.futureReset.schedule(delayResetBallHBLANK, true)
-	} else {
+func (bs *ballSprite) scheduleReset(hblank bool) {
+	if !hblank {
 		bs.futureReset.schedule(delayResetBall, true)
+	} else {
+		bs.futureReset.schedule(delayResetBallHBLANK, true)
 	}
 }
 
