@@ -2,34 +2,37 @@ package errors
 
 import "fmt"
 
+// Errno is used specified the specific error
+type Errno int
+
 // list of sub-systems used when defining errors
 const (
-	CategoryDebugger   = 0
-	CategoryVCS        = 64
-	CategoryCPU        = 128
-	CategoryMemory     = 192
-	CategoryTIA        = 256
-	CategoryRIOT       = 320
-	CategoryTV         = 384
-	CategoryController = 448
+	CategoryDebugger = iota * 8
+	CategoryVCS
+	CategoryCPU
+	CategoryMemory
+	CategoryTIA
+	CategoryRIOT
+	CategoryTV
+	CategoryController
 )
 
 // list of error numbers
 const (
 	// Debugger
-	NoSymbolsFile = CategoryDebugger + iota
+	NoSymbolsFile Errno = CategoryDebugger + iota
 	SymbolsFileError
 	UnknownSymbol
 
 	// VCS
 
 	// CPU
-	UnimplementedInstruction = CategoryCPU + iota
+	UnimplementedInstruction Errno = CategoryCPU + iota
 	NullInstruction
 	ProgramCounterCycled
 
 	// Memory
-	UnservicedChipWrite = CategoryMemory + iota
+	UnservicedChipWrite Errno = CategoryMemory + iota
 	UnknownRegisterName
 	UnreadableAddress
 
@@ -38,12 +41,15 @@ const (
 	// RIOT
 
 	// TV
+	UnknownStateRequest
+	UnknownCallbackRequest
+	InvalidStateRequest
 
 	// Controller
-	NoControllersFound = CategoryController + iota
+	NoControllersFound Errno = CategoryController + iota
 )
 
-var messages = map[int]string{
+var messages = map[Errno]string{
 	// Debugger
 	NoSymbolsFile:    "no symbols file for %s",
 	SymbolsFileError: "error processing symbols file (%s)",
@@ -66,6 +72,9 @@ var messages = map[int]string{
 	// RIOT
 
 	// TV
+	UnknownStateRequest:    "TV does not support %v state",
+	UnknownCallbackRequest: "TV does not support %v callback",
+	InvalidStateRequest:    "state request for %v is currently invalid",
 
 	// Controller
 	NoControllersFound: "no controllers found",
@@ -76,7 +85,7 @@ type Values []interface{}
 
 // GopherError is the error type used by Gopher2600
 type GopherError struct {
-	Errno  int
+	Errno  Errno
 	Values Values
 }
 

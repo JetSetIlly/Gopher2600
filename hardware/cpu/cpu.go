@@ -192,7 +192,7 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	}
 	carry, _ := mc.PC.Add(1, false)
 	if carry {
-		return 0, errors.GopherError{errors.ProgramCounterCycled, nil}
+		return 0, errors.GopherError{Errno: errors.ProgramCounterCycled, Values: nil}
 	}
 	return op, nil
 }
@@ -207,7 +207,7 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	// the next instruction but I don't believe this has any side-effects
 	carry, _ := mc.PC.Add(2, false)
 	if carry {
-		return 0, errors.GopherError{errors.ProgramCounterCycled, nil}
+		return 0, errors.GopherError{Errno: errors.ProgramCounterCycled, Values: nil}
 	}
 
 	return val, nil
@@ -314,9 +314,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	defn, found := mc.opCodes[operator]
 	if !found {
 		if operator == 0xff {
-			return nil, errors.GopherError{errors.NullInstruction, nil}
+			return nil, errors.GopherError{Errno: errors.NullInstruction, Values: nil}
 		}
-		return nil, errors.GopherError{errors.UnimplementedInstruction, errors.Values{operator, mc.PC.ToUint16() - 1}}
+		return nil, errors.GopherError{Errno: errors.UnimplementedInstruction, Values: errors.Values{operator, mc.PC.ToUint16() - 1}}
 	}
 	result.Defn = defn
 

@@ -72,7 +72,9 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 			}
 
 		case easyterm.KeyCtrlC:
-			// CTRL-C
+			// CTRL-C -- note that there is a ctrl-c signal handler, set up in
+			// debugger.Start(), that controls the main debugging loop. this
+			// ctrl-c handler by contrast, controls the user input loop
 			ct.Print("\n")
 			return n + 1, &ui.UserInterrupt{Message: "user interrupt: CTRL-C"}
 

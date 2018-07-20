@@ -1,8 +1,6 @@
 package television
 
-import (
-	"fmt"
-)
+import "gopher2600/errors"
 
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
@@ -10,22 +8,28 @@ type SignalAttributes struct {
 	Pixel                                    PixelSignal
 }
 
+// TVStateReq is used to identify which television attribute is being asked
+// for with the GetTVState() function
+type TVStateReq string
+
+// CallbackReq is used to identify which callback to register
+type CallbackReq string
+
 // Television defines the operations that can be performed on the television
 type Television interface {
-	Signal(SignalAttributes)
 	MachineInfoTerse() string
 	MachineInfo() string
-	GetTVState(string) (*TVState, error)
+	Signal(SignalAttributes)
 	SetVisibility(visible bool) error
 	SetPause(pause bool) error
+
+	RequestTVState(TVStateReq) (*TVState, error)
+	RegisterCallback(CallbackReq, func()) error
 }
 
 // DummyTV is the null implementation of the television interface. useful
 // for tools that don't need a television or related information at all.
 type DummyTV struct{ Television }
-
-// Signal (with DummyTV reciever) is the null implementation
-func (DummyTV) Signal(SignalAttributes) {}
 
 // MachineInfoTerse (with DummyTV reciever) is the null implementation
 func (DummyTV) MachineInfoTerse() string {
@@ -42,10 +46,8 @@ func (tv DummyTV) String() string {
 	return tv.MachineInfo()
 }
 
-// GetTVState (with dummyTV reciever) is the null implementation
-func (DummyTV) GetTVState(state string) (*TVState, error) {
-	return nil, fmt.Errorf("dummy tv doesn't have that tv state (%s)", state)
-}
+// Signal (with DummyTV reciever) is the null implementation
+func (DummyTV) Signal(SignalAttributes) {}
 
 // SetVisibility (with dummyTV reciever) is the null implementation
 func (DummyTV) SetVisibility(visible bool) error {
@@ -55,4 +57,14 @@ func (DummyTV) SetVisibility(visible bool) error {
 // SetPause (with dummyTV reciever) is the null implementation
 func (DummyTV) SetPause(pause bool) error {
 	return nil
+}
+
+// RequestTVState (with dummyTV reciever) is the null implementation
+func (DummyTV) RequestTVState(request TVStateReq) (*TVState, error) {
+	return nil, errors.GopherError{Errno: errors.UnknownStateRequest, Values: errors.Values{request}}
+}
+
+// RegisterCallback (with dummyTV reciever) is the null implementation
+func (DummyTV) RegisterCallback(request CallbackReq, callback func()) error {
+	return errors.GopherError{Errno: errors.UnknownCallbackRequest, Values: errors.Values{request}}
 }

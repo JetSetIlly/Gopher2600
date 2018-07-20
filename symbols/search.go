@@ -11,5 +11,5 @@ func (sym *Table) SearchLocation(location string) (uint16, error) {
 			}
 		}
 	}
-	return 0, errors.GopherError{errors.UnknownSymbol, errors.Values{location}}
+	return 0, errors.GopherError{Errno: errors.UnknownSymbol, Values: errors.Values{location}}
 }

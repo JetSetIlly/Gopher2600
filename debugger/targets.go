@@ -1,6 +1,10 @@
 package debugger
 
-import "gopher2600/hardware"
+import (
+	"fmt"
+	"gopher2600/hardware"
+	"gopher2600/television"
+)
 
 // defines which types are valid targets
 type target interface {
@@ -10,37 +14,34 @@ type target interface {
 }
 
 // parseTarget uses a keyword to decide which part of the vcs to target
-func parseTarget(vcs *hardware.VCS, keyword string) target {
-	var target target
+func parseTarget(vcs *hardware.VCS, keyword string) (target, error) {
+	var trg target
 	var err error
 
 	switch keyword {
 	case "PC":
-		target = vcs.MC.PC
+		trg = vcs.MC.PC
 	case "A":
-		target = vcs.MC.A
+		trg = vcs.MC.A
 	case "X":
-		target = vcs.MC.X
+		trg = vcs.MC.X
 	case "Y":
-		target = vcs.MC.Y
+		trg = vcs.MC.Y
 	case "SP":
-		target = vcs.MC.SP
+		trg = vcs.MC.SP
 	case "FRAMENUM", "FRAME", "FR":
-		target, err = vcs.TV.GetTVState("FRAMENUM")
-		if err != nil {
-			return nil
-		}
+		trg, err = vcs.TV.RequestTVState(television.ReqFramenum)
 	case "SCANLINE", "SL":
-		target, err = vcs.TV.GetTVState("SCANLINE")
-		if err != nil {
-			return nil
-		}
+		trg, err = vcs.TV.RequestTVState(television.ReqScanline)
 	case "HORIZPOS", "HP":
-		target, err = vcs.TV.GetTVState("HORIZPOS")
-		if err != nil {
-			return nil
-		}
+		trg, err = vcs.TV.RequestTVState(television.ReqHorizPos)
+	default:
+		return nil, fmt.Errorf("invalid target (%s)", keyword)
 	}
 
-	return target
+	if err != nil {
+		return nil, err
+	}
+
+	return trg, nil
 }

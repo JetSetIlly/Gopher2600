@@ -77,7 +77,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// unlikely for a program never to write to chip memory on a more-or-less
 	// frequent basis
 	if area.writeSignal {
-		return errors.GopherError{errors.UnservicedChipWrite, errors.Values{vcssymbols.WriteSymbols[area.lastWriteAddress]}}
+		return errors.GopherError{Errno: errors.UnservicedChipWrite, Values: errors.Values{vcssymbols.WriteSymbols[area.lastWriteAddress]}}
 	}
 
 	sym := vcssymbols.WriteSymbols[address]
@@ -123,7 +123,7 @@ func (area ChipMemory) LastReadRegister() string {
 func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
 	sym := vcssymbols.ReadSymbols[address&area.readMask]
 	if sym == "" {
-		return 0, 0, "", "", errors.GopherError{errors.UnreadableAddress, nil}
+		return 0, 0, "", "", errors.GopherError{Errno: errors.UnreadableAddress, Values: nil}
 	}
 	return area.memory[address-area.origin], address & area.readMask, area.Label(), sym, nil
 }

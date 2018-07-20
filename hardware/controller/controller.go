@@ -34,7 +34,7 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus, panel *panel.Panel) *Stic
 		// system assigned index: typically increments on each new controller added.
 		stick.device = joysticks.Connect(1)
 		if stick.device == nil {
-			stick.err = errors.GopherError{errors.NoControllersFound, nil}
+			stick.err = errors.GopherError{Errno: errors.NoControllersFound, Values: nil}
 			return
 		}
 

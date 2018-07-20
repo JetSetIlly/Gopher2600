@@ -66,9 +66,9 @@ func (tr *traps) parseTrap(parts []string) error {
 	for i := 1; i < len(parts); i++ {
 		parts[i] = strings.ToUpper(parts[i])
 
-		tgt := parseTarget(tr.dbg.vcs, parts[i])
-		if tgt == nil {
-			return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
+		tgt, err := parseTarget(tr.dbg.vcs, parts[i])
+		if err != nil {
+			return err
 		}
 
 		addNewTrap := true

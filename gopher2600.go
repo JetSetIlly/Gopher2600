@@ -10,9 +10,11 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/television"
+	"gopher2600/television/sdltv"
 	"os"
 	"runtime/pprof"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -54,7 +56,7 @@ func main() {
 
 		err = dbg.Start(term, cartridgeFile, initScript)
 		if err != nil {
-			fmt.Printf("* error running debugger (%s)\n", err)
+			fmt.Printf("* error running debugger: %s\n", err)
 			os.Exit(10)
 		}
 	case "DISASM":
@@ -67,30 +69,30 @@ func main() {
 					fmt.Println(dsm.Dump())
 				}
 			}
-			fmt.Printf("* error during disassembly (%s)\n", err)
+			fmt.Printf("* error during disassembly: %s\n", err)
 			os.Exit(10)
 		}
 		fmt.Println(dsm.Dump())
 	case "FPS":
 		err := fps(cartridgeFile, true)
 		if err != nil {
-			fmt.Printf("* error starting FPS profiler (%s)\n", err)
+			fmt.Printf("* error starting FPS profiler: %s\n", err)
 			os.Exit(10)
 		}
 	case "TVFPS":
 		err := fps(cartridgeFile, false)
 		if err != nil {
-			fmt.Printf("* error starting TVFPS profiler (%s)\n", err)
+			fmt.Printf("* error starting TVFPS profiler: %s\n", err)
 			os.Exit(10)
 		}
 	case "RUN":
 		err := run(cartridgeFile)
 		if err != nil {
-			fmt.Printf("* error running emulator (%s)\n", err)
+			fmt.Printf("* error running emulator: %s\n", err)
 			os.Exit(10)
 		}
 	default:
-		fmt.Printf("* unknown mode (%s)\n", strings.ToUpper(*mode))
+		fmt.Printf("* unknown mode: %s\n", strings.ToUpper(*mode))
 		os.Exit(10)
 	}
 }
@@ -105,7 +107,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 			return fmt.Errorf("error creating television for fps profiler")
 		}
 	} else {
-		tv, err = television.NewSDLTV("NTSC", television.IdealScale)
+		tv, err = sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 		if err != nil {
 			return fmt.Errorf("error creating television for fps profiler")
 		}
@@ -151,10 +153,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 }
 
 func run(cartridgeFile string) error {
-	var tv television.Television
-	var err error
-
-	tv, err = television.NewSDLTV("NTSC", television.IdealScale)
+	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 	if err != nil {
 		return fmt.Errorf("error creating television for fps profiler")
 	}
@@ -170,10 +169,32 @@ func run(cartridgeFile string) error {
 		return err
 	}
 
+	// protecting "running" variable with a mutex
+	var runningLock sync.Mutex
+	running := true
+
+	err = tv.RegisterCallback(sdltv.ReqOnWindowClose, func() {
+		runningLock.Lock()
+		running = false
+		runningLock.Unlock()
+	})
+	if err != nil {
+		return err
+	}
+
 	for {
+		runningLock.Lock()
+		if !running {
+			runningLock.Unlock()
+			break
+		}
+		runningLock.Unlock()
+
 		_, _, err := vcs.Step(hardware.NullVideoCycleCallback)
 		if err != nil {
 			return err
 		}
 	}
+
+	return nil
 }

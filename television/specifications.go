@@ -1,18 +1,18 @@
 package television
 
 type specification struct {
-	clocksPerHblank   int
-	clocksPerVisible  int
-	clocksPerScanline int
+	ClocksPerHblank   int
+	ClocksPerVisible  int
+	ClocksPerScanline int
 
-	vsyncClocks int
+	VsyncClocks int
 
-	scanlinesPerVBlank   int
-	scanlinesPerVisible  int
-	scanlinesPerOverscan int
-	scanlinesTotal       int
+	ScanlinesPerVBlank   int
+	ScanlinesPerVisible  int
+	ScanlinesPerOverscan int
+	ScanlinesTotal       int
 
-	colors []color
+	Colors []color
 }
 
 var specNTSC *specification
@@ -23,30 +23,30 @@ func init() {
 	if specNTSC == nil {
 		panic("error during initialisation of NTSC specification")
 	}
-	specNTSC.clocksPerHblank = 68
-	specNTSC.clocksPerVisible = 160
-	specNTSC.clocksPerScanline = 228
-	specNTSC.vsyncClocks = 3 * specNTSC.clocksPerScanline
-	specNTSC.scanlinesPerVBlank = 37
-	specNTSC.scanlinesPerVisible = 228
-	specNTSC.scanlinesPerOverscan = 30
-	specNTSC.scanlinesTotal = 298
-	specNTSC.colors = ntscColors
+	specNTSC.ClocksPerHblank = 68
+	specNTSC.ClocksPerVisible = 160
+	specNTSC.ClocksPerScanline = 228
+	specNTSC.VsyncClocks = 3 * specNTSC.ClocksPerScanline
+	specNTSC.ScanlinesPerVBlank = 37
+	specNTSC.ScanlinesPerVisible = 228
+	specNTSC.ScanlinesPerOverscan = 30
+	specNTSC.ScanlinesTotal = 298
+	specNTSC.Colors = ntscColors
 
 	specPAL = new(specification)
 	if specPAL == nil {
 		panic("error during initialisation of PAL specification")
 	}
-	specPAL.clocksPerHblank = 68
-	specPAL.clocksPerVisible = 160
-	specPAL.clocksPerScanline = 228
-	specPAL.vsyncClocks = 3 * specPAL.clocksPerScanline
-	specPAL.scanlinesPerVBlank = 45
-	specPAL.scanlinesPerVisible = 228
-	specPAL.scanlinesPerOverscan = 36
-	specPAL.scanlinesTotal = 312
+	specPAL.ClocksPerHblank = 68
+	specPAL.ClocksPerVisible = 160
+	specPAL.ClocksPerScanline = 228
+	specPAL.VsyncClocks = 3 * specPAL.ClocksPerScanline
+	specPAL.ScanlinesPerVBlank = 45
+	specPAL.ScanlinesPerVisible = 228
+	specPAL.ScanlinesPerOverscan = 36
+	specPAL.ScanlinesTotal = 312
 
 	// use NTSC colors for PAL specification for now
 	// TODO: implement PAL colors
-	specPAL.colors = ntscColors
+	specPAL.Colors = ntscColors
 }

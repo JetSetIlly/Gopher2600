@@ -1,7 +1,6 @@
 package debugger
 
 import (
-	"fmt"
 	"gopher2600/debugger/ui"
 	"strconv"
 	"strings"
@@ -62,6 +61,7 @@ func (bp *breakpoints) prepareBreakpoints() {
 func (bp *breakpoints) check() bool {
 	broken := false
 	for i := range bp.breaks {
+		// check current value of target with the requested value
 		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
 			// make sure that we're not breaking on an ignore state
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
@@ -130,9 +130,9 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 
 		} else {
 			// defer parsing of other keywords to parseTargets()
-			tgt = parseTarget(bp.dbg.vcs, parts[i])
-			if tgt == nil {
-				return fmt.Errorf("invalid %s target (%s)", parts[0], parts[i])
+			tgt, err = parseTarget(bp.dbg.vcs, parts[i])
+			if err != nil {
+				return err
 			}
 		}
 	}

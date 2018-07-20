@@ -175,11 +175,11 @@ func (tia *TIA) StepVideoCycle() bool {
 	if tia.hblank {
 		// we're in the hblank state so do not tick the sprites and send the null
 		// pixel color to the television
-		tia.tv.Signal(television.SignalAttributes{tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, television.VideoBlack})
+		tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: television.VideoBlack})
 	} else {
 		// send pixel color to television
 		pixel := television.PixelSignal(tia.Video.Pixel())
-		tia.tv.Signal(television.SignalAttributes{tia.vsync, tia.vblank, frontPorch, tia.hsync, cburst, pixel})
+		tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixel})
 	}
 
 	// set collision registers

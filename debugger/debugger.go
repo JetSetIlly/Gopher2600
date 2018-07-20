@@ -9,11 +9,12 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
-	"gopher2600/television"
+	"gopher2600/television/sdltv"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const defaultOnHalt = "CPU; TV"
@@ -24,7 +25,12 @@ type Debugger struct {
 	vcs    *hardware.VCS
 	disasm disassembly.Disassembly
 
-	// repeat execution loop until a halt condition is encountered
+	// control of debug/input loop - accessed from within a sub-go routine so
+	// both protected with a sync.mutex
+	// 	o running - whether the debugger is to continue with the debugging loop
+	// 	o runUntilHalt - repeat execution loop until a halt condition is encountered
+	runLock      sync.Mutex
+	running      bool
 	runUntilHalt bool
 
 	// halt conditions
@@ -49,7 +55,8 @@ type Debugger struct {
 
 	// input loop fields. we're storing these here because inputLoop can be
 	// called from within another input loop (via a video step callback) and we
-	// want these properties to persist
+	// want these properties to persist (when a video step input loop has
+	// completed and we're back into the main input loop)
 	inputloopHalt       bool // whether to halt the current execution loop
 	inputloopNext       bool // execute a step once user input has returned a result
 	inputloopVideoClock bool // step mode
@@ -61,9 +68,6 @@ type Debugger struct {
 	// user interface
 	ui       ui.UserInterface
 	uiSilent bool // controls whether UI is to remain silent
-
-	// whether the debugger is to continue with the debugging loop
-	running bool
 
 	// buffer for user input
 	input []byte
@@ -81,7 +85,7 @@ func NewDebugger() (*Debugger, error) {
 	}
 
 	// prepare hardware
-	tv, err := television.NewSDLTV("NTSC", television.IdealScale)
+	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 	if err != nil {
 		return nil, err
 	}
@@ -129,24 +133,35 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 
 	// make sure we've indicated that the debugger is running before we start
 	// the ctrl-c handler. it'll return immediately if we don't
+	//
+	// *CRITICAL SECTION* *NOT REQUIRED* go routine not started yet
 	dbg.running = true
 
-	// register ctrl-c handler: note that depending on the terminal being used,
-	// some ctrl-c events may be handled by the UserRead() function this signal
-	// handler however, will always be used to interrupt the emulation when it
-	// is running
+	// register ctrl-c handler -- note that this controls the debugging
+	// inputLoop() below. when that loop calls debugger.ui.UserRead(), that
+	// function may have its own loop that may delay the side-effects of our
+	// handler below. compare plain terminal and colour terminal
+	// implementations. the latter terminal responds to ctrl-c in its input
+	// loop and curtails the input loop immediately, debugger.inputLoop() to
+	// react to the changes caused by our signal handler.
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
-		for dbg.running {
+		loop := true
+		for loop {
 			<-ctrlC
+
+			// *CRITICAL SECTION* after signal received
+			dbg.runLock.Lock()
 			if dbg.runUntilHalt {
 				dbg.runUntilHalt = false
 			} else {
 				// TODO: interrupt os.stdin.Read() in plain terminal, so that
 				// the user doesn't have to press return after a ctrl-c press
 				dbg.running = false
+				loop = false
 			}
+			dbg.runLock.Unlock()
 		}
 	}()
 
@@ -218,7 +233,15 @@ func (dbg *Debugger) noVideoCycleCallback(result *result.Instruction) error {
 func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	var err error
 
-	for dbg.running {
+	for {
+		// *CRITICAL SECTION*
+		dbg.runLock.Lock()
+		if !dbg.running {
+			dbg.runLock.Unlock()
+			break // for loop
+		}
+		dbg.runLock.Unlock()
+
 		// return immediately if we're in a mid-cycle input loop and we don't want
 		// to be
 		//
@@ -236,6 +259,9 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			dbg.inputloopHalt = bpCheck || trCheck
 		}
 
+		// *CRITICAL SECTION*
+		dbg.runLock.Lock()
+
 		// if haltCommand mode and if run state is correct that print haltCommand
 		// command(s)
 		if dbg.commandOnHalt != "" {
@@ -249,6 +275,9 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// expand breakpoint to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
 
+		dbg.runLock.Unlock()
+		// *END CRITICAL SECTION*
+
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
 			err = dbg.vcs.TV.SetPause(true)
@@ -256,8 +285,10 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				return err
 			}
 
-			// reset run until break condition
+			// *CRITICAL SECTION*
+			dbg.runLock.Lock()
 			dbg.runUntilHalt = false
+			dbg.runLock.Unlock()
 
 			// build prompt
 			// - different prompt depending on whether a valid disassembly is available
@@ -279,7 +310,12 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				switch err.(type) {
 				case *ui.UserInterrupt:
 					dbg.print(ui.Feedback, err.Error())
+
+					// *CRITICAL SECTION*
+					dbg.runLock.Lock()
 					dbg.running = false
+					dbg.runLock.Unlock()
+
 					return nil
 				default:
 					return err
@@ -443,13 +479,13 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	case KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(parts)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error on break: %s", err)
 		}
 
 	case KeywordTrap:
 		err := dbg.traps.parseTrap(parts)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("error on trap: %s", err)
 		}
 
 	case KeywordList:
@@ -543,7 +579,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case KeywordQuit:
+		// *CRITICAL SECTION*
+		dbg.runLock.Lock()
 		dbg.running = false
+		dbg.runLock.Unlock()
 
 	case KeywordReset:
 		err := dbg.vcs.Reset()
@@ -553,7 +592,11 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.Feedback, "machine reset")
 
 	case KeywordRun:
+		// *CRITICAL SECTION*
+		dbg.runLock.Lock()
 		dbg.runUntilHalt = true
+		dbg.runLock.Unlock()
+
 		stepNext = true
 
 	case KeywordStep:
