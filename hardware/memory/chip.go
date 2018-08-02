@@ -10,6 +10,8 @@ import (
 type ChipMemory struct {
 	CPUBus
 	ChipBus
+	PeriphBus
+
 	Area
 	AreaInfo
 
@@ -29,11 +31,18 @@ type ChipMemory struct {
 	// lastReadRegister works slightly different that lastWriteAddress. it stores
 	// the register *name* of the last memory location *read* by the CPU
 	lastReadRegister string
+
+	// the periphQueue is used to write to chip memory in a goroutine friendly
+	// manner. peripherals can be implemented with goroutines and so we need to
+	// be careful when accessing memory.
+	periphQueue chan *periphPayload
 }
 
-// note that all the symbols used are the standard VCS symbol names, as defined
-// in the symbols package. this may be confusing if the cartridge has a symbols
-// file that does not use standard names, but this seems unlikely.
+func newChipMem() *ChipMemory {
+	area := new(ChipMemory)
+	area.periphQueue = make(chan *periphPayload, periphQueueLen)
+	return area
+}
 
 // Label is an implementation of Area.Label
 func (area ChipMemory) Label() string {
@@ -48,75 +57,6 @@ func (area ChipMemory) Origin() uint16 {
 // Memtop is an implementation of Area.Memtop
 func (area ChipMemory) Memtop() uint16 {
 	return area.memtop
-}
-
-// Implementation of CPUBus.Read
-func (area *ChipMemory) Read(address uint16) (uint8, error) {
-	address &= area.readMask
-
-	// note the name of the register that we are reading
-	area.lastReadRegister = vcssymbols.ReadSymbols[address]
-
-	sym := vcssymbols.ReadSymbols[address]
-	if sym == "" {
-		// silently ignore illegal reads (we're definitely reading from the correct
-		// memory space but some registers are not readable)
-		return 0, nil
-	}
-
-	return area.memory[address-area.origin], nil
-}
-
-// Implementation of CPUBus.Write
-func (area *ChipMemory) Write(address uint16, data uint8) error {
-	// check that the last write to this memory area has been serviced TODO:
-	// we'll only be notified of an unserviced write signal if the chip memory is
-	// written to again. byt the CPU theoretically, this may never happen so we
-	// should consider implementing a "tick" function that is called every
-	// machine cycle to perform the sanity check. on the other hand it does seem
-	// unlikely for a program never to write to chip memory on a more-or-less
-	// frequent basis
-	if area.writeSignal {
-		return errors.GopherError{Errno: errors.UnservicedChipWrite, Values: errors.Values{vcssymbols.WriteSymbols[area.lastWriteAddress]}}
-	}
-
-	sym := vcssymbols.WriteSymbols[address]
-	if sym == "" {
-		// silently ignore illegal writes (we're definitely writing to the correct
-		// memory space but some registers are not writable)
-		return nil
-	}
-
-	// note address of write
-	area.lastWriteAddress = address
-	area.writeSignal = true
-	area.writeData = data
-
-	return nil
-}
-
-// ChipRead is an implementation of ChipBus.ChipRead. returns:
-// - whether a chip was last written to
-// - the CPU name of the address that was written to
-// - the written value
-func (area *ChipMemory) ChipRead() (bool, string, uint8) {
-	if area.writeSignal {
-		area.writeSignal = false
-		return true, vcssymbols.WriteSymbols[area.lastWriteAddress], area.writeData
-	}
-	return false, "", 0
-}
-
-// ChipWrite writes the data to the memory area's address specified by
-// registerName
-func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
-	area.memory[address] = data
-}
-
-// LastReadRegister returns the register name of the last memory
-// location *read* by the CPU
-func (area ChipMemory) LastReadRegister() string {
-	return area.lastReadRegister
 }
 
 // Peek is the implementation of Area.Peek. returns:

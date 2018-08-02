@@ -2,11 +2,10 @@ package hardware
 
 import (
 	"fmt"
-	"gopher2600/hardware/controller"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/panel"
+	"gopher2600/hardware/peripherals"
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
 	"gopher2600/television"
@@ -29,8 +28,8 @@ type VCS struct {
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
-	panel      *panel.Panel
-	controller *controller.Stick
+	panel      *peripherals.Panel
+	controller *peripherals.Stick
 }
 
 // New is the preferred method of initialisation for the VCS structure
@@ -60,13 +59,13 @@ func New(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't allocate memory for VCS RIOT")
 	}
 
-	vcs.panel = panel.New(vcs.Mem.RIOT)
+	vcs.panel = peripherals.NewPanel(vcs.Mem.RIOT)
 	if vcs.panel == nil {
 		return nil, fmt.Errorf("can't create console control panel")
 	}
 
 	// TODO: better contoller support
-	vcs.controller = controller.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
+	vcs.controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
 	if vcs.panel == nil {
 		return nil, fmt.Errorf("can't create new stick controller")
 	}

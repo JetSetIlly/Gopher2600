@@ -21,7 +21,7 @@ import (
 const initScript = ".gopher2600/debuggerInit"
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, FPS, TVFPS")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, PLAY, FPS, TVFPS")
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
@@ -85,6 +85,11 @@ func main() {
 			fmt.Printf("* error starting TVFPS profiler: %s\n", err)
 			os.Exit(10)
 		}
+
+	case "PLAY":
+		// PLAY is a synonym for RUN
+		fallthrough
+
 	case "RUN":
 		err := run(cartridgeFile)
 		if err != nil {

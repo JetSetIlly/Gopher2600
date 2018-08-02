@@ -1,4 +1,6 @@
-package panel
+// Panel uses the concurrent chip bus interface
+
+package peripherals
 
 import (
 	"gopher2600/hardware/memory"
@@ -7,7 +9,7 @@ import (
 
 // Panel represents the console's front control panel
 type Panel struct {
-	riot  memory.ChipBus
+	riot  memory.PeriphBus
 	p0pro bool
 	p1pro bool
 	color bool
@@ -18,8 +20,8 @@ type Panel struct {
 	gameReset  bool
 }
 
-// New is the preferred method of initialisation for the Panel type
-func New(riot memory.ChipBus) *Panel {
+// NewPanel is the preferred method of initialisation for the Panel type
+func NewPanel(riot memory.PeriphBus) *Panel {
 	pan := new(Panel)
 	pan.riot = riot
 	pan.color = true
@@ -45,7 +47,7 @@ func (pan *Panel) set() {
 		strobe |= 0x01
 	}
 
-	pan.riot.ChipWrite(vcssymbols.SWCHB, strobe)
+	pan.riot.PeriphWrite(vcssymbols.SWCHB, strobe)
 }
 
 // SetColor toggles the color switch

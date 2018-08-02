@@ -1,10 +1,9 @@
-package controller
+package peripherals
 
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/vcssymbols"
-	"gopher2600/hardware/panel"
 
 	"github.com/splace/joysticks"
 )
@@ -16,14 +15,14 @@ type Stick struct {
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
-func NewStick(tia memory.ChipBus, riot memory.ChipBus, panel *panel.Panel) *Stick {
+func NewStick(tia memory.PeriphBus, riot memory.PeriphBus, panel *Panel) *Stick {
 	stick := new(Stick)
 
 	// TODO: make all this work with a seconc contoller. for now, initialise
 	// and asssume that there is just one controller for player 0
-	riot.ChipWrite(vcssymbols.SWCHA, 0xff)
-	tia.ChipWrite(vcssymbols.INPT4, 0x80)
-	tia.ChipWrite(vcssymbols.INPT5, 0x80)
+	riot.PeriphWrite(vcssymbols.SWCHA, 0xff)
+	tia.PeriphWrite(vcssymbols.INPT4, 0x80)
+	tia.PeriphWrite(vcssymbols.INPT5, 0x80)
 
 	// there is a flaw (either in splace/joysticks or somewehere else lower
 	// down in the kernel driver) which means that Connect() will not return
@@ -69,9 +68,9 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus, panel *panel.Panel) *Stic
 				panel.SetGameSelect(false)
 
 			case <-buttonPress:
-				tia.ChipWrite(vcssymbols.INPT4, 0x00)
+				tia.PeriphWrite(vcssymbols.INPT4, 0x00)
 			case <-buttonRelease:
-				tia.ChipWrite(vcssymbols.INPT4, 0x80)
+				tia.PeriphWrite(vcssymbols.INPT4, 0x80)
 
 			case ev := <-stickMove:
 				swcha := uint8(0xff)
@@ -87,7 +86,7 @@ func NewStick(tia memory.ChipBus, riot memory.ChipBus, panel *panel.Panel) *Stic
 				} else if y > 0.5 {
 					swcha &= 0xdf
 				}
-				riot.ChipWrite(vcssymbols.SWCHA, swcha)
+				riot.PeriphWrite(vcssymbols.SWCHA, swcha)
 			}
 		}
 	}()

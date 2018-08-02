@@ -2,7 +2,7 @@ package memory
 
 // newTIA is the preferred method of initialisation for the TIA memory area
 func newTIA() *ChipMemory {
-	area := new(ChipMemory)
+	area := newChipMem()
 	if area == nil {
 		return nil
 	}
