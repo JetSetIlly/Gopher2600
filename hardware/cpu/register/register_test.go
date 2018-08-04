@@ -15,10 +15,7 @@ func r16(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r16, err := register.New(0, 16, "TEST", "TST")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	r16 := register.NewRegister(0, 16, "TEST", "TST")
 	assert.CheckValueVCS(t, r16.IsZero(), true)
 	assert.CheckValueVCS(t, r16, 0)
 
@@ -37,10 +34,7 @@ func r16(t *testing.T) {
 	assert.CheckValueVCS(t, r16.IsZero(), true)
 
 	// register operand
-	r16b, err := register.New(10, 16, "TEST B", "TSTB")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	r16b := register.NewRegister(10, 16, "TEST B", "TSTB")
 	assert.CheckValueVCS(t, r16b, 10)
 	r16.Add(r16b, true)
 	assert.CheckValueVCS(t, r16, 11)
@@ -89,10 +83,7 @@ func r8(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r8, err := register.New(0, 8, "TEST", "TST")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	r8 := register.NewRegister(0, 8, "TEST", "TST")
 	assert.CheckValueVCS(t, r8.IsZero(), true)
 	assert.CheckValueVCS(t, r8, 0)
 
@@ -111,10 +102,7 @@ func r8(t *testing.T) {
 	assert.CheckValueVCS(t, r8.IsZero(), true)
 
 	// register operand
-	r8b, err := register.New(10, 8, "TEST B", "TSTB")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	r8b := register.NewRegister(10, 8, "TEST B", "TSTB")
 	assert.CheckValueVCS(t, r8b, 10)
 	r8.Add(r8b, true)
 	assert.CheckValueVCS(t, r8, 11)

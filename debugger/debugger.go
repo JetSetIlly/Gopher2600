@@ -38,6 +38,9 @@ type Debugger struct {
 	breakpoints *breakpoints
 	traps       *traps
 
+	// any error from previous emulation step
+	lastStepError bool
+
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
 	// used when ONHALT is called with no arguments
@@ -73,25 +76,24 @@ type Debugger struct {
 	input []byte
 }
 
-// NewDebugger is the preferred method of initialisation for the Debugger structure
+// NewDebugger creates and initialises everything required for a new debugging
+// session. Use the Start() method to actually begin the session.
 func NewDebugger() (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
 
 	dbg.ui = new(ui.PlainTerminal)
-	if dbg.ui == nil {
-		return nil, fmt.Errorf("error allocationg memory for UI")
-	}
 
 	// prepare hardware
 	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error preparing television: %s", err)
 	}
-	dbg.vcs, err = hardware.New(tv)
+
+	dbg.vcs, err = hardware.NewVCS(tv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
 
 	// set up breakpoints/traps
@@ -169,7 +171,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 	if initScript != "" {
 		err = dbg.RunScript(initScript, true)
 		if err != nil {
-			dbg.print(ui.Error, "* error running debugger initialisation script (%s)\n", err)
+			dbg.print(ui.Error, "* error running debugger initialisation script: %s\n", err)
 		}
 	}
 
@@ -256,8 +258,11 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		if dbg.inputloopNext {
 			bpCheck := dbg.breakpoints.check()
 			trCheck := dbg.traps.check()
-			dbg.inputloopHalt = bpCheck || trCheck
+			dbg.inputloopHalt = bpCheck || trCheck || dbg.lastStepError
 		}
+
+		// reset last step error
+		dbg.lastStepError = false
 
 		// *CRITICAL SECTION*
 		dbg.runLock.Lock()
@@ -351,8 +356,20 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				} else {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.noVideoCycleCallback)
 				}
+
 				if err != nil {
-					return err
+					switch err := err.(type) {
+					case errors.GopherError:
+						// do not exit input loop when error is a gopher error
+						// set lastStepError instead and allow emulation to
+						// halt
+						dbg.lastStepError = true
+
+						// print gopher error message
+						dbg.print(ui.Error, "%s", err)
+					default:
+						return err
+					}
 				}
 
 				if dbg.commandOnStep != "" {
@@ -467,7 +484,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		if err != nil {
 			switch err := err.(type) {
 			case errors.GopherError:
-				if err.Errno == errors.UnknownSymbol {
+				if err.Errno == errors.SymbolUnknown {
 					dbg.print(ui.Feedback, "%s -> not found", parts[1])
 					return false, nil
 				}

@@ -85,7 +85,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		case 1:
 			hex = fmt.Sprintf("%02x %s", result.Defn.ObjectCode, hex)
 		default:
-			panic("unsupported number of bytes in instruction")
+			hex = fmt.Sprintf("(%d bytes) %s", result.Defn.Bytes, hex)
 		}
 	}
 
@@ -101,7 +101,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 
 					// 	-- we create a mock register with the instruction's
 					// 	address as the initial value
-					pc, _ := register.NewAnonymous(result.Address, 16)
+					pc := register.NewAnonRegister(result.Address, 16)
 
 					// -- add the number of instruction bytes to get the PC as
 					// it would be at the end of the instruction

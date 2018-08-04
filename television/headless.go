@@ -14,8 +14,9 @@ const (
 )
 
 // HeadlessTV is the minimalist implementation of the Television interface - a
-// television without a screen. fuller implementations of the television can
-// use this as the basis of the emulation
+// television without a screen. Fuller implementations of the television can
+// use this as the basis of the emulation by struct embedding. The
+// InitHeadlessTV() method is useful in this regard.
 type HeadlessTV struct {
 	// spec is the specification of the tv type (NTSC or PAL)
 	Spec *specification
@@ -52,12 +53,10 @@ type HeadlessTV struct {
 	forceUpdate func() error
 }
 
-// NewHeadlessTV is the preferred method for initalising a headless TV
+// NewHeadlessTV creates a new instance of HeadlessTV for a minimalist
+// implementation of a televsion for the VCS emulation
 func NewHeadlessTV(tvType string) (*HeadlessTV, error) {
 	tv := new(HeadlessTV)
-	if tv == nil {
-		return nil, fmt.Errorf("can't allocate memory for headless tv")
-	}
 
 	err := InitHeadlessTV(tv, tvType)
 	if err != nil {
@@ -228,7 +227,7 @@ func (tv *HeadlessTV) SetPause(pause bool) error {
 func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 	switch request {
 	default:
-		return nil, errors.GopherError{Errno: errors.UnknownStateRequest, Values: errors.Values{request}}
+		return nil, errors.NewGopherError(errors.UnknownStateRequest, request)
 	case ReqFramenum:
 		return tv.frameNum, nil
 	case ReqScanline:
@@ -240,5 +239,5 @@ func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 
 // RegisterCallback (with dummyTV reciever) is the null implementation
 func (tv *HeadlessTV) RegisterCallback(request CallbackReq, callback func()) error {
-	return errors.GopherError{Errno: errors.UnknownCallbackRequest, Values: errors.Values{request}}
+	return errors.NewGopherError(errors.UnknownCallbackRequest, request)
 }

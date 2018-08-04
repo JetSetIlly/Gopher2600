@@ -33,16 +33,11 @@ type RIOT struct {
 	timerCycles int
 }
 
-// New is the preferred method of initialisation for the PIA structure
-func New(mem memory.ChipBus) *RIOT {
+// NewRIOT creates a RIOT, to be used in a VCS emulation
+func NewRIOT(mem memory.ChipBus) *RIOT {
 	riot := new(RIOT)
-	if riot == nil {
-		return nil
-	}
-
 	riot.timerRegister = "no timer"
 	riot.mem = mem
-
 	return riot
 }
 
@@ -87,7 +82,7 @@ func (riot *RIOT) ReadRIOTMemory() {
 			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		default:
-			fmt.Printf("unserviced RIOT register", register)
+			fmt.Printf("unserviced RIOT register (%v)", register)
 		}
 	}
 }

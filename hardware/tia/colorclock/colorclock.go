@@ -13,12 +13,7 @@ type ColorClock struct {
 // New is the preferred method of initialisation for the ColorClock
 func New() *ColorClock {
 	cc := new(ColorClock)
-	if cc == nil {
-		return nil
-	}
-
 	cc.SetResetPattern("010100") // count==56,
-
 	return cc
 }
 

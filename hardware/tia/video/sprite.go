@@ -44,10 +44,6 @@ type sprite struct {
 
 func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 	sp := new(sprite)
-	if sp == nil {
-		return nil
-	}
-
 	sp.label = label
 	sp.colorClock = colorClock
 

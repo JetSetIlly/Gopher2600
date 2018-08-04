@@ -1,7 +1,7 @@
 package debugger
 
 import (
-	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/television"
 )
@@ -36,7 +36,7 @@ func parseTarget(vcs *hardware.VCS, keyword string) (target, error) {
 	case "HORIZPOS", "HP":
 		trg, err = vcs.TV.RequestTVState(television.ReqHorizPos)
 	default:
-		return nil, fmt.Errorf("invalid target (%s)", keyword)
+		return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
 	}
 
 	if err != nil {

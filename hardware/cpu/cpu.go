@@ -43,40 +43,23 @@ type CPU struct {
 	// side-effects. we use this in the disassembly package to make sure
 	// we reach every part of the program
 	NoSideEffects bool
+
+	// silently ignore addressing errors unless StrictAddressing is true
+	StrictAddressing bool
 }
 
-// New is the preferred method of initialisation for the CPU structure
-func New(mem memory.CPUBus) (*CPU, error) {
+// NewCPU is the preferred method of initialisation for the CPU structure
+func NewCPU(mem memory.CPUBus) (*CPU, error) {
 	var err error
 
 	mc := new(CPU)
 	mc.mem = mem
 
-	mc.PC, err = register.New(0, 16, "PC", "PC")
-	if err != nil {
-		return nil, err
-	}
-
-	mc.A, err = register.New(0, 8, "A", "A")
-	if err != nil {
-		return nil, err
-	}
-
-	mc.X, err = register.New(0, 8, "X", "X")
-	if err != nil {
-		return nil, err
-	}
-
-	mc.Y, err = register.New(0, 8, "Y", "Y")
-	if err != nil {
-		return nil, err
-	}
-
-	mc.SP, err = register.New(0, 8, "SP", "SP")
-	if err != nil {
-		return nil, err
-	}
-
+	mc.PC = register.NewRegister(0, 16, "PC", "PC")
+	mc.A = register.NewRegister(0, 8, "A", "A")
+	mc.X = register.NewRegister(0, 8, "X", "X")
+	mc.Y = register.NewRegister(0, 8, "Y", "Y")
+	mc.SP = register.NewRegister(0, 8, "SP", "SP")
 	mc.Status = NewStatusRegister("Status", "SR")
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
@@ -113,7 +96,7 @@ func (mc *CPU) IsExecuting() bool {
 func (mc *CPU) Reset() error {
 	// sanity check
 	if mc.IsExecuting() {
-		return fmt.Errorf("can't reset CPU in the middle of an instruction")
+		panic(fmt.Errorf("can't reset CPU in the middle of an instruction"))
 	}
 
 	mc.PC.Load(0)
@@ -136,7 +119,7 @@ func (mc *CPU) Reset() error {
 func (mc *CPU) LoadPC(indirectAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
-		return fmt.Errorf("can't alter program counter in the middle of an instruction")
+		panic(fmt.Errorf("can't alter program counter in the middle of an instruction"))
 	}
 
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
@@ -156,11 +139,41 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 	return nil
 }
 
+func (mc *CPU) write8Bit(address uint16, value uint8) error {
+	err := mc.mem.Write(address, value)
+
+	if err != nil {
+		switch err := err.(type) {
+		case errors.GopherError:
+			// don't worry about unwritable addresses (unless strict addressing
+			// is on)
+			if mc.StrictAddressing || err.Errno != errors.UnwritableAddress {
+				return err
+			}
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
+
 	if err != nil {
-		return 0, err
+		switch err := err.(type) {
+		case errors.GopherError:
+			// don't worry about unreadable addresses (unless strict addressing
+			// is on)
+			if mc.StrictAddressing || err.Errno != errors.UnreadableAddress {
+				return 0, err
+			}
+		default:
+			return 0, err
+		}
 	}
+
 	mc.endCycle()
 
 	return val, nil
@@ -192,7 +205,7 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	}
 	carry, _ := mc.PC.Add(1, false)
 	if carry {
-		return 0, errors.GopherError{Errno: errors.ProgramCounterCycled, Values: nil}
+		return 0, errors.NewGopherError(errors.ProgramCounterCycled, nil)
 	}
 	return op, nil
 }
@@ -207,7 +220,7 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	// the next instruction but I don't believe this has any side-effects
 	carry, _ := mc.PC.Add(2, false)
 	if carry {
-		return 0, errors.GopherError{Errno: errors.ProgramCounterCycled, Values: nil}
+		return 0, errors.NewGopherError(errors.ProgramCounterCycled, nil)
 	}
 
 	return val, nil
@@ -276,8 +289,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) err
 }
 
 // ExecuteInstruction steps CPU forward one instruction, calling
-// cycleCallback() after every cycle. note that the CPU will panic if a CPU
-// method is called during a callback.
+// cycleCallback() after every cycle
 func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*result.Instruction, error) {
 	// sanity check
 	if mc.IsExecuting() {
@@ -314,9 +326,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	defn, found := mc.opCodes[operator]
 	if !found {
 		if operator == 0xff {
-			return nil, errors.GopherError{Errno: errors.NullInstruction, Values: nil}
+			return nil, errors.NewGopherError(errors.NullInstruction, nil)
 		}
-		return nil, errors.GopherError{Errno: errors.UnimplementedInstruction, Values: errors.Values{operator, mc.PC.ToUint16() - 1}}
+		return nil, errors.NewGopherError(errors.UnimplementedInstruction, operator, mc.PC.ToUint16()-1)
 	}
 	result.Defn = defn
 
@@ -439,10 +451,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 
 		// using 8bit addition because we don't want a page-fault
-		adder, err := register.NewAnonymous(mc.X, 8)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
 
 		// +1 cycle
@@ -470,10 +479,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		adder, err := register.NewAnonymous(mc.Y, 16)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(mc.Y, 16)
 		adder.Add(indexedAddress&0x00ff, false)
 		address = adder.ToUint16()
 
@@ -501,10 +507,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		adder, err := register.NewAnonymous(mc.X, 16)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(mc.X, 16)
 
 		// add index to LSB of address
 		adder.Add(indirectAddress&0x00ff, false)
@@ -533,10 +536,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		adder, err := register.NewAnonymous(mc.Y, 16)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(mc.Y, 16)
 
 		// add index to LSB of address
 		adder.Add(indirectAddress&0x00ff, false)
@@ -564,10 +564,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		adder, err := register.NewAnonymous(indirectAddress, 8)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
 		result.InstructionData = indirectAddress
@@ -583,10 +580,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		adder, err := register.NewAnonymous(indirectAddress, 8)
-		if err != nil {
-			return nil, err
-		}
+		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
 		result.InstructionData = indirectAddress
@@ -622,7 +616,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			// phantom write
 			// +1 cycle
 			if !mc.NoSideEffects {
-				err = mc.mem.Write(address, value)
+				err = mc.write8Bit(address, value)
 
 				if err != nil {
 					return nil, err
@@ -660,7 +654,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "PHA":
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(mc.SP.ToUint16(), mc.A.ToUint8())
+			err = mc.write8Bit(mc.SP.ToUint16(), mc.A.ToUint8())
 			if err != nil {
 				return nil, err
 			}
@@ -680,7 +674,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "PHP":
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(mc.SP.ToUint16(), mc.Status.ToUint8())
+			err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
 			if err != nil {
 				return nil, err
 			}
@@ -759,7 +753,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "STA":
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(address, mc.A.ToUint8())
+			err = mc.write8Bit(address, mc.A.ToUint8())
 			if err != nil {
 				return nil, err
 			}
@@ -767,7 +761,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "STX":
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(address, mc.X.ToUint8())
+			err = mc.write8Bit(address, mc.X.ToUint8())
 			if err != nil {
 				return nil, err
 			}
@@ -775,7 +769,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "STY":
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(address, mc.Y.ToUint8())
+			err = mc.write8Bit(address, mc.Y.ToUint8())
 			if err != nil {
 				return nil, err
 			}
@@ -804,7 +798,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	case "ASL":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r, err = register.NewAnonymous(value, mc.A.Size())
+			r = register.NewAnonRegister(value, mc.A.Size())
 		} else {
 			r = mc.A
 		}
@@ -816,7 +810,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	case "LSR":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r, err = register.NewAnonymous(value, mc.A.Size())
+			r = register.NewAnonRegister(value, mc.A.Size())
 		} else {
 			r = mc.A
 		}
@@ -848,7 +842,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	case "ROR":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r, err = register.NewAnonymous(value, mc.A.Size())
+			r = register.NewAnonRegister(value, mc.A.Size())
 		} else {
 			r = mc.A
 		}
@@ -860,7 +854,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	case "ROL":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r, err = register.NewAnonymous(value, mc.A.Size())
+			r = register.NewAnonRegister(value, mc.A.Size())
 		} else {
 			r = mc.A
 		}
@@ -870,30 +864,21 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		value = r.ToUint8()
 
 	case "INC":
-		r, err := register.NewAnonymous(value, 8)
-		if err != nil {
-			return nil, err
-		}
+		r := register.NewAnonRegister(value, 8)
 		r.Add(1, false)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "DEC":
-		r, err := register.NewAnonymous(value, 8)
-		if err != nil {
-			return nil, err
-		}
+		r := register.NewAnonRegister(value, 8)
 		r.Add(255, false)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp, err := register.NewAnonymous(mc.A, mc.A.Size())
-		if err != nil {
-			return nil, err
-		}
+		cmp := register.NewAnonRegister(mc.A, mc.A.Size())
 
 		// maybe surprisingly, CMP can be implemented with binary subtract even
 		// if decimal mode is active (the meaning is the same)
@@ -902,28 +887,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp, err := register.NewAnonymous(mc.X, mc.X.Size())
-		if err != nil {
-			return nil, err
-		}
+		cmp := register.NewAnonRegister(mc.X, mc.X.Size())
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp, err := register.NewAnonymous(mc.Y, mc.Y.Size())
-		if err != nil {
-			return nil, err
-		}
+		cmp := register.NewAnonRegister(mc.Y, mc.Y.Size())
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp, err := register.NewAnonymous(value, mc.A.Size())
-		if err != nil {
-			return nil, err
-		}
+		cmp := register.NewAnonRegister(value, mc.A.Size())
 		mc.Status.Sign = cmp.IsNegative()
 		mc.Status.Overflow = cmp.IsBitV()
 		cmp.AND(mc.A)
@@ -1000,7 +976,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if !mc.NoSideEffects {
 			// push MSB of PC onto stack, and decrement SP
 			// +1 cycle
-			err = mc.mem.Write(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
+			err = mc.write8Bit(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
 			if err != nil {
 				return nil, err
 			}
@@ -1011,7 +987,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if !mc.NoSideEffects {
 			// push LSB of PC onto stack, and decrement SP
 			// +1 cycle
-			err = mc.mem.Write(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
+			err = mc.write8Bit(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
 			if err != nil {
 				return nil, err
 			}
@@ -1083,7 +1059,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	// write altered value back to memory for RMW instructions
 	if defn.Effect == definitions.RMW {
 		if !mc.NoSideEffects {
-			err = mc.mem.Write(address, value)
+			err = mc.write8Bit(address, value)
 			if err != nil {
 				return nil, err
 

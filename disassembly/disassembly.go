@@ -32,7 +32,7 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.
 	dsm.SequencePoints = make([]uint16, 0, memory.Cart.Memtop()-memory.Cart.Origin())
 
 	// create a new non-branching CPU to disassemble memory
-	mc, err := cpu.New(memory)
+	mc, err := cpu.NewCPU(memory)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 		}
 	}
 
-	mem, err := memory.New()
+	mem, err := memory.NewVCSMemory()
 	if err != nil {
 		return nil, err
 	}

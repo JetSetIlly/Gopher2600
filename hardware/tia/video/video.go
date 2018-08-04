@@ -22,13 +22,9 @@ type Video struct {
 	Collisions collisions
 }
 
-// New is the preferred method of initialisation for the Video structure
-func New(colorClock *colorclock.ColorClock) *Video {
+// NewVideo is the preferred method of initialisation for the Video structure
+func NewVideo(colorClock *colorclock.ColorClock) *Video {
 	vd := new(Video)
-	if vd == nil {
-		return nil
-	}
-
 	vd.colorClock = colorClock
 
 	// playfield

@@ -64,7 +64,7 @@ func NewMockVCSMem() (*MockVCSMem, error) {
 	mem := new(MockVCSMem)
 
 	// use the memory.VCS implementation of memory.Bus
-	mem.CPUBus, err = memory.New()
+	mem.CPUBus, err = memory.NewVCSMemory()
 	if err != nil {
 		return nil, err
 	}

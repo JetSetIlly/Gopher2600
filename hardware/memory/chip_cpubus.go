@@ -16,12 +16,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	sym := vcssymbols.ReadSymbols[address]
 	if sym == "" {
-		// silently ignore illegal reads (we're definitely reading from the correct
-		// memory space but some registers are not readable)
-		//
-		// TODO: add a GopherError that can be ignored or noted as appropriate
-		// for the application
-		return 0, nil
+		return 0, errors.NewGopherError(errors.UnreadableAddress, address)
 	}
 
 	return area.memory[address-area.origin], nil
@@ -33,14 +28,12 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
-		return errors.GopherError{Errno: errors.UnservicedChipWrite, Values: errors.Values{vcssymbols.WriteSymbols[area.lastWriteAddress]}}
+		return errors.NewGopherError(errors.UnservicedChipWrite, vcssymbols.WriteSymbols[area.lastWriteAddress])
 	}
 
 	sym := vcssymbols.WriteSymbols[address]
 	if sym == "" {
-		// silently ignore illegal writes (we're definitely writing to the correct
-		// memory space but some registers are not writable)
-		return nil
+		return errors.NewGopherError(errors.UnwritableAddress, address)
 	}
 
 	// note address of write

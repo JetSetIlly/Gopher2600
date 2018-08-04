@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"fmt"
+	"gopher2600/errors"
 	"os"
 )
 
@@ -28,9 +28,6 @@ type Cartridge struct {
 // newCart is the preferred method of initialisation for the cartridges
 func newCart() *Cartridge {
 	cart := new(Cartridge)
-	if cart == nil {
-		return nil
-	}
 	cart.label = "Cartridge"
 	cart.origin = 0x1000
 	cart.memtop = 0x1fff
@@ -70,14 +67,14 @@ func (cart Cartridge) Read(address uint16) (uint8, error) {
 
 // Implementation of CPUBus.Write
 func (cart *Cartridge) Write(address uint16, data uint8) error {
-	return fmt.Errorf("refusing to write to cartridge")
+	return errors.NewGopherError(errors.UnwritableAddress, address)
 }
 
 // Attach loads the bytes from a cartridge (represented by 'filename')
 func (cart *Cartridge) Attach(filename string) error {
 	cf, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("error opening cartridge (%s)", err)
+		return errors.NewGopherError(errors.CartridgeFileCannotOpen, err)
 	}
 	defer func() {
 		_ = cf.Close()
@@ -92,7 +89,7 @@ func (cart *Cartridge) Attach(filename string) error {
 	// check that cartridge is of a supported size
 	// TODO: ensure that this is a complete and accurate check
 	if cfi.Size()%bankSize != 0 {
-		return fmt.Errorf("cartridge (%s) is not of a supported size (%d)", filename, cfi.Size())
+		return errors.NewGopherError(errors.CartridgeFileCannotOpen, cfi.Size())
 	}
 
 	// allocate enough memory for new cartridge
@@ -104,7 +101,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		return err
 	}
 	if n != len(cart.memory) {
-		return fmt.Errorf("error reading cartridge file (%s)", filename)
+		return errors.NewGopherError(errors.CartridgeFileError, errors.FileTruncated)
 	}
 
 	// make sure we're pointing to the first bank

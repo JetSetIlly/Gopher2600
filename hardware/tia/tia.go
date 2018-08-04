@@ -50,13 +50,9 @@ func (tia TIA) String() string {
 	return tia.MachineInfo()
 }
 
-// New is the preferred method of initialisation for the TIA structure
-func New(tv television.Television, mem memory.ChipBus) *TIA {
+// NewTIA creates a TIA, to be used in a VCS emulation
+func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := new(TIA)
-	if tia == nil {
-		return nil
-	}
-
 	tia.tv = tv
 	tia.mem = mem
 
@@ -79,7 +75,7 @@ func New(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.New(tia.colorClock)
+	tia.Video = video.NewVideo(tia.colorClock)
 	if tia.Video == nil {
 		return nil
 	}

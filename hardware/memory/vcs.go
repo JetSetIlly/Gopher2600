@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
@@ -24,43 +25,33 @@ type VCSMemory struct {
 
 // TODO: allow reading only when 02 clock is high and writing when it is low
 
-// New is the preferred method of initialisation for VCSMemory
-func New() (*VCSMemory, error) {
+// NewVCSMemory is the preferred method of initialisation for VCSMemory
+func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
-	if mem == nil {
-		return nil, fmt.Errorf("can't allocate memory for VCS")
-	}
-
 	mem.memmap = make(map[uint16]Area)
+
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
 	mem.PIA = newPIA()
 	mem.Cart = newCart()
-
-	if mem.memmap == nil || mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
-		return nil, fmt.Errorf("can't allocate memory for VCS")
+	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
+		return nil, fmt.Errorf("error creating memory areas")
 	}
 
 	// create the memory map; each address in the memory map points to the
 	// memory area it resides in. we only record 'primary' addresses; all
 	// addresses should be passed through the MapAddress() function in order
 	// to iron out any mirrors
-
-	var i uint16
-
-	for i = mem.TIA.origin; i <= mem.TIA.memtop; i++ {
+	for i := mem.TIA.origin; i <= mem.TIA.memtop; i++ {
 		mem.memmap[i] = mem.TIA
 	}
-
-	for i = mem.PIA.origin; i <= mem.PIA.memtop; i++ {
+	for i := mem.PIA.origin; i <= mem.PIA.memtop; i++ {
 		mem.memmap[i] = mem.PIA
 	}
-
-	for i = mem.RIOT.origin; i <= mem.RIOT.memtop; i++ {
+	for i := mem.RIOT.origin; i <= mem.RIOT.memtop; i++ {
 		mem.memmap[i] = mem.RIOT
 	}
-
-	for i = mem.Cart.origin; i <= mem.Cart.memtop; i++ {
+	for i := mem.Cart.origin; i <= mem.Cart.memtop; i++ {
 		mem.memmap[i] = mem.Cart
 	}
 
@@ -102,7 +93,7 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address)
 	area, present := mem.memmap[ma]
 	if !present {
-		return 0, fmt.Errorf("%04x not mapped correctly", address)
+		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
 	return area.(CPUBus).Read(ma)
 }
@@ -138,12 +129,12 @@ func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, e
 			}
 		}
 	default:
-		return 0, 0, "", "", fmt.Errorf("unrecognised address (%v)", address)
+		return 0, 0, "", "", errors.NewGopherError(errors.UnrecognisedAddress, address)
 	}
 
 	area, present := mem.memmap[ma]
 	if !present {
-		return 0, 0, area.Label(), "", fmt.Errorf("%04x not mapped correctly", address)
+		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
 
 	return area.(Area).Peek(ma)

@@ -465,7 +465,7 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 
 func TestCPU(t *testing.T) {
 	mem := NewMockMem()
-	mc, err := cpu.New(mem)
+	mc, err := cpu.NewCPU(mem)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

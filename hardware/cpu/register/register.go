@@ -20,22 +20,19 @@ type Register struct {
 	binformat string
 }
 
-// NewAnonymous initialises a new register without a name
-func NewAnonymous(value interface{}, size int) (*Register, error) {
-	return New(value, size, "", "")
+// NewAnonRegister initialises a new register without a name
+func NewAnonRegister(value interface{}, size int) *Register {
+	return NewRegister(value, size, "", "")
 }
 
-// New is the preferred method of initialisation for Register
-func New(value interface{}, size int, label string, shortLabel string) (*Register, error) {
+// NewRegister creates a new register of a givel size and name, and initialises
+// the value
+func NewRegister(value interface{}, size int, label string, shortLabel string) *Register {
 	if size != 8 && size != 16 {
-		return nil, fmt.Errorf("can't create register (%s) - unsupported bit size (%d)", label, size)
+		panic(fmt.Errorf("cannot create register (%s) - unsupported bit size (%d)", label, size))
 	}
 
 	r := new(Register)
-	if r == nil {
-		return nil, fmt.Errorf("can't allocate memory for CPU register (%s)", label)
-	}
-
 	switch value := value.(type) {
 	case *Register:
 		r.value = value.value
@@ -48,7 +45,7 @@ func New(value interface{}, size int, label string, shortLabel string) (*Registe
 	case uint16:
 		r.value = uint32(value)
 	default:
-		return nil, fmt.Errorf("can't create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value))
+		panic(fmt.Errorf("cannot create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value)))
 	}
 
 	r.size = size
@@ -69,7 +66,7 @@ func New(value interface{}, size int, label string, shortLabel string) (*Registe
 		r.binformat = "%016b"
 	}
 
-	return r, nil
+	return r
 }
 
 // Size returns the number of bits in register
@@ -100,7 +97,7 @@ func (r Register) IsBitV() bool {
 func (r Register) FromInt(v interface{}) string {
 	switch v.(type) {
 	case int:
-		tr, _ := New(v, r.size, r.label, r.shortLabel)
+		tr := NewRegister(v, r.size, r.label, r.shortLabel)
 		return fmt.Sprintf("%s=%s", tr.shortLabel, tr.ToHex())
 	default:
 		return r.shortLabel
@@ -174,7 +171,7 @@ func (r *Register) Load(v interface{}) {
 	case uint16:
 		r.value = uint32(v) & r.mask
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 }
 
@@ -211,7 +208,7 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 		}
 		postNeg = uint32(v)&r.signBit == r.signBit
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 
 	carry = ^r.mask&r.value != 0
@@ -236,7 +233,7 @@ func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
 	case uint8:
 		val = int(v)
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 
 	// no need to do anything if operand is zero
@@ -261,7 +258,7 @@ func (r *Register) AND(v interface{}) {
 	case uint8:
 		r.value &= uint32(v)
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 	r.value &= r.mask
 }
@@ -286,7 +283,7 @@ func (r *Register) EOR(v interface{}) {
 	case uint8:
 		r.value ^= uint32(v)
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 	r.value &= r.mask
 }
@@ -311,7 +308,7 @@ func (r *Register) ORA(v interface{}) {
 	case uint8:
 		r.value |= uint32(v)
 	default:
-		panic(fmt.Sprintf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
 	}
 	r.value &= r.mask
 }

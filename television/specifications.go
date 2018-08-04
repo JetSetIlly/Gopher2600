@@ -20,9 +20,6 @@ var specPAL *specification
 
 func init() {
 	specNTSC = new(specification)
-	if specNTSC == nil {
-		panic("error during initialisation of NTSC specification")
-	}
 	specNTSC.ClocksPerHblank = 68
 	specNTSC.ClocksPerVisible = 160
 	specNTSC.ClocksPerScanline = 228
@@ -34,9 +31,6 @@ func init() {
 	specNTSC.Colors = ntscColors
 
 	specPAL = new(specification)
-	if specPAL == nil {
-		panic("error during initialisation of PAL specification")
-	}
 	specPAL.ClocksPerHblank = 68
 	specPAL.ClocksPerVisible = 160
 	specPAL.ClocksPerScanline = 228

@@ -23,7 +23,7 @@ func init() {
 		table6bits[i] = fmt.Sprintf("%06b", p)
 	}
 	if table6bits[63] != "000000" {
-		panic("error during 6 bit polycounter generation")
+		panic(fmt.Errorf("error during 6 bit polycounter generation"))
 	}
 
 	// force the final value to be the invalid polycounter value. this is only
@@ -32,13 +32,13 @@ func init() {
 }
 
 // LookupPattern returns the index of the specified pattern
-func LookupPattern(pattern string) (int, error) {
+func LookupPattern(pattern string) int {
 	for i := 0; i < len(table6bits); i++ {
 		if table6bits[i] == pattern {
-			return i, nil
+			return i
 		}
 	}
-	return 0, fmt.Errorf("could not find pattern (%s) in 6 bit lookup table", pattern)
+	panic(fmt.Errorf("could not find pattern (%s) in 6 bit lookup table", pattern))
 }
 
 // Polycounter implements the VCS method of counting. It is doesn't require
@@ -59,10 +59,7 @@ type Polycounter struct {
 // resets during a Tick(). this should be called at least once or the reset
 // pattern will be "000000" which is probably not what you want
 func (pk *Polycounter) SetResetPattern(resetPattern string) {
-	i, err := LookupPattern(resetPattern)
-	if err != nil {
-		panic("couldn't find reset pattern in polycounter table")
-	}
+	i := LookupPattern(resetPattern)
 	pk.ResetPoint = i
 }
 

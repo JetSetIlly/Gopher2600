@@ -32,31 +32,32 @@ type VCS struct {
 	controller *peripherals.Stick
 }
 
-// New is the preferred method of initialisation for the VCS structure
-func New(tv television.Television) (*VCS, error) {
+// NewVCS creates a new VCS and everything associated with the hardware. It is
+// used for all aspects of emulation: debugging sessions, and regular play
+func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
 	vcs := new(VCS)
 	vcs.TV = tv
 
-	vcs.Mem, err = memory.New()
+	vcs.Mem, err = memory.NewVCSMemory()
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.MC, err = cpu.New(vcs.Mem)
+	vcs.MC, err = cpu.NewCPU(vcs.Mem)
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.TIA = tia.New(vcs.TV, vcs.Mem.TIA)
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
-		return nil, fmt.Errorf("can't allocate memory for VCS TIA")
+		return nil, fmt.Errorf("can't create TIA")
 	}
 
-	vcs.RIOT = riot.New(vcs.Mem.RIOT)
+	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
-		return nil, fmt.Errorf("can't allocate memory for VCS RIOT")
+		return nil, fmt.Errorf("can't create RIOT")
 	}
 
 	vcs.panel = peripherals.NewPanel(vcs.Mem.RIOT)
@@ -66,8 +67,8 @@ func New(tv television.Television) (*VCS, error) {
 
 	// TODO: better contoller support
 	vcs.controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
-	if vcs.panel == nil {
-		return nil, fmt.Errorf("can't create new stick controller")
+	if vcs.controller == nil {
+		return nil, fmt.Errorf("can't create stick controller")
 	}
 
 	return vcs, nil

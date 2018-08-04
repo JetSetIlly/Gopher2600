@@ -10,7 +10,7 @@ const (
 )
 
 func TestMemory(t *testing.T) {
-	mem, err := memory.New()
+	mem, err := memory.NewVCSMemory()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

@@ -3,6 +3,7 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/ui"
+	"gopher2600/errors"
 	"os"
 	"strings"
 )
@@ -12,7 +13,7 @@ func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
 	// open script and defer closing
 	sf, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, fmt.Errorf("error opening script (%s)", err)
+		return nil, errors.NewGopherError(errors.ScriptFileCannotOpen, err)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -33,7 +34,7 @@ func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
 		return nil, err
 	}
 	if n != len(buffer) {
-		return nil, fmt.Errorf("error reading scriptfile file (%s)", scriptfile)
+		return nil, errors.NewGopherError(errors.ScriptFileError, errors.FileTruncated)
 	}
 
 	// convert buffer to an array of lines

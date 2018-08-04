@@ -85,7 +85,7 @@ func (tv *SDLTV) RegisterCallback(request television.CallbackReq, callback func(
 		tv.onWindowClose = callback
 		tv.guiLoopLock.Unlock()
 	default:
-		return errors.GopherError{Errno: errors.UnknownCallbackRequest, Values: errors.Values{request}}
+		return errors.NewGopherError(errors.UnknownCallbackRequest, request)
 	}
 
 	return nil

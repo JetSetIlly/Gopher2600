@@ -1,7 +1,6 @@
 package sdltv
 
 import (
-	"fmt"
 	"gopher2600/television"
 	"sync"
 	"time"
@@ -54,14 +53,11 @@ type SDLTV struct {
 	guiLoopLock sync.Mutex
 }
 
-// NewSDLTV is the preferred method for initalising an SDL TV
+// NewSDLTV initiliases a new instance of an SDL based display for the VCS
 func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	var err error
 
 	tv := new(SDLTV)
-	if tv == nil {
-		return nil, fmt.Errorf("can't allocate memory for sdl tv")
-	}
 
 	err = television.InitHeadlessTV(&tv.HeadlessTV, tvType)
 	if err != nil {
@@ -79,7 +75,8 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	// for the renderer
 	tv.pixelWidth = 2
 
-	// pixel scale
+	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
+	// the screen
 	tv.pixelScale = scale
 
 	// SDL initialisation
@@ -124,13 +121,8 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 	// register callbacks from HeadlessTV to SDLTV
 	tv.NewFrame = func() error {
-		err := tv.update()
-		if err != nil {
-			return err
-		}
-		tv.scr.swapBuffer()
-
-		return nil
+		defer tv.scr.swapBuffer()
+		return tv.update()
 	}
 
 	// update tv with a black image

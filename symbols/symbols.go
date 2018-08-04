@@ -57,7 +57,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		if cartridgeFilename == "" {
 			return table, nil
 		}
-		return table, errors.GopherError{Errno: errors.NoSymbolsFile, Values: errors.Values{cartridgeFilename}}
+		return table, errors.NewGopherError(errors.SymbolsFileCannotOpen, cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -66,17 +66,17 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	// get file info
 	sfi, err := sf.Stat()
 	if err != nil {
-		return table, errors.GopherError{Errno: errors.SymbolsFileError, Values: errors.Values{err}}
+		return table, errors.NewGopherError(errors.SymbolsFileError, err)
 	}
 
 	// read symbols file and split into lines
 	sym := make([]byte, sfi.Size())
 	n, err := sf.Read(sym)
 	if err != nil {
-		return table, errors.GopherError{Errno: errors.SymbolsFileError, Values: errors.Values{err}}
+		return table, errors.NewGopherError(errors.SymbolsFileError, err)
 	}
 	if n != len(sym) {
-		return table, errors.GopherError{Errno: errors.SymbolsFileError, Values: errors.Values{"file truncated"}}
+		return table, errors.NewGopherError(errors.SymbolsFileError, errors.FileTruncated)
 	}
 	lines := strings.Split(string(sym), "\n")
 

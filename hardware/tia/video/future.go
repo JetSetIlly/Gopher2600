@@ -15,9 +15,6 @@ type future struct {
 // newFuture is the preferred method of initialisation for the pending type
 func newFuture() *future {
 	dc := new(future)
-	if dc == nil {
-		return nil
-	}
 	dc.remainingCycles = -1
 	dc.payload = true
 	return dc

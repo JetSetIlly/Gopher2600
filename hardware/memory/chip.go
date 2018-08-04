@@ -33,8 +33,8 @@ type ChipMemory struct {
 	lastReadRegister string
 
 	// the periphQueue is used to write to chip memory in a goroutine friendly
-	// manner. peripherals can be implemented with goroutines and so we need to
-	// be careful when accessing memory.
+	// manner (peripherals have been implemented with goroutines and so we need
+	// to be careful when accessing the memory array)
 	periphQueue chan *periphPayload
 }
 
@@ -63,7 +63,7 @@ func (area ChipMemory) Memtop() uint16 {
 func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
 	sym := vcssymbols.ReadSymbols[address&area.readMask]
 	if sym == "" {
-		return 0, 0, "", "", errors.GopherError{Errno: errors.UnreadableAddress, Values: nil}
+		return 0, 0, "", "", errors.NewGopherError(errors.UnreadableAddress, address)
 	}
 	return area.memory[address-area.origin], address & area.readMask, area.Label(), sym, nil
 }

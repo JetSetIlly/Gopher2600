@@ -37,7 +37,7 @@ func main() {
 	case "DEBUG":
 		dbg, err := debugger.NewDebugger()
 		if err != nil {
-			fmt.Printf("* error starting debugger (%s)\n", err)
+			fmt.Printf("* error starting debugger: %s\n", err)
 			os.Exit(10)
 		}
 
@@ -109,19 +109,19 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	if justTheVCS {
 		tv = new(television.DummyTV)
 		if tv == nil {
-			return fmt.Errorf("error creating television for fps profiler")
+			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
 		tv, err = sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 		if err != nil {
-			return fmt.Errorf("error creating television for fps profiler")
+			return fmt.Errorf("error preparing television: %s", err)
 		}
 	}
 	tv.SetVisibility(true)
 
-	vcs, err := hardware.New(tv)
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return fmt.Errorf("error starting fps profiler (%s)", err)
+		return fmt.Errorf("error preparing VCS: %s", err)
 	}
 
 	err = vcs.AttachCartridge(cartridgeFile)
@@ -160,13 +160,13 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 func run(cartridgeFile string) error {
 	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
 	if err != nil {
-		return fmt.Errorf("error creating television for fps profiler")
+		return fmt.Errorf("error preparing television: %s", err)
 	}
 	tv.SetVisibility(true)
 
-	vcs, err := hardware.New(tv)
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return fmt.Errorf("error starting fps profiler (%s)", err)
+		return fmt.Errorf("error preparing VCS: %s", err)
 	}
 
 	err = vcs.AttachCartridge(cartridgeFile)

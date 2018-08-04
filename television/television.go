@@ -61,10 +61,10 @@ func (DummyTV) SetPause(pause bool) error {
 
 // RequestTVState (with dummyTV reciever) is the null implementation
 func (DummyTV) RequestTVState(request TVStateReq) (*TVState, error) {
-	return nil, errors.GopherError{Errno: errors.UnknownStateRequest, Values: errors.Values{request}}
+	return nil, errors.NewGopherError(errors.UnknownStateRequest, request)
 }
 
 // RegisterCallback (with dummyTV reciever) is the null implementation
 func (DummyTV) RegisterCallback(request CallbackReq, callback func()) error {
-	return errors.GopherError{Errno: errors.UnknownCallbackRequest, Values: errors.Values{request}}
+	return errors.NewGopherError(errors.UnknownCallbackRequest, request)
 }
