@@ -12,28 +12,20 @@ type future struct {
 	payload futurePayload
 }
 
-// newFuture is the preferred method of initialisation for the pending type
-func newFuture() *future {
-	dc := new(future)
-	dc.remainingCycles = -1
-	dc.payload = true
-	return dc
-}
-
 // schedule the pending future action
 func (dc *future) schedule(cycles int, payload futurePayload) {
-	dc.remainingCycles = cycles
+	dc.remainingCycles = cycles + 1
 	dc.payload = payload
 }
 
 // isScheduled returns true if pending action has not yet resolved
 func (dc future) isScheduled() bool {
-	return dc.remainingCycles > -1
+	return dc.remainingCycles > 0
 }
 
 // tick moves the pending action counter on one step
 func (dc *future) tick() bool {
-	if dc.remainingCycles == 0 {
+	if dc.remainingCycles > 0 {
 		dc.remainingCycles--
 		return true
 	}

@@ -11,7 +11,7 @@ type missileSprite struct {
 	color        uint8
 	size         uint8
 	enable       bool
-	futureEnable *future
+	futureEnable future
 	triggerList  []int
 
 	// if any of the sprite's draw positions are reached but a reset position
@@ -24,12 +24,6 @@ type missileSprite struct {
 func newMissileSprite(label string, colorClock *colorclock.ColorClock) *missileSprite {
 	ms := new(missileSprite)
 	ms.sprite = newSprite(label, colorClock)
-
-	ms.futureEnable = newFuture()
-	if ms.futureEnable == nil {
-		return nil
-	}
-
 	return ms
 }
 

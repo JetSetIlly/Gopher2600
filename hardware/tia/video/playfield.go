@@ -32,7 +32,7 @@ type playfield struct {
 	// use the same future instance for all playfield registers. this is okay
 	// because the delay is so short there is no chance of another write being
 	// scheduled before the previous request has been resolved
-	futureWrite *future
+	futureWrite future
 
 	// screenRegion keeps track of which part of the screen we're currently in
 	//  0 -> hblank
@@ -48,10 +48,6 @@ type playfield struct {
 func newPlayfield(colorClock *colorclock.ColorClock) *playfield {
 	pf := new(playfield)
 	pf.colorClock = colorClock
-	pf.futureWrite = newFuture()
-	if pf.futureWrite == nil {
-		return nil
-	}
 	return pf
 }
 

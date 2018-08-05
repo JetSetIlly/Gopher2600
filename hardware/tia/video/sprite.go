@@ -19,7 +19,7 @@ type sprite struct {
 	colorClock *colorclock.ColorClock
 
 	// all sprites have a slight delay when resetting position
-	futureReset *future
+	futureReset future
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
@@ -46,11 +46,6 @@ func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
 	sp := new(sprite)
 	sp.label = label
 	sp.colorClock = colorClock
-
-	sp.futureReset = newFuture()
-	if sp.futureReset == nil {
-		return nil
-	}
 
 	sp.position.SetResetPattern("101101")
 

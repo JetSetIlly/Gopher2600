@@ -13,18 +13,12 @@ type ballSprite struct {
 	verticalDelay bool
 	enable        bool
 	enablePrev    bool
-	futureEnable  *future
+	futureEnable  future
 }
 
 func newBallSprite(label string, colorClock *colorclock.ColorClock) *ballSprite {
 	bs := new(ballSprite)
 	bs.sprite = newSprite(label, colorClock)
-
-	bs.futureEnable = newFuture()
-	if bs.futureEnable == nil {
-		return nil
-	}
-
 	return bs
 }
 
