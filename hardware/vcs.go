@@ -30,6 +30,14 @@ type VCS struct {
 
 	panel      *peripherals.Panel
 	controller *peripherals.Stick
+
+	// treat the side effects of the CPU after every CPU cycle or only at the
+	// end of each instruction (monolithic)
+	//
+	// NOTE: for correct emulation this flag should definitely be false. the
+	// flag is provided only so to demonstrate the difference between the two
+	// strategies
+	monolithCPU bool
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -107,42 +115,72 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	// cpuCycles will continue to accumulate until the WSYNC has been resolved.
 	cpuCycles := 0
 
-	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
-	// function defines the order of operation for the rest of the VCS for
-	// every CPU cycle.
-	cycleVCS := func(r *result.Instruction) {
-		cpuCycles++
+	if vcs.monolithCPU {
+		r, err = vcs.MC.ExecuteInstruction(func(*result.Instruction) {})
+		if err != nil {
+			return cpuCycles, nil, err
+		}
 
-		// run riot only once per CPU cycle
-		// TODO: not sure when in the video cycle sequence it should be run
-		// TODO: is this something that can drift, thereby causing subtly different
-		// results / graphical effects? is this what RSYNC is for?
+		cpuCycles = r.ActualCycles
 
 		vcs.RIOT.ReadRIOTMemory()
-		vcs.RIOT.Step()
-
-		// three color clocks per CPU cycle so we run video cycle three times
-
 		vcs.TIA.ReadTIAMemory()
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		videoCycleCallback(r)
 
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		videoCycleCallback(r)
+		for i := 0; i < cpuCycles; i++ {
+			vcs.RIOT.Step()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		}
 
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		videoCycleCallback(r)
-	}
+		// CPU has been left in the unready state - continue cycling the VCS hardware
+		// until the CPU is ready
+		for !vcs.MC.RdyFlg {
+			cpuCycles++
+			vcs.RIOT.Step()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		}
 
-	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
-	if err != nil {
-		return cpuCycles, nil, err
-	}
+	} else {
+		// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
+		// function defines the order of operation for the rest of the VCS for
+		// every CPU cycle.
+		cycleVCS := func(r *result.Instruction) {
+			cpuCycles++
 
-	// CPU has been left in the unready state - continue cycling the VCS hardware
-	// until the CPU is ready
-	for !vcs.MC.RdyFlg {
-		cycleVCS(r)
+			// run riot only once per CPU cycle
+			// TODO: not sure when in the video cycle sequence it should be run
+			// TODO: is this something that can drift, thereby causing subtly different
+			// results / graphical effects? is this what RSYNC is for?
+
+			vcs.RIOT.ReadRIOTMemory()
+			vcs.RIOT.Step()
+
+			// three color clocks per CPU cycle so we run video cycle three times
+
+			vcs.TIA.ReadTIAMemory()
+			vcs.TIA.StepVideoCycle()
+			videoCycleCallback(r)
+
+			vcs.TIA.StepVideoCycle()
+			videoCycleCallback(r)
+
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			videoCycleCallback(r)
+		}
+
+		r, err = vcs.MC.ExecuteInstruction(cycleVCS)
+		if err != nil {
+			return cpuCycles, nil, err
+		}
+
+		// CPU has been left in the unready state - continue cycling the VCS hardware
+		// until the CPU is ready
+		for !vcs.MC.RdyFlg {
+			cycleVCS(r)
+		}
 	}
 
 	return cpuCycles, r, nil
