@@ -1,3 +1,7 @@
+// traps are used to halt execution of the emulator when the target *changes*
+// from its current value to any other value. compare to breakpoints which halt
+// execution when the target is *changed to* a specific value.
+
 package debugger
 
 import (
@@ -15,7 +19,7 @@ type traps struct {
 // trapper defines a specific trap
 type trapper struct {
 	target    target
-	origValue int
+	origValue interface{}
 }
 
 // newTraps is the preferred method of initialisation for traps
@@ -36,12 +40,12 @@ func (tr *traps) clear() {
 func (tr *traps) check() bool {
 	trapped := false
 	for i := range tr.traps {
-		ntr := tr.traps[i].target.ToInt() != tr.traps[i].origValue
-		if ntr {
-			tr.traps[i].origValue = tr.traps[i].target.ToInt()
+		hasTrapped := tr.traps[i].target.Value() != tr.traps[i].origValue
+		if hasTrapped {
+			tr.traps[i].origValue = tr.traps[i].target.Value()
 			tr.dbg.print(ui.Feedback, "trap on %s", tr.traps[i].target.ShortLabel())
 		}
-		trapped = ntr || trapped
+		trapped = hasTrapped || trapped
 	}
 
 	return trapped
@@ -81,7 +85,7 @@ func (tr *traps) parseTrap(parts []string) error {
 		}
 
 		if addNewTrap {
-			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.ToInt()})
+			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.Value()})
 		}
 	}
 

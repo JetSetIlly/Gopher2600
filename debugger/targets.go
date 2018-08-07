@@ -10,7 +10,7 @@ import (
 type target interface {
 	Label() string
 	ShortLabel() string
-	ToInt() int
+	Value() interface{}
 }
 
 // parseTarget uses a keyword to decide which part of the vcs to target
@@ -39,9 +39,5 @@ func parseTarget(vcs *hardware.VCS, keyword string) (target, error) {
 		return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return trg, nil
+	return trg, err
 }

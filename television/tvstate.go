@@ -24,13 +24,13 @@ type TVState struct {
 }
 
 // Label returns the verbose label of the TVState
-// (implements debugger.target)
+// (implements debugger.target interface)
 func (ts TVState) Label() string {
 	return ts.label
 }
 
 // ShortLabel returns the terse label of the TVState
-// (implements debugger.target)
+// (implements debugger.target interface)
 func (ts TVState) ShortLabel() string {
 	return ts.shortLabel
 }
@@ -52,8 +52,8 @@ func (ts TVState) String() string {
 	return ts.MachineInfo()
 }
 
-// ToInt returns the value as an integer
-// (implements debugger.target)
-func (ts TVState) ToInt() int {
+// Value returns the canonical value of the tv state
+// (implements debugger.target interface)
+func (ts TVState) Value() interface{} {
 	return ts.value
 }

@@ -57,6 +57,9 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.
 				case errors.UnimplementedInstruction:
 					// ignore unimplemented instructions
 					continue
+				case errors.UnreadableAddress:
+					// ignore unreadable addresses
+					continue
 				default:
 					return err
 				}

@@ -1,3 +1,7 @@
+// breakpoints are used to halt execution when a  target is *changed to* a
+// specific value.  compare to traps which are used to halt execution when the
+// target *changes* from its current value to any other value.
+
 package debugger
 
 import (
@@ -12,13 +16,13 @@ type breakpoints struct {
 	breaks []breaker
 
 	// ignore certain target values
-	ignoredBreakerStates map[target]int
+	ignoredBreakerStates map[target]interface{}
 }
 
 // breaker defines a specific break condition
 type breaker struct {
 	target target
-	value  int
+	value  interface{}
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
@@ -49,9 +53,9 @@ func (bp *breakpoints) clear() {
 //		A == v -> breaks
 //
 func (bp *breakpoints) prepareBreakpoints() {
-	bp.ignoredBreakerStates = make(map[target]int, len(bp.breaks))
+	bp.ignoredBreakerStates = make(map[target]interface{}, len(bp.breaks))
 	for _, b := range bp.breaks {
-		bp.ignoredBreakerStates[b.target] = b.target.ToInt()
+		bp.ignoredBreakerStates[b.target] = b.target.Value()
 	}
 }
 
@@ -62,10 +66,10 @@ func (bp *breakpoints) check() bool {
 	broken := false
 	for i := range bp.breaks {
 		// check current value of target with the requested value
-		if bp.breaks[i].target.ToInt() == bp.breaks[i].value {
+		if bp.breaks[i].target.Value() == bp.breaks[i].value {
 			// make sure that we're not breaking on an ignore state
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
-			if !prs || prs && bp.breaks[i].target.ToInt() != bv {
+			if !prs || prs && bp.breaks[i].target.Value() != bv {
 				bp.dbg.print(ui.Feedback, "break on %s=%d", bp.breaks[i].target.ShortLabel(), bp.breaks[i].value)
 				broken = true
 			}
@@ -77,7 +81,7 @@ func (bp *breakpoints) check() bool {
 	if !broken {
 		for i := range bp.breaks {
 			bv, prs := bp.ignoredBreakerStates[bp.breaks[i].target]
-			if prs && bp.breaks[i].target.ToInt() != bv {
+			if prs && bp.breaks[i].target.Value() != bv {
 				delete(bp.ignoredBreakerStates, bp.breaks[i].target)
 			}
 		}
