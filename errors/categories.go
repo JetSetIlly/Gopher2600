@@ -3,7 +3,11 @@ package errors
 // list of error numbers
 const (
 	// Debugger
-	SymbolsFileCannotOpen Errno = iota
+	InputInvalidCommand Errno = iota
+	InputTooManyArgs
+	InputTooFewArgs
+	InputEmpty
+	SymbolsFileCannotOpen
 	SymbolsFileError
 	SymbolUnknown
 	ScriptFileCannotOpen

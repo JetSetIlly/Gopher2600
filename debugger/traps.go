@@ -7,7 +7,6 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/ui"
-	"strings"
 )
 
 // traps keeps track of all the currently defined trappers
@@ -65,12 +64,10 @@ func (tr traps) list() {
 	}
 }
 
-func (tr *traps) parseTrap(parts []string) error {
-	// loop over parts, allowing multiple traps to be applied
-	for i := 1; i < len(parts); i++ {
-		parts[i] = strings.ToUpper(parts[i])
-
-		tgt, err := parseTarget(tr.dbg.vcs, parts[i])
+func (tr *traps) parseTrap(tokens *tokens) error {
+	_, present := tokens.peek()
+	for present {
+		tgt, err := parseTarget(tr.dbg, tokens)
 		if err != nil {
 			return err
 		}
@@ -87,6 +84,8 @@ func (tr *traps) parseTrap(parts []string) error {
 		if addNewTrap {
 			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.Value()})
 		}
+
+		_, present = tokens.peek()
 	}
 
 	return nil

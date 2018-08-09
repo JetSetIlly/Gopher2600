@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"gopher2600/errors"
+	"strings"
 )
 
 // ArgType defines the expected argument type
@@ -58,41 +60,48 @@ func (a CommandArgs) minLen() (m int) {
 	return
 }
 
-// CheckCommandInput checks whether input is correct according to the
+// ValidateInput checks whether input is correct according to the
 // command definitions
-func (options Commands) CheckCommandInput(input []string) error {
+func (options Commands) ValidateInput(input []string) error {
 	var args CommandArgs
+
+	// if input is empty then return
+	if len(input) == 0 {
+		return errors.NewGopherError(errors.InputEmpty)
+	}
+
+	input[0] = strings.ToUpper(input[0])
 
 	// basic check for whether command is recognised
 	var ok bool
 	if args, ok = options[input[0]]; !ok {
-		return fmt.Errorf("%s is not a debugging command", input[0])
+		return errors.NewGopherError(errors.InputInvalidCommand, fmt.Sprintf("%s is not a debugging command", input[0]))
 	}
 
 	//  too *many* arguments have been supplied
 	if len(input)-1 > args.maxLen() {
-		return fmt.Errorf("too many arguments for %s", input[0])
+		return errors.NewGopherError(errors.InputTooManyArgs, fmt.Sprintf("too many arguments for %s", input[0]))
 	}
 
 	// too *few* arguments have been supplied
 	if len(input)-1 < args.minLen() {
 		switch args[len(input)-1].Typ {
 		case ArgKeyword:
-			return fmt.Errorf("keyword required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("keyword required for %s", input[0]))
 		case ArgFile:
-			return fmt.Errorf("filename required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("filename required for %s", input[0]))
 		case ArgAddress:
-			return fmt.Errorf("address required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("address required for %s", input[0]))
 		case ArgTarget:
-			return fmt.Errorf("emulation target required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("emulation target required for %s", input[0]))
 		case ArgValue:
-			return fmt.Errorf("numeric argument required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("numeric argument required for %s", input[0]))
 		case ArgString:
-			return fmt.Errorf("string argument required for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("string argument required for %s", input[0]))
 		default:
 			// TODO: argument types can be OR'd together. breakdown these types
 			// to give more useful information
-			return fmt.Errorf("too few arguments for %s", input[0])
+			return errors.NewGopherError(errors.InputTooFewArgs, fmt.Sprintf("too few arguments for %s", input[0]))
 		}
 	}
 

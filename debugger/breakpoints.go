@@ -7,7 +7,6 @@ package debugger
 import (
 	"gopher2600/debugger/ui"
 	"strconv"
-	"strings"
 )
 
 // breakpoints keeps track of all the currently defined breaker
@@ -41,17 +40,6 @@ func (bp *breakpoints) clear() {
 // of all Targets. we can then use these stored values to know what to
 // ignore. used primarily so that we're not breaking immediately on a previous
 // breakstate.
-//
-// one possible flaw in the current implementation of this idea is that the
-// emulation will not honour new breaks until the value has cycled back to the
-// break value:
-//
-//    A == v
-//		break A v
-//    A == v -> no break
-//    A == w -> no break
-//		A == v -> breaks
-//
 func (bp *breakpoints) prepareBreakpoints() {
 	bp.ignoredBreakerStates = make(map[target]interface{}, len(bp.breaks))
 	for _, b := range bp.breaks {
@@ -100,7 +88,7 @@ func (bp breakpoints) list() {
 	}
 }
 
-func (bp *breakpoints) parseBreakpoint(parts []string) error {
+func (bp *breakpoints) parseBreakpoint(tokens *tokens) error {
 	var tgt target
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
@@ -109,15 +97,14 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 	// something appropriate
 	tgt = bp.dbg.vcs.MC.PC
 
-	// loop over parts. if part is a number then add the breakpoint for the
+	// loop over tokens. if token is a number then add the breakpoint for the
 	// current target. if it is not a number, look for a keyword that changes
 	// the target (or run a BREAK meta-command)
 	//
 	// note that this method of looping allows the user to chain break commands
-	for i := 1; i < len(parts); i++ {
-		parts[i] = strings.ToUpper(parts[i])
-
-		val, err := strconv.ParseUint(parts[i], 0, 16)
+	a, present := tokens.get()
+	for present {
+		val, err := strconv.ParseUint(a, 0, 16)
 		if err == nil {
 			// check to see if breakpoint already exists
 			addNewBreak := true
@@ -131,14 +118,15 @@ func (bp *breakpoints) parseBreakpoint(parts []string) error {
 			if addNewBreak {
 				bp.breaks = append(bp.breaks, breaker{target: tgt, value: int(val)})
 			}
-
 		} else {
-			// defer parsing of other keywords to parseTargets()
-			tgt, err = parseTarget(bp.dbg.vcs, parts[i])
+			tokens.unget()
+			tgt, err = parseTarget(bp.dbg, tokens)
 			if err != nil {
 				return err
 			}
 		}
+
+		a, present = tokens.get()
 	}
 
 	return nil

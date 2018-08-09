@@ -2,6 +2,10 @@ package errors
 
 var messages = map[Errno]string{
 	// Debugger
+	InputInvalidCommand:   "%s",
+	InputTooManyArgs:      "%s",
+	InputTooFewArgs:       "%s",
+	InputEmpty:            "%s",
 	SymbolsFileCannotOpen: "no symbols file for %s",
 	SymbolsFileError:      "error processing symbols file (%s)",
 	SymbolUnknown:         "unrecognised symbol (%s)",

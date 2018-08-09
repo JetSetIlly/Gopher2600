@@ -411,67 +411,61 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// TODO: categorise commands into script-safe and non-script-safe
 
-	// remove leading/trailing space
-	input = strings.TrimSpace(input)
+	// tokenise input
+	tokens := tokeniseInput(input)
 
-	// if the input is empty then return true, indicating that the emulation
-	// should "step" forward once
-	if input == "" {
-		return true, nil
-	}
-
-	// divide user input into parts and convert to upper-case for easy parsing
-	// input is unchanged in case we need the original user-case
-	parts := strings.Fields(input)
-
-	// normalise variations in syntax
-	for i := 0; i < len(parts); i++ {
-		// normalise hex notation
-		if parts[i][0] == '$' {
-			parts[i] = fmt.Sprintf("0x%s", parts[i][1:])
+	// check validity of input -- this allows us to catch errors early and in
+	// many cases to ignore the "success" flag when calling tokens.item()
+	if err := DebuggerCommands.ValidateInput(tokens.tokens); err != nil {
+		switch err := err.(type) {
+		case errors.GopherError:
+			switch err.Errno {
+			case errors.InputEmpty:
+				// user pressed return
+				return true, nil
+			}
 		}
-	}
-
-	// normalise case of first entry in parts list (the command)
-	parts[0] = strings.ToUpper(parts[0])
-
-	if err := DebuggerCommands.CheckCommandInput(parts); err != nil {
 		return false, err
 	}
 
 	// most commands do not cause the emulator to step forward
 	stepNext := false
 
-	// implement debugging command
-	switch parts[0] {
+	tokens.reset()
+	command, _ := tokens.get()
+	command = strings.ToUpper(command)
+	switch command {
 	default:
-		return false, fmt.Errorf("%s is not yet implemented", parts[0])
+		return false, fmt.Errorf("%s is not yet implemented", command)
 
 		// control of the debugger
 	case KeywordHelp:
-		if len(parts) == 1 {
-			for k := range DebuggerCommands {
-				dbg.print(ui.Help, k)
-			}
-		} else {
-			s := strings.ToUpper(parts[1])
+		keyword, present := tokens.get()
+		if present {
+			s := strings.ToUpper(keyword)
 			txt, prs := Help[s]
 			if prs == false {
 				dbg.print(ui.Help, "no help for %s", s)
 			} else {
 				dbg.print(ui.Help, txt)
 			}
+		} else {
+			for k := range DebuggerCommands {
+				dbg.print(ui.Help, k)
+			}
 		}
 
 	case KeywordInsert:
-		err := dbg.loadCartridge(parts[1])
+		cart, _ := tokens.get()
+		err := dbg.loadCartridge(cart)
 		if err != nil {
 			return false, err
 		}
-		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", parts[1])
+		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", cart)
 
 	case KeywordScript:
-		err := dbg.RunScript(parts[1], false)
+		script, _ := tokens.get()
+		err := dbg.RunScript(script, false)
 		if err != nil {
 			return false, err
 		}
@@ -480,65 +474,65 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.CPUStep, dbg.disasm.Dump())
 
 	case KeywordSymbol:
-		address, err := dbg.disasm.Symtable.SearchLocation(parts[1])
+		symbol, _ := tokens.get()
+		address, err := dbg.disasm.Symtable.SearchLocation(symbol)
 		if err != nil {
 			switch err := err.(type) {
 			case errors.GopherError:
 				if err.Errno == errors.SymbolUnknown {
-					dbg.print(ui.Feedback, "%s -> not found", parts[1])
+					dbg.print(ui.Feedback, "%s -> not found", symbol)
 					return false, nil
 				}
 			}
 			return false, err
 		}
-		dbg.print(ui.Feedback, "%s -> %#04x", parts[1], address)
+		dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
 
 	case KeywordBreak:
-		err := dbg.breakpoints.parseBreakpoint(parts)
+		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
 			return false, fmt.Errorf("error on break: %s", err)
 		}
 
 	case KeywordTrap:
-		err := dbg.traps.parseTrap(parts)
+		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
 			return false, fmt.Errorf("error on trap: %s", err)
 		}
 
 	case KeywordList:
-		if len(parts) > 1 {
-			switch strings.ToUpper(parts[1]) {
-			case "BREAKS":
-				dbg.breakpoints.list()
-			case "TRAPS":
-				dbg.traps.list()
-			}
+		list, _ := tokens.get()
+		switch strings.ToUpper(list) {
+		case "BREAKS":
+			dbg.breakpoints.list()
+		case "TRAPS":
+			dbg.traps.list()
 		}
 
 	case KeywordClear:
-		if len(parts) > 1 {
-			switch strings.ToUpper(parts[1]) {
-			case "BREAKS":
-				dbg.breakpoints.clear()
-				dbg.print(ui.Feedback, "breakpoints cleared")
-			case "TRAPS":
-				dbg.traps.clear()
-				dbg.print(ui.Feedback, "traps cleared")
-			}
+		clear, _ := tokens.get()
+		switch strings.ToUpper(clear) {
+		case "BREAKS":
+			dbg.breakpoints.clear()
+			dbg.print(ui.Feedback, "breakpoints cleared")
+		case "TRAPS":
+			dbg.traps.clear()
+			dbg.print(ui.Feedback, "traps cleared")
 		}
 
 	case KeywordOnHalt:
-		if len(parts) < 2 {
+		if tokens.remaining() == 0 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 		} else {
-			if strings.ToUpper(parts[1]) == "OFF" {
+			option, _ := tokens.peek()
+			if strings.ToUpper(option) == "OFF" {
 				dbg.commandOnHalt = ""
 				dbg.print(ui.Feedback, "no auto-command on halt")
 				return false, nil
 			}
 
 			// use remaininder of command line to form the ONHALT command sequence
-			dbg.commandOnHalt = strings.Join(parts[1:], " ")
+			dbg.commandOnHalt = tokens.remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
@@ -555,17 +549,18 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		return false, err
 
 	case KeywordOnStep:
-		if len(parts) < 2 {
+		if tokens.remaining() == 0 {
 			dbg.commandOnStep = dbg.commandOnStepStored
 		} else {
-			if strings.ToUpper(parts[1]) == "OFF" {
+			option, _ := tokens.peek()
+			if strings.ToUpper(option) == "OFF" {
 				dbg.commandOnStep = ""
 				dbg.print(ui.Feedback, "no auto-command on step")
 				return false, nil
 			}
 
 			// use remaininder of command line to form the ONSTEP command sequence
-			dbg.commandOnStep = strings.Join(parts[1:], " ")
+			dbg.commandOnStep = tokens.remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
@@ -618,33 +613,19 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordStep:
 		stepNext = true
-		if len(parts) > 1 {
-			switch parts[1] {
-			case "CPU":
-				dbg.inputloopVideoClock = false
-			case "VIDEO":
-				dbg.inputloopVideoClock = true
-			}
-		}
 
 	case KeywordStepMode:
-		if len(parts) > 1 {
-			switch strings.ToUpper(parts[1]) {
-			case "CPU":
-				dbg.inputloopVideoClock = false
-			case "VIDEO":
-				dbg.inputloopVideoClock = true
-			default:
-				return false, fmt.Errorf("unknown step mode (%s)", parts[1])
-			}
+		mode, _ := tokens.get()
+		mode = strings.ToUpper(mode)
+		switch mode {
+		case "CPU":
+			dbg.inputloopVideoClock = false
+		case "VIDEO":
+			dbg.inputloopVideoClock = true
+		default:
+			return false, fmt.Errorf("unknown step mode (%s)", mode)
 		}
-		var stepMode string
-		if dbg.inputloopVideoClock {
-			stepMode = "video"
-		} else {
-			stepMode = "cpu"
-		}
-		dbg.print(ui.Feedback, "step mode: %s", stepMode)
+		dbg.print(ui.Feedback, "step mode: %s", mode)
 
 	case KeywordTerse:
 		dbg.machineInfoVerbose = false
@@ -673,14 +654,15 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.MC)
 
 	case KeywordPeek:
-		for i := 1; i < len(parts); i++ {
+		a, present := tokens.get()
+		for present {
 			var addr interface{}
 			var msg string
 
-			addr, err := strconv.ParseUint(parts[i], 0, 16)
+			addr, err := strconv.ParseUint(a, 0, 16)
 			if err != nil {
 				// argument is not a number so argument must be a string
-				addr = strings.ToUpper(parts[i])
+				addr = strings.ToUpper(a)
 				msg = addr.(string)
 			} else {
 				// convert number to type suitable for Peek command
@@ -704,6 +686,8 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 				msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
 			}
 			dbg.print(ui.MachineInfo, msg)
+
+			a, present = tokens.get()
 		}
 
 	case KeywordRAM:
@@ -739,8 +723,9 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordDisplay:
 		visibility := true
-		if len(parts) > 1 {
-			switch parts[1] {
+		action, present := tokens.get()
+		if present {
+			switch strings.ToUpper(action) {
 			case "OFF":
 				visibility = false
 			}

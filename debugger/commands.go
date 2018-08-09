@@ -51,8 +51,8 @@ const (
 var DebuggerCommands = parser.Commands{
 	KeywordInsert:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
 	KeywordSymbol:        parser.CommandArgs{parser.Arg{Typ: parser.ArgString, Req: true}},
-	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}},
-	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}},
+	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}, parser.Arg{Typ: parser.ArgIndeterminate}},
+	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgIndeterminate}},
 	KeywordList:          parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
 	KeywordClear:         parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
 	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate}},
@@ -78,7 +78,7 @@ var DebuggerCommands = parser.Commands{
 	KeywordMissile:       parser.CommandArgs{},
 	KeywordBall:          parser.CommandArgs{},
 	KeywordPlayfield:     parser.CommandArgs{},
-	KeywordDisplay:       parser.CommandArgs{},
+	KeywordDisplay:       parser.CommandArgs{parser.Arg{Typ: parser.ArgValue, Req: false}},
 	KeywordScript:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
 	KeywordDisassemble:   parser.CommandArgs{},
 }
