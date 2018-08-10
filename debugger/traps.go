@@ -6,6 +6,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
 )
 
@@ -64,8 +65,8 @@ func (tr traps) list() {
 	}
 }
 
-func (tr *traps) parseTrap(tokens *tokens) error {
-	_, present := tokens.peek()
+func (tr *traps) parseTrap(tokens *input.Tokens) error {
+	_, present := tokens.Peek()
 	for present {
 		tgt, err := parseTarget(tr.dbg, tokens)
 		if err != nil {
@@ -85,7 +86,7 @@ func (tr *traps) parseTrap(tokens *tokens) error {
 			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.Value()})
 		}
 
-		_, present = tokens.peek()
+		_, present = tokens.Peek()
 	}
 
 	return nil

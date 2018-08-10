@@ -1,6 +1,9 @@
 package debugger
 
-import "gopher2600/debugger/parser"
+import (
+	"fmt"
+	"gopher2600/debugger/input"
+)
 
 // debugger keywords. not a useful data structure but we can use these to form
 // the more useful DebuggerCommands and Help structures
@@ -38,57 +41,7 @@ const (
 	KeywordDisplay       = "DISPLAY"
 	KeywordScript        = "SCRIPT"
 	KeywordDisassemble   = "DISASSEMBLE"
-
-	SubKeywordBreaks = "BREAKS"
-	SubKeywordTraps  = "TRAPS"
-	SubKeywordVideo  = "VIDEO"
-	SubKeywordCPU    = "CPU"
 )
-
-// DebuggerCommands provides:
-//	- the list of debugger commands (keys to the map)
-//  - the tab completion method for each argument for each command
-var DebuggerCommands = parser.Commands{
-	KeywordInsert:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
-	KeywordSymbol:        parser.CommandArgs{parser.Arg{Typ: parser.ArgString, Req: true}},
-	KeywordBreak:         parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgValue, Req: false}, parser.Arg{Typ: parser.ArgIndeterminate}},
-	KeywordTrap:          parser.CommandArgs{parser.Arg{Typ: parser.ArgTarget, Req: true}, parser.Arg{Typ: parser.ArgIndeterminate}},
-	KeywordList:          parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
-	KeywordClear:         parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: true, Vals: parser.Keywords{SubKeywordBreaks, SubKeywordTraps}}},
-	KeywordOnHalt:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate}},
-	KeywordOnStep:        parser.CommandArgs{parser.Arg{Typ: parser.ArgIndeterminate}},
-	KeywordLast:          parser.CommandArgs{},
-	KeywordMemMap:        parser.CommandArgs{},
-	KeywordQuit:          parser.CommandArgs{},
-	KeywordReset:         parser.CommandArgs{},
-	KeywordRun:           parser.CommandArgs{},
-	KeywordStep:          parser.CommandArgs{},
-	KeywordStepMode:      parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: false, Vals: parser.Keywords{SubKeywordCPU, SubKeywordVideo}}},
-	KeywordTerse:         parser.CommandArgs{},
-	KeywordVerbose:       parser.CommandArgs{},
-	KeywordVerbosity:     parser.CommandArgs{},
-	KeywordDebuggerState: parser.CommandArgs{},
-	KeywordCPU:           parser.CommandArgs{},
-	KeywordPeek:          parser.CommandArgs{parser.Arg{Typ: parser.ArgValue | parser.ArgString, Req: true}, parser.Arg{Typ: parser.ArgIndeterminate}},
-	KeywordRAM:           parser.CommandArgs{},
-	KeywordRIOT:          parser.CommandArgs{},
-	KeywordTIA:           parser.CommandArgs{},
-	KeywordTV:            parser.CommandArgs{},
-	KeywordPlayer:        parser.CommandArgs{},
-	KeywordMissile:       parser.CommandArgs{},
-	KeywordBall:          parser.CommandArgs{},
-	KeywordPlayfield:     parser.CommandArgs{},
-	KeywordDisplay:       parser.CommandArgs{parser.Arg{Typ: parser.ArgValue, Req: false}},
-	KeywordScript:        parser.CommandArgs{parser.Arg{Typ: parser.ArgFile, Req: true}},
-	KeywordDisassemble:   parser.CommandArgs{},
-}
-
-func init() {
-	// add the help command. we can't add the complete definition for the
-	// command in the DebuggerCommands declaration because the list of Keywords
-	// refers to DebuggerCommands itself
-	DebuggerCommands[KeywordHelp] = parser.CommandArgs{parser.Arg{Typ: parser.ArgKeyword, Req: false, Vals: &DebuggerCommands}}
-}
 
 // Help contains the help text for the debugger's top level commands
 var Help = map[string]string{
@@ -125,4 +78,52 @@ var Help = map[string]string{
 	KeywordDisplay:       "Display the TV image",
 	KeywordScript:        "Run commands from specified file",
 	KeywordDisassemble:   "Print the full cartridge disassembly",
+}
+
+var commandTemplate = input.CommandTemplate{
+	KeywordInsert:        "%F",
+	KeywordSymbol:        "%V",
+	KeywordBreak:         "%*",
+	KeywordTrap:          "%*",
+	KeywordList:          "[BREAKS|TRAPS]",
+	KeywordClear:         "[BREAKS|TRAPS]",
+	KeywordOnHalt:        "%*",
+	KeywordOnStep:        "%*",
+	KeywordLast:          "",
+	KeywordMemMap:        "",
+	KeywordQuit:          "",
+	KeywordReset:         "",
+	KeywordRun:           "",
+	KeywordStep:          "",
+	KeywordStepMode:      "[CPU|VIDEO]",
+	KeywordTerse:         "",
+	KeywordVerbose:       "",
+	KeywordVerbosity:     "",
+	KeywordDebuggerState: "",
+	KeywordCPU:           "",
+	KeywordPeek:          "%*",
+	KeywordRAM:           "",
+	KeywordRIOT:          "",
+	KeywordTIA:           "",
+	KeywordTV:            "",
+	KeywordPlayer:        "",
+	KeywordMissile:       "",
+	KeywordBall:          "",
+	KeywordPlayfield:     "",
+	KeywordDisplay:       "[|OFF]",
+	KeywordScript:        "%F",
+	KeywordDisassemble:   "",
+}
+
+// DebuggerCommands is the tree of valid commands
+var DebuggerCommands input.Commands
+
+func init() {
+	var err error
+
+	// parse command template
+	DebuggerCommands, err = input.CompileCommandTemplate(commandTemplate, KeywordHelp)
+	if err != nil {
+		panic(fmt.Errorf("error compiling command template: %s", err))
+	}
 }

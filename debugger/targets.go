@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/input"
 	"gopher2600/errors"
 	"gopher2600/television"
 	"strings"
@@ -41,11 +42,11 @@ func (trg genericTarget) Value() interface{} {
 }
 
 // parseTarget uses a keyword to decide which part of the vcs to target
-func parseTarget(dbg *Debugger, tokens *tokens) (target, error) {
+func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 	var trg target
 	var err error
 
-	keyword, present := tokens.get()
+	keyword, present := tokens.Get()
 	if present {
 		keyword = strings.ToUpper(keyword)
 		switch keyword {
@@ -70,7 +71,7 @@ func parseTarget(dbg *Debugger, tokens *tokens) (target, error) {
 		// help investigate a bug in the emulation. I don't think it's much use
 		// but it was an instructive exercise and may come in useful one day.
 		case "INSTRUCTION", "INS":
-			subkey, present := tokens.get()
+			subkey, present := tokens.Get()
 			if present {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {

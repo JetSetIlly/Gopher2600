@@ -5,7 +5,10 @@
 package debugger
 
 import (
+	"fmt"
+	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
+	"gopher2600/errors"
 	"strconv"
 )
 
@@ -88,8 +91,11 @@ func (bp breakpoints) list() {
 	}
 }
 
-func (bp *breakpoints) parseBreakpoint(tokens *tokens) error {
+func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	var tgt target
+
+	// resolvedTarget notes whether a target has been used correctly
+	var resolvedTarget bool
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
 	// being set on the PC. breaking on PC is probably the most common type of
@@ -97,12 +103,16 @@ func (bp *breakpoints) parseBreakpoint(tokens *tokens) error {
 	// something appropriate
 	tgt = bp.dbg.vcs.MC.PC
 
+	// resolvedTarget is true to begin with so that the initial target of PC
+	// can be changed immediately
+	resolvedTarget = true
+
 	// loop over tokens. if token is a number then add the breakpoint for the
 	// current target. if it is not a number, look for a keyword that changes
 	// the target (or run a BREAK meta-command)
 	//
 	// note that this method of looping allows the user to chain break commands
-	a, present := tokens.get()
+	a, present := tokens.Get()
 	for present {
 		val, err := strconv.ParseUint(a, 0, 16)
 		if err == nil {
@@ -118,15 +128,25 @@ func (bp *breakpoints) parseBreakpoint(tokens *tokens) error {
 			if addNewBreak {
 				bp.breaks = append(bp.breaks, breaker{target: tgt, value: int(val)})
 			}
+			resolvedTarget = true
 		} else {
-			tokens.unget()
+			if !resolvedTarget {
+				return errors.NewGopherError(errors.InputTooFewArgs, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+			}
+
+			tokens.Unget()
 			tgt, err = parseTarget(bp.dbg, tokens)
 			if err != nil {
 				return err
 			}
+			resolvedTarget = false
 		}
 
-		a, present = tokens.get()
+		a, present = tokens.Get()
+	}
+
+	if !resolvedTarget {
+		return errors.NewGopherError(errors.InputTooFewArgs, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 	}
 
 	return nil

@@ -1,12 +1,12 @@
 package ui
 
-import "gopher2600/debugger/parser"
+import "gopher2600/debugger/input"
 
 // UserInterface defines the user interface operations required by the debugger
 type UserInterface interface {
 	Initialise() error
 	CleanUp()
-	RegisterTabCompleter(*parser.TabCompletion)
+	RegisterTabCompleter(*input.TabCompletion)
 	UserPrint(PrintProfile, string, ...interface{})
 	UserRead([]byte, string) (int, error)
 }

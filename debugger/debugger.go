@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/parser"
+	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
@@ -126,7 +126,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 	}
 	defer dbg.ui.CleanUp()
 
-	dbg.ui.RegisterTabCompleter(parser.NewTabCompletion(DebuggerCommands))
+	dbg.ui.RegisterTabCompleter(input.NewTabCompletion(DebuggerCommands))
 
 	err = dbg.loadCartridge(filename)
 	if err != nil {
@@ -408,15 +408,15 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 // that cause the emulation to move forward (RUN, STEP) return true for the
 // first return value. other commands return false and act upon the command
 // immediately. note that the empty string is the same as the STEP command
-func (dbg *Debugger) parseCommand(input string) (bool, error) {
+func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	// TODO: categorise commands into script-safe and non-script-safe
 
 	// tokenise input
-	tokens := tokeniseInput(input)
+	tokens := input.TokeniseInput(userInput)
 
 	// check validity of input -- this allows us to catch errors early and in
 	// many cases to ignore the "success" flag when calling tokens.item()
-	if err := DebuggerCommands.ValidateInput(tokens.tokens); err != nil {
+	if err := DebuggerCommands.ValidateInput(tokens); err != nil {
 		switch err := err.(type) {
 		case errors.GopherError:
 			switch err.Errno {
@@ -431,8 +431,8 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 	// most commands do not cause the emulator to step forward
 	stepNext := false
 
-	tokens.reset()
-	command, _ := tokens.get()
+	tokens.Reset()
+	command, _ := tokens.Get()
 	command = strings.ToUpper(command)
 	switch command {
 	default:
@@ -440,7 +440,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 		// control of the debugger
 	case KeywordHelp:
-		keyword, present := tokens.get()
+		keyword, present := tokens.Get()
 		if present {
 			s := strings.ToUpper(keyword)
 			txt, prs := Help[s]
@@ -456,7 +456,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordInsert:
-		cart, _ := tokens.get()
+		cart, _ := tokens.Get()
 		err := dbg.loadCartridge(cart)
 		if err != nil {
 			return false, err
@@ -464,7 +464,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", cart)
 
 	case KeywordScript:
-		script, _ := tokens.get()
+		script, _ := tokens.Get()
 		err := dbg.RunScript(script, false)
 		if err != nil {
 			return false, err
@@ -474,7 +474,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.print(ui.CPUStep, dbg.disasm.Dump())
 
 	case KeywordSymbol:
-		symbol, _ := tokens.get()
+		symbol, _ := tokens.Get()
 		address, err := dbg.disasm.Symtable.SearchLocation(symbol)
 		if err != nil {
 			switch err := err.(type) {
@@ -501,7 +501,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordList:
-		list, _ := tokens.get()
+		list, _ := tokens.Get()
 		switch strings.ToUpper(list) {
 		case "BREAKS":
 			dbg.breakpoints.list()
@@ -510,7 +510,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordClear:
-		clear, _ := tokens.get()
+		clear, _ := tokens.Get()
 		switch strings.ToUpper(clear) {
 		case "BREAKS":
 			dbg.breakpoints.clear()
@@ -521,10 +521,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		}
 
 	case KeywordOnHalt:
-		if tokens.remaining() == 0 {
+		if tokens.Remaining() == 0 {
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 		} else {
-			option, _ := tokens.peek()
+			option, _ := tokens.Peek()
 			if strings.ToUpper(option) == "OFF" {
 				dbg.commandOnHalt = ""
 				dbg.print(ui.Feedback, "no auto-command on halt")
@@ -532,7 +532,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 
 			// use remaininder of command line to form the ONHALT command sequence
-			dbg.commandOnHalt = tokens.remainder()
+			dbg.commandOnHalt = tokens.Remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
@@ -549,10 +549,10 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		return false, err
 
 	case KeywordOnStep:
-		if tokens.remaining() == 0 {
+		if tokens.Remaining() == 0 {
 			dbg.commandOnStep = dbg.commandOnStepStored
 		} else {
-			option, _ := tokens.peek()
+			option, _ := tokens.Peek()
 			if strings.ToUpper(option) == "OFF" {
 				dbg.commandOnStep = ""
 				dbg.print(ui.Feedback, "no auto-command on step")
@@ -560,7 +560,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 
 			// use remaininder of command line to form the ONSTEP command sequence
-			dbg.commandOnStep = tokens.remainder()
+			dbg.commandOnStep = tokens.Remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
@@ -615,7 +615,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		stepNext = true
 
 	case KeywordStepMode:
-		mode, _ := tokens.get()
+		mode, _ := tokens.Get()
 		mode = strings.ToUpper(mode)
 		switch mode {
 		case "CPU":
@@ -654,7 +654,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.MC)
 
 	case KeywordPeek:
-		a, present := tokens.get()
+		a, present := tokens.Get()
 		for present {
 			var addr interface{}
 			var msg string
@@ -687,7 +687,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 			}
 			dbg.print(ui.MachineInfo, msg)
 
-			a, present = tokens.get()
+			a, present = tokens.Get()
 		}
 
 	case KeywordRAM:
@@ -723,7 +723,7 @@ func (dbg *Debugger) parseCommand(input string) (bool, error) {
 
 	case KeywordDisplay:
 		visibility := true
-		action, present := tokens.get()
+		action, present := tokens.Get()
 		if present {
 			switch strings.ToUpper(action) {
 			case "OFF":

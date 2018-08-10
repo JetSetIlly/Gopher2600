@@ -1,4 +1,4 @@
-package parser
+package input
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ const cycleDuration = 500 * time.Millisecond
 
 // TabCompletion keeps track of the most recent tab completion attempt
 type TabCompletion struct {
-	baseOptions Commands
+	commands Commands
 
 	options    []string
 	lastOption int
@@ -22,19 +22,18 @@ type TabCompletion struct {
 	lastCompletionTime time.Time
 }
 
-// NewTabCompletion is the preferred method of initialisation for TabCompletion
-func NewTabCompletion(baseOptions Commands) *TabCompletion {
+// NewTabCompletion initialises a new TabCompletion instance
+func NewTabCompletion(commands Commands) *TabCompletion {
 	tc := new(TabCompletion)
-	tc.baseOptions = baseOptions
-	tc.options = make([]string, 0, len(tc.baseOptions))
+	tc.commands = commands
+	tc.options = make([]string, 0, len(tc.commands))
 	return tc
 }
 
 // GuessWord transforms the input such that the last word in the input is
 // expanded to meet the closest match in the list of allowed strings.
 func (tc *TabCompletion) GuessWord(input string) string {
-	// split input into words
-	p := strings.Fields(input)
+	p := tokeniseInput(input)
 	if len(p) == 0 {
 		return input
 	}
@@ -68,33 +67,33 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		tc.lastOption = 0
 
 		// get args for command
-		var arg Arg
+		var arg commandArg
 
-		argList, ok := tc.baseOptions[strings.ToUpper(p[0])]
+		argList, ok := tc.commands[strings.ToUpper(p[0])]
 		if ok && len(input) > len(p[0]) {
 			if len(argList) == 0 {
 				return input
 			}
 			arg = argList[len(p)-2]
 		} else {
-			arg.Typ = ArgKeyword
-			arg.Vals = &tc.baseOptions
+			arg.typ = argKeyword
+			arg.values = &tc.commands
 		}
 
-		switch arg.Typ {
-		case ArgKeyword:
+		switch arg.typ {
+		case argKeyword:
 			// trigger is the word we're trying to complete on
 			trigger := strings.ToUpper(p[len(p)-1])
 			p = p[:len(p)-1]
 
-			switch kw := arg.Vals.(type) {
+			switch kw := arg.values.(type) {
 			case *Commands:
 				for k := range *kw {
 					if len(trigger) <= len(k) && trigger == k[:len(trigger)] {
 						tc.options = append(tc.options, k)
 					}
 				}
-			case Keywords:
+			case []string:
 				for _, k := range kw {
 					if len(trigger) <= len(k) && trigger == k[:len(trigger)] {
 						tc.options = append(tc.options, k)
@@ -104,7 +103,7 @@ func (tc *TabCompletion) GuessWord(input string) string {
 				tc.options = append(tc.options, "unhandled argument type")
 			}
 
-		case ArgFile:
+		case argFile:
 			// TODO: filename completion
 			tc.options = append(tc.options, "<TODO: file-completion>")
 		}

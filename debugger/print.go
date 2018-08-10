@@ -9,7 +9,7 @@ import (
 // before passing to the real UserPrint. it also allows us to easily obey
 // directives such as the silent directive without passing the burden onto UI
 // implementors
-func (dbg Debugger) print(pp ui.PrintProfile, s string, a ...interface{}) {
+func (dbg *Debugger) print(pp ui.PrintProfile, s string, a ...interface{}) {
 	if dbg.uiSilent && pp != ui.Error {
 		return
 	}
