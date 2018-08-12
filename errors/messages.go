@@ -30,9 +30,7 @@ var messages = map[Errno]string{
 	CartridgeInvalidSize:    "cartridge size is not recognised (%d)",
 
 	// TV
-	UnknownStateRequest:    "TV does not support %v state",
-	UnknownCallbackRequest: "TV does not support %v callback",
-	InvalidStateRequest:    "state request for %v is currently invalid",
+	UnknownTVRequest: "TV does not support %v request",
 
 	// Peripherals
 	NoControllersFound: "no controllers found",

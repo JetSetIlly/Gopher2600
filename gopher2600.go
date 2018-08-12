@@ -178,7 +178,7 @@ func run(cartridgeFile string) error {
 	var runningLock sync.Mutex
 	running := true
 
-	err = tv.RegisterCallback(sdltv.ReqOnWindowClose, func() {
+	err = tv.RegisterCallback(television.ReqOnWindowClose, nil, func() {
 		runningLock.Lock()
 		running = false
 		runningLock.Unlock()

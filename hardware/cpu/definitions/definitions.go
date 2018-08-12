@@ -1,5 +1,7 @@
 package definitions
 
+import "fmt"
+
 // AddressingMode describes the method by which an instruction receives data
 // on which to operate
 type AddressingMode int
@@ -43,4 +45,11 @@ type InstructionDefinition struct {
 	AddressingMode AddressingMode
 	PageSensitive  bool
 	Effect         EffectCategory
+}
+
+func (defn InstructionDefinition) String() string {
+	if defn.Mnemonic == "" {
+		return "undecoded instruction"
+	}
+	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.ObjectCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }

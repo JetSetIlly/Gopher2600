@@ -11,6 +11,23 @@ import (
 // IdealScale is the suggested scaling for the screen
 const IdealScale = 2.0
 
+type callback struct {
+	channel  chan func()
+	function func()
+}
+
+func (cb *callback) dispatch() {
+	if cb.function == nil {
+		return
+	}
+
+	if cb.channel != nil {
+		cb.channel <- cb.function
+	} else {
+		cb.function()
+	}
+}
+
 // SDLTV is the SDL implementation of a simple television
 type SDLTV struct {
 	television.HeadlessTV
@@ -23,7 +40,8 @@ type SDLTV struct {
 	// masking
 	playScr *screen
 	dbgScr  *screen
-	// scr points to the screen currently in use
+
+	// scr points to the screen (playScr or dbScr) currently in use
 	scr *screen
 
 	// the width of each VCS colour clock (in SDL pixels)
@@ -35,8 +53,9 @@ type SDLTV struct {
 	// the time the last frame was rendered - used to limit frame rate
 	lastFrameRender time.Time
 
-	// function to all when close button is pressed
-	onWindowClose func()
+	// callback functions
+	onWindowClose  callback
+	onMouseButton1 callback
 
 	// whether the emulation is currently paused - affects how we render the
 	// screen

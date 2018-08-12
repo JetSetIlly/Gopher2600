@@ -2,6 +2,22 @@ package television
 
 import "gopher2600/errors"
 
+// list of valid requests for television implementations. it is not
+// required that every implementation does something useful for every request.
+// for instance, ONWINDOWCLOSE is meaningless if the implementation has no
+// display window
+const (
+	ReqFramenum TVStateReq = "FRAME"
+	ReqScanline TVStateReq = "SCANLINE"
+	ReqHorizPos TVStateReq = "HORIZPOS"
+
+	ReqTVSpec    TVInfoReq = "TVSPEC"
+	ReqLastMouse TVInfoReq = "MOUSE"
+
+	ReqOnWindowClose  CallbackReq = "ONWINDOWCLOSE"
+	ReqOnMouseButton1 CallbackReq = "ONMOUSEBUTTON1"
+)
+
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
 	VSync, VBlank, FrontPorch, HSync, CBurst bool
@@ -11,6 +27,10 @@ type SignalAttributes struct {
 // TVStateReq is used to identify which television attribute is being asked
 // for with the GetTVState() function
 type TVStateReq string
+
+// TVInfoReq is used to identiry what information is being requested with the
+// GetTVInfo() function
+type TVInfoReq string
 
 // CallbackReq is used to identify which callback to register
 type CallbackReq string
@@ -24,7 +44,8 @@ type Television interface {
 	SetPause(pause bool) error
 
 	RequestTVState(TVStateReq) (*TVState, error)
-	RegisterCallback(CallbackReq, func()) error
+	RequestTVInfo(TVInfoReq) (string, error)
+	RegisterCallback(CallbackReq, chan func(), func()) error
 }
 
 // DummyTV is the null implementation of the television interface. useful
@@ -61,10 +82,15 @@ func (DummyTV) SetPause(pause bool) error {
 
 // RequestTVState (with dummyTV reciever) is the null implementation
 func (DummyTV) RequestTVState(request TVStateReq) (*TVState, error) {
-	return nil, errors.NewGopherError(errors.UnknownStateRequest, request)
+	return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
+}
+
+// RequestTVInfo (with dummyTV reciever) is the null implementation
+func (DummyTV) RequestTVInfo(request TVInfoReq) (string, error) {
+	return "", errors.NewGopherError(errors.UnknownTVRequest, request)
 }
 
 // RegisterCallback (with dummyTV reciever) is the null implementation
-func (DummyTV) RegisterCallback(request CallbackReq, callback func()) error {
-	return errors.NewGopherError(errors.UnknownCallbackRequest, request)
+func (DummyTV) RegisterCallback(request CallbackReq, channel chan func(), callback func()) error {
+	return errors.NewGopherError(errors.UnknownTVRequest, request)
 }

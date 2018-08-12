@@ -31,8 +31,8 @@ type VCS struct {
 	panel      *peripherals.Panel
 	controller *peripherals.Stick
 
-	// treat the side effects of the CPU after every CPU cycle or only at the
-	// end of each instruction (monolithic)
+	// treat the side effects of the CPU after every CPU cycle (correct) or
+	// only at the end of each instruction (wrong)
 	//
 	// NOTE: for correct emulation this flag should definitely be false. the
 	// flag is provided only so to demonstrate the difference between the two

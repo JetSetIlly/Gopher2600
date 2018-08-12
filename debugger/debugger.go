@@ -9,12 +9,12 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
+	"gopher2600/television"
 	"gopher2600/television/sdltv"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 const defaultOnHalt = "CPU; TV"
@@ -25,11 +25,9 @@ type Debugger struct {
 	vcs    *hardware.VCS
 	disasm disassembly.Disassembly
 
-	// control of debug/input loop - accessed from within a sub-go routine so
-	// both protected with a sync.mutex
+	// control of debug/input loop:
 	// 	o running - whether the debugger is to continue with the debugging loop
 	// 	o runUntilHalt - repeat execution loop until a halt condition is encountered
-	runLock      sync.Mutex
 	running      bool
 	runUntilHalt bool
 
@@ -74,6 +72,14 @@ type Debugger struct {
 
 	// buffer for user input
 	input []byte
+
+	// channel for communicating with the debugging loop from other areas of
+	// the emulation, paritcularly from other goroutines. for instance, we use
+	// the callbackChannel to implement ctrl-c handling, even though all the
+	// code to do it is right here in this very file. we do this to avoid
+	// having to use sync.Mutex. marking critical sections with a mutex is fine
+	// and would definitiely work, it is, frankly, a pain and feels wrong.
+	callbackChannel chan func()
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -110,6 +116,22 @@ func NewDebugger() (*Debugger, error) {
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
+	// make callback channel - buffered because this channel may be used in the
+	// same goroutine as the debuggin loop and we don't want it to deadlock
+	dbg.callbackChannel = make(chan func(), 2)
+
+	// register onMouseButton1 callback
+	err = tv.RegisterCallback(television.ReqOnMouseButton1, dbg.callbackChannel, func() {
+		// this callback function may be running inside a different goroutine
+		// so care must be taken not to cause a deadlock
+		dbg.runUntilHalt = false
+
+		// TODO: set breakpoint at mouse coordinates
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return dbg, nil
 }
 
@@ -135,17 +157,9 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 
 	// make sure we've indicated that the debugger is running before we start
 	// the ctrl-c handler. it'll return immediately if we don't
-	//
-	// *CRITICAL SECTION* *NOT REQUIRED* go routine not started yet
 	dbg.running = true
 
-	// register ctrl-c handler -- note that this controls the debugging
-	// inputLoop() below. when that loop calls debugger.ui.UserRead(), that
-	// function may have its own loop that may delay the side-effects of our
-	// handler below. compare plain terminal and colour terminal
-	// implementations. the latter terminal responds to ctrl-c in its input
-	// loop and curtails the input loop immediately, debugger.inputLoop() to
-	// react to the changes caused by our signal handler.
+	// register ctrl-c handler
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
@@ -153,17 +167,15 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 		for loop {
 			<-ctrlC
 
-			// *CRITICAL SECTION* after signal received
-			dbg.runLock.Lock()
-			if dbg.runUntilHalt {
-				dbg.runUntilHalt = false
-			} else {
-				// TODO: interrupt os.stdin.Read() in plain terminal, so that
-				// the user doesn't have to press return after a ctrl-c press
-				dbg.running = false
-				loop = false
+			dbg.callbackChannel <- func() {
+				if dbg.runUntilHalt {
+					dbg.runUntilHalt = false
+				} else {
+					// TODO: interrupt os.stdin.Read() in plain terminal, so that
+					// the user doesn't have to press return after a ctrl-c press
+					dbg.running = false
+				}
 			}
-			dbg.runLock.Unlock()
 		}
 	}()
 
@@ -236,21 +248,24 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	var err error
 
 	for {
-		// *CRITICAL SECTION*
-		dbg.runLock.Lock()
 		if !dbg.running {
-			dbg.runLock.Unlock()
 			break // for loop
 		}
-		dbg.runLock.Unlock()
 
-		// return immediately if we're in a mid-cycle input loop and we don't want
-		// to be
-		//
-		// the extra condition (dbg.inputLoopNext) is to prevent execution
-		// continuing if we call "stepmode cpu" in the middle of a cpu-cycle
+		// this extra test is to prevent the video input loop from continuing
+		// if step mode has been switched to cpu - the input loop will unravel
+		// and execution will continue in the main inputLoop
 		if !mainLoop && !dbg.inputloopVideoClock && dbg.inputloopNext {
 			return nil
+		}
+
+		// check callback channel and run any functions we find in there
+		// TODO: not sure if this is the best part of the loop to put this
+		// check. it works for now.
+		select {
+		case f := <-dbg.callbackChannel:
+			f()
+		default:
 		}
 
 		// check for breakpoints and traps. check() functions echo all the
@@ -263,9 +278,6 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 		// reset last step error
 		dbg.lastStepError = false
-
-		// *CRITICAL SECTION*
-		dbg.runLock.Lock()
 
 		// if haltCommand mode and if run state is correct that print haltCommand
 		// command(s)
@@ -280,9 +292,6 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// expand breakpoint to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
 
-		dbg.runLock.Unlock()
-		// *END CRITICAL SECTION*
-
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
 			err = dbg.vcs.TV.SetPause(true)
@@ -290,10 +299,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				return err
 			}
 
-			// *CRITICAL SECTION*
-			dbg.runLock.Lock()
 			dbg.runUntilHalt = false
-			dbg.runLock.Unlock()
 
 			// build prompt
 			// - different prompt depending on whether a valid disassembly is available
@@ -315,12 +321,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				switch err.(type) {
 				case *ui.UserInterrupt:
 					dbg.print(ui.Feedback, err.Error())
-
-					// *CRITICAL SECTION*
-					dbg.runLock.Lock()
 					dbg.running = false
-					dbg.runLock.Unlock()
-
 					return nil
 				default:
 					return err
@@ -578,23 +579,29 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordLast:
 		if dbg.lastResult != nil {
-			var printTag ui.PrintProfile
-			if dbg.lastResult.Final {
-				printTag = ui.CPUStep
-			} else {
-				printTag = ui.VideoStep
+			option, _ := tokens.Get()
+			option = strings.ToUpper(option)
+			switch option {
+			case "DEFN":
+				dbg.print(ui.Feedback, "%s", dbg.lastResult.Defn)
+			case "":
+				var printTag ui.PrintProfile
+				if dbg.lastResult.Final {
+					printTag = ui.CPUStep
+				} else {
+					printTag = ui.VideoStep
+				}
+				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
+			default:
+				return false, fmt.Errorf("unknown last request (%s)", option)
 			}
-			dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
 		}
 
 	case KeywordMemMap:
 		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case KeywordQuit:
-		// *CRITICAL SECTION*
-		dbg.runLock.Lock()
 		dbg.running = false
-		dbg.runLock.Unlock()
 
 	case KeywordReset:
 		err := dbg.vcs.Reset()
@@ -604,15 +611,24 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.print(ui.Feedback, "machine reset")
 
 	case KeywordRun:
-		// *CRITICAL SECTION*
-		dbg.runLock.Lock()
 		dbg.runUntilHalt = true
-		dbg.runLock.Unlock()
-
 		stepNext = true
 
 	case KeywordStep:
-		stepNext = true
+		mode, _ := tokens.Get()
+		mode = strings.ToUpper(mode)
+		switch mode {
+		case "":
+			stepNext = true
+		case "CPU":
+			dbg.inputloopVideoClock = false
+			stepNext = true
+		case "VIDEO":
+			dbg.inputloopVideoClock = true
+			stepNext = true
+		default:
+			return false, fmt.Errorf("unknown step mode (%s)", mode)
+		}
 
 	case KeywordStepMode:
 		mode, _ := tokens.Get()
@@ -700,7 +716,22 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.TIA)
 
 	case KeywordTV:
-		dbg.printMachineInfo(dbg.vcs.TV)
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "SPEC":
+				info, err := dbg.vcs.TV.RequestTVInfo(television.ReqTVSpec)
+				if err != nil {
+					return false, err
+				}
+				dbg.print(ui.MachineInfo, info)
+			default:
+				return false, fmt.Errorf("unknown tv info (%s)", option)
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.TV)
+		}
 
 	// information about the machine (sprites, playfield)
 	case KeywordPlayer:
@@ -734,6 +765,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+	case KeywordMouse:
+		info, err := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouse)
+		if err != nil {
+			return false, err
+		}
+		dbg.print(ui.MachineInfo, info)
 	}
 
 	return stepNext, nil

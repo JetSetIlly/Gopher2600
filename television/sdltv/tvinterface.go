@@ -4,15 +4,9 @@
 package sdltv
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/television"
-)
-
-// list of addtiinal callback register requests for SDL television
-// TODO: gui related callback requests should be standardised accross all gui
-// implementations.
-const (
-	ReqOnWindowClose television.CallbackReq = "ONWINDOWCLOSE"
 )
 
 // Signal is the principle method of communication between the VCS and
@@ -65,12 +59,12 @@ func (tv *SDLTV) SetPause(pause bool) error {
 }
 
 // RegisterCallback implements Television interface
-func (tv *SDLTV) RegisterCallback(request television.CallbackReq, callback func()) error {
+func (tv *SDLTV) RegisterCallback(request television.CallbackReq, channel chan func(), callback func()) error {
 	// call embedded implementation and filter out UnknownCallbackRequests
 	err := tv.HeadlessTV.RegisterCallback(request, callback)
 	switch err := err.(type) {
 	case errors.GopherError:
-		if err.Errno != errors.UnknownCallbackRequest {
+		if err.Errno != errors.UnknownTVRequest {
 			return err
 		}
 	default:
@@ -78,15 +72,47 @@ func (tv *SDLTV) RegisterCallback(request television.CallbackReq, callback func(
 	}
 
 	switch request {
-	case ReqOnWindowClose:
+	case television.ReqOnWindowClose:
 		// * CRITICAL SEECTION*
 		// (W) tv.onWindowClose
 		tv.guiLoopLock.Lock()
-		tv.onWindowClose = callback
+		tv.onWindowClose.channel = channel
+		tv.onWindowClose.function = callback
+		tv.guiLoopLock.Unlock()
+	case television.ReqOnMouseButton1:
+		// * CRITICAL SEECTION*
+		// (W) tv.onMouseButton1
+		tv.guiLoopLock.Lock()
+		tv.onMouseButton1.channel = channel
+		tv.onMouseButton1.function = callback
 		tv.guiLoopLock.Unlock()
 	default:
-		return errors.NewGopherError(errors.UnknownCallbackRequest, request)
+		return errors.NewGopherError(errors.UnknownTVRequest, request)
 	}
 
 	return nil
+}
+
+// RequestTVInfo returns the TVState object for the named state
+func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
+	state, err := tv.HeadlessTV.RequestTVInfo(request)
+	switch err := err.(type) {
+	case errors.GopherError:
+		if err.Errno != errors.UnknownTVRequest {
+			return state, err
+		}
+	default:
+		return state, err
+	}
+
+	switch request {
+	case television.ReqLastMouse:
+		// * CRITICAL SEECTION*
+		// (R) tv.mouseX, tv.mouseY
+		tv.guiLoopLock.Lock()
+		defer tv.guiLoopLock.Unlock()
+		return fmt.Sprintf("mouse: hp=%d, sl=%d\n", tv.mouseX, tv.mouseY), nil
+	default:
+		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
+	}
 }

@@ -1,6 +1,8 @@
 package television
 
 type specification struct {
+	ID string
+
 	ClocksPerHblank   int
 	ClocksPerVisible  int
 	ClocksPerScanline int
@@ -20,6 +22,7 @@ var specPAL *specification
 
 func init() {
 	specNTSC = new(specification)
+	specNTSC.ID = "NTSC"
 	specNTSC.ClocksPerHblank = 68
 	specNTSC.ClocksPerVisible = 160
 	specNTSC.ClocksPerScanline = 228
@@ -31,6 +34,7 @@ func init() {
 	specNTSC.Colors = ntscColors
 
 	specPAL = new(specification)
+	specPAL.ID = "PAL"
 	specPAL.ClocksPerHblank = 68
 	specPAL.ClocksPerVisible = 160
 	specPAL.ClocksPerScanline = 228

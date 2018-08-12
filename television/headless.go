@@ -6,13 +6,6 @@ import (
 	"strings"
 )
 
-// list of valid tv state requests for headless tv
-const (
-	ReqFramenum TVStateReq = "FRAME"
-	ReqScanline TVStateReq = "SCANLINE"
-	ReqHorizPos TVStateReq = "HORIZPOS"
-)
-
 // HeadlessTV is the minimalist implementation of the Television interface - a
 // television without a screen. Fuller implementations of the television can
 // use this as the basis of the emulation by struct embedding. The
@@ -223,11 +216,13 @@ func (tv *HeadlessTV) SetPause(pause bool) error {
 	return nil
 }
 
-// RequestTVState returns the TVState object for the named state
+// RequestTVState returns the TVState object for the named state. television
+// implementations in other packages will difficulty extending this function
+// because TVStateReq does not expose its members.
 func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 	switch request {
 	default:
-		return nil, errors.NewGopherError(errors.UnknownStateRequest, request)
+		return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
 	case ReqFramenum:
 		return tv.frameNum, nil
 	case ReqScanline:
@@ -237,7 +232,18 @@ func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 	}
 }
 
-// RegisterCallback (with dummyTV reciever) is the null implementation
+// RequestTVInfo returns the TVState object for the named state
+func (tv *HeadlessTV) RequestTVInfo(request TVInfoReq) (string, error) {
+	switch request {
+	default:
+		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
+	case ReqTVSpec:
+		return tv.Spec.ID, nil
+	}
+}
+
+// RegisterCallback is used to hook custom functionality into the televsion
 func (tv *HeadlessTV) RegisterCallback(request CallbackReq, callback func()) error {
-	return errors.NewGopherError(errors.UnknownCallbackRequest, request)
+	// the HeadlessTV implementation does nothing currently
+	return errors.NewGopherError(errors.UnknownTVRequest, request)
 }

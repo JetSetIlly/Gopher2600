@@ -39,6 +39,7 @@ const (
 	KeywordBall          = "BALL"
 	KeywordPlayfield     = "PLAYFIELD"
 	KeywordDisplay       = "DISPLAY"
+	KeywordMouse         = "MOUSE"
 	KeywordScript        = "SCRIPT"
 	KeywordDisassemble   = "DISASSEMBLE"
 )
@@ -76,6 +77,7 @@ var Help = map[string]string{
 	KeywordBall:          "Display the current state of the Ball sprite",
 	KeywordPlayfield:     "Display the current playfield data",
 	KeywordDisplay:       "Display the TV image",
+	KeywordMouse:         "Return the coordinates of the last mouse press",
 	KeywordScript:        "Run commands from specified file",
 	KeywordDisassemble:   "Print the full cartridge disassembly",
 }
@@ -89,12 +91,12 @@ var commandTemplate = input.CommandTemplate{
 	KeywordClear:         "[BREAKS|TRAPS]",
 	KeywordOnHalt:        "%*",
 	KeywordOnStep:        "%*",
-	KeywordLast:          "",
+	KeywordLast:          "[|DEFN]",
 	KeywordMemMap:        "",
 	KeywordQuit:          "",
 	KeywordReset:         "",
 	KeywordRun:           "",
-	KeywordStep:          "",
+	KeywordStep:          "[|CPU|VIDEO]",
 	KeywordStepMode:      "[CPU|VIDEO]",
 	KeywordTerse:         "",
 	KeywordVerbose:       "",
@@ -105,12 +107,13 @@ var commandTemplate = input.CommandTemplate{
 	KeywordRAM:           "",
 	KeywordRIOT:          "",
 	KeywordTIA:           "",
-	KeywordTV:            "",
+	KeywordTV:            "[|SPEC]",
 	KeywordPlayer:        "",
 	KeywordMissile:       "",
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
 	KeywordDisplay:       "[|OFF]",
+	KeywordMouse:         "",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
 }

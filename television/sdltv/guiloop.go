@@ -1,6 +1,8 @@
 package sdltv
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 // guiLoop listens for SDL events and is run concurrently. critical sections
 // protected by tv.guiLoopLock
@@ -17,9 +19,7 @@ func (tv *SDLTV) guiLoop() {
 			// *CRITICAL SECTION*
 			// (R) tv.onWindowClose
 			tv.guiLoopLock.Lock()
-			if tv.onWindowClose != nil {
-				tv.onWindowClose()
-			}
+			tv.onWindowClose.dispatch()
 			tv.guiLoopLock.Unlock()
 
 		case *sdl.KeyboardEvent:
@@ -49,6 +49,7 @@ func (tv *SDLTV) guiLoop() {
 					// *CRITICAL SECTION*
 					// (W) mouseX, mouseY
 					// (R) tv.scr, tv.dbgScr
+					// (R) tv.onMouseButton1
 					tv.guiLoopLock.Lock()
 
 					// convert X pixel value to horizpos equivalent
@@ -68,6 +69,8 @@ func (tv *SDLTV) guiLoop() {
 					} else {
 						tv.mouseY = int(float32(int(ev.Y)+tv.Spec.ScanlinesPerVBlank) / sy)
 					}
+
+					tv.onMouseButton1.dispatch()
 
 					tv.guiLoopLock.Unlock()
 

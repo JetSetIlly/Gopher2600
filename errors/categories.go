@@ -32,9 +32,7 @@ const (
 	CartridgeInvalidSize
 
 	// TV
-	UnknownStateRequest
-	UnknownCallbackRequest
-	InvalidStateRequest
+	UnknownTVRequest
 
 	// Peripherals
 	NoControllersFound
