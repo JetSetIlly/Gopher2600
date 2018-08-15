@@ -56,7 +56,7 @@ func (tv *SDLTV) guiLoop() {
 					// the opposite of pixelX() and also the scalining applied
 					// by the SDL renderer
 					if tv.scr == tv.dbgScr {
-						tv.mouseX = int(float32(int(ev.X)-tv.Spec.ClocksPerHblank) / sx)
+						tv.mouseX = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
 					} else {
 						tv.mouseX = int(float32(ev.X) / sx)
 					}
@@ -67,7 +67,7 @@ func (tv *SDLTV) guiLoop() {
 					if tv.scr == tv.dbgScr {
 						tv.mouseY = int(float32(ev.Y) / sy)
 					} else {
-						tv.mouseY = int(float32(int(ev.Y)+tv.Spec.ScanlinesPerVBlank) / sy)
+						tv.mouseY = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank
 					}
 
 					tv.onMouseButton1.dispatch()

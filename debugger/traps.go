@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
+	"strings"
 )
 
 // traps keeps track of all the currently defined trappers
@@ -34,21 +35,18 @@ func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
-// check compares the current state of the emulation with every trap
-// condition. it lists every condition that applies, not just the first
-// condition it encounters.
-func (tr *traps) check() bool {
-	trapped := false
+// check compares the current state of the emulation with every trap condition.
+// it returns a string listing every condition that applies
+func (tr *traps) check(previousResult string) string {
+	checkString := strings.Builder{}
+	checkString.WriteString(previousResult)
 	for i := range tr.traps {
-		hasTrapped := tr.traps[i].target.Value() != tr.traps[i].origValue
-		if hasTrapped {
+		if tr.traps[i].target.Value() != tr.traps[i].origValue {
 			tr.traps[i].origValue = tr.traps[i].target.Value()
-			tr.dbg.print(ui.Feedback, "trap on %s", tr.traps[i].target.ShortLabel())
+			checkString.WriteString(fmt.Sprintf("trap on %s", tr.traps[i].target.ShortLabel()))
 		}
-		trapped = hasTrapped || trapped
 	}
-
-	return trapped
+	return checkString.String()
 }
 
 func (tr traps) list() {

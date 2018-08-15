@@ -111,7 +111,19 @@ func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
 		// (R) tv.mouseX, tv.mouseY
 		tv.guiLoopLock.Lock()
 		defer tv.guiLoopLock.Unlock()
-		return fmt.Sprintf("mouse: hp=%d, sl=%d\n", tv.mouseX, tv.mouseY), nil
+		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.mouseX, tv.mouseY), nil
+	case television.ReqLastMouseX:
+		// * CRITICAL SEECTION*
+		// (R) tv.mouseX
+		tv.guiLoopLock.Lock()
+		defer tv.guiLoopLock.Unlock()
+		return fmt.Sprintf("%d", tv.mouseX), nil
+	case television.ReqLastMouseY:
+		// * CRITICAL SEECTION*
+		// (R) tv.mouseY
+		tv.guiLoopLock.Lock()
+		defer tv.guiLoopLock.Unlock()
+		return fmt.Sprintf("%d", tv.mouseY), nil
 	default:
 		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
 	}

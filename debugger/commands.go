@@ -113,7 +113,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
 	KeywordDisplay:       "[|OFF]",
-	KeywordMouse:         "",
+	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
 }

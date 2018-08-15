@@ -11,8 +11,10 @@ const (
 	ReqScanline TVStateReq = "SCANLINE"
 	ReqHorizPos TVStateReq = "HORIZPOS"
 
-	ReqTVSpec    TVInfoReq = "TVSPEC"
-	ReqLastMouse TVInfoReq = "MOUSE"
+	ReqTVSpec     TVInfoReq = "TVSPEC"
+	ReqLastMouse  TVInfoReq = "MOUSE"
+	ReqLastMouseX TVInfoReq = "MOUSEX"
+	ReqLastMouseY TVInfoReq = "MOUSEY"
 
 	ReqOnWindowClose  CallbackReq = "ONWINDOWCLOSE"
 	ReqOnMouseButton1 CallbackReq = "ONMOUSEBUTTON1"

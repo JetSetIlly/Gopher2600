@@ -36,6 +36,10 @@ type Debugger struct {
 	breakpoints *breakpoints
 	traps       *traps
 
+	// we accumulate break and trap messsages until we can service them
+	breakMessages string
+	trapMessages  string
+
 	// any error from previous emulation step
 	lastStepError bool
 
@@ -75,11 +79,11 @@ type Debugger struct {
 
 	// channel for communicating with the debugging loop from other areas of
 	// the emulation, paritcularly from other goroutines. for instance, we use
-	// the callbackChannel to implement ctrl-c handling, even though all the
+	// the syncChannel to implement ctrl-c handling, even though all the
 	// code to do it is right here in this very file. we do this to avoid
 	// having to use sync.Mutex. marking critical sections with a mutex is fine
 	// and would definitiely work, it is, frankly, a pain and feels wrong.
-	callbackChannel chan func()
+	syncChannel chan func()
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -118,15 +122,18 @@ func NewDebugger() (*Debugger, error) {
 
 	// make callback channel - buffered because this channel may be used in the
 	// same goroutine as the debuggin loop and we don't want it to deadlock
-	dbg.callbackChannel = make(chan func(), 2)
+	dbg.syncChannel = make(chan func(), 2)
 
 	// register onMouseButton1 callback
-	err = tv.RegisterCallback(television.ReqOnMouseButton1, dbg.callbackChannel, func() {
+	err = tv.RegisterCallback(television.ReqOnMouseButton1, dbg.syncChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
-		dbg.runUntilHalt = false
+		hp, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseX)
+		sl, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseY)
 
-		// TODO: set breakpoint at mouse coordinates
+		dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
+
+		// if the emulation is running the new break should cause it to halt
 	})
 	if err != nil {
 		return nil, err
@@ -167,7 +174,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 		for loop {
 			<-ctrlC
 
-			dbg.callbackChannel <- func() {
+			dbg.syncChannel <- func() {
 				if dbg.runUntilHalt {
 					dbg.runUntilHalt = false
 				} else {
@@ -222,11 +229,13 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	return nil
 }
 
-// videoCycleCallback() and noVideoCycleCallback() are wrapper functions to be
-// used when calling vcs.Step() -- video stepping uses the former and cpu
-// stepping uses the latter
+// videoCycleCallback() and breakpointCallback() are wrapper functions to be
+// used when calling vcs.Step(). stepmode CPU uses breakpointCallback(),
+// whereas stepmode VIDEO uses videoCycleCallback() which in turn uses
+// breakpointCallback()
 
 func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
+	dbg.breakpointCallback(result)
 	dbg.lastResult = result
 	if dbg.commandOnStep != "" {
 		_, err := dbg.parseInput(dbg.commandOnStep)
@@ -237,7 +246,9 @@ func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
 	return dbg.inputLoop(false)
 }
 
-func (dbg *Debugger) noVideoCycleCallback(result *result.Instruction) error {
+func (dbg *Debugger) breakpointCallback(result *result.Instruction) error {
+	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
+	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	return nil
 }
 
@@ -259,22 +270,17 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			return nil
 		}
 
-		// check callback channel and run any functions we find in there
+		// check syncChannel and run any functions we find in there
 		// TODO: not sure if this is the best part of the loop to put this
 		// check. it works for now.
 		select {
-		case f := <-dbg.callbackChannel:
+		case f := <-dbg.syncChannel:
 			f()
 		default:
 		}
 
-		// check for breakpoints and traps. check() functions echo all the
-		// conditions that match
-		if dbg.inputloopNext {
-			bpCheck := dbg.breakpoints.check()
-			trCheck := dbg.traps.check()
-			dbg.inputloopHalt = bpCheck || trCheck || dbg.lastStepError
-		}
+		// check for deferred breakpoints and traps
+		dbg.inputloopHalt = dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
@@ -288,6 +294,12 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				_, _ = dbg.parseInput(dbg.commandOnHalt)
 			}
 		}
+
+		// print and reset accumulated break and trap messages
+		dbg.print(ui.Feedback, dbg.breakMessages)
+		dbg.print(ui.Feedback, dbg.trapMessages)
+		dbg.breakMessages = ""
+		dbg.trapMessages = ""
 
 		// expand breakpoint to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
@@ -335,10 +347,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// prepare for next loop
-			//  o forget about current break state
-			//  o prepare for matching on next breakpoint
 			dbg.inputloopHalt = false
-			dbg.breakpoints.prepareBreakpoints()
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
@@ -355,7 +364,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if dbg.inputloopVideoClock {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleCallback)
 				} else {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.noVideoCycleCallback)
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakpointCallback)
 				}
 
 				if err != nil {
@@ -503,22 +512,28 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordList:
 		list, _ := tokens.Get()
-		switch strings.ToUpper(list) {
+		list = strings.ToUpper(list)
+		switch list {
 		case "BREAKS":
 			dbg.breakpoints.list()
 		case "TRAPS":
 			dbg.traps.list()
+		default:
+			return false, fmt.Errorf("unknown list option (%s)", list)
 		}
 
 	case KeywordClear:
 		clear, _ := tokens.Get()
-		switch strings.ToUpper(clear) {
+		clear = strings.ToUpper(clear)
+		switch clear {
 		case "BREAKS":
 			dbg.breakpoints.clear()
 			dbg.print(ui.Feedback, "breakpoints cleared")
 		case "TRAPS":
 			dbg.traps.clear()
 			dbg.print(ui.Feedback, "traps cleared")
+		default:
+			return false, fmt.Errorf("unknown clear option (%s)", clear)
 		}
 
 	case KeywordOnHalt:
@@ -593,7 +608,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				}
 				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
 			default:
-				return false, fmt.Errorf("unknown last request (%s)", option)
+				return false, fmt.Errorf("unknown last request option (%s)", option)
 			}
 		}
 
@@ -727,7 +742,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				}
 				dbg.print(ui.MachineInfo, info)
 			default:
-				return false, fmt.Errorf("unknown tv info (%s)", option)
+				return false, fmt.Errorf("unknown info request (%s)", option)
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TV)
@@ -756,9 +771,12 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		visibility := true
 		action, present := tokens.Get()
 		if present {
-			switch strings.ToUpper(action) {
+			action = strings.ToUpper(action)
+			switch action {
 			case "OFF":
 				visibility = false
+			default:
+				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
 		}
 		err := dbg.vcs.TV.SetVisibility(visibility)
@@ -767,7 +785,23 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordMouse:
-		info, err := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouse)
+		req := television.ReqLastMouse
+
+		coord, present := tokens.Get()
+
+		if present {
+			coord = strings.ToUpper(coord)
+			switch coord {
+			case "X":
+				req = television.ReqLastMouseX
+			case "Y":
+				req = television.ReqLastMouseY
+			default:
+				return false, fmt.Errorf("unknown mouse option (%s)", coord)
+			}
+		}
+
+		info, err := dbg.vcs.TV.RequestTVInfo(req)
 		if err != nil {
 			return false, err
 		}

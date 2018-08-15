@@ -16,6 +16,9 @@ func (dbg *Debugger) print(pp ui.PrintProfile, s string, a ...interface{}) {
 
 	// trim *all* trailing newlines - UserPrint() will add newlines if required
 	s = strings.TrimRight(s, "\n")
+	if s == "" {
+		return
+	}
 
 	dbg.ui.UserPrint(pp, s, a...)
 }
