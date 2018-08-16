@@ -79,12 +79,19 @@ func (tv *SDLTV) RegisterCallback(request television.CallbackReq, channel chan f
 		tv.onWindowClose.channel = channel
 		tv.onWindowClose.function = callback
 		tv.guiLoopLock.Unlock()
-	case television.ReqOnMouseButton1:
+	case television.ReqOnMouseButtonLeft:
 		// * CRITICAL SEECTION*
-		// (W) tv.onMouseButton1
+		// (W) tv.onMouseButtonLeft
 		tv.guiLoopLock.Lock()
-		tv.onMouseButton1.channel = channel
-		tv.onMouseButton1.function = callback
+		tv.onMouseButtonLeft.channel = channel
+		tv.onMouseButtonLeft.function = callback
+		tv.guiLoopLock.Unlock()
+	case television.ReqOnMouseButtonRight:
+		// * CRITICAL SEECTION*
+		// (W) tv.onMouseButtonRight
+		tv.guiLoopLock.Lock()
+		tv.onMouseButtonRight.channel = channel
+		tv.onMouseButtonRight.function = callback
 		tv.guiLoopLock.Unlock()
 	default:
 		return errors.NewGopherError(errors.UnknownTVRequest, request)

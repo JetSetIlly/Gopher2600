@@ -43,13 +43,17 @@ func (tv *SDLTV) guiLoop() {
 		case *sdl.MouseButtonEvent:
 			if ev.Type == sdl.MOUSEBUTTONDOWN {
 				switch ev.Button {
+
 				case sdl.BUTTON_LEFT:
+					tv.onMouseButtonLeft.dispatch()
+
+				case sdl.BUTTON_RIGHT:
 					sx, sy := tv.renderer.GetScale()
 
 					// *CRITICAL SECTION*
 					// (W) mouseX, mouseY
 					// (R) tv.scr, tv.dbgScr
-					// (R) tv.onMouseButton1
+					// (R) tv.onMouseButtonRight
 					tv.guiLoopLock.Lock()
 
 					// convert X pixel value to horizpos equivalent
@@ -70,11 +74,9 @@ func (tv *SDLTV) guiLoop() {
 						tv.mouseY = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank
 					}
 
-					tv.onMouseButton1.dispatch()
+					tv.onMouseButtonRight.dispatch()
 
 					tv.guiLoopLock.Unlock()
-
-				case sdl.BUTTON_RIGHT:
 				}
 			}
 

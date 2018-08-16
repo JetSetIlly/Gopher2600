@@ -54,8 +54,9 @@ type SDLTV struct {
 	lastFrameRender time.Time
 
 	// callback functions
-	onWindowClose  callback
-	onMouseButton1 callback
+	onWindowClose      callback
+	onMouseButtonLeft  callback
+	onMouseButtonRight callback
 
 	// whether the emulation is currently paused - affects how we render the
 	// screen

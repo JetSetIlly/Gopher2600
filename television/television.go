@@ -16,8 +16,9 @@ const (
 	ReqLastMouseX TVInfoReq = "MOUSEX"
 	ReqLastMouseY TVInfoReq = "MOUSEY"
 
-	ReqOnWindowClose  CallbackReq = "ONWINDOWCLOSE"
-	ReqOnMouseButton1 CallbackReq = "ONMOUSEBUTTON1"
+	ReqOnWindowClose      CallbackReq = "ONWINDOWCLOSE"
+	ReqOnMouseButtonLeft  CallbackReq = "ONMOUSEBUTTONLEFT"
+	ReqOnMouseButtonRight CallbackReq = "ONMOUSEBUTTONRIGHT"
 )
 
 // SignalAttributes represents the data sent to the television
