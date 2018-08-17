@@ -43,7 +43,7 @@ func (bk breaker) String() string {
 
 // isSingleton checks if break condition is part of a list (false) or is a
 // singleton condition (true)
-func (bk breaker) isSinglton() bool {
+func (bk breaker) isSingleton() bool {
 	return bk.next == nil && bk.prev == nil
 }
 
@@ -61,7 +61,7 @@ func (bk *breaker) check() bool {
 		// instances. if it's a singleton break then we always reset the
 		// ignoreValue. if it's the end of the list we reset the value to nil
 		// if there is no match
-		if bk.isSinglton() {
+		if bk.isSingleton() {
 			bk.ignoreValue = currVal
 		} else {
 			bk.ignoreValue = nil
@@ -104,6 +104,20 @@ func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
+func (bp *breakpoints) drop(num int) error {
+	if len(bp.breaks)-1 < num {
+		return errors.NewGopherError(errors.CommandError, fmt.Errorf("breakpoint #%d is not defined", num))
+	}
+
+	h := bp.breaks[:num]
+	t := bp.breaks[num+1:]
+	bp.breaks = make([]breaker, len(h)+len(t), cap(bp.breaks))
+	copy(bp.breaks, h)
+	copy(bp.breaks[len(h):], t)
+
+	return nil
+}
+
 // breakpoints.check compares the current state of the emulation with every
 // break condition. it returns a string listing every condition that applies
 func (bp *breakpoints) check(previousResult string) string {
@@ -123,7 +137,7 @@ func (bp breakpoints) list() {
 		bp.dbg.print(ui.Feedback, "no breakpoints")
 	} else {
 		for i := range bp.breaks {
-			bp.dbg.print(ui.Feedback, "%s", bp.breaks[i])
+			bp.dbg.print(ui.Feedback, "% 2d: %s", i, bp.breaks[i])
 		}
 	}
 }
@@ -197,7 +211,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 
 		} else {
 			if !resolvedTarget {
-				return errors.NewGopherError(errors.InputTooFewArgs, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+				return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 			}
 
 			if tok == "&" {
@@ -218,7 +232,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.NewGopherError(errors.InputTooFewArgs, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+		return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 	}
 
 	// don't add breakpoints that already exist (only works correctly with

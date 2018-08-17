@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
+	"gopher2600/errors"
 	"strings"
 )
 
@@ -35,6 +36,20 @@ func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
+func (tr *traps) drop(num int) error {
+	if len(tr.traps)-1 < num {
+		return errors.NewGopherError(errors.CommandError, fmt.Errorf("trap #%d is not defined", num))
+	}
+
+	h := tr.traps[:num]
+	t := tr.traps[num+1:]
+	tr.traps = make([]trapper, len(h)+len(t), cap(tr.traps))
+	copy(tr.traps, h)
+	copy(tr.traps[len(h):], t)
+
+	return nil
+}
+
 // check compares the current state of the emulation with every trap condition.
 // it returns a string listing every condition that applies
 func (tr *traps) check(previousResult string) string {
@@ -53,13 +68,9 @@ func (tr traps) list() {
 	if len(tr.traps) == 0 {
 		tr.dbg.print(ui.Feedback, "no traps")
 	} else {
-		s := ""
-		sep := ""
 		for i := range tr.traps {
-			s = fmt.Sprintf("%s%s%s", s, sep, tr.traps[i].target.ShortLabel())
-			sep = ", "
+			tr.dbg.print(ui.Feedback, "% 2d: %s", i, tr.traps[i].target.ShortLabel())
 		}
-		tr.dbg.print(ui.Feedback, s)
 	}
 }
 

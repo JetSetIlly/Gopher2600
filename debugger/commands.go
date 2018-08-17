@@ -21,6 +21,7 @@ const (
 	KeywordTrap          = "TRAP"
 	KeywordList          = "LIST"
 	KeywordClear         = "CLEAR"
+	KeywordDrop          = "DROP"
 	KeywordOnHalt        = "ONHALT"
 	KeywordOnStep        = "ONSTEP"
 	KeywordLast          = "LAST"
@@ -56,9 +57,10 @@ var Help = map[string]string{
 	KeywordInsert:        "Insert cartridge into emulation (from file)",
 	KeywordSymbol:        "Search for the address label symbol in disassembly. returns address",
 	KeywordBreak:         "Cause emulator to halt when conditions are met",
+	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
 	KeywordList:          "List current entries for BREAKS and TRAPS",
 	KeywordClear:         "Clear all entries in BREAKS and TRAPS",
-	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
+	KeywordDrop:          "Drop a specific BREAK or TRAP conditin, using the number of the condition reported by LIST",
 	KeywordOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	KeywordOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
 	KeywordLast:          "Prints the result of the last cpu/video cycle",
@@ -95,6 +97,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordTrap:          "%*",
 	KeywordList:          "[BREAKS|TRAPS]",
 	KeywordClear:         "[BREAKS|TRAPS]",
+	KeywordDrop:          "[BREAK|TRAP] %V",
 	KeywordOnHalt:        "%*",
 	KeywordOnStep:        "%*",
 	KeywordLast:          "[|DEFN]",
@@ -257,6 +260,33 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.print(ui.Feedback, "traps cleared")
 		default:
 			return false, fmt.Errorf("unknown clear option (%s)", clear)
+		}
+
+	case KeywordDrop:
+		drop, _ := tokens.Get()
+
+		s, _ := tokens.Get()
+		num, err := strconv.Atoi(s)
+		if err != nil {
+			return false, fmt.Errorf("drop attribute must be a decimal number (%s)", s)
+		}
+
+		drop = strings.ToUpper(drop)
+		switch drop {
+		case "BREAK":
+			err := dbg.breakpoints.drop(num)
+			if err != nil {
+				return false, err
+			}
+			dbg.print(ui.Feedback, "breakpoint #%d dropped", num)
+		case "TRAP":
+			err := dbg.traps.drop(num)
+			if err != nil {
+				return false, err
+			}
+			dbg.print(ui.Feedback, "trap #%d dropped", num)
+		default:
+			return false, fmt.Errorf("unknown drop option (%s)", drop)
 		}
 
 	case KeywordOnHalt:
