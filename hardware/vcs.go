@@ -188,14 +188,30 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 
 // Reset emulates the reset switch on the console panel
 //  - reset the CPU
-//  - reload reset address into the PC
+//  - destroy and create the TIA and RIOT
+//  - load reset address into the PC
 func (vcs *VCS) Reset() error {
 	if err := vcs.MC.Reset(); err != nil {
 		return err
 	}
+
+	// TODO: consider implementing tia.Reset and riot.Reset instead of
+	// recreating the two components
+
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
+	if vcs.TIA == nil {
+		return fmt.Errorf("can't create TIA")
+	}
+
+	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
+	if vcs.RIOT == nil {
+		return fmt.Errorf("can't create RIOT")
+	}
+
 	err := vcs.MC.LoadPC(AddressReset)
 	if _, ok := err.(*memory.MissingCartridgeError); !ok {
 		return err
 	}
+
 	return nil
 }

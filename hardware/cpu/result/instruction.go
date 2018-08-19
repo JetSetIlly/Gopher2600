@@ -90,7 +90,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 	}
 
 	// ... and use assembler symbol for the operand if available/appropriate
-	if symtable.Valid && style.Has(StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
+	if style.Has(StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
 		if result.Defn.AddressingMode != definitions.Immediate {
 
 			switch result.Defn.Effect {
@@ -191,14 +191,17 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		}
 		programCounter = columnise(programCounter, 6)
 		operator = columnise(operator, 3)
-		if symtable.Valid {
+		if symtable.MaxLocationWidth > 0 {
 			label = columnise(label, symtable.MaxLocationWidth)
+		} else {
+			label = columnise(label, 0)
+		}
 
+		if symtable.MaxSymbolWidth > 0 {
 			// +3 to MaxSymbolWidth so that additional notation (parenthesis,
 			// etc.) isn't cropped off.
 			operand = columnise(operand, symtable.MaxSymbolWidth+3)
 		} else {
-			label = columnise(label, 0)
 			operand = columnise(operand, 7)
 		}
 	}

@@ -233,5 +233,9 @@
 0x40, RTI, 6, IMPLIED, False
 
 # undocumented instructions
+# - by convention, I've decided to user upper-case mnemonics for documented
+# instructions and lower-case mnemonics for undocumented instructions
+# - I'm using the 'dop' mnemonic for 3-byte 'nop'
 0x04, dop, 3, ZERO_PAGE, False
+0x80, dop, 3, IMMEDIATE, False
 0xa7, lax, 4, ABSOLUTE, False

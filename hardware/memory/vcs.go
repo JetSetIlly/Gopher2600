@@ -116,19 +116,26 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 //  o address label
 //  o error
 func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, error) {
+	var mapped bool
 	var ma uint16
+
 	switch address := address.(type) {
 	case uint16:
 		ma = mem.MapAddress(uint16(address))
+		mapped = true
 	case string:
 		// search for symbolic address in standard vcs read symbols
 		// TODO: peeking of cartridge specific symbols
 		for a, sym := range vcssymbols.ReadSymbols {
 			if sym == address {
 				ma = a
+				mapped = true
+				break // for loop
 			}
 		}
-	default:
+	}
+
+	if !mapped {
 		return 0, 0, "", "", errors.NewGopherError(errors.UnrecognisedAddress, address)
 	}
 

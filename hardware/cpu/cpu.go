@@ -96,7 +96,7 @@ func (mc *CPU) IsExecuting() bool {
 func (mc *CPU) Reset() error {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("can't reset CPU in the middle of an instruction"))
+		return errors.NewGopherError(errors.InvalidOperationMidInstruction, "reset")
 	}
 
 	mc.PC.Load(0)
@@ -119,7 +119,7 @@ func (mc *CPU) Reset() error {
 func (mc *CPU) LoadPC(indirectAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("can't alter program counter in the middle of an instruction"))
+		return errors.NewGopherError(errors.InvalidOperationMidInstruction, "load PC")
 	}
 
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()

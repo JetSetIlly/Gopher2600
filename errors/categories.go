@@ -16,6 +16,7 @@ const (
 	UnimplementedInstruction
 	NullInstruction
 	ProgramCounterCycled
+	InvalidOperationMidInstruction
 
 	// Memory
 	UnservicedChipWrite

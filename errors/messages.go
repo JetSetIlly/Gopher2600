@@ -11,9 +11,10 @@ var messages = map[Errno]string{
 	InvalidTarget:         "invalid target (%s)",
 
 	// CPU
-	UnimplementedInstruction: "unimplemented instruction (%0#x) at (%#04x)",
-	NullInstruction:          "unimplemented instruction (0xff)",
-	ProgramCounterCycled:     "program counter cycled back to 0x0000",
+	UnimplementedInstruction:       "unimplemented instruction (%0#x) at (%#04x)",
+	NullInstruction:                "unimplemented instruction (0xff)",
+	ProgramCounterCycled:           "program counter cycled back to 0x0000",
+	InvalidOperationMidInstruction: "invalid operation mid-instruction (%s)",
 
 	// Memory
 	UnservicedChipWrite: "chip memory write signal has not been serviced since previous write (%s)",

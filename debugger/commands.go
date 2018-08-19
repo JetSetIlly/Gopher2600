@@ -92,7 +92,7 @@ var Help = map[string]string{
 
 var commandTemplate = input.CommandTemplate{
 	KeywordInsert:        "%F",
-	KeywordSymbol:        "%V",
+	KeywordSymbol:        "%V [|ALL]",
 	KeywordBreak:         "%*",
 	KeywordTrap:          "%*",
 	KeywordList:          "[BREAKS|TRAPS]",
@@ -211,7 +211,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordSymbol:
 		symbol, _ := tokens.Get()
-		address, err := dbg.disasm.Symtable.SearchLocation(symbol)
+		symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol)
 		if err != nil {
 			switch err := err.(type) {
 			case errors.GopherError:
@@ -222,7 +222,24 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			}
 			return false, err
 		}
-		dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
+
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "ALL":
+				// find all instances of symbol address in memory space
+				for m := uint16(0); m < dbg.vcs.Mem.Cart.Origin(); m++ {
+					if dbg.vcs.Mem.MapAddress(m) == address {
+						dbg.print(ui.Feedback, "%s -> %#04x", symbol, m)
+					}
+				}
+			default:
+				return false, fmt.Errorf("unknown option for SYMBOL command (%s)", option)
+			}
+		} else {
+			dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
+		}
 
 	case KeywordBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
@@ -458,18 +475,17 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(addr)
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
-				continue
+			} else {
+				// format results
+				if uint64(mappedAddress) != addr {
+					msg = fmt.Sprintf("%s = %#04x", msg, mappedAddress)
+				}
+				msg = fmt.Sprintf("%s -> 0x%02x :: %s", msg, val, areaName)
+				if addressLabel != "" {
+					msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
+				}
+				dbg.print(ui.MachineInfo, msg)
 			}
-
-			// format results
-			if uint64(mappedAddress) != addr {
-				msg = fmt.Sprintf("%s = %#04x", msg, mappedAddress)
-			}
-			msg = fmt.Sprintf("%s -> 0x%02x :: %s", msg, val, areaName)
-			if addressLabel != "" {
-				msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
-			}
-			dbg.print(ui.MachineInfo, msg)
 
 			a, present = tokens.Get()
 		}

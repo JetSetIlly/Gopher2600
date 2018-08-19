@@ -19,8 +19,6 @@ type Table struct {
 
 	MaxLocationWidth int
 	MaxSymbolWidth   int
-
-	Valid bool
 }
 
 // StandardSymbolTable initialises a symbols table using the standard VCS symbols
@@ -28,8 +26,7 @@ func StandardSymbolTable() (*Table, error) {
 	table := new(Table)
 	table.ReadSymbols = vcssymbols.ReadSymbols
 	table.WriteSymbols = vcssymbols.WriteSymbols
-	table.maxWidth()
-	table.Valid = true
+	table.genMaxWidth()
 	return table, nil
 }
 
@@ -40,6 +37,19 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	table.Locations = make(map[uint16]string)
 	table.ReadSymbols = make(map[uint16]string)
 	table.WriteSymbols = make(map[uint16]string)
+
+	// prioritise symbols with reference symbols for the VCS. do this in all
+	// instances, even if there is an error with the symbols file
+	defer func() {
+		for k, v := range vcssymbols.ReadSymbols {
+			table.ReadSymbols[k] = v
+		}
+		for k, v := range vcssymbols.WriteSymbols {
+			table.WriteSymbols[k] = v
+		}
+
+		table.genMaxWidth()
+	}()
 
 	// try to open symbols file
 	symFilename := cartridgeFilename
@@ -112,23 +122,10 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		}
 	}
 
-	// prioritise symbols with reference symbols for the VCS
-	for k, v := range vcssymbols.ReadSymbols {
-		table.ReadSymbols[k] = v
-	}
-	for k, v := range vcssymbols.WriteSymbols {
-		table.WriteSymbols[k] = v
-	}
-
-	table.maxWidth()
-
-	// indicate that symbol table should be used
-	table.Valid = true
-
 	return table, nil
 }
 
-func (table *Table) maxWidth() {
+func (table *Table) genMaxWidth() {
 	// get max width of symbol in each list -- it may seem that we could keep
 	// track of these width values as we go along but we can't really because
 	// the overwriting of previous symbols, during the loops over

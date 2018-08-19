@@ -7,6 +7,7 @@ import (
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
 	"gopher2600/television"
@@ -227,13 +228,13 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	return nil
 }
 
-// videoCycleCallback() and breakpointCallback() are wrapper functions to be
-// used when calling vcs.Step(). stepmode CPU uses breakpointCallback(),
+// videoCycleCallback() and breakandtrapCallback() are wrapper functions to be
+// used when calling vcs.Step(). stepmode CPU uses breakandtrapCallback(),
 // whereas stepmode VIDEO uses videoCycleCallback() which in turn uses
-// breakpointCallback()
+// breakandtrapCallback()
 
 func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
-	dbg.breakpointCallback(result)
+	dbg.breakandtrapCallback(result)
 	dbg.lastResult = result
 	if dbg.commandOnStep != "" {
 		_, err := dbg.parseInput(dbg.commandOnStep)
@@ -244,9 +245,18 @@ func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
 	return dbg.inputLoop(false)
 }
 
-func (dbg *Debugger) breakpointCallback(result *result.Instruction) error {
+func (dbg *Debugger) breakandtrapCallback(result *result.Instruction) error {
+	// because we call this callback mid-instruction, the programme counter
+	// maybe in it's non-final state - we don't want to break or trap in these
+	// instances if the final effect of the instruction changes the programme
+	// counter to some other value
+	if (result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine) && !result.Final {
+		return nil
+	}
+
 	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
+
 	return nil
 }
 
@@ -277,18 +287,18 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		default:
 		}
 
-		// check for deferred breakpoints and traps
+		// check for breakpoints and traps
+		dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
+		dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 		dbg.inputloopHalt = dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
 
-		// if haltCommand mode and if run state is correct that print haltCommand
-		// command(s)
+		// if commandOnHalt is defined and if run state is correct then run
+		// commandOnHalt command(s)
 		if dbg.commandOnHalt != "" {
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
-				// note this is parsing input, not reading input. we're passing the
-				// parse function a prepared command sequence.
 				_, _ = dbg.parseInput(dbg.commandOnHalt)
 			}
 		}
@@ -299,7 +309,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		dbg.breakMessages = ""
 		dbg.trapMessages = ""
 
-		// expand breakpoint to include step-once/many flag
+		// expand inputloopHalt to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
 
 		if dbg.inputloopHalt {
@@ -362,7 +372,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if dbg.inputloopVideoClock {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleCallback)
 				} else {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakpointCallback)
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakandtrapCallback)
 				}
 
 				if err != nil {
