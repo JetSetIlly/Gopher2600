@@ -6,6 +6,7 @@ import (
 	"gopher2600/debugger/ui"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/symbols"
 	"gopher2600/television"
 	"strconv"
 	"strings"
@@ -66,13 +67,13 @@ var Help = map[string]string{
 	KeywordLast:          "Prints the result of the last cpu/video cycle",
 	KeywordMemMap:        "Display high-levl VCS memory map",
 	KeywordQuit:          "Exits the emulator",
-	KeywordReset:         "Rest the emulation to its initial state",
+	KeywordReset:         "Reset the emulation to its initial state",
 	KeywordRun:           "Run emulator until next halt state",
 	KeywordStep:          "Step forward emulator one step (see STEPMODE command)",
 	KeywordStepMode:      "Change method of stepping: CPU or VIDEO",
 	KeywordTerse:         "Use terse format when displaying machine information",
 	KeywordVerbose:       "Use verbose format when displaying machine information",
-	KeywordVerbosity:     "Display which fomat is used when displaying machine information (see TERSE and VERBOSE commands)",
+	KeywordVerbosity:     "Display which format is used when displaying machine information (see TERSE and VERBOSE commands)",
 	KeywordDebuggerState: "Display summary of debugger options",
 	KeywordCPU:           "Display the current state of the CPU",
 	KeywordPeek:          "Inspect an individual memory address",
@@ -98,15 +99,15 @@ var commandTemplate = input.CommandTemplate{
 	KeywordList:          "[BREAKS|TRAPS]",
 	KeywordClear:         "[BREAKS|TRAPS]",
 	KeywordDrop:          "[BREAK|TRAP] %V",
-	KeywordOnHalt:        "%*",
-	KeywordOnStep:        "%*",
+	KeywordOnHalt:        "[|OFF|ECHO] %*",
+	KeywordOnStep:        "[|OFF|ECHO] %*",
 	KeywordLast:          "[|DEFN]",
 	KeywordMemMap:        "",
 	KeywordQuit:          "",
 	KeywordReset:         "",
 	KeywordRun:           "",
 	KeywordStep:          "[|CPU|VIDEO]",
-	KeywordStepMode:      "[CPU|VIDEO]",
+	KeywordStepMode:      "[|CPU|VIDEO]",
 	KeywordTerse:         "",
 	KeywordVerbose:       "",
 	KeywordVerbosity:     "",
@@ -211,7 +212,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordSymbol:
 		symbol, _ := tokens.Get()
-		symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol)
+		table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
 		if err != nil {
 			switch err := err.(type) {
 			case errors.GopherError:
@@ -228,9 +229,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "ALL":
+				dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
+
 				// find all instances of symbol address in memory space
-				for m := uint16(0); m < dbg.vcs.Mem.Cart.Origin(); m++ {
-					if dbg.vcs.Mem.MapAddress(m) == address {
+				// assumption: the address returned by SearchSymbol is the
+				// first address in the complete list
+				for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
+					if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
 						dbg.print(ui.Feedback, "%s -> %#04x", symbol, m)
 					}
 				}
@@ -316,6 +321,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				dbg.print(ui.Feedback, "no auto-command on halt")
 				return false, nil
 			}
+			if strings.ToUpper(option) == "ECHO" {
+				dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+				return false, nil
+			}
 
 			// use remaininder of command line to form the ONHALT command sequence
 			dbg.commandOnHalt = tokens.Remainder()
@@ -325,6 +334,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.commandOnHalt = strings.Replace(dbg.commandOnHalt, ",", ";", -1)
 
 			// store the new command so we can reuse it
+			// TODO: normalise case of specified command sequence
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
@@ -344,6 +354,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				dbg.print(ui.Feedback, "no auto-command on step")
 				return false, nil
 			}
+			if strings.ToUpper(option) == "ECHO" {
+				dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+				return false, nil
+			}
 
 			// use remaininder of command line to form the ONSTEP command sequence
 			dbg.commandOnStep = tokens.Remainder()
@@ -353,6 +367,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.commandOnStep = strings.Replace(dbg.commandOnStep, ",", ";", -1)
 
 			// store the new command so we can reuse it
+			// TODO: normalise case of specified command sequence
 			dbg.commandOnStepStored = dbg.commandOnStep
 		}
 
@@ -416,15 +431,22 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordStepMode:
-		mode, _ := tokens.Get()
-		mode = strings.ToUpper(mode)
-		switch mode {
-		case "CPU":
-			dbg.inputloopVideoClock = false
-		case "VIDEO":
-			dbg.inputloopVideoClock = true
-		default:
-			return false, fmt.Errorf("unknown step mode (%s)", mode)
+		mode, present := tokens.Get()
+		if present {
+			mode = strings.ToUpper(mode)
+			switch mode {
+			case "CPU":
+				dbg.inputloopVideoClock = false
+			case "VIDEO":
+				dbg.inputloopVideoClock = true
+			default:
+				return false, fmt.Errorf("unknown step mode (%s)", mode)
+			}
+		}
+		if dbg.inputloopVideoClock {
+			mode = "VIDEO"
+		} else {
+			mode = "CPU"
 		}
 		dbg.print(ui.Feedback, "step mode: %s", mode)
 
@@ -444,7 +466,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordDebuggerState:
-		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT")
+		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT ECHO; ONSTEP ECHO")
 		if err != nil {
 			return false, err
 		}

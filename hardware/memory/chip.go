@@ -61,9 +61,9 @@ func (area ChipMemory) Memtop() uint16 {
 
 // Peek is the implementation of Area.Peek. returns:
 func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
-	sym := vcssymbols.ReadSymbols[address&area.readMask]
+	sym := vcssymbols.ReadSymbols[address]
 	if sym == "" {
 		return 0, 0, "", "", errors.NewGopherError(errors.UnreadableAddress, address)
 	}
-	return area.memory[address-area.origin], address & area.readMask, area.Label(), sym, nil
+	return area.memory[address-area.origin], address, area.Label(), sym, nil
 }

@@ -9,8 +9,6 @@ import (
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	area.resolvePeriphQueue()
 
-	address &= area.readMask
-
 	// note the name of the register that we are reading
 	area.lastReadRegister = vcssymbols.ReadSymbols[address]
 

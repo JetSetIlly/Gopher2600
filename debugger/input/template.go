@@ -60,7 +60,7 @@ func CompileCommandTemplate(template CommandTemplate, helpKeyword string) (Comma
 					case 'V':
 						commands[k] = append(commands[k], commandArg{typ: argValue, required: true})
 					case '*':
-						commands[k] = append(commands[k], commandArg{typ: argIndeterminate, required: true})
+						commands[k] = append(commands[k], commandArg{typ: argIndeterminate, required: false})
 					}
 				}
 			}
