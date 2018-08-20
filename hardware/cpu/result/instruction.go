@@ -241,7 +241,7 @@ func (result Instruction) IsValid() error {
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
-	if result.Bug != "" {
+	if result.Bug == "" {
 		if result.Defn.AddressingMode == definitions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
 				return fmt.Errorf("number of cycles wrong (%d instead of %d, %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2)
@@ -249,11 +249,12 @@ func (result Instruction) IsValid() error {
 		} else {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
+					fmt.Println(result.Defn)
 					return fmt.Errorf("number of cycles wrong (%d instead of %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1)
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					return fmt.Errorf("number of cycles wrong (%d instead of %d", result.ActualCycles, result.Defn.Cycles)
+					return fmt.Errorf("number of cycles wrong (%d instead of %d)", result.ActualCycles, result.Defn.Cycles)
 				}
 			}
 		}

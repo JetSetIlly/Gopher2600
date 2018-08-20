@@ -185,8 +185,8 @@
 0x85, STA, 3, ZERO_PAGE, False, WRITE
 0x95, STA, 4, INDEXED_ZERO_PAGE_X, False, WRITE
 0x8d, STA, 4, ABSOLUTE, False, WRITE
-0x9d, STA, 5, ABSOLUTE_INDEXED_X, False, WRITE
-0x99, STA, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+0x9d, STA, 5, ABSOLUTE_INDEXED_X, True, WRITE
+0x99, STA, 5, ABSOLUTE_INDEXED_Y, True, WRITE
 0x81, STA, 6, PRE_INDEX_INDIRECT, False, WRITE
 0x91, STA, 6, POST_INDEX_INDIRECT, False, WRITE
 
@@ -216,14 +216,14 @@
 # flow control (branch instructions) -- machine cycles count column is the fail count
 # ie. when the branch condition isfalse and the PC allowed to advance as normal. if the
 # branch succeeds then the PC is adjusted, taking an additional cycle.
-0x90, BCC, 2, RELATIVE, False, FLOW
-0xb0, BCS, 2, RELATIVE, False, FLOW
-0xf0, BEQ, 2, RELATIVE, False, FLOW
-0x30, BMI, 2, RELATIVE, False, FLOW
-0xd0, BNE, 2, RELATIVE, False, FLOW
-0x10, BPL, 2, RELATIVE, False, FLOW
-0x50, BVC, 2, RELATIVE, False, FLOW
-0x70, BVS, 2, RELATIVE, False, FLOW
+0x90, BCC, 2, RELATIVE, True, FLOW
+0xb0, BCS, 2, RELATIVE, True, FLOW
+0xf0, BEQ, 2, RELATIVE, True, FLOW
+0x30, BMI, 2, RELATIVE, True, FLOW
+0xd0, BNE, 2, RELATIVE, True, FLOW
+0x10, BPL, 2, RELATIVE, True, FLOW
+0x50, BVC, 2, RELATIVE, True, FLOW
+0x70, BVS, 2, RELATIVE, True, FLOW
 
 0x20, JSR, 6, ABSOLUTE, False, SUB-ROUTINE
 0x60, RTS, 6, IMPLIED, False, SUB-ROUTINE
@@ -237,5 +237,5 @@
 # instructions and lower-case mnemonics for undocumented instructions
 # - I'm using the 'dop' mnemonic for 3-byte 'nop'
 0x04, dop, 3, ZERO_PAGE, False
-0x80, dop, 3, IMMEDIATE, False
-0xa7, lax, 4, ABSOLUTE, False
+0x80, dop, 2, IMMEDIATE, False
+0xa7, lax, 3, ZERO_PAGE, False

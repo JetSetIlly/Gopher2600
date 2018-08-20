@@ -84,6 +84,9 @@ func (riot *RIOT) ReadRIOTMemory() {
 		default:
 			fmt.Printf("unserviced RIOT register (%v)", register)
 		}
+
+		// write value to INTIM straight-away
+		riot.mem.ChipWrite(vcssymbols.INTIM, uint8(riot.timerINTIMvalue))
 	}
 }
 

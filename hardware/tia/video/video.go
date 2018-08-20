@@ -176,6 +176,14 @@ func (vd *Video) Pixel() uint8 {
 		}
 
 		// priority 2
+		if p0u {
+			return p0c
+		}
+		if m0u {
+			return m0c
+		}
+
+		// priority 3
 		if p1u {
 			return p1c
 		}
@@ -183,13 +191,6 @@ func (vd *Video) Pixel() uint8 {
 			return m1c
 		}
 
-		// priority 3
-		if p0u {
-			return p0c
-		}
-		if m0u {
-			return m0c
-		}
 	} else {
 		// priority 1
 		if p0u {
@@ -208,11 +209,11 @@ func (vd *Video) Pixel() uint8 {
 		}
 
 		// priority 3
-		if pfu {
-			return pfc
-		}
 		if blu {
 			return blc
+		}
+		if pfu {
+			return pfc
 		}
 	}
 

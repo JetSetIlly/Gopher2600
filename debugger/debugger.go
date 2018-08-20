@@ -390,6 +390,15 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 					}
 				}
 
+				// check validity of instruction result
+				if dbg.lastResult.Final {
+					err := dbg.lastResult.IsValid()
+					if err != nil {
+						fmt.Println(dbg.lastResult)
+						panic(err)
+					}
+				}
+
 				if dbg.commandOnStep != "" {
 					_, err := dbg.parseInput(dbg.commandOnStep)
 					if err != nil {

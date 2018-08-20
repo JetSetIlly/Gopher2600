@@ -507,9 +507,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		adder := register.NewAnonRegister(mc.X, 16)
-
 		// add index to LSB of address
+		adder := register.NewAnonRegister(mc.X, 16)
 		adder.Add(indirectAddress&0x00ff, false)
 		address = adder.ToUint16()
 
@@ -536,9 +535,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		adder := register.NewAnonRegister(mc.Y, 16)
-
 		// add index to LSB of address
+		adder := register.NewAnonRegister(mc.Y, 16)
 		adder.Add(indirectAddress&0x00ff, false)
 		address = adder.ToUint16()
 
