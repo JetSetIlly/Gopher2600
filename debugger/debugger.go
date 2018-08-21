@@ -324,7 +324,15 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// build prompt
 			// - different prompt depending on whether a valid disassembly is available
 			var prompt string
-			if p, ok := dbg.disasm.Program[dbg.vcs.MC.PC.ToUint16()]; ok {
+			var disasmPC uint16
+
+			if dbg.lastResult == nil || dbg.lastResult.Final {
+				disasmPC = dbg.vcs.MC.PC.ToUint16()
+			} else {
+				disasmPC = dbg.lastResult.Address
+			}
+
+			if p, ok := dbg.disasm.Program[disasmPC]; ok {
 				prompt = strings.Trim(p.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
@@ -394,6 +402,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if dbg.lastResult.Final {
 					err := dbg.lastResult.IsValid()
 					if err != nil {
+						fmt.Println(dbg.lastResult.Defn)
 						fmt.Println(dbg.lastResult)
 						panic(err)
 					}

@@ -227,17 +227,17 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 }
 
 func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) error {
-	// return early if IgnoreBranching flag is turned on
+	// return early if NoSideEffects flag is turned on
 	if mc.NoSideEffects {
 		return nil
 	}
 
 	// in the case of branchng (relative addressing) we've read an 8bit value
 	// rather than a 16bit value to use as the "address". we do this kind of
-	// thing all over the place and it normally doesn't matter but because we'll
-	// sometimes be doing subtractions with this value we need to make sure the
-	// sign bit of the 8bit value has been propogated into the most-significant
-	// bits of the 16bit value.
+	// thing all over the place and it normally doesn't matter; but because
+	// we'll sometimes be doing subtractions with this value we need to make
+	// sure the sign bit of the 8bit value has been propogated into the
+	// most-significant bits of the 16bit value.
 	if address&0x0080 == 0x0080 {
 		address |= 0xff00
 	}
@@ -344,11 +344,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	// get address to use when reading/writing from/to memory (note that in the
 	// case of immediate addressing, we are actually getting the value to use in
-	// the instruction, not the address). we also take the opportuinity to set
+	// the instruction, not the address). we also take the opportunity to set
 	// the InstructionData value for the StepResult and whether a page fault has
 	// occured
 	switch defn.AddressingMode {
 	case definitions.Implied:
+		// implied mode does not use any additional bytes. however, the next
+		// instruction is read but the PC is not incremented
+
 		// phantom read
 		// +1 cycle
 		_, err := mc.read8Bit(mc.PC.ToUint16())
@@ -367,18 +370,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 		result.InstructionData = value
 
-	case definitions.Relative:
-		// relative addressing is only used for branch instructions, the address
-		// is an offset value from the current PC position
-
-		// +1 cycle
-		value, err := mc.read8BitPC()
-		if err != nil {
-			return nil, err
-		}
-		result.InstructionData = value
-		address = uint16(value)
-
 	case definitions.Absolute:
 		if defn.Effect != definitions.Subroutine {
 			// +2 cycles
@@ -388,8 +379,24 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			}
 			result.InstructionData = address
 		}
+
 		// else... for JSR, addresses are read slightly differently so we defer
 		// this part of the operation to the mnemonic switch below
+
+	case definitions.Relative:
+		// relative addressing is only used for branch instructions, the address
+		// is an offset value from the current PC position
+
+		// most of the addressing cycles for this addressing mode are consumed
+		// in the branch() function
+
+		// +1 cycle
+		value, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+		result.InstructionData = value
+		address = uint16(value)
 
 	case definitions.ZeroPage:
 		// +1 cycle
@@ -399,6 +406,36 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 		address = uint16(value)
 		result.InstructionData = address
+
+	case definitions.IndexedZeroPageX:
+		// +1 cycles
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+		adder := register.NewAnonRegister(indirectAddress, 8)
+		adder.Add(mc.X, false)
+		address = adder.ToUint16()
+		result.InstructionData = indirectAddress
+
+		// +1 cycle
+		mc.endCycle()
+
+	case definitions.IndexedZeroPageY:
+		// used exclusively for LDX ZeroPage,y
+
+		// +1 cycles
+		indirectAddress, err := mc.read8BitPC()
+		if err != nil {
+			return nil, err
+		}
+		adder := register.NewAnonRegister(indirectAddress, 8)
+		adder.Add(mc.Y, false)
+		address = adder.ToUint16()
+		result.InstructionData = indirectAddress
+
+		// +1 cycle
+		mc.endCycle()
 
 	case definitions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
@@ -450,12 +487,16 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
+		// phantom read before adjusting the index
+		// +1 cycle
+		_, err = mc.read8Bit(uint16(indirectAddress))
+		if err != nil {
+			return nil, err
+		}
+
 		// using 8bit addition because we don't want a page-fault
 		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
-
-		// +1 cycle
-		mc.endCycle()
 
 		// +2 cycles
 		address, err = mc.read16Bit(adder.ToUint16())
@@ -485,8 +526,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 		// check for page fault
 		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if result.PageFault {
-			// phantom read
+
+		if result.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
 			if err != nil {
@@ -495,6 +537,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			result.ActualCycles++
 		}
 
+		// fix MSB of address
 		adder.Add(indexedAddress&0xff00, false)
 		address = adder.ToUint16()
 
@@ -514,8 +557,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 		// check for page fault
 		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if result.PageFault {
-			// phantom read
+		if result.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
 			if err != nil {
@@ -523,6 +566,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			}
 		}
 
+		// fix MSB of address
 		adder.Add(indirectAddress&0xff00, false)
 		address = adder.ToUint16()
 
@@ -542,8 +586,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 		// check for page fault
 		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if result.PageFault {
-			// phantom read
+		if result.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
 			if err != nil {
@@ -551,40 +595,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			}
 		}
 
+		// fix MSB of address
 		adder.Add(indirectAddress&0xff00, false)
 		address = adder.ToUint16()
 
 		result.InstructionData = indirectAddress
-
-	case definitions.IndexedZeroPageX:
-		// +1 cycles
-		indirectAddress, err := mc.read8BitPC()
-		if err != nil {
-			return nil, err
-		}
-		adder := register.NewAnonRegister(indirectAddress, 8)
-		adder.Add(mc.X, false)
-		address = adder.ToUint16()
-		result.InstructionData = indirectAddress
-
-		// +1 cycle
-		mc.endCycle()
-
-	case definitions.IndexedZeroPageY:
-		// used exclusively for LDX ZeroPage,y
-
-		// +1 cycles
-		indirectAddress, err := mc.read8BitPC()
-		if err != nil {
-			return nil, err
-		}
-		adder := register.NewAnonRegister(indirectAddress, 8)
-		adder.Add(mc.Y, false)
-		address = adder.ToUint16()
-		result.InstructionData = indirectAddress
-
-		// +1 cycle
-		mc.endCycle()
 
 	default:
 		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)
@@ -1054,7 +1069,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
 	}
 
-	// write altered value back to memory for RMW instructions
+	// for Write instructions: consume an extra cycle for the extra memory
+	// access we've already performed
+	if defn.Effect == definitions.Write {
+		// +1 cycle
+		mc.endCycle()
+	}
+
+	// for RMW instructions: write altered value back to memory
 	if defn.Effect == definitions.RMW {
 		if !mc.NoSideEffects {
 			err = mc.write8Bit(address, value)
@@ -1063,12 +1085,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 			}
 		}
-		// +1 cycle
-		mc.endCycle()
-	}
-
-	// consume an extra cycle for the extra memory access for Write instructions
-	if defn.Effect == definitions.Write {
 		// +1 cycle
 		mc.endCycle()
 	}

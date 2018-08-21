@@ -250,11 +250,11 @@ func (result Instruction) IsValid() error {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
 					fmt.Println(result.Defn)
-					return fmt.Errorf("number of cycles wrong (%d instead of %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1)
+					return fmt.Errorf("number of cycles wrong (actual %d instead of %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1)
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					return fmt.Errorf("number of cycles wrong (%d instead of %d)", result.ActualCycles, result.Defn.Cycles)
+					return fmt.Errorf("number of cycles wrong (actual %d instead of %d)", result.ActualCycles, result.Defn.Cycles)
 				}
 			}
 		}
