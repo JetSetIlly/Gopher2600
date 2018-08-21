@@ -49,7 +49,7 @@ func (rs rsync) String() string {
 }
 
 func (rs rsync) remainingCycles() int {
-	return polycounter.MaxPhase - rs.colorClock.Phase
+	return polycounter.MaxPhase - rs.colorClock.Phase + 1
 }
 
 func (rs rsync) isActive() bool {
@@ -61,11 +61,9 @@ func (rs *rsync) reset() {
 }
 
 func (rs *rsync) set() {
-	// setting phase to -2 is effectively a delay of 2 cycles
-	rs.colorClock.Phase = -2
 	rs.active = true
 }
 
 func (rs rsync) check() bool {
-	return rs.active && rs.colorClock.Phase == 3
+	return rs.active && rs.colorClock.Phase == polycounter.MaxPhase
 }

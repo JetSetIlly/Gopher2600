@@ -19,7 +19,7 @@ package video
 const (
 	delayEnableBall     = 1
 	delayEnableMissile  = 1
-	delayPlayfieldWrite = 7
+	delayPlayfieldWrite = 5
 
 	delayResetBall    = 4
 	delayResetMissile = 4

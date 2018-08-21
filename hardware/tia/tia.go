@@ -106,6 +106,7 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.wsync = true
 		service = false
 	case "RSYNC":
+		tia.colorClock.ResetPhase()
 		tia.rsync.set()
 		service = false
 	case "HMOVE":
