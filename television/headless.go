@@ -207,7 +207,7 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 }
 
 // SetVisibility does nothing for the HeadlessTV
-func (tv *HeadlessTV) SetVisibility(visible bool) error {
+func (tv *HeadlessTV) SetVisibility(visible, showOverscan bool) error {
 	return nil
 }
 

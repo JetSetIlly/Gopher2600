@@ -43,7 +43,7 @@ type Television interface {
 	MachineInfoTerse() string
 	MachineInfo() string
 	Signal(SignalAttributes)
-	SetVisibility(visible bool) error
+	SetVisibility(visible, showOverscan bool) error
 	SetPause(pause bool) error
 
 	RequestTVState(TVStateReq) (*TVState, error)
@@ -74,7 +74,7 @@ func (tv DummyTV) String() string {
 func (DummyTV) Signal(SignalAttributes) {}
 
 // SetVisibility (with dummyTV reciever) is the null implementation
-func (DummyTV) SetVisibility(visible bool) error {
+func (DummyTV) SetVisibility(visible, showOverscan bool) error {
 	return nil
 }
 

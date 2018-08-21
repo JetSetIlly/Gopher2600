@@ -34,10 +34,20 @@ func (tv *SDLTV) Signal(attr television.SignalAttributes) {
 }
 
 // SetVisibility toggles the visiblity of the SDLTV window
-func (tv *SDLTV) SetVisibility(visible bool) error {
-	// *NON-CRITICAL SECTION* called from guiLoop but SDL handles its own
-	// concurrency conflicts
+func (tv *SDLTV) SetVisibility(visible, showOverscan bool) error {
+	// *CRITICAL SECTION*
+	// (W) tv.scr
+	// (R) tv.playScr, tv.dbgScr
+	tv.guiLoopLock.Lock()
+	if showOverscan {
+		tv.scr = tv.dbgScr
+	} else {
+		tv.scr = tv.playScr
+	}
+	tv.setWindowSize(tv.scr.width, tv.scr.height)
+	tv.guiLoopLock.Unlock()
 
+	// *NON-CRITICAL SECTION* SDL handles its own concurrency conflicts
 	if visible {
 		tv.window.Show()
 	} else {

@@ -14,7 +14,7 @@ func (tv *SDLTV) guiLoop() {
 		// close window
 		case *sdl.QuitEvent:
 			// SetVisibility is outside of the critical section
-			tv.SetVisibility(false)
+			tv.SetVisibility(false, false)
 
 			// *CRITICAL SECTION*
 			// (R) tv.onWindowClose
@@ -26,17 +26,15 @@ func (tv *SDLTV) guiLoop() {
 			if ev.Type == sdl.KEYDOWN {
 				switch ev.Keysym.Sym {
 				case sdl.K_BACKQUOTE:
+					var showOverscan bool
+
 					// *CRITICAL SECTION*
-					// (W) tv.scr
-					// (R) tv.playScr, tv.dbgScr
+					// (R) tv.scr, tv.dbgScr
 					tv.guiLoopLock.Lock()
-					if tv.scr == tv.dbgScr {
-						tv.scr = tv.playScr
-					} else {
-						tv.scr = tv.dbgScr
-					}
-					tv.setWindowSize(tv.scr.width, tv.scr.height)
+					showOverscan = tv.scr != tv.dbgScr
 					tv.guiLoopLock.Unlock()
+
+					tv.SetVisibility(true, showOverscan)
 				}
 			}
 

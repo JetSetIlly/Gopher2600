@@ -117,7 +117,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	}
-	tv.SetVisibility(true)
+	tv.SetVisibility(true, false)
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
@@ -162,7 +162,7 @@ func run(cartridgeFile string) error {
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
-	tv.SetVisibility(true)
+	tv.SetVisibility(true, false)
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {

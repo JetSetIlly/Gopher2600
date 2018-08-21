@@ -122,7 +122,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordMissile:       "",
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
-	KeywordDisplay:       "[|OFF]",
+	KeywordDisplay:       "[|OFF|OVERSCAN]",
 	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
@@ -560,17 +560,20 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordDisplay:
 		visibility := true
+		showOverscan := false
 		action, present := tokens.Get()
 		if present {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
 				visibility = false
+			case "OVERSCAN":
+				showOverscan = true
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
 		}
-		err := dbg.vcs.TV.SetVisibility(visibility)
+		err := dbg.vcs.TV.SetVisibility(visibility, showOverscan)
 		if err != nil {
 			return false, err
 		}
