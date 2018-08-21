@@ -25,7 +25,7 @@ func (dc future) isScheduled() bool {
 
 // tick moves the pending action counter on one step
 func (dc *future) tick() bool {
-	if dc.remainingCycles > 0 {
+	if dc.remainingCycles == 1 {
 		dc.remainingCycles--
 		return true
 	}
