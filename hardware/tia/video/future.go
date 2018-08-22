@@ -30,7 +30,7 @@ func (dc *future) tick() bool {
 		return true
 	}
 
-	if dc.isScheduled() {
+	if dc.remainingCycles > 0 {
 		dc.remainingCycles--
 	}
 

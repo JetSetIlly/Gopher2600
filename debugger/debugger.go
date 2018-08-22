@@ -96,7 +96,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg.ui = new(ui.PlainTerminal)
 
 	// prepare hardware
-	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
+	tv, err := sdltv.NewSDLTV("NTSC", 2.0)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing television: %s", err)
 	}
@@ -124,7 +124,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg.syncChannel = make(chan func(), 2)
 
 	// register tv callbacks
-	err = tv.RegisterCallback(television.ReqOnMouseButtonRight, dbg.syncChannel, func() {
+	err = tv.RequestCallbackRegistration(television.ReqOnMouseButtonRight, dbg.syncChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
 		hp, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseX)
@@ -314,7 +314,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
-			err = dbg.vcs.TV.SetPause(true)
+			err = dbg.vcs.TV.RequestSetAttr(television.ReqSetPause, true)
 			if err != nil {
 				return err
 			}
@@ -367,7 +367,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
-				err = dbg.vcs.TV.SetPause(false)
+				err = dbg.vcs.TV.RequestSetAttr(television.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

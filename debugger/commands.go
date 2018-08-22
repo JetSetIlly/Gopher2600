@@ -93,7 +93,7 @@ var Help = map[string]string{
 
 var commandTemplate = input.CommandTemplate{
 	KeywordInsert:        "%F",
-	KeywordSymbol:        "%V [|ALL]",
+	KeywordSymbol:        "%S [|ALL]",
 	KeywordBreak:         "%*",
 	KeywordTrap:          "%*",
 	KeywordList:          "[BREAKS|TRAPS]",
@@ -122,7 +122,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordMissile:       "",
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
-	KeywordDisplay:       "[|OFF|OVERSCAN]",
+	KeywordDisplay:       "[|OFF|DEBUG|SCALE] %*",
 	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
@@ -560,20 +560,39 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordDisplay:
 		visibility := true
-		showOverscan := false
+		debug := false
 		action, present := tokens.Get()
 		if present {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
 				visibility = false
-			case "OVERSCAN":
-				showOverscan = true
+			case "DEBUG":
+				debug = true
+			case "SCALE":
+				scl, present := tokens.Get()
+				if !present {
+					return false, fmt.Errorf("value required for %s %s", command, action)
+				}
+
+				scale, err := strconv.ParseFloat(scl, 32)
+				if err != nil {
+					return false, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
+				}
+
+				err = dbg.vcs.TV.RequestSetAttr(television.ReqSetScale, float32(scale))
+				return false, err
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
 		}
-		err := dbg.vcs.TV.SetVisibility(visibility, showOverscan)
+
+		err := dbg.vcs.TV.RequestSetAttr(television.ReqSetVisibility, visibility)
+		if err != nil {
+			return false, err
+		}
+
+		err = dbg.vcs.TV.RequestSetAttr(television.ReqSetDebug, debug)
 		if err != nil {
 			return false, err
 		}

@@ -107,7 +107,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string) (int, error) {
 				ct.commandHistory = append(ct.commandHistory, command{input: nh})
 			}
 
-			ct.Print("\n")
+			ct.Print("\r\n")
 			return n + 1, nil
 
 		case easyterm.KeyEsc:

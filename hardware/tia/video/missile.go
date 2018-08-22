@@ -70,7 +70,7 @@ func (ms *missileSprite) tick() {
 	} else {
 		// tick draw signal only if a position reset is within three cycles of
 		// occuring. in effect, this prevents draw signal ticking during the
-		// first two cycles of a reset request , unless the reset is scheduled
+		// first two cycles of a reset request, unless the reset is scheduled
 		// during a HBLANK
 		if ms.futureReset.remainingCycles < 4 {
 			ms.tickGraphicsScan()

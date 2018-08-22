@@ -3,25 +3,6 @@ package input
 // Commands is the root of the argument "tree"
 type Commands map[string]commandArgList
 
-// argType defines the expected argument type
-type argType int
-
-// the possible values for argType
-const (
-	argKeyword argType = iota
-	argFile
-	argValue
-	argString
-	argIndeterminate
-)
-
-// commandArg specifies the type and properties of an individual argument
-type commandArg struct {
-	typ      argType
-	required bool
-	values   interface{}
-}
-
 // commandArgList is the list of commandArgList for each command
 type commandArgList []commandArg
 
@@ -32,7 +13,7 @@ func (a commandArgList) maximumLen() int {
 		return 0
 	}
 	if a[len(a)-1].typ == argIndeterminate {
-		// return the maximum value allowed for an integer
+		// to indicate indeterminancy, return the maximum value allowed for an integer
 		return int(^uint(0) >> 1)
 	}
 	return len(a)
@@ -49,4 +30,24 @@ func (a commandArgList) requiredLen() (m int) {
 		m++
 	}
 	return
+}
+
+// argType defines the expected argument type
+type argType int
+
+// the possible values for argType
+const (
+	argKeyword argType = iota
+	argFile
+	argValue
+	argString
+	argIndeterminate
+	argNode
+)
+
+// commandArg specifies the type and properties of an individual argument
+type commandArg struct {
+	typ      argType
+	required bool
+	values   interface{}
 }

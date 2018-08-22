@@ -112,12 +112,16 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
-		tv, err = sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
+		tv, err = sdltv.NewSDLTV("NTSC", 3.0)
+		if err != nil {
+			return fmt.Errorf("error preparing television: %s", err)
+		}
+
+		err = tv.RequestSetAttr(television.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	}
-	tv.SetVisibility(true, false)
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
@@ -158,11 +162,15 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 }
 
 func run(cartridgeFile string) error {
-	tv, err := sdltv.NewSDLTV("NTSC", sdltv.IdealScale)
+	tv, err := sdltv.NewSDLTV("NTSC", 3.0)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
-	tv.SetVisibility(true, false)
+
+	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+	if err != nil {
+		return fmt.Errorf("error preparing television: %s", err)
+	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
@@ -178,7 +186,7 @@ func run(cartridgeFile string) error {
 	var runningLock sync.Mutex
 	running := true
 
-	err = tv.RegisterCallback(television.ReqOnWindowClose, nil, func() {
+	err = tv.RequestCallbackRegistration(television.ReqOnWindowClose, nil, func() {
 		runningLock.Lock()
 		running = false
 		runningLock.Unlock()

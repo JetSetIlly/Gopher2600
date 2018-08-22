@@ -1,40 +1,33 @@
 package sdltv
 
 import (
+	"gopher2600/television"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 // guiLoop listens for SDL events and is run concurrently. critical sections
 // protected by tv.guiLoopLock
 func (tv *SDLTV) guiLoop() {
-	for true {
+	for {
 		ev := sdl.WaitEvent()
 		switch ev := ev.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
-			// SetVisibility is outside of the critical section
-			tv.SetVisibility(false, false)
-
-			// *CRITICAL SECTION*
-			// (R) tv.onWindowClose
-			tv.guiLoopLock.Lock()
-			tv.onWindowClose.dispatch()
-			tv.guiLoopLock.Unlock()
+			tv.RequestSetAttr(television.ReqSetVisibility, false)
 
 		case *sdl.KeyboardEvent:
 			if ev.Type == sdl.KEYDOWN {
 				switch ev.Keysym.Sym {
 				case sdl.K_BACKQUOTE:
-					var showOverscan bool
-
-					// *CRITICAL SECTION*
-					// (R) tv.scr, tv.dbgScr
 					tv.guiLoopLock.Lock()
-					showOverscan = tv.scr != tv.dbgScr
+					tv.scr.toggleMasking()
 					tv.guiLoopLock.Unlock()
 
-					tv.SetVisibility(true, showOverscan)
+					// TODO: this doesn't work properly because we're in a
+					// different goroutine than the one in which we intialised
+					// the SDL library.
 				}
 			}
 
@@ -46,18 +39,13 @@ func (tv *SDLTV) guiLoop() {
 					tv.onMouseButtonLeft.dispatch()
 
 				case sdl.BUTTON_RIGHT:
-					sx, sy := tv.renderer.GetScale()
+					sx, sy := tv.scr.renderer.GetScale()
 
-					// *CRITICAL SECTION*
-					// (W) mouseX, mouseY
-					// (R) tv.scr, tv.dbgScr
-					// (R) tv.onMouseButtonRight
 					tv.guiLoopLock.Lock()
-
 					// convert X pixel value to horizpos equivalent
 					// the opposite of pixelX() and also the scalining applied
 					// by the SDL renderer
-					if tv.scr == tv.dbgScr {
+					if tv.scr.unmasked {
 						tv.mouseX = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
 					} else {
 						tv.mouseX = int(float32(ev.X) / sx)
@@ -66,15 +54,14 @@ func (tv *SDLTV) guiLoop() {
 					// convert Y pixel value to scanline equivalent
 					// the opposite of pixelY() and also the scalining applied
 					// by the SDL renderer
-					if tv.scr == tv.dbgScr {
+					if tv.scr.unmasked {
 						tv.mouseY = int(float32(ev.Y) / sy)
 					} else {
-						tv.mouseY = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank
+						tv.mouseY = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync
 					}
+					tv.guiLoopLock.Unlock()
 
 					tv.onMouseButtonRight.dispatch()
-
-					tv.guiLoopLock.Unlock()
 				}
 			}
 

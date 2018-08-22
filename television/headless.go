@@ -12,24 +12,29 @@ import (
 // InitHeadlessTV() method is useful in this regard.
 type HeadlessTV struct {
 	// spec is the specification of the tv type (NTSC or PAL)
-	Spec *specification
+	Spec *Specification
 
 	// the current horizontal position. the position where the next pixel will be
 	// drawn. also used to check we're receiving the correct signals at the
 	// correct time.
-	horizPos *TVState
+	HorizPos *TVState
 
 	// the current frame and scanline number
-	frameNum *TVState
-	scanline *TVState
+	FrameNum *TVState
+	Scanline *TVState
+
+	// record of signal attributes from the last call to Signal()
+	prevSignal SignalAttributes
 
 	// vsyncCount records the number of consecutive colorClocks the vsync signal
-	// has been sustained
+	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
 
-	// records of signal information from the last call to Signal()
-	prevHSync  bool
-	prevCBurst bool
+	// the scanline at which vblank is turned off and on
+	//  - top mask ranges from 0 to VBlankOff-1
+	//  - bottom mask ranges from VBlankOn to Spec.ScanlinesTotal
+	VBlankOff int
+	VBlankOn  int
 
 	// if the signals we've received do not match what we expect then outOfSpec
 	// will be false for the duration of the rest of the frame. this is useful
@@ -37,13 +42,9 @@ type HeadlessTV struct {
 	// misbehave.
 	outOfSpec bool
 
-	// phospher indicates whether the phosphor gun is active
-	Phosphor bool
-
-	// callbacks
-	NewFrame    func() error
-	NewScanline func() error
-	forceUpdate func() error
+	// callback hooks from Signal()
+	SignalNewFrameHook    func() error
+	SignalNewScanlineHook func() error
 }
 
 // NewHeadlessTV creates a new instance of HeadlessTV for a minimalist
@@ -65,22 +66,21 @@ func NewHeadlessTV(tvType string) (*HeadlessTV, error) {
 func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	switch strings.ToUpper(tvType) {
 	case "NTSC":
-		tv.Spec = specNTSC
+		tv.Spec = SpecNTSC
 	case "PAL":
-		tv.Spec = specPAL
+		tv.Spec = SpecPAL
 	default:
 		return fmt.Errorf("unsupport tv type (%s)", tvType)
 	}
 
 	// empty callbacks
-	tv.NewFrame = func() error { return nil }
-	tv.NewScanline = func() error { return nil }
-	tv.forceUpdate = func() error { return nil }
+	tv.SignalNewFrameHook = func() error { return nil }
+	tv.SignalNewScanlineHook = func() error { return nil }
 
 	// initialise TVState
-	tv.horizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.Spec.ClocksPerHblank, valueFormat: "%d"}
-	tv.frameNum = &TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
-	tv.scanline = &TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
+	tv.HorizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.Spec.ClocksPerHblank, valueFormat: "%d"}
+	tv.FrameNum = &TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
+	tv.Scanline = &TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
 
 	return nil
 }
@@ -91,7 +91,7 @@ func (tv HeadlessTV) MachineInfoTerse() string {
 	if tv.outOfSpec {
 		specExclaim = " !!"
 	}
-	return fmt.Sprintf("%s %s %s%s", tv.frameNum.MachineInfoTerse(), tv.scanline.MachineInfoTerse(), tv.horizPos.MachineInfoTerse(), specExclaim)
+	return fmt.Sprintf("%s %s %s%s", tv.FrameNum.MachineInfoTerse(), tv.Scanline.MachineInfoTerse(), tv.HorizPos.MachineInfoTerse(), specExclaim)
 }
 
 // MachineInfo returns the television information in verbose format
@@ -100,7 +100,7 @@ func (tv HeadlessTV) MachineInfo() string {
 	if tv.outOfSpec {
 		outOfSpec = "!!"
 	}
-	return fmt.Sprintf("%v\n%v\n%v%s\nPixel: %d", tv.frameNum, tv.scanline, tv.horizPos, outOfSpec, tv.PixelX(false))
+	return fmt.Sprintf("%v\n%v\n%v%s", tv.FrameNum, tv.Scanline, tv.HorizPos, outOfSpec)
 }
 
 // map String to MachineInfo
@@ -108,57 +108,27 @@ func (tv HeadlessTV) String() string {
 	return tv.MachineInfo()
 }
 
-// PixelX returns an adjusted horizPos value
-// -- adjustOrigin argument specifies whether or not pixel origin should be the
-// visible portion of the screen
-// -- note that if adjust origin is true, the function may return a negative
-// number
-func (tv HeadlessTV) PixelX(adjustOrigin bool) int {
-	if adjustOrigin {
-		return tv.horizPos.value
-	}
-	return tv.horizPos.value + tv.Spec.ClocksPerHblank
-}
-
-// PixelY returns an adjusted scanline value
-// -- adjustOrigin argument specifies whether or not pixel origin should be the
-// visible portion of the screen
-// -- note that if adjust origin is true, the function may return a negative
-// number
-func (tv HeadlessTV) PixelY(adjustOrigin bool) int {
-	if adjustOrigin {
-		return tv.scanline.value - tv.Spec.ScanlinesPerVBlank
-	}
-	return tv.scanline.value
-}
-
-// ForceUpdate forces the tv image to be updated -- calls the forceUpdate
-// callback from outside the television context (eg. from the debugger)
-func (tv HeadlessTV) ForceUpdate() error {
-	return tv.forceUpdate()
-}
-
 // Signal is principle method of communication between the VCS and televsion
 func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 
 	// check that hsync signal is within the specification
-	if attr.HSync && !tv.prevHSync {
-		if tv.horizPos.value < -52 || tv.horizPos.value > -49 {
+	if attr.HSync && !tv.prevSignal.HSync {
+		if tv.HorizPos.value < -52 || tv.HorizPos.value > -49 {
 			tv.outOfSpec = true
 		}
-	} else if !attr.HSync && tv.prevHSync {
-		if tv.horizPos.value < -36 || tv.horizPos.value > -33 {
+	} else if !attr.HSync && tv.prevSignal.HSync {
+		if tv.HorizPos.value < -36 || tv.HorizPos.value > -33 {
 			tv.outOfSpec = true
 		}
 	}
 
 	// check that color burst signal is within the specification
-	if attr.CBurst && !tv.prevCBurst {
-		if tv.horizPos.value < -28 || tv.horizPos.value > -17 {
+	if attr.CBurst && !tv.prevSignal.CBurst {
+		if tv.HorizPos.value < -28 || tv.HorizPos.value > -17 {
 			tv.outOfSpec = true
 		}
-	} else if !attr.CBurst && tv.prevCBurst {
-		if tv.horizPos.value < -19 || tv.horizPos.value > -16 {
+	} else if !attr.CBurst && tv.prevSignal.CBurst {
+		if tv.HorizPos.value < -19 || tv.HorizPos.value > -16 {
 			tv.outOfSpec = true
 		}
 	}
@@ -169,51 +139,46 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 	} else {
 		if tv.vsyncCount >= tv.Spec.VsyncClocks {
 			tv.outOfSpec = false
-			tv.frameNum.value++
-			tv.scanline.value = 0
-			_ = tv.NewFrame()
+			tv.FrameNum.value++
+			tv.Scanline.value = 0
+			_ = tv.SignalNewFrameHook()
 		}
 		tv.vsyncCount = 0
 	}
 
 	// start a new scanline if a frontporch signal has been received
 	if attr.FrontPorch {
-		tv.horizPos.value = -tv.Spec.ClocksPerHblank
-		tv.scanline.value++
-		tv.NewScanline()
+		tv.HorizPos.value = -tv.Spec.ClocksPerHblank
+		tv.Scanline.value++
+		tv.SignalNewScanlineHook()
 
-		if tv.scanline.value > tv.Spec.ScanlinesTotal {
+		if tv.Scanline.value > tv.Spec.ScanlinesTotal {
 			// we've not yet received a correct vsync signal but we really should
 			// have. continue but mark the frame as being out of spec
 			tv.outOfSpec = true
 		}
 	} else {
-		tv.horizPos.value++
-		if tv.horizPos.value > tv.Spec.ClocksPerVisible {
+		tv.HorizPos.value++
+		if tv.HorizPos.value > tv.Spec.ClocksPerVisible {
 			// we've not yet received a front porch signal yet but we really should
 			// have. continue but mark the frame as being out of spec
 			tv.outOfSpec = true
 		}
 	}
 
-	// set phosphor state
-	tv.Phosphor = tv.horizPos.value >= 0 && !attr.VBlank
+	// note the scanline when vblank is turned on/off
+	if !attr.VBlank && tv.prevSignal.VBlank {
+		tv.VBlankOff = tv.Scanline.value
+	}
+	if attr.VBlank && !tv.prevSignal.VBlank {
+		tv.VBlankOn = tv.Scanline.value
+	}
 
 	// record the current signal settings so they can be used for reference
-	tv.prevHSync = attr.HSync
+	tv.prevSignal = attr
 
 	// everthing else we could possibly do requires a screen of some sort
 	// (eg. color decoding)
-}
-
-// SetVisibility does nothing for the HeadlessTV
-func (tv *HeadlessTV) SetVisibility(visible, showOverscan bool) error {
-	return nil
-}
-
-// SetPause does nothing for the HeadlessTV
-func (tv *HeadlessTV) SetPause(pause bool) error {
-	return nil
 }
 
 // RequestTVState returns the TVState object for the named state. television
@@ -224,11 +189,11 @@ func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 	default:
 		return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
 	case ReqFramenum:
-		return tv.frameNum, nil
+		return tv.FrameNum, nil
 	case ReqScanline:
-		return tv.scanline, nil
+		return tv.Scanline, nil
 	case ReqHorizPos:
-		return tv.horizPos, nil
+		return tv.HorizPos, nil
 	}
 }
 
@@ -242,8 +207,13 @@ func (tv *HeadlessTV) RequestTVInfo(request TVInfoReq) (string, error) {
 	}
 }
 
-// RegisterCallback is used to hook custom functionality into the televsion
-func (tv *HeadlessTV) RegisterCallback(request CallbackReq, callback func()) error {
+// RequestCallbackRegistration is used to hook custom functionality into the televsion
+func (tv *HeadlessTV) RequestCallbackRegistration(request CallbackReq, channel chan func(), callback func()) error {
 	// the HeadlessTV implementation does nothing currently
+	return errors.NewGopherError(errors.UnknownTVRequest, request)
+}
+
+// RequestSetAttr is used to set a television attibute
+func (tv *HeadlessTV) RequestSetAttr(request SetAttrReq, args ...interface{}) error {
 	return errors.NewGopherError(errors.UnknownTVRequest, request)
 }

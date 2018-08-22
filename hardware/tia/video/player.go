@@ -78,7 +78,12 @@ func (ps *playerSprite) tick() {
 			ps.deferDrawStart = true
 		} else {
 			ps.startDrawing()
-			ps.graphicsScanFilter = 3
+
+			if ps.size == 0x05 {
+				ps.graphicsScanFilter = 1
+			} else if ps.size == 0x07 {
+				ps.graphicsScanFilter = 3
+			}
 		}
 	} else {
 		// if player.position.tick() has not caused the position counter to
