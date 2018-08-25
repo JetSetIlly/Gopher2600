@@ -13,7 +13,6 @@ type ballSprite struct {
 	verticalDelay bool
 	enable        bool
 	enablePrev    bool
-	futureEnable  future
 }
 
 func newBallSprite(label string, colorClock *colorclock.ColorClock) *ballSprite {
@@ -24,32 +23,24 @@ func newBallSprite(label string, colorClock *colorclock.ColorClock) *ballSprite 
 
 // MachineInfo returns the ball sprite information in terse format
 func (bs ballSprite) MachineInfoTerse() string {
-	es := ""
+	msg := ""
 	if bs.enable {
-		es = "[+] "
+		msg = "[+] "
 	} else {
-		es = "[-] "
+		msg = "[-] "
 	}
-	return fmt.Sprintf("%s%s", es, bs.sprite.MachineInfoTerse())
+	return fmt.Sprintf("%s%s", msg, bs.sprite.MachineInfoTerse())
 }
 
 // MachineInfo returns the ball sprite information in verbose format
 func (bs ballSprite) MachineInfo() string {
-	es := ""
+	msg := ""
 	if bs.enable {
-		es = "\n enabled"
+		msg = "enabled"
 	} else {
-		es = "\n disabled"
+		msg = "disabled"
 	}
-	if bs.futureEnable.isScheduled() {
-		es = fmt.Sprintf("%s [%v in %d cycle", es, bs.futureEnable.payload.(bool), bs.futureEnable.remainingCycles)
-		if bs.futureEnable.remainingCycles != 1 {
-			es = fmt.Sprintf("%ss]", es)
-		} else {
-			es = fmt.Sprintf("%s]", es)
-		}
-	}
-	return fmt.Sprintf("%s%s", bs.sprite.MachineInfo(), es)
+	return fmt.Sprintf("%s\n %s", bs.sprite.MachineInfo(), msg)
 }
 
 // tick moves the counters along for the ball sprite
@@ -65,12 +56,6 @@ func (bs *ballSprite) tick() {
 	if bs.futureReset.tick() {
 		bs.resetPosition()
 		bs.startDrawing()
-	}
-
-	// enable
-	if bs.futureEnable.tick() {
-		bs.enablePrev = bs.enable
-		bs.enable = bs.futureEnable.payload.(bool)
 	}
 }
 
@@ -104,12 +89,18 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 
 func (bs *ballSprite) scheduleReset(hblank bool) {
 	if !hblank {
-		bs.futureReset.schedule(delayResetBall, true)
+		bs.futureReset.schedule(delayResetBall, true, "resetting")
 	} else {
-		bs.futureReset.schedule(delayResetBallHBLANK, true)
+		bs.futureReset.schedule(delayResetBallHBLANK, true, "resetting")
 	}
 }
 
-func (bs *ballSprite) scheduleEnable(value uint8) {
-	bs.futureEnable.schedule(delayEnableBall, value&0x02 == 0x02)
+func (bs *ballSprite) scheduleEnable(enable bool, futureWrite *future) {
+	label := "enabling"
+	if !enable {
+		label = "disabling"
+	}
+	futureWrite.schedule(delayEnableBall, func() {
+		bs.enable = enable
+	}, label)
 }

@@ -158,9 +158,10 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 			vcs.RIOT.ReadRIOTMemory()
 			vcs.RIOT.Step()
 
-			// three color clocks per CPU cycle so we run video cycle three times
-
+			// read tia memory just once and before we cycle the tia
 			vcs.TIA.ReadTIAMemory()
+
+			// three color clocks per CPU cycle so we run video cycle three times
 			vcs.TIA.StepVideoCycle()
 			videoCycleCallback(r)
 

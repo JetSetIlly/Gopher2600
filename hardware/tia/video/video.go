@@ -20,6 +20,18 @@ type Video struct {
 
 	// collision matrix
 	Collisions collisions
+
+	// there's a slight delay when changing the state of sprites. note that we
+	// use the same future instance for all delayed write operations. this is
+	// okay because in all instances the delay is so short there is no chance
+	// of another write being scheduled before the previous request has been
+	// resolved
+	//
+	// note however that we do not use this future instance for resets, which
+	// are also delayed operations. this is because, resets only occur when
+	// HBLANK is not enabled and hence, should not be 'ticked' during HBLANK.
+	// for this reason the sprite types keep track of their own reset schedules
+	futureWrite future
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure
@@ -55,19 +67,26 @@ func NewVideo(colorClock *colorclock.ColorClock) *Video {
 	// connect player 0 and player 1 to each other (via the vertical delay bit)
 	vd.Player0.gfxDataDelay = &vd.Player1.gfxDataPrev
 	vd.Player1.gfxDataDelay = &vd.Player0.gfxDataPrev
+	vd.Player0.gfxDataOther = &vd.Player1.gfxData
+	vd.Player1.gfxDataOther = &vd.Player0.gfxData
 
 	return vd
 }
 
-// TickPlayfield moves the playfield on one clock
-// -- playfield ticks every video clock, regardless of the current HBLANK and
-// HMOVE state
-func (vd *Video) TickPlayfield() {
+// Tick is called *every* video clock, regardless of the current HBLANK state
+func (vd *Video) Tick() {
+	// resolve delayed write operations
+	if vd.futureWrite.tick() {
+		vd.futureWrite.payload.(func())()
+	}
+
+	// tick playfield forward
 	vd.Playfield.tick()
 }
 
-// Tick moves all video elements forward one video cycle
-func (vd *Video) Tick() {
+// TickSprites moves all video elements forward one video cycle and is only
+// called when HBLANK is inactive
+func (vd *Video) TickSprites() {
 	vd.Player0.tick()
 	vd.Player1.tick()
 	vd.Missile0.tick()
@@ -75,7 +94,9 @@ func (vd *Video) Tick() {
 	vd.Ball.tick()
 }
 
-// TickSpritesForHMOVE moves sprite elements if horiz movement value is in range
+// TickSpritesForHMOVE moves sprite elements if horiz movement value is in
+// range usually only called when HBLANK is active but this is not a hard
+// requirement
 func (vd *Video) TickSpritesForHMOVE(count int) {
 	if count == 0 {
 		return
@@ -276,11 +297,11 @@ func (vd *Video) ReadVideoMemory(register string, value uint8, hblank bool) bool
 	case "REFP1":
 		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value)
+		vd.Playfield.scheduleWrite(0, value, &vd.futureWrite)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value)
+		vd.Playfield.scheduleWrite(1, value, &vd.futureWrite)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value)
+		vd.Playfield.scheduleWrite(2, value, &vd.futureWrite)
 	case "RESP0":
 		vd.Player0.scheduleReset(hblank)
 	case "RESP1":
@@ -292,17 +313,15 @@ func (vd *Video) ReadVideoMemory(register string, value uint8, hblank bool) bool
 	case "RESBL":
 		vd.Ball.scheduleReset(hblank)
 	case "GRP0":
-		vd.Player0.gfxDataPrev = vd.Player1.gfxData
-		vd.Player0.gfxData = value
+		vd.Player0.scheduleWrite(value, &vd.futureWrite)
 	case "GRP1":
-		vd.Player1.gfxDataPrev = vd.Player0.gfxData
-		vd.Player1.gfxData = value
+		vd.Player1.scheduleWrite(value, &vd.futureWrite)
 	case "ENAM0":
-		vd.Missile0.scheduleEnable(value)
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
 	case "ENAM1":
-		vd.Missile1.scheduleEnable(value)
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
 	case "ENABL":
-		vd.Ball.scheduleEnable(value)
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
 	case "HMP0":
 		vd.Player0.horizMovement = (value ^ 0x80) >> 4
 	case "HMP1":

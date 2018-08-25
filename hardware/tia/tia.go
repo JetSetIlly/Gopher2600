@@ -155,7 +155,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// playfield always ticks
-	tia.Video.TickPlayfield()
+	tia.Video.Tick()
 
 	// HMOVE clock stuffing
 	if ct, ok := tia.hmove.tick(); ok {
@@ -164,7 +164,7 @@ func (tia *TIA) StepVideoCycle() bool {
 
 	// tick all video elements
 	if !tia.hblank {
-		tia.Video.Tick()
+		tia.Video.TickSprites()
 	}
 
 	// at the end of the video cycle we want to finally 'send' information to the

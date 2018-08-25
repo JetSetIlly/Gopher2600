@@ -28,12 +28,6 @@ type playfield struct {
 	priority  bool
 	scoremode bool
 
-	// there's a slight delay when writing to playfield registers. note that we
-	// use the same future instance for all playfield registers. this is okay
-	// because the delay is so short there is no chance of another write being
-	// scheduled before the previous request has been resolved
-	futureWrite future
-
 	// screenRegion keeps track of which part of the screen we're currently in
 	//  0 -> hblank
 	//  1 -> left half of screen
@@ -68,11 +62,6 @@ func (pf playfield) MachineInfo() string {
 }
 
 func (pf *playfield) tick() {
-	// reset
-	if pf.futureWrite.tick() {
-		pf.futureWrite.payload.(func())()
-	}
-
 	if pf.colorClock.MatchBeginning(17) {
 		// start of visible screen (playfield not affected by HMOVE)
 		// 101110
@@ -111,7 +100,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.backgroundColor
 }
 
-func (pf *playfield) scheduleWrite(segment int, value uint8) {
+func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future) {
 	var f func()
 	switch segment {
 	case 0:
@@ -156,5 +145,5 @@ func (pf *playfield) scheduleWrite(segment int, value uint8) {
 	// cycle from the current instruction
 	//
 	// but then again, maybe the delay is 5 video cycles in all instances
-	pf.futureWrite.schedule(delayPlayfieldWrite, f)
+	futureWrite.schedule(delayWritePlayfield, f, "writing")
 }

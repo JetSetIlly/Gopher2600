@@ -14,6 +14,7 @@ type playerSprite struct {
 	gfxData       uint8
 	gfxDataPrev   uint8
 	gfxDataDelay  *uint8
+	gfxDataOther  *uint8
 	size          uint8
 	reflected     bool
 	verticalDelay bool
@@ -66,7 +67,7 @@ func (ps playerSprite) MachineInfoTerse() string {
 // MachineInfo returns the missile sprite information in verbose format
 func (ps playerSprite) MachineInfo() string {
 	// TODO: extended MachineInfo() for player sprite
-	return fmt.Sprintf("%s%s", ps.sprite.MachineInfo())
+	return fmt.Sprintf("%s", ps.sprite.MachineInfo())
 }
 
 // tick moves the counters along for the player sprite
@@ -146,8 +147,15 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 
 func (ps *playerSprite) scheduleReset(hblank bool) {
 	if !hblank {
-		ps.futureReset.schedule(delayResetPlayer, true)
+		ps.futureReset.schedule(delayResetPlayer, true, "resetting")
 	} else {
-		ps.futureReset.schedule(delayResetPlayerHBLANK, true)
+		ps.futureReset.schedule(delayResetPlayerHBLANK, true, "resetting")
 	}
+}
+
+func (ps *playerSprite) scheduleWrite(data uint8, futureWrite *future) {
+	futureWrite.schedule(delayWritePlayer, func() {
+		ps.gfxDataPrev = *ps.gfxDataOther
+		ps.gfxData = data
+	}, "writing")
 }

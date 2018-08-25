@@ -8,11 +8,10 @@ import (
 type missileSprite struct {
 	*sprite
 
-	color        uint8
-	size         uint8
-	enable       bool
-	futureEnable future
-	triggerList  []int
+	color       uint8
+	size        uint8
+	enable      bool
+	triggerList []int
 
 	// if any of the sprite's draw positions are reached but a reset position
 	// signal has been scheduled, then we need to delay the start of the
@@ -29,32 +28,24 @@ func newMissileSprite(label string, colorClock *colorclock.ColorClock) *missileS
 
 // MachineInfo returns the missile sprite information in terse format
 func (ms missileSprite) MachineInfoTerse() string {
-	es := ""
+	msg := ""
 	if ms.enable {
-		es = "[+] "
+		msg = "[+] "
 	} else {
-		es = "[-] "
+		msg = "[-] "
 	}
-	return fmt.Sprintf("%s%s", es, ms.sprite.MachineInfoTerse())
+	return fmt.Sprintf("%s%s", msg, ms.sprite.MachineInfoTerse())
 }
 
 // MachineInfo returns the missile sprite information in verbose format
 func (ms missileSprite) MachineInfo() string {
-	es := ""
+	msg := ""
 	if ms.enable {
-		es = "\n enabled"
+		msg = "enabled"
 	} else {
-		es = "\n disabled"
+		msg = "disabled"
 	}
-	if ms.futureEnable.isScheduled() {
-		es = fmt.Sprintf("%s [%v in %d cycle", es, ms.futureEnable.payload.(bool), ms.futureEnable.remainingCycles)
-		if ms.futureEnable.remainingCycles != 1 {
-			es = fmt.Sprintf("%ss]", es)
-		} else {
-			es = fmt.Sprintf("%s]", es)
-		}
-	}
-	return fmt.Sprintf("%s%s", ms.sprite.MachineInfo(), es)
+	return fmt.Sprintf("%s\n %s", ms.sprite.MachineInfo(), msg)
 }
 
 // tick moves the counters along for the missile sprite
@@ -84,11 +75,6 @@ func (ms *missileSprite) tick() {
 			ms.startDrawing()
 			ms.deferDrawSig = false
 		}
-	}
-
-	// enable
-	if ms.futureEnable.tick() {
-		ms.enable = ms.futureEnable.payload.(bool)
 	}
 }
 
@@ -130,12 +116,18 @@ func (ms *missileSprite) scheduleReset(hblank bool) {
 	}
 
 	if !hblank {
-		ms.futureReset.schedule(delayResetMissile, true)
+		ms.futureReset.schedule(delayResetMissile, true, "resetting")
 	} else {
-		ms.futureReset.schedule(delayResetMissileHBLANK, true)
+		ms.futureReset.schedule(delayResetMissileHBLANK, true, "resetting")
 	}
 }
 
-func (ms *missileSprite) scheduleEnable(value uint8) {
-	ms.futureEnable.schedule(delayEnableMissile, value&0x02 == 0x02)
+func (ms *missileSprite) scheduleEnable(enable bool, futureWrite *future) {
+	label := "enabling"
+	if !enable {
+		label = "disabling"
+	}
+	futureWrite.schedule(delayEnableMissile, func() {
+		ms.enable = enable
+	}, label)
 }
