@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 	"math/bits"
 )
 
@@ -35,7 +35,7 @@ type playerSprite struct {
 	graphicsScanFilter int
 }
 
-func newPlayerSprite(label string, colorClock *colorclock.ColorClock) *playerSprite {
+func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerSprite {
 	ps := new(playerSprite)
 	ps.sprite = newSprite(label, colorClock)
 	return ps
@@ -74,7 +74,7 @@ func (ps playerSprite) MachineInfo() string {
 func (ps *playerSprite) tick() {
 	// position
 	if ps.tickPosition(ps.triggerList) {
-		if ps.futureReset.isScheduled() {
+		if ps.resetting {
 			ps.stopDrawing()
 			ps.deferDrawStart = true
 		} else {
@@ -104,15 +104,6 @@ func (ps *playerSprite) tick() {
 			ps.tickGraphicsScan()
 		}
 		ps.graphicsScanFilter++
-	}
-
-	// reset
-	if ps.futureReset.tick() {
-		ps.resetPosition()
-		if ps.deferDrawStart {
-			ps.startDrawing()
-			ps.deferDrawStart = false
-		}
 	}
 }
 
@@ -145,12 +136,17 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (ps *playerSprite) scheduleReset(hblank bool) {
-	if !hblank {
-		ps.futureReset.schedule(delayResetPlayer, true, "resetting")
-	} else {
-		ps.futureReset.schedule(delayResetPlayerHBLANK, true, "resetting")
-	}
+func (ps *playerSprite) scheduleReset(futureWrite *future) {
+	ps.resetting = true
+
+	futureWrite.schedule(delayResetPlayer, func() {
+		ps.resetting = false
+		ps.resetPosition()
+		if ps.deferDrawStart {
+			ps.startDrawing()
+			ps.deferDrawStart = false
+		}
+	}, "resetting")
 }
 
 func (ps *playerSprite) scheduleWrite(data uint8, futureWrite *future) {

@@ -2,7 +2,6 @@ package tia
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
 	"gopher2600/hardware/tia/polycounter"
 )
 
@@ -15,15 +14,15 @@ import (
 
 type rsync struct {
 	active     bool
-	colorClock *colorclock.ColorClock
+	colorClock *polycounter.Polycounter
 }
 
-func newRsync(cc *colorclock.ColorClock) *rsync {
+func newRsync(colorClock *polycounter.Polycounter) *rsync {
 	rs := new(rsync)
 	if rs == nil {
 		return nil
 	}
-	rs.colorClock = cc
+	rs.colorClock = colorClock
 	return rs
 }
 

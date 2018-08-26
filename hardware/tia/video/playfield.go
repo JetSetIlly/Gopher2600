@@ -2,11 +2,11 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 )
 
 type playfield struct {
-	colorClock *colorclock.ColorClock
+	colorClock *polycounter.Polycounter
 
 	foregroundColor uint8
 	backgroundColor uint8
@@ -39,7 +39,7 @@ type playfield struct {
 	idx int
 }
 
-func newPlayfield(colorClock *colorclock.ColorClock) *playfield {
+func newPlayfield(colorClock *polycounter.Polycounter) *playfield {
 	pf := new(playfield)
 	pf.colorClock = colorClock
 	return pf

@@ -2,7 +2,7 @@ package tia
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 )
 
 // according to TIA_HW_Notes.txt the hardware equivalent of _HMOVE is a ripple
@@ -13,16 +13,16 @@ import (
 type hmove struct {
 	count      int
 	phase      int
-	colorClock *colorclock.ColorClock
+	colorClock *polycounter.Polycounter
 }
 
-func newHmove(cc *colorclock.ColorClock) *hmove {
+func newHmove(colorClock *polycounter.Polycounter) *hmove {
 	hm := new(hmove)
 	if hm == nil {
 		return nil
 	}
 	hm.reset()
-	hm.colorClock = cc
+	hm.colorClock = colorClock
 	return hm
 }
 

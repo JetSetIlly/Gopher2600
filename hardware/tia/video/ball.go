@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 )
 
 type ballSprite struct {
@@ -15,7 +15,7 @@ type ballSprite struct {
 	enablePrev    bool
 }
 
-func newBallSprite(label string, colorClock *colorclock.ColorClock) *ballSprite {
+func newBallSprite(label string, colorClock *polycounter.Polycounter) *ballSprite {
 	bs := new(ballSprite)
 	bs.sprite = newSprite(label, colorClock)
 	return bs
@@ -51,12 +51,6 @@ func (bs *ballSprite) tick() {
 	} else {
 		bs.tickGraphicsScan()
 	}
-
-	// reset
-	if bs.futureReset.tick() {
-		bs.resetPosition()
-		bs.startDrawing()
-	}
 }
 
 // pixel returns the color of the ball at the current time.  returns
@@ -66,7 +60,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	//  o ball is enabled and vertical delay is not enabled
 	//  o OR ball was previously enabled and vertical delay is enabled
 	//  o AND a reset signal (RESBL) has not recently been triggered
-	if ((!bs.verticalDelay && bs.enable) || (bs.verticalDelay && bs.enablePrev)) && !bs.futureReset.isScheduled() {
+	if ((!bs.verticalDelay && bs.enable) || (bs.verticalDelay && bs.enablePrev)) && !bs.resetting {
 		switch bs.graphicsScanCounter {
 		case 0:
 			return true, bs.color
@@ -87,12 +81,14 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (bs *ballSprite) scheduleReset(hblank bool) {
-	if !hblank {
-		bs.futureReset.schedule(delayResetBall, true, "resetting")
-	} else {
-		bs.futureReset.schedule(delayResetBallHBLANK, true, "resetting")
-	}
+func (bs *ballSprite) scheduleReset(futureWrite *future) {
+	bs.resetting = true
+
+	futureWrite.schedule(delayResetBall, func() {
+		bs.resetting = false
+		bs.resetPosition()
+		bs.startDrawing()
+	}, "resetting")
 }
 
 func (bs *ballSprite) scheduleEnable(enable bool, futureWrite *future) {

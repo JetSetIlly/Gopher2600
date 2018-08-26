@@ -2,7 +2,6 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
 	"gopher2600/hardware/tia/polycounter"
 )
 
@@ -16,10 +15,7 @@ type sprite struct {
 
 	// colorClock references the VCS wide color clock. we only use it to note
 	// the Pixel() value of the color clock at the reset point of the sprite.
-	colorClock *colorclock.ColorClock
-
-	// all sprites have a slight delay when resetting position
-	futureReset future
+	colorClock *polycounter.Polycounter
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
@@ -40,9 +36,13 @@ type sprite struct {
 
 	// the amount of horizontal movement for the sprite
 	horizMovement uint8
+
+	// a note on whether the sprite is about to be reset its position. the
+	// actual reset is scheduled by video.futureWrite
+	resetting bool
 }
 
-func newSprite(label string, colorClock *colorclock.ColorClock) *sprite {
+func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
 	sp := new(sprite)
 	sp.label = label
 	sp.colorClock = colorClock
@@ -66,8 +66,8 @@ func (sp sprite) MachineInfoTerse() string {
 		sig = fmt.Sprintf("dsig=%d", sp.graphicsScanMax-sp.graphicsScanCounter)
 	}
 	res := "reset=-"
-	if sp.futureReset.isScheduled() {
-		res = fmt.Sprintf("reset=%d", sp.futureReset.remainingCycles)
+	if sp.resetting {
+		res = "reset=+"
 	}
 	return fmt.Sprintf("%s: %s %s %s", sp.label, pos, sig, res)
 }
@@ -79,13 +79,9 @@ func (sp sprite) MachineInfo() string {
 	if sp.isDrawing() {
 		sig = fmt.Sprintf("drawing : from pixel %d", sp.graphicsScanMax-sp.graphicsScanCounter+1)
 	}
-	res := "reset: none scheduled"
-	if sp.futureReset.isScheduled() {
-		plural := ""
-		if sp.futureReset.remainingCycles != 1 {
-			plural = "s"
-		}
-		res = fmt.Sprintf("reset: in %d cycle%s", sp.futureReset.remainingCycles, plural)
+	res := "no reset scheduled"
+	if sp.resetting {
+		res = "reset scheduled"
 	}
 	return fmt.Sprintf("%s: %s\n %s\n %s", sp.label, pos, sig, res)
 }

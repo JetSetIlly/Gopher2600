@@ -1,12 +1,12 @@
 package video
 
 import (
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
-	colorClock *colorclock.ColorClock
+	colorClock *polycounter.Polycounter
 
 	// playfield
 	Playfield *playfield
@@ -26,16 +26,11 @@ type Video struct {
 	// okay because in all instances the delay is so short there is no chance
 	// of another write being scheduled before the previous request has been
 	// resolved
-	//
-	// note however that we do not use this future instance for resets, which
-	// are also delayed operations. this is because, resets only occur when
-	// HBLANK is not enabled and hence, should not be 'ticked' during HBLANK.
-	// for this reason the sprite types keep track of their own reset schedules
 	futureWrite future
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(colorClock *colorclock.ColorClock) *Video {
+func NewVideo(colorClock *polycounter.Polycounter) *Video {
 	vd := new(Video)
 	vd.colorClock = colorClock
 
@@ -264,7 +259,7 @@ func createTriggerList(playerSize uint8) []int {
 // ReadVideoMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
 // for those where a "schedule" function is called.
-func (vd *Video) ReadVideoMemory(register string, value uint8, hblank bool) bool {
+func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":
 		vd.Missile0.size = (value & 0x30) >> 4
@@ -303,15 +298,15 @@ func (vd *Video) ReadVideoMemory(register string, value uint8, hblank bool) bool
 	case "PF2":
 		vd.Playfield.scheduleWrite(2, value, &vd.futureWrite)
 	case "RESP0":
-		vd.Player0.scheduleReset(hblank)
+		vd.Player0.scheduleReset(&vd.futureWrite)
 	case "RESP1":
-		vd.Player1.scheduleReset(hblank)
+		vd.Player1.scheduleReset(&vd.futureWrite)
 	case "RESM0":
-		vd.Missile0.scheduleReset(hblank)
+		vd.Missile0.scheduleReset(&vd.futureWrite)
 	case "RESM1":
-		vd.Missile1.scheduleReset(hblank)
+		vd.Missile1.scheduleReset(&vd.futureWrite)
 	case "RESBL":
-		vd.Ball.scheduleReset(hblank)
+		vd.Ball.scheduleReset(&vd.futureWrite)
 	case "GRP0":
 		vd.Player0.scheduleWrite(value, &vd.futureWrite)
 	case "GRP1":

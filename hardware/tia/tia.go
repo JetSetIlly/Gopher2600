@@ -3,7 +3,7 @@ package tia
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
 )
@@ -18,9 +18,15 @@ type TIA struct {
 	tv  television.Television
 	mem memory.ChipBus
 
-	colorClock *colorclock.ColorClock
-	hmove      *hmove
-	rsync      *rsync
+	colorClock *polycounter.Polycounter
+
+	// motion clock is an out-of-phase colorClock, running 2 cycles ahead of
+	// the main color clock (according to the document, "Atari 2600 TIA
+	// Hardware Notes" by Andrew Towers)
+	motionClock bool
+
+	hmove *hmove
+	rsync *rsync
 
 	// TIA state -- controlled by the CPU
 	vsync  bool
@@ -58,10 +64,8 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	// TODO: audio
 
-	tia.colorClock = colorclock.New()
-	if tia.colorClock == nil {
-		return nil
-	}
+	tia.colorClock = polycounter.New6Bit()
+	tia.colorClock.SetResetPattern("010100") // count==56,
 
 	tia.hmove = newHmove(tia.colorClock)
 	if tia.hmove == nil {
@@ -118,7 +122,7 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	}
 
-	service = !tia.Video.ReadVideoMemory(register, value, tia.hblank)
+	service = !tia.Video.ReadVideoMemory(register, value)
 
 	// TODO: TIA audio memory
 }
@@ -130,6 +134,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	frontPorch := false
 	cburst := false
 
+	// color clock
 	if tia.colorClock.MatchEnd(16) && !tia.hmove.isActive() {
 		// HBLANK off (early)
 		tia.hblank = false
@@ -142,6 +147,15 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.hsync = false
 	} else if tia.colorClock.MatchEnd(12) {
 		cburst = true
+	}
+
+	// motion clock
+	if tia.colorClock.MatchMid(17) && !tia.hmove.isActive() {
+		tia.motionClock = true
+	} else if tia.colorClock.MatchMid(19) && tia.hmove.isActive() {
+		tia.motionClock = true
+	} else if tia.colorClock.MatchMid(0) {
+		tia.motionClock = false
 	}
 
 	if tia.colorClock.Tick(tia.rsync.check()) {
@@ -163,7 +177,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// tick all video elements
-	if !tia.hblank {
+	if tia.motionClock {
 		tia.Video.TickSprites()
 	}
 

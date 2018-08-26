@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/colorclock"
+	"gopher2600/hardware/tia/polycounter"
 )
 
 type missileSprite struct {
@@ -20,7 +20,7 @@ type missileSprite struct {
 	deferDrawSig bool
 }
 
-func newMissileSprite(label string, colorClock *colorclock.ColorClock) *missileSprite {
+func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
 	ms := new(missileSprite)
 	ms.sprite = newSprite(label, colorClock)
 	return ms
@@ -52,29 +52,14 @@ func (ms missileSprite) MachineInfo() string {
 func (ms *missileSprite) tick() {
 	// position
 	if ms.tickPosition(ms.triggerList) {
-		if ms.futureReset.isScheduled() {
+		if ms.resetting {
 			ms.stopDrawing()
 			ms.deferDrawSig = true
 		} else {
 			ms.startDrawing()
 		}
 	} else {
-		// tick draw signal only if a position reset is within three cycles of
-		// occuring. in effect, this prevents draw signal ticking during the
-		// first two cycles of a reset request, unless the reset is scheduled
-		// during a HBLANK
-		if ms.futureReset.remainingCycles < 4 {
-			ms.tickGraphicsScan()
-		}
-	}
-
-	// reset
-	if ms.futureReset.tick() {
-		ms.resetPosition()
-		if ms.deferDrawSig {
-			ms.startDrawing()
-			ms.deferDrawSig = false
-		}
+		ms.tickGraphicsScan()
 	}
 }
 
@@ -102,24 +87,17 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	return false, 0
 }
 
-func (ms *missileSprite) scheduleReset(hblank bool) {
-	// consume an extra draw sig cycle if the reset is encountered
-	// during the first phase of position 000000 or anywhere in 100000. I have no
-	// idea why this should be the case but we need to consume an extra
-	// tick somewhere for some scenarios and the rule has the desired effect
-	// in the examples I've come across so far - found by experimentation
-	//
-	// this doesn't smell right TODO: see if we can remove this (what appears
-	// to be) special case code for missile sprites
-	if ms.position.Match(1) || ms.position.MatchBeginning(0) {
-		ms.tickGraphicsScan()
-	}
+func (ms *missileSprite) scheduleReset(futureWrite *future) {
+	ms.resetting = true
 
-	if !hblank {
-		ms.futureReset.schedule(delayResetMissile, true, "resetting")
-	} else {
-		ms.futureReset.schedule(delayResetMissileHBLANK, true, "resetting")
-	}
+	futureWrite.schedule(delayResetMissile, func() {
+		ms.resetting = false
+		ms.resetPosition()
+		if ms.deferDrawSig {
+			ms.startDrawing()
+			ms.deferDrawSig = false
+		}
+	}, "resetting")
 }
 
 func (ms *missileSprite) scheduleEnable(enable bool, futureWrite *future) {
