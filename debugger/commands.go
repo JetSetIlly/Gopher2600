@@ -116,7 +116,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordPeek:          "%*",
 	KeywordRAM:           "",
 	KeywordRIOT:          "",
-	KeywordTIA:           "",
+	KeywordTIA:           "[|FUTURE]",
 	KeywordTV:            "[|SPEC]",
 	KeywordPlayer:        "",
 	KeywordMissile:       "",
@@ -519,7 +519,18 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.RIOT)
 
 	case KeywordTIA:
-		dbg.printMachineInfo(dbg.vcs.TIA)
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "FUTURE":
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.FutureWrite)
+			default:
+				return false, fmt.Errorf("unknown request (%s)", option)
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.TIA)
+		}
 
 	case KeywordTV:
 		option, present := tokens.Get()
@@ -533,7 +544,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				}
 				dbg.print(ui.MachineInfo, info)
 			default:
-				return false, fmt.Errorf("unknown info request (%s)", option)
+				return false, fmt.Errorf("unknown request (%s)", option)
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TV)

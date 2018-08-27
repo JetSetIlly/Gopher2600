@@ -21,6 +21,26 @@ type future struct {
 	unresolved bool
 }
 
+// MachineInfo returns the ball sprite information in terse format
+func (fut future) MachineInfo() string {
+	if !fut.unresolved {
+		return "nothing scheduled"
+	}
+	suffix := ""
+	if fut.remainingCycles != 1 {
+		suffix = "s"
+	}
+	return fmt.Sprintf("%s in %d cycle%s", fut.label, fut.remainingCycles, suffix)
+}
+
+// MachineInfo returns the ball sprite information in verbose format
+func (fut future) MachineInfoTerse() string {
+	if !fut.unresolved {
+		return "no sch"
+	}
+	return fmt.Sprintf("%s(%d)", fut.label, fut.remainingCycles)
+}
+
 // schedule the pending future action
 func (fut *future) schedule(cycles int, payload futurePayload, label string) {
 	if fut.unresolved {

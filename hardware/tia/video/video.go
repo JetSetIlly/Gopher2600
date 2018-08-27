@@ -26,7 +26,7 @@ type Video struct {
 	// okay because in all instances the delay is so short there is no chance
 	// of another write being scheduled before the previous request has been
 	// resolved
-	futureWrite future
+	FutureWrite future
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure
@@ -71,8 +71,8 @@ func NewVideo(colorClock *polycounter.Polycounter) *Video {
 // Tick is called *every* video clock, regardless of the current HBLANK state
 func (vd *Video) Tick() {
 	// resolve delayed write operations
-	if vd.futureWrite.tick() {
-		vd.futureWrite.payload.(func())()
+	if vd.FutureWrite.tick() {
+		vd.FutureWrite.payload.(func())()
 	}
 
 	// tick playfield forward
@@ -292,31 +292,31 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "REFP1":
 		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value, &vd.futureWrite)
+		vd.Playfield.scheduleWrite(0, value, &vd.FutureWrite)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value, &vd.futureWrite)
+		vd.Playfield.scheduleWrite(1, value, &vd.FutureWrite)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value, &vd.futureWrite)
+		vd.Playfield.scheduleWrite(2, value, &vd.FutureWrite)
 	case "RESP0":
-		vd.Player0.scheduleReset(&vd.futureWrite)
+		vd.Player0.scheduleReset(&vd.FutureWrite)
 	case "RESP1":
-		vd.Player1.scheduleReset(&vd.futureWrite)
+		vd.Player1.scheduleReset(&vd.FutureWrite)
 	case "RESM0":
-		vd.Missile0.scheduleReset(&vd.futureWrite)
+		vd.Missile0.scheduleReset(&vd.FutureWrite)
 	case "RESM1":
-		vd.Missile1.scheduleReset(&vd.futureWrite)
+		vd.Missile1.scheduleReset(&vd.FutureWrite)
 	case "RESBL":
-		vd.Ball.scheduleReset(&vd.futureWrite)
+		vd.Ball.scheduleReset(&vd.FutureWrite)
 	case "GRP0":
-		vd.Player0.scheduleWrite(value, &vd.futureWrite)
+		vd.Player0.scheduleWrite(value, &vd.FutureWrite)
 	case "GRP1":
-		vd.Player1.scheduleWrite(value, &vd.futureWrite)
+		vd.Player1.scheduleWrite(value, &vd.FutureWrite)
 	case "ENAM0":
-		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
 	case "ENAM1":
-		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
 	case "ENABL":
-		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.futureWrite)
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
 	case "HMP0":
 		vd.Player0.horizMovement = (value ^ 0x80) >> 4
 	case "HMP1":
