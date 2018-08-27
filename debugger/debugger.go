@@ -43,6 +43,10 @@ type Debugger struct {
 	// any error from previous emulation step
 	lastStepError bool
 
+	// single-fire step traps. these are used for the STEP command, allowing
+	// things like "STEP FRAME".
+	stepTraps *traps
+
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
 	// used when ONHALT is called with no arguments
@@ -109,6 +113,7 @@ func NewDebugger() (*Debugger, error) {
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
 	dbg.traps = newTraps(dbg)
+	dbg.stepTraps = newTraps(dbg)
 
 	// default ONHALT command squence
 	dbg.commandOnHaltStored = defaultOnHalt
@@ -287,10 +292,18 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		default:
 		}
 
+		// check for step-traps
+		stepTrapMessage := dbg.stepTraps.check("")
+		if stepTrapMessage != "" {
+			dbg.stepTraps.clear()
+		}
+
 		// check for breakpoints and traps
 		dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 		dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
-		dbg.inputloopHalt = dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.lastStepError
+
+		// check for halt conditions
+		dbg.inputloopHalt = stepTrapMessage != "" || dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false

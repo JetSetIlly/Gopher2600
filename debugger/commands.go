@@ -106,7 +106,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordQuit:          "",
 	KeywordReset:         "",
 	KeywordRun:           "",
-	KeywordStep:          "[|CPU|VIDEO]",
+	KeywordStep:          "[|CPU|VIDEO]", // see notes
 	KeywordStepMode:      "[|CPU|VIDEO]",
 	KeywordTerse:         "",
 	KeywordVerbose:       "",
@@ -122,11 +122,16 @@ var commandTemplate = input.CommandTemplate{
 	KeywordMissile:       "",
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
-	KeywordDisplay:       "[|OFF|DEBUG|SCALE] %*",
+	KeywordDisplay:       "[|OFF|DEBUG|SCALE] %*", // see notes
 	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
 }
+
+// notes
+// o KeywordStep can take a valid target
+// o KeywordDisplay SCALE takes an additional argument but OFF and DEBUG do
+// 	not. the %* is a compromise
 
 // DebuggerCommands is the tree of valid commands
 var DebuggerCommands input.Commands
@@ -427,7 +432,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.inputloopVideoClock = true
 			stepNext = true
 		default:
-			return false, fmt.Errorf("unknown step mode (%s)", mode)
+			// try to parse trap
+			tokens.Unget()
+			err := dbg.stepTraps.parseTrap(tokens)
+			if err != nil {
+				return false, fmt.Errorf("unknown step mode (%s)", mode)
+			}
+			dbg.runUntilHalt = true
+			stepNext = true
 		}
 
 	case KeywordStepMode:
