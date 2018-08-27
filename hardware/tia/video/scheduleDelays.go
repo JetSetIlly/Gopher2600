@@ -16,7 +16,7 @@ const (
 	delayWritePlayer    = 2
 	delayWritePlayfield = 5
 
-	delayResetBall    = 5
-	delayResetMissile = 5
-	delayResetPlayer  = 5
+	delayResetBall    = 4
+	delayResetMissile = 4
+	delayResetPlayer  = 4
 )

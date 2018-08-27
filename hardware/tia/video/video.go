@@ -241,17 +241,17 @@ func createTriggerList(playerSize uint8) []int {
 	var triggerList []int
 	switch playerSize {
 	case 0x0, 0x05, 0x07:
-		// empty trigger list
+		// empty trigger list - single sprite of varying widths
 	case 0x01:
-		triggerList = []int{4} // 111100
+		triggerList = []int{4}
 	case 0x02:
-		triggerList = []int{8} // 110111
+		triggerList = []int{8}
 	case 0x03:
-		triggerList = []int{4, 8} // 111100, 110111
+		triggerList = []int{4, 8}
 	case 0x04:
-		triggerList = []int{4} // 110111
+		triggerList = []int{16}
 	case 0x06:
-		triggerList = []int{8, 16} // 110111, 011100
+		triggerList = []int{8, 16}
 	}
 	return triggerList
 }

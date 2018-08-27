@@ -168,18 +168,21 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.rsync.reset()
 	}
 
-	// playfield always ticks
-	tia.Video.Tick()
-
 	// HMOVE clock stuffing
 	if ct, ok := tia.hmove.tick(); ok {
 		tia.Video.TickSpritesForHMOVE(ct)
 	}
 
-	// tick all video elements
+	// tick all sprites according to motion clock
 	if tia.motionClock {
 		tia.Video.TickSprites()
 	}
+
+	// tick playfield and scheduled writes
+	// -- important that this happens after TickSprites because we want
+	// position resets to happen *after* sprite ticking; in particular, when
+	// the draw signl has been resolved
+	tia.Video.Tick()
 
 	// at the end of the video cycle we want to finally 'send' information to the
 	// televison. what we 'send' depends on the state of hblank.
