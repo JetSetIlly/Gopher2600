@@ -82,6 +82,10 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	tv.FrameNum = &TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
 	tv.Scanline = &TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
 
+	// vblank off/on values
+	tv.VBlankOff = 0
+	tv.VBlankOn = tv.Spec.ScanlinesTotal
+
 	return nil
 }
 

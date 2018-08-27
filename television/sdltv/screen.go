@@ -161,9 +161,19 @@ func (scr *screen) update(paused bool) error {
 	var err error
 
 	// clear image from rendered
-	scr.renderer.SetDrawColor(5, 5, 5, 255)
+	scr.renderer.SetDrawColor(5, 10, 5, 255)
 	scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 	err = scr.renderer.Clear()
+	if err != nil {
+		return err
+	}
+
+	// show current frame's pixels
+	err = scr.texture.Update(nil, scr.pixels, scr.pitch)
+	if err != nil {
+		return err
+	}
+	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
 	if err != nil {
 		return err
 	}
@@ -180,26 +190,16 @@ func (scr *screen) update(paused bool) error {
 		}
 	}
 
-	// show current frame's pixels
-	err = scr.texture.Update(nil, scr.pixels, scr.pitch)
-	if err != nil {
-		return err
-	}
-	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
-	if err != nil {
-		return err
-	}
-
 	// draw masks
 	if scr.unmasked {
+		scr.renderer.SetDrawColor(15, 15, 15, 100)
 		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
-		scr.renderer.SetDrawColor(10, 10, 10, 100)
 
 		// hblank mask
 		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.tv.Spec.ClocksPerHblank), H: scr.srcRect.H})
 	} else {
-		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 		scr.renderer.SetDrawColor(0, 0, 0, 255)
+		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 	}
 
 	// top vblank mask
@@ -210,6 +210,48 @@ func (scr *screen) update(paused bool) error {
 	y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
 	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
 	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
+
+	// add cursor if tv is paused
+	// -- drawing last so that cursor isn't masked or drawn behind any alpha
+	// layers
+	if paused {
+		// cursor coordinates
+		x := scr.tv.HorizPos.Value().(int) + scr.tv.Spec.ClocksPerHblank
+		y := scr.tv.Scanline.Value().(int)
+
+		// cursor is one step ahead of pixel -- move to new scanline if
+		// necessary
+		if x >= scr.tv.Spec.ClocksPerScanline+scr.tv.Spec.ClocksPerHblank {
+			x = 0
+			y++
+		}
+		accurateCursorPos := true
+
+		// adjust coordinates if screen is masked
+		if !scr.unmasked {
+			x -= scr.tv.Spec.ClocksPerHblank
+			y -= scr.tv.Spec.ScanlinesPerVBlank + scr.tv.Spec.ScanlinesPerVSync
+			if x < 0 {
+				accurateCursorPos = false
+				x = 0
+			}
+			if y < 0 {
+				accurateCursorPos = false
+				y = 0
+			}
+		}
+
+		// cursor color depends on whether cursor positioning is accurate
+		if !accurateCursorPos {
+			scr.renderer.SetDrawColor(100, 100, 255, 100)
+		} else {
+			scr.renderer.SetDrawColor(255, 255, 255, 100)
+		}
+		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+
+		// cursor is a 2x2 rectangle
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y), W: 2, H: 2})
+	}
 
 	return nil
 }
