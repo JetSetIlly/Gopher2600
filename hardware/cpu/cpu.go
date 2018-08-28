@@ -534,7 +534,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			if err != nil {
 				return nil, err
 			}
-			result.ActualCycles++
 		}
 
 		// fix MSB of address

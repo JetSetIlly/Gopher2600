@@ -442,6 +442,13 @@ func (dbg *Debugger) parseInput(input string) (bool, error) {
 	var cont bool
 	var err error
 
+	input = strings.TrimSpace(input)
+
+	// ignore comments
+	if strings.HasPrefix(input, "#") {
+		return false, nil
+	}
+
 	commands := strings.Split(input, ";")
 	for i := 0; i < len(commands); i++ {
 		cont, err = dbg.parseCommand(commands[i])
