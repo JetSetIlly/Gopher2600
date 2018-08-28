@@ -2,7 +2,6 @@ package register
 
 import (
 	"fmt"
-	"reflect"
 )
 
 // Load value into register
@@ -17,7 +16,7 @@ func (r *Register) Load(v interface{}) {
 	case uint16:
 		r.value = uint32(v) & r.mask
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 }
 
@@ -54,7 +53,7 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 		}
 		postNeg = uint32(v)&r.signBit == r.signBit
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 
 	carry = ^r.mask&r.value != 0
@@ -69,17 +68,17 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 
 // Subtract value from register. Returns carry and overflow states
 func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
-	var val int
+	var val uint16
 
 	switch v := v.(type) {
 	case *Register:
-		val = int(v.value)
+		val = uint16(v.value)
 	case int:
-		val = v
+		val = uint16(v)
 	case uint8:
-		val = int(v)
+		val = uint16(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 
 	// no need to do anything if operand is zero
@@ -87,11 +86,14 @@ func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
 		return carry, false
 	}
 
+	// two's complement
 	val = ^val
-	val++
-	val &= int(r.mask)
+	if carry {
+		val++
+	}
+	val &= uint16(r.mask)
 
-	return r.Add(val, !carry)
+	return r.Add(val, false)
 }
 
 // AND value with register
@@ -104,7 +106,7 @@ func (r *Register) AND(v interface{}) {
 	case uint8:
 		r.value &= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }
@@ -129,7 +131,7 @@ func (r *Register) EOR(v interface{}) {
 	case uint8:
 		r.value ^= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }
@@ -154,7 +156,7 @@ func (r *Register) ORA(v interface{}) {
 	case uint8:
 		r.value |= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%s)", reflect.TypeOf(v)))
+		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }

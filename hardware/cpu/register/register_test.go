@@ -48,6 +48,12 @@ func r16(t *testing.T) {
 	r16.Subtract(1, true)
 	assert.CheckValueVCS(t, r16.IsZero(), false)
 	assert.CheckValueVCS(t, r16.IsNegative(), true)
+	r16.Subtract(1, true)
+	assert.CheckValueVCS(t, r16, 0xFFFE)
+
+	r16.Load(0x01)
+	r16.Subtract(2, true)
+	assert.CheckValueVCS(t, r16, 0xFFFF)
 
 	// logical operators
 	r16.Load(0x21)
@@ -110,6 +116,10 @@ func r8(t *testing.T) {
 	// subtraction
 	r8.Subtract(1, true)
 	assert.CheckValueVCS(t, r8, 10)
+
+	r8.Load(0x01)
+	r8.Subtract(0x06, false)
+	assert.CheckValueVCS(t, r8, 0xFA)
 
 	// logical operators
 	r8.Load(0x21)
