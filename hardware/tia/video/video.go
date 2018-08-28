@@ -68,19 +68,22 @@ func NewVideo(colorClock *polycounter.Polycounter) *Video {
 	return vd
 }
 
-// Tick is called *every* video clock, regardless of the current HBLANK state
-func (vd *Video) Tick() {
+// TickFutureWrites is called *every* video clock
+func (vd *Video) TickFutureWrites() {
 	// resolve delayed write operations
 	if vd.FutureWrite.tick() {
 		vd.FutureWrite.payload.(func())()
 	}
+}
 
+// TickPlayfield is called *every* video clock
+func (vd *Video) TickPlayfield() {
 	// tick playfield forward
 	vd.Playfield.tick()
 }
 
 // TickSprites moves all video elements forward one video cycle and is only
-// called when HBLANK is inactive
+// called when motion clock is active
 func (vd *Video) TickSprites() {
 	vd.Player0.tick()
 	vd.Player1.tick()
@@ -89,9 +92,7 @@ func (vd *Video) TickSprites() {
 	vd.Ball.tick()
 }
 
-// TickSpritesForHMOVE moves sprite elements if horiz movement value is in
-// range usually only called when HBLANK is active but this is not a hard
-// requirement
+// TickSpritesForHMOVE is only called when HMOVE is active
 func (vd *Video) TickSpritesForHMOVE(count int) {
 	if count == 0 {
 		return

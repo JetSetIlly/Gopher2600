@@ -14,7 +14,7 @@ const (
 	delayEnableBall     = 3
 	delayEnableMissile  = 3
 	delayWritePlayer    = 3
-	delayWritePlayfield = 7
+	delayWritePlayfield = 4
 
 	delayResetBall    = 6
 	delayResetMissile = 6

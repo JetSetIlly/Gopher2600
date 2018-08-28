@@ -148,7 +148,7 @@ func (tia *TIA) StepVideoCycle() bool {
 		cburst = true
 	}
 
-	// motion clock -- put simply, motinClock is true when hblank is false, and
+	// motion clock -- put simply, motionClock is true when hblank is false, and
 	// vice-versea, but offset by two cycles (hblank flips two video-cycles)
 	// before the motion clock
 	if tia.colorClock.MatchMid(17) && !tia.hmove.isActive() {
@@ -191,18 +191,19 @@ func (tia *TIA) StepVideoCycle() bool {
 	// -- important that this happens after TickSprites because we want
 	// position resets to happen *after* sprite ticking; in particular, when
 	// the draw signl has been resolved
-	tia.Video.Tick()
+	tia.Video.TickPlayfield()
+	tia.Video.TickFutureWrites()
+
+	// decide on pixel color - based on whether motionClock is active (not
+	// hblank)
+	pixelColor := television.VideoBlack
+	if !tia.hblank {
+		pixelColor = television.PixelSignal(tia.Video.Pixel())
+	}
 
 	// at the end of the video cycle we want to finally 'send' information to the
-	// televison. what we 'send' depends on the state of hblank.
-	if tia.hblank {
-		// sent video black
-		tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: television.VideoBlack})
-	} else {
-		// send pixel color to television
-		pixel := television.PixelSignal(tia.Video.Pixel())
-		tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixel})
-	}
+	// televison
+	tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixelColor})
 
 	// set collision registers
 	tia.Video.Collisions.SetMemory(tia.mem)

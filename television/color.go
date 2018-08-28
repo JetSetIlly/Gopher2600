@@ -6,7 +6,7 @@ type PixelSignal uint16
 
 // VideoBlack is the PixelSignal value that indicates no VCS pixel is to be
 // shown
-const VideoBlack = 0xffff
+const VideoBlack PixelSignal = 0xffff
 
 // color is the color that is show on screen. different television
 // specifications interpret colors differently

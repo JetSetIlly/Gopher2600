@@ -37,6 +37,10 @@ type playfield struct {
 	// idx is the index into the data field - interpreted depending on
 	// screenRegion and reflection settings
 	idx int
+
+	// a playfield "pixel" is sustained for the duration 3 video cycles, even
+	// if the playfield register is changed
+	currentPixel bool
 }
 
 func newPlayfield(colorClock *polycounter.Polycounter) *playfield {
@@ -62,40 +66,44 @@ func (pf playfield) MachineInfo() string {
 }
 
 func (pf *playfield) tick() {
+	newPixel := false
 	if pf.colorClock.MatchBeginning(17) {
 		// start of visible screen (playfield not affected by HMOVE)
 		// 101110
 		pf.screenRegion = 1
 		pf.idx = 0
+		newPixel = true
 	} else if pf.colorClock.MatchBeginning(37) {
 		// just past the centre of the visible screen
 		// 110110
 		pf.screenRegion = 2
 		pf.idx = 0
+		newPixel = true
 	} else if pf.colorClock.MatchBeginning(0) {
 		// start of scanline
 		// 000000
 		pf.screenRegion = 0
 	} else if pf.screenRegion != 0 && pf.colorClock.Phase == 0 {
 		pf.idx++
+		newPixel = true
+	}
+
+	// pixel returns the color of the playfield at the current time.
+	// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
+	if newPixel && pf.screenRegion != 0 {
+		if pf.screenRegion == 1 || !pf.reflected {
+			// normal, non-reflected playfield
+			pf.currentPixel = pf.data[pf.idx]
+		} else {
+			// reflected playfield
+			pf.currentPixel = pf.data[len(pf.data)-pf.idx-1]
+		}
 	}
 }
 
-// pixel returns the color of the playfield at the current time.
-// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (pf *playfield) pixel() (bool, uint8) {
-	if pf.screenRegion != 0 {
-		if pf.screenRegion == 1 || !pf.reflected {
-			// normal, non-reflected playfield
-			if pf.data[pf.idx] {
-				return true, pf.foregroundColor
-			}
-		} else {
-			// reflected playfield
-			if pf.data[len(pf.data)-pf.idx-1] {
-				return true, pf.foregroundColor
-			}
-		}
+	if pf.currentPixel {
+		return true, pf.foregroundColor
 	}
 	return false, pf.backgroundColor
 }
