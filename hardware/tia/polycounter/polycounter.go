@@ -56,8 +56,8 @@ func (pk *Polycounter) Reset() {
 // Tick advances the count to the next state - returns true if counter has
 // looped. the force argument allows the function to be called and for the loop
 // to definitely take place. we use this in the VCS during for the RSYNC check
-func (pk *Polycounter) Tick(force bool) bool {
-	if force || pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
+func (pk *Polycounter) Tick() bool {
+	if pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
 		pk.Reset()
 		return true
 	}

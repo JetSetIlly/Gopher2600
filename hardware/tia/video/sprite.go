@@ -95,7 +95,7 @@ func (sp *sprite) resetPosition() {
 }
 
 func (sp *sprite) tickPosition(triggerList []int) bool {
-	if sp.position.Tick(false) {
+	if sp.position.Tick() {
 		return true
 	}
 

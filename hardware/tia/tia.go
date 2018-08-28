@@ -110,7 +110,6 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.wsync = true
 		service = false
 	case "RSYNC":
-		tia.colorClock.ResetPhase()
 		tia.rsync.set()
 		service = false
 	case "HMOVE":
@@ -149,7 +148,9 @@ func (tia *TIA) StepVideoCycle() bool {
 		cburst = true
 	}
 
-	// motion clock
+	// motion clock -- put simply, motinClock is true when hblank is false, and
+	// vice-versea, but offset by two cycles (hblank flips two video-cycles)
+	// before the motion clock
 	if tia.colorClock.MatchMid(17) && !tia.hmove.isActive() {
 		tia.motionClock = true
 	} else if tia.colorClock.MatchMid(19) && tia.hmove.isActive() {
@@ -158,14 +159,22 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.motionClock = false
 	}
 
-	if tia.colorClock.Tick(tia.rsync.check()) {
-		// set up new scanline if colorClock has ticked its way to the reset point or if
-		// an rsync has matured (see rsync.go commentary)
+	// set up new scanline if colorClock has ticked its way to the reset point or if
+	// an rsync has matured (see rsync.go commentary)
+	if tia.rsync.tick() {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
 		tia.hmove.reset()
-		tia.rsync.reset()
+
+		tia.colorClock.Reset()
+	} else if tia.colorClock.Tick() {
+		frontPorch = true
+		tia.wsync = false
+		tia.hblank = true
+		tia.hmove.reset()
+
+		// not sure if we need to reset rsync
 	}
 
 	// HMOVE clock stuffing
@@ -187,8 +196,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// at the end of the video cycle we want to finally 'send' information to the
 	// televison. what we 'send' depends on the state of hblank.
 	if tia.hblank {
-		// we're in the hblank state so do not tick the sprites and send the null
-		// pixel color to the television
+		// sent video black
 		tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: television.VideoBlack})
 	} else {
 		// send pixel color to television

@@ -7,29 +7,28 @@ import (
 
 // rsync is tricky but I've inpterpreted the various literature (and
 // observation of the Stella emulator) in the following way:
-//  - color clock phase is reset to 0 when RSYNC is triggered (see tia.go)
-//	- we note that rsync is now active (active flag below)
-//  - when the color clock phase reaches the end of it's phase cycle start
-//		a new scanline in the normal way (colorClock.tick() in tia.go)
+//  - color clock phase is reset to 0 when RSYNC is triggered
+//	- set remainingCycles
+//	- rsync.tick() is called every video cycle
+//  - when the remainingCycles reaches zero during a rsync.tick(), return true.
+//  - a new scanline is then begun in the normal way
 
 type rsync struct {
-	active     bool
-	colorClock *polycounter.Polycounter
+	remainingCycles int
+	colorClock      *polycounter.Polycounter
 }
 
 func newRsync(colorClock *polycounter.Polycounter) *rsync {
 	rs := new(rsync)
-	if rs == nil {
-		return nil
-	}
 	rs.colorClock = colorClock
+	rs.reset()
 	return rs
 }
 
 // MachineInfoTerse returns the RSYNC information in verbose format
 func (rs rsync) MachineInfoTerse() string {
 	if rs.isActive() {
-		return fmt.Sprintf("RS=%d", rs.remainingCycles())
+		return fmt.Sprintf("RS=%d", rs.remainingCycles)
 	}
 	return "RS=-"
 }
@@ -37,7 +36,7 @@ func (rs rsync) MachineInfoTerse() string {
 // MachineInfo returns the RSYNC information in verbose format
 func (rs rsync) MachineInfo() string {
 	if rs.isActive() {
-		return fmt.Sprintf("RSYNC -> reset in %d cycle(s)", rs.remainingCycles())
+		return fmt.Sprintf("RSYNC -> reset in %d cycle(s)", rs.remainingCycles)
 	}
 	return "RSYNC -> not set"
 }
@@ -47,22 +46,30 @@ func (rs rsync) String() string {
 	return rs.MachineInfo()
 }
 
-func (rs rsync) remainingCycles() int {
-	return polycounter.MaxPhase - rs.colorClock.Phase + 1
-}
-
 func (rs rsync) isActive() bool {
-	return rs.active
+	return rs.remainingCycles > -1
 }
 
 func (rs *rsync) reset() {
-	rs.active = false
+	rs.remainingCycles = -1
 }
 
 func (rs *rsync) set() {
-	rs.active = true
+	// after a lot of faffing and experimentation, I'm fairly sure that rsync
+	// is activated after 5 cycles (well, 4 but we need to account for the
+	// immediate tick in TIA)
+	rs.remainingCycles = 5
+	rs.colorClock.ResetPhase()
 }
 
-func (rs rsync) check() bool {
-	return rs.active && rs.colorClock.Phase == polycounter.MaxPhase
+func (rs *rsync) tick() bool {
+	if rs.remainingCycles == -1 {
+		return false
+	}
+	if rs.remainingCycles == 0 {
+		rs.remainingCycles = -1
+		return true
+	}
+	rs.remainingCycles--
+	return false
 }

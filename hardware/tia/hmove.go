@@ -18,9 +18,6 @@ type hmove struct {
 
 func newHmove(colorClock *polycounter.Polycounter) *hmove {
 	hm := new(hmove)
-	if hm == nil {
-		return nil
-	}
 	hm.reset()
 	hm.colorClock = colorClock
 	return hm
