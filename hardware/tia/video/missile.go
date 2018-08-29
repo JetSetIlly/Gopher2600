@@ -18,6 +18,15 @@ type missileSprite struct {
 	// sprite's drawing process. the drawing actually commences when the reset
 	// actually takes place (concept shared with player sprite)
 	deferDrawSig bool
+
+	// whether the reset bit is on. from the stella programmer's guide, "as
+	// long as [the] control bit is true the missile will remain locked to the
+	// centre of its player and the missile graphics will be disabled
+	resetToPlayerPos bool
+
+	// the player to which the missile is paired. we use this when resetting
+	// the missile position to the player
+	parentPlayer *playerSprite
 }
 
 func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
@@ -61,12 +70,28 @@ func (ms *missileSprite) tick() {
 	} else {
 		ms.tickGraphicsScan()
 	}
+
+	// when RESMP bit is on the missile's position is constantly updated
+	// ready for when the bit is reset. this doesn't match the behaviour of
+	// stella, which seems to only reset the position at the moment the bit is
+	// reset. however, it is easier to do it like this and I don't think it has
+	// any effect on the emulation.
+	if ms.resetToPlayerPos {
+		switch ms.parentPlayer.size {
+		case 0x05:
+			ms.position.Sync(&ms.parentPlayer.position, 9)
+		case 0x07:
+			ms.position.Sync(&ms.parentPlayer.position, 12)
+		default:
+			ms.position.Sync(&ms.parentPlayer.position, 5)
+		}
+	}
 }
 
 // pixel returns the color of the missile at the current time.  returns
 // (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (ms *missileSprite) pixel() (bool, uint8) {
-	if ms.enable {
+	if ms.enable && !ms.resetToPlayerPos {
 		switch ms.graphicsScanCounter {
 		case 0:
 			return true, ms.color
@@ -97,15 +122,21 @@ func (ms *missileSprite) scheduleReset(futureWrite *future) {
 			ms.startDrawing()
 			ms.deferDrawSig = false
 		}
-	}, "resetting")
+	}, fmt.Sprintf("%s resetting", ms.label))
 }
 
 func (ms *missileSprite) scheduleEnable(enable bool, futureWrite *future) {
-	label := "enabling"
+	label := "enabling missile"
 	if !enable {
-		label = "disabling"
+		label = "disabling missile"
 	}
 	futureWrite.schedule(delayEnableMissile, func() {
 		ms.enable = enable
-	}, label)
+	}, fmt.Sprintf("%s %s", ms.label, label))
+}
+
+func (ms *missileSprite) scheduleResetToPlayer(reset bool, futureWrite *future) {
+	futureWrite.schedule(delayResetMissileToPlayerPos, func() {
+		ms.resetToPlayerPos = reset
+	}, fmt.Sprintf("%s resetting to player pos", ms.label))
 }

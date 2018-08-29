@@ -146,12 +146,12 @@ func (ps *playerSprite) scheduleReset(futureWrite *future) {
 			ps.startDrawing()
 			ps.deferDrawStart = false
 		}
-	}, "resetting")
+	}, fmt.Sprintf("%s resetting", ps.label))
 }
 
 func (ps *playerSprite) scheduleWrite(data uint8, futureWrite *future) {
 	futureWrite.schedule(delayWritePlayer, func() {
 		ps.gfxDataPrev = *ps.gfxDataOther
 		ps.gfxData = data
-	}, "writing")
+	}, fmt.Sprintf("%s writing data", ps.label))
 }

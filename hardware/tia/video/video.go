@@ -65,6 +65,10 @@ func NewVideo(colorClock *polycounter.Polycounter) *Video {
 	vd.Player0.gfxDataOther = &vd.Player1.gfxData
 	vd.Player1.gfxDataOther = &vd.Player0.gfxData
 
+	// connect missile sprite to its parent player sprite
+	vd.Missile0.parentPlayer = vd.Player0
+	vd.Missile1.parentPlayer = vd.Player1
+
 	return vd
 }
 
@@ -335,7 +339,9 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "VDELBL":
 		vd.Ball.verticalDelay = value&0x01 == 0x01
 	case "RESMP0":
+		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.FutureWrite)
 	case "RESMP1":
+		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.FutureWrite)
 	case "HMCLR":
 		vd.Player0.horizMovement = 0x08
 		vd.Player1.horizMovement = 0x08

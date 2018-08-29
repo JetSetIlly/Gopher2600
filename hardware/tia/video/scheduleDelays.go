@@ -11,10 +11,11 @@ package video
 // values are used.
 
 const (
-	delayEnableBall     = 2
-	delayEnableMissile  = 2
-	delayWritePlayer    = 2
-	delayWritePlayfield = 3
+	delayWritePlayfield          = 3
+	delayWritePlayer             = 2
+	delayEnableBall              = 2
+	delayEnableMissile           = 2
+	delayResetMissileToPlayerPos = 2
 
 	// TIA_HW_Notes.txt: "there are 5 CLK worth of clocking/latching to take
 	// into account"

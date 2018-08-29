@@ -88,7 +88,7 @@ func (bs *ballSprite) scheduleReset(futureWrite *future) {
 		bs.resetting = false
 		bs.resetPosition()
 		bs.startDrawing()
-	}, "resetting")
+	}, fmt.Sprintf("%s resetting", bs.label))
 }
 
 func (bs *ballSprite) scheduleEnable(enable bool, futureWrite *future) {
@@ -98,5 +98,5 @@ func (bs *ballSprite) scheduleEnable(enable bool, futureWrite *future) {
 	}
 	futureWrite.schedule(delayEnableBall, func() {
 		bs.enable = enable
-	}, label)
+	}, fmt.Sprintf("%s %s", bs.label, label))
 }

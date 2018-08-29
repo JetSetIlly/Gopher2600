@@ -20,13 +20,6 @@ type Polycounter struct {
 	ResetPoint int
 }
 
-// SetResetPattern specifies the pattern at which the polycounter automatically
-// resets during a Tick(). this should be called at least once or the reset
-// pattern will be "000000" which is probably not what you want
-func (pk *Polycounter) SetResetPattern(resetPattern string) {
-	pk.ResetPoint = pk.table.LookupPattern(resetPattern)
-}
-
 // MachineInfoTerse returns the polycounter information in terse format
 func (pk Polycounter) MachineInfoTerse() string {
 	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
@@ -42,6 +35,21 @@ func (pk Polycounter) String() string {
 	return pk.MachineInfo()
 }
 
+// SetResetPattern specifies the pattern at which the polycounter automatically
+// resets during a Tick(). this should be called at least once or the reset
+// pattern will be "000000" which is probably not what you want
+func (pk *Polycounter) SetResetPattern(resetPattern string) {
+	pk.ResetPoint = pk.table.LookupPattern(resetPattern)
+}
+
+// SetResetPoint specifies the point at which the polycounter automatically
+func (pk *Polycounter) SetResetPoint(resetPoint int) {
+	if resetPoint > len(pk.table) {
+		panic(fmt.Errorf("cannot set reset point to %d for a polycounter table of length %d", resetPoint, len(pk.table)))
+	}
+	pk.ResetPoint = resetPoint
+}
+
 // ResetPhase resets the phase *only*
 func (pk *Polycounter) ResetPhase() {
 	pk.Phase = 0
@@ -51,6 +59,35 @@ func (pk *Polycounter) ResetPhase() {
 func (pk *Polycounter) Reset() {
 	pk.Count = 0
 	pk.Phase = 0
+}
+
+// Sync is used to synchronise two polycounters
+// -- positive offsets adjust the reset point to the right
+func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
+	if pk.ResetPoint != pko.ResetPoint {
+		panic("cannot Sync() two polycounters with different reset points")
+	}
+
+	pk.Count = pko.Count
+	pk.Phase = pko.Phase
+
+	// moving to the right means subtracting from the polycounter count/phase
+	pk.Count -= offset / (MaxPhase + 1)
+	if pk.Count > pk.ResetPoint {
+		pk.Count = pk.Count - pk.ResetPoint
+	} else if pk.Count < 0 {
+		pk.Count = pk.ResetPoint
+	}
+	pk.Phase -= offset % (MaxPhase + 1)
+	if pk.Phase > MaxPhase {
+		pk.Phase = pk.Phase - MaxPhase
+	} else if pk.Phase < 0 {
+		pk.Phase = (MaxPhase + 1) + pk.Phase
+		pk.Count--
+		if pk.Count < 0 {
+			pk.Count = pk.ResetPoint
+		}
+	}
 }
 
 // Tick advances the count to the next state - returns true if counter has
