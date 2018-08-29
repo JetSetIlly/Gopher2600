@@ -194,15 +194,13 @@ func (tia *TIA) StepVideoCycle() bool {
 	tia.Video.TickPlayfield()
 	tia.Video.TickFutureWrites()
 
-	// decide on pixel color - based on whether motionClock is active (not
-	// hblank)
+	// decide on pixel color
 	pixelColor := television.VideoBlack
 	if !tia.hblank {
 		pixelColor = television.PixelSignal(tia.Video.Pixel())
 	}
 
-	// at the end of the video cycle we want to finally 'send' information to the
-	// televison
+	// at the end of the video cycle we want to finally signal the televison
 	tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixelColor})
 
 	// set collision registers

@@ -1,22 +1,24 @@
 package video
 
 // these constants represent the number of cycles required to perform certian
-// operations on graphical elements. most operations occur immediately but a
-// handful take more than one cycle. for instance, enabling a sprite (the ball
-// and missiles) takes one cycle, whereas changing the graphical data of a
-// player sprite occurs immediately.
+// operations on sprites.
 //
-// the functions that make use of these values are in the file relevent to the
-// graphical element type. these functions in turn call the schedule() function
-// of a current instance of future type
+// in all cases, these values have been determined by observation and by
+// technical commentary, such as Andrew Tower's "Atari 2600 TIA Hardware
+// Notes" (TIA_HW_Notes.txt).
+//
+// see Future type, the schedule() function in paricular, to see how these
+// values are used.
 
 const (
-	delayEnableBall     = 3
-	delayEnableMissile  = 3
-	delayWritePlayer    = 3
-	delayWritePlayfield = 4
+	delayEnableBall     = 2
+	delayEnableMissile  = 2
+	delayWritePlayer    = 2
+	delayWritePlayfield = 3
 
-	delayResetBall    = 6
-	delayResetMissile = 6
-	delayResetPlayer  = 6
+	// TIA_HW_Notes.txt: "there are 5 CLK worth of clocking/latching to take
+	// into account"
+	delayResetBall    = 5
+	delayResetMissile = 5
+	delayResetPlayer  = 5
 )

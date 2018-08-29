@@ -9,6 +9,8 @@ type future struct {
 	// label is a short decription describing the future payload
 	label string
 
+	active bool
+
 	// remainingCycles is the number of remaining ticks before the pending
 	// action is resolved
 	remainingCycles int
@@ -46,26 +48,29 @@ func (fut *future) schedule(cycles int, payload futurePayload, label string) {
 	if fut.unresolved {
 		panic(fmt.Sprintf("scheduling future (%s) before previous operation (%s) is resolved", label, fut.label))
 	}
-	fut.label = label
+
+	// remaining cycles
+	// + 1 because we'll tick and consume a cycle immediately after scheduling
 	fut.remainingCycles = cycles + 1
+
+	fut.label = label
 	fut.payload = payload
 	fut.unresolved = true
 }
 
 // isScheduled returns true if pending action has not yet resolved
 func (fut future) isScheduled() bool {
-	return fut.remainingCycles > 0
+	return !fut.unresolved
 }
 
 // tick moves the pending action counter on one step
 func (fut *future) tick() bool {
-	if fut.remainingCycles == 1 {
-		fut.remainingCycles--
-		fut.unresolved = false
-		return true
-	}
+	if fut.unresolved {
+		if fut.remainingCycles == 0 {
+			fut.unresolved = false
+			return true
+		}
 
-	if fut.remainingCycles > 0 {
 		fut.remainingCycles--
 	}
 

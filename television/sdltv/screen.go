@@ -168,16 +168,6 @@ func (scr *screen) update(paused bool) error {
 		return err
 	}
 
-	// show current frame's pixels
-	err = scr.texture.Update(nil, scr.pixels, scr.pitch)
-	if err != nil {
-		return err
-	}
-	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
-	if err != nil {
-		return err
-	}
-
 	// if tv is paused then show the previous frame's faded image
 	if paused {
 		err = scr.fadeTexture.Update(nil, scr.pixelsFade, scr.pitch)
@@ -188,6 +178,18 @@ func (scr *screen) update(paused bool) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// show current frame's pixels
+	// - if tv is paused this overwrites the faded image (drawn above) up to
+	// the pixel where the current frame has reached
+	err = scr.texture.Update(nil, scr.pixels, scr.pitch)
+	if err != nil {
+		return err
+	}
+	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
+	if err != nil {
+		return err
 	}
 
 	// draw masks
