@@ -4,6 +4,9 @@ import (
 	"fmt"
 )
 
+// note that none of these values fail if value is too big for regsuter. the
+// value is simply masked and stored
+
 // Load value into register
 func (r *Register) Load(v interface{}) {
 	switch v := v.(type) {

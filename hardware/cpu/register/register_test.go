@@ -9,6 +9,7 @@ import (
 func TestRegister(t *testing.T) {
 	r16(t)
 	r8(t)
+	r4(t)
 }
 
 func r16(t *testing.T) {
@@ -150,4 +151,20 @@ func r8(t *testing.T) {
 	carry = r8.ROR(true)
 	assert.CheckValueVCS(t, r8, 0xff)
 	assert.CheckValueVCS(t, carry, false)
+}
+
+func r4(t *testing.T) {
+	var carry, overflow bool
+
+	// initialisation
+	r4 := register.NewRegister(0, 4, "TEST", "TST")
+	assert.CheckValueVCS(t, r4.IsZero(), true)
+	assert.CheckValueVCS(t, r4, 0)
+
+	r4.Load(0xff)
+	assert.CheckValueVCS(t, r4, 15)
+	carry, overflow = r4.Add(1, false)
+	assert.CheckValueVCS(t, r4, 0)
+	assert.CheckValueVCS(t, carry, true)
+	assert.CheckValueVCS(t, overflow, false)
 }

@@ -2,13 +2,14 @@ package register
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 )
 
 // Register is an array of of type bit, used for register representation
 type Register struct {
 	value      uint32
-	size       int
+	size       uint
 	label      string
 	shortLabel string
 
@@ -21,18 +22,19 @@ type Register struct {
 }
 
 // NewAnonRegister initialises a new register without a name
-func NewAnonRegister(value interface{}, size int) *Register {
+func NewAnonRegister(value interface{}, size uint) *Register {
 	return NewRegister(value, size, "", "")
 }
 
 // NewRegister creates a new register of a givel size and name, and initialises
 // the value
-func NewRegister(value interface{}, size int, label string, shortLabel string) *Register {
-	if size != 8 && size != 16 {
+func NewRegister(value interface{}, size uint, label string, shortLabel string) *Register {
+	if size < 2 || size > 32 {
 		panic(fmt.Errorf("cannot create register (%s) - unsupported bit size (%d)", label, size))
 	}
 
 	r := new(Register)
+
 	switch value := value.(type) {
 	case *Register:
 		r.value = value.value
@@ -48,30 +50,21 @@ func NewRegister(value interface{}, size int, label string, shortLabel string) *
 		panic(fmt.Errorf("cannot create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value)))
 	}
 
-	r.size = size
 	r.label = label
 	r.shortLabel = shortLabel
-
-	if size == 8 {
-		r.signBit = 0x00000080
-		r.vbit = 0x00000040
-		r.mask = 0x000000FF
-		r.hexformat = "%#02x"
-		r.binformat = "%08b"
-	} else if size == 16 {
-		r.signBit = 0x00008000
-		r.vbit = 0x00004000
-		r.mask = 0x0000FFFF
-		r.hexformat = "%#04x"
-		r.binformat = "%016b"
-	}
+	r.size = size
+	r.signBit = 1 << (size - 1)
+	r.vbit = 1 << (size - 2)
+	r.mask = (1 << size) - 1
+	r.binformat = fmt.Sprintf("%%0%db", r.size)
+	r.hexformat = fmt.Sprintf("%%0%dx", int(math.Ceil(float64(r.size)/4.0)))
 
 	return r
 }
 
 // Size returns the number of bits in register
-func (r Register) Size() int {
-	return 8
+func (r Register) Size() uint {
+	return r.size
 }
 
 // IsNegative checks the sign bit of the register
