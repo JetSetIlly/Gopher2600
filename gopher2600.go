@@ -12,6 +12,7 @@ import (
 	"gopher2600/television"
 	"gopher2600/television/sdltv"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 	"sync"
@@ -136,6 +137,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	const cyclesPerFrame = 19912
 	const numOfFrames = 180
 
+	// start cpu profile
 	f, err := os.Create("cpu.profile")
 	if err != nil {
 		return err
@@ -146,10 +148,11 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	}
 	defer pprof.StopCPUProfile()
 
+	// run emulation for a while
 	cycles := cyclesPerFrame * numOfFrames
 	startTime := time.Now()
 	for cycles > 0 {
-		stepCycles, _, err := vcs.Step(hardware.NullVideoCycleCallback)
+		stepCycles, _, err := vcs.Step(hardware.StubVideoCycleCallback)
 		if err != nil {
 			return err
 		}
@@ -157,6 +160,18 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	}
 
 	fmt.Printf("%f fps\n", float64(numOfFrames)/time.Since(startTime).Seconds())
+
+	// write memory profile
+	f, err = os.Create("mem.profile")
+	if err != nil {
+		return err
+	}
+	runtime.GC()
+	err = pprof.WriteHeapProfile(f)
+	if err != nil {
+		return fmt.Errorf("could not write memory profile: %s", err)
+	}
+	f.Close()
 
 	return nil
 }
@@ -203,7 +218,7 @@ func run(cartridgeFile string) error {
 		}
 		runningLock.Unlock()
 
-		_, _, err := vcs.Step(hardware.NullVideoCycleCallback)
+		_, _, err := vcs.Step(hardware.StubVideoCycleCallback)
 		if err != nil {
 			return err
 		}

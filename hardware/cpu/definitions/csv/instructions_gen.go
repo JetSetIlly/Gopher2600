@@ -1,4 +1,4 @@
-//go:generate go run definitions_gen.go
+//go:generate go run instructions_gen.go
 
 package main
 
@@ -16,10 +16,14 @@ import (
 const definitionsCSVFile = "./definitions.csv"
 const generatedGoFile = "../instructions.go"
 
-const leadingBoilerPlate = "// generated code - do not change\n\npackage definitions\n\n// GetInstructionDefinitions returns the opcode table for the MC6502\nfunc GetInstructionDefinitions() (map[uint8]InstructionDefinition, error) {\nreturn map[uint8]InstructionDefinition"
-const trailingBoilerPlate = ", nil\n}"
+const leadingBoilerPlate = "// generated code - do not change\n\npackage definitions\n\n// GetInstructionDefinitions returns the opcode table for the MC6502\nfunc GetInstructionDefinitions() ([]*InstructionDefinition, error) {\nreturn []*InstructionDefinition{"
+const trailingBoilerPlate = "}, nil\n}"
 
-func generate() (map[uint8]definitions.InstructionDefinition, error) {
+// parseCSV reads & parses the definitions CSV file and creates & returns a map
+// of InstructionDefinitions
+func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
+
+	// open file
 	df, err := os.Open(definitionsCSVFile)
 	if err != nil {
 		// can't open definitions csv file using full path, so try to open
@@ -49,6 +53,7 @@ func generate() (map[uint8]definitions.InstructionDefinition, error) {
 	deftable := make(map[uint8]definitions.InstructionDefinition)
 
 	for {
+		// loop through file until EOF is reached
 		rec, err := csvr.Read()
 		if err == io.EOF {
 			break
@@ -171,22 +176,24 @@ func generate() (map[uint8]definitions.InstructionDefinition, error) {
 }
 
 func main() {
-	deftable, err := generate()
+
+	// parse definitions files
+	deftable, err := parseCSV()
 	if err != nil {
 		fmt.Printf("error during opcode generation (%s)", err)
 		os.Exit(10)
 	}
 
-	// use Go syntax representation of deftable as basis of output
-	output := fmt.Sprintf("%#v", deftable)
-
-	// trim leading information, up to first brace
-	i := strings.Index(output, "{")
-	if i == -1 {
-		fmt.Printf("error during opcode generation (deftable malformed)")
-		os.Exit(10)
+	// output the definitions map as an array
+	output := ""
+	for opcode := 0; opcode < 256; opcode++ {
+		def, found := deftable[uint8(opcode)]
+		if found {
+			output = fmt.Sprintf("%s\n&%#v,", output, def)
+		} else {
+			output = fmt.Sprintf("%s\nnil,", output)
+		}
 	}
-	output = output[i:]
 
 	// we'll be putting the contents of deftable into the definition package so
 	// we need to remove the expicit references to that package

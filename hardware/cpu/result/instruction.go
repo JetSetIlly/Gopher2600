@@ -11,7 +11,7 @@ import (
 // Instruction contains all the interesting information from a CPU step.
 type Instruction struct {
 	Address         uint16
-	Defn            definitions.InstructionDefinition
+	Defn            *definitions.InstructionDefinition
 	InstructionData interface{}
 	ActualCycles    int
 

@@ -99,9 +99,9 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	return nil
 }
 
-// NullVideoCycleCallback can be used when calling Step() when no special
-// behaviour is required
-func NullVideoCycleCallback(*result.Instruction) error {
+// StubVideoCycleCallback can be used as an argument to VCS.Step() when no
+// feedback is required - useful for non-debugging emulation modes
+func StubVideoCycleCallback(*result.Instruction) error {
 	return nil
 }
 

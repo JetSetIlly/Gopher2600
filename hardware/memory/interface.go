@@ -35,8 +35,12 @@ type Area interface {
 	Origin() uint16
 	Memtop() uint16
 
-	// peek returns value, mapped address, area name, label (if any), and any
-	// error (which may not be fatal)
+	// peek returns:
+	// o value
+	// o mapped address
+	// o area name
+	// o label (if any)
+	// o error (which may not be fatal)
 	Peek(address uint16) (uint8, uint16, string, string, error)
 }
 

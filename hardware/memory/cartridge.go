@@ -117,7 +117,7 @@ func (cart *Cartridge) Eject() {
 	cart.bank = 0
 }
 
-// Peek is the implementation of Area.Peek
+// Peek is the implementation of Memory.Area.Peek
 func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error) {
 	if len(cart.memory) == 0 {
 		return 0, 0, "", "", new(MissingCartridgeError)

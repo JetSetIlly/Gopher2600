@@ -24,7 +24,7 @@ type CPU struct {
 	Status StatusRegister
 
 	mem     memory.CPUBus
-	opCodes map[uint8]definitions.InstructionDefinition
+	opCodes []*definitions.InstructionDefinition
 
 	// endCycle is called at the end of the imaginary CPU cycle. for example,
 	// reading a byte from memory takes one cycle and so the emulation will
@@ -323,8 +323,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	if err != nil {
 		return nil, err
 	}
-	defn, found := mc.opCodes[operator]
-	if !found {
+	defn := mc.opCodes[operator]
+	if defn == nil {
 		if operator == 0xff {
 			return nil, errors.NewGopherError(errors.NullInstruction, nil)
 		}

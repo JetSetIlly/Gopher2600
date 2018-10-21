@@ -78,7 +78,8 @@ var WriteSymbols = map[uint16]string{
 	0x287: "TIM1024",
 }
 
-// tia write registers
+// TIA write registers - values are enumerated from 0; value is added to the
+// origin address of the TIA in ChipBus.ChipWrite implementation
 const (
 	CXM0P uint16 = iota
 	CXM1P
@@ -96,7 +97,8 @@ const (
 	INPT5
 )
 
-// riot write registers
+// RIOT write registers - values are enumerated from 0; value is added to the
+// origin address of the RIOT in ChipBus.ChipWrite implementation
 const (
 	SWCHA uint16 = iota
 	SWACNT
