@@ -23,21 +23,11 @@ type Video struct {
 
 	// there's a slight delay when changing the state of sprites. note that we
 	// use the same future instance for all delayed write operations. this is
-	// okay because in all instances the delay is so short there is no chance
+	// okay because in most instances the delay is so short there is no chance
 	// of another write being scheduled before the previous request has been
-	// resolved
-	// TODO: I'm now not sure if the above statement is true. the BRK
-	// instruction for instance pushes values onto the stack very quickly. if
-	// the SP is inside register space then the BRK command can trigger these
-	// future writes. as it currently stands, the FutureWrite object will
-	// sanity-panic if a new event is scheduled before a previous event has
-	// completed. Should we remove the sanity-panic for the BRK instruction and
-	// allow write events to be lost? or should have a queue of FutureWrite
-	// events. The second option doesn't seem correct - from my rudimentary
-	// understanding of electronics that is.  The sanity-panic isn't really
-	// needed of course, but I don't want to remove it completely just yet. The
-	// other conclusion we could mull over is that the schedule delay values
-	// are wrong.
+	// resolved. the exception to this is the BRK command which pushes onto the
+	// stack so quickly it's possible for registers to be triggered before
+	// previous writes have been resolved.
 	FutureWrite future
 }
 

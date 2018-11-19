@@ -9,23 +9,17 @@ type future struct {
 	// label is a short decription describing the future payload
 	label string
 
-	active bool
-
 	// remainingCycles is the number of remaining ticks before the pending
 	// action is resolved
 	remainingCycles int
 
 	// the value that is to be the result of the pending action
 	payload futurePayload
-
-	// whether or not a scheduled operation has completed -- used primarily as
-	// a sanity check
-	unresolved bool
 }
 
 // MachineInfo returns the ball sprite information in terse format
 func (fut future) MachineInfo() string {
-	if !fut.unresolved {
+	if fut.remainingCycles == 0 {
 		return "nothing scheduled"
 	}
 	suffix := ""
@@ -37,7 +31,7 @@ func (fut future) MachineInfo() string {
 
 // MachineInfo returns the ball sprite information in verbose format
 func (fut future) MachineInfoTerse() string {
-	if !fut.unresolved {
+	if fut.remainingCycles == 0 {
 		return "no sch"
 	}
 	return fmt.Sprintf("%s(%d)", fut.label, fut.remainingCycles)
@@ -45,34 +39,40 @@ func (fut future) MachineInfoTerse() string {
 
 // schedule the pending future action
 func (fut *future) schedule(cycles int, payload futurePayload, label string) {
-	if fut.unresolved {
-		panic(fmt.Sprintf("scheduling future (%s) before previous operation (%s) is resolved", label, fut.label))
-	}
-
-	// remaining cycles
+	// silently preempt and forget about existing future events.
+	// I'm pretty sure this is okay. the only time this can occur is during a
+	// BRK instruction.
+	//
+	// there used to be a sanity panic here but the BRK
+	// instruction would erroneoudly cause it to fail in certain instances. it
+	// was easier to remove then to introduce special conditions.
+	//
+	// set remaining cycles:
+	// + 1 because we trigger the payload on a count of 1 and use zero as the
+	// off state
 	// + 1 because we'll tick and consume a cycle immediately after scheduling
-	fut.remainingCycles = cycles + 1
+	fut.remainingCycles = cycles + 2
 
 	fut.label = label
 	fut.payload = payload
-	fut.unresolved = true
 }
 
 // isScheduled returns true if pending action has not yet resolved
 func (fut future) isScheduled() bool {
-	return !fut.unresolved
+	return fut.remainingCycles > 0
 }
 
 // tick moves the pending action counter on one step
 func (fut *future) tick() bool {
-	if fut.unresolved {
-		if fut.remainingCycles == 0 {
-			fut.unresolved = false
-			return true
-		}
-
-		fut.remainingCycles--
+	if fut.remainingCycles == 0 {
+		return false
 	}
 
+	if fut.remainingCycles == 1 {
+		fut.remainingCycles--
+		return true
+	}
+
+	fut.remainingCycles--
 	return false
 }
