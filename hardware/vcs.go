@@ -210,7 +210,7 @@ func (vcs *VCS) Reset() error {
 	}
 
 	err := vcs.MC.LoadPC(AddressReset)
-	if _, ok := err.(*memory.MissingCartridgeError); !ok {
+	if err != nil {
 		return err
 	}
 

@@ -27,6 +27,8 @@ func (col *collisions) clear() {
 	col.cxppmm = 0
 }
 
+// NOTE that collisions are detected in the video.Pixel() command
+
 func (col *collisions) SetMemory(mem memory.ChipBus) {
 	mem.ChipWrite(vcssymbols.CXM0P, col.cxm0p)
 	mem.ChipWrite(vcssymbols.CXM1P, col.cxm1p)

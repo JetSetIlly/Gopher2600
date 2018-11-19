@@ -24,9 +24,9 @@ var messages = map[Errno]string{
 	UnrecognisedAddress: "address unrecognised (%v)",
 
 	// Cartridges
-	CartridgeFileCannotOpen: "cannot open cartridge (%s)",
-	CartridgeFileError:      "error reading cartridge file (%s)",
-	CartridgeInvalidSize:    "cartridge size is not recognised (%d)",
+	CartridgeFileError:   "error reading cartridge file (%s)",
+	CartridgeUnsupported: "cartridge unsupported (%s)",
+	CartridgeMissing:     "no cartridge attached",
 
 	// TV
 	UnknownTVRequest: "TV does not support %v request",

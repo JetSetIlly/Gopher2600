@@ -26,9 +26,9 @@ const (
 	UnrecognisedAddress
 
 	// Cartridges
-	CartridgeFileCannotOpen
 	CartridgeFileError
-	CartridgeInvalidSize
+	CartridgeUnsupported
+	CartridgeMissing
 
 	// TV
 	UnknownTVRequest

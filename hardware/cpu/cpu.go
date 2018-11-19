@@ -2,7 +2,9 @@ package cpu
 
 // TODO List
 // ---------
-// . NMOS indexed addressing extra read when crossing page boundaries
+// o NMOS indexed addressing extra read when crossing page boundaries
+// o check that NoSideEffects is consistent in its intention
+// o check that all calls to endCycle() occur when they're supposed to
 
 import (
 	"fmt"
@@ -13,6 +15,8 @@ import (
 	"gopher2600/hardware/memory"
 	"log"
 )
+
+const irqInterruptVector = 0xfffe
 
 // CPU is the main container structure for the package
 type CPU struct {
@@ -139,7 +143,14 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 	return nil
 }
 
+// note that write8Bit, unline read8Bit(), does not call endCycle() this is
+// because we need to differentiate between different addressing modes at
+// different times.
 func (mc *CPU) write8Bit(address uint16, value uint8) error {
+	if mc.NoSideEffects {
+		return nil
+	}
+
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
@@ -158,6 +169,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	return nil
 }
 
+// note that read8Bit calls endCycle as appropriate
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
@@ -352,11 +364,21 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		// implied mode does not use any additional bytes. however, the next
 		// instruction is read but the PC is not incremented
 
-		// phantom read
-		// +1 cycle
-		_, err := mc.read8Bit(mc.PC.ToUint16())
-		if err != nil {
-			return nil, err
+		if defn.Mnemonic == "BRK" {
+			// BRK is unusual in that it increases the PC by two bytes despite
+			// being an implied addressing mode.
+			// +1 cycle
+			_, err = mc.read8BitPC()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// phantom read
+			// +1 cycle
+			_, err := mc.read8Bit(mc.PC.ToUint16())
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	case definitions.Immediate:
@@ -627,12 +649,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 			// phantom write
 			// +1 cycle
-			if !mc.NoSideEffects {
-				err = mc.write8Bit(address, value)
+			err = mc.write8Bit(address, value)
 
-				if err != nil {
-					return nil, err
-				}
+			if err != nil {
+				return nil, err
 			}
 			mc.endCycle()
 		}
@@ -665,11 +685,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Overflow = false
 
 	case "PHA":
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(mc.SP.ToUint16(), mc.A.ToUint8())
-			if err != nil {
-				return nil, err
-			}
+		err = mc.write8Bit(mc.SP.ToUint16(), mc.A.ToUint8())
+		if err != nil {
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 
@@ -685,11 +703,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.A.Load(value)
 
 	case "PHP":
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
-			if err != nil {
-				return nil, err
-			}
+		err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
+		if err != nil {
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 
@@ -764,27 +780,21 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "STA":
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(address, mc.A.ToUint8())
-			if err != nil {
-				return nil, err
-			}
+		err = mc.write8Bit(address, mc.A.ToUint8())
+		if err != nil {
+			return nil, err
 		}
 
 	case "STX":
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(address, mc.X.ToUint8())
-			if err != nil {
-				return nil, err
-			}
+		err = mc.write8Bit(address, mc.X.ToUint8())
+		if err != nil {
+			return nil, err
 		}
 
 	case "STY":
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(address, mc.Y.ToUint8())
-			if err != nil {
-				return nil, err
-			}
+		err = mc.write8Bit(address, mc.Y.ToUint8())
+		if err != nil {
+			return nil, err
 		}
 
 	case "INX":
@@ -985,24 +995,20 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		// +1 cycle
 		mc.endCycle()
 
-		if !mc.NoSideEffects {
-			// push MSB of PC onto stack, and decrement SP
-			// +1 cycle
-			err = mc.write8Bit(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
-			if err != nil {
-				return nil, err
-			}
+		// push MSB of PC onto stack, and decrement SP
+		// +1 cycle
+		err = mc.write8Bit(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
+		if err != nil {
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 		mc.endCycle()
 
-		if !mc.NoSideEffects {
-			// push LSB of PC onto stack, and decrement SP
-			// +1 cycle
-			err = mc.write8Bit(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
-			if err != nil {
-				return nil, err
-			}
+		// push LSB of PC onto stack, and decrement SP
+		// +1 cycle
+		err = mc.write8Bit(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
+		if err != nil {
+			return nil, err
 		}
 		mc.SP.Add(255, false)
 		mc.endCycle()
@@ -1047,15 +1053,69 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 
 	case "BRK":
-		// TODO: implement BRK
+		// push PC onto register (same effect as JSR)
+		err := mc.write8Bit(mc.SP.ToUint16(), uint8((mc.PC.ToUint16()&0xFF00)>>8))
+		if err != nil {
+			return nil, err
+		}
+		mc.SP.Add(255, false)
+		mc.endCycle()
+
+		err = mc.write8Bit(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
+		if err != nil {
+			return nil, err
+		}
+		mc.SP.Add(255, false)
+		mc.endCycle()
+
+		// push status register (same effect as PHP)
+		err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
+		if err != nil {
+			return nil, err
+		}
+		mc.SP.Add(255, false)
+		mc.endCycle()
+
+		// set the break flag
+		mc.Status.Break = true
+
+		// perform jump
+		brkAddress, err := mc.read16Bit(irqInterruptVector)
+		if err != nil {
+			return nil, err
+		}
+		if !mc.NoSideEffects {
+			mc.PC.Load(brkAddress)
+		}
 
 	case "RTI":
-		// TODO: implement RTI
+		// pull status register (same effect as PLP)
+		mc.SP.Add(1, false)
+		mc.endCycle()
+		value, err = mc.read8Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
+		mc.Status.FromUint8(value)
+
+		// pull program counter (same effect as RTS)
+		if !mc.NoSideEffects {
+			mc.SP.Add(1, false)
+			mc.endCycle()
+			rtiAddress, err := mc.read16Bit(mc.SP.ToUint16())
+			if err != nil {
+				return nil, err
+			}
+			mc.SP.Add(1, false)
+			mc.PC.Load(rtiAddress)
+			mc.PC.Add(1, false)
+			mc.endCycle()
+		}
 
 	// undocumented instructions
 
 	case "dop":
-		// does nothing
+		// does nothing (2 byte nop)
 
 	case "lax":
 		mc.A.Load(value)
@@ -1077,13 +1137,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == definitions.RMW {
-		if !mc.NoSideEffects {
-			err = mc.write8Bit(address, value)
-			if err != nil {
-				return nil, err
+		err = mc.write8Bit(address, value)
+		if err != nil {
+			return nil, err
 
-			}
 		}
+
 		// +1 cycle
 		mc.endCycle()
 	}

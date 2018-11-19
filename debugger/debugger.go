@@ -32,9 +32,11 @@ type Debugger struct {
 	runUntilHalt bool
 
 	// halt conditions
-	// note that the UI probably allows the user to halt (eg. ctrl-c)
 	breakpoints *breakpoints
 	traps       *traps
+
+	// note that the UI probably allows the user to manually break or trap at
+	// will, with for example, ctrl-c
 
 	// we accumulate break and trap messsages until we can service them
 	breakMessages string
@@ -54,7 +56,7 @@ type Debugger struct {
 	commandOnHalt       string
 	commandOnHaltStored string
 
-	// similarly, commandOnStep is the sequence of commands to run afer ever
+	// similarly, commandOnStep is the sequence of commands to run afer every
 	// cpu/video cycle
 	commandOnStep       string
 	commandOnStepStored string
@@ -239,7 +241,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 // breakandtrapCallback()
 
 func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
-	dbg.breakandtrapCallback(result)
+	dbg.breakAndTrapCallback(result)
 	dbg.lastResult = result
 	if dbg.commandOnStep != "" {
 		_, err := dbg.parseInput(dbg.commandOnStep)
@@ -250,13 +252,15 @@ func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
 	return dbg.inputLoop(false)
 }
 
-func (dbg *Debugger) breakandtrapCallback(result *result.Instruction) error {
+func (dbg *Debugger) breakAndTrapCallback(result *result.Instruction) error {
 	// because we call this callback mid-instruction, the programme counter
 	// maybe in it's non-final state - we don't want to break or trap in these
 	// instances if the final effect of the instruction changes the programme
 	// counter to some other value
-	if (result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine) && !result.Final {
-		return nil
+	if result.Defn != nil {
+		if (result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine) && !result.Final {
+			return nil
+		}
 	}
 
 	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
@@ -393,7 +397,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 				if dbg.inputloopVideoClock {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleCallback)
 				} else {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakandtrapCallback)
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakAndTrapCallback)
 				}
 
 				if err != nil {
@@ -409,15 +413,15 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 					default:
 						return err
 					}
-				}
-
-				// check validity of instruction result
-				if dbg.lastResult.Final {
-					err := dbg.lastResult.IsValid()
-					if err != nil {
-						fmt.Println(dbg.lastResult.Defn)
-						fmt.Println(dbg.lastResult)
-						panic(err)
+				} else {
+					// check validity of instruction result
+					if dbg.lastResult.Final {
+						err := dbg.lastResult.IsValid()
+						if err != nil {
+							fmt.Println(dbg.lastResult.Defn)
+							fmt.Println(dbg.lastResult)
+							panic(err)
+						}
 					}
 				}
 

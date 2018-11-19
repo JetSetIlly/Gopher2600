@@ -2,6 +2,8 @@ package result
 
 import "fmt"
 
+// columnise forces the string into the given width. used for outputting
+// disassembly into columns
 func columnise(s string, width int) string {
 	if width > len(s) {
 		t := make([]byte, width-len(s))

@@ -26,7 +26,7 @@ func StandardSymbolTable() (*Table, error) {
 	table := new(Table)
 	table.ReadSymbols = vcssymbols.ReadSymbols
 	table.WriteSymbols = vcssymbols.WriteSymbols
-	table.genMaxWidth()
+	table.genMaxWidths()
 	return table, nil
 }
 
@@ -48,12 +48,14 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 			table.WriteSymbols[k] = v
 		}
 
-		table.genMaxWidth()
+		table.genMaxWidths()
 	}()
 
 	// try to open symbols file
 	symFilename := cartridgeFilename
 	ext := path.Ext(symFilename)
+
+	// try to figure out the case of the file extension
 	if ext == ".BIN" {
 		symFilename = fmt.Sprintf("%s.SYM", symFilename[:len(symFilename)-len(ext)])
 	} else {
@@ -73,7 +75,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		_ = sf.Close()
 	}()
 
-	// get file info
+	// get file info of symbols file
 	sfi, err := sf.Stat()
 	if err != nil {
 		return table, errors.NewGopherError(errors.SymbolsFileError, err)
@@ -125,11 +127,8 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	return table, nil
 }
 
-func (table *Table) genMaxWidth() {
-	// get max width of symbol in each list -- it may seem that we could keep
-	// track of these width values as we go along but we can't really because
-	// the overwriting of previous symbols, during the loops over
-	// vcsRead/WriteSymbols above, causes havoc
+// find the widest location and read/write symbol
+func (table *Table) genMaxWidths() {
 	for _, s := range table.Locations {
 		if len(s) > table.MaxLocationWidth {
 			table.MaxLocationWidth = len(s)

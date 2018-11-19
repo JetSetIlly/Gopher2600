@@ -6,6 +6,12 @@ import "gopher2600/errors"
 // for tools that don't need a television or related information at all.
 type DummyTV struct{ Television }
 
+// NewDummyTV is the preferred method of initialisation for DummyTV - you can
+// get away with an plain new(DummyTV) but this is probably more convenient
+func NewDummyTV(tvType string, scale float32) (*DummyTV, error) {
+	return new(DummyTV), nil
+}
+
 // MachineInfoTerse (with DummyTV reciever) is the null implementation
 func (DummyTV) MachineInfoTerse() string {
 	return ""

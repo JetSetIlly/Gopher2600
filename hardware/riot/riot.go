@@ -82,7 +82,7 @@ func (riot *RIOT) ReadRIOTMemory() {
 			riot.timerINTIMvalue = value
 			riot.timerCycles = 2
 		default:
-			fmt.Printf("unserviced RIOT register (%v)", register)
+			fmt.Printf("unserviced RIOT register (%v)\n", register)
 		}
 
 		// write value to INTIM straight-away

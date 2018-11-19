@@ -5,12 +5,13 @@ import (
 	"strings"
 )
 
-// TableID is used to select and identify a symbol table
-type TableID int
+// TableType is used to select and identify a symbol table
+// when searching
+type TableType int
 
 // list of valid symbol tables
 const (
-	UnspecifiedSymTable TableID = iota
+	UnspecifiedSymTable TableType = iota
 	LocationSymTable
 	ReadSymTable
 	WriteSymTable
@@ -18,7 +19,7 @@ const (
 
 // SearchSymbol return the address of the supplied symbol. search is
 // case-insensitive
-func (sym *Table) SearchSymbol(symbol string, table TableID) (TableID, string, uint16, error) {
+func (sym *Table) SearchSymbol(symbol string, table TableType) (TableType, string, uint16, error) {
 	symbolUpper := strings.ToUpper(symbol)
 
 	if table == UnspecifiedSymTable || table == LocationSymTable {
