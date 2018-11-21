@@ -111,8 +111,8 @@ func (mc *CPU) Reset() error {
 	mc.Status.reset()
 	mc.Status.Zero = mc.A.IsZero()
 	mc.Status.Sign = mc.A.IsNegative()
-	mc.Status.InterruptDisable = true
-	mc.Status.Break = true
+	mc.Status.InterruptDisable = false
+	mc.Status.Break = false
 	mc.endCycle = nil
 	mc.RdyFlg = true
 
@@ -355,10 +355,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	var value uint8
 
 	// get address to use when reading/writing from/to memory (note that in the
-	// case of immediate addressing, we are actually getting the value to use in
-	// the instruction, not the address). we also take the opportunity to set
-	// the InstructionData value for the StepResult and whether a page fault has
-	// occured
+	// case of immediate addressing, we are actually getting the value to use
+	// in the instruction, not the address).
+	//
+	// we also take the opportunity to set the InstructionData value for the
+	// StepResult and whether a page fault has occured. note that we don't do
+	// this in the case of JSR
 	switch defn.AddressingMode {
 	case definitions.Implied:
 		// implied mode does not use any additional bytes. however, the next
@@ -435,10 +437,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
-		result.InstructionData = indirectAddress
 
 		// +1 cycle
 		mc.endCycle()
@@ -451,10 +453,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
-		result.InstructionData = indirectAddress
 
 		// +1 cycle
 		mc.endCycle()
@@ -467,6 +469,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 
 		// implement NMOS 6502 Indirect JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
@@ -485,7 +488,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			address = uint16(hi) << 8
 			address |= uint16(lo)
 
-			result.InstructionData = indirectAddress
 			result.Bug = fmt.Sprintf("Indirect JMP Bug")
 
 			// +1 cycle
@@ -499,7 +501,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			if err != nil {
 				return nil, err
 			}
-			result.InstructionData = indirectAddress
 		}
 
 	case definitions.PreIndexedIndirect:
@@ -508,6 +509,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 
 		// phantom read before adjusting the index
 		// +1 cycle
@@ -527,7 +529,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 
 		// never a page fault wth pre-index indirect addressing
-		result.InstructionData = indirectAddress
 
 	case definitions.PostIndexedIndirect:
 		// +1 cycle
@@ -535,6 +536,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 
 		// +2 cycles
 		indexedAddress, err := mc.read16Bit(uint16(indirectAddress))
@@ -562,14 +564,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		adder.Add(indexedAddress&0xff00, false)
 		address = adder.ToUint16()
 
-		result.InstructionData = indirectAddress
-
 	case definitions.AbsoluteIndexedX:
 		// +2 cycles
 		indirectAddress, err := mc.read16BitPC()
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 
 		// add index to LSB of address
 		adder := register.NewAnonRegister(mc.X, 16)
@@ -591,14 +592,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		adder.Add(indirectAddress&0xff00, false)
 		address = adder.ToUint16()
 
-		result.InstructionData = indirectAddress
-
 	case definitions.AbsoluteIndexedY:
 		// +2 cycles
 		indirectAddress, err := mc.read16BitPC()
 		if err != nil {
 			return nil, err
 		}
+		result.InstructionData = indirectAddress
 
 		// add index to LSB of address
 		adder := register.NewAnonRegister(mc.Y, 16)
@@ -619,8 +619,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		// fix MSB of address
 		adder.Add(indirectAddress&0xff00, false)
 		address = adder.ToUint16()
-
-		result.InstructionData = indirectAddress
 
 	default:
 		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)
@@ -1035,22 +1033,24 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if !mc.NoSideEffects {
 			// +1 cycle
 			mc.SP.Add(1, false)
-			mc.endCycle()
+		}
+		mc.endCycle()
 
-			// +2 cycles
-			rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
-			if err != nil {
-				return nil, err
-			}
+		// +2 cycles
+		rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
+
+		if !mc.NoSideEffects {
 			mc.SP.Add(1, false)
 
 			// load and correct PC
 			mc.PC.Load(rtsAddress)
 			mc.PC.Add(1, false)
-
-			// +1 cycle
-			mc.endCycle()
 		}
+		// +1 cycle
+		mc.endCycle()
 
 	case "BRK":
 		// push PC onto register (same effect as JSR)
@@ -1090,8 +1090,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	case "RTI":
 		// pull status register (same effect as PLP)
-		mc.SP.Add(1, false)
+		if !mc.NoSideEffects {
+			mc.SP.Add(1, false)
+		}
+
+		// not sure when this cycle should occur
 		mc.endCycle()
+
 		value, err = mc.read8Bit(mc.SP.ToUint16())
 		if err != nil {
 			return nil, err
@@ -1101,15 +1106,17 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		// pull program counter (same effect as RTS)
 		if !mc.NoSideEffects {
 			mc.SP.Add(1, false)
-			mc.endCycle()
-			rtiAddress, err := mc.read16Bit(mc.SP.ToUint16())
-			if err != nil {
-				return nil, err
-			}
+		}
+
+		rtiAddress, err := mc.read16Bit(mc.SP.ToUint16())
+		if err != nil {
+			return nil, err
+		}
+
+		if !mc.NoSideEffects {
 			mc.SP.Add(1, false)
 			mc.PC.Load(rtiAddress)
 			mc.PC.Add(1, false)
-			mc.endCycle()
 		}
 
 	// undocumented instructions
@@ -1122,6 +1129,31 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 		mc.X.Load(value)
+
+	case "skw":
+		// does nothing (2 byte skip)
+		// differs to dop because the second byte is actually read
+
+	case "dcp":
+		// AND the contents of the A register with value...
+		// decrease value...
+		r := register.NewAnonRegister(value, 8)
+		r.Add(255, false)
+		value = r.ToUint8()
+
+		// ... and compare with the A register
+		r.Load(mc.A)
+		mc.Status.Carry, _ = r.Subtract(value, true)
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+
+	case "asr":
+		mc.A.AND(value)
+
+		// ... then LSR the result
+		mc.Status.Carry = mc.A.LSR()
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
 
 	default:
 		// this should never, ever happen

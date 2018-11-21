@@ -32,8 +32,12 @@ const (
 	Read EffectCategory = iota
 	Write
 	RMW
+
+	// the following three effects have a variable effect on the program
+	// counter, depending on the instruction's precise operand
 	Flow
 	Subroutine
+	Interrupt
 )
 
 // InstructionDefinition - defines each instruction in the instruction set; one per instruction

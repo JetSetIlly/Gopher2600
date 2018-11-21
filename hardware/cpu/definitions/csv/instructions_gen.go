@@ -67,6 +67,14 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 			return nil, fmt.Errorf("wrong number of fields in instruction definition (%s)", rec)
 		}
 
+		// trim trailing comment from last record
+		rec[len(rec)-1] = strings.Split(rec[len(rec)-1], "#")[0]
+
+		// manually trim trailing space from all fields in the record
+		for i := 0; i < len(rec); i++ {
+			rec[i] = strings.TrimSpace(rec[i])
+		}
+
 		newDef := definitions.InstructionDefinition{}
 
 		// parse object code -- we'll use this for the hash key too
@@ -165,6 +173,8 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 				newDef.Effect = definitions.Flow
 			case "SUB-ROUTINE":
 				newDef.Effect = definitions.Subroutine
+			case "INTERRUPT":
+				newDef.Effect = definitions.Interrupt
 			}
 		}
 

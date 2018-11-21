@@ -13,7 +13,7 @@ import (
 
 // AddressReset is the address where the reset address is stored
 // - used by VCS.Reset() and Disassembly module
-const AddressReset = 0xfffc
+const AddressReset = uint16(0xfffc)
 
 // AddressIRQ is the address where the interrupt address is stored
 const AddressIRQ = 0xfffe

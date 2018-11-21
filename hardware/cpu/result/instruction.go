@@ -10,19 +10,27 @@ import (
 
 // Instruction contains all the interesting information from a CPU step.
 type Instruction struct {
-	Address         uint16
-	Defn            *definitions.InstructionDefinition
+	Address uint16
+	Defn    *definitions.InstructionDefinition
+
+	// whether this data has been finalised - note that the values of the
+	// following ields in this struct maybe undefined unless Final is true
+	Final bool
+
+	// instruction data is the actual instruction data. so, for example, in the
+	// case of a branch instruction, it is the offset value.
 	InstructionData interface{}
-	ActualCycles    int
+
+	// the actual number of cycles taken by the instruction - usually the same
+	// as Defn.Cycles but in the case of PageFaults and branches, this value
+	// may be different
+	ActualCycles int
 
 	// whether an extra cycle was required because of 8 bit adder overflow
 	PageFault bool
 
 	// whether a known buggy code path (int the emulated CPU) was triggered
 	Bug string
-
-	// whether this data has been finalised
-	Final bool
 }
 
 func (result Instruction) String() string {
@@ -50,121 +58,123 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		}
 	}
 
-	// use mnemonic if specified in instruciton result
-	if result.Defn.Mnemonic == "" {
+	// use question marks (???) where instruction hasn't been decoded yet
+
+	if result.Defn == nil {
 		operator = "???"
 	} else {
+		// use mnemonic if specified in instruciton result
 		operator = result.Defn.Mnemonic
-	}
 
-	// parse instruction result data ...
-	var idx uint16
-	switch result.InstructionData.(type) {
-	case uint8:
-		idx = uint16(result.InstructionData.(uint8))
-		operand = fmt.Sprintf("$%02x", idx)
-	case uint16:
-		idx = uint16(result.InstructionData.(uint16))
-		operand = fmt.Sprintf("$%04x", idx)
-	case nil:
-		if result.Defn.Bytes == 2 {
-			operand = "??"
-		} else if result.Defn.Bytes == 3 {
-			operand = "????"
+		// parse instruction result data ...
+		var idx uint16
+		switch result.InstructionData.(type) {
+		case uint8:
+			idx = uint16(result.InstructionData.(uint8))
+			operand = fmt.Sprintf("$%02x", idx)
+		case uint16:
+			idx = uint16(result.InstructionData.(uint16))
+			operand = fmt.Sprintf("$%04x", idx)
+		case nil:
+			if result.Defn.Bytes == 2 {
+				operand = "??"
+			} else if result.Defn.Bytes == 3 {
+				operand = "????"
+			}
 		}
-	}
 
-	if result.Final && style.Has(StyleFlagHex) {
-		switch result.Defn.Bytes {
-		case 3:
-			hex = fmt.Sprintf("%02x", idx&0xff00>>8)
-			fallthrough
-		case 2:
-			hex = fmt.Sprintf("%02x %s", idx&0x00ff, hex)
-			fallthrough
-		case 1:
-			hex = fmt.Sprintf("%02x %s", result.Defn.ObjectCode, hex)
-		default:
-			hex = fmt.Sprintf("(%d bytes) %s", result.Defn.Bytes, hex)
-		}
-	}
-
-	// ... and use assembler symbol for the operand if available/appropriate
-	if style.Has(StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
-		if result.Defn.AddressingMode != definitions.Immediate {
-
-			switch result.Defn.Effect {
-			case definitions.Flow:
-				if result.Defn.AddressingMode == definitions.Relative {
-					// relative labels. to get the correct label we have to
-					// simulate what a successful branch instruction would do:
-
-					// 	-- we create a mock register with the instruction's
-					// 	address as the initial value
-					pc := register.NewAnonRegister(result.Address, 16)
-
-					// -- add the number of instruction bytes to get the PC as
-					// it would be at the end of the instruction
-					pc.Add(uint8(result.Defn.Bytes), false)
-
-					// -- because we're doing 16 bit arithmetic with an 8bit
-					// value, we need to make sure the sign bit has been
-					// propogated to the more-significant bits
-					if idx&0x0080 == 0x0080 {
-						idx |= 0xff00
-					}
-
-					// -- add the 2s-complement value to the mock program
-					// counter
-					pc.Add(idx, false)
-
-					// -- look up mock program counter value in symbol table
-					if v, ok := symtable.Locations[pc.ToUint16()]; ok {
-						operand = v
-					}
-
-				} else {
-					if v, ok := symtable.Locations[idx]; ok {
-						operand = v
-					}
-				}
-			case definitions.Read:
-				if v, ok := symtable.ReadSymbols[idx]; ok {
-					operand = v
-				}
-			case definitions.Write:
+		if result.Final && style.Has(StyleFlagHex) {
+			switch result.Defn.Bytes {
+			case 3:
+				hex = fmt.Sprintf("%02x", idx&0xff00>>8)
 				fallthrough
-			case definitions.RMW:
-				if v, ok := symtable.WriteSymbols[idx]; ok {
-					operand = v
+			case 2:
+				hex = fmt.Sprintf("%02x %s", idx&0x00ff, hex)
+				fallthrough
+			case 1:
+				hex = fmt.Sprintf("%02x %s", result.Defn.ObjectCode, hex)
+			default:
+				hex = fmt.Sprintf("(%d bytes) %s", result.Defn.Bytes, hex)
+			}
+		}
+
+		// ... and use assembler symbol for the operand if available/appropriate
+		if style.Has(StyleFlagSymbols) && result.InstructionData != nil && (operand == "" || operand[0] != '?') {
+			if result.Defn.AddressingMode != definitions.Immediate {
+
+				switch result.Defn.Effect {
+				case definitions.Flow:
+					if result.Defn.AddressingMode == definitions.Relative {
+						// relative labels. to get the correct label we have to
+						// simulate what a successful branch instruction would do:
+
+						// 	-- we create a mock register with the instruction's
+						// 	address as the initial value
+						pc := register.NewAnonRegister(result.Address, 16)
+
+						// -- add the number of instruction bytes to get the PC as
+						// it would be at the end of the instruction
+						pc.Add(uint8(result.Defn.Bytes), false)
+
+						// -- because we're doing 16 bit arithmetic with an 8bit
+						// value, we need to make sure the sign bit has been
+						// propogated to the more-significant bits
+						if idx&0x0080 == 0x0080 {
+							idx |= 0xff00
+						}
+
+						// -- add the 2s-complement value to the mock program
+						// counter
+						pc.Add(idx, false)
+
+						// -- look up mock program counter value in symbol table
+						if v, ok := symtable.Locations[pc.ToUint16()]; ok {
+							operand = v
+						}
+
+					} else {
+						if v, ok := symtable.Locations[idx]; ok {
+							operand = v
+						}
+					}
+				case definitions.Read:
+					if v, ok := symtable.ReadSymbols[idx]; ok {
+						operand = v
+					}
+				case definitions.Write:
+					fallthrough
+				case definitions.RMW:
+					if v, ok := symtable.WriteSymbols[idx]; ok {
+						operand = v
+					}
 				}
 			}
 		}
-	}
 
-	// decorate operand with addressing mode indicators
-	switch result.Defn.AddressingMode {
-	case definitions.Implied:
-	case definitions.Immediate:
-		operand = fmt.Sprintf("#%s", operand)
-	case definitions.Relative:
-	case definitions.Absolute:
-	case definitions.ZeroPage:
-	case definitions.Indirect:
-		operand = fmt.Sprintf("(%s)", operand)
-	case definitions.PreIndexedIndirect:
-		operand = fmt.Sprintf("(%s,X)", operand)
-	case definitions.PostIndexedIndirect:
-		operand = fmt.Sprintf("(%s),Y", operand)
-	case definitions.AbsoluteIndexedX:
-		operand = fmt.Sprintf("%s,X", operand)
-	case definitions.AbsoluteIndexedY:
-		operand = fmt.Sprintf("%s,Y", operand)
-	case definitions.IndexedZeroPageX:
-		operand = fmt.Sprintf("%s,X", operand)
-	case definitions.IndexedZeroPageY:
-		operand = fmt.Sprintf("%s,Y", operand)
-	default:
+		// decorate operand with addressing mode indicators
+		switch result.Defn.AddressingMode {
+		case definitions.Implied:
+		case definitions.Immediate:
+			operand = fmt.Sprintf("#%s", operand)
+		case definitions.Relative:
+		case definitions.Absolute:
+		case definitions.ZeroPage:
+		case definitions.Indirect:
+			operand = fmt.Sprintf("(%s)", operand)
+		case definitions.PreIndexedIndirect:
+			operand = fmt.Sprintf("(%s,X)", operand)
+		case definitions.PostIndexedIndirect:
+			operand = fmt.Sprintf("(%s),Y", operand)
+		case definitions.AbsoluteIndexedX:
+			operand = fmt.Sprintf("%s,X", operand)
+		case definitions.AbsoluteIndexedY:
+			operand = fmt.Sprintf("%s,Y", operand)
+		case definitions.IndexedZeroPageX:
+			operand = fmt.Sprintf("%s,X", operand)
+		case definitions.IndexedZeroPageY:
+			operand = fmt.Sprintf("%s,Y", operand)
+		default:
+		}
 	}
 
 	// cycles annotation depends on whether the result is in its final form
@@ -224,37 +234,37 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 // implementation hasn't gone off the rails.
 func (result Instruction) IsValid() error {
 	if !result.Final {
-		return fmt.Errorf("not checking an unfinalised InstructionResult")
+		return fmt.Errorf("not checking an unfinalised InstructionResult: %s", result)
 	}
 
 	// check that InstructionData is broadly sensible - is either nil, a uint16 or uint8
 	if result.InstructionData != nil {
 		ot := reflect.TypeOf(result.InstructionData).Kind()
 		if ot != reflect.Uint16 && ot != reflect.Uint8 {
-			return fmt.Errorf("instruction data is bad (%s)", ot)
+			return fmt.Errorf("instruction data is bad (%s): %s", ot, result)
 		}
 	}
 
 	// is PageFault valid given content of Defn
 	if !result.Defn.PageSensitive && result.PageFault {
-		return fmt.Errorf("unexpected page fault")
+		return fmt.Errorf("unexpected page fault: %s", result)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.Bug == "" {
 		if result.Defn.AddressingMode == definitions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
-				return fmt.Errorf("number of cycles wrong (%d instead of %d, %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2)
+				return fmt.Errorf("number of cycles wrong (%d instead of %d, %d or %d): %s", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2, result)
 			}
 		} else {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
 					fmt.Println(result.Defn)
-					return fmt.Errorf("number of cycles wrong (actual %d instead of %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1)
+					return fmt.Errorf("number of cycles wrong (actual %d instead of %d or %d): %s", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result)
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					return fmt.Errorf("number of cycles wrong (actual %d instead of %d)", result.ActualCycles, result.Defn.Cycles)
+					return fmt.Errorf("number of cycles wrong (actual %d instead of %d): %s", result.ActualCycles, result.Defn.Cycles, result)
 				}
 			}
 		}

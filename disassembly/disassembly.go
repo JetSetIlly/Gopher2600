@@ -8,6 +8,7 @@ import (
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"gopher2600/symbols"
+	"strings"
 )
 
 // Disassembly represents the annotated disassembly of a 6502 binary
@@ -37,6 +38,8 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.
 		return err
 	}
 	mc.NoSideEffects = true
+
+	// start disassembly at reset point
 	mc.LoadPC(hardware.AddressReset)
 
 	for {
@@ -66,6 +69,12 @@ func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.
 			default:
 				return err
 			}
+		}
+
+		// check validity
+		err = ir.IsValid()
+		if err != nil {
+			return err
 		}
 
 		// add instruction result to disassembly result. an instruction result
@@ -112,10 +121,10 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 
 // Dump returns the entire disassembly as a string
 func (dsm *Disassembly) Dump() (s string) {
-	// TODO: buffered output - it can take too long to build the string if the
-	// disassembly is too long
+	b := strings.Builder{}
 	for _, pc := range dsm.SequencePoints {
-		s = fmt.Sprintf("%s\n%s", s, dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull))
+		b.WriteString(dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull))
+		b.WriteString("\n")
 	}
-	return s
+	return b.String()
 }

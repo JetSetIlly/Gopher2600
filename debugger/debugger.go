@@ -258,7 +258,10 @@ func (dbg *Debugger) breakAndTrapCallback(result *result.Instruction) error {
 	// instances if the final effect of the instruction changes the programme
 	// counter to some other value
 	if result.Defn != nil {
-		if (result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine) && !result.Final {
+		if (result.Defn.Effect == definitions.Flow ||
+			result.Defn.Effect == definitions.Subroutine ||
+			result.Defn.Effect == definitions.Interrupt) &&
+			!result.Final {
 			return nil
 		}
 	}
