@@ -10,9 +10,16 @@ const (
 	StyleFlagSymbols Style = 0x01 << iota
 	StyleFlagLocation
 
-	StyleFlagHex
+	// StyleFlagColumns forces output into columns of suitable width
 	StyleFlagColumns
+
+	// include any useful notes about the disassembly. for example, whether a
+	// page-fault occured
 	StyleFlagNotes
+
+	// ByteCode flag causes the program data to be printed verbatim before
+	// the disassembly
+	StyleFlagByteCode
 )
 
 // compound styles

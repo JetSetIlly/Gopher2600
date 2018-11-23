@@ -421,8 +421,8 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 					if dbg.lastResult.Final {
 						err := dbg.lastResult.IsValid()
 						if err != nil {
-							fmt.Println(dbg.lastResult.Defn)
-							fmt.Println(dbg.lastResult)
+							dbg.print(ui.Error, "%s", dbg.lastResult.Defn)
+							dbg.print(ui.Error, "%s", dbg.lastResult)
 							panic(err)
 						}
 					}

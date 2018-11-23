@@ -58,10 +58,12 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		}
 	}
 
-	// use question marks (???) where instruction hasn't been decoded yet
+	// use question marks where instruction hasn't been decoded yet
 
 	if result.Defn == nil {
+		// nothing has been decoded yet
 		operator = "???"
+
 	} else {
 		// use mnemonic if specified in instruciton result
 		operator = result.Defn.Mnemonic
@@ -83,7 +85,8 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 			}
 		}
 
-		if result.Final && style.Has(StyleFlagHex) {
+		// (include byte code in output)
+		if result.Final && style.Has(StyleFlagByteCode) {
 			switch result.Defn.Bytes {
 			case 3:
 				hex = fmt.Sprintf("%02x", idx&0xff00>>8)
@@ -196,7 +199,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 
 	// force column widths
 	if style.Has(StyleFlagColumns) {
-		if style.Has(StyleFlagHex) {
+		if style.Has(StyleFlagByteCode) {
 			hex = columnise(hex, 8)
 		}
 		programCounter = columnise(programCounter, 6)
@@ -217,15 +220,13 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 	}
 
 	// build final string
-	s := fmt.Sprintf("%s %s %s %s %s %s",
+	return fmt.Sprintf("%s %s %s %s %s %s",
 		hex,
 		label,
 		programCounter,
 		operator,
 		operand,
 		notes)
-
-	return s
 }
 
 // IsValid checks whether the instance of StepResult contains consistent data.

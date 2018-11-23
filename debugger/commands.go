@@ -8,6 +8,7 @@ import (
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
 	"gopher2600/television"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -213,7 +214,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordDisassemble:
-		dbg.print(ui.CPUStep, dbg.disasm.Dump())
+		dbg.disasm.Dump(os.Stdout)
 
 	case KeywordSymbol:
 		symbol, _ := tokens.Get()

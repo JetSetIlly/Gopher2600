@@ -67,13 +67,13 @@ func main() {
 			case errors.GopherError:
 				// print what disassembly output we do have
 				if dsm != nil {
-					fmt.Print(dsm.Dump())
+					dsm.Dump(os.Stdout)
 				}
 			}
 			fmt.Printf("* error during disassembly: %s\n", err)
 			os.Exit(10)
 		}
-		fmt.Print(dsm.Dump())
+		dsm.Dump(os.Stdout)
 	case "FPS":
 		err := fps(cartridgeFile, true)
 		if err != nil {

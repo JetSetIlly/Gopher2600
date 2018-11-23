@@ -76,7 +76,9 @@ func init() {
 // ColorBuild creates the ANSI sequence to create the pen with the correct
 // foreground/background color and attribute
 func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
-	s := "\033["
+	s := strings.Builder{}
+	s.Grow(32)
+	s.WriteString("\033[")
 
 	// pen
 	if pen != "" {
@@ -86,23 +88,23 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 		}
 		switch strings.ToUpper(pen) {
 		case "BLACK":
-			s = fmt.Sprintf("%s%d%d", s, penType, colBlack)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colBlack))
 		case "RED":
-			s = fmt.Sprintf("%s%d%d", s, penType, colRed)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colRed))
 		case "GREEN":
-			s = fmt.Sprintf("%s%d%d", s, penType, colGreen)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colGreen))
 		case "YELLOW":
-			s = fmt.Sprintf("%s%d%d", s, penType, colYelow)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colYelow))
 		case "BLUE":
-			s = fmt.Sprintf("%s%d%d", s, penType, colBlue)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colBlue))
 		case "MAGENTA":
-			s = fmt.Sprintf("%s%d%d", s, penType, colMagenta)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colMagenta))
 		case "CYAN":
-			s = fmt.Sprintf("%s%d%d", s, penType, colCyan)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colCyan))
 		case "WHITE":
-			s = fmt.Sprintf("%s%d%d", s, penType, colWhite)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colWhite))
 		case "NORMAL":
-			s = fmt.Sprintf("%s%d%d", s, penType, colDefault)
+			s.WriteString(fmt.Sprintf("%d%d", penType, colDefault))
 		case "":
 		default:
 			return "", fmt.Errorf("unknown ANSI pen (%s)", pen)
@@ -111,8 +113,8 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 
 	// paper
 	if paper != "" {
-		if len(s) > 2 {
-			s = fmt.Sprintf("%s;", s)
+		if s.Len() > 2 {
+			s.WriteString(";")
 		}
 		// paper
 		paperType := targetPaper
@@ -121,23 +123,23 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 		}
 		switch strings.ToUpper(paper) {
 		case "BLACK":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colBlack)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colBlack))
 		case "RED":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colRed)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colRed))
 		case "GREEN":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colGreen)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colGreen))
 		case "YELLOW":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colYelow)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colYelow))
 		case "BLUE":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colBlue)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colBlue))
 		case "MAGENTA":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colMagenta)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colMagenta))
 		case "CYAN":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colCyan)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colCyan))
 		case "WHITE":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colWhite)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colWhite))
 		case "NORMAL":
-			s = fmt.Sprintf("%s%d%d", s, paperType, colDefault)
+			s.WriteString(fmt.Sprintf("%d%d", paperType, colDefault))
 		case "":
 		default:
 			return "", fmt.Errorf("unknown ANSI paper (%s)", paper)
@@ -146,18 +148,18 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 
 	// attribute
 	if attribute != "" {
-		if len(s) > 2 {
-			s = fmt.Sprintf("%s;", s)
+		if s.Len() > 2 {
+			s.WriteString(";")
 		}
 		switch strings.ToUpper(attribute) {
 		case "BOLD": // bold
-			s = fmt.Sprintf("%s%d", s, attrBold)
+			s.WriteString(fmt.Sprintf("%d", attrBold))
 		case "UNDERLINE": // underline
-			s = fmt.Sprintf("%s%d", s, attrUnderline)
+			s.WriteString(fmt.Sprintf("%d", attrUnderline))
 		case "ITALIC": // italic
-			s = fmt.Sprintf("%s%d", s, attrInverse)
+			s.WriteString(fmt.Sprintf("%d", attrInverse))
 		case "STRIKE": // strikethrough
-			s = fmt.Sprintf("%s%d", s, attrStrike)
+			s.WriteString(fmt.Sprintf("%d", attrStrike))
 		case "NORMAL": // normal
 		case "":
 		default:
@@ -166,9 +168,9 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 	}
 
 	// terminate ANSI sequence
-	s = fmt.Sprintf("%sm", s)
+	s.WriteString("m")
 
-	return s, nil
+	return s.String(), nil
 }
 
 // ClearLine is the CSI sequence to clear the entire of the current line

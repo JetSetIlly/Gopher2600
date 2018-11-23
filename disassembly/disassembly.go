@@ -8,7 +8,7 @@ import (
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"gopher2600/symbols"
-	"strings"
+	"io"
 )
 
 // Disassembly represents the annotated disassembly of a 6502 binary
@@ -119,12 +119,10 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	return dsm, nil
 }
 
-// Dump returns the entire disassembly as a string
-func (dsm *Disassembly) Dump() (s string) {
-	b := strings.Builder{}
+// Dump writes the entire disassembly to the write interface
+func (dsm *Disassembly) Dump(output io.Writer) {
 	for _, pc := range dsm.SequencePoints {
-		b.WriteString(dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull))
-		b.WriteString("\n")
+		output.Write([]byte(dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull)))
+		output.Write([]byte("\n"))
 	}
-	return b.String()
 }
