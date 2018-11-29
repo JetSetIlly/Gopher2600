@@ -5,7 +5,6 @@ import (
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/symbols"
-	"reflect"
 )
 
 // Instruction contains all the interesting information from a CPU step.
@@ -34,7 +33,7 @@ type Instruction struct {
 }
 
 func (result Instruction) String() string {
-	return result.GetString(nil, 0)
+	return result.GetString(nil, StyleBrief)
 }
 
 // GetString returns a human readable version of InstructionResult, addresses
@@ -180,15 +179,20 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		}
 	}
 
-	// cycles annotation depends on whether the result is in its final form
+	// add annotation
 	if style.Has(StyleFlagNotes) {
 		if result.Final {
+			// result is of a complete instruction - add number of cycles it
+			// actually took to execute
 			notes = fmt.Sprintf("[%d]", result.ActualCycles)
 		} else {
+			// result is an interim result - indicate with [v], which means
+			// video cycle
 			notes = "[v]"
 		}
 
-		// add annotation for page-faults and known CPU bugs
+		// add annotation for page-faults and known CPU bugs - these can occur
+		// whether or not the result is not yet 'final'
 		if result.PageFault {
 			notes += " page-fault"
 		}
@@ -227,49 +231,4 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		operator,
 		operand,
 		notes)
-}
-
-// IsValid checks whether the instance of StepResult contains consistent data.
-//
-// Intended to be used during development of the CPU pacakge, to make sure
-// implementation hasn't gone off the rails.
-func (result Instruction) IsValid() error {
-	if !result.Final {
-		return fmt.Errorf("not checking an unfinalised InstructionResult: %s", result)
-	}
-
-	// check that InstructionData is broadly sensible - is either nil, a uint16 or uint8
-	if result.InstructionData != nil {
-		ot := reflect.TypeOf(result.InstructionData).Kind()
-		if ot != reflect.Uint16 && ot != reflect.Uint8 {
-			return fmt.Errorf("instruction data is bad (%s): %s", ot, result)
-		}
-	}
-
-	// is PageFault valid given content of Defn
-	if !result.Defn.PageSensitive && result.PageFault {
-		return fmt.Errorf("unexpected page fault: %s", result)
-	}
-
-	// if a bug has been triggered, don't perform the number of cycles check
-	if result.Bug == "" {
-		if result.Defn.AddressingMode == definitions.Relative {
-			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
-				return fmt.Errorf("number of cycles wrong (%d instead of %d, %d or %d): %s", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2, result)
-			}
-		} else {
-			if result.Defn.PageSensitive {
-				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
-					fmt.Println(result.Defn)
-					return fmt.Errorf("number of cycles wrong (actual %d instead of %d or %d): %s", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result)
-				}
-			} else {
-				if result.ActualCycles != result.Defn.Cycles {
-					return fmt.Errorf("number of cycles wrong (actual %d instead of %d): %s", result.ActualCycles, result.Defn.Cycles, result)
-				}
-			}
-		}
-	}
-
-	return nil
 }
