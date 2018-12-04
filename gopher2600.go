@@ -177,7 +177,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 }
 
 func run(cartridgeFile string) error {
-	tv, err := sdltv.NewSDLTV("NTSC", 3.0)
+	tv, err := sdltv.NewSDLTV("NTSC", 4.0)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}

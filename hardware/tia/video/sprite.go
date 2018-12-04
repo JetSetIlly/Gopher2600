@@ -47,6 +47,7 @@ func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
 	sp.label = label
 	sp.colorClock = colorClock
 
+	sp.position = *polycounter.New6Bit()
 	sp.position.SetResetPattern("101101")
 
 	// the direction of count and max is important - don't monkey with it
@@ -77,7 +78,7 @@ func (sp sprite) MachineInfo() string {
 	pos := fmt.Sprintf("reset at pixel %d\nposition: %s", sp.positionResetPixel, sp.position)
 	sig := fmt.Sprintf("drawing: inactive")
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("drawing : from pixel %d", sp.graphicsScanMax-sp.graphicsScanCounter+1)
+		sig = fmt.Sprintf("drawing : from pixel %d", sp.graphicsScanMax-sp.graphicsScanCounter)
 	}
 	res := "no reset scheduled"
 	if sp.resetting {
@@ -89,7 +90,7 @@ func (sp sprite) MachineInfo() string {
 func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
-	// note reset position of sprite, in pixels. used to MachineInfo()
+	// note reset position of sprite, in pixels. used in MachineInfo()
 	// functions
 	sp.positionResetPixel = sp.colorClock.Pixel()
 }

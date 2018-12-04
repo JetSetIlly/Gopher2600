@@ -166,7 +166,6 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.wsync = false
 		tia.hblank = true
 		tia.hmove.reset()
-
 		tia.colorClock.Reset()
 	} else if tia.colorClock.Tick() {
 		frontPorch = true
@@ -190,7 +189,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// tick playfield and scheduled writes
 	// -- important that this happens after TickSprites because we want
 	// position resets to happen *after* sprite ticking; in particular, when
-	// the draw signl has been resolved
+	// the draw signal has been resolved
 	tia.Video.TickPlayfield()
 	tia.Video.TickFutureWrites()
 

@@ -62,7 +62,8 @@ func (pk *Polycounter) Reset() {
 }
 
 // Sync is used to synchronise two polycounters
-// -- positive offsets adjust the reset point to the right
+// -- positive offsets adjusts the reset point to the right
+// -- used for moving missile position to the player position
 func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
 	if pk.ResetPoint != pko.ResetPoint {
 		panic("cannot Sync() two polycounters with different reset points")
@@ -111,6 +112,11 @@ func (pk *Polycounter) Tick() bool {
 // Match check whether polycounter is at the given count, any phase
 func (pk Polycounter) Match(count int) bool {
 	return pk.Count == count
+}
+
+// MatchPhase checks whether polycounter is at the given count and given phase
+func (pk Polycounter) MatchPhase(count, phase int) bool {
+	return pk.Count == count && pk.Phase == phase
 }
 
 // MatchEnd checks whether polycounter is at the *end* (ie. last phase) of the given count

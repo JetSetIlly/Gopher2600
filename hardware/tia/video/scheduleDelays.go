@@ -19,7 +19,7 @@ const (
 
 	// TIA_HW_Notes.txt: "there are 5 CLK worth of clocking/latching to take
 	// into account"
-	delayResetBall    = 5
 	delayResetMissile = 5
 	delayResetPlayer  = 5
+	delayResetBall    = 5
 )

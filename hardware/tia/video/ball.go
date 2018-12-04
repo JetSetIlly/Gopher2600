@@ -83,7 +83,6 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 
 func (bs *ballSprite) scheduleReset(futureWrite *future) {
 	bs.resetting = true
-
 	futureWrite.schedule(delayResetBall, func() {
 		bs.resetting = false
 		bs.resetPosition()

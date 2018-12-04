@@ -6,7 +6,7 @@ import "fmt"
 const MaxPhase = 3
 
 // MidPhase is the halfway point in each count
-const MidPhase = 1
+const MidPhase = 2
 
 type polycounterTable []string
 
@@ -25,6 +25,8 @@ func init() {
 		p = p & 0x3f
 		table6bits[i] = fmt.Sprintf("%06b", p)
 	}
+
+	// sanity check that the table has looped correctly
 	if table6bits[63] != "000000" {
 		panic(fmt.Errorf("error during 6 bit polycounter generation"))
 	}
