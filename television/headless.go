@@ -36,11 +36,12 @@ type HeadlessTV struct {
 	VBlankOff int
 	VBlankOn  int
 
-	// if the signals we've received do not match what we expect then outOfSpec
+	// if the signals we've received do not match what we expect then OutOfSpec
 	// will be false for the duration of the rest of the frame. this is useful
 	// for ROM debugging, to indicate that the ROM may cause a real television to
 	// misbehave.
-	outOfSpec bool
+	OutOfSpec     bool
+	OutOfSpecNote string
 
 	// callback hooks from Signal()
 	SignalNewFrameHook    func() error
@@ -92,7 +93,7 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 // MachineInfoTerse returns the television information in terse format
 func (tv HeadlessTV) MachineInfoTerse() string {
 	specExclaim := ""
-	if tv.outOfSpec {
+	if tv.OutOfSpec {
 		specExclaim = " !!"
 	}
 	return fmt.Sprintf("%s %s %s%s", tv.FrameNum.MachineInfoTerse(), tv.Scanline.MachineInfoTerse(), tv.HorizPos.MachineInfoTerse(), specExclaim)
@@ -100,11 +101,17 @@ func (tv HeadlessTV) MachineInfoTerse() string {
 
 // MachineInfo returns the television information in verbose format
 func (tv HeadlessTV) MachineInfo() string {
+	s := strings.Builder{}
 	outOfSpec := ""
-	if tv.outOfSpec {
-		outOfSpec = "!!"
+	if tv.OutOfSpec {
+		outOfSpec = " !!"
 	}
-	return fmt.Sprintf("%v\n%v\n%v%s", tv.FrameNum, tv.Scanline, tv.HorizPos, outOfSpec)
+	s.WriteString(fmt.Sprintf("TV (%s)%s:\n", tv.Spec.ID, outOfSpec))
+	s.WriteString(fmt.Sprintf("   %s\n", tv.FrameNum))
+	s.WriteString(fmt.Sprintf("   %s\n", tv.Scanline))
+	s.WriteString(fmt.Sprintf("   %s", tv.HorizPos))
+
+	return s.String()
 }
 
 // map String to MachineInfo
@@ -118,22 +125,26 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 	// check that hsync signal is within the specification
 	if attr.HSync && !tv.prevSignal.HSync {
 		if tv.HorizPos.value < -52 || tv.HorizPos.value > -49 {
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "bad HSYNC (on)"
 		}
 	} else if !attr.HSync && tv.prevSignal.HSync {
 		if tv.HorizPos.value < -36 || tv.HorizPos.value > -33 {
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "bad HSYNC (off)"
 		}
 	}
 
 	// check that color burst signal is within the specification
 	if attr.CBurst && !tv.prevSignal.CBurst {
 		if tv.HorizPos.value < -28 || tv.HorizPos.value > -17 {
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "bad CBURST (on)"
 		}
 	} else if !attr.CBurst && tv.prevSignal.CBurst {
 		if tv.HorizPos.value < -19 || tv.HorizPos.value > -16 {
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "bad CBURST (off)"
 		}
 	}
 
@@ -142,7 +153,7 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 		tv.vsyncCount++
 	} else {
 		if tv.vsyncCount >= tv.Spec.VsyncClocks {
-			tv.outOfSpec = false
+			tv.OutOfSpec = false
 			tv.FrameNum.value++
 			tv.Scanline.value = 0
 			_ = tv.SignalNewFrameHook()
@@ -154,19 +165,23 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) {
 	if attr.FrontPorch {
 		tv.HorizPos.value = -tv.Spec.ClocksPerHblank
 		tv.Scanline.value++
-		tv.SignalNewScanlineHook()
+		_ = tv.SignalNewScanlineHook()
 
 		if tv.Scanline.value > tv.Spec.ScanlinesTotal {
 			// we've not yet received a correct vsync signal but we really should
 			// have. continue but mark the frame as being out of spec
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "no VSYNC"
+			tv.Scanline.value = 0
+			_ = tv.SignalNewFrameHook()
 		}
 	} else {
 		tv.HorizPos.value++
 		if tv.HorizPos.value > tv.Spec.ClocksPerVisible {
 			// we've not yet received a front porch signal yet but we really should
 			// have. continue but mark the frame as being out of spec
-			tv.outOfSpec = true
+			tv.OutOfSpec = true
+			tv.OutOfSpecNote = "no FRONTPORCH"
 		}
 	}
 

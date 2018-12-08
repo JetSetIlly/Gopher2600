@@ -2,6 +2,7 @@ package video
 
 import (
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/video/future"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
@@ -21,14 +22,17 @@ type Video struct {
 	// collision matrix
 	Collisions collisions
 
-	// there's a slight delay when changing the state of sprites. note that we
-	// use the same future instance for all delayed write operations. this is
-	// okay because in most instances the delay is so short there is no chance
-	// of another write being scheduled before the previous request has been
-	// resolved. the exception to this is the BRK command which pushes onto the
-	// stack so quickly it's possible for registers to be triggered before
-	// previous writes have been resolved.
-	FutureWrite future
+	// there's a slight delay when changing the state of video objects. we're
+	// using two future instances to emulate what happens in the 2600. the
+	// first is OnFutureColorClock, which *ticks* every video cycle. we use this for
+	// writing playfield bits, player bits and enable flags for missiles and
+	// the ball.
+	//
+	// the second future instance is FutureMotionClock. this is for those
+	// writes that only occur during the "motion clock", resetting sprite
+	// positions
+	OnFutureColorClock  future.Group
+	OnFutureMotionClock future.Group
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure
@@ -74,11 +78,13 @@ func NewVideo(colorClock *polycounter.Polycounter) *Video {
 	return vd
 }
 
-// TickFutureWrites is called *every* video clock
-func (vd *Video) TickFutureWrites() {
+// TickFutures is called *every* video clock
+func (vd *Video) TickFutures(sprites bool) {
 	// resolve delayed write operations
-	if vd.FutureWrite.tick() {
-		vd.FutureWrite.payload.(func())()
+	vd.OnFutureColorClock.Tick()
+
+	if sprites {
+		vd.OnFutureMotionClock.Tick()
 	}
 }
 
@@ -100,24 +106,25 @@ func (vd *Video) TickSprites() {
 
 // TickSpritesForHMOVE is only called when HMOVE is active
 func (vd *Video) TickSpritesForHMOVE(count int) {
-	if count == 0 {
-		return
-	}
-
 	if vd.Player0.horizMovement >= uint8(count) {
 		vd.Player0.tick()
+		vd.Player0.adjustHorizPos(count)
 	}
 	if vd.Player1.horizMovement >= uint8(count) {
 		vd.Player1.tick()
+		vd.Player1.adjustHorizPos(count)
 	}
 	if vd.Missile0.horizMovement >= uint8(count) {
 		vd.Missile0.tick()
+		vd.Missile0.adjustHorizPos(count)
 	}
 	if vd.Missile1.horizMovement >= uint8(count) {
 		vd.Missile1.tick()
+		vd.Missile1.adjustHorizPos(count)
 	}
 	if vd.Ball.horizMovement >= uint8(count) {
 		vd.Ball.tick()
+		vd.Ball.adjustHorizPos(count)
 	}
 }
 
@@ -299,31 +306,31 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "REFP1":
 		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value, &vd.FutureWrite)
+		vd.Playfield.scheduleWrite(0, value, &vd.OnFutureColorClock)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value, &vd.FutureWrite)
+		vd.Playfield.scheduleWrite(1, value, &vd.OnFutureColorClock)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value, &vd.FutureWrite)
+		vd.Playfield.scheduleWrite(2, value, &vd.OnFutureColorClock)
 	case "RESP0":
-		vd.Player0.scheduleReset(&vd.FutureWrite)
+		vd.Player0.scheduleReset(&vd.OnFutureMotionClock)
 	case "RESP1":
-		vd.Player1.scheduleReset(&vd.FutureWrite)
+		vd.Player1.scheduleReset(&vd.OnFutureMotionClock)
 	case "RESM0":
-		vd.Missile0.scheduleReset(&vd.FutureWrite)
+		vd.Missile0.scheduleReset(&vd.OnFutureMotionClock)
 	case "RESM1":
-		vd.Missile1.scheduleReset(&vd.FutureWrite)
+		vd.Missile1.scheduleReset(&vd.OnFutureMotionClock)
 	case "RESBL":
-		vd.Ball.scheduleReset(&vd.FutureWrite)
+		vd.Ball.scheduleReset(&vd.OnFutureMotionClock)
 	case "GRP0":
-		vd.Player0.scheduleWrite(value, &vd.FutureWrite)
+		vd.Player0.scheduleWrite(value, &vd.OnFutureColorClock)
 	case "GRP1":
-		vd.Player1.scheduleWrite(value, &vd.FutureWrite)
+		vd.Player1.scheduleWrite(value, &vd.OnFutureColorClock)
 	case "ENAM0":
-		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "ENAM1":
-		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "ENABL":
-		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.FutureWrite)
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "HMP0":
 		vd.Player0.horizMovement = (value ^ 0x80) >> 4
 	case "HMP1":
@@ -335,15 +342,15 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "HMBL":
 		vd.Ball.horizMovement = (value ^ 0x80) >> 4
 	case "VDELP0":
-		vd.Player0.verticalDelay = value&0x01 == 0x01
+		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
 	case "VDELP1":
-		vd.Player1.verticalDelay = value&0x01 == 0x01
+		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
 	case "VDELBL":
-		vd.Ball.verticalDelay = value&0x01 == 0x01
+		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
 	case "RESMP0":
-		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.FutureWrite)
+		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "RESMP1":
-		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.FutureWrite)
+		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "HMCLR":
 		vd.Player0.horizMovement = 0x08
 		vd.Player1.horizMovement = 0x08

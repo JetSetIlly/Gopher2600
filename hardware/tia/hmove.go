@@ -34,9 +34,9 @@ func (hm hmove) MachineInfoTerse() string {
 // MachineInfo returns the HMOVE information in verbose format
 func (hm hmove) MachineInfo() string {
 	if hm.isActive() {
-		return fmt.Sprintf("HMOVE -> %d more tick(s)", hm.count)
+		return fmt.Sprintf("hmove: %d more tick(s)", hm.count)
 	}
-	return "HMOVE -> no movement"
+	return "hmove: no movement"
 }
 
 // map String to MachineInfo

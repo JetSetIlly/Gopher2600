@@ -95,7 +95,7 @@ func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
 // looped. the force argument allows the function to be called and for the loop
 // to definitely take place. we use this in the VCS during for the RSYNC check
 func (pk *Polycounter) Tick() bool {
-	if pk.Count == pk.ResetPoint && pk.Phase == MaxPhase {
+	if pk.CycleOnNextTick() {
 		pk.Reset()
 		return true
 	}
@@ -124,24 +124,22 @@ func (pk Polycounter) MatchEnd(count int) bool {
 	return pk.Count == count && pk.Phase == MaxPhase
 }
 
-// MatchMid checks whether polycounter is the *middle* of the given count
-func (pk Polycounter) MatchMid(count int) bool {
-	return pk.Count == count && pk.Phase == MidPhase
-}
-
 // MatchBeginning checks whether polycounter is at the *beginning* (ie. first phase) of the given count
 func (pk Polycounter) MatchBeginning(count int) bool {
 	return pk.Count == count && pk.Phase == 0
 }
 
-// Pixel returns the color clock when expressed a pixel
+// Pixel returns the color clock when expressed as a pixel
 func (pk Polycounter) Pixel() int {
 	return (pk.Count * 4) + pk.Phase - 68
 }
 
-// New6Bit initialises a new instance of a 6 bit polycounter
-func New6Bit() *Polycounter {
-	pk := new(Polycounter)
-	pk.table = table6bits
-	return pk
+// CycleOnNextTick checks to see if polycounter is about to cycle
+func (pk Polycounter) CycleOnNextTick() bool {
+	return pk.Count == pk.ResetPoint && pk.Phase == MaxPhase
+}
+
+// CycledOnLastTick checks to see if polycounter has just cycled
+func (pk Polycounter) CycledOnLastTick() bool {
+	return pk.Count == 0 && pk.Phase == 0
 }

@@ -3,6 +3,7 @@ package video
 import (
 	"fmt"
 	"gopher2600/hardware/tia/polycounter"
+	"strings"
 )
 
 // the sprite type is used for those video elements that move about - players,
@@ -19,12 +20,11 @@ type sprite struct {
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
-	// circulates to 0000000
+	// circulates to zero
 	position polycounter.Polycounter
 
-	// reset position of the sprite -- does not take horizonal movement into
-	// account
-	positionResetPixel int
+	// pixel position of the sprite
+	horizPos int
 
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
@@ -37,8 +37,7 @@ type sprite struct {
 	// the amount of horizontal movement for the sprite
 	horizMovement uint8
 
-	// a note on whether the sprite is about to be reset its position. the
-	// actual reset is scheduled by video.futureWrite
+	// a note on whether the sprite is about to be reset its position
 	resetting bool
 }
 
@@ -48,7 +47,7 @@ func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
 	sp.colorClock = colorClock
 
 	sp.position = *polycounter.New6Bit()
-	sp.position.SetResetPattern("101101")
+	sp.position.SetResetPoint(39) // "101101"
 
 	// the direction of count and max is important - don't monkey with it
 	// the value is used in Pixel*() functions to determine which pixel to check
@@ -61,30 +60,45 @@ func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
 
 // MachineInfoTerse returns the sprite information in terse format
 func (sp sprite) MachineInfoTerse() string {
-	pos := fmt.Sprintf("pos=%d", sp.positionResetPixel)
-	sig := "dsig=-"
+	s := strings.Builder{}
+	s.WriteString(sp.label)
+	s.WriteString(": ")
+	s.WriteString(sp.position.String())
+	s.WriteString(fmt.Sprintf(" pos=%d", sp.horizPos))
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("dsig=%d", sp.graphicsScanMax-sp.graphicsScanCounter)
+		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
+	} else {
+		s.WriteString(" drw=-")
 	}
-	res := "reset=-"
 	if sp.resetting {
-		res = "reset=+"
+		s.WriteString(" res=+")
+	} else {
+		s.WriteString(" res=-")
 	}
-	return fmt.Sprintf("%s: %s %s %s", sp.label, pos, sig, res)
+
+	return s.String()
 }
 
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
-	pos := fmt.Sprintf("reset at pixel %d\nposition: %s", sp.positionResetPixel, sp.position)
-	sig := fmt.Sprintf("drawing: inactive")
+	s := strings.Builder{}
+
+	s.WriteString(fmt.Sprintf("%s:\n", sp.label))
+	s.WriteString(fmt.Sprintf("   position: %s\n", sp.position))
+	s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.horizPos))
+	s.WriteString(fmt.Sprintf("   hmove: %d\n", sp.horizMovement))
 	if sp.isDrawing() {
-		sig = fmt.Sprintf("drawing : from pixel %d", sp.graphicsScanMax-sp.graphicsScanCounter)
+		s.WriteString(fmt.Sprintf("   drawing: %d\n", sp.graphicsScanMax-sp.graphicsScanCounter))
+	} else {
+		s.WriteString("   drawing: inactive\n")
 	}
-	res := "no reset scheduled"
 	if sp.resetting {
-		res = "reset scheduled"
+		s.WriteString("   reset: soon\n")
+	} else {
+		s.WriteString("   reset: none scheduled\n")
 	}
-	return fmt.Sprintf("%s: %s\n %s\n %s", sp.label, pos, sig, res)
+
+	return s.String()
 }
 
 func (sp *sprite) resetPosition() {
@@ -92,7 +106,11 @@ func (sp *sprite) resetPosition() {
 
 	// note reset position of sprite, in pixels. used in MachineInfo()
 	// functions
-	sp.positionResetPixel = sp.colorClock.Pixel()
+	if sp.colorClock.Count > 15 {
+		sp.horizPos = sp.colorClock.Pixel()
+	} else {
+		sp.horizPos = 2
+	}
 }
 
 func (sp *sprite) tickPosition(triggerList []int) bool {
@@ -109,13 +127,26 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 	return false
 }
 
-func (sp *sprite) startDrawing() {
-	sp.graphicsScanCounter = 0
+func (sp *sprite) adjustHorizPos(count int) {
+	if sp.horizMovement > 8 {
+		if count > 8 {
+			sp.horizPos--
+			if sp.horizPos < 0 {
+				sp.horizPos = 159
+			}
+		}
+	} else if sp.horizMovement < 8 {
+		if 8-int(sp.horizMovement)-count >= 0 {
+			sp.horizPos++
+			if sp.horizPos > 159 {
+				sp.horizPos = 0
+			}
+		}
+	}
 }
 
-// stopDrawing is used to stop the draw signal prematurely
-func (sp *sprite) stopDrawing() {
-	sp.graphicsScanCounter = sp.graphicsScanOff
+func (sp *sprite) startDrawing() {
+	sp.graphicsScanCounter = 0
 }
 
 func (sp *sprite) isDrawing() bool {

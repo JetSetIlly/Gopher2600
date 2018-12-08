@@ -16,9 +16,12 @@ const (
 	delayEnableBall              = 2
 	delayEnableMissile           = 2
 	delayResetMissileToPlayerPos = 2
+	delayVDELBL                  = 1
+	delayVDELP                   = 1
 
 	// TIA_HW_Notes.txt: "there are 5 CLK worth of clocking/latching to take
-	// into account"
+	// into account". not entirely sure this passage is relevant to my solution
+	// or if it's just a coincidence.
 	delayResetMissile = 5
 	delayResetPlayer  = 5
 	delayResetBall    = 5

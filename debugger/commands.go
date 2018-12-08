@@ -537,7 +537,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "FUTURE":
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.FutureWrite)
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.OnFutureColorClock)
 			default:
 				return false, fmt.Errorf("unknown request (%s)", option)
 			}

@@ -205,13 +205,15 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// top vblank mask
-	h := int32(scr.tv.VBlankOff) - scr.srcRect.Y
-	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
+	if scr.tv.VBlankOff < scr.tv.VBlankOn {
+		h := int32(scr.tv.VBlankOff) - scr.srcRect.Y
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
 
-	// bottom vblank mask
-	y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
-	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
-	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
+		// bottom vblank mask
+		y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
+		h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
+	}
 
 	// add cursor if tv is paused
 	// -- drawing last so that cursor isn't masked or drawn behind any alpha

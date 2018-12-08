@@ -182,11 +182,6 @@ func run(cartridgeFile string) error {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
 
-	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
-	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
-	}
-
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return fmt.Errorf("error preparing VCS: %s", err)
@@ -201,6 +196,7 @@ func run(cartridgeFile string) error {
 	var runningLock sync.Mutex
 	running := true
 
+	// FIXME: window closing not currently working correctly
 	err = tv.RequestCallbackRegistration(television.ReqOnWindowClose, nil, func() {
 		runningLock.Lock()
 		running = false
@@ -208,6 +204,11 @@ func run(cartridgeFile string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+	if err != nil {
+		return fmt.Errorf("error preparing television: %s", err)
 	}
 
 	for {

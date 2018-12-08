@@ -3,6 +3,7 @@ package video
 import (
 	"fmt"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/video/future"
 )
 
 type playfield struct {
@@ -58,6 +59,9 @@ func (pf playfield) MachineInfoTerse() string {
 			s += "0"
 		}
 	}
+	if pf.reflected {
+		s += " reflected"
+	}
 	return s
 }
 
@@ -108,7 +112,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.backgroundColor
 }
 
-func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future) {
+func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future.Group) {
 	var f func()
 	switch segment {
 	case 0:
@@ -145,13 +149,5 @@ func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future
 		}
 	}
 
-	// delay of 5 video cycles for playfield writes seems correct - 1
-	// entire CPU cycle plus one remaining cycle from the current
-	// instruction
-	//
-	// there may be instances when there is more than one remaining video
-	// cycle from the current instruction
-	//
-	// but then again, maybe the delay is 5 video cycles in all instances
-	futureWrite.schedule(delayWritePlayfield, f, "writing")
+	futureWrite.Schedule(delayWritePlayfield, f, "writing")
 }

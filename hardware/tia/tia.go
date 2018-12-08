@@ -48,7 +48,7 @@ func (tia TIA) MachineInfoTerse() string {
 
 // MachineInfo returns the TIA information in verbose format
 func (tia TIA) MachineInfo() string {
-	return fmt.Sprintf("%v\n%v\n%v", tia.colorClock, tia.rsync, tia.hmove)
+	return fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v", tia.colorClock, tia.rsync, tia.hmove)
 }
 
 // map String to MachineInfo
@@ -65,7 +65,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	// TODO: audio
 
 	tia.colorClock = polycounter.New6Bit()
-	tia.colorClock.SetResetPattern("010100") // count==56,
+	tia.colorClock.SetResetPoint(56) // "010100"
 
 	tia.hmove = newHmove(tia.colorClock)
 	if tia.hmove == nil {
@@ -148,14 +148,11 @@ func (tia *TIA) StepVideoCycle() bool {
 		cburst = true
 	}
 
-	// motion clock -- put simply, motionClock is true when hblank is false, and
-	// vice-versea, but offset by two cycles (hblank flips two video-cycles)
-	// before the motion clock
-	if tia.colorClock.MatchMid(17) && !tia.hmove.isActive() {
+	// motion clock is an out-of-phase color clock. note that the motion clock
+	// does not care about HMOVE.
+	if tia.colorClock.MatchEnd(15) {
 		tia.motionClock = true
-	} else if tia.colorClock.MatchMid(19) && tia.hmove.isActive() {
-		tia.motionClock = true
-	} else if tia.colorClock.MatchMid(0) {
+	} else if tia.colorClock.MatchEnd(56) {
 		tia.motionClock = false
 	}
 
@@ -181,8 +178,8 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.Video.TickSpritesForHMOVE(ct)
 	}
 
-	// tick all sprites according to motion clock
-	if tia.motionClock {
+	// tick all sprites according to hblank
+	if !tia.hblank {
 		tia.Video.TickSprites()
 	}
 
@@ -191,7 +188,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// position resets to happen *after* sprite ticking; in particular, when
 	// the draw signal has been resolved
 	tia.Video.TickPlayfield()
-	tia.Video.TickFutureWrites()
+	tia.Video.TickFutures(tia.motionClock)
 
 	// decide on pixel color
 	pixelColor := television.VideoBlack

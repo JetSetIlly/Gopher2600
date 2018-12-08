@@ -5,9 +5,6 @@ import "fmt"
 // MaxPhase is the maximum value attainable by Polycounter.Phase
 const MaxPhase = 3
 
-// MidPhase is the halfway point in each count
-const MidPhase = 2
-
 type polycounterTable []string
 
 // initialise the 6 bit table representing the polycounter sequence. we use to
@@ -44,4 +41,11 @@ func (tab polycounterTable) LookupPattern(pattern string) int {
 		}
 	}
 	panic(fmt.Errorf("could not find pattern (%s) in 6 bit lookup table", pattern))
+}
+
+// New6Bit initialises a new instance of a 6 bit polycounter
+func New6Bit() *Polycounter {
+	pk := new(Polycounter)
+	pk.table = table6bits
+	return pk
 }

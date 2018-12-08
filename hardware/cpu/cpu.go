@@ -683,11 +683,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Overflow = false
 
 	case "PHA":
+		// +1 cycle
 		err = mc.write8Bit(mc.SP.ToUint16(), mc.A.ToUint8())
 		if err != nil {
 			return nil, err
 		}
 		mc.SP.Add(255, false)
+		mc.endCycle()
 
 	case "PLA":
 		// +1 cycle
@@ -701,11 +703,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.A.Load(value)
 
 	case "PHP":
+		// +1 cycle
 		err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
 		if err != nil {
 			return nil, err
 		}
 		mc.SP.Add(255, false)
+		mc.endCycle()
 
 	case "PLP":
 		// +1 cycle
@@ -778,22 +782,28 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case "STA":
+		// +1 cycle
 		err = mc.write8Bit(address, mc.A.ToUint8())
 		if err != nil {
 			return nil, err
 		}
+		mc.endCycle()
 
 	case "STX":
+		// +1 cycle
 		err = mc.write8Bit(address, mc.X.ToUint8())
 		if err != nil {
 			return nil, err
 		}
+		mc.endCycle()
 
 	case "STY":
+		// +1 cycle
 		err = mc.write8Bit(address, mc.Y.ToUint8())
 		if err != nil {
 			return nil, err
 		}
+		mc.endCycle()
 
 	case "INX":
 		mc.X.Add(1, false)
@@ -1160,13 +1170,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
 	}
 
-	// for Write instructions: consume an extra cycle for the extra memory
-	// access we've already performed
-	if defn.Effect == definitions.Write {
-		// +1 cycle
-		mc.endCycle()
-	}
-
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == definitions.RMW {
 		err = mc.write8Bit(address, value)
@@ -1174,7 +1177,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 
 		}
-
 		// +1 cycle
 		mc.endCycle()
 	}
