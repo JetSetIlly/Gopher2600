@@ -150,7 +150,7 @@ func (tia *TIA) StepVideoCycle() bool {
 
 	// motion clock is an out-of-phase color clock. note that the motion clock
 	// does not care about HMOVE.
-	if tia.colorClock.MatchEnd(15) {
+	if tia.colorClock.MatchEnd(8) {
 		tia.motionClock = true
 	} else if tia.colorClock.MatchEnd(56) {
 		tia.motionClock = false

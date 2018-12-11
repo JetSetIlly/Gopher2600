@@ -96,7 +96,7 @@ func (ps playerSprite) MachineInfo() string {
 func (ps *playerSprite) tick() {
 	// position
 	if ps.tickPosition(ps.triggerList) {
-		if ps.resetting && !ps.resetTriggeredOnDraw {
+		if ps.resetFuture != nil && !ps.resetTriggeredOnDraw {
 			ps.deferDrawStart = true
 		} else {
 			ps.startDrawing()
@@ -158,11 +158,9 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 }
 
 func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {
-	ps.resetting = true
 	ps.resetTriggeredOnDraw = ps.position.CycleOnNextTick()
-
-	onFutureWrite.Schedule(delayResetPlayer, func() {
-		ps.resetting = false
+	ps.resetFuture = onFutureWrite.Schedule(delayResetPlayer, func() {
+		ps.resetFuture = nil
 		ps.resetTriggeredOnDraw = false
 		ps.resetPosition()
 		if ps.deferDrawStart {

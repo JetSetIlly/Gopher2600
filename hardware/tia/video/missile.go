@@ -76,7 +76,7 @@ func (ms missileSprite) MachineInfo() string {
 func (ms *missileSprite) tick() {
 	// position
 	if ms.tickPosition(ms.triggerList) {
-		if ms.resetting && !ms.resetTriggeredOnDraw {
+		if ms.resetFuture != nil && !ms.resetTriggeredOnDraw {
 			ms.deferDrawStart = true
 		} else {
 			ms.startDrawing()
@@ -86,7 +86,7 @@ func (ms *missileSprite) tick() {
 		//	a) not resetting
 		//  b) or if it is resetting then only when the position counter is in
 		//  a particular configuration
-		if !ms.resetting {
+		if ms.resetFuture == nil {
 			ms.tickGraphicsScan()
 		} else {
 			// special conditions based on size
@@ -150,11 +150,9 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 }
 
 func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
-	ms.resetting = true
 	ms.resetTriggeredOnDraw = ms.position.CycleOnNextTick()
-
-	onFutureWrite.Schedule(delayResetMissile, func() {
-		ms.resetting = false
+	ms.resetFuture = onFutureWrite.Schedule(delayResetMissile, func() {
+		ms.resetFuture = nil
 		ms.resetTriggeredOnDraw = false
 		ms.resetPosition()
 		if ms.deferDrawStart {

@@ -3,6 +3,7 @@ package video
 import (
 	"fmt"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/video/future"
 	"strings"
 )
 
@@ -38,7 +39,7 @@ type sprite struct {
 	horizMovement uint8
 
 	// a note on whether the sprite is about to be reset its position
-	resetting bool
+	resetFuture *future.Instance
 }
 
 func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
@@ -70,10 +71,10 @@ func (sp sprite) MachineInfoTerse() string {
 	} else {
 		s.WriteString(" drw=-")
 	}
-	if sp.resetting {
-		s.WriteString(" res=+")
-	} else {
+	if sp.resetFuture == nil {
 		s.WriteString(" res=-")
+	} else {
+		s.WriteString(fmt.Sprintf(" res=%d", sp.resetFuture.RemainingCycles))
 	}
 
 	return s.String()
@@ -92,10 +93,10 @@ func (sp sprite) MachineInfo() string {
 	} else {
 		s.WriteString("   drawing: inactive\n")
 	}
-	if sp.resetting {
-		s.WriteString("   reset: soon\n")
-	} else {
+	if sp.resetFuture == nil {
 		s.WriteString("   reset: none scheduled\n")
+	} else {
+		s.WriteString(fmt.Sprintf("   reset: %d cycles\n", sp.resetFuture.RemainingCycles))
 	}
 
 	return s.String()

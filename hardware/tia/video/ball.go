@@ -93,7 +93,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	//  o OR ball was previously enabled and vertical delay is enabled
 	//  o AND a reset signal (RESBL) has not recently been triggered
 	if (!bs.verticalDelay && bs.enable) || (bs.verticalDelay && bs.enablePrev) {
-		if !bs.resetting || (bs.resetting && bs.pixelDelayAfterReset > 0) {
+		if bs.resetFuture == nil || (bs.resetFuture != nil && bs.pixelDelayAfterReset > 0) {
 			switch bs.graphicsScanCounter {
 			case 0:
 				return true, bs.color
@@ -122,9 +122,8 @@ func (bs *ballSprite) scheduleReset(onFuture *future.Group) {
 		bs.pixelDelayAfterReset = 0
 	}
 
-	bs.resetting = true
-	onFuture.Schedule(delayResetBall, func() {
-		bs.resetting = false
+	bs.resetFuture = onFuture.Schedule(delayResetBall, func() {
+		bs.resetFuture = nil
 		bs.resetPosition()
 		bs.startDrawing()
 	}, fmt.Sprintf("%s resetting", bs.label))

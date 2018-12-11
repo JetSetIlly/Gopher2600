@@ -276,34 +276,47 @@ func createTriggerList(playerSize uint8) []int {
 func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	case "NUSIZ0":
+		// TODO: write delay?
 		vd.Missile0.size = (value & 0x30) >> 4
 		vd.Player0.size = value & 0x07
 		vd.Player0.triggerList = createTriggerList(vd.Player0.size)
 		vd.Missile0.triggerList = vd.Player0.triggerList
 	case "NUSIZ1":
+		// TODO: write delay?
 		vd.Missile1.size = (value & 0x30) >> 4
 		vd.Player1.size = value & 0x07
 		vd.Player1.triggerList = createTriggerList(vd.Player1.size)
 		vd.Missile1.triggerList = vd.Player1.triggerList
 	case "COLUP0":
+		// TODO: write delay?
 		vd.Player0.color = value & 0xfe
 		vd.Missile0.color = value & 0xfe
 	case "COLUP1":
+		// TODO: write delay?
 		vd.Player1.color = value & 0xfe
 		vd.Missile1.color = value & 0xfe
 	case "COLUPF":
+		// TODO: write delay?
 		vd.Playfield.foregroundColor = value & 0xfe
 		vd.Ball.color = value & 0xfe
 	case "COLUBK":
-		vd.Playfield.backgroundColor = value & 0xfe
+		// this delay works and fixes a graphical issue with the "Keystone
+		// Kapers" rom. I'm not entirely sure this is the correct fix however.
+		// and I'm definitely now sure about the delay time.
+		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
+			vd.Playfield.backgroundColor = value & 0xfe
+		}, "setting COLUBK")
 	case "CTRLPF":
+		// TODO: write delay?
 		vd.Ball.size = (value & 0x30) >> 4
 		vd.Playfield.reflected = value&0x01 == 0x01
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "REFP0":
+		// TODO: write delay?
 		vd.Player0.reflected = value&0x08 == 0x08
 	case "REFP1":
+		// TODO: write delay?
 		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
 		vd.Playfield.scheduleWrite(0, value, &vd.OnFutureColorClock)
@@ -332,14 +345,19 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "ENABL":
 		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "HMP0":
+		// TODO: write delay?
 		vd.Player0.horizMovement = (value ^ 0x80) >> 4
 	case "HMP1":
+		// TODO: write delay?
 		vd.Player1.horizMovement = (value ^ 0x80) >> 4
 	case "HMM0":
+		// TODO: write delay?
 		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
 	case "HMM1":
+		// TODO: write delay?
 		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
 	case "HMBL":
+		// TODO: write delay?
 		vd.Ball.horizMovement = (value ^ 0x80) >> 4
 	case "VDELP0":
 		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
@@ -352,6 +370,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "RESMP1":
 		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "HMCLR":
+		// TODO: write delay?
 		vd.Player0.horizMovement = 0x08
 		vd.Player1.horizMovement = 0x08
 		vd.Missile0.horizMovement = 0x08
