@@ -99,7 +99,7 @@ func compileTemplateFragment(fragment string) (commandArgList, error) {
 				placeholder = false
 				i++
 			} else {
-				return nil, fmt.Errorf("unparsable fragment (%s)", fragment, fragment[i])
+				return nil, fmt.Errorf("unparsable fragment (%s)", fragment)
 			}
 		}
 	}

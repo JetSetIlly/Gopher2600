@@ -58,6 +58,13 @@ func (pia PIA) Peek(address uint16) (uint8, uint16, string, string, error) {
 	return pia.memory[oa], address, pia.Label(), "", nil
 }
 
+// Poke is the implementation of Memory.Area.Poke
+func (pia PIA) Poke(address uint16, value uint8) error {
+	oa := address - pia.origin
+	pia.memory[oa] = value
+	return nil
+}
+
 // MachineInfoTerse returns the RIOT information in terse format
 func (pia PIA) MachineInfoTerse() string {
 	return pia.MachineInfo()

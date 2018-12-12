@@ -163,3 +163,8 @@ func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error
 	oa := address - cart.origin
 	return cart.memory[oa], address, cart.Label(), "", nil
 }
+
+// Poke is the implementation of Memory.Area.Poke
+func (cart Cartridge) Poke(address uint16, value uint8) error {
+	return errors.NewGopherError(errors.UnPokeableAddress, address)
+}

@@ -152,3 +152,31 @@ func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, e
 
 	return area.(Area).Peek(ma)
 }
+
+// Poke writes a value at the address
+func (mem VCSMemory) Poke(address interface{}, value uint8) error {
+	var mapped bool
+	var ma uint16
+
+	switch address := address.(type) {
+	case uint16:
+		ma = mem.MapAddress(uint16(address), true)
+		mapped = true
+	case string:
+		// search for symbolic address in standard vcs read symbols
+		// TODO: peeking of cartridge specific symbols
+		for a, sym := range vcssymbols.ReadSymbols {
+			if sym == address {
+				ma = a
+				mapped = true
+				break // for loop
+			}
+		}
+	}
+
+	if !mapped {
+		return errors.NewGopherError(errors.UnrecognisedAddress, address)
+	}
+
+	return mem.memmap[ma].Poke(ma, value)
+}

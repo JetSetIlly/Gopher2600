@@ -42,6 +42,8 @@ type Area interface {
 	// o label (if any)
 	// o error (which may not be fatal)
 	Peek(address uint16) (uint8, uint16, string, string, error)
+
+	Poke(address uint16, value uint8) error
 }
 
 // AreaInfo provides the basic info needed to define a memory area. All memory

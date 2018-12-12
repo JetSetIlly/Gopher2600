@@ -22,6 +22,7 @@ var messages = map[Errno]string{
 	UnreadableAddress:   "memory location is not readable (%#04x)",
 	UnwritableAddress:   "memory location is not writable (%#04x)",
 	UnrecognisedAddress: "address unrecognised (%v)",
+	UnPokeableAddress:   "address is un-poke-able (%v)",
 
 	// Cartridges
 	CartridgeFileError:   "error reading cartridge file (%s)",

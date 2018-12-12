@@ -24,6 +24,7 @@ const (
 	UnreadableAddress
 	UnwritableAddress
 	UnrecognisedAddress
+	UnPokeableAddress
 
 	// Cartridges
 	CartridgeFileError
