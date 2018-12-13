@@ -23,7 +23,7 @@ const defaultOnStep = "LAST"
 // Debugger is the basic debugging frontend for the emulation
 type Debugger struct {
 	vcs    *hardware.VCS
-	disasm disassembly.Disassembly
+	disasm *disassembly.Disassembly
 
 	// control of debug/input loop:
 	// 	o running - whether the debugger is to continue with the debugging loop
@@ -31,16 +31,24 @@ type Debugger struct {
 	running      bool
 	runUntilHalt bool
 
+	// interface to the vcs memory with additional debugging functions
+	// -- access to vcs memory from the debugger is most fruitfully performed
+	// through this structure
+	dbgmem *memoryDebug
+
 	// halt conditions
 	breakpoints *breakpoints
 	traps       *traps
+	watches     *watches
 
 	// note that the UI probably allows the user to manually break or trap at
 	// will, with for example, ctrl-c
 
-	// we accumulate break and trap messsages until we can service them
+	// we accumulate break, trap and watch messsages until we can service them
+	// if the strings are empty then no break/trap/watch event has occurred
 	breakMessages string
 	trapMessages  string
+	watchMessages string
 
 	// any error from previous emulation step
 	lastStepError bool
@@ -112,9 +120,17 @@ func NewDebugger() (*Debugger, error) {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
 
+	// create instance of disassembly -- the same base structure is used
+	// for disassemblies subseuquent to the first one.
+	dbg.disasm = new(disassembly.Disassembly)
+
+	// set up debugging interface to memory
+	dbg.dbgmem = newMemoryDebug(dbg)
+
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
 	dbg.traps = newTraps(dbg)
+	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)
 
 	// default ONHALT command squence
@@ -268,6 +284,7 @@ func (dbg *Debugger) breakAndTrapCallback(result *result.Instruction) error {
 
 	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
+	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
 	return nil
 }
@@ -308,9 +325,10 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// check for breakpoints and traps
 		dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 		dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
+		dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
 		// check for halt conditions
-		dbg.inputloopHalt = stepTrapMessage != "" || dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.lastStepError
+		dbg.inputloopHalt = stepTrapMessage != "" || dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.watchMessages != "" || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
@@ -326,8 +344,10 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// print and reset accumulated break and trap messages
 		dbg.print(ui.Feedback, dbg.breakMessages)
 		dbg.print(ui.Feedback, dbg.trapMessages)
+		dbg.print(ui.Feedback, dbg.watchMessages)
 		dbg.breakMessages = ""
 		dbg.trapMessages = ""
+		dbg.watchMessages = ""
 
 		// expand inputloopHalt to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt

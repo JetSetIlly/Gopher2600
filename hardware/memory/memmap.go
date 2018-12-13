@@ -9,7 +9,7 @@ func (mem VCSMemory) MemoryMap() string {
 	var sr, er uint16
 
 	for er = 0; er <= 0x1fff; er++ {
-		area := mem.memmap[mem.MapAddress(er, true)]
+		area := mem.Memmap[mem.MapAddress(er, true)]
 
 		if area.Label() != areaLabel {
 			if areaLabel != "" {

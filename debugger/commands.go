@@ -21,6 +21,7 @@ const (
 	KeywordSymbol        = "SYMBOL"
 	KeywordBreak         = "BREAK"
 	KeywordTrap          = "TRAP"
+	KeywordWatch         = "WATCH"
 	KeywordList          = "LIST"
 	KeywordClear         = "CLEAR"
 	KeywordDrop          = "DROP"
@@ -61,6 +62,7 @@ var Help = map[string]string{
 	KeywordSymbol:        "Search for the address label symbol in disassembly. returns address",
 	KeywordBreak:         "Cause emulator to halt when conditions are met",
 	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
+	KeywordWatch:         "Watch a memory address for activity",
 	KeywordList:          "List current entries for BREAKS and TRAPS",
 	KeywordClear:         "Clear all entries in BREAKS and TRAPS",
 	KeywordDrop:          "Drop a specific BREAK or TRAP conditin, using the number of the condition reported by LIST",
@@ -99,9 +101,10 @@ var commandTemplate = input.CommandTemplate{
 	KeywordSymbol:        "%S [|ALL]",
 	KeywordBreak:         "%*",
 	KeywordTrap:          "%*",
-	KeywordList:          "[BREAKS|TRAPS]",
-	KeywordClear:         "[BREAKS|TRAPS]",
-	KeywordDrop:          "[BREAK|TRAP] %V",
+	KeywordWatch:         "[READ|WRITE|] %V %*",
+	KeywordList:          "[BREAKS|TRAPS|WATCHES]",
+	KeywordClear:         "[BREAKS|TRAPS|WATCHES]",
+	KeywordDrop:          "[BREAK|TRAP|WATCH] %V",
 	KeywordOnHalt:        "[|OFF|ECHO] %*",
 	KeywordOnStep:        "[|OFF|ECHO] %*",
 	KeywordLast:          "[|DEFN]",
@@ -220,6 +223,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.disasm.Dump(os.Stdout)
 
 	case KeywordSymbol:
+		// TODO: change this so that it uses debugger.memory front-end
 		symbol, _ := tokens.Get()
 		table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
 		if err != nil {
@@ -267,6 +271,12 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			return false, fmt.Errorf("error on trap: %s", err)
 		}
 
+	case KeywordWatch:
+		err := dbg.watches.parseWatch(tokens)
+		if err != nil {
+			return false, fmt.Errorf("error on watch: %s", err)
+		}
+
 	case KeywordList:
 		list, _ := tokens.Get()
 		list = strings.ToUpper(list)
@@ -275,6 +285,8 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.breakpoints.list()
 		case "TRAPS":
 			dbg.traps.list()
+		case "WATCHES":
+			dbg.watches.list()
 		default:
 			return false, fmt.Errorf("unknown list option (%s)", list)
 		}
@@ -289,6 +301,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		case "TRAPS":
 			dbg.traps.clear()
 			dbg.print(ui.Feedback, "traps cleared")
+		case "WATCHES":
+			dbg.watches.clear()
+			dbg.print(ui.Feedback, "watches cleared")
 		default:
 			return false, fmt.Errorf("unknown clear option (%s)", clear)
 		}
@@ -316,6 +331,12 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				return false, err
 			}
 			dbg.print(ui.Feedback, "trap #%d dropped", num)
+		case "WATCH":
+			err := dbg.watches.drop(num)
+			if err != nil {
+				return false, err
+			}
+			dbg.print(ui.Feedback, "watch #%d dropped", num)
 		default:
 			return false, fmt.Errorf("unknown drop option (%s)", drop)
 		}
@@ -493,6 +514,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.MC)
 
 	case KeywordPeek:
+		// get address token
 		a, present := tokens.Get()
 		for present {
 			var addr interface{}
@@ -510,7 +532,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			}
 
 			// perform peek
-			val, mappedAddress, areaName, addressLabel, err := dbg.vcs.Mem.Peek(addr)
+			val, mappedAddress, areaName, addressLabel, err := dbg.dbgmem.peek(addr)
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 			} else {
@@ -564,7 +586,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			msg = fmt.Sprintf("%#04x -> %#02x", addr, uint16(val))
 
 			// perform poke
-			err = dbg.vcs.Mem.Poke(uint16(addr), uint8(val))
+			err = dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 			} else {

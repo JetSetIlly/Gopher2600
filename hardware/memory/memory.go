@@ -2,8 +2,6 @@ package memory
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/vcssymbols"
 )
 
 // VCSMemory presents a monolithic representation of system memory to the CPU -
@@ -14,21 +12,29 @@ type VCSMemory struct {
 
 	// memmap is a hash for every address in the VCS address space, returning
 	// one of the four memory areas
-	memmap map[uint16]Area
+	Memmap map[uint16]Area
 
 	// the four memory areas
 	RIOT *ChipMemory
 	TIA  *ChipMemory
 	PIA  *PIA
 	Cart *Cartridge
+
+	// a note of the last memory location to be accessed
+	// this address is the mapped address
+	LastAddressAccessFlag  bool
+	LastAddressAccessed    uint16
+	LastAddressAccessWrite bool
+	LastAddressAccessValue uint8
 }
 
 // TODO: allow reading only when 02 clock is high and writing when it is low
+// ??
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
-	mem.memmap = make(map[uint16]Area)
+	mem.Memmap = make(map[uint16]Area)
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
@@ -43,29 +49,25 @@ func NewVCSMemory() (*VCSMemory, error) {
 	// addresses should be passed through the MapAddress() function in order
 	// to iron out any mirrors
 	for i := mem.TIA.origin; i <= mem.TIA.memtop; i++ {
-		mem.memmap[i] = mem.TIA
+		mem.Memmap[i] = mem.TIA
 	}
 	for i := mem.PIA.origin; i <= mem.PIA.memtop; i++ {
-		mem.memmap[i] = mem.PIA
+		mem.Memmap[i] = mem.PIA
 	}
 	for i := mem.RIOT.origin; i <= mem.RIOT.memtop; i++ {
-		mem.memmap[i] = mem.RIOT
+		mem.Memmap[i] = mem.RIOT
 	}
 	for i := mem.Cart.origin; i <= mem.Cart.memtop; i++ {
-		mem.memmap[i] = mem.Cart
+		mem.Memmap[i] = mem.Cart
 	}
 
 	return mem, nil
 }
 
-func (mem VCSMemory) String() string {
-	return mem.MemoryMap()
-}
-
 // MapAddress translates the quoted address from mirror space to primary space.
 // Generally, all access to the different memory areas should be passed through
 // this function. Any other information about an address can be accessed
-// through mem.memmap[mappedAddress]
+// through mem.Memmap[mappedAddress]
 func (mem VCSMemory) MapAddress(address uint16, readAddress bool) uint16 {
 	// note that the order of these filters is important
 
@@ -97,86 +99,28 @@ func (mem VCSMemory) MapAddress(address uint16, readAddress bool) uint16 {
 // Implementation of CPUBus.Read
 func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address, true)
-	area, present := mem.memmap[ma]
+	area, present := mem.Memmap[ma]
 	if !present {
 		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
-	return area.(CPUBus).Read(ma)
+	mem.LastAddressAccessFlag = true
+	mem.LastAddressAccessed = ma
+	mem.LastAddressAccessWrite = false
+	data, err := area.(CPUBus).Read(ma)
+	mem.LastAddressAccessValue = data
+	return data, err
 }
 
 // Implementation of CPUBus.Write
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma := mem.MapAddress(address, false)
-	area, present := mem.memmap[ma]
+	area, present := mem.Memmap[ma]
 	if !present {
 		return fmt.Errorf("%04x not mapped correctly", address)
 	}
+	mem.LastAddressAccessFlag = true
+	mem.LastAddressAccessed = ma
+	mem.LastAddressAccessWrite = true
+	mem.LastAddressAccessValue = data
 	return area.(CPUBus).Write(ma, data)
-}
-
-// Peek returns the contents of the memory address, without triggering any side
-// effects. returns:
-//  o value
-//  o mapped address
-//  o area name
-//  o address label
-//  o error
-func (mem VCSMemory) Peek(address interface{}) (uint8, uint16, string, string, error) {
-	var mapped bool
-	var ma uint16
-
-	switch address := address.(type) {
-	case uint16:
-		ma = mem.MapAddress(uint16(address), true)
-		mapped = true
-	case string:
-		// search for symbolic address in standard vcs read symbols
-		// TODO: peeking of cartridge specific symbols
-		for a, sym := range vcssymbols.ReadSymbols {
-			if sym == address {
-				ma = a
-				mapped = true
-				break // for loop
-			}
-		}
-	}
-
-	if !mapped {
-		return 0, 0, "", "", errors.NewGopherError(errors.UnrecognisedAddress, address)
-	}
-
-	area, present := mem.memmap[ma]
-	if !present {
-		panic(fmt.Errorf("%04x not mapped correctly", address))
-	}
-
-	return area.(Area).Peek(ma)
-}
-
-// Poke writes a value at the address
-func (mem VCSMemory) Poke(address interface{}, value uint8) error {
-	var mapped bool
-	var ma uint16
-
-	switch address := address.(type) {
-	case uint16:
-		ma = mem.MapAddress(uint16(address), true)
-		mapped = true
-	case string:
-		// search for symbolic address in standard vcs read symbols
-		// TODO: peeking of cartridge specific symbols
-		for a, sym := range vcssymbols.ReadSymbols {
-			if sym == address {
-				ma = a
-				mapped = true
-				break // for loop
-			}
-		}
-	}
-
-	if !mapped {
-		return errors.NewGopherError(errors.UnrecognisedAddress, address)
-	}
-
-	return mem.memmap[ma].Poke(ma, value)
 }
