@@ -27,24 +27,24 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
 	step(t, mc) // SEC
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZC")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZC")
 	step(t, mc) // CLC
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZc")
 	step(t, mc) // CLI
-	assert.CheckValueVCS(t, mc.Status, "sv-BdiZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZc")
 	step(t, mc) // SEI
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 	step(t, mc) // SED
-	assert.CheckValueVCS(t, mc.Status, "sv-BDIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bDIZc")
 	step(t, mc) // CLD
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 	step(t, mc) // CLV
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 
 	// PHP; PLP
 	origin = mem.putInstructions(origin, 0x08, 0x28)
 	step(t, mc) // PHP
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 	assert.CheckValueVCS(t, mc.SP, 254)
 
 	// mangle status register
@@ -55,7 +55,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	// restore status register
 	step(t, mc) // PLP
 	assert.CheckValueVCS(t, mc.SP, 255)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 }
 
 func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *MockMem) {
@@ -95,28 +95,28 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	origin = mem.putInstructions(origin, 0x0a, 0x4a, 0x4a)
 	step(t, mc) // ASL
 	assert.CheckValueVCS(t, mc.A, 2)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 	step(t, mc) // LSR
 	assert.CheckValueVCS(t, mc.A, 1)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 	step(t, mc) // LSR
 	assert.CheckValueVCS(t, mc.A, 0)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZC")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZC")
 
 	// ROL implied; ROR implied; ROR implied; ROR implied
 	origin = mem.putInstructions(origin, 0x2a, 0x6a, 0x6a, 0x6a)
 	step(t, mc) // ROL
 	assert.CheckValueVCS(t, mc.A, 1)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 	step(t, mc) // ROR
 	assert.CheckValueVCS(t, mc.A, 0)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZC")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZC")
 	step(t, mc) // ROR
 	assert.CheckValueVCS(t, mc.A, 128)
-	assert.CheckValueVCS(t, mc.Status, "Sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "Sv-bdizc")
 	step(t, mc) // ROR
 	assert.CheckValueVCS(t, mc.A, 64)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 }
 
 func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *MockMem) {
@@ -132,7 +132,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.X, 6)
 	step(t, mc) // DEX
 	assert.CheckValueVCS(t, mc.X, 5)
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 
 	// PHA; LDA immediate; PLA
 	origin = mem.putInstructions(origin, 0xa9, 5, 0x48, 0xa9, 0, 0x68)
@@ -392,41 +392,41 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
 	step(t, mc) // CMP $00
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZC")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0xf6, 0xc9, 0x18)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	assert.CheckValueVCS(t, mc.Status, "Sv-BdIzC")
+	assert.CheckValueVCS(t, mc.Status, "Sv-bdizC")
 
 	// LDX immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa2, 0xf6, 0xe0, 0x18)
 	step(t, mc) // LDX $F6
 	step(t, mc) // CMP $10
-	assert.CheckValueVCS(t, mc.Status, "Sv-BdIzC")
+	assert.CheckValueVCS(t, mc.Status, "Sv-bdizC")
 
 	// LDY immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa0, 0xf6, 0xc0, 0x18)
 	step(t, mc) // LDY $F6
 	step(t, mc) // CMP $10
-	assert.CheckValueVCS(t, mc.Status, "Sv-BdIzC")
+	assert.CheckValueVCS(t, mc.Status, "Sv-bdizC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0x18, 0xc9, 0xf6)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIzc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 
 	// BIT zero page
 	origin = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZc")
 
 	// BIT immediate
 	origin = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	assert.CheckValueVCS(t, mc.Status, "sv-BdIZc")
+	assert.CheckValueVCS(t, mc.Status, "sv-bdiZc")
 }
 
 func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {

@@ -104,7 +104,7 @@ func (pt *Terminal) CleanUp() {
 // TODO: expand the functionality of easyterm Print()
 func (pt *Terminal) Print(s string, a ...interface{}) {
 	pt.output.WriteString(fmt.Sprintf(s, a...))
-	pt.output.Sync()
+	//pt.output.Sync()
 }
 
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the

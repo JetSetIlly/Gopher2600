@@ -84,8 +84,8 @@ func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
 		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 
-	// no need to do anything if operand is zero
-	if val == 0 {
+	// no need to do anything if operand is zero and carry is set
+	if val == 0 && carry {
 		return carry, false
 	}
 
