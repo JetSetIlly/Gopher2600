@@ -16,6 +16,11 @@ func (tv *SDLTV) guiLoop() {
 		// close window
 		case *sdl.QuitEvent:
 			tv.RequestSetAttr(television.ReqSetVisibility, false)
+			// *CRITICAL SECTION*
+			// (R) tv.onWindowClose
+			tv.guiLoopLock.Lock()
+			tv.onWindowClose.dispatch()
+			tv.guiLoopLock.Unlock()
 
 		case *sdl.KeyboardEvent:
 			if ev.Type == sdl.KEYDOWN {

@@ -12,6 +12,15 @@ func TestRegister(t *testing.T) {
 	r4(t)
 }
 
+func TestSubtract(t *testing.T) {
+	r8 := register.NewRegister(0, 8, "TEST", "TST")
+	r8.Load(0)
+	r8.Subtract(0, true)
+	assert.CheckValueVCS(t, r8, 0)
+	r8.Subtract(0, false)
+	assert.CheckValueVCS(t, r8, 255)
+}
+
 func r16(t *testing.T) {
 	var carry, overflow bool
 

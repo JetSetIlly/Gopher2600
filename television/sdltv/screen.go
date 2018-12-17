@@ -6,18 +6,30 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+// the number of bytes required for each screen pixel
+// 4 == red + green + blue + alpha
+const scrDepth int32 = 4
+
 type screen struct {
 	tv *television.HeadlessTV
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
 
-	playWidth  int32
-	playHeight int32
-	maxWidth   int32
-	maxHeight  int32
-	depth      int32
-	pitch      int
+	// maxWidth and maxHeight are the maximum possible sizes for the current tv
+	// specification
+	maxWidth  int32
+	maxHeight int32
+	maxMask   *sdl.Rect
+
+	// pixels arrays are of maximum screen size - actual smalled screens are
+	// masked appropriately
+	pixels     []byte
+	pixelsFade []byte
+
+	// textures are used to present the pixels to the renderer
+	texture     *sdl.Texture
+	textureFade *sdl.Texture
 
 	// the width of each VCS colour clock (in SDL pixels)
 	pixelWidth int
@@ -25,17 +37,11 @@ type screen struct {
 	// by how much each pixel should be scaled
 	pixelScale float32
 
-	noMask      *sdl.Rect
-	maskRectDst *sdl.Rect
-	maskRectSrc *sdl.Rect
-
-	texture     *sdl.Texture
-	fadeTexture *sdl.Texture
-
-	pixelsA    []byte
-	pixelsB    []byte
-	pixels     []byte
-	pixelsFade []byte
+	// play variables differ depending on the ROM
+	playWidth   int32
+	playHeight  int32
+	playSrcMask *sdl.Rect
+	playDstMask *sdl.Rect
 
 	// whether we're using the max screen
 	//  - destRect and srcRect change depending on the value of unmasked
@@ -51,13 +57,13 @@ func newScreen(tv *television.HeadlessTV) (*screen, error) {
 	scr.tv = tv
 
 	// SDL window - the correct size for the window will be determined below
-	scr.window, err = sdl.CreateWindow("Gopher2600", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 0, 0, sdl.WINDOW_HIDDEN|sdl.WINDOW_OPENGL)
+	scr.window, err = sdl.CreateWindow("Gopher2600", int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED), 0, 0, uint32(sdl.WINDOW_HIDDEN)|uint32(sdl.WINDOW_OPENGL))
 	if err != nil {
 		return nil, err
 	}
 
 	// SDL renderer
-	scr.renderer, err = sdl.CreateRenderer(scr.window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
+	scr.renderer, err = sdl.CreateRenderer(scr.window, -1, uint32(sdl.RENDERER_ACCELERATED)|uint32(sdl.RENDERER_PRESENTVSYNC))
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +72,6 @@ func newScreen(tv *television.HeadlessTV) (*screen, error) {
 	scr.playHeight = int32(tv.Spec.ScanlinesPerVisible)
 	scr.maxWidth = int32(tv.Spec.ClocksPerScanline)
 	scr.maxHeight = int32(tv.Spec.ScanlinesTotal)
-	scr.depth = 4
-	scr.pitch = int(scr.maxWidth * scr.depth)
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -77,32 +81,30 @@ func newScreen(tv *television.HeadlessTV) (*screen, error) {
 	// screen texture is used to draw the pixels onto the sdl window (by the
 	// renderer). it is used evey frame, regardless of whether the tv is paused
 	// or unpaused
-	scr.texture, err = scr.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STREAMING, scr.maxWidth, scr.maxHeight)
+	scr.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
 	if err != nil {
 		return nil, err
 	}
-	scr.texture.SetBlendMode(sdl.BLENDMODE_BLEND)
+	scr.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
 
 	// fade texture is only used when the tv is paused. it is used to display
 	// the previous frame as a guide, in case the current frame is not completely
 	// rendered
-	scr.fadeTexture, err = scr.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STREAMING, scr.maxWidth, scr.maxHeight)
+	scr.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
 	if err != nil {
 		return nil, err
 	}
-	scr.fadeTexture.SetBlendMode(sdl.BLENDMODE_BLEND)
-	scr.fadeTexture.SetAlphaMod(50)
+	scr.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	scr.textureFade.SetAlphaMod(50)
 
 	// our acutal screen data
-	scr.pixelsA = make([]byte, scr.maxWidth*scr.maxHeight*scr.depth)
-	scr.pixelsB = make([]byte, scr.maxWidth*scr.maxHeight*scr.depth)
 
-	scr.pixels = scr.pixelsA
-	scr.pixelsFade = scr.pixelsB
+	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
-	scr.noMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
-	scr.maskRectDst = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.maskRectSrc = &sdl.Rect{X: int32(tv.Spec.ClocksPerHblank), Y: int32(tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync), W: scr.playWidth, H: scr.playHeight}
+	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
+	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(tv.Spec.ClocksPerHblank), Y: int32(tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync), W: scr.playWidth, H: scr.playHeight}
 
 	return scr, nil
 }
@@ -131,13 +133,13 @@ func (scr *screen) setMasking(unmasked bool) {
 	if scr.unmasked {
 		w = int32(float32(scr.maxWidth) * scr.pixelScale * float32(scr.pixelWidth))
 		h = int32(float32(scr.maxHeight) * scr.pixelScale)
-		scr.destRect = scr.noMask
-		scr.srcRect = scr.noMask
+		scr.destRect = scr.maxMask
+		scr.srcRect = scr.maxMask
 	} else {
 		w = int32(float32(scr.playWidth) * scr.pixelScale * float32(scr.pixelWidth))
 		h = int32(float32(scr.playHeight) * scr.pixelScale)
-		scr.destRect = scr.maskRectDst
-		scr.srcRect = scr.maskRectSrc
+		scr.destRect = scr.playDstMask
+		scr.srcRect = scr.playSrcMask
 	}
 
 	scr.window.SetSize(w, h)
@@ -148,8 +150,8 @@ func (scr *screen) toggleMasking() {
 }
 
 func (scr *screen) setPixel(x, y int32, red, green, blue byte) {
-	i := (y*scr.maxWidth + x) * scr.depth
-	if i < int32(len(scr.pixels))-scr.depth && i >= 0 {
+	i := (y*scr.maxWidth + x) * scrDepth
+	if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
 		scr.pixels[i] = red
 		scr.pixels[i+1] = green
 		scr.pixels[i+2] = blue
@@ -161,8 +163,8 @@ func (scr *screen) update(paused bool) error {
 	var err error
 
 	// clear image from rendered
-	scr.renderer.SetDrawColor(5, 10, 5, 255)
-	scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+	scr.renderer.SetDrawColor(5, 25, 5, 255)
+	scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 	err = scr.renderer.Clear()
 	if err != nil {
 		return err
@@ -170,11 +172,11 @@ func (scr *screen) update(paused bool) error {
 
 	// if tv is paused then show the previous frame's faded image
 	if paused {
-		err = scr.fadeTexture.Update(nil, scr.pixelsFade, scr.pitch)
+		err = scr.textureFade.Update(nil, scr.pixelsFade, int(scr.maxWidth*scrDepth))
 		if err != nil {
 			return err
 		}
-		err = scr.renderer.Copy(scr.fadeTexture, scr.srcRect, scr.destRect)
+		err = scr.renderer.Copy(scr.textureFade, scr.srcRect, scr.destRect)
 		if err != nil {
 			return err
 		}
@@ -183,7 +185,7 @@ func (scr *screen) update(paused bool) error {
 	// show current frame's pixels
 	// - if tv is paused this overwrites the faded image (drawn above) up to
 	// the pixel where the current frame has reached
-	err = scr.texture.Update(nil, scr.pixels, scr.pitch)
+	err = scr.texture.Update(nil, scr.pixels, int(scr.maxWidth*scrDepth))
 	if err != nil {
 		return err
 	}
@@ -195,25 +197,23 @@ func (scr *screen) update(paused bool) error {
 	// draw masks
 	if scr.unmasked {
 		scr.renderer.SetDrawColor(15, 15, 15, 100)
-		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
 
 		// hblank mask
 		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.tv.Spec.ClocksPerHblank), H: scr.srcRect.H})
 	} else {
 		scr.renderer.SetDrawColor(0, 0, 0, 255)
-		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 	}
 
 	// top vblank mask
-	if scr.tv.VBlankOff < scr.tv.VBlankOn {
-		h := int32(scr.tv.VBlankOff) - scr.srcRect.Y
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
+	h := int32(scr.tv.VBlankOff) - scr.srcRect.Y
+	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
 
-		// bottom vblank mask
-		y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
-		h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
-	}
+	// bottom vblank mask
+	y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
+	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
+	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
 
 	// add cursor if tv is paused
 	// -- drawing last so that cursor isn't masked or drawn behind any alpha
@@ -229,29 +229,31 @@ func (scr *screen) update(paused bool) error {
 			x = 0
 			y++
 		}
-		accurateCursorPos := true
+
+		// note whether cursor is "off-screen" (according to current masking)
+		offscreenCursorPos := false
 
 		// adjust coordinates if screen is masked
 		if !scr.unmasked {
 			x -= scr.tv.Spec.ClocksPerHblank
 			y -= scr.tv.Spec.ScanlinesPerVBlank + scr.tv.Spec.ScanlinesPerVSync
 			if x < 0 {
-				accurateCursorPos = false
+				offscreenCursorPos = true
 				x = 0
 			}
 			if y < 0 {
-				accurateCursorPos = false
+				offscreenCursorPos = true
 				y = 0
 			}
 		}
 
-		// cursor color depends on whether cursor positioning is accurate
-		if !accurateCursorPos {
+		// cursor color depends on whether cursor is off-screen or not
+		if offscreenCursorPos {
 			scr.renderer.SetDrawColor(100, 100, 255, 100)
 		} else {
 			scr.renderer.SetDrawColor(255, 255, 255, 100)
 		}
-		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 
 		// cursor is a 2x2 rectangle
 		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y), W: 2, H: 2})

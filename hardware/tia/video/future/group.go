@@ -4,8 +4,9 @@ import "fmt"
 
 // Group is used to buffer payloads for future triggering.
 type Group struct {
-	id      int
-	singles [3]Instance
+	id       int
+	singles  [3]Instance
+	lastTick [3]bool
 }
 
 // MachineInfo returns the ball sprite information in terse format
@@ -51,5 +52,8 @@ func (fut Group) IsScheduled() bool {
 
 // Tick moves the pending action counter on one step
 func (fut *Group) Tick() bool {
-	return fut.singles[0].tick() || fut.singles[1].tick() || fut.singles[2].tick()
+	fut.lastTick[0] = fut.singles[0].tick()
+	fut.lastTick[1] = fut.singles[1].tick()
+	fut.lastTick[2] = fut.singles[2].tick()
+	return fut.lastTick[0] || fut.lastTick[1] || fut.lastTick[2]
 }

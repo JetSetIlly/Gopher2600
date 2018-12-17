@@ -177,7 +177,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 }
 
 func run(cartridgeFile string) error {
-	tv, err := sdltv.NewSDLTV("NTSC", 4.0)
+	tv, err := sdltv.NewSDLTV("NTSC", 3.0)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
@@ -196,7 +196,7 @@ func run(cartridgeFile string) error {
 	var runningLock sync.Mutex
 	running := true
 
-	// FIXME: window closing not currently working correctly
+	// register quit function
 	err = tv.RequestCallbackRegistration(television.ReqOnWindowClose, nil, func() {
 		runningLock.Lock()
 		running = false

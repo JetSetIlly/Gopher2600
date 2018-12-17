@@ -61,8 +61,9 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		return nil, err
 	}
 
-	// register callbacks from HeadlessTV to SDLTV
-	tv.SignalNewFrameHook = tv.newFrame
+	// register new frame callback from HeadlessTV to SDLTV
+	// leaving SignalNewScanline() hook at its default
+	tv.HookNewFrame = tv.newFrame
 
 	// update tv (with a black image)
 	err = tv.update()
@@ -74,6 +75,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	go tv.guiLoop()
 
 	// note that we've elected not to show the window on startup
+	// window is instead opened on a ReqSetVisibility request
 
 	return tv, nil
 }
@@ -85,6 +87,8 @@ func (tv *SDLTV) Signal(attr television.SignalAttributes) {
 	tv.HeadlessTV.Signal(attr)
 
 	tv.guiLoopLock.Lock()
+	defer tv.guiLoopLock.Unlock()
+
 	// decode color
 	r, g, b := byte(0), byte(0), byte(0)
 	if attr.Pixel <= 256 {
@@ -96,7 +100,6 @@ func (tv *SDLTV) Signal(attr television.SignalAttributes) {
 	y := int32(tv.Scanline.Value().(int))
 
 	tv.scr.setPixel(x, y, r, g, b)
-	tv.guiLoopLock.Unlock()
 }
 
 func (tv *SDLTV) newFrame() error {
@@ -109,7 +112,7 @@ func (tv *SDLTV) update() error {
 	tv.guiLoopLock.Lock()
 	defer tv.guiLoopLock.Unlock()
 
-	// abbrogate mot of the updating to the screem
+	// abbrogate most of the updating to the screen instance
 	err := tv.scr.update(tv.paused)
 	if err != nil {
 		return err
