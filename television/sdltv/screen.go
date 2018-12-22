@@ -1,8 +1,6 @@
 package sdltv
 
 import (
-	"gopher2600/television"
-
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -11,7 +9,7 @@ import (
 const scrDepth int32 = 4
 
 type screen struct {
-	tv *television.HeadlessTV
+	tv *SDLTV
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -48,9 +46,11 @@ type screen struct {
 	unmasked bool
 	destRect *sdl.Rect
 	srcRect  *sdl.Rect
+
+	stability stability
 }
 
-func newScreen(tv *television.HeadlessTV) (*screen, error) {
+func newScreen(tv *SDLTV) (*screen, error) {
 	var err error
 
 	scr := new(screen)
@@ -68,10 +68,12 @@ func newScreen(tv *television.HeadlessTV) (*screen, error) {
 		return nil, err
 	}
 
-	scr.playWidth = int32(tv.Spec.ClocksPerVisible)
-	scr.playHeight = int32(tv.Spec.ScanlinesPerVisible)
 	scr.maxWidth = int32(tv.Spec.ClocksPerScanline)
 	scr.maxHeight = int32(tv.Spec.ScanlinesTotal)
+	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
+
+	scr.playWidth = int32(tv.Spec.ClocksPerVisible)
+	scr.setPlayHeight(int32(tv.Spec.ScanlinesPerVisible))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -102,11 +104,15 @@ func newScreen(tv *television.HeadlessTV) (*screen, error) {
 	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
-	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
-	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(tv.Spec.ClocksPerHblank), Y: int32(tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync), W: scr.playWidth, H: scr.playHeight}
-
 	return scr, nil
+}
+
+func (scr *screen) setPlayHeight(scanlines int32) error {
+	scr.playHeight = scanlines
+	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: int32(scr.tv.VBlankOff), W: scr.playWidth, H: scr.playHeight}
+
+	return scr.setMasking(scr.unmasked)
 }
 
 func (scr *screen) setScaling(scale float32) error {
@@ -125,7 +131,7 @@ func (scr *screen) setScaling(scale float32) error {
 	return nil
 }
 
-func (scr *screen) setMasking(unmasked bool) {
+func (scr *screen) setMasking(unmasked bool) error {
 	var w, h int32
 
 	scr.unmasked = unmasked
@@ -142,7 +148,14 @@ func (scr *screen) setMasking(unmasked bool) {
 		scr.srcRect = scr.playSrcMask
 	}
 
+	// minimum window size
+	if h < int32(float32(scr.tv.Spec.ScanlinesPerVisible)*scr.pixelScale) {
+		h = int32(float32(scr.tv.Spec.ScanlinesPerVisible) * scr.pixelScale)
+	}
+
 	scr.window.SetSize(w, h)
+
+	return nil
 }
 
 func (scr *screen) toggleMasking() {
@@ -162,8 +175,14 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte) {
 func (scr *screen) update(paused bool) error {
 	var err error
 
+	// before we go any further, check to frame stability
+	err = scr.checkStability()
+	if err != nil {
+		return err
+	}
+
 	// clear image from rendered
-	scr.renderer.SetDrawColor(5, 25, 5, 255)
+	scr.renderer.SetDrawColor(5, 5, 5, 255)
 	scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 	err = scr.renderer.Clear()
 	if err != nil {

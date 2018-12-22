@@ -33,10 +33,11 @@ const (
 	ReqOnMouseButtonLeft  CallbackReq = "ONMOUSEBUTTONLEFT"
 	ReqOnMouseButtonRight CallbackReq = "ONMOUSEBUTTONRIGHT"
 
-	ReqSetVisibility SetAttrReq = "SETVISIBILITY" // bool
-	ReqSetPause      SetAttrReq = "SETPAUSE"      // bool
-	ReqSetDebug      SetAttrReq = "SETDEBUG"      // bool
-	ReqSetScale      SetAttrReq = "SETSCALE"      // float
+	ReqSetVisibility       SetAttrReq = "SETVISIBILITY"           // bool, optional bool (update on show)
+	ReqSetVisibilityStable SetAttrReq = "SETVISIBILITYWHENSTABLE" // none
+	ReqSetPause            SetAttrReq = "SETPAUSE"                // bool
+	ReqSetDebug            SetAttrReq = "SETDEBUG"                // bool
+	ReqSetScale            SetAttrReq = "SETSCALE"                // float
 )
 
 // SignalAttributes represents the data sent to the television
@@ -50,7 +51,7 @@ type Television interface {
 	MachineInfoTerse() string
 	MachineInfo() string
 
-	Signal(SignalAttributes)
+	Signal(SignalAttributes) error
 
 	RequestTVState(TVStateReq) (*TVState, error)
 	RequestTVInfo(TVInfoReq) (string, error)

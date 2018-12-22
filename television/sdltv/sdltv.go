@@ -53,7 +53,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	}
 
 	// initialise the screens we'll be using
-	tv.scr, err = newScreen(&tv.HeadlessTV)
+	tv.scr, err = newScreen(tv)
 
 	// set window size and scaling
 	err = tv.scr.setScaling(scale)
@@ -83,8 +83,11 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 // Signal is the principle method of communication between the VCS and
 // televsion. note that most of the work is done in the embedded HeadlessTV
 // instance
-func (tv *SDLTV) Signal(attr television.SignalAttributes) {
-	tv.HeadlessTV.Signal(attr)
+func (tv *SDLTV) Signal(attr television.SignalAttributes) error {
+	err := tv.HeadlessTV.Signal(attr)
+	if err != nil {
+		return err
+	}
 
 	tv.guiLoopLock.Lock()
 	defer tv.guiLoopLock.Unlock()
@@ -100,6 +103,8 @@ func (tv *SDLTV) Signal(attr television.SignalAttributes) {
 	y := int32(tv.Scanline.Value().(int))
 
 	tv.scr.setPixel(x, y, r, g, b)
+
+	return nil
 }
 
 func (tv *SDLTV) newFrame() error {

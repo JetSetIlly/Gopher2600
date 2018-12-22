@@ -22,7 +22,8 @@ type TIA struct {
 
 	// motion clock is an out-of-phase colorClock, running 2 cycles ahead of
 	// the main color clock (according to the document, "Atari 2600 TIA
-	// Hardware Notes" by Andrew Towers)
+	// Hardware Notes" by Andrew Towers) - currently used to indicate when
+	// calling tickFutures()
 	motionClock bool
 
 	hmove *hmove
@@ -197,7 +198,10 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// at the end of the video cycle we want to finally signal the televison
-	tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixelColor})
+	err := tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixelColor})
+	if err != nil {
+		panic(err)
+	}
 
 	// set collision registers
 	tia.Video.Collisions.SetMemory(tia.mem)

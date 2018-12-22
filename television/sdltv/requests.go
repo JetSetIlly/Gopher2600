@@ -76,10 +76,17 @@ func (tv *SDLTV) RequestSetAttr(request television.SetAttrReq, args ...interface
 	}
 
 	switch request {
+	case television.ReqSetVisibilityStable:
+		tv.scr.stability.showRequest = true
+
 	case television.ReqSetVisibility:
 		if args[0].(bool) {
 			tv.scr.window.Show()
-			tv.update()
+
+			// default args[1] of true if not present
+			if len(args) < 2 || args[1].(bool) {
+				tv.update()
+			}
 		} else {
 			tv.scr.window.Hide()
 		}

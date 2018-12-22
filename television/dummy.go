@@ -28,7 +28,9 @@ func (tv DummyTV) String() string {
 }
 
 // Signal (with DummyTV reciever) is the null implementation
-func (DummyTV) Signal(SignalAttributes) {}
+func (DummyTV) Signal(SignalAttributes) error {
+	return nil
+}
 
 // RequestTVState (with dummyTV reciever) is the null implementation
 func (DummyTV) RequestTVState(request TVStateReq) (*TVState, error) {

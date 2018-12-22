@@ -206,7 +206,7 @@ func run(cartridgeFile string) error {
 		return err
 	}
 
-	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+	err = tv.RequestSetAttr(television.ReqSetVisibilityStable, true)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
