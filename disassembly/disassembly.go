@@ -9,6 +9,7 @@ import (
 	"gopher2600/hardware/memory"
 	"gopher2600/symbols"
 	"io"
+	"strings"
 )
 
 // Disassembly represents the annotated disassembly of a 6502 binary
@@ -124,5 +125,28 @@ func (dsm *Disassembly) Dump(output io.Writer) {
 	for _, pc := range dsm.SequencePoints {
 		output.Write([]byte(dsm.Program[pc].GetString(dsm.Symtable, result.StyleFull)))
 		output.Write([]byte("\n"))
+	}
+}
+
+// Grep searches the disassembly dump for search string. case sensitive
+func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool) {
+	var s, m string
+
+	if !caseSensitive {
+		search = strings.ToUpper(search)
+	}
+
+	for _, pc := range dsm.SequencePoints {
+		s = dsm.Program[pc].GetString(dsm.Symtable, result.StyleBrief)
+		if !caseSensitive {
+			m = strings.ToUpper(s)
+		} else {
+			m = s
+		}
+
+		if strings.Contains(m, search) {
+			output.Write([]byte(s))
+			output.Write([]byte("\n"))
+		}
 	}
 }

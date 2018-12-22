@@ -53,6 +53,7 @@ const (
 	KeywordMouse         = "MOUSE"
 	KeywordScript        = "SCRIPT"
 	KeywordDisassemble   = "DISASSEMBLE"
+	KeywordGrep          = "GREP"
 )
 
 // Help contains the help text for the debugger's top level commands
@@ -94,6 +95,7 @@ var Help = map[string]string{
 	KeywordMouse:         "Return the coordinates of the last mouse press",
 	KeywordScript:        "Run commands from specified file",
 	KeywordDisassemble:   "Print the full cartridge disassembly",
+	KeywordGrep:          "Simple string search (case insensitive) of the disassembly",
 }
 
 var commandTemplate = input.CommandTemplate{
@@ -133,6 +135,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
+	KeywordGrep:          "%S %*",
 }
 
 // notes
@@ -221,6 +224,16 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordDisassemble:
 		dbg.disasm.Dump(os.Stdout)
+
+	case KeywordGrep:
+		search := tokens.Remainder()
+		output := strings.Builder{}
+		dbg.disasm.Grep(search, &output, false)
+		if output.Len() == 0 {
+			dbg.print(ui.Error, "%s not found in disassembly", search)
+		} else {
+			dbg.print(ui.Feedback, output.String())
+		}
 
 	case KeywordSymbol:
 		// TODO: change this so that it uses debugger.memory front-end
