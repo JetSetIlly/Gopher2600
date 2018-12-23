@@ -33,6 +33,9 @@ const (
 
 	// TV
 	UnknownTVRequest
+	SDLTV
+	ImageTV
+	DigestTV
 
 	// Peripherals
 	NoControllersFound

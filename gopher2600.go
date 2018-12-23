@@ -10,6 +10,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/television"
+	"gopher2600/television/digesttv"
 	"gopher2600/television/sdltv"
 	"os"
 	"runtime"
@@ -22,7 +23,7 @@ import (
 const initScript = ".gopher2600/debuggerInit"
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, PLAY, FPS, TVFPS")
+	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, PLAY, FPS, TVFPS, IMAGEGEN, REGRESS")
 	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	flag.Parse()
 
@@ -60,6 +61,7 @@ func main() {
 			fmt.Printf("* error running debugger: %s\n", err)
 			os.Exit(10)
 		}
+
 	case "DISASM":
 		dsm, err := disassembly.NewDisassembly(cartridgeFile)
 		if err != nil {
@@ -74,16 +76,25 @@ func main() {
 			os.Exit(10)
 		}
 		dsm.Dump(os.Stdout)
+
 	case "FPS":
 		err := fps(cartridgeFile, true)
 		if err != nil {
 			fmt.Printf("* error starting FPS profiler: %s\n", err)
 			os.Exit(10)
 		}
+
 	case "TVFPS":
 		err := fps(cartridgeFile, false)
 		if err != nil {
 			fmt.Printf("* error starting TVFPS profiler: %s\n", err)
+			os.Exit(10)
+		}
+
+	case "REGRESS":
+		err := regress(cartridgeFile, 3)
+		if err != nil {
+			fmt.Printf("* error running TEST: %s\n", err)
 			os.Exit(10)
 		}
 
@@ -103,6 +114,40 @@ func main() {
 	}
 }
 
+func regress(cartridgeFile string, numOfFrames int) error {
+	tv, err := digesttv.NewDigestTV("NTSC")
+	if err != nil {
+		return fmt.Errorf("error preparing television: %s", err)
+	}
+
+	vcs, err := hardware.NewVCS(tv)
+	if err != nil {
+		return fmt.Errorf("error preparing VCS: %s", err)
+	}
+
+	err = vcs.AttachCartridge(cartridgeFile)
+	if err != nil {
+		return err
+	}
+
+	const cyclesPerFrame = 19912
+
+	// run emulation for a while
+	cycles := cyclesPerFrame * numOfFrames
+	for cycles > 0 {
+		stepCycles, _, err := vcs.Step(hardware.StubVideoCycleCallback)
+		if err != nil {
+			return err
+		}
+		cycles -= stepCycles
+	}
+
+	// output current digest
+	fmt.Println(tv)
+
+	return nil
+}
+
 func fps(cartridgeFile string, justTheVCS bool) error {
 	var tv television.Television
 	var err error
@@ -110,7 +155,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	if justTheVCS {
 		tv = new(television.DummyTV)
 		if tv == nil {
-			return fmt.Errorf("error preparing television: %s", err)
+			return fmt.Errorf("error preparing television")
 		}
 	} else {
 		tv, err = sdltv.NewSDLTV("NTSC", 3.0)
@@ -159,6 +204,7 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 		cycles -= stepCycles
 	}
 
+	// display estimated fps
 	fmt.Printf("%f fps\n", float64(numOfFrames)/time.Since(startTime).Seconds())
 
 	// write memory profile

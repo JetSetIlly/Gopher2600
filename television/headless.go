@@ -179,6 +179,9 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 			// we've not yet received a correct vsync signal but we really should have
 			// continue with an implied VSYNC
 			tv.outOfSpec = true
+
+			// repeat the last scanline (over and over if necessary)
+			tv.Scanline.value--
 		}
 	} else {
 		tv.HorizPos.value++
