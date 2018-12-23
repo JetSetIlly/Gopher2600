@@ -46,6 +46,7 @@ type HeadlessTV struct {
 	// hook into and add extra gubbins to the Signal() function
 	HookNewFrame    func() error
 	HookNewScanline func() error
+	HookSetPixel    func(x, y int32, red, green, blue byte) error
 }
 
 // NewHeadlessTV creates a new instance of HeadlessTV for a minimalist
@@ -77,6 +78,7 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	// empty callbacks
 	tv.HookNewFrame = func() error { return nil }
 	tv.HookNewScanline = func() error { return nil }
+	tv.HookSetPixel = func(x, y int32, r, g, b byte) error { return nil }
 
 	// initialise TVState
 	tv.HorizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.Spec.ClocksPerHblank, valueFormat: "%d"}
@@ -199,10 +201,18 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 	// record the current signal settings so they can be used for reference
 	tv.prevSignal = attr
 
-	// everthing else we could possibly do requires a screen of some sort
-	// (eg. color decoding)
+	// decode color
+	red, green, blue := byte(0), byte(0), byte(0)
+	if attr.Pixel <= 256 {
+		col := tv.Spec.Colors[attr.Pixel]
+		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+	}
 
-	return nil
+	// current coordinates
+	x := int32(tv.HorizPos.Value().(int)) + int32(tv.Spec.ClocksPerHblank)
+	y := int32(tv.Scanline.Value().(int))
+
+	return tv.HookSetPixel(x, y, red, green, blue)
 }
 
 // RequestTVState returns the TVState object for the named state. television

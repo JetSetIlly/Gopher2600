@@ -64,6 +64,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	// register new frame callback from HeadlessTV to SDLTV
 	// leaving SignalNewScanline() hook at its default
 	tv.HookNewFrame = tv.newFrame
+	tv.HookSetPixel = tv.setPixel
 
 	// update tv (with a black image)
 	err = tv.update()
@@ -80,31 +81,12 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	return tv, nil
 }
 
-// Signal is the principle method of communication between the VCS and
-// televsion. note that most of the work is done in the embedded HeadlessTV
-// instance
-func (tv *SDLTV) Signal(attr television.SignalAttributes) error {
-	err := tv.HeadlessTV.Signal(attr)
-	if err != nil {
-		return err
-	}
-
+// Pixel puts the pixel on the tv
+func (tv *SDLTV) setPixel(x, y int32, red, green, blue byte) error {
 	tv.guiLoopLock.Lock()
 	defer tv.guiLoopLock.Unlock()
 
-	// decode color
-	r, g, b := byte(0), byte(0), byte(0)
-	if attr.Pixel <= 256 {
-		col := tv.Spec.Colors[attr.Pixel]
-		r, g, b = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-	}
-
-	x := int32(tv.HorizPos.Value().(int)) + int32(tv.Spec.ClocksPerHblank)
-	y := int32(tv.Scanline.Value().(int))
-
-	tv.scr.setPixel(x, y, r, g, b)
-
-	return nil
+	return tv.scr.setPixel(x, y, red, green, blue)
 }
 
 func (tv *SDLTV) newFrame() error {

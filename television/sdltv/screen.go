@@ -162,7 +162,7 @@ func (scr *screen) toggleMasking() {
 	scr.setMasking(!scr.unmasked)
 }
 
-func (scr *screen) setPixel(x, y int32, red, green, blue byte) {
+func (scr *screen) setPixel(x, y int32, red, green, blue byte) error {
 	i := (y*scr.maxWidth + x) * scrDepth
 	if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
 		scr.pixels[i] = red
@@ -170,6 +170,8 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte) {
 		scr.pixels[i+2] = blue
 		scr.pixels[i+3] = 255
 	}
+
+	return nil
 }
 
 func (scr *screen) update(paused bool) error {
