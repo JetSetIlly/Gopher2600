@@ -12,6 +12,12 @@ const (
 	ScriptFileError
 	InvalidTarget
 
+	// Regression
+	RegressionEntryExists
+	RegressionEntryCollision
+	RegressionEntryDoesNotExist
+	RegressionEntryFail
+
 	// CPU
 	UnimplementedInstruction
 	NullInstruction

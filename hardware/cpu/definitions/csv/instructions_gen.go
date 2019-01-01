@@ -67,7 +67,7 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 			return nil, fmt.Errorf("wrong number of fields in instruction definition (%s)", rec)
 		}
 
-		// trim trailing comment from last record
+		// trim trailing comment from record
 		rec[len(rec)-1] = strings.Split(rec[len(rec)-1], "#")[0]
 
 		// manually trim trailing space from all fields in the record

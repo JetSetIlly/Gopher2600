@@ -9,10 +9,12 @@ import (
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/regression"
 	"gopher2600/television"
-	"gopher2600/television/digesttv"
 	"gopher2600/television/sdltv"
+	"io"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -23,142 +25,236 @@ import (
 const initScript = ".gopher2600/debuggerInit"
 
 func main() {
-	mode := flag.String("mode", "DEBUG", "emulation mode: DEBUG, DISASM, RUN, PLAY, FPS, TVFPS, IMAGEGEN, REGRESS")
-	termType := flag.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
-	flag.Parse()
+	progName := path.Base(os.Args[0])
 
-	cartridgeFile := ""
-	if len(flag.Args()) == 1 {
-		cartridgeFile = flag.Args()[0]
-	} else if len(flag.Args()) > 1 {
-		fmt.Println("* too many arguments")
-		os.Exit(10)
+	progFlags := flag.NewFlagSet(progName, flag.ExitOnError)
+	progFlags.Parse(os.Args[1:])
+
+	if len(progFlags.Args()) == 0 {
+		fmt.Println("* mode or cartridge required")
+		os.Exit(2)
 	}
 
-	switch strings.ToUpper(*mode) {
+	mode := strings.ToUpper(progFlags.Arg(0))
+	modeArgPos := 1
+	modeFlags := flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
+	modeFlagsParse := func() {
+		if len(progFlags.Args()) >= modeArgPos {
+			modeFlags.Parse(progFlags.Args()[modeArgPos:])
+		}
+	}
+
+	switch mode {
+	default:
+		// RUN is the default mode
+		modeArgPos = 0
+		fallthrough
+
+	case "RUN":
+		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
+		modeFlagsParse()
+
+		switch len(modeFlags.Args()) {
+		case 0:
+			fmt.Println("* 2600 cartridge required")
+			os.Exit(2)
+		case 1:
+			err := run(modeFlags.Arg(0), *tvMode, float32(*scaling))
+			if err != nil {
+				fmt.Printf("* error running emulator: %s\n", err)
+				os.Exit(2)
+			}
+		default:
+			fmt.Printf("* too many arguments for %s mode\n", mode)
+			os.Exit(2)
+		}
+
 	case "DEBUG":
+		termType := modeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
+		modeFlagsParse()
+
 		dbg, err := debugger.NewDebugger()
 		if err != nil {
 			fmt.Printf("* error starting debugger: %s\n", err)
-			os.Exit(10)
+			os.Exit(2)
 		}
 
 		// start debugger with choice of interface and cartridge
 		var term ui.UserInterface
 
 		switch strings.ToUpper(*termType) {
-		case "COLOR":
-			term = new(colorterm.ColorTerminal)
 		default:
 			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
 			fallthrough
 		case "PLAIN":
 			term = nil
+		case "COLOR":
+			term = new(colorterm.ColorTerminal)
 		}
 
-		err = dbg.Start(term, cartridgeFile, initScript)
-		if err != nil {
-			fmt.Printf("* error running debugger: %s\n", err)
-			os.Exit(10)
+		switch len(modeFlags.Args()) {
+		case 0:
+			// it's okay if DEBUG mode is started with no cartridges
+			fallthrough
+		case 1:
+			err := dbg.Start(term, modeFlags.Arg(0), initScript)
+			if err != nil {
+				fmt.Printf("* error running debugger: %s\n", err)
+				os.Exit(2)
+			}
+		default:
+			fmt.Printf("* too many arguments for %s mode\n", mode)
+			os.Exit(2)
 		}
 
 	case "DISASM":
-		dsm, err := disassembly.NewDisassembly(cartridgeFile)
-		if err != nil {
-			switch err.(type) {
-			case errors.GopherError:
-				// print what disassembly output we do have
-				if dsm != nil {
-					dsm.Dump(os.Stdout)
+		modeFlagsParse()
+
+		switch len(modeFlags.Args()) {
+		case 0:
+			fmt.Println("* 2600 cartridge required")
+			os.Exit(2)
+		case 1:
+			dsm, err := disassembly.NewDisassembly(modeFlags.Arg(0))
+			if err != nil {
+				switch err.(type) {
+				case errors.GopherError:
+					// print what disassembly output we do have
+					if dsm != nil {
+						dsm.Dump(os.Stdout)
+					}
 				}
+				fmt.Printf("* error during disassembly: %s\n", err)
+				os.Exit(2)
 			}
-			fmt.Printf("* error during disassembly: %s\n", err)
-			os.Exit(10)
+			dsm.Dump(os.Stdout)
+		default:
+			fmt.Printf("* too many arguments for %s mode\n", mode)
+			os.Exit(2)
 		}
-		dsm.Dump(os.Stdout)
 
 	case "FPS":
-		err := fps(cartridgeFile, true)
-		if err != nil {
-			fmt.Printf("* error starting FPS profiler: %s\n", err)
-			os.Exit(10)
-		}
+		display := modeFlags.Bool("display", false, "display TV output: boolean")
+		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
+		frames := modeFlags.Int("frames", 100, "number of frames to run")
+		modeFlagsParse()
 
-	case "TVFPS":
-		err := fps(cartridgeFile, false)
-		if err != nil {
-			fmt.Printf("* error starting TVFPS profiler: %s\n", err)
-			os.Exit(10)
+		switch len(modeFlags.Args()) {
+		case 0:
+			fmt.Println("* 2600 cartridge required")
+			os.Exit(2)
+		case 1:
+			err := fps(modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *frames)
+			if err != nil {
+				fmt.Printf("* error starting fps profiler: %s\n", err)
+				os.Exit(2)
+			}
+		default:
+			fmt.Printf("* too many arguments for %s mode\n", mode)
+			os.Exit(2)
 		}
 
 	case "REGRESS":
-		err := regress(cartridgeFile, 3)
-		if err != nil {
-			fmt.Printf("* error running TEST: %s\n", err)
-			os.Exit(10)
-		}
+		subMode := strings.ToUpper(progFlags.Arg(1))
+		modeArgPos++
+		switch subMode {
+		default:
+			modeArgPos-- // undo modeArgPos adjustment
+			fallthrough
+		case "RUN":
+			verbose := modeFlags.Bool("verbose", false, "display details of each test")
+			failOnError := modeFlags.Bool("fail", false, "fail on error: boolean")
+			modeFlagsParse()
 
-	case "PLAY":
-		// PLAY is a synonym for RUN
-		fallthrough
+			var output io.Writer
+			if *verbose == true {
+				output = os.Stdout
+			}
 
-	case "RUN":
-		err := run(cartridgeFile)
-		if err != nil {
-			fmt.Printf("* error running emulator: %s\n", err)
-			os.Exit(10)
+			switch len(modeFlags.Args()) {
+			case 0:
+				succeed, fail, err := regression.RegressRunTests(output, *failOnError)
+				if err != nil {
+					fmt.Printf("* error during regression tests: %s\n", err)
+					os.Exit(2)
+				}
+				fmt.Printf("regression tests: %d succeed, %d fail\n", succeed, fail)
+			default:
+				fmt.Printf("* too many arguments for %s mode\n", mode)
+				os.Exit(2)
+			}
+
+		case "DELETE":
+			modeFlagsParse()
+
+			switch len(modeFlags.Args()) {
+			case 0:
+				fmt.Println("* 2600 cartridge required")
+				os.Exit(2)
+			case 1:
+				err := regression.RegressDeleteCartridge(modeFlags.Arg(0))
+				if err != nil {
+					fmt.Printf("* error deleting regression entry: %s\n", err)
+					os.Exit(2)
+				}
+				fmt.Printf("! deleted %s from regression database\n", path.Base(modeFlags.Arg(0)))
+			default:
+				fmt.Printf("* too many arguments for %s mode\n", mode)
+				os.Exit(2)
+			}
+
+		case "ADD":
+			tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
+			modeFlagsParse()
+
+			switch len(modeFlags.Args()) {
+			case 0:
+				fmt.Println("* 2600 cartridge required")
+				os.Exit(2)
+			case 1:
+				err := regression.RegressAddCartridge(modeFlags.Arg(0), *tvMode, *numFrames)
+				if err != nil {
+					fmt.Printf("* error adding regression test: %s\n", err)
+					os.Exit(2)
+				}
+				fmt.Printf("! added %s to regression database\n", path.Base(modeFlags.Arg(0)))
+			default:
+				fmt.Printf("* too many arguments for %s mode\n", mode)
+				os.Exit(2)
+			}
+		case "UPDATE":
+			tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
+			modeFlagsParse()
+
+			switch len(modeFlags.Args()) {
+			case 0:
+				fmt.Println("* 2600 cartridge required")
+				os.Exit(2)
+			case 1:
+				err := regression.RegressUpdateCartridge(modeFlags.Arg(0), *tvMode, *numFrames)
+				if err != nil {
+					fmt.Printf("* error updating regression test: %s\n", err)
+					os.Exit(2)
+				}
+				fmt.Printf("! updated %s in regression database\n", path.Base(modeFlags.Arg(0)))
+			default:
+				fmt.Printf("* too many arguments for %s mode\n", mode)
+				os.Exit(2)
+			}
 		}
-	default:
-		fmt.Printf("* unknown mode: %s\n", strings.ToUpper(*mode))
-		os.Exit(10)
 	}
 }
 
-func regress(cartridgeFile string, numOfFrames int) error {
-	tv, err := digesttv.NewDigestTV("NTSC")
-	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
-	}
-
-	vcs, err := hardware.NewVCS(tv)
-	if err != nil {
-		return fmt.Errorf("error preparing VCS: %s", err)
-	}
-
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return err
-	}
-
-	const cyclesPerFrame = 19912
-
-	// run emulation for a while
-	cycles := cyclesPerFrame * numOfFrames
-	for cycles > 0 {
-		stepCycles, _, err := vcs.Step(hardware.StubVideoCycleCallback)
-		if err != nil {
-			return err
-		}
-		cycles -= stepCycles
-	}
-
-	// output current digest
-	fmt.Println(tv)
-
-	return nil
-}
-
-func fps(cartridgeFile string, justTheVCS bool) error {
+func fps(cartridgeFile string, display bool, tvMode string, scaling float32, numOfFrames int) error {
 	var tv television.Television
 	var err error
 
-	if justTheVCS {
-		tv = new(television.DummyTV)
-		if tv == nil {
-			return fmt.Errorf("error preparing television")
-		}
-	} else {
-		tv, err = sdltv.NewSDLTV("NTSC", 3.0)
+	if display {
+		tv, err = sdltv.NewSDLTV(tvMode, scaling)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
@@ -167,6 +263,11 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
+	} else {
+		tv, err = television.NewHeadlessTV("NTSC")
+		if err != nil {
+			return fmt.Errorf("error preparing television: %s", err)
+		}
 	}
 
 	vcs, err := hardware.NewVCS(tv)
@@ -178,9 +279,6 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	if err != nil {
 		return err
 	}
-
-	const cyclesPerFrame = 19912
-	const numOfFrames = 180
 
 	// start cpu profile
 	f, err := os.Create("cpu.profile")
@@ -193,19 +291,16 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	}
 	defer pprof.StopCPUProfile()
 
-	// run emulation for a while
-	cycles := cyclesPerFrame * numOfFrames
+	// run for numOfFrames and calculate frames-per-second
 	startTime := time.Now()
-	for cycles > 0 {
-		stepCycles, _, err := vcs.Step(hardware.StubVideoCycleCallback)
-		if err != nil {
-			return err
-		}
-		cycles -= stepCycles
+	err = vcs.RunFrames(numOfFrames)
+	if err != nil {
+		return err
 	}
+	fps := float64(numOfFrames) / time.Since(startTime).Seconds()
 
 	// display estimated fps
-	fmt.Printf("%f fps\n", float64(numOfFrames)/time.Since(startTime).Seconds())
+	fmt.Printf("%f fps\n", fps)
 
 	// write memory profile
 	f, err = os.Create("mem.profile")
@@ -222,8 +317,8 @@ func fps(cartridgeFile string, justTheVCS bool) error {
 	return nil
 }
 
-func run(cartridgeFile string) error {
-	tv, err := sdltv.NewSDLTV("NTSC", 3.0)
+func run(cartridgeFile, tvMode string, scaling float32) error {
+	tv, err := sdltv.NewSDLTV(tvMode, scaling)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}

@@ -216,3 +216,25 @@ func (vcs *VCS) Reset() error {
 
 	return nil
 }
+
+// RunFrames sets emulator running for the specified number of frames
+// - not used by the debugger because traps and steptraps are more flexible
+// - useful for fps and regression tests
+func (vcs *VCS) RunFrames(numFrames int) error {
+	frm, err := vcs.TV.RequestTVState(television.ReqFramenum)
+	if err != nil {
+		return err
+	}
+
+	targetFrame := frm.Value().(int) + numFrames
+
+	for frm.Value().(int) != targetFrame {
+		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
+		frm, err = vcs.TV.RequestTVState(television.ReqFramenum)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

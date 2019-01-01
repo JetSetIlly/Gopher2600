@@ -55,6 +55,8 @@ type Debugger struct {
 
 	// single-fire step traps. these are used for the STEP command, allowing
 	// things like "STEP FRAME".
+	// -- note that the hardware.VCS type has the StepFrames() function, we're
+	// not using that here because this solution is more general and flexible
 	stepTraps *traps
 
 	// commandOnHalt says whether an sequence of commands should run automatically

@@ -10,6 +10,12 @@ var messages = map[Errno]string{
 	ScriptFileCannotOpen:  "cannot open script file (%s)",
 	InvalidTarget:         "invalid target (%s)",
 
+	// Regression
+	RegressionEntryExists:       "entry exists (%s)",
+	RegressionEntryCollision:    "ROM hash collision (%s AND %s)",
+	RegressionEntryDoesNotExist: "entry missing (%s)",
+	RegressionEntryFail:         "screen digest mismatch (%s)",
+
 	// CPU
 	UnimplementedInstruction:       "unimplemented instruction (%0#x) at (%#04x)",
 	NullInstruction:                "unimplemented instruction (0xff)",
