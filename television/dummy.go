@@ -27,6 +27,11 @@ func (tv DummyTV) String() string {
 	return tv.MachineInfo()
 }
 
+// Reset all the values for the television
+func (DummyTV) Reset() error {
+	return nil
+}
+
 // Signal (with DummyTV reciever) is the null implementation
 func (DummyTV) Signal(SignalAttributes) error {
 	return nil

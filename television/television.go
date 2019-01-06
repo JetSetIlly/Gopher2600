@@ -24,10 +24,10 @@ const (
 	ReqScanline TVStateReq = "SCANLINE"
 	ReqHorizPos TVStateReq = "HORIZPOS"
 
-	ReqTVSpec     TVInfoReq = "TVSPEC"
-	ReqLastMouse  TVInfoReq = "MOUSE"
-	ReqLastMouseX TVInfoReq = "MOUSEX"
-	ReqLastMouseY TVInfoReq = "MOUSEY"
+	ReqTVSpec            TVInfoReq = "TVSPEC"
+	ReqLastMouse         TVInfoReq = "MOUSE"
+	ReqLastMouseHorizPos TVInfoReq = "MOUSEHORIZPOS"
+	ReqLastMouseScanline TVInfoReq = "MOUSESCANLINE"
 
 	ReqOnWindowClose      CallbackReq = "ONWINDOWCLOSE"
 	ReqOnMouseButtonLeft  CallbackReq = "ONMOUSEBUTTONLEFT"
@@ -51,6 +51,7 @@ type Television interface {
 	MachineInfoTerse() string
 	MachineInfo() string
 
+	Reset() error
 	Signal(SignalAttributes) error
 
 	RequestTVState(TVStateReq) (*TVState, error)

@@ -94,12 +94,16 @@ type Debugger struct {
 	input []byte
 
 	// channel for communicating with the debugging loop from other areas of
-	// the emulation, paritcularly from other goroutines. for instance, we use
-	// the syncChannel to implement ctrl-c handling, even though all the code
-	// to do it is right here in this very file. we do this to avoid having to
-	// use sync.Mutex. marking critical sections with a mutex is fine and would
-	// definitiely work. However it is, frankly, a pain, messy and feels wrong.
-	syncChannel chan func()
+	// the emulation, paritcularly from other goroutines.
+	// -- it is used primarily to communicate with SDL gui goroutine
+	// -- we also use the dbgChannel to implement ctrl-c handling. even though
+	// all the code to do it is right here in this very file, we do this to
+	// avoid having to use sync.Mutex.
+	// -- we could improve this by allowing the function to take arguments and
+	// to return a value but there's no real use-case for this at the moment
+	// but it's something to consider (see colorterminal/input.go for possible
+	// reason)
+	dbgChannel chan func()
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -146,18 +150,18 @@ func NewDebugger() (*Debugger, error) {
 	dbg.input = make([]byte, 255)
 
 	// make synchronisation channel
-	dbg.syncChannel = make(chan func(), 2)
+	dbg.dbgChannel = make(chan func(), 2)
 
 	// register tv callbacks
-	err = tv.RequestCallbackRegistration(television.ReqOnMouseButtonRight, dbg.syncChannel, func() {
+	// -- add break on right mouse button
+	err = tv.RequestCallbackRegistration(television.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
-		hp, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseX)
-		sl, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseY)
+		hp, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseHorizPos)
+		sl, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseScanline)
 
+		dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
 		dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
-
-		// if the emulation is running the new break should cause it to halt
 	})
 	if err != nil {
 		return nil, err
@@ -194,16 +198,13 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
-		loop := true
-		for loop {
+		for {
 			<-ctrlC
 
-			dbg.syncChannel <- func() {
+			dbg.dbgChannel <- func() {
 				if dbg.runUntilHalt {
 					dbg.runUntilHalt = false
 				} else {
-					// TODO: interrupt os.stdin.Read() in plain terminal, so that
-					// the user doesn't have to press return after a ctrl-c press
 					dbg.running = false
 				}
 			}
@@ -228,8 +229,9 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 }
 
 // loadCartridge makes sure that the cartridge loaded into vcs memory and the
-// available disassembly/symbols are in sync. *never call vcs.AttachCartridge
-// except through this funtion*
+// available disassembly/symbols are in sync.
+//
+// *never call vcs.AttachCartridge except through this funtion*
 func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	err := dbg.vcs.AttachCartridge(cartridgeFilename)
 	if err != nil {
@@ -246,6 +248,11 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	}
 
 	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symtable)
+	if err != nil {
+		return err
+	}
+
+	err = dbg.vcs.TV.Reset()
 	if err != nil {
 		return err
 	}
@@ -309,13 +316,15 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			return nil
 		}
 
-		// check syncChannel and run any functions we find in there
-		// TODO: not sure if this is the best part of the loop to put this
-		// check. it works for now.
+		// check dbgChannel and run any functions we find in there -- note that
+		// we also monitor the dbgChannel in the UserInterface.UserRead()
+		// function. if we didn't then this inputLoop would not react to
+		// messages on the channel until it reaches this point again.
 		select {
-		case f := <-dbg.syncChannel:
+		case f := <-dbg.dbgChannel:
 			f()
 		default:
+			// go novice note: we need a default case otherwise the select blocks
 		}
 
 		// check for step-traps
@@ -354,6 +363,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// expand inputloopHalt to include step-once/many flag
 		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
 
+		// enter halt state
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
 			err = dbg.vcs.TV.RequestSetAttr(television.ReqSetPause, true)
@@ -386,7 +396,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// get user input
-			n, err := dbg.ui.UserRead(dbg.input, prompt)
+			n, err := dbg.ui.UserRead(dbg.input, prompt, dbg.dbgChannel)
 			if err != nil {
 				switch err.(type) {
 				case *ui.UserInterrupt:

@@ -29,10 +29,6 @@ func (tv *SDLTV) guiLoop() {
 					tv.guiLoopLock.Lock()
 					tv.scr.toggleMasking()
 					tv.guiLoopLock.Unlock()
-
-					// TODO: this doesn't work properly because we're in a
-					// different goroutine than the one in which we intialised
-					// the SDL library.
 				}
 			}
 
@@ -51,18 +47,18 @@ func (tv *SDLTV) guiLoop() {
 					// the opposite of pixelX() and also the scalining applied
 					// by the SDL renderer
 					if tv.scr.unmasked {
-						tv.mouseX = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
+						tv.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
 					} else {
-						tv.mouseX = int(float32(ev.X) / sx)
+						tv.lastMouseHorizPos = int(float32(ev.X) / sx)
 					}
 
 					// convert Y pixel value to scanline equivalent
 					// the opposite of pixelY() and also the scalining applied
 					// by the SDL renderer
 					if tv.scr.unmasked {
-						tv.mouseY = int(float32(ev.Y) / sy)
+						tv.lastMouseScanline = int(float32(ev.Y) / sy)
 					} else {
-						tv.mouseY = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync
+						tv.lastMouseScanline = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync
 					}
 					tv.guiLoopLock.Unlock()
 

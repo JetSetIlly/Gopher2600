@@ -15,6 +15,7 @@ func BenchmarkSDLTV(b *testing.B) {
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}
+
 	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))

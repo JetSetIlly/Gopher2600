@@ -2,11 +2,13 @@ package future
 
 import "fmt"
 
+const futureDepth = 3
+
 // Group is used to buffer payloads for future triggering.
 type Group struct {
 	id       int
-	singles  [3]Instance
-	lastTick [3]bool
+	singles  [futureDepth]Instance
+	lastTick [futureDepth]bool
 }
 
 // MachineInfo returns the ball sprite information in terse format
@@ -52,8 +54,10 @@ func (fut Group) IsScheduled() bool {
 
 // Tick moves the pending action counter on one step
 func (fut *Group) Tick() bool {
-	fut.lastTick[0] = fut.singles[0].tick()
-	fut.lastTick[1] = fut.singles[1].tick()
-	fut.lastTick[2] = fut.singles[2].tick()
-	return fut.lastTick[0] || fut.lastTick[1] || fut.lastTick[2]
+	r := false
+	for i := 0; i < len(fut.lastTick); i++ {
+		fut.lastTick[i] = fut.singles[i].tick()
+		r = r || fut.lastTick[i]
+	}
+	return r
 }

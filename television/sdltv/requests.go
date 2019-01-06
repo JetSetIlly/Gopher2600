@@ -9,6 +9,35 @@ import (
 	"gopher2600/television"
 )
 
+// RequestTVState returns the TVState object for the named state
+func (tv *SDLTV) RequestTVState(request television.TVStateReq) (*television.TVState, error) {
+	return tv.HeadlessTV.RequestTVState(request)
+}
+
+// RequestTVInfo returns the TVState object for the named state
+func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
+	state, err := tv.HeadlessTV.RequestTVInfo(request)
+	switch err := err.(type) {
+	case errors.GopherError:
+		if err.Errno != errors.UnknownTVRequest {
+			return state, err
+		}
+	default:
+		return state, err
+	}
+
+	switch request {
+	case television.ReqLastMouse:
+		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.lastMouseHorizPos, tv.lastMouseScanline), nil
+	case television.ReqLastMouseHorizPos:
+		return fmt.Sprintf("%d", tv.lastMouseHorizPos), nil
+	case television.ReqLastMouseScanline:
+		return fmt.Sprintf("%d", tv.lastMouseScanline), nil
+	default:
+		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
+	}
+}
+
 // RequestCallbackRegistration implements Television interface
 func (tv *SDLTV) RequestCallbackRegistration(request television.CallbackReq, channel chan func(), callback func()) error {
 	// call embedded implementation and filter out UnknownCallbackRequests
@@ -37,30 +66,6 @@ func (tv *SDLTV) RequestCallbackRegistration(request television.CallbackReq, cha
 	}
 
 	return nil
-}
-
-// RequestTVInfo returns the TVState object for the named state
-func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
-	state, err := tv.HeadlessTV.RequestTVInfo(request)
-	switch err := err.(type) {
-	case errors.GopherError:
-		if err.Errno != errors.UnknownTVRequest {
-			return state, err
-		}
-	default:
-		return state, err
-	}
-
-	switch request {
-	case television.ReqLastMouse:
-		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.mouseX, tv.mouseY), nil
-	case television.ReqLastMouseX:
-		return fmt.Sprintf("%d", tv.mouseX), nil
-	case television.ReqLastMouseY:
-		return fmt.Sprintf("%d", tv.mouseY), nil
-	default:
-		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
-	}
 }
 
 // RequestSetAttr is used to set a television attibute

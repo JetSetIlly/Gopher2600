@@ -121,6 +121,18 @@ func (tv HeadlessTV) String() string {
 	return tv.MachineInfo()
 }
 
+// Reset all the values for the television
+func (tv *HeadlessTV) Reset() error {
+	tv.HorizPos.value = -tv.Spec.ClocksPerHblank
+	tv.FrameNum.value = 0
+	tv.Scanline.value = 0
+	tv.vsyncCount = 0
+	tv.prevSignal = SignalAttributes{}
+	tv.VBlankOff = 0
+	tv.VBlankOn = 0
+	return nil
+}
+
 // Signal is principle method of communication between the VCS and televsion
 //
 // note that the program panics if an errant signal is received that suggests
@@ -220,7 +232,8 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 
 // RequestTVState returns the TVState object for the named state. television
 // implementations in other packages will difficulty extending this function
-// because TVStateReq does not expose its members.
+// because TVStateReq does not expose its members. (although it may need to if
+// television is running in it's own goroutine)
 func (tv *HeadlessTV) RequestTVState(request TVStateReq) (*TVState, error) {
 	switch request {
 	default:

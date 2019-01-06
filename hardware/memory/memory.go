@@ -68,7 +68,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 // Generally, all access to the different memory areas should be passed through
 // this function. Any other information about an address can be accessed
 // through mem.Memmap[mappedAddress]
-func (mem VCSMemory) MapAddress(address uint16, readAddress bool) uint16 {
+func (mem VCSMemory) MapAddress(address uint16, cpuPerspective bool) uint16 {
 	// note that the order of these filters is important
 
 	// cartridge addresses
@@ -78,7 +78,7 @@ func (mem VCSMemory) MapAddress(address uint16, readAddress bool) uint16 {
 
 	// RIOT addresses
 	if address&mem.RIOT.origin == mem.RIOT.origin {
-		if readAddress {
+		if cpuPerspective {
 			return address & mem.RIOT.memtop & mem.RIOT.readMask
 		}
 		return address & mem.RIOT.memtop
@@ -90,7 +90,7 @@ func (mem VCSMemory) MapAddress(address uint16, readAddress bool) uint16 {
 	}
 
 	// everything else is in TIA space
-	if readAddress {
+	if cpuPerspective {
 		return address & mem.TIA.memtop & mem.TIA.readMask
 	}
 	return address & mem.TIA.memtop

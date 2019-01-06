@@ -8,7 +8,7 @@ type UserInterface interface {
 	CleanUp()
 	RegisterTabCompleter(*input.TabCompletion)
 	UserPrint(PrintProfile, string, ...interface{})
-	UserRead([]byte, string) (int, error)
+	UserRead([]byte, string, chan func()) (int, error)
 }
 
 // UserInterrupt can be returned by UserRead() when user has cause an

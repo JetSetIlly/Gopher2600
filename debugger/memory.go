@@ -2,27 +2,38 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/symbols"
+	"strings"
 )
 
-// memoryDebug is a front-end to the real VCS memory
+// memoryDebug is a front-end to the real VCS memory. this additonal memory
+// layer allows addressing by symbols.
 type memoryDebug struct {
-	vcsmem      *memory.VCSMemory
-	disassembly *disassembly.Disassembly
+	vcsmem *memory.VCSMemory
+
+	// symbols.Table instance can change after we've initialised with
+	// newMemoryDebug(), so we need a pointer to a pointer
+	symtable **symbols.Table
 }
 
-// mapAddress is like the MapAddress function in the VCS.memory package but
-// this accepts symbols as well as numeric addresses
-func (mem memoryDebug) mapAddress(address interface{}, readAddress bool) (uint16, error) {
+func newMemoryDebug(dbg *Debugger) *memoryDebug {
+	mem := new(memoryDebug)
+	mem.vcsmem = dbg.vcs.Mem
+	mem.symtable = &dbg.disasm.Symtable
+	return mem
+}
+
+// mapAddress allows addressing by symbols in addition to numerically
+func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uint16, error) {
 	var mapped bool
 	var ma uint16
 	var symbolTable map[uint16]string
 
-	if readAddress {
-		symbolTable = vcssymbols.ReadSymbols
+	if cpuPerspective {
+		symbolTable = (*mem.symtable).ReadSymbols
 	} else {
 		symbolTable = vcssymbols.WriteSymbols
 	}
@@ -33,7 +44,6 @@ func (mem memoryDebug) mapAddress(address interface{}, readAddress bool) (uint16
 		mapped = true
 	case string:
 		// search for symbolic address in standard vcs read symbols
-		// TODO: peeking of cartridge specific symbols
 		for a, sym := range symbolTable {
 			if sym == address {
 				ma = a
@@ -41,7 +51,16 @@ func (mem memoryDebug) mapAddress(address interface{}, readAddress bool) (uint16
 				break // for loop
 			}
 		}
-		mapped = true
+
+		// try again with an uppercase label
+		address = strings.ToUpper(address)
+		for a, sym := range symbolTable {
+			if sym == address {
+				ma = a
+				mapped = true
+				break // for loop
+			}
+		}
 	}
 
 	if !mapped {
@@ -49,13 +68,6 @@ func (mem memoryDebug) mapAddress(address interface{}, readAddress bool) (uint16
 	}
 
 	return ma, nil
-}
-
-func newMemoryDebug(dbg *Debugger) *memoryDebug {
-	memdbg := new(memoryDebug)
-	memdbg.vcsmem = dbg.vcs.Mem
-	memdbg.disassembly = dbg.disasm
-	return memdbg
 }
 
 // Peek returns the contents of the memory address, without triggering any side
@@ -76,7 +88,7 @@ func (mem memoryDebug) peek(address interface{}) (uint8, uint16, string, string,
 		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
 
-	return area.(memory.Area).Peek(ma)
+	return area.Peek(ma)
 }
 
 // Poke writes a value at the address
@@ -86,5 +98,10 @@ func (mem memoryDebug) poke(address interface{}, value uint8) error {
 		return err
 	}
 
-	return mem.vcsmem.Memmap[ma].Poke(ma, value)
+	area, present := mem.vcsmem.Memmap[ma]
+	if !present {
+		panic(fmt.Errorf("%04x not mapped correctly", address))
+	}
+
+	return area.Poke(ma, value)
 }

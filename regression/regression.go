@@ -9,7 +9,6 @@ import (
 	"gopher2600/television/digesttv"
 	"io"
 	"os"
-	"path"
 	"strconv"
 )
 
@@ -39,7 +38,7 @@ type regressionEntry struct {
 }
 
 func (entry regressionEntry) String() string {
-	return fmt.Sprintf("%s [%s] frames=%d", path.Base(entry.cartridgeFile), entry.tvMode, entry.numOFrames)
+	return fmt.Sprintf("%s [%s] frames=%d", entry.cartridgeFile, entry.tvMode, entry.numOFrames)
 }
 
 type regressionDB struct {
@@ -207,7 +206,7 @@ func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpd
 				return errors.NewGopherError(errors.RegressionEntryExists, entry)
 			}
 
-			return errors.NewGopherError(errors.RegressionEntryCollision, path.Base(entry.cartridgeFile), path.Base(existEntry.cartridgeFile))
+			return errors.NewGopherError(errors.RegressionEntryCollision, entry.cartridgeFile, existEntry.cartridgeFile)
 		}
 	}
 
@@ -230,7 +229,7 @@ func RegressDeleteCartridge(cartridgeFile string) error {
 	}
 
 	if _, ok := db.entries[key]; ok == false {
-		return errors.NewGopherError(errors.RegressionEntryDoesNotExist, path.Base(cartridgeFile))
+		return errors.NewGopherError(errors.RegressionEntryDoesNotExist, cartridgeFile)
 	}
 
 	delete(db.entries, key)

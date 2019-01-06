@@ -177,7 +177,7 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte) error {
 func (scr *screen) update(paused bool) error {
 	var err error
 
-	// before we go any further, check to frame stability
+	// before we go any further, check frame stability
 	err = scr.checkStability()
 	if err != nil {
 		return err

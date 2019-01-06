@@ -1,7 +1,6 @@
 package colorterm
 
 import (
-	"bufio"
 	"gopher2600/debugger/colorterm/easyterm"
 	"gopher2600/debugger/input"
 	"os"
@@ -11,10 +10,9 @@ import (
 type ColorTerminal struct {
 	easyterm.Terminal
 
-	reader         *bufio.Reader
+	reader         runeReader
 	commandHistory []command
-
-	tabCompleter *input.TabCompletion
+	tabCompleter   *input.TabCompletion
 }
 
 type command struct {
@@ -28,8 +26,8 @@ func (ct *ColorTerminal) Initialise() error {
 		return err
 	}
 
-	ct.reader = bufio.NewReader(os.Stdin)
 	ct.commandHistory = make([]command, 0)
+	ct.reader = initRuneReader()
 
 	return nil
 }

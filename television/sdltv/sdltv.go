@@ -23,13 +23,14 @@ type SDLTV struct {
 	onMouseButtonLeft  callback
 	onMouseButtonRight callback
 
-	// whether the emulation is currently paused - affects how we render the
-	// screen
+	// whether the emulation is currently paused. if paused is true then
+	// as much of the current frame is displayed as possible; the previous
+	// frame will take up the remainder of the screen.
 	paused bool
 
 	// last mouse selection
-	mouseX int // expressed as horizontal position
-	mouseY int // expressed as scanlines
+	lastMouseHorizPos int
+	lastMouseScanline int
 
 	// critical section protection
 	guiLoopLock sync.Mutex

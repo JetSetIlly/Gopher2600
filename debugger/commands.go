@@ -535,8 +535,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 			addr, err := strconv.ParseUint(a, 0, 16)
 			if err != nil {
-				// argument is not a number so argument must be a string
-				addr = strings.ToUpper(a)
+				// argument is not a number so argument must be a label
+				// we're accepting the case as entered by the user
+				addr = string(a)
 				msg = addr.(string)
 			} else {
 				// convert number to type suitable for Peek command
@@ -715,9 +716,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			coord = strings.ToUpper(coord)
 			switch coord {
 			case "X":
-				req = television.ReqLastMouseX
+				req = television.ReqLastMouseHorizPos
 			case "Y":
-				req = television.ReqLastMouseY
+				req = television.ReqLastMouseScanline
 			default:
 				return false, fmt.Errorf("unknown mouse option (%s)", coord)
 			}
