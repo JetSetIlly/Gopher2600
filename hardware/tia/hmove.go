@@ -44,15 +44,6 @@ func (hm hmove) String() string {
 	return hm.MachineInfo()
 }
 
-func (hm hmove) isActive() bool {
-	return hm.count > -1
-}
-
-func (hm *hmove) reset() {
-	hm.count = -1
-	hm.phase = -1
-}
-
 func (hm *hmove) set() {
 	hm.count = 15
 	hm.phase = hm.colorClock.Phase
@@ -67,4 +58,16 @@ func (hm *hmove) tick() (ct int, tick bool) {
 		tick = true
 	}
 	return ct, tick
+}
+
+// hmove inactivty control
+
+const inactiveCount = -1
+
+func (hm hmove) isActive() bool {
+	return hm.count > inactiveCount
+}
+
+func (hm *hmove) reset() {
+	hm.count = inactiveCount
 }

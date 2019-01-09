@@ -47,7 +47,7 @@ type playerSprite struct {
 
 func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerSprite {
 	ps := new(playerSprite)
-	ps.sprite = newSprite(label, colorClock)
+	ps.sprite = newSprite(label, colorClock, ps.tick)
 	return ps
 }
 

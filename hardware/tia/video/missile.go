@@ -42,7 +42,7 @@ type missileSprite struct {
 
 func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
 	ms := new(missileSprite)
-	ms.sprite = newSprite(label, colorClock)
+	ms.sprite = newSprite(label, colorClock, ms.tick)
 	return ms
 }
 

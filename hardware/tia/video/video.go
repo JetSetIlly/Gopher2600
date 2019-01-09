@@ -104,28 +104,31 @@ func (vd *Video) TickSprites() {
 	vd.Ball.tick()
 }
 
+// NewScanline is called at beginning of every scanline
+func (vd *Video) NewScanline() {
+	vd.Player0.newScanline()
+	vd.Player1.newScanline()
+	vd.Missile0.newScanline()
+	vd.Missile1.newScanline()
+	vd.Ball.newScanline()
+}
+
+// PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
+func (vd *Video) PrepareSpritesForHMOVE() {
+	vd.Player0.horizMovementLatch = true
+	vd.Player1.horizMovementLatch = true
+	vd.Missile0.horizMovementLatch = true
+	vd.Missile1.horizMovementLatch = true
+	vd.Ball.horizMovementLatch = true
+}
+
 // TickSpritesForHMOVE is only called when HMOVE is active
 func (vd *Video) TickSpritesForHMOVE(count int) {
-	if vd.Player0.horizMovement >= uint8(count) {
-		vd.Player0.tick()
-		vd.Player0.adjustHorizPos(count)
-	}
-	if vd.Player1.horizMovement >= uint8(count) {
-		vd.Player1.tick()
-		vd.Player1.adjustHorizPos(count)
-	}
-	if vd.Missile0.horizMovement >= uint8(count) {
-		vd.Missile0.tick()
-		vd.Missile0.adjustHorizPos(count)
-	}
-	if vd.Missile1.horizMovement >= uint8(count) {
-		vd.Missile1.tick()
-		vd.Missile1.adjustHorizPos(count)
-	}
-	if vd.Ball.horizMovement >= uint8(count) {
-		vd.Ball.tick()
-		vd.Ball.adjustHorizPos(count)
-	}
+	vd.Player0.tickSpritesForHMOVE(count)
+	vd.Player1.tickSpritesForHMOVE(count)
+	vd.Missile0.tickSpritesForHMOVE(count)
+	vd.Missile1.tickSpritesForHMOVE(count)
+	vd.Ball.tickSpritesForHMOVE(count)
 }
 
 // Pixel returns the color of the pixel at the current time. it will default
@@ -344,21 +347,6 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "ENABL":
 		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
-	case "HMP0":
-		// TODO: write delay?
-		vd.Player0.horizMovement = (value ^ 0x80) >> 4
-	case "HMP1":
-		// TODO: write delay?
-		vd.Player1.horizMovement = (value ^ 0x80) >> 4
-	case "HMM0":
-		// TODO: write delay?
-		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
-	case "HMM1":
-		// TODO: write delay?
-		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
-	case "HMBL":
-		// TODO: write delay?
-		vd.Ball.horizMovement = (value ^ 0x80) >> 4
 	case "VDELP0":
 		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
 	case "VDELP1":
@@ -369,15 +357,33 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "RESMP1":
 		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
-	case "HMCLR":
+	case "CXCLR":
+		vd.Collisions.clear()
+
+		// horizontal movement values range from -8 to +7
+		// for convenience we convert this to the range 0 to 15
+		//
 		// TODO: write delay?
+	case "HMP0":
+		vd.Player0.horizMovement = (value ^ 0x80) >> 4
+	case "HMP1":
+		vd.Player1.horizMovement = (value ^ 0x80) >> 4
+	case "HMM0":
+		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
+	case "HMM1":
+		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
+	case "HMBL":
+		vd.Ball.horizMovement = (value ^ 0x80) >> 4
+
+	case "HMCLR":
+		// note that HMCLR does not reset the horizontal movement latches in
+		// the sprite object (TIA_HW_Notes)
 		vd.Player0.horizMovement = 0x08
 		vd.Player1.horizMovement = 0x08
 		vd.Missile0.horizMovement = 0x08
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
-	case "CXCLR":
-		vd.Collisions.clear()
+
 	}
 
 	return false

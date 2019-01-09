@@ -31,7 +31,7 @@ type ballSprite struct {
 
 func newBallSprite(label string, colorClock *polycounter.Polycounter) *ballSprite {
 	bs := new(ballSprite)
-	bs.sprite = newSprite(label, colorClock)
+	bs.sprite = newSprite(label, colorClock, bs.tick)
 	return bs
 }
 

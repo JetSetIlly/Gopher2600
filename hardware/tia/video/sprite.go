@@ -24,8 +24,11 @@ type sprite struct {
 	// circulates to zero
 	position polycounter.Polycounter
 
-	// pixel position of the sprite
+	// pixel of the sprite
 	horizPos int
+
+	// adjusted horizontal position
+	adjHorizPos int
 
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
@@ -36,16 +39,23 @@ type sprite struct {
 	graphicsScanOff     int
 
 	// the amount of horizontal movement for the sprite
-	horizMovement uint8
+	horizMovement      uint8
+	horizMovementLatch bool
+
+	// the tick function that wraps the tickPosition() function
+	// - this function is called instead of the local tickPosition() function - the
+	// ticker function will calls tickPosition() as appropriate
+	tick func()
 
 	// a note on whether the sprite is about to be reset its position
 	resetFuture *future.Instance
 }
 
-func newSprite(label string, colorClock *polycounter.Polycounter) *sprite {
+func newSprite(label string, colorClock *polycounter.Polycounter, tick func()) *sprite {
 	sp := new(sprite)
 	sp.label = label
 	sp.colorClock = colorClock
+	sp.tick = tick
 
 	sp.position = *polycounter.New6Bit()
 	sp.position.SetResetPoint(39) // "101101"
@@ -65,7 +75,13 @@ func (sp sprite) MachineInfoTerse() string {
 	s.WriteString(sp.label)
 	s.WriteString(": ")
 	s.WriteString(sp.position.String())
-	s.WriteString(fmt.Sprintf(" pos=%d", sp.horizPos))
+	if sp.adjHorizPos == sp.horizPos {
+		s.WriteString(fmt.Sprintf(" pix=%d", sp.adjHorizPos))
+		s.WriteString(fmt.Sprintf(" hm=%d", sp.horizMovement))
+	} else {
+		s.WriteString(fmt.Sprintf(" {pix=%d", sp.adjHorizPos))
+		s.WriteString(fmt.Sprintf(" hm=%d}", sp.horizMovement))
+	}
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -86,7 +102,11 @@ func (sp sprite) MachineInfo() string {
 
 	s.WriteString(fmt.Sprintf("%s:\n", sp.label))
 	s.WriteString(fmt.Sprintf("   position: %s\n", sp.position))
-	s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.horizPos))
+	if sp.adjHorizPos == sp.horizPos {
+		s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.adjHorizPos))
+	} else {
+		s.WriteString(fmt.Sprintf("   pixel: %d {%d}\n", sp.horizPos, sp.adjHorizPos))
+	}
 	s.WriteString(fmt.Sprintf("   hmove: %d\n", sp.horizMovement))
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf("   drawing: %d\n", sp.graphicsScanMax-sp.graphicsScanCounter))
@@ -102,6 +122,19 @@ func (sp sprite) MachineInfo() string {
 	return s.String()
 }
 
+// newScanline is called at the beginning of a new scanline.
+// -- this is only used to reset the adjusted horizontal position value that we
+// use to report the horizontal location of the sprite. a bit of a waste
+// perhaps.
+// -- an alternative would be reset this value based on the position polycounter
+// value. but that wouldn't be wholly accurate (information-wise) in all
+// instances. that said, the additional function call doesn't impact that much
+// on performance, it just feels ugly.
+func (sp *sprite) newScanline() {
+	// reset adjusted horizontal position value
+	sp.adjHorizPos = sp.horizPos
+}
+
 func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
@@ -112,6 +145,7 @@ func (sp *sprite) resetPosition() {
 	} else {
 		sp.horizPos = 2
 	}
+	sp.adjHorizPos = sp.horizPos
 }
 
 func (sp *sprite) tickPosition(triggerList []int) bool {
@@ -128,21 +162,28 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 	return false
 }
 
-func (sp *sprite) adjustHorizPos(count int) {
-	if sp.horizMovement > 8 {
-		if count > 8 {
-			sp.horizPos--
-			if sp.horizPos < 0 {
-				sp.horizPos = 159
+func (sp *sprite) tickSpritesForHMOVE(count int) {
+	if sp.horizMovementLatch && (sp.horizMovement&uint8(count) != 0) {
+		sp.tick()
+
+		// adjust horizontal position
+		if sp.horizMovement > 8 {
+			if count > 8 {
+				sp.adjHorizPos--
+				if sp.adjHorizPos < 0 {
+					sp.adjHorizPos = 159
+				}
+			}
+		} else if sp.horizMovement < 8 {
+			if 8-int(sp.horizMovement)-count >= 0 {
+				sp.adjHorizPos++
+				if sp.adjHorizPos > 159 {
+					sp.adjHorizPos = 0
+				}
 			}
 		}
-	} else if sp.horizMovement < 8 {
-		if 8-int(sp.horizMovement)-count >= 0 {
-			sp.horizPos++
-			if sp.horizPos > 159 {
-				sp.horizPos = 0
-			}
-		}
+	} else {
+		sp.horizMovementLatch = false
 	}
 }
 

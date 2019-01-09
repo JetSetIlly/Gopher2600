@@ -114,6 +114,7 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.rsync.set()
 		service = false
 	case "HMOVE":
+		tia.Video.PrepareSpritesForHMOVE()
 		tia.hmove.set()
 		service = false
 	}
@@ -164,13 +165,14 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.wsync = false
 		tia.hblank = true
 		tia.hmove.reset()
+		tia.Video.NewScanline()
 		tia.colorClock.Reset()
 	} else if tia.colorClock.Tick() {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
 		tia.hmove.reset()
-
+		tia.Video.NewScanline()
 		// not sure if we need to reset rsync
 	}
 
