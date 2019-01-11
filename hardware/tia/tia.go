@@ -26,7 +26,7 @@ type TIA struct {
 	// calling tickFutures()
 	motionClock bool
 
-	hmove *hmove
+	Hmove *hmove
 	rsync *rsync
 
 	// TIA state -- controlled by the CPU
@@ -44,12 +44,12 @@ type TIA struct {
 
 // MachineInfoTerse returns the TIA information in terse format
 func (tia TIA) MachineInfoTerse() string {
-	return fmt.Sprintf("%s %s %s", tia.colorClock.MachineInfoTerse(), tia.rsync.MachineInfoTerse(), tia.hmove.MachineInfoTerse())
+	return fmt.Sprintf("%s %s %s", tia.colorClock.MachineInfoTerse(), tia.rsync.MachineInfoTerse(), tia.Hmove.MachineInfoTerse())
 }
 
 // MachineInfo returns the TIA information in verbose format
 func (tia TIA) MachineInfo() string {
-	return fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v", tia.colorClock, tia.rsync, tia.hmove)
+	return fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v", tia.colorClock, tia.rsync, tia.Hmove)
 }
 
 // map String to MachineInfo
@@ -68,8 +68,8 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.colorClock = polycounter.New6Bit()
 	tia.colorClock.SetResetPoint(56) // "010100"
 
-	tia.hmove = newHmove(tia.colorClock)
-	if tia.hmove == nil {
+	tia.Hmove = newHmove(tia.colorClock)
+	if tia.Hmove == nil {
 		return nil
 	}
 
@@ -115,7 +115,7 @@ func (tia *TIA) ReadTIAMemory() {
 		service = false
 	case "HMOVE":
 		tia.Video.PrepareSpritesForHMOVE()
-		tia.hmove.set()
+		tia.Hmove.set()
 		service = false
 	}
 
@@ -136,10 +136,10 @@ func (tia *TIA) StepVideoCycle() bool {
 	cburst := false
 
 	// color clock
-	if tia.colorClock.MatchEnd(16) && !tia.hmove.isActive() {
+	if tia.colorClock.MatchEnd(16) && !tia.Hmove.isActive() {
 		// HBLANK off (early)
 		tia.hblank = false
-	} else if tia.colorClock.MatchEnd(18) && tia.hmove.isActive() {
+	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isActive() {
 		// HBLANK off (late)
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(4) {
@@ -164,20 +164,20 @@ func (tia *TIA) StepVideoCycle() bool {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
-		tia.hmove.reset()
+		tia.Hmove.reset()
 		tia.Video.NewScanline()
 		tia.colorClock.Reset()
 	} else if tia.colorClock.Tick() {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
-		tia.hmove.reset()
+		tia.Hmove.reset()
 		tia.Video.NewScanline()
 		// not sure if we need to reset rsync
 	}
 
 	// HMOVE clock stuffing
-	if ct, ok := tia.hmove.tick(); ok {
+	if ct, ok := tia.Hmove.tick(); ok {
 		tia.Video.TickSpritesForHMOVE(ct)
 	}
 

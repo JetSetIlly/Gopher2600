@@ -122,6 +122,20 @@ func (sp sprite) MachineInfo() string {
 	return s.String()
 }
 
+// MachineInfoInternal returns low state information about the type
+func (sp sprite) MachineInfoInternal() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%04b ", sp.horizMovement))
+	if sp.horizMovementLatch {
+		s.WriteString("*")
+	} else {
+		s.WriteString(" ")
+	}
+	s.WriteString(" ")
+	s.WriteString(sp.label)
+	return s.String()
+}
+
 // newScanline is called at the beginning of a new scanline.
 // -- this is only used to reset the adjusted horizontal position value that we
 // use to report the horizontal location of the sprite. a bit of a waste

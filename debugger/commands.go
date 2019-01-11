@@ -114,7 +114,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordQuit:          "",
 	KeywordReset:         "",
 	KeywordRun:           "",
-	KeywordStep:          "[|CPU|VIDEO]", // see notes
+	KeywordStep:          "[|CPU|VIDEO|SCANLINE]", // see notes
 	KeywordStepMode:      "[|CPU|VIDEO]",
 	KeywordTerse:         "",
 	KeywordVerbose:       "",
@@ -125,7 +125,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordPoke:          "%V %V %*",
 	KeywordRAM:           "",
 	KeywordRIOT:          "",
-	KeywordTIA:           "[|FUTURE]",
+	KeywordTIA:           "[|FUTURE|HMOVE]",
 	KeywordTV:            "[|SPEC]",
 	KeywordPlayer:        "",
 	KeywordMissile:       "",
@@ -451,6 +451,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		err = dbg.vcs.TV.Reset()
+		if err != nil {
+			return false, err
+		}
 		dbg.print(ui.Feedback, "machine reset")
 
 	case KeywordRun:
@@ -624,6 +628,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			switch option {
 			case "FUTURE":
 				dbg.printMachineInfo(dbg.vcs.TIA.Video.OnFutureColorClock)
+			case "HMOVE":
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Hmove.MachineInfoInternal())
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Player0.MachineInfoInternal())
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Player1.MachineInfoInternal())
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Missile0.MachineInfoInternal())
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Missile1.MachineInfoInternal())
+				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Ball.MachineInfoInternal())
 			default:
 				return false, fmt.Errorf("unknown request (%s)", option)
 			}

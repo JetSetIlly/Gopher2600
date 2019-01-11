@@ -18,6 +18,8 @@ func (ct *ColorTerminal) UserPrint(pp ui.PrintProfile, s string, a ...interface{
 		ct.Print(ansi.DimPens["yellow"])
 	case ui.MachineInfo:
 		ct.Print(ansi.PenColor["cyan"])
+	case ui.MachineInfoInternal:
+		ct.Print(ansi.PenColor["blue"])
 	case ui.Error:
 		ct.Print(ansi.PenColor["red"])
 		ct.Print(ansi.PenColor["bold"])

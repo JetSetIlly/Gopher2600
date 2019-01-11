@@ -39,6 +39,14 @@ func (hm hmove) MachineInfo() string {
 	return "hmove: no movement"
 }
 
+// MachineInfoInternal returns low state information about the type
+func (hm hmove) MachineInfoInternal() string {
+	if hm.isActive() {
+		return fmt.Sprintf("%04b\n", hm.count)
+	}
+	return fmt.Sprintf("0000\n")
+}
+
 // map String to MachineInfo
 func (hm hmove) String() string {
 	return hm.MachineInfo()
