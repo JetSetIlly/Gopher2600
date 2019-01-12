@@ -49,6 +49,12 @@ type sprite struct {
 
 	// a note on whether the sprite is about to be reset its position
 	resetFuture *future.Instance
+
+	// 0 = force reset is off
+	// 1 = force reset trigger
+	// n = wait for trigger
+	forceReset int
+	// see comment in tickSpritesForHMOVE()
 }
 
 func newSprite(label string, colorClock *polycounter.Polycounter, tick func()) *sprite {
@@ -178,6 +184,39 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 
 func (sp *sprite) tickSpritesForHMOVE(count int) {
 	if sp.horizMovementLatch && (sp.horizMovement&uint8(count) != 0) {
+		// this mental construct is designed to fix a problem in the Keystone
+		// Kapers ROM. I don't believe for a moment that this is a perfect
+		// solution but it makes sense in the context of that ROM.
+		//
+		// What seems to be happening in Keystone Kapers ROM is this:
+		//
+		//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
+		//  o HMOVE is tripped at beginning of line 96
+		//  o but reset doesn't occur until we resume motion clocks, by which
+		//		time HMOVE is finished
+		//  o moreover, the game doesn't want the ball to appear at the
+		//		beginning of the visible part of the screen; it wants the ball
+		//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
+		//		move adjustments needs to happen such that the ball really
+		//		appears at the end of the scanline (and
+		//  o to cut a long story short, the game needs the ball to have been
+		//		reset before the HMOVE has completed on line 96
+		//
+		// confusing huh?  this delay construct fixes the above issue while not
+		// breaking other regression tests. I don't know if this is a generally
+		// correct solution or if it's specific to the ball sprite but I'm
+		// keeping it in for now.
+		if sp.resetFuture != nil {
+			if sp.forceReset == 1 {
+				sp.resetFuture.Force()
+				sp.forceReset = 0
+			} else if sp.forceReset == 0 {
+				sp.forceReset = delayForceReset
+			} else {
+				sp.forceReset--
+			}
+		}
+
 		sp.tick()
 
 		// adjust horizontal position

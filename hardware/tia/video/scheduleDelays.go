@@ -25,4 +25,7 @@ const (
 	delayResetMissile = 5
 	delayResetPlayer  = 5
 	delayResetBall    = 5
+
+	// see comment in sprite.tickSpritesForHMOVE()
+	delayForceReset = 3
 )

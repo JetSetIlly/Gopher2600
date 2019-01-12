@@ -54,3 +54,9 @@ func (fut *Instance) tick() bool {
 	fut.RemainingCycles--
 	return false
 }
+
+// Force can be used to immediately run the future payload
+func (fut *Instance) Force() {
+	fut.RemainingCycles = 0
+	fut.payload()
+}
