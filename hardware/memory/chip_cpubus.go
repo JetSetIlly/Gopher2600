@@ -17,7 +17,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 		return 0, errors.NewGopherError(errors.UnreadableAddress, address)
 	}
 
-	return area.memory[address-area.origin], nil
+	return area.memory[area.origin|address^area.origin], nil
 }
 
 // Implementation of CPUBus.Write

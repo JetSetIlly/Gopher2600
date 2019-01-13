@@ -41,14 +41,12 @@ func (pia PIA) Memtop() uint16 {
 
 // Implementation of CPUBus.Read
 func (pia PIA) Read(address uint16) (uint8, error) {
-	oa := address - pia.origin
-	return pia.memory[oa], nil
+	return pia.memory[pia.origin|address^pia.origin], nil
 }
 
 // Implementation of CPUBus.Write
 func (pia *PIA) Write(address uint16, data uint8) error {
-	oa := address - pia.origin
-	pia.memory[oa] = data
+	pia.memory[pia.origin|address^pia.origin] = data
 	return nil
 }
 
