@@ -16,8 +16,6 @@ import (
 	"log"
 )
 
-const irqInterruptVector = 0xfffe
-
 // CPU is the main container structure for the package
 type CPU struct {
 	PC     *register.Register
@@ -338,7 +336,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	defn := mc.opCodes[operator]
 	if defn == nil {
 		if operator == 0xff {
-			return nil, errors.NewGopherError(errors.NullInstruction, nil)
+			return nil, errors.NewGopherError(errors.NullInstruction)
 		}
 		return nil, errors.NewGopherError(errors.UnimplementedInstruction, operator, mc.PC.ToUint16()-1)
 	}
@@ -701,6 +699,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.A.Load(value)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
 
 	case "PHP":
 		// +1 cycle
@@ -1090,7 +1090,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Break = true
 
 		// perform jump
-		brkAddress, err := mc.read16Bit(irqInterruptVector)
+		brkAddress, err := mc.read16Bit(memory.AddressIRQ)
 		if err != nil {
 			return nil, err
 		}

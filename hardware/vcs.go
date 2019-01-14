@@ -11,13 +11,6 @@ import (
 	"gopher2600/television"
 )
 
-// AddressReset is the address where the reset address is stored
-// - used by VCS.Reset() and Disassembly module
-const AddressReset = uint16(0xfffc)
-
-// AddressIRQ is the address where the interrupt address is stored
-const AddressIRQ = 0xfffe
-
 // VCS struct is the main container for the emulated components of the VCS
 type VCS struct {
 	MC   *cpu.CPU
@@ -96,6 +89,7 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -209,7 +203,7 @@ func (vcs *VCS) Reset() error {
 		return fmt.Errorf("can't create RIOT")
 	}
 
-	err := vcs.MC.LoadPC(AddressReset)
+	err := vcs.MC.LoadPC(memory.AddressReset)
 	if err != nil {
 		return err
 	}

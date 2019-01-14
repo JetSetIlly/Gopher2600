@@ -3,7 +3,6 @@ package disassembly
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
@@ -28,20 +27,20 @@ type Disassembly struct {
 
 // ParseMemory disassembles an existing memory instance. uses a new cpu
 // instance which has no side effects, so it's safe to use with "live" memory
-func (dsm *Disassembly) ParseMemory(memory *memory.VCSMemory, symtable *symbols.Table) error {
+func (dsm *Disassembly) ParseMemory(mem *memory.VCSMemory, symtable *symbols.Table) error {
 	dsm.Symtable = symtable
 	dsm.Program = make(map[uint16]*result.Instruction)
-	dsm.SequencePoints = make([]uint16, 0, memory.Cart.Memtop()-memory.Cart.Origin())
+	dsm.SequencePoints = make([]uint16, 0, mem.Cart.Memtop()-mem.Cart.Origin())
 
 	// create a new non-branching CPU to disassemble memory
-	mc, err := cpu.NewCPU(memory)
+	mc, err := cpu.NewCPU(mem)
 	if err != nil {
 		return err
 	}
 	mc.NoSideEffects = true
 
 	// start disassembly at reset point
-	mc.LoadPC(hardware.AddressReset)
+	mc.LoadPC(memory.AddressReset)
 
 	for {
 		ir, err := mc.ExecuteInstruction(func(ir *result.Instruction) {})

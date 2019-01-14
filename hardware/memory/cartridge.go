@@ -6,6 +6,13 @@ import (
 	"os"
 )
 
+// AddressReset is the address where the reset address is stored
+// - used by VCS.Reset() and Disassembly module
+const AddressReset = uint16(0xfffc)
+
+// AddressIRQ is the address where the interrupt address is stored
+const AddressIRQ = 0xfffe
+
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
 	CPUBus
@@ -165,6 +172,10 @@ func (cart *Cartridge) Attach(filename string) error {
 			}
 			return data
 		}
+
+		// E0 Method (Parker Bros)
+		//
+		// o Montezuma's Revenge
 
 	case 12288:
 		return errors.NewGopherError(errors.CartridgeUnsupported, "12288 bytes not yet supported")
