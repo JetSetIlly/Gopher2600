@@ -31,6 +31,12 @@ func NewPanel(riot memory.PeriphBus) *Panel {
 
 func (pan *Panel) set() {
 	strobe := uint8(0)
+
+	// pins 2, 4 and 5 are not used and always value value of 1
+	strobe |= 0x20
+	strobe |= 0x10
+	strobe |= 0x04
+
 	if pan.p0pro {
 		strobe |= 0x80
 	}
