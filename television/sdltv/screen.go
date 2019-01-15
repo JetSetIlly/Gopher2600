@@ -44,10 +44,11 @@ type screen struct {
 	// whether we're using the max screen
 	//  - destRect and srcRect change depending on the value of unmasked
 	unmasked bool
-	destRect *sdl.Rect
 	srcRect  *sdl.Rect
+	destRect *sdl.Rect
 
-	stability stability
+	// stabiliser to make sure image remains solid
+	stabiliser *screenStabiliser
 }
 
 func newScreen(tv *SDLTV) (*screen, error) {
@@ -100,9 +101,11 @@ func newScreen(tv *SDLTV) (*screen, error) {
 	scr.textureFade.SetAlphaMod(50)
 
 	// our acutal screen data
-
 	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+
+	// new stabiliser
+	scr.stabiliser = newScreenStabiliser(scr)
 
 	return scr, nil
 }
@@ -162,13 +165,15 @@ func (scr *screen) toggleMasking() {
 	scr.setMasking(!scr.unmasked)
 }
 
-func (scr *screen) setPixel(x, y int32, red, green, blue byte) error {
-	i := (y*scr.maxWidth + x) * scrDepth
-	if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
-		scr.pixels[i] = red
-		scr.pixels[i+1] = green
-		scr.pixels[i+2] = blue
-		scr.pixels[i+3] = 255
+func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	if scr.unmasked || !vblank {
+		i := (y*scr.maxWidth + x) * scrDepth
+		if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
+			scr.pixels[i] = red
+			scr.pixels[i+1] = green
+			scr.pixels[i+2] = blue
+			scr.pixels[i+3] = 255
+		}
 	}
 
 	return nil
@@ -178,10 +183,15 @@ func (scr *screen) update(paused bool) error {
 	var err error
 
 	// before we go any further, check frame stability
-	err = scr.checkStability()
+	err = scr.stabiliser.beginStabilisation()
 	if err != nil {
 		return err
 	}
+	defer scr.stabiliser.endStabilisation()
+
+	// note that because of how the stabilisation routines work, srcRect,
+	// destRect, etc. should only be read. changing them during frame update
+	// will cause havoc
 
 	// clear image from rendered
 	scr.renderer.SetDrawColor(5, 5, 5, 255)
@@ -210,6 +220,7 @@ func (scr *screen) update(paused bool) error {
 	if err != nil {
 		return err
 	}
+
 	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
 	if err != nil {
 		return err

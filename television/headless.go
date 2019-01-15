@@ -46,7 +46,7 @@ type HeadlessTV struct {
 	// hook into and add extra gubbins to the Signal() function
 	HookNewFrame    func() error
 	HookNewScanline func() error
-	HookSetPixel    func(x, y int32, red, green, blue byte) error
+	HookSetPixel    func(x, y int32, red, green, blue byte, vblank bool) error
 }
 
 // NewHeadlessTV creates a new instance of HeadlessTV for a minimalist
@@ -78,7 +78,7 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	// empty callbacks
 	tv.HookNewFrame = func() error { return nil }
 	tv.HookNewScanline = func() error { return nil }
-	tv.HookSetPixel = func(x, y int32, r, g, b byte) error { return nil }
+	tv.HookSetPixel = func(x, y int32, r, g, b byte, vblank bool) error { return nil }
 
 	// initialise TVState
 	tv.HorizPos = &TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.Spec.ClocksPerHblank, valueFormat: "%d"}
@@ -128,8 +128,8 @@ func (tv *HeadlessTV) Reset() error {
 	tv.Scanline.value = 0
 	tv.vsyncCount = 0
 	tv.prevSignal = SignalAttributes{}
-	tv.VBlankOff = 0
-	tv.VBlankOn = 0
+	tv.VBlankOff = -1
+	tv.VBlankOn = -1
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 	if attr.VSync {
 		tv.vsyncCount++
 	} else {
-		if tv.vsyncCount != 0 {
+		if tv.vsyncCount >= tv.Spec.VsyncClocks {
 			tv.outOfSpec = tv.vsyncCount != tv.Spec.VsyncClocks
 
 			tv.FrameNum.value++
@@ -175,6 +175,15 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 			if err != nil {
 				return err
 			}
+
+			// some roms turn off vblank multiple times before the end of the frame. to
+			// prevent recording additional VBLANK signals, we make sure to
+			// reset the VBlankOff value at the end of the frame
+			//
+			// ROMs affected:
+			//	* Custer's Revenge
+			//	* Ladybug
+			tv.VBlankOff = -1
 		}
 	}
 
@@ -188,7 +197,7 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 		}
 
 		if tv.Scanline.value > tv.Spec.ScanlinesTotal {
-			// we've not yet received a correct vsync signal but we really should have
+			// we've not yet received a correct vsync signal
 			// continue with an implied VSYNC
 			tv.outOfSpec = true
 
@@ -205,12 +214,23 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 		}
 	}
 
-	// note the scanline when vblank is turned on/off
-	if !attr.VBlank && tv.prevSignal.VBlank {
+	// note the scanline when vblank is turned on/off. plus, only record the
+	// off signal if it hasn't been set before this frame
+	if tv.VBlankOff == -1 && !attr.VBlank && tv.prevSignal.VBlank {
 		tv.VBlankOff = tv.Scanline.value
 	}
 	if attr.VBlank && !tv.prevSignal.VBlank {
-		tv.VBlankOn = tv.Scanline.value
+		// some ROMS do not turn on VBlank until the beginning of the frame
+		// this means that the value of vblank on will be less than vblank off.
+		// to remedy this, we record a value of ScanlinesTotal+1 instead of 0.
+		//
+		// ROMs affected:
+		//  * Gauntlet
+		if tv.Scanline.value == 0 {
+			tv.VBlankOn = tv.Spec.ScanlinesTotal + 1
+		} else {
+			tv.VBlankOn = tv.Scanline.value
+		}
 	}
 
 	// record the current signal settings so they can be used for reference
@@ -224,10 +244,10 @@ func (tv *HeadlessTV) Signal(attr SignalAttributes) error {
 	}
 
 	// current coordinates
-	x := int32(tv.HorizPos.Value().(int)) + int32(tv.Spec.ClocksPerHblank)
-	y := int32(tv.Scanline.Value().(int))
+	x := int32(tv.HorizPos.value) + int32(tv.Spec.ClocksPerHblank)
+	y := int32(tv.Scanline.value)
 
-	return tv.HookSetPixel(x, y, red, green, blue)
+	return tv.HookSetPixel(x, y, red, green, blue, attr.VBlank)
 }
 
 // RequestTVState returns the TVState object for the named state. television

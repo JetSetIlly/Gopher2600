@@ -83,11 +83,11 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 }
 
 // Pixel puts the pixel on the tv
-func (tv *SDLTV) setPixel(x, y int32, red, green, blue byte) error {
+func (tv *SDLTV) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	tv.guiLoopLock.Lock()
 	defer tv.guiLoopLock.Unlock()
 
-	return tv.scr.setPixel(x, y, red, green, blue)
+	return tv.scr.setPixel(x, y, red, green, blue, vblank)
 }
 
 func (tv *SDLTV) newFrame() error {

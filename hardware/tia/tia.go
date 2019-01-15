@@ -200,7 +200,13 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// at the end of the video cycle we want to finally signal the televison
-	err := tia.tv.Signal(television.SignalAttributes{VSync: tia.vsync, VBlank: tia.vblank, FrontPorch: frontPorch, HSync: tia.hsync, CBurst: cburst, Pixel: pixelColor})
+	err := tia.tv.Signal(television.SignalAttributes{
+		VSync:      tia.vsync,
+		VBlank:     tia.vblank,
+		FrontPorch: frontPorch,
+		HSync:      tia.hsync,
+		CBurst:     cburst,
+		Pixel:      pixelColor})
 	if err != nil {
 		panic(err)
 	}

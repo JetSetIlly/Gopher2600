@@ -82,7 +82,10 @@ func (tv *SDLTV) RequestSetAttr(request television.SetAttrReq, args ...interface
 
 	switch request {
 	case television.ReqSetVisibilityStable:
-		tv.scr.stability.showRequest = true
+		err = tv.scr.stabiliser.resolveSetVisibilityStable()
+		if err != nil {
+			return err
+		}
 
 	case television.ReqSetVisibility:
 		if args[0].(bool) {

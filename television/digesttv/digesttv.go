@@ -43,7 +43,7 @@ func (tv *DigestTV) newFrame() error {
 	return nil
 }
 
-func (tv *DigestTV) setPixel(x, y int32, red, green, blue byte) error {
+func (tv *DigestTV) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	offset := len(tv.digest)
 
