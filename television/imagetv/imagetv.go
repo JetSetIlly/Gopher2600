@@ -62,7 +62,7 @@ func (tv *ImageTV) newFrame() error {
 	return nil
 }
 
-func (tv *ImageTV) setPixel(x, y int32, red, green, blue byte) error {
+func (tv *ImageTV) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	col := color.NRGBA{R: red, G: green, B: blue, A: 255}
 	tv.currImage.Set(int(x)*tv.pixelWidth, int(y), col)
 	tv.currImage.Set(int(x)*tv.pixelWidth+1, int(y), col)
