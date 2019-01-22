@@ -25,43 +25,47 @@ func (r *Register) Load(v interface{}) {
 
 // Add value to register. Returns carry and overflow states
 func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
-	var preNeg, postNeg bool
+	var rval, vval uint32
 
-	preNeg = r.IsNegative()
+	// note value of register before we change it
+	rval = r.value
 
 	switch v := v.(type) {
 	case *Register:
-		r.value += v.value
+		vval = uint32(v.value)
+		r.value += vval
 		if carry {
 			r.value++
 		}
-
-		postNeg = v.IsNegative()
 	case int:
-		r.value += uint32(v)
+		vval = uint32(v)
+		r.value += vval
 		if carry {
 			r.value++
 		}
-		postNeg = uint32(v)&r.signBit == r.signBit
 	case uint8:
-		r.value += uint32(v)
+		vval = uint32(v)
+		r.value += vval
 		if carry {
 			r.value++
 		}
-		postNeg = uint32(v)&r.signBit == r.signBit
 	case uint16:
-		r.value += uint32(v)
+		vval = uint32(v)
+		r.value += vval
 		if carry {
 			r.value++
 		}
-		postNeg = uint32(v)&r.signBit == r.signBit
 	default:
 		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 
-	carry = ^r.mask&r.value != 0
-	overflow := !r.IsNegative() && preNeg && postNeg
+	// decide on overflow flag
+	// -- notes from Ken Shirriff's blog: "The 6502 overflow flag explained
+	// mathematically"
+	overflow := ((rval ^ r.value) & (vval ^ r.value) & 0x80) != 0
 
+	// decide on carry flag
+	carry = ^r.mask&r.value != 0
 	if carry {
 		r.value &= r.mask
 	}
@@ -71,32 +75,24 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 
 // Subtract value from register. Returns carry and overflow states
 func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
-	var val uint16
+	var vval uint16
 
 	switch v := v.(type) {
 	case *Register:
-		val = uint16(v.value)
+		vval = uint16(v.value)
 	case int:
-		val = uint16(v)
+		vval = uint16(v)
 	case uint8:
-		val = uint16(v)
+		vval = uint16(v)
 	default:
 		panic(fmt.Errorf("unsupported value type (%T)", v))
 	}
 
-	// no need to do anything if operand is zero and carry is set
-	if val == 0 && carry {
-		return carry, false
-	}
+	// one's complement
+	vval = ^vval
+	vval &= uint16(r.mask)
 
-	// two's complement
-	val = ^val
-	if carry {
-		val++
-	}
-	val &= uint16(r.mask)
-
-	return r.Add(val, false)
+	return r.Add(vval, carry)
 }
 
 // AND value with register
