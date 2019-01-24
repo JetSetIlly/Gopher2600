@@ -241,10 +241,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
 		dbg.print(ui.Error, "%s", err)
-		symtable, err = symbols.StandardSymbolTable()
-		if err != nil {
-			return err
-		}
+		symtable = symbols.StandardSymbolTable()
 	}
 
 	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symtable)

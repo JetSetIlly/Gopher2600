@@ -22,12 +22,12 @@ type Table struct {
 }
 
 // StandardSymbolTable initialises a symbols table using the standard VCS symbols
-func StandardSymbolTable() (*Table, error) {
+func StandardSymbolTable() *Table {
 	table := new(Table)
 	table.ReadSymbols = vcssymbols.ReadSymbols
 	table.WriteSymbols = vcssymbols.WriteSymbols
 	table.genMaxWidths()
-	return table, nil
+	return table
 }
 
 // ReadSymbolsFile initialises a symbols table from the symbols file for the

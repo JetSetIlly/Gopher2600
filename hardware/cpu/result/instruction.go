@@ -33,13 +33,17 @@ type Instruction struct {
 }
 
 func (result Instruction) String() string {
-	return result.GetString(nil, StyleBrief)
+	return result.GetString(symbols.StandardSymbolTable(), StyleBrief)
 }
 
 // GetString returns a human readable version of InstructionResult, addresses
 // replaced with symbols if supplied symbols argument is not null. prefer this
 // function to implicit calls to String()
 func (result Instruction) GetString(symtable *symbols.Table, style Style) string {
+	if symtable == nil {
+		panic("Instruction.GetString() requires a non-nil instance of symbols.Table")
+	}
+
 	// columns
 	var hex string
 	var label, programCounter string

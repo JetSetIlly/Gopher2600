@@ -244,7 +244,7 @@
 0x0c, skw, 4, ABSOLUTE, False
 0xa7, lax, 3, ZERO_PAGE, False
 0xb3, lax, 5, POST_INDEX_INDIRECT, True
-0xb7, lax, 5, INDEXED_ZERO_PAGE_X, False
+0xb7, lax, 4, INDEXED_ZERO_PAGE_X, False
 
 0xc7, dcp, 5, ZERO_PAGE, False, RMW		# dcm
 0x4b, asr, 2, IMMEDIATE, False			# alr

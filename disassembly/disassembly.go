@@ -94,10 +94,7 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
 		fmt.Println(err)
-		symtable, err = symbols.StandardSymbolTable()
-		if err != nil {
-			return nil, err
-		}
+		symtable = symbols.StandardSymbolTable()
 	}
 
 	mem, err := memory.NewVCSMemory()
