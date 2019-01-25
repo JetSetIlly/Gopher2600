@@ -70,10 +70,7 @@ func (tc *TabCompletion) GuessWord(input string) string {
 		var arg commandArg
 
 		argList, ok := tc.commands[strings.ToUpper(p[0])]
-		if ok && len(input) > len(p[0]) {
-			if len(argList) == 0 {
-				return input
-			}
+		if ok && len(input) > len(p[0]) && len(argList) != 0 && len(argList) > len(p)-2 {
 			arg = argList[len(p)-2]
 		} else {
 			arg.typ = argKeyword
