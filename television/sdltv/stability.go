@@ -20,7 +20,12 @@ type screenStabiliser struct {
 	// the current number of (stable) visible scanlines. only changes once the
 	// frame is considered stable
 	visibleScanlines int
-	visibleTop       int
+
+	// the scanline number of the first visible scanline. this is currently
+	// defined to be the scanline at which VBlank is turned off when the image
+	// first passes the stability threshold. it is used to adjust the viewport
+	// for wobbly frames. see "shift viewport" comment below.
+	visibleTopReference int
 
 	// has a ReqSetVisibilityStable been received recently? we don't want to
 	// open the window until the screen is stable
@@ -36,8 +41,10 @@ func newScreenStabiliser(scr *screen) *screenStabiliser {
 	return stb
 }
 
-// number of frames that needs to elapse before the screen is considered "stable"
-const stabilityThreshold int = 5
+// number of consistent frames that needs to elapse before the screen is
+// considered "stable" -- this value has been set arbitrarily. a more
+// sophisticated approach may be worth investigating
+const stabilityThreshold int = 6
 
 // beginStabilisation should be called at beginning of frame update. note that
 // it should also be paired with endStabilisation, called at the end of the
@@ -52,10 +59,13 @@ func (stb *screenStabiliser) beginStabilisation() error {
 		stb.count++
 
 		stb.visibleScanlines = stb.scr.tv.VBlankOn - stb.scr.tv.VBlankOff
-		stb.visibleTop = stb.scr.tv.VBlankOff
+		stb.visibleTopReference = stb.scr.tv.VBlankOff
 
-		// update play window dimenstions
-		stb.scr.setPlayHeight(int32(stb.visibleScanlines))
+		// update screen masking (which itself sets the window size)
+		err := stb.scr.setMasking(stb.scr.unmasked)
+		if err != nil {
+			return err
+		}
 
 		// show window if a show request has been queued up
 		if stb.queuedShowRequest {
@@ -66,30 +76,35 @@ func (stb *screenStabiliser) beginStabilisation() error {
 		}
 	} else {
 		if !stb.isStable() {
+			// stability hasn't been reached yet so reset count
 			stb.count = 0
-		}
 
-		// we could reset stability.count whenever the number of visible
-		// scanlines change:
-		//
-		// however, some ROMs are very lazy at keeping the number of scanlines
-		// stable (for example, when moving between a title screen and a game
-		// screen).  if we do reset the stability count, the window will resize
-		// (with setPlayHeight) during the course of the emulation. which is
-		// ugly and confusing and the very thing we're trying to prevent with
-		// this stability construct.
-		//
-		// that said, it's easy to imagine a situation where it may be
-		// necessary to prefer a later screen size. if this is ever an issue
-		// then a more elaborate solution is required.
+			// we could reset stability.count whenever the number of visible
+			// scanlines change:
+			//
+			// however, some ROMs are very lazy at keeping the number of scanlines
+			// stable (for example, when moving between a title screen and a game
+			// screen).  if we do reset the stability count, the window will resize
+			// (with setPlayHeight) during the course of the emulation. which is
+			// ugly and confusing and the very thing we're trying to prevent with
+			// this stability construct.
+			//
+			// that said, it's easy to imagine a situation where it may be
+			// necessary to prefer a later screen size. if this is ever an issue
+			// then a more elaborate solution is required.
+		}
 	}
 
-	// shift viewpoint: this is a fix for Plaq Attack although other ROMs could
+	// shift viewport: this is a fix for Plaq Attack although other ROMs could
 	// feasibly have the same problem. Plaq Attack has an inconsistent number
 	// of VBLank lines at the start of the frame but the same number of visible
 	// scanlines throughout. the following adjusts the src/dest rectangles to
 	// account for the difference.
-	stb.viewportShift = int32(stb.scr.tv.VBlankOff - stb.scr.stabiliser.visibleTop)
+	//
+	// (note that this shift will bugger up scanline reporting when using the
+	// right mouse button facility. if screen is unmasked however, then the
+	// reporting will be correct)
+	stb.viewportShift = int32(stb.scr.tv.VBlankOff - stb.visibleTopReference)
 	stb.scr.srcRect.Y += stb.viewportShift
 
 	return nil

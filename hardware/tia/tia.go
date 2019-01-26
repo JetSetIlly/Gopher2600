@@ -196,7 +196,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// decide on pixel color
 	pixelColor := television.VideoBlack
 	if !tia.hblank {
-		pixelColor = television.PixelSignal(tia.Video.Pixel())
+		pixelColor = television.ColorSignal(tia.Video.Pixel())
 	}
 
 	// at the end of the video cycle we want to finally signal the televison

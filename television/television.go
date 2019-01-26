@@ -43,7 +43,7 @@ const (
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
 	VSync, VBlank, FrontPorch, HSync, CBurst bool
-	Pixel                                    PixelSignal
+	Pixel                                    ColorSignal
 }
 
 // Television defines the operations that can be performed on the television

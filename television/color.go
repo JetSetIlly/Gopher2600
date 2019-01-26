@@ -1,12 +1,12 @@
 package television
 
-// PixelSignal represents the signal that is sent from the VCS to the
+// ColorSignal represents the signal that is sent from the VCS to the
 // television
-type PixelSignal uint16
+type ColorSignal uint16
 
 // VideoBlack is the PixelSignal value that indicates no VCS pixel is to be
 // shown
-const VideoBlack PixelSignal = 0xffff
+const VideoBlack ColorSignal = 0xffff
 
 // color is the color that is show on screen. different television
 // specifications interpret colors differently

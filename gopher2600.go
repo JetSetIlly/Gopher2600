@@ -53,6 +53,7 @@ func main() {
 	case "RUN":
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
+		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
 		modeFlagsParse()
 
 		switch len(modeFlags.Args()) {
@@ -60,7 +61,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := run(modeFlags.Arg(0), *tvMode, float32(*scaling))
+			err := run(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable)
 			if err != nil {
 				fmt.Printf("* error running emulator: %s\n", err)
 				os.Exit(2)
@@ -317,7 +318,7 @@ func fps(cartridgeFile string, display bool, tvMode string, scaling float32, num
 	return nil
 }
 
-func run(cartridgeFile, tvMode string, scaling float32) error {
+func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 	tv, err := sdltv.NewSDLTV(tvMode, scaling)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
@@ -347,9 +348,16 @@ func run(cartridgeFile, tvMode string, scaling float32) error {
 		return err
 	}
 
-	err = tv.RequestSetAttr(television.ReqSetVisibilityStable, true)
-	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
+	if stable {
+		err = tv.RequestSetAttr(television.ReqSetVisibilityStable, true)
+		if err != nil {
+			return fmt.Errorf("error preparing television: %s", err)
+		}
+	} else {
+		err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+		if err != nil {
+			return fmt.Errorf("error preparing television: %s", err)
+		}
 	}
 
 	for {
