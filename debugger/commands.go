@@ -648,7 +648,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				info, err := dbg.vcs.TV.RequestTVInfo(television.ReqTVSpec)
+				info, err := dbg.vcs.TV.GetMetaState(television.ReqTVSpec)
 				if err != nil {
 					return false, err
 				}
@@ -701,19 +701,19 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					return false, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
 				}
 
-				err = dbg.vcs.TV.RequestSetAttr(television.ReqSetScale, float32(scale))
+				err = dbg.vcs.TV.SetFeature(television.ReqSetScale, float32(scale))
 				return false, err
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
 		}
 
-		err := dbg.vcs.TV.RequestSetAttr(television.ReqSetVisibility, visibility)
+		err := dbg.vcs.TV.SetFeature(television.ReqSetVisibility, visibility)
 		if err != nil {
 			return false, err
 		}
 
-		err = dbg.vcs.TV.RequestSetAttr(television.ReqSetDebug, debug)
+		err = dbg.vcs.TV.SetFeature(television.ReqSetDebug, debug)
 		if err != nil {
 			return false, err
 		}
@@ -735,7 +735,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			}
 		}
 
-		info, err := dbg.vcs.TV.RequestTVInfo(req)
+		info, err := dbg.vcs.TV.GetMetaState(req)
 		if err != nil {
 			return false, err
 		}

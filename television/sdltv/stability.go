@@ -19,13 +19,13 @@ type screenStabiliser struct {
 
 	// the current number of (stable) visible scanlines. only changes once the
 	// frame is considered stable
-	visibleScanlines int
+	visibleScanlines int32
 
 	// the scanline number of the first visible scanline. this is currently
 	// defined to be the scanline at which VBlank is turned off when the image
 	// first passes the stability threshold. it is used to adjust the viewport
 	// for wobbly frames. see "shift viewport" comment below.
-	visibleTopReference int
+	visibleTopReference int32
 
 	// has a ReqSetVisibilityStable been received recently? we don't want to
 	// open the window until the screen is stable
@@ -58,11 +58,11 @@ func (stb *screenStabiliser) beginStabilisation() error {
 	} else if stb.count == stabilityThreshold {
 		stb.count++
 
-		stb.visibleScanlines = stb.scr.tv.VBlankOn - stb.scr.tv.VBlankOff
-		stb.visibleTopReference = stb.scr.tv.VBlankOff
+		stb.visibleScanlines = int32(stb.scr.tv.VisibleBottom - stb.scr.tv.VisibleTop)
+		stb.visibleTopReference = int32(stb.scr.tv.VisibleTop)
 
-		// update screen masking (which itself sets the window size)
-		err := stb.scr.setMasking(stb.scr.unmasked)
+		// update play height (which in turn updates masking and window size)
+		err := stb.scr.setPlayHeight(int32(stb.visibleScanlines))
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func (stb *screenStabiliser) beginStabilisation() error {
 	// (note that this shift will bugger up scanline reporting when using the
 	// right mouse button facility. if screen is unmasked however, then the
 	// reporting will be correct)
-	stb.viewportShift = int32(stb.scr.tv.VBlankOff - stb.visibleTopReference)
+	stb.viewportShift = int32(stb.scr.tv.VisibleTop) - stb.visibleTopReference
 	stb.scr.srcRect.Y += stb.viewportShift
 
 	return nil
@@ -125,7 +125,7 @@ func (stb *screenStabiliser) isStable() bool {
 
 func (stb *screenStabiliser) resolveSetVisibilityStable() error {
 	if stb.isStable() {
-		err := stb.scr.tv.RequestSetAttr(television.ReqSetVisibility, true, false)
+		err := stb.scr.tv.SetFeature(television.ReqSetVisibility, true, false)
 		if err != nil {
 			return err
 		}

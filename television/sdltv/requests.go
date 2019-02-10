@@ -9,14 +9,14 @@ import (
 	"gopher2600/television"
 )
 
-// RequestTVState returns the TVState object for the named state
-func (tv *SDLTV) RequestTVState(request television.TVStateReq) (*television.TVState, error) {
-	return tv.HeadlessTV.RequestTVState(request)
+// GetState returns the TVState object for the named state
+func (tv *SDLTV) GetState(request television.StateReq) (television.TVState, error) {
+	return tv.HeadlessTV.GetState(request)
 }
 
-// RequestTVInfo returns the TVState object for the named state
-func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
-	state, err := tv.HeadlessTV.RequestTVInfo(request)
+// GetMetaState returns the TVState object for the named state
+func (tv *SDLTV) GetMetaState(request television.MetaStateReq) (string, error) {
+	state, err := tv.HeadlessTV.GetMetaState(request)
 	switch err := err.(type) {
 	case errors.GopherError:
 		if err.Errno != errors.UnknownTVRequest {
@@ -38,10 +38,10 @@ func (tv *SDLTV) RequestTVInfo(request television.TVInfoReq) (string, error) {
 	}
 }
 
-// RequestCallbackRegistration implements Television interface
-func (tv *SDLTV) RequestCallbackRegistration(request television.CallbackReq, channel chan func(), callback func()) error {
+// RegisterCallback implements Television interface
+func (tv *SDLTV) RegisterCallback(request television.CallbackReq, channel chan func(), callback func()) error {
 	// call embedded implementation and filter out UnknownCallbackRequests
-	err := tv.HeadlessTV.RequestCallbackRegistration(request, channel, callback)
+	err := tv.HeadlessTV.RegisterCallback(request, channel, callback)
 	switch err := err.(type) {
 	case errors.GopherError:
 		if err.Errno != errors.UnknownTVRequest {
@@ -68,9 +68,9 @@ func (tv *SDLTV) RequestCallbackRegistration(request television.CallbackReq, cha
 	return nil
 }
 
-// RequestSetAttr is used to set a television attibute
-func (tv *SDLTV) RequestSetAttr(request television.SetAttrReq, args ...interface{}) error {
-	err := tv.HeadlessTV.RequestSetAttr(request)
+// SetFeature is used to set a television attribute
+func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) error {
+	err := tv.HeadlessTV.SetFeature(request)
 	switch err := err.(type) {
 	case errors.GopherError:
 		if err.Errno != errors.UnknownTVRequest {

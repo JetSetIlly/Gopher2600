@@ -38,12 +38,12 @@ func (DummyTV) Signal(SignalAttributes) error {
 }
 
 // RequestTVState (with dummyTV reciever) is the null implementation
-func (DummyTV) RequestTVState(request TVStateReq) (*TVState, error) {
-	return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
+func (DummyTV) RequestTVState(request StateReq) (TVState, error) {
+	return TVState{}, errors.NewGopherError(errors.UnknownTVRequest, request)
 }
 
 // RequestTVInfo (with dummyTV reciever) is the null implementation
-func (DummyTV) RequestTVInfo(request TVInfoReq) (string, error) {
+func (DummyTV) RequestTVInfo(request MetaStateReq) (string, error) {
 	return "", errors.NewGopherError(errors.UnknownTVRequest, request)
 }
 
@@ -53,6 +53,6 @@ func (DummyTV) RequestCallbackRegistration(request CallbackReq, channel chan fun
 }
 
 // RequestSetAttr (with dummyTV reciever) is the null implementation
-func (DummyTV) RequestSetAttr(request SetAttrReq, args ...interface{}) error {
+func (DummyTV) RequestSetAttr(request FeatureReq, args ...interface{}) error {
 	return errors.NewGopherError(errors.UnknownTVRequest, request)
 }

@@ -16,10 +16,13 @@ type ImageTV struct {
 
 	pixelWidth int
 
-	screenGeom   image.Rectangle
+	screenGeom image.Rectangle
+
+	// currImage is the image we write to, until newFrame() is called again
 	currImage    *image.NRGBA
 	currFrameNum int
 
+	// this is the image we'll be saving when Save() is called
 	lastImage    *image.NRGBA
 	lastFrameNum int
 }
@@ -39,8 +42,8 @@ func NewImageTV(tvType string) (*ImageTV, error) {
 		Min: image.Point{X: 0, Y: 0},
 		Max: image.Point{X: tv.Spec.ClocksPerScanline * tv.pixelWidth, Y: tv.Spec.ScanlinesTotal},
 	}
-
 	// start a new frame
+	tv.currFrameNum = -1 // we'll be adding 1 to this value immediately in newFrame()
 	err = tv.newFrame()
 	if err != nil {
 		return nil, err
@@ -58,7 +61,7 @@ func (tv *ImageTV) newFrame() error {
 	tv.lastImage = tv.currImage
 	tv.lastFrameNum = tv.currFrameNum
 	tv.currImage = image.NewNRGBA(tv.screenGeom)
-	tv.currFrameNum = tv.FrameNum.Value().(int)
+	tv.currFrameNum++
 	return nil
 }
 

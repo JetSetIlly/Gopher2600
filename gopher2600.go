@@ -18,7 +18,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -139,7 +139,7 @@ func main() {
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
-		frames := modeFlags.Int("frames", 100, "number of frames to run")
+		runTime := modeFlags.String("time", "5s", "run duration")
 		modeFlagsParse()
 
 		switch len(modeFlags.Args()) {
@@ -147,7 +147,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := fps(modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *frames)
+			err := fps(modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *runTime)
 			if err != nil {
 				fmt.Printf("* error starting fps profiler: %s\n", err)
 				os.Exit(2)
@@ -250,7 +250,7 @@ func main() {
 	}
 }
 
-func fps(cartridgeFile string, display bool, tvMode string, scaling float32, numOfFrames int) error {
+func fps(cartridgeFile string, display bool, tvMode string, scaling float32, runTime string) error {
 	var tv television.Television
 	var err error
 
@@ -260,7 +260,7 @@ func fps(cartridgeFile string, display bool, tvMode string, scaling float32, num
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 
-		err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+		err = tv.SetFeature(television.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
@@ -292,16 +292,41 @@ func fps(cartridgeFile string, display bool, tvMode string, scaling float32, num
 	}
 	defer pprof.StopCPUProfile()
 
-	// run for numOfFrames and calculate frames-per-second
-	startTime := time.Now()
-	err = vcs.RunFrames(numOfFrames)
+	// get starting frame number
+	tvState, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
-	fps := float64(numOfFrames) / time.Since(startTime).Seconds()
+	startFrame := tvState.Value().(int)
 
-	// display estimated fps
-	fmt.Printf("%f fps\n", fps)
+	// run for specified period of time
+	// -- while value of running variable is positive
+	var running atomic.Value
+	running.Store(0)
+
+	// -- parse supplied duration
+	duration, err := time.ParseDuration(runTime)
+	if err != nil {
+		return err
+	}
+
+	// -- run until specified time elapses
+	go func() {
+		time.AfterFunc(duration, func() { running.Store(-1) })
+	}()
+	vcs.Run(&running)
+
+	// get ending frame number
+	tvState, err = tv.GetState(television.ReqFramenum)
+	if err != nil {
+		return err
+	}
+	endFrame := tvState.Value().(int)
+
+	// calculate and display frames-per-second
+	frameCount := endFrame - startFrame
+	fps := float64(frameCount) / duration.Seconds()
+	fmt.Printf("%.2f fps (%d frames in %.2f seconds)\n", fps, frameCount, duration.Seconds())
 
 	// write memory profile
 	f, err = os.Create("mem.profile")
@@ -334,45 +359,31 @@ func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 		return err
 	}
 
-	// protecting "running" variable with a mutex
-	var runningLock sync.Mutex
-	running := true
+	// run while value of running variable is positive
+	var running atomic.Value
+	running.Store(0)
 
 	// register quit function
-	err = tv.RequestCallbackRegistration(television.ReqOnWindowClose, nil, func() {
-		runningLock.Lock()
-		running = false
-		runningLock.Unlock()
+	err = tv.RegisterCallback(television.ReqOnWindowClose, nil, func() {
+		running.Store(-1)
 	})
 	if err != nil {
 		return err
 	}
 
 	if stable {
-		err = tv.RequestSetAttr(television.ReqSetVisibilityStable, true)
+		err = tv.SetFeature(television.ReqSetVisibilityStable, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
-		err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+		err = tv.SetFeature(television.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	}
 
-	for {
-		runningLock.Lock()
-		if !running {
-			runningLock.Unlock()
-			break
-		}
-		runningLock.Unlock()
-
-		_, _, err := vcs.Step(hardware.StubVideoCycleCallback)
-		if err != nil {
-			return err
-		}
-	}
+	vcs.Run(&running)
 
 	return nil
 }

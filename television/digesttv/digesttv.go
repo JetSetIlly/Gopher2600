@@ -49,13 +49,13 @@ func (tv *DigestTV) setPixel(x, y int32, red, green, blue byte, vblank bool) err
 
 	offset += tv.Spec.ClocksPerScanline * int(y) * 3
 	offset += int(x) * 3
-	if offset < len(tv.screenData) {
-		tv.screenData[offset] = red
-		tv.screenData[offset+1] = green
-		tv.screenData[offset+2] = blue
-	} else {
-		fmt.Println(tv.FrameNum.Value(), offset)
-	}
+
+	// allow indexing to naturally fail if offset is too big
+
+	tv.screenData[offset] = red
+	tv.screenData[offset+1] = green
+	tv.screenData[offset+2] = blue
+
 	return nil
 }
 

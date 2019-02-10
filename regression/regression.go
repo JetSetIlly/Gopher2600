@@ -165,7 +165,7 @@ func run(cartridgeFile string, tvMode string, numOfFrames int) (string, error) {
 		return "", err
 	}
 
-	err = vcs.RunFrames(numOfFrames)
+	err = vcs.RunForFrameCount(numOfFrames)
 	if err != nil {
 		return "", err
 	}

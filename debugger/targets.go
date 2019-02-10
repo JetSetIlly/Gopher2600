@@ -61,11 +61,11 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 		case "SP":
 			trg = dbg.vcs.MC.SP
 		case "FRAMENUM", "FRAME", "FR":
-			trg, err = dbg.vcs.TV.RequestTVState(television.ReqFramenum)
+			trg, err = dbg.vcs.TV.GetState(television.ReqFramenum)
 		case "SCANLINE", "SL":
-			trg, err = dbg.vcs.TV.RequestTVState(television.ReqScanline)
+			trg, err = dbg.vcs.TV.GetState(television.ReqScanline)
 		case "HORIZPOS", "HP":
-			trg, err = dbg.vcs.TV.RequestTVState(television.ReqHorizPos)
+			trg, err = dbg.vcs.TV.GetState(television.ReqHorizPos)
 
 		// cpu instruction targetting was originally added as an experiment, to
 		// help investigate a bug in the emulation. I don't think it's much use

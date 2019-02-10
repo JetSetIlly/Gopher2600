@@ -20,6 +20,10 @@ type screen struct {
 	maxHeight int32
 	maxMask   *sdl.Rect
 
+	// last plot coordinates
+	lastX int32
+	lastY int32
+
 	// pixels arrays are of maximum screen size - actual smalled screens are
 	// masked appropriately
 	pixels     []byte
@@ -41,9 +45,10 @@ type screen struct {
 	playSrcMask *sdl.Rect
 	playDstMask *sdl.Rect
 
-	// whether we're using the max screen
-	//  - destRect and srcRect change depending on the value of unmasked
+	// whether we're using an unmasked screen
 	unmasked bool
+
+	// destRect and srcRect change depending on the value of unmasked
 	srcRect  *sdl.Rect
 	destRect *sdl.Rect
 
@@ -110,14 +115,20 @@ func newScreen(tv *SDLTV) (*screen, error) {
 	return scr, nil
 }
 
-func (scr *screen) setPlayHeight(scanlines int32) error {
-	scr.playHeight = scanlines
+// setPlayHeight should be used when the number of visible scanlines change.
+// when we want to show the overscan areas then we should use the setMasking()
+// function.
+func (scr *screen) setPlayHeight(visibleScanlines int32) error {
+	scr.playHeight = visibleScanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: int32(scr.tv.VBlankOff), W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: int32(scr.tv.VisibleTop), W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
 
+// setScaling alters how big each pixel is on the physical screen. any change
+// in the scale will cause the window size to change (via a call to
+// the setMasking() function)
 func (scr *screen) setScaling(scale float32) error {
 	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
 	// the screen
@@ -134,6 +145,9 @@ func (scr *screen) setScaling(scale float32) error {
 	return nil
 }
 
+// setMasking alters which scanlines are actually shown. i.e. when unmasked, we
+// can see the vblank and hblank areas of the screen. this can cause the window size
+// to change
 func (scr *screen) setMasking(unmasked bool) error {
 	var w, h int32
 
@@ -166,6 +180,8 @@ func (scr *screen) toggleMasking() {
 }
 
 func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	scr.lastX = x
+	scr.lastY = y
 	if scr.unmasked || !vblank {
 		i := (y*scr.maxWidth + x) * scrDepth
 		if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
@@ -239,12 +255,12 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// top vblank mask
-	h := int32(scr.tv.VBlankOff) - scr.srcRect.Y
+	h := int32(scr.tv.VisibleTop) - scr.srcRect.Y
 	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
 
 	// bottom vblank mask
-	y := int32(scr.tv.VBlankOn) - scr.srcRect.Y
-	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VBlankOn)
+	y := int32(scr.tv.VisibleBottom) - scr.srcRect.Y
+	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VisibleBottom)
 	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
 
 	// add cursor if tv is paused
@@ -252,8 +268,8 @@ func (scr *screen) update(paused bool) error {
 	// layers
 	if paused {
 		// cursor coordinates
-		x := scr.tv.HorizPos.Value().(int) + scr.tv.Spec.ClocksPerHblank
-		y := scr.tv.Scanline.Value().(int)
+		x := int(scr.lastX) + scr.tv.Spec.ClocksPerHblank
+		y := int(scr.lastY)
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary

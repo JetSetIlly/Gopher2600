@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"gopher2600/hardware"
+	"gopher2600/hardware/cpu/result"
 	"gopher2600/television"
 	"gopher2600/television/sdltv"
 	"testing"
@@ -16,7 +17,7 @@ func BenchmarkSDLTV(b *testing.B) {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}
 
-	err = tv.RequestSetAttr(television.ReqSetVisibility, true)
+	err = tv.SetFeature(television.ReqSetVisibility, true)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}
@@ -34,7 +35,7 @@ func BenchmarkSDLTV(b *testing.B) {
 	b.ResetTimer()
 
 	for steps := 0; steps < b.N; steps++ {
-		_, _, err = vcs.Step(hardware.StubVideoCycleCallback)
+		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
 		if err != nil {
 			panic(err)
 		}

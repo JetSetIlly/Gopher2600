@@ -154,11 +154,11 @@ func NewDebugger() (*Debugger, error) {
 
 	// register tv callbacks
 	// -- add break on right mouse button
-	err = tv.RequestCallbackRegistration(television.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
+	err = tv.RegisterCallback(television.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
-		hp, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseHorizPos)
-		sl, _ := dbg.vcs.TV.RequestTVInfo(television.ReqLastMouseScanline)
+		hp, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseHorizPos)
+		sl, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseScanline)
 
 		dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
 		dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
@@ -363,7 +363,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// enter halt state
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
-			err = dbg.vcs.TV.RequestSetAttr(television.ReqSetPause, true)
+			err = dbg.vcs.TV.SetFeature(television.ReqSetPause, true)
 			if err != nil {
 				return err
 			}
@@ -416,7 +416,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
-				err = dbg.vcs.TV.RequestSetAttr(television.ReqSetPause, false)
+				err = dbg.vcs.TV.SetFeature(television.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

@@ -9,6 +9,7 @@ import (
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
 	"gopher2600/television"
+	"sync/atomic"
 )
 
 // VCS struct is the main container for the emulated components of the VCS
@@ -93,13 +94,40 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 	return nil
 }
 
-// StubVideoCycleCallback can be used as an argument to VCS.Step() when no
-// feedback is required - useful for non-debugging emulation modes
-func StubVideoCycleCallback(*result.Instruction) error {
+// Reset emulates the reset switch on the console panel
+//  - reset the CPU
+//  - destroy and create the TIA and RIOT
+//  - load reset address into the PC
+func (vcs *VCS) Reset() error {
+	if err := vcs.MC.Reset(); err != nil {
+		return err
+	}
+
+	// TODO: consider implementing tia.Reset and riot.Reset instead of
+	// recreating the two components
+
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
+	if vcs.TIA == nil {
+		return fmt.Errorf("can't create TIA")
+	}
+
+	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
+	if vcs.RIOT == nil {
+		return fmt.Errorf("can't create RIOT")
+	}
+
+	err := vcs.MC.LoadPC(memory.AddressReset)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Step the emulator state one CPU instruction
+// -- we can put this function in a loop for an effective debugging loop
+// ths videoCycleCallback function for an additional callback point in the
+// debugger.
 func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *result.Instruction, error) {
 	var r *result.Instruction
 	var err error
@@ -181,50 +209,95 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	return cpuCycles, r, nil
 }
 
-// Reset emulates the reset switch on the console panel
-//  - reset the CPU
-//  - destroy and create the TIA and RIOT
-//  - load reset address into the PC
-func (vcs *VCS) Reset() error {
-	if err := vcs.MC.Reset(); err != nil {
-		return err
+// RunConcurrent sets the emulation running as quickly as possible
+func (vcs *VCS) RunConcurrent(running *bool) error {
+	var err error
+
+	var triggerRIOT chan bool
+	var triggerTIA chan bool
+
+	triggerRIOT = make(chan bool)
+	triggerTIA = make(chan bool)
+
+	go func() {
+		for {
+			<-triggerRIOT
+			vcs.RIOT.ReadRIOTMemory()
+			vcs.RIOT.Step()
+			triggerRIOT <- true
+		}
+	}()
+
+	go func() {
+		for {
+			<-triggerTIA
+			// read tia memory just once and before we cycle the tia
+			vcs.TIA.ReadTIAMemory()
+
+			// three color clocks per CPU cycle so we run video cycle three times
+			vcs.TIA.StepVideoCycle()
+			vcs.TIA.StepVideoCycle()
+			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+			triggerTIA <- true
+		}
+	}()
+
+	cycleVCS := func(r *result.Instruction) {
+		triggerTIA <- true
+		triggerRIOT <- true
+		<-triggerTIA
+		<-triggerRIOT
 	}
 
-	// TODO: consider implementing tia.Reset and riot.Reset instead of
-	// recreating the two components
-
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
-	if vcs.TIA == nil {
-		return fmt.Errorf("can't create TIA")
-	}
-
-	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
-	if vcs.RIOT == nil {
-		return fmt.Errorf("can't create RIOT")
-	}
-
-	err := vcs.MC.LoadPC(memory.AddressReset)
-	if err != nil {
-		return err
+	for *running == true {
+		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// RunFrames sets emulator running for the specified number of frames
+// Run sets the emulation running as quickly as possible
+// -- using an atomic value rather than a mutex
+func (vcs *VCS) Run(running *atomic.Value) error {
+	var err error
+
+	cycleVCS := func(r *result.Instruction) {
+		vcs.RIOT.ReadRIOTMemory()
+		vcs.RIOT.Step()
+		vcs.TIA.ReadTIAMemory()
+		vcs.TIA.StepVideoCycle()
+		vcs.TIA.StepVideoCycle()
+		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+	}
+
+	for running.Load().(int) >= 0 {
+		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RunForFrameCount sets emulator running for the specified number of frames
 // - not used by the debugger because traps and steptraps are more flexible
 // - useful for fps and regression tests
-func (vcs *VCS) RunFrames(numFrames int) error {
-	frm, err := vcs.TV.RequestTVState(television.ReqFramenum)
+func (vcs *VCS) RunForFrameCount(numFrames int) error {
+	tvs, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
 
-	targetFrame := frm.Value().(int) + numFrames
+	targetFrame := tvs.Value().(int) + numFrames
 
-	for frm.Value().(int) != targetFrame {
+	for tvs.Value().(int) != targetFrame {
 		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
-		frm, err = vcs.TV.RequestTVState(television.ReqFramenum)
+
+		tvs, err = vcs.TV.GetState(television.ReqFramenum)
 		if err != nil {
 			return err
 		}
