@@ -2,7 +2,6 @@ package sdltv
 
 import (
 	"gopher2600/television"
-	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -14,8 +13,7 @@ type SDLTV struct {
 	// much of the sdl magic happens in the screen object
 	scr *screen
 
-	// the time the last frame was rendered - used to limit frame rate
-	lastFrameRender time.Time
+	fpsLimiter *fpsLimiter
 
 	// callback functions
 	onWindowClose      callback
@@ -37,6 +35,11 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	var err error
 
 	tv := new(SDLTV)
+
+	tv.fpsLimiter, err = newFPSLimiter(50)
+	if err != nil {
+		return nil, err
+	}
 
 	err = television.InitHeadlessTV(&tv.HeadlessTV, tvType)
 	if err != nil {
@@ -80,18 +83,15 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 // update the gui so that it reflects changes to buffered data in the tv struct
 func (tv *SDLTV) update() error {
+	tv.fpsLimiter.wait()
+
 	// abbrogate most of the updating to the screen instance
 	err := tv.scr.update(tv.paused)
 	if err != nil {
 		return err
 	}
 
-	// FPS limiting - for windowed SDL, attempt to synchronise to 60fps (VSYNC
-	// hint only seems to work if window is in full screen mode)
-	time.Sleep(16666*time.Microsecond - time.Since(tv.lastFrameRender))
 	tv.scr.renderer.Present()
-	tv.lastFrameRender = time.Now()
-
 	tv.scr.swapPixels()
 
 	return nil

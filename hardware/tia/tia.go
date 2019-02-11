@@ -80,7 +80,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.NewVideo(tia.colorClock)
+	tia.Video = video.NewVideo(tia.colorClock, mem)
 	if tia.Video == nil {
 		return nil
 	}
@@ -210,9 +210,6 @@ func (tia *TIA) StepVideoCycle() bool {
 	if err != nil {
 		panic(err)
 	}
-
-	// set collision registers
-	tia.Video.Collisions.SetMemory(tia.mem)
 
 	return !tia.wsync
 }

@@ -139,7 +139,7 @@ func main() {
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
-		runTime := modeFlags.String("time", "5s", "run duration")
+		runTime := modeFlags.String("time", "5s", "run duration (note: there is a 2s overhead)")
 		profile := modeFlags.Bool("profile", false, "perform cpu and memory profiling")
 		modeFlagsParse()
 
@@ -303,9 +303,6 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	startFrame := tvState.Value().(int)
 
 	// run for specified period of time
-	// -- while value of running variable is positive
-	var running atomic.Value
-	running.Store(0)
 
 	// -- parse supplied duration
 	duration, err := time.ParseDuration(runTime)
@@ -313,11 +310,27 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 		return err
 	}
 
-	// -- run until specified time elapses
+	// -- setup trigger that expires when duration has elapsed
+	var running atomic.Value
+	running.Store(0)
+
 	go func() {
-		time.AfterFunc(duration, func() { running.Store(-1) })
+		// force a two second leadtime to allow framerate to settle down
+		time.AfterFunc(2*time.Second, func() {
+			tvState, _ := vcs.TV.GetState(television.ReqFramenum)
+			startFrame = tvState.Value().(int)
+
+			time.AfterFunc(duration, func() {
+				running.Store(-1)
+			})
+		})
 	}()
-	vcs.Run(&running)
+
+	// -- run until specified time elapses (running is changed to -1)
+	err = vcs.Run(&running)
+	if err != nil {
+		return err
+	}
 
 	// get ending frame number
 	tvState, err = tv.GetState(television.ReqFramenum)
@@ -388,7 +401,5 @@ func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 		}
 	}
 
-	vcs.Run(&running)
-
-	return nil
+	return vcs.Run(&running)
 }

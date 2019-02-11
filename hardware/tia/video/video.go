@@ -1,6 +1,8 @@
 package video
 
 import (
+	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/vcssymbols"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video/future"
 )
@@ -8,6 +10,9 @@ import (
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
 	colorClock *polycounter.Polycounter
+
+	// collision matrix
+	collisions *collisions
 
 	// playfield
 	Playfield *playfield
@@ -18,9 +23,6 @@ type Video struct {
 	Missile0 *missileSprite
 	Missile1 *missileSprite
 	Ball     *ballSprite
-
-	// collision matrix
-	Collisions collisions
 
 	// there's a slight delay when changing the state of video objects. we're
 	// using two future instances to emulate what happens in the 2600. the
@@ -36,9 +38,12 @@ type Video struct {
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(colorClock *polycounter.Polycounter) *Video {
+func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus) *Video {
 	vd := new(Video)
 	vd.colorClock = colorClock
+
+	// collision matrix
+	vd.collisions = newCollision(mem)
 
 	// playfield
 	vd.Playfield = newPlayfield(vd.colorClock)
@@ -145,57 +150,72 @@ func (vd *Video) Pixel() uint8 {
 
 	// collisions
 	if m0u && p1u {
-		vd.Collisions.cxm0p |= 0x80
+		vd.collisions.cxm0p |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXM0P)
 	}
 	if m0u && p0u {
-		vd.Collisions.cxm0p |= 0x40
+		vd.collisions.cxm0p |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXM0P)
 	}
 
 	if m1u && p0u {
-		vd.Collisions.cxm1p |= 0x80
+		vd.collisions.cxm1p |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXM1P)
 	}
 	if m1u && p1u {
-		vd.Collisions.cxm1p |= 0x40
+		vd.collisions.cxm1p |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXM1P)
 	}
 
 	if p0u && pfu {
-		vd.Collisions.cxp0fb |= 0x80
+		vd.collisions.cxp0fb |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXP0FB)
 	}
 	if p0u && blu {
-		vd.Collisions.cxp0fb |= 0x40
+		vd.collisions.cxp0fb |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXP0FB)
 	}
 
 	if p1u && pfu {
-		vd.Collisions.cxp1fb |= 0x80
+		vd.collisions.cxp1fb |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXP1FB)
 	}
 	if p1u && blu {
-		vd.Collisions.cxp1fb |= 0x40
+		vd.collisions.cxp1fb |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXP1FB)
 	}
 
 	if m0u && pfu {
-		vd.Collisions.cxm0fb |= 0x80
+		vd.collisions.cxm0fb |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXM0FB)
 	}
 	if m0u && blu {
-		vd.Collisions.cxm0fb |= 0x40
+		vd.collisions.cxm0fb |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXM0FB)
 	}
 
 	if m1u && pfu {
-		vd.Collisions.cxm1fb |= 0x80
+		vd.collisions.cxm1fb |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXM1FB)
 	}
 	if m1u && blu {
-		vd.Collisions.cxm1fb |= 0x40
+		vd.collisions.cxm1fb |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXM1FB)
 	}
 
 	if blu && pfu {
-		vd.Collisions.cxblpf |= 0x80
+		vd.collisions.cxblpf |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXBLPF)
 	}
 	// no bit 6 for CXBLPF
 
 	if p0u && p1u {
-		vd.Collisions.cxppmm |= 0x80
+		vd.collisions.cxppmm |= 0x80
+		vd.collisions.SetMemory(vcssymbols.CXPPMM)
 	}
 	if m0u && m1u {
-		vd.Collisions.cxppmm |= 0x40
+		vd.collisions.cxppmm |= 0x40
+		vd.collisions.SetMemory(vcssymbols.CXPPMM)
 	}
 
 	// apply priorities to get pixel color
@@ -358,7 +378,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "RESMP1":
 		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "CXCLR":
-		vd.Collisions.clear()
+		vd.collisions.clear()
 
 		// horizontal movement values range from -8 to +7
 		// for convenience we convert this to the range 0 to 15
