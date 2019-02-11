@@ -100,22 +100,16 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 		}
 
 	case television.ReqSetPause:
-		tv.guiLoopLock.Lock()
 		tv.paused = args[0].(bool)
-		tv.guiLoopLock.Unlock()
 		if args[0].(bool) {
 			tv.update()
 		}
 
 	case television.ReqSetDebug:
-		tv.guiLoopLock.Lock()
 		tv.scr.setMasking(args[0].(bool))
-		tv.guiLoopLock.Unlock()
 
 	case television.ReqSetScale:
-		tv.guiLoopLock.Lock()
 		tv.scr.setScaling(args[0].(float32))
-		tv.guiLoopLock.Unlock()
 
 	default:
 		return errors.NewGopherError(errors.UnknownTVRequest, request)

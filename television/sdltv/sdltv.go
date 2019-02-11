@@ -2,7 +2,6 @@ package sdltv
 
 import (
 	"gopher2600/television"
-	"sync"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -31,9 +30,6 @@ type SDLTV struct {
 	// last mouse selection
 	lastMouseHorizPos int
 	lastMouseScanline int
-
-	// critical section protection
-	guiLoopLock sync.Mutex
 }
 
 // NewSDLTV initiliases a new instance of an SDL based display for the VCS
@@ -62,10 +58,10 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		return nil, err
 	}
 
-	// register new frame callback from HeadlessTV to SDLTV
-	// leaving SignalNewScanline() hook at its default
-	tv.HookNewFrame = tv.newFrame
-	tv.HookSetPixel = tv.setPixel
+	// register headlesstv callbacks
+	// leave SignalNewScanline() hook at its default
+	tv.HookNewFrame = tv.update
+	tv.HookSetPixel = tv.scr.setPixel
 
 	// update tv (with a black image)
 	err = tv.update()
@@ -73,7 +69,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		return nil, err
 	}
 
-	// begin gui loop
+	// gui events are serviced by a separate loop
 	go tv.guiLoop()
 
 	// note that we've elected not to show the window on startup
@@ -82,24 +78,8 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	return tv, nil
 }
 
-// Pixel puts the pixel on the tv
-func (tv *SDLTV) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
-	tv.guiLoopLock.Lock()
-	defer tv.guiLoopLock.Unlock()
-
-	return tv.scr.setPixel(x, y, red, green, blue, vblank)
-}
-
-func (tv *SDLTV) newFrame() error {
-	defer tv.scr.swapPixels()
-	return tv.update()
-}
-
 // update the gui so that it reflects changes to buffered data in the tv struct
 func (tv *SDLTV) update() error {
-	tv.guiLoopLock.Lock()
-	defer tv.guiLoopLock.Unlock()
-
 	// abbrogate most of the updating to the screen instance
 	err := tv.scr.update(tv.paused)
 	if err != nil {
@@ -111,6 +91,8 @@ func (tv *SDLTV) update() error {
 	time.Sleep(16666*time.Microsecond - time.Since(tv.lastFrameRender))
 	tv.scr.renderer.Present()
 	tv.lastFrameRender = time.Now()
+
+	tv.scr.swapPixels()
 
 	return nil
 }

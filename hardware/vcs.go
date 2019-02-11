@@ -209,8 +209,11 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	return cpuCycles, r, nil
 }
 
-// RunConcurrent sets the emulation running as quickly as possible
-func (vcs *VCS) RunConcurrent(running *bool) error {
+// RunConcurrent sets the emulation running with as many different sub-systems
+// running concurrently as possible
+// NOTE: this doesn't really work as yet. it's here because it's an intersting
+// idea.
+func (vcs *VCS) RunConcurrent(running *atomic.Value) error {
 	var err error
 
 	var triggerRIOT chan bool
@@ -249,7 +252,7 @@ func (vcs *VCS) RunConcurrent(running *bool) error {
 		<-triggerRIOT
 	}
 
-	for *running == true {
+	for running.Load().(int) >= 0 {
 		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
 		if err != nil {
 			return err

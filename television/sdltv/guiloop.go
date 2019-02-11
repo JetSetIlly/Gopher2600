@@ -2,6 +2,7 @@ package sdltv
 
 import (
 	"gopher2600/television"
+	"runtime"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -9,6 +10,9 @@ import (
 // guiLoop listens for SDL events and is run concurrently. critical sections
 // protected by tv.guiLoopLock
 func (tv *SDLTV) guiLoop() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	for {
 		ev := sdl.WaitEvent()
 		switch ev := ev.(type) {
@@ -16,19 +20,13 @@ func (tv *SDLTV) guiLoop() {
 		// close window
 		case *sdl.QuitEvent:
 			tv.SetFeature(television.ReqSetVisibility, false)
-			// *CRITICAL SECTION*
-			// (R) tv.onWindowClose
-			tv.guiLoopLock.Lock()
 			tv.onWindowClose.dispatch()
-			tv.guiLoopLock.Unlock()
 
 		case *sdl.KeyboardEvent:
 			if ev.Type == sdl.KEYDOWN {
 				switch ev.Keysym.Sym {
 				case sdl.K_BACKQUOTE:
-					tv.guiLoopLock.Lock()
 					tv.scr.toggleMasking()
-					tv.guiLoopLock.Unlock()
 				}
 			}
 
@@ -42,7 +40,6 @@ func (tv *SDLTV) guiLoop() {
 				case sdl.BUTTON_RIGHT:
 					sx, sy := tv.scr.renderer.GetScale()
 
-					tv.guiLoopLock.Lock()
 					// convert X pixel value to horizpos equivalent
 					// the opposite of pixelX() and also the scalining applied
 					// by the SDL renderer
@@ -60,7 +57,6 @@ func (tv *SDLTV) guiLoop() {
 					} else {
 						tv.lastMouseScanline = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync
 					}
-					tv.guiLoopLock.Unlock()
 
 					tv.onMouseButtonRight.dispatch()
 				}

@@ -311,7 +311,7 @@ func (scr *screen) update(paused bool) error {
 }
 
 func (scr *screen) swapPixels() {
-	// swap which pixel buffer we're using in time for next roung of pixel
+	// swap which pixel buffer we're using in time for next round of pixel
 	// plotting
 	swp := scr.pixels
 	scr.pixels = scr.pixelsFade

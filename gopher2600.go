@@ -140,6 +140,7 @@ func main() {
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		runTime := modeFlags.String("time", "5s", "run duration")
+		profile := modeFlags.Bool("profile", false, "perform cpu and memory profiling")
 		modeFlagsParse()
 
 		switch len(modeFlags.Args()) {
@@ -147,7 +148,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := fps(modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *runTime)
+			err := fps(*profile, modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *runTime)
 			if err != nil {
 				fmt.Printf("* error starting fps profiler: %s\n", err)
 				os.Exit(2)
@@ -250,7 +251,7 @@ func main() {
 	}
 }
 
-func fps(cartridgeFile string, display bool, tvMode string, scaling float32, runTime string) error {
+func fps(profile bool, cartridgeFile string, display bool, tvMode string, scaling float32, runTime string) error {
 	var tv television.Television
 	var err error
 
@@ -281,16 +282,18 @@ func fps(cartridgeFile string, display bool, tvMode string, scaling float32, run
 		return err
 	}
 
-	// start cpu profile
-	f, err := os.Create("cpu.profile")
-	if err != nil {
-		return err
+	// write cpu profile
+	if profile {
+		f, err := os.Create("cpu.profile")
+		if err != nil {
+			return err
+		}
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			return err
+		}
+		defer pprof.StopCPUProfile()
 	}
-	err = pprof.StartCPUProfile(f)
-	if err != nil {
-		return err
-	}
-	defer pprof.StopCPUProfile()
 
 	// get starting frame number
 	tvState, err := vcs.TV.GetState(television.ReqFramenum)
@@ -329,16 +332,18 @@ func fps(cartridgeFile string, display bool, tvMode string, scaling float32, run
 	fmt.Printf("%.2f fps (%d frames in %.2f seconds)\n", fps, frameCount, duration.Seconds())
 
 	// write memory profile
-	f, err = os.Create("mem.profile")
-	if err != nil {
-		return err
+	if profile {
+		f, err := os.Create("mem.profile")
+		if err != nil {
+			return err
+		}
+		runtime.GC()
+		err = pprof.WriteHeapProfile(f)
+		if err != nil {
+			return fmt.Errorf("could not write memory profile: %s", err)
+		}
+		f.Close()
 	}
-	runtime.GC()
-	err = pprof.WriteHeapProfile(f)
-	if err != nil {
-		return fmt.Errorf("could not write memory profile: %s", err)
-	}
-	f.Close()
 
 	return nil
 }
