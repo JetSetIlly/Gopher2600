@@ -40,8 +40,16 @@ type HeadlessTV struct {
 	//	-- some ROMs make this more awkward than it first seems. for instance,
 	//	vblank can be turned on and off anywhere, making detecting where the
 	//	visible top of the screen more laborious than necessary.
+	//  -- updated at the end of very frame (just before HookNewFrame is
+	//  called)
 	VisibleTop    int
 	VisibleBottom int
+
+	// pendingVisibleTop/Bottom records visible part of the screen (as
+	// described above) during the frame. we use these to update the real
+	// variables at the end of a frame
+	pendingVisibleTop    int
+	pendingVisibleBottom int
 
 	// to help us decide where the visible limits of the screen are, we note if
 	// we have received a colorSignal this scanline
@@ -132,8 +140,8 @@ func (tv *HeadlessTV) Reset() error {
 	tv.vsyncCount = 0
 	tv.prevSignal = SignalAttributes{}
 
-	tv.VisibleTop = -1
-	tv.VisibleBottom = -1
+	tv.pendingVisibleTop = -1
+	tv.pendingVisibleBottom = -1
 	tv.colorSignalThisScanline = false
 
 	return nil
@@ -178,13 +186,17 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 			tv.scanline.value = 0
 			tv.vsyncCount = 0
 
+			// record visible top/bottom for this frame
+			tv.VisibleTop = tv.pendingVisibleTop
+			tv.VisibleBottom = tv.pendingVisibleBottom
+
 			err := tv.HookNewFrame()
 			if err != nil {
 				return err
 			}
 
-			tv.VisibleTop = -1
-			tv.VisibleBottom = -1
+			tv.pendingVisibleTop = -1
+			tv.pendingVisibleBottom = -1
 			tv.colorSignalThisScanline = false
 		}
 	}
@@ -226,8 +238,8 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		// ROMs affected:
 		//	* Custer's Revenge
 		//	* Ladybug
-		if tv.VisibleTop == -1 {
-			tv.VisibleTop = tv.scanline.value
+		if tv.pendingVisibleTop == -1 {
+			tv.pendingVisibleTop = tv.scanline.value
 		}
 	}
 	if sig.VBlank && !tv.prevSignal.VBlank {
@@ -238,11 +250,11 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		// ROMs affected:
 		//  * Gauntlet
 		if tv.scanline.value == 0 {
-			tv.VisibleBottom = tv.Spec.ScanlinesTotal
+			tv.pendingVisibleBottom = tv.Spec.ScanlinesTotal
 		} else {
 			// some ROMs do monkey things with VBLANK. some, like Custer's
 			// Revenge do it quite cleverly but others can produce odd results.
-			// the following condition only allows VisibleBottom to be recorded
+			// the following condition only allows pendingVisibleBottom to be recorded
 			// if:
 			//    (a) it hasn't been altered this frame yet
 			// or (b) if the scanline is still in the "visible" part of the
@@ -252,10 +264,10 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 			//
 			// ROMs affected:
 			//  * Dk (original Donkey Kong)
-			if tv.VisibleBottom == -1 {
-				tv.VisibleBottom = tv.scanline.value
+			if tv.pendingVisibleBottom == -1 {
+				tv.pendingVisibleBottom = tv.scanline.value
 			} else if tv.scanline.value < (tv.Spec.ScanlinesTotal-tv.Spec.ScanlinesPerOverscan) || tv.colorSignalThisScanline == false {
-				tv.VisibleBottom = tv.scanline.value
+				tv.pendingVisibleBottom = tv.scanline.value
 			}
 		}
 	}
@@ -285,16 +297,16 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 // implementations in other packages will difficulty extending this function
 // because TVStateReq does not expose its members. (although it may need to if
 // television is running in it's own goroutine)
-func (tv *HeadlessTV) GetState(request StateReq) (TVState, error) {
+func (tv *HeadlessTV) GetState(request StateReq) (*TVState, error) {
 	switch request {
 	default:
-		return TVState{}, errors.NewGopherError(errors.UnknownTVRequest, request)
+		return &TVState{}, errors.NewGopherError(errors.UnknownTVRequest, request)
 	case ReqFramenum:
-		return tv.frameNum, nil
+		return &tv.frameNum, nil
 	case ReqScanline:
-		return tv.scanline, nil
+		return &tv.scanline, nil
 	case ReqHorizPos:
-		return tv.horizPos, nil
+		return &tv.horizPos, nil
 	}
 }
 

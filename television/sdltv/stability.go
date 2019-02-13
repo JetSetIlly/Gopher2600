@@ -25,7 +25,8 @@ type screenStabiliser struct {
 	// defined to be the scanline at which VBlank is turned off when the image
 	// first passes the stability threshold. it is used to adjust the viewport
 	// for wobbly frames. see "shift viewport" comment below.
-	visibleTopReference int32
+	visibleTopReference    int32
+	visibleBottomReference int32
 
 	// has a ReqSetVisibilityStable been received recently? we don't want to
 	// open the window until the screen is stable
@@ -46,55 +47,54 @@ func newScreenStabiliser(scr *screen) *screenStabiliser {
 // sophisticated approach may be worth investigating
 const stabilityThreshold int = 6
 
-// beginStabilisation should be called at beginning of frame update. note that
-// it should also be paired with endStabilisation, called at the end of the
-// frame upate
-func (stb *screenStabiliser) beginStabilisation() error {
+// checkStableFrame checks to see if the screen dimensions have been stable for
+// a count of "stabilityThreshold"
+//
+// currently: once it's been determined that the screen dimensions are stable
+// then any changes are ignored
+func (stb *screenStabiliser) checkStableFrame() error {
 	// measures the consistency of the generated television frame and alters
 	// window sizing appropriately
-	if stb.count < stabilityThreshold {
-		stb.count++
+	if !stb.isStable() {
+		if stb.visibleTopReference == int32(stb.scr.tv.VisibleTop) &&
+			stb.visibleBottomReference == int32(stb.scr.tv.VisibleBottom) {
 
-	} else if stb.count == stabilityThreshold {
-		stb.count++
+			if stb.count < stabilityThreshold {
+				stb.count++
+			} else if stb.count == stabilityThreshold {
+				stb.count++
 
-		stb.visibleScanlines = int32(stb.scr.tv.VisibleBottom - stb.scr.tv.VisibleTop)
-		stb.visibleTopReference = int32(stb.scr.tv.VisibleTop)
+				// update play height (which in turn updates masking and window size)
+				err := stb.scr.setPlayHeight(int32(stb.visibleScanlines), int32(stb.visibleTopReference))
+				if err != nil {
+					return err
+				}
 
-		// update play height (which in turn updates masking and window size)
-		err := stb.scr.setPlayHeight(int32(stb.visibleScanlines))
-		if err != nil {
-			return err
-		}
-
-		// show window if a show request has been queued up
-		if stb.queuedShowRequest {
-			err := stb.resolveSetVisibilityStable()
-			if err != nil {
-				return err
+				// show window if a show request has been queued up
+				if stb.queuedShowRequest {
+					err := stb.resolveSetVisibilityStable()
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				// stability hasn't been reached yet so reset count
+				stb.count = 0
 			}
-		}
-	} else {
-		if !stb.isStable() {
-			// stability hasn't been reached yet so reset count
-			stb.count = 0
-
-			// we could reset stability.count whenever the number of visible
-			// scanlines change:
-			//
-			// however, some ROMs are very lazy at keeping the number of scanlines
-			// stable (for example, when moving between a title screen and a game
-			// screen).  if we do reset the stability count, the window will resize
-			// (with setPlayHeight) during the course of the emulation. which is
-			// ugly and confusing and the very thing we're trying to prevent with
-			// this stability construct.
-			//
-			// that said, it's easy to imagine a situation where it may be
-			// necessary to prefer a later screen size. if this is ever an issue
-			// then a more elaborate solution is required.
+		} else {
+			stb.visibleTopReference = int32(stb.scr.tv.VisibleTop)
+			stb.visibleBottomReference = int32(stb.scr.tv.VisibleBottom)
+			stb.visibleScanlines = int32(stb.visibleBottomReference - stb.visibleTopReference)
 		}
 	}
 
+	return nil
+}
+
+// beginViewportStabilisation should be called at beginning of frame update. note that
+// it should also be paired with endViewportStabilisation, called at the end of the
+// frame upate
+func (stb *screenStabiliser) beginViewportStabilisation() error {
 	// shift viewport: this is a fix for Plaq Attack although other ROMs could
 	// feasibly have the same problem. Plaq Attack has an inconsistent number
 	// of VBLank lines at the start of the frame but the same number of visible
@@ -104,15 +104,19 @@ func (stb *screenStabiliser) beginStabilisation() error {
 	// (note that this shift will bugger up scanline reporting when using the
 	// right mouse button facility. if screen is unmasked however, then the
 	// reporting will be correct)
-	stb.viewportShift = int32(stb.scr.tv.VisibleTop) - stb.visibleTopReference
-	stb.scr.srcRect.Y += stb.viewportShift
+
+	// do nothing if VisibleTop is -1
+	if stb.scr.tv.VisibleTop != -1 {
+		stb.viewportShift = int32(stb.scr.tv.VisibleTop) - stb.visibleTopReference
+		stb.scr.srcRect.Y += stb.viewportShift
+	}
 
 	return nil
 }
 
-// endStabilsation should be called at the end of a frame update (assuming
-// beginStabilisation was called at the beginning of the update)
-func (stb *screenStabiliser) endStabilisation() error {
+// endViewportStabilsation should be called at the end of a frame update (assuming
+// beginViewportStabilisation was called at the beginning of the update)
+func (stb *screenStabiliser) endViewportStabilisation() error {
 	// undo viewport shift
 	stb.scr.srcRect.Y -= stb.viewportShift
 
@@ -125,7 +129,7 @@ func (stb *screenStabiliser) isStable() bool {
 
 func (stb *screenStabiliser) resolveSetVisibilityStable() error {
 	if stb.isStable() {
-		err := stb.scr.tv.SetFeature(television.ReqSetVisibility, true, false)
+		err := stb.scr.tv.SetFeature(television.ReqSetVisibility, true, true)
 		if err != nil {
 			return err
 		}

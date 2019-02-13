@@ -53,7 +53,7 @@ type screen struct {
 	destRect *sdl.Rect
 
 	// stabiliser to make sure image remains solid
-	stabiliser *screenStabiliser
+	stb *screenStabiliser
 }
 
 func newScreen(tv *SDLTV) (*screen, error) {
@@ -79,7 +79,7 @@ func newScreen(tv *SDLTV) (*screen, error) {
 	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
 
 	scr.playWidth = int32(tv.Spec.ClocksPerVisible)
-	scr.setPlayHeight(int32(tv.Spec.ScanlinesPerVisible))
+	scr.setPlayHeight(int32(tv.Spec.ScanlinesPerVisible), int32(tv.Spec.ScanlinesPerVBlank+tv.Spec.ScanlinesPerVSync))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -110,7 +110,7 @@ func newScreen(tv *SDLTV) (*screen, error) {
 	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
 	// new stabiliser
-	scr.stabiliser = newScreenStabiliser(scr)
+	scr.stb = newScreenStabiliser(scr)
 
 	return scr, nil
 }
@@ -118,10 +118,10 @@ func newScreen(tv *SDLTV) (*screen, error) {
 // setPlayHeight should be used when the number of visible scanlines change.
 // when we want to show the overscan areas then we should use the setMasking()
 // function.
-func (scr *screen) setPlayHeight(visibleScanlines int32) error {
-	scr.playHeight = visibleScanlines
+func (scr *screen) setPlayHeight(scanlines int32, top int32) error {
+	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: int32(scr.tv.VisibleTop), W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -182,7 +182,13 @@ func (scr *screen) toggleMasking() {
 func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	scr.lastX = x
 	scr.lastY = y
-	if scr.unmasked || !vblank {
+
+	// do not plot pixel if VBLANK is on. some ROMs use VBLANK to output black
+	//
+	// ROMs affected:
+	//	* Custer's Revenge
+	//	* Ladybug
+	if !vblank {
 		i := (y*scr.maxWidth + x) * scrDepth
 		if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
 			scr.pixels[i] = red
@@ -199,18 +205,23 @@ func (scr *screen) update(paused bool) error {
 	var err error
 
 	// before we go any further, check frame stability
-	err = scr.stabiliser.beginStabilisation()
+	err = scr.stb.beginViewportStabilisation()
 	if err != nil {
 		return err
 	}
-	defer scr.stabiliser.endStabilisation()
+	defer scr.stb.endViewportStabilisation()
 
 	// note that because of how the stabilisation routines work, srcRect,
 	// destRect, etc. should only be read. changing them during frame update
 	// will cause havoc
 
-	// clear image from rendered
-	scr.renderer.SetDrawColor(5, 5, 5, 255)
+	// clear image from rendered. using a non-video-black color if screen is
+	// unmasked
+	if scr.unmasked {
+		scr.renderer.SetDrawColor(5, 5, 5, 255)
+	} else {
+		scr.renderer.SetDrawColor(0, 0, 0, 255)
+	}
 	scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 	err = scr.renderer.Clear()
 	if err != nil {
@@ -242,33 +253,11 @@ func (scr *screen) update(paused bool) error {
 		return err
 	}
 
-	// draw masks
-	if scr.unmasked {
-		scr.renderer.SetDrawColor(15, 15, 15, 100)
-		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-
-		// hblank mask
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.tv.Spec.ClocksPerHblank), H: scr.srcRect.H})
-	} else {
-		scr.renderer.SetDrawColor(0, 0, 0, 255)
-		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
-	}
-
-	// top vblank mask
-	h := int32(scr.tv.VisibleTop) - scr.srcRect.Y
-	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: scr.srcRect.W, H: h})
-
-	// bottom vblank mask
-	y := int32(scr.tv.VisibleBottom) - scr.srcRect.Y
-	h = int32(scr.tv.Spec.ScanlinesTotal - scr.tv.VisibleBottom)
-	scr.renderer.FillRect(&sdl.Rect{X: 0, Y: y, W: scr.srcRect.W, H: h})
-
 	// add cursor if tv is paused
-	// -- drawing last so that cursor isn't masked or drawn behind any alpha
-	// layers
+	// - drawing last so that cursor isn't masked
 	if paused {
 		// cursor coordinates
-		x := int(scr.lastX) + scr.tv.Spec.ClocksPerHblank
+		x := int(scr.lastX)
 		y := int(scr.lastY)
 
 		// cursor is one step ahead of pixel -- move to new scanline if
@@ -284,7 +273,7 @@ func (scr *screen) update(paused bool) error {
 		// adjust coordinates if screen is masked
 		if !scr.unmasked {
 			x -= scr.tv.Spec.ClocksPerHblank
-			y -= scr.tv.Spec.ScanlinesPerVBlank + scr.tv.Spec.ScanlinesPerVSync
+			y -= int(scr.stb.visibleTopReference) + int(scr.stb.viewportShift)
 			if x < 0 {
 				offscreenCursorPos = true
 				x = 0

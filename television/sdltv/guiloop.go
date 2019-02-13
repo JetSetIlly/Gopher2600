@@ -27,6 +27,7 @@ func (tv *SDLTV) guiLoop() {
 				switch ev.Keysym.Sym {
 				case sdl.K_BACKQUOTE:
 					tv.scr.toggleMasking()
+					tv.update()
 				}
 			}
 
@@ -55,7 +56,7 @@ func (tv *SDLTV) guiLoop() {
 					if tv.scr.unmasked {
 						tv.lastMouseScanline = int(float32(ev.Y) / sy)
 					} else {
-						tv.lastMouseScanline = int(float32(ev.Y)/sy) + tv.Spec.ScanlinesPerVBlank + tv.Spec.ScanlinesPerVSync
+						tv.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
 					}
 
 					tv.onMouseButtonRight.dispatch()

@@ -63,7 +63,14 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 
 	// register headlesstv callbacks
 	// leave SignalNewScanline() hook at its default
-	tv.HookNewFrame = tv.update
+	tv.HookNewFrame = func() error {
+		defer tv.scr.swapPixels()
+		err := tv.scr.stb.checkStableFrame()
+		if err != nil {
+			return err
+		}
+		return tv.update()
+	}
 	tv.HookSetPixel = tv.scr.setPixel
 
 	// update tv (with a black image)
@@ -92,7 +99,6 @@ func (tv *SDLTV) update() error {
 	}
 
 	tv.scr.renderer.Present()
-	tv.scr.swapPixels()
 
 	return nil
 }

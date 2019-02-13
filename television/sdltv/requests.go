@@ -10,7 +10,7 @@ import (
 )
 
 // GetState returns the TVState object for the named state
-func (tv *SDLTV) GetState(request television.StateReq) (television.TVState, error) {
+func (tv *SDLTV) GetState(request television.StateReq) (*television.TVState, error) {
 	return tv.HeadlessTV.GetState(request)
 }
 
@@ -82,7 +82,7 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 
 	switch request {
 	case television.ReqSetVisibilityStable:
-		err = tv.scr.stabiliser.resolveSetVisibilityStable()
+		err = tv.scr.stb.resolveSetVisibilityStable()
 		if err != nil {
 			return err
 		}
@@ -107,9 +107,11 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 
 	case television.ReqSetDebug:
 		tv.scr.setMasking(args[0].(bool))
+		tv.update()
 
 	case television.ReqSetScale:
 		tv.scr.setScaling(args[0].(float32))
+		tv.update()
 
 	default:
 		return errors.NewGopherError(errors.UnknownTVRequest, request)
