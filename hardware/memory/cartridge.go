@@ -19,6 +19,9 @@ type Cartridge struct {
 	Area
 	AreaInfo
 
+	name   string
+	method string
+
 	bank   int
 	memory [][]uint8
 
@@ -28,13 +31,28 @@ type Cartridge struct {
 	readHook func(uint16) uint8
 }
 
+const ejectedName = "ejected"
+const ejectedMethod = "none"
+
 // newCart is the preferred method of initialisation for the cartridges
 func newCart() *Cartridge {
 	cart := new(Cartridge)
 	cart.label = "Cartridge"
 	cart.origin = 0x1000
 	cart.memtop = 0x1fff
+	cart.name = ejectedName
+	cart.method = ejectedMethod
 	return cart
+}
+
+// MachineInfoTerse returns the cartridge information in terse format
+func (cart Cartridge) MachineInfoTerse() string {
+	return fmt.Sprintf("%s [%s] bank=%d", cart.name, cart.method, cart.bank)
+}
+
+// MachineInfo returns the cartridge information in verbose format
+func (cart Cartridge) MachineInfo() string {
+	return fmt.Sprintf("name: %s\nmethod: %s\nbank:%d", cart.name, cart.method, cart.bank)
 }
 
 // Label is an implementation of Area.Label
@@ -121,6 +139,11 @@ func (cart *Cartridge) Attach(filename string) error {
 
 	switch cfi.Size() {
 	case 2048:
+		// note that while we're allocating a full 4096 bytes for this
+		// cartrdige size, the readHook below ensures that we only ever read
+		// the first 2048.
+		cart.allocateCartridgeSpace(cf, 1)
+
 		// this is a half-size cartridge of 2048 bytes
 		//
 		//	o Combat
@@ -128,11 +151,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		//  o Outlaw
 		//	o Surround
 		//  o mostly early cartridges
-
-		// note that while we're allocating a full 4096 bytes for this
-		// cartrdige size, the readHook below ensures that we only ever read
-		// the first 2048.
-		cart.allocateCartridgeSpace(cf, 1)
+		cart.method = "standard 2k"
 
 		cart.readHook = func(address uint16) uint8 {
 			// because we've only allocated half the amount of memory that
@@ -142,14 +161,15 @@ func (cart *Cartridge) Attach(filename string) error {
 		}
 
 	case 4096:
+		cart.allocateCartridgeSpace(cf, 1)
+
 		// this is a regular cartridge of 4096 bytes
 		//
 		//  o Pitfall
 		//  o Adventure
 		//  o Yars Revenge
 		//  o most 2600 cartridges...
-
-		cart.allocateCartridgeSpace(cf, 1)
+		cart.method = "standard 4k"
 		cart.readHook = func(address uint16) uint8 { return cart.memory[0][address] }
 
 	case 8192:
@@ -172,6 +192,7 @@ func (cart *Cartridge) Attach(filename string) error {
 			}
 			return data
 		}
+		cart.method = "standard 8k (F8)"
 
 		// E0 Method (Parker Bros)
 		//
@@ -204,6 +225,7 @@ func (cart *Cartridge) Attach(filename string) error {
 			}
 			return data
 		}
+		cart.method = "standard 16k (F6)"
 
 	case 32768:
 		cart.allocateCartridgeSpace(cf, 8)
@@ -213,6 +235,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		// o Fatal Run
 		// o Super Mario Bros.
 		// o other homebrew games
+		cart.method = "standard 32k (F4)"
 
 		cart.readHook = func(address uint16) uint8 {
 			data := cart.memory[cart.bank][address]
@@ -243,6 +266,9 @@ func (cart *Cartridge) Attach(filename string) error {
 		return errors.NewGopherError(errors.CartridgeUnsupported, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
+	// note name of cartridge
+	cart.name = filename
+
 	return nil
 }
 
@@ -252,6 +278,8 @@ func (cart *Cartridge) Eject() {
 	cart.allocateCartridgeSpace(nil, 1)
 	cart.bank = 0
 	cart.readHook = func(oa uint16) uint8 { return cart.memory[0][oa] }
+	cart.name = ejectedName
+	cart.method = ejectedMethod
 }
 
 // Peek is the implementation of Memory.Area.Peek

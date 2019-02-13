@@ -38,6 +38,7 @@ const (
 	KeywordVerbose       = "VERBOSE"
 	KeywordVerbosity     = "VERBOSITY"
 	KeywordDebuggerState = "DEBUGGERSTATE"
+	KeywordCartridge     = "CARTRIDGE"
 	KeywordCPU           = "CPU"
 	KeywordPeek          = "PEEK"
 	KeywordPoke          = "POKE"
@@ -80,6 +81,7 @@ var Help = map[string]string{
 	KeywordVerbose:       "Use verbose format when displaying machine information",
 	KeywordVerbosity:     "Display which format is used when displaying machine information (see TERSE and VERBOSE commands)",
 	KeywordDebuggerState: "Display summary of debugger options",
+	KeywordCartridge:     "Display information about the current cartridge",
 	KeywordCPU:           "Display the current state of the CPU",
 	KeywordPeek:          "Inspect an individual memory address",
 	KeywordPoke:          "Modify an individual memory address",
@@ -120,6 +122,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordVerbose:       "",
 	KeywordVerbosity:     "",
 	KeywordDebuggerState: "",
+	KeywordCartridge:     "",
 	KeywordCPU:           "",
 	KeywordPeek:          "%V %*",
 	KeywordPoke:          "%V %V %*",
@@ -526,6 +529,8 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	// information about the machine (chips)
+	case KeywordCartridge:
+		dbg.printMachineInfo(dbg.vcs.Mem.Cart)
 
 	case KeywordCPU:
 		dbg.printMachineInfo(dbg.vcs.MC)

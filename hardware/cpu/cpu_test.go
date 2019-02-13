@@ -223,12 +223,7 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	step(t, mc) // LDA (0x0b,X)
 	assert.CheckValueVCS(t, mc.A, 47)
 
-	// post-indexed indirect
-	// Y = 1
-	// LDA (Indirect), Y
-	origin = mem.putInstructions(origin, 0xb1, 0x0b)
-	step(t, mc) // LDA (0x0b),Y
-	assert.CheckValueVCS(t, mc.A, 43)
+	// post-indexed indirect (see below)
 
 	// pre-indexed indirect (with wraparound)
 	// X = 1
@@ -248,6 +243,23 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	result := step(t, mc) // LDA (0x0b),Y
 	assert.CheckValueVCS(t, mc.A, 123)
 	assert.CheckValueVCS(t, result.PageFault, true)
+}
+
+func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+	var origin uint16
+	mem.Clear()
+	mc.Reset()
+
+	mem.putInstructions(0xff00, 0x01, 0x02, 0x03)
+
+	mc.PC.Load(0x04)
+	origin = mem.putInstructions(origin, 0x01, 0xff, 0xfe, 0xfd)
+	origin = mem.putInstructions(origin, 0xa0, 0x01)
+	step(t, mc)
+	assert.CheckValueVCS(t, mc.Y, 1)
+	origin = mem.putInstructions(origin, 0xb1, 0x00)
+	step(t, mc)
+	assert.CheckValueVCS(t, mc.A, 0x03)
 }
 
 func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
@@ -475,6 +487,7 @@ func TestCPU(t *testing.T) {
 	testRegsiterBitwiseInstructions(t, mc, mem)
 	testImmediateImplied(t, mc, mem)
 	testOtherAddressingModes(t, mc, mem)
+	testPostIndexedIndirect(t, mc, mem)
 	testStorageInstructions(t, mc, mem)
 	testBranching(t, mc, mem)
 	testJumps(t, mc, mem)

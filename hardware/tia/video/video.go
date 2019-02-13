@@ -298,6 +298,9 @@ func createTriggerList(playerSize uint8) []int {
 // for those where a "schedule" function is called.
 func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
+	default:
+		return false
+
 	case "NUSIZ0":
 		// TODO: write delay?
 		vd.Missile0.size = (value & 0x30) >> 4
@@ -403,8 +406,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile0.horizMovement = 0x08
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
-
 	}
 
-	return false
+	return true
 }

@@ -3,6 +3,7 @@ package tia
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/tia/audio"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
@@ -39,7 +40,7 @@ type TIA struct {
 	wsync  bool
 
 	Video *video.Video
-	// TODO: audio
+	Audio *audio.Audio
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -63,8 +64,6 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.tv = tv
 	tia.mem = mem
 
-	// TODO: audio
-
 	tia.colorClock = polycounter.New6Bit()
 	tia.colorClock.SetResetPoint(56) // "010100"
 
@@ -85,15 +84,20 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 		return nil
 	}
 
-	// TODO: audio
+	tia.Audio = audio.NewAudio()
+	if tia.Audio == nil {
+		return nil
+	}
 
 	return tia
 }
 
 // ReadTIAMemory checks for side effects in the TIA sub-system
 func (tia *TIA) ReadTIAMemory() {
-	service, register, value := tia.mem.ChipRead()
-	if !service {
+	valueRead, register, value := tia.mem.ChipRead()
+
+	if !valueRead {
+		// nothing to service
 		return
 	}
 
@@ -103,29 +107,31 @@ func (tia *TIA) ReadTIAMemory() {
 		// TODO: do something with controller settings below
 		_ = value&vsyncLatchTriggerMask == vsyncLatchTriggerMask
 		_ = value&vsyncGroundedPaddleMask == vsyncGroundedPaddleMask
-		service = false
+		return
 	case "VBLANK":
 		tia.vblank = value&vblankMask == vblankMask
-		service = false
+		return
 	case "WSYNC":
 		tia.wsync = true
-		service = false
+		return
 	case "RSYNC":
 		tia.rsync.set()
-		service = false
+		return
 	case "HMOVE":
 		tia.Video.PrepareSpritesForHMOVE()
 		tia.Hmove.set()
-		service = false
-	}
-
-	if !service {
 		return
 	}
 
-	service = !tia.Video.ReadVideoMemory(register, value)
+	if tia.Video.ReadVideoMemory(register, value) {
+		return
+	}
 
-	// TODO: TIA audio memory
+	if tia.Audio.ReadAudioMemory(register, value) {
+		return
+	}
+
+	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
 // StepVideoCycle moves the state of the tia forward one video cycle
