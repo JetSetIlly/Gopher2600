@@ -272,8 +272,9 @@ func (scr *screen) update(paused bool) error {
 
 		// adjust coordinates if screen is masked
 		if !scr.unmasked {
-			x -= scr.tv.Spec.ClocksPerHblank
-			y -= int(scr.stb.visibleTopReference) + int(scr.stb.viewportShift)
+			x -= int(scr.srcRect.X)
+			y -= int(scr.srcRect.Y)
+
 			if x < 0 {
 				offscreenCursorPos = true
 				x = 0
