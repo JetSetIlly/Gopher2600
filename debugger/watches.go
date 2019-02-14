@@ -119,8 +119,6 @@ func (wtc *watches) list() {
 }
 
 func (wtc *watches) parseWatch(tokens *input.Tokens) error {
-	// TODO: move this into parseWatch() function, in they style
-	// parseBreakpoint() and parseTrap()
 	var event watchEvent
 
 	// read mode

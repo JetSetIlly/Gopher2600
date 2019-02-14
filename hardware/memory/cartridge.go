@@ -22,8 +22,9 @@ type Cartridge struct {
 	name   string
 	method string
 
-	bank   int
-	memory [][]uint8
+	NumBanks int
+	Bank     int
+	memory   [][]uint8
 
 	// readHook allows custom read routines depending on the cartridge type
 	// that has been inserted. note that the address has been normalised so that
@@ -47,12 +48,12 @@ func newCart() *Cartridge {
 
 // MachineInfoTerse returns the cartridge information in terse format
 func (cart Cartridge) MachineInfoTerse() string {
-	return fmt.Sprintf("%s [%s] bank=%d", cart.name, cart.method, cart.bank)
+	return fmt.Sprintf("%s [%s] bank=%d", cart.name, cart.method, cart.Bank)
 }
 
 // MachineInfo returns the cartridge information in verbose format
 func (cart Cartridge) MachineInfo() string {
-	return fmt.Sprintf("name: %s\nmethod: %s\nbank:%d", cart.name, cart.method, cart.bank)
+	return fmt.Sprintf("name: %s\nmethod: %s\nbank:%d", cart.name, cart.method, cart.Bank)
 }
 
 // Label is an implementation of Area.Label
@@ -91,11 +92,13 @@ func (cart *Cartridge) Write(address uint16, data uint8) error {
 
 // allocateCartridgeSpace is a generalised allocation of memory and file
 // reading routine. common to all cartridge sizes
-func (cart *Cartridge) allocateCartridgeSpace(file *os.File, numberOfBanks int) error {
-	// allocate enough memory for new cartridge
-	cart.memory = make([][]uint8, numberOfBanks)
+func (cart *Cartridge) allocateCartridgeSpace(file *os.File, numBanks int) error {
+	cart.NumBanks = numBanks
 
-	for b := 0; b < numberOfBanks; b++ {
+	// allocate enough memory for new cartridge
+	cart.memory = make([][]uint8, cart.NumBanks)
+
+	for b := 0; b < cart.NumBanks; b++ {
 		cart.memory[b] = make([]uint8, 4096)
 
 		if file != nil {
@@ -131,7 +134,7 @@ func (cart *Cartridge) Attach(filename string) error {
 
 	// set null read hook
 	cart.readHook = func(uint16) uint8 { return 0 }
-	cart.bank = 0
+	cart.Bank = 0
 
 	// how cartridges are mapped into the 4k space can differs dramatically.
 	// the following implementation details have been cribbed from Kevin
@@ -184,11 +187,11 @@ func (cart *Cartridge) Attach(filename string) error {
 		//  o and lots of others
 
 		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.bank][address]
+			data := cart.memory[cart.Bank][address]
 			if address == 0x0ff8 {
-				cart.bank = 0
+				cart.Bank = 0
 			} else if address == 0x0ff9 {
-				cart.bank = 1
+				cart.Bank = 1
 			}
 			return data
 		}
@@ -213,15 +216,15 @@ func (cart *Cartridge) Attach(filename string) error {
 		//  o Midnite Magic
 		//  o and others
 		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.bank][address]
+			data := cart.memory[cart.Bank][address]
 			if address == 0x0ff6 {
-				cart.bank = 0
+				cart.Bank = 0
 			} else if address == 0x0ff7 {
-				cart.bank = 1
+				cart.Bank = 1
 			} else if address == 0x0ff8 {
-				cart.bank = 2
+				cart.Bank = 2
 			} else if address == 0x0ff9 {
-				cart.bank = 3
+				cart.Bank = 3
 			}
 			return data
 		}
@@ -238,23 +241,23 @@ func (cart *Cartridge) Attach(filename string) error {
 		cart.method = "standard 32k (F4)"
 
 		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.bank][address]
+			data := cart.memory[cart.Bank][address]
 			if address == 0x0ff4 {
-				cart.bank = 0
+				cart.Bank = 0
 			} else if address == 0x0ff5 {
-				cart.bank = 1
+				cart.Bank = 1
 			} else if address == 0x0ff6 {
-				cart.bank = 2
+				cart.Bank = 2
 			} else if address == 0x0ff7 {
-				cart.bank = 3
+				cart.Bank = 3
 			} else if address == 0x0ff8 {
-				cart.bank = 4
+				cart.Bank = 4
 			} else if address == 0x0ff9 {
-				cart.bank = 5
+				cart.Bank = 5
 			} else if address == 0x0ffa {
-				cart.bank = 6
+				cart.Bank = 6
 			} else if address == 0x0ffb {
-				cart.bank = 7
+				cart.Bank = 7
 			}
 			return data
 		}
@@ -272,11 +275,20 @@ func (cart *Cartridge) Attach(filename string) error {
 	return nil
 }
 
+// BankSwitch changes the current bank number
+func (cart *Cartridge) BankSwitch(bank int) error {
+	if bank > cart.NumBanks {
+		return errors.NewGopherError(errors.CartridgeNoSuchBank, bank, cart.NumBanks)
+	}
+	cart.Bank = bank
+	return nil
+}
+
 // Eject removes memory from cartridge space and unlike the real hardware,
 // attaches a bank of empty memory - for convenience of the debugger
 func (cart *Cartridge) Eject() {
 	cart.allocateCartridgeSpace(nil, 1)
-	cart.bank = 0
+	cart.Bank = 0
 	cart.readHook = func(oa uint16) uint8 { return cart.memory[0][oa] }
 	cart.name = ejectedName
 	cart.method = ejectedMethod
@@ -287,7 +299,7 @@ func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error
 	if len(cart.memory) == 0 {
 		return 0, 0, "", "", errors.NewGopherError(errors.CartridgeMissing)
 	}
-	return cart.memory[cart.bank][cart.origin|address^cart.origin], address, cart.Label(), "", nil
+	return cart.memory[cart.Bank][cart.origin|address^cart.origin], address, cart.Label(), "", nil
 }
 
 // Poke is the implementation of Memory.Area.Poke

@@ -36,6 +36,7 @@ const (
 	CartridgeFileError
 	CartridgeUnsupported
 	CartridgeMissing
+	CartridgeNoSuchBank
 
 	// TV
 	UnknownTVRequest

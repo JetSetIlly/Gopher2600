@@ -117,8 +117,8 @@ func (mc *CPU) Reset() error {
 	return nil
 }
 
-// LoadPC loads the contents of indirectAddress into the PC
-func (mc *CPU) LoadPC(indirectAddress uint16) error {
+// LoadPCIndirect loads the contents of indirectAddress into the PC
+func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
 		return errors.NewGopherError(errors.InvalidOperationMidInstruction, "load PC")
@@ -137,6 +137,26 @@ func (mc *CPU) LoadPC(indirectAddress uint16) error {
 		return err
 	}
 	mc.PC.Load(val)
+
+	return nil
+}
+
+// LoadPC loads the contents of directAddress into the PC
+func (mc *CPU) LoadPC(directAddress uint16) error {
+	// sanity check
+	if mc.IsExecuting() {
+		return errors.NewGopherError(errors.InvalidOperationMidInstruction, "load PC")
+	}
+
+	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
+	// cycle we need to make sure endCycle() is in a valid state for the duration
+	// of the function
+	mc.endCycle = func() {}
+	defer func() {
+		mc.endCycle = nil
+	}()
+
+	mc.PC.Load(directAddress)
 
 	return nil
 }

@@ -15,12 +15,6 @@ type TVState struct {
 	shortLabel  string
 	value       int
 	valueFormat string
-
-	// invalid indicates that value is currently not valid
-	// -- we've inverted the logic so that the default value of false is useful
-	// for most cases, meaning that we don't have to think about this field at
-	// all
-	invalid bool
 }
 
 // Label returns the verbose label of the TVState

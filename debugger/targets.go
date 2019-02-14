@@ -77,8 +77,8 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 				switch subkey {
 				case "EFFECT", "EFF":
 					return &genericTarget{
-						label:      "EFFECT",
-						shortLabel: "EFF",
+						label:      "INS EFFECT",
+						shortLabel: "INS EFF",
 						value: func() interface{} {
 							if dbg.lastResult == nil {
 								return -1
@@ -92,6 +92,27 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 			} else {
 				return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
 			}
+
+		case "CARTRIDGE", "CART":
+			subkey, present := tokens.Get()
+			if present {
+				subkey = strings.ToUpper(subkey)
+				switch subkey {
+				case "BANK":
+					return &genericTarget{
+						label:      "BANK",
+						shortLabel: "BANK",
+						value: func() interface{} {
+							return int(dbg.vcs.Mem.Cart.Bank)
+						},
+					}, nil
+				default:
+					return nil, errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+				}
+			} else {
+				return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
+			}
+
 		default:
 			return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
 		}

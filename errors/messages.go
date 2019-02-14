@@ -34,6 +34,7 @@ var messages = map[Errno]string{
 	CartridgeFileError:   "error reading cartridge file (%s)",
 	CartridgeUnsupported: "cartridge unsupported (%s)",
 	CartridgeMissing:     "no cartridge attached",
+	CartridgeNoSuchBank:  "bank out of range (%d) for this cartridge (max=%d)",
 
 	// TV
 	UnknownTVRequest: "TV does not support %v request",

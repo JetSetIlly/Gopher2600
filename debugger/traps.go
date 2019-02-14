@@ -57,8 +57,8 @@ func (tr *traps) check(previousResult string) string {
 	checkString.WriteString(previousResult)
 	for i := range tr.traps {
 		if tr.traps[i].target.Value() != tr.traps[i].origValue {
+			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]", tr.traps[i].target.ShortLabel(), tr.traps[i].origValue, tr.traps[i].target.Value()))
 			tr.traps[i].origValue = tr.traps[i].target.Value()
-			checkString.WriteString(fmt.Sprintf("trap on %s", tr.traps[i].target.ShortLabel()))
 		}
 	}
 	return checkString.String()

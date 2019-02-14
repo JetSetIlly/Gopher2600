@@ -116,7 +116,7 @@ func (vcs *VCS) Reset() error {
 		return fmt.Errorf("can't create RIOT")
 	}
 
-	err := vcs.MC.LoadPC(memory.AddressReset)
+	err := vcs.MC.LoadPCIndirect(memory.AddressReset)
 	if err != nil {
 		return err
 	}

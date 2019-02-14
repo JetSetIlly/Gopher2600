@@ -9,8 +9,12 @@ import (
 
 // Instruction contains all the interesting information from a CPU step.
 type Instruction struct {
+	// note that this Instruction type does not currently keep track of what
+	// bank the instruction is in.
+	// TODO: consider saving bank information in Instruction type
 	Address uint16
-	Defn    *definitions.InstructionDefinition
+
+	Defn *definitions.InstructionDefinition
 
 	// whether this data has been finalised - note that the values of the
 	// following ields in this struct maybe undefined unless Final is true

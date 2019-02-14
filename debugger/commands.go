@@ -101,10 +101,15 @@ var Help = map[string]string{
 }
 
 var commandTemplate = input.CommandTemplate{
-	KeywordInsert:        "%F",
-	KeywordSymbol:        "%S [|ALL]",
-	KeywordBreak:         "%*",
-	KeywordTrap:          "%*",
+	KeywordInsert: "%F",
+	KeywordSymbol: "%S [|ALL]",
+
+	// break/trap/watch values are parsed in parseTargets() function
+	// TODO: find some way to create valid templates using information from
+	// other sources
+	KeywordBreak: "%*",
+	KeywordTrap:  "%*",
+
 	KeywordWatch:         "[READ|WRITE|] %V %*",
 	KeywordList:          "[BREAKS|TRAPS|WATCHES]",
 	KeywordClear:         "[BREAKS|TRAPS|WATCHES]",

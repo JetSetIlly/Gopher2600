@@ -231,7 +231,10 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 // loadCartridge makes sure that the cartridge loaded into vcs memory and the
 // available disassembly/symbols are in sync.
 //
-// *never call vcs.AttachCartridge except through this funtion*
+// NEVER call vcs.AttachCartridge except through this funtion
+//
+// this is the glue that hold the cartridge and disassembly packages
+// together
 func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	err := dbg.vcs.AttachCartridge(cartridgeFilename)
 	if err != nil {
@@ -370,23 +373,27 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			dbg.runUntilHalt = false
 
-			// build prompt
-			// - different prompt depending on whether a valid disassembly is available
-			var prompt string
+			// decide which PC value to use
 			var disasmPC uint16
-
 			if dbg.lastResult == nil || dbg.lastResult.Final {
 				disasmPC = dbg.vcs.MC.PC.ToUint16()
 			} else {
 				disasmPC = dbg.lastResult.Address
 			}
 
-			if p, ok := dbg.disasm.Program[disasmPC]; ok {
+			// build prompt
+			// - different prompt depending on whether a valid disassembly is available
+			var prompt string
+			if p, ok := dbg.disasm.Program[dbg.disasm.Cart.Bank][disasmPC]; ok {
 				prompt = strings.Trim(p.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
-				prompt = fmt.Sprintf("[ %#04x ] > ", dbg.vcs.MC.PC.ToUint16())
+				// we should have a valid entry from the disassembly, if we
+				// don't then say so and prepare a suitable prompt
+				dbg.print(ui.Error, "something went wrong with the disassembly (no instruction at this address)")
+				prompt = fmt.Sprintf("[ *witchspace* ] > ")
 			}
+
 			// - additional annotation if we're not showing the prompt in the main loop
 			if !mainLoop && !dbg.lastResult.Final {
 				prompt = fmt.Sprintf("+ %s", prompt)
