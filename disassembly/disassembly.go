@@ -16,11 +16,6 @@ type Disassembly struct {
 	// symbols used to build disassembly output
 	Symtable *symbols.Table
 
-	// sequencePoints contains the list of program counter values. listed in
-	// order so can be used to index program map to produce complete
-	// disassembly
-	sequencePoints [][]uint16
-
 	// table of instruction results. index with contents of sequencePoints
 	Program [](map[uint16]*result.Instruction)
 }
@@ -47,7 +42,7 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 	}
 
 	dsm := new(Disassembly)
-	err = dsm.ParseMemory(mem, symtable)
+	err = dsm.ParseMemory(mem.Cart, symtable)
 	if err != nil {
 		return dsm, err
 	}
@@ -59,9 +54,11 @@ func NewDisassembly(cartridgeFilename string) (*Disassembly, error) {
 func (dsm *Disassembly) Dump(output io.Writer) {
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
-		for _, pc := range dsm.sequencePoints[bank] {
-			output.Write([]byte(dsm.Program[bank][pc].GetString(dsm.Symtable, result.StyleFull)))
-			output.Write([]byte("\n"))
+		for a := dsm.Cart.Origin(); a <= dsm.Cart.Memtop(); a++ {
+			if dsm.Program[bank][a] != nil {
+				output.Write([]byte(dsm.Program[bank][a].GetString(dsm.Symtable, result.StyleFull)))
+				output.Write([]byte("\n"))
+			}
 		}
 	}
 }
@@ -76,8 +73,12 @@ func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool
 
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		bankHeader := false
-		for _, pc := range dsm.sequencePoints[bank] {
-			s = dsm.Program[bank][pc].GetString(dsm.Symtable, result.StyleBrief)
+		for a := dsm.Cart.Origin(); a <= dsm.Cart.Memtop(); a++ {
+			if dsm.Program[bank][a] == nil {
+				continue
+			}
+
+			s = dsm.Program[bank][a].GetString(dsm.Symtable, result.StyleBrief)
 			if !caseSensitive {
 				m = strings.ToUpper(s)
 			} else {

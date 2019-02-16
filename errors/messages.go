@@ -18,7 +18,7 @@ var messages = map[Errno]string{
 
 	// CPU
 	UnimplementedInstruction:       "unimplemented instruction (%0#x) at (%#04x)",
-	NullInstruction:                "unimplemented instruction (0xff)",
+	InvalidOpcode:                  "invalid opcode (%#04x)",
 	ProgramCounterCycled:           "program counter cycled back to 0x0000",
 	InvalidOperationMidInstruction: "invalid operation mid-instruction (%s)",
 

@@ -9,10 +9,14 @@ import (
 
 // Instruction contains all the interesting information from a CPU step.
 type Instruction struct {
-	// note that this Instruction type does not currently keep track of what
-	// bank the instruction is in.
-	// TODO: consider saving bank information in Instruction type
 	Address uint16
+
+	// note that this Instruction type does not keep track of what bank the
+	// instruction is in. we've considered doing so but it would mean exposing
+	// a Bank() function on the CPUBus interface, which doesn't seem correct.
+	// currently, the only place we need to know the bank that an Instruction
+	// came from is in the disassembly package, where we can solve the problem
+	// locally
 
 	Defn *definitions.InstructionDefinition
 

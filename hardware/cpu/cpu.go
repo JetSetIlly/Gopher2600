@@ -3,7 +3,7 @@ package cpu
 // TODO List
 // ---------
 // o NMOS indexed addressing extra read when crossing page boundaries
-// o check that NoSideEffects is consistent in its intention
+// o check that NoFlowControl is consistent in its intention
 // o check that all calls to endCycle() occur when they're supposed to
 
 import (
@@ -41,13 +41,19 @@ type CPU struct {
 	// 3 of the 6507)
 	RdyFlg bool
 
-	// it is somtimes useful to ignore branching instructions and other
-	// side-effects. we use this in the disassembly package to make sure
-	// we reach every part of the program
-	NoSideEffects bool
-
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
+
+	// it is somtimes useful to ignore flow control functions (including breaks
+	// and sub-routines). we use this in the disassembly package to make sure
+	// we reach every part of the program.
+	//
+	// note that because WRITE and RMW instructions still affect the supplied
+	// memory, it is possible for flow to change when cartridge banks are
+	// switched (as a result of a WRITE). this is intentional. if you don't
+	// want this to happen then the memory instance needs to filter
+	// appropriately.
+	NoFlowControl bool
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure
@@ -165,10 +171,6 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 // because we need to differentiate between different addressing modes at
 // different times.
 func (mc *CPU) write8Bit(address uint16, value uint8) error {
-	if mc.NoSideEffects {
-		return nil
-	}
-
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
@@ -257,8 +259,8 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 }
 
 func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) error {
-	// return early if NoSideEffects flag is turned on
-	if mc.NoSideEffects {
+	// return early if NoFlowControl flag is turned on
+	if mc.NoFlowControl {
 		return nil
 	}
 
@@ -355,9 +357,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	}
 	defn := mc.opCodes[operator]
 	if defn == nil {
-		if operator == 0xff {
-			return nil, errors.NewGopherError(errors.NullInstruction)
+		// any byte in which the higher nibble has a value which is numerically
+		// odd, is an invalid 6502 opcode. this probably means that execution
+		// has wandered into data memory - most likely to occur during
+		// disassembly.
+		if (operator>>4)%2 == 1 {
+			return nil, errors.NewGopherError(errors.InvalidOpcode, fmt.Sprintf("%02x", operator))
 		}
+
 		return nil, errors.NewGopherError(errors.UnimplementedInstruction, operator, mc.PC.ToUint16()-1)
 	}
 	result.Defn = defn
@@ -956,7 +963,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.Zero = cmp.IsZero()
 
 	case "JMP":
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.PC.Load(address)
 		}
 
@@ -1048,7 +1055,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 
 		address = (uint16(msb) << 8) | uint16(lsb)
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.PC.Load(address)
 		}
 
@@ -1060,7 +1067,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		result.InstructionData = address
 
 	case "RTS":
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			// +1 cycle
 			mc.SP.Add(1, false)
 		}
@@ -1072,7 +1079,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 
 			// load and correct PC
@@ -1114,13 +1121,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.PC.Load(brkAddress)
 		}
 
 	case "RTI":
 		// pull status register (same effect as PLP)
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 		}
 
@@ -1134,7 +1141,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		mc.Status.FromUint8(value)
 
 		// pull program counter (same effect as RTS)
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 		}
 
@@ -1143,7 +1150,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 
-		if !mc.NoSideEffects {
+		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 			mc.PC.Load(rtiAddress)
 			mc.PC.Add(1, false)

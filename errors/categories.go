@@ -20,7 +20,7 @@ const (
 
 	// CPU
 	UnimplementedInstruction
-	NullInstruction
+	InvalidOpcode
 	ProgramCounterCycled
 	InvalidOperationMidInstruction
 

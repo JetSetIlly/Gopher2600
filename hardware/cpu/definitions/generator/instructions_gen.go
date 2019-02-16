@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const definitionsCSVFile = "./definitions.csv"
+const definitionsCSVFile = "./instructions.csv"
 const generatedGoFile = "../instructions.go"
 
 const leadingBoilerPlate = "// generated code - do not change\n\npackage definitions\n\n// GetInstructionDefinitions returns the opcode table for the MC6502\nfunc GetInstructionDefinitions() ([]*InstructionDefinition, error) {\nreturn []*InstructionDefinition{"

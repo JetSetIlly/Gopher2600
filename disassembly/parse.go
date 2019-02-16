@@ -8,84 +8,92 @@ import (
 	"gopher2600/symbols"
 )
 
-// ParseMemory disassembles an existing memory instance. uses a new cpu
-// instance which has no side effects, so it's safe to use with "live" memory
-func (dsm *Disassembly) ParseMemory(mem *memory.VCSMemory, symtable *symbols.Table) error {
-	dsm.Cart = mem.Cart
+func distributionAnalysis(mc *cpu.CPU, mem memory.VCSMemory) {
+	for bank := 0; bank < mem.Cart.NumBanks; bank++ {
+		mem.Cart.BankSwitch(bank)
+		mc.LoadPCIndirect(mem.Cart.Origin())
+
+		// unfinished
+	}
+}
+
+// ParseMemory disassembles an existing instance of cartridge memory using a
+// cpu with no flow control.
+func (dsm *Disassembly) ParseMemory(cart *memory.Cartridge, symtable *symbols.Table) error {
+	dsm.Cart = cart
 	dsm.Symtable = symtable
 	dsm.Program = make([]map[uint16]*result.Instruction, dsm.Cart.NumBanks)
-	dsm.sequencePoints = make([][]uint16, dsm.Cart.NumBanks)
+
+	// create new memory
+	mem, err := newMinimalMemory(dsm.Cart)
+	if err != nil {
+		return err
+	}
 
 	// create a new non-branching CPU to disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
 		return err
 	}
-	mc.NoSideEffects = true
 
-	// start disassembly at reset point
-	mc.LoadPCIndirect(memory.AddressReset)
+	mc.NoFlowControl = true
 
+	// allocate memory for disassembly
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		dsm.Cart.BankSwitch(bank)
 		dsm.Program[bank] = make(map[uint16]*result.Instruction)
-		dsm.sequencePoints[bank] = make([]uint16, 0, dsm.Cart.Memtop()-dsm.Cart.Origin())
+	}
 
-		nextBank := false
-		for !nextBank {
-			ir, err := mc.ExecuteInstruction(func(ir *result.Instruction) {})
+	// make sure we're in the starting bank - at the beginning of the
+	// disassembly and at the end
+	dsm.Cart.BankSwitch(0)
+	mc.LoadPCIndirect(memory.AddressReset)
+	defer func() {
+		dsm.Cart.BankSwitch(0)
+		mc.LoadPCIndirect(memory.AddressReset)
+	}()
 
-			// filter out some errors
-			if err != nil {
-				switch err := err.(type) {
-				case errors.GopherError:
-					switch err.Errno {
-					case errors.ProgramCounterCycled:
-						// reached end of memory
-						nextBank = true
-					case errors.NullInstruction:
-						// we've encountered a null instruction. ignore
-						continue
-					case errors.UnimplementedInstruction:
-						// ignore unimplemented instructions
-						continue
-					case errors.UnreadableAddress:
-						// ignore unreadable addresses
-						continue
-					default:
-						return err
-					}
+	for {
+		currentBank := dsm.Cart.Bank
+		ir, err := mc.ExecuteInstruction(func(ir *result.Instruction) {})
+
+		// filter out some errors
+		if err != nil {
+			switch err := err.(type) {
+			case errors.GopherError:
+				switch err.Errno {
+				case errors.ProgramCounterCycled:
+					// reached end of memory
+					continue
+				case errors.InvalidOpcode:
+					// we've encountered a null instruction. ignore
+					continue
+				case errors.UnimplementedInstruction:
+					// ignore unimplemented instructions
+					continue
+				case errors.UnreadableAddress:
+					// ignore unreadable addresses
+					continue
 				default:
 					return err
 				}
-			}
-
-			// if nextBank flag has been set then break inner for loop
-			if nextBank {
-				break
-			}
-
-			// check validity of instruction result
-			err = ir.IsValid()
-			if err != nil {
+			default:
 				return err
 			}
-
-			// add instruction result to disassembly result. an instruction result
-			// of nil means that the part of the program just read by the CPU does
-			// not contain valid instructions (maybe the assembler reasoned that
-			// the code is unreachable)
-			dsm.sequencePoints[bank] = append(dsm.sequencePoints[bank], ir.Address)
-			dsm.Program[bank][ir.Address] = ir
 		}
 
-		// start disassembly of subsequent bank at origin point of cartridge
-		// space - this may not be correct in all instances
-		mc.LoadPC(dsm.Cart.Origin())
+		// check validity of instruction result
+		err = ir.IsValid()
+		if err != nil {
+			return err
+		}
+
+		// if we've seen this before then finish the disassembly
+		if dsm.Program[currentBank][ir.Address] != nil {
+			return nil
+		}
+
+		// add instruction result to hash table
+		dsm.Program[currentBank][ir.Address] = ir
 	}
-
-	// make sure we're in the starting bank
-	dsm.Cart.BankSwitch(0)
-
-	return nil
 }

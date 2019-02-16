@@ -247,7 +247,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 		symtable = symbols.StandardSymbolTable()
 	}
 
-	err = dbg.disasm.ParseMemory(dbg.vcs.Mem, symtable)
+	err = dbg.disasm.ParseMemory(dbg.vcs.Mem.Cart, symtable)
 	if err != nil {
 		return err
 	}
@@ -384,14 +384,14 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			// build prompt
 			// - different prompt depending on whether a valid disassembly is available
 			var prompt string
-			if p, ok := dbg.disasm.Program[dbg.disasm.Cart.Bank][disasmPC]; ok {
-				prompt = strings.Trim(p.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
+			if disasmRes, ok := dbg.disasm.Program[dbg.disasm.Cart.Bank][disasmPC]; ok {
+				prompt = strings.Trim(disasmRes.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
 				// we should have a valid entry from the disassembly, if we
 				// don't then say so and prepare a suitable prompt
 				dbg.print(ui.Error, "something went wrong with the disassembly (no instruction at this address)")
-				prompt = fmt.Sprintf("[ *witchspace* ] > ")
+				prompt = fmt.Sprintf("[ *witchspace* (%d, %#04x)] > ", dbg.disasm.Cart.Bank, disasmPC)
 			}
 
 			// - additional annotation if we're not showing the prompt in the main loop

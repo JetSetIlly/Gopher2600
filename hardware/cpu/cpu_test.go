@@ -2,10 +2,62 @@ package cpu_test
 
 import (
 	"gopher2600/assert"
+	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"testing"
 )
+
+type mockMem struct {
+	internal []uint8
+}
+
+func newMockMem() *mockMem {
+	mem := new(mockMem)
+
+	// leave some room at the top of memory allocation to allow testing of
+	// invalid memory writes
+	mem.internal = make([]uint8, 0x10000)
+
+	return mem
+}
+
+func (mem *mockMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
+	for i, b := range bytes {
+		mem.Write(uint16(i)+origin, b)
+	}
+	return origin + uint16(len(bytes))
+}
+
+func (mem mockMem) assert(t *testing.T, address uint16, value uint8) {
+	t.Helper()
+	d, _ := mem.Read(address)
+	if d != value {
+		t.Errorf("memory assertion failed (%v  - wanted %v at address %04x", d, value, address)
+	}
+}
+
+// Clear sets all bytes in memory to zero
+func (mem *mockMem) Clear() {
+	for i := 0; i < len(mem.internal); i++ {
+		mem.internal[i] = 0
+	}
+}
+
+func (mem mockMem) Read(address uint16) (uint8, error) {
+	if address&0xff00 == 0xff00 {
+		return 0, errors.NewGopherError(errors.UnreadableAddress, address)
+	}
+	return mem.internal[address], nil
+}
+
+func (mem *mockMem) Write(address uint16, data uint8) error {
+	if address&0xff00 == 0xff00 {
+		return errors.NewGopherError(errors.UnwritableAddress, address)
+	}
+	mem.internal[address] = data
+	return nil
+}
 
 func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
 	result, err := mc.ExecuteInstruction(func(*result.Instruction) {})
@@ -19,7 +71,7 @@ func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
 	return result
 }
 
-func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -58,7 +110,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.Status, "sv-bdIZc")
 }
 
-func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -76,7 +128,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.A, 3)
 }
 
-func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -119,7 +171,7 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.Status, "sv-bdizc")
 }
 
-func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -171,7 +223,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.SP, 100)
 }
 
-func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -245,15 +297,15 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, result.PageFault, true)
 }
 
-func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
 
-	mem.putInstructions(0xff00, 0x01, 0x02, 0x03)
+	mem.putInstructions(0xee00, 0x01, 0x02, 0x03)
 
 	mc.PC.Load(0x04)
-	origin = mem.putInstructions(origin, 0x01, 0xff, 0xfe, 0xfd)
+	origin = mem.putInstructions(origin, 0x01, 0xee, 0xfe, 0xfd)
 	origin = mem.putInstructions(origin, 0xa0, 0x01)
 	step(t, mc)
 	assert.CheckValueVCS(t, mc.Y, 1)
@@ -262,7 +314,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.A, 0x03)
 }
 
-func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -296,7 +348,7 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	mem.assert(t, 0x0100, 0x53)
 }
 
-func testBranching(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// TODO: test page faults
 	// TODO: test backwards branching
 
@@ -364,7 +416,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.PC, 0x12)
 }
 
-func testJumps(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -396,7 +448,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.PC, 0x0003)
 }
 
-func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -441,7 +493,7 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.Status, "sv-bdiZc")
 }
 
-func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -462,7 +514,7 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.SP, 255)
 }
 
-func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *MockMem) {
+func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -475,8 +527,64 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *MockMem) {
 	assert.CheckValueVCS(t, mc.A, 0x19)
 }
 
+func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var origin uint16
+	mem.Clear()
+	mc.Reset()
+
+	// non-strict addressing (Writing)
+	mem.Clear()
+	mc.Reset()
+	mc.StrictAddressing = false
+	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
+	_, err := mc.ExecuteInstruction(func(*result.Instruction) {})
+	if err != nil {
+		if err.(errors.GopherError).Errno == errors.UnwritableAddress {
+			t.Fatalf("recieved an UnwritableAddress error when we shouldn't")
+		}
+		t.Fatalf("error during CPU step (%v)\n", err)
+	}
+
+	// strict addressing (Writing)
+	mc.StrictAddressing = true
+	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	if err == nil {
+		t.Fatalf("not recieved an UnwritableAddress error when we should")
+	}
+	if err.(errors.GopherError).Errno == errors.UnwritableAddress {
+		// this is okay
+	} else {
+		t.Fatalf("error during CPU step (%v)\n", err)
+	}
+
+	// non-strict addressing (Reading)
+	mc.StrictAddressing = false
+	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	if err != nil {
+		if err.(errors.GopherError).Errno == errors.UnreadableAddress {
+			t.Fatalf("recieved an UnreadableAddress we shouldn't")
+		}
+		t.Fatalf("error during CPU step (%v)\n", err)
+	}
+
+	// strict addressing (Reading)
+	mc.StrictAddressing = true
+	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	if err == nil {
+		t.Fatalf("not recieved an UnreadableAddress error when we should")
+	}
+	if err.(errors.GopherError).Errno == errors.UnreadableAddress {
+		// this is okay
+	} else {
+		t.Fatalf("error during CPU step (%v)\n", err)
+	}
+}
+
 func TestCPU(t *testing.T) {
-	mem := NewMockMem()
+	mem := newMockMem()
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -494,4 +602,5 @@ func TestCPU(t *testing.T) {
 	testComparisonInstructions(t, mc, mem)
 	testSubroutineInstructions(t, mc, mem)
 	testDecimalMode(t, mc, mem)
+	testStrictAddressing(t, mc, mem)
 }
