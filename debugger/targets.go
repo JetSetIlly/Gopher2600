@@ -15,9 +15,6 @@ type target interface {
 	Value() interface{}
 }
 
-// genericTarget is a a way of hacking any object so that it qualifies as a
-// target. bit messy but it may more convenient that defining the interface for
-// a given type
 type genericTarget struct {
 	label      string
 	shortLabel string
@@ -33,11 +30,15 @@ func (trg genericTarget) ShortLabel() string {
 }
 
 func (trg genericTarget) Value() interface{} {
-	switch value := trg.value.(type) {
+	switch v := trg.value.(type) {
 	case func() interface{}:
-		return value()
+		switch v := v().(type) {
+		case error:
+			panic(v)
+		}
+		return v()
 	default:
-		return value
+		return v
 	}
 }
 
@@ -50,6 +51,7 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 	if present {
 		keyword = strings.ToUpper(keyword)
 		switch keyword {
+		// cpu registers
 		case "PC":
 			trg = dbg.vcs.MC.PC
 		case "A":
@@ -60,12 +62,53 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 			trg = dbg.vcs.MC.Y
 		case "SP":
 			trg = dbg.vcs.MC.SP
+
+		// tv state
 		case "FRAMENUM", "FRAME", "FR":
-			trg, err = dbg.vcs.TV.GetState(television.ReqFramenum)
+			trg = &genericTarget{
+				label:      "Frame",
+				shortLabel: "FR",
+				value: func() interface{} {
+					if dbg.lastResult == nil {
+						return -1
+					}
+					fr, err := dbg.vcs.TV.GetState(television.ReqFramenum)
+					if err != nil {
+						return err
+					}
+					return fr.(int)
+				},
+			}
 		case "SCANLINE", "SL":
-			trg, err = dbg.vcs.TV.GetState(television.ReqScanline)
+			trg = &genericTarget{
+				label:      "Scanline",
+				shortLabel: "SL",
+				value: func() interface{} {
+					if dbg.lastResult == nil {
+						return -1
+					}
+					sl, err := dbg.vcs.TV.GetState(television.ReqScanline)
+					if err != nil {
+						return err
+					}
+					return sl.(int)
+				},
+			}
 		case "HORIZPOS", "HP":
-			trg, err = dbg.vcs.TV.GetState(television.ReqHorizPos)
+			trg = &genericTarget{
+				label:      "Horiz Pos",
+				shortLabel: "HP",
+				value: func() interface{} {
+					if dbg.lastResult == nil {
+						return -1
+					}
+					hp, err := dbg.vcs.TV.GetState(television.ReqHorizPos)
+					if err != nil {
+						return err
+					}
+					return hp.(int)
+				},
+			}
 
 		// cpu instruction targetting was originally added as an experiment, to
 		// help investigate a bug in the emulation. I don't think it's much use
@@ -76,7 +119,7 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {
 				case "EFFECT", "EFF":
-					return &genericTarget{
+					trg = &genericTarget{
 						label:      "INS EFFECT",
 						shortLabel: "INS EFF",
 						value: func() interface{} {
@@ -85,36 +128,37 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 							}
 							return int(dbg.lastResult.Defn.Effect)
 						},
-					}, nil
+					}
 				default:
-					return nil, errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					err = errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
 				}
 			} else {
-				return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
+				err = errors.NewGopherError(errors.InvalidTarget, keyword)
 			}
 
+		// cartridge
 		case "CARTRIDGE", "CART":
 			subkey, present := tokens.Get()
 			if present {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {
 				case "BANK":
-					return &genericTarget{
+					trg = &genericTarget{
 						label:      "BANK",
 						shortLabel: "BANK",
 						value: func() interface{} {
-							return int(dbg.vcs.Mem.Cart.Bank)
+							return dbg.vcs.Mem.Cart.Bank
 						},
-					}, nil
+					}
 				default:
-					return nil, errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					err = errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
 				}
 			} else {
-				return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
+				err = errors.NewGopherError(errors.InvalidTarget, keyword)
 			}
 
 		default:
-			return nil, errors.NewGopherError(errors.InvalidTarget, keyword)
+			err = errors.NewGopherError(errors.InvalidTarget, keyword)
 		}
 	}
 

@@ -23,11 +23,11 @@ type HeadlessTV struct {
 	//	- the current horizontal position. the position where the next pixel will be
 	//  drawn. also used to check we're receiving the correct signals at the
 	//  correct time.
-	horizPos TVState
+	horizPos int
 	//	- the current frame
-	frameNum TVState
+	frameNum int
 	//	- the current scanline number
-	scanline TVState
+	scanline int
 
 	// record of signal attributes from the last call to Signal()
 	prevSignal SignalAttributes
@@ -94,9 +94,9 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	tv.HookSetPixel = func(x, y int32, r, g, b byte, vblank bool) error { return nil }
 
 	// initialise TVState
-	tv.horizPos = TVState{label: "Horiz Pos", shortLabel: "HP", value: -tv.Spec.ClocksPerHblank, valueFormat: "%d"}
-	tv.frameNum = TVState{label: "Frame", shortLabel: "FR", value: 0, valueFormat: "%d"}
-	tv.scanline = TVState{label: "Scanline", shortLabel: "SL", value: 0, valueFormat: "%d"}
+	tv.horizPos = -tv.Spec.ClocksPerHblank
+	tv.frameNum = 0
+	tv.scanline = 0
 
 	tv.Reset()
 
@@ -109,7 +109,7 @@ func (tv HeadlessTV) MachineInfoTerse() string {
 	if tv.outOfSpec {
 		specExclaim = " !!"
 	}
-	return fmt.Sprintf("%s %s %s%s", tv.frameNum.MachineInfoTerse(), tv.scanline.MachineInfoTerse(), tv.horizPos.MachineInfoTerse(), specExclaim)
+	return fmt.Sprintf("FR=%d SL=%d HP=%d %s", tv.frameNum, tv.scanline, tv.horizPos, specExclaim)
 }
 
 // MachineInfo returns the television information in verbose format
@@ -120,9 +120,9 @@ func (tv HeadlessTV) MachineInfo() string {
 		outOfSpec = " !!"
 	}
 	s.WriteString(fmt.Sprintf("TV (%s)%s:\n", tv.Spec.ID, outOfSpec))
-	s.WriteString(fmt.Sprintf("   %s\n", tv.frameNum))
-	s.WriteString(fmt.Sprintf("   %s\n", tv.scanline))
-	s.WriteString(fmt.Sprintf("   %s", tv.horizPos))
+	s.WriteString(fmt.Sprintf("   Frame: %d\n", tv.frameNum))
+	s.WriteString(fmt.Sprintf("   Scanline: %d\n", tv.scanline))
+	s.WriteString(fmt.Sprintf("   Horiz Pos: %d", tv.horizPos))
 
 	return s.String()
 }
@@ -134,9 +134,9 @@ func (tv HeadlessTV) String() string {
 
 // Reset all the values for the television
 func (tv *HeadlessTV) Reset() error {
-	tv.horizPos.value = -tv.Spec.ClocksPerHblank
-	tv.frameNum.value = 0
-	tv.scanline.value = 0
+	tv.horizPos = -tv.Spec.ClocksPerHblank
+	tv.frameNum = 0
+	tv.scanline = 0
 	tv.vsyncCount = 0
 	tv.prevSignal = SignalAttributes{}
 
@@ -157,21 +157,21 @@ func (tv *HeadlessTV) Reset() error {
 // continue.
 func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	if sig.HSync && !tv.prevSignal.HSync {
-		if tv.horizPos.value < -52 || tv.horizPos.value > -49 {
-			panic(fmt.Sprintf("bad HSYNC (on at %d)", tv.horizPos.value))
+		if tv.horizPos < -52 || tv.horizPos > -49 {
+			panic(fmt.Errorf("bad HSYNC (on at %d)", tv.horizPos))
 		}
 	} else if !sig.HSync && tv.prevSignal.HSync {
-		if tv.horizPos.value < -36 || tv.horizPos.value > -33 {
-			panic(fmt.Sprintf("bad HSYNC (off at %d)", tv.horizPos.value))
+		if tv.horizPos < -36 || tv.horizPos > -33 {
+			panic(fmt.Errorf("bad HSYNC (off at %d)", tv.horizPos))
 		}
 	}
 	if sig.CBurst && !tv.prevSignal.CBurst {
-		if tv.horizPos.value < -28 || tv.horizPos.value > -17 {
-			panic("bad CBURST (on)")
+		if tv.horizPos < -28 || tv.horizPos > -17 {
+			panic(fmt.Errorf("bad CBURST (on)"))
 		}
 	} else if !sig.CBurst && tv.prevSignal.CBurst {
-		if tv.horizPos.value < -19 || tv.horizPos.value > -16 {
-			panic("bad CBURST (off)")
+		if tv.horizPos < -19 || tv.horizPos > -16 {
+			panic(fmt.Errorf("bad CBURST (off)"))
 		}
 	}
 
@@ -182,8 +182,8 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		if tv.vsyncCount >= tv.Spec.VsyncClocks {
 			tv.outOfSpec = tv.vsyncCount != tv.Spec.VsyncClocks
 
-			tv.frameNum.value++
-			tv.scanline.value = 0
+			tv.frameNum++
+			tv.scanline = 0
 			tv.vsyncCount = 0
 
 			// record visible top/bottom for this frame
@@ -203,28 +203,28 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 
 	// start a new scanline if a frontporch signal has been received
 	if sig.FrontPorch {
-		tv.horizPos.value = -tv.Spec.ClocksPerHblank
-		tv.scanline.value++
+		tv.horizPos = -tv.Spec.ClocksPerHblank
+		tv.scanline++
 		err := tv.HookNewScanline()
 		if err != nil {
 			return err
 		}
 
-		if tv.scanline.value > tv.Spec.ScanlinesTotal {
+		if tv.scanline > tv.Spec.ScanlinesTotal {
 			// we've not yet received a correct vsync signal
 			// continue with an implied VSYNC
 			tv.outOfSpec = true
 
 			// repeat the last scanline (over and over if necessary)
-			tv.scanline.value--
+			tv.scanline--
 		}
 	} else {
-		tv.horizPos.value++
+		tv.horizPos++
 
 		// check to see if frontporch has been encountered
 		// we're panicking because this shouldn't ever happen
-		if tv.horizPos.value > tv.Spec.ClocksPerVisible {
-			panic("no FRONTPORCH")
+		if tv.horizPos > tv.Spec.ClocksPerVisible {
+			panic(fmt.Errorf("no FRONTPORCH"))
 		}
 	}
 
@@ -239,7 +239,7 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		//	* Custer's Revenge
 		//	* Ladybug
 		if tv.pendingVisibleTop == -1 {
-			tv.pendingVisibleTop = tv.scanline.value
+			tv.pendingVisibleTop = tv.scanline
 		}
 	}
 	if sig.VBlank && !tv.prevSignal.VBlank {
@@ -249,7 +249,7 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		//
 		// ROMs affected:
 		//  * Gauntlet
-		if tv.scanline.value == 0 {
+		if tv.scanline == 0 {
 			tv.pendingVisibleBottom = tv.Spec.ScanlinesTotal
 		} else {
 			// some ROMs do monkey things with VBLANK. some, like Custer's
@@ -265,9 +265,9 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 			// ROMs affected:
 			//  * Dk (original Donkey Kong)
 			if tv.pendingVisibleBottom == -1 {
-				tv.pendingVisibleBottom = tv.scanline.value
-			} else if tv.scanline.value < (tv.Spec.ScanlinesTotal-tv.Spec.ScanlinesPerOverscan) || tv.colorSignalThisScanline == false {
-				tv.pendingVisibleBottom = tv.scanline.value
+				tv.pendingVisibleBottom = tv.scanline
+			} else if tv.scanline < (tv.Spec.ScanlinesTotal-tv.Spec.ScanlinesPerOverscan) || tv.colorSignalThisScanline == false {
+				tv.pendingVisibleBottom = tv.scanline
 			}
 		}
 	}
@@ -287,8 +287,8 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	}
 
 	// current coordinates
-	x := int32(tv.horizPos.value) + int32(tv.Spec.ClocksPerHblank)
-	y := int32(tv.scanline.value)
+	x := int32(tv.horizPos) + int32(tv.Spec.ClocksPerHblank)
+	y := int32(tv.scanline)
 
 	return tv.HookSetPixel(x, y, red, green, blue, sig.VBlank)
 }
@@ -297,16 +297,16 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 // implementations in other packages will difficulty extending this function
 // because TVStateReq does not expose its members. (although it may need to if
 // television is running in it's own goroutine)
-func (tv *HeadlessTV) GetState(request StateReq) (*TVState, error) {
+func (tv *HeadlessTV) GetState(request StateReq) (interface{}, error) {
 	switch request {
 	default:
-		return &TVState{}, errors.NewGopherError(errors.UnknownTVRequest, request)
+		return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
 	case ReqFramenum:
-		return &tv.frameNum, nil
+		return tv.frameNum, nil
 	case ReqScanline:
-		return &tv.scanline, nil
+		return tv.scanline, nil
 	case ReqHorizPos:
-		return &tv.horizPos, nil
+		return tv.horizPos, nil
 	}
 }
 

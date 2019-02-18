@@ -49,7 +49,7 @@ func (result Instruction) String() string {
 // function to implicit calls to String()
 func (result Instruction) GetString(symtable *symbols.Table, style Style) string {
 	if symtable == nil {
-		panic("Instruction.GetString() requires a non-nil instance of symbols.Table")
+		panic(fmt.Errorf("Instruction.GetString() requires a non-nil instance of symbols.Table"))
 	}
 
 	// columns

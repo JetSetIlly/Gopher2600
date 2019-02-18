@@ -300,7 +300,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	if err != nil {
 		return err
 	}
-	startFrame := tvState.Value().(int)
+	startFrame := tvState.(int)
 
 	// run for specified period of time
 
@@ -317,7 +317,12 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	go func() {
 		// force a two second leadtime to allow framerate to settle down
 		time.AfterFunc(2*time.Second, func() {
-			startFrame = tvState.Value().(int)
+			tvState, err = vcs.TV.GetState(television.ReqFramenum)
+			if err != nil {
+				panic(err)
+			}
+
+			startFrame = tvState.(int)
 
 			time.AfterFunc(duration, func() {
 				running.Store(-1)
@@ -332,7 +337,11 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// get ending frame number
-	endFrame := tvState.Value().(int)
+	tvState, err = vcs.TV.GetState(television.ReqFramenum)
+	if err != nil {
+		return err
+	}
+	endFrame := tvState.(int)
 
 	// calculate and display frames-per-second
 	frameCount := endFrame - startFrame

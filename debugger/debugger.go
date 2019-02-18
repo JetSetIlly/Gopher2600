@@ -382,16 +382,14 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// build prompt
-			// - different prompt depending on whether a valid disassembly is available
 			var prompt string
-			if disasmRes, ok := dbg.disasm.Program[dbg.disasm.Cart.Bank][disasmPC]; ok {
-				prompt = strings.Trim(disasmRes.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
+			if r, ok := dbg.disasm.Get(dbg.disasm.Cart.Bank, disasmPC); ok {
+				prompt = strings.Trim(r.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
-				// we should have a valid entry from the disassembly, if we
-				// don't then say so and prepare a suitable prompt
-				dbg.print(ui.Error, "something went wrong with the disassembly (no instruction at this address)")
-				prompt = fmt.Sprintf("[ *witchspace* (%d, %#04x)] > ", dbg.disasm.Cart.Bank, disasmPC)
+				// incomplete disassembly, prepare witchspace prompt
+				// TODO: implement "just in time" disassembly
+				prompt = fmt.Sprintf("[witchspace (%d, %#04x)] > ", dbg.disasm.Cart.Bank, disasmPC)
 			}
 
 			// - additional annotation if we're not showing the prompt in the main loop

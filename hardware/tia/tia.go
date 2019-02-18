@@ -131,7 +131,7 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	}
 
-	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
+	panic(fmt.Errorf("unserviced register (%s=%v)", register, value))
 }
 
 // StepVideoCycle moves the state of the tia forward one video cycle

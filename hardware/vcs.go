@@ -295,10 +295,14 @@ func (vcs *VCS) RunForFrameCount(numFrames int) error {
 		return err
 	}
 
-	targetFrame := tvs.Value().(int) + numFrames
+	targetFrame := tvs.(int) + numFrames
 
-	for tvs.Value().(int) != targetFrame {
+	for tvs.(int) != targetFrame {
 		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
+		tvs, err = vcs.TV.GetState(television.ReqFramenum)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

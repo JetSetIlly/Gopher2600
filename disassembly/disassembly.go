@@ -16,8 +16,9 @@ type Disassembly struct {
 	// symbols used to build disassembly output
 	Symtable *symbols.Table
 
-	// table of instruction results. index with contents of sequencePoints
-	Program [](map[uint16]*result.Instruction)
+	// table of instruction results. indexed by bank and normalised address
+	// -- use Get() and put() functions
+	program [](map[uint16]*result.Instruction)
 }
 
 // NewDisassembly initialises a new partial emulation and returns a
@@ -55,8 +56,8 @@ func (dsm *Disassembly) Dump(output io.Writer) {
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 		for a := dsm.Cart.Origin(); a <= dsm.Cart.Memtop(); a++ {
-			if dsm.Program[bank][a] != nil {
-				output.Write([]byte(dsm.Program[bank][a].GetString(dsm.Symtable, result.StyleFull)))
+			if dsm.program[bank][a] != nil {
+				output.Write([]byte(dsm.program[bank][a].GetString(dsm.Symtable, result.StyleFull)))
 				output.Write([]byte("\n"))
 			}
 		}
@@ -74,11 +75,11 @@ func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		bankHeader := false
 		for a := dsm.Cart.Origin(); a <= dsm.Cart.Memtop(); a++ {
-			if dsm.Program[bank][a] == nil {
+			if dsm.program[bank][a] == nil {
 				continue
 			}
 
-			s = dsm.Program[bank][a].GetString(dsm.Symtable, result.StyleBrief)
+			s = dsm.program[bank][a].GetString(dsm.Symtable, result.StyleBrief)
 			if !caseSensitive {
 				m = strings.ToUpper(s)
 			} else {
@@ -95,4 +96,19 @@ func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool
 			}
 		}
 	}
+}
+
+// Get returns the disassembled entry at the specified bank/address
+func (dsm Disassembly) Get(bank int, address uint16) (*result.Instruction, bool) {
+	v, ok := dsm.program[bank][address&dsm.Cart.Memtop()]
+	return v, ok
+}
+
+// put stores a disassembled entry - returns false if entry already exists
+func (dsm Disassembly) put(bank int, result *result.Instruction) bool {
+	if _, ok := dsm.Get(bank, result.Address); ok {
+		return false
+	}
+	dsm.program[bank][result.Address&dsm.Cart.Memtop()] = result
+	return true
 }

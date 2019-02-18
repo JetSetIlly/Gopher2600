@@ -66,7 +66,7 @@ func (pk *Polycounter) Reset() {
 // -- used for moving missile position to the player position
 func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
 	if pk.ResetPoint != pko.ResetPoint {
-		panic("cannot Sync() two polycounters with different reset points")
+		panic(fmt.Errorf("cannot Sync() two polycounters with different reset points"))
 	}
 
 	pk.Count = pko.Count

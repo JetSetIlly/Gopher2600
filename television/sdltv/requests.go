@@ -10,7 +10,7 @@ import (
 )
 
 // GetState returns the TVState object for the named state
-func (tv *SDLTV) GetState(request television.StateReq) (*television.TVState, error) {
+func (tv *SDLTV) GetState(request television.StateReq) (interface{}, error) {
 	return tv.HeadlessTV.GetState(request)
 }
 

@@ -54,7 +54,7 @@ type Television interface {
 	Reset() error
 	Signal(SignalAttributes) error
 
-	GetState(StateReq) (*TVState, error)
+	GetState(StateReq) (interface{}, error)
 	GetMetaState(MetaStateReq) (string, error)
 	RegisterCallback(CallbackReq, chan func(), func()) error
 	SetFeature(request FeatureReq, args ...interface{}) error

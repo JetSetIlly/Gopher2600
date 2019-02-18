@@ -38,8 +38,8 @@ func (DummyTV) Signal(SignalAttributes) error {
 }
 
 // RequestTVState (with dummyTV reciever) is the null implementation
-func (DummyTV) RequestTVState(request StateReq) (TVState, error) {
-	return TVState{}, errors.NewGopherError(errors.UnknownTVRequest, request)
+func (DummyTV) RequestTVState(request StateReq) (interface{}, error) {
+	return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
 }
 
 // RequestTVInfo (with dummyTV reciever) is the null implementation
