@@ -18,6 +18,7 @@ const (
 	delayResetMissileToPlayerPos = 2
 	delayVDELBL                  = 1
 	delayVDELP                   = 1
+	delayNUSIZ                   = 3
 
 	// TIA_HW_Notes.txt: "there are 5 CLK worth of clocking/latching to take
 	// into account". not entirely sure this passage is relevant to my solution

@@ -302,17 +302,19 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		return false
 
 	case "NUSIZ0":
-		// TODO: write delay?
-		vd.Missile0.size = (value & 0x30) >> 4
-		vd.Player0.size = value & 0x07
-		vd.Player0.triggerList = createTriggerList(vd.Player0.size)
-		vd.Missile0.triggerList = vd.Player0.triggerList
+		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+			vd.Missile0.size = (value & 0x30) >> 4
+			vd.Player0.size = value & 0x07
+			vd.Player0.triggerList = createTriggerList(vd.Player0.size)
+			vd.Missile0.triggerList = vd.Player0.triggerList
+		}, "adjusting NUSIZ0")
 	case "NUSIZ1":
-		// TODO: write delay?
-		vd.Missile1.size = (value & 0x30) >> 4
-		vd.Player1.size = value & 0x07
-		vd.Player1.triggerList = createTriggerList(vd.Player1.size)
-		vd.Missile1.triggerList = vd.Player1.triggerList
+		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+			vd.Missile1.size = (value & 0x30) >> 4
+			vd.Player1.size = value & 0x07
+			vd.Player1.triggerList = createTriggerList(vd.Player1.size)
+			vd.Missile1.triggerList = vd.Player1.triggerList
+		}, "adjusting NUSIZ1")
 	case "COLUP0":
 		// TODO: write delay?
 		vd.Player0.color = value & 0xfe
