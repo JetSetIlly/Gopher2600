@@ -32,10 +32,13 @@ const (
 )
 
 type watcher struct {
-	address    uint16
+	address uint16
+
+	// whether to watch for a specific value
 	matchValue bool
 	value      uint8
-	event      watchEvent
+
+	event watchEvent
 }
 
 func (wtr watcher) String() string {
@@ -118,7 +121,7 @@ func (wtc *watches) list() {
 	}
 }
 
-func (wtc *watches) parseWatch(tokens *input.Tokens) error {
+func (wtc *watches) parseWatch(tokens *input.Tokens, dbgmem *memoryDebug) error {
 	var event watchEvent
 
 	// read mode
@@ -137,23 +140,46 @@ func (wtc *watches) parseWatch(tokens *input.Tokens) error {
 		tokens.Unget()
 	}
 
-	// read address. required.
+	// get address. required.
 	a, present := tokens.Get()
 	if !present {
-		return fmt.Errorf("address required")
-	}
-	addr, err := strconv.ParseUint(a, 0, 16)
-	if err != nil {
-		return fmt.Errorf("16bit numeric address required (%s)", a)
+		return fmt.Errorf("watch address required")
 	}
 
-	// read value if possible
+	var addr uint16
+	var err error
+
+	// convert address:
+	// we're using mapAddress in the memoryDebug instance for this. the
+	// second argument to mapAddress is whether the mapping is from the cpu
+	// perspective or not. for our purposes, this means that READ watch
+	// events are and WRITE watch events are not.
+
+	switch mode {
+	case "READ":
+		addr, err = dbgmem.mapAddress(a, true)
+	case "WRITE":
+		addr, err = dbgmem.mapAddress(a, false)
+	default:
+		// try both perspectives
+		addr, err = dbgmem.mapAddress(a, true)
+		if err != nil {
+			addr, err = dbgmem.mapAddress(a, false)
+		}
+	}
+
+	// mapping of the address was unsucessful
+	if err != nil {
+		return fmt.Errorf("invalid watch address: %s", err)
+	}
+
+	// get watch value if possible
 	var val uint64
 	a, useVal := tokens.Get()
 	if useVal {
 		val, err = strconv.ParseUint(a, 0, 8)
 		if err != nil {
-			return fmt.Errorf("8bit value required (%s)", a)
+			return fmt.Errorf("invalid watch value (%s)", a)
 		}
 	}
 

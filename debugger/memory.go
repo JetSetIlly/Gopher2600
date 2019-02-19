@@ -6,6 +6,7 @@ import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/vcssymbols"
 	"gopher2600/symbols"
+	"strconv"
 	"strings"
 )
 
@@ -40,8 +41,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 
 	switch address := address.(type) {
 	case uint16:
-		ma = mem.vcsmem.MapAddress(uint16(address), true)
-		mapped = true
+		ma = mem.vcsmem.MapAddress(address, true)
 	case string:
 		// search for symbolic address in standard vcs read symbols
 		for a, sym := range symbolTable {
@@ -50,6 +50,9 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 				mapped = true
 				break // for loop
 			}
+		}
+		if mapped {
+			break // case switch
 		}
 
 		// try again with an uppercase label
@@ -61,10 +64,21 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 				break // for loop
 			}
 		}
-	}
+		if mapped {
+			break // case switch
+		}
 
-	if !mapped {
-		return 0, errors.NewGopherError(errors.UnrecognisedAddress, address)
+		// finally, this may be a string representation of a numerical address
+		na, err := strconv.ParseUint(address, 0, 16)
+		if err == nil {
+			ma = uint16(na)
+			ma = mem.vcsmem.MapAddress(ma, true)
+			mapped = true
+		}
+
+		if !mapped {
+			return 0, errors.NewGopherError(errors.UnrecognisedAddress, address)
+		}
 	}
 
 	return ma, nil

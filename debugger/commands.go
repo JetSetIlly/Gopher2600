@@ -42,6 +42,7 @@ const (
 	KeywordCPU           = "CPU"
 	KeywordPeek          = "PEEK"
 	KeywordPoke          = "POKE"
+	KeywordHexLoad       = "HEXLOAD"
 	KeywordRAM           = "RAM"
 	KeywordRIOT          = "RIOT"
 	KeywordTIA           = "TIA"
@@ -85,6 +86,7 @@ var Help = map[string]string{
 	KeywordCPU:           "Display the current state of the CPU",
 	KeywordPeek:          "Inspect an individual memory address",
 	KeywordPoke:          "Modify an individual memory address",
+	KeywordHexLoad:       "Modify a sequence of memory addresses. Starting address must be numeric.",
 	KeywordRAM:           "Display the current contents of PIA RAM",
 	KeywordRIOT:          "Display the current state of the RIOT",
 	KeywordTIA:           "Display current state of the TIA",
@@ -129,8 +131,9 @@ var commandTemplate = input.CommandTemplate{
 	KeywordDebuggerState: "",
 	KeywordCartridge:     "",
 	KeywordCPU:           "",
-	KeywordPeek:          "%V %*",
-	KeywordPoke:          "%V %V %*",
+	KeywordPeek:          "%*",
+	KeywordPoke:          "%*",
+	KeywordHexLoad:       "%*",
 	KeywordRAM:           "",
 	KeywordRIOT:          "",
 	KeywordTIA:           "[|FUTURE|HMOVE]",
@@ -293,7 +296,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordWatch:
-		err := dbg.watches.parseWatch(tokens)
+		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
 		if err != nil {
 			return false, fmt.Errorf("error on watch: %s", err)
 		}
@@ -541,40 +544,28 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		dbg.printMachineInfo(dbg.vcs.MC)
 
 	case KeywordPeek:
-		// get address token
+		// get first address token
 		a, present := tokens.Get()
+		if !present {
+			dbg.print(ui.Error, "peek address required")
+			return false, nil
+		}
+
 		for present {
-			var addr interface{}
-			var msg string
-
-			addr, err := strconv.ParseUint(a, 0, 16)
-			if err != nil {
-				// argument is not a number so argument must be a label
-				// we're accepting the case as entered by the user
-				addr = string(a)
-				msg = addr.(string)
-			} else {
-				// convert number to type suitable for Peek command
-				addr = uint16(addr.(uint64))
-				msg = fmt.Sprintf("%#04x", addr)
-			}
-
 			// perform peek
-			val, mappedAddress, areaName, addressLabel, err := dbg.dbgmem.peek(addr)
+			val, mappedAddress, areaName, addressLabel, err := dbg.dbgmem.peek(a)
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 			} else {
 				// format results
-				if uint64(mappedAddress) != addr {
-					msg = fmt.Sprintf("%s = %#04x", msg, mappedAddress)
-				}
-				msg = fmt.Sprintf("%s -> %#02x :: %s", msg, val, areaName)
+				msg := fmt.Sprintf("%#04x -> %#02x :: %s", mappedAddress, val, areaName)
 				if addressLabel != "" {
 					msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
 				}
 				dbg.print(ui.MachineInfo, msg)
 			}
 
+			// loop through all addresses
 			a, present = tokens.Get()
 		}
 
@@ -582,45 +573,75 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		// get address token
 		a, present := tokens.Get()
 		if !present {
+			dbg.print(ui.Error, "poke address required")
 			return false, nil
 		}
 
-		var addr uint64
-		var val uint64
-		var msg string
-
-		// convert address token to numeric value
-		addr, err := strconv.ParseUint(a, 0, 16)
+		addr, err := dbg.dbgmem.mapAddress(a, true)
 		if err != nil {
-			dbg.print(ui.Error, "poke address must be numeric (%s)", a)
+			dbg.print(ui.Error, "invalid poke address (%v)", a)
+			return false, nil
+		}
+
+		// get value token
+		a, present = tokens.Get()
+		if !present {
+			dbg.print(ui.Error, "poke value required")
+			return false, nil
+		}
+
+		val, err := strconv.ParseUint(a, 0, 8)
+		if err != nil {
+			dbg.print(ui.Error, "poke value must be numeric (%s)", a)
+			return false, nil
+		}
+
+		// perform single poke
+		err = dbg.dbgmem.poke(addr, uint8(val))
+		if err != nil {
+			dbg.print(ui.Error, "%s", err)
+		} else {
+			dbg.print(ui.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
+		}
+
+	case KeywordHexLoad:
+		// get address token
+		a, present := tokens.Get()
+		if !present {
+			dbg.print(ui.Error, "hexload address required")
+			return false, nil
+		}
+
+		addr, err := dbg.dbgmem.mapAddress(a, true)
+		if err != nil {
+			dbg.print(ui.Error, "invalid hexload address (%s)", a)
 			return false, nil
 		}
 
 		// get (first) value token
 		a, present = tokens.Get()
 		if !present {
+			dbg.print(ui.Error, "at least one hexload value required")
 			return false, nil
 		}
 
 		for present {
-			val, err = strconv.ParseUint(a, 0, 16)
+			val, err := strconv.ParseUint(a, 0, 8)
 			if err != nil {
-				dbg.print(ui.Error, "poke value must be numeric (%s)", a)
+				dbg.print(ui.Error, "hexload value must be numeric (%s)", a)
 				a, present = tokens.Get()
 				continue // for loop
 			}
 
-			// convert number to type suitable for Peek command
-			msg = fmt.Sprintf("%#04x -> %#02x", addr, uint16(val))
-
-			// perform poke
+			// perform individual poke
 			err = dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 			} else {
-				dbg.print(ui.MachineInfo, msg)
+				dbg.print(ui.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
 			}
 
+			// loop through all values
 			a, present = tokens.Get()
 			addr++
 		}

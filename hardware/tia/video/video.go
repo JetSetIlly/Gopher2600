@@ -301,20 +301,7 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	default:
 		return false
 
-	case "NUSIZ0":
-		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
-			vd.Missile0.size = (value & 0x30) >> 4
-			vd.Player0.size = value & 0x07
-			vd.Player0.triggerList = createTriggerList(vd.Player0.size)
-			vd.Missile0.triggerList = vd.Player0.triggerList
-		}, "adjusting NUSIZ0")
-	case "NUSIZ1":
-		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
-			vd.Missile1.size = (value & 0x30) >> 4
-			vd.Player1.size = value & 0x07
-			vd.Player1.triggerList = createTriggerList(vd.Player1.size)
-			vd.Missile1.triggerList = vd.Player1.triggerList
-		}, "adjusting NUSIZ1")
+	// colours
 	case "COLUP0":
 		// TODO: write delay?
 		vd.Player0.color = value & 0xfe
@@ -323,10 +310,8 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		// TODO: write delay?
 		vd.Player1.color = value & 0xfe
 		vd.Missile1.color = value & 0xfe
-	case "COLUPF":
-		// TODO: write delay?
-		vd.Playfield.foregroundColor = value & 0xfe
-		vd.Ball.color = value & 0xfe
+
+	// playfield
 	case "COLUBK":
 		// this delay works and fixes a graphical issue with the "Keystone
 		// Kapers" rom. I'm not entirely sure this is the correct fix however.
@@ -334,6 +319,10 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
 			vd.Playfield.backgroundColor = value & 0xfe
 		}, "setting COLUBK")
+	case "COLUPF":
+		// TODO: write delay?
+		vd.Playfield.foregroundColor = value & 0xfe
+		vd.Ball.color = value & 0xfe
 	case "CTRLPF":
 		// TODO: write delay?
 		vd.Ball.size = (value & 0x30) >> 4
@@ -352,62 +341,87 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Playfield.scheduleWrite(1, value, &vd.OnFutureColorClock)
 	case "PF2":
 		vd.Playfield.scheduleWrite(2, value, &vd.OnFutureColorClock)
-	case "RESP0":
-		vd.Player0.scheduleReset(&vd.OnFutureMotionClock)
-	case "RESP1":
-		vd.Player1.scheduleReset(&vd.OnFutureMotionClock)
-	case "RESM0":
-		vd.Missile0.scheduleReset(&vd.OnFutureMotionClock)
-	case "RESM1":
-		vd.Missile1.scheduleReset(&vd.OnFutureMotionClock)
+
+	// ball sprite
+	case "ENABL":
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
 	case "RESBL":
 		vd.Ball.scheduleReset(&vd.OnFutureMotionClock)
+	case "VDELBL":
+		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
+
+	// player sprites
 	case "GRP0":
 		vd.Player0.scheduleWrite(value, &vd.OnFutureColorClock)
 	case "GRP1":
 		vd.Player1.scheduleWrite(value, &vd.OnFutureColorClock)
-	case "ENAM0":
-		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
-	case "ENAM1":
-		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
-	case "ENABL":
-		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+	case "RESP0":
+		vd.Player0.scheduleReset(&vd.OnFutureMotionClock)
+	case "RESP1":
+		vd.Player1.scheduleReset(&vd.OnFutureMotionClock)
 	case "VDELP0":
 		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
 	case "VDELP1":
 		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
-	case "VDELBL":
-		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
+
+	// missile sprites
+	case "ENAM0":
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+	case "ENAM1":
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+	case "RESM0":
+		vd.Missile0.scheduleReset(&vd.OnFutureMotionClock)
+	case "RESM1":
+		vd.Missile1.scheduleReset(&vd.OnFutureMotionClock)
 	case "RESMP0":
 		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
 	case "RESMP1":
 		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
+
+	// player & missile sprites
+	case "NUSIZ0":
+		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+			vd.Missile0.size = (value & 0x30) >> 4
+			vd.Player0.size = value & 0x07
+			vd.Player0.triggerList = createTriggerList(vd.Player0.size)
+			vd.Missile0.triggerList = vd.Player0.triggerList
+		}, "adjusting NUSIZ0")
+	case "NUSIZ1":
+		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+			vd.Missile1.size = (value & 0x30) >> 4
+			vd.Player1.size = value & 0x07
+			vd.Player1.triggerList = createTriggerList(vd.Player1.size)
+			vd.Missile1.triggerList = vd.Player1.triggerList
+		}, "adjusting NUSIZ1")
+
+	// clear collisions
 	case "CXCLR":
 		vd.collisions.clear()
 
-		// horizontal movement values range from -8 to +7
-		// for convenience we convert this to the range 0 to 15
-		//
-		// TODO: write delay?
-	case "HMP0":
-		vd.Player0.horizMovement = (value ^ 0x80) >> 4
-	case "HMP1":
-		vd.Player1.horizMovement = (value ^ 0x80) >> 4
-	case "HMM0":
-		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
-	case "HMM1":
-		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
-	case "HMBL":
-		vd.Ball.horizMovement = (value ^ 0x80) >> 4
-
+	// horizontal movement
 	case "HMCLR":
-		// note that HMCLR does not reset the horizontal movement latches in
-		// the sprite object (TIA_HW_Notes)
 		vd.Player0.horizMovement = 0x08
 		vd.Player1.horizMovement = 0x08
 		vd.Missile0.horizMovement = 0x08
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
+	case "HMP0":
+		// values range from -8 to +7 for convenience we convert this to the
+		// range 0 to 15
+		// TODO: write delay?
+		vd.Player0.horizMovement = (value ^ 0x80) >> 4
+	case "HMP1":
+		// TODO: write delay?
+		vd.Player1.horizMovement = (value ^ 0x80) >> 4
+	case "HMM0":
+		// TODO: write delay?
+		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
+	case "HMM1":
+		// TODO: write delay?
+		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
+	case "HMBL":
+		// TODO: write delay?
+		vd.Ball.horizMovement = (value ^ 0x80) >> 4
 	}
 
 	return true
