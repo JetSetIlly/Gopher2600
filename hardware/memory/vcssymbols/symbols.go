@@ -72,10 +72,10 @@ var WriteSymbols = map[uint16]string{
 	0x2C:  "CXCLR",
 	0x280: "SWCHA",
 	0x281: "SWACNT",
-	0x284: "TIM1T",
-	0x285: "TIM8T",
-	0x286: "TIM64T",
-	0x287: "TIM1024",
+	0x294: "TIM1T",
+	0x295: "TIM8T",
+	0x296: "TIM64T",
+	0x297: "TIM1024",
 }
 
 // TIA write registers - values are enumerated from 0; value is added to the

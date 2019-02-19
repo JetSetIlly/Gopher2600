@@ -36,8 +36,6 @@ type ChipMemory struct {
 	// manner (peripherals have been implemented with goroutines and so we need
 	// to be careful when accessing the memory array)
 	periphQueue chan *periphPayload
-
-	NoServiceChecks bool
 }
 
 func newChipMem() *ChipMemory {

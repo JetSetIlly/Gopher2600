@@ -25,6 +25,8 @@ func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
 
 // LastReadRegister is an implementation of ChipBus.LastReadRegister. it
 // returns the register name of the last memory location *read* by the CPU
-func (area ChipMemory) LastReadRegister() string {
-	return area.lastReadRegister
+func (area *ChipMemory) LastReadRegister() string {
+	r := area.lastReadRegister
+	area.lastReadRegister = ""
+	return r
 }

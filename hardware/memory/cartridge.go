@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
+	"io"
 	"os"
 )
 
@@ -27,9 +28,15 @@ type Cartridge struct {
 	memory   [][]uint8
 
 	// readHook allows custom read routines depending on the cartridge type
-	// that has been inserted. note that the address has been normalised so that
-	// the origin is at 0 bytes
-	readHook func(uint16) uint8
+	// that has been inserted.
+	readHook func(uint16) (uint8, error)
+
+	// similarly for writeHook
+	writeHook func(uint16, uint8) error
+
+	// some cartridges have extra RAM - they'll need custom read/write hooks to
+	// make use of it
+	extraRAM []uint8
 }
 
 const ejectedName = "ejected"
@@ -41,8 +48,7 @@ func newCart() *Cartridge {
 	cart.label = "Cartridge"
 	cart.origin = 0x1000
 	cart.memtop = 0x1fff
-	cart.name = ejectedName
-	cart.method = ejectedMethod
+	cart.Eject()
 	return cart
 }
 
@@ -82,21 +88,27 @@ func (cart Cartridge) Read(address uint16) (uint8, error) {
 	if len(cart.memory) == 0 {
 		return 0, errors.NewGopherError(errors.CartridgeMissing)
 	}
-	return cart.readHook(cart.origin | address ^ cart.origin), nil
+	return cart.readHook(cart.origin | address ^ cart.origin)
 }
 
 // Implementation of CPUBus.Write
 func (cart *Cartridge) Write(address uint16, data uint8) error {
-	return errors.NewGopherError(errors.UnwritableAddress, address)
+	return cart.writeHook(cart.origin|address^cart.origin, data)
 }
 
-// allocateCartridgeSpace is a generalised allocation of memory and file
-// reading routine. common to all cartridge sizes
-func (cart *Cartridge) allocateCartridgeSpace(file *os.File, numBanks int) error {
+// readBanks is a generalised allocation of memory and file reading routine.
+// common to all cartridge sizes
+func (cart *Cartridge) readBanks(file io.ReadSeeker, numBanks int) error {
 	cart.NumBanks = numBanks
 
 	// allocate enough memory for new cartridge
 	cart.memory = make([][]uint8, cart.NumBanks)
+
+	if file == nil {
+		return nil
+	}
+
+	file.Seek(0, io.SeekStart)
 
 	for b := 0; b < cart.NumBanks; b++ {
 		cart.memory[b] = make([]uint8, 4096)
@@ -132,9 +144,16 @@ func (cart *Cartridge) Attach(filename string) error {
 		return err
 	}
 
-	// set null read hook
-	cart.readHook = func(uint16) uint8 { return 0 }
 	cart.Bank = 0
+
+	// set default read hooks
+	cart.readHook = func(addr uint16) (uint8, error) {
+		return 0, errors.NewGopherError(errors.UnreadableAddress, addr)
+	}
+
+	cart.writeHook = func(addr uint16, data uint8) error {
+		return errors.NewGopherError(errors.UnwritableAddress, addr)
+	}
 
 	// how cartridges are mapped into the 4k space can differs dramatically.
 	// the following implementation details have been cribbed from Kevin
@@ -145,7 +164,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		// note that while we're allocating a full 4096 bytes for this
 		// cartrdige size, the readHook below ensures that we only ever read
 		// the first 2048.
-		cart.allocateCartridgeSpace(cf, 1)
+		cart.readBanks(cf, 1)
 
 		// this is a half-size cartridge of 2048 bytes
 		//
@@ -156,15 +175,15 @@ func (cart *Cartridge) Attach(filename string) error {
 		//  o mostly early cartridges
 		cart.method = "standard 2k"
 
-		cart.readHook = func(address uint16) uint8 {
+		cart.readHook = func(addr uint16) (uint8, error) {
 			// because we've only allocated half the amount of memory that
-			// should be there, we need a further mask to make sure the address
+			// should be there, we need a further mask to make sure the addr
 			// is in range
-			return cart.memory[0][address&0x07ff]
+			return cart.memory[0][addr&0x07ff], nil
 		}
 
 	case 4096:
-		cart.allocateCartridgeSpace(cf, 1)
+		cart.readBanks(cf, 1)
 
 		// this is a regular cartridge of 4096 bytes
 		//
@@ -173,10 +192,15 @@ func (cart *Cartridge) Attach(filename string) error {
 		//  o Yars Revenge
 		//  o most 2600 cartridges...
 		cart.method = "standard 4k"
-		cart.readHook = func(address uint16) uint8 { return cart.memory[0][address] }
+
+		cart.readHook = func(addr uint16) (uint8, error) {
+			return cart.memory[0][addr], nil
+		}
+
+		cart.addCartridgeRAM()
 
 	case 8192:
-		cart.allocateCartridgeSpace(cf, 2)
+		cart.readBanks(cf, 2)
 
 		// TODO: differentiation of bank switching methods
 
@@ -185,17 +209,30 @@ func (cart *Cartridge) Attach(filename string) error {
 		//	o ET
 		//  o Krull
 		//  o and lots of others
+		cart.method = "standard 8k (F8)"
 
-		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.Bank][address]
-			if address == 0x0ff8 {
+		cart.readHook = func(addr uint16) (uint8, error) {
+			data := cart.memory[cart.Bank][addr]
+			if addr == 0x0ff8 {
 				cart.Bank = 0
-			} else if address == 0x0ff9 {
+			} else if addr == 0x0ff9 {
 				cart.Bank = 1
 			}
-			return data
+			return data, nil
 		}
-		cart.method = "standard 8k (F8)"
+
+		cart.writeHook = func(addr uint16, data uint8) error {
+			if addr == 0x0ff8 {
+				cart.Bank = 0
+			} else if addr == 0x0ff9 {
+				cart.Bank = 1
+			} else {
+				return errors.NewGopherError(errors.UnwritableAddress, addr)
+			}
+			return nil
+		}
+
+		cart.addCartridgeRAM()
 
 		// E0 Method (Parker Bros)
 		//
@@ -205,7 +242,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		return errors.NewGopherError(errors.CartridgeUnsupported, "12288 bytes not yet supported")
 
 	case 16384:
-		cart.allocateCartridgeSpace(cf, 4)
+		cart.readBanks(cf, 4)
 
 		// TODO: differentiation of bank switching methods
 
@@ -215,57 +252,102 @@ func (cart *Cartridge) Attach(filename string) error {
 		//	o RS Boxing
 		//  o Midnite Magic
 		//  o and others
-		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.Bank][address]
-			if address == 0x0ff6 {
-				cart.Bank = 0
-			} else if address == 0x0ff7 {
-				cart.Bank = 1
-			} else if address == 0x0ff8 {
-				cart.Bank = 2
-			} else if address == 0x0ff9 {
-				cart.Bank = 3
-			}
-			return data
-		}
 		cart.method = "standard 16k (F6)"
 
+		cart.readHook = func(addr uint16) (uint8, error) {
+			data := cart.memory[cart.Bank][addr]
+			if addr == 0x0ff6 {
+				cart.Bank = 0
+			} else if addr == 0x0ff7 {
+				cart.Bank = 1
+			} else if addr == 0x0ff8 {
+				cart.Bank = 2
+			} else if addr == 0x0ff9 {
+				cart.Bank = 3
+			}
+			return data, nil
+		}
+
+		cart.writeHook = func(addr uint16, data uint8) error {
+			if addr == 0x0ff6 {
+				cart.Bank = 0
+			} else if addr == 0x0ff7 {
+				cart.Bank = 1
+			} else if addr == 0x0ff8 {
+				cart.Bank = 2
+			} else if addr == 0x0ff9 {
+				cart.Bank = 3
+			} else {
+				return errors.NewGopherError(errors.UnwritableAddress, addr)
+			}
+			return nil
+		}
+
+		cart.addCartridgeRAM()
+
 	case 32768:
-		cart.allocateCartridgeSpace(cf, 8)
+		cart.readBanks(cf, 8)
 
 		// F4 method (standard)
 		//
 		// o Fatal Run
 		// o Super Mario Bros.
+		// o Donkey Kong
 		// o other homebrew games
 		cart.method = "standard 32k (F4)"
 
-		cart.readHook = func(address uint16) uint8 {
-			data := cart.memory[cart.Bank][address]
-			if address == 0x0ff4 {
+		cart.readHook = func(addr uint16) (uint8, error) {
+			data := cart.memory[cart.Bank][addr]
+			if addr == 0x0ff4 {
 				cart.Bank = 0
-			} else if address == 0x0ff5 {
+			} else if addr == 0x0ff5 {
 				cart.Bank = 1
-			} else if address == 0x0ff6 {
+			} else if addr == 0x0ff6 {
 				cart.Bank = 2
-			} else if address == 0x0ff7 {
+			} else if addr == 0x0ff7 {
 				cart.Bank = 3
-			} else if address == 0x0ff8 {
+			} else if addr == 0x0ff8 {
 				cart.Bank = 4
-			} else if address == 0x0ff9 {
+			} else if addr == 0x0ff9 {
 				cart.Bank = 5
-			} else if address == 0x0ffa {
+			} else if addr == 0x0ffa {
 				cart.Bank = 6
-			} else if address == 0x0ffb {
+			} else if addr == 0x0ffb {
 				cart.Bank = 7
 			}
-			return data
+			return data, nil
 		}
+
+		cart.writeHook = func(addr uint16, data uint8) error {
+			if addr == 0x0ff4 {
+				cart.Bank = 0
+			} else if addr == 0x0ff5 {
+				cart.Bank = 1
+			} else if addr == 0x0ff6 {
+				cart.Bank = 2
+			} else if addr == 0x0ff7 {
+				cart.Bank = 3
+			} else if addr == 0x0ff8 {
+				cart.Bank = 4
+			} else if addr == 0x0ff9 {
+				cart.Bank = 5
+			} else if addr == 0x0ffa {
+				cart.Bank = 6
+			} else if addr == 0x0ffb {
+				cart.Bank = 7
+			} else {
+				return errors.NewGopherError(errors.UnwritableAddress, addr)
+			}
+			return nil
+		}
+
+		cart.addCartridgeRAM()
 
 	case 65536:
 		return errors.NewGopherError(errors.CartridgeUnsupported, "65536 bytes not yet supported")
 
 	default:
+		cart.Eject()
 		return errors.NewGopherError(errors.CartridgeUnsupported, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
@@ -273,6 +355,53 @@ func (cart *Cartridge) Attach(filename string) error {
 	cart.name = filename
 
 	return nil
+}
+
+func (cart *Cartridge) addCartridgeRAM() bool {
+	// information about cartridge RAM from Horton's "Cart Information"
+	// document [sizes.txt] and observation of incorrect ROM behaviour when
+	// compared to the Stella emulator.
+
+	// check for cartridge memory
+	// -- this method of detection simply checks whether the first 256
+	// of each bank are "empty"
+	// -- I've guessed that this is a good method. if there's another one I
+	// don't know about it.
+	nullChar := cart.memory[0][0]
+	for b := 0; b < len(cart.memory); b++ {
+		for a := 0; a < 256; a++ {
+			if cart.memory[b][a] != nullChar {
+				return false
+			}
+		}
+	}
+
+	// allocate RAM
+	cart.extraRAM = make([]uint8, 128)
+
+	// update write hook
+	writeHook := cart.writeHook
+	cart.writeHook = func(addr uint16, data uint8) error {
+		if addr > 127 {
+			return writeHook(addr, data)
+		}
+		cart.extraRAM[addr] = data
+		return nil
+	}
+
+	// update read hook
+	readHook := cart.readHook
+	cart.readHook = func(addr uint16) (uint8, error) {
+		if addr > 127 && addr < 256 {
+			return cart.extraRAM[addr-128], nil
+		}
+		return readHook(addr)
+	}
+
+	// update cartridge method information
+	cart.method = fmt.Sprintf("%s inc. extra RAM", cart.method)
+
+	return true
 }
 
 // BankSwitch changes the current bank number
@@ -287,11 +416,14 @@ func (cart *Cartridge) BankSwitch(bank int) error {
 // Eject removes memory from cartridge space and unlike the real hardware,
 // attaches a bank of empty memory - for convenience of the debugger
 func (cart *Cartridge) Eject() {
-	cart.allocateCartridgeSpace(nil, 1)
-	cart.Bank = 0
-	cart.readHook = func(oa uint16) uint8 { return cart.memory[0][oa] }
 	cart.name = ejectedName
 	cart.method = ejectedMethod
+	cart.NumBanks = 1
+	cart.Bank = 0
+	cart.readBanks(nil, cart.NumBanks)
+	cart.readHook = func(uint16) (uint8, error) { return 0, nil }
+	cart.writeHook = func(addr uint16, data uint8) error { return nil }
+	cart.extraRAM = nil
 }
 
 // Peek is the implementation of Memory.Area.Peek
