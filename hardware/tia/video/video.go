@@ -70,11 +70,9 @@ func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus) *Video {
 		return nil
 	}
 
-	// connect player 0 and player 1 to each other (via the vertical delay bit)
-	vd.Player0.gfxDataDelay = &vd.Player1.gfxDataPrev
-	vd.Player1.gfxDataDelay = &vd.Player0.gfxDataPrev
-	vd.Player0.gfxDataOther = &vd.Player1.gfxData
-	vd.Player1.gfxDataOther = &vd.Player0.gfxData
+	// connect player 0 and player 1 to each other
+	vd.Player0.otherPlayer = vd.Player1
+	vd.Player1.otherPlayer = vd.Player0
 
 	// connect missile sprite to its parent player sprite
 	vd.Missile0.parentPlayer = vd.Player0
@@ -109,22 +107,13 @@ func (vd *Video) TickSprites() {
 	vd.Ball.tick()
 }
 
-// NewScanline is called at beginning of every scanline
-func (vd *Video) NewScanline() {
-	vd.Player0.newScanline()
-	vd.Player1.newScanline()
-	vd.Missile0.newScanline()
-	vd.Missile1.newScanline()
-	vd.Ball.newScanline()
-}
-
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
 func (vd *Video) PrepareSpritesForHMOVE() {
-	vd.Player0.horizMovementLatch = true
-	vd.Player1.horizMovementLatch = true
-	vd.Missile0.horizMovementLatch = true
-	vd.Missile1.horizMovementLatch = true
-	vd.Ball.horizMovementLatch = true
+	vd.Player0.PrepareForHMOVE()
+	vd.Player1.PrepareForHMOVE()
+	vd.Missile0.PrepareForHMOVE()
+	vd.Missile1.PrepareForHMOVE()
+	vd.Ball.PrepareForHMOVE()
 }
 
 // TickSpritesForHMOVE is only called when HMOVE is active
@@ -140,13 +129,19 @@ func (vd *Video) TickSpritesForHMOVE(count int) {
 // to returning the background color if no sprite or playfield pixel is
 // present. it also sets the collision registers
 // - it need not be called therefore during VBLANK or HBLANK
-func (vd *Video) Pixel() uint8 {
+func (vd *Video) Pixel(debugColors bool) uint8 {
 	pfu, pfc := vd.Playfield.pixel()
 	blu, blc := vd.Ball.pixel()
 	p0u, p0c := vd.Player0.pixel()
 	p1u, p1c := vd.Player1.pixel()
 	m0u, m0c := vd.Missile0.pixel()
 	m1u, m1c := vd.Missile1.pixel()
+
+	// override program colors with debug colors
+	if debugColors {
+		p0c = 0x32 // red
+		p1c = 0x15 // gold
+	}
 
 	// collisions
 	if m0u && p1u {
@@ -315,14 +310,16 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	case "COLUBK":
 		// this delay works and fixes a graphical issue with the "Keystone
 		// Kapers" rom. I'm not entirely sure this is the correct fix however.
-		// and I'm definitely now sure about the delay time.
+		// and I'm definitely not sure about the delay time
 		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
 			vd.Playfield.backgroundColor = value & 0xfe
 		}, "setting COLUBK")
 	case "COLUPF":
-		// TODO: write delay?
-		vd.Playfield.foregroundColor = value & 0xfe
-		vd.Ball.color = value & 0xfe
+		// similar to COLUBK this fixes a bug with "Pressure Cooker"
+		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
+			vd.Playfield.foregroundColor = value & 0xfe
+			vd.Ball.color = value & 0xfe
+		}, "setting COLUPF")
 	case "CTRLPF":
 		// TODO: write delay?
 		vd.Ball.size = (value & 0x30) >> 4
@@ -405,23 +402,25 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		vd.Missile0.horizMovement = 0x08
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
+
+	// horizontal movement values range from -8 to +7 for convenience we
+	// convert this to the range 0 to 15
+
 	case "HMP0":
-		// values range from -8 to +7 for convenience we convert this to the
-		// range 0 to 15
 		// TODO: write delay?
-		vd.Player0.horizMovement = (value ^ 0x80) >> 4
+		vd.Player0.horizMovement = (int(value) ^ 0x80) >> 4
 	case "HMP1":
 		// TODO: write delay?
-		vd.Player1.horizMovement = (value ^ 0x80) >> 4
+		vd.Player1.horizMovement = (int(value) ^ 0x80) >> 4
 	case "HMM0":
 		// TODO: write delay?
-		vd.Missile0.horizMovement = (value ^ 0x80) >> 4
+		vd.Missile0.horizMovement = (int(value) ^ 0x80) >> 4
 	case "HMM1":
 		// TODO: write delay?
-		vd.Missile1.horizMovement = (value ^ 0x80) >> 4
+		vd.Missile1.horizMovement = (int(value) ^ 0x80) >> 4
 	case "HMBL":
 		// TODO: write delay?
-		vd.Ball.horizMovement = (value ^ 0x80) >> 4
+		vd.Ball.horizMovement = (int(value) ^ 0x80) >> 4
 	}
 
 	return true

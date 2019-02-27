@@ -17,6 +17,10 @@ type Specification struct {
 	VsyncClocks int
 
 	Colors []color
+
+	IdealTop       int
+	IdealBottom    int
+	IdealScanlines int
 }
 
 // SpecNTSC is the specification for NTSC television typee
@@ -38,6 +42,9 @@ func init() {
 	SpecNTSC.ScanlinesTotal = 262
 	SpecNTSC.Colors = ntscColors
 	SpecNTSC.VsyncClocks = SpecNTSC.ScanlinesPerVSync * SpecNTSC.ClocksPerScanline
+	SpecNTSC.IdealTop = SpecNTSC.ScanlinesPerVSync + SpecNTSC.ScanlinesPerVBlank
+	SpecNTSC.IdealBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesPerOverscan
+	SpecNTSC.IdealScanlines = SpecNTSC.IdealBottom - SpecNTSC.IdealTop
 
 	SpecPAL = new(Specification)
 	SpecPAL.ID = "PAL"
@@ -49,6 +56,9 @@ func init() {
 	SpecPAL.ScanlinesPerOverscan = 36
 	SpecPAL.ScanlinesTotal = 312
 	SpecPAL.VsyncClocks = SpecPAL.ScanlinesPerVSync * SpecPAL.ClocksPerScanline
+	SpecPAL.IdealTop = SpecPAL.ScanlinesPerVSync + SpecPAL.ScanlinesPerVBlank
+	SpecPAL.IdealBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesPerOverscan
+	SpecPAL.IdealScanlines = SpecPAL.IdealBottom - SpecPAL.IdealTop
 
 	// use NTSC colors for PAL specification for now
 	// TODO: implement PAL colors

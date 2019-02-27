@@ -24,12 +24,6 @@ type missileSprite struct {
 	// actually takes place (concept shared with player sprite)
 	deferDrawStart bool
 
-	// this is a wierd one. if a reset has occured and the missile is about to
-	// start drawing on the next tick, then resetTriggeredOnDraw is set to true
-	// the deferDrawSig is then set to the opposite value when the draw is
-	// supposed to start (concept share with player sprite)
-	resetTriggeredOnDraw bool
-
 	// whether the reset bit is on. from the stella programmer's guide, "as
 	// long as [the] control bit is true the missile will remain locked to the
 	// centre of its player and the missile graphics will be disabled
@@ -38,6 +32,10 @@ type missileSprite struct {
 	// the player to which the missile is paired. we use this when resetting
 	// the missile position to the player
 	parentPlayer *playerSprite
+
+	// notes whether a reset has just occurred on the last cycle -- used to
+	// delay the drawing of the sprite in certain circumstances
+	resetTriggered bool
 }
 
 func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
@@ -62,7 +60,27 @@ func (ms missileSprite) MachineInfo() string {
 	s := strings.Builder{}
 
 	s.WriteString(fmt.Sprintf("   color: %d\n", ms.color))
-	s.WriteString(fmt.Sprintf("   size: %d\n", ms.size))
+	s.WriteString(fmt.Sprintf("   size: %03b [", ms.size))
+	switch ms.size {
+	case 0:
+		s.WriteString("normal")
+	case 1:
+		s.WriteString("double")
+	case 2:
+		s.WriteString("quadruple")
+	case 3:
+		s.WriteString("double-quad")
+	}
+	s.WriteString("]\n")
+	s.WriteString("   trigger list: ")
+	if len(ms.triggerList) > 0 {
+		for i := 0; i < len(ms.triggerList); i++ {
+			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*(polycounter.MaxPhase+1))+ms.hmovedHorizPos))
+		}
+		s.WriteString(fmt.Sprintf(" %v\n", ms.triggerList))
+	} else {
+		s.WriteString("none\n")
+	}
 	if ms.enable {
 		s.WriteString("   enabled: yes")
 	} else {
@@ -76,7 +94,10 @@ func (ms missileSprite) MachineInfo() string {
 func (ms *missileSprite) tick() {
 	// position
 	if ms.tickPosition(ms.triggerList) {
-		if ms.resetFuture != nil && !ms.resetTriggeredOnDraw {
+		// this is a wierd one. if a reset has just occured then we delay the
+		// start of the drawing of the sprite (concept shared with player
+		// sprite)
+		if ms.resetFuture != nil && !ms.resetTriggered {
 			ms.deferDrawStart = true
 		} else {
 			ms.startDrawing()
@@ -123,6 +144,8 @@ func (ms *missileSprite) tick() {
 			ms.position.Sync(&ms.parentPlayer.position, 5)
 		}
 	}
+
+	ms.resetTriggered = false
 }
 
 // pixel returns the color of the missile at the current time.  returns
@@ -150,10 +173,10 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 }
 
 func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
-	ms.resetTriggeredOnDraw = ms.position.CycleOnNextTick()
+	ms.resetTriggered = true
 	ms.resetFuture = onFutureWrite.Schedule(delayResetMissile, func() {
 		ms.resetFuture = nil
-		ms.resetTriggeredOnDraw = false
+		ms.resetTriggered = false
 		ms.resetPosition()
 		if ms.deferDrawStart {
 			ms.startDrawing()

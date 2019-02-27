@@ -142,7 +142,7 @@ var commandTemplate = input.CommandTemplate{
 	KeywordMissile:       "",
 	KeywordBall:          "",
 	KeywordPlayfield:     "",
-	KeywordDisplay:       "[|OFF|DEBUG|SCALE] %*", // see notes
+	KeywordDisplay:       "[|OFF|DEBUG|SCALE|DEBUGCOLORS] %*", // see notes
 	KeywordMouse:         "[|X|Y]",
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
@@ -694,13 +694,61 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	// information about the machine (sprites, playfield)
 	case KeywordPlayer:
 		// TODO: argument to print either player 0 or player 1
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+
+		if dbg.machineInfoVerbose {
+			// arrange the two player's information side by side in order to
+			// save space and to allow for easy comparison
+
+			p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
+			p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
+
+			ml := 0
+			for i := range p0 {
+				if len(p0[i]) > ml {
+					ml = len(p0[i])
+				}
+			}
+
+			s := strings.Builder{}
+			for i := range p0 {
+				if p0[i] != "" {
+					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
+				}
+			}
+			dbg.print(ui.MachineInfo, s.String())
+		} else {
+			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
+			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+		}
 
 	case KeywordMissile:
 		// TODO: argument to print either missile 0 or missile 1
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+
+		if dbg.machineInfoVerbose {
+			// arrange the two missile's information side by side in order to
+			// save space and to allow for easy comparison
+
+			p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+			p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
+
+			ml := 0
+			for i := range p0 {
+				if len(p0[i]) > ml {
+					ml = len(p0[i])
+				}
+			}
+
+			s := strings.Builder{}
+			for i := range p0 {
+				if p0[i] != "" {
+					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
+				}
+			}
+			dbg.print(ui.MachineInfo, s.String())
+		} else {
+			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+		}
 
 	case KeywordBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
@@ -734,6 +782,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 				err = dbg.vcs.TV.SetFeature(television.ReqSetScale, float32(scale))
 				return false, err
+			case "DEBUGCOLORS":
+				dbg.vcs.TIA.UseDebugColors = !dbg.vcs.TIA.UseDebugColors
+				if dbg.vcs.TIA.UseDebugColors {
+					dbg.print(ui.Feedback, "using debug colors in display")
+				} else {
+					dbg.print(ui.Feedback, "using program colors in display")
+				}
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}

@@ -14,6 +14,9 @@ type Instance struct {
 
 	// the value that is to be the result of the pending action
 	payload func()
+
+	// arguments to the payload function
+	args []interface{}
 }
 
 func schedule(group *Group, cycles int, payload func(), label string) *Instance {
@@ -41,5 +44,6 @@ func (ins *Instance) tick() bool {
 
 // Force can be used to immediately run the future payload
 func (ins *Instance) Force() {
+	ins.payload()
 	ins.group.Force(ins)
 }

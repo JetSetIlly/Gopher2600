@@ -204,13 +204,6 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 func (scr *screen) update(paused bool) error {
 	var err error
 
-	// before we go any further, check frame stability
-	err = scr.stb.beginViewportStabilisation()
-	if err != nil {
-		return err
-	}
-	defer scr.stb.endViewportStabilisation()
-
 	// note that because of how the stabilisation routines work, srcRect,
 	// destRect, etc. should only be read. changing them during frame update
 	// will cause havoc

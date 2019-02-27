@@ -215,7 +215,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 	if initScript != "" {
 		err = dbg.RunScript(initScript, true)
 		if err != nil {
-			dbg.print(ui.Error, "* error running debugger initialisation script: %s\n", err)
+			dbg.print(ui.Error, "error running debugger initialisation script: %s\n", err)
 		}
 	}
 

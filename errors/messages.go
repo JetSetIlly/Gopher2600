@@ -8,6 +8,8 @@ var messages = map[Errno]string{
 	SymbolsFileError:      "error processing symbols file (%s)",
 	SymbolUnknown:         "unrecognised symbol (%s)",
 	ScriptFileCannotOpen:  "cannot open script file (%s)",
+	ScriptFileError:       "script error: %s",
+	ScriptRunError:        "script error: use of '%s' is not allowed in scripts [%s::%d]",
 	InvalidTarget:         "invalid target (%s)",
 
 	// Regression

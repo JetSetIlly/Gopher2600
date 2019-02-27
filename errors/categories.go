@@ -10,6 +10,7 @@ const (
 	SymbolUnknown
 	ScriptFileCannotOpen
 	ScriptFileError
+	ScriptRunError
 	InvalidTarget
 
 	// Regression

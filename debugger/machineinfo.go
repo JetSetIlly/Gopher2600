@@ -12,10 +12,10 @@ type machineInfo interface {
 }
 
 func (dbg *Debugger) printMachineInfo(mi machineInfo) {
-	dbg.print(ui.MachineInfo, "%s", dbg.sprintMachineInfo(mi))
+	dbg.print(ui.MachineInfo, "%s", dbg.getMachineInfo(mi))
 }
 
-func (dbg *Debugger) sprintMachineInfo(mi machineInfo) string {
+func (dbg *Debugger) getMachineInfo(mi machineInfo) string {
 	if dbg.machineInfoVerbose {
 		return mi.MachineInfo()
 	}

@@ -4,10 +4,10 @@ package video
 // operations on sprites.
 //
 // in all cases, these values have been determined by observation and by
-// technical commentary, such as Andrew Tower's "Atari 2600 TIA Hardware
-// Notes" (TIA_HW_Notes.txt).
+// technical commentary, such as Andrew Tower's "Atari 2600 TIA Hardware Notes"
+// (TIA_HW_Notes.txt).
 //
-// see Future type, the schedule() function in paricular, to see how these
+// see Future type, the schedule() function in particular, to see how these
 // values are used.
 
 const (

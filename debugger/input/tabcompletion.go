@@ -41,7 +41,7 @@ func (tc *TabCompletion) GuessWord(input string) string {
 	// if input string is the same as the string last returned by this function
 	// AND it is within a time duration of 'cycleDuration' then return the next
 	// option
-	if input == tc.lastGuess && time.Since(tc.lastCompletionTime) < cycleDuration {
+	if input == tc.lastGuess { //&& time.Since(tc.lastCompletionTime) < cycleDuration {
 
 		// if there was only one option in the option list then return immediatly
 		if len(tc.options) <= 1 {

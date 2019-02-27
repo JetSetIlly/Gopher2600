@@ -14,18 +14,23 @@ type hmove struct {
 	count      int
 	phase      int
 	colorClock *polycounter.Polycounter
+
+	// whether or not hmove is active or not is distinct from the hmove count.
+	// the latch is reset whever the colorClock cycles but we still need to
+	// complete the movement of the sprites with the tick() function, which is
+	// governed by the count
+	latch bool
 }
 
 func newHmove(colorClock *polycounter.Polycounter) *hmove {
 	hm := new(hmove)
-	hm.reset()
 	hm.colorClock = colorClock
 	return hm
 }
 
 // MachineInfoTerse returns the HMOVE information in verbose format
 func (hm hmove) MachineInfoTerse() string {
-	if hm.isActive() {
+	if hm.latch {
 		return fmt.Sprintf("HM=%d", hm.count)
 	}
 	return "HM=-"
@@ -33,7 +38,7 @@ func (hm hmove) MachineInfoTerse() string {
 
 // MachineInfo returns the HMOVE information in verbose format
 func (hm hmove) MachineInfo() string {
-	if hm.isActive() {
+	if hm.latch {
 		return fmt.Sprintf("hmove: %d more tick(s)", hm.count)
 	}
 	return "hmove: no movement"
@@ -41,7 +46,7 @@ func (hm hmove) MachineInfo() string {
 
 // MachineInfoInternal returns low state information about the type
 func (hm hmove) MachineInfoInternal() string {
-	if hm.isActive() {
+	if hm.latch {
 		return fmt.Sprintf("%04b\n", hm.count)
 	}
 	return fmt.Sprintf("0000\n")
@@ -53,29 +58,33 @@ func (hm hmove) String() string {
 }
 
 func (hm *hmove) set() {
+	hm.latch = true
 	hm.count = 15
 	hm.phase = hm.colorClock.Phase
 }
 
-func (hm *hmove) tick() (ct int, tick bool) {
-	// if hmove is active, when color clock phase cycles to where it was when
-	// hmove.set() was called reduce the hmove count
-	if hm.count > 0 && hm.phase == hm.colorClock.Phase {
-		ct = hm.count
-		hm.count--
-		tick = true
+func (hm *hmove) unset() {
+	hm.latch = false
+}
+
+func (hm *hmove) isset() bool {
+	return hm.latch
+}
+
+func (hm *hmove) tick() (int, bool) {
+	if hm.count == -1 {
+		return 0, true
 	}
-	return ct, tick
-}
 
-// hmove inactivty control
+	if hm.count <= 0 {
+		return hm.count, false
+	}
 
-const inactiveCount = -1
+	if hm.phase == hm.colorClock.Phase {
+		ct := hm.count
+		hm.count--
+		return ct, true
+	}
 
-func (hm hmove) isActive() bool {
-	return hm.count > inactiveCount
-}
-
-func (hm *hmove) reset() {
-	hm.count = inactiveCount
+	return hm.count, false
 }

@@ -68,13 +68,13 @@ func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 			}
 			next, err := dbg.parseInput(lines[i])
 			if err != nil {
-				dbg.print(ui.Error, fmt.Sprintf("script error (%s): %s", scriptfile, err.Error()))
+				return errors.NewGopherError(errors.ScriptFileError, err)
 			}
 			if next {
-				dbg.print(ui.Error, fmt.Sprintf("script error (%s): use of '%s' is not recommended in scripts", scriptfile, lines[i]))
-
 				// make sure run state is still sane
 				dbg.runUntilHalt = false
+
+				return errors.NewGopherError(errors.ScriptRunError, strings.ToUpper(lines[i]), scriptfile, i)
 			}
 		}
 	}

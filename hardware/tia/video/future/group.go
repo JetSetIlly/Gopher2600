@@ -58,7 +58,6 @@ func (fut *Group) Force(ins *Instance) {
 	for e != nil {
 		i := e.Value.(*Instance)
 		if i == ins {
-			i.payload()
 			fut.instances.Remove(e)
 			break
 		} else {

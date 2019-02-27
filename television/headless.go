@@ -37,11 +37,8 @@ type HeadlessTV struct {
 	vsyncCount int
 
 	// the scanline at which the visible part of the screen begins and ends
-	//	-- some ROMs make this more awkward than it first seems. for instance,
-	//	vblank can be turned on and off anywhere, making detecting where the
-	//	visible top of the screen more laborious than necessary.
-	//  -- updated at the end of very frame (just before HookNewFrame is
-	//  called)
+	// - we start off with ideal values and push the screen outwards as
+	// required
 	VisibleTop    int
 	VisibleBottom int
 
@@ -50,10 +47,6 @@ type HeadlessTV struct {
 	// variables at the end of a frame
 	pendingVisibleTop    int
 	pendingVisibleBottom int
-
-	// to help us decide where the visible limits of the screen are, we note if
-	// we have received a colorSignal this scanline
-	colorSignalThisScanline bool
 
 	// callback hooks from Signal() - these are used by outer-structs to
 	// hook into and add extra gubbins to the Signal() function
@@ -140,9 +133,9 @@ func (tv *HeadlessTV) Reset() error {
 	tv.vsyncCount = 0
 	tv.prevSignal = SignalAttributes{}
 
-	tv.pendingVisibleTop = -1
-	tv.pendingVisibleBottom = -1
-	tv.colorSignalThisScanline = false
+	// default top/bottom to the "ideal" values
+	tv.pendingVisibleTop = tv.Spec.IdealTop
+	tv.pendingVisibleBottom = tv.Spec.IdealBottom
 
 	return nil
 }
@@ -158,20 +151,24 @@ func (tv *HeadlessTV) Reset() error {
 func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	if sig.HSync && !tv.prevSignal.HSync {
 		if tv.horizPos < -52 || tv.horizPos > -49 {
-			panic(fmt.Errorf("bad HSYNC (on at %d)", tv.horizPos))
+			//panic(fmt.Errorf("bad HSYNC (on at %d)", tv.horizPos))
+			fmt.Println("hysnc on", tv.horizPos)
 		}
 	} else if !sig.HSync && tv.prevSignal.HSync {
 		if tv.horizPos < -36 || tv.horizPos > -33 {
-			panic(fmt.Errorf("bad HSYNC (off at %d)", tv.horizPos))
+			//panic(fmt.Errorf("bad HSYNC (off at %d)", tv.horizPos))
+			fmt.Println("hysnc off", tv.horizPos)
 		}
 	}
 	if sig.CBurst && !tv.prevSignal.CBurst {
 		if tv.horizPos < -28 || tv.horizPos > -17 {
-			panic(fmt.Errorf("bad CBURST (on)"))
+			//panic(fmt.Errorf("bad CBURST (on)"))
+			fmt.Println("cburst on", tv.horizPos)
 		}
 	} else if !sig.CBurst && tv.prevSignal.CBurst {
 		if tv.horizPos < -19 || tv.horizPos > -16 {
-			panic(fmt.Errorf("bad CBURST (off)"))
+			//panic(fmt.Errorf("bad CBURST (off)"))
+			fmt.Println("cburst off", tv.horizPos)
 		}
 	}
 
@@ -195,9 +192,9 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 				return err
 			}
 
-			tv.pendingVisibleTop = -1
-			tv.pendingVisibleBottom = -1
-			tv.colorSignalThisScanline = false
+			// default top/bottom to the "ideal" values
+			tv.pendingVisibleTop = tv.Spec.IdealTop
+			tv.pendingVisibleBottom = tv.Spec.IdealBottom
 		}
 	}
 
@@ -228,63 +225,26 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// note the scanline when vblank is turned on/off. plus, only record the
-	// off signal if it hasn't been set before during this frame
-	if !sig.VBlank && tv.prevSignal.VBlank {
-		// some roms turn off vblank multiple times before the end of the frame.
-		// if VisibleTop has been altered already then do not record the
-		// VBlank off event
-		//
-		// ROMs affected:
-		//	* Custer's Revenge
-		//	* Ladybug
-		if tv.pendingVisibleTop == -1 {
-			tv.pendingVisibleTop = tv.scanline
+	// push screen limits outwards as required
+	if !sig.VBlank {
+		if tv.scanline > tv.pendingVisibleBottom {
+			tv.pendingVisibleBottom = tv.scanline + 2
 		}
-	}
-	if sig.VBlank && !tv.prevSignal.VBlank {
-		// some ROMs do not turn on VBlank until the beginning of a frame.
-		// this means that the value of vblank on will be less than vblank off.
-		// the following condition prevents that.
-		//
-		// ROMs affected:
-		//  * Gauntlet
-		if tv.scanline == 0 {
-			tv.pendingVisibleBottom = tv.Spec.ScanlinesTotal
-		} else {
-			// some ROMs do monkey things with VBLANK. some, like Custer's
-			// Revenge do it quite cleverly but others can produce odd results.
-			// the following condition only allows pendingVisibleBottom to be recorded
-			// if:
-			//    (a) it hasn't been altered this frame yet
-			// or (b) if the scanline is still in the "visible" part of the
-			//		  screen (as defined by the TV specification)
-			// or (c) is into the overscan area of the screen and we've
-			//        received no meaningul color signal this scanline.
-			//
-			// ROMs affected:
-			//  * Dk (original Donkey Kong)
-			if tv.pendingVisibleBottom == -1 {
-				tv.pendingVisibleBottom = tv.scanline
-			} else if tv.scanline < (tv.Spec.ScanlinesTotal-tv.Spec.ScanlinesPerOverscan) || tv.colorSignalThisScanline == false {
-				tv.pendingVisibleBottom = tv.scanline
-			}
+		if tv.scanline < tv.pendingVisibleTop {
+			tv.pendingVisibleTop = tv.scanline - 2
 		}
 	}
 
+	// decode color
+	red, green, blue := byte(0), byte(0), byte(0)
 	if sig.Pixel != VideoBlack {
-		tv.colorSignalThisScanline = true
+		col := tv.Spec.Colors[sig.Pixel]
+		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+
 	}
 
 	// record the current signal settings so they can be used for reference
 	tv.prevSignal = sig
-
-	// decode color
-	red, green, blue := byte(0), byte(0), byte(0)
-	if sig.Pixel <= 256 {
-		col := tv.Spec.Colors[sig.Pixel]
-		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-	}
 
 	// current coordinates
 	x := int32(tv.horizPos) + int32(tv.Spec.ClocksPerHblank)

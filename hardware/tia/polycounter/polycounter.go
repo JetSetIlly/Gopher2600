@@ -27,7 +27,7 @@ func (pk Polycounter) MachineInfoTerse() string {
 
 // MachineInfo returns the polycounter information in verbose format
 func (pk Polycounter) MachineInfo() string {
-	return fmt.Sprintf("(%d) %s@%d", pk.Count, pk.table[pk.Count], pk.Phase)
+	return fmt.Sprintf("(%d) %s@%d (px%d)", pk.Count, pk.table[pk.Count], pk.Phase, pk.Pixel())
 }
 
 // map String to MachineInfo

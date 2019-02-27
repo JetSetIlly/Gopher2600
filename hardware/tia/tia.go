@@ -7,6 +7,7 @@ import (
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
+	"strings"
 )
 
 const vblankMask = 0x02
@@ -18,6 +19,10 @@ const vsyncGroundedPaddleMask = 0x80
 type TIA struct {
 	tv  television.Television
 	mem memory.ChipBus
+
+	// number of cycles since the last WSYNC
+	cpuCycles   int
+	videoCycles int
 
 	colorClock *polycounter.Polycounter
 
@@ -41,6 +46,9 @@ type TIA struct {
 
 	Video *video.Video
 	Audio *audio.Audio
+
+	// whether to override colours with the "debug colors"
+	UseDebugColors bool
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -50,7 +58,10 @@ func (tia TIA) MachineInfoTerse() string {
 
 // MachineInfo returns the TIA information in verbose format
 func (tia TIA) MachineInfo() string {
-	return fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v", tia.colorClock, tia.rsync, tia.Hmove)
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v\n", tia.colorClock, tia.rsync, tia.Hmove))
+	s.WriteString(fmt.Sprintf("   Cycles since WSYNC:\n     CPU=%d\n     Video=%d", tia.cpuCycles, tia.videoCycles))
+	return s.String()
 }
 
 // map String to MachineInfo
@@ -138,17 +149,24 @@ func (tia *TIA) ReadTIAMemory() {
 // returns the state of the CPU (conceptually, we're attaching the result of
 // this function to pin 3 of the 6507)
 func (tia *TIA) StepVideoCycle() bool {
+	tia.videoCycles++
+	if tia.videoCycles%3 == 0 {
+		tia.cpuCycles++
+	}
+
 	frontPorch := false
 	cburst := false
 
 	// color clock
-	if tia.colorClock.MatchEnd(16) && !tia.Hmove.isActive() {
+	if tia.colorClock.MatchEnd(16) && !tia.Hmove.isset() {
 		// HBLANK off (early)
 		tia.hblank = false
-	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isActive() {
+	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isset() {
 		// HBLANK off (late)
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(4) {
+		// TODO: TIA_HW doesn't say the turning hsync on is "delayed by 4 CLKs"
+		// should we use MatchBeginning(4) instead?
 		tia.hsync = true
 	} else if tia.colorClock.MatchEnd(8) {
 		tia.hsync = false
@@ -170,15 +188,15 @@ func (tia *TIA) StepVideoCycle() bool {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
-		tia.Hmove.reset()
-		tia.Video.NewScanline()
+		tia.Hmove.unset()
 		tia.colorClock.Reset()
 	} else if tia.colorClock.Tick() {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
-		tia.Hmove.reset()
-		tia.Video.NewScanline()
+		tia.Hmove.unset()
+		tia.videoCycles = 0
+		tia.cpuCycles = 0
 		// not sure if we need to reset rsync
 	}
 
@@ -202,7 +220,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	// decide on pixel color
 	pixelColor := television.VideoBlack
 	if !tia.hblank {
-		pixelColor = television.ColorSignal(tia.Video.Pixel())
+		pixelColor = television.ColorSignal(tia.Video.Pixel(tia.UseDebugColors))
 	}
 
 	// at the end of the video cycle we want to finally signal the televison

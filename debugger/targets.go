@@ -120,7 +120,7 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 				switch subkey {
 				case "EFFECT", "EFF":
 					trg = &genericTarget{
-						label:      "INS EFFECT",
+						label:      "INSTRUCTION EFFECT",
 						shortLabel: "INS EFF",
 						value: func() interface{} {
 							if dbg.lastResult == nil {

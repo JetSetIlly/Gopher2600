@@ -24,11 +24,11 @@ type sprite struct {
 	// circulates to zero
 	position polycounter.Polycounter
 
-	// pixel of the sprite
+	// horizontal position of the sprite - may be affected by HMOVE
 	horizPos int
 
-	// adjusted horizontal position
-	adjHorizPos int
+	// horizontal position after hmove has been applied
+	hmovedHorizPos int
 
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
@@ -39,7 +39,10 @@ type sprite struct {
 	graphicsScanOff     int
 
 	// the amount of horizontal movement for the sprite
-	horizMovement      uint8
+	// -- as set by the 6502 - normalised into the 0 to 15 range
+	// (note that negative numbers indicate movements to the right)
+	horizMovement int
+	// -- whether HMOVE is still affecting this sprite
 	horizMovementLatch bool
 
 	// the tick function that wraps the tickPosition() function
@@ -67,7 +70,6 @@ func newSprite(label string, colorClock *polycounter.Polycounter, tick func()) *
 	sp.position.SetResetPoint(39) // "101101"
 
 	// the direction of count and max is important - don't monkey with it
-	// the value is used in Pixel*() functions to determine which pixel to check
 	sp.graphicsScanMax = 8
 	sp.graphicsScanOff = sp.graphicsScanMax + 1
 	sp.graphicsScanCounter = sp.graphicsScanOff
@@ -81,13 +83,8 @@ func (sp sprite) MachineInfoTerse() string {
 	s.WriteString(sp.label)
 	s.WriteString(": ")
 	s.WriteString(sp.position.String())
-	if sp.adjHorizPos == sp.horizPos {
-		s.WriteString(fmt.Sprintf(" pix=%d", sp.adjHorizPos))
-		s.WriteString(fmt.Sprintf(" hm=%d", sp.horizMovement))
-	} else {
-		s.WriteString(fmt.Sprintf(" {pix=%d", sp.adjHorizPos))
-		s.WriteString(fmt.Sprintf(" hm=%d}", sp.horizMovement))
-	}
+	s.WriteString(fmt.Sprintf(" pix=%d", sp.horizPos))
+	s.WriteString(fmt.Sprintf(" {hm=%d}", sp.horizMovement-8))
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -107,13 +104,6 @@ func (sp sprite) MachineInfo() string {
 	s := strings.Builder{}
 
 	s.WriteString(fmt.Sprintf("%s:\n", sp.label))
-	s.WriteString(fmt.Sprintf("   position: %s\n", sp.position))
-	if sp.adjHorizPos == sp.horizPos {
-		s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.adjHorizPos))
-	} else {
-		s.WriteString(fmt.Sprintf("   pixel: %d {%d}\n", sp.horizPos, sp.adjHorizPos))
-	}
-	s.WriteString(fmt.Sprintf("   hmove: %d\n", sp.horizMovement))
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf("   drawing: %d\n", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -123,6 +113,15 @@ func (sp sprite) MachineInfo() string {
 		s.WriteString("   reset: none scheduled\n")
 	} else {
 		s.WriteString(fmt.Sprintf("   reset: %d cycles\n", sp.resetFuture.RemainingCycles))
+	}
+	s.WriteString(fmt.Sprintf("   reset pos: %s\n", sp.position))
+	s.WriteString(fmt.Sprintf("   hmove: %d [%#02x] %04b\n", sp.horizMovement-8, (sp.horizMovement<<4)^0x80, sp.horizMovement))
+	s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.horizPos))
+	s.WriteString(fmt.Sprintf("   adj pixel: %d", sp.hmovedHorizPos))
+	if sp.horizMovementLatch {
+		s.WriteString(" *\n")
+	} else {
+		s.WriteString("\n")
 	}
 
 	return s.String()
@@ -142,30 +141,12 @@ func (sp sprite) MachineInfoInternal() string {
 	return s.String()
 }
 
-// newScanline is called at the beginning of a new scanline.
-// -- this is only used to reset the adjusted horizontal position value that we
-// use to report the horizontal location of the sprite. a bit of a waste
-// perhaps.
-// -- an alternative would be reset this value based on the position polycounter
-// value. but that wouldn't be wholly accurate (information-wise) in all
-// instances. that said, the additional function call doesn't impact that much
-// on performance, it just feels ugly.
-func (sp *sprite) newScanline() {
-	// reset adjusted horizontal position value
-	sp.adjHorizPos = sp.horizPos
-}
-
 func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
-	// note reset position of sprite, in pixels. used in MachineInfo()
-	// functions
-	if sp.colorClock.Count > 15 {
-		sp.horizPos = sp.colorClock.Pixel()
-	} else {
-		sp.horizPos = 2
-	}
-	sp.adjHorizPos = sp.horizPos
+	// note reset position of sprite, in pixels
+	sp.horizPos = sp.colorClock.Pixel()
+	sp.hmovedHorizPos = sp.horizPos
 }
 
 func (sp *sprite) tickPosition(triggerList []int) bool {
@@ -173,6 +154,7 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 		return true
 	}
 
+	// check for start positions of additional copies of the sprite
 	for _, v := range triggerList {
 		if v == sp.position.Count && sp.position.Phase == 0 {
 			return true
@@ -182,61 +164,59 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 	return false
 }
 
+func (sp *sprite) PrepareForHMOVE() {
+	// start horizontal movment of this sprite
+	sp.horizMovementLatch = true
+	sp.hmovedHorizPos = sp.horizPos
+}
+
 func (sp *sprite) tickSpritesForHMOVE(count int) {
-	if sp.horizMovementLatch && (sp.horizMovement&uint8(count) != 0) {
-		// this mental construct is designed to fix a problem in the Keystone
-		// Kapers ROM. I don't believe for a moment that this is a perfect
-		// solution but it makes sense in the context of that ROM.
-		//
-		// What seems to be happening in Keystone Kapers ROM is this:
-		//
-		//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
-		//  o HMOVE is tripped at beginning of line 96
-		//  o but reset doesn't occur until we resume motion clocks, by which
-		//		time HMOVE is finished
-		//  o moreover, the game doesn't want the ball to appear at the
-		//		beginning of the visible part of the screen; it wants the ball
-		//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
-		//		move adjustments needs to happen such that the ball really
-		//		appears at the end of the scanline (and
-		//  o to cut a long story short, the game needs the ball to have been
-		//		reset before the HMOVE has completed on line 96
-		//
-		// confusing huh?  this delay construct fixes the above issue while not
-		// breaking other regression tests. I don't know if this is a generally
-		// correct solution or if it's specific to the ball sprite but I'm
-		// keeping it in for now.
-		if sp.resetFuture != nil {
-			if sp.forceReset == 1 {
-				sp.resetFuture.Force()
-				sp.forceReset = 0
-			} else if sp.forceReset == 0 {
-				sp.forceReset = delayForceReset
-			} else {
-				sp.forceReset--
-			}
-		}
-
-		sp.tick()
-
-		// adjust horizontal position
-		if sp.horizMovement > 8 {
-			if count > 8 {
-				sp.adjHorizPos--
-				if sp.adjHorizPos < 0 {
-					sp.adjHorizPos = 159
+	if sp.horizMovementLatch {
+		// bitwise comparison - if no bits match then unset the latch,
+		// otherwise continue with the HMOVE for this sprite
+		if sp.horizMovement&count == 0 {
+			sp.horizMovementLatch = false
+		} else {
+			// this mental construct is designed to fix a problem in the Keystone
+			// Kapers ROM. I don't believe for a moment that this is a perfect
+			// solution but it makes sense in the context of that ROM.
+			//
+			// What seems to be happening in Keystone Kapers ROM is this:
+			//
+			//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
+			//  o HMOVE is tripped at beginning of line 96
+			//  o but reset doesn't occur until we resume motion clocks, by which
+			//		time HMOVE is finished
+			//  o moreover, the game doesn't want the ball to appear at the
+			//		beginning of the visible part of the screen; it wants the ball
+			//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
+			//		move adjustments needs to happen such that the ball really
+			//		appears at the end of the scanline
+			//  o to cut a long story short, the game needs the ball to have been
+			//		reset before the HMOVE has completed on line 96
+			//
+			// confusing huh?  this delay construct fixes the above issue while not
+			// breaking other regression tests. I don't know if this is a generally
+			// correct solution or if it's specific to the ball sprite but I'm
+			// keeping it in for now.
+			if sp.resetFuture != nil {
+				if sp.forceReset == 1 {
+					sp.resetFuture.Force()
+					sp.forceReset = 0
+				} else if sp.forceReset == 0 {
+					sp.forceReset = delayForceReset
+				} else {
+					sp.forceReset--
 				}
 			}
-		} else if sp.horizMovement < 8 {
-			if 8-int(sp.horizMovement)-count >= 0 {
-				sp.adjHorizPos++
-				if sp.adjHorizPos > 159 {
-					sp.adjHorizPos = 0
-				}
+
+			sp.tick()
+
+			sp.hmovedHorizPos--
+			if sp.hmovedHorizPos < 0 {
+				sp.hmovedHorizPos = 160
 			}
 		}
-	} else {
-		sp.horizMovementLatch = false
 	}
 }
 
