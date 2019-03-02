@@ -13,6 +13,7 @@ type target interface {
 	Label() string
 	ShortLabel() string
 	Value() interface{}
+	FormatValue(interface{}) string
 }
 
 type genericTarget struct {
@@ -39,6 +40,24 @@ func (trg genericTarget) Value() interface{} {
 		return v()
 	default:
 		return v
+	}
+}
+
+func (trg genericTarget) FormatValue(fv interface{}) string {
+	switch v := trg.value.(type) {
+	case string:
+		return fv.(string)
+	case func() interface{}:
+		switch v := v().(type) {
+		case string:
+			return fv.(string)
+		case error:
+			panic(v)
+		default:
+			return fmt.Sprintf("%v", fv)
+		}
+	default:
+		return fmt.Sprintf("%v", fv)
 	}
 }
 

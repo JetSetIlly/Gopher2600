@@ -286,8 +286,10 @@ func (scr *screen) update(paused bool) error {
 		}
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_NONE))
 
-		// cursor is a 2x2 rectangle
-		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y), W: 2, H: 2})
+		// leave the current pixel visible at the top-left corner of the cursor
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y), W: 1, H: 1})
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y + 1), W: 1, H: 1})
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y + 1), W: 1, H: 1})
 	}
 
 	return nil

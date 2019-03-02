@@ -32,10 +32,10 @@ type breaker struct {
 
 func (bk breaker) String() string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("%s->%d", bk.target.ShortLabel(), bk.value))
+	b.WriteString(fmt.Sprintf("%s->%s", bk.target.ShortLabel(), bk.target.FormatValue(bk.value)))
 	n := bk.next
 	for n != nil {
-		b.WriteString(fmt.Sprintf(" & %s->%d", n.target.ShortLabel(), n.value))
+		b.WriteString(fmt.Sprintf(" & %s->%s", n.target.ShortLabel(), bk.target.FormatValue(n.value)))
 		n = n.next
 	}
 	return b.String()
@@ -180,8 +180,9 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	// something appropriate
 	tgt := target(bp.dbg.vcs.MC.PC)
 
-	// resolvedTarget is true to begin with so that the initial target of PC
-	// can be changed immediately
+	// resolvedTarget keeps track of whether we have specified a target but not
+	// given any values for that target. we set it to true initially because
+	// we want to be able to change the default target
 	resolvedTarget := true
 
 	// we don't add new breakpoints to the main list straight away. we append
@@ -191,10 +192,9 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	// loop over tokens. if token is a number then add the breakpoint for the
 	// current target. if it is not a number, look for a keyword that changes
 	// the target (or run a BREAK meta-command)
-	//
-	// note that this method of looping allows the user to chain break commands
 	tok, present := tokens.Get()
 	for present {
+		// if token is a number...
 		val, err := strconv.ParseUint(tok, 0, 16)
 		if err == nil {
 			if andBreaks == true {
@@ -210,15 +210,21 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 			}
 
 		} else {
+			// if token is not a number ...
+
+			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
 				return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 			}
 
+			// possibly switch composition mode
 			if tok == "&" {
 				andBreaks = true
 			} else if tok == "|" {
 				andBreaks = false
 			} else {
+				// token is not a number or a composition symbol so try to
+				// parse a new target
 				tokens.Unget()
 				tgt, err = parseTarget(bp.dbg, tokens)
 				if err != nil {
@@ -235,24 +241,31 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 		return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 	}
 
-	// don't add breakpoints that already exist (only works correctly with
-	// singleton breaks currently)
-	// TODO: fix this so we do not add AND-conditions that already exist
+	// don't add breakpoints that already exist
+	duplicate := false
 	for _, nb := range newBreaks {
-		if nb.next == nil {
-			exists := false
-			for _, ob := range bp.breaks {
-				if ob.next == nil && ob.target == nb.target && ob.value == nb.value {
-					bp.dbg.print(ui.Feedback, "breakpoint already exists (%s)", ob)
-					exists = true
-				}
+		for _, ob := range bp.breaks {
+			and := &nb
+			oand := &ob
+			for !duplicate && and != nil && oand != nil {
+				// note that this method of duplication detection only works if
+				// targets are ANDed in the same order.
+				// TODO: sort conditions before comparison
+				duplicate = oand.target.Label() == and.target.Label() && oand.value == and.value
+				and = and.next
+				oand = oand.next
 			}
-			if !exists {
-				bp.breaks = append(bp.breaks, nb)
+			if duplicate {
+				break
 			}
-		} else {
-			bp.breaks = append(bp.breaks, nb)
 		}
+
+		// fail on first error
+		if duplicate {
+			return errors.NewGopherError(errors.CommandError, fmt.Errorf("breakpoint already exists (%s)", nb))
+		}
+
+		bp.breaks = append(bp.breaks, nb)
 	}
 
 	return nil

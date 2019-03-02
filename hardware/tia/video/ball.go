@@ -74,7 +74,7 @@ func (bs ballSprite) MachineInfo() string {
 // tick moves the counters along for the ball sprite
 func (bs *ballSprite) tick() {
 	// position
-	if bs.tickPosition(nil) {
+	if bs.checkForGfxStart(nil) {
 		bs.startDrawing()
 	} else {
 		bs.tickGraphicsScan()

@@ -129,7 +129,7 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.rsync.set()
 		return
 	case "HMOVE":
-		tia.Video.PrepareSpritesForHMOVE()
+		tia.Video.PrepareSpritesForHMOVE(tia.videoCycles)
 		tia.Hmove.set()
 		return
 	}
@@ -202,7 +202,7 @@ func (tia *TIA) StepVideoCycle() bool {
 
 	// HMOVE clock stuffing
 	if ct, ok := tia.Hmove.tick(); ok {
-		tia.Video.TickSpritesForHMOVE(ct)
+		tia.Video.ResolveHorizMovement(ct)
 	}
 
 	// tick all sprites according to hblank

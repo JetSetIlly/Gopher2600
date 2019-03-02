@@ -139,7 +139,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)
 
-	// default ONHALT command squence
+	// default ONHALT command sequence
 	dbg.commandOnHaltStored = defaultOnHalt
 
 	// default ONSTEP command sequnce
@@ -160,8 +160,12 @@ func NewDebugger() (*Debugger, error) {
 		hp, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseHorizPos)
 		sl, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseScanline)
 
-		dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
-		dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
+		_, err := dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
+		if err == nil {
+			dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
+		} else {
+			dbg.print(ui.Error, "%s", err)
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -348,7 +352,10 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// commandOnHalt command(s)
 		if dbg.commandOnHalt != "" {
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
-				_, _ = dbg.parseInput(dbg.commandOnHalt)
+				_, err = dbg.parseInput(dbg.commandOnHalt)
+				if err != nil {
+					dbg.print(ui.Error, "%s", err)
+				}
 			}
 		}
 

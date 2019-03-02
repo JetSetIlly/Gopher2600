@@ -19,13 +19,14 @@ type playerSprite struct {
 	gfxDataA      uint8 // GRP0A	(or GRP1A)
 	gfxDataB      uint8 // GRP0B	(or GRP1B)
 
-	// we need access to the other player sprite. when we write new gfxData,
-	// that triggers the other player's gfxDataPrev value to equal its gfxData
-	// -- this wasn't clear to me originally and was crystal clear after
-	// reading Erik Mooney's post, "48-pixel highres routine explained!"
+	// we need access to the other player sprite. when we write new gfxData, it
+	// triggers the other player's gfxDataPrev value to equal its gfxData --
+	// this wasn't clear to me originally and was crystal clear after reading
+	// Erik Mooney's post, "48-pixel highres routine explained!"
 	otherPlayer *playerSprite
 
 	// the list of color clock states when missile drawing is triggered
+	// (in addition to when the sprite's position counter loops back to zero)
 	triggerList []int
 
 	// if any of the sprite's draw positions are reached but a reset position
@@ -51,10 +52,17 @@ func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerS
 	return ps
 }
 
-// because of the delay in starting pixel output with player sprites we are
-// adding one to our reported pixel start position (with additional pixels
-// for the larger player sizes)
-func (ps playerSprite) visualPixel() int {
+// visual pixel tells us where the left-most bit of the graphics register will
+// appear. due to the delayed tick of the player sprite the player will appear
+// one pixel later in the scanline (or two pixels, depending on the player's
+// size register)
+//
+// the result of this function apes the "Pos#" information in the TIA tab of
+// the Stella debugger.
+func (ps playerSprite) visualPixel() string {
+	// visual pixel is always one pixel later than the hmoved horizontal
+	// reset position; or two pixels if the size of the player sprite is double
+	// or quadruple sized.
 	visPix := ps.hmovedHorizPos + 1
 	if ps.size == 0x05 || ps.size == 0x07 {
 		visPix++
@@ -65,12 +73,62 @@ func (ps playerSprite) visualPixel() int {
 		visPix -= 160
 	}
 
-	return visPix
+	return fmt.Sprintf("%d", visPix)
+}
+
+// realPixel is a variant on visualPixel() that takes into account where the
+// first on bit is in the graphics register. returns the string "invisible" if
+// no bits are set in the register.
+func (ps playerSprite) realPixel() string {
+	// how many screen-pixels does each sprite-pixel consume
+	pixelWidth := 1
+	if ps.size == 0x05 || ps.size == 0x07 {
+		pixelWidth = 2
+	}
+
+	// select which graphics register to use
+	gfxData := ps.gfxDataA
+	if ps.verticalDelay {
+		gfxData = ps.gfxDataB
+	}
+
+	// reverse the bits if necessary
+	if ps.reflected {
+		gfxData = bits.Reverse8(gfxData)
+	}
+
+	visPix := -1
+
+	// find first on bit in gfxData; note that we're looping from 2 to 9 (a
+	// range of eight) because we want the multiplier i to take into account
+	// the first always-dead sprite pixel (see visualPixel() commentary)
+	m := uint8(0x80)
+	for i := 2; i <= 9; i++ {
+		if gfxData&m == m {
+			// when we've found it, move visual pixel the appropriate number of
+			// places to the right (by adding multiplies of pixelWidth)
+			visPix = ps.hmovedHorizPos + (i * pixelWidth)
+			break // for loop
+		}
+		m >>= 1
+	}
+
+	// there are no on bits in the gxfData
+	if visPix == -1 {
+		return "invisible"
+	}
+
+	// adjust for screen boundary
+	if visPix >= 160 {
+		visPix -= 160
+	}
+
+	return fmt.Sprintf("%d", visPix)
 }
 
 // MachineInfo returns the player sprite information in terse format
 func (ps playerSprite) MachineInfoTerse() string {
-	return fmt.Sprintf("%s (vis pix=%d)", ps.sprite.MachineInfoTerse(), ps.visualPixel())
+	return fmt.Sprintf("%s (vis pix=%s)", ps.sprite.MachineInfoTerse(), ps.visualPixel())
 }
 
 // MachineInfo returns the player sprite information in verbose format
@@ -81,7 +139,7 @@ func (ps playerSprite) MachineInfo() string {
 		// if HMOVE is still working then we not sure what the pixel is
 		s.WriteString(fmt.Sprintf("   visual pixel: ***\n"))
 	} else {
-		s.WriteString(fmt.Sprintf("   visual pixel: %d\n", ps.visualPixel()))
+		s.WriteString(fmt.Sprintf("   visual pixel: %s\n", ps.visualPixel()))
 	}
 	s.WriteString(fmt.Sprintf("   color: %d\n", ps.color))
 	s.WriteString(fmt.Sprintf("   size: %03b [", ps.size))
@@ -107,6 +165,8 @@ func (ps playerSprite) MachineInfo() string {
 	s.WriteString("   trigger list: ")
 	if len(ps.triggerList) > 0 {
 		for i := 0; i < len(ps.triggerList); i++ {
+			// additional pixels when the graphics scan is triggered (NOT the
+			// visual pixel)
 			s.WriteString(fmt.Sprintf("%d ", (ps.triggerList[i]*(polycounter.MaxPhase+1))+ps.hmovedHorizPos))
 		}
 		s.WriteString(fmt.Sprintf(" %v\n", ps.triggerList))
@@ -124,7 +184,7 @@ func (ps playerSprite) MachineInfo() string {
 // tick moves the counters along for the player sprite
 func (ps *playerSprite) tick() {
 	// position
-	if ps.tickPosition(ps.triggerList) {
+	if ps.checkForGfxStart(ps.triggerList) {
 		// this is a wierd one. if a reset has just occured then we delay the
 		// start of the drawing of the sprite (concept shared with missile
 		// sprite)
@@ -169,13 +229,13 @@ func (ps *playerSprite) tick() {
 // pixel returns the color of the player at the current time.  returns
 // (false, 0) if no pixel is to be seen; and (true, col) if there is
 func (ps *playerSprite) pixel() (bool, uint8) {
-	// vertical delay
+	// select which graphics register to use
 	gfxData := ps.gfxDataA
 	if ps.verticalDelay {
 		gfxData = ps.gfxDataB
 	}
 
-	// reflection
+	// reverse the bits if necessary
 	if ps.reflected {
 		gfxData = bits.Reverse8(gfxData)
 	}

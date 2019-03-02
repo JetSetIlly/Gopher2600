@@ -40,15 +40,16 @@ type sprite struct {
 
 	// the amount of horizontal movement for the sprite
 	// -- as set by the 6502 - normalised into the 0 to 15 range
-	// (note that negative numbers indicate movements to the right)
+	// -- for presentation purposes the value of this variable is inversed so
+	// that positive numbers indicate movement to the right and negative
+	// numbers indicate movement to the left.
 	horizMovement int
 	// -- whether HMOVE is still affecting this sprite
 	horizMovementLatch bool
 
-	// the tick function that wraps the tickPosition() function
-	// - this function is called instead of the local tickPosition() function - the
-	// ticker function will calls tickPosition() as appropriate
-	tick func()
+	// each type of sprite has slightly different spriteTick logic which needs
+	// to be called from within the HMOVE logic common to all sprite types
+	spriteTick func()
 
 	// a note on whether the sprite is about to be reset its position
 	resetFuture *future.Instance
@@ -57,14 +58,14 @@ type sprite struct {
 	// 1 = force reset trigger
 	// n = wait for trigger
 	forceReset int
-	// see comment in tickSpritesForHMOVE()
+	// see comment in resolveHorizMovement()
 }
 
-func newSprite(label string, colorClock *polycounter.Polycounter, tick func()) *sprite {
+func newSprite(label string, colorClock *polycounter.Polycounter, spriteTick func()) *sprite {
 	sp := new(sprite)
 	sp.label = label
 	sp.colorClock = colorClock
-	sp.tick = tick
+	sp.spriteTick = spriteTick
 
 	sp.position = *polycounter.New6Bit()
 	sp.position.SetResetPoint(39) // "101101"
@@ -115,7 +116,17 @@ func (sp sprite) MachineInfo() string {
 		s.WriteString(fmt.Sprintf("   reset: %d cycles\n", sp.resetFuture.RemainingCycles))
 	}
 	s.WriteString(fmt.Sprintf("   reset pos: %s\n", sp.position))
-	s.WriteString(fmt.Sprintf("   hmove: %d [%#02x] %04b\n", sp.horizMovement-8, (sp.horizMovement<<4)^0x80, sp.horizMovement))
+
+	// information about horizontal movement.
+	// - horizMovement value normalised and inverted so that positive numbers
+	// indicate movement to the right and negative numbers indicate movement to
+	// the left
+	// - value in square brackets is the value that was originally poked into
+	// the move register
+	// - the 4 bit binary number at the end is the representation of what the HMOVE
+	// circuitry interacts with, bit-by-bit - see resolveHorizMovement()
+	s.WriteString(fmt.Sprintf("   hmove: %d [%#02x] %04b\n", -sp.horizMovement+8, (sp.horizMovement<<4)^0x80, sp.horizMovement))
+
 	s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.horizPos))
 	s.WriteString(fmt.Sprintf("   adj pixel: %d", sp.hmovedHorizPos))
 	if sp.horizMovementLatch {
@@ -149,7 +160,7 @@ func (sp *sprite) resetPosition() {
 	sp.hmovedHorizPos = sp.horizPos
 }
 
-func (sp *sprite) tickPosition(triggerList []int) bool {
+func (sp *sprite) checkForGfxStart(triggerList []int) bool {
 	if sp.position.Tick() {
 		return true
 	}
@@ -164,13 +175,21 @@ func (sp *sprite) tickPosition(triggerList []int) bool {
 	return false
 }
 
-func (sp *sprite) PrepareForHMOVE() {
+func (sp *sprite) PrepareForHMOVE(videoCycles int, delayClock *future.Group) {
 	// start horizontal movment of this sprite
 	sp.horizMovementLatch = true
-	sp.hmovedHorizPos = sp.horizPos
+
+	// at beginning of hmove sequence, without knowing anything else, the final
+	// position of the sprite will be the reset position plus 8. the actual
+	// value will be reduced depending on what happens during hmove ticking.
+	// factors that effect the final position:
+	//   o the value in the horizontal movement register (eg. HMP0)
+	//   o whether the ticking is occuring during the hblank period
+	// both these factors are considered in the tickSpritesForHMOVE() function
+	sp.hmovedHorizPos = sp.horizPos + 8
 }
 
-func (sp *sprite) tickSpritesForHMOVE(count int) {
+func (sp *sprite) resolveHorizMovement(count int) {
 	if sp.horizMovementLatch {
 		// bitwise comparison - if no bits match then unset the latch,
 		// otherwise continue with the HMOVE for this sprite
@@ -210,12 +229,15 @@ func (sp *sprite) tickSpritesForHMOVE(count int) {
 				}
 			}
 
-			sp.tick()
-
+			// adjust position information
 			sp.hmovedHorizPos--
 			if sp.hmovedHorizPos < 0 {
-				sp.hmovedHorizPos = 160
+				sp.hmovedHorizPos = 159
 			}
+
+			// perform an additional tick of the sprite (different sprite types
+			// have different tick logic)
+			sp.spriteTick()
 		}
 	}
 }

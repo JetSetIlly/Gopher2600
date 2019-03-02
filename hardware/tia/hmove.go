@@ -15,10 +15,9 @@ type hmove struct {
 	phase      int
 	colorClock *polycounter.Polycounter
 
-	// whether or not hmove is active or not is distinct from the hmove count.
-	// the latch is reset whever the colorClock cycles but we still need to
-	// complete the movement of the sprites with the tick() function, which is
-	// governed by the count
+	// latch is set whenever HMOVE is triggered and resets whenever
+	// the colorClock cycles back to zero. it is used to control whether the
+	// hblank period should be extended.
 	latch bool
 }
 
@@ -30,7 +29,7 @@ func newHmove(colorClock *polycounter.Polycounter) *hmove {
 
 // MachineInfoTerse returns the HMOVE information in verbose format
 func (hm hmove) MachineInfoTerse() string {
-	if hm.latch {
+	if hm.count >= 0 {
 		return fmt.Sprintf("HM=%d", hm.count)
 	}
 	return "HM=-"
@@ -38,7 +37,7 @@ func (hm hmove) MachineInfoTerse() string {
 
 // MachineInfo returns the HMOVE information in verbose format
 func (hm hmove) MachineInfo() string {
-	if hm.latch {
+	if hm.count >= 0 {
 		return fmt.Sprintf("hmove: %d more tick(s)", hm.count)
 	}
 	return "hmove: no movement"
@@ -46,7 +45,7 @@ func (hm hmove) MachineInfo() string {
 
 // MachineInfoInternal returns low state information about the type
 func (hm hmove) MachineInfoInternal() string {
-	if hm.latch {
+	if hm.count >= 0 {
 		return fmt.Sprintf("%04b\n", hm.count)
 	}
 	return fmt.Sprintf("0000\n")
@@ -57,34 +56,40 @@ func (hm hmove) String() string {
 	return hm.MachineInfo()
 }
 
+// set begins the horizontal movement sequence
 func (hm *hmove) set() {
 	hm.latch = true
 	hm.count = 15
 	hm.phase = hm.colorClock.Phase
 }
 
+// unset send the horizontal movement sequence
 func (hm *hmove) unset() {
 	hm.latch = false
 }
 
+// isset check to see if the horiztonal movement sequence is currently running
 func (hm *hmove) isset() bool {
 	return hm.latch
 }
 
+// tick returns the current hmove ripple counter and whether a tick has occurred
 func (hm *hmove) tick() (int, bool) {
+	// if we've reached a count of -1 then no tick will ever occur
 	if hm.count == -1 {
-		return 0, true
+		return -1, false
 	}
 
-	if hm.count <= 0 {
-		return hm.count, false
-	}
-
+	// count has not yet concluded so whenever the color clock reaches the same
+	// phase as when we started, return the current count and the fact that a
+	// tick has occurred. reduce the current count by 1
 	if hm.phase == hm.colorClock.Phase {
 		ct := hm.count
 		hm.count--
 		return ct, true
 	}
 
+	// count has not yet concluded but nothing else has happened this video
+	// cycle. return the current count and the fact that no tick has occurred.
 	return hm.count, false
 }

@@ -34,7 +34,7 @@ func r16(t *testing.T) {
 	assert.CheckValueVCS(t, r16, 127)
 	r16.Add(2, false)
 	assert.CheckValueVCS(t, r16, 129)
-	assert.CheckValueVCS(t, r16, "0000000010000001")
+	assert.CheckValueVCS(t, r16, "0000000010000001b")
 
 	r16.Load(0xffff)
 	assert.CheckValueVCS(t, r16.IsNegative(), true)
@@ -108,7 +108,7 @@ func r8(t *testing.T) {
 	assert.CheckValueVCS(t, r8, 127)
 	r8.Add(2, false)
 	assert.CheckValueVCS(t, r8, 129)
-	assert.CheckValueVCS(t, r8, "10000001")
+	assert.CheckValueVCS(t, r8, "10000001b")
 
 	r8.Load(0xff)
 	assert.CheckValueVCS(t, r8.IsNegative(), true)

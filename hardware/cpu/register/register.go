@@ -56,8 +56,8 @@ func NewRegister(value interface{}, size uint, label string, shortLabel string) 
 	r.signBit = 1 << (size - 1)
 	r.vbit = 1 << (size - 2)
 	r.mask = (1 << size) - 1
-	r.binformat = fmt.Sprintf("%%0%db", r.size)
-	r.hexformat = fmt.Sprintf("%%0%dx", int(math.Ceil(float64(r.size)/4.0)))
+	r.binformat = fmt.Sprintf("%%0%dbb", r.size)
+	r.hexformat = fmt.Sprintf("%%#0%dx", int(math.Ceil(float64(r.size)/4.0)))
 
 	return r
 }
@@ -152,8 +152,14 @@ func (r Register) ToUint16() uint16 {
 	return uint16(r.value)
 }
 
-// Value returns the canonical value for the register -- implements target
-// interface
+// Value returns the canonical value for the register
+// -- implements target interface
 func (r Register) Value() interface{} {
 	return r.ToInt()
+}
+
+// FormatValue returns an arbitrary value in the format of the register
+// -- implements target interface
+func (r Register) FormatValue(fv interface{}) string {
+	return fmt.Sprintf(r.hexformat, fv)
 }

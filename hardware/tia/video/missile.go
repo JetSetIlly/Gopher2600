@@ -93,7 +93,7 @@ func (ms missileSprite) MachineInfo() string {
 // tick moves the counters along for the missile sprite
 func (ms *missileSprite) tick() {
 	// position
-	if ms.tickPosition(ms.triggerList) {
+	if ms.checkForGfxStart(ms.triggerList) {
 		// this is a wierd one. if a reset has just occured then we delay the
 		// start of the drawing of the sprite (concept shared with player
 		// sprite)
