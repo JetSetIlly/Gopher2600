@@ -759,8 +759,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	// tv control
 
 	case KeywordDisplay:
+		var err error
+
 		visibility := true
-		debug := false
 		action, present := tokens.Get()
 		if present {
 			action = strings.ToUpper(action)
@@ -768,7 +769,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case "OFF":
 				visibility = false
 			case "DEBUG":
-				debug = true
+				err = dbg.vcs.TV.SetFeature(television.ReqToggleDebug)
+				if err != nil {
+					return false, err
+				}
 			case "SCALE":
 				scl, present := tokens.Get()
 				if !present {
@@ -794,12 +798,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			}
 		}
 
-		err := dbg.vcs.TV.SetFeature(television.ReqSetVisibility, visibility)
-		if err != nil {
-			return false, err
-		}
-
-		err = dbg.vcs.TV.SetFeature(television.ReqSetDebug, debug)
+		err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, visibility)
 		if err != nil {
 			return false, err
 		}

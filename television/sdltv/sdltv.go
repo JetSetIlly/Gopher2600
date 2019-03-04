@@ -2,6 +2,7 @@ package sdltv
 
 import (
 	"gopher2600/television"
+	"sync"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -17,6 +18,7 @@ type SDLTV struct {
 
 	// callback functions
 	onWindowClose      callback
+	onKeyboard         callback
 	onMouseButtonLeft  callback
 	onMouseButtonRight callback
 
@@ -24,6 +26,19 @@ type SDLTV struct {
 	// as much of the current frame is displayed as possible; the previous
 	// frame will take up the remainder of the screen.
 	paused bool
+
+	crit sdltvCriticalSection
+}
+
+// attributes in this struct should only ever be accessed with the mutex
+// locked. currently, only ever accessed via:
+//		* guiLoop()
+//		* GetMetaState()
+type sdltvCriticalSection struct {
+	guiMutex sync.Mutex
+
+	// last keyboard event
+	keypress sdl.Keycode
 
 	// last mouse selection
 	lastMouseHorizPos int

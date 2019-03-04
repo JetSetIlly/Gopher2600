@@ -2,17 +2,12 @@ package sdltv
 
 import (
 	"gopher2600/television"
-	"runtime"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// guiLoop listens for SDL events and is run concurrently. critical sections
-// protected by tv.guiLoopLock
+// guiLoop listens for SDL events and is run concurrently
 func (tv *SDLTV) guiLoop() {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
 	for {
 		ev := sdl.WaitEvent()
 		switch ev := ev.(type) {
@@ -24,11 +19,10 @@ func (tv *SDLTV) guiLoop() {
 
 		case *sdl.KeyboardEvent:
 			if ev.Type == sdl.KEYDOWN {
-				switch ev.Keysym.Sym {
-				case sdl.K_BACKQUOTE:
-					tv.scr.toggleMasking()
-					tv.update()
-				}
+				tv.crit.guiMutex.Lock()
+				tv.crit.keypress = ev.Keysym.Sym
+				tv.crit.guiMutex.Unlock()
+				tv.onKeyboard.dispatch()
 			}
 
 		case *sdl.MouseButtonEvent:
@@ -39,25 +33,27 @@ func (tv *SDLTV) guiLoop() {
 					tv.onMouseButtonLeft.dispatch()
 
 				case sdl.BUTTON_RIGHT:
+					tv.crit.guiMutex.Lock()
 					sx, sy := tv.scr.renderer.GetScale()
 
 					// convert X pixel value to horizpos equivalent
 					// the opposite of pixelX() and also the scalining applied
 					// by the SDL renderer
 					if tv.scr.unmasked {
-						tv.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
+						tv.crit.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
 					} else {
-						tv.lastMouseHorizPos = int(float32(ev.X) / sx)
+						tv.crit.lastMouseHorizPos = int(float32(ev.X) / sx)
 					}
 
 					// convert Y pixel value to scanline equivalent
 					// the opposite of pixelY() and also the scalining applied
 					// by the SDL renderer
 					if tv.scr.unmasked {
-						tv.lastMouseScanline = int(float32(ev.Y) / sy)
+						tv.crit.lastMouseScanline = int(float32(ev.Y) / sy)
 					} else {
-						tv.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
+						tv.crit.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
 					}
+					tv.crit.guiMutex.Unlock()
 
 					tv.onMouseButtonRight.dispatch()
 				}

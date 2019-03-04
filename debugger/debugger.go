@@ -153,6 +153,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg.dbgChannel = make(chan func(), 2)
 
 	// register tv callbacks
+
 	// -- add break on right mouse button
 	err = tv.RegisterCallback(television.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
 		// this callback function may be running inside a different goroutine
@@ -165,6 +166,22 @@ func NewDebugger() (*Debugger, error) {
 			dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
 		} else {
 			dbg.print(ui.Error, "%s", err)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// -- respond to keyboard
+	err = tv.RegisterCallback(television.ReqOnKeyboard, dbg.dbgChannel, func() {
+		key, _ := dbg.vcs.TV.GetMetaState(television.ReqLastKeyboard)
+		switch key {
+		case "`":
+			err = dbg.vcs.TV.SetFeature(television.ReqToggleDebug)
+			if err != nil {
+				dbg.print(ui.Error, "%s", err)
+			}
+		default:
 		}
 	})
 	if err != nil {

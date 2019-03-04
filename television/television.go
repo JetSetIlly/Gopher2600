@@ -25,11 +25,13 @@ const (
 	ReqHorizPos StateReq = "HORIZPOS"
 
 	ReqTVSpec            MetaStateReq = "TVSPEC"
+	ReqLastKeyboard      MetaStateReq = "KEYBOARD"
 	ReqLastMouse         MetaStateReq = "MOUSE"
 	ReqLastMouseHorizPos MetaStateReq = "MOUSEHORIZPOS"
 	ReqLastMouseScanline MetaStateReq = "MOUSESCANLINE"
 
 	ReqOnWindowClose      CallbackReq = "ONWINDOWCLOSE"
+	ReqOnKeyboard         CallbackReq = "ONKEYBOARD"
 	ReqOnMouseButtonLeft  CallbackReq = "ONMOUSEBUTTONLEFT"
 	ReqOnMouseButtonRight CallbackReq = "ONMOUSEBUTTONRIGHT"
 
@@ -37,6 +39,7 @@ const (
 	ReqSetVisibilityStable FeatureReq = "SETVISIBILITYWHENSTABLE" // none
 	ReqSetPause            FeatureReq = "SETPAUSE"                // bool
 	ReqSetDebug            FeatureReq = "SETDEBUG"                // bool
+	ReqToggleDebug         FeatureReq = "TOGGLEDEBUG"             // none
 	ReqSetScale            FeatureReq = "SETSCALE"                // float
 )
 

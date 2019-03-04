@@ -26,13 +26,18 @@ func (tv *SDLTV) GetMetaState(request television.MetaStateReq) (string, error) {
 		return state, err
 	}
 
+	tv.crit.guiMutex.Lock()
+	defer tv.crit.guiMutex.Unlock()
+
 	switch request {
+	case television.ReqLastKeyboard:
+		return fmt.Sprintf("%c", tv.crit.keypress), nil
 	case television.ReqLastMouse:
-		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.lastMouseHorizPos, tv.lastMouseScanline), nil
+		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.crit.lastMouseHorizPos, tv.crit.lastMouseScanline), nil
 	case television.ReqLastMouseHorizPos:
-		return fmt.Sprintf("%d", tv.lastMouseHorizPos), nil
+		return fmt.Sprintf("%d", tv.crit.lastMouseHorizPos), nil
 	case television.ReqLastMouseScanline:
-		return fmt.Sprintf("%d", tv.lastMouseScanline), nil
+		return fmt.Sprintf("%d", tv.crit.lastMouseScanline), nil
 	default:
 		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
 	}
@@ -55,6 +60,9 @@ func (tv *SDLTV) RegisterCallback(request television.CallbackReq, channel chan f
 	case television.ReqOnWindowClose:
 		tv.onWindowClose.channel = channel
 		tv.onWindowClose.function = callback
+	case television.ReqOnKeyboard:
+		tv.onKeyboard.channel = channel
+		tv.onKeyboard.function = callback
 	case television.ReqOnMouseButtonLeft:
 		tv.onMouseButtonLeft.channel = channel
 		tv.onMouseButtonLeft.function = callback
@@ -107,6 +115,10 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 
 	case television.ReqSetDebug:
 		tv.scr.setMasking(args[0].(bool))
+		tv.update()
+
+	case television.ReqToggleDebug:
+		tv.scr.toggleMasking()
 		tv.update()
 
 	case television.ReqSetScale:
