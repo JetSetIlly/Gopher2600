@@ -73,6 +73,11 @@ func (hm *hmove) isset() bool {
 	return hm.latch
 }
 
+// isjustset checks to see if the horiztonal movement sequence has just started
+func (hm *hmove) isjustset() bool {
+	return hm.count == 15 && hm.phase == hm.colorClock.Phase
+}
+
 // tick returns the current hmove ripple counter and whether a tick has occurred
 func (hm *hmove) tick() (int, bool) {
 	// if we've reached a count of -1 then no tick will ever occur

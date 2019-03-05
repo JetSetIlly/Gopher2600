@@ -77,9 +77,9 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 	}
 
 	// register headlesstv callbacks
-	// leave SignalNewScanline() hook at its default
+	// --leave SignalNewScanline() hook at its default
 	tv.HookNewFrame = func() error {
-		defer tv.scr.swapPixels()
+		defer tv.scr.clearPixels()
 		err := tv.scr.stb.checkStableFrame()
 		if err != nil {
 			return err

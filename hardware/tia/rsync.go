@@ -27,7 +27,7 @@ func newRsync(colorClock *polycounter.Polycounter) *rsync {
 
 // MachineInfoTerse returns the RSYNC information in verbose format
 func (rs rsync) MachineInfoTerse() string {
-	if rs.isActive() {
+	if rs.isactive() {
 		return fmt.Sprintf("RS=%d", rs.remainingCycles)
 	}
 	return "RS=-"
@@ -35,7 +35,7 @@ func (rs rsync) MachineInfoTerse() string {
 
 // MachineInfo returns the RSYNC information in verbose format
 func (rs rsync) MachineInfo() string {
-	if rs.isActive() {
+	if rs.isactive() {
 		return fmt.Sprintf("rsync: reset in %d cycle(s)", rs.remainingCycles)
 	}
 	return "rsync: not set"
@@ -46,7 +46,7 @@ func (rs rsync) String() string {
 	return rs.MachineInfo()
 }
 
-func (rs rsync) isActive() bool {
+func (rs rsync) isactive() bool {
 	return rs.remainingCycles > -1
 }
 
@@ -60,6 +60,10 @@ func (rs *rsync) set() {
 	// immediate tick in TIA)
 	rs.remainingCycles = 5
 	rs.colorClock.ResetPhase()
+}
+
+func (rs *rsync) isjustset() bool {
+	return rs.remainingCycles == 5
 }
 
 func (rs *rsync) tick() bool {

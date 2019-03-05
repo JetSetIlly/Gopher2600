@@ -1,6 +1,6 @@
 package sdltv
 
-// callback is used to wrap functions supplied to RequestCallbackRegistration()
+// callback is used to wrap functions supplied to RequestCallback()
 
 type callback struct {
 	channel  chan func()

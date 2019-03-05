@@ -182,6 +182,15 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.motionClock = false
 	}
 
+	// send metasignal information before we perform any state ticking
+	err := tia.tv.MetaSignal(television.MetaSignalAttributes{
+		Hmove: tia.Hmove.isjustset(),
+		Rsync: tia.rsync.isjustset(),
+		Wsync: tia.wsync})
+	if err != nil {
+		panic(err)
+	}
+
 	// set up new scanline if colorClock has ticked its way to the reset point or if
 	// an rsync has matured (see rsync.go commentary)
 	if tia.rsync.tick() {
@@ -224,7 +233,7 @@ func (tia *TIA) StepVideoCycle() bool {
 	}
 
 	// at the end of the video cycle we want to finally signal the televison
-	err := tia.tv.Signal(television.SignalAttributes{
+	err = tia.tv.Signal(television.SignalAttributes{
 		VSync:      tia.vsync,
 		VBlank:     tia.vblank,
 		FrontPorch: frontPorch,

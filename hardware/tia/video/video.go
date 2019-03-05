@@ -130,6 +130,7 @@ func (vd *Video) ResolveHorizMovement(count int) {
 // present. it also sets the collision registers
 // - it need not be called therefore during VBLANK or HBLANK
 func (vd *Video) Pixel(debugColors bool) uint8 {
+	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	blu, blc := vd.Ball.pixel()
 	p0u, p0c := vd.Player0.pixel()
@@ -138,9 +139,15 @@ func (vd *Video) Pixel(debugColors bool) uint8 {
 	m1u, m1c := vd.Missile1.pixel()
 
 	// override program colors with debug colors
+	// -- same/similar colors to those used in the Stella emulator
 	if debugColors {
+		bgc = 0x00 // black (stella uses a light grey)
+		blc = 0xb4 // cyan
+		pfc = 0x62 // purple
 		p0c = 0x32 // red
-		p1c = 0x15 // gold
+		p1c = 0x12 // gold
+		m0c = 0xf2 // orange
+		m1c = 0xd2 // green
 	}
 
 	// collisions
@@ -266,7 +273,7 @@ func (vd *Video) Pixel(debugColors bool) uint8 {
 	}
 
 	// priority 4
-	return vd.Playfield.backgroundColor
+	return bgc
 }
 
 func createTriggerList(playerSize uint8) []int {

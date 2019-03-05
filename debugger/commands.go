@@ -761,13 +761,15 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	case KeywordDisplay:
 		var err error
 
-		visibility := true
 		action, present := tokens.Get()
 		if present {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				visibility = false
+				err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, false)
+				if err != nil {
+					return false, err
+				}
 			case "DEBUG":
 				err = dbg.vcs.TV.SetFeature(television.ReqToggleDebug)
 				if err != nil {
@@ -796,11 +798,11 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
-		}
-
-		err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, visibility)
-		if err != nil {
-			return false, err
+		} else {
+			err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, true)
+			if err != nil {
+				return false, err
+			}
 		}
 
 	case KeywordMouse:

@@ -24,8 +24,8 @@ type screen struct {
 	lastX int32
 	lastY int32
 
-	// pixels arrays are of maximum screen size - actual smalled screens are
-	// masked appropriately
+	// pixels arrays are of maximum screen size - actual smaller play screens
+	// are masked appropriately
 	pixels     []byte
 	pixelsFade []byte
 
@@ -54,6 +54,9 @@ type screen struct {
 
 	// stabiliser to make sure image remains solid
 	stb *screenStabiliser
+
+	// overlay for screen showing metasignal information
+	metasignals *metasignalOverlay
 }
 
 func newScreen(tv *SDLTV) (*screen, error) {
@@ -111,6 +114,12 @@ func newScreen(tv *SDLTV) (*screen, error) {
 
 	// new stabiliser
 	scr.stb = newScreenStabiliser(scr)
+
+	// new overlay
+	scr.metasignals, err = newMetasignalOverlay(scr)
+	if err != nil {
+		return nil, err
+	}
 
 	return scr, nil
 }
@@ -204,6 +213,12 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 func (scr *screen) update(paused bool) error {
 	var err error
 
+	// update additional overlays
+	err = scr.metasignals.update()
+	if err != nil {
+		return err
+	}
+
 	// clear image from rendered. using a non-video-black color if screen is
 	// unmasked
 	if scr.unmasked {
@@ -240,6 +255,14 @@ func (scr *screen) update(paused bool) error {
 	err = scr.renderer.Copy(scr.texture, scr.srcRect, scr.destRect)
 	if err != nil {
 		return err
+	}
+
+	// show debugging overlay
+	if scr.unmasked {
+		err = scr.renderer.Copy(scr.metasignals.texture, scr.srcRect, scr.destRect)
+		if err != nil {
+			return err
+		}
 	}
 
 	// add cursor if tv is paused
@@ -291,7 +314,7 @@ func (scr *screen) update(paused bool) error {
 	return nil
 }
 
-func (scr *screen) swapPixels() {
+func (scr *screen) clearPixels() {
 	// swap which pixel buffer we're using in time for next round of pixel
 	// plotting
 	swp := scr.pixels
@@ -302,4 +325,7 @@ func (scr *screen) swapPixels() {
 	for i := 0; i < len(scr.pixels); i++ {
 		scr.pixels[i] = 0
 	}
+
+	// clear pixels in additional overlays
+	scr.metasignals.clearPixels()
 }

@@ -49,6 +49,15 @@ type SignalAttributes struct {
 	Pixel                                    ColorSignal
 }
 
+// MetaSignalAttributes represents any additional emulator data sent to the
+// "television" (in inverted commas). not all television implementations need
+// to do anything useful with this information.
+type MetaSignalAttributes struct {
+	Hmove bool
+	Rsync bool
+	Wsync bool
+}
+
 // Television defines the operations that can be performed on the television
 type Television interface {
 	MachineInfoTerse() string
@@ -56,6 +65,7 @@ type Television interface {
 
 	Reset() error
 	Signal(SignalAttributes) error
+	MetaSignal(MetaSignalAttributes) error
 
 	GetState(StateReq) (interface{}, error)
 	GetMetaState(MetaStateReq) (string, error)

@@ -253,6 +253,11 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	return tv.HookSetPixel(x, y, red, green, blue, sig.VBlank)
 }
 
+// MetaSignal recieves (and processes) additional emulator information from the emulator
+func (tv *HeadlessTV) MetaSignal(MetaSignalAttributes) error {
+	return nil
+}
+
 // GetState returns the TVState object for the named state. television
 // implementations in other packages will difficulty extending this function
 // because TVStateReq does not expose its members. (although it may need to if
