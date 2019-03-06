@@ -49,7 +49,11 @@ const (
 	ReqToggleMasking                         // none
 	ReqSetAltColors                          // bool
 	ReqToggleAltColors                       // none
+	ReqSetMetaSignals                        // bool
+	ReqToggleMetaSignals                     // none
 	ReqSetScale                              // float
+	ReqIncScale                              // none
+	ReqDecScale                              // none
 )
 
 // SignalAttributes represents the data sent to the television

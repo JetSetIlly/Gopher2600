@@ -31,7 +31,7 @@ type screen struct {
 
 	// altPixels mirrors the pixels array with alternative color palette
 	// -- useful for switching between regular and debug colors
-	// -- allocated but only used if tv.allowDebugging is true
+	// -- allocated but only used if tv.allowDebugging and useAltPixels is true
 	altPixels     []byte
 	altPixelsFade []byte
 	useAltPixels  bool
@@ -63,8 +63,9 @@ type screen struct {
 	stb *screenStabiliser
 
 	// overlay for screen showing metasignal information
-	// -- allocated but only used if tv.allowDebugging is true
-	metasignals *metasignalOverlay
+	// -- allocated but only used if tv.allowDebugging and useMetaSignals is true
+	metasignals    *metasignalOverlay
+	useMetaSignals bool
 }
 
 func newScreen(tv *SDLTV) (*screen, error) {
@@ -274,8 +275,15 @@ func (scr *screen) update(paused bool) error {
 		return err
 	}
 
+	// show hblank overlay
+	if scr.unmasked {
+		scr.renderer.SetDrawColor(100, 100, 100, 20)
+		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.tv.Spec.ClocksPerHblank), H: int32(scr.tv.Spec.ScanlinesTotal)})
+	}
+
 	// show metasignal overlay
-	if scr.tv.allowDebugging {
+	if scr.tv.allowDebugging && scr.useMetaSignals {
 		err = scr.metasignals.update()
 		if err != nil {
 			return err

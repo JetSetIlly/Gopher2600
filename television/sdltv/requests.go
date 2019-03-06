@@ -132,9 +132,29 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 		tv.scr.useAltPixels = !tv.scr.useAltPixels
 		tv.update()
 
+	case television.ReqSetMetaSignals:
+		tv.scr.useMetaSignals = args[0].(bool)
+		tv.update()
+
+	case television.ReqToggleMetaSignals:
+		tv.scr.useMetaSignals = !tv.scr.useMetaSignals
+		tv.update()
+
 	case television.ReqSetScale:
 		tv.scr.setScaling(args[0].(float32))
 		tv.update()
+
+	case television.ReqIncScale:
+		if tv.scr.pixelScale < 4.0 {
+			tv.scr.setScaling(tv.scr.pixelScale + 0.1)
+			tv.update()
+		}
+
+	case television.ReqDecScale:
+		if tv.scr.pixelScale > 0.5 {
+			tv.scr.setScaling(tv.scr.pixelScale - 0.1)
+			tv.update()
+		}
 
 	default:
 		return errors.NewGopherError(errors.UnknownTVRequest, request)

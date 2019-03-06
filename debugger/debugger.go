@@ -122,6 +122,7 @@ func NewDebugger() (*Debugger, error) {
 	}
 	tv.SetFeature(television.ReqSetAllowDebugging, true)
 
+	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(tv)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
@@ -153,38 +154,9 @@ func NewDebugger() (*Debugger, error) {
 	// make synchronisation channel
 	dbg.dbgChannel = make(chan func(), 2)
 
-	// register tv callbacks
-
-	// -- add break on right mouse button
-	err = tv.RegisterCallback(television.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
-		// this callback function may be running inside a different goroutine
-		// so care must be taken not to cause a deadlock
-		hp, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseHorizPos)
-		sl, _ := dbg.vcs.TV.GetMetaState(television.ReqLastMouseScanline)
-
-		_, err := dbg.parseCommand(fmt.Sprintf("%s sl %s & hp %s", KeywordBreak, sl, hp))
-		if err == nil {
-			dbg.print(ui.Feedback, "mouse break on sl->%s and hp->%s", sl, hp)
-		} else {
-			dbg.print(ui.Error, "%s", err)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// -- respond to keyboard
-	err = tv.RegisterCallback(television.ReqOnKeyboard, dbg.dbgChannel, func() {
-		key, _ := dbg.vcs.TV.GetMetaState(television.ReqLastKeyboard)
-		switch key {
-		case "`":
-			err = dbg.vcs.TV.SetFeature(television.ReqToggleMasking)
-			if err != nil {
-				dbg.print(ui.Error, "%s", err)
-			}
-		default:
-		}
-	})
+	// set up callbacks for the TV interface
+	// -- requires dbgChannel to have been set up
+	err = dbg.setupTVCallbacks()
 	if err != nil {
 		return nil, err
 	}
