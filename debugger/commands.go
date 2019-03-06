@@ -771,7 +771,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					return false, err
 				}
 			case "DEBUG":
-				err = dbg.vcs.TV.SetFeature(television.ReqToggleDebug)
+				err = dbg.vcs.TV.SetFeature(television.ReqToggleMasking)
 				if err != nil {
 					return false, err
 				}
@@ -789,11 +789,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				err = dbg.vcs.TV.SetFeature(television.ReqSetScale, float32(scale))
 				return false, err
 			case "DEBUGCOLORS":
-				dbg.vcs.TIA.UseDebugColors = !dbg.vcs.TIA.UseDebugColors
-				if dbg.vcs.TIA.UseDebugColors {
-					dbg.print(ui.Feedback, "using debug colors in display")
-				} else {
-					dbg.print(ui.Feedback, "using program colors in display")
+				err = dbg.vcs.TV.SetFeature(television.ReqToggleAltColors)
+				if err != nil {
+					return false, err
 				}
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)

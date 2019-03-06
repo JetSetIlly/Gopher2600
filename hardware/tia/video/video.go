@@ -37,6 +37,17 @@ type Video struct {
 	OnFutureMotionClock future.Group
 }
 
+// colors to use for debugging
+const (
+	debugColBackground = uint8(0x00) // black (stella uses a light grey)
+	debugColBall       = uint8(0xb4) // cyan
+	debugColPlayfield  = uint8(0x62) // purple
+	debugColPlayer0    = uint8(0x32) // red
+	debugColPlayer1    = uint8(0x12) // gold
+	debugColMissile0   = uint8(0xf2) // orange
+	debugColMissile1   = uint8(0xd2) // green
+)
+
 // NewVideo is the preferred method of initialisation for the Video structure
 func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus) *Video {
 	vd := new(Video)
@@ -129,7 +140,7 @@ func (vd *Video) ResolveHorizMovement(count int) {
 // to returning the background color if no sprite or playfield pixel is
 // present. it also sets the collision registers
 // - it need not be called therefore during VBLANK or HBLANK
-func (vd *Video) Pixel(debugColors bool) uint8 {
+func (vd *Video) Pixel() (uint8, uint8) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	blu, blc := vd.Ball.pixel()
@@ -137,18 +148,6 @@ func (vd *Video) Pixel(debugColors bool) uint8 {
 	p1u, p1c := vd.Player1.pixel()
 	m0u, m0c := vd.Missile0.pixel()
 	m1u, m1c := vd.Missile1.pixel()
-
-	// override program colors with debug colors
-	// -- same/similar colors to those used in the Stella emulator
-	if debugColors {
-		bgc = 0x00 // black (stella uses a light grey)
-		blc = 0xb4 // cyan
-		pfc = 0x62 // purple
-		p0c = 0x32 // red
-		p1c = 0x12 // gold
-		m0c = 0xf2 // orange
-		m1c = 0xd2 // green
-	}
 
 	// collisions
 	if m0u && p1u {
@@ -220,60 +219,60 @@ func (vd *Video) Pixel(debugColors bool) uint8 {
 		vd.collisions.SetMemory(vcssymbols.CXPPMM)
 	}
 
+	var col, dcol uint8
+
 	// apply priorities to get pixel color
 	if vd.Playfield.priority {
-		// priority 1
-		if pfu {
-			return pfc
-		}
-		if blu {
-			return blc
-		}
-
-		// priority 2
-		if p0u {
-			return p0c
-		}
-		if m0u {
-			return m0c
-		}
-
-		// priority 3
-		if p1u {
-			return p1c
-		}
-		if m1u {
-			return m1c
+		if pfu { // priority 1
+			col = pfc
+			dcol = debugColPlayfield
+		} else if blu {
+			col = blc
+			dcol = debugColBall
+		} else if p0u { // priority 2
+			col = p0c
+			dcol = debugColPlayer0
+		} else if m0u {
+			col = m0c
+			dcol = debugColMissile0
+		} else if p1u { // priority 3
+			col = p1c
+			dcol = debugColPlayer1
+		} else if m1u {
+			col = m1c
+			dcol = debugColMissile1
+		} else {
+			col = bgc
+			dcol = debugColBackground
 		}
 
 	} else {
-		// priority 1
-		if p0u {
-			return p0c
-		}
-		if m0u {
-			return m0c
-		}
-
-		// priority 2
-		if p1u {
-			return p1c
-		}
-		if m1u {
-			return m1c
-		}
-
-		// priority 3
-		if blu {
-			return blc
-		}
-		if pfu {
-			return pfc
+		if p0u { // priority 1
+			col = p0c
+			dcol = debugColPlayer0
+		} else if m0u {
+			col = m0c
+			dcol = debugColMissile0
+		} else if p1u { // priority 2
+			col = p1c
+			dcol = debugColPlayer1
+		} else if m1u {
+			col = m1c
+			dcol = debugColMissile1
+		} else if blu { // priority 3
+			col = blc
+			dcol = debugColBall
+		} else if pfu {
+			col = pfc
+			dcol = debugColPlayfield
+		} else {
+			col = bgc
+			dcol = debugColBackground
 		}
 	}
 
 	// priority 4
-	return bgc
+	return col, dcol
 }
 
 func createTriggerList(playerSize uint8) []int {

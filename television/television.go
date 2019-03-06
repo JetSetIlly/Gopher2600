@@ -2,51 +2,65 @@ package television
 
 // StateReq is used to identify which television attribute is being asked
 // with the GetState() function
-type StateReq string
+type StateReq int
 
 // MetaStateReq is used to identify what information is being requested with the
 // with the GetMetaState() function
-type MetaStateReq string
+type MetaStateReq int
 
 // CallbackReq is used to identify which callback to register
-type CallbackReq string
+type CallbackReq int
 
 // FeatureReq is used to request the setting of a television attribute
 // eg. setting debugging overscan
-type FeatureReq string
+type FeatureReq int
 
-// list of valid requests for television implementations. it is not
-// required that every implementation does something useful for every request.
-// for instance, ONWINDOWCLOSE is meaningless if the implementation has no
-// display window
+// list of valid state requests
 const (
-	ReqFramenum StateReq = "FRAME"
-	ReqScanline StateReq = "SCANLINE"
-	ReqHorizPos StateReq = "HORIZPOS"
+	ReqFramenum StateReq = iota
+	ReqScanline
+	ReqHorizPos
+)
 
-	ReqTVSpec            MetaStateReq = "TVSPEC"
-	ReqLastKeyboard      MetaStateReq = "KEYBOARD"
-	ReqLastMouse         MetaStateReq = "MOUSE"
-	ReqLastMouseHorizPos MetaStateReq = "MOUSEHORIZPOS"
-	ReqLastMouseScanline MetaStateReq = "MOUSESCANLINE"
+// list of valid metastate requests
+const (
+	ReqTVSpec MetaStateReq = iota
+	ReqLastKeyboard
+	ReqLastMouse
+	ReqLastMouseHorizPos
+	ReqLastMouseScanline
+)
 
-	ReqOnWindowClose      CallbackReq = "ONWINDOWCLOSE"
-	ReqOnKeyboard         CallbackReq = "ONKEYBOARD"
-	ReqOnMouseButtonLeft  CallbackReq = "ONMOUSEBUTTONLEFT"
-	ReqOnMouseButtonRight CallbackReq = "ONMOUSEBUTTONRIGHT"
+// list of valid callback requests
+const (
+	ReqOnWindowClose CallbackReq = iota
+	ReqOnKeyboard
+	ReqOnMouseButtonLeft
+	ReqOnMouseButtonRight
+)
 
-	ReqSetVisibility       FeatureReq = "SETVISIBILITY"           // bool, optional bool (update on show)
-	ReqSetVisibilityStable FeatureReq = "SETVISIBILITYWHENSTABLE" // none
-	ReqSetPause            FeatureReq = "SETPAUSE"                // bool
-	ReqSetDebug            FeatureReq = "SETDEBUG"                // bool
-	ReqToggleDebug         FeatureReq = "TOGGLEDEBUG"             // none
-	ReqSetScale            FeatureReq = "SETSCALE"                // float
+// list of valid feature requests
+const (
+	ReqSetVisibility       FeatureReq = iota // bool, optional bool (update on show)
+	ReqSetVisibilityStable                   // none
+	ReqSetAllowDebugging                     // bool
+	ReqSetPause                              // bool
+	ReqSetMasking                            // bool
+	ReqToggleMasking                         // none
+	ReqSetAltColors                          // bool
+	ReqToggleAltColors                       // none
+	ReqSetScale                              // float
 )
 
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
 	VSync, VBlank, FrontPorch, HSync, CBurst bool
 	Pixel                                    ColorSignal
+
+	// AltPixel allows the emulator to set an alternative color for each pixel
+	// - used to signal the debug color in addition to the regular color
+	// - arguable that this be sent as a metasignal
+	AltPixel ColorSignal
 }
 
 // MetaSignalAttributes represents any additional emulator data sent to the

@@ -14,6 +14,7 @@ type SDLTV struct {
 	// much of the sdl magic happens in the screen object
 	scr *screen
 
+	// regulates how often the screen is updated
 	fpsLimiter *fpsLimiter
 
 	// callback functions
@@ -27,6 +28,12 @@ type SDLTV struct {
 	// frame will take up the remainder of the screen.
 	paused bool
 
+	// ther's a small bug significant performance boost if we disable certain
+	// code paths with this allowDebugging flag
+	allowDebugging bool
+
+	// guiLoop() runs in a different goroutine. "communication" between that
+	// routine and SDLTV must happen via this critical section structure
 	crit sdltvCriticalSection
 }
 
@@ -86,7 +93,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 		}
 		return tv.update()
 	}
-	tv.HookSetPixel = tv.scr.setPixel
+	tv.HookSetPixel = tv.scr.setRegPixel
 
 	// update tv (with a black image)
 	err = tv.update()
@@ -116,4 +123,13 @@ func (tv *SDLTV) update() error {
 	tv.scr.renderer.Present()
 
 	return nil
+}
+
+func (tv *SDLTV) setDebugging(allow bool) {
+	tv.allowDebugging = allow
+	if allow {
+		tv.HookSetAltPixel = tv.scr.setAltPixel
+	} else {
+		tv.HookSetAltPixel = nil
+	}
 }

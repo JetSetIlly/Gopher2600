@@ -46,9 +46,6 @@ type TIA struct {
 
 	Video *video.Video
 	Audio *audio.Audio
-
-	// whether to override colours with the "debug colors"
-	UseDebugColors bool
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -182,15 +179,6 @@ func (tia *TIA) StepVideoCycle() bool {
 		tia.motionClock = false
 	}
 
-	// send metasignal information before we perform any state ticking
-	err := tia.tv.MetaSignal(television.MetaSignalAttributes{
-		Hmove: tia.Hmove.isjustset(),
-		Rsync: tia.rsync.isjustset(),
-		Wsync: tia.wsync})
-	if err != nil {
-		panic(err)
-	}
-
 	// set up new scanline if colorClock has ticked its way to the reset point or if
 	// an rsync has matured (see rsync.go commentary)
 	if tia.rsync.tick() {
@@ -227,19 +215,29 @@ func (tia *TIA) StepVideoCycle() bool {
 	tia.Video.TickFutures(tia.motionClock)
 
 	// decide on pixel color
-	pixelColor := television.VideoBlack
+	var pixelColor, debugColor uint8
 	if !tia.hblank {
-		pixelColor = television.ColorSignal(tia.Video.Pixel(tia.UseDebugColors))
+		pixelColor, debugColor = tia.Video.Pixel()
 	}
 
 	// at the end of the video cycle we want to finally signal the televison
-	err = tia.tv.Signal(television.SignalAttributes{
+	err := tia.tv.Signal(television.SignalAttributes{
 		VSync:      tia.vsync,
 		VBlank:     tia.vblank,
 		FrontPorch: frontPorch,
 		HSync:      tia.hsync,
 		CBurst:     cburst,
-		Pixel:      pixelColor})
+		Pixel:      television.ColorSignal(pixelColor),
+		AltPixel:   television.ColorSignal(debugColor)})
+	if err != nil {
+		panic(err)
+	}
+
+	// send metasignal information before we perform any state ticking
+	err = tia.tv.MetaSignal(television.MetaSignalAttributes{
+		Hmove: tia.Hmove.isjustset(),
+		Rsync: tia.rsync.isjustset(),
+		Wsync: tia.wsync})
 	if err != nil {
 		panic(err)
 	}

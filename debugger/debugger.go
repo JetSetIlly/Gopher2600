@@ -120,6 +120,7 @@ func NewDebugger() (*Debugger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error preparing television: %s", err)
 	}
+	tv.SetFeature(television.ReqSetAllowDebugging, true)
 
 	dbg.vcs, err = hardware.NewVCS(tv)
 	if err != nil {
@@ -177,7 +178,7 @@ func NewDebugger() (*Debugger, error) {
 		key, _ := dbg.vcs.TV.GetMetaState(television.ReqLastKeyboard)
 		switch key {
 		case "`":
-			err = dbg.vcs.TV.SetFeature(television.ReqToggleDebug)
+			err = dbg.vcs.TV.SetFeature(television.ReqToggleMasking)
 			if err != nil {
 				dbg.print(ui.Error, "%s", err)
 			}

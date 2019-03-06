@@ -53,6 +53,7 @@ type HeadlessTV struct {
 	HookNewFrame    func() error
 	HookNewScanline func() error
 	HookSetPixel    func(x, y int32, red, green, blue byte, vblank bool) error
+	HookSetAltPixel func(x, y int32, red, green, blue byte, vblank bool) error
 }
 
 // NewHeadlessTV creates a new instance of HeadlessTV for a minimalist
@@ -85,6 +86,7 @@ func InitHeadlessTV(tv *HeadlessTV, tvType string) error {
 	tv.HookNewFrame = func() error { return nil }
 	tv.HookNewScanline = func() error { return nil }
 	tv.HookSetPixel = func(x, y int32, r, g, b byte, vblank bool) error { return nil }
+	tv.HookSetAltPixel = nil //func(x, y int32, r, g, b byte, vblank bool) error { return nil }
 
 	// initialise TVState
 	tv.horizPos = -tv.Spec.ClocksPerHblank
@@ -235,14 +237,6 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// decode color
-	red, green, blue := byte(0), byte(0), byte(0)
-	if sig.Pixel != VideoBlack {
-		col := tv.Spec.Colors[sig.Pixel]
-		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-
-	}
-
 	// record the current signal settings so they can be used for reference
 	tv.prevSignal = sig
 
@@ -250,7 +244,29 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	x := int32(tv.horizPos) + int32(tv.Spec.ClocksPerHblank)
 	y := int32(tv.scanline)
 
-	return tv.HookSetPixel(x, y, red, green, blue, sig.VBlank)
+	// decode color using the regular color signal
+	red, green, blue := byte(0), byte(0), byte(0)
+	if sig.Pixel != VideoBlack {
+		col := tv.Spec.Colors[sig.Pixel]
+		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+	}
+
+	err := tv.HookSetPixel(x, y, red, green, blue, sig.VBlank)
+	if err != nil {
+		return err
+	}
+
+	// decode color using the alternative color signal
+	if tv.HookSetAltPixel != nil {
+		red, green, blue = byte(0), byte(0), byte(0)
+		if sig.Pixel != VideoBlack {
+			col := tv.Spec.Colors[sig.AltPixel]
+			red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+		}
+		return tv.HookSetAltPixel(x, y, red, green, blue, sig.VBlank)
+	}
+
+	return nil
 }
 
 // MetaSignal recieves (and processes) additional emulator information from the emulator

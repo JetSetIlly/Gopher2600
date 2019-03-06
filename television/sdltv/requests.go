@@ -99,7 +99,8 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 		if args[0].(bool) {
 			tv.scr.window.Show()
 
-			// default args[1] of true if not present
+			// update screen
+			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
 				tv.update()
 			}
@@ -107,18 +108,28 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 			tv.scr.window.Hide()
 		}
 
+	case television.ReqSetAllowDebugging:
+		tv.setDebugging(args[0].(bool))
+		tv.update()
+
 	case television.ReqSetPause:
 		tv.paused = args[0].(bool)
-		if args[0].(bool) {
-			tv.update()
-		}
+		tv.update()
 
-	case television.ReqSetDebug:
+	case television.ReqSetMasking:
 		tv.scr.setMasking(args[0].(bool))
 		tv.update()
 
-	case television.ReqToggleDebug:
-		tv.scr.toggleMasking()
+	case television.ReqToggleMasking:
+		tv.scr.setMasking(!tv.scr.unmasked)
+		tv.update()
+
+	case television.ReqSetAltColors:
+		tv.scr.useAltPixels = args[0].(bool)
+		tv.update()
+
+	case television.ReqToggleAltColors:
+		tv.scr.useAltPixels = !tv.scr.useAltPixels
 		tv.update()
 
 	case television.ReqSetScale:

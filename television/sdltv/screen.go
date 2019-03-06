@@ -29,6 +29,13 @@ type screen struct {
 	pixels     []byte
 	pixelsFade []byte
 
+	// altPixels mirrors the pixels array with alternative color palette
+	// -- useful for switching between regular and debug colors
+	// -- allocated but only used if tv.allowDebugging is true
+	altPixels     []byte
+	altPixelsFade []byte
+	useAltPixels  bool
+
 	// textures are used to present the pixels to the renderer
 	texture     *sdl.Texture
 	textureFade *sdl.Texture
@@ -56,6 +63,7 @@ type screen struct {
 	stb *screenStabiliser
 
 	// overlay for screen showing metasignal information
+	// -- allocated but only used if tv.allowDebugging is true
 	metasignals *metasignalOverlay
 }
 
@@ -111,6 +119,8 @@ func newScreen(tv *SDLTV) (*screen, error) {
 	// our acutal screen data
 	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.altPixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.altPixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
 	// new stabiliser
 	scr.stb = newScreenStabiliser(scr)
@@ -184,11 +194,15 @@ func (scr *screen) setMasking(unmasked bool) error {
 	return nil
 }
 
-func (scr *screen) toggleMasking() {
-	scr.setMasking(!scr.unmasked)
+func (scr *screen) setRegPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	return scr.setPixel(&scr.pixels, x, y, red, green, blue, vblank)
 }
 
-func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) error {
+func (scr *screen) setAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	return scr.setPixel(&scr.altPixels, x, y, red, green, blue, vblank)
+}
+
+func (scr *screen) setPixel(pixels *[]byte, x, y int32, red, green, blue byte, vblank bool) error {
 	scr.lastX = x
 	scr.lastY = y
 
@@ -200,10 +214,10 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 	if !vblank {
 		i := (y*scr.maxWidth + x) * scrDepth
 		if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
-			scr.pixels[i] = red
-			scr.pixels[i+1] = green
-			scr.pixels[i+2] = blue
-			scr.pixels[i+3] = 255
+			(*pixels)[i] = red
+			(*pixels)[i+1] = green
+			(*pixels)[i+2] = blue
+			(*pixels)[i+3] = 255
 		}
 	}
 
@@ -212,12 +226,6 @@ func (scr *screen) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 
 func (scr *screen) update(paused bool) error {
 	var err error
-
-	// update additional overlays
-	err = scr.metasignals.update()
-	if err != nil {
-		return err
-	}
 
 	// clear image from rendered. using a non-video-black color if screen is
 	// unmasked
@@ -234,7 +242,11 @@ func (scr *screen) update(paused bool) error {
 
 	// if tv is paused then show the previous frame's faded image
 	if paused {
-		err = scr.textureFade.Update(nil, scr.pixelsFade, int(scr.maxWidth*scrDepth))
+		if scr.tv.allowDebugging && scr.useAltPixels {
+			err = scr.textureFade.Update(nil, scr.altPixelsFade, int(scr.maxWidth*scrDepth))
+		} else {
+			err = scr.textureFade.Update(nil, scr.pixelsFade, int(scr.maxWidth*scrDepth))
+		}
 		if err != nil {
 			return err
 		}
@@ -245,9 +257,14 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// show current frame's pixels
+	// - decide which set of pixels to use
 	// - if tv is paused this overwrites the faded image (drawn above) up to
 	// the pixel where the current frame has reached
-	err = scr.texture.Update(nil, scr.pixels, int(scr.maxWidth*scrDepth))
+	if scr.tv.allowDebugging && scr.useAltPixels {
+		err = scr.texture.Update(nil, scr.altPixels, int(scr.maxWidth*scrDepth))
+	} else {
+		err = scr.texture.Update(nil, scr.pixels, int(scr.maxWidth*scrDepth))
+	}
 	if err != nil {
 		return err
 	}
@@ -257,11 +274,18 @@ func (scr *screen) update(paused bool) error {
 		return err
 	}
 
-	// show debugging overlay
-	if scr.unmasked {
-		err = scr.renderer.Copy(scr.metasignals.texture, scr.srcRect, scr.destRect)
+	// show metasignal overlay
+	if scr.tv.allowDebugging {
+		err = scr.metasignals.update()
 		if err != nil {
 			return err
+		}
+
+		if scr.unmasked {
+			err = scr.renderer.Copy(scr.metasignals.texture, scr.srcRect, scr.destRect)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -315,17 +339,26 @@ func (scr *screen) update(paused bool) error {
 }
 
 func (scr *screen) clearPixels() {
-	// swap which pixel buffer we're using in time for next round of pixel
-	// plotting
-	swp := scr.pixels
-	scr.pixels = scr.pixelsFade
-	scr.pixelsFade = swp
+	if scr.tv.allowDebugging {
+		// "fade" alternative pixels and clear
+		swp := scr.altPixels
+		scr.altPixels = scr.altPixelsFade
+		scr.altPixelsFade = swp
+		for i := 0; i < len(scr.altPixels); i++ {
+			scr.altPixels[i] = 0
+		}
 
-	// clear pixels
+		// clear pixels in additional overlays
+		scr.metasignals.clearPixels()
+
+		// "fade" regular pixels
+		swp = scr.pixels
+		scr.pixels = scr.pixelsFade
+		scr.pixelsFade = swp
+	}
+
+	// clear regular pixels
 	for i := 0; i < len(scr.pixels); i++ {
 		scr.pixels[i] = 0
 	}
-
-	// clear pixels in additional overlays
-	scr.metasignals.clearPixels()
 }
