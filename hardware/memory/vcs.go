@@ -22,7 +22,6 @@ type VCSMemory struct {
 
 	// a note of the last memory location to be accessed
 	// this address is the mapped address
-	LastAddressAccessFlag  bool
 	LastAddressAccessed    uint16
 	LastAddressAccessWrite bool
 	LastAddressAccessValue uint8
@@ -100,7 +99,6 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	if !present {
 		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
-	mem.LastAddressAccessFlag = true
 	mem.LastAddressAccessed = ma
 	mem.LastAddressAccessWrite = false
 	data, err := area.(CPUBus).Read(ma)
@@ -115,7 +113,6 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	if !present {
 		return fmt.Errorf("%04x not mapped correctly", address)
 	}
-	mem.LastAddressAccessFlag = true
 	mem.LastAddressAccessed = ma
 	mem.LastAddressAccessWrite = true
 	mem.LastAddressAccessValue = data

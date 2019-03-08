@@ -53,7 +53,8 @@ type watches struct {
 	dbg    *Debugger
 	vcsmem *memory.VCSMemory
 
-	watches []watcher
+	watches             []watcher
+	lastAddressAccessed uint16
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
@@ -90,20 +91,25 @@ func (wtc *watches) check(previousResult string) string {
 	checkString.WriteString(previousResult)
 	for i := range wtc.watches {
 		// match addresses if memory has been accessed recently (LastAddressFlag)
-		if wtc.vcsmem.LastAddressAccessFlag && wtc.watches[i].address == wtc.vcsmem.LastAddressAccessed {
+		if wtc.watches[i].address == wtc.vcsmem.LastAddressAccessed {
 
-			// match events
-			if wtc.watches[i].event == watchEventAny || (wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAddressAccessWrite) || (wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAddressAccessWrite) {
-				// match value
-				if !wtc.watches[i].matchValue || (wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAddressAccessValue)) {
-					// prepare string according to event
-					if wtc.vcsmem.LastAddressAccessWrite {
-						checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAddressAccessValue))
-					} else {
-						checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
+			if wtc.lastAddressAccessed != wtc.vcsmem.LastAddressAccessed {
+				wtc.lastAddressAccessed = wtc.vcsmem.LastAddressAccessed
+
+				// match events
+				if wtc.watches[i].event == watchEventAny || (wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAddressAccessWrite) || (wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAddressAccessWrite) {
+
+					// match value
+					if !wtc.watches[i].matchValue || (wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAddressAccessValue)) {
+
+						// prepare string according to event
+						if wtc.vcsmem.LastAddressAccessWrite {
+							checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAddressAccessValue))
+						} else {
+							checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
+						}
+
 					}
-
-					wtc.vcsmem.LastAddressAccessFlag = false
 				}
 			}
 		}

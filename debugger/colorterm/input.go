@@ -43,7 +43,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 	//
 	// for this to work we need to place the cursor in it's initial position
 	// before we begin the loop
-	ct.Print("\r%s", ansi.CursorMove(len(prompt)))
+	ct.Print("\r")
+	ct.Print(ansi.CursorMove(len(prompt)))
 
 	for {
 		ct.Print(ansi.CursorStore)
@@ -53,6 +54,9 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 
 		select {
 		case f := <-dbgChannel:
+			// handle functions that are passsed on over dbgChannel. these can
+			// be things like events from the television GUI. eg. mouse clicks,
+			// key presses, etc.
 			ct.Print(ansi.CursorStore)
 			f()
 			ct.Print(ansi.CursorRestore)
@@ -211,12 +215,19 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 
 			default:
 				if unicode.IsDigit(readRune.r) || unicode.IsLetter(readRune.r) || unicode.IsSpace(readRune.r) || unicode.IsPunct(readRune.r) || unicode.IsSymbol(readRune.r) {
-					ct.Print("%c", readRune.r)
-					m := utf8.EncodeRune(er, readRune.r)
-					copy(input[cursorPos+m:], input[cursorPos:])
-					copy(input[cursorPos:], er[:m])
+					ct.Print(ansi.CursorForwardOne)
+					l := utf8.EncodeRune(er, readRune.r)
+
+					// insert new character into input stream at current cursor
+					// position
+					copy(input[cursorPos+l:], input[cursorPos:])
+					copy(input[cursorPos:], er[:l])
 					cursorPos++
-					inputLen += m
+
+					inputLen += l
+
+					// make sure history pointer is at the end of the command
+					// history array
 					history = len(ct.commandHistory)
 				}
 			}

@@ -1,11 +1,10 @@
 package colorterm
 
-/* this part of the colorterm package facilitates the reading of runes from a
-* reader interface (eg, os.Stdin). a straight call to reader.ReadRune() will
-* block until input is available. this causes problems if we want the program
-* to wait for something else from another reader or channel. with the mechanism
-* here, an input loop can use a channel-select to prevent the blocking.
- */
+// this part of the colorterm package facilitates the reading of runes from a
+// reader interface (eg, os.Stdin). a straight call to reader.ReadRune() will
+// block until input is available. this causes problems if we want the program
+// to wait for something else from another reader or channel. with the mechanism
+// here, an input loop can use a channel-select to prevent the blocking.
 
 import (
 	"bufio"

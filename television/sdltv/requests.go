@@ -132,12 +132,12 @@ func (tv *SDLTV) SetFeature(request television.FeatureReq, args ...interface{}) 
 		tv.scr.useAltPixels = !tv.scr.useAltPixels
 		tv.update()
 
-	case television.ReqSetMetaSignals:
-		tv.scr.useMetaSignals = args[0].(bool)
+	case television.ReqSetShowSystemState:
+		tv.scr.showSystemState = args[0].(bool)
 		tv.update()
 
-	case television.ReqToggleMetaSignals:
-		tv.scr.useMetaSignals = !tv.scr.useMetaSignals
+	case television.ReqToggleShowSystemState:
+		tv.scr.showSystemState = !tv.scr.showSystemState
 		tv.update()
 
 	case television.ReqSetScale:

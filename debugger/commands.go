@@ -793,6 +793,11 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				if err != nil {
 					return false, err
 				}
+			case "METASIGNALS":
+				err = dbg.vcs.TV.SetFeature(television.ReqToggleShowSystemState)
+				if err != nil {
+					return false, err
+				}
 			default:
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}

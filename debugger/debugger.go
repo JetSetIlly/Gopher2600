@@ -3,6 +3,7 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/input"
+	"gopher2600/debugger/monitor"
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
@@ -32,9 +33,14 @@ type Debugger struct {
 	runUntilHalt bool
 
 	// interface to the vcs memory with additional debugging functions
-	// -- access to vcs memory from the debugger is most fruitfully performed
-	// through this structure
+	// -- access to vcs memory from the debugger (eg. peeking and poking) is
+	// most fruitfully performed through this structure
 	dbgmem *memoryDebug
+
+	// system monitor is a very low level mechanism for monitoring the state of
+	// the cpu and of memory. it is checked every video cycle and interesting
+	// changes noted and recorded.
+	sysmon *monitor.SystemMonitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -94,15 +100,11 @@ type Debugger struct {
 	input []byte
 
 	// channel for communicating with the debugging loop from other areas of
-	// the emulation, paritcularly from other goroutines.
-	// -- it is used primarily to communicate with SDL gui goroutine
-	// -- we also use the dbgChannel to implement ctrl-c handling. even though
-	// all the code to do it is right here in this very file, we do this to
-	// avoid having to use sync.Mutex.
-	// -- we could improve this by allowing the function to take arguments and
-	// to return a value but there's no real use-case for this at the moment
-	// but it's something to consider (see colorterminal/input.go for possible
-	// reason)
+	// the emulation, paritcularly from other goroutines. it is used to:
+	//  a) receive events from some other part of the emulation. for example,
+	//  the SDL guiloop() goroutine
+	//  b) receive ctrl-c events when the emulation is running (note that
+	//  ctrl-c handling is handled differently under different circumstances)
 	dbgChannel chan func()
 }
 
@@ -130,10 +132,13 @@ func NewDebugger() (*Debugger, error) {
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.
-	dbg.disasm = new(disassembly.Disassembly)
+	dbg.disasm = &disassembly.Disassembly{}
 
 	// set up debugging interface to memory
-	dbg.dbgmem = newMemoryDebug(dbg)
+	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
+
+	// set up system monitor
+	dbg.sysmon = &monitor.SystemMonitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.MC, Rec: dbg.vcs.TV}
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -184,11 +189,9 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 		return err
 	}
 
-	// make sure we've indicated that the debugger is running before we start
-	// the ctrl-c handler. it'll return immediately if we don't
 	dbg.running = true
 
-	// register ctrl-c handler
+	// register a ctrl-c handler.
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt)
 	go func() {
@@ -197,8 +200,15 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 
 			dbg.dbgChannel <- func() {
 				if dbg.runUntilHalt {
+					// stop emulation at the next step
 					dbg.runUntilHalt = false
 				} else {
+					// runUntilHalt is false which means that the emulation is
+					// not running. at this point, an input loop is probably
+					// running. note that ctrl-c signals do not always reach
+					// this far into the program.  for instance, the colorterm
+					// implementation of UserRead() puts the terminal into raw
+					// mode and so must handle ctrl-c events differently.
 					dbg.running = false
 				}
 			}
@@ -254,13 +264,12 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	return nil
 }
 
-// videoCycleCallback() and breakandtrapCallback() are wrapper functions to be
-// used when calling vcs.Step(). stepmode CPU uses breakandtrapCallback(),
-// whereas stepmode VIDEO uses videoCycleCallback() which in turn uses
-// breakandtrapCallback()
+// videoCycle*() are callback functions to be used when calling vcs.Step().
+// stepmode CPU uses videoCycle(), whereas stepmode VIDEO uses
+// videoCycleWithInput() which in turn calls videoCycle()
 
-func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
-	dbg.breakAndTrapCallback(result)
+func (dbg *Debugger) videoCycleWithInput(result *result.Instruction) error {
+	dbg.videoCycle(result)
 	dbg.lastResult = result
 	if dbg.commandOnStep != "" {
 		_, err := dbg.parseInput(dbg.commandOnStep)
@@ -271,7 +280,7 @@ func (dbg *Debugger) videoCycleCallback(result *result.Instruction) error {
 	return dbg.inputLoop(false)
 }
 
-func (dbg *Debugger) breakAndTrapCallback(result *result.Instruction) error {
+func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	// because we call this callback mid-instruction, the programme counter
 	// maybe in it's non-final state - we don't want to break or trap in these
 	// instances if the final effect of the instruction changes the programme
@@ -289,7 +298,20 @@ func (dbg *Debugger) breakAndTrapCallback(result *result.Instruction) error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	return nil
+	return dbg.sysmon.Check()
+}
+
+func (dbg *Debugger) checkDbgChannel() {
+	// check dbgChannel and run any functions we find in there -- note that
+	// we also monitor the dbgChannel in the UserInterface.UserRead()
+	// function. if we didn't then this inputLoop would not react to
+	// messages on the channel until it reaches this point again.
+	select {
+	case f := <-dbg.dbgChannel:
+		f()
+	default:
+		// go novice note: we need a default case otherwise the select blocks
+	}
 }
 
 // inputLoop has two modes, defined by the mainLoop argument. when inputLoop is
@@ -299,6 +321,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 	var err error
 
 	for {
+		dbg.checkDbgChannel()
 		if !dbg.running {
 			break // for loop
 		}
@@ -308,17 +331,6 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// and execution will continue in the main inputLoop
 		if !mainLoop && !dbg.inputloopVideoClock && dbg.inputloopNext {
 			return nil
-		}
-
-		// check dbgChannel and run any functions we find in there -- note that
-		// we also monitor the dbgChannel in the UserInterface.UserRead()
-		// function. if we didn't then this inputLoop would not react to
-		// messages on the channel until it reaches this point again.
-		select {
-		case f := <-dbg.dbgChannel:
-			f()
-		default:
-			// go novice note: we need a default case otherwise the select blocks
 		}
 
 		// check for step-traps
@@ -399,12 +411,18 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			if err != nil {
 				switch err.(type) {
 				case *ui.UserInterrupt:
+					// UserRead() has caught a ctrl-c event and returned the
+					// appropriate error
 					dbg.print(ui.Feedback, err.Error())
 					dbg.running = false
-					return nil
 				default:
 					return err
 				}
+			}
+
+			dbg.checkDbgChannel()
+			if !dbg.running {
+				break // for loop
 			}
 
 			// parse user input
@@ -429,9 +447,9 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		if dbg.inputloopNext {
 			if mainLoop {
 				if dbg.inputloopVideoClock {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleCallback)
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleWithInput)
 				} else {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.breakAndTrapCallback)
+					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
 				}
 
 				if err != nil {

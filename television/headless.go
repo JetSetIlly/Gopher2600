@@ -2,6 +2,7 @@ package television
 
 import (
 	"fmt"
+	"gopher2600/debugger/monitor"
 	"gopher2600/errors"
 	"strings"
 )
@@ -117,7 +118,7 @@ func (tv HeadlessTV) MachineInfo() string {
 	s.WriteString(fmt.Sprintf("TV (%s)%s:\n", tv.Spec.ID, outOfSpec))
 	s.WriteString(fmt.Sprintf("   Frame: %d\n", tv.frameNum))
 	s.WriteString(fmt.Sprintf("   Scanline: %d\n", tv.scanline))
-	s.WriteString(fmt.Sprintf("   Horiz Pos: %d", tv.horizPos))
+	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", tv.horizPos, tv.horizPos+tv.Spec.ClocksPerHblank))
 
 	return s.String()
 }
@@ -245,12 +246,7 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	y := int32(tv.scanline)
 
 	// decode color using the regular color signal
-	red, green, blue := byte(0), byte(0), byte(0)
-	if sig.Pixel != VideoBlack {
-		col := tv.Spec.Colors[sig.Pixel]
-		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-	}
-
+	red, green, blue := tv.Spec.TranslateColorSignal(sig.Pixel)
 	err := tv.HookSetPixel(x, y, red, green, blue, sig.VBlank)
 	if err != nil {
 		return err
@@ -258,19 +254,15 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 
 	// decode color using the alternative color signal
 	if tv.HookSetAltPixel != nil {
-		red, green, blue = byte(0), byte(0), byte(0)
-		if sig.Pixel != VideoBlack {
-			col := tv.Spec.Colors[sig.AltPixel]
-			red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-		}
+		red, green, blue = tv.Spec.TranslateColorSignal(sig.AltPixel)
 		return tv.HookSetAltPixel(x, y, red, green, blue, sig.VBlank)
 	}
 
 	return nil
 }
 
-// MetaSignal recieves (and processes) additional emulator information from the emulator
-func (tv *HeadlessTV) MetaSignal(MetaSignalAttributes) error {
+// SystemStateRecord recieves (and processes) additional emulator information from the emulator
+func (tv *HeadlessTV) SystemStateRecord(monitor.SystemState) error {
 	return nil
 }
 

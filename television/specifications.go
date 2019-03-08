@@ -23,6 +23,17 @@ type Specification struct {
 	IdealScanlines int
 }
 
+// TranslateColorSignal decodaes color signal to an RGB value
+func (spec Specification) TranslateColorSignal(sig ColorSignal) (byte, byte, byte) {
+	red, green, blue := byte(0), byte(0), byte(0)
+	if sig != VideoBlack {
+		col := spec.Colors[sig]
+		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+	}
+
+	return red, green, blue
+}
+
 // SpecNTSC is the specification for NTSC television typee
 var SpecNTSC *Specification
 

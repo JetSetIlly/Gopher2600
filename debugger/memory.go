@@ -13,18 +13,11 @@ import (
 // memoryDebug is a front-end to the real VCS memory. this additonal memory
 // layer allows addressing by symbols.
 type memoryDebug struct {
-	vcsmem *memory.VCSMemory
+	mem *memory.VCSMemory
 
 	// symbols.Table instance can change after we've initialised with
 	// newMemoryDebug(), so we need a pointer to a pointer
 	symtable **symbols.Table
-}
-
-func newMemoryDebug(dbg *Debugger) *memoryDebug {
-	mem := new(memoryDebug)
-	mem.vcsmem = dbg.vcs.Mem
-	mem.symtable = &dbg.disasm.Symtable
-	return mem
 }
 
 // mapAddress allows addressing by symbols in addition to numerically
@@ -41,7 +34,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 
 	switch address := address.(type) {
 	case uint16:
-		ma = mem.vcsmem.MapAddress(address, true)
+		ma = mem.mem.MapAddress(address, true)
 	case string:
 		// search for symbolic address in standard vcs read symbols
 		for a, sym := range symbolTable {
@@ -72,7 +65,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 		na, err := strconv.ParseUint(address, 0, 16)
 		if err == nil {
 			ma = uint16(na)
-			ma = mem.vcsmem.MapAddress(ma, true)
+			ma = mem.mem.MapAddress(ma, true)
 			mapped = true
 		}
 
@@ -97,7 +90,7 @@ func (mem memoryDebug) peek(address interface{}) (uint8, uint16, string, string,
 		return 0, 0, "", "", err
 	}
 
-	area, present := mem.vcsmem.Memmap[ma]
+	area, present := mem.mem.Memmap[ma]
 	if !present {
 		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}
@@ -112,7 +105,7 @@ func (mem memoryDebug) poke(address interface{}, value uint8) error {
 		return err
 	}
 
-	area, present := mem.vcsmem.Memmap[ma]
+	area, present := mem.mem.Memmap[ma]
 	if !present {
 		panic(fmt.Errorf("%04x not mapped correctly", address))
 	}

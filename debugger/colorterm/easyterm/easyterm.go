@@ -51,7 +51,7 @@ type Terminal struct {
 }
 
 // Initialise the fields in the Terminal struct
-func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
+func (et *Terminal) Initialise(inputFile, outputFile *os.File) error {
 	// not which files we're using for input and output
 	if inputFile == nil {
 		return fmt.Errorf("easyterm Terminal requires an input file")
@@ -60,17 +60,17 @@ func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
 		return fmt.Errorf("easyterm Terminal requires an output file")
 	}
 
-	pt.input = inputFile
-	pt.output = outputFile
+	et.input = inputFile
+	et.output = outputFile
 
 	// prepare the attributes for the different terminal modes we'll be using
-	termios.Tcgetattr(pt.input.Fd(), &pt.canAttr)
-	termios.Cfmakecbreak(&pt.cbreakAttr)
-	termios.Cfmakeraw(&pt.rawAttr)
+	termios.Tcgetattr(et.input.Fd(), &et.canAttr)
+	termios.Cfmakecbreak(&et.cbreakAttr)
+	termios.Cfmakeraw(&et.rawAttr)
 
 	// set up sig/ack channels for signal handler
-	pt.terminateHandlerSig = make(chan bool)
-	pt.terminateHandlerAck = make(chan bool)
+	et.terminateHandlerSig = make(chan bool)
+	et.terminateHandlerAck = make(chan bool)
 
 	// kickstart signal handler (it is so cool that this works so easily with
 	// go channels)
@@ -78,14 +78,14 @@ func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
 		sigwinch := make(chan os.Signal, 1)
 		signal.Notify(sigwinch, syscall.SIGWINCH)
 		defer func() {
-			pt.terminateHandlerAck <- true
+			et.terminateHandlerAck <- true
 		}()
 
 		for {
 			select {
 			case <-sigwinch:
-				_ = pt.UpdateGeometry()
-			case <-pt.terminateHandlerSig:
+				_ = et.UpdateGeometry()
+			case <-et.terminateHandlerSig:
 				return
 			}
 		}
@@ -95,25 +95,31 @@ func (pt *Terminal) Initialise(inputFile, outputFile *os.File) error {
 }
 
 // CleanUp closes resources created in the Initialise() function
-func (pt *Terminal) CleanUp() {
-	pt.terminateHandlerSig <- true
-	<-pt.terminateHandlerAck
+func (et *Terminal) CleanUp() {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	et.terminateHandlerSig <- true
+	<-et.terminateHandlerAck
 }
 
-// Print writes the formatted string to the output file
-// TODO: expand the functionality of easyterm Print()
-func (pt *Terminal) Print(s string, a ...interface{}) {
-	pt.output.WriteString(fmt.Sprintf(s, a...))
+// Print writes string to the output file
+func (et *Terminal) Print(s string) {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	et.output.WriteString(s)
+
 	//pt.output.Sync()
 }
 
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
 // output terminal
-func (pt *Terminal) UpdateGeometry() error {
-	pt.mu.Lock()
-	defer pt.mu.Unlock()
+func (et *Terminal) UpdateGeometry() error {
+	et.mu.Lock()
+	defer et.mu.Unlock()
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, pt.output.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&pt.Geometry)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, et.output.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&et.Geometry)))
 	if errno != 0 {
 		return fmt.Errorf("error updating terminal geometry information (%d)", errno)
 	}
@@ -121,26 +127,38 @@ func (pt *Terminal) UpdateGeometry() error {
 }
 
 // CanonicalMode puts terminal into normal, everyday canonical mode
-func (pt *Terminal) CanonicalMode() {
-	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.canAttr)
+func (et *Terminal) CanonicalMode() {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.canAttr)
 }
 
 // RawMode puts terminal into raw mode
-func (pt *Terminal) RawMode() {
-	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.rawAttr)
+func (et *Terminal) RawMode() {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.rawAttr)
 }
 
 // CBreakMode puts terminal into cbreak mode
-func (pt *Terminal) CBreakMode() {
-	termios.Tcsetattr(pt.input.Fd(), termios.TCIFLUSH, &pt.cbreakAttr)
+func (et *Terminal) CBreakMode() {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.cbreakAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty
-func (pt *Terminal) Flush() error {
-	if err := termios.Tcflush(pt.input.Fd(), termios.TCIFLUSH); err != nil {
+func (et *Terminal) Flush() error {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
+	if err := termios.Tcflush(et.input.Fd(), termios.TCIFLUSH); err != nil {
 		return err
 	}
-	if err := termios.Tcflush(pt.output.Fd(), termios.TCOFLUSH); err != nil {
+	if err := termios.Tcflush(et.output.Fd(), termios.TCOFLUSH); err != nil {
 		return err
 	}
 	return nil

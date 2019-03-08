@@ -233,14 +233,5 @@ func (tia *TIA) StepVideoCycle() bool {
 		panic(err)
 	}
 
-	// send metasignal information before we perform any state ticking
-	err = tia.tv.MetaSignal(television.MetaSignalAttributes{
-		Hmove: tia.Hmove.isjustset(),
-		Rsync: tia.rsync.isjustset(),
-		Wsync: tia.wsync})
-	if err != nil {
-		panic(err)
-	}
-
 	return !tia.wsync
 }

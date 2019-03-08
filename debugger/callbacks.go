@@ -39,7 +39,7 @@ func (dbg *Debugger) setupTVCallbacks() error {
 			err = dbg.vcs.TV.SetFeature(television.ReqToggleAltColors)
 		case "2":
 			// toggle metasignals overlay
-			err = dbg.vcs.TV.SetFeature(television.ReqToggleMetaSignals)
+			err = dbg.vcs.TV.SetFeature(television.ReqToggleShowSystemState)
 		case "=":
 			// toggle debugging colours
 			err = dbg.vcs.TV.SetFeature(television.ReqIncScale)

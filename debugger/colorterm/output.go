@@ -1,17 +1,18 @@
 package colorterm
 
 import (
+	"fmt"
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/debugger/ui"
 )
 
 // UserPrint is the top level output function
-func (ct *ColorTerminal) UserPrint(pp ui.PrintProfile, s string, a ...interface{}) {
-	if pp != ui.Input {
+func (ct *ColorTerminal) UserPrint(profile ui.PrintProfile, s string, a ...interface{}) {
+	if profile != ui.Input {
 		ct.Print("\r")
 	}
 
-	switch pp {
+	switch profile {
 	case ui.CPUStep:
 		ct.Print(ansi.PenColor["yellow"])
 	case ui.VideoStep:
@@ -22,10 +23,7 @@ func (ct *ColorTerminal) UserPrint(pp ui.PrintProfile, s string, a ...interface{
 		ct.Print(ansi.PenColor["blue"])
 	case ui.Error:
 		ct.Print(ansi.PenColor["red"])
-		ct.Print(ansi.PenColor["bold"])
 		ct.Print("* ")
-		ct.Print(ansi.NormalPen)
-		ct.Print(ansi.PenColor["red"])
 	case ui.Help:
 		ct.Print(ansi.DimPens["white"])
 		ct.Print("  ")
@@ -37,11 +35,15 @@ func (ct *ColorTerminal) UserPrint(pp ui.PrintProfile, s string, a ...interface{
 		ct.Print(ansi.PenStyles["bold"])
 	}
 
-	ct.Print(s, a...)
+	if len(a) > 0 {
+		ct.Print(fmt.Sprintf(s, a...))
+	} else {
+		ct.Print(s)
+	}
 	ct.Print(ansi.NormalPen)
 
 	// add a newline if print profile is anything other than prompt
-	if pp != ui.Prompt && pp != ui.Input {
+	if profile != ui.Prompt && profile != ui.Input {
 		ct.Print("\n")
 	}
 }

@@ -1,5 +1,7 @@
 package television
 
+import "gopher2600/debugger/monitor"
+
 // StateReq is used to identify which television attribute is being asked
 // with the GetState() function
 type StateReq int
@@ -41,19 +43,19 @@ const (
 
 // list of valid feature requests
 const (
-	ReqSetVisibility       FeatureReq = iota // bool, optional bool (update on show)
-	ReqSetVisibilityStable                   // none
-	ReqSetAllowDebugging                     // bool
-	ReqSetPause                              // bool
-	ReqSetMasking                            // bool
-	ReqToggleMasking                         // none
-	ReqSetAltColors                          // bool
-	ReqToggleAltColors                       // none
-	ReqSetMetaSignals                        // bool
-	ReqToggleMetaSignals                     // none
-	ReqSetScale                              // float
-	ReqIncScale                              // none
-	ReqDecScale                              // none
+	ReqSetVisibility         FeatureReq = iota // bool, optional bool (update on show)
+	ReqSetVisibilityStable                     // none
+	ReqSetAllowDebugging                       // bool
+	ReqSetPause                                // bool
+	ReqSetMasking                              // bool
+	ReqToggleMasking                           // none
+	ReqSetAltColors                            // bool
+	ReqToggleAltColors                         // none
+	ReqSetShowSystemState                      // bool
+	ReqToggleShowSystemState                   // none
+	ReqSetScale                                // float
+	ReqIncScale                                // none
+	ReqDecScale                                // none
 )
 
 // SignalAttributes represents the data sent to the television
@@ -67,15 +69,6 @@ type SignalAttributes struct {
 	AltPixel ColorSignal
 }
 
-// MetaSignalAttributes represents any additional emulator data sent to the
-// "television" (in inverted commas). not all television implementations need
-// to do anything useful with this information.
-type MetaSignalAttributes struct {
-	Hmove bool
-	Rsync bool
-	Wsync bool
-}
-
 // Television defines the operations that can be performed on the television
 type Television interface {
 	MachineInfoTerse() string
@@ -83,10 +76,11 @@ type Television interface {
 
 	Reset() error
 	Signal(SignalAttributes) error
-	MetaSignal(MetaSignalAttributes) error
 
 	GetState(StateReq) (interface{}, error)
 	GetMetaState(MetaStateReq) (string, error)
 	RegisterCallback(CallbackReq, chan func(), func()) error
 	SetFeature(request FeatureReq, args ...interface{}) error
+
+	SystemStateRecord(monitor.SystemState) error
 }

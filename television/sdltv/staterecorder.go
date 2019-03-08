@@ -1,22 +1,19 @@
 package sdltv
 
 import (
-	"gopher2600/television"
+	"gopher2600/debugger/monitor"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// with a bit of work this metaSignalOverlay struct can be be adapted to
-// effectively display many different types of meta signal
-
-type metasignalOverlay struct {
+type systemStateOverlay struct {
 	scr     *screen
 	pixels  []byte
 	texture *sdl.Texture
 }
 
-func newMetasignalOverlay(scr *screen) (*metasignalOverlay, error) {
-	overlay := new(metasignalOverlay)
+func newSystemStateOverlay(scr *screen) (*systemStateOverlay, error) {
+	overlay := new(systemStateOverlay)
 	overlay.scr = scr
 
 	// our acutal screen data
@@ -33,14 +30,14 @@ func newMetasignalOverlay(scr *screen) (*metasignalOverlay, error) {
 	return overlay, nil
 }
 
-func (overlay *metasignalOverlay) setPixel(attr television.MetaSignalAttributes) {
+func (overlay *systemStateOverlay) setPixel(attr monitor.SystemState) {
 	i := (overlay.scr.lastY*overlay.scr.maxWidth + overlay.scr.lastX) * scrDepth
 
 	if i >= int32(len(overlay.pixels)) {
 		return
 	}
 
-	// work meta-signal information into an overlay
+	// work SystemState information into an overlay
 
 	var r, g, b, a byte
 
@@ -71,13 +68,13 @@ func (overlay *metasignalOverlay) setPixel(attr television.MetaSignalAttributes)
 	}
 }
 
-func (overlay *metasignalOverlay) clearPixels() {
+func (overlay *systemStateOverlay) clearPixels() {
 	for i := 0; i < len(overlay.pixels); i++ {
 		overlay.pixels[i] = 0
 	}
 }
 
-func (overlay *metasignalOverlay) update() error {
+func (overlay *systemStateOverlay) update() error {
 	err := overlay.texture.Update(nil, overlay.pixels, int(overlay.scr.maxWidth*scrDepth))
 	if err != nil {
 		return err
@@ -85,19 +82,19 @@ func (overlay *metasignalOverlay) update() error {
 	return nil
 }
 
-// MetaSignal recieves (and processes) additional emulator information from the emulator
-func (tv *SDLTV) MetaSignal(attr television.MetaSignalAttributes) error {
+// SystemStateRecord recieves (and processes) additional emulator information from the emulator
+func (tv *SDLTV) SystemStateRecord(attr monitor.SystemState) error {
 	// don't do anything if debugging is not enabled
 	if !tv.allowDebugging {
 		return nil
 	}
 
-	err := tv.HeadlessTV.MetaSignal(attr)
+	err := tv.HeadlessTV.SystemStateRecord(attr)
 	if err != nil {
 		return err
 	}
 
-	tv.scr.metasignals.setPixel(attr)
+	tv.scr.systemState.setPixel(attr)
 
 	return nil
 }

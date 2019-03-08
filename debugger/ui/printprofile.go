@@ -5,7 +5,7 @@ type PrintProfile int
 
 // enumeration of print profile types
 const (
-	// the following profiles ar generated as a result of the emulation
+	// the following profiles are generated as a result of the emulation
 	CPUStep PrintProfile = iota
 	VideoStep
 	MachineInfo
