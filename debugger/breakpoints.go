@@ -195,7 +195,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	tok, present := tokens.Get()
 	for present {
 		// if token is a number...
-		val, err := strconv.ParseUint(tok, 0, 16)
+		val, err := strconv.ParseInt(tok, 0, 16)
 		if err == nil {
 			if andBreaks == true {
 				if len(newBreaks) == 0 {

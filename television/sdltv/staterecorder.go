@@ -2,22 +2,50 @@ package sdltv
 
 import (
 	"gopher2600/debugger/monitor"
+	"gopher2600/errors"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type rgba struct {
+	r byte
+	g byte
+	b byte
+	a byte
+}
+
 type systemStateOverlay struct {
-	scr     *screen
+	scr *screen
+
 	pixels  []byte
 	texture *sdl.Texture
+
+	colors map[string]rgba
+	labels [][]string
+}
+
+var definedColors = []rgba{
+	rgba{r: 255, g: 0, b: 0, a: 100},
+	rgba{r: 0, g: 0, b: 255, a: 100},
+	rgba{r: 0, g: 255, b: 0, a: 100},
+	rgba{r: 255, g: 0, b: 255, a: 100},
+	rgba{r: 255, g: 255, b: 0, a: 100},
+	rgba{r: 0, g: 255, b: 255, a: 100},
 }
 
 func newSystemStateOverlay(scr *screen) (*systemStateOverlay, error) {
 	overlay := new(systemStateOverlay)
 	overlay.scr = scr
+	overlay.colors = make(map[string]rgba)
 
 	// our acutal screen data
 	overlay.pixels = make([]byte, overlay.scr.maxWidth*overlay.scr.maxHeight*scrDepth)
+
+	// labels
+	overlay.labels = make([][]string, overlay.scr.maxHeight)
+	for i := 0; i < len(overlay.labels); i++ {
+		overlay.labels[i] = make([]string, overlay.scr.maxWidth)
+	}
 
 	var err error
 
@@ -30,42 +58,42 @@ func newSystemStateOverlay(scr *screen) (*systemStateOverlay, error) {
 	return overlay, nil
 }
 
-func (overlay *systemStateOverlay) setPixel(attr monitor.SystemState) {
+func (overlay *systemStateOverlay) setPixel(attr monitor.SystemState) error {
 	i := (overlay.scr.lastY*overlay.scr.maxWidth + overlay.scr.lastX) * scrDepth
 
 	if i >= int32(len(overlay.pixels)) {
-		return
+		return nil
 	}
 
-	// work SystemState information into an overlay
-
-	var r, g, b, a byte
-
-	if attr.Wsync {
-		r = 0
-		g = 0
-		b = 255
-		a = 100
-	}
-	if attr.Hmove {
-		r = 0
-		g = 255
-		b = 0
-		a = 100
-	}
-	if attr.Rsync {
-		r = 255
-		g = 0
-		b = 0
-		a = 100
+	// label required...
+	if attr.Label == "" {
+		errors.NewGopherError(errors.CannotRecordState, "recording of system state requires a label")
 	}
 
-	if a > 0 {
-		overlay.pixels[i] = r   // red
-		overlay.pixels[i+1] = g // green
-		overlay.pixels[i+2] = b // blue
-		overlay.pixels[i+3] = a // alpha
+	// ... however, if a group has been supplied, use that to assign color
+	var key string
+	if attr.Group != "" {
+		key = attr.Group
+	} else {
+		key = attr.Label
 	}
+
+	col, ok := overlay.colors[key]
+	if !ok {
+		overlay.colors[key] = definedColors[(len(overlay.colors)+1)%len(definedColors)]
+		col = overlay.colors[key]
+	}
+
+	if col.a > 0 {
+		overlay.pixels[i] = col.r   // red
+		overlay.pixels[i+1] = col.g // green
+		overlay.pixels[i+2] = col.b // blue
+		overlay.pixels[i+3] = col.a // alpha
+	}
+
+	overlay.labels[overlay.scr.lastY][overlay.scr.lastX] = attr.Label
+
+	return nil
 }
 
 func (overlay *systemStateOverlay) clearPixels() {
@@ -94,7 +122,5 @@ func (tv *SDLTV) SystemStateRecord(attr monitor.SystemState) error {
 		return err
 	}
 
-	tv.scr.systemState.setPixel(attr)
-
-	return nil
+	return tv.scr.systemState.setPixel(attr)
 }

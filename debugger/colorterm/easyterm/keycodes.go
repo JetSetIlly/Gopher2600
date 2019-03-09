@@ -13,6 +13,8 @@ const (
 const (
 	EscDelete = 51
 	EscCursor = 91
+	EscHome   = 72
+	EscEnd    = 70
 )
 
 // list of ASCII code for characters that can follow EscCursor

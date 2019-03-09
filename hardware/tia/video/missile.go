@@ -75,7 +75,7 @@ func (ms missileSprite) MachineInfo() string {
 	s.WriteString("   trigger list: ")
 	if len(ms.triggerList) > 0 {
 		for i := 0; i < len(ms.triggerList); i++ {
-			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*(polycounter.MaxPhase+1))+ms.hmovedHorizPos))
+			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*(polycounter.MaxPhase+1))+ms.currentPixel))
 		}
 		s.WriteString(fmt.Sprintf(" %v\n", ms.triggerList))
 	} else {

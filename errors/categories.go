@@ -12,6 +12,7 @@ const (
 	ScriptFileError
 	ScriptRunError
 	InvalidTarget
+	CannotRecordState
 
 	// Regression
 	RegressionEntryExists

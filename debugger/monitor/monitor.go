@@ -7,9 +7,8 @@ import (
 
 // SystemState represents the current state of the emulation
 type SystemState struct {
-	Hmove bool
-	Rsync bool
-	Wsync bool
+	Label string
+	Group string
 }
 
 // SystemStateRecorder implementations will take note of the system state as
@@ -30,28 +29,69 @@ type SystemMonitor struct {
 // Check should be called every video cycle to record the current state of the
 // emulation/system
 func (mon *SystemMonitor) Check() error {
+	var err error
 	meta := SystemState{}
-	meta.Wsync = !mon.MC.RdyFlg
+
+	if !mon.MC.RdyFlg {
+		meta.Label = "WSYNC"
+		err = mon.Rec.SystemStateRecord(meta)
+		if err != nil {
+			panic(err)
+		}
+		return nil
+	}
 
 	if mon.Mem.LastAddressAccessWrite {
 		switch mon.Mem.LastAddressAccessed {
 		case 0x03: // RSYNC
 			if mon.lastMonitoredMemAddress != 0x03 {
-				meta.Rsync = true
+				meta.Label = "RSYNC"
 			}
 		case 0x2a: // HMOVE
 			if mon.lastMonitoredMemAddress != 0x2a {
-				meta.Hmove = true
+				meta.Label = "HMOVE"
+			}
+		case 0x10:
+			if mon.lastMonitoredMemAddress != 0x10 {
+				meta.Label = "RESP0"
+				meta.Group = "sprite reset"
+			}
+		case 0x11:
+			if mon.lastMonitoredMemAddress != 0x11 {
+				meta.Label = "RESP1"
+				meta.Group = "sprite reset"
+			}
+		case 0x12:
+			if mon.lastMonitoredMemAddress != 0x12 {
+				meta.Label = "RESM0"
+				meta.Group = "sprite reset"
+			}
+		case 0x13:
+			if mon.lastMonitoredMemAddress != 0x13 {
+				meta.Label = "RESM1"
+				meta.Group = "sprite reset"
+			}
+		case 0x14:
+			if mon.lastMonitoredMemAddress != 0x14 {
+				meta.Label = "RESBL"
+				meta.Group = "sprite reset"
+			}
+		case 0x2b:
+			if mon.lastMonitoredMemAddress != 0x2b {
+				meta.Label = "HMCLR"
+			}
+		}
+
+		if meta.Label != "" {
+			err = mon.Rec.SystemStateRecord(meta)
+			if err != nil {
+				panic(err)
 			}
 		}
 	}
-	mon.lastMonitoredMemAddress = mon.Mem.LastAddressAccessed
 
-	// send metasignal information
-	err := mon.Rec.SystemStateRecord(meta)
-	if err != nil {
-		panic(err)
-	}
+	// note address
+	mon.lastMonitoredMemAddress = mon.Mem.LastAddressAccessed
 
 	return nil
 }

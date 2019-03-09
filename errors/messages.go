@@ -11,6 +11,7 @@ var messages = map[Errno]string{
 	ScriptFileError:       "script error: %s",
 	ScriptRunError:        "script error: use of '%s' is not allowed in scripts [%s::%d]",
 	InvalidTarget:         "invalid target (%s)",
+	CannotRecordState:     "cannot record state: %s",
 
 	// Regression
 	RegressionEntryExists:       "entry exists (%s)",

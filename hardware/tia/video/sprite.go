@@ -25,10 +25,10 @@ type sprite struct {
 	position polycounter.Polycounter
 
 	// horizontal position of the sprite - may be affected by HMOVE
-	horizPos int
+	resetPixel int
 
 	// horizontal position after hmove has been applied
-	hmovedHorizPos int
+	currentPixel int
 
 	// the draw signal controls which "bit" of the sprite is to be drawn next.
 	// generally, the draw signal is activated when the position polycounter
@@ -39,10 +39,8 @@ type sprite struct {
 	graphicsScanOff     int
 
 	// the amount of horizontal movement for the sprite
-	// -- as set by the 6502 - normalised into the 0 to 15 range
-	// -- for presentation purposes the value of this variable is inversed so
-	// that positive numbers indicate movement to the right and negative
-	// numbers indicate movement to the left.
+	// -- as set by the 6502 - written into the HMP0/P1/M0/M1/BL register
+	// -- normalised into the 0 to 15 range
 	horizMovement int
 	// -- whether HMOVE is still affecting this sprite
 	horizMovementLatch bool
@@ -84,8 +82,10 @@ func (sp sprite) MachineInfoTerse() string {
 	s.WriteString(sp.label)
 	s.WriteString(": ")
 	s.WriteString(sp.position.String())
-	s.WriteString(fmt.Sprintf(" pix=%d", sp.horizPos))
-	s.WriteString(fmt.Sprintf(" {hm=%d}", sp.horizMovement-8))
+	s.WriteString(fmt.Sprintf(" pos=%d", sp.currentPixel))
+	if sp.horizMovementLatch {
+		s.WriteString("*")
+	}
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -105,6 +105,7 @@ func (sp sprite) MachineInfo() string {
 	s := strings.Builder{}
 
 	s.WriteString(fmt.Sprintf("%s:\n", sp.label))
+	s.WriteString(fmt.Sprintf("   polycounter: %s\n", sp.position))
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf("   drawing: %d\n", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -115,7 +116,6 @@ func (sp sprite) MachineInfo() string {
 	} else {
 		s.WriteString(fmt.Sprintf("   reset: %d cycles\n", sp.resetFuture.RemainingCycles))
 	}
-	s.WriteString(fmt.Sprintf("   reset pos: %s\n", sp.position))
 
 	// information about horizontal movement.
 	// - horizMovement value normalised and inverted so that positive numbers
@@ -127,8 +127,8 @@ func (sp sprite) MachineInfo() string {
 	// circuitry interacts with, bit-by-bit - see resolveHorizMovement()
 	s.WriteString(fmt.Sprintf("   hmove: %d [%#02x] %04b\n", -sp.horizMovement+8, (sp.horizMovement<<4)^0x80, sp.horizMovement))
 
-	s.WriteString(fmt.Sprintf("   pixel: %d\n", sp.horizPos))
-	s.WriteString(fmt.Sprintf("   adj pixel: %d", sp.hmovedHorizPos))
+	s.WriteString(fmt.Sprintf("   reset pixel: %d\n", sp.resetPixel))
+	s.WriteString(fmt.Sprintf("   current pixel: %d", sp.currentPixel))
 	if sp.horizMovementLatch {
 		s.WriteString(" *\n")
 	} else {
@@ -156,8 +156,8 @@ func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
 	// note reset position of sprite, in pixels
-	sp.horizPos = sp.colorClock.Pixel()
-	sp.hmovedHorizPos = sp.horizPos
+	sp.resetPixel = sp.colorClock.Pixel()
+	sp.currentPixel = sp.resetPixel
 }
 
 func (sp *sprite) checkForGfxStart(triggerList []int) bool {
@@ -180,13 +180,13 @@ func (sp *sprite) PrepareForHMOVE(videoCycles int, delayClock *future.Group) {
 	sp.horizMovementLatch = true
 
 	// at beginning of hmove sequence, without knowing anything else, the final
-	// position of the sprite will be the reset position plus 8. the actual
+	// position of the sprite will be the current position plus 8. the actual
 	// value will be reduced depending on what happens during hmove ticking.
 	// factors that effect the final position:
 	//   o the value in the horizontal movement register (eg. HMP0)
 	//   o whether the ticking is occuring during the hblank period
 	// both these factors are considered in the tickSpritesForHMOVE() function
-	sp.hmovedHorizPos = sp.horizPos + 8
+	sp.currentPixel += 8
 }
 
 func (sp *sprite) resolveHorizMovement(count int) {
@@ -230,9 +230,9 @@ func (sp *sprite) resolveHorizMovement(count int) {
 			}
 
 			// adjust position information
-			sp.hmovedHorizPos--
-			if sp.hmovedHorizPos < 0 {
-				sp.hmovedHorizPos = 159
+			sp.currentPixel--
+			if sp.currentPixel < 0 {
+				sp.currentPixel = 159
 			}
 
 			// perform an additional tick of the sprite (different sprite types

@@ -200,6 +200,14 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 
 						// eat the third character in the sequence
 						readRune = <-ct.reader
+
+					case easyterm.EscHome:
+						ct.Print(ansi.CursorMove(-cursorPos))
+						cursorPos = 0
+
+					case easyterm.EscEnd:
+						ct.Print(ansi.CursorMove(inputLen - cursorPos))
+						cursorPos = inputLen
 					}
 				}
 

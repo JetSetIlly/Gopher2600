@@ -63,7 +63,7 @@ func (ps playerSprite) visualPixel() string {
 	// visual pixel is always one pixel later than the hmoved horizontal
 	// reset position; or two pixels if the size of the player sprite is double
 	// or quadruple sized.
-	visPix := ps.hmovedHorizPos + 1
+	visPix := ps.currentPixel + 1
 	if ps.size == 0x05 || ps.size == 0x07 {
 		visPix++
 	}
@@ -107,7 +107,7 @@ func (ps playerSprite) realPixel() string {
 		if gfxData&m == m {
 			// when we've found it, move visual pixel the appropriate number of
 			// places to the right (by adding multiplies of pixelWidth)
-			visPix = ps.hmovedHorizPos + (i * pixelWidth)
+			visPix = ps.currentPixel + (i * pixelWidth)
 			break // for loop
 		}
 		m >>= 1
@@ -135,11 +135,11 @@ func (ps playerSprite) MachineInfoTerse() string {
 func (ps playerSprite) MachineInfo() string {
 	s := strings.Builder{}
 
+	s.WriteString(fmt.Sprintf("   visual pixel: %s", ps.visualPixel()))
 	if ps.horizMovementLatch {
-		// if HMOVE is still working then we not sure what the pixel is
-		s.WriteString(fmt.Sprintf("   visual pixel: ***\n"))
+		s.WriteString(fmt.Sprintf(" *\n"))
 	} else {
-		s.WriteString(fmt.Sprintf("   visual pixel: %s\n", ps.visualPixel()))
+		s.WriteString(fmt.Sprintf("\n"))
 	}
 	s.WriteString(fmt.Sprintf("   color: %d\n", ps.color))
 	s.WriteString(fmt.Sprintf("   size: %03b [", ps.size))
@@ -167,7 +167,7 @@ func (ps playerSprite) MachineInfo() string {
 		for i := 0; i < len(ps.triggerList); i++ {
 			// additional pixels when the graphics scan is triggered (NOT the
 			// visual pixel)
-			s.WriteString(fmt.Sprintf("%d ", (ps.triggerList[i]*(polycounter.MaxPhase+1))+ps.hmovedHorizPos))
+			s.WriteString(fmt.Sprintf("%d ", (ps.triggerList[i]*(polycounter.MaxPhase+1))+ps.currentPixel))
 		}
 		s.WriteString(fmt.Sprintf(" %v\n", ps.triggerList))
 	} else {

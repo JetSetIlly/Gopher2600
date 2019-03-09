@@ -33,28 +33,7 @@ func (tv *SDLTV) guiLoop() {
 					tv.onMouseButtonLeft.dispatch()
 
 				case sdl.BUTTON_RIGHT:
-					tv.crit.guiMutex.Lock()
-					sx, sy := tv.scr.renderer.GetScale()
-
-					// convert X pixel value to horizpos equivalent
-					// the opposite of pixelX() and also the scalining applied
-					// by the SDL renderer
-					if tv.scr.unmasked {
-						tv.crit.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
-					} else {
-						tv.crit.lastMouseHorizPos = int(float32(ev.X) / sx)
-					}
-
-					// convert Y pixel value to scanline equivalent
-					// the opposite of pixelY() and also the scalining applied
-					// by the SDL renderer
-					if tv.scr.unmasked {
-						tv.crit.lastMouseScanline = int(float32(ev.Y) / sy)
-					} else {
-						tv.crit.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
-					}
-					tv.crit.guiMutex.Unlock()
-
+					tv.noteMouse(ev)
 					tv.onMouseButtonRight.dispatch()
 				}
 			}
@@ -68,4 +47,30 @@ func (tv *SDLTV) guiLoop() {
 		default:
 		}
 	}
+}
+
+func (tv *SDLTV) noteMouse(ev *sdl.MouseButtonEvent) {
+	tv.crit.guiMutex.Lock()
+
+	sx, sy := tv.scr.renderer.GetScale()
+
+	// convert X pixel value to horizpos equivalent
+	// the opposite of pixelX() and also the scalining applied
+	// by the SDL renderer
+	if tv.scr.unmasked {
+		tv.crit.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
+	} else {
+		tv.crit.lastMouseHorizPos = int(float32(ev.X) / sx)
+	}
+
+	// convert Y pixel value to scanline equivalent
+	// the opposite of pixelY() and also the scalining applied
+	// by the SDL renderer
+	if tv.scr.unmasked {
+		tv.crit.lastMouseScanline = int(float32(ev.Y) / sy)
+	} else {
+		tv.crit.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
+	}
+
+	tv.crit.guiMutex.Unlock()
 }
