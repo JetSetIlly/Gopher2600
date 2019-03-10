@@ -119,12 +119,12 @@ func (vd *Video) TickSprites() {
 }
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
-func (vd *Video) PrepareSpritesForHMOVE(videoCycles int) {
-	vd.Player0.PrepareForHMOVE(videoCycles, &vd.OnFutureColorClock)
-	vd.Player1.PrepareForHMOVE(videoCycles, &vd.OnFutureColorClock)
-	vd.Missile0.PrepareForHMOVE(videoCycles, &vd.OnFutureColorClock)
-	vd.Missile1.PrepareForHMOVE(videoCycles, &vd.OnFutureColorClock)
-	vd.Ball.PrepareForHMOVE(videoCycles, &vd.OnFutureColorClock)
+func (vd *Video) PrepareSpritesForHMOVE() {
+	vd.Player0.PrepareForHMOVE()
+	vd.Player1.PrepareForHMOVE()
+	vd.Missile0.PrepareForHMOVE()
+	vd.Missile1.PrepareForHMOVE()
+	vd.Ball.PrepareForHMOVE()
 }
 
 // ResolveHorizMovement is only called when HMOVE is active
@@ -134,6 +134,15 @@ func (vd *Video) ResolveHorizMovement(count int) {
 	vd.Missile0.resolveHorizMovement(count)
 	vd.Missile1.resolveHorizMovement(count)
 	vd.Ball.resolveHorizMovement(count)
+}
+
+// ForceHMOVE is an ungodly hack
+func (vd *Video) ForceHMOVE(adjustment int) {
+	vd.Player0.forceHMOVE(adjustment)
+	vd.Player1.forceHMOVE(adjustment)
+	vd.Missile0.forceHMOVE(adjustment)
+	vd.Missile1.forceHMOVE(adjustment)
+	vd.Ball.forceHMOVE(adjustment)
 }
 
 // Pixel returns the color of the pixel at the current time. it will default

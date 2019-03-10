@@ -19,9 +19,6 @@ type hmove struct {
 	// the colorClock cycles back to zero. it is used to control whether the
 	// hblank period should be extended.
 	latch bool
-
-	// justset is true for a single videocycle
-	justset bool
 }
 
 func newHmove(colorClock *polycounter.Polycounter) *hmove {
@@ -64,7 +61,6 @@ func (hm *hmove) set() {
 	hm.latch = true
 	hm.count = 15
 	hm.phase = hm.colorClock.Phase
-	hm.justset = true
 }
 
 // unset send the horizontal movement sequence
@@ -77,16 +73,9 @@ func (hm *hmove) isset() bool {
 	return hm.latch
 }
 
-// isjustset checks to see if the horiztonal movement sequence has just started
-func (hm *hmove) isjustset() bool {
-	return hm.count == 15 &&
-		((hm.phase < polycounter.MaxPhase && hm.phase+1 == hm.colorClock.Phase) ||
-			(hm.phase == polycounter.MaxPhase && 0 == hm.colorClock.Phase))
-}
-
 // tick returns the current hmove ripple counter and whether a tick has occurred
 func (hm *hmove) tick() (int, bool) {
-	// if we've reached a count of -1 then no tick will ever occur
+	// if we've reached a count of -1 then no tick will occur
 	if hm.count == -1 {
 		return -1, false
 	}

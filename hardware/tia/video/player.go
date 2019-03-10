@@ -186,9 +186,16 @@ func (ps *playerSprite) tick() {
 	// position
 	if ps.checkForGfxStart(ps.triggerList) {
 		// this is a wierd one. if a reset has just occured then we delay the
-		// start of the drawing of the sprite (concept shared with missile
-		// sprite)
-		if ps.resetFuture != nil && !ps.resetTriggered {
+		// start of the drawing of the sprite, unless the position of the
+		// sprite has been moved with HMOVE.
+		//
+		// the first part of the condition was tuned with the "player testcard"
+		// roms. the additional condition regarding the effects of HMOVE, was
+		// tuned after seeing errors in Mott's test code, "Games that do bad
+		// things to HMOVE...". not at all sure this is an accurate solution.
+		//
+		// (concept shared with missile sprite)
+		if ps.resetFuture != nil && !ps.resetTriggered && ps.resetPixel == ps.currentPixel {
 			ps.deferDrawStart = true
 		} else {
 			ps.startDrawing()

@@ -95,9 +95,11 @@ func (ms *missileSprite) tick() {
 	// position
 	if ms.checkForGfxStart(ms.triggerList) {
 		// this is a wierd one. if a reset has just occured then we delay the
-		// start of the drawing of the sprite (concept shared with player
-		// sprite)
-		if ms.resetFuture != nil && !ms.resetTriggered {
+		// start of the drawing of the sprite, unless the position of the
+		// sprite has been moved with HMOVE.
+		//
+		// (concept shared with player sprite)
+		if ms.resetFuture != nil && !ms.resetTriggered && ms.resetPixel == ms.currentPixel {
 			ms.deferDrawStart = true
 		} else {
 			ms.startDrawing()
@@ -111,7 +113,9 @@ func (ms *missileSprite) tick() {
 			ms.tickGraphicsScan()
 		} else {
 			// special conditions based on size
-			// TODO: investigate special condition
+			//
+			// note sure about this logic at all. this is what was required for
+			// the "missile testcards" to work correctly.
 			switch ms.size {
 			case 0x0:
 				ms.tickGraphicsScan()

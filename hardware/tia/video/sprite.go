@@ -175,7 +175,22 @@ func (sp *sprite) checkForGfxStart(triggerList []int) bool {
 	return false
 }
 
-func (sp *sprite) PrepareForHMOVE(videoCycles int, delayClock *future.Group) {
+func (sp *sprite) forceHMOVE(adjustment int) {
+	hm := (sp.horizMovement - (15 - adjustment))
+	for i := 0; i < hm; i++ {
+		// adjust position information
+		sp.currentPixel--
+		if sp.currentPixel < 0 {
+			sp.currentPixel = 159
+		}
+
+		// perform an additional tick of the sprite (different sprite types
+		// have different tick logic)
+		sp.spriteTick()
+	}
+}
+
+func (sp *sprite) PrepareForHMOVE() {
 	// start horizontal movment of this sprite
 	sp.horizMovementLatch = true
 

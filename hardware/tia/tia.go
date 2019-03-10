@@ -126,8 +126,15 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.rsync.set()
 		return
 	case "HMOVE":
-		tia.Video.PrepareSpritesForHMOVE(tia.videoCycles)
-		tia.Hmove.set()
+		if tia.colorClock.Count < 15 {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.Hmove.set()
+		} else if tia.colorClock.Count > 39 && tia.colorClock.Count < 55 {
+			tia.Video.ForceHMOVE(-39 + tia.colorClock.Count)
+		} else if tia.colorClock.Count >= 54 {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.Hmove.set()
+		}
 		return
 	}
 
@@ -155,26 +162,25 @@ func (tia *TIA) StepVideoCycle() bool {
 	cburst := false
 
 	// color clock
-	if tia.colorClock.MatchEnd(16) && !tia.Hmove.isset() {
-		// HBLANK off (early)
-		tia.hblank = false
-	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isset() {
-		// HBLANK off (late)
-		tia.hblank = false
-	} else if tia.colorClock.MatchEnd(4) {
-		// TODO: TIA_HW doesn't say the turning hsync on is "delayed by 4 CLKs"
-		// should we use MatchBeginning(4) instead?
+	if tia.colorClock.MatchEnd(4) {
 		tia.hsync = true
 	} else if tia.colorClock.MatchEnd(8) {
 		tia.hsync = false
 	} else if tia.colorClock.MatchEnd(12) {
 		cburst = true
-	}
-
-	// motion clock is an out-of-phase color clock. note that the motion clock
-	// does not care about HMOVE.
-	if tia.colorClock.MatchEnd(15) {
+	} else if tia.colorClock.MatchEnd(15) {
 		tia.motionClock = true
+	} else if tia.colorClock.MatchEnd(16) {
+		if !tia.Hmove.isset() {
+			// HBLANK off (early)
+			tia.hblank = false
+		}
+		tia.Hmove.count = -1
+	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isset() {
+		// HBLANK off (late)
+		tia.hblank = false
+	} else if tia.colorClock.MatchEnd(54) {
+		tia.Hmove.unset()
 	} else if tia.colorClock.MatchEnd(56) {
 		tia.motionClock = false
 	}
@@ -191,7 +197,6 @@ func (tia *TIA) StepVideoCycle() bool {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
-		tia.Hmove.unset()
 		tia.videoCycles = 0
 		tia.cpuCycles = 0
 		// not sure if we need to reset rsync
