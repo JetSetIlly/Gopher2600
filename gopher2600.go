@@ -8,10 +8,11 @@ import (
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
+	"gopher2600/gui"
+	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/regression"
 	"gopher2600/television"
-	"gopher2600/television/sdltv"
 	"io"
 	"os"
 	"path"
@@ -256,12 +257,12 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	var err error
 
 	if display {
-		tv, err = sdltv.NewSDLTV(tvMode, scaling)
+		tv, err = sdl.NewGUI(tvMode, scaling)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 
-		err = tv.SetFeature(television.ReqSetVisibility, true)
+		err = tv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
@@ -296,7 +297,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// get starting frame number
-	tvState, err := vcs.TV.GetState(television.ReqFramenum)
+	tvState, err := tv.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
@@ -317,7 +318,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	go func() {
 		// force a two second leadtime to allow framerate to settle down
 		time.AfterFunc(2*time.Second, func() {
-			tvState, err = vcs.TV.GetState(television.ReqFramenum)
+			tvState, err = tv.GetState(television.ReqFramenum)
 			if err != nil {
 				panic(err)
 			}
@@ -366,7 +367,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 }
 
 func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
-	tv, err := sdltv.NewSDLTV(tvMode, scaling)
+	tv, err := sdl.NewGUI(tvMode, scaling)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
@@ -386,7 +387,7 @@ func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 	running.Store(0)
 
 	// register quit function
-	err = tv.RegisterCallback(television.ReqOnWindowClose, nil, func() {
+	err = tv.RegisterCallback(gui.ReqOnWindowClose, nil, func() {
 		running.Store(-1)
 	})
 	if err != nil {
@@ -394,12 +395,12 @@ func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 	}
 
 	if stable {
-		err = tv.SetFeature(television.ReqSetVisibilityStable, true)
+		err = tv.SetFeature(gui.ReqSetVisibilityStable, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
-		err = tv.SetFeature(television.ReqSetVisibility, true)
+		err = tv.SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}

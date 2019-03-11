@@ -7,12 +7,12 @@ import (
 	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
+	"gopher2600/gui"
+	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
-	"gopher2600/television"
-	"gopher2600/television/sdltv"
 	"os"
 	"os/signal"
 	"strings"
@@ -25,6 +25,7 @@ const defaultOnStep = "LAST"
 type Debugger struct {
 	vcs    *hardware.VCS
 	disasm *disassembly.Disassembly
+	tv     gui.GUI
 
 	// control of debug/input loop:
 	// 	o running - whether the debugger is to continue with the debugging loop
@@ -118,14 +119,14 @@ func NewDebugger() (*Debugger, error) {
 	dbg.ui = new(ui.PlainTerminal)
 
 	// prepare hardware
-	tv, err := sdltv.NewSDLTV("NTSC", 2.0)
+	dbg.tv, err = sdl.NewGUI("NTSC", 2.0)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing television: %s", err)
 	}
-	tv.SetFeature(television.ReqSetAllowDebugging, true)
+	dbg.tv.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(tv)
+	dbg.vcs, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
@@ -375,7 +376,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		// enter halt state
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
-			err = dbg.vcs.TV.SetFeature(television.ReqSetPause, true)
+			err = dbg.tv.SetFeature(gui.ReqSetPause, true)
 			if err != nil {
 				return err
 			}
@@ -436,7 +437,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
-				err = dbg.vcs.TV.SetFeature(television.ReqSetPause, false)
+				err = dbg.tv.SetFeature(gui.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

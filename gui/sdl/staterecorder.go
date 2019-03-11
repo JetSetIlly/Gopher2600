@@ -1,4 +1,4 @@
-package sdltv
+package sdl
 
 import (
 	"gopher2600/debugger/monitor"
@@ -111,7 +111,7 @@ func (overlay *systemStateOverlay) update() error {
 }
 
 // SystemStateRecord recieves (and processes) additional emulator information from the emulator
-func (tv *SDLTV) SystemStateRecord(attr monitor.SystemState) error {
+func (tv *GUI) SystemStateRecord(attr monitor.SystemState) error {
 	// don't do anything if debugging is not enabled
 	if !tv.allowDebugging {
 		return nil

@@ -1,4 +1,4 @@
-package sdltv
+package sdl
 
 import (
 	"gopher2600/television"
@@ -7,8 +7,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SDLTV is the SDL implementation of a simple television
-type SDLTV struct {
+// GUI is the SDL implementation of a the gui/television
+type GUI struct {
 	television.HeadlessTV
 
 	// much of the sdl magic happens in the screen object
@@ -34,14 +34,14 @@ type SDLTV struct {
 
 	// guiLoop() runs in a different goroutine. "communication" between that
 	// routine and SDLTV must happen via this critical section structure
-	crit sdltvCriticalSection
+	crit criticalSection
 }
 
 // attributes in this struct should only ever be accessed with the mutex
 // locked. currently, only ever accessed via:
 //		* guiLoop()
 //		* GetMetaState()
-type sdltvCriticalSection struct {
+type criticalSection struct {
 	guiMutex sync.Mutex
 
 	// last keyboard event
@@ -52,11 +52,11 @@ type sdltvCriticalSection struct {
 	lastMouseScanline int
 }
 
-// NewSDLTV initiliases a new instance of an SDL based display for the VCS
-func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
+// NewGUI initiliases a new instance of an SDL based display for the VCS
+func NewGUI(tvType string, scale float32) (*GUI, error) {
 	var err error
 
-	tv := new(SDLTV)
+	tv := new(GUI)
 
 	tv.fpsLimiter, err = newFPSLimiter(50)
 	if err != nil {
@@ -111,7 +111,7 @@ func NewSDLTV(tvType string, scale float32) (*SDLTV, error) {
 }
 
 // update the gui so that it reflects changes to buffered data in the tv struct
-func (tv *SDLTV) update() error {
+func (tv *GUI) update() error {
 	tv.fpsLimiter.wait()
 
 	// abbrogate most of the updating to the screen instance
@@ -125,7 +125,7 @@ func (tv *SDLTV) update() error {
 	return nil
 }
 
-func (tv *SDLTV) setDebugging(allow bool) {
+func (tv *GUI) setDebugging(allow bool) {
 	tv.allowDebugging = allow
 	if allow {
 		tv.HookSetAltPixel = tv.scr.setAltPixel

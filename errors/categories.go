@@ -42,9 +42,12 @@ const (
 
 	// TV
 	UnknownTVRequest
-	SDLTV
 	ImageTV
 	DigestTV
+
+	// GUI
+	UnknownGUIRequest
+	SDLTV
 
 	// Peripherals
 	NoControllersFound

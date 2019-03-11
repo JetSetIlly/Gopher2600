@@ -41,9 +41,12 @@ var messages = map[Errno]string{
 
 	// TV
 	UnknownTVRequest: "TV does not support %v request",
-	SDLTV:            "SDLTV: %s",
 	ImageTV:          "ImageTV: %s",
 	DigestTV:         "DigestTV: %s",
+
+	// GUI
+	UnknownGUIRequest: "GUI does not support %v request",
+	SDLTV:             "SDLTV: %s",
 
 	// Peripherals
 	NoControllersFound: "no controllers found",

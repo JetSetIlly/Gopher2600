@@ -1,4 +1,4 @@
-package sdltv
+package sdl
 
 import (
 	"github.com/veandco/go-sdl2/sdl"
@@ -9,7 +9,7 @@ import (
 const scrDepth int32 = 4
 
 type screen struct {
-	tv *SDLTV
+	tv *GUI
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -68,7 +68,7 @@ type screen struct {
 	showSystemState bool
 }
 
-func newScreen(tv *SDLTV) (*screen, error) {
+func newScreen(tv *GUI) (*screen, error) {
 	var err error
 
 	scr := new(screen)

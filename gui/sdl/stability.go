@@ -1,8 +1,6 @@
-package sdltv
+package sdl
 
-import (
-	"gopher2600/television"
-)
+import "gopher2600/gui"
 
 // the purpose of the stability check is to prevent the window opening and then
 // resizing after the initialisation sequence of the ROM. by giving the ROM
@@ -87,7 +85,7 @@ func (stb *screenStabiliser) checkStableFrame() error {
 
 func (stb *screenStabiliser) resolveSetVisibilityStable() error {
 	if stb.count > stabilityThreshold {
-		err := stb.scr.tv.SetFeature(television.ReqSetVisibility, true, true)
+		err := stb.scr.tv.SetFeature(gui.ReqSetVisibility, true, true)
 		if err != nil {
 			return err
 		}

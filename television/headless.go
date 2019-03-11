@@ -280,26 +280,7 @@ func (tv *HeadlessTV) GetState(request StateReq) (interface{}, error) {
 		return tv.scanline, nil
 	case ReqHorizPos:
 		return tv.horizPos, nil
-	}
-}
-
-// GetMetaState returns the TVState object for the named state
-func (tv *HeadlessTV) GetMetaState(request MetaStateReq) (string, error) {
-	switch request {
-	default:
-		return "", errors.NewGopherError(errors.UnknownTVRequest, request)
 	case ReqTVSpec:
 		return tv.Spec.ID, nil
 	}
-}
-
-// RegisterCallback is used to hook custom functionality into the televsion
-func (tv *HeadlessTV) RegisterCallback(request CallbackReq, channel chan func(), callback func()) error {
-	// the HeadlessTV implementation does nothing currently
-	return errors.NewGopherError(errors.UnknownTVRequest, request)
-}
-
-// SetFeature is used to set a television attibute
-func (tv *HeadlessTV) SetFeature(request FeatureReq, args ...interface{}) error {
-	return errors.NewGopherError(errors.UnknownTVRequest, request)
 }

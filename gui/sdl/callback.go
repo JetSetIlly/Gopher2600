@@ -1,4 +1,4 @@
-package sdltv
+package sdl
 
 // callback is used to wrap functions supplied to RequestCallback()
 

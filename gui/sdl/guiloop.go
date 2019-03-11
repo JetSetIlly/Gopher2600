@@ -1,20 +1,20 @@
-package sdltv
+package sdl
 
 import (
-	"gopher2600/television"
+	"gopher2600/gui"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 // guiLoop listens for SDL events and is run concurrently
-func (tv *SDLTV) guiLoop() {
+func (tv *GUI) guiLoop() {
 	for {
 		ev := sdl.WaitEvent()
 		switch ev := ev.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
-			tv.SetFeature(television.ReqSetVisibility, false)
+			tv.SetFeature(gui.ReqSetVisibility, false)
 			tv.onWindowClose.dispatch()
 
 		case *sdl.KeyboardEvent:
@@ -49,7 +49,7 @@ func (tv *SDLTV) guiLoop() {
 	}
 }
 
-func (tv *SDLTV) noteMouse(ev *sdl.MouseButtonEvent) {
+func (tv *GUI) noteMouse(ev *sdl.MouseButtonEvent) {
 	tv.crit.guiMutex.Lock()
 
 	sx, sy := tv.scr.renderer.GetScale()

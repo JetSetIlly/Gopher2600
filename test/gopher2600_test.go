@@ -2,22 +2,22 @@ package main_test
 
 import (
 	"fmt"
+	"gopher2600/gui"
+	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/result"
-	"gopher2600/television"
-	"gopher2600/television/sdltv"
 	"testing"
 )
 
-func BenchmarkSDLTV(b *testing.B) {
+func BenchmarkSDL(b *testing.B) {
 	var err error
 
-	tv, err := sdltv.NewSDLTV("NTSC", 1.0)
+	tv, err := sdl.NewGUI("NTSC", 1.0)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}
 
-	err = tv.SetFeature(television.ReqSetVisibility, true)
+	err = tv.SetFeature(gui.ReqSetVisibility, true)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}

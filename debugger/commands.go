@@ -5,6 +5,7 @@ import (
 	"gopher2600/debugger/input"
 	"gopher2600/debugger/ui"
 	"gopher2600/errors"
+	"gopher2600/gui"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
 	"gopher2600/television"
@@ -462,7 +463,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		err = dbg.vcs.TV.Reset()
+		err = dbg.tv.Reset()
 		if err != nil {
 			return false, err
 		}
@@ -679,16 +680,16 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				info, err := dbg.vcs.TV.GetMetaState(television.ReqTVSpec)
+				info, err := dbg.tv.GetState(television.ReqTVSpec)
 				if err != nil {
 					return false, err
 				}
-				dbg.print(ui.MachineInfo, info)
+				dbg.print(ui.MachineInfo, info.(string))
 			default:
 				return false, fmt.Errorf("unknown request (%s)", option)
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.TV)
+			dbg.printMachineInfo(dbg.tv)
 		}
 
 	// information about the machine (sprites, playfield)
@@ -766,12 +767,12 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, false)
+				err = dbg.tv.SetFeature(gui.ReqSetVisibility, false)
 				if err != nil {
 					return false, err
 				}
 			case "DEBUG":
-				err = dbg.vcs.TV.SetFeature(television.ReqToggleMasking)
+				err = dbg.tv.SetFeature(gui.ReqToggleMasking)
 				if err != nil {
 					return false, err
 				}
@@ -786,15 +787,15 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					return false, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
 				}
 
-				err = dbg.vcs.TV.SetFeature(television.ReqSetScale, float32(scale))
+				err = dbg.tv.SetFeature(gui.ReqSetScale, float32(scale))
 				return false, err
 			case "DEBUGCOLORS":
-				err = dbg.vcs.TV.SetFeature(television.ReqToggleAltColors)
+				err = dbg.tv.SetFeature(gui.ReqToggleAltColors)
 				if err != nil {
 					return false, err
 				}
 			case "METASIGNALS":
-				err = dbg.vcs.TV.SetFeature(television.ReqToggleShowSystemState)
+				err = dbg.tv.SetFeature(gui.ReqToggleShowSystemState)
 				if err != nil {
 					return false, err
 				}
@@ -802,14 +803,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				return false, fmt.Errorf("unknown display action (%s)", action)
 			}
 		} else {
-			err = dbg.vcs.TV.SetFeature(television.ReqSetVisibility, true)
+			err = dbg.tv.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return false, err
 			}
 		}
 
 	case KeywordMouse:
-		req := television.ReqLastMouse
+		req := gui.ReqLastMouse
 
 		coord, present := tokens.Get()
 
@@ -817,19 +818,19 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			coord = strings.ToUpper(coord)
 			switch coord {
 			case "X":
-				req = television.ReqLastMouseHorizPos
+				req = gui.ReqLastMouseHorizPos
 			case "Y":
-				req = television.ReqLastMouseScanline
+				req = gui.ReqLastMouseScanline
 			default:
 				return false, fmt.Errorf("unknown mouse option (%s)", coord)
 			}
 		}
 
-		info, err := dbg.vcs.TV.GetMetaState(req)
+		info, err := dbg.tv.GetMetaState(req)
 		if err != nil {
 			return false, err
 		}
-		dbg.print(ui.MachineInfo, info)
+		dbg.print(ui.MachineInfo, info.(string))
 	}
 
 	return stepNext, nil
