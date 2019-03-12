@@ -84,14 +84,14 @@ func (tv *ImageTV) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 //       <group/<label>_<framenum>.png
 func (tv *ImageTV) SystemStateRecord(state monitor.SystemState) error {
 	if state.Label == "" || state.Group == "" {
-		return errors.NewGopherError(errors.ImageTV, "SystemStateRecord requires a Label and Group")
+		return errors.NewFormattedError(errors.ImageTV, "SystemStateRecord requires a Label and Group")
 	}
 	return tv.save(filepath.Join(state.Group, state.Label))
 }
 
 func (tv *ImageTV) save(fileNameBase string) error {
 	if tv.lastImage == nil {
-		return errors.NewGopherError(errors.ImageTV, "no data to save")
+		return errors.NewFormattedError(errors.ImageTV, "no data to save")
 	}
 
 	// prepare filename for image
@@ -100,22 +100,22 @@ func (tv *ImageTV) save(fileNameBase string) error {
 	f, err := os.Open(imageName)
 	if f != nil {
 		f.Close()
-		return errors.NewGopherError(errors.ImageTV, fmt.Errorf("image file (%s) already exists", imageName))
+		return errors.NewFormattedError(errors.ImageTV, fmt.Errorf("image file (%s) already exists", imageName))
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return errors.NewGopherError(errors.ImageTV, err)
+		return errors.NewFormattedError(errors.ImageTV, err)
 	}
 
 	f, err = os.Create(imageName)
 	if err != nil {
-		return errors.NewGopherError(errors.ImageTV, err)
+		return errors.NewFormattedError(errors.ImageTV, err)
 	}
 
 	defer f.Close()
 
 	err = png.Encode(f, tv.lastImage)
 	if err != nil {
-		return errors.NewGopherError(errors.ImageTV, err)
+		return errors.NewFormattedError(errors.ImageTV, err)
 	}
 
 	return nil

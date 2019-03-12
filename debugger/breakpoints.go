@@ -106,7 +106,7 @@ func (bp *breakpoints) clear() {
 
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
-		return errors.NewGopherError(errors.CommandError, fmt.Errorf("breakpoint #%d is not defined", num))
+		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("breakpoint #%d is not defined", num))
 	}
 
 	h := bp.breaks[:num]
@@ -214,7 +214,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 
 			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
-				return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+				return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 			}
 
 			// possibly switch composition mode
@@ -238,7 +238,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.NewGopherError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 	}
 
 	// don't add breakpoints that already exist
@@ -262,7 +262,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 
 		// fail on first error
 		if duplicate {
-			return errors.NewGopherError(errors.CommandError, fmt.Errorf("breakpoint already exists (%s)", nb))
+			return errors.NewFormattedError(errors.CommandError, fmt.Errorf("breakpoint already exists (%s)", nb))
 		}
 
 		bp.breaks = append(bp.breaks, nb)

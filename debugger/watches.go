@@ -72,7 +72,7 @@ func (wtc *watches) clear() {
 
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
-		return errors.NewGopherError(errors.CommandError, fmt.Errorf("watch #%d is not defined", num))
+		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("watch #%d is not defined", num))
 	}
 
 	h := wtc.watches[:num]

@@ -273,7 +273,7 @@ func (tv *HeadlessTV) SystemStateRecord(monitor.SystemState) error {
 func (tv *HeadlessTV) GetState(request StateReq) (interface{}, error) {
 	switch request {
 	default:
-		return nil, errors.NewGopherError(errors.UnknownTVRequest, request)
+		return nil, errors.NewFormattedError(errors.UnknownTVRequest, request)
 	case ReqFramenum:
 		return tv.frameNum, nil
 	case ReqScanline:

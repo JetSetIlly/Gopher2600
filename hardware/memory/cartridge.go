@@ -86,7 +86,7 @@ func (cart *Cartridge) Clear() {
 // Implementation of CPUBus.Read
 func (cart Cartridge) Read(address uint16) (uint8, error) {
 	if len(cart.memory) == 0 {
-		return 0, errors.NewGopherError(errors.CartridgeMissing)
+		return 0, errors.NewFormattedError(errors.CartridgeMissing)
 	}
 	return cart.readHook(cart.origin | address ^ cart.origin)
 }
@@ -120,7 +120,7 @@ func (cart *Cartridge) readBanks(file io.ReadSeeker, numBanks int) error {
 				return err
 			}
 			if n != 4096 {
-				return errors.NewGopherError(errors.CartridgeFileError, errors.FileTruncated)
+				return errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 			}
 		}
 	}
@@ -132,7 +132,7 @@ func (cart *Cartridge) readBanks(file io.ReadSeeker, numBanks int) error {
 func (cart *Cartridge) Attach(filename string) error {
 	cf, err := os.Open(filename)
 	if err != nil {
-		return errors.NewGopherError(errors.CartridgeFileError, err)
+		return errors.NewFormattedError(errors.CartridgeFileError, err)
 	}
 	defer func() {
 		_ = cf.Close()
@@ -148,11 +148,11 @@ func (cart *Cartridge) Attach(filename string) error {
 
 	// set default read hooks
 	cart.readHook = func(addr uint16) (uint8, error) {
-		return 0, errors.NewGopherError(errors.UnreadableAddress, addr)
+		return 0, errors.NewFormattedError(errors.UnreadableAddress, addr)
 	}
 
 	cart.writeHook = func(addr uint16, data uint8) error {
-		return errors.NewGopherError(errors.UnwritableAddress, addr)
+		return errors.NewFormattedError(errors.UnwritableAddress, addr)
 	}
 
 	// how cartridges are mapped into the 4k space can differs dramatically.
@@ -227,7 +227,7 @@ func (cart *Cartridge) Attach(filename string) error {
 			} else if addr == 0x0ff9 {
 				cart.Bank = 1
 			} else {
-				return errors.NewGopherError(errors.UnwritableAddress, addr)
+				return errors.NewFormattedError(errors.UnwritableAddress, addr)
 			}
 			return nil
 		}
@@ -239,7 +239,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		// o Montezuma's Revenge
 
 	case 12288:
-		return errors.NewGopherError(errors.CartridgeUnsupported, "12288 bytes not yet supported")
+		return errors.NewFormattedError(errors.CartridgeUnsupported, "12288 bytes not yet supported")
 
 	case 16384:
 		cart.readBanks(cf, 4)
@@ -278,7 +278,7 @@ func (cart *Cartridge) Attach(filename string) error {
 			} else if addr == 0x0ff9 {
 				cart.Bank = 3
 			} else {
-				return errors.NewGopherError(errors.UnwritableAddress, addr)
+				return errors.NewFormattedError(errors.UnwritableAddress, addr)
 			}
 			return nil
 		}
@@ -336,7 +336,7 @@ func (cart *Cartridge) Attach(filename string) error {
 			} else if addr == 0x0ffb {
 				cart.Bank = 7
 			} else {
-				return errors.NewGopherError(errors.UnwritableAddress, addr)
+				return errors.NewFormattedError(errors.UnwritableAddress, addr)
 			}
 			return nil
 		}
@@ -344,11 +344,11 @@ func (cart *Cartridge) Attach(filename string) error {
 		cart.addCartridgeRAM()
 
 	case 65536:
-		return errors.NewGopherError(errors.CartridgeUnsupported, "65536 bytes not yet supported")
+		return errors.NewFormattedError(errors.CartridgeUnsupported, "65536 bytes not yet supported")
 
 	default:
 		cart.Eject()
-		return errors.NewGopherError(errors.CartridgeUnsupported, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
+		return errors.NewFormattedError(errors.CartridgeUnsupported, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
 	// note name of cartridge
@@ -407,7 +407,7 @@ func (cart *Cartridge) addCartridgeRAM() bool {
 // BankSwitch changes the current bank number
 func (cart *Cartridge) BankSwitch(bank int) error {
 	if bank > cart.NumBanks {
-		return errors.NewGopherError(errors.CartridgeNoSuchBank, bank, cart.NumBanks)
+		return errors.NewFormattedError(errors.CartridgeNoSuchBank, bank, cart.NumBanks)
 	}
 	cart.Bank = bank
 	return nil
@@ -429,7 +429,7 @@ func (cart *Cartridge) Eject() {
 // Peek is the implementation of Memory.Area.Peek
 func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error) {
 	if len(cart.memory) == 0 {
-		return 0, 0, "", "", errors.NewGopherError(errors.CartridgeMissing)
+		return 0, 0, "", "", errors.NewFormattedError(errors.CartridgeMissing)
 	}
 	return cart.memory[cart.Bank][cart.origin|address^cart.origin], address, cart.Label(), "", nil
 }
@@ -438,5 +438,5 @@ func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error
 func (cart Cartridge) Poke(address uint16, value uint8) error {
 	// if we want to poke cartridge memory we need to account for different
 	// cartridge sizes.
-	return errors.NewGopherError(errors.UnPokeableAddress, address)
+	return errors.NewFormattedError(errors.UnPokeableAddress, address)
 }

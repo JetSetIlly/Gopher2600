@@ -47,7 +47,7 @@ const (
 
 	// GUI
 	UnknownGUIRequest
-	SDLTV
+	SDL
 
 	// Peripherals
 	NoControllersFound

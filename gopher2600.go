@@ -121,7 +121,7 @@ func main() {
 			dsm, err := disassembly.NewDisassembly(modeFlags.Arg(0))
 			if err != nil {
 				switch err.(type) {
-				case errors.GopherError:
+				case errors.FormattedError:
 					// print what disassembly output we do have
 					if dsm != nil {
 						dsm.Dump(os.Stdout)

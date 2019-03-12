@@ -63,12 +63,12 @@ func (area ChipMemory) Memtop() uint16 {
 func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
 	sym := vcssymbols.ReadSymbols[address]
 	if sym == "" {
-		return 0, 0, "", "", errors.NewGopherError(errors.UnreadableAddress, address)
+		return 0, 0, "", "", errors.NewFormattedError(errors.UnreadableAddress, address)
 	}
 	return area.memory[address-area.origin], address, area.Label(), sym, nil
 }
 
 // Poke is the implementation of Memory.Area.Poke
 func (area ChipMemory) Poke(address uint16, value uint8) error {
-	return errors.NewGopherError(errors.UnPokeableAddress, address)
+	return errors.NewFormattedError(errors.UnPokeableAddress, address)
 }

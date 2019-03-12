@@ -17,7 +17,7 @@ func (dsm *Disassembly) parseLoop(mc *cpu.CPU) error {
 		// filter out some errors
 		if err != nil {
 			switch err := err.(type) {
-			case errors.GopherError:
+			case errors.FormattedError:
 				switch err.Errno {
 				case errors.ProgramCounterCycled:
 					return nil

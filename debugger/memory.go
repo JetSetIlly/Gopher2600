@@ -70,7 +70,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 		}
 
 		if !mapped {
-			return 0, errors.NewGopherError(errors.UnrecognisedAddress, address)
+			return 0, errors.NewFormattedError(errors.UnrecognisedAddress, address)
 		}
 	}
 

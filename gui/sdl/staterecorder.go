@@ -67,7 +67,7 @@ func (overlay *systemStateOverlay) setPixel(attr monitor.SystemState) error {
 
 	// label required...
 	if attr.Label == "" {
-		errors.NewGopherError(errors.CannotRecordState, "recording of system state requires a label")
+		errors.NewFormattedError(errors.CannotRecordState, "recording of system state requires a label")
 	}
 
 	// ... however, if a group has been supplied, use that to assign color

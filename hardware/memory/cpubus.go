@@ -14,7 +14,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	sym := vcssymbols.ReadSymbols[address]
 	if sym == "" {
-		return 0, errors.NewGopherError(errors.UnreadableAddress, address)
+		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
 	}
 
 	return area.memory[area.origin|address^area.origin], nil
@@ -26,12 +26,12 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
-		return errors.NewGopherError(errors.UnservicedChipWrite, vcssymbols.WriteSymbols[area.lastWriteAddress])
+		return errors.NewFormattedError(errors.UnservicedChipWrite, vcssymbols.WriteSymbols[area.lastWriteAddress])
 	}
 
 	sym := vcssymbols.WriteSymbols[address]
 	if sym == "" {
-		return errors.NewGopherError(errors.UnwritableAddress, address)
+		return errors.NewFormattedError(errors.UnwritableAddress, address)
 	}
 
 	// note address of write

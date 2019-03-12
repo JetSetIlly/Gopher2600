@@ -149,10 +149,10 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 						},
 					}
 				default:
-					err = errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					err = errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
 				}
 			} else {
-				err = errors.NewGopherError(errors.InvalidTarget, keyword)
+				err = errors.NewFormattedError(errors.InvalidTarget, keyword)
 			}
 
 		// cartridge
@@ -170,14 +170,14 @@ func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
 						},
 					}
 				default:
-					err = errors.NewGopherError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					err = errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
 				}
 			} else {
-				err = errors.NewGopherError(errors.InvalidTarget, keyword)
+				err = errors.NewFormattedError(errors.InvalidTarget, keyword)
 			}
 
 		default:
-			err = errors.NewGopherError(errors.InvalidTarget, keyword)
+			err = errors.NewFormattedError(errors.InvalidTarget, keyword)
 		}
 	}
 

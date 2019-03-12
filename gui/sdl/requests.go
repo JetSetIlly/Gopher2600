@@ -21,7 +21,7 @@ func (tv *GUI) GetMetaState(request gui.MetaStateReq) (interface{}, error) {
 	case gui.ReqLastMouseScanline:
 		return tv.crit.lastMouseScanline, nil
 	default:
-		return nil, errors.NewGopherError(errors.UnknownGUIRequest, request)
+		return nil, errors.NewFormattedError(errors.UnknownGUIRequest, request)
 	}
 }
 
@@ -43,7 +43,7 @@ func (tv *GUI) RegisterCallback(request gui.CallbackReq, channel chan func(), ca
 		tv.onMouseButtonRight.channel = channel
 		tv.onMouseButtonRight.function = callback
 	default:
-		return errors.NewGopherError(errors.UnknownGUIRequest, request)
+		return errors.NewFormattedError(errors.UnknownGUIRequest, request)
 	}
 
 	return nil
@@ -120,7 +120,7 @@ func (tv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		}
 
 	default:
-		return errors.NewGopherError(errors.UnknownGUIRequest, request)
+		return errors.NewFormattedError(errors.UnknownGUIRequest, request)
 	}
 
 	return nil

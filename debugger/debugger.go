@@ -455,7 +455,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 
 				if err != nil {
 					switch err := err.(type) {
-					case errors.GopherError:
+					case errors.FormattedError:
 						// do not exit input loop when error is a gopher error
 						// set lastStepError instead and allow emulation to
 						// halt

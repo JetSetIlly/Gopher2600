@@ -182,7 +182,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	// many cases to ignore the "success" flag when calling tokens.item()
 	if err := DebuggerCommands.ValidateInput(tokens); err != nil {
 		switch err := err.(type) {
-		case errors.GopherError:
+		case errors.FormattedError:
 			switch err.Errno {
 			case errors.InputEmpty:
 				// user pressed return
@@ -253,7 +253,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
 		if err != nil {
 			switch err := err.(type) {
-			case errors.GopherError:
+			case errors.FormattedError:
 				if err.Errno == errors.SymbolUnknown {
 					dbg.print(ui.Feedback, "%s -> not found", symbol)
 					return false, nil

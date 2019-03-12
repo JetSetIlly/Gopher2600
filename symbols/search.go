@@ -46,5 +46,5 @@ func (sym *Table) SearchSymbol(symbol string, table TableType) (TableType, strin
 		}
 	}
 
-	return UnspecifiedSymTable, symbol, 0, errors.NewGopherError(errors.SymbolUnknown, symbol)
+	return UnspecifiedSymTable, symbol, 0, errors.NewFormattedError(errors.SymbolUnknown, symbol)
 }

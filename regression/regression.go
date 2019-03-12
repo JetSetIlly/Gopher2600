@@ -203,10 +203,10 @@ func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpd
 	if allowUpdate == false {
 		if existEntry, ok := db.entries[entry.key]; ok {
 			if existEntry.cartridgeFile == entry.cartridgeFile {
-				return errors.NewGopherError(errors.RegressionEntryExists, entry)
+				return errors.NewFormattedError(errors.RegressionEntryExists, entry)
 			}
 
-			return errors.NewGopherError(errors.RegressionEntryCollision, entry.cartridgeFile, existEntry.cartridgeFile)
+			return errors.NewFormattedError(errors.RegressionEntryCollision, entry.cartridgeFile, existEntry.cartridgeFile)
 		}
 	}
 
@@ -229,7 +229,7 @@ func RegressDeleteCartridge(cartridgeFile string) error {
 	}
 
 	if _, ok := db.entries[key]; ok == false {
-		return errors.NewGopherError(errors.RegressionEntryDoesNotExist, cartridgeFile)
+		return errors.NewFormattedError(errors.RegressionEntryDoesNotExist, cartridgeFile)
 	}
 
 	delete(db.entries, key)
@@ -262,7 +262,7 @@ func RegressRunTests(output io.Writer, failOnError bool) (int, int, error) {
 
 		if err != nil || entry.digest != digest {
 			if err == nil {
-				err = errors.NewGopherError(errors.RegressionEntryFail, entry)
+				err = errors.NewFormattedError(errors.RegressionEntryFail, entry)
 			}
 
 			numFail++

@@ -46,14 +46,8 @@ var messages = map[Errno]string{
 
 	// GUI
 	UnknownGUIRequest: "GUI does not support %v request",
-	SDLTV:             "SDLTV: %s",
+	SDL:               "SDL: %s",
 
 	// Peripherals
 	NoControllersFound: "no controllers found",
 }
-
-// more error strings -- these are strings that are used as arguments to error
-// string messages
-const (
-	FileTruncated string = "file truncated"
-)

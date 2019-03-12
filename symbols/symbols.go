@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/vcssymbols"
+	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -69,26 +70,15 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		if cartridgeFilename == "" {
 			return table, nil
 		}
-		return table, errors.NewGopherError(errors.SymbolsFileCannotOpen, cartridgeFilename)
+		return nil, errors.NewFormattedError(errors.SymbolsFileCannotOpen, cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()
 	}()
 
-	// get file info of symbols file
-	sfi, err := sf.Stat()
+	sym, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return table, errors.NewGopherError(errors.SymbolsFileError, err)
-	}
-
-	// read symbols file and split into lines
-	sym := make([]byte, sfi.Size())
-	n, err := sf.Read(sym)
-	if err != nil {
-		return table, errors.NewGopherError(errors.SymbolsFileError, err)
-	}
-	if n != len(sym) {
-		return table, errors.NewGopherError(errors.SymbolsFileError, errors.FileTruncated)
+		return nil, errors.NewFormattedError(errors.SymbolsFileError, err)
 	}
 	lines := strings.Split(string(sym), "\n")
 

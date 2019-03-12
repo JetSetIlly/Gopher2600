@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/ui"
 	"gopher2600/errors"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -13,28 +14,15 @@ func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
 	// open script and defer closing
 	sf, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, errors.NewGopherError(errors.ScriptFileCannotOpen, err)
+		return nil, errors.NewFormattedError(errors.ScriptFileCannotOpen, err)
 	}
 	defer func() {
 		_ = sf.Close()
 	}()
 
-	// get file info
-	sfi, err := sf.Stat()
+	buffer, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return nil, err
-	}
-
-	// allocate enough memory for new cartridge
-	buffer := make([]uint8, sfi.Size())
-
-	// read script file
-	n, err := sf.Read(buffer)
-	if err != nil {
-		return nil, err
-	}
-	if n != len(buffer) {
-		return nil, errors.NewGopherError(errors.ScriptFileError, errors.FileTruncated)
+		return nil, errors.NewFormattedError(errors.ScriptFileError, err)
 	}
 
 	// convert buffer to an array of lines
@@ -68,13 +56,13 @@ func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
 			}
 			next, err := dbg.parseInput(lines[i])
 			if err != nil {
-				return errors.NewGopherError(errors.ScriptFileError, err)
+				return errors.NewFormattedError(errors.ScriptFileError, err)
 			}
 			if next {
 				// make sure run state is still sane
 				dbg.runUntilHalt = false
 
-				return errors.NewGopherError(errors.ScriptRunError, strings.ToUpper(lines[i]), scriptfile, i)
+				return errors.NewFormattedError(errors.ScriptRunError, strings.ToUpper(lines[i]), scriptfile, i)
 			}
 		}
 	}
