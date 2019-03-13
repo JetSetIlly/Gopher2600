@@ -256,7 +256,9 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 		}
 	}
 
-	return false, 0
+	// always return player color because when in "scoremode", the playfield
+	// wants to know what the color should be
+	return false, ps.color
 }
 
 func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {

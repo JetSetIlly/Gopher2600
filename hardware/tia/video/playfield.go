@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video/future"
+	"strings"
 )
 
 type playfield struct {
@@ -51,22 +52,28 @@ func newPlayfield(colorClock *polycounter.Polycounter) *playfield {
 }
 
 func (pf playfield) MachineInfoTerse() string {
-	s := "playfield: "
+	s := strings.Builder{}
+	s.WriteString("playfield: ")
 	for i := 0; i < len(pf.data); i++ {
 		if pf.data[i] {
-			s += "1"
+			s.WriteString("1")
 		} else {
-			s += "0"
+			s.WriteString("0")
 		}
 	}
 	if pf.reflected {
-		s += " reflected"
+		s.WriteString(" reflected")
 	}
-	return s
+	return s.String()
 }
 
 func (pf playfield) MachineInfo() string {
-	return fmt.Sprintf("pf0: %08b\npf1: %08b\npf2: %08b\n%s", pf.pf0, pf.pf1, pf.pf2, pf.MachineInfoTerse())
+	s := strings.Builder{}
+	s.WriteString(pf.MachineInfoTerse())
+	s.WriteString(fmt.Sprintf("\n   pf0: %08b\n   pf1: %08b\n   pf2: %08b", pf.pf0, pf.pf1, pf.pf2))
+	s.WriteString(fmt.Sprintf("\n   fg color: %d", pf.foregroundColor))
+	s.WriteString(fmt.Sprintf("\n   bg color: %d", pf.backgroundColor))
+	return s.String()
 }
 
 func (pf *playfield) tick() {

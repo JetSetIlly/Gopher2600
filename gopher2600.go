@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const initScript = ".gopher2600/debuggerInit"
+const defaultInitScript = ".gopher2600/debuggerInit"
 
 func main() {
 	progName := path.Base(os.Args[0])
@@ -74,6 +74,7 @@ func main() {
 
 	case "DEBUG":
 		termType := modeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
+		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
 		modeFlagsParse()
 
 		dbg, err := debugger.NewDebugger()
@@ -100,7 +101,7 @@ func main() {
 			// it's okay if DEBUG mode is started with no cartridges
 			fallthrough
 		case 1:
-			err := dbg.Start(term, modeFlags.Arg(0), initScript)
+			err := dbg.Start(term, modeFlags.Arg(0), *initScript)
 			if err != nil {
 				fmt.Printf("* error running debugger: %s\n", err)
 				os.Exit(2)

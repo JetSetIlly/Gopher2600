@@ -240,7 +240,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 	case KeywordGrep:
 		search := tokens.Remainder()
 		output := strings.Builder{}
-		dbg.disasm.Grep(search, &output, false)
+		dbg.disasm.Grep(search, &output, false, 3)
 		if output.Len() == 0 {
 			dbg.print(ui.Error, "%s not found in disassembly", search)
 		} else {

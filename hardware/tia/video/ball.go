@@ -112,7 +112,8 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 			}
 		}
 	}
-	return false, 0
+
+	return false, bs.color
 }
 
 func (bs *ballSprite) scheduleReset(onFuture *future.Group) {

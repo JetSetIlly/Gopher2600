@@ -195,7 +195,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 	tok, present := tokens.Get()
 	for present {
 		// if token is a number...
-		val, err := strconv.ParseInt(tok, 0, 16)
+		val, err := strconv.ParseInt(tok, 0, 32)
 		if err == nil {
 			if andBreaks == true {
 				if len(newBreaks) == 0 {
@@ -241,28 +241,36 @@ func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
 		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
 	}
 
+	return bp.checkNewBreakpoints(newBreaks)
+}
+
+func (bp *breakpoints) checkNewBreakpoints(newBreaks []breaker) error {
 	// don't add breakpoints that already exist
-	duplicate := false
 	for _, nb := range newBreaks {
 		for _, ob := range bp.breaks {
 			and := &nb
 			oand := &ob
-			for !duplicate && and != nil && oand != nil {
+
+			// start with assuming this is a duplicate
+			duplicate := true
+
+			// continue comparison until we reach the end of one of the lists
+			// or if a non-duplicate condition has been found
+			for duplicate && and != nil && oand != nil {
 				// note that this method of duplication detection only works if
 				// targets are ANDed in the same order.
+				//
 				// TODO: sort conditions before comparison
-				duplicate = oand.target.Label() == and.target.Label() && oand.value == and.value
+				duplicate = duplicate && (oand.target.Label() == and.target.Label() && oand.value == and.value)
+
 				and = and.next
 				oand = oand.next
 			}
-			if duplicate {
-				break
-			}
-		}
 
-		// fail on first error
-		if duplicate {
-			return errors.NewFormattedError(errors.CommandError, fmt.Errorf("breakpoint already exists (%s)", nb))
+			// fail if this is a duplicate and if both lists were of the same length
+			if duplicate && and == nil && oand == nil {
+				return errors.NewFormattedError(errors.CommandError, fmt.Errorf("breakpoint already exists (%s)", ob))
+			}
 		}
 
 		bp.breaks = append(bp.breaks, nb)

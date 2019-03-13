@@ -173,7 +173,8 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 			}
 		}
 	}
-	return false, 0
+
+	return false, ms.color
 }
 
 func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
