@@ -10,7 +10,7 @@ func (dbg *Debugger) setupTVCallbacks() error {
 	var err error
 
 	// add break on right mouse button
-	err = dbg.tv.RegisterCallback(gui.ReqOnMouseButtonRight, dbg.dbgChannel, func() {
+	err = dbg.tv.RegisterCallback(gui.ReqOnMouseButtonRight, dbg.interruptChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
 		hp, _ := dbg.tv.GetMetaState(gui.ReqLastMouseHorizPos)
@@ -28,7 +28,7 @@ func (dbg *Debugger) setupTVCallbacks() error {
 	}
 
 	// respond to keyboard
-	err = dbg.tv.RegisterCallback(gui.ReqOnKeyboard, dbg.dbgChannel, func() {
+	err = dbg.tv.RegisterCallback(gui.ReqOnKeyboard, dbg.interruptChannel, func() {
 		key, _ := dbg.tv.GetMetaState(gui.ReqLastKeyboard)
 		switch key {
 		case "`":

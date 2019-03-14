@@ -106,7 +106,7 @@ type Debugger struct {
 	//  the SDL guiloop() goroutine
 	//  b) receive ctrl-c events when the emulation is running (note that
 	//  ctrl-c handling is handled differently under different circumstances)
-	dbgChannel chan func()
+	interruptChannel chan func()
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -158,10 +158,10 @@ func NewDebugger() (*Debugger, error) {
 	dbg.input = make([]byte, 255)
 
 	// make synchronisation channel
-	dbg.dbgChannel = make(chan func(), 2)
+	dbg.interruptChannel = make(chan func(), 2)
 
 	// set up callbacks for the TV interface
-	// -- requires dbgChannel to have been set up
+	// -- requires interruptChannel to have been set up
 	err = dbg.setupTVCallbacks()
 	if err != nil {
 		return nil, err
@@ -171,10 +171,10 @@ func NewDebugger() (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript string) error {
+func (dbg *Debugger) Start(iface ui.UserInterface, filename string, initScript string) error {
 	// prepare user interface
-	if interf != nil {
-		dbg.ui = interf
+	if iface != nil {
+		dbg.ui = iface
 	}
 
 	err := dbg.ui.Initialise()
@@ -199,7 +199,7 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 		for {
 			<-ctrlC
 
-			dbg.dbgChannel <- func() {
+			dbg.interruptChannel <- func() {
 				if dbg.runUntilHalt {
 					// stop emulation at the next step
 					dbg.runUntilHalt = false
@@ -218,15 +218,20 @@ func (dbg *Debugger) Start(interf ui.UserInterface, filename string, initScript 
 
 	// run initialisation script
 	if initScript != "" {
-		err = dbg.RunScript(initScript, true)
+		spt, err := dbg.loadScript(initScript)
 		if err != nil {
 			dbg.print(ui.Error, "error running debugger initialisation script: %s\n", err)
+		}
+
+		err = dbg.inputLoop(spt, true)
+		if err != nil {
+			return err
 		}
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
 	// debugger is to exit
-	err = dbg.inputLoop(true)
+	err = dbg.inputLoop(dbg.ui, true)
 	if err != nil {
 		return err
 	}
@@ -265,22 +270,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 	return nil
 }
 
-// videoCycle*() are callback functions to be used when calling vcs.Step().
-// stepmode CPU uses videoCycle(), whereas stepmode VIDEO uses
-// videoCycleWithInput() which in turn calls videoCycle()
-
-func (dbg *Debugger) videoCycleWithInput(result *result.Instruction) error {
-	dbg.videoCycle(result)
-	dbg.lastResult = result
-	if dbg.commandOnStep != "" {
-		_, err := dbg.parseInput(dbg.commandOnStep)
-		if err != nil {
-			dbg.print(ui.Error, "%s", err)
-		}
-	}
-	return dbg.inputLoop(false)
-}
-
+// videoCycle() to be used with vcs.Step()
 func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	// because we call this callback mid-instruction, the programme counter
 	// maybe in it's non-final state - we don't want to break or trap in these
@@ -302,27 +292,42 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	return dbg.sysmon.Check()
 }
 
-func (dbg *Debugger) checkDbgChannel() {
-	// check dbgChannel and run any functions we find in there -- note that
-	// we also monitor the dbgChannel in the UserInterface.UserRead()
-	// function. if we didn't then this inputLoop would not react to
-	// messages on the channel until it reaches this point again.
+func (dbg *Debugger) checkForInterrupts() {
+	// check interrupt channel and run any functions we find in there
 	select {
-	case f := <-dbg.dbgChannel:
+	case f := <-dbg.interruptChannel:
 		f()
 	default:
-		// go novice note: we need a default case otherwise the select blocks
+		// pro-tip: default case required otherwise the select will block
+		// indefinately.
 	}
 }
 
 // inputLoop has two modes, defined by the mainLoop argument. when inputLoop is
 // not a "mainLoop", the function will only loop for the duration of one cpu
 // step. this is used to implement video-stepping.
-func (dbg *Debugger) inputLoop(mainLoop bool) error {
+//
+// inputter is an instance of type UserInput. this will usually be dbg.ui but
+// it could equally be an instance of debuggingScript.
+func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 	var err error
 
+	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
+	// when in video-step mode
+	videoCycleWithInput := func(result *result.Instruction) error {
+		dbg.videoCycle(result)
+		dbg.lastResult = result
+		if dbg.commandOnStep != "" {
+			_, err := dbg.parseInput(dbg.commandOnStep)
+			if err != nil {
+				dbg.print(ui.Error, "%s", err)
+			}
+		}
+		return dbg.inputLoop(inputter, false)
+	}
+
 	for {
-		dbg.checkDbgChannel()
+		dbg.checkForInterrupts()
 		if !dbg.running {
 			break // for loop
 		}
@@ -408,20 +413,27 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 			}
 
 			// get user input
-			n, err := dbg.ui.UserRead(dbg.input, prompt, dbg.dbgChannel)
+			n, err := inputter.UserRead(dbg.input, prompt, dbg.interruptChannel)
 			if err != nil {
-				switch err.(type) {
-				case *ui.UserInterrupt:
-					// UserRead() has caught a ctrl-c event and returned the
-					// appropriate error
-					dbg.print(ui.Feedback, err.Error())
-					dbg.running = false
-				default:
-					return err
+				switch err := err.(type) {
+
+				case errors.FormattedError:
+					switch err.Errno {
+					case errors.UserInterrupt:
+						dbg.running = false
+						fallthrough
+					case errors.ScriptEnd:
+						if mainLoop {
+							dbg.print(ui.Feedback, err.Error())
+						}
+						return nil
+					}
 				}
+
+				return err
 			}
 
-			dbg.checkDbgChannel()
+			dbg.checkForInterrupts()
 			if !dbg.running {
 				break // for loop
 			}
@@ -448,7 +460,7 @@ func (dbg *Debugger) inputLoop(mainLoop bool) error {
 		if dbg.inputloopNext {
 			if mainLoop {
 				if dbg.inputloopVideoClock {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycleWithInput)
+					_, dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
 				} else {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
 				}

@@ -2,16 +2,22 @@ package errors
 
 var messages = map[Errno]string{
 	// Debugger
-	InputEmpty:            "input is empty",
-	CommandError:          "%s",
+	InputEmpty:        "no input",
+	UserInterrupt:     "user interrupt",
+	CommandError:      "%s",
+	InvalidTarget:     "invalid target (%s)",
+	CannotRecordState: "cannot record state: %s",
+
+	// Symbols
 	SymbolsFileCannotOpen: "no symbols file for %s",
 	SymbolsFileError:      "error processing symbols file (%s)",
 	SymbolUnknown:         "unrecognised symbol (%s)",
-	ScriptFileCannotOpen:  "cannot open script file (%s)",
-	ScriptFileError:       "script error: %s",
-	ScriptRunError:        "script error: use of '%s' is not allowed in scripts [%s::%d]",
-	InvalidTarget:         "invalid target (%s)",
-	CannotRecordState:     "cannot record state: %s",
+
+	// Script
+	ScriptFileCannotOpen: "cannot open script file (%s)",
+	ScriptFileError:      "script error: %s",
+	ScriptRunError:       "script error: use of '%s' is not allowed in scripts [%s::%d]",
+	ScriptEnd:            "end of script (%s)",
 
 	// Regression
 	RegressionEntryExists:       "entry exists (%s)",
@@ -43,6 +49,9 @@ var messages = map[Errno]string{
 	UnknownTVRequest: "TV does not support %v request",
 	ImageTV:          "ImageTV: %s",
 	DigestTV:         "DigestTV: %s",
+
+	// Controllers
+	StickDisconnected: "Stick for player %d is not connected",
 
 	// GUI
 	UnknownGUIRequest: "GUI does not support %v request",

@@ -42,7 +42,7 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 }
 
 // UserRead is the plain terminal read routine
-func (pt PlainTerminal) UserRead(input []byte, prompt string, dbgChannel chan func()) (int, error) {
+func (pt PlainTerminal) UserRead(input []byte, prompt string, interruptChannel chan func()) (int, error) {
 	pt.UserPrint(Prompt, prompt)
 
 	n, err := os.Stdin.Read(input)

@@ -57,14 +57,17 @@ func (pia PIA) MachineInfoTerse() string {
 
 // MachineInfo returns the RIOT information in verbose format
 func (pia PIA) MachineInfo() string {
-	s := ""
+	s := strings.Builder{}
+	s.WriteString("      -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+	s.WriteString("    ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --\n")
 	for y := 0; y < 8; y++ {
+		s.WriteString(fmt.Sprintf("%X- | ", y+8))
 		for x := 0; x < 16; x++ {
-			s = fmt.Sprintf("%s %02x", s, pia.memory[uint16((y*16)+x)])
+			s.WriteString(fmt.Sprintf(" %02x", pia.memory[uint16((y*16)+x)]))
 		}
-		s = fmt.Sprintf("%s\n", s)
+		s.WriteString("\n")
 	}
-	return strings.Trim(s, "\n")
+	return strings.Trim(s.String(), "\n")
 }
 
 // map String to MachineInfo

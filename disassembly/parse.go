@@ -68,6 +68,14 @@ func (dsm *Disassembly) parseLoop(mc *cpu.CPU) error {
 						// resume from where we left off
 						dsm.Cart.BankSwitch(retBank)
 						mc.LoadPC(retPC)
+					} else {
+						// it's entirely possible for the program to jump
+						// outside of cartridge space and run inside RIOT RAM,
+						// for instance (test-ane.bin does this for instance).
+						//
+						// it's difficult to see what we can do in these cases
+						// without actually running the program for real (with
+						// actual side-effects, that is)
 					}
 				} else {
 					// absolute addressing

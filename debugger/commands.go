@@ -57,6 +57,8 @@ const (
 	KeywordScript        = "SCRIPT"
 	KeywordDisassemble   = "DISASSEMBLE"
 	KeywordGrep          = "GREP"
+	KeywordStick0        = "STICK0"
+	KeywordStick1        = "STICK1"
 )
 
 // Help contains the help text for the debugger's top level commands
@@ -101,6 +103,8 @@ var Help = map[string]string{
 	KeywordScript:        "Run commands from specified file",
 	KeywordDisassemble:   "Print the full cartridge disassembly",
 	KeywordGrep:          "Simple string search (case insensitive) of the disassembly",
+	KeywordStick0:        "Emulate a joystick input for Player 0",
+	KeywordStick1:        "Emulate a joystick input for Player 1",
 }
 
 var commandTemplate = input.CommandTemplate{
@@ -117,8 +121,8 @@ var commandTemplate = input.CommandTemplate{
 	KeywordList:          "[BREAKS|TRAPS|WATCHES]",
 	KeywordClear:         "[BREAKS|TRAPS|WATCHES]",
 	KeywordDrop:          "[BREAK|TRAP|WATCH] %V",
-	KeywordOnHalt:        "[|OFF|ECHO] %*",
-	KeywordOnStep:        "[|OFF|ECHO] %*",
+	KeywordOnHalt:        "[|OFF|RESTORE] %*",
+	KeywordOnStep:        "[|OFF|RESTORE] %*",
 	KeywordLast:          "[|DEFN]",
 	KeywordMemMap:        "",
 	KeywordQuit:          "",
@@ -148,6 +152,8 @@ var commandTemplate = input.CommandTemplate{
 	KeywordScript:        "%F",
 	KeywordDisassemble:   "",
 	KeywordGrep:          "%S %*",
+	KeywordStick0:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
+	KeywordStick1:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
 }
 
 // notes
@@ -186,7 +192,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			switch err.Errno {
 			case errors.InputEmpty:
 				// user pressed return
-				return true, nil
+				return false, nil
 			}
 		}
 		return false, err
@@ -229,7 +235,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordScript:
 		script, _ := tokens.Get()
-		err := dbg.RunScript(script, false)
+
+		spt, err := dbg.loadScript(script)
+		if err != nil {
+			dbg.print(ui.Error, "error running debugger initialisation script: %s\n", err)
+			return false, err
+		}
+
+		err = dbg.inputLoop(spt, true)
 		if err != nil {
 			return false, err
 		}
@@ -368,19 +381,17 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordOnHalt:
 		if tokens.Remaining() == 0 {
-			dbg.commandOnHalt = dbg.commandOnHaltStored
-		} else {
-			option, _ := tokens.Peek()
-			if strings.ToUpper(option) == "OFF" {
-				dbg.commandOnHalt = ""
-				dbg.print(ui.Feedback, "no auto-command on halt")
-				return false, nil
-			}
-			if strings.ToUpper(option) == "ECHO" {
-				dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
-				return false, nil
-			}
+			dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			return false, nil
+		}
 
+		option, _ := tokens.Peek()
+		switch strings.ToUpper(option) {
+		case "OFF":
+			dbg.commandOnHalt = ""
+		case "RESTORE":
+			dbg.commandOnHalt = dbg.commandOnHaltStored
+		default:
 			// use remaininder of command line to form the ONHALT command sequence
 			dbg.commandOnHalt = tokens.Remainder()
 
@@ -393,27 +404,30 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
-		dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+		// display the new/restored onhalt command(s)
+		if dbg.commandOnHalt == "" {
+			dbg.print(ui.Feedback, "auto-command on halt: OFF")
+		} else {
+			dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+		}
 
-		// run the new onhalt command(s)
+		// run the new/restored onhalt command(s)
 		_, err := dbg.parseInput(dbg.commandOnHalt)
 		return false, err
 
 	case KeywordOnStep:
 		if tokens.Remaining() == 0 {
-			dbg.commandOnStep = dbg.commandOnStepStored
-		} else {
-			option, _ := tokens.Peek()
-			if strings.ToUpper(option) == "OFF" {
-				dbg.commandOnStep = ""
-				dbg.print(ui.Feedback, "no auto-command on step")
-				return false, nil
-			}
-			if strings.ToUpper(option) == "ECHO" {
-				dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
-				return false, nil
-			}
+			dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+			return false, nil
+		}
 
+		option, _ := tokens.Peek()
+		switch strings.ToUpper(option) {
+		case "OFF":
+			dbg.commandOnStep = ""
+		case "RESTORE":
+			dbg.commandOnStep = dbg.commandOnStepStored
+		default:
 			// use remaininder of command line to form the ONSTEP command sequence
 			dbg.commandOnStep = tokens.Remainder()
 
@@ -426,9 +440,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.commandOnStepStored = dbg.commandOnStep
 		}
 
-		dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+		// display the new/restored onstep command(s)
+		if dbg.commandOnStep == "" {
+			dbg.print(ui.Feedback, "auto-command on step: OFF")
+		} else {
+			dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+		}
 
-		// run the new onstep command(s)
+		// run the new/restored onstep command(s)
 		_, err := dbg.parseInput(dbg.commandOnStep)
 		return false, err
 
@@ -831,6 +850,24 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			return false, err
 		}
 		dbg.print(ui.MachineInfo, info.(string))
+
+	case KeywordStick0:
+		action, present := tokens.Get()
+		if present {
+			err := dbg.vcs.Controller.HandleStick(0, action)
+			if err != nil {
+				return false, err
+			}
+		}
+
+	case KeywordStick1:
+		action, present := tokens.Get()
+		if present {
+			err := dbg.vcs.Controller.HandleStick(1, action)
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 
 	return stepNext, nil

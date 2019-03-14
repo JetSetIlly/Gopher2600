@@ -1,9 +1,11 @@
 package peripherals
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/vcssymbols"
+	"strings"
 
 	"github.com/splace/joysticks"
 )
@@ -12,17 +14,22 @@ import (
 type Stick struct {
 	device *joysticks.HID
 	err    error
+
+	tia  memory.PeriphBus
+	riot memory.PeriphBus
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
 func NewStick(tia memory.PeriphBus, riot memory.PeriphBus, panel *Panel) *Stick {
-	stick := new(Stick)
+	stk := new(Stick)
+	stk.tia = tia
+	stk.riot = riot
 
-	// TODO: make all this work with a seconc contoller. for now, initialise
+	// TODO: make all this work with a second contoller. for now, initialise
 	// and asssume that there is just one controller for player 0
-	riot.PeriphWrite(vcssymbols.SWCHA, 0xff)
-	tia.PeriphWrite(vcssymbols.INPT4, 0x80)
-	tia.PeriphWrite(vcssymbols.INPT5, 0x80)
+	stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xff)
+	stk.tia.PeriphWrite(vcssymbols.INPT4, 0x80)
+	stk.tia.PeriphWrite(vcssymbols.INPT5, 0x80)
 
 	// there is a flaw (either in splace/joysticks or somewehere else lower
 	// down in the kernel driver) which means that Connect() will not return
@@ -31,28 +38,28 @@ func NewStick(tia memory.PeriphBus, riot memory.PeriphBus, panel *Panel) *Stick 
 	go func() {
 		// try connecting to specific controller.
 		// system assigned index: typically increments on each new controller added.
-		stick.device = joysticks.Connect(1)
-		if stick.device == nil {
-			stick.err = errors.NewFormattedError(errors.NoControllersFound, nil)
+		stk.device = joysticks.Connect(1)
+		if stk.device == nil {
+			stk.err = errors.NewFormattedError(errors.NoControllersFound, nil)
 			return
 		}
 
 		// get/assign channels for specific events
-		stickMove := stick.device.OnMove(1)
+		stickMove := stk.device.OnMove(1)
 
-		buttonPress := stick.device.OnClose(1)
-		buttonRelease := stick.device.OnOpen(1)
+		buttonPress := stk.device.OnClose(1)
+		buttonRelease := stk.device.OnOpen(1)
 
 		// on xbox controller, button 8 is the start button
-		resetPress := stick.device.OnClose(8)
-		resetRelease := stick.device.OnOpen(8)
+		resetPress := stk.device.OnClose(8)
+		resetRelease := stk.device.OnOpen(8)
 
 		// on xbox controller, button 9 is the back button
-		selectPress := stick.device.OnClose(7)
-		selectRelease := stick.device.OnOpen(7)
+		selectPress := stk.device.OnClose(7)
+		selectRelease := stk.device.OnOpen(7)
 
 		// start feeding OS events onto the event channels.
-		go stick.device.ParcelOutEvents()
+		go stk.device.ParcelOutEvents()
 
 		// handle event channels
 		for {
@@ -68,28 +75,57 @@ func NewStick(tia memory.PeriphBus, riot memory.PeriphBus, panel *Panel) *Stick 
 				panel.SetGameSelect(false)
 
 			case <-buttonPress:
-				tia.PeriphWrite(vcssymbols.INPT4, 0x00)
+				stk.HandleStick(0, "FIRE")
 			case <-buttonRelease:
-				tia.PeriphWrite(vcssymbols.INPT4, 0x80)
+				stk.HandleStick(0, "NOFIRE")
 
 			case ev := <-stickMove:
-				swcha := uint8(0xff)
 				x := ev.(joysticks.CoordsEvent).X
 				y := ev.(joysticks.CoordsEvent).Y
 				if x < -0.5 {
-					swcha &= 0xbf
+					stk.HandleStick(0, "LEFT")
 				} else if x > 0.5 {
-					swcha &= 0x7f
-				}
-				if y < -0.5 {
-					swcha &= 0xef
+					stk.HandleStick(0, "RIGHT")
+				} else if y < -0.5 {
+					stk.HandleStick(0, "UP")
 				} else if y > 0.5 {
-					swcha &= 0xdf
+					stk.HandleStick(0, "DOWN")
+				} else {
+					stk.HandleStick(0, "CENTRE")
 				}
-				riot.PeriphWrite(vcssymbols.SWCHA, swcha)
 			}
 		}
 	}()
 
-	return stick
+	return stk
+}
+
+// HandleStick parses the action and writes to the correct memory location
+func (stk *Stick) HandleStick(player int, action string) error {
+	if player == 0 {
+		switch strings.ToUpper(action) {
+		case "LEFT":
+			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xbf)
+		case "RIGHT":
+			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0x7f)
+		case "UP":
+			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xef)
+		case "DOWN":
+			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xdf)
+		case "CENTER":
+			fallthrough
+		case "CENTRE":
+			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xff)
+		case "FIRE":
+			stk.tia.PeriphWrite(vcssymbols.INPT4, 0x00)
+		case "NOFIRE":
+			stk.tia.PeriphWrite(vcssymbols.INPT4, 0x80)
+		}
+	} else if player == 1 {
+		return errors.NewFormattedError(errors.StickDisconnected, player)
+	} else {
+		panic(fmt.Sprintf("there is no player %d with a joystick to handle", player))
+	}
+
+	return nil
 }

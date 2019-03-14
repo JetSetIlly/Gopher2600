@@ -23,7 +23,7 @@ type VCS struct {
 	TV television.Television
 
 	panel      *peripherals.Panel
-	controller *peripherals.Stick
+	Controller *peripherals.Stick
 
 	// treat the side effects of the CPU after every CPU cycle (correct) or
 	// only at the end of each instruction (wrong)
@@ -68,8 +68,8 @@ func NewVCS(tv television.Television) (*VCS, error) {
 	}
 
 	// TODO: better contoller support
-	vcs.controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
-	if vcs.controller == nil {
+	vcs.Controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
+	if vcs.Controller == nil {
 		return nil, fmt.Errorf("can't create stick controller")
 	}
 

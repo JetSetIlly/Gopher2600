@@ -1,16 +1,19 @@
 package debugger
 
 import (
-	"fmt"
-	"gopher2600/debugger/ui"
 	"gopher2600/errors"
 	"io/ioutil"
 	"os"
 	"strings"
 )
 
-func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
+type debuggingScript struct {
+	scriptFile string
+	lines      []string
+	nextLine   int
+}
 
+func (dbg *Debugger) loadScript(scriptfile string) (*debuggingScript, error) {
 	// open script and defer closing
 	sf, err := os.Open(scriptfile)
 	if err != nil {
@@ -25,47 +28,24 @@ func (dbg *Debugger) loadScript(scriptfile string) ([]string, error) {
 		return nil, errors.NewFormattedError(errors.ScriptFileError, err)
 	}
 
+	dbs := new(debuggingScript)
+	dbs.scriptFile = scriptfile
+
 	// convert buffer to an array of lines
-	s := fmt.Sprintf("%s", buffer)
-	return strings.Split(s, "\n"), nil
+	dbs.lines = strings.Split(string(buffer), "\n")
+
+	return dbs, nil
 }
 
-// RunScript uses a text file as a source for a sequence of commands
-func (dbg *Debugger) RunScript(scriptfile string, silent bool) error {
-
-	// the silent flag passed to this function is meant to silence commands for
-	// the duration of the script only. store existing state of dbg.silent so we
-	// can restore it when script has concluded
-	uiSilentRestore := dbg.uiSilent
-	dbg.uiSilent = silent
-	defer func() {
-		dbg.uiSilent = uiSilentRestore
-	}()
-
-	// load file
-	lines, err := dbg.loadScript(scriptfile)
-	if err != nil {
-		return err
+// UserRead implements ui.UserInput interface
+func (dbs *debuggingScript) UserRead(buffer []byte, prompt string, interruptChannel chan func()) (int, error) {
+	if dbs.nextLine > len(dbs.lines)-1 {
+		return -1, errors.NewFormattedError(errors.ScriptEnd, dbs.scriptFile)
 	}
 
-	// parse each line as user input
-	for i := 0; i < len(lines); i++ {
-		if strings.Trim(lines[i], " ") != "" {
-			if !silent {
-				dbg.print(ui.Script, lines[i])
-			}
-			next, err := dbg.parseInput(lines[i])
-			if err != nil {
-				return errors.NewFormattedError(errors.ScriptFileError, err)
-			}
-			if next {
-				// make sure run state is still sane
-				dbg.runUntilHalt = false
+	l := len(dbs.lines[dbs.nextLine]) + 1
+	copy(buffer, []byte(dbs.lines[dbs.nextLine]))
+	dbs.nextLine++
 
-				return errors.NewFormattedError(errors.ScriptRunError, strings.ToUpper(lines[i]), scriptfile, i)
-			}
-		}
-	}
-
-	return nil
+	return l, nil
 }

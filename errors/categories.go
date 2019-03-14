@@ -4,15 +4,21 @@ package errors
 const (
 	// Debugger
 	InputEmpty Errno = iota
+	UserInterrupt
 	CommandError
+	InvalidTarget
+	CannotRecordState
+
+	// Symbols
 	SymbolsFileCannotOpen
 	SymbolsFileError
 	SymbolUnknown
+
+	// Script
 	ScriptFileCannotOpen
 	ScriptFileError
 	ScriptRunError
-	InvalidTarget
-	CannotRecordState
+	ScriptEnd
 
 	// Regression
 	RegressionEntryExists
@@ -44,6 +50,9 @@ const (
 	UnknownTVRequest
 	ImageTV
 	DigestTV
+
+	// Controllers
+	StickDisconnected
 
 	// GUI
 	UnknownGUIRequest

@@ -4,18 +4,16 @@ import (
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/debugger/colorterm/easyterm"
 	"gopher2600/debugger/ui"
+	"gopher2600/errors"
 	"unicode"
 	"unicode/utf8"
 )
 
 // UserRead is the top level input function
-func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan func()) (int, error) {
+func (ct *ColorTerminal) UserRead(input []byte, prompt string, interruptChannel chan func()) (int, error) {
 
 	// ctrl-c handling: currently, we put the terminal into rawmode and listen
-	// for ctrl-c event using the readRune reader, rather than using the ctrl-c
-	// handler on the end of the dbgChannel. we could use the ctrl-c handler
-	// but it means having a return value for the channeled function which I'm
-	// not prepared to add just yet. this method is okay.
+	// for ctrl-c event using the readRune reader.
 
 	ct.RawMode()
 	defer ct.CanonicalMode()
@@ -53,8 +51,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 		ct.Print(ansi.CursorRestore)
 
 		select {
-		case f := <-dbgChannel:
-			// handle functions that are passsed on over dbgChannel. these can
+		case f := <-interruptChannel:
+			// handle functions that are passsed on over interruptChannel. these can
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
 			ct.Print(ansi.CursorStore)
@@ -93,7 +91,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, dbgChannel chan f
 				// debugger.Start(), that controls the main debugging loop. this
 				// ctrl-c handler by contrast, controls the user input loop
 				ct.Print("\n")
-				return inputLen + 1, &ui.UserInterrupt{Message: "user interrupt: CTRL-C"}
+				return inputLen + 1, errors.NewFormattedError(errors.UserInterrupt)
 
 			case easyterm.KeyCarriageReturn:
 				// CARRIAGE RETURN
