@@ -1,16 +1,16 @@
 package debugger
 
 import (
-	"gopher2600/debugger/ui"
+	"gopher2600/debugger/console"
 	"strings"
 )
 
-// wrapper function for UserPrint(). useful for  normalising the input string
+// wrapper function for UserPrint(). useful for normalising the input string
 // before passing to the real UserPrint. it also allows us to easily obey
 // directives such as the silent directive without passing the burden onto UI
 // implementors
-func (dbg *Debugger) print(pp ui.PrintProfile, s string, a ...interface{}) {
-	if dbg.uiSilent && pp != ui.Error {
+func (dbg *Debugger) print(pp console.PrintProfile, s string, a ...interface{}) {
+	if dbg.consoleSilent && pp != console.Error {
 		return
 	}
 
@@ -20,5 +20,5 @@ func (dbg *Debugger) print(pp ui.PrintProfile, s string, a ...interface{}) {
 		return
 	}
 
-	dbg.ui.UserPrint(pp, s, a...)
+	dbg.console.UserPrint(pp, s, a...)
 }

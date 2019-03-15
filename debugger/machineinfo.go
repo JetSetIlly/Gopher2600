@@ -1,6 +1,6 @@
 package debugger
 
-import "gopher2600/debugger/ui"
+import "gopher2600/debugger/console"
 
 // types that satisfy machineInfo return information about the state of the
 // emulated machine. String() should return verbose info, while StringTerse()
@@ -12,7 +12,7 @@ type machineInfo interface {
 }
 
 func (dbg *Debugger) printMachineInfo(mi machineInfo) {
-	dbg.print(ui.MachineInfo, "%s", dbg.getMachineInfo(mi))
+	dbg.print(console.MachineInfo, "%s", dbg.getMachineInfo(mi))
 }
 
 func (dbg *Debugger) getMachineInfo(mi machineInfo) string {

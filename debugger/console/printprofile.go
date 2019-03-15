@@ -1,4 +1,4 @@
-package ui
+package console
 
 // PrintProfile specifies the printing mode
 type PrintProfile int

@@ -3,7 +3,7 @@ package colorterm
 import (
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/debugger/colorterm/easyterm"
-	"gopher2600/debugger/ui"
+	"gopher2600/debugger/console"
 	"gopher2600/errors"
 	"unicode"
 	"unicode/utf8"
@@ -46,8 +46,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, interruptChannel 
 
 	for {
 		ct.Print(ansi.CursorStore)
-		ct.UserPrint(ui.Prompt, "%s%s", ansi.ClearLine, prompt)
-		ct.UserPrint(ui.Input, string(input[:inputLen]))
+		ct.UserPrint(console.Prompt, "%s%s", ansi.ClearLine, prompt)
+		ct.UserPrint(console.Input, string(input[:inputLen]))
 		ct.Print(ansi.CursorRestore)
 
 		select {

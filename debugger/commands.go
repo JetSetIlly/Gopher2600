@@ -2,8 +2,8 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/console"
 	"gopher2600/debugger/input"
-	"gopher2600/debugger/ui"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/result"
@@ -75,7 +75,7 @@ var Help = map[string]string{
 	KeywordOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	KeywordOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
 	KeywordLast:          "Prints the result of the last cpu/video cycle",
-	KeywordMemMap:        "Display high-levl VCS memory map",
+	KeywordMemMap:        "Display high-level VCS memory map",
 	KeywordQuit:          "Exits the emulator",
 	KeywordReset:         "Reset the emulation to its initial state",
 	KeywordRun:           "Run emulator until next halt state",
@@ -215,13 +215,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			s := strings.ToUpper(keyword)
 			txt, prs := Help[s]
 			if prs == false {
-				dbg.print(ui.Help, "no help for %s", s)
+				dbg.print(console.Help, "no help for %s", s)
 			} else {
-				dbg.print(ui.Help, txt)
+				dbg.print(console.Help, txt)
 			}
 		} else {
 			for k := range DebuggerCommands {
-				dbg.print(ui.Help, k)
+				dbg.print(console.Help, k)
 			}
 		}
 
@@ -231,14 +231,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		dbg.print(ui.Feedback, "machine reset with new cartridge (%s)", cart)
+		dbg.print(console.Feedback, "machine reset with new cartridge (%s)", cart)
 
 	case KeywordScript:
 		script, _ := tokens.Get()
 
 		spt, err := dbg.loadScript(script)
 		if err != nil {
-			dbg.print(ui.Error, "error running debugger initialisation script: %s\n", err)
+			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
 			return false, err
 		}
 
@@ -255,9 +255,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		output := strings.Builder{}
 		dbg.disasm.Grep(search, &output, false, 3)
 		if output.Len() == 0 {
-			dbg.print(ui.Error, "%s not found in disassembly", search)
+			dbg.print(console.Error, "%s not found in disassembly", search)
 		} else {
-			dbg.print(ui.Feedback, output.String())
+			dbg.print(console.Feedback, output.String())
 		}
 
 	case KeywordSymbol:
@@ -268,7 +268,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			switch err := err.(type) {
 			case errors.FormattedError:
 				if err.Errno == errors.SymbolUnknown {
-					dbg.print(ui.Feedback, "%s -> not found", symbol)
+					dbg.print(console.Feedback, "%s -> not found", symbol)
 					return false, nil
 				}
 			}
@@ -280,21 +280,21 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "ALL":
-				dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
+				dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
 
 				// find all instances of symbol address in memory space
 				// assumption: the address returned by SearchSymbol is the
 				// first address in the complete list
 				for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
 					if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
-						dbg.print(ui.Feedback, "%s -> %#04x", symbol, m)
+						dbg.print(console.Feedback, "%s -> %#04x", symbol, m)
 					}
 				}
 			default:
 				return false, fmt.Errorf("unknown option for SYMBOL command (%s)", option)
 			}
 		} else {
-			dbg.print(ui.Feedback, "%s -> %#04x", symbol, address)
+			dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
 		}
 
 	case KeywordBreak:
@@ -335,13 +335,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		switch clear {
 		case "BREAKS":
 			dbg.breakpoints.clear()
-			dbg.print(ui.Feedback, "breakpoints cleared")
+			dbg.print(console.Feedback, "breakpoints cleared")
 		case "TRAPS":
 			dbg.traps.clear()
-			dbg.print(ui.Feedback, "traps cleared")
+			dbg.print(console.Feedback, "traps cleared")
 		case "WATCHES":
 			dbg.watches.clear()
-			dbg.print(ui.Feedback, "watches cleared")
+			dbg.print(console.Feedback, "watches cleared")
 		default:
 			return false, fmt.Errorf("unknown clear option (%s)", clear)
 		}
@@ -362,26 +362,26 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-			dbg.print(ui.Feedback, "breakpoint #%d dropped", num)
+			dbg.print(console.Feedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
 				return false, err
 			}
-			dbg.print(ui.Feedback, "trap #%d dropped", num)
+			dbg.print(console.Feedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
 				return false, err
 			}
-			dbg.print(ui.Feedback, "watch #%d dropped", num)
+			dbg.print(console.Feedback, "watch #%d dropped", num)
 		default:
 			return false, fmt.Errorf("unknown drop option (%s)", drop)
 		}
 
 	case KeywordOnHalt:
 		if tokens.Remaining() == 0 {
-			dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 			return false, nil
 		}
 
@@ -406,9 +406,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 		// display the new/restored onhalt command(s)
 		if dbg.commandOnHalt == "" {
-			dbg.print(ui.Feedback, "auto-command on halt: OFF")
+			dbg.print(console.Feedback, "auto-command on halt: OFF")
 		} else {
-			dbg.print(ui.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 		}
 
 		// run the new/restored onhalt command(s)
@@ -417,7 +417,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 	case KeywordOnStep:
 		if tokens.Remaining() == 0 {
-			dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
 			return false, nil
 		}
 
@@ -442,9 +442,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 
 		// display the new/restored onstep command(s)
 		if dbg.commandOnStep == "" {
-			dbg.print(ui.Feedback, "auto-command on step: OFF")
+			dbg.print(console.Feedback, "auto-command on step: OFF")
 		} else {
-			dbg.print(ui.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
 		}
 
 		// run the new/restored onstep command(s)
@@ -457,13 +457,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "DEFN":
-				dbg.print(ui.Feedback, "%s", dbg.lastResult.Defn)
+				dbg.print(console.Feedback, "%s", dbg.lastResult.Defn)
 			case "":
-				var printTag ui.PrintProfile
+				var printTag console.PrintProfile
 				if dbg.lastResult.Final {
-					printTag = ui.CPUStep
+					printTag = console.CPUStep
 				} else {
-					printTag = ui.VideoStep
+					printTag = console.VideoStep
 				}
 				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
 			default:
@@ -472,7 +472,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 	case KeywordMemMap:
-		dbg.print(ui.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(console.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case KeywordQuit:
 		dbg.running = false
@@ -486,7 +486,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		dbg.print(ui.Feedback, "machine reset")
+		dbg.print(console.Feedback, "machine reset")
 
 	case KeywordRun:
 		dbg.runUntilHalt = true
@@ -533,21 +533,21 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		} else {
 			mode = "CPU"
 		}
-		dbg.print(ui.Feedback, "step mode: %s", mode)
+		dbg.print(console.Feedback, "step mode: %s", mode)
 
 	case KeywordTerse:
 		dbg.machineInfoVerbose = false
-		dbg.print(ui.Feedback, "verbosity: terse")
+		dbg.print(console.Feedback, "verbosity: terse")
 
 	case KeywordVerbose:
 		dbg.machineInfoVerbose = true
-		dbg.print(ui.Feedback, "verbosity: verbose")
+		dbg.print(console.Feedback, "verbosity: verbose")
 
 	case KeywordVerbosity:
 		if dbg.machineInfoVerbose {
-			dbg.print(ui.Feedback, "verbosity: verbose")
+			dbg.print(console.Feedback, "verbosity: verbose")
 		} else {
-			dbg.print(ui.Feedback, "verbosity: terse")
+			dbg.print(console.Feedback, "verbosity: terse")
 		}
 
 	case KeywordDebuggerState:
@@ -567,7 +567,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		// get first address token
 		a, present := tokens.Get()
 		if !present {
-			dbg.print(ui.Error, "peek address required")
+			dbg.print(console.Error, "peek address required")
 			return false, nil
 		}
 
@@ -575,14 +575,14 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			// perform peek
 			val, mappedAddress, areaName, addressLabel, err := dbg.dbgmem.peek(a)
 			if err != nil {
-				dbg.print(ui.Error, "%s", err)
+				dbg.print(console.Error, "%s", err)
 			} else {
 				// format results
 				msg := fmt.Sprintf("%#04x -> %#02x :: %s", mappedAddress, val, areaName)
 				if addressLabel != "" {
 					msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
 				}
-				dbg.print(ui.MachineInfo, msg)
+				dbg.print(console.MachineInfo, msg)
 			}
 
 			// loop through all addresses
@@ -593,62 +593,62 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		// get address token
 		a, present := tokens.Get()
 		if !present {
-			dbg.print(ui.Error, "poke address required")
+			dbg.print(console.Error, "poke address required")
 			return false, nil
 		}
 
 		addr, err := dbg.dbgmem.mapAddress(a, true)
 		if err != nil {
-			dbg.print(ui.Error, "invalid poke address (%v)", a)
+			dbg.print(console.Error, "invalid poke address (%v)", a)
 			return false, nil
 		}
 
 		// get value token
 		a, present = tokens.Get()
 		if !present {
-			dbg.print(ui.Error, "poke value required")
+			dbg.print(console.Error, "poke value required")
 			return false, nil
 		}
 
 		val, err := strconv.ParseUint(a, 0, 8)
 		if err != nil {
-			dbg.print(ui.Error, "poke value must be numeric (%s)", a)
+			dbg.print(console.Error, "poke value must be numeric (%s)", a)
 			return false, nil
 		}
 
 		// perform single poke
 		err = dbg.dbgmem.poke(addr, uint8(val))
 		if err != nil {
-			dbg.print(ui.Error, "%s", err)
+			dbg.print(console.Error, "%s", err)
 		} else {
-			dbg.print(ui.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
+			dbg.print(console.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
 		}
 
 	case KeywordHexLoad:
 		// get address token
 		a, present := tokens.Get()
 		if !present {
-			dbg.print(ui.Error, "hexload address required")
+			dbg.print(console.Error, "hexload address required")
 			return false, nil
 		}
 
 		addr, err := dbg.dbgmem.mapAddress(a, true)
 		if err != nil {
-			dbg.print(ui.Error, "invalid hexload address (%s)", a)
+			dbg.print(console.Error, "invalid hexload address (%s)", a)
 			return false, nil
 		}
 
 		// get (first) value token
 		a, present = tokens.Get()
 		if !present {
-			dbg.print(ui.Error, "at least one hexload value required")
+			dbg.print(console.Error, "at least one hexload value required")
 			return false, nil
 		}
 
 		for present {
 			val, err := strconv.ParseUint(a, 0, 8)
 			if err != nil {
-				dbg.print(ui.Error, "hexload value must be numeric (%s)", a)
+				dbg.print(console.Error, "hexload value must be numeric (%s)", a)
 				a, present = tokens.Get()
 				continue // for loop
 			}
@@ -656,9 +656,9 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			// perform individual poke
 			err = dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
-				dbg.print(ui.Error, "%s", err)
+				dbg.print(console.Error, "%s", err)
 			} else {
-				dbg.print(ui.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
+				dbg.print(console.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
 			}
 
 			// loop through all values
@@ -680,12 +680,12 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case "FUTURE":
 				dbg.printMachineInfo(dbg.vcs.TIA.Video.OnFutureColorClock)
 			case "HMOVE":
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Hmove.MachineInfoInternal())
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Player0.MachineInfoInternal())
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Player1.MachineInfoInternal())
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Missile0.MachineInfoInternal())
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Missile1.MachineInfoInternal())
-				dbg.print(ui.MachineInfoInternal, dbg.vcs.TIA.Video.Ball.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Hmove.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Player0.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Player1.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Missile0.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Missile1.MachineInfoInternal())
+				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Ball.MachineInfoInternal())
 			default:
 				return false, fmt.Errorf("unknown request (%s)", option)
 			}
@@ -703,7 +703,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				if err != nil {
 					return false, err
 				}
-				dbg.print(ui.MachineInfo, info.(string))
+				dbg.print(console.MachineInfo, info.(string))
 			default:
 				return false, fmt.Errorf("unknown request (%s)", option)
 			}
@@ -735,7 +735,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
 				}
 			}
-			dbg.print(ui.MachineInfo, s.String())
+			dbg.print(console.MachineInfo, s.String())
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
@@ -764,7 +764,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
 				}
 			}
-			dbg.print(ui.MachineInfo, s.String())
+			dbg.print(console.MachineInfo, s.String())
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
@@ -849,7 +849,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		dbg.print(ui.MachineInfo, info.(string))
+		dbg.print(console.MachineInfo, info.(string))
 
 	case KeywordStick0:
 		action, present := tokens.Get()

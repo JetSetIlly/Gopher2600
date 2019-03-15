@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/ui"
+	"gopher2600/debugger/console"
 	"gopher2600/gui"
 )
 
@@ -18,9 +18,9 @@ func (dbg *Debugger) setupTVCallbacks() error {
 
 		_, err := dbg.parseCommand(fmt.Sprintf("%s sl %d & hp %d", KeywordBreak, sl, hp))
 		if err == nil {
-			dbg.print(ui.Feedback, "mouse break on sl->%d and hp->%d", sl, hp)
+			dbg.print(console.Feedback, "mouse break on sl->%d and hp->%d", sl, hp)
 		} else {
-			dbg.print(ui.Error, "%s", err)
+			dbg.print(console.Error, "%s", err)
 		}
 	})
 	if err != nil {
@@ -48,7 +48,7 @@ func (dbg *Debugger) setupTVCallbacks() error {
 			err = dbg.tv.SetFeature(gui.ReqDecScale)
 		}
 		if err != nil {
-			dbg.print(ui.Error, "%s", err)
+			dbg.print(console.Error, "%s", err)
 		}
 	})
 	if err != nil {

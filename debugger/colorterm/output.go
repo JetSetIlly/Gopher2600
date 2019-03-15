@@ -3,35 +3,35 @@ package colorterm
 import (
 	"fmt"
 	"gopher2600/debugger/colorterm/ansi"
-	"gopher2600/debugger/ui"
+	"gopher2600/debugger/console"
 )
 
 // UserPrint is the top level output function
-func (ct *ColorTerminal) UserPrint(profile ui.PrintProfile, s string, a ...interface{}) {
-	if profile != ui.Input {
+func (ct *ColorTerminal) UserPrint(profile console.PrintProfile, s string, a ...interface{}) {
+	if profile != console.Input {
 		ct.Print("\r")
 	}
 
 	switch profile {
-	case ui.CPUStep:
+	case console.CPUStep:
 		ct.Print(ansi.PenColor["yellow"])
-	case ui.VideoStep:
+	case console.VideoStep:
 		ct.Print(ansi.DimPens["yellow"])
-	case ui.MachineInfo:
+	case console.MachineInfo:
 		ct.Print(ansi.PenColor["cyan"])
-	case ui.MachineInfoInternal:
+	case console.MachineInfoInternal:
 		ct.Print(ansi.PenColor["blue"])
-	case ui.Error:
+	case console.Error:
 		ct.Print(ansi.PenColor["red"])
 		ct.Print("* ")
-	case ui.Help:
+	case console.Help:
 		ct.Print(ansi.DimPens["white"])
 		ct.Print("  ")
-	case ui.Feedback:
+	case console.Feedback:
 		ct.Print(ansi.DimPens["white"])
-	case ui.Script:
+	case console.Script:
 		ct.Print("> ")
-	case ui.Prompt:
+	case console.Prompt:
 		ct.Print(ansi.PenStyles["bold"])
 	}
 
@@ -43,7 +43,7 @@ func (ct *ColorTerminal) UserPrint(profile ui.PrintProfile, s string, a ...inter
 	ct.Print(ansi.NormalPen)
 
 	// add a newline if print profile is anything other than prompt
-	if profile != ui.Prompt && profile != ui.Input {
+	if profile != console.Prompt && profile != console.Input {
 		ct.Print("\n")
 	}
 }

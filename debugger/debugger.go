@@ -2,13 +2,12 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/console"
 	"gopher2600/debugger/input"
 	"gopher2600/debugger/monitor"
-	"gopher2600/debugger/ui"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
@@ -62,8 +61,6 @@ type Debugger struct {
 
 	// single-fire step traps. these are used for the STEP command, allowing
 	// things like "STEP FRAME".
-	// -- note that the hardware.VCS type has the StepFrames() function, we're
-	// not using that here because this solution is more general and flexible
 	stepTraps *traps
 
 	// commandOnHalt says whether an sequence of commands should run automatically
@@ -93,9 +90,9 @@ type Debugger struct {
 	// intermediate result when video-stepping
 	lastResult *result.Instruction
 
-	// user interface
-	ui       ui.UserInterface
-	uiSilent bool // controls whether UI is to remain silent
+	// console interface
+	console       console.UserInterface
+	consoleSilent bool // controls whether UI is to remain silent
 
 	// buffer for user input
 	input []byte
@@ -111,18 +108,15 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger() (*Debugger, error) {
+func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
 
-	dbg.ui = new(ui.PlainTerminal)
+	dbg.console = new(console.PlainTerminal)
 
 	// prepare hardware
-	dbg.tv, err = sdl.NewGUI("NTSC", 2.0)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing television: %s", err)
-	}
+	dbg.tv = tv
 	dbg.tv.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
@@ -171,19 +165,19 @@ func NewDebugger() (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(iface ui.UserInterface, filename string, initScript string) error {
+func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScript string) error {
 	// prepare user interface
 	if iface != nil {
-		dbg.ui = iface
+		dbg.console = iface
 	}
 
-	err := dbg.ui.Initialise()
+	err := dbg.console.Initialise()
 	if err != nil {
 		return err
 	}
-	defer dbg.ui.CleanUp()
+	defer dbg.console.CleanUp()
 
-	dbg.ui.RegisterTabCompleter(input.NewTabCompletion(DebuggerCommands))
+	dbg.console.RegisterTabCompleter(input.NewTabCompletion(DebuggerCommands))
 
 	err = dbg.loadCartridge(filename)
 	if err != nil {
@@ -220,7 +214,7 @@ func (dbg *Debugger) Start(iface ui.UserInterface, filename string, initScript s
 	if initScript != "" {
 		spt, err := dbg.loadScript(initScript)
 		if err != nil {
-			dbg.print(ui.Error, "error running debugger initialisation script: %s\n", err)
+			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
 		}
 
 		err = dbg.inputLoop(spt, true)
@@ -231,7 +225,7 @@ func (dbg *Debugger) Start(iface ui.UserInterface, filename string, initScript s
 
 	// prepare and run main input loop. inputLoop will not return until
 	// debugger is to exit
-	err = dbg.inputLoop(dbg.ui, true)
+	err = dbg.inputLoop(dbg.console, true)
 	if err != nil {
 		return err
 	}
@@ -253,7 +247,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
-		dbg.print(ui.Error, "%s", err)
+		dbg.print(console.Error, "%s", err)
 		symtable = symbols.StandardSymbolTable()
 	}
 
@@ -309,7 +303,7 @@ func (dbg *Debugger) checkForInterrupts() {
 //
 // inputter is an instance of type UserInput. this will usually be dbg.ui but
 // it could equally be an instance of debuggingScript.
-func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
+func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error {
 	var err error
 
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
@@ -320,7 +314,7 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep)
 			if err != nil {
-				dbg.print(ui.Error, "%s", err)
+				dbg.print(console.Error, "%s", err)
 			}
 		}
 		return dbg.inputLoop(inputter, false)
@@ -362,15 +356,15 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
 				_, err = dbg.parseInput(dbg.commandOnHalt)
 				if err != nil {
-					dbg.print(ui.Error, "%s", err)
+					dbg.print(console.Error, "%s", err)
 				}
 			}
 		}
 
 		// print and reset accumulated break and trap messages
-		dbg.print(ui.Feedback, dbg.breakMessages)
-		dbg.print(ui.Feedback, dbg.trapMessages)
-		dbg.print(ui.Feedback, dbg.watchMessages)
+		dbg.print(console.Feedback, dbg.breakMessages)
+		dbg.print(console.Feedback, dbg.trapMessages)
+		dbg.print(console.Feedback, dbg.watchMessages)
 		dbg.breakMessages = ""
 		dbg.trapMessages = ""
 		dbg.watchMessages = ""
@@ -424,7 +418,7 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 						fallthrough
 					case errors.ScriptEnd:
 						if mainLoop {
-							dbg.print(ui.Feedback, err.Error())
+							dbg.print(console.Feedback, err.Error())
 						}
 						return nil
 					}
@@ -441,7 +435,7 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 			// parse user input
 			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]))
 			if err != nil {
-				dbg.print(ui.Error, "%s", err)
+				dbg.print(console.Error, "%s", err)
 			}
 
 			// prepare for next loop
@@ -474,7 +468,7 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 						dbg.lastStepError = true
 
 						// print gopher error message
-						dbg.print(ui.Error, "%s", err)
+						dbg.print(console.Error, "%s", err)
 					default:
 						return err
 					}
@@ -483,8 +477,8 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 					if dbg.lastResult.Final {
 						err := dbg.lastResult.IsValid()
 						if err != nil {
-							dbg.print(ui.Error, "%s", dbg.lastResult.Defn)
-							dbg.print(ui.Error, "%s", dbg.lastResult)
+							dbg.print(console.Error, "%s", dbg.lastResult.Defn)
+							dbg.print(console.Error, "%s", dbg.lastResult)
 							panic(err)
 						}
 					}
@@ -493,7 +487,7 @@ func (dbg *Debugger) inputLoop(inputter ui.UserInput, mainLoop bool) error {
 				if dbg.commandOnStep != "" {
 					_, err := dbg.parseInput(dbg.commandOnStep)
 					if err != nil {
-						dbg.print(ui.Error, "%s", err)
+						dbg.print(console.Error, "%s", err)
 					}
 				}
 			} else {

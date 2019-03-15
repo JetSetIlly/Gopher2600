@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gopher2600/debugger"
 	"gopher2600/debugger/colorterm"
-	"gopher2600/debugger/ui"
+	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -77,14 +77,20 @@ func main() {
 		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
 		modeFlagsParse()
 
-		dbg, err := debugger.NewDebugger()
+		tv, err := sdl.NewGUI("NTSC", 2.0)
+		if err != nil {
+			fmt.Printf("* error preparing television: %s", err)
+			os.Exit(2)
+		}
+
+		dbg, err := debugger.NewDebugger(tv)
 		if err != nil {
 			fmt.Printf("* error starting debugger: %s\n", err)
 			os.Exit(2)
 		}
 
 		// start debugger with choice of interface and cartridge
-		var term ui.UserInterface
+		var term console.UserInterface
 
 		switch strings.ToUpper(*termType) {
 		default:

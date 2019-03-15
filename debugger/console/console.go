@@ -1,4 +1,4 @@
-package ui
+package console
 
 import "gopher2600/debugger/input"
 
