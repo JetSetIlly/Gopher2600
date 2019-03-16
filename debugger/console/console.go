@@ -5,6 +5,7 @@ import "gopher2600/debugger/input"
 // UserInput defines the operations required by an interface that allows input
 type UserInput interface {
 	UserRead(buffer []byte, prompt string, interruptChannel chan func()) (int, error)
+	IsInteractive() bool
 }
 
 // UserOutput defines the operations required by an interface that allows

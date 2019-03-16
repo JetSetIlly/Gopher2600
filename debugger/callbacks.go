@@ -16,7 +16,7 @@ func (dbg *Debugger) setupTVCallbacks() error {
 		hp, _ := dbg.tv.GetMetaState(gui.ReqLastMouseHorizPos)
 		sl, _ := dbg.tv.GetMetaState(gui.ReqLastMouseScanline)
 
-		_, err := dbg.parseCommand(fmt.Sprintf("%s sl %d & hp %d", KeywordBreak, sl, hp))
+		_, err := dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, sl, hp), false)
 		if err == nil {
 			dbg.print(console.Feedback, "mouse break on sl->%d and hp->%d", sl, hp)
 		} else {

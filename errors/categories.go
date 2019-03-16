@@ -3,8 +3,7 @@ package errors
 // list of error numbers
 const (
 	// Debugger
-	InputEmpty Errno = iota
-	UserInterrupt
+	UserInterrupt Errno = iota
 	CommandError
 	InvalidTarget
 	CannotRecordState
@@ -19,6 +18,9 @@ const (
 	ScriptFileError
 	ScriptRunError
 	ScriptEnd
+
+	// Capture
+	CaptureFileError
 
 	// Regression
 	RegressionEntryExists

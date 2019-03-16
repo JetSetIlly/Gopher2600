@@ -17,149 +17,104 @@ import (
 // debugger keywords. not a useful data structure but we can use these to form
 // the more useful DebuggerCommands and Help structures
 const (
-	KeywordHelp          = "HELP"
-	KeywordInsert        = "INSERT"
-	KeywordSymbol        = "SYMBOL"
-	KeywordBreak         = "BREAK"
-	KeywordTrap          = "TRAP"
-	KeywordWatch         = "WATCH"
-	KeywordList          = "LIST"
-	KeywordClear         = "CLEAR"
-	KeywordDrop          = "DROP"
-	KeywordOnHalt        = "ONHALT"
-	KeywordOnStep        = "ONSTEP"
-	KeywordLast          = "LAST"
-	KeywordMemMap        = "MEMMAP"
-	KeywordQuit          = "QUIT"
-	KeywordReset         = "RESET"
-	KeywordRun           = "RUN"
-	KeywordStep          = "STEP"
-	KeywordStepMode      = "STEPMODE"
-	KeywordTerse         = "TERSE"
-	KeywordVerbose       = "VERBOSE"
-	KeywordVerbosity     = "VERBOSITY"
-	KeywordDebuggerState = "DEBUGGERSTATE"
-	KeywordCartridge     = "CARTRIDGE"
-	KeywordCPU           = "CPU"
-	KeywordPeek          = "PEEK"
-	KeywordPoke          = "POKE"
-	KeywordHexLoad       = "HEXLOAD"
-	KeywordRAM           = "RAM"
-	KeywordRIOT          = "RIOT"
-	KeywordTIA           = "TIA"
-	KeywordTV            = "TV"
-	KeywordPlayer        = "PLAYER"
-	KeywordMissile       = "MISSILE"
-	KeywordBall          = "BALL"
-	KeywordPlayfield     = "PLAYFIELD"
-	KeywordDisplay       = "DISPLAY"
-	KeywordMouse         = "MOUSE"
-	KeywordScript        = "SCRIPT"
-	KeywordDisassemble   = "DISASSEMBLE"
-	KeywordGrep          = "GREP"
-	KeywordStick0        = "STICK0"
-	KeywordStick1        = "STICK1"
+	cmdBall          = "BALL"
+	cmdBreak         = "BREAK"
+	cmdCPU           = "CPU"
+	cmdCapture       = "CAPTURE"
+	cmdCartridge     = "CARTRIDGE"
+	cmdClear         = "CLEAR"
+	cmdDebuggerState = "DEBUGGERSTATE"
+	cmdDisassemble   = "DISASSEMBLE"
+	cmdDisplay       = "DISPLAY"
+	cmdDrop          = "DROP"
+	cmdGrep          = "GREP"
+	cmdHelp          = "HELP"
+	cmdHexLoad       = "HEXLOAD"
+	cmdInsert        = "INSERT"
+	cmdLast          = "LAST"
+	cmdList          = "LIST"
+	cmdMemMap        = "MEMMAP"
+	cmdMissile       = "MISSILE"
+	cmdMouse         = "MOUSE"
+	cmdOnHalt        = "ONHALT"
+	cmdOnStep        = "ONSTEP"
+	cmdPeek          = "PEEK"
+	cmdPlayer        = "PLAYER"
+	cmdPlayfield     = "PLAYFIELD"
+	cmdPoke          = "POKE"
+	cmdQuit          = "QUIT"
+	cmdRAM           = "RAM"
+	cmdRIOT          = "RIOT"
+	cmdReset         = "RESET"
+	cmdRun           = "RUN"
+	cmdScript        = "SCRIPT"
+	cmdStep          = "STEP"
+	cmdStepMode      = "STEPMODE"
+	cmdStick0        = "STICK0"
+	cmdStick1        = "STICK1"
+	cmdSymbol        = "SYMBOL"
+	cmdTIA           = "TIA"
+	cmdTV            = "TV"
+	cmdTerse         = "TERSE"
+	cmdTrap          = "TRAP"
+	cmdVerbose       = "VERBOSE"
+	cmdVerbosity     = "VERBOSITY"
+	cmdWatch         = "WATCH"
 )
-
-// Help contains the help text for the debugger's top level commands
-var Help = map[string]string{
-	KeywordHelp:          "Lists commands and provides help for individual debugger commands",
-	KeywordInsert:        "Insert cartridge into emulation (from file)",
-	KeywordSymbol:        "Search for the address label symbol in disassembly. returns address",
-	KeywordBreak:         "Cause emulator to halt when conditions are met",
-	KeywordTrap:          "Cause emulator to halt when specified machine component is touched",
-	KeywordWatch:         "Watch a memory address for activity",
-	KeywordList:          "List current entries for BREAKS and TRAPS",
-	KeywordClear:         "Clear all entries in BREAKS and TRAPS",
-	KeywordDrop:          "Drop a specific BREAK or TRAP conditin, using the number of the condition reported by LIST",
-	KeywordOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
-	KeywordOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
-	KeywordLast:          "Prints the result of the last cpu/video cycle",
-	KeywordMemMap:        "Display high-level VCS memory map",
-	KeywordQuit:          "Exits the emulator",
-	KeywordReset:         "Reset the emulation to its initial state",
-	KeywordRun:           "Run emulator until next halt state",
-	KeywordStep:          "Step forward emulator one step (see STEPMODE command)",
-	KeywordStepMode:      "Change method of stepping: CPU or VIDEO",
-	KeywordTerse:         "Use terse format when displaying machine information",
-	KeywordVerbose:       "Use verbose format when displaying machine information",
-	KeywordVerbosity:     "Display which format is used when displaying machine information (see TERSE and VERBOSE commands)",
-	KeywordDebuggerState: "Display summary of debugger options",
-	KeywordCartridge:     "Display information about the current cartridge",
-	KeywordCPU:           "Display the current state of the CPU",
-	KeywordPeek:          "Inspect an individual memory address",
-	KeywordPoke:          "Modify an individual memory address",
-	KeywordHexLoad:       "Modify a sequence of memory addresses. Starting address must be numeric.",
-	KeywordRAM:           "Display the current contents of PIA RAM",
-	KeywordRIOT:          "Display the current state of the RIOT",
-	KeywordTIA:           "Display current state of the TIA",
-	KeywordTV:            "Display the current TV state",
-	KeywordPlayer:        "Display the current state of the Player 0/1 sprite",
-	KeywordMissile:       "Display the current state of the Missile 0/1 sprite",
-	KeywordBall:          "Display the current state of the Ball sprite",
-	KeywordPlayfield:     "Display the current playfield data",
-	KeywordDisplay:       "Display the TV image",
-	KeywordMouse:         "Return the coordinates of the last mouse press",
-	KeywordScript:        "Run commands from specified file",
-	KeywordDisassemble:   "Print the full cartridge disassembly",
-	KeywordGrep:          "Simple string search (case insensitive) of the disassembly",
-	KeywordStick0:        "Emulate a joystick input for Player 0",
-	KeywordStick1:        "Emulate a joystick input for Player 1",
-}
-
-var commandTemplate = input.CommandTemplate{
-	KeywordInsert: "%F",
-	KeywordSymbol: "%S [|ALL]",
-
-	// break/trap/watch values are parsed in parseTargets() function
-	// TODO: find some way to create valid templates using information from
-	// other sources
-	KeywordBreak: "%*",
-	KeywordTrap:  "%*",
-
-	KeywordWatch:         "[READ|WRITE|] %V %*",
-	KeywordList:          "[BREAKS|TRAPS|WATCHES]",
-	KeywordClear:         "[BREAKS|TRAPS|WATCHES]",
-	KeywordDrop:          "[BREAK|TRAP|WATCH] %V",
-	KeywordOnHalt:        "[|OFF|RESTORE] %*",
-	KeywordOnStep:        "[|OFF|RESTORE] %*",
-	KeywordLast:          "[|DEFN]",
-	KeywordMemMap:        "",
-	KeywordQuit:          "",
-	KeywordReset:         "",
-	KeywordRun:           "",
-	KeywordStep:          "[|CPU|VIDEO|SCANLINE]", // see notes
-	KeywordStepMode:      "[|CPU|VIDEO]",
-	KeywordTerse:         "",
-	KeywordVerbose:       "",
-	KeywordVerbosity:     "",
-	KeywordDebuggerState: "",
-	KeywordCartridge:     "",
-	KeywordCPU:           "",
-	KeywordPeek:          "%*",
-	KeywordPoke:          "%*",
-	KeywordHexLoad:       "%*",
-	KeywordRAM:           "",
-	KeywordRIOT:          "",
-	KeywordTIA:           "[|FUTURE|HMOVE]",
-	KeywordTV:            "[|SPEC]",
-	KeywordPlayer:        "",
-	KeywordMissile:       "",
-	KeywordBall:          "",
-	KeywordPlayfield:     "",
-	KeywordDisplay:       "[|OFF|DEBUG|SCALE|DEBUGCOLORS] %*", // see notes
-	KeywordMouse:         "[|X|Y]",
-	KeywordScript:        "%F",
-	KeywordDisassemble:   "",
-	KeywordGrep:          "%S %*",
-	KeywordStick0:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
-	KeywordStick1:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
-}
 
 // notes
 // o KeywordStep can take a valid target
 // o KeywordDisplay SCALE takes an additional argument but OFF and DEBUG do
 // 	not. the %* is a compromise
+
+// break/trap/watch values are parsed in parseTargets() function
+// TODO: find some way to create valid templates using information from
+// other sources
+
+var commandTemplate = input.CommandTemplate{
+	cmdBall:          "",
+	cmdBreak:         "%*",
+	cmdCPU:           "",
+	cmdCapture:       "[END|%F]",
+	cmdCartridge:     "",
+	cmdClear:         "[BREAKS|TRAPS|WATCHES]",
+	cmdDebuggerState: "",
+	cmdDisassemble:   "",
+	cmdDisplay:       "[|OFF|DEBUG|SCALE|DEBUGCOLORS] %*", // see notes
+	cmdDrop:          "[BREAK|TRAP|WATCH] %V",
+	cmdGrep:          "%S %*",
+	cmdHexLoad:       "%*",
+	cmdInsert:        "%F",
+	cmdLast:          "[|DEFN]",
+	cmdList:          "[BREAKS|TRAPS|WATCHES]",
+	cmdMemMap:        "",
+	cmdMissile:       "",
+	cmdMouse:         "[|X|Y]",
+	cmdOnHalt:        "[|OFF|RESTORE] %*",
+	cmdOnStep:        "[|OFF|RESTORE] %*",
+	cmdPeek:          "%*",
+	cmdPlayer:        "",
+	cmdPlayfield:     "",
+	cmdPoke:          "%*",
+	cmdQuit:          "",
+	cmdRAM:           "",
+	cmdRIOT:          "",
+	cmdReset:         "",
+	cmdRun:           "",
+	cmdScript:        "%F",
+	cmdStep:          "[|CPU|VIDEO|SCANLINE]", // see notes
+	cmdStepMode:      "[|CPU|VIDEO]",
+	cmdStick0:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
+	cmdStick1:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
+	cmdSymbol:        "%S [|ALL]",
+	cmdTIA:           "[|FUTURE|HMOVE]",
+	cmdTV:            "[|SPEC]",
+	cmdTerse:         "",
+	cmdTrap:          "%*",
+	cmdVerbose:       "",
+	cmdVerbosity:     "",
+	cmdWatch:         "[READ|WRITE|] %V %*",
+}
 
 // DebuggerCommands is the tree of valid commands
 var DebuggerCommands input.Commands
@@ -168,48 +123,55 @@ func init() {
 	var err error
 
 	// parse command template
-	DebuggerCommands, err = input.CompileCommandTemplate(commandTemplate, KeywordHelp)
+	DebuggerCommands, err = input.CompileCommandTemplate(commandTemplate, cmdHelp)
 	if err != nil {
 		panic(fmt.Errorf("error compiling command template: %s", err))
 	}
 }
 
+type parseCommandResult int
+
+const (
+	doNothing parseCommandResult = iota
+	emptyInput
+	stepContinue
+	setDefaultStep
+	captureStarted
+	captureEnded
+)
+
 // parseCommand scans user input for valid commands and acts upon it. commands
 // that cause the emulation to move forward (RUN, STEP) return true for the
 // first return value. other commands return false and act upon the command
 // immediately. note that the empty string is the same as the STEP command
-func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
-	// TODO: categorise commands into script-safe and non-script-safe
-
+//
+// TODO: categorise commands into script-safe and non-script-safe
+func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error) {
 	// tokenise input
-	tokens := input.TokeniseInput(userInput)
+	tokens := input.TokeniseInput(*userInput)
 
-	// check validity of input -- this allows us to catch errors early and in
-	// many cases to ignore the "success" flag when calling tokens.item()
-	if err := DebuggerCommands.ValidateInput(tokens); err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			switch err.Errno {
-			case errors.InputEmpty:
-				// user pressed return
-				return false, nil
-			}
-		}
-		return false, err
+	// check validity of input
+	err := DebuggerCommands.ValidateInput(tokens)
+	if err != nil {
+		return doNothing, err
 	}
 
-	// most commands do not cause the emulator to step forward
-	stepNext := false
+	// if there are no tokens in the input then return emptyInput directive
+	if tokens.Remaining() == 0 {
+		return emptyInput, nil
+	}
+
+	// normalise user input
+	*userInput = tokens.String()
 
 	tokens.Reset()
 	command, _ := tokens.Get()
 	command = strings.ToUpper(command)
 	switch command {
 	default:
-		return false, fmt.Errorf("%s is not yet implemented", command)
+		return doNothing, fmt.Errorf("%s is not yet implemented", command)
 
-		// control of the debugger
-	case KeywordHelp:
+	case cmdHelp:
 		keyword, present := tokens.Get()
 		if present {
 			s := strings.ToUpper(keyword)
@@ -225,32 +187,32 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			}
 		}
 
-	case KeywordInsert:
+	case cmdInsert:
 		cart, _ := tokens.Get()
 		err := dbg.loadCartridge(cart)
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 		dbg.print(console.Feedback, "machine reset with new cartridge (%s)", cart)
 
-	case KeywordScript:
+	case cmdScript:
 		script, _ := tokens.Get()
 
 		spt, err := dbg.loadScript(script)
 		if err != nil {
 			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
-			return false, err
+			return doNothing, err
 		}
 
-		err = dbg.inputLoop(spt, true)
+		err = dbg.inputLoop(spt, false)
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 
-	case KeywordDisassemble:
+	case cmdDisassemble:
 		dbg.disasm.Dump(os.Stdout)
 
-	case KeywordGrep:
+	case cmdGrep:
 		search := tokens.Remainder()
 		output := strings.Builder{}
 		dbg.disasm.Grep(search, &output, false, 3)
@@ -260,7 +222,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.print(console.Feedback, output.String())
 		}
 
-	case KeywordSymbol:
+	case cmdSymbol:
 		// TODO: change this so that it uses debugger.memory front-end
 		symbol, _ := tokens.Get()
 		table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
@@ -269,10 +231,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case errors.FormattedError:
 				if err.Errno == errors.SymbolUnknown {
 					dbg.print(console.Feedback, "%s -> not found", symbol)
-					return false, nil
+					return doNothing, nil
 				}
 			}
-			return false, err
+			return doNothing, err
 		}
 
 		option, present := tokens.Get()
@@ -291,31 +253,31 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 					}
 				}
 			default:
-				return false, fmt.Errorf("unknown option for SYMBOL command (%s)", option)
+				return doNothing, fmt.Errorf("unknown option for SYMBOL command (%s)", option)
 			}
 		} else {
 			dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
 		}
 
-	case KeywordBreak:
+	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
-			return false, fmt.Errorf("error on break: %s", err)
+			return doNothing, fmt.Errorf("error on break: %s", err)
 		}
 
-	case KeywordTrap:
+	case cmdTrap:
 		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
-			return false, fmt.Errorf("error on trap: %s", err)
+			return doNothing, fmt.Errorf("error on trap: %s", err)
 		}
 
-	case KeywordWatch:
+	case cmdWatch:
 		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
 		if err != nil {
-			return false, fmt.Errorf("error on watch: %s", err)
+			return doNothing, fmt.Errorf("error on watch: %s", err)
 		}
 
-	case KeywordList:
+	case cmdList:
 		list, _ := tokens.Get()
 		list = strings.ToUpper(list)
 		switch list {
@@ -326,10 +288,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		case "WATCHES":
 			dbg.watches.list()
 		default:
-			return false, fmt.Errorf("unknown list option (%s)", list)
+			return doNothing, fmt.Errorf("unknown list option (%s)", list)
 		}
 
-	case KeywordClear:
+	case cmdClear:
 		clear, _ := tokens.Get()
 		clear = strings.ToUpper(clear)
 		switch clear {
@@ -343,16 +305,16 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.watches.clear()
 			dbg.print(console.Feedback, "watches cleared")
 		default:
-			return false, fmt.Errorf("unknown clear option (%s)", clear)
+			return doNothing, fmt.Errorf("unknown clear option (%s)", clear)
 		}
 
-	case KeywordDrop:
+	case cmdDrop:
 		drop, _ := tokens.Get()
 
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return false, fmt.Errorf("drop attribute must be a decimal number (%s)", s)
+			return doNothing, fmt.Errorf("drop attribute must be a decimal number (%s)", s)
 		}
 
 		drop = strings.ToUpper(drop)
@@ -360,29 +322,29 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		case "BREAK":
 			err := dbg.breakpoints.drop(num)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 			dbg.print(console.Feedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 			dbg.print(console.Feedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 			dbg.print(console.Feedback, "watch #%d dropped", num)
 		default:
-			return false, fmt.Errorf("unknown drop option (%s)", drop)
+			return doNothing, fmt.Errorf("unknown drop option (%s)", drop)
 		}
 
-	case KeywordOnHalt:
+	case cmdOnHalt:
 		if tokens.Remaining() == 0 {
 			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
-			return false, nil
+			return doNothing, nil
 		}
 
 		option, _ := tokens.Peek()
@@ -412,13 +374,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 		// run the new/restored onhalt command(s)
-		_, err := dbg.parseInput(dbg.commandOnHalt)
-		return false, err
+		_, err := dbg.parseInput(dbg.commandOnHalt, false)
+		return doNothing, err
 
-	case KeywordOnStep:
+	case cmdOnStep:
 		if tokens.Remaining() == 0 {
 			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
-			return false, nil
+			return doNothing, nil
 		}
 
 		option, _ := tokens.Peek()
@@ -448,10 +410,10 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 		}
 
 		// run the new/restored onstep command(s)
-		_, err := dbg.parseInput(dbg.commandOnStep)
-		return false, err
+		_, err := dbg.parseInput(dbg.commandOnStep, false)
+		return doNothing, err
 
-	case KeywordLast:
+	case cmdLast:
 		if dbg.lastResult != nil {
 			option, _ := tokens.Get()
 			option = strings.ToUpper(option)
@@ -467,108 +429,105 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				}
 				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
 			default:
-				return false, fmt.Errorf("unknown last request option (%s)", option)
+				return doNothing, fmt.Errorf("unknown last request option (%s)", option)
 			}
 		}
 
-	case KeywordMemMap:
+	case cmdMemMap:
 		dbg.print(console.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
-	case KeywordQuit:
+	case cmdQuit:
 		dbg.running = false
 
-	case KeywordReset:
+	case cmdReset:
 		err := dbg.vcs.Reset()
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 		err = dbg.tv.Reset()
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 		dbg.print(console.Feedback, "machine reset")
 
-	case KeywordRun:
+	case cmdRun:
 		dbg.runUntilHalt = true
-		stepNext = true
+		return stepContinue, nil
 
-	case KeywordStep:
+	case cmdStep:
 		mode, _ := tokens.Get()
 		mode = strings.ToUpper(mode)
 		switch mode {
 		case "":
-			stepNext = true
 		case "CPU":
-			dbg.inputloopVideoClock = false
-			stepNext = true
+			dbg.inputEveryVideoCycle = false
 		case "VIDEO":
-			dbg.inputloopVideoClock = true
-			stepNext = true
+			dbg.inputEveryVideoCycle = true
 		default:
 			// try to parse trap
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
-				return false, fmt.Errorf("unknown step mode (%s)", mode)
+				return doNothing, fmt.Errorf("unknown step mode (%s)", mode)
 			}
 			dbg.runUntilHalt = true
-			stepNext = true
 		}
 
-	case KeywordStepMode:
+		return setDefaultStep, nil
+
+	case cmdStepMode:
 		mode, present := tokens.Get()
 		if present {
 			mode = strings.ToUpper(mode)
 			switch mode {
 			case "CPU":
-				dbg.inputloopVideoClock = false
+				dbg.inputEveryVideoCycle = false
 			case "VIDEO":
-				dbg.inputloopVideoClock = true
+				dbg.inputEveryVideoCycle = true
 			default:
-				return false, fmt.Errorf("unknown step mode (%s)", mode)
+				return doNothing, fmt.Errorf("unknown step mode (%s)", mode)
 			}
 		}
-		if dbg.inputloopVideoClock {
+		if dbg.inputEveryVideoCycle {
 			mode = "VIDEO"
 		} else {
 			mode = "CPU"
 		}
 		dbg.print(console.Feedback, "step mode: %s", mode)
 
-	case KeywordTerse:
+	case cmdTerse:
 		dbg.machineInfoVerbose = false
 		dbg.print(console.Feedback, "verbosity: terse")
 
-	case KeywordVerbose:
+	case cmdVerbose:
 		dbg.machineInfoVerbose = true
 		dbg.print(console.Feedback, "verbosity: verbose")
 
-	case KeywordVerbosity:
+	case cmdVerbosity:
 		if dbg.machineInfoVerbose {
 			dbg.print(console.Feedback, "verbosity: verbose")
 		} else {
 			dbg.print(console.Feedback, "verbosity: terse")
 		}
 
-	case KeywordDebuggerState:
-		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT ECHO; ONSTEP ECHO")
+	case cmdDebuggerState:
+		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT ECHO; ONSTEP ECHO", false)
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 
-	// information about the machine (chips)
-	case KeywordCartridge:
+	case cmdCartridge:
 		dbg.printMachineInfo(dbg.vcs.Mem.Cart)
 
-	case KeywordCPU:
+	case cmdCPU:
 		dbg.printMachineInfo(dbg.vcs.MC)
 
-	case KeywordPeek:
+	case cmdPeek:
 		// get first address token
 		a, present := tokens.Get()
 		if !present {
 			dbg.print(console.Error, "peek address required")
-			return false, nil
+			return doNothing, nil
 		}
 
 		for present {
@@ -589,31 +548,31 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			a, present = tokens.Get()
 		}
 
-	case KeywordPoke:
+	case cmdPoke:
 		// get address token
 		a, present := tokens.Get()
 		if !present {
 			dbg.print(console.Error, "poke address required")
-			return false, nil
+			return doNothing, nil
 		}
 
 		addr, err := dbg.dbgmem.mapAddress(a, true)
 		if err != nil {
 			dbg.print(console.Error, "invalid poke address (%v)", a)
-			return false, nil
+			return doNothing, nil
 		}
 
 		// get value token
 		a, present = tokens.Get()
 		if !present {
 			dbg.print(console.Error, "poke value required")
-			return false, nil
+			return doNothing, nil
 		}
 
 		val, err := strconv.ParseUint(a, 0, 8)
 		if err != nil {
 			dbg.print(console.Error, "poke value must be numeric (%s)", a)
-			return false, nil
+			return doNothing, nil
 		}
 
 		// perform single poke
@@ -624,25 +583,25 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.print(console.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
 		}
 
-	case KeywordHexLoad:
+	case cmdHexLoad:
 		// get address token
 		a, present := tokens.Get()
 		if !present {
 			dbg.print(console.Error, "hexload address required")
-			return false, nil
+			return doNothing, nil
 		}
 
 		addr, err := dbg.dbgmem.mapAddress(a, true)
 		if err != nil {
 			dbg.print(console.Error, "invalid hexload address (%s)", a)
-			return false, nil
+			return doNothing, nil
 		}
 
 		// get (first) value token
 		a, present = tokens.Get()
 		if !present {
 			dbg.print(console.Error, "at least one hexload value required")
-			return false, nil
+			return doNothing, nil
 		}
 
 		for present {
@@ -666,13 +625,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			addr++
 		}
 
-	case KeywordRAM:
+	case cmdRAM:
 		dbg.printMachineInfo(dbg.vcs.Mem.PIA)
 
-	case KeywordRIOT:
+	case cmdRIOT:
 		dbg.printMachineInfo(dbg.vcs.RIOT)
 
-	case KeywordTIA:
+	case cmdTIA:
 		option, present := tokens.Get()
 		if present {
 			option = strings.ToUpper(option)
@@ -687,13 +646,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Missile1.MachineInfoInternal())
 				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Ball.MachineInfoInternal())
 			default:
-				return false, fmt.Errorf("unknown request (%s)", option)
+				return doNothing, fmt.Errorf("unknown request (%s)", option)
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TIA)
 		}
 
-	case KeywordTV:
+	case cmdTV:
 		option, present := tokens.Get()
 		if present {
 			option = strings.ToUpper(option)
@@ -701,18 +660,18 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case "SPEC":
 				info, err := dbg.tv.GetState(television.ReqTVSpec)
 				if err != nil {
-					return false, err
+					return doNothing, err
 				}
 				dbg.print(console.MachineInfo, info.(string))
 			default:
-				return false, fmt.Errorf("unknown request (%s)", option)
+				return doNothing, fmt.Errorf("unknown request (%s)", option)
 			}
 		} else {
 			dbg.printMachineInfo(dbg.tv)
 		}
 
 	// information about the machine (sprites, playfield)
-	case KeywordPlayer:
+	case cmdPlayer:
 		// TODO: argument to print either player 0 or player 1
 
 		if dbg.machineInfoVerbose {
@@ -741,7 +700,7 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
 		}
 
-	case KeywordMissile:
+	case cmdMissile:
 		// TODO: argument to print either missile 0 or missile 1
 
 		if dbg.machineInfoVerbose {
@@ -770,15 +729,13 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
 		}
 
-	case KeywordBall:
+	case cmdBall:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
 
-	case KeywordPlayfield:
+	case cmdPlayfield:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Playfield)
 
-	// tv control
-
-	case KeywordDisplay:
+	case cmdDisplay:
 		var err error
 
 		action, present := tokens.Get()
@@ -788,47 +745,47 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case "OFF":
 				err = dbg.tv.SetFeature(gui.ReqSetVisibility, false)
 				if err != nil {
-					return false, err
+					return doNothing, err
 				}
 			case "DEBUG":
 				err = dbg.tv.SetFeature(gui.ReqToggleMasking)
 				if err != nil {
-					return false, err
+					return doNothing, err
 				}
 			case "SCALE":
 				scl, present := tokens.Get()
 				if !present {
-					return false, fmt.Errorf("value required for %s %s", command, action)
+					return doNothing, fmt.Errorf("value required for %s %s", command, action)
 				}
 
 				scale, err := strconv.ParseFloat(scl, 32)
 				if err != nil {
-					return false, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
+					return doNothing, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
 				}
 
 				err = dbg.tv.SetFeature(gui.ReqSetScale, float32(scale))
-				return false, err
+				return doNothing, err
 			case "DEBUGCOLORS":
 				err = dbg.tv.SetFeature(gui.ReqToggleAltColors)
 				if err != nil {
-					return false, err
+					return doNothing, err
 				}
 			case "METASIGNALS":
 				err = dbg.tv.SetFeature(gui.ReqToggleShowSystemState)
 				if err != nil {
-					return false, err
+					return doNothing, err
 				}
 			default:
-				return false, fmt.Errorf("unknown display action (%s)", action)
+				return doNothing, fmt.Errorf("unknown display action (%s)", action)
 			}
 		} else {
 			err = dbg.tv.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 		}
 
-	case KeywordMouse:
+	case cmdMouse:
 		req := gui.ReqLastMouse
 
 		coord, present := tokens.Get()
@@ -841,34 +798,51 @@ func (dbg *Debugger) parseCommand(userInput string) (bool, error) {
 			case "Y":
 				req = gui.ReqLastMouseScanline
 			default:
-				return false, fmt.Errorf("unknown mouse option (%s)", coord)
+				return doNothing, fmt.Errorf("unknown mouse option (%s)", coord)
 			}
 		}
 
 		info, err := dbg.tv.GetMetaState(req)
 		if err != nil {
-			return false, err
+			return doNothing, err
 		}
 		dbg.print(console.MachineInfo, info.(string))
 
-	case KeywordStick0:
+	case cmdStick0:
 		action, present := tokens.Get()
 		if present {
 			err := dbg.vcs.Controller.HandleStick(0, action)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 		}
 
-	case KeywordStick1:
+	case cmdStick1:
 		action, present := tokens.Get()
 		if present {
 			err := dbg.vcs.Controller.HandleStick(1, action)
 			if err != nil {
-				return false, err
+				return doNothing, err
 			}
 		}
+
+	case cmdCapture:
+		tok, _ := tokens.Get()
+
+		if strings.ToUpper(tok) == "END" {
+			if dbg.capture == nil {
+				return doNothing, fmt.Errorf("no script capture currently taking place")
+			}
+			err := dbg.capture.end()
+			dbg.capture = nil
+			return captureEnded, err
+		}
+
+		var err error
+
+		dbg.capture, err = dbg.startCaptureScript(tok)
+		return captureStarted, err
 	}
 
-	return stepNext, nil
+	return doNothing, nil
 }

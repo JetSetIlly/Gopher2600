@@ -51,3 +51,8 @@ func (pt PlainTerminal) UserRead(input []byte, prompt string, interruptChannel c
 	}
 	return n, nil
 }
+
+// IsInteractive satisfies the console.UserInput interface
+func (pt *PlainTerminal) IsInteractive() bool {
+	return true
+}

@@ -44,3 +44,8 @@ func (ct *ColorTerminal) CleanUp() {
 func (ct *ColorTerminal) RegisterTabCompleter(tc *input.TabCompletion) {
 	ct.tabCompleter = tc
 }
+
+// IsInteractive satisfies the console.UserInput interface
+func (ct *ColorTerminal) IsInteractive() bool {
+	return true
+}

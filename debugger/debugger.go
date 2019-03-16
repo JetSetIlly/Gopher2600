@@ -26,10 +26,11 @@ type Debugger struct {
 	disasm *disassembly.Disassembly
 	tv     gui.GUI
 
-	// control of debug/input loop:
-	// 	o running - whether the debugger is to continue with the debugging loop
-	// 	o runUntilHalt - repeat execution loop until a halt condition is encountered
-	running      bool
+	// whether the debugger is to continue with the debugging loop
+	// set to false only when debugger is to finish
+	running bool
+
+	// continue emulation until a halt condition is encountered
 	runUntilHalt bool
 
 	// interface to the vcs memory with additional debugging functions
@@ -63,6 +64,9 @@ type Debugger struct {
 	// things like "STEP FRAME".
 	stepTraps *traps
 
+	// step command to use when input is empty
+	defaultStepCommand string
+
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
 	// used when ONHALT is called with no arguments
@@ -82,9 +86,13 @@ type Debugger struct {
 	// called from within another input loop (via a video step callback) and we
 	// want these properties to persist (when a video step input loop has
 	// completed and we're back into the main input loop)
-	inputloopHalt       bool // whether to halt the current execution loop
-	inputloopNext       bool // execute a step once user input has returned a result
-	inputloopVideoClock bool // step mode
+	inputloopHalt bool // whether to halt the current execution loop
+	inputloopNext bool // execute a step once user input has returned a result
+
+	// granularity of single stepping - every cpu instruction or every video cycle
+	// -- also affects when emulation will halt on breaks, traps and watches.
+	// if inputeveryvideocycle is true then the halt may occur mid-cpu-cycle
+	inputEveryVideoCycle bool
 
 	// the last result from vcs.Step() - could be a complete result or an
 	// intermediate result when video-stepping
@@ -104,6 +112,9 @@ type Debugger struct {
 	//  b) receive ctrl-c events when the emulation is running (note that
 	//  ctrl-c handling is handled differently under different circumstances)
 	interruptChannel chan func()
+
+	// capture user input to a script file. no capture taking place if nil
+	capture *captureScript
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -140,6 +151,7 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)
+	dbg.defaultStepCommand = "STEP"
 
 	// default ONHALT command sequence
 	dbg.commandOnHaltStored = defaultOnHalt
@@ -217,7 +229,7 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
 		}
 
-		err = dbg.inputLoop(spt, true)
+		err = dbg.inputLoop(spt, false)
 		if err != nil {
 			return err
 		}
@@ -225,7 +237,7 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 
 	// prepare and run main input loop. inputLoop will not return until
 	// debugger is to exit
-	err = dbg.inputLoop(dbg.console, true)
+	err = dbg.inputLoop(dbg.console, false)
 	if err != nil {
 		return err
 	}
@@ -297,13 +309,13 @@ func (dbg *Debugger) checkForInterrupts() {
 	}
 }
 
-// inputLoop has two modes, defined by the mainLoop argument. when inputLoop is
-// not a "mainLoop", the function will only loop for the duration of one cpu
-// step. this is used to implement video-stepping.
+// inputLoop has two modes, defined by the videoCycleInput argument.
+// when videoCycleInput is true then user will be prompted every video cycle,
+// as opposed to only every cpu instruction.
 //
 // inputter is an instance of type UserInput. this will usually be dbg.ui but
 // it could equally be an instance of debuggingScript.
-func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error {
+func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool) error {
 	var err error
 
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
@@ -312,12 +324,12 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 		dbg.videoCycle(result)
 		dbg.lastResult = result
 		if dbg.commandOnStep != "" {
-			_, err := dbg.parseInput(dbg.commandOnStep)
+			_, err := dbg.parseInput(dbg.commandOnStep, false)
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			}
 		}
-		return dbg.inputLoop(inputter, false)
+		return dbg.inputLoop(inputter, true)
 	}
 
 	for {
@@ -327,9 +339,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 		}
 
 		// this extra test is to prevent the video input loop from continuing
-		// if step mode has been switched to cpu - the input loop will unravel
-		// and execution will continue in the main inputLoop
-		if !mainLoop && !dbg.inputloopVideoClock && dbg.inputloopNext {
+		// if step granularity has been switched to every cpu instruction - the
+		// input loop will unravel and execution will continue in the main
+		// inputLoop
+		if videoCycleInput && !dbg.inputEveryVideoCycle && dbg.inputloopNext {
 			return nil
 		}
 
@@ -354,7 +367,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 		// commandOnHalt command(s)
 		if dbg.commandOnHalt != "" {
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
-				_, err = dbg.parseInput(dbg.commandOnHalt)
+				_, err = dbg.parseInput(dbg.commandOnHalt, false)
 				if err != nil {
 					dbg.print(console.Error, "%s", err)
 				}
@@ -402,7 +415,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 			}
 
 			// - additional annotation if we're not showing the prompt in the main loop
-			if !mainLoop && !dbg.lastResult.Final {
+			if videoCycleInput && !dbg.lastResult.Final {
 				prompt = fmt.Sprintf("+ %s", prompt)
 			}
 
@@ -417,7 +430,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 						dbg.running = false
 						fallthrough
 					case errors.ScriptEnd:
-						if mainLoop {
+						if !videoCycleInput {
 							dbg.print(console.Feedback, err.Error())
 						}
 						return nil
@@ -433,7 +446,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 			}
 
 			// parse user input
-			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]))
+			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]), inputter.IsInteractive())
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			}
@@ -452,8 +465,8 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 
 		// move emulation on one step if user has requested/implied it
 		if dbg.inputloopNext {
-			if mainLoop {
-				if dbg.inputloopVideoClock {
+			if !videoCycleInput {
+				if dbg.inputEveryVideoCycle {
 					_, dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
 				} else {
 					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
@@ -485,7 +498,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 				}
 
 				if dbg.commandOnStep != "" {
-					_, err := dbg.parseInput(dbg.commandOnStep)
+					_, err := dbg.parseInput(dbg.commandOnStep, false)
 					if err != nil {
 						dbg.print(console.Error, "%s", err)
 					}
@@ -501,24 +514,69 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, mainLoop bool) error 
 
 // parseInput splits the input into individual commands. each command is then
 // passed to parseCommand for final processing
-func (dbg *Debugger) parseInput(input string) (bool, error) {
-	var cont bool
+//
+// interactive argument should be true only for input that has immediately come from
+// the user. only interactive input will be added to a capture file.
+//
+// returns "step" status - whether or not the input should cause the emulation
+// to continue at least one step (a command in the input may have set the
+// runUntilHalt flag)
+func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
+	var result parseCommandResult
 	var err error
+	var step bool
 
-	input = strings.TrimSpace(input)
+	// whether or not we should capture the input to a file
+	captureInput := dbg.capture != nil && interactive
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
 		return false, nil
 	}
 
+	// divide input if necessary
 	commands := strings.Split(input, ";")
 	for i := 0; i < len(commands); i++ {
-		cont, err = dbg.parseCommand(commands[i])
+		// parse command. format of command[i] wil be normalised
+		result, err = dbg.parseCommand(&commands[i])
 		if err != nil {
 			return false, err
 		}
+
+		// the result from parseCommand() tells us what to do next
+		switch result {
+		case doNothing:
+			// most commands don't require us to do anything
+			break
+		case stepContinue:
+			// emulation should continue to next step
+			step = true
+		case emptyInput:
+			// input was empty. if this was an interactive input then try the
+			// default step command
+			if interactive {
+				return dbg.parseInput(dbg.defaultStepCommand, interactive)
+			}
+			return false, nil
+		case setDefaultStep:
+			// command has reset what the default step command shoudl be
+			dbg.defaultStepCommand = commands[i]
+			step = true
+		case captureStarted:
+			// command has caused input capture to begin. we don't want to
+			// record this command in the capture file
+			captureInput = false
+		case captureEnded:
+			// command has caused input capture to end. we don't want to record
+			// this command in the capture file
+			captureInput = false
+		}
+
+		// record command in capture file if required
+		if captureInput {
+			dbg.capture.add(commands[i])
+		}
 	}
 
-	return cont, nil
+	return step, nil
 }

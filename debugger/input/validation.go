@@ -15,7 +15,7 @@ func (options Commands) ValidateInput(newInput *Tokens) error {
 
 	// if tokens is empty then return
 	if len(tokens) == 0 {
-		return errors.NewFormattedError(errors.InputEmpty)
+		return nil
 	}
 
 	tokens[0] = strings.ToUpper(tokens[0])

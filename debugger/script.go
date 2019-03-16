@@ -37,6 +37,11 @@ func (dbg *Debugger) loadScript(scriptfile string) (*debuggingScript, error) {
 	return dbs, nil
 }
 
+// IsInteractive satisfies the console.UserRead interface
+func (dbs *debuggingScript) IsInteractive() bool {
+	return false
+}
+
 // UserRead implements ui.UserInput interface
 func (dbs *debuggingScript) UserRead(buffer []byte, prompt string, interruptChannel chan func()) (int, error) {
 	if dbs.nextLine > len(dbs.lines)-1 {

@@ -2,7 +2,6 @@ package errors
 
 var messages = map[Errno]string{
 	// Debugger
-	InputEmpty:        "no input",
 	UserInterrupt:     "user interrupt",
 	CommandError:      "%s",
 	InvalidTarget:     "invalid target (%s)",
@@ -18,6 +17,9 @@ var messages = map[Errno]string{
 	ScriptFileError:      "script error: %s",
 	ScriptRunError:       "script error: use of '%s' is not allowed in scripts [%s::%d]",
 	ScriptEnd:            "end of script (%s)",
+
+	// Capture
+	CaptureFileError: "error with capture script (%s)",
 
 	// Regression
 	RegressionEntryExists:       "entry exists (%s)",

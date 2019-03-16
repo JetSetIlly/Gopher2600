@@ -12,6 +12,15 @@ type Tokens struct {
 	curr   int
 }
 
+func (tk *Tokens) String() string {
+	s := strings.Builder{}
+	for i := range tk.tokens {
+		s.WriteString(tk.tokens[i])
+		s.WriteString(" ")
+	}
+	return s.String()
+}
+
 // Reset begins the token traversal process from the beginning
 func (tk *Tokens) Reset() {
 	tk.curr = 0
