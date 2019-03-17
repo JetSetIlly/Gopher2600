@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/gui"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 // GetMetaState returns the TVState object for the named state
@@ -13,7 +15,7 @@ func (tv *GUI) GetMetaState(request gui.MetaStateReq) (interface{}, error) {
 
 	switch request {
 	case gui.ReqLastKeyboard:
-		return fmt.Sprintf("%c", tv.crit.keypress), nil
+		return fmt.Sprintf("%s", sdl.GetKeyName(tv.crit.keypress)), nil
 	case gui.ReqLastMouse:
 		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.crit.lastMouseHorizPos, tv.crit.lastMouseScanline), nil
 	case gui.ReqLastMouseHorizPos:

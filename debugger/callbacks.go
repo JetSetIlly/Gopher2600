@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"gopher2600/debugger/console"
 	"gopher2600/gui"
+	"gopher2600/playmode"
 )
 
-func (dbg *Debugger) setupTVCallbacks() error {
+func (dbg *Debugger) setupGUICallbacks() error {
 	var err error
 
 	// add break on right mouse button
-	err = dbg.tv.RegisterCallback(gui.ReqOnMouseButtonRight, dbg.interruptChannel, func() {
+	err = dbg.gui.RegisterCallback(gui.ReqOnMouseButtonRight, dbg.interruptChannel, func() {
 		// this callback function may be running inside a different goroutine
 		// so care must be taken not to cause a deadlock
-		hp, _ := dbg.tv.GetMetaState(gui.ReqLastMouseHorizPos)
-		sl, _ := dbg.tv.GetMetaState(gui.ReqLastMouseScanline)
+		hp, _ := dbg.gui.GetMetaState(gui.ReqLastMouseHorizPos)
+		sl, _ := dbg.gui.GetMetaState(gui.ReqLastMouseScanline)
 
 		_, err := dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, sl, hp), false)
 		if err == nil {
@@ -27,25 +28,29 @@ func (dbg *Debugger) setupTVCallbacks() error {
 		return err
 	}
 
-	// respond to keyboard
-	err = dbg.tv.RegisterCallback(gui.ReqOnKeyboard, dbg.interruptChannel, func() {
-		key, _ := dbg.tv.GetMetaState(gui.ReqLastKeyboard)
-		switch key {
+	// respond to keyboard - use playmode keyboard callback functions in the
+	// first instance and catch unhandled keys to see if we can use them for
+	// debugging mode
+	err = dbg.gui.RegisterCallback(gui.ReqOnKeyboard, dbg.interruptChannel, func() {
+		switch playmode.KeyboardCallback(dbg.gui, dbg.vcs) {
 		case "`":
 			// back-tick: toggle masking
-			err = dbg.tv.SetFeature(gui.ReqToggleMasking)
+			err = dbg.gui.SetFeature(gui.ReqToggleMasking)
 		case "1":
 			// toggle debugging colours
-			err = dbg.tv.SetFeature(gui.ReqToggleAltColors)
+			err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
 		case "2":
 			// toggle metasignals overlay
-			err = dbg.tv.SetFeature(gui.ReqToggleShowSystemState)
+			err = dbg.gui.SetFeature(gui.ReqToggleShowSystemState)
 		case "=":
-			// toggle debugging colours
-			err = dbg.tv.SetFeature(gui.ReqIncScale)
+			// equal sign is the same as plus, for convenience
+			fallthrough
+		case "+":
+			// increase scaling
+			err = dbg.gui.SetFeature(gui.ReqIncScale)
 		case "-":
-			// toggle debugging colours
-			err = dbg.tv.SetFeature(gui.ReqDecScale)
+			// decrease window scanling
+			err = dbg.gui.SetFeature(gui.ReqDecScale)
 		}
 		if err != nil {
 			dbg.print(console.Error, "%s", err)

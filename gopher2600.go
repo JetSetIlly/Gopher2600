@@ -11,6 +11,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
+	"gopher2600/playmode"
 	"gopher2600/regression"
 	"gopher2600/television"
 	"io"
@@ -52,6 +53,9 @@ func main() {
 		fallthrough
 
 	case "RUN":
+		fallthrough
+
+	case "PLAY":
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
@@ -62,7 +66,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := run(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable)
+			err := playmode.Play(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable)
 			if err != nil {
 				fmt.Printf("* error running emulator: %s\n", err)
 				os.Exit(2)
@@ -371,47 +375,4 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	return nil
-}
-
-func run(cartridgeFile, tvMode string, scaling float32, stable bool) error {
-	tv, err := sdl.NewGUI(tvMode, scaling)
-	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
-	}
-
-	vcs, err := hardware.NewVCS(tv)
-	if err != nil {
-		return fmt.Errorf("error preparing VCS: %s", err)
-	}
-
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return err
-	}
-
-	// run while value of running variable is positive
-	var running atomic.Value
-	running.Store(0)
-
-	// register quit function
-	err = tv.RegisterCallback(gui.ReqOnWindowClose, nil, func() {
-		running.Store(-1)
-	})
-	if err != nil {
-		return err
-	}
-
-	if stable {
-		err = tv.SetFeature(gui.ReqSetVisibilityStable, true)
-		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
-		}
-	} else {
-		err = tv.SetFeature(gui.ReqSetVisibility, true)
-		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
-		}
-	}
-
-	return vcs.Run(&running)
 }

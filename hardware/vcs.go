@@ -22,7 +22,7 @@ type VCS struct {
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
-	panel      *peripherals.Panel
+	Panel      *peripherals.Panel
 	Controller *peripherals.Stick
 
 	// treat the side effects of the CPU after every CPU cycle (correct) or
@@ -62,13 +62,13 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't create RIOT")
 	}
 
-	vcs.panel = peripherals.NewPanel(vcs.Mem.RIOT)
-	if vcs.panel == nil {
+	vcs.Panel = peripherals.NewPanel(vcs.Mem.RIOT)
+	if vcs.Panel == nil {
 		return nil, fmt.Errorf("can't create console control panel")
 	}
 
 	// TODO: better contoller support
-	vcs.Controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.panel)
+	vcs.Controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.Panel)
 	if vcs.Controller == nil {
 		return nil, fmt.Errorf("can't create stick controller")
 	}

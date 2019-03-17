@@ -24,7 +24,7 @@ const defaultOnStep = "LAST"
 type Debugger struct {
 	vcs    *hardware.VCS
 	disasm *disassembly.Disassembly
-	tv     gui.GUI
+	gui    gui.GUI
 
 	// whether the debugger is to continue with the debugging loop
 	// set to false only when debugger is to finish
@@ -127,11 +127,11 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	dbg.console = new(console.PlainTerminal)
 
 	// prepare hardware
-	dbg.tv = tv
-	dbg.tv.SetFeature(gui.ReqSetAllowDebugging, true)
+	dbg.gui = tv
+	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(dbg.tv)
+	dbg.vcs, err = hardware.NewVCS(dbg.gui)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
@@ -168,7 +168,7 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 
 	// set up callbacks for the TV interface
 	// -- requires interruptChannel to have been set up
-	err = dbg.setupTVCallbacks()
+	err = dbg.setupGUICallbacks()
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +388,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 		// enter halt state
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
-			err = dbg.tv.SetFeature(gui.ReqSetPause, true)
+			err = dbg.gui.SetFeature(gui.ReqSetPause, true)
 			if err != nil {
 				return err
 			}
@@ -456,7 +456,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
-				err = dbg.tv.SetFeature(gui.ReqSetPause, false)
+				err = dbg.gui.SetFeature(gui.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

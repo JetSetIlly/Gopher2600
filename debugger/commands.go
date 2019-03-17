@@ -444,7 +444,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 		if err != nil {
 			return doNothing, err
 		}
-		err = dbg.tv.Reset()
+		err = dbg.gui.Reset()
 		if err != nil {
 			return doNothing, err
 		}
@@ -658,7 +658,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				info, err := dbg.tv.GetState(television.ReqTVSpec)
+				info, err := dbg.gui.GetState(television.ReqTVSpec)
 				if err != nil {
 					return doNothing, err
 				}
@@ -667,7 +667,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 				return doNothing, fmt.Errorf("unknown request (%s)", option)
 			}
 		} else {
-			dbg.printMachineInfo(dbg.tv)
+			dbg.printMachineInfo(dbg.gui)
 		}
 
 	// information about the machine (sprites, playfield)
@@ -743,12 +743,12 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.tv.SetFeature(gui.ReqSetVisibility, false)
+				err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
 				if err != nil {
 					return doNothing, err
 				}
 			case "DEBUG":
-				err = dbg.tv.SetFeature(gui.ReqToggleMasking)
+				err = dbg.gui.SetFeature(gui.ReqToggleMasking)
 				if err != nil {
 					return doNothing, err
 				}
@@ -763,15 +763,15 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 					return doNothing, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
 				}
 
-				err = dbg.tv.SetFeature(gui.ReqSetScale, float32(scale))
+				err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))
 				return doNothing, err
 			case "DEBUGCOLORS":
-				err = dbg.tv.SetFeature(gui.ReqToggleAltColors)
+				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
 				if err != nil {
 					return doNothing, err
 				}
 			case "METASIGNALS":
-				err = dbg.tv.SetFeature(gui.ReqToggleShowSystemState)
+				err = dbg.gui.SetFeature(gui.ReqToggleShowSystemState)
 				if err != nil {
 					return doNothing, err
 				}
@@ -779,7 +779,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 				return doNothing, fmt.Errorf("unknown display action (%s)", action)
 			}
 		} else {
-			err = dbg.tv.SetFeature(gui.ReqSetVisibility, true)
+			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return doNothing, err
 			}
@@ -802,7 +802,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 			}
 		}
 
-		info, err := dbg.tv.GetMetaState(req)
+		info, err := dbg.gui.GetMetaState(req)
 		if err != nil {
 			return doNothing, err
 		}
