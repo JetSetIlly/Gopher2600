@@ -1,8 +1,8 @@
 package sdl
 
 import (
+	"gopher2600/gui"
 	"gopher2600/television"
-	"sync"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -17,11 +17,8 @@ type GUI struct {
 	// regulates how often the screen is updated
 	fpsLimiter *fpsLimiter
 
-	// callback functions
-	onWindowClose      callback
-	onKeyboard         callback
-	onMouseButtonLeft  callback
-	onMouseButtonRight callback
+	// connects SDL guiLoop with the parent process
+	eventChannel chan gui.Event
 
 	// whether the emulation is currently paused. if paused is true then
 	// as much of the current frame is displayed as possible; the previous
@@ -31,25 +28,6 @@ type GUI struct {
 	// ther's a small bug significant performance boost if we disable certain
 	// code paths with this allowDebugging flag
 	allowDebugging bool
-
-	// guiLoop() runs in a different goroutine. "communication" between that
-	// routine and SDLTV must happen via this critical section structure
-	crit criticalSection
-}
-
-// attributes in this struct should only ever be accessed with the mutex
-// locked. currently, only ever accessed via:
-//		* guiLoop()
-//		* GetMetaState()
-type criticalSection struct {
-	guiMutex sync.Mutex
-
-	// last keyboard event
-	keypress sdl.Keycode
-
-	// last mouse selection
-	lastMouseHorizPos int
-	lastMouseScanline int
 }
 
 // NewGUI initiliases a new instance of an SDL based display for the VCS

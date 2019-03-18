@@ -1,10 +1,13 @@
 package console
 
-import "gopher2600/debugger/input"
+import (
+	"gopher2600/debugger/input"
+	"gopher2600/gui"
+)
 
 // UserInput defines the operations required by an interface that allows input
 type UserInput interface {
-	UserRead(buffer []byte, prompt string, interruptChannel chan func()) (int, error)
+	UserRead(buffer []byte, prompt string, eventChannel chan gui.Event, eventHandler func(gui.Event) error) (int, error)
 	IsInteractive() bool
 }
 

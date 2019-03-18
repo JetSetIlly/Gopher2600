@@ -105,13 +105,11 @@ type Debugger struct {
 	// buffer for user input
 	input []byte
 
-	// channel for communicating with the debugging loop from other areas of
-	// the emulation, paritcularly from other goroutines. it is used to:
-	//  a) receive events from some other part of the emulation. for example,
-	//  the SDL guiloop() goroutine
-	//  b) receive ctrl-c events when the emulation is running (note that
-	//  ctrl-c handling is handled differently under different circumstances)
-	interruptChannel chan func()
+	// channel for communicating with the debugger from the ctrl-c goroutine
+	interruptChannel chan os.Signal
+
+	// channel for communicating with the debugger from the gui goroutine
+	guiChannel chan gui.Event
 
 	// capture user input to a script file. no capture taking place if nil
 	capture *captureScript
@@ -163,15 +161,12 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
-	// make synchronisation channel
-	dbg.interruptChannel = make(chan func(), 2)
+	// make synchronisation channels
+	dbg.interruptChannel = make(chan os.Signal, 2)
+	dbg.guiChannel = make(chan gui.Event, 2)
 
-	// set up callbacks for the TV interface
-	// -- requires interruptChannel to have been set up
-	err = dbg.setupGUICallbacks()
-	if err != nil {
-		return nil, err
-	}
+	// connect debugger to gui
+	dbg.gui.SetEventChannel(dbg.guiChannel)
 
 	return dbg, nil
 }
@@ -198,29 +193,9 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 
 	dbg.running = true
 
-	// register a ctrl-c handler.
-	ctrlC := make(chan os.Signal, 1)
-	signal.Notify(ctrlC, os.Interrupt)
-	go func() {
-		for {
-			<-ctrlC
-
-			dbg.interruptChannel <- func() {
-				if dbg.runUntilHalt {
-					// stop emulation at the next step
-					dbg.runUntilHalt = false
-				} else {
-					// runUntilHalt is false which means that the emulation is
-					// not running. at this point, an input loop is probably
-					// running. note that ctrl-c signals do not always reach
-					// this far into the program.  for instance, the colorterm
-					// implementation of UserRead() puts the terminal into raw
-					// mode and so must handle ctrl-c events differently.
-					dbg.running = false
-				}
-			}
-		}
-	}()
+	// create interrupt channel
+	dbg.interruptChannel = make(chan os.Signal, 1)
+	signal.Notify(dbg.interruptChannel, os.Interrupt)
 
 	// run initialisation script
 	if initScript != "" {
@@ -298,17 +273,6 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	return dbg.sysmon.Check()
 }
 
-func (dbg *Debugger) checkForInterrupts() {
-	// check interrupt channel and run any functions we find in there
-	select {
-	case f := <-dbg.interruptChannel:
-		f()
-	default:
-		// pro-tip: default case required otherwise the select will block
-		// indefinately.
-	}
-}
-
 // inputLoop has two modes, defined by the videoCycleInput argument.
 // when videoCycleInput is true then user will be prompted every video cycle,
 // as opposed to only every cpu instruction.
@@ -333,7 +297,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 	}
 
 	for {
-		dbg.checkForInterrupts()
+		dbg.checkInterruptsAndEvents()
 		if !dbg.running {
 			break // for loop
 		}
@@ -420,7 +384,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 			}
 
 			// get user input
-			n, err := inputter.UserRead(dbg.input, prompt, dbg.interruptChannel)
+			n, err := inputter.UserRead(dbg.input, prompt, dbg.guiChannel, dbg.guiEventHandler)
 			if err != nil {
 				switch err := err.(type) {
 
@@ -440,7 +404,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 				return err
 			}
 
-			dbg.checkForInterrupts()
+			dbg.checkInterruptsAndEvents()
 			if !dbg.running {
 				break // for loop
 			}

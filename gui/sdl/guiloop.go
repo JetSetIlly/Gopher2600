@@ -9,32 +9,79 @@ import (
 // guiLoop listens for SDL events and is run concurrently
 func (tv *GUI) guiLoop() {
 	for {
-		ev := sdl.WaitEvent()
-		switch ev := ev.(type) {
+		sdlEvent := sdl.WaitEvent()
+		switch sdlEvent := sdlEvent.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
 			tv.SetFeature(gui.ReqSetVisibility, false)
-			tv.onWindowClose.dispatch()
+			tv.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 		case *sdl.KeyboardEvent:
-			if ev.Type == sdl.KEYDOWN {
-				tv.crit.guiMutex.Lock()
-				tv.crit.keypress = ev.Keysym.Sym
-				tv.crit.guiMutex.Unlock()
-				tv.onKeyboard.dispatch()
+			switch sdlEvent.Type {
+			case sdl.KEYDOWN:
+				tv.eventChannel <- gui.Event{
+					ID: gui.EventKeyboard,
+					Data: gui.EventDataKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Down: true}}
+			case sdl.KEYUP:
+				tv.eventChannel <- gui.Event{
+					ID: gui.EventKeyboard,
+					Data: gui.EventDataKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Down: false}}
 			}
 
 		case *sdl.MouseButtonEvent:
-			if ev.Type == sdl.MOUSEBUTTONDOWN {
-				switch ev.Button {
+			hp, sl := tv.convertMouseCoords(sdlEvent)
+			switch sdlEvent.Type {
+			case sdl.MOUSEBUTTONDOWN:
+				switch sdlEvent.Button {
 
 				case sdl.BUTTON_LEFT:
-					tv.onMouseButtonLeft.dispatch()
+					tv.eventChannel <- gui.Event{
+						ID: gui.EventMouseLeft,
+						Data: gui.EventDataMouse{
+							Down:     true,
+							X:        int(sdlEvent.X),
+							Y:        int(sdlEvent.Y),
+							HorizPos: hp,
+							Scanline: sl}}
 
 				case sdl.BUTTON_RIGHT:
-					tv.noteMouse(ev)
-					tv.onMouseButtonRight.dispatch()
+					tv.eventChannel <- gui.Event{
+						ID: gui.EventMouseRight,
+						Data: gui.EventDataMouse{
+							Down:     true,
+							X:        int(sdlEvent.X),
+							Y:        int(sdlEvent.Y),
+							HorizPos: hp,
+							Scanline: sl}}
+				}
+
+			case sdl.MOUSEBUTTONUP:
+				switch sdlEvent.Button {
+
+				case sdl.BUTTON_LEFT:
+					tv.eventChannel <- gui.Event{
+						ID: gui.EventMouseLeft,
+						Data: gui.EventDataMouse{
+							Down:     false,
+							X:        int(sdlEvent.X),
+							Y:        int(sdlEvent.Y),
+							HorizPos: hp,
+							Scanline: sl}}
+
+				case sdl.BUTTON_RIGHT:
+					tv.eventChannel <- gui.Event{
+						ID: gui.EventMouseRight,
+						Data: gui.EventDataMouse{
+							Down:     false,
+							X:        int(sdlEvent.X),
+							Y:        int(sdlEvent.Y),
+							HorizPos: hp,
+							Scanline: sl}}
 				}
 			}
 
@@ -49,8 +96,8 @@ func (tv *GUI) guiLoop() {
 	}
 }
 
-func (tv *GUI) noteMouse(ev *sdl.MouseButtonEvent) {
-	tv.crit.guiMutex.Lock()
+func (tv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
+	var hp, sl int
 
 	sx, sy := tv.scr.renderer.GetScale()
 
@@ -58,19 +105,19 @@ func (tv *GUI) noteMouse(ev *sdl.MouseButtonEvent) {
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
 	if tv.scr.unmasked {
-		tv.crit.lastMouseHorizPos = int(float32(ev.X)/sx) - tv.Spec.ClocksPerHblank
+		hp = int(float32(sdlEvent.X)/sx) - tv.Spec.ClocksPerHblank
 	} else {
-		tv.crit.lastMouseHorizPos = int(float32(ev.X) / sx)
+		hp = int(float32(sdlEvent.X) / sx)
 	}
 
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
 	if tv.scr.unmasked {
-		tv.crit.lastMouseScanline = int(float32(ev.Y) / sy)
+		sl = int(float32(sdlEvent.Y) / sy)
 	} else {
-		tv.crit.lastMouseScanline = int(float32(ev.Y)/sy) + int(tv.scr.stb.visibleTopReference)
+		sl = int(float32(sdlEvent.Y)/sy) + int(tv.scr.stb.visibleTopReference)
 	}
 
-	tv.crit.guiMutex.Unlock()
+	return hp, sl
 }

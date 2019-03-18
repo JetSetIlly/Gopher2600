@@ -20,7 +20,6 @@ var Help = map[string]string{
 	cmdList:          "List current entries for BREAKS and TRAPS",
 	cmdMemMap:        "Display high-level VCS memory map",
 	cmdMissile:       "Display the current state of the Missile 0/1 sprite",
-	cmdMouse:         "Return the coordinates of the last mouse press",
 	cmdOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	cmdOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
 	cmdPeek:          "Inspect an individual memory address",

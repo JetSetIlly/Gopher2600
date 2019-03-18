@@ -3,6 +3,7 @@ package console
 import (
 	"fmt"
 	"gopher2600/debugger/input"
+	"gopher2600/gui"
 	"os"
 )
 
@@ -42,7 +43,7 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 }
 
 // UserRead is the plain terminal read routine
-func (pt PlainTerminal) UserRead(input []byte, prompt string, interruptChannel chan func()) (int, error) {
+func (pt PlainTerminal) UserRead(input []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	pt.UserPrint(Prompt, prompt)
 
 	n, err := os.Stdin.Read(input)

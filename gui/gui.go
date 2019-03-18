@@ -2,32 +2,9 @@ package gui
 
 import "gopher2600/television"
 
-// MetaStateReq is used to identify what information is being requested with the
-// with the GetMetaState() function
-type MetaStateReq int
-
-// CallbackReq is used to identify which callback to register
-type CallbackReq int
-
 // FeatureReq is used to request the setting of a gui attribute
 // eg. setting debugging overscan
 type FeatureReq int
-
-// list of valid metastate requests
-const (
-	ReqLastKeyboard MetaStateReq = iota
-	ReqLastMouse
-	ReqLastMouseHorizPos
-	ReqLastMouseScanline
-)
-
-// list of valid callback requests
-const (
-	ReqOnWindowClose CallbackReq = iota
-	ReqOnKeyboard
-	ReqOnMouseButtonLeft
-	ReqOnMouseButtonRight
-)
 
 // list of valid feature requests
 const (
@@ -49,7 +26,41 @@ const (
 // GUI defines the operations that can be performed on GUIs
 type GUI interface {
 	television.Television
-	GetMetaState(MetaStateReq) (interface{}, error)
-	RegisterCallback(CallbackReq, chan func(), func()) error
 	SetFeature(request FeatureReq, args ...interface{}) error
+	SetEventChannel(chan (Event))
+}
+
+// EventID idintifies the type of event taking place
+type EventID int
+
+// list of valid events
+const (
+	EventWindowClose EventID = iota
+	EventKeyboard
+	EventMouseLeft
+	EventMouseRight
+)
+
+// EventData represents the data that is associated with an event
+type EventData interface{}
+
+// Event is the structure that is passed over the event channel
+type Event struct {
+	ID   EventID
+	Data EventData
+}
+
+// EventDataKeyboard is the data that accompanies EvenKeyboard events
+type EventDataKeyboard struct {
+	Key  string
+	Down bool
+}
+
+// EventDataMouse is the data that accompanies EventMouse events
+type EventDataMouse struct {
+	Down     bool
+	X        int
+	Y        int
+	HorizPos int
+	Scanline int
 }

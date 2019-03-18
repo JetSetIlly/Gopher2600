@@ -1,55 +1,9 @@
 package sdl
 
 import (
-	"fmt"
 	"gopher2600/errors"
 	"gopher2600/gui"
-
-	"github.com/veandco/go-sdl2/sdl"
 )
-
-// GetMetaState returns the TVState object for the named state
-func (tv *GUI) GetMetaState(request gui.MetaStateReq) (interface{}, error) {
-	tv.crit.guiMutex.Lock()
-	defer tv.crit.guiMutex.Unlock()
-
-	switch request {
-	case gui.ReqLastKeyboard:
-		return fmt.Sprintf("%s", sdl.GetKeyName(tv.crit.keypress)), nil
-	case gui.ReqLastMouse:
-		return fmt.Sprintf("mouse: hp=%d, sl=%d", tv.crit.lastMouseHorizPos, tv.crit.lastMouseScanline), nil
-	case gui.ReqLastMouseHorizPos:
-		return tv.crit.lastMouseHorizPos, nil
-	case gui.ReqLastMouseScanline:
-		return tv.crit.lastMouseScanline, nil
-	default:
-		return nil, errors.NewFormattedError(errors.UnknownGUIRequest, request)
-	}
-}
-
-// RegisterCallback setups up communication between a GUI goroutine and the
-// main goroutine
-func (tv *GUI) RegisterCallback(request gui.CallbackReq, channel chan func(), callback func()) error {
-	// call embedded implementation and filter out UnknownCallbackRequests
-	switch request {
-	case gui.ReqOnWindowClose:
-		tv.onWindowClose.channel = channel
-		tv.onWindowClose.function = callback
-	case gui.ReqOnKeyboard:
-		tv.onKeyboard.channel = channel
-		tv.onKeyboard.function = callback
-	case gui.ReqOnMouseButtonLeft:
-		tv.onMouseButtonLeft.channel = channel
-		tv.onMouseButtonLeft.function = callback
-	case gui.ReqOnMouseButtonRight:
-		tv.onMouseButtonRight.channel = channel
-		tv.onMouseButtonRight.function = callback
-	default:
-		return errors.NewFormattedError(errors.UnknownGUIRequest, request)
-	}
-
-	return nil
-}
 
 // SetFeature is used to set a television attribute
 func (tv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
@@ -126,4 +80,9 @@ func (tv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 	}
 
 	return nil
+}
+
+// SetEventChannel implements the GUI interface
+func (tv *GUI) SetEventChannel(eventChannel chan gui.Event) {
+	tv.eventChannel = eventChannel
 }

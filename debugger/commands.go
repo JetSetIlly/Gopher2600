@@ -35,7 +35,6 @@ const (
 	cmdList          = "LIST"
 	cmdMemMap        = "MEMMAP"
 	cmdMissile       = "MISSILE"
-	cmdMouse         = "MOUSE"
 	cmdOnHalt        = "ONHALT"
 	cmdOnStep        = "ONSTEP"
 	cmdPeek          = "PEEK"
@@ -89,7 +88,6 @@ var commandTemplate = input.CommandTemplate{
 	cmdList:          "[BREAKS|TRAPS|WATCHES]",
 	cmdMemMap:        "",
 	cmdMissile:       "",
-	cmdMouse:         "[|X|Y]",
 	cmdOnHalt:        "[|OFF|RESTORE] %*",
 	cmdOnStep:        "[|OFF|RESTORE] %*",
 	cmdPeek:          "%*",
@@ -784,29 +782,6 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 				return doNothing, err
 			}
 		}
-
-	case cmdMouse:
-		req := gui.ReqLastMouse
-
-		coord, present := tokens.Get()
-
-		if present {
-			coord = strings.ToUpper(coord)
-			switch coord {
-			case "X":
-				req = gui.ReqLastMouseHorizPos
-			case "Y":
-				req = gui.ReqLastMouseScanline
-			default:
-				return doNothing, fmt.Errorf("unknown mouse option (%s)", coord)
-			}
-		}
-
-		info, err := dbg.gui.GetMetaState(req)
-		if err != nil {
-			return doNothing, err
-		}
-		dbg.print(console.MachineInfo, info.(string))
 
 	case cmdStick0:
 		action, present := tokens.Get()

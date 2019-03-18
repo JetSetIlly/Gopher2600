@@ -264,27 +264,27 @@ func main() {
 }
 
 func fps(profile bool, cartridgeFile string, display bool, tvMode string, scaling float32, runTime string) error {
-	var tv television.Television
+	var fpstv television.Television
 	var err error
 
 	if display {
-		tv, err = sdl.NewGUI(tvMode, scaling)
+		fpstv, err = sdl.NewGUI(tvMode, scaling)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 
-		err = tv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
+		err = fpstv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
-		tv, err = television.NewHeadlessTV("NTSC")
+		fpstv, err = television.NewHeadlessTV("NTSC")
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(fpstv)
 	if err != nil {
 		return fmt.Errorf("error preparing VCS: %s", err)
 	}
@@ -308,7 +308,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// get starting frame number
-	tvState, err := tv.GetState(television.ReqFramenum)
+	tvState, err := fpstv.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
@@ -323,13 +323,13 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// -- setup trigger that expires when duration has elapsed
-	var running atomic.Value
-	running.Store(0)
+	var timerRunning atomic.Value
+	timerRunning.Store(1)
 
 	go func() {
 		// force a two second leadtime to allow framerate to settle down
 		time.AfterFunc(2*time.Second, func() {
-			tvState, err = tv.GetState(television.ReqFramenum)
+			tvState, err = fpstv.GetState(television.ReqFramenum)
 			if err != nil {
 				panic(err)
 			}
@@ -337,13 +337,15 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 			startFrame = tvState.(int)
 
 			time.AfterFunc(duration, func() {
-				running.Store(-1)
+				timerRunning.Store(-1)
 			})
 		})
 	}()
 
 	// -- run until specified time elapses (running is changed to -1)
-	err = vcs.Run(&running)
+	err = vcs.Run(func() bool {
+		return timerRunning.Load().(int) > 0
+	})
 	if err != nil {
 		return err
 	}

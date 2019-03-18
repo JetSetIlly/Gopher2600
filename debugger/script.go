@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"gopher2600/errors"
+	"gopher2600/gui"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -43,7 +44,7 @@ func (dbs *debuggingScript) IsInteractive() bool {
 }
 
 // UserRead implements ui.UserInput interface
-func (dbs *debuggingScript) UserRead(buffer []byte, prompt string, interruptChannel chan func()) (int, error) {
+func (dbs *debuggingScript) UserRead(buffer []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	if dbs.nextLine > len(dbs.lines)-1 {
 		return -1, errors.NewFormattedError(errors.ScriptEnd, dbs.scriptFile)
 	}

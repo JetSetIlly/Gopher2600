@@ -262,9 +262,10 @@ func (vcs *VCS) RunConcurrent(running *atomic.Value) error {
 	return nil
 }
 
-// Run sets the emulation running as quickly as possible
-// -- using an atomic value rather than a mutex
-func (vcs *VCS) Run(running *atomic.Value) error {
+// Run sets the emulation running as quickly as possible.  eventHandler()
+// should return false when an external event (eg. a GUI event) indicates that
+// the emulation should stop.
+func (vcs *VCS) Run(continueCheck func() bool) error {
 	var err error
 
 	cycleVCS := func(r *result.Instruction) {
@@ -276,7 +277,7 @@ func (vcs *VCS) Run(running *atomic.Value) error {
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 	}
 
-	for running.Load().(int) >= 0 {
+	for continueCheck() {
 		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
 		if err != nil {
 			return err

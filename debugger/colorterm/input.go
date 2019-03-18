@@ -5,12 +5,13 @@ import (
 	"gopher2600/debugger/colorterm/easyterm"
 	"gopher2600/debugger/console"
 	"gopher2600/errors"
+	"gopher2600/gui"
 	"unicode"
 	"unicode/utf8"
 )
 
 // UserRead is the top level input function
-func (ct *ColorTerminal) UserRead(input []byte, prompt string, interruptChannel chan func()) (int, error) {
+func (ct *ColorTerminal) UserRead(input []byte, prompt string, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
 	// ctrl-c handling: currently, we put the terminal into rawmode and listen
 	// for ctrl-c event using the readRune reader.
@@ -51,12 +52,12 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, interruptChannel 
 		ct.Print(ansi.CursorRestore)
 
 		select {
-		case f := <-interruptChannel:
+		case event := <-events:
 			// handle functions that are passsed on over interruptChannel. these can
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
 			ct.Print(ansi.CursorStore)
-			f()
+			eventHandler(event)
 			ct.Print(ansi.CursorRestore)
 
 		case readRune := <-ct.reader:

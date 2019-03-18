@@ -10,12 +10,12 @@ import (
 
 // Play sets the emulation running - without any debugging features
 func Play(cartridgeFile, tvMode string, scaling float32, stable bool) error {
-	tv, err := sdl.NewGUI(tvMode, scaling)
+	playtv, err := sdl.NewGUI(tvMode, scaling)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(playtv)
 	if err != nil {
 		return fmt.Errorf("error preparing VCS: %s", err)
 	}
@@ -29,33 +29,31 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 	var running atomic.Value
 	running.Store(0)
 
-	// register quit function
-	err = tv.RegisterCallback(gui.ReqOnWindowClose, nil, func() {
-		running.Store(-1)
-	})
+	// connect debugger to gui
+	guiChannel := make(chan gui.Event, 2)
+	playtv.SetEventChannel(guiChannel)
+
+	// request television visibility
+	request := gui.ReqSetVisibilityStable
+	if !stable {
+		request = gui.ReqSetVisibility
+	}
+	err = playtv.SetFeature(request, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("error preparing television: %s", err)
 	}
 
-	// register quit function
-	err = tv.RegisterCallback(gui.ReqOnKeyboard, nil, func() {
-		_ = KeyboardCallback(tv, vcs)
+	return vcs.Run(func() bool {
+		select {
+		case ev := <-guiChannel:
+			switch ev.ID {
+			case gui.EventWindowClose:
+				return false
+			case gui.EventKeyboard:
+				KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), playtv, vcs)
+			}
+		default:
+		}
+		return true
 	})
-	if err != nil {
-		return err
-	}
-
-	if stable {
-		err = tv.SetFeature(gui.ReqSetVisibilityStable, true)
-		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
-		}
-	} else {
-		err = tv.SetFeature(gui.ReqSetVisibility, true)
-		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
-		}
-	}
-
-	return vcs.Run(&running)
 }
