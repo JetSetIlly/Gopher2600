@@ -2,8 +2,8 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/input"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"strconv"
@@ -127,13 +127,13 @@ func (wtc *watches) list() {
 	}
 }
 
-func (wtc *watches) parseWatch(tokens *input.Tokens, dbgmem *memoryDebug) error {
+func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) error {
 	var event watchEvent
 
 	// read mode
 	mode, present := tokens.Get()
 	if !present {
-		return nil
+		return fmt.Errorf("watch address required")
 	}
 	mode = strings.ToUpper(mode)
 	switch mode {

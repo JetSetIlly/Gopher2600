@@ -2,14 +2,15 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/input"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/symbols"
 	"gopher2600/television"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -49,8 +50,7 @@ const (
 	cmdScript        = "SCRIPT"
 	cmdStep          = "STEP"
 	cmdStepMode      = "STEPMODE"
-	cmdStick0        = "STICK0"
-	cmdStick1        = "STICK1"
+	cmdStick         = "STICK"
 	cmdSymbol        = "SYMBOL"
 	cmdTIA           = "TIA"
 	cmdTV            = "TV"
@@ -61,70 +61,62 @@ const (
 	cmdWatch         = "WATCH"
 )
 
-// notes
-// o KeywordStep can take a valid target
-// o KeywordDisplay SCALE takes an additional argument but OFF and DEBUG do
-// 	not. the %* is a compromise
-
-// break/trap/watch values are parsed in parseTargets() function
-// TODO: find some way to create valid templates using information from
-// other sources
-
-var commandTemplate = input.CommandTemplate{
-	cmdBall:          "",
-	cmdBreak:         "%*",
-	cmdCPU:           "",
-	cmdCapture:       "[END|%F]",
-	cmdCartridge:     "",
-	cmdClear:         "[BREAKS|TRAPS|WATCHES]",
-	cmdDebuggerState: "",
-	cmdDisassemble:   "",
-	cmdDisplay:       "[|OFF|DEBUG|SCALE|DEBUGCOLORS] %*", // see notes
-	cmdDrop:          "[BREAK|TRAP|WATCH] %V",
-	cmdGrep:          "%S %*",
-	cmdHexLoad:       "%*",
-	cmdInsert:        "%F",
-	cmdLast:          "[|DEFN]",
-	cmdList:          "[BREAKS|TRAPS|WATCHES]",
-	cmdMemMap:        "",
-	cmdMissile:       "",
-	cmdOnHalt:        "[|OFF|RESTORE] %*",
-	cmdOnStep:        "[|OFF|RESTORE] %*",
-	cmdPeek:          "%*",
-	cmdPlayer:        "",
-	cmdPlayfield:     "",
-	cmdPoke:          "%*",
-	cmdQuit:          "",
-	cmdRAM:           "",
-	cmdRIOT:          "",
-	cmdReset:         "",
-	cmdRun:           "",
-	cmdScript:        "%F",
-	cmdStep:          "[|CPU|VIDEO|SCANLINE]", // see notes
-	cmdStepMode:      "[|CPU|VIDEO]",
-	cmdStick0:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
-	cmdStick1:        "[LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
-	cmdSymbol:        "%S [|ALL]",
-	cmdTIA:           "[|FUTURE|HMOVE]",
-	cmdTV:            "[|SPEC]",
-	cmdTerse:         "",
-	cmdTrap:          "%*",
-	cmdVerbose:       "",
-	cmdVerbosity:     "",
-	cmdWatch:         "[READ|WRITE|] %V %*",
+var expCommandTemplate = []string{
+	cmdBall,
+	cmdBreak + " [%*]",
+	cmdCPU,
+	cmdCapture + " [END|%F]",
+	cmdCartridge,
+	cmdClear + " [BREAKS|TRAPS|WATCHES]",
+	cmdDebuggerState,
+	cmdDisassemble,
+	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
+	cmdDrop + " [BREAK|TRAP|WATCH] %V",
+	cmdGrep + " %V",
+	cmdHelp + " %*",
+	cmdHexLoad + " %V %*",
+	cmdInsert + " %F",
+	cmdLast + " (DEFN)",
+	cmdList + " [BREAKS|TRAPS|WATCHES]",
+	cmdMemMap,
+	cmdMissile + "(0|1)",
+	cmdOnHalt + " (OFF|RESTORE|%*)",
+	cmdOnStep + " (OFF|RESTORE|%*)",
+	cmdPeek + " %V %*",
+	cmdPlayer + "(0|1)",
+	cmdPlayfield,
+	cmdPoke + " %V %*",
+	cmdQuit,
+	cmdRAM,
+	cmdRIOT,
+	cmdReset,
+	cmdRun,
+	cmdScript + " %F",
+	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
+	cmdStepMode + " (CPU|VIDEO)",
+	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
+	cmdSymbol + " %V (ALL)",
+	cmdTIA + " (FUTURE|HMOVE)",
+	cmdTV + " (SPEC)",
+	cmdTerse,
+	cmdTrap + " [%*]",
+	cmdVerbose,
+	cmdVerbosity,
+	cmdWatch + " (READ|WRITE) [%V]",
 }
 
-// DebuggerCommands is the tree of valid commands
-var DebuggerCommands input.Commands
+var debuggerCommands *commandline.Commands
 
 func init() {
 	var err error
 
 	// parse command template
-	DebuggerCommands, err = input.CompileCommandTemplate(commandTemplate, cmdHelp)
+	debuggerCommands, err = commandline.ParseCommandTemplate(expCommandTemplate)
 	if err != nil {
-		panic(fmt.Errorf("error compiling command template: %s", err))
+		fmt.Println(err)
+		os.Exit(100)
 	}
+	sort.Stable(debuggerCommands)
 }
 
 type parseCommandResult int
@@ -146,25 +138,41 @@ const (
 // TODO: categorise commands into script-safe and non-script-safe
 func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error) {
 	// tokenise input
-	tokens := input.TokeniseInput(*userInput)
+	tokens := commandline.TokeniseInput(*userInput)
 
-	// check validity of input
-	err := DebuggerCommands.ValidateInput(tokens)
-	if err != nil {
-		return doNothing, err
-	}
+	// normalise user input -- we don't use the results in this
+	// function but we do use it futher-up. eg. when capturing user input to a
+	// script
+	*userInput = tokens.String()
 
 	// if there are no tokens in the input then return emptyInput directive
 	if tokens.Remaining() == 0 {
 		return emptyInput, nil
 	}
 
-	// normalise user input
-	*userInput = tokens.String()
+	// check validity of tokenised input
+	//
+	// the absolute best thing about this is that we don't need to worrying too
+	// much about the success of tokens.Get() in the command implementations
+	// below:
+	//
+	//   tok, _ := tokens.Get()
+	//
+	// is an acceptable pattern
+	err := debuggerCommands.ValidateTokens(tokens)
+	if err != nil {
+		return doNothing, err
+	}
 
+	// check first token. if this token makes sense then we will consume the
+	// rest of the tokens appropriately
 	tokens.Reset()
 	command, _ := tokens.Get()
+
+	// take uppercase value of the first token. it's useful to take the
+	// uppercase value but we have to be careful when we do it because
 	command = strings.ToUpper(command)
+
 	switch command {
 	default:
 		return doNothing, fmt.Errorf("%s is not yet implemented", command)
@@ -180,9 +188,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 				dbg.print(console.Help, txt)
 			}
 		} else {
-			for k := range DebuggerCommands {
-				dbg.print(console.Help, k)
-			}
+			dbg.print(console.Help, debuggerCommands.String())
 		}
 
 	case cmdInsert:
@@ -211,7 +217,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 		dbg.disasm.Dump(os.Stdout)
 
 	case cmdGrep:
-		search := tokens.Remainder()
+		search, _ := tokens.Get()
 		output := strings.Builder{}
 		dbg.disasm.Grep(search, &output, false, 3)
 		if output.Len() == 0 {
@@ -509,7 +515,7 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 		}
 
 	case cmdDebuggerState:
-		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT ECHO; ONSTEP ECHO", false)
+		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT; ONSTEP", false)
 		if err != nil {
 			return doNothing, err
 		}
@@ -670,61 +676,121 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 
 	// information about the machine (sprites, playfield)
 	case cmdPlayer:
-		// TODO: argument to print either player 0 or player 1
+		plyr := -1
+
+		tok, _ := tokens.Get()
+		switch tok {
+		case "0":
+			plyr = 0
+		case "1":
+			plyr = 1
+		default:
+			tokens.Unget()
+		}
 
 		if dbg.machineInfoVerbose {
 			// arrange the two player's information side by side in order to
 			// save space and to allow for easy comparison
 
-			p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
-			p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
+			switch plyr {
+			case 0:
+				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
+				dbg.print(console.MachineInfo, strings.Join(p0, "\n"))
 
-			ml := 0
-			for i := range p0 {
-				if len(p0[i]) > ml {
-					ml = len(p0[i])
-				}
-			}
+			case 1:
+				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
+				dbg.print(console.MachineInfo, strings.Join(p1, "\n"))
 
-			s := strings.Builder{}
-			for i := range p0 {
-				if p0[i] != "" {
-					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
+			default:
+				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
+				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
+
+				ml := 0
+				for i := range p0 {
+					if len(p0[i]) > ml {
+						ml = len(p0[i])
+					}
 				}
+
+				s := strings.Builder{}
+				for i := range p0 {
+					if p0[i] != "" {
+						s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
+					}
+				}
+				dbg.print(console.MachineInfo, s.String())
 			}
-			dbg.print(console.MachineInfo, s.String())
 		} else {
-			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
-			dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+			switch plyr {
+			case 0:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
+
+			case 1:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+
+			default:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
+			}
 		}
 
 	case cmdMissile:
-		// TODO: argument to print either missile 0 or missile 1
+		mssl := -1
+
+		tok, _ := tokens.Get()
+		switch tok {
+		case "0":
+			mssl = 0
+		case "1":
+			mssl = 1
+		default:
+			tokens.Unget()
+		}
 
 		if dbg.machineInfoVerbose {
-			// arrange the two missile's information side by side in order to
-			// save space and to allow for easy comparison
+			switch mssl {
+			case 0:
+				m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+				dbg.print(console.MachineInfo, strings.Join(m0, "\n"))
 
-			p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-			p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
+			case 1:
+				m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+				dbg.print(console.MachineInfo, strings.Join(m1, "\n"))
 
-			ml := 0
-			for i := range p0 {
-				if len(p0[i]) > ml {
-					ml = len(p0[i])
+			default:
+				// arrange the two missile's information side by side in order to
+				// save space and to allow for easy comparison
+
+				m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+				m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
+
+				ml := 0
+				for i := range m0 {
+					if len(m0[i]) > ml {
+						ml = len(m0[i])
+					}
 				}
-			}
 
-			s := strings.Builder{}
-			for i := range p0 {
-				if p0[i] != "" {
-					s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
+				s := strings.Builder{}
+				for i := range m0 {
+					if m0[i] != "" {
+						s.WriteString(fmt.Sprintf("%s %s | %s\n", m0[i], strings.Repeat(" ", ml-len(m0[i])), m1[i]))
+					}
 				}
+				dbg.print(console.MachineInfo, s.String())
 			}
-			dbg.print(console.MachineInfo, s.String())
 		} else {
-			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
-			dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+			switch mssl {
+			case 0:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+
+			case 1:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+
+			default:
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+			}
 		}
 
 	case cmdBall:
@@ -783,22 +849,15 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 			}
 		}
 
-	case cmdStick0:
-		action, present := tokens.Get()
-		if present {
-			err := dbg.vcs.Controller.HandleStick(0, action)
-			if err != nil {
-				return doNothing, err
-			}
-		}
+	case cmdStick:
+		stick, _ := tokens.Get()
+		action, _ := tokens.Get()
 
-	case cmdStick1:
-		action, present := tokens.Get()
-		if present {
-			err := dbg.vcs.Controller.HandleStick(1, action)
-			if err != nil {
-				return doNothing, err
-			}
+		stickN, _ := strconv.Atoi(stick)
+
+		err := dbg.vcs.Controller.HandleStick(stickN, action)
+		if err != nil {
+			return doNothing, err
 		}
 
 	case cmdCapture:

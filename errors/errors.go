@@ -17,10 +17,10 @@ type FormattedError struct {
 
 // NewFormattedError is used to create a new instance of a FormattedError
 func NewFormattedError(errno Errno, values ...interface{}) FormattedError {
-	ge := new(FormattedError)
-	ge.Errno = errno
-	ge.Values = values
-	return *ge
+	er := new(FormattedError)
+	er.Errno = errno
+	er.Values = values
+	return *er
 }
 
 func (er FormattedError) Error() string {

@@ -2,8 +2,8 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/input"
 	"gopher2600/debugger/monitor"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
@@ -184,7 +184,7 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 	}
 	defer dbg.console.CleanUp()
 
-	dbg.console.RegisterTabCompleter(input.NewTabCompletion(DebuggerCommands))
+	dbg.console.RegisterTabCompleter(commandline.NewTabCompletion(debuggerCommands))
 
 	err = dbg.loadCartridge(filename)
 	if err != nil {

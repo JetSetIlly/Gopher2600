@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/input"
+	"gopher2600/debugger/commandline"
 	"gopher2600/errors"
 	"gopher2600/television"
 	"strings"
@@ -62,7 +62,7 @@ func (trg genericTarget) FormatValue(fv interface{}) string {
 }
 
 // parseTarget uses a keyword to decide which part of the vcs to target
-func parseTarget(dbg *Debugger, tokens *input.Tokens) (target, error) {
+func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 	var trg target
 	var err error
 

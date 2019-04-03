@@ -6,8 +6,8 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/input"
 	"gopher2600/errors"
 	"strconv"
 	"strings"
@@ -171,7 +171,7 @@ func (bp breakpoints) list() {
 //  & SL 100 HP 0 | X 10
 //
 // TODO: more sophisticated breakpoints parser
-func (bp *breakpoints) parseBreakpoint(tokens *input.Tokens) error {
+func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	andBreaks := false
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint

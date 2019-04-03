@@ -65,10 +65,18 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, events chan gui.E
 				return inputLen, readRune.err
 			}
 
+			// reset tabcompletion state if anything other than the tab key has
+			// been pressed
+			if readRune.r != easyterm.KeyTab {
+				if ct.tabCompleter != nil {
+					ct.tabCompleter.Reset()
+				}
+			}
+
 			switch readRune.r {
 			case easyterm.KeyTab:
 				if ct.tabCompleter != nil {
-					s := ct.tabCompleter.GuessWord(string(input[:cursorPos]))
+					s := ct.tabCompleter.Complete(string(input[:cursorPos]))
 
 					// the difference in the length of the new input and the old
 					// input

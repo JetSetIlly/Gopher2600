@@ -1,4 +1,4 @@
-package input
+package commandline
 
 import (
 	"fmt"
@@ -8,22 +8,30 @@ import (
 // Tokens represents tokenised input. This can be used to walk through the
 // input string (using get()) for eas(ier) parsing
 type Tokens struct {
+	input  string
 	tokens []string
 	curr   int
 }
 
 func (tk *Tokens) String() string {
-	s := strings.Builder{}
-	for i := range tk.tokens {
-		s.WriteString(tk.tokens[i])
-		s.WriteString(" ")
-	}
-	return s.String()
+	return tk.input
+
+	// s := strings.Builder{}
+	// for i := range tk.tokens {
+	// 	s.WriteString(tk.tokens[i])
+	// 	s.WriteString(" ")
+	// }
+	// return s.String()
 }
 
 // Reset begins the token traversal process from the beginning
 func (tk *Tokens) Reset() {
 	tk.curr = 0
+}
+
+// IsEnd returns true if we're at the end of the token list
+func (tk Tokens) IsEnd() bool {
+	return tk.curr >= len(tk.tokens)
 }
 
 // Remainder returns the remaining tokens as a string
@@ -36,9 +44,14 @@ func (tk Tokens) Remaining() int {
 	return len(tk.tokens) - tk.curr
 }
 
-// Total returns the total count of tokens
-func (tk Tokens) Total() int {
-	return len(tk.tokens)
+// ReplaceEnd changes the last entry of the token list
+func (tk *Tokens) ReplaceEnd(newEnd string) {
+	// change end of original string
+	t := strings.LastIndex(tk.input, tk.tokens[len(tk.tokens)-1])
+	tk.input = tk.input[:t] + newEnd
+
+	// change tokens
+	tk.tokens[len(tk.tokens)-1] = newEnd
 }
 
 // Get returns the next token in the list, and a success boolean - if the end
@@ -76,8 +89,11 @@ func TokeniseInput(input string) *Tokens {
 	// remove leading/trailing space
 	input = strings.TrimSpace(input)
 
-	// divide user input into tokens
+	// divide user input into tokens. removes excess white space
 	tk.tokens = tokeniseInput(input)
+
+	// take a note of the raw input
+	tk.input = input
 
 	// normalise variations in syntax
 	for i := 0; i < len(tk.tokens); i++ {
@@ -93,7 +109,7 @@ func TokeniseInput(input string) *Tokens {
 // tokeniseInput is the "raw" tokenising function (without normalisation or
 // wrapping everything up in a Tokens instance). used by the fancier
 // TokeniseInput and anywhere else where we need to divide input into tokens
-// (eg. TabCompletion.GuessWord())
+// (eg. TabCompletion.Complete())
 func tokeniseInput(input string) []string {
 	return strings.Fields(input)
 }

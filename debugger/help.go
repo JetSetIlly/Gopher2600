@@ -2,7 +2,7 @@ package debugger
 
 // Help contains the help text for the debugger's top level commands
 var Help = map[string]string{
-	cmdBall:          "Display the current state of the Ball sprite",
+	cmdBall:          "Display the current state of the ball sprite",
 	cmdBreak:         "Cause emulator to halt when conditions are met",
 	cmdCPU:           "Display the current state of the CPU",
 	cmdCapture:       "Start capturing entered commands to an extermnal script",
@@ -19,11 +19,11 @@ var Help = map[string]string{
 	cmdLast:          "Prints the result of the last cpu/video cycle",
 	cmdList:          "List current entries for BREAKS and TRAPS",
 	cmdMemMap:        "Display high-level VCS memory map",
-	cmdMissile:       "Display the current state of the Missile 0/1 sprite",
+	cmdMissile:       "Display the current state of the missile 0/1 sprite",
 	cmdOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	cmdOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
 	cmdPeek:          "Inspect an individual memory address",
-	cmdPlayer:        "Display the current state of the Player 0/1 sprite",
+	cmdPlayer:        "Display the current state of the player 0/1 sprite",
 	cmdPlayfield:     "Display the current playfield data",
 	cmdPoke:          "Modify an individual memory address",
 	cmdQuit:          "Exits the emulator",
@@ -34,8 +34,7 @@ var Help = map[string]string{
 	cmdScript:        "Run commands from specified file",
 	cmdStep:          "Step forward emulator one step (see STEPMODE command)",
 	cmdStepMode:      "Change method of stepping: CPU or VIDEO",
-	cmdStick0:        "Emulate a joystick input for Player 0",
-	cmdStick1:        "Emulate a joystick input for Player 1",
+	cmdStick:         "Emulate a joystick input for Player 0 or Player 1",
 	cmdSymbol:        "Search for the address label symbol in disassembly. returns address",
 	cmdTIA:           "Display current state of the TIA",
 	cmdTV:            "Display the current TV state",

@@ -1,7 +1,6 @@
 package console
 
 import (
-	"gopher2600/debugger/input"
 	"gopher2600/gui"
 )
 
@@ -21,7 +20,13 @@ type UserOutput interface {
 type UserInterface interface {
 	Initialise() error
 	CleanUp()
-	RegisterTabCompleter(*input.TabCompletion)
+	RegisterTabCompleter(TabCompleter)
 	UserInput
 	UserOutput
+}
+
+// TabCompleter defines the operations required for tab completion
+type TabCompleter interface {
+	Complete(input string) string
+	Reset()
 }

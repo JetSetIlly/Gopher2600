@@ -2,7 +2,7 @@ package colorterm
 
 import (
 	"gopher2600/debugger/colorterm/easyterm"
-	"gopher2600/debugger/input"
+	"gopher2600/debugger/console"
 	"os"
 )
 
@@ -12,7 +12,7 @@ type ColorTerminal struct {
 
 	reader         runeReader
 	commandHistory []command
-	tabCompleter   *input.TabCompletion
+	tabCompleter   console.TabCompleter
 }
 
 type command struct {
@@ -41,7 +41,7 @@ func (ct *ColorTerminal) CleanUp() {
 
 // RegisterTabCompleter adds an implementation of TabCompleter to the
 // ColorTerminal
-func (ct *ColorTerminal) RegisterTabCompleter(tc *input.TabCompletion) {
+func (ct *ColorTerminal) RegisterTabCompleter(tc console.TabCompleter) {
 	ct.tabCompleter = tc
 }
 

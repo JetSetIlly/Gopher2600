@@ -6,8 +6,8 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/input"
 	"gopher2600/errors"
 	"strings"
 )
@@ -74,7 +74,7 @@ func (tr traps) list() {
 	}
 }
 
-func (tr *traps) parseTrap(tokens *input.Tokens) error {
+func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 	_, present := tokens.Peek()
 	for present {
 		tgt, err := parseTarget(tr.dbg, tokens)
