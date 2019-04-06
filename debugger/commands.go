@@ -15,6 +15,8 @@ import (
 	"strings"
 )
 
+// TODO: categorise commands into script-safe and non-script-safe
+
 // debugger keywords. not a useful data structure but we can use these to form
 // the more useful DebuggerCommands and Help structures
 const (
@@ -106,6 +108,7 @@ var expCommandTemplate = []string{
 }
 
 var debuggerCommands *commandline.Commands
+var debuggerCommandsIdx *commandline.Index
 
 func init() {
 	var err error
@@ -117,6 +120,8 @@ func init() {
 		os.Exit(100)
 	}
 	sort.Stable(debuggerCommands)
+
+	debuggerCommandsIdx = commandline.CreateIndex(debuggerCommands)
 }
 
 type parseCommandResult int
@@ -130,12 +135,12 @@ const (
 	captureEnded
 )
 
-// parseCommand scans user input for valid commands and acts upon it. commands
-// that cause the emulation to move forward (RUN, STEP) return true for the
-// first return value. other commands return false and act upon the command
-// immediately. note that the empty string is the same as the STEP command
-//
-// TODO: categorise commands into script-safe and non-script-safe
+// parseCommand/enactCommand scans user input for a valid command and acts upon
+// it. commands that cause the emulation to move forward (RUN, STEP) return
+// true for the first return value. other commands return false and act upon
+// the command immediately. note that the empty string is the same as the STEP
+// command
+
 func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(*userInput)
@@ -164,6 +169,10 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 		return doNothing, err
 	}
 
+	return dbg.enactCommand(tokens)
+}
+
+func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResult, error) {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately
 	tokens.Reset()
@@ -180,12 +189,13 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 	case cmdHelp:
 		keyword, present := tokens.Get()
 		if present {
-			s := strings.ToUpper(keyword)
-			txt, prs := Help[s]
+			keyword = strings.ToUpper(keyword)
+			helpTxt, prs := Help[keyword]
 			if prs == false {
-				dbg.print(console.Help, "no help for %s", s)
+				dbg.print(console.Help, "no help for %s", keyword)
 			} else {
-				dbg.print(console.Help, txt)
+				helpTxt = fmt.Sprintf("%s\nUsage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
+				dbg.print(console.Help, helpTxt)
 			}
 		} else {
 			dbg.print(console.Help, debuggerCommands.String())
