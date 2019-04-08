@@ -9,7 +9,7 @@ var Help = map[string]string{
 	cmdCartridge:     "Display information about the current cartridge",
 	cmdClear:         "Clear all entries in BREAKS and TRAPS",
 	cmdDebuggerState: "Display summary of debugger options",
-	cmdDisassemble:   "Print the full cartridge disassembly",
+	cmdDisassembly:   "Print the full cartridge disassembly",
 	cmdDisplay:       "Display the TV image",
 	cmdDrop:          "Drop a specific BREAK or TRAP conditin, using the number of the condition reported by LIST",
 	cmdGrep:          "Simple string search (case insensitive) of the disassembly",

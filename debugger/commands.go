@@ -27,7 +27,7 @@ const (
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
 	cmdDebuggerState = "DEBUGGERSTATE"
-	cmdDisassemble   = "DISASSEMBLE"
+	cmdDisassembly   = "DISASSEMBLY"
 	cmdDisplay       = "DISPLAY"
 	cmdDrop          = "DROP"
 	cmdGrep          = "GREP"
@@ -71,7 +71,7 @@ var expCommandTemplate = []string{
 	cmdCartridge,
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
 	cmdDebuggerState,
-	cmdDisassemble,
+	cmdDisassembly + "(STATE)",
 	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %V",
 	cmdGrep + " %V",
@@ -163,7 +163,18 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 	//
 	//   tok, _ := tokens.Get()
 	//
-	// is an acceptable pattern
+	// is an acceptable pattern. default values can be handled thus:
+	//
+	//  tok, ok := tokens.Get()
+	//  if ok {
+	//    switch tok {
+	//		...
+	//	  }
+	//  } else {
+	//	  // default action
+	//    ...
+	//  }
+	//
 	err := debuggerCommands.ValidateTokens(tokens)
 	if err != nil {
 		return doNothing, err
@@ -194,7 +205,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			if prs == false {
 				dbg.print(console.Help, "no help for %s", keyword)
 			} else {
-				helpTxt = fmt.Sprintf("%s\nUsage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
+				helpTxt = fmt.Sprintf("%s\n\n  Usage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
 				dbg.print(console.Help, helpTxt)
 			}
 		} else {
@@ -223,8 +234,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			return doNothing, err
 		}
 
-	case cmdDisassemble:
-		dbg.disasm.Dump(os.Stdout)
+	case cmdDisassembly:
+		option, ok := tokens.Get()
+		if ok {
+			switch strings.ToUpper(option) {
+			case "STATE":
+				dbg.print(console.Feedback, dbg.disasm.String())
+			}
+		} else {
+			dbg.disasm.Dump(os.Stdout)
+		}
 
 	case cmdGrep:
 		search, _ := tokens.Get()
@@ -429,12 +448,13 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 
 	case cmdLast:
 		if dbg.lastResult != nil {
-			option, _ := tokens.Get()
-			option = strings.ToUpper(option)
-			switch option {
-			case "DEFN":
-				dbg.print(console.Feedback, "%s", dbg.lastResult.Defn)
-			case "":
+			option, ok := tokens.Get()
+			if ok {
+				switch strings.ToUpper(option) {
+				case "DEFN":
+					dbg.print(console.Feedback, "%s", dbg.lastResult.Defn)
+				}
+			} else {
 				var printTag console.PrintProfile
 				if dbg.lastResult.Final {
 					printTag = console.CPUStep
@@ -442,8 +462,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 					printTag = console.VideoStep
 				}
 				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
-			default:
-				return doNothing, fmt.Errorf("unknown last request option (%s)", option)
 			}
 		}
 

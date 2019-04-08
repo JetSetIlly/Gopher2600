@@ -42,8 +42,10 @@ type Cartridge struct {
 const ejectedName = "ejected"
 const ejectedMethod = "none"
 
-// newCart is the preferred method of initialisation for the cartridges
-func newCart() *Cartridge {
+// NewCart is the preferred method of initialisation for the cartridges
+// -- public naming because it is sometimes useful to be able to initialise a
+// this type of memory when analysing a cartidge (eg. disassembly)
+func NewCart() *Cartridge {
 	cart := new(Cartridge)
 	cart.label = "Cartridge"
 	cart.origin = 0x1000

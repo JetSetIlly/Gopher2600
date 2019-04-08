@@ -238,7 +238,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 		symtable = symbols.StandardSymbolTable()
 	}
 
-	err = dbg.disasm.ParseMemory(dbg.vcs.Mem.Cart, symtable)
+	err = dbg.disasm.FromMemory(dbg.vcs.Mem.Cart, symtable)
 	if err != nil {
 		return err
 	}
@@ -253,15 +253,16 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 
 // videoCycle() to be used with vcs.Step()
 func (dbg *Debugger) videoCycle(result *result.Instruction) error {
-	// because we call this callback mid-instruction, the programme counter
-	// maybe in it's non-final state - we don't want to break or trap in these
-	// instances if the final effect of the instruction changes the programme
-	// counter to some other value
-	if result.Defn != nil {
-		if (result.Defn.Effect == definitions.Flow ||
-			result.Defn.Effect == definitions.Subroutine ||
-			result.Defn.Effect == definitions.Interrupt) &&
-			!result.Final {
+	// note result as lastResult immediately
+	dbg.lastResult = result
+
+	// because we call this callback mid-instruction, the program counter
+	// maybe in its non-final state - we don't want to break or trap in those
+	// instances when the final effect of the instruction changes the program
+	// counter to some other value (ie. a flow, subroutine or interrupt
+	// instruction)
+	if !result.Final && result.Defn != nil {
+		if result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine || result.Defn.Effect == definitions.Interrupt {
 			return nil
 		}
 	}
@@ -286,7 +287,6 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 	// when in video-step mode
 	videoCycleWithInput := func(result *result.Instruction) error {
 		dbg.videoCycle(result)
-		dbg.lastResult = result
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep, false)
 			if err != nil {
@@ -359,23 +359,29 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 
 			dbg.runUntilHalt = false
 
-			// decide which PC value to use
-			var disasmPC uint16
+			// decide which address value to use
+			var disasmAddress uint16
+			var disasmBank int
+
 			if dbg.lastResult == nil || dbg.lastResult.Final {
-				disasmPC = dbg.vcs.MC.PC.ToUint16()
+				disasmAddress = dbg.vcs.MC.PC.ToUint16()
 			} else {
-				disasmPC = dbg.lastResult.Address
+				// if we're in the middle of an instruction then use the
+				// addresss in lastResult - in video-stepping mode we want the
+				// prompt to report the instruction that we're working on, not
+				// the next one to be stepped into.
+				disasmAddress = dbg.lastResult.Address
 			}
+			disasmBank = dbg.vcs.Mem.Cart.Bank
 
 			// build prompt
 			var prompt string
-			if r, ok := dbg.disasm.Get(dbg.disasm.Cart.Bank, disasmPC); ok {
+			if r, ok := dbg.disasm.Get(disasmBank, disasmAddress); ok {
 				prompt = strings.Trim(r.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
 				prompt = fmt.Sprintf("[ %s ] > ", prompt)
 			} else {
 				// incomplete disassembly, prepare witchspace prompt
-				// TODO: implement "just in time" disassembly
-				prompt = fmt.Sprintf("[witchspace (%d, %#04x)] > ", dbg.disasm.Cart.Bank, disasmPC)
+				prompt = fmt.Sprintf("[witchspace (%d, %#04x)] > ", disasmBank, disasmAddress)
 			}
 
 			// - additional annotation if we're not showing the prompt in the main loop

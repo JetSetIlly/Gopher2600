@@ -41,12 +41,6 @@ func (bk breaker) String() string {
 	return b.String()
 }
 
-// isSingleton checks if break condition is part of a list (false) or is a
-// singleton condition (true)
-func (bk breaker) isSingleton() bool {
-	return bk.next == nil && bk.prev == nil
-}
-
 // breaker.check checks the specific break condition with the current value of
 // the break target
 func (bk *breaker) check() bool {
@@ -56,12 +50,9 @@ func (bk *breaker) check() bool {
 	if bk.next == nil {
 		b = b && currVal != bk.ignoreValue
 
-		// this is either a singleton break or the end of a break-list
-		// (inList==true). note how we set the ignoreValue in these two
-		// instances. if it's a singleton break then we always reset the
-		// ignoreValue. if it's the end of the list we reset the value to nil
-		// if there is no match
-		if bk.isSingleton() {
+		// this is either a single, unconnected break condition or the last
+		// condition in a list. the ignore value depends on that.
+		if bk.prev == nil {
 			bk.ignoreValue = currVal
 		} else {
 			bk.ignoreValue = nil
@@ -81,8 +72,7 @@ func (bk *breaker) check() bool {
 	return b
 }
 
-// add appends a new breaker object to the *end of the list* from the perspective
-// of bk
+// breaker.add links a new breaker object to an existing breaker object
 func (bk *breaker) add(nbk *breaker) {
 	n := &bk.next
 	for *n != nil {
@@ -189,32 +179,53 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	// them to newBreaks first and then check that we aren't adding duplicates
 	newBreaks := make([]breaker, 0, 10)
 
-	// loop over tokens. if token is a number then add the breakpoint for the
-	// current target. if it is not a number, look for a keyword that changes
-	// the target (or run a BREAK meta-command)
+	// loop over tokens:
+	//	o if token is a valid type value then add the breakpoint for the current target
+	//  o if it is not a valid type value, try to change the target
 	tok, present := tokens.Get()
 	for present {
-		// if token is a number...
-		val, err := strconv.ParseInt(tok, 0, 32)
+		var val interface{}
+		var err error
+
+		// try to interpret the token depending on the type of value the target
+		// expects
+		switch tgt.Value().(type) {
+		case int:
+			var v int64
+			v, err = strconv.ParseInt(tok, 0, 32)
+			if err == nil {
+				val = int(v)
+			}
+		case bool:
+			switch strings.ToLower(tok) {
+			case "true":
+				val = true
+			case "false":
+				val = false
+			default:
+				err = fmt.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label())
+			}
+		default:
+			panic(fmt.Errorf("unsupported value type (%T) for target (%s)", tgt.Value(), tgt.Label()))
+		}
+
 		if err == nil {
 			if andBreaks == true {
 				if len(newBreaks) == 0 {
-					newBreaks = append(newBreaks, breaker{target: tgt, value: int(val)})
+					newBreaks = append(newBreaks, breaker{target: tgt, value: val})
 				} else {
-					newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: int(val)})
+					newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: val})
 				}
 				resolvedTarget = true
 			} else {
-				newBreaks = append(newBreaks, breaker{target: tgt, value: int(val)})
+				newBreaks = append(newBreaks, breaker{target: tgt, value: val})
 				resolvedTarget = true
 			}
 
 		} else {
-			// if token is not a number ...
-
 			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
-				return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+				return errors.NewFormattedError(errors.CommandError, err)
 			}
 
 			// possibly switch composition mode
@@ -238,7 +249,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value to break on (%s)", tgt.Label()))
+		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("need a value (%T) to break on (%s)", tgt.Value(), tgt.Label()))
 	}
 
 	return bp.checkNewBreakpoints(newBreaks)

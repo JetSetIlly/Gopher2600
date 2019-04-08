@@ -64,7 +64,6 @@ func (trg genericTarget) FormatValue(fv interface{}) string {
 // parseTarget uses a keyword to decide which part of the vcs to target
 func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 	var trg target
-	var err error
 
 	keyword, present := tokens.Get()
 	if present {
@@ -149,10 +148,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 						},
 					}
 				default:
-					err = errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					return nil, errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
 				}
 			} else {
-				err = errors.NewFormattedError(errors.InvalidTarget, keyword)
+				return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
 			}
 
 		// cartridge
@@ -169,17 +168,33 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 							return dbg.vcs.Mem.Cart.Bank
 						},
 					}
+
+				case "WITCHSPACE", "WITCH":
+					var witchspace bool
+
+					trg = &genericTarget{
+						label:      "CART WITCHSPACE",
+						shortLabel: "CART WITCH",
+						value: func() interface{} {
+							if dbg.lastResult != nil && dbg.lastResult.Final {
+								_, ok := dbg.disasm.Get(dbg.vcs.Mem.Cart.Bank, dbg.vcs.MC.PC.ToUint16())
+								witchspace = !ok
+							}
+							return witchspace
+						},
+					}
+
 				default:
-					err = errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s/%s", keyword, subkey))
+					return nil, errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
 				}
 			} else {
-				err = errors.NewFormattedError(errors.InvalidTarget, keyword)
+				return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
 			}
 
 		default:
-			err = errors.NewFormattedError(errors.InvalidTarget, keyword)
+			return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
 		}
 	}
 
-	return trg, err
+	return trg, nil
 }

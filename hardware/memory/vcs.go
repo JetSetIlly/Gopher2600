@@ -35,7 +35,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
 	mem.PIA = newPIA()
-	mem.Cart = newCart()
+	mem.Cart = NewCart()
 	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
 		return nil, fmt.Errorf("error creating memory areas")
 	}

@@ -11,12 +11,10 @@ import (
 type Instruction struct {
 	Address uint16
 
-	// note that this Instruction type does not keep track of what bank the
-	// instruction is in. we've considered doing so but it would mean exposing
-	// a Bank() function on the CPUBus interface, which doesn't seem correct.
-	// currently, the only place we need to know the bank that an Instruction
-	// came from is in the disassembly package, where we can solve the problem
-	// locally
+	// for the VCS emulation, it would be lovely to have a note of which
+	// cartridge bank the address is in, but we want to keep the 6502 emulation
+	// as non-specific as possible. if you need to know the cartridge bank then
+	// you need to get it somehow else.
 
 	Defn *definitions.InstructionDefinition
 

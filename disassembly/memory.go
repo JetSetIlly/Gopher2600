@@ -2,7 +2,7 @@ package disassembly
 
 import "gopher2600/hardware/memory"
 
-type minimalMemory struct {
+type disasmMemory struct {
 	cart *memory.Cartridge
 
 	// origin and memtop of cartridge space (for convenience)
@@ -10,16 +10,16 @@ type minimalMemory struct {
 	cartMemtop uint16
 }
 
-// newMinimalMemory is the preferred method of initialisation for minimalMemory
-func newMinimalMemory(cart *memory.Cartridge) (*minimalMemory, error) {
-	mem := new(minimalMemory)
+// newDisasmMemory is the preferred method of initialisation for disasmMemory
+func newDisasmMemory(cart *memory.Cartridge) (*disasmMemory, error) {
+	mem := new(disasmMemory)
 	mem.cart = cart
 	mem.cartOrigin = mem.cart.Origin()
 	mem.cartMemtop = mem.cart.Memtop()
 	return mem, nil
 }
 
-func (mem *minimalMemory) Read(address uint16) (uint8, error) {
+func (mem *disasmMemory) Read(address uint16) (uint8, error) {
 	// map address
 	if address&mem.cartOrigin == mem.cartOrigin {
 		address = address & mem.cartMemtop
@@ -29,7 +29,7 @@ func (mem *minimalMemory) Read(address uint16) (uint8, error) {
 	return 0, nil
 }
 
-func (mem *minimalMemory) Write(address uint16, data uint8) error {
+func (mem *disasmMemory) Write(address uint16, data uint8) error {
 	// map address
 	if address&mem.cartOrigin == mem.cartOrigin {
 		address = address & mem.cartMemtop

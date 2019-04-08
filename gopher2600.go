@@ -129,7 +129,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			dsm, err := disassembly.NewDisassembly(modeFlags.Arg(0))
+			dsm, err := disassembly.FromCartrige(modeFlags.Arg(0))
 			if err != nil {
 				switch err.(type) {
 				case errors.FormattedError:
