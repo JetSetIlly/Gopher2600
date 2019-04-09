@@ -135,13 +135,13 @@ func main() {
 				case errors.FormattedError:
 					// print what disassembly output we do have
 					if dsm != nil {
-						dsm.Dump(os.Stdout)
+						dsm.DumpFlow(os.Stdout)
 					}
 				}
 				fmt.Printf("* error during disassembly: %s\n", err)
 				os.Exit(2)
 			}
-			dsm.Dump(os.Stdout)
+			dsm.DumpFlow(os.Stdout)
 		default:
 			fmt.Printf("* too many arguments for %s mode\n", mode)
 			os.Exit(2)

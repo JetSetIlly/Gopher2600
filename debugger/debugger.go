@@ -360,28 +360,31 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 			dbg.runUntilHalt = false
 
 			// decide which address value to use
-			var disasmAddress uint16
-			var disasmBank int
+			var promptAddress uint16
+			var promptBank int
 
 			if dbg.lastResult == nil || dbg.lastResult.Final {
-				disasmAddress = dbg.vcs.MC.PC.ToUint16()
+				promptAddress = dbg.vcs.MC.PC.ToUint16()
 			} else {
 				// if we're in the middle of an instruction then use the
 				// addresss in lastResult - in video-stepping mode we want the
 				// prompt to report the instruction that we're working on, not
 				// the next one to be stepped into.
-				disasmAddress = dbg.lastResult.Address
+				promptAddress = dbg.lastResult.Address
 			}
-			disasmBank = dbg.vcs.Mem.Cart.Bank
+			promptBank = dbg.vcs.Mem.Cart.Bank
 
 			// build prompt
 			var prompt string
-			if r, ok := dbg.disasm.Get(disasmBank, disasmAddress); ok {
-				prompt = strings.Trim(r.GetString(dbg.disasm.Symtable, result.StyleBrief), " ")
-				prompt = fmt.Sprintf("[ %s ] > ", prompt)
+			if r, ok := dbg.disasm.GetLinear(promptBank, promptAddress); ok {
+				// because we're using the raw disassmebly the reported address
+				// in that disassembly may be misleading. because of that, we
+
+				prompt = strings.Trim(r.GetString(dbg.disasm.Symtable, result.StyleFlagSymbols), " ")
+				prompt = fmt.Sprintf("[ %#04x %s ] > ", promptAddress, prompt)
 			} else {
 				// incomplete disassembly, prepare witchspace prompt
-				prompt = fmt.Sprintf("[witchspace (%d, %#04x)] > ", disasmBank, disasmAddress)
+				prompt = fmt.Sprintf("[ %#04x (%d) witchspace ] > ", promptAddress, promptBank)
 			}
 
 			// - additional annotation if we're not showing the prompt in the main loop

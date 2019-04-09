@@ -7,7 +7,8 @@ type Style int
 const (
 	// specifying StyleFlagSymbols or StyleFlagLocation has no effect if no
 	// symbols type instance is available
-	StyleFlagSymbols Style = 0x01 << iota
+	StyleFlagAddress Style = 0x01 << iota
+	StyleFlagSymbols
 	StyleFlagLocation
 
 	// StyleFlagColumns forces output into columns of suitable width
@@ -24,8 +25,8 @@ const (
 
 // compound styles
 const (
-	StyleBrief = StyleFlagSymbols
-	StyleFull  = StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns | StyleFlagNotes
+	StyleBrief = StyleFlagAddress | StyleFlagSymbols
+	StyleFull  = StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns | StyleFlagNotes
 )
 
 // Has tests to see if style has the supplied flag in its definition

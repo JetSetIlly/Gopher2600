@@ -87,15 +87,15 @@ func (n *node) validate(tokens *Tokens) error {
 
 	switch n.tag {
 	case "%V":
-		_, err := strconv.ParseInt(tok, 0, 32)
-		if err != nil {
+		_, e := strconv.ParseInt(tok, 0, 32)
+		if e != nil {
 			err = fmt.Errorf("numeric argument required (%s is not numeric)", tok)
 			match = false
 		}
 
 	case "%I":
-		_, err := strconv.ParseFloat(tok, 32)
-		if err != nil {
+		_, e := strconv.ParseFloat(tok, 32)
+		if e != nil {
 			err = fmt.Errorf("float argument required (%s is not numeric)", tok)
 			match = false
 		}

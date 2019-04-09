@@ -74,7 +74,7 @@ var expCommandTemplate = []string{
 	cmdDisassembly + "(STATE)",
 	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %V",
-	cmdGrep + " %V",
+	cmdGrep + " %S",
 	cmdHelp + " %*",
 	cmdHexLoad + " %V %*",
 	cmdInsert + " %F",
@@ -242,7 +242,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 				dbg.print(console.Feedback, dbg.disasm.String())
 			}
 		} else {
-			dbg.disasm.Dump(os.Stdout)
+			dbg.disasm.DumpFlow(os.Stdout)
 		}
 
 	case cmdGrep:

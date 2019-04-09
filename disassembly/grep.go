@@ -20,11 +20,11 @@ func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		bankHeader := false
 		for a := dsm.Cart.Origin(); a <= dsm.Cart.Memtop(); a++ {
-			if dsm.program[bank][a] == nil {
+			if dsm.flow[bank][a] == nil {
 				continue
 			}
 
-			s = dsm.program[bank][a].GetString(dsm.Symtable, result.StyleBrief)
+			s = dsm.flow[bank][a].GetString(dsm.Symtable, result.StyleBrief)
 			if !caseSensitive {
 				m = strings.ToUpper(s)
 			} else {
@@ -45,8 +45,13 @@ func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool
 
 				// print context
 				for c := 0; c < len(ctx); c++ {
-					output.Write([]byte(ctx[c]))
-					output.Write([]byte("\n"))
+					// only write actual content. note that there is more often
+					// than not, valid context. the main reason as far I can
+					// see, for empty context are mistakes in disassembly
+					if ctx[c] != "" {
+						output.Write([]byte(ctx[c]))
+						output.Write([]byte("\n"))
+					}
 				}
 
 				// print match
