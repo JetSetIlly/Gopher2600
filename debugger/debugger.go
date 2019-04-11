@@ -376,12 +376,11 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 
 			// build prompt
 			var prompt string
-			if r, ok := dbg.disasm.GetLinear(promptBank, promptAddress); ok {
+			if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
 				// because we're using the raw disassmebly the reported address
 				// in that disassembly may be misleading. because of that, we
 
-				prompt = strings.Trim(r.GetString(dbg.disasm.Symtable, result.StyleFlagSymbols), " ")
-				prompt = fmt.Sprintf("[ %#04x %s ] > ", promptAddress, prompt)
+				prompt = fmt.Sprintf("[ %#04x %s ] > ", promptAddress, entry)
 			} else {
 				// incomplete disassembly, prepare witchspace prompt
 				prompt = fmt.Sprintf("[ %#04x (%d) witchspace ] > ", promptAddress, promptBank)

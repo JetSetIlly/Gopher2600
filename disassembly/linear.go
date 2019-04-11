@@ -19,16 +19,21 @@ import (
 // for presenting the entire program.
 
 func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
+	style := result.StyleFlagSymbols | result.StyleFlagCompact
+
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
 		dsm.Cart.BankSwitch(bank)
 		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
 			mc.PC.Load(address)
-			result, _ := mc.ExecuteInstruction(func(*result.Instruction) {})
+			r, _ := mc.ExecuteInstruction(func(*result.Instruction) {})
 
 			// check validity of instruction result and add if it "executed"
 			// correctly
-			if result != nil && result.IsValid() == nil {
-				dsm.linear[bank][address] = result
+			if r != nil && r.IsValid() == nil {
+				dsm.linear[bank][address&bankMask] = Entry{
+					Style:                 style,
+					instruction:           r.GetString(dsm.Symtable, style),
+					instructionDefinition: r.Defn}
 			}
 		}
 	}

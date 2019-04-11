@@ -5,6 +5,7 @@ import (
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/symbols"
+	"strings"
 )
 
 // Instruction contains all the interesting information from a CPU step.
@@ -26,6 +27,12 @@ type Instruction struct {
 	// case of a branch instruction, it is the offset value.
 	InstructionData interface{}
 
+	// the accuracy of the following members are dependent on when the
+	// instruction was executed so care should be taken when presenting the
+	// information to the user. in practical terms, this means that the use of
+	// StyleFlagCycles and StyleFlagNotes (and by implication StyleFull) should
+	// be used with care
+
 	// the actual number of cycles taken by the instruction - usually the same
 	// as Defn.Cycles but in the case of PageFaults and branches, this value
 	// may be different
@@ -34,12 +41,12 @@ type Instruction struct {
 	// whether an extra cycle was required because of 8 bit adder overflow
 	PageFault bool
 
-	// whether a known buggy code path (int the emulated CPU) was triggered
+	// whether a known buggy code path (in the emulated CPU) was triggered
 	Bug string
 }
 
 func (result Instruction) String() string {
-	return result.GetString(symbols.StandardSymbolTable(), StyleBrief)
+	return result.GetString(symbols.StandardSymbolTable(), StyleFlagAddress|StyleFlagSymbols)
 }
 
 // GetString returns a human readable version of InstructionResult, addresses
@@ -189,8 +196,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 		}
 	}
 
-	// add annotation
-	if style.Has(StyleFlagNotes) {
+	if style.Has(StyleFlagCycles) {
 		if result.Final {
 			// result is of a complete instruction - add number of cycles it
 			// actually took to execute
@@ -200,7 +206,10 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 			// video cycle
 			notes = "[v]"
 		}
+	}
 
+	// add annotation
+	if style.Has(StyleFlagNotes) {
 		// add annotation for page-faults and known CPU bugs - these can occur
 		// whether or not the result is not yet 'final'
 		if result.PageFault {
@@ -234,11 +243,17 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 	}
 
 	// build final string
-	return fmt.Sprintf("%s %s %s %s %s %s",
+	s := fmt.Sprintf("%s %s %s %s %s %s",
 		hex,
 		label,
 		programCounter,
 		operator,
 		operand,
 		notes)
+
+	if style.Has(StyleFlagCompact) {
+		return strings.Trim(s, " ")
+	}
+
+	return s
 }

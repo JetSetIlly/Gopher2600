@@ -5,28 +5,32 @@ type Style int
 
 // style flags to hint at what to include when creating disassembly output
 const (
+	// ByteCode flag causes the program data to be printed verbatim before
+	// the disassembly
+	StyleFlagByteCode Style = 0x01 << iota
+
 	// specifying StyleFlagSymbols or StyleFlagLocation has no effect if no
 	// symbols type instance is available
-	StyleFlagAddress Style = 0x01 << iota
+	StyleFlagAddress
 	StyleFlagSymbols
 	StyleFlagLocation
 
-	// StyleFlagColumns forces output into columns of suitable width
-	StyleFlagColumns
+	// the number of cycles consumed by the instruction
+	StyleFlagCycles
 
 	// include any useful notes about the disassembly. for example, whether a
-	// page-fault occured
+	// page-fault occurred
 	StyleFlagNotes
 
-	// ByteCode flag causes the program data to be printed verbatim before
-	// the disassembly
-	StyleFlagByteCode
-)
+	// force output into columns of suitable width
+	StyleFlagColumns
 
-// compound styles
-const (
-	StyleBrief = StyleFlagAddress | StyleFlagSymbols
-	StyleFull  = StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns | StyleFlagNotes
+	// remove leading/trailing whitespace
+	StyleFlagCompact
+
+	// compound style
+	StyleExecution = StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagCycles | StyleFlagNotes | StyleFlagColumns
+	StyleDisasm    = StyleFlagByteCode | StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns
 )
 
 // Has tests to see if style has the supplied flag in its definition

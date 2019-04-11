@@ -44,15 +44,11 @@ type CPU struct {
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
 
-	// it is somtimes useful to ignore flow control functions (including breaks
-	// and sub-routines). we use this in the disassembly package to make sure
-	// we reach every part of the program.
-	//
-	// note that because WRITE and RMW instructions still affect the supplied
-	// memory, it is possible for flow to change when cartridge banks are
-	// switched (as a result of a WRITE). this is intentional. if you don't
-	// want this to happen then the memory instance needs to filter
-	// appropriately.
+	// NoFlowControl sets whehter the cpu responds accurately to instructions that
+	// affect the flow of the program (branches, JPS, subroutines and interrupts).
+	// we use this in the disassembly package to make sure we reach every part of
+	// the program. note that the alteration flow as a result of bank switching is
+	// still possible.
 	NoFlowControl bool
 }
 
@@ -335,7 +331,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	}
 
 	// prepare StepResult structure
-	result := new(result.Instruction)
+	result := &result.Instruction{}
 	result.Address = mc.PC.ToUint16()
 
 	// register end cycle callback

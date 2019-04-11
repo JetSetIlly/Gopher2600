@@ -68,10 +68,10 @@ var expCommandTemplate = []string{
 	cmdBreak + " [%*]",
 	cmdCPU,
 	cmdCapture + " [END|%F]",
-	cmdCartridge,
+	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
 	cmdDebuggerState,
-	cmdDisassembly + "(STATE)",
+	cmdDisassembly,
 	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %V",
 	cmdGrep + " %S",
@@ -235,15 +235,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdDisassembly:
-		option, ok := tokens.Get()
-		if ok {
-			switch strings.ToUpper(option) {
-			case "STATE":
-				dbg.print(console.Feedback, dbg.disasm.String())
-			}
-		} else {
-			dbg.disasm.DumpFlow(os.Stdout)
-		}
+		dbg.disasm.Dump(os.Stdout)
 
 	case cmdGrep:
 		search, _ := tokens.Get()
@@ -461,7 +453,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 				} else {
 					printTag = console.VideoStep
 				}
-				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleFull))
+				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleExecution))
 			}
 		}
 
@@ -549,7 +541,15 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdCartridge:
-		dbg.printMachineInfo(dbg.vcs.Mem.Cart)
+		tok, ok := tokens.Get()
+		if ok {
+			switch tok {
+			case "ANALYSIS":
+				dbg.print(console.Feedback, dbg.disasm.String())
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.Mem.Cart)
+		}
 
 	case cmdCPU:
 		dbg.printMachineInfo(dbg.vcs.MC)

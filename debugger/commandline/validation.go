@@ -39,13 +39,30 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 	return fmt.Errorf("unrecognised command (%s)", cmd)
 }
 
+func placeHolderText(text string) string {
+	switch text {
+	case "%*":
+		return "required arguments"
+	case "%S":
+		return "string argument"
+	case "%V":
+		return "numeric argument"
+	case "%I":
+		return "floating-point argument"
+	case "%F":
+		return "filename argument"
+	default:
+		return text
+	}
+}
+
 // branches creates a readable string, listing all the branches of the node
 func branches(n *node) string {
 	s := strings.Builder{}
 	s.WriteString(n.tag)
 	for bi := range n.branch {
-		s.WriteString(", ")
-		s.WriteString(n.branch[bi].tag)
+		s.WriteString(" or ")
+		s.WriteString(placeHolderText(n.branch[bi].tag))
 	}
 	return s.String()
 }
@@ -59,19 +76,13 @@ func (n *node) validate(tokens *Tokens) error {
 		// with the exception of the %* placeholder
 		if n.group == groupRequired || (n.group == groupRoot && n.tag != "%*") {
 			// replace placeholder arguments with something a little less cryptic
-			switch n.tag {
-			case "%*":
-				return fmt.Errorf("missing required arguments")
-			case "%S":
-				return fmt.Errorf("missing string argument")
-			case "%V":
-				return fmt.Errorf("missing numeric argument")
-			case "%I":
-				return fmt.Errorf("missing floating-point argument")
-			case "%F":
-				return fmt.Errorf("missing filename argument")
+			s := strings.Builder{}
+			if len(n.branch) > 0 {
+				return fmt.Errorf("missing a required argument (%s)", branches(n))
 			}
-			return fmt.Errorf("missing a required argument (%s)", branches(n))
+			s.WriteString("missing ")
+			s.WriteString(placeHolderText(n.tag))
+			return fmt.Errorf(s.String())
 		}
 
 		return nil
