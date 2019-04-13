@@ -102,29 +102,36 @@ func NewStick(tia memory.PeriphBus, riot memory.PeriphBus, panel *Panel) *Stick 
 
 // HandleStick parses the action and writes to the correct memory location
 func (stk *Stick) HandleStick(player int, action string) error {
+	var stickAddress uint16
+	var fireAddress uint16
+
 	if player == 0 {
-		switch strings.ToUpper(action) {
-		case "LEFT":
-			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xbf)
-		case "RIGHT":
-			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0x7f)
-		case "UP":
-			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xef)
-		case "DOWN":
-			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xdf)
-		case "CENTER":
-			fallthrough
-		case "CENTRE":
-			stk.riot.PeriphWrite(vcssymbols.SWCHA, 0xff)
-		case "FIRE":
-			stk.tia.PeriphWrite(vcssymbols.INPT4, 0x00)
-		case "NOFIRE":
-			stk.tia.PeriphWrite(vcssymbols.INPT4, 0x80)
-		}
+		stickAddress = vcssymbols.SWCHA
+		fireAddress = vcssymbols.INPT4
 	} else if player == 1 {
-		return errors.NewFormattedError(errors.StickDisconnected, player)
+		stickAddress = vcssymbols.SWCHB
+		fireAddress = vcssymbols.INPT5
 	} else {
 		panic(fmt.Sprintf("there is no player %d with a joystick to handle", player))
+	}
+
+	switch strings.ToUpper(action) {
+	case "LEFT":
+		stk.riot.PeriphWrite(stickAddress, 0xbf)
+	case "RIGHT":
+		stk.riot.PeriphWrite(stickAddress, 0x7f)
+	case "UP":
+		stk.riot.PeriphWrite(stickAddress, 0xef)
+	case "DOWN":
+		stk.riot.PeriphWrite(stickAddress, 0xdf)
+	case "CENTER":
+		fallthrough
+	case "CENTRE":
+		stk.riot.PeriphWrite(stickAddress, 0xff)
+	case "FIRE":
+		stk.tia.PeriphWrite(fireAddress, 0x00)
+	case "NOFIRE":
+		stk.tia.PeriphWrite(fireAddress, 0x80)
 	}
 
 	return nil

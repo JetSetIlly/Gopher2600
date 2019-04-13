@@ -1,6 +1,6 @@
 package television
 
-import "gopher2600/debugger/monitor"
+import "gopher2600/debugger/metavideo"
 
 // StateReq is used to identify which television attribute is being asked
 // with the GetState() function
@@ -33,7 +33,7 @@ type Television interface {
 
 	Reset() error
 	Signal(SignalAttributes) error
+	MetaSignal(metavideo.MetaSignalAttributes) error
 
 	GetState(StateReq) (interface{}, error)
-	SystemStateRecord(monitor.SystemState) error
 }

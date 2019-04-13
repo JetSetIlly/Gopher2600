@@ -2,14 +2,12 @@ package imagetv
 
 import (
 	"fmt"
-	"gopher2600/debugger/monitor"
 	"gopher2600/errors"
 	"gopher2600/television"
 	"image"
 	"image/color"
 	"image/png"
 	"os"
-	"path/filepath"
 )
 
 // ImageTV is a television implementation that writes images to disk
@@ -74,22 +72,11 @@ func (tv *ImageTV) setPixel(x, y int32, red, green, blue byte, vblank bool) erro
 	return nil
 }
 
-// SystemStateRecord implements a save facility. the SystemState instance
-// should have:
+// Save last frame to filename - filename base supplied as an argument, the
+// frame number and file extension is appended by the function
 //
-//	 o Group attribute set to the image path
-//   o Label attribute set to the base filename
-//
-// final saved image will be stored as
-//       <group/<label>_<framenum>.png
-func (tv *ImageTV) SystemStateRecord(state monitor.SystemState) error {
-	if state.Label == "" || state.Group == "" {
-		return errors.NewFormattedError(errors.ImageTV, "SystemStateRecord requires a Label and Group")
-	}
-	return tv.save(filepath.Join(state.Group, state.Label))
-}
-
-func (tv *ImageTV) save(fileNameBase string) error {
+// return tv.Save(filepath.Join(state.Group, state.Label))
+func (tv *ImageTV) Save(fileNameBase string) error {
 	if tv.lastImage == nil {
 		return errors.NewFormattedError(errors.ImageTV, "no data to save")
 	}

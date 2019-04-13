@@ -38,7 +38,7 @@ func RegressUpdateCartridge(cartridgeFile string, tvMode string, numOfFrames int
 	return addCartridge(cartridgeFile, tvMode, numOfFrames, true)
 }
 
-// RegressRunTests runs the
+// RegressRunTests runs all the tests in the regression database
 func RegressRunTests(output io.Writer, failOnError bool) (int, int, error) {
 	db, err := startSession()
 	if err != nil {

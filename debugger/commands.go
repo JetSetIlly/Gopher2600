@@ -23,7 +23,6 @@ const (
 	cmdBall          = "BALL"
 	cmdBreak         = "BREAK"
 	cmdCPU           = "CPU"
-	cmdCapture       = "CAPTURE"
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
 	cmdDebuggerState = "DEBUGGERSTATE"
@@ -46,6 +45,7 @@ const (
 	cmdPoke          = "POKE"
 	cmdQuit          = "QUIT"
 	cmdRAM           = "RAM"
+	cmdRecord        = "RECORD"
 	cmdRIOT          = "RIOT"
 	cmdReset         = "RESET"
 	cmdRun           = "RUN"
@@ -67,7 +67,6 @@ var expCommandTemplate = []string{
 	cmdBall,
 	cmdBreak + " [%*]",
 	cmdCPU,
-	cmdCapture + " [END|%F]",
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
 	cmdDebuggerState,
@@ -90,6 +89,7 @@ var expCommandTemplate = []string{
 	cmdPoke + " %V %*",
 	cmdQuit,
 	cmdRAM,
+	cmdRecord + " [END|%F]",
 	cmdRIOT,
 	cmdReset,
 	cmdRun,
@@ -131,8 +131,8 @@ const (
 	emptyInput
 	stepContinue
 	setDefaultStep
-	captureStarted
-	captureEnded
+	scriptRecordStarted
+	scriptRecordEnded
 )
 
 // parseCommand/enactCommand scans user input for a valid command and acts upon
@@ -863,7 +863,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 					return doNothing, err
 				}
 			case "METASIGNALS":
-				err = dbg.gui.SetFeature(gui.ReqToggleShowSystemState)
+				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaPixels)
 				if err != nil {
 					return doNothing, err
 				}
@@ -888,22 +888,22 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			return doNothing, err
 		}
 
-	case cmdCapture:
+	case cmdRecord:
 		tok, _ := tokens.Get()
 
 		if strings.ToUpper(tok) == "END" {
-			if dbg.capture == nil {
-				return doNothing, fmt.Errorf("no script capture currently taking place")
+			if dbg.recording == nil {
+				return doNothing, fmt.Errorf("no script recording currently taking place")
 			}
-			err := dbg.capture.end()
-			dbg.capture = nil
-			return captureEnded, err
+			err := dbg.recording.end()
+			dbg.recording = nil
+			return scriptRecordEnded, err
 		}
 
 		var err error
 
-		dbg.capture, err = dbg.startCaptureScript(tok)
-		return captureStarted, err
+		dbg.recording, err = dbg.startScriptRecording(tok)
+		return scriptRecordStarted, err
 	}
 
 	return doNothing, nil

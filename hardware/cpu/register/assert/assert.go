@@ -7,9 +7,8 @@ import (
 	"testing"
 )
 
-// CheckValueVCS can be used to test equality between one value and another.
-// includes VCS specific types.
-func CheckValueVCS(t *testing.T, r, x interface{}) {
+// Assert is used to test equality between one value and another
+func Assert(t *testing.T, r, x interface{}) {
 	t.Helper()
 	switch r := r.(type) {
 

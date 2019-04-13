@@ -63,9 +63,10 @@ type screen struct {
 	stb *screenStabiliser
 
 	// overlay for screen showing metasignal information
-	// -- allocated but only used if tv.allowDebugging and useMetaSignals is true
-	systemState     *systemStateOverlay
-	showSystemState bool
+	// -- always allocated but only used when tv.allowDebugging and
+	// showMetaPixels is true
+	metaPixels     *metaVideoOverlay
+	showMetaPixels bool
 }
 
 func newScreen(tv *GUI) (*screen, error) {
@@ -127,7 +128,7 @@ func newScreen(tv *GUI) (*screen, error) {
 	scr.stb = newScreenStabiliser(scr)
 
 	// new overlay
-	scr.systemState, err = newSystemStateOverlay(scr)
+	scr.metaPixels, err = newMetaVideoOverlay(scr)
 	if err != nil {
 		return nil, err
 	}
@@ -283,14 +284,14 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// show metasignal overlay
-	if scr.tv.allowDebugging && scr.showSystemState {
-		err = scr.systemState.update()
+	if scr.tv.allowDebugging && scr.showMetaPixels {
+		err = scr.metaPixels.update()
 		if err != nil {
 			return err
 		}
 
 		if scr.unmasked {
-			err = scr.renderer.Copy(scr.systemState.texture, scr.srcRect, scr.destRect)
+			err = scr.renderer.Copy(scr.metaPixels.texture, scr.srcRect, scr.destRect)
 			if err != nil {
 				return err
 			}
@@ -357,7 +358,7 @@ func (scr *screen) clearPixels() {
 		}
 
 		// clear pixels in additional overlays
-		scr.systemState.clearPixels()
+		scr.metaPixels.clearPixels()
 
 		// "fade" regular pixels
 		swp = scr.pixels

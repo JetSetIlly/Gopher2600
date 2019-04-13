@@ -51,12 +51,12 @@ func (tv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		tv.scr.useAltPixels = !tv.scr.useAltPixels
 		tv.update()
 
-	case gui.ReqSetShowSystemState:
-		tv.scr.showSystemState = args[0].(bool)
+	case gui.ReqSetShowMetaPixels:
+		tv.scr.showMetaPixels = args[0].(bool)
 		tv.update()
 
-	case gui.ReqToggleShowSystemState:
-		tv.scr.showSystemState = !tv.scr.showSystemState
+	case gui.ReqToggleShowMetaPixels:
+		tv.scr.showMetaPixels = !tv.scr.showMetaPixels
 		tv.update()
 
 	case gui.ReqSetScale:

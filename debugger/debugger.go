@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/monitor"
+	"gopher2600/debugger/metavideo"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -38,10 +38,12 @@ type Debugger struct {
 	// most fruitfully performed through this structure
 	dbgmem *memoryDebug
 
-	// system monitor is a very low level mechanism for monitoring the state of
-	// the cpu and of memory. it is checked every video cycle and interesting
-	// changes noted and recorded.
-	sysmon *monitor.SystemMonitor
+	// metavideo is additional information about the emulation state (ie.
+	// if a sprite was reset or if WSYNC is active, etc.)
+	//
+	// videomon.Check() is called every video cycle to inform the gui of
+	// the metainformation of the last television signal
+	videomon *metavideo.Monitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -111,8 +113,9 @@ type Debugger struct {
 	// channel for communicating with the debugger from the gui goroutine
 	guiChannel chan gui.Event
 
-	// capture user input to a script file. no capture taking place if nil
-	capture *captureScript
+	// recording user input to a script file.
+	// -- no recording taking place if nil
+	recording *scriptRecording
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -141,8 +144,8 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	// set up debugging interface to memory
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
-	// set up system monitor
-	dbg.sysmon = &monitor.SystemMonitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.MC, Rec: dbg.vcs.TV}
+	// set up metapixel monitor
+	dbg.videomon = &metavideo.Monitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.MC, Rend: dbg.vcs.TV}
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -271,7 +274,7 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	return dbg.sysmon.Check()
+	return dbg.videomon.Check()
 }
 
 // inputLoop has two modes, defined by the videoCycleInput argument.
@@ -488,7 +491,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 // passed to parseCommand for final processing
 //
 // interactive argument should be true only for input that has immediately come from
-// the user. only interactive input will be added to a capture file.
+// the user. only interactive input will be added to a new script file.
 //
 // returns "step" status - whether or not the input should cause the emulation
 // to continue at least one step (a command in the input may have set the
@@ -498,8 +501,8 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 	var err error
 	var step bool
 
-	// whether or not we should capture the input to a file
-	captureInput := dbg.capture != nil && interactive
+	// whether or not we should record the input to a file
+	inpt := dbg.recording != nil && interactive
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
@@ -534,19 +537,19 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 			// command has reset what the default step command shoudl be
 			dbg.defaultStepCommand = commands[i]
 			step = true
-		case captureStarted:
-			// command has caused input capture to begin. we don't want to
-			// record this command in the capture file
-			captureInput = false
-		case captureEnded:
-			// command has caused input capture to end. we don't want to record
-			// this command in the capture file
-			captureInput = false
+		case scriptRecordStarted:
+			// command has caused input script recording to begin. we don't want to
+			// record this command in the script file
+			inpt = false
+		case scriptRecordEnded:
+			// command has caused script recording to end. we don't want to record
+			// this command in the script file
+			inpt = false
 		}
 
-		// record command in capture file if required
-		if captureInput {
-			dbg.capture.add(commands[i])
+		// record command in script file if required
+		if inpt {
+			dbg.recording.add(commands[i])
 		}
 	}
 

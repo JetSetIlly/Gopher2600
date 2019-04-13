@@ -2,7 +2,7 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/debugger/monitor"
+	"gopher2600/debugger/metavideo"
 	"gopher2600/errors"
 	"strings"
 )
@@ -261,8 +261,8 @@ func (tv *HeadlessTV) Signal(sig SignalAttributes) error {
 	return nil
 }
 
-// SystemStateRecord recieves (and processes) additional emulator information from the emulator
-func (tv *HeadlessTV) SystemStateRecord(monitor.SystemState) error {
+// MetaSignal recieves (and processes) additional emulator information from the emulator
+func (tv *HeadlessTV) MetaSignal(metavideo.MetaSignalAttributes) error {
 	return nil
 }
 

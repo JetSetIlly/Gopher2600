@@ -2,10 +2,9 @@ package errors
 
 var messages = map[Errno]string{
 	// Debugger
-	UserInterrupt:     "user interrupt",
-	CommandError:      "%s",
-	InvalidTarget:     "invalid target (%s)",
-	CannotRecordState: "cannot record state: %s",
+	UserInterrupt: "user interrupt",
+	CommandError:  "%s",
+	InvalidTarget: "invalid target (%s)",
 
 	// Symbols
 	SymbolsFileCannotOpen: "no symbols file for %s",
@@ -17,9 +16,7 @@ var messages = map[Errno]string{
 	ScriptFileError:      "script error: %s",
 	ScriptRunError:       "script error: use of '%s' is not allowed in scripts [%s::%d]",
 	ScriptEnd:            "end of script (%s)",
-
-	// Capture
-	CaptureFileError: "error with capture script (%s)",
+	ScriptRecordError:    "error when recording script (%s)",
 
 	// Regression
 	RegressionEntryExists:       "entry exists (%s)",

@@ -6,7 +6,6 @@ const (
 	UserInterrupt Errno = iota
 	CommandError
 	InvalidTarget
-	CannotRecordState
 
 	// Symbols
 	SymbolsFileCannotOpen
@@ -20,7 +19,7 @@ const (
 	ScriptEnd
 
 	// Capture
-	CaptureFileError
+	ScriptRecordError
 
 	// Regression
 	RegressionEntryExists
