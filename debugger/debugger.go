@@ -11,6 +11,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/peripherals/digitalsticks"
 	"gopher2600/symbols"
 	"os"
 	"os/signal"
@@ -133,6 +134,18 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(dbg.gui)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing VCS: %s", err)
+	}
+
+	// create a controller
+	dst, err := digitalsticks.NewSplaceStick(0, dbg.vcs.Mem.TIA, dbg.vcs.Mem.RIOT, dbg.vcs.Panel)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing VCS: %s", err)
+	}
+
+	// attach a controller
+	err = dbg.vcs.AttachController(0, dst)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}

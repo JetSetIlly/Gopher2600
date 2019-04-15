@@ -2,6 +2,7 @@ package hardware
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
@@ -22,8 +23,10 @@ type VCS struct {
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
-	Panel      *peripherals.Panel
-	Controller *peripherals.Stick
+	Panel *peripherals.Panel
+
+	Player0 peripherals.Controller
+	Player1 peripherals.Controller
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -59,13 +62,21 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't create console control panel")
 	}
 
-	// TODO: better contoller support
-	vcs.Controller = peripherals.NewStick(vcs.Mem.TIA, vcs.Mem.RIOT, vcs.Panel)
-	if vcs.Controller == nil {
-		return nil, fmt.Errorf("can't create stick controller")
-	}
-
 	return vcs, nil
+}
+
+// AttachController allows control of the emulation with the Contoller
+// implementation
+func (vcs *VCS) AttachController(player int, controller peripherals.Controller) error {
+	switch player {
+	case 0:
+		vcs.Player0 = controller
+	case 1:
+		vcs.Player1 = controller
+	default:
+		return errors.NewFormattedError(errors.NoPlayerPort)
+	}
+	return nil
 }
 
 // AttachCartridge loads a cartridge (given by filename) into the emulators memory
@@ -116,6 +127,15 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
+func (vcs *VCS) strobeControllers() {
+	if vcs.Player0 != nil {
+		vcs.Player0.Strobe()
+	}
+	if vcs.Player1 != nil {
+		vcs.Player1.Strobe()
+	}
+}
+
 // Step the emulator state one CPU instruction
 // -- we can put this function in a loop for an effective debugging loop
 // ths videoCycleCallback function for an additional callback point in the
@@ -134,6 +154,9 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	// every CPU cycle.
 	cycleVCS := func(r *result.Instruction) {
 		cpuCycles++
+
+		// ensure controllers have updated their input
+		vcs.strobeControllers()
 
 		// run riot only once per CPU cycle
 		// TODO: not sure when in the video cycle sequence it should be run
@@ -208,6 +231,7 @@ func (vcs *VCS) RunConcurrent(running *atomic.Value) error {
 	}()
 
 	cycleVCS := func(r *result.Instruction) {
+		vcs.strobeControllers()
 		triggerTIA <- true
 		triggerRIOT <- true
 		<-triggerTIA
@@ -231,6 +255,7 @@ func (vcs *VCS) Run(continueCheck func() bool) error {
 	var err error
 
 	cycleVCS := func(r *result.Instruction) {
+		vcs.strobeControllers()
 		vcs.RIOT.ReadRIOTMemory()
 		vcs.RIOT.Step()
 		vcs.TIA.ReadTIAMemory()

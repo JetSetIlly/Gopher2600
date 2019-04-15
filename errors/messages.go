@@ -49,13 +49,11 @@ var messages = map[Errno]string{
 	ImageTV:          "ImageTV: %s",
 	DigestTV:         "DigestTV: %s",
 
-	// Controllers
-	StickDisconnected: "Stick for player %d is not connected",
-
 	// GUI
 	UnknownGUIRequest: "GUI does not support %v request",
 	SDL:               "SDL: %s",
 
 	// Peripherals
-	NoControllersFound: "no controllers found",
+	NoControllerHardware: "no hardware controllers found",
+	NoPlayerPort:         "VCS only supports two players (0 and 1)",
 }

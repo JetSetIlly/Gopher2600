@@ -52,13 +52,11 @@ const (
 	ImageTV
 	DigestTV
 
-	// Controllers
-	StickDisconnected
-
 	// GUI
 	UnknownGUIRequest
 	SDL
 
 	// Peripherals
-	NoControllersFound
+	NoControllerHardware
+	NoPlayerPort
 )

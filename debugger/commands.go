@@ -878,12 +878,20 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdStick:
+		var err error
+
 		stick, _ := tokens.Get()
 		action, _ := tokens.Get()
 
 		stickN, _ := strconv.Atoi(stick)
 
-		err := dbg.vcs.Controller.HandleStick(stickN, action)
+		switch stickN {
+		case 0:
+			err = dbg.vcs.Player0.Handle(action)
+		case 1:
+			err = dbg.vcs.Player1.Handle(action)
+		}
+
 		if err != nil {
 			return doNothing, err
 		}
