@@ -2,7 +2,6 @@ package hardware
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
@@ -25,8 +24,8 @@ type VCS struct {
 
 	Panel *peripherals.Panel
 
-	Player0 peripherals.Controller
-	Player1 peripherals.Controller
+	Player0 *peripherals.Port
+	Player1 *peripherals.Port
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -62,21 +61,17 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't create console control panel")
 	}
 
-	return vcs, nil
-}
-
-// AttachController allows control of the emulation with the Contoller
-// implementation
-func (vcs *VCS) AttachController(player int, controller peripherals.Controller) error {
-	switch player {
-	case 0:
-		vcs.Player0 = controller
-	case 1:
-		vcs.Player1 = controller
-	default:
-		return errors.NewFormattedError(errors.NoPlayerPort)
+	vcs.Player0 = peripherals.NewPlayer0(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
+	if vcs.Panel == nil {
+		return nil, fmt.Errorf("can't create player 0 port")
 	}
-	return nil
+
+	vcs.Player1 = peripherals.NewPlayer1(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
+	if vcs.Panel == nil {
+		return nil, fmt.Errorf("can't create player 1 port")
+	}
+
+	return vcs, nil
 }
 
 // AttachCartridge loads a cartridge (given by filename) into the emulators memory
@@ -127,13 +122,14 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-func (vcs *VCS) strobeControllers() {
+func (vcs *VCS) strobe() {
 	if vcs.Player0 != nil {
 		vcs.Player0.Strobe()
 	}
 	if vcs.Player1 != nil {
 		vcs.Player1.Strobe()
 	}
+	vcs.Panel.Strobe()
 }
 
 // Step the emulator state one CPU instruction
@@ -156,7 +152,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		cpuCycles++
 
 		// ensure controllers have updated their input
-		vcs.strobeControllers()
+		vcs.strobe()
 
 		// run riot only once per CPU cycle
 		// TODO: not sure when in the video cycle sequence it should be run
@@ -231,7 +227,7 @@ func (vcs *VCS) RunConcurrent(running *atomic.Value) error {
 	}()
 
 	cycleVCS := func(r *result.Instruction) {
-		vcs.strobeControllers()
+		vcs.strobe()
 		triggerTIA <- true
 		triggerRIOT <- true
 		<-triggerTIA
@@ -255,7 +251,7 @@ func (vcs *VCS) Run(continueCheck func() bool) error {
 	var err error
 
 	cycleVCS := func(r *result.Instruction) {
-		vcs.strobeControllers()
+		vcs.strobe()
 		vcs.RIOT.ReadRIOTMemory()
 		vcs.RIOT.Step()
 		vcs.TIA.ReadTIAMemory()

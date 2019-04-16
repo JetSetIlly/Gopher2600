@@ -11,7 +11,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
-	"gopher2600/hardware/peripherals/digitalsticks"
+	"gopher2600/hardware/peripherals/sticks"
 	"gopher2600/symbols"
 	"os"
 	"os/signal"
@@ -138,17 +138,12 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
 
-	// create a controller
-	dst, err := digitalsticks.NewSplaceStick(0, dbg.vcs.Mem.TIA, dbg.vcs.Mem.RIOT, dbg.vcs.Panel)
+	// create and attach a controller
+	stk, err := sticks.NewSplaceStick(dbg.vcs.Panel)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
-
-	// attach a controller
-	err = dbg.vcs.AttachController(0, dst)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing VCS: %s", err)
-	}
+	dbg.vcs.Player0.Attach(stk)
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.

@@ -14,8 +14,7 @@ type Panel struct {
 	p1pro bool
 	color bool
 
-	// select and reset switches do not toggle. calling functions to
-	// SetGameSelect() and SetGameReset() should emulate as best as possible
+	// select and reset switches do not toggle, they are triggered
 	gameSelect bool
 	gameReset  bool
 }
@@ -25,11 +24,12 @@ func NewPanel(riot memory.PeriphBus) *Panel {
 	pan := new(Panel)
 	pan.riot = riot
 	pan.color = true
-	pan.set()
+	pan.Strobe()
 	return pan
 }
 
-func (pan *Panel) set() {
+// Strobe makes sure the panel has submitted its latest input
+func (pan *Panel) Strobe() {
 	strobe := uint8(0)
 
 	// pins 2, 4 and 5 are not used and always value value of 1
@@ -59,29 +59,24 @@ func (pan *Panel) set() {
 // SetColor toggles the color switch
 func (pan *Panel) SetColor(set bool) {
 	pan.color = set
-	pan.set()
 }
 
 // SetPlayer0Pro toggles the color switch
 func (pan *Panel) SetPlayer0Pro(set bool) {
 	pan.p0pro = set
-	pan.set()
 }
 
 // SetPlayer1Pro toggles the color switch
 func (pan *Panel) SetPlayer1Pro(set bool) {
 	pan.p1pro = set
-	pan.set()
 }
 
 // SetGameSelect toggles the color switch
 func (pan *Panel) SetGameSelect(set bool) {
 	pan.gameSelect = set
-	pan.set()
 }
 
 // SetGameReset toggles the color switch
 func (pan *Panel) SetGameReset(set bool) {
 	pan.gameReset = set
-	pan.set()
 }

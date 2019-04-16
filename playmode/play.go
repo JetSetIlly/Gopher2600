@@ -5,7 +5,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals/digitalsticks"
+	"gopher2600/hardware/peripherals/sticks"
 	"sync/atomic"
 )
 
@@ -21,15 +21,11 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 		return fmt.Errorf("error preparing VCS: %s", err)
 	}
 
-	dst, err := digitalsticks.NewSplaceStick(0, vcs.Mem.TIA, vcs.Mem.RIOT, vcs.Panel)
+	stk, err := sticks.NewSplaceStick(vcs.Panel)
 	if err != nil {
 		return err
 	}
-
-	err = vcs.AttachController(0, dst)
-	if err != nil {
-		return err
-	}
+	vcs.Player0.Attach(stk)
 
 	err = vcs.AttachCartridge(cartridgeFile)
 	if err != nil {

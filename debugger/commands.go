@@ -7,6 +7,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
 	"gopher2600/television"
 	"os"
@@ -883,13 +884,30 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		stick, _ := tokens.Get()
 		action, _ := tokens.Get()
 
-		stickN, _ := strconv.Atoi(stick)
+		var event peripherals.Event
+		switch strings.ToUpper(action) {
+		case "UP":
+			event = peripherals.Up
+		case "DOWN":
+			event = peripherals.Down
+		case "LEFT":
+			event = peripherals.Left
+		case "RIGHT":
+			event = peripherals.Right
+		case "CENTRE", "CENTER":
+			event = peripherals.Centre
+		case "FIRE":
+			event = peripherals.Fire
+		case "NOFIRE":
+			event = peripherals.NoFire
+		}
 
-		switch stickN {
+		n, _ := strconv.Atoi(stick)
+		switch n {
 		case 0:
-			err = dbg.vcs.Player0.Handle(action)
+			err = dbg.vcs.Player0.Handle(event)
 		case 1:
-			err = dbg.vcs.Player1.Handle(action)
+			err = dbg.vcs.Player1.Handle(event)
 		}
 
 		if err != nil {
