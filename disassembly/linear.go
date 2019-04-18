@@ -25,7 +25,7 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 		dsm.Cart.BankSwitch(bank)
 		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
 			mc.PC.Load(address)
-			r, _ := mc.ExecuteInstruction(func(*result.Instruction) {})
+			r, _ := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 
 			// check validity of instruction result and add if it "executed"
 			// correctly

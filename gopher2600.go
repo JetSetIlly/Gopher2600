@@ -59,6 +59,8 @@ func main() {
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
+		record := modeFlags.Bool("record", false, "record user input to a ile")
+		recording := modeFlags.String("recording", "", "the file to use for recording/playback")
 		modeFlagsParse()
 
 		switch len(modeFlags.Args()) {
@@ -66,7 +68,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := playmode.Play(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable)
+			err := playmode.Play(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable, *recording, *record)
 			if err != nil {
 				fmt.Printf("* error running emulator: %s\n", err)
 				os.Exit(2)

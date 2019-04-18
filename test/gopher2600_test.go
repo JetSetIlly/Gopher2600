@@ -27,7 +27,7 @@ func BenchmarkSDL(b *testing.B) {
 		panic(fmt.Errorf("error preparing VCS: %s", err))
 	}
 
-	err = vcs.AttachCartridge("roms/ROMs/Pitfall.bin")
+	err = vcs.AttachCartridge("../roms/ROMs/Pitfall.bin")
 	if err != nil {
 		panic(err)
 	}

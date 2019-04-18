@@ -13,13 +13,11 @@ const (
 	SymbolUnknown
 
 	// Script
+	ScriptRecordError
 	ScriptFileCannotOpen
 	ScriptFileError
 	ScriptRunError
 	ScriptEnd
-
-	// Capture
-	ScriptRecordError
 
 	// Regression
 	RegressionEntryExists
@@ -59,4 +57,9 @@ const (
 	// Peripherals
 	NoControllerHardware
 	NoPlayerPort
+	ControllerUnplugged
+
+	// Scribe
+	ScribeError
+	PlaybackError
 )

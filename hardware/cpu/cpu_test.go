@@ -60,7 +60,7 @@ func (mem *mockMem) Write(address uint16, data uint8) error {
 }
 
 func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
-	result, err := mc.ExecuteInstruction(func(*result.Instruction) {})
+	result, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}
@@ -537,7 +537,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	mc.Reset()
 	mc.StrictAddressing = false
 	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	_, err := mc.ExecuteInstruction(func(*result.Instruction) {})
+	_, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
 		if err.(errors.FormattedError).Errno == errors.UnwritableAddress {
 			t.Fatalf("recieved an UnwritableAddress error when we shouldn't")
@@ -548,7 +548,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// strict addressing (Writing)
 	mc.StrictAddressing = true
 	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err == nil {
 		t.Fatalf("not recieved an UnwritableAddress error when we should")
 	}
@@ -561,7 +561,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// non-strict addressing (Reading)
 	mc.StrictAddressing = false
 	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
 		if err.(errors.FormattedError).Errno == errors.UnreadableAddress {
 			t.Fatalf("recieved an UnreadableAddress we shouldn't")
@@ -572,7 +572,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// strict addressing (Reading)
 	mc.StrictAddressing = true
 	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) {})
+	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err == nil {
 		t.Fatalf("not recieved an UnreadableAddress error when we should")
 	}

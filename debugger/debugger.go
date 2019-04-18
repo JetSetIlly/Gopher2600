@@ -139,7 +139,7 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	}
 
 	// create and attach a controller
-	stk, err := sticks.NewSplaceStick(dbg.vcs.Panel)
+	stk, err := sticks.NewSplaceStick()
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}

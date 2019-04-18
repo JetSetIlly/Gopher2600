@@ -15,8 +15,8 @@ type Panel struct {
 	color bool
 
 	// select and reset switches do not toggle, they are triggered
-	gameSelect bool
-	gameReset  bool
+	selectPressed bool
+	resetPressed  bool
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
@@ -40,43 +40,57 @@ func (pan *Panel) Strobe() {
 	if pan.p0pro {
 		strobe |= 0x80
 	}
+
 	if pan.p1pro {
 		strobe |= 0x40
 	}
+
 	if pan.color {
 		strobe |= 0x08
 	}
-	if !pan.gameSelect {
+
+	if !pan.selectPressed {
 		strobe |= 0x02
 	}
-	if !pan.gameReset {
+
+	if !pan.resetPressed {
 		strobe |= 0x01
 	}
 
 	pan.riot.PeriphWrite(vcssymbols.SWCHB, strobe)
 }
 
-// SetColor toggles the color switch
-func (pan *Panel) SetColor(set bool) {
-	pan.color = set
+// ToggleColour toggles the colour switch
+func (pan *Panel) ToggleColour() {
+	pan.color = !pan.color
 }
 
-// SetPlayer0Pro toggles the color switch
-func (pan *Panel) SetPlayer0Pro(set bool) {
-	pan.p0pro = set
+// TogglePlayer0Pro toggles the color switch
+func (pan *Panel) TogglePlayer0Pro() {
+	pan.p0pro = !pan.p0pro
 }
 
-// SetPlayer1Pro toggles the color switch
-func (pan *Panel) SetPlayer1Pro(set bool) {
-	pan.p1pro = set
+// TogglePlayer1Pro toggles the color switch
+func (pan *Panel) TogglePlayer1Pro() {
+	pan.p1pro = !pan.p1pro
 }
 
-// SetGameSelect toggles the color switch
-func (pan *Panel) SetGameSelect(set bool) {
-	pan.gameSelect = set
+// PressSelect emulates the select switch
+func (pan *Panel) PressSelect() {
+	pan.selectPressed = true
 }
 
-// SetGameReset toggles the color switch
-func (pan *Panel) SetGameReset(set bool) {
-	pan.gameReset = set
+// PressReset emulates the reset switch
+func (pan *Panel) PressReset() {
+	pan.resetPressed = true
+}
+
+// ReleaseSelect emulates the select switch
+func (pan *Panel) ReleaseSelect() {
+	pan.selectPressed = false
+}
+
+// ReleaseReset emulates the reset switch
+func (pan *Panel) ReleaseReset() {
+	pan.resetPressed = false
 }

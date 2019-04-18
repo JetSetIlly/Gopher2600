@@ -16,7 +16,7 @@ type SplaceStick struct {
 }
 
 // NewSplaceStick is the preferred method of initialisation for the Stick type
-func NewSplaceStick(panel *peripherals.Panel) (*SplaceStick, error) {
+func NewSplaceStick() (*SplaceStick, error) {
 	sps := new(SplaceStick)
 	sps.event = make(chan peripherals.Event)
 
@@ -82,11 +82,11 @@ func NewSplaceStick(panel *peripherals.Panel) (*SplaceStick, error) {
 }
 
 // GetInput implements the Controller interface
-func (sps *SplaceStick) GetInput() peripherals.Event {
+func (sps *SplaceStick) GetInput(_ string) (peripherals.Event, error) {
 	select {
 	case ev := <-sps.event:
-		return ev
+		return ev, nil
 	default:
-		return peripherals.NoEvent
+		return peripherals.NoEvent, nil
 	}
 }

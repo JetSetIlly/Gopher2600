@@ -56,4 +56,9 @@ var messages = map[Errno]string{
 	// Peripherals
 	NoControllerHardware: "no hardware controllers found",
 	NoPlayerPort:         "VCS only supports two players (0 and 1)",
+	ControllerUnplugged:  "controller unplugged",
+
+	// Scribe
+	ScribeError:   "error when transcribing input (%s)",
+	PlaybackError: "error when playing back transcribed input (%s)",
 }

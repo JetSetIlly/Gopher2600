@@ -22,7 +22,7 @@ import (
 func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 	for {
 		bank := dsm.Cart.Bank
-		r, err := mc.ExecuteInstruction(func(*result.Instruction) {})
+		r, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 
 		// filter out the predictable errors
 		if err != nil {

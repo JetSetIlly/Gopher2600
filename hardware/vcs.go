@@ -9,7 +9,6 @@ import (
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
 	"gopher2600/television"
-	"sync/atomic"
 )
 
 // VCS struct is the main container for the emulated components of the VCS
@@ -122,14 +121,22 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-func (vcs *VCS) strobe() {
+func (vcs *VCS) strobe() error {
+	var err error
 	if vcs.Player0 != nil {
-		vcs.Player0.Strobe()
+		err = vcs.Player0.Strobe()
+		if err != nil {
+			return err
+		}
 	}
 	if vcs.Player1 != nil {
-		vcs.Player1.Strobe()
+		err = vcs.Player1.Strobe()
+		if err != nil {
+			return err
+		}
 	}
 	vcs.Panel.Strobe()
+	return nil
 }
 
 // Step the emulator state one CPU instruction
@@ -148,11 +155,13 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
 	// function defines the order of operation for the rest of the VCS for
 	// every CPU cycle.
-	cycleVCS := func(r *result.Instruction) {
+	cycleVCS := func(r *result.Instruction) error {
 		cpuCycles++
 
 		// ensure controllers have updated their input
-		vcs.strobe()
+		if err := vcs.strobe(); err != nil {
+			return err
+		}
 
 		// run riot only once per CPU cycle
 		// TODO: not sure when in the video cycle sequence it should be run
@@ -174,6 +183,8 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
 		videoCycleCallback(r)
+
+		return nil
 	}
 
 	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
@@ -190,74 +201,25 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 	return cpuCycles, r, nil
 }
 
-// RunConcurrent sets the emulation running with as many different sub-systems
-// running concurrently as possible
-// NOTE: this doesn't really work as yet. it's here because it's an intersting
-// idea.
-func (vcs *VCS) RunConcurrent(running *atomic.Value) error {
-	var err error
-
-	var triggerRIOT chan bool
-	var triggerTIA chan bool
-
-	triggerRIOT = make(chan bool)
-	triggerTIA = make(chan bool)
-
-	go func() {
-		for {
-			<-triggerRIOT
-			vcs.RIOT.ReadRIOTMemory()
-			vcs.RIOT.Step()
-			triggerRIOT <- true
-		}
-	}()
-
-	go func() {
-		for {
-			<-triggerTIA
-			// read tia memory just once and before we cycle the tia
-			vcs.TIA.ReadTIAMemory()
-
-			// three color clocks per CPU cycle so we run video cycle three times
-			vcs.TIA.StepVideoCycle()
-			vcs.TIA.StepVideoCycle()
-			vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-			triggerTIA <- true
-		}
-	}()
-
-	cycleVCS := func(r *result.Instruction) {
-		vcs.strobe()
-		triggerTIA <- true
-		triggerRIOT <- true
-		<-triggerTIA
-		<-triggerRIOT
-	}
-
-	for running.Load().(int) >= 0 {
-		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Run sets the emulation running as quickly as possible.  eventHandler()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
 func (vcs *VCS) Run(continueCheck func() bool) error {
 	var err error
 
-	cycleVCS := func(r *result.Instruction) {
-		vcs.strobe()
+	cycleVCS := func(r *result.Instruction) error {
+		// ensure controllers have updated their inpu
+		if err := vcs.strobe(); err != nil {
+			return err
+		}
+
 		vcs.RIOT.ReadRIOTMemory()
 		vcs.RIOT.Step()
 		vcs.TIA.ReadTIAMemory()
 		vcs.TIA.StepVideoCycle()
 		vcs.TIA.StepVideoCycle()
 		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		return nil
 	}
 
 	for continueCheck() {

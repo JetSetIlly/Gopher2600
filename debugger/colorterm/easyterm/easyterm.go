@@ -103,16 +103,6 @@ func (et *Terminal) CleanUp() {
 	<-et.terminateHandlerAck
 }
 
-// Print writes string to the output file
-func (et *Terminal) Print(s string) {
-	et.mu.Lock()
-	defer et.mu.Unlock()
-
-	et.output.WriteString(s)
-
-	//pt.output.Sync()
-}
-
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
 // output terminal
 func (et *Terminal) UpdateGeometry() error {
@@ -162,4 +152,10 @@ func (et *Terminal) Flush() error {
 		return err
 	}
 	return nil
+}
+
+// Print writes string to the output file
+func (et *Terminal) Print(s string) {
+	// no need to take hold of the mutex
+	et.output.WriteString(s)
 }

@@ -35,7 +35,7 @@ type CPU struct {
 	//
 	// by definition: if it is undefined then no execution is currently being
 	// executed (see IsExecutingInstruction method)
-	endCycle func()
+	endCycle func() error
 
 	// controls whether cpu executes a cycle when it receives a clock tick (pin
 	// 3 of the 6507)
@@ -129,7 +129,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
 	// cycle we need to make sure endCycle() is in a valid state for the duration
 	// of the function
-	mc.endCycle = func() {}
+	mc.endCycle = func() error { return nil }
 	defer func() {
 		mc.endCycle = nil
 	}()
@@ -153,7 +153,7 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
 	// cycle we need to make sure endCycle() is in a valid state for the duration
 	// of the function
-	mc.endCycle = func() {}
+	mc.endCycle = func() error { return nil }
 	defer func() {
 		mc.endCycle = nil
 	}()
@@ -202,9 +202,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 		}
 	}
 
-	mc.endCycle()
-
-	return val, nil
+	return val, mc.endCycle()
 }
 
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
@@ -212,13 +210,19 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
-	mc.endCycle()
+	err = mc.endCycle()
+	if err != nil {
+		return 0, err
+	}
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
 		return 0, err
 	}
-	mc.endCycle()
+	err = mc.endCycle()
+	if err != nil {
+		return 0, err
+	}
 
 	val := uint16(hi) << 8
 	val |= uint16(lo)
@@ -318,7 +322,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) err
 
 // ExecuteInstruction steps CPU forward one instruction, calling
 // cycleCallback() after every cycle
-func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*result.Instruction, error) {
+func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error) (*result.Instruction, error) {
 	// sanity check
 	if mc.IsExecuting() {
 		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
@@ -326,8 +330,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {
-		cycleCallback(nil)
-		return nil, nil
+		err := cycleCallback(nil)
+		return nil, err
 	}
 
 	// prepare StepResult structure
@@ -335,9 +339,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 	result.Address = mc.PC.ToUint16()
 
 	// register end cycle callback
-	mc.endCycle = func() {
+	mc.endCycle = func() error {
 		result.ActualCycles++
-		cycleCallback(result)
+		return cycleCallback(result)
 	}
 	defer func() {
 		mc.endCycle = nil
@@ -464,7 +468,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		address = adder.ToUint16()
 
 		// +1 cycle
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case definitions.IndexedZeroPageY:
 		// used exclusively for LDX ZeroPage,y
@@ -480,7 +487,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		address = adder.ToUint16()
 
 		// +1 cycle
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case definitions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
@@ -500,7 +510,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			}
 
 			// +1 cycle
-			mc.endCycle()
+			err = mc.endCycle()
+			if err != nil {
+				return nil, err
+			}
 
 			hi, err := mc.mem.Read(indirectAddress & 0xff00)
 			if err != nil {
@@ -512,7 +525,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			result.Bug = fmt.Sprintf("Indirect JMP Bug")
 
 			// +1 cycle
-			mc.endCycle()
+			err = mc.endCycle()
+			if err != nil {
+				return nil, err
+			}
 
 		} else {
 			// normal, non-buggy behaviour
@@ -673,7 +689,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			if err != nil {
 				return nil, err
 			}
-			mc.endCycle()
+			err = mc.endCycle()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -710,12 +729,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "PLA":
 		// +1 cycle
 		mc.SP.Add(1, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
+
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.ToUint16())
 		if err != nil {
@@ -732,12 +758,18 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "PLP":
 		// +1 cycle
 		mc.SP.Add(1, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.ToUint16())
 		if err != nil {
@@ -810,7 +842,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "STX":
 		// +1 cycle
@@ -818,7 +853,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "STY":
 		// +1 cycle
@@ -826,7 +864,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		if err != nil {
 			return nil, err
 		}
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "INX":
 		mc.X.Add(1, false)
@@ -1024,7 +1065,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 		// with that in mind, we're not sure what this extra cycle is for
 		// +1 cycle
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// push MSB of PC onto stack, and decrement SP
 		// +1 cycle
@@ -1033,7 +1077,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// push LSB of PC onto stack, and decrement SP
 		// +1 cycle
@@ -1042,7 +1089,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// perform jump
 		msb, err := mc.read8BitPC()
@@ -1067,7 +1117,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			// +1 cycle
 			mc.SP.Add(1, false)
 		}
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// +2 cycles
 		rtsAddress, err := mc.read16Bit(mc.SP.ToUint16())
@@ -1083,7 +1136,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			mc.PC.Add(1, false)
 		}
 		// +1 cycle
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 	case "BRK":
 		// push PC onto register (same effect as JSR)
@@ -1092,14 +1148,20 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		err = mc.write8Bit(mc.SP.ToUint16(), uint8(mc.PC.ToUint16()&0x00FF))
 		if err != nil {
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// push status register (same effect as PHP)
 		err = mc.write8Bit(mc.SP.ToUint16(), mc.Status.ToUint8())
@@ -1107,7 +1169,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 			return nil, err
 		}
 		mc.SP.Add(255, false)
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		// set the break flag
 		mc.Status.Break = true
@@ -1128,7 +1193,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 		}
 
 		// not sure when this cycle should occur
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 
 		value, err = mc.read8Bit(mc.SP.ToUint16())
 		if err != nil {
@@ -1207,7 +1275,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction)) (*res
 
 		}
 		// +1 cycle
-		mc.endCycle()
+		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// finalise result

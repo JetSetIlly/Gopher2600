@@ -13,30 +13,24 @@ func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardw
 	if keyEvent.Down {
 		switch keyEvent.Key {
 		case "F1":
-			vcs.Panel.SetGameSelect(true)
+			vcs.Panel.PressSelect()
 		case "F2":
-			vcs.Panel.SetGameReset(true)
+			vcs.Panel.PressReset()
 		case "F3":
-			vcs.Panel.SetColor(true)
+			vcs.Panel.ToggleColour()
 		case "F4":
-			vcs.Panel.SetColor(false)
+			vcs.Panel.TogglePlayer0Pro()
 		case "F5":
-			vcs.Panel.SetPlayer0Pro(true)
-		case "F6":
-			vcs.Panel.SetPlayer0Pro(false)
-		case "F7":
-			vcs.Panel.SetPlayer1Pro(true)
-		case "F8":
-			vcs.Panel.SetPlayer1Pro(false)
+			vcs.Panel.TogglePlayer1Pro()
 		default:
 			return false
 		}
 	} else {
 		switch keyEvent.Key {
 		case "F1":
-			vcs.Panel.SetGameSelect(false)
+			vcs.Panel.ReleaseSelect()
 		case "F2":
-			vcs.Panel.SetGameReset(false)
+			vcs.Panel.ReleaseReset()
 		default:
 			return false
 		}

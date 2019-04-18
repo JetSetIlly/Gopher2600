@@ -5,9 +5,9 @@ package peripherals
 type Event int
 
 // list of defined Events
-// TODO: paddle and keyboard events
 const (
 	NoEvent Event = iota
+	Unplugged
 
 	// joystick
 	Up
@@ -22,12 +22,12 @@ const (
 
 	// for convenience, a controller implementation can interact with the panel
 	PanelSelectPress
-	PanelResetPress
 	PanelSelectRelease
+	PanelResetPress
 	PanelResetRelease
 )
 
 // Controller defines the operations required for VCS controllers
 type Controller interface {
-	GetInput() Event
+	GetInput(id string) (Event, error)
 }

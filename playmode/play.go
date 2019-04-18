@@ -6,11 +6,15 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals/sticks"
+	"gopher2600/scribe"
+	"path"
+	"strings"
 	"sync/atomic"
+	"time"
 )
 
 // Play sets the emulation running - without any debugging features
-func Play(cartridgeFile, tvMode string, scaling float32, stable bool) error {
+func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording string, newRecording bool) error {
 	playtv, err := sdl.NewGUI(tvMode, scaling)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
@@ -21,11 +25,44 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool) error {
 		return fmt.Errorf("error preparing VCS: %s", err)
 	}
 
-	stk, err := sticks.NewSplaceStick(vcs.Panel)
+	stk, err := sticks.NewSplaceStick()
 	if err != nil {
 		return err
 	}
 	vcs.Player0.Attach(stk)
+
+	// create default recording file name if no name has been supplied
+	if newRecording && recording == "" {
+		shortCartName := path.Base(cartridgeFile)
+		shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cartridgeFile))
+		n := time.Now()
+		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute())
+		recording = fmt.Sprintf("recording_%s_%s", shortCartName, timestamp)
+	}
+
+	if recording != "" {
+		if newRecording {
+			scribe, err := scribe.NewScribe(recording, vcs)
+			if err != nil {
+				return fmt.Errorf("error preparing VCS: %s", err)
+			}
+
+			defer func() {
+				scribe.End()
+			}()
+
+			vcs.Player0.AttachScribe(scribe)
+			vcs.Player1.AttachScribe(scribe)
+		} else {
+			scribe, err := scribe.NewPlayback(recording, vcs)
+			if err != nil {
+				return fmt.Errorf("error preparing VCS: %s", err)
+			}
+
+			vcs.Player0.Attach(scribe)
+			vcs.Player1.Attach(scribe)
+		}
+	}
 
 	err = vcs.AttachCartridge(cartridgeFile)
 	if err != nil {
