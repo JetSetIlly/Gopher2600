@@ -29,8 +29,13 @@ const defaultInitScript = ".gopher2600/debuggerInit"
 func main() {
 	progName := path.Base(os.Args[0])
 
-	progFlags := flag.NewFlagSet(progName, flag.ExitOnError)
-	progFlags.Parse(os.Args[1:])
+	progFlags := flag.NewFlagSet(progName, flag.ContinueOnError)
+	err := progFlags.Parse(os.Args[1:])
+	if err == flag.ErrHelp {
+		fmt.Println("  mode or cartridge required")
+		fmt.Println("    available modes: RUN/PLAY, DEBUG, DISASM, FPS, REGRESS")
+		os.Exit(2)
+	}
 
 	if len(progFlags.Args()) == 0 {
 		fmt.Println("* mode or cartridge required")
