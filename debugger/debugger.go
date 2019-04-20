@@ -143,7 +143,7 @@ func NewDebugger(tv gui.GUI) (*Debugger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}
-	dbg.vcs.Player0.Attach(stk)
+	dbg.vcs.Ports.Player0.Attach(stk)
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.

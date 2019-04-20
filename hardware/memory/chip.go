@@ -31,16 +31,10 @@ type ChipMemory struct {
 	// lastReadRegister works slightly different that lastWriteAddress. it stores
 	// the register *name* of the last memory location *read* by the CPU
 	lastReadRegister string
-
-	// the periphQueue is used to write to chip memory in a goroutine friendly
-	// manner (peripherals have been implemented with goroutines and so we need
-	// to be careful when accessing the memory array)
-	periphQueue chan *periphPayload
 }
 
 func newChipMem() *ChipMemory {
 	area := new(ChipMemory)
-	area.periphQueue = make(chan *periphPayload, periphQueueLen)
 	return area
 }
 

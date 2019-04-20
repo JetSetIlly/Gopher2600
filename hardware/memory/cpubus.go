@@ -5,10 +5,8 @@ import (
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
-// Implementation of CPUBus.Read
+// Read is an implementation of CPUBus. returns the value and/or error
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
-	area.resolvePeriphQueue()
-
 	// note the name of the register that we are reading
 	area.lastReadRegister = vcssymbols.ReadSymbols[address]
 
@@ -20,10 +18,9 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	return area.memory[area.origin|address^area.origin], nil
 }
 
-// Implementation of CPUBus.Write
+// Write is an implementation of CPUBus. it writes the data to the memory
+// area's address
 func (area *ChipMemory) Write(address uint16, data uint8) error {
-	area.resolvePeriphQueue()
-
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
 		return errors.NewFormattedError(errors.UnservicedChipWrite, vcssymbols.WriteSymbols[area.lastWriteAddress])

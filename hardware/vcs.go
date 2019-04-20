@@ -22,9 +22,7 @@ type VCS struct {
 	TV television.Television
 
 	Panel *peripherals.Panel
-
-	Player0 *peripherals.Port
-	Player1 *peripherals.Port
+	Ports *peripherals.Ports
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -60,14 +58,9 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, fmt.Errorf("can't create console control panel")
 	}
 
-	vcs.Player0 = peripherals.NewPlayer0(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
-	if vcs.Panel == nil {
-		return nil, fmt.Errorf("can't create player 0 port")
-	}
-
-	vcs.Player1 = peripherals.NewPlayer1(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
-	if vcs.Panel == nil {
-		return nil, fmt.Errorf("can't create player 1 port")
+	vcs.Ports = peripherals.NewPorts(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
+	if vcs.Ports == nil {
+		return nil, fmt.Errorf("can't create ports")
 	}
 
 	return vcs, nil
@@ -123,14 +116,14 @@ func (vcs *VCS) Reset() error {
 
 func (vcs *VCS) strobe() error {
 	var err error
-	if vcs.Player0 != nil {
-		err = vcs.Player0.Strobe()
+	if vcs.Ports.Player0 != nil {
+		err = vcs.Ports.Player0.Strobe()
 		if err != nil {
 			return err
 		}
 	}
-	if vcs.Player1 != nil {
-		err = vcs.Player1.Strobe()
+	if vcs.Ports.Player1 != nil {
+		err = vcs.Ports.Player1.Strobe()
 		if err != nil {
 			return err
 		}

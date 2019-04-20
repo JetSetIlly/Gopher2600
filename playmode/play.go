@@ -29,14 +29,19 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 	if err != nil {
 		return err
 	}
-	vcs.Player0.Attach(stk)
+	vcs.Ports.Player0.Attach(stk)
+
+	err = vcs.AttachCartridge(cartridgeFile)
+	if err != nil {
+		return err
+	}
 
 	// create default recording file name if no name has been supplied
 	if newRecording && recording == "" {
 		shortCartName := path.Base(cartridgeFile)
 		shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cartridgeFile))
 		n := time.Now()
-		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute())
+		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
 		recording = fmt.Sprintf("recording_%s_%s", shortCartName, timestamp)
 	}
 
@@ -51,22 +56,17 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 				scribe.End()
 			}()
 
-			vcs.Player0.AttachScribe(scribe)
-			vcs.Player1.AttachScribe(scribe)
+			vcs.Ports.Player0.AttachScribe(scribe)
+			vcs.Ports.Player1.AttachScribe(scribe)
 		} else {
 			scribe, err := scribe.NewPlayback(recording, vcs)
 			if err != nil {
 				return fmt.Errorf("error preparing VCS: %s", err)
 			}
 
-			vcs.Player0.Attach(scribe)
-			vcs.Player1.Attach(scribe)
+			vcs.Ports.Player0.Attach(scribe)
+			vcs.Ports.Player1.Attach(scribe)
 		}
-	}
-
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return err
 	}
 
 	// run while value of running variable is positive

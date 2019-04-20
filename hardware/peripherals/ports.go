@@ -6,8 +6,27 @@ import (
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
-// A Port instance is used by controllers to communicate with the VCS
-type Port struct {
+// Ports is the containing structure for the two player ports
+type Ports struct {
+	Player0 *player
+	Player1 *player
+
+	lastJoystickValue uint8
+}
+
+// NewPorts is the preferred method of initialisation for the Ports type
+func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports {
+	pt := new(Ports)
+	pt.Player0 = newPlayer0(pt, riot, tia, panel)
+	pt.Player1 = newPlayer1(pt, riot, tia, panel)
+	pt.lastJoystickValue = 0xff
+	return pt
+}
+
+// A player instance is used by controllers to communicate with the VCS
+type player struct {
+	ports *Ports
+
 	controller     Controller
 	prevController Controller
 
@@ -29,11 +48,10 @@ type Port struct {
 	joystickFunc func(uint8) uint8
 }
 
-// NewPlayer0 should be used to create a new communication port for
-// controllers used by player 0
-func NewPlayer0(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Port {
-	pt := &Port{
+func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+	pl := &player{
 		id:           "Player0",
+		ports:        pt,
 		riot:         riot,
 		tia:          tia,
 		panel:        panel,
@@ -41,57 +59,70 @@ func NewPlayer0(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Port
 		fireButton:   vcssymbols.INPT4,
 		joystickFunc: func(n uint8) uint8 { return n }}
 
-	pt.riot.PeriphWrite(pt.joystick, 0xff)
-	pt.tia.PeriphWrite(pt.fireButton, 0x80)
+	pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
+	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+	pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
-	return pt
+	return pl
 }
 
-// NewPlayer1 should be used to create a new communication port for
-// controllers used by player 1
-func NewPlayer1(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Port {
-	pt := &Port{
+func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+	pl := &player{
 		id:           "Player1",
+		ports:        pt,
 		riot:         riot,
 		tia:          tia,
 		panel:        panel,
 		joystick:     vcssymbols.SWCHA,
 		fireButton:   vcssymbols.INPT5,
-		joystickFunc: func(n uint8) uint8 { return n>>4 | 0xf0 }}
+		joystickFunc: func(n uint8) uint8 { return (n >> 4) | (n << 4) }}
 
-	pt.riot.PeriphWrite(pt.joystick, 0xff)
-	pt.tia.PeriphWrite(pt.fireButton, 0x80)
+	pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
+	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+	pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
-	return pt
+	return pl
 }
 
 // Handle interprets an event into the correct sequence of memory addressing
-func (pt Port) Handle(event Event) error {
+func (pl player) Handle(event Event) error {
 	switch event {
 	case Left:
-		pt.riot.PeriphWrite(pt.joystick, pt.joystickFunc(0xbf))
+		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+		pl.ports.lastJoystickValue &= pl.joystickFunc(0xbf)
+		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
 	case Right:
-		pt.riot.PeriphWrite(pt.joystick, pt.joystickFunc(0x7f))
+		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+		pl.ports.lastJoystickValue &= pl.joystickFunc(0x7f)
+		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
 	case Up:
-		pt.riot.PeriphWrite(pt.joystick, pt.joystickFunc(0xef))
+		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+		pl.ports.lastJoystickValue &= pl.joystickFunc(0xef)
+		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
 	case Down:
-		pt.riot.PeriphWrite(pt.joystick, pt.joystickFunc(0xdf))
+		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+		pl.ports.lastJoystickValue &= pl.joystickFunc(0xdf)
+		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
 	case Centre:
-		pt.riot.PeriphWrite(pt.joystick, pt.joystickFunc(0xff))
+		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
+		pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
+		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
 	case Fire:
-		pt.tia.PeriphWrite(pt.fireButton, 0x00)
+		pl.tia.PeriphWrite(pl.fireButton, 0x00)
 	case NoFire:
-		pt.tia.PeriphWrite(pt.fireButton, 0x80)
+		pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
 	// for convenience, a controller implementation can interact with the panel
 	case PanelSelectPress:
-		pt.panel.PressSelect()
+		pl.panel.PressSelect()
 	case PanelSelectRelease:
-		pt.panel.ReleaseSelect()
+		pl.panel.ReleaseSelect()
 	case PanelResetPress:
-		pt.panel.PressReset()
+		pl.panel.PressReset()
 	case PanelResetRelease:
-		pt.panel.ReleaseReset()
+		pl.panel.ReleaseReset()
 
 	case Unplugged:
 		return errors.NewFormattedError(errors.ControllerUnplugged)
@@ -102,40 +133,40 @@ func (pt Port) Handle(event Event) error {
 	}
 
 	// record event with the transcriber
-	if pt.scribe != nil {
-		return pt.scribe.Transcribe(pt.id, event)
+	if pl.scribe != nil {
+		return pl.scribe.Transcribe(pl.id, event)
 	}
 
 	return nil
 }
 
 // Attach registers a controller implementation with the port
-func (pt *Port) Attach(controller Controller) {
+func (pl *player) Attach(controller Controller) {
 	if controller == nil {
-		pt.controller = pt.prevController
-		pt.prevController = nil
+		pl.controller = pl.prevController
+		pl.prevController = nil
 	} else {
-		pt.prevController = pt.controller
-		pt.controller = controller
+		pl.prevController = pl.controller
+		pl.controller = controller
 	}
 }
 
-// Strobe makes sure the controllers have submitted their latest input
-func (pt *Port) Strobe() error {
-	if pt.controller != nil {
-		ev, err := pt.controller.GetInput(pt.id)
+// Strobe makes sure the controller have submitted their latest input
+func (pl *player) Strobe() error {
+	if pl.controller != nil {
+		ev, err := pl.controller.GetInput(pl.id)
 		if err != nil {
 			return err
 		}
 
-		err = pt.Handle(ev)
+		err = pl.Handle(ev)
 		if err != nil {
 			switch err := err.(type) {
 			case errors.FormattedError:
 				if err.Errno != errors.ControllerUnplugged {
 					return err
 				}
-				pt.controller = pt.prevController
+				pl.controller = pl.prevController
 			default:
 				return err
 			}
@@ -147,6 +178,6 @@ func (pt *Port) Strobe() error {
 
 // AttachScribe registers the presence of a transcriber implementation. use an
 // argument of nil to disconnect an existing scribe
-func (pt *Port) AttachScribe(scribe Transcriber) {
-	pt.scribe = scribe
+func (pl *player) AttachScribe(scribe Transcriber) {
+	pl.scribe = scribe
 }
