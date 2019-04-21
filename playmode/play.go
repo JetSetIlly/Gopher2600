@@ -6,7 +6,7 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals/sticks"
-	"gopher2600/scribe"
+	"gopher2600/recorder"
 	"path"
 	"strings"
 	"sync/atomic"
@@ -47,25 +47,25 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 
 	if recording != "" {
 		if newRecording {
-			scribe, err := scribe.NewScribe(recording, vcs)
+			recording, err := recorder.NewRecorder(recording, vcs)
 			if err != nil {
 				return fmt.Errorf("error preparing VCS: %s", err)
 			}
 
 			defer func() {
-				scribe.End()
+				recording.End()
 			}()
 
-			vcs.Ports.Player0.AttachScribe(scribe)
-			vcs.Ports.Player1.AttachScribe(scribe)
+			vcs.Ports.Player0.AttachRecorder(recording)
+			vcs.Ports.Player1.AttachRecorder(recording)
 		} else {
-			scribe, err := scribe.NewPlayback(recording, vcs)
+			recording, err := recorder.NewPlayback(recording, vcs)
 			if err != nil {
 				return fmt.Errorf("error preparing VCS: %s", err)
 			}
 
-			vcs.Ports.Player0.Attach(scribe)
-			vcs.Ports.Player1.Attach(scribe)
+			vcs.Ports.Player0.Attach(recording)
+			vcs.Ports.Player1.Attach(recording)
 		}
 	}
 

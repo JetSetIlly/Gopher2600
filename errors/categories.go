@@ -13,7 +13,7 @@ const (
 	SymbolUnknown
 
 	// Script
-	ScriptRecordError
+	ScriptRecordingError
 	ScriptFileCannotOpen
 	ScriptFileError
 	ScriptRunError
@@ -59,7 +59,7 @@ const (
 	NoPlayerPort
 	ControllerUnplugged
 
-	// Scribe
-	ScribeError
+	// Recorder
+	RecordingError
 	PlaybackError
 )

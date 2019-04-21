@@ -915,20 +915,23 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdRecord:
+		// record can refer to recording of a script or recording of user
+		// input. in this context, it currently only refers to script recording
+
 		tok, _ := tokens.Get()
 
 		if strings.ToUpper(tok) == "END" {
-			if dbg.recording == nil {
+			if dbg.scriptRec == nil {
 				return doNothing, fmt.Errorf("no script recording currently taking place")
 			}
-			err := dbg.recording.end()
-			dbg.recording = nil
+			err := dbg.scriptRec.end()
+			dbg.scriptRec = nil
 			return scriptRecordEnded, err
 		}
 
 		var err error
 
-		dbg.recording, err = dbg.startScriptRecording(tok)
+		dbg.scriptRec, err = dbg.startScriptRecording(tok)
 		return scriptRecordStarted, err
 	}
 

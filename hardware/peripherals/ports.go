@@ -176,8 +176,8 @@ func (pl *player) Strobe() error {
 	return nil
 }
 
-// AttachScribe registers the presence of a transcriber implementation. use an
+// AttachRecorder registers the presence of a transcriber implementation. use an
 // argument of nil to disconnect an existing scribe
-func (pl *player) AttachScribe(scribe Transcriber) {
+func (pl *player) AttachRecorder(scribe Transcriber) {
 	pl.scribe = scribe
 }

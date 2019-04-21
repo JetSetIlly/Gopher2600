@@ -1,4 +1,4 @@
-package scribe
+package recorder
 
 import (
 	"fmt"
@@ -13,37 +13,37 @@ import (
 const fieldSep = ", "
 const numFields = 5
 
-// Scribe records controller events to disk, intended for future playback
-type Scribe struct {
+// Recorder records controller events to disk, intended for future playback
+type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
 }
 
-// NewScribe is the preferred method of implementation for the Scribe type
-func NewScribe(transcript string, vcs *hardware.VCS) (*Scribe, error) {
+// NewRecorder is the preferred method of implementation for the FileRecorder type
+func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return nil, errors.NewFormattedError(errors.ScribeError, "hardware is not suitable for transcribing")
+		return nil, errors.NewFormattedError(errors.RecordingError, "hardware is not suitable for recording")
 	}
 
-	scr := &Scribe{vcs: vcs}
+	scr := &Recorder{vcs: vcs}
 
 	// open file
 	_, err := os.Stat(transcript)
 	if os.IsNotExist(err) {
 		scr.output, err = os.Create(transcript)
 		if err != nil {
-			return nil, errors.NewFormattedError(errors.ScribeError, "can't create file")
+			return nil, errors.NewFormattedError(errors.RecordingError, "can't create file")
 		}
 	} else {
-		return nil, errors.NewFormattedError(errors.ScribeError, "file already exists")
+		return nil, errors.NewFormattedError(errors.RecordingError, "file already exists")
 	}
 
 	// add header information
 	tvspec, err := scr.vcs.TV.GetState(television.ReqTVSpec)
 	if err != nil {
 		scr.output.Close()
-		return nil, errors.NewFormattedError(errors.ScribeError, err)
+		return nil, errors.NewFormattedError(errors.RecordingError, err)
 	}
 
 	line := fmt.Sprintf("%v\n", tvspec)
@@ -51,28 +51,28 @@ func NewScribe(transcript string, vcs *hardware.VCS) (*Scribe, error) {
 	n, err := io.WriteString(scr.output, line)
 	if err != nil {
 		scr.output.Close()
-		return nil, errors.NewFormattedError(errors.ScribeError, err)
+		return nil, errors.NewFormattedError(errors.RecordingError, err)
 	}
 	if n != len(line) {
 		scr.output.Close()
-		return nil, errors.NewFormattedError(errors.ScribeError, "output truncated")
+		return nil, errors.NewFormattedError(errors.RecordingError, "output truncated")
 	}
 
 	return scr, nil
 }
 
-// End closes the output file. future calls to Transcribe will fail
-func (scr *Scribe) End() error {
+// End closes the output file.
+func (scr *Recorder) End() error {
 	err := scr.output.Close()
 	if err != nil {
-		return errors.NewFormattedError(errors.ScribeError, err)
+		return errors.NewFormattedError(errors.RecordingError, err)
 	}
 
 	return nil
 }
 
 // Transcribe implements the Transcriber interface
-func (scr *Scribe) Transcribe(id string, event peripherals.Event) error {
+func (scr *Recorder) Transcribe(id string, event peripherals.Event) error {
 	// don't do anything if event is the NoEvent
 	if event == peripherals.NoEvent {
 		return nil
@@ -80,11 +80,11 @@ func (scr *Scribe) Transcribe(id string, event peripherals.Event) error {
 
 	// sanity checks
 	if scr.output == nil {
-		return errors.NewFormattedError(errors.ScribeError, "transcript is not open")
+		return errors.NewFormattedError(errors.RecordingError, "recording file is not open")
 	}
 
 	if scr.vcs == nil || scr.vcs.TV == nil {
-		return errors.NewFormattedError(errors.ScribeError, "hardware is not suitable for transcribing")
+		return errors.NewFormattedError(errors.RecordingError, "hardware is not suitable for recording")
 	}
 
 	// create line and write to file
@@ -105,10 +105,10 @@ func (scr *Scribe) Transcribe(id string, event peripherals.Event) error {
 
 	n, err := io.WriteString(scr.output, line)
 	if err != nil {
-		return errors.NewFormattedError(errors.ScribeError, err)
+		return errors.NewFormattedError(errors.RecordingError, err)
 	}
 	if n != len(line) {
-		return errors.NewFormattedError(errors.ScribeError, "output truncated")
+		return errors.NewFormattedError(errors.RecordingError, "output truncated")
 	}
 
 	return nil

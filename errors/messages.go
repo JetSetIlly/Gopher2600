@@ -16,7 +16,7 @@ var messages = map[Errno]string{
 	ScriptFileError:      "script error: %s",
 	ScriptRunError:       "script error: use of '%s' is not allowed in scripts [%s::%d]",
 	ScriptEnd:            "end of script (%s)",
-	ScriptRecordError:    "error when recording script (%s)",
+	ScriptRecordingError: "error when recording script (%s)",
 
 	// Regression
 	RegressionEntryExists:       "entry exists (%s)",
@@ -58,7 +58,7 @@ var messages = map[Errno]string{
 	NoPlayerPort:         "VCS only supports two players (0 and 1)",
 	ControllerUnplugged:  "controller unplugged",
 
-	// Scribe
-	ScribeError:   "error when transcribing input (%s)",
-	PlaybackError: "error when playing back transcribed input (%s)",
+	// Recorder
+	RecordingError: "error when recording input (%s)",
+	PlaybackError:  "error when playing back recorded input (%s)",
 }

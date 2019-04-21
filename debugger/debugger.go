@@ -114,9 +114,9 @@ type Debugger struct {
 	// channel for communicating with the debugger from the gui goroutine
 	guiChannel chan gui.Event
 
-	// recording user input to a script file.
-	// -- no recording taking place if nil
-	recording *scriptRecording
+	// scriptRec user input to a script file.
+	// -- no scriptRec taking place if nil
+	scriptRec *scriptRecording
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -510,7 +510,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 	var step bool
 
 	// whether or not we should record the input to a file
-	inpt := dbg.recording != nil && interactive
+	inpt := dbg.scriptRec != nil && interactive
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
@@ -557,7 +557,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 
 		// record command in script file if required
 		if inpt {
-			dbg.recording.add(commands[i])
+			dbg.scriptRec.add(commands[i])
 		}
 	}
 

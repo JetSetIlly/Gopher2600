@@ -71,10 +71,10 @@ func (dbg *Debugger) startScriptRecording(scriptfile string) (*scriptRecording, 
 	if os.IsNotExist(err) {
 		rec.output, err = os.Create(scriptfile)
 		if err != nil {
-			return nil, errors.NewFormattedError(errors.ScriptRecordError, "can't create file")
+			return nil, errors.NewFormattedError(errors.ScriptRecordingError, "can't create file")
 		}
 	} else {
-		return nil, errors.NewFormattedError(errors.ScriptRecordError, "file already exists")
+		return nil, errors.NewFormattedError(errors.ScriptRecordingError, "file already exists")
 	}
 
 	return rec, nil
@@ -83,7 +83,7 @@ func (dbg *Debugger) startScriptRecording(scriptfile string) (*scriptRecording, 
 func (rec *scriptRecording) end() error {
 	err := rec.output.Close()
 	if err != nil {
-		return errors.NewFormattedError(errors.ScriptRecordError, err)
+		return errors.NewFormattedError(errors.ScriptRecordingError, err)
 	}
 
 	return nil
@@ -94,10 +94,10 @@ func (rec *scriptRecording) add(line string) error {
 
 	n, err := io.WriteString(rec.output, line)
 	if err != nil {
-		return errors.NewFormattedError(errors.ScriptRecordError, err)
+		return errors.NewFormattedError(errors.ScriptRecordingError, err)
 	}
 	if n != len(line) {
-		return errors.NewFormattedError(errors.ScriptRecordError, "output truncated")
+		return errors.NewFormattedError(errors.ScriptRecordingError, "output truncated")
 	}
 
 	return nil

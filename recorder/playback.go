@@ -1,4 +1,4 @@
-package scribe
+package recorder
 
 import (
 	"fmt"
@@ -24,8 +24,8 @@ type playbackSequence struct {
 	eventCt int
 }
 
-// Playback reads an existing scribe file and responds to controller Strobe()
-// requests
+// Playback is an implementation of the controller interface. it reads from an
+// existing recording file and responds to GetInput() requests
 type Playback struct {
 	vcs       *hardware.VCS
 	sequences map[string]*playbackSequence
@@ -35,7 +35,7 @@ type Playback struct {
 func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, "current emulation doesn't match transcribed input")
+		return nil, errors.NewFormattedError(errors.PlaybackError, "no playback hardware available")
 	}
 
 	plb := &Playback{vcs: vcs}
@@ -63,7 +63,7 @@ func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
 		return nil, errors.NewFormattedError(errors.PlaybackError, err)
 	}
 	if tvspec != lines[0] {
-		return nil, errors.NewFormattedError(errors.PlaybackError, "current TV type does not match transcript")
+		return nil, errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
 	}
 
 	// loop through transcript and divide events according to the first field
