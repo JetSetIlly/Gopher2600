@@ -190,3 +190,26 @@ func TestTabCompletion_complex(t *testing.T) {
 		t.Errorf("expecting '%s' got '%s'", expected, completion)
 	}
 }
+
+func TestTabCompletion_filenameFirstOption(t *testing.T) {
+	var cmds *commandline.Commands
+	var tc *commandline.TabCompletion
+	var completion, expected string
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{
+		"TEST [%F|foo|bar]",
+	})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	tc = commandline.NewTabCompletion(cmds)
+
+	completion = "TEST f"
+	expected = "TEST FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+}

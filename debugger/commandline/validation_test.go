@@ -228,3 +228,18 @@ func TestValidation_doubleArgs(t *testing.T) {
 		t.Errorf("doesn't match but should: %s", err)
 	}
 }
+
+func TestValidation_filenameFirstArg(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST [%F|foo [wibble]|bar]"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	err = cmds.Validate("TEST foo wibble")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+}

@@ -59,8 +59,6 @@ func (tc *TabCompletion) Complete(input string) string {
 	}
 
 	// new tabcompletion session
-
-	// reinitialise matches array
 	tc.Reset()
 
 	// no need to to anything if input ends with a space
@@ -134,10 +132,17 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		match = err == nil
 
 	case "%S":
-		// accept anything
+		// against expectations, string placeholders do not cause a match. if
+		// they did then they would be acting in the same way as the %*
+		// placeholder and any subsequent branches will not be considered at
+		// all.
+		match = false
 
 	case "%F":
 		// TODO: filename completion
+
+		// see commentary for %S above
+		match = false
 
 	case "%*":
 		// this placeholder indicates that the rest of the tokens can be

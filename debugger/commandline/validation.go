@@ -59,7 +59,7 @@ func placeHolderText(text string) string {
 // branches creates a readable string, listing all the branches of the node
 func branches(n *node) string {
 	s := strings.Builder{}
-	s.WriteString(n.tag)
+	s.WriteString(placeHolderText(n.tag))
 	for bi := range n.branch {
 		s.WriteString(" or ")
 		s.WriteString(placeHolderText(n.branch[bi].tag))
@@ -112,11 +112,18 @@ func (n *node) validate(tokens *Tokens) error {
 		}
 
 	case "%S":
-		// accept anything
+		// string placeholders do not cause a match if the node has branches.
+		// if they did then they would be acting in the same way as the %*
+		// placeholder and any subsequent branches will not be considered at
+		// all.
+
+		match = n.branch == nil
 
 	case "%F":
-		// accept anything (note: filename is distinct from %S when we use it
-		// for tab-completion)
+		// TODO: check for file existance
+
+		// see commentary for %S above
+		match = n.branch == nil
 
 	case "%*":
 		// this placeholder indicates that the rest of the tokens can be

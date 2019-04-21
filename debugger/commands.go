@@ -46,7 +46,6 @@ const (
 	cmdPoke          = "POKE"
 	cmdQuit          = "QUIT"
 	cmdRAM           = "RAM"
-	cmdRecord        = "RECORD"
 	cmdRIOT          = "RIOT"
 	cmdReset         = "RESET"
 	cmdRun           = "RUN"
@@ -90,11 +89,10 @@ var expCommandTemplate = []string{
 	cmdPoke + " %V %*",
 	cmdQuit,
 	cmdRAM,
-	cmdRecord + " [END|%F]",
 	cmdRIOT,
 	cmdReset,
 	cmdRun,
-	cmdScript + " %F",
+	cmdScript + " [RECORD [%S]|END|%F]",
 	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
@@ -162,13 +160,14 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 	// much about the success of tokens.Get() in the command implementations
 	// below:
 	//
-	//   tok, _ := tokens.Get()
+	//   arg, _ := tokens.Get()
 	//
-	// is an acceptable pattern. default values can be handled thus:
+	// is an acceptable pattern when an argument is required. default values
+	// can be handled thus:
 	//
-	//  tok, ok := tokens.Get()
+	//  arg, ok := tokens.Get()
 	//  if ok {
-	//    switch tok {
+	//    switch arg {
 	//		...
 	//	  }
 	//  } else {
@@ -222,17 +221,31 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		dbg.print(console.Feedback, "machine reset with new cartridge (%s)", cart)
 
 	case cmdScript:
-		script, _ := tokens.Get()
-
-		spt, err := dbg.loadScript(script)
-		if err != nil {
-			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
-			return doNothing, err
-		}
-
-		err = dbg.inputLoop(spt, false)
-		if err != nil {
-			return doNothing, err
+		option, _ := tokens.Get()
+		switch strings.ToUpper(option) {
+		case "RECORD":
+			var err error
+			script, _ := tokens.Get()
+			dbg.scriptRec, err = dbg.startScriptRecording(script)
+			return scriptRecordStarted, err
+		case "END":
+			if dbg.scriptRec == nil {
+				return doNothing, fmt.Errorf("no script recording currently taking place")
+			}
+			err := dbg.scriptRec.end()
+			dbg.scriptRec = nil
+			dbg.print(console.Feedback, "script recording completed\n")
+			return scriptRecordEnded, err
+		default:
+			// run a script
+			spt, err := dbg.loadScript(option)
+			if err != nil {
+				return doNothing, err
+			}
+			err = dbg.inputLoop(spt, false)
+			if err != nil {
+				return doNothing, err
+			}
 		}
 
 	case cmdDisassembly:
@@ -542,9 +555,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdCartridge:
-		tok, ok := tokens.Get()
+		arg, ok := tokens.Get()
 		if ok {
-			switch tok {
+			switch arg {
 			case "ANALYSIS":
 				dbg.print(console.Feedback, dbg.disasm.String())
 			}
@@ -707,8 +720,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 	case cmdPlayer:
 		plyr := -1
 
-		tok, _ := tokens.Get()
-		switch tok {
+		arg, _ := tokens.Get()
+		switch arg {
 		case "0":
 			plyr = 0
 		case "1":
@@ -766,8 +779,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 	case cmdMissile:
 		mssl := -1
 
-		tok, _ := tokens.Get()
-		switch tok {
+		arg, _ := tokens.Get()
+		switch arg {
 		case "0":
 			mssl = 0
 		case "1":
@@ -913,26 +926,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		if err != nil {
 			return doNothing, err
 		}
-
-	case cmdRecord:
-		// record can refer to recording of a script or recording of user
-		// input. in this context, it currently only refers to script recording
-
-		tok, _ := tokens.Get()
-
-		if strings.ToUpper(tok) == "END" {
-			if dbg.scriptRec == nil {
-				return doNothing, fmt.Errorf("no script recording currently taking place")
-			}
-			err := dbg.scriptRec.end()
-			dbg.scriptRec = nil
-			return scriptRecordEnded, err
-		}
-
-		var err error
-
-		dbg.scriptRec, err = dbg.startScriptRecording(tok)
-		return scriptRecordStarted, err
 	}
 
 	return doNothing, nil
