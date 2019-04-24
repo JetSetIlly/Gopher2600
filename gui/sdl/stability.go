@@ -1,6 +1,9 @@
 package sdl
 
-import "gopher2600/gui"
+import (
+	"gopher2600/gui"
+	"gopher2600/television"
+)
 
 // the purpose of the stability check is to prevent the window opening and then
 // resizing after the initialisation sequence of the ROM. by giving the ROM
@@ -53,10 +56,22 @@ func (stb *screenStabiliser) checkStableFrame() error {
 	// measures the consistency of the generated television frame and alters
 	// window sizing appropriately
 
+	var err error
+
+	visibleTop, err := stb.scr.gtv.GetState(television.ReqVisibleTop)
+	if err != nil {
+		return err
+	}
+
+	visibleBottom, err := stb.scr.gtv.GetState(television.ReqVisibleBottom)
+	if err != nil {
+		return err
+	}
+
 	// update play height (which in turn updates masking and window size)
-	if stb.visibleTopReference != int32(stb.scr.tv.VisibleTop) || stb.visibleBottomReference != int32(stb.scr.tv.VisibleBottom) {
-		stb.visibleTopReference = int32(stb.scr.tv.VisibleTop)
-		stb.visibleBottomReference = int32(stb.scr.tv.VisibleBottom)
+	if stb.visibleTopReference != int32(visibleTop) || stb.visibleBottomReference != int32(visibleBottom) {
+		stb.visibleTopReference = int32(visibleTop)
+		stb.visibleBottomReference = int32(visibleBottom)
 		stb.visibleScanlines = int32(stb.visibleBottomReference - stb.visibleTopReference)
 		stb.count = 0
 	}
@@ -85,7 +100,7 @@ func (stb *screenStabiliser) checkStableFrame() error {
 
 func (stb *screenStabiliser) resolveSetVisibilityStable() error {
 	if stb.count > stabilityThreshold {
-		err := stb.scr.tv.SetFeature(gui.ReqSetVisibility, true, true)
+		err := stb.scr.gtv.SetFeature(gui.ReqSetVisibility, true, true)
 		if err != nil {
 			return err
 		}

@@ -5,8 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/television/digesttv"
 	"io"
 	"os"
 	"strconv"
@@ -147,31 +145,6 @@ func (db *regressionDB) readEntries() error {
 	}
 
 	return nil
-}
-
-func run(cartridgeFile string, tvMode string, numOfFrames int) (string, error) {
-	tv, err := digesttv.NewDigestTV(tvMode)
-	if err != nil {
-		return "", fmt.Errorf("error preparing television: %s", err)
-	}
-
-	vcs, err := hardware.NewVCS(tv)
-	if err != nil {
-		return "", fmt.Errorf("error preparing VCS: %s", err)
-	}
-
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return "", err
-	}
-
-	err = vcs.RunForFrameCount(numOfFrames)
-	if err != nil {
-		return "", err
-	}
-
-	// output current digest
-	return fmt.Sprintf("%s", tv), nil
 }
 
 // RegressAddCartridge adds a cartridge to the regression db

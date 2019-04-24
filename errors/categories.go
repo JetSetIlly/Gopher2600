@@ -47,6 +47,7 @@ const (
 
 	// TV
 	UnknownTVRequest
+	BasicTelevision
 	ImageTV
 	DigestTV
 

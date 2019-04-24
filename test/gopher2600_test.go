@@ -12,7 +12,7 @@ import (
 func BenchmarkSDL(b *testing.B) {
 	var err error
 
-	tv, err := sdl.NewGUI("NTSC", 1.0)
+	tv, err := sdl.NewGUI("NTSC", 1.0, nil)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}

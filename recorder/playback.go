@@ -58,11 +58,8 @@ func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
 	lines := strings.Split(string(buffer), "\n")
 
 	// read header
-	tvspec, err := plb.vcs.TV.GetState(television.ReqTVSpec)
-	if err != nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, err)
-	}
-	if tvspec != lines[0] {
+	tvspec := plb.vcs.TV.GetSpec()
+	if tvspec.ID != lines[0] {
 		return nil, errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
 	}
 

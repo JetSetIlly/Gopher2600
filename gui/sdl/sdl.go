@@ -1,6 +1,7 @@
 package sdl
 
 import (
+	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/television"
 
@@ -9,7 +10,7 @@ import (
 
 // GUI is the SDL implementation of a the gui/television
 type GUI struct {
-	television.HeadlessTV
+	television.Television
 
 	// much of the sdl magic happens in the screen object
 	scr *screen
@@ -31,17 +32,31 @@ type GUI struct {
 }
 
 // NewGUI initiliases a new instance of an SDL based display for the VCS
-func NewGUI(tvType string, scale float32) (*GUI, error) {
+func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, error) {
 	var err error
 
-	tv := new(GUI)
+	// set up gui
+	gtv := new(GUI)
 
-	tv.fpsLimiter, err = newFPSLimiter(50)
-	if err != nil {
-		return nil, err
+	// create or attach television implementation
+	if tv == nil {
+		gtv.Television, err = television.NewBasicTelevision(tvType)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// check that the quoted tvType matches the specification of the
+		// supplied BasicTelevision instance. we don't really need this but
+		// becuase we're implying that tvType is required, even when an
+		// instance of BasicTelevision has been supplied, the caller may be
+		// expecting an error
+		if tvType != tv.GetSpec().ID {
+			return nil, errors.NewFormattedError(errors.DigestTV, "trying to piggyback a tv of a different spec")
+		}
+		gtv.Television = tv
 	}
 
-	err = television.InitHeadlessTV(&tv.HeadlessTV, tvType)
+	gtv.fpsLimiter, err = newFPSLimiter(50)
 	if err != nil {
 		return nil, err
 	}
@@ -53,61 +68,75 @@ func NewGUI(tvType string, scale float32) (*GUI, error) {
 	}
 
 	// initialise the screens we'll be using
-	tv.scr, err = newScreen(tv)
+	gtv.scr, err = newScreen(gtv)
 
 	// set window size and scaling
-	err = tv.scr.setScaling(scale)
+	err = gtv.scr.setScaling(scale)
 	if err != nil {
 		return nil, err
 	}
 
-	// register headlesstv callbacks
-	// --leave SignalNewScanline() hook at its default
-	tv.HookNewFrame = func() error {
-		defer tv.scr.clearPixels()
-		err := tv.scr.stb.checkStableFrame()
-		if err != nil {
-			return err
-		}
-		return tv.update()
-	}
-	tv.HookSetPixel = tv.scr.setRegPixel
+	// register ourselves as a television.Renderer
+	gtv.AddRenderer(gtv)
 
 	// update tv (with a black image)
-	err = tv.update()
+	err = gtv.update()
 	if err != nil {
 		return nil, err
 	}
 
 	// gui events are serviced by a separate loop
-	go tv.guiLoop()
+	go gtv.guiLoop()
 
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request
 
-	return tv, nil
+	return gtv, nil
 }
 
 // update the gui so that it reflects changes to buffered data in the tv struct
-func (tv *GUI) update() error {
-	tv.fpsLimiter.wait()
+func (gtv *GUI) update() error {
+	gtv.fpsLimiter.wait()
 
 	// abbrogate most of the updating to the screen instance
-	err := tv.scr.update(tv.paused)
+	err := gtv.scr.update(gtv.paused)
 	if err != nil {
 		return err
 	}
 
-	tv.scr.renderer.Present()
+	gtv.scr.renderer.Present()
 
 	return nil
 }
 
-func (tv *GUI) setDebugging(allow bool) {
-	tv.allowDebugging = allow
-	if allow {
-		tv.HookSetAltPixel = tv.scr.setAltPixel
-	} else {
-		tv.HookSetAltPixel = nil
+func (gtv *GUI) setDebugging(allow bool) {
+	gtv.allowDebugging = allow
+}
+
+// NewFrame implements television.Renderer interface
+func (gtv *GUI) NewFrame() error {
+	defer gtv.scr.clearPixels()
+	err := gtv.scr.stb.checkStableFrame()
+	if err != nil {
+		return err
 	}
+	return gtv.update()
+}
+
+// NewScanline implements television.Renderer interface
+func (gtv *GUI) NewScanline() error {
+	return nil
+}
+
+// SetPixel implements television.Renderer interface
+func (gtv *GUI) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	return gtv.scr.setRegPixel(x, y, red, green, blue, vblank)
+}
+
+// SetAltPixel implements television.Renderer interface
+func (gtv *GUI) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	if !gtv.allowDebugging {
+		return nil
+	}
+	return gtv.scr.setAltPixel(x, y, red, green, blue, vblank)
 }

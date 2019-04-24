@@ -15,7 +15,7 @@ import (
 
 // Play sets the emulation running - without any debugging features
 func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording string, newRecording bool) error {
-	playtv, err := sdl.NewGUI(tvMode, scaling)
+	playtv, err := sdl.NewGUI(tvMode, scaling, nil)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}

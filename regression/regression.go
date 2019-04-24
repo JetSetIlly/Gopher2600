@@ -3,6 +3,8 @@ package regression
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware"
+	"gopher2600/television/renderers"
 	"io"
 )
 
@@ -73,4 +75,29 @@ func RegressRunTests(output io.Writer, failOnError bool) (int, int, error) {
 	}
 
 	return numSucceed, numFail, nil
+}
+
+func run(cartridgeFile string, tvMode string, numOfFrames int) (string, error) {
+	tv, err := renderers.NewDigestTV(tvMode, nil)
+	if err != nil {
+		return "", fmt.Errorf("error preparing television: %s", err)
+	}
+
+	vcs, err := hardware.NewVCS(tv)
+	if err != nil {
+		return "", fmt.Errorf("error preparing VCS: %s", err)
+	}
+
+	err = vcs.AttachCartridge(cartridgeFile)
+	if err != nil {
+		return "", err
+	}
+
+	err = vcs.RunForFrameCount(numOfFrames)
+	if err != nil {
+		return "", err
+	}
+
+	// output current digest
+	return fmt.Sprintf("%s", tv), nil
 }

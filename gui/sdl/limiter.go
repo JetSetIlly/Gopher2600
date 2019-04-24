@@ -40,6 +40,7 @@ func newFPSLimiter(framesPerSecond int) (*fpsLimiter, error) {
 
 	return lim, nil
 }
+
 func (lim *fpsLimiter) wait() {
 	<-lim.tick
 }

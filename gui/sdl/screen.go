@@ -9,7 +9,7 @@ import (
 const scrDepth int32 = 4
 
 type screen struct {
-	tv *GUI
+	gtv *GUI
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -69,11 +69,11 @@ type screen struct {
 	showMetaPixels bool
 }
 
-func newScreen(tv *GUI) (*screen, error) {
+func newScreen(gtv *GUI) (*screen, error) {
 	var err error
 
 	scr := new(screen)
-	scr.tv = tv
+	scr.gtv = gtv
 
 	// SDL window - the correct size for the window will be determined below
 	scr.window, err = sdl.CreateWindow("Gopher2600", int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED), 0, 0, uint32(sdl.WINDOW_HIDDEN)|uint32(sdl.WINDOW_OPENGL))
@@ -87,12 +87,12 @@ func newScreen(tv *GUI) (*screen, error) {
 		return nil, err
 	}
 
-	scr.maxWidth = int32(tv.Spec.ClocksPerScanline)
-	scr.maxHeight = int32(tv.Spec.ScanlinesTotal)
+	scr.maxWidth = int32(gtv.GetSpec().ClocksPerScanline)
+	scr.maxHeight = int32(gtv.GetSpec().ScanlinesTotal)
 	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
 
-	scr.playWidth = int32(tv.Spec.ClocksPerVisible)
-	scr.setPlayHeight(int32(tv.Spec.ScanlinesPerVisible), int32(tv.Spec.ScanlinesPerVBlank+tv.Spec.ScanlinesPerVSync))
+	scr.playWidth = int32(gtv.GetSpec().ClocksPerVisible)
+	scr.setPlayHeight(int32(gtv.GetSpec().ScanlinesPerVisible), int32(gtv.GetSpec().ScanlinesPerVBlank+gtv.GetSpec().ScanlinesPerVSync))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -142,7 +142,7 @@ func newScreen(tv *GUI) (*screen, error) {
 func (scr *screen) setPlayHeight(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.tv.Spec.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -187,8 +187,8 @@ func (scr *screen) setMasking(unmasked bool) error {
 	}
 
 	// minimum window size
-	if h < int32(float32(scr.tv.Spec.ScanlinesPerVisible)*scr.pixelScale) {
-		h = int32(float32(scr.tv.Spec.ScanlinesPerVisible) * scr.pixelScale)
+	if h < int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible)*scr.pixelScale) {
+		h = int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible) * scr.pixelScale)
 	}
 
 	scr.window.SetSize(w, h)
@@ -244,7 +244,7 @@ func (scr *screen) update(paused bool) error {
 
 	// if tv is paused then show the previous frame's faded image
 	if paused {
-		if scr.tv.allowDebugging && scr.useAltPixels {
+		if scr.gtv.allowDebugging && scr.useAltPixels {
 			err = scr.textureFade.Update(nil, scr.altPixelsFade, int(scr.maxWidth*scrDepth))
 		} else {
 			err = scr.textureFade.Update(nil, scr.pixelsFade, int(scr.maxWidth*scrDepth))
@@ -262,7 +262,7 @@ func (scr *screen) update(paused bool) error {
 	// - decide which set of pixels to use
 	// - if tv is paused this overwrites the faded image (drawn above) up to
 	// the pixel where the current frame has reached
-	if scr.tv.allowDebugging && scr.useAltPixels {
+	if scr.gtv.allowDebugging && scr.useAltPixels {
 		err = scr.texture.Update(nil, scr.altPixels, int(scr.maxWidth*scrDepth))
 	} else {
 		err = scr.texture.Update(nil, scr.pixels, int(scr.maxWidth*scrDepth))
@@ -280,11 +280,11 @@ func (scr *screen) update(paused bool) error {
 	if scr.unmasked {
 		scr.renderer.SetDrawColor(100, 100, 100, 20)
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.tv.Spec.ClocksPerHblank), H: int32(scr.tv.Spec.ScanlinesTotal)})
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.gtv.GetSpec().ClocksPerHblank), H: int32(scr.gtv.GetSpec().ScanlinesTotal)})
 	}
 
 	// show metasignal overlay
-	if scr.tv.allowDebugging && scr.showMetaPixels {
+	if scr.gtv.allowDebugging && scr.showMetaPixels {
 		err = scr.metaPixels.update()
 		if err != nil {
 			return err
@@ -307,7 +307,7 @@ func (scr *screen) update(paused bool) error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= scr.tv.Spec.ClocksPerScanline+scr.tv.Spec.ClocksPerHblank {
+		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblank {
 			x = 0
 			y++
 		}
@@ -348,7 +348,7 @@ func (scr *screen) update(paused bool) error {
 }
 
 func (scr *screen) clearPixels() {
-	if scr.tv.allowDebugging {
+	if scr.gtv.allowDebugging {
 		// "fade" alternative pixels and clear
 		swp := scr.altPixels
 		scr.altPixels = scr.altPixelsFade

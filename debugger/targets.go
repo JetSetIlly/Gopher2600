@@ -94,7 +94,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					if err != nil {
 						return err
 					}
-					return fr.(int)
+					return fr
 				},
 			}
 		case "SCANLINE", "SL":
@@ -109,7 +109,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					if err != nil {
 						return err
 					}
-					return sl.(int)
+					return sl
 				},
 			}
 		case "HORIZPOS", "HP":
@@ -124,7 +124,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					if err != nil {
 						return err
 					}
-					return hp.(int)
+					return hp
 				},
 			}
 

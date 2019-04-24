@@ -11,13 +11,18 @@ const (
 	ReqFramenum StateReq = iota
 	ReqScanline
 	ReqHorizPos
-	ReqTVSpec
+	ReqVisibleTop
+	ReqVisibleBottom
 )
 
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
-	VSync, VBlank, FrontPorch, HSync, CBurst bool
-	Pixel                                    ColorSignal
+	VSync      bool
+	VBlank     bool
+	FrontPorch bool
+	HSync      bool
+	CBurst     bool
+	Pixel      ColorSignal
 
 	// AltPixel allows the emulator to set an alternative color for each pixel
 	// - used to signal the debug color in addition to the regular color
@@ -31,9 +36,20 @@ type Television interface {
 	MachineInfoTerse() string
 	MachineInfo() string
 
+	AddRenderer(Renderer)
+
 	Reset() error
 	Signal(SignalAttributes) error
 	MetaSignal(metavideo.MetaSignalAttributes) error
 
-	GetState(StateReq) (interface{}, error)
+	GetState(StateReq) (int, error)
+	GetSpec() *Specification
+}
+
+// Renderer implementations display information from a television
+type Renderer interface {
+	NewFrame() error
+	NewScanline() error
+	SetPixel(x, y int32, red, green, blue byte, vblank bool) error
+	SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error
 }

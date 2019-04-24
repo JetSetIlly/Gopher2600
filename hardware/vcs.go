@@ -229,16 +229,16 @@ func (vcs *VCS) Run(continueCheck func() bool) error {
 // - not used by the debugger because traps and steptraps are more flexible
 // - useful for fps and regression tests
 func (vcs *VCS) RunForFrameCount(numFrames int) error {
-	tvs, err := vcs.TV.GetState(television.ReqFramenum)
+	fn, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
 
-	targetFrame := tvs.(int) + numFrames
+	targetFrame := fn + numFrames
 
-	for tvs.(int) != targetFrame {
+	for fn != targetFrame {
 		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
-		tvs, err = vcs.TV.GetState(television.ReqFramenum)
+		fn, err = vcs.TV.GetState(television.ReqFramenum)
 		if err != nil {
 			return err
 		}

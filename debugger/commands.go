@@ -9,7 +9,6 @@ import (
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
-	"gopher2600/television"
 	"os"
 	"sort"
 	"strconv"
@@ -27,6 +26,7 @@ const (
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
 	cmdDebuggerState = "DEBUGGERSTATE"
+	cmdDigest        = "DIGEST"
 	cmdDisassembly   = "DISASSEMBLY"
 	cmdDisplay       = "DISPLAY"
 	cmdDrop          = "DROP"
@@ -70,6 +70,7 @@ var expCommandTemplate = []string{
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
 	cmdDebuggerState,
+	cmdDigest + " (RESET)",
 	cmdDisassembly,
 	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %V",
@@ -704,11 +705,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				info, err := dbg.gui.GetState(television.ReqTVSpec)
-				if err != nil {
-					return doNothing, err
-				}
-				dbg.print(console.MachineInfo, info.(string))
+				spec := dbg.gui.GetSpec()
+				dbg.print(console.MachineInfo, spec.ID)
 			default:
 				return doNothing, fmt.Errorf("unknown request (%s)", option)
 			}
@@ -925,6 +923,17 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 
 		if err != nil {
 			return doNothing, err
+		}
+
+	case cmdDigest:
+		arg, ok := tokens.Get()
+		if ok {
+			switch arg {
+			case "RESET":
+				dbg.digest.ResetDigest()
+			}
+		} else {
+			dbg.print(console.Feedback, dbg.digest.String())
 		}
 	}
 

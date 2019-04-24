@@ -8,11 +8,14 @@ import (
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/peripherals/sticks"
 	"gopher2600/symbols"
+	"gopher2600/television"
+	"gopher2600/television/renderers"
 	"os"
 	"os/signal"
 	"strings"
@@ -25,6 +28,9 @@ const defaultOnStep = "LAST"
 type Debugger struct {
 	vcs    *hardware.VCS
 	disasm *disassembly.Disassembly
+
+	// gui/tv
+	digest *renderers.DigestTV
 	gui    gui.GUI
 
 	// whether the debugger is to continue with the debugging loop
@@ -121,19 +127,32 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger(tv gui.GUI) (*Debugger, error) {
+func NewDebugger() (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
 
 	dbg.console = new(console.PlainTerminal)
 
-	// prepare hardware
-	dbg.gui = tv
+	// prepare gui/tv
+	btv, err := television.NewBasicTelevision("NTSC")
+	if err != nil {
+		return nil, err
+	}
+
+	dbg.digest, err = renderers.NewDigestTV("NTSC", btv)
+	if err != nil {
+		return nil, err
+	}
+
+	dbg.gui, err = sdl.NewGUI("NTSC", 2.0, btv)
+	if err != nil {
+		return nil, err
+	}
 	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(dbg.gui)
+	dbg.vcs, err = hardware.NewVCS(btv)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing VCS: %s", err)
 	}

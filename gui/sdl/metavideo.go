@@ -73,16 +73,16 @@ func (mpx *metaVideoOverlay) update() error {
 }
 
 // MetaSignal recieves (and processes) additional emulator information from the emulator
-func (tv *GUI) MetaSignal(sig metavideo.MetaSignalAttributes) error {
+func (gtv *GUI) MetaSignal(sig metavideo.MetaSignalAttributes) error {
 	// don't do anything if debugging is not enabled
-	if !tv.allowDebugging {
+	if !gtv.allowDebugging {
 		return nil
 	}
 
-	err := tv.HeadlessTV.MetaSignal(sig)
+	err := gtv.Television.MetaSignal(sig)
 	if err != nil {
 		return err
 	}
 
-	return tv.scr.metaPixels.setPixel(sig)
+	return gtv.scr.metaPixels.setPixel(sig)
 }

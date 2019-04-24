@@ -46,6 +46,7 @@ var messages = map[Errno]string{
 
 	// TV
 	UnknownTVRequest: "TV does not support %v request",
+	BasicTelevision:  "BasicTelevision: %s",
 	ImageTV:          "ImageTV: %s",
 	DigestTV:         "DigestTV: %s",
 

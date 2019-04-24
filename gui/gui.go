@@ -26,6 +26,9 @@ const (
 // GUI defines the operations that can be performed on GUIs
 type GUI interface {
 	television.Television
+	television.Renderer
+
+	// send a request to set a gui feature
 	SetFeature(request FeatureReq, args ...interface{}) error
 
 	// the event channel is used to by the GUI implementation to send

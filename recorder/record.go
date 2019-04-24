@@ -40,13 +40,8 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	}
 
 	// add header information
-	tvspec, err := scr.vcs.TV.GetState(television.ReqTVSpec)
-	if err != nil {
-		scr.output.Close()
-		return nil, errors.NewFormattedError(errors.RecordingError, err)
-	}
-
-	line := fmt.Sprintf("%v\n", tvspec)
+	tvspec := scr.vcs.TV.GetSpec()
+	line := fmt.Sprintf("%v\n", tvspec.ID)
 
 	n, err := io.WriteString(scr.output, line)
 	if err != nil {

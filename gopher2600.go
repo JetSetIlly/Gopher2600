@@ -88,13 +88,7 @@ func main() {
 		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
 		modeFlagsParse()
 
-		tv, err := sdl.NewGUI("NTSC", 2.0)
-		if err != nil {
-			fmt.Printf("* error preparing television: %s", err)
-			os.Exit(2)
-		}
-
-		dbg, err := debugger.NewDebugger(tv)
+		dbg, err := debugger.NewDebugger()
 		if err != nil {
 			fmt.Printf("* error starting debugger: %s\n", err)
 			os.Exit(2)
@@ -275,7 +269,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	var err error
 
 	if display {
-		fpstv, err = sdl.NewGUI(tvMode, scaling)
+		fpstv, err = sdl.NewGUI(tvMode, scaling, nil)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
@@ -285,7 +279,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 			return fmt.Errorf("error preparing television: %s", err)
 		}
 	} else {
-		fpstv, err = television.NewHeadlessTV("NTSC")
+		fpstv, err = television.NewBasicTelevision("NTSC")
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}
@@ -315,11 +309,11 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// get starting frame number
-	tvState, err := fpstv.GetState(television.ReqFramenum)
+	fn, err := fpstv.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
-	startFrame := tvState.(int)
+	startFrame := fn
 
 	// run for specified period of time
 
@@ -336,12 +330,12 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	go func() {
 		// force a two second leadtime to allow framerate to settle down
 		time.AfterFunc(2*time.Second, func() {
-			tvState, err = fpstv.GetState(television.ReqFramenum)
+			fn, err = fpstv.GetState(television.ReqFramenum)
 			if err != nil {
 				panic(err)
 			}
 
-			startFrame = tvState.(int)
+			startFrame = fn
 
 			time.AfterFunc(duration, func() {
 				timerRunning.Store(-1)
@@ -358,11 +352,11 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}
 
 	// get ending frame number
-	tvState, err = vcs.TV.GetState(television.ReqFramenum)
+	fn, err = vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
 	}
-	endFrame := tvState.(int)
+	endFrame := fn
 
 	// calculate and display frames-per-second
 	frameCount := endFrame - startFrame

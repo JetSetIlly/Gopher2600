@@ -7,26 +7,26 @@ import (
 )
 
 // guiLoop listens for SDL events and is run concurrently
-func (tv *GUI) guiLoop() {
+func (gtv *GUI) guiLoop() {
 	for {
 		sdlEvent := sdl.WaitEvent()
 		switch sdlEvent := sdlEvent.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
-			tv.SetFeature(gui.ReqSetVisibility, false)
-			tv.eventChannel <- gui.Event{ID: gui.EventWindowClose}
+			gtv.SetFeature(gui.ReqSetVisibility, false)
+			gtv.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 		case *sdl.KeyboardEvent:
 			switch sdlEvent.Type {
 			case sdl.KEYDOWN:
-				tv.eventChannel <- gui.Event{
+				gtv.eventChannel <- gui.Event{
 					ID: gui.EventKeyboard,
 					Data: gui.EventDataKeyboard{
 						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
 						Down: true}}
 			case sdl.KEYUP:
-				tv.eventChannel <- gui.Event{
+				gtv.eventChannel <- gui.Event{
 					ID: gui.EventKeyboard,
 					Data: gui.EventDataKeyboard{
 						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
@@ -34,13 +34,13 @@ func (tv *GUI) guiLoop() {
 			}
 
 		case *sdl.MouseButtonEvent:
-			hp, sl := tv.convertMouseCoords(sdlEvent)
+			hp, sl := gtv.convertMouseCoords(sdlEvent)
 			switch sdlEvent.Type {
 			case sdl.MOUSEBUTTONDOWN:
 				switch sdlEvent.Button {
 
 				case sdl.BUTTON_LEFT:
-					tv.eventChannel <- gui.Event{
+					gtv.eventChannel <- gui.Event{
 						ID: gui.EventMouseLeft,
 						Data: gui.EventDataMouse{
 							Down:     true,
@@ -50,7 +50,7 @@ func (tv *GUI) guiLoop() {
 							Scanline: sl}}
 
 				case sdl.BUTTON_RIGHT:
-					tv.eventChannel <- gui.Event{
+					gtv.eventChannel <- gui.Event{
 						ID: gui.EventMouseRight,
 						Data: gui.EventDataMouse{
 							Down:     true,
@@ -64,7 +64,7 @@ func (tv *GUI) guiLoop() {
 				switch sdlEvent.Button {
 
 				case sdl.BUTTON_LEFT:
-					tv.eventChannel <- gui.Event{
+					gtv.eventChannel <- gui.Event{
 						ID: gui.EventMouseLeft,
 						Data: gui.EventDataMouse{
 							Down:     false,
@@ -74,7 +74,7 @@ func (tv *GUI) guiLoop() {
 							Scanline: sl}}
 
 				case sdl.BUTTON_RIGHT:
-					tv.eventChannel <- gui.Event{
+					gtv.eventChannel <- gui.Event{
 						ID: gui.EventMouseRight,
 						Data: gui.EventDataMouse{
 							Down:     false,
@@ -96,16 +96,16 @@ func (tv *GUI) guiLoop() {
 	}
 }
 
-func (tv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
+func (gtv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	var hp, sl int
 
-	sx, sy := tv.scr.renderer.GetScale()
+	sx, sy := gtv.scr.renderer.GetScale()
 
 	// convert X pixel value to horizpos equivalent
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
-	if tv.scr.unmasked {
-		hp = int(float32(sdlEvent.X)/sx) - tv.Spec.ClocksPerHblank
+	if gtv.scr.unmasked {
+		hp = int(float32(sdlEvent.X)/sx) - gtv.GetSpec().ClocksPerHblank
 	} else {
 		hp = int(float32(sdlEvent.X) / sx)
 	}
@@ -113,10 +113,10 @@ func (tv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
-	if tv.scr.unmasked {
+	if gtv.scr.unmasked {
 		sl = int(float32(sdlEvent.Y) / sy)
 	} else {
-		sl = int(float32(sdlEvent.Y)/sy) + int(tv.scr.stb.visibleTopReference)
+		sl = int(float32(sdlEvent.Y)/sy) + int(gtv.scr.stb.visibleTopReference)
 	}
 
 	return hp, sl
