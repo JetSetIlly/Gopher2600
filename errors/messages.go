@@ -55,9 +55,10 @@ var messages = map[Errno]string{
 	SDL:               "SDL: %s",
 
 	// Peripherals
-	NoControllerHardware: "no hardware controllers found",
-	NoPlayerPort:         "VCS only supports two players (0 and 1)",
-	ControllerUnplugged:  "controller unplugged",
+	NoControllerHardware:   "no hardware controllers found",
+	NoPlayerPort:           "VCS only supports two players (0 and 1)",
+	ControllerUnplugged:    "controller unplugged",
+	UnknownPeripheralEvent: "this peripheral (%s) does not understand that event (%v)",
 
 	// Recorder
 	RecordingError: "error when recording input (%s)",

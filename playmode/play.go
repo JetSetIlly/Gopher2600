@@ -56,8 +56,9 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 				recording.End()
 			}()
 
-			vcs.Ports.Player0.AttachRecorder(recording)
-			vcs.Ports.Player1.AttachRecorder(recording)
+			vcs.Ports.Player0.AttachTranscriber(recording)
+			vcs.Ports.Player1.AttachTranscriber(recording)
+			vcs.Panel.AttachTranscriber(recording)
 		} else {
 			recording, err := recorder.NewPlayback(recording, vcs)
 			if err != nil {
@@ -66,6 +67,7 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 
 			vcs.Ports.Player0.Attach(recording)
 			vcs.Ports.Player1.Attach(recording)
+			vcs.Panel.Attach(recording)
 		}
 	}
 
@@ -85,19 +87,21 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 	err = playtv.SetFeature(request, true)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
+
 	}
 
-	return vcs.Run(func() bool {
+	return vcs.Run(func() (bool, error) {
 		select {
 		case ev := <-guiChannel:
 			switch ev.ID {
 			case gui.EventWindowClose:
-				return false
+				return false, nil
 			case gui.EventKeyboard:
-				KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), playtv, vcs)
+				err = KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), playtv, vcs)
+				return err == nil, err
 			}
 		default:
 		}
-		return true
+		return true, nil
 	})
 }

@@ -128,8 +128,8 @@ func (vcs *VCS) strobe() error {
 			return err
 		}
 	}
-	vcs.Panel.Strobe()
-	return nil
+
+	return vcs.Panel.Strobe()
 }
 
 // Step the emulator state one CPU instruction
@@ -197,7 +197,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 // Run sets the emulation running as quickly as possible.  eventHandler()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
-func (vcs *VCS) Run(continueCheck func() bool) error {
+func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	var err error
 
 	cycleVCS := func(r *result.Instruction) error {
@@ -215,14 +215,16 @@ func (vcs *VCS) Run(continueCheck func() bool) error {
 		return nil
 	}
 
-	for continueCheck() {
+	cont := true
+	for cont {
 		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
 		if err != nil {
 			return err
 		}
+		cont, err = continueCheck()
 	}
 
-	return nil
+	return err
 }
 
 // RunForFrameCount sets emulator running for the specified number of frames

@@ -25,18 +25,17 @@ func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports 
 
 // A player instance is used by controllers to communicate with the VCS
 type player struct {
-	ports *Ports
+	peripheral
 
-	controller     Controller
-	prevController Controller
+	// pointer back to the containing Ports stuct. we need this because both
+	// player instances need to know what lastJoystickValue is
+	ports *Ports
 
 	id string
 
 	riot  memory.PeriphBus
 	tia   memory.PeriphBus
 	panel *Panel
-
-	scribe Transcriber
 
 	// joysticks
 	joystick   uint16 // RIOT address
@@ -59,6 +58,10 @@ func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 		fireButton:   vcssymbols.INPT4,
 		joystickFunc: func(n uint8) uint8 { return n }}
 
+	pl.peripheral = peripheral{
+		id:     pl.id,
+		handle: pl.Handle}
+
 	pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
 	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
 	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
@@ -78,6 +81,10 @@ func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 		fireButton:   vcssymbols.INPT5,
 		joystickFunc: func(n uint8) uint8 { return (n >> 4) | (n << 4) }}
 
+	pl.peripheral = peripheral{
+		id:     pl.id,
+		handle: pl.Handle}
+
 	pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
 	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
 	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
@@ -87,8 +94,13 @@ func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 }
 
 // Handle interprets an event into the correct sequence of memory addressing
-func (pl player) Handle(event Event) error {
+func (pl *player) Handle(event Event) error {
 	switch event {
+
+	// do nothing at all if event is a NoEvent
+	case NoEvent:
+		return nil
+
 	case Left:
 		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
 		pl.ports.lastJoystickValue &= pl.joystickFunc(0xbf)
@@ -115,21 +127,24 @@ func (pl player) Handle(event Event) error {
 		pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
 	// for convenience, a controller implementation can interact with the panel
+	// note that the function returns the result of panel.Handle straightaway
+	// and will cause a transcriber to miss the event (the event may be written by
+	// a transcriber attached to the panel)
 	case PanelSelectPress:
-		pl.panel.PressSelect()
+		return pl.panel.Handle(PanelSelectPress)
 	case PanelSelectRelease:
-		pl.panel.ReleaseSelect()
+		return pl.panel.Handle(PanelSelectPress)
 	case PanelResetPress:
-		pl.panel.PressReset()
+		return pl.panel.Handle(PanelResetPress)
 	case PanelResetRelease:
-		pl.panel.ReleaseReset()
+		return pl.panel.Handle(PanelResetRelease)
 
 	case Unplugged:
 		return errors.NewFormattedError(errors.ControllerUnplugged)
 
 	// return now if there is no event to process
 	default:
-		return nil
+		return errors.NewFormattedError(errors.UnknownPeripheralEvent, pl.id, event)
 	}
 
 	// record event with the transcriber
@@ -138,46 +153,4 @@ func (pl player) Handle(event Event) error {
 	}
 
 	return nil
-}
-
-// Attach registers a controller implementation with the port
-func (pl *player) Attach(controller Controller) {
-	if controller == nil {
-		pl.controller = pl.prevController
-		pl.prevController = nil
-	} else {
-		pl.prevController = pl.controller
-		pl.controller = controller
-	}
-}
-
-// Strobe makes sure the controller have submitted their latest input
-func (pl *player) Strobe() error {
-	if pl.controller != nil {
-		ev, err := pl.controller.GetInput(pl.id)
-		if err != nil {
-			return err
-		}
-
-		err = pl.Handle(ev)
-		if err != nil {
-			switch err := err.(type) {
-			case errors.FormattedError:
-				if err.Errno != errors.ControllerUnplugged {
-					return err
-				}
-				pl.controller = pl.prevController
-			default:
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// AttachRecorder registers the presence of a transcriber implementation. use an
-// argument of nil to disconnect an existing scribe
-func (pl *player) AttachRecorder(scribe Transcriber) {
-	pl.scribe = scribe
 }

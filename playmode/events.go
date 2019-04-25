@@ -3,38 +3,57 @@ package playmode
 import (
 	"gopher2600/gui"
 	"gopher2600/hardware"
+	"gopher2600/hardware/peripherals"
 )
 
 // KeyboardEventHandler handles keypresses for play/run mode
 // returns true if key has been handled, false if not
 //
 // (public declaration because we want to use this in the debugger as well)
-func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardware.VCS) bool {
+func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardware.VCS) error {
+	var err error
+
 	if keyEvent.Down {
 		switch keyEvent.Key {
 		case "F1":
-			vcs.Panel.PressSelect()
+			err = vcs.Panel.Handle(peripherals.PanelSelectPress)
 		case "F2":
-			vcs.Panel.PressReset()
+			err = vcs.Panel.Handle(peripherals.PanelResetPress)
 		case "F3":
-			vcs.Panel.ToggleColour()
+			err = vcs.Panel.Handle(peripherals.PanelToggleColor)
 		case "F4":
-			vcs.Panel.TogglePlayer0Pro()
+			err = vcs.Panel.Handle(peripherals.PanelTogglePlayer0Pro)
 		case "F5":
-			vcs.Panel.TogglePlayer1Pro()
-		default:
-			return false
+			err = vcs.Panel.Handle(peripherals.PanelTogglePlayer1Pro)
+		case "Left":
+			err = vcs.Ports.Player0.Handle(peripherals.Left)
+		case "Right":
+			err = vcs.Ports.Player0.Handle(peripherals.Right)
+		case "Up":
+			err = vcs.Ports.Player0.Handle(peripherals.Up)
+		case "Down":
+			err = vcs.Ports.Player0.Handle(peripherals.Down)
+		case "Space":
+			err = vcs.Ports.Player0.Handle(peripherals.Fire)
 		}
 	} else {
 		switch keyEvent.Key {
 		case "F1":
-			vcs.Panel.ReleaseSelect()
+			err = vcs.Panel.Handle(peripherals.PanelSelectRelease)
 		case "F2":
-			vcs.Panel.ReleaseReset()
-		default:
-			return false
+			err = vcs.Panel.Handle(peripherals.PanelResetRelease)
+		case "Left":
+			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+		case "Right":
+			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+		case "Up":
+			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+		case "Down":
+			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+		case "Space":
+			err = vcs.Ports.Player0.Handle(peripherals.NoFire)
 		}
 	}
 
-	return true
+	return err
 }

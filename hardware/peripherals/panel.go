@@ -3,33 +3,43 @@
 package peripherals
 
 import (
+	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
 // Panel represents the console's front control panel
 type Panel struct {
-	riot  memory.PeriphBus
-	p0pro bool
-	p1pro bool
-	color bool
+	peripheral
 
-	// select and reset switches do not toggle, they are triggered
+	id string
+
+	riot          memory.PeriphBus
+	p0pro         bool
+	p1pro         bool
+	color         bool
 	selectPressed bool
 	resetPressed  bool
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
 func NewPanel(riot memory.PeriphBus) *Panel {
-	pan := new(Panel)
-	pan.riot = riot
-	pan.color = true
-	pan.Strobe()
+	pan := &Panel{
+		id:    "Panel",
+		riot:  riot,
+		color: true}
+
+	pan.peripheral = peripheral{
+		id:     pan.id,
+		handle: pan.Handle}
+
+	pan.commit()
+
 	return pan
 }
 
-// Strobe makes sure the panel has submitted its latest input
-func (pan *Panel) Strobe() {
+func (pan *Panel) commit() {
+	// commit changes to RIOT memory
 	strobe := uint8(0)
 
 	// pins 2, 4 and 5 are not used and always value value of 1
@@ -60,37 +70,38 @@ func (pan *Panel) Strobe() {
 	pan.riot.PeriphWrite(vcssymbols.SWCHB, strobe)
 }
 
-// ToggleColour toggles the colour switch
-func (pan *Panel) ToggleColour() {
-	pan.color = !pan.color
-}
+// Handle interprets an event into the correct sequence of memory addressing
+func (pan *Panel) Handle(event Event) error {
+	switch event {
 
-// TogglePlayer0Pro toggles the color switch
-func (pan *Panel) TogglePlayer0Pro() {
-	pan.p0pro = !pan.p0pro
-}
+	// do nothing at all if event is a NoEvent
+	case NoEvent:
+		return nil
 
-// TogglePlayer1Pro toggles the color switch
-func (pan *Panel) TogglePlayer1Pro() {
-	pan.p1pro = !pan.p1pro
-}
+	case PanelSelectPress:
+		pan.selectPressed = true
+	case PanelSelectRelease:
+		pan.selectPressed = false
+	case PanelResetPress:
+		pan.resetPressed = true
+	case PanelResetRelease:
+		pan.resetPressed = false
+	case PanelToggleColor:
+		pan.color = !pan.color
+	case PanelTogglePlayer0Pro:
+		pan.p0pro = !pan.p0pro
+	case PanelTogglePlayer1Pro:
+		pan.p1pro = !pan.p1pro
+	default:
+		return errors.NewFormattedError(errors.UnknownPeripheralEvent, pan.id, event)
+	}
 
-// PressSelect emulates the select switch
-func (pan *Panel) PressSelect() {
-	pan.selectPressed = true
-}
+	pan.commit()
 
-// PressReset emulates the reset switch
-func (pan *Panel) PressReset() {
-	pan.resetPressed = true
-}
+	// record event with the transcriber
+	if pan.scribe != nil {
+		return pan.scribe.Transcribe(pan.id, event)
+	}
 
-// ReleaseSelect emulates the select switch
-func (pan *Panel) ReleaseSelect() {
-	pan.selectPressed = false
-}
-
-// ReleaseReset emulates the reset switch
-func (pan *Panel) ReleaseReset() {
-	pan.resetPressed = false
+	return nil
 }

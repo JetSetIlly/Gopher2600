@@ -59,6 +59,7 @@ const (
 	NoControllerHardware
 	NoPlayerPort
 	ControllerUnplugged
+	UnknownPeripheralEvent
 
 	// Recorder
 	RecordingError

@@ -132,15 +132,15 @@ func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return peripherals.Unplugged, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return peripherals.Unplugged, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return peripherals.Unplugged, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
 	}
 
 	// compare current state with the state in the transcript

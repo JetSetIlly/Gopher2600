@@ -64,7 +64,7 @@ func main() {
 		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
-		record := modeFlags.Bool("record", false, "record user input to a ile")
+		record := modeFlags.Bool("record", false, "record user input to a file")
 		recording := modeFlags.String("recording", "", "the file to use for recording/playback")
 		modeFlagsParse()
 
@@ -344,8 +344,8 @@ func fps(profile bool, cartridgeFile string, display bool, tvMode string, scalin
 	}()
 
 	// -- run until specified time elapses (running is changed to -1)
-	err = vcs.Run(func() bool {
-		return timerRunning.Load().(int) > 0
+	err = vcs.Run(func() (bool, error) {
+		return timerRunning.Load().(int) > 0, nil
 	})
 	if err != nil {
 		return err

@@ -16,7 +16,8 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 		data := event.Data.(gui.EventDataKeyboard)
 
 		// check playmode key presses first
-		if playmode.KeyboardEventHandler(data, dbg.gui, dbg.vcs) {
+		err = playmode.KeyboardEventHandler(data, dbg.gui, dbg.vcs)
+		if err != nil {
 			break // switch event.ID
 		}
 

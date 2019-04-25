@@ -74,7 +74,6 @@ func NewSplaceStick() (*SplaceStick, error) {
 			case <-resetRelease:
 				sps.event <- peripherals.PanelResetRelease
 			}
-
 		}
 	}()
 
