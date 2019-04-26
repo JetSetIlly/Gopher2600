@@ -243,3 +243,40 @@ func TestValidation_filenameFirstArg(t *testing.T) {
 		t.Errorf("doesn't match but should: %s", err)
 	}
 }
+
+func TestValidation_singluarOption(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	err = cmds.Validate("SCRIPT foo")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+
+	err = cmds.Validate("SCRIPT END")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+
+	err = cmds.Validate("SCRIPT RECORD foo")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+
+	err = cmds.Validate("SCRIPT RECORD REGRESSION foo")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+
+	err = cmds.Validate("SCRIPT RECORD REGRESSION foo end")
+	if err == nil {
+		t.Errorf("matches but shouldn't")
+	} else {
+		fmt.Println(err)
+	}
+}
