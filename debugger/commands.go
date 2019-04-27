@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
+	"gopher2600/debugger/script"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/result"
@@ -14,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-// TODO: categorise commands into script-safe and non-script-safe
 
 // debugger keywords. not a useful data structure but we can use these to form
 // the more useful DebuggerCommands and Help structures
@@ -63,7 +62,7 @@ const (
 	cmdWatch         = "WATCH"
 )
 
-var expCommandTemplate = []string{
+var commandTemplate = []string{
 	cmdBall,
 	cmdBreak + " [%*]",
 	cmdCPU,
@@ -107,19 +106,33 @@ var expCommandTemplate = []string{
 	cmdWatch + " (READ|WRITE) [%V]",
 }
 
+// list of commands that should not be executed when recording/playing scripts
+var scriptUnsafeTemplate = []string{
+	cmdScript + " [RECORD [%S]]",
+	cmdRun,
+}
+
 var debuggerCommands *commandline.Commands
+var scriptUnsafeCommands *commandline.Commands
 var debuggerCommandsIdx *commandline.Index
 
 func init() {
 	var err error
 
 	// parse command template
-	debuggerCommands, err = commandline.ParseCommandTemplate(expCommandTemplate)
+	debuggerCommands, err = commandline.ParseCommandTemplate(commandTemplate)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(100)
 	}
 	sort.Stable(debuggerCommands)
+
+	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(100)
+	}
+	sort.Stable(scriptUnsafeCommands)
 
 	debuggerCommandsIdx = commandline.CreateIndex(debuggerCommands)
 }
@@ -141,7 +154,7 @@ const (
 // the command immediately. note that the empty string is the same as the STEP
 // command
 
-func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error) {
+func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCommandResult, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(*userInput)
 
@@ -158,13 +171,13 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 	// check validity of tokenised input
 	//
 	// the absolute best thing about this is that we don't need to worrying too
-	// much about the success of tokens.Get() in the command implementations
+	// much about the success of tokens.Get() in the enactCommand() function
 	// below:
 	//
 	//   arg, _ := tokens.Get()
 	//
-	// is an acceptable pattern when an argument is required. default values
-	// can be handled thus:
+	// is an acceptable pattern even when an argument is required. default
+	// values can be handled thus:
 	//
 	//  arg, ok := tokens.Get()
 	//  if ok {
@@ -181,10 +194,23 @@ func (dbg *Debugger) parseCommand(userInput *string) (parseCommandResult, error)
 		return doNothing, err
 	}
 
-	return dbg.enactCommand(tokens)
+	// test to see if command is allowed when recording/playing a script
+	if dbg.recording.IsRecording() || !interactive {
+		tokens.Reset()
+
+		err := scriptUnsafeCommands.ValidateTokens(tokens)
+
+		// fail when the tokens DO match the scriptUnsafe template (ie. when
+		// there is no err from the validate function)
+		if err == nil {
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
+		}
+	}
+
+	return dbg.enactCommand(tokens, interactive)
 }
 
-func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResult, error) {
+func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) (parseCommandResult, error) {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately
 	tokens.Reset()
@@ -196,7 +222,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 
 	switch command {
 	default:
-		return doNothing, fmt.Errorf("%s is not yet implemented", command)
+		return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
 
 	case cmdHelp:
 		keyword, present := tokens.Get()
@@ -226,30 +252,54 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		switch strings.ToUpper(option) {
 		case "RECORD":
 			var err error
-			script, _ := tokens.Get()
-			dbg.scriptRec, err = dbg.startScriptRecording(script)
-			return scriptRecordStarted, err
-		case "END":
-			if dbg.scriptRec == nil {
-				return doNothing, fmt.Errorf("no script recording currently taking place")
-			}
-			err := dbg.scriptRec.end()
-			dbg.scriptRec = nil
-			dbg.print(console.Feedback, "script recording completed\n")
-			return scriptRecordEnded, err
-		default:
-			// run a script
-			spt, err := dbg.loadScript(option)
+			saveFile, _ := tokens.Get()
+			err = dbg.recording.Start(saveFile)
 			if err != nil {
 				return doNothing, err
 			}
-			err = dbg.inputLoop(spt, false)
+			return scriptRecordStarted, nil
+
+		case "END":
+			dbg.recording.Rollback()
+			err := dbg.recording.End()
+			return scriptRecordEnded, err
+
+		default:
+			// run a script
+			plb, err := script.StartPlayback(option)
+			if err != nil {
+				return doNothing, err
+			}
+
+			if dbg.recording.IsRecording() {
+				// if we're currently recording a script we want to write this
+				// command to the new script file...
+				err = dbg.recording.Commit()
+				if err != nil {
+					return doNothing, err
+				}
+
+				// ... but indicate that we'll be entering a new script and so
+				// don't want to repeat the commands from that script
+				dbg.recording.StartPlayback()
+
+				defer func() {
+					dbg.recording.EndPlayback()
+				}()
+
+				// TODO: provide a recording option to allow insertion of
+				// the actual script commands rather than the call to the
+				// script itself
+			}
+
+			err = dbg.inputLoop(plb, false)
 			if err != nil {
 				return doNothing, err
 			}
 		}
 
 	case cmdDisassembly:
+		// TODO: put through debugger.print() command so we can capture it
 		dbg.disasm.Dump(os.Stdout)
 
 	case cmdGrep:
@@ -293,7 +343,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 					}
 				}
 			default:
-				return doNothing, fmt.Errorf("unknown option for SYMBOL command (%s)", option)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown option for SYMBOL command (%s)", option))
 			}
 		} else {
 			dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
@@ -302,19 +352,19 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
-			return doNothing, fmt.Errorf("error on break: %s", err)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on break: %s", err))
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
-			return doNothing, fmt.Errorf("error on trap: %s", err)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on trap: %s", err))
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
 		if err != nil {
-			return doNothing, fmt.Errorf("error on watch: %s", err)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on watch: %s", err))
 		}
 
 	case cmdList:
@@ -328,7 +378,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		case "WATCHES":
 			dbg.watches.list()
 		default:
-			return doNothing, fmt.Errorf("unknown list option (%s)", list)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown list option (%s)", list))
 		}
 
 	case cmdClear:
@@ -345,7 +395,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			dbg.watches.clear()
 			dbg.print(console.Feedback, "watches cleared")
 		default:
-			return doNothing, fmt.Errorf("unknown clear option (%s)", clear)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown clear option (%s)", clear))
 		}
 
 	case cmdDrop:
@@ -354,7 +404,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return doNothing, fmt.Errorf("drop attribute must be a decimal number (%s)", s)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("drop attribute must be a decimal number (%s)", s))
 		}
 
 		drop = strings.ToUpper(drop)
@@ -378,7 +428,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			}
 			dbg.print(console.Feedback, "watch #%d dropped", num)
 		default:
-			return doNothing, fmt.Errorf("unknown drop option (%s)", drop)
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown drop option (%s)", drop))
 		}
 
 	case cmdOnHalt:
@@ -386,6 +436,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
 			return doNothing, nil
 		}
+
+		// TODO: non-interactive check of tokens against scriptUnsafeTemplate
 
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
@@ -414,7 +466,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 		// run the new/restored onhalt command(s)
-		_, err := dbg.parseInput(dbg.commandOnHalt, false)
+		_, err := dbg.parseInput(dbg.commandOnHalt, false, false)
 		return doNothing, err
 
 	case cmdOnStep:
@@ -422,6 +474,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
 			return doNothing, nil
 		}
+
+		// TODO: non-interactive check of tokens against scriptUnsafeTemplate
 
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
@@ -450,7 +504,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 		// run the new/restored onstep command(s)
-		_, err := dbg.parseInput(dbg.commandOnStep, false)
+		_, err := dbg.parseInput(dbg.commandOnStep, false, false)
 		return doNothing, err
 
 	case cmdLast:
@@ -507,7 +561,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
-				return doNothing, fmt.Errorf("unknown step mode (%s)", mode)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 			dbg.runUntilHalt = true
 		}
@@ -524,7 +578,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			case "VIDEO":
 				dbg.inputEveryVideoCycle = true
 			default:
-				return doNothing, fmt.Errorf("unknown step mode (%s)", mode)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 		}
 		if dbg.inputEveryVideoCycle {
@@ -550,7 +604,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 		}
 
 	case cmdDebuggerState:
-		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT; ONSTEP", false)
+		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT; ONSTEP", false, false)
 		if err != nil {
 			return doNothing, err
 		}
@@ -686,14 +740,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			case "FUTURE":
 				dbg.printMachineInfo(dbg.vcs.TIA.Video.OnFutureColorClock)
 			case "HMOVE":
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Hmove.MachineInfoInternal())
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Player0.MachineInfoInternal())
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Player1.MachineInfoInternal())
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Missile0.MachineInfoInternal())
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Missile1.MachineInfoInternal())
-				dbg.print(console.MachineInfoInternal, dbg.vcs.TIA.Video.Ball.MachineInfoInternal())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Hmove.EmulatorInfo())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Player0.EmulatorInfo())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Player1.EmulatorInfo())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Missile0.EmulatorInfo())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Missile1.EmulatorInfo())
+				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Ball.EmulatorInfo())
 			default:
-				return doNothing, fmt.Errorf("unknown request (%s)", option)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown request (%s)", option))
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.TIA)
@@ -708,7 +762,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 				spec := dbg.gui.GetSpec()
 				dbg.print(console.MachineInfo, spec.ID)
 			default:
-				return doNothing, fmt.Errorf("unknown request (%s)", option)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown request (%s)", option))
 			}
 		} else {
 			dbg.printMachineInfo(dbg.gui)
@@ -859,12 +913,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 			case "SCALE":
 				scl, present := tokens.Get()
 				if !present {
-					return doNothing, fmt.Errorf("value required for %s %s", command, action)
+					return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
 				}
 
 				scale, err := strconv.ParseFloat(scl, 32)
 				if err != nil {
-					return doNothing, fmt.Errorf("%s %s value not valid (%s)", command, action, scl)
+					return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
 				}
 
 				err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))
@@ -880,7 +934,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens) (parseCommandResul
 					return doNothing, err
 				}
 			default:
-				return doNothing, fmt.Errorf("unknown display action (%s)", action)
+				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown display action (%s)", action))
 			}
 		} else {
 			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)

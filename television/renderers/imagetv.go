@@ -45,7 +45,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 		// instance of BasicTelevision has been supplied, the caller may be
 		// expecting an error
 		if tvType != tv.GetSpec().ID {
-			return nil, errors.NewFormattedError(errors.DigestTV, "trying to piggyback a tv of a different spec")
+			return nil, errors.NewFormattedError(errors.ImageTV, "trying to piggyback a tv of a different spec")
 		}
 		imtv.Television = tv
 	}

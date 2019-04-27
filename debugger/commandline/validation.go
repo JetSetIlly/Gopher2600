@@ -29,6 +29,13 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 			}
 
 			if tokens.Remaining() > 0 {
+				// TODO: this error message is misleading when the last
+				// argument in a branch is optional and the supplied argument
+				// does not match. in those instances, it should say something
+				// like: "argument does not match option"
+				//
+				// we need a way to detect that situation if we reach this
+				// point.
 				return fmt.Errorf("too many arguments for %s", cmd)
 			}
 

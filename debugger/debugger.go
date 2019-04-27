@@ -5,6 +5,7 @@ import (
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
 	"gopher2600/debugger/metavideo"
+	"gopher2600/debugger/script"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -108,8 +109,7 @@ type Debugger struct {
 	lastResult *result.Instruction
 
 	// console interface
-	console       console.UserInterface
-	consoleSilent bool // controls whether UI is to remain silent
+	console console.UserInterface
 
 	// buffer for user input
 	input []byte
@@ -120,9 +120,8 @@ type Debugger struct {
 	// channel for communicating with the debugger from the gui goroutine
 	guiChannel chan gui.Event
 
-	// scriptRec user input to a script file.
-	// -- no scriptRec taking place if nil
-	scriptRec *scriptRecording
+	// record user input to a script file
+	recording script.Recorder
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -202,10 +201,10 @@ func NewDebugger() (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScript string) error {
+func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartridge string) error {
 	// prepare user interface
-	if iface != nil {
-		dbg.console = iface
+	if cons != nil {
+		dbg.console = cons
 	}
 
 	err := dbg.console.Initialise()
@@ -216,7 +215,7 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 
 	dbg.console.RegisterTabCompleter(commandline.NewTabCompletion(debuggerCommands))
 
-	err = dbg.loadCartridge(filename)
+	err = dbg.loadCartridge(cartridge)
 	if err != nil {
 		return err
 	}
@@ -229,12 +228,12 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 
 	// run initialisation script
 	if initScript != "" {
-		spt, err := dbg.loadScript(initScript)
+		plb, err := script.StartPlayback(initScript)
 		if err != nil {
 			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
 		}
 
-		err = dbg.inputLoop(spt, false)
+		err = dbg.inputLoop(plb, false)
 		if err != nil {
 			return err
 		}
@@ -252,7 +251,7 @@ func (dbg *Debugger) Start(iface console.UserInterface, filename string, initScr
 // loadCartridge makes sure that the cartridge loaded into vcs memory and the
 // available disassembly/symbols are in sync.
 //
-// NEVER call vcs.AttachCartridge except through this funtion
+// NEVER call vcs.AttachCartridge except through this function
 //
 // this is the glue that hold the cartridge and disassembly packages
 // together
@@ -304,13 +303,13 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	return dbg.videomon.Check()
 }
 
-// inputLoop has two modes, defined by the videoCycleInput argument.
-// when videoCycleInput is true then user will be prompted every video cycle,
-// as opposed to only every cpu instruction.
+// inputLoop has two modes, defined by the videoCycle argument.  when
+// videoCycle is true then user will be prompted every video cycle, as opposed
+// to only every cpu instruction.
 //
 // inputter is an instance of type UserInput. this will usually be dbg.ui but
 // it could equally be an instance of debuggingScript.
-func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool) error {
+func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) error {
 	var err error
 
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
@@ -318,7 +317,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 	videoCycleWithInput := func(result *result.Instruction) error {
 		dbg.videoCycle(result)
 		if dbg.commandOnStep != "" {
-			_, err := dbg.parseInput(dbg.commandOnStep, false)
+			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			}
@@ -336,7 +335,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 		// if step granularity has been switched to every cpu instruction - the
 		// input loop will unravel and execution will continue in the main
 		// inputLoop
-		if videoCycleInput && !dbg.inputEveryVideoCycle && dbg.inputloopNext {
+		if videoCycle && !dbg.inputEveryVideoCycle && dbg.inputloopNext {
 			return nil
 		}
 
@@ -361,7 +360,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 		// commandOnHalt command(s)
 		if dbg.commandOnHalt != "" {
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
-				_, err = dbg.parseInput(dbg.commandOnHalt, false)
+				_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
 				if err != nil {
 					dbg.print(console.Error, "%s", err)
 				}
@@ -389,50 +388,23 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 
 			dbg.runUntilHalt = false
 
-			// decide which address value to use
-			var promptAddress uint16
-			var promptBank int
-
-			if dbg.lastResult == nil || dbg.lastResult.Final {
-				promptAddress = dbg.vcs.MC.PC.ToUint16()
-			} else {
-				// if we're in the middle of an instruction then use the
-				// addresss in lastResult - in video-stepping mode we want the
-				// prompt to report the instruction that we're working on, not
-				// the next one to be stepped into.
-				promptAddress = dbg.lastResult.Address
-			}
-			promptBank = dbg.vcs.Mem.Cart.Bank
-
-			// build prompt
-			var prompt string
-			if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
-				// because we're using the raw disassmebly the reported address
-				// in that disassembly may be misleading. because of that, we
-
-				prompt = fmt.Sprintf("[ %#04x %s ] > ", promptAddress, entry)
-			} else {
-				// incomplete disassembly, prepare witchspace prompt
-				prompt = fmt.Sprintf("[ %#04x (%d) witchspace ] > ", promptAddress, promptBank)
-			}
-
-			// - additional annotation if we're not showing the prompt in the main loop
-			if videoCycleInput && !dbg.lastResult.Final {
-				prompt = fmt.Sprintf("+ %s", prompt)
-			}
-
 			// get user input
-			n, err := inputter.UserRead(dbg.input, prompt, dbg.guiChannel, dbg.guiEventHandler)
+			n, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChannel, dbg.guiEventHandler)
 			if err != nil {
 				switch err := err.(type) {
 
 				case errors.FormattedError:
 					switch err.Errno {
 					case errors.UserInterrupt:
-						dbg.running = false
+						if dbg.recording.IsRecording() {
+							dbg.parseInput("SCRIPT END", false, false)
+							continue // for loop
+						} else {
+							dbg.running = false
+						}
 						fallthrough
 					case errors.ScriptEnd:
-						if !videoCycleInput {
+						if !videoCycle {
 							dbg.print(console.Feedback, err.Error())
 						}
 						return nil
@@ -448,7 +420,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 			}
 
 			// parse user input
-			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]), inputter.IsInteractive())
+			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]), inputter.IsInteractive(), false)
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			}
@@ -467,7 +439,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 
 		// move emulation on one step if user has requested/implied it
 		if dbg.inputloopNext {
-			if !videoCycleInput {
+			if !videoCycle {
 				if dbg.inputEveryVideoCycle {
 					_, dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
 				} else {
@@ -500,7 +472,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 				}
 
 				if dbg.commandOnStep != "" {
-					_, err := dbg.parseInput(dbg.commandOnStep, false)
+					_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 					if err != nil {
 						dbg.print(console.Error, "%s", err)
 					}
@@ -514,6 +486,47 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 	return nil
 }
 
+func (dbg *Debugger) buildPrompt(videoCycle bool) string {
+	// decide which address value to use
+	var promptAddress uint16
+	var promptBank int
+
+	if dbg.lastResult == nil || dbg.lastResult.Final {
+		promptAddress = dbg.vcs.MC.PC.ToUint16()
+	} else {
+		// if we're in the middle of an instruction then use the
+		// addresss in lastResult - in video-stepping mode we want the
+		// prompt to report the instruction that we're working on, not
+		// the next one to be stepped into.
+		promptAddress = dbg.lastResult.Address
+	}
+	promptBank = dbg.vcs.Mem.Cart.Bank
+
+	var prompt = "["
+
+	if dbg.recording.IsRecording() {
+		prompt = fmt.Sprintf("%s(rec)", prompt)
+	}
+
+	if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
+		// because we're using the raw disassmebly the reported address
+		// in that disassembly may be misleading.
+		prompt = fmt.Sprintf("%s %#04x %s ]", prompt, promptAddress, entry)
+	} else {
+		// incomplete disassembly, prepare witchspace prompt
+		prompt = fmt.Sprintf("%s %#04x (%d) witchspace ]", prompt, promptAddress, promptBank)
+	}
+
+	// - additional annotation if we're not showing the prompt in the main loop
+	if videoCycle && !dbg.lastResult.Final {
+		prompt = fmt.Sprintf("%s < ", prompt)
+	} else {
+		prompt = fmt.Sprintf("%s > ", prompt)
+	}
+
+	return prompt
+}
+
 // parseInput splits the input into individual commands. each command is then
 // passed to parseCommand for final processing
 //
@@ -523,13 +536,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycleInput bool)
 // returns "step" status - whether or not the input should cause the emulation
 // to continue at least one step (a command in the input may have set the
 // runUntilHalt flag)
-func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
+func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
 	var result parseCommandResult
 	var err error
 	var step bool
-
-	// whether or not we should record the input to a file
-	inpt := dbg.scriptRec != nil && interactive
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
@@ -539,9 +549,18 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 	// divide input if necessary
 	commands := strings.Split(input, ";")
 	for i := 0; i < len(commands); i++ {
+
+		// try to record command now if it is not a result of an "autocommand"
+		// (ONSTEP, ONHALT). if there's an error as a result of parsing, it
+		// will be rolled back before committing
+		if !auto {
+			dbg.recording.WriteInput(commands[i])
+		}
+
 		// parse command. format of command[i] wil be normalised
-		result, err = dbg.parseCommand(&commands[i])
+		result, err = dbg.parseCommand(&commands[i], interactive)
 		if err != nil {
+			dbg.recording.Rollback()
 			return false, err
 		}
 
@@ -550,34 +569,34 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (bool, error) {
 		case doNothing:
 			// most commands don't require us to do anything
 			break
+
 		case stepContinue:
 			// emulation should continue to next step
 			step = true
+
 		case emptyInput:
 			// input was empty. if this was an interactive input then try the
 			// default step command
 			if interactive {
-				return dbg.parseInput(dbg.defaultStepCommand, interactive)
+				return dbg.parseInput(dbg.defaultStepCommand, interactive, auto)
 			}
 			return false, nil
+
 		case setDefaultStep:
 			// command has reset what the default step command shoudl be
 			dbg.defaultStepCommand = commands[i]
 			step = true
+
 		case scriptRecordStarted:
-			// command has caused input script recording to begin. we don't want to
-			// record this command in the script file
-			inpt = false
+			// command has caused input script recording to begin. rollback the
+			// call to recordCommand() above because we don't want to record
+			// the fact that we've starting recording in the script itsel
+			dbg.recording.Rollback()
+
 		case scriptRecordEnded:
-			// command has caused script recording to end. we don't want to record
-			// this command in the script file
-			inpt = false
+			// nothing special required when script recording has completed
 		}
 
-		// record command in script file if required
-		if inpt {
-			dbg.scriptRec.add(commands[i])
-		}
 	}
 
 	return step, nil

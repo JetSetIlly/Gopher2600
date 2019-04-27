@@ -14,14 +14,8 @@ type Tokens struct {
 }
 
 func (tk *Tokens) String() string {
+	// TODO: normalise tokens to uppercase except those that match %F and %S
 	return tk.input
-
-	// s := strings.Builder{}
-	// for i := range tk.tokens {
-	// 	s.WriteString(tk.tokens[i])
-	// 	s.WriteString(" ")
-	// }
-	// return s.String()
 }
 
 // Reset begins the token traversal process from the beginning

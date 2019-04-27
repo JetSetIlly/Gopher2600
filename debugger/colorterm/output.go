@@ -19,7 +19,7 @@ func (ct *ColorTerminal) UserPrint(profile console.PrintProfile, s string, a ...
 		ct.Print(ansi.DimPens["yellow"])
 	case console.MachineInfo:
 		ct.Print(ansi.PenColor["cyan"])
-	case console.MachineInfoInternal:
+	case console.EmulatorInfo:
 		ct.Print(ansi.PenColor["blue"])
 	case console.Error:
 		ct.Print(ansi.PenColor["red"])
@@ -29,8 +29,6 @@ func (ct *ColorTerminal) UserPrint(profile console.PrintProfile, s string, a ...
 		ct.Print("  ")
 	case console.Feedback:
 		ct.Print(ansi.DimPens["white"])
-	case console.Script:
-		ct.Print("> ")
 	case console.Prompt:
 		ct.Print(ansi.PenStyles["bold"])
 	}

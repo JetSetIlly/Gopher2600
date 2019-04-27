@@ -43,8 +43,8 @@ func (hm hmove) MachineInfo() string {
 	return "hmove: no movement"
 }
 
-// MachineInfoInternal returns low state information about the type
-func (hm hmove) MachineInfoInternal() string {
+// EmulatorInfo returns low state information about the type
+func (hm hmove) EmulatorInfo() string {
 	if hm.count >= 0 {
 		return fmt.Sprintf("%04b\n", hm.count)
 	}

@@ -138,8 +138,8 @@ func (sp sprite) MachineInfo() string {
 	return s.String()
 }
 
-// MachineInfoInternal returns low state information about the type
-func (sp sprite) MachineInfoInternal() string {
+// EmulatorInfo returns low state information about the type
+func (sp sprite) EmulatorInfo() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%04b ", sp.horizMovement))
 	if sp.horizMovementLatch {

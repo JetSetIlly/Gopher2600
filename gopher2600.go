@@ -26,36 +26,90 @@ import (
 
 const defaultInitScript = ".gopher2600/debuggerInit"
 
+type nop struct{}
+
+func (*nop) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
 func main() {
 	progName := path.Base(os.Args[0])
 
+	var mode string
+	var modeArgPos int
+	var modeFlags *flag.FlagSet
+	var modeFlagsParse func()
+
+	progModes := []string{"RUN", "PLAY", "DEBUG", "DISASM", "FPS", "REGRESS"}
+	defaultMode := "RUN"
+
 	progFlags := flag.NewFlagSet(progName, flag.ContinueOnError)
+
+	// prevent Parse() from outputting it's own error messages
+	progFlags.SetOutput(&nop{})
+
 	err := progFlags.Parse(os.Args[1:])
-	if err == flag.ErrHelp {
-		fmt.Println("  mode or cartridge required")
-		fmt.Println("    available modes: RUN/PLAY, DEBUG, DISASM, FPS, REGRESS")
-		os.Exit(2)
-	}
+	if err != nil {
+		if err == flag.ErrHelp {
+			fmt.Printf("available modes: %s\n", strings.Join(progModes, ", "))
+			fmt.Printf("default: %s\n", defaultMode)
+			os.Exit(2)
+		}
 
-	if len(progFlags.Args()) == 0 {
-		fmt.Println("* mode or cartridge required")
-		os.Exit(2)
-	}
+		// flags have been set that are not recognised. default to the RUN mode
+		// and try again
+		mode = defaultMode
+		modeArgPos = 0
+		modeFlags = flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
+		modeFlagsParse = func() {
+			if len(progFlags.Args()) >= modeArgPos {
+				modeFlags.Parse(os.Args[1:])
+			}
+		}
+	} else {
+		switch progFlags.NArg() {
+		case 0:
+			// no arguments at all. suggest that a cartridge is required
+			fmt.Println("* 2600 cartridge required")
+			os.Exit(2)
+		case 1:
+			// a single argument has been supplied. assume it's a cartridge
+			// name and set the mode to the default mode ...
+			mode = defaultMode
+			modeArgPos = 0
 
-	mode := strings.ToUpper(progFlags.Arg(0))
-	modeArgPos := 1
-	modeFlags := flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
-	modeFlagsParse := func() {
-		if len(progFlags.Args()) >= modeArgPos {
-			modeFlags.Parse(progFlags.Args()[modeArgPos:])
+			// ... unless it apears in the list of modes. in which case, the
+			// single argument is a specified mode. let the mode switch below
+			// handle what to do next.
+			arg := strings.ToUpper(progFlags.Arg(0))
+			for i := range progModes {
+				if progModes[i] == arg {
+					mode = arg
+					modeArgPos = 1
+					break
+				}
+			}
+		default:
+			// many arguments have been supplied. the first argument must be
+			// the mode (the switch below will compalin if it's invalid)
+			mode = strings.ToUpper(progFlags.Arg(0))
+			modeArgPos = 1
+		}
+
+		// all modes can have their own sets of flags. the following prepares
+		// the foundations.
+		modeFlags = flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
+		modeFlagsParse = func() {
+			if len(progFlags.Args()) >= modeArgPos {
+				modeFlags.Parse(progFlags.Args()[modeArgPos:])
+			}
 		}
 	}
 
 	switch mode {
 	default:
-		// RUN is the default mode
-		modeArgPos = 0
-		fallthrough
+		fmt.Printf("* %s mode unrecognised\n", mode)
+		os.Exit(2)
 
 	case "RUN":
 		fallthrough
@@ -112,7 +166,7 @@ func main() {
 			// it's okay if DEBUG mode is started with no cartridges
 			fallthrough
 		case 1:
-			err := dbg.Start(term, modeFlags.Arg(0), *initScript)
+			err := dbg.Start(term, *initScript, modeFlags.Arg(0))
 			if err != nil {
 				fmt.Printf("* error running debugger: %s\n", err)
 				os.Exit(2)

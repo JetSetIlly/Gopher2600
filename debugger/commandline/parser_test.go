@@ -150,17 +150,17 @@ func TestParser(t *testing.T) {
 	var err error
 
 	template = []string{
-		// "DISPLAY (OFF|DEBUG|SCALE [%V]|DEBUGCOLORS)",
-		// "SCRIPT [%F|RECORD [%F]|END]",
-		// "DROP [BREAK|TRAP|WATCH] [%S]",
-		// "GREP %V",
+		"DISPLAY (OFF|DEBUG|SCALE [%V]|DEBUGCOLORS)",
+		"SCRIPT [%F|RECORD [%F]|END]",
+		"DROP [BREAK|TRAP|WATCH] [%S]",
+		"GREP %V",
 		"TEST [FOO [%S]|BAR] (EGG [%S]|FOG|NOG NUG) (TUG)",
-		//"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]",
+		"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]",
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
 		expectEquality(t, template, cmds)
-		memvizOutput(t, "1", cmds)
+		//memvizOutput(t, "1", cmds)
 	}
 }

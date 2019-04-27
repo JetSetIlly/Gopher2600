@@ -10,10 +10,6 @@ import (
 // directives such as the silent directive without passing the burden onto UI
 // implementors
 func (dbg *Debugger) print(pp console.PrintProfile, s string, a ...interface{}) {
-	if dbg.consoleSilent && pp != console.Error {
-		return
-	}
-
 	// trim *all* trailing newlines - UserPrint() will add newlines if required
 	s = strings.TrimRight(s, "\n")
 	if s == "" {
@@ -21,4 +17,9 @@ func (dbg *Debugger) print(pp console.PrintProfile, s string, a ...interface{}) 
 	}
 
 	dbg.console.UserPrint(pp, s, a...)
+
+	// output to script file
+	if pp.IncludeInScriptOutput() {
+		dbg.recording.WriteOutput(s, a...)
+	}
 }

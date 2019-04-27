@@ -51,7 +51,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		// instance of BasicTelevision has been supplied, the caller may be
 		// expecting an error
 		if tvType != tv.GetSpec().ID {
-			return nil, errors.NewFormattedError(errors.DigestTV, "trying to piggyback a tv of a different spec")
+			return nil, errors.NewFormattedError(errors.SDL, "trying to piggyback a tv of a different spec")
 		}
 		gtv.Television = tv
 	}

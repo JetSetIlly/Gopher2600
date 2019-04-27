@@ -47,7 +47,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 
 	case gui.EventMouseRight:
 		data := event.Data.(gui.EventDataMouse)
-		_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false)
+		_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false, false)
 		if err == nil {
 			dbg.print(console.Feedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
 		}
@@ -66,11 +66,18 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 		} else {
 			// runUntilHalt is false which means that the emulation is
 			// not running. at this point, an input loop is probably
-			// running. note that ctrl-c signals do not always reach
+			// running.
+			//
+			// note that ctrl-c signals do not always reach
 			// this far into the program.  for instance, the colorterm
 			// implementation of UserRead() puts the terminal into raw
 			// mode and so must handle ctrl-c events differently.
-			dbg.running = false
+
+			if dbg.recording.IsRecording() {
+				dbg.recording.End()
+			} else {
+				dbg.running = false
+			}
 		}
 	case ev := <-dbg.guiChannel:
 		dbg.guiEventHandler(ev)
