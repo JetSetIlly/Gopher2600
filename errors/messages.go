@@ -61,6 +61,7 @@ var messages = map[Errno]string{
 	UnknownPeripheralEvent: "this peripheral (%s) does not understand that event (%v)",
 
 	// Recorder
-	RecordingError: "error when recording input (%s)",
-	PlaybackError:  "error when playing back recorded input (%s)",
+	RecordingError:    "error when recording input (%s)",
+	PlaybackError:     "error when playing back recorded input (%s)",
+	PlaybackHashError: "hash error when playing back recording input (%s)",
 }

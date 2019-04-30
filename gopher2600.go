@@ -115,7 +115,7 @@ func main() {
 		fallthrough
 
 	case "PLAY":
-		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
 		record := modeFlags.Bool("record", false, "record user input to a file")
@@ -124,12 +124,15 @@ func main() {
 
 		switch len(modeFlags.Args()) {
 		case 0:
-			fmt.Println("* 2600 cartridge required")
-			os.Exit(2)
+			if *recording == "" {
+				fmt.Println("* 2600 cartridge required")
+				os.Exit(2)
+			}
+			fallthrough
 		case 1:
-			err := playmode.Play(modeFlags.Arg(0), *tvMode, float32(*scaling), *stable, *recording, *record)
+			err := playmode.Play(modeFlags.Arg(0), *tvType, float32(*scaling), *stable, *recording, *record)
 			if err != nil {
-				fmt.Printf("* error running emulator: %s\n", err)
+				fmt.Println(err)
 				os.Exit(2)
 			}
 		default:
@@ -204,7 +207,7 @@ func main() {
 
 	case "FPS":
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
-		tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		runTime := modeFlags.String("time", "5s", "run duration (note: there is a 2s overhead)")
 		profile := modeFlags.Bool("profile", false, "perform cpu and memory profiling")
@@ -215,7 +218,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := fps(*profile, modeFlags.Arg(0), *display, *tvMode, float32(*scaling), *runTime)
+			err := fps(*profile, modeFlags.Arg(0), *display, *tvType, float32(*scaling), *runTime)
 			if err != nil {
 				fmt.Printf("* error starting fps profiler: %s\n", err)
 				os.Exit(2)
@@ -275,7 +278,7 @@ func main() {
 			}
 
 		case "ADD":
-			tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
 			modeFlagsParse()
 
@@ -284,7 +287,7 @@ func main() {
 				fmt.Println("* 2600 cartridge required")
 				os.Exit(2)
 			case 1:
-				err := regression.RegressAddCartridge(modeFlags.Arg(0), *tvMode, *numFrames)
+				err := regression.RegressAddCartridge(modeFlags.Arg(0), *tvType, *numFrames)
 				if err != nil {
 					fmt.Printf("* error adding regression test: %s\n", err)
 					os.Exit(2)
@@ -295,7 +298,7 @@ func main() {
 				os.Exit(2)
 			}
 		case "UPDATE":
-			tvMode := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
 			modeFlagsParse()
 
@@ -304,7 +307,7 @@ func main() {
 				fmt.Println("* 2600 cartridge required")
 				os.Exit(2)
 			case 1:
-				err := regression.RegressUpdateCartridge(modeFlags.Arg(0), *tvMode, *numFrames)
+				err := regression.RegressUpdateCartridge(modeFlags.Arg(0), *tvType, *numFrames)
 				if err != nil {
 					fmt.Printf("* error updating regression test: %s\n", err)
 					os.Exit(2)
@@ -318,12 +321,12 @@ func main() {
 	}
 }
 
-func fps(profile bool, cartridgeFile string, display bool, tvMode string, scaling float32, runTime string) error {
+func fps(profile bool, cartridgeFile string, display bool, tvType string, scaling float32, runTime string) error {
 	var fpstv television.Television
 	var err error
 
 	if display {
-		fpstv, err = sdl.NewGUI(tvMode, scaling, nil)
+		fpstv, err = sdl.NewGUI(tvType, scaling, nil)
 		if err != nil {
 			return fmt.Errorf("error preparing television: %s", err)
 		}

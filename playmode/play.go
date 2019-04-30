@@ -9,13 +9,12 @@ import (
 	"gopher2600/recorder"
 	"path"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
 // Play sets the emulation running - without any debugging features
-func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording string, newRecording bool) error {
-	playtv, err := sdl.NewGUI(tvMode, scaling, nil)
+func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording string, newRecording bool) error {
+	playtv, err := sdl.NewGUI(tvType, scaling, nil)
 	if err != nil {
 		return fmt.Errorf("error preparing television: %s", err)
 	}
@@ -31,11 +30,6 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 	}
 	vcs.Ports.Player0.Attach(stk)
 
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return err
-	}
-
 	// create default recording file name if no name has been supplied
 	if newRecording && recording == "" {
 		shortCartName := path.Base(cartridgeFile)
@@ -45,35 +39,67 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 		recording = fmt.Sprintf("recording_%s_%s", shortCartName, timestamp)
 	}
 
+	var rec *recorder.Recorder
+	var plb *recorder.Playback
+
+	// note that we attach the cartridge in three different branches below - we
+	// need to do this at different times depending on whether a new recording
+	// or playback is taking place; or if it's just a regular playback
+
 	if recording != "" {
 		if newRecording {
-			recording, err := recorder.NewRecorder(recording, vcs)
+			err = vcs.AttachCartridge(cartridgeFile)
 			if err != nil {
-				return fmt.Errorf("error preparing VCS: %s", err)
+				return err
+			}
+
+			rec, err = recorder.NewRecorder(recording, vcs)
+			if err != nil {
+				return fmt.Errorf("error preparing recording: %s", err)
 			}
 
 			defer func() {
-				recording.End()
+				rec.End()
 			}()
 
-			vcs.Ports.Player0.AttachTranscriber(recording)
-			vcs.Ports.Player1.AttachTranscriber(recording)
-			vcs.Panel.AttachTranscriber(recording)
+			vcs.Ports.Player0.AttachTranscriber(rec)
+			vcs.Ports.Player1.AttachTranscriber(rec)
+			vcs.Panel.AttachTranscriber(rec)
 		} else {
-			recording, err := recorder.NewPlayback(recording, vcs)
+			plb, err = recorder.NewPlayback(recording, vcs)
 			if err != nil {
-				return fmt.Errorf("error preparing VCS: %s", err)
+				return fmt.Errorf("error playing back recording: %s", err)
 			}
 
-			vcs.Ports.Player0.Attach(recording)
-			vcs.Ports.Player1.Attach(recording)
-			vcs.Panel.Attach(recording)
+			vcs.Ports.Player0.Attach(plb)
+			vcs.Ports.Player1.Attach(plb)
+			vcs.Panel.Attach(plb)
+
+			if cartridgeFile != "" && cartridgeFile != plb.CartName {
+				return fmt.Errorf("error playing back recording: cartridge name doesn't match the name in the recording")
+			}
+
+			// if no cartridge filename has been provided then use the one in
+			// the playback file
+			cartridgeFile = plb.CartName
+
+			err = vcs.AttachCartridge(cartridgeFile)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		err = vcs.AttachCartridge(cartridgeFile)
+		if err != nil {
+			return err
 		}
 	}
 
-	// run while value of running variable is positive
-	var running atomic.Value
-	running.Store(0)
+	// now that we've attached the cartridge check the hash against the
+	// playback has (if it exists)
+	if plb != nil && plb.CartHash != vcs.Mem.Cart.Hash {
+		return fmt.Errorf("error playing back recording: cartridge hash doesn't match")
+	}
 
 	// connect debugger to gui
 	guiChannel := make(chan gui.Event, 2)
@@ -90,6 +116,7 @@ func Play(cartridgeFile, tvMode string, scaling float32, stable bool, recording 
 
 	}
 
+	// run and handle gui events
 	return vcs.Run(func() (bool, error) {
 		select {
 		case ev := <-guiChannel:

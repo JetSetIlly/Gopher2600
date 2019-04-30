@@ -6,6 +6,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/television"
+	"gopher2600/television/renderers"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -17,6 +18,10 @@ type event struct {
 	frame    int
 	scanline int
 	horizpos int
+	hash     string
+
+	// the line in the recording file the playback event appears
+	line int
 }
 
 type playbackSequence struct {
@@ -27,12 +32,19 @@ type playbackSequence struct {
 // Playback is an implementation of the controller interface. it reads from an
 // existing recording file and responds to GetInput() requests
 type Playback struct {
+	CartName string
+	CartHash string
+	TVtype   string
+
 	vcs       *hardware.VCS
+	digest    *renderers.DigestTV
 	sequences map[string]*playbackSequence
 }
 
 // NewPlayback is hte preferred method of implementation for the Playback type
 func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
+	var err error
+
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
 		return nil, errors.NewFormattedError(errors.PlaybackError, "no playback hardware available")
@@ -41,72 +53,82 @@ func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
 	plb := &Playback{vcs: vcs}
 	plb.sequences = make(map[string]*playbackSequence)
 
-	// open file
+	// create digesttv, piggybacking on the tv already being used by vcs
+	plb.digest, err = renderers.NewDigestTV(vcs.TV.GetSpec().ID, vcs.TV)
+	if err != nil {
+		return nil, errors.NewFormattedError(errors.RecordingError, err)
+	}
+
+	// open file; read the entirity of the contents; close file
 	tf, err := os.Open(transcript)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.PlaybackError, err)
 	}
-
 	buffer, err := ioutil.ReadAll(tf)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.PlaybackError, err)
 	}
+	err = tf.Close()
+	if err != nil {
+		return nil, errors.NewFormattedError(errors.PlaybackError, err)
+	}
 
-	_ = tf.Close()
-
-	// convert buffer to an array of lines
+	// convert file contents to an array of lines
 	lines := strings.Split(string(buffer), "\n")
 
-	// read header
-	tvspec := plb.vcs.TV.GetSpec()
-	if tvspec.ID != lines[0] {
-		return nil, errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
+	// read header and perform validation checks
+	err = plb.readHeader(lines)
+	if err != nil {
+		return nil, err
 	}
 
 	// loop through transcript and divide events according to the first field
 	// (the ID)
-	for i := 1; i < len(lines)-1; i++ {
+	for i := numHeaderLines; i < len(lines)-1; i++ {
 		toks := strings.Split(lines[i], fieldSep)
 
 		// ignore lines that don't have enough fields
 		if len(toks) != numFields {
-			continue
+			msg := fmt.Sprintf("expected %d fields at line %d", numFields, i+1)
+			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 
 		// add a new playbackSequence for the id if it doesn't exist
-		id := toks[0]
+		id := toks[fieldID]
 		if _, ok := plb.sequences[id]; !ok {
 			plb.sequences[id] = &playbackSequence{}
 		}
 
 		// create a new event and convert tokens accordingly
 		// any errors in the transcript causes failure
-		event := event{}
+		event := event{line: i + 1}
 
-		n, err := strconv.Atoi(toks[1])
+		n, err := strconv.Atoi(toks[fieldEvent])
 		if err != nil {
-			msg := fmt.Sprintf("line %d, col %d", i+1, len(strings.Join(toks[:2], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:2], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 		event.event = peripherals.Event(n)
 
-		event.frame, err = strconv.Atoi(toks[2])
+		event.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
-			msg := fmt.Sprintf("line %d, col %d", i+1, len(strings.Join(toks[:3], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:3], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 
-		event.scanline, err = strconv.Atoi(toks[3])
+		event.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
-			msg := fmt.Sprintf("line %d, col %d", i+1, len(strings.Join(toks[:4], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:4], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 
-		event.horizpos, err = strconv.Atoi(toks[4])
+		event.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
 		if err != nil {
-			msg := fmt.Sprintf("line %d, col %d", i+1, len(strings.Join(toks[:5], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:5], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
+
+		event.hash = toks[fieldHash]
 
 		// add new event to list of events in the correct playback sequence
 		seq := plb.sequences[id]
@@ -146,6 +168,11 @@ func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
 	// compare current state with the state in the transcript
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
+		if nextEvent.hash != plb.digest.String() {
+			msg := fmt.Sprintf("line %d", nextEvent.line)
+			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, msg)
+		}
+
 		seq.eventCt++
 		return nextEvent.event, nil
 	}

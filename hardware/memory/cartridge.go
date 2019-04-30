@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"gopher2600/errors"
 	"io"
@@ -20,7 +21,14 @@ type Cartridge struct {
 	Area
 	AreaInfo
 
-	name   string
+	// full path to the cartridge as stored on disk
+	Filename string
+
+	// hash of binary loaded from disk. any subsequent pokes to cartridge
+	// memory will not be reflected in the value
+	Hash string
+
+	// cartridge bank-switching method
 	method string
 
 	NumBanks int
@@ -40,6 +48,7 @@ type Cartridge struct {
 }
 
 const ejectedName = "ejected"
+const ejectedHash = "nohash"
 const ejectedMethod = "none"
 
 // NewCart is the preferred method of initialisation for the cartridges
@@ -56,12 +65,12 @@ func NewCart() *Cartridge {
 
 // MachineInfoTerse returns the cartridge information in terse format
 func (cart Cartridge) MachineInfoTerse() string {
-	return fmt.Sprintf("%s [%s] bank=%d", cart.name, cart.method, cart.Bank)
+	return fmt.Sprintf("%s [%s] bank=%d", cart.Filename, cart.method, cart.Bank)
 }
 
 // MachineInfo returns the cartridge information in verbose format
 func (cart Cartridge) MachineInfo() string {
-	return fmt.Sprintf("name: %s\nmethod: %s\nbank:%d", cart.name, cart.method, cart.Bank)
+	return fmt.Sprintf("name: %s\nmethod: %s\nbank:%d", cart.Filename, cart.method, cart.Bank)
 }
 
 // Label is an implementation of Area.Label
@@ -146,6 +155,14 @@ func (cart *Cartridge) Attach(filename string) error {
 		return err
 	}
 
+	// generate hash
+	key := sha1.New()
+	if _, err := io.Copy(key, cf); err != nil {
+		return err
+	}
+	cart.Hash = fmt.Sprintf("%x", key.Sum(nil))
+
+	// we always start in bank 0
 	cart.Bank = 0
 
 	// set default read hooks
@@ -354,7 +371,7 @@ func (cart *Cartridge) Attach(filename string) error {
 	}
 
 	// note name of cartridge
-	cart.name = filename
+	cart.Filename = filename
 
 	return nil
 }
@@ -418,8 +435,9 @@ func (cart *Cartridge) BankSwitch(bank int) error {
 // Eject removes memory from cartridge space and unlike the real hardware,
 // attaches a bank of empty memory - for convenience of the debugger
 func (cart *Cartridge) Eject() {
-	cart.name = ejectedName
+	cart.Filename = ejectedName
 	cart.method = ejectedMethod
+	cart.Hash = ejectedHash
 	cart.NumBanks = 1
 	cart.Bank = 0
 	cart.readBanks(nil, cart.NumBanks)

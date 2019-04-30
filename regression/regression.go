@@ -14,18 +14,13 @@ func RegressDeleteCartridge(cartridgeFile string) error {
 	if err != nil {
 		return err
 	}
-	defer db.endSession()
+	defer db.endSession(true)
 
-	key, err := getCartridgeHash(cartridgeFile)
-	if err != nil {
-		return err
-	}
-
-	if _, ok := db.entries[key]; ok == false {
+	if _, ok := db.entries[cartridgeFile]; ok == false {
 		return errors.NewFormattedError(errors.RegressionEntryDoesNotExist, cartridgeFile)
 	}
 
-	delete(db.entries, key)
+	delete(db.entries, cartridgeFile)
 
 	return nil
 }
@@ -46,7 +41,7 @@ func RegressRunTests(output io.Writer, failOnError bool) (int, int, error) {
 	if err != nil {
 		return -1, -1, err
 	}
-	defer db.endSession()
+	defer db.endSession(false)
 
 	numSucceed := 0
 	numFail := 0

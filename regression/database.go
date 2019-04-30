@@ -1,7 +1,6 @@
 package regression
 
 import (
-	"crypto/sha1"
 	"encoding/csv"
 	"fmt"
 	"gopher2600/errors"
@@ -12,28 +11,14 @@ import (
 
 const regressionDBFile = ".gopher2600/regressionDB"
 
-func getCartridgeHash(cartridgeFile string) (string, error) {
-	f, err := os.Open(cartridgeFile)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	key := sha1.New()
-	if _, err := io.Copy(key, f); err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", key.Sum(nil)), nil
-}
-
 type regressionEntry struct {
-	cartridgeHash string
 	cartridgePath string
 	tvMode        string
 	numOFrames    int
 	screenDigest  string
 }
+
+const numFields = 4
 
 func (entry regressionEntry) String() string {
 	return fmt.Sprintf("%s [%s] frames=%d", entry.cartridgePath, entry.tvMode, entry.numOFrames)
@@ -62,36 +47,37 @@ func startSession() (*regressionDB, error) {
 	return db, nil
 }
 
-func (db *regressionDB) endSession() error {
+func (db *regressionDB) endSession(commitChanges bool) error {
 	// write entries to regression database
-	csvw := csv.NewWriter(db.dbfile)
+	if commitChanges {
+		csvw := csv.NewWriter(db.dbfile)
 
-	err := db.dbfile.Truncate(0)
-	if err != nil {
-		return err
-	}
-
-	db.dbfile.Seek(0, os.SEEK_SET)
-
-	for _, entry := range db.entries {
-		rec := make([]string, 5)
-		rec[0] = entry.cartridgeHash
-		rec[1] = entry.cartridgePath
-		rec[2] = entry.tvMode
-		rec[3] = strconv.Itoa(entry.numOFrames)
-		rec[4] = entry.screenDigest
-
-		err := csvw.Write(rec)
+		err := db.dbfile.Truncate(0)
 		if err != nil {
 			return err
 		}
-	}
 
-	// make sure everything's been written
-	csvw.Flush()
-	err = csvw.Error()
-	if err != nil {
-		return err
+		db.dbfile.Seek(0, os.SEEK_SET)
+
+		for _, entry := range db.entries {
+			rec := make([]string, numFields)
+			rec[0] = entry.cartridgePath
+			rec[1] = entry.tvMode
+			rec[2] = strconv.Itoa(entry.numOFrames)
+			rec[3] = entry.screenDigest
+
+			err := csvw.Write(rec)
+			if err != nil {
+				return err
+			}
+		}
+
+		// make sure everything's been written
+		csvw.Flush()
+		err = csvw.Error()
+		if err != nil {
+			return err
+		}
 	}
 
 	// end session by closing file
@@ -114,7 +100,7 @@ func (db *regressionDB) readEntries() error {
 	csvr.Comment = rune('#')
 	csvr.TrimLeadingSpace = true
 	csvr.ReuseRecord = true
-	csvr.FieldsPerRecord = 5
+	csvr.FieldsPerRecord = numFields
 
 	db.dbfile.Seek(0, os.SEEK_SET)
 
@@ -128,20 +114,19 @@ func (db *regressionDB) readEntries() error {
 			return err
 		}
 
-		numOfFrames, err := strconv.Atoi(rec[3])
+		numOfFrames, err := strconv.Atoi(rec[2])
 		if err != nil {
 			return err
 		}
 
 		// add entry to database
 		entry := regressionEntry{
-			cartridgeHash: rec[0],
-			cartridgePath: rec[1],
-			tvMode:        rec[2],
+			cartridgePath: rec[0],
+			tvMode:        rec[1],
 			numOFrames:    numOfFrames,
-			screenDigest:  rec[4]}
+			screenDigest:  rec[3]}
 
-		db.entries[entry.cartridgeHash] = entry
+		db.entries[entry.cartridgePath] = entry
 	}
 
 	return nil
@@ -153,7 +138,7 @@ func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpd
 	if err != nil {
 		return err
 	}
-	defer db.endSession()
+	defer db.endSession(true)
 
 	// run cartdrige and get digest
 	digest, err := run(cartridgeFile, tvMode, numOfFrames)
@@ -161,20 +146,14 @@ func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpd
 		return err
 	}
 
-	// add new entry to database
-	key, err := getCartridgeHash(cartridgeFile)
-	if err != nil {
-		return err
-	}
 	entry := regressionEntry{
-		cartridgeHash: key,
 		cartridgePath: cartridgeFile,
 		tvMode:        tvMode,
 		numOFrames:    numOfFrames,
 		screenDigest:  digest}
 
 	if allowUpdate == false {
-		if existEntry, ok := db.entries[entry.cartridgeHash]; ok {
+		if existEntry, ok := db.entries[entry.cartridgePath]; ok {
 			if existEntry.cartridgePath == entry.cartridgePath {
 				return errors.NewFormattedError(errors.RegressionEntryExists, entry)
 			}
@@ -183,7 +162,7 @@ func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpd
 		}
 	}
 
-	db.entries[entry.cartridgeHash] = entry
+	db.entries[entry.cartridgePath] = entry
 
 	return nil
 }

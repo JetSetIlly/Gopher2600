@@ -64,4 +64,5 @@ const (
 	// Recorder
 	RecordingError
 	PlaybackError
+	PlaybackHashError
 )
