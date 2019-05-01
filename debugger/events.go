@@ -59,7 +59,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 func (dbg *Debugger) checkInterruptsAndEvents() {
 	// check interrupt channel and run any functions we find in there
 	select {
-	case <-dbg.interruptChannel:
+	case <-dbg.intChan:
 		if dbg.runUntilHalt {
 			// stop emulation at the next step
 			dbg.runUntilHalt = false
@@ -79,7 +79,7 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 				dbg.running = false
 			}
 		}
-	case ev := <-dbg.guiChannel:
+	case ev := <-dbg.guiChan:
 		dbg.guiEventHandler(ev)
 	default:
 		// pro-tip: default case required otherwise the select will block

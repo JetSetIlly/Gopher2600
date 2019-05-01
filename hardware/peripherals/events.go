@@ -30,4 +30,8 @@ const (
 	PanelToggleColor
 	PanelTogglePlayer0Pro
 	PanelTogglePlayer1Pro
+
+	// PanelPowerOff is a special event and should probably be handled outside
+	// of the panel implementation
+	PanelPowerOff
 )

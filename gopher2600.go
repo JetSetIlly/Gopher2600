@@ -12,6 +12,7 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/playmode"
+	"gopher2600/recorder"
 	"gopher2600/regression"
 	"gopher2600/television"
 	"io"
@@ -25,12 +26,6 @@ import (
 )
 
 const defaultInitScript = ".gopher2600/debuggerInit"
-
-type nop struct{}
-
-func (*nop) Write(p []byte) (n int, err error) {
-	return 0, nil
-}
 
 func main() {
 	progName := path.Base(os.Args[0])
@@ -46,7 +41,7 @@ func main() {
 	progFlags := flag.NewFlagSet(progName, flag.ContinueOnError)
 
 	// prevent Parse() from outputting it's own error messages
-	progFlags.SetOutput(&nop{})
+	progFlags.SetOutput(&nopWriter{})
 
 	err := progFlags.Parse(os.Args[1:])
 	if err != nil {
@@ -132,8 +127,13 @@ func main() {
 		case 1:
 			err := playmode.Play(modeFlags.Arg(0), *tvType, float32(*scaling), *stable, *recording, *record)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("* error running: %s\n", err)
 				os.Exit(2)
+			}
+			if *record == true {
+				fmt.Println("! recording completed")
+			} else if *recording != "" {
+				fmt.Println("! playback completed")
 			}
 		default:
 			fmt.Printf("* too many arguments for %s mode\n", mode)
@@ -243,46 +243,59 @@ func main() {
 			var output io.Writer
 			if *verbose == true {
 				output = os.Stdout
+			} else {
+				output = &nopWriter{}
 			}
 
-			switch len(modeFlags.Args()) {
-			case 0:
-				succeed, fail, err := regression.RegressRunTests(output)
-				if err != nil {
-					fmt.Printf("* error during regression tests: %s\n", err)
-					os.Exit(2)
-				}
-				fmt.Printf("regression tests: %d succeed, %d fail\n", succeed, fail)
-			default:
-				fmt.Printf("* too many arguments for %s mode\n", mode)
+			succeed, fail, skipped, err := regression.RegressRunTests(output, modeFlags.Args())
+			if err != nil {
+				fmt.Printf("* error during regression tests: %s\n", err)
 				os.Exit(2)
 			}
+			fmt.Printf("regression tests: %d succeed, %d fail, %d skipped\n", succeed, fail, skipped)
 
 		case "LIST":
-			var output io.Writer
-			output = os.Stdout
-			err := regression.RegressList(output)
-			if err != nil {
-				fmt.Printf("* error during regression listing: %s\n", err)
+			modeFlagsParse()
+			switch len(modeFlags.Args()) {
+			case 0:
+				err := regression.RegressList(os.Stdout)
+				if err != nil {
+					fmt.Printf("* error during regression listing: %s\n", err)
+					os.Exit(2)
+				}
+			default:
+				fmt.Printf("* no additional arguments required when using %s/%s mode\n", mode, subMode)
 				os.Exit(2)
 			}
 
 		case "DELETE":
+			answerYes := modeFlags.Bool("yes", false, "answer yes to confirmation")
 			modeFlagsParse()
 
 			switch len(modeFlags.Args()) {
 			case 0:
-				fmt.Println("* 2600 cartridge required")
+				fmt.Println("* database key required (use REGRESS LIST to view)")
 				os.Exit(2)
 			case 1:
-				err := regression.RegressDelete(modeFlags.Arg(0))
+
+				// use stdin for confirmation unless "yes" flag has been sent
+				var confirmation io.Reader
+				if *answerYes == true {
+					confirmation = new(yesReader)
+				} else {
+					confirmation = os.Stdin
+				}
+
+				ok, err := regression.RegressDelete(os.Stdout, confirmation, modeFlags.Arg(0))
 				if err != nil {
 					fmt.Printf("* error deleting regression entry: %s\n", err)
 					os.Exit(2)
 				}
-				fmt.Printf("! deleted %s from regression database\n", path.Base(modeFlags.Arg(0)))
+				if ok {
+					fmt.Printf("! deleted %s from regression database\n", path.Base(modeFlags.Arg(0)))
+				}
 			default:
-				fmt.Printf("* too many arguments for %s mode\n", mode)
+				fmt.Printf("* only one entry can be deleted at at time when using %s/%s \n", mode, subMode)
 				os.Exit(2)
 			}
 
@@ -296,20 +309,27 @@ func main() {
 				fmt.Println("* 2600 cartridge or playback file required")
 				os.Exit(2)
 			case 1:
-				// TODO: adding different record types
-				newRecord := &regression.FrameRecord{
-					CartridgeFile: modeFlags.Arg(0),
-					TVtype:        *tvType,
-					NumFrames:     *numFrames}
+				var rec regression.Handler
 
-				err := regression.RegressAdd(newRecord)
+				if recorder.IsPlaybackFile(modeFlags.Arg(0)) {
+					rec = &regression.PlaybackRegression{
+						Script: modeFlags.Arg(0),
+					}
+				} else {
+					rec = &regression.FrameRegression{
+						CartFile:  modeFlags.Arg(0),
+						TVtype:    *tvType,
+						NumFrames: *numFrames}
+				}
+
+				err := regression.RegressAdd(rec)
 				if err != nil {
 					fmt.Printf("* error adding regression test: %s\n", err)
 					os.Exit(2)
 				}
 				fmt.Printf("! added %s to regression database\n", path.Base(modeFlags.Arg(0)))
 			default:
-				fmt.Printf("* too many arguments for %s mode\n", mode)
+				fmt.Printf("* regression tests must be added one at a time when using %s/%s mode\n", mode, subMode)
 				os.Exit(2)
 			}
 		}
@@ -430,4 +450,19 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	}
 
 	return nil
+}
+
+// special purpose io.Reader / io.Writer
+
+type nopWriter struct{}
+
+func (*nopWriter) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+type yesReader struct{}
+
+func (*yesReader) Read(p []byte) (n int, err error) {
+	p[0] = 'y'
+	return 1, nil
 }

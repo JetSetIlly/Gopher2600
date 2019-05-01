@@ -19,7 +19,7 @@ var messages = map[Errno]string{
 	ScriptRecordingError: "error when recording script (%s)",
 
 	// Regression
-	RegressionDBError: "database error: (%s)",
+	RegressionDBError: "database error: %s",
 	RegressionFail:    "screen digest mismatch (%s)",
 
 	// CPU
@@ -57,9 +57,11 @@ var messages = map[Errno]string{
 	NoPlayerPort:           "VCS only supports two players (0 and 1)",
 	ControllerUnplugged:    "controller unplugged",
 	UnknownPeripheralEvent: "this peripheral (%s) does not understand that event (%v)",
+	PowerOff:               "emulated machine has been powered off",
 
 	// Recorder
-	RecordingError:    "error when recording input (%s)",
-	PlaybackError:     "error when playing back recorded input (%s)",
-	PlaybackHashError: "hash error when playing back recording input (%s)",
+	RecordingError:      "error when recording input (%s)",
+	PlaybackInvalidFile: "not a vcs playback file",
+	PlaybackError:       "error playing back recording (%s)",
+	PlaybackHashError:   "hash error when playing back recording input (%s)",
 }

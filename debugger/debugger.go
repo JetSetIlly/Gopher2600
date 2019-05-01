@@ -115,10 +115,10 @@ type Debugger struct {
 	input []byte
 
 	// channel for communicating with the debugger from the ctrl-c goroutine
-	interruptChannel chan os.Signal
+	intChan chan os.Signal
 
 	// channel for communicating with the debugger from the gui goroutine
-	guiChannel chan gui.Event
+	guiChan chan gui.Event
 
 	// record user input to a script file
 	recording script.Recorder
@@ -191,11 +191,12 @@ func NewDebugger() (*Debugger, error) {
 	dbg.input = make([]byte, 255)
 
 	// make synchronisation channels
-	dbg.interruptChannel = make(chan os.Signal, 2)
-	dbg.guiChannel = make(chan gui.Event, 2)
+	dbg.intChan = make(chan os.Signal, 1)
+	dbg.guiChan = make(chan gui.Event, 2)
+	signal.Notify(dbg.intChan, os.Interrupt)
 
 	// connect debugger to gui
-	dbg.gui.SetEventChannel(dbg.guiChannel)
+	dbg.gui.SetEventChannel(dbg.guiChan)
 
 	return dbg, nil
 }
@@ -221,10 +222,6 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 	}
 
 	dbg.running = true
-
-	// create interrupt channel
-	dbg.interruptChannel = make(chan os.Signal, 1)
-	signal.Notify(dbg.interruptChannel, os.Interrupt)
 
 	// run initialisation script
 	if initScript != "" {
@@ -389,7 +386,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			dbg.runUntilHalt = false
 
 			// get user input
-			n, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChannel, dbg.guiEventHandler)
+			n, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
 			if err != nil {
 				switch err := err.(type) {
 

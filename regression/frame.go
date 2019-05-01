@@ -17,63 +17,63 @@ const (
 	numFrameFields
 )
 
-// FrameRecord is the simplest regression database record type
-type FrameRecord struct {
-	key           int
-	CartridgeFile string
-	TVtype        string
-	NumFrames     int
-	screenDigest  string
+// FrameRegression is the simplest regression type
+type FrameRegression struct {
+	key          int
+	CartFile     string
+	TVtype       string
+	NumFrames    int
+	screenDigest string
 }
 
-func (rec FrameRecord) getID() string {
+func (reg FrameRegression) getID() string {
 	return "frame"
 }
 
-func newFrameRecord(key int, csv string) (*FrameRecord, error) {
-	rec := &FrameRecord{key: key}
+func newFrameRegression(key int, csv string) (*FrameRegression, error) {
+	reg := &FrameRegression{key: key}
 
 	// loop through file until EOF is reached
 	fields := strings.Split(csv, ",")
-	rec.screenDigest = fields[frameFieldDigest]
-	rec.CartridgeFile = fields[frameFieldCartName]
-	rec.TVtype = fields[frameFieldTVtype]
+	reg.screenDigest = fields[frameFieldDigest]
+	reg.CartFile = fields[frameFieldCartName]
+	reg.TVtype = fields[frameFieldTVtype]
 
 	var err error
 
-	rec.NumFrames, err = strconv.Atoi(fields[frameFieldNumFrames])
+	reg.NumFrames, err = strconv.Atoi(fields[frameFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[frameFieldNumFrames])
 		return nil, errors.NewFormattedError(errors.RegressionDBError, msg)
 	}
 
-	return rec, nil
+	return reg, nil
 }
 
-func (rec *FrameRecord) setKey(key int) {
-	rec.key = key
+func (reg *FrameRegression) setKey(key int) {
+	reg.key = key
 }
 
-func (rec FrameRecord) getKey() int {
-	return rec.key
+func (reg FrameRegression) getKey() int {
+	return reg.key
 }
 
-func (rec *FrameRecord) getCSV() string {
+func (reg *FrameRegression) getCSV() string {
 	return fmt.Sprintf("%s%s%s%s%s%s%d%s%s",
-		csvLeader(rec), fieldSep,
-		rec.CartridgeFile, fieldSep,
-		rec.TVtype, fieldSep,
-		rec.NumFrames, fieldSep,
-		rec.screenDigest,
+		csvLeader(reg), fieldSep,
+		reg.CartFile, fieldSep,
+		reg.TVtype, fieldSep,
+		reg.NumFrames, fieldSep,
+		reg.screenDigest,
 	)
 }
 
-func (rec FrameRecord) String() string {
-	return fmt.Sprintf("%s [%s] frames=%d", rec.CartridgeFile, rec.TVtype, rec.NumFrames)
+func (reg FrameRegression) String() string {
+	return fmt.Sprintf("[%s] %s [%s] frames=%d", reg.getID(), reg.CartFile, reg.TVtype, reg.NumFrames)
 }
 
-func (rec *FrameRecord) regress(newRecord bool) (bool, error) {
-	tv, err := renderers.NewDigestTV(rec.TVtype, nil)
+func (reg *FrameRegression) regress(newRegression bool) (bool, error) {
+	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
 		return false, fmt.Errorf("error preparing television: %s", err)
 	}
@@ -83,20 +83,23 @@ func (rec *FrameRecord) regress(newRecord bool) (bool, error) {
 		return false, fmt.Errorf("error preparing VCS: %s", err)
 	}
 
-	err = vcs.AttachCartridge(rec.CartridgeFile)
+	err = vcs.AttachCartridge(reg.CartFile)
 	if err != nil {
 		return false, err
 	}
 
-	err = vcs.RunForFrameCount(rec.NumFrames)
+	err = vcs.RunForFrameCount(reg.NumFrames)
 	if err != nil {
 		return false, err
 	}
 
-	if newRecord {
-		rec.screenDigest = tv.String()
+	if newRegression {
+		reg.screenDigest = tv.String()
 		return true, nil
 	}
 
-	return tv.String() == rec.screenDigest, nil
+	return tv.String() == reg.screenDigest, nil
+}
+
+func (reg FrameRegression) cleanUp() {
 }

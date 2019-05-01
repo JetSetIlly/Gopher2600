@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -22,21 +23,26 @@ const fieldSep = ", "
 // playback file header format
 // ---------------------------
 //
+// # vcs_playback
 // # <cartridge name>
 // # <cartridge hash>
 // # <tv type>
 
 const (
-	lineCartName int = iota
+	lineMagicString int = iota
+	lineCartName
 	lineCartHash
 	lineTVtype
 	numHeaderLines
 )
 
+const magicString = "vcs_playback"
+
 func (rec *Recorder) writeHeader() error {
 	lines := make([]string, numHeaderLines)
 
 	// add header information
+	lines[lineMagicString] = magicString
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
 	lines[lineTVtype] = fmt.Sprintf("%v\n", rec.vcs.TV.GetSpec().ID)
@@ -59,16 +65,31 @@ func (rec *Recorder) writeHeader() error {
 }
 
 func (plb *Playback) readHeader(lines []string) error {
+	if lines[lineMagicString] != magicString {
+		return errors.NewFormattedError(errors.PlaybackInvalidFile)
+	}
+
 	// read header
-	plb.CartName = lines[lineCartName]
+	plb.CartFile = lines[lineCartName]
 	plb.CartHash = lines[lineCartHash]
 	plb.TVtype = lines[lineTVtype]
 
-	// validate header
-	tvspec := plb.vcs.TV.GetSpec()
-	if tvspec.ID != lines[lineTVtype] {
-		return errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
+	return nil
+}
+
+// IsPlaybackFile returns true if file appears to be a playback file.
+func IsPlaybackFile(filename string) bool {
+	f, err := os.Open(filename)
+	if err != nil {
+		return false
+	}
+	defer func() { f.Close() }()
+
+	b := make([]byte, len(magicString))
+	n, err := f.Read(b)
+	if n != len(magicString) || err != nil {
+		return false
 	}
 
-	return nil
+	return string(b) == magicString
 }

@@ -58,9 +58,11 @@ const (
 	NoPlayerPort
 	ControllerUnplugged
 	UnknownPeripheralEvent
+	PowerOff
 
 	// Recorder
 	RecordingError
+	PlaybackInvalidFile
 	PlaybackError
 	PlaybackHashError
 )

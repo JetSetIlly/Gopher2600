@@ -2,11 +2,14 @@ package playmode
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals/sticks"
 	"gopher2600/recorder"
+	"os"
+	"os/signal"
 	"path"
 	"strings"
 	"time"
@@ -14,14 +17,18 @@ import (
 
 // Play sets the emulation running - without any debugging features
 func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording string, newRecording bool) error {
+	if recorder.IsPlaybackFile(cartridgeFile) {
+		return fmt.Errorf("specified cartridge is a playback file. use -recording flag")
+	}
+
 	playtv, err := sdl.NewGUI(tvType, scaling, nil)
 	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
+		return fmt.Errorf("preparing television: %s", err)
 	}
 
 	vcs, err := hardware.NewVCS(playtv)
 	if err != nil {
-		return fmt.Errorf("error preparing VCS: %s", err)
+		return fmt.Errorf("preparing VCS: %s", err)
 	}
 
 	stk, err := sticks.NewSplaceStick()
@@ -55,7 +62,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 
 			rec, err = recorder.NewRecorder(recording, vcs)
 			if err != nil {
-				return fmt.Errorf("error preparing recording: %s", err)
+				return err
 			}
 
 			defer func() {
@@ -66,24 +73,25 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			vcs.Ports.Player1.AttachTranscriber(rec)
 			vcs.Panel.AttachTranscriber(rec)
 		} else {
-			plb, err = recorder.NewPlayback(recording, vcs)
+			plb, err = recorder.NewPlayback(recording)
 			if err != nil {
-				return fmt.Errorf("error playing back recording: %s", err)
+				return err
 			}
 
-			vcs.Ports.Player0.Attach(plb)
-			vcs.Ports.Player1.Attach(plb)
-			vcs.Panel.Attach(plb)
-
-			if cartridgeFile != "" && cartridgeFile != plb.CartName {
-				return fmt.Errorf("error playing back recording: cartridge name doesn't match the name in the recording")
+			if cartridgeFile != "" && cartridgeFile != plb.CartFile {
+				return fmt.Errorf("playback: cartridge name doesn't match the name in the recording")
 			}
 
 			// if no cartridge filename has been provided then use the one in
 			// the playback file
-			cartridgeFile = plb.CartName
+			cartridgeFile = plb.CartFile
 
 			err = vcs.AttachCartridge(cartridgeFile)
+			if err != nil {
+				return err
+			}
+
+			err = plb.AttachToVCS(vcs)
 			if err != nil {
 				return err
 			}
@@ -91,14 +99,14 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 	} else {
 		err = vcs.AttachCartridge(cartridgeFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("playback: %s", err)
 		}
 	}
 
 	// now that we've attached the cartridge check the hash against the
 	// playback has (if it exists)
 	if plb != nil && plb.CartHash != vcs.Mem.Cart.Hash {
-		return fmt.Errorf("error playing back recording: cartridge hash doesn't match")
+		return fmt.Errorf("playback: cartridge hash doesn't match")
 	}
 
 	// connect debugger to gui
@@ -112,13 +120,20 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 	}
 	err = playtv.SetFeature(request, true)
 	if err != nil {
-		return fmt.Errorf("error preparing television: %s", err)
+		return fmt.Errorf("preparing television: %s", err)
 
 	}
 
+	// we need to make sure we call the deferred function rec.End() even when
+	// ctrl-c is pressed. redirect interrupt signal to an os.Signal channel
+	intChan := make(chan os.Signal, 1)
+	signal.Notify(intChan, os.Interrupt)
+
 	// run and handle gui events
-	return vcs.Run(func() (bool, error) {
+	err = vcs.Run(func() (bool, error) {
 		select {
+		case <-intChan:
+			return false, nil
 		case ev := <-guiChannel:
 			switch ev.ID {
 			case gui.EventWindowClose:
@@ -131,4 +146,16 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 		}
 		return true, nil
 	})
+
+	if err != nil {
+		// filter PowerOff errors
+		switch err := err.(type) {
+		case errors.FormattedError:
+			if err.Errno == errors.PowerOff {
+				return nil
+			}
+		}
+	}
+
+	return err
 }

@@ -32,34 +32,22 @@ type playbackSequence struct {
 // Playback is an implementation of the controller interface. it reads from an
 // existing recording file and responds to GetInput() requests
 type Playback struct {
-	CartName string
+	CartFile string
 	CartHash string
 	TVtype   string
 
+	sequences map[string]*playbackSequence
 	vcs       *hardware.VCS
 	digest    *renderers.DigestTV
-	sequences map[string]*playbackSequence
 }
 
 // NewPlayback is hte preferred method of implementation for the Playback type
-func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
+func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
-	// check we're working with correct information
-	if vcs == nil || vcs.TV == nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, "no playback hardware available")
-	}
-
-	plb := &Playback{vcs: vcs}
+	plb := &Playback{}
 	plb.sequences = make(map[string]*playbackSequence)
 
-	// create digesttv, piggybacking on the tv already being used by vcs
-	plb.digest, err = renderers.NewDigestTV(vcs.TV.GetSpec().ID, vcs.TV)
-	if err != nil {
-		return nil, errors.NewFormattedError(errors.RecordingError, err)
-	}
-
-	// open file; read the entirity of the contents; close file
 	tf, err := os.Open(transcript)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.PlaybackError, err)
@@ -136,6 +124,41 @@ func NewPlayback(transcript string, vcs *hardware.VCS) (*Playback, error) {
 	}
 
 	return plb, nil
+}
+
+// AttachToVCS attaches the playback instance (an implementation of the
+// controller interface) to the supplied VCS
+func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
+	// check we're working with correct information
+	if vcs == nil || vcs.TV == nil {
+		return errors.NewFormattedError(errors.PlaybackError, "no playback hardware available")
+	}
+	plb.vcs = vcs
+
+	// validate header
+	if plb.vcs.TV.GetSpec().ID != plb.TVtype {
+		return errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
+	}
+
+	// create digesttv, piggybacking on the tv already being used by vcs;
+	// unless that tv is already a digesttv
+	switch tv := plb.vcs.TV.(type) {
+	case *renderers.DigestTV:
+		plb.digest = tv
+	default:
+		var err error
+		plb.digest, err = renderers.NewDigestTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
+		if err != nil {
+			return errors.NewFormattedError(errors.RecordingError, err)
+		}
+	}
+
+	// attach playback to controllers
+	vcs.Ports.Player0.Attach(plb)
+	vcs.Ports.Player1.Attach(plb)
+	vcs.Panel.Attach(plb)
+
+	return nil
 }
 
 // GetInput implements peripherals.Controller interface

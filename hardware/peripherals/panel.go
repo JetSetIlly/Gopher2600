@@ -8,6 +8,9 @@ import (
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
+// PanelID is the name used to identify panel events
+const PanelID = "Panel"
+
 // Panel represents the console's front control panel
 type Panel struct {
 	peripheral
@@ -25,7 +28,7 @@ type Panel struct {
 // NewPanel is the preferred method of initialisation for the Panel type
 func NewPanel(riot memory.PeriphBus) *Panel {
 	pan := &Panel{
-		id:    "Panel",
+		id:    PanelID,
 		riot:  riot,
 		color: true}
 
@@ -92,6 +95,8 @@ func (pan *Panel) Handle(event Event) error {
 		pan.p0pro = !pan.p0pro
 	case PanelTogglePlayer1Pro:
 		pan.p1pro = !pan.p1pro
+	case PanelPowerOff:
+		return errors.NewFormattedError(errors.PowerOff)
 	default:
 		return errors.NewFormattedError(errors.UnknownPeripheralEvent, pan.id, event)
 	}
