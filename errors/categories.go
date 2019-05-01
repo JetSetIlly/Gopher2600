@@ -20,10 +20,8 @@ const (
 	ScriptEnd
 
 	// Regression
-	RegressionEntryExists
-	RegressionEntryCollision
-	RegressionEntryDoesNotExist
-	RegressionEntryFail
+	RegressionDBError
+	RegressionFail
 
 	// CPU
 	UnimplementedInstruction

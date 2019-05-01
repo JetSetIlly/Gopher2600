@@ -19,10 +19,8 @@ var messages = map[Errno]string{
 	ScriptRecordingError: "error when recording script (%s)",
 
 	// Regression
-	RegressionEntryExists:       "entry exists (%s)",
-	RegressionEntryCollision:    "ROM hash collision (%s AND %s)",
-	RegressionEntryDoesNotExist: "entry missing (%s)",
-	RegressionEntryFail:         "screen digest mismatch (%s)",
+	RegressionDBError: "database error: (%s)",
+	RegressionFail:    "screen digest mismatch (%s)",
 
 	// CPU
 	UnimplementedInstruction:       "unimplemented instruction (%0#x) at (%#04x)",

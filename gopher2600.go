@@ -235,9 +235,9 @@ func main() {
 		default:
 			modeArgPos-- // undo modeArgPos adjustment
 			fallthrough
+
 		case "RUN":
 			verbose := modeFlags.Bool("verbose", false, "display details of each test")
-			failOnError := modeFlags.Bool("fail", false, "fail on error: boolean")
 			modeFlagsParse()
 
 			var output io.Writer
@@ -247,7 +247,7 @@ func main() {
 
 			switch len(modeFlags.Args()) {
 			case 0:
-				succeed, fail, err := regression.RegressRunTests(output, *failOnError)
+				succeed, fail, err := regression.RegressRunTests(output)
 				if err != nil {
 					fmt.Printf("* error during regression tests: %s\n", err)
 					os.Exit(2)
@@ -255,6 +255,15 @@ func main() {
 				fmt.Printf("regression tests: %d succeed, %d fail\n", succeed, fail)
 			default:
 				fmt.Printf("* too many arguments for %s mode\n", mode)
+				os.Exit(2)
+			}
+
+		case "LIST":
+			var output io.Writer
+			output = os.Stdout
+			err := regression.RegressList(output)
+			if err != nil {
+				fmt.Printf("* error during regression listing: %s\n", err)
 				os.Exit(2)
 			}
 
@@ -266,7 +275,7 @@ func main() {
 				fmt.Println("* 2600 cartridge required")
 				os.Exit(2)
 			case 1:
-				err := regression.RegressDeleteCartridge(modeFlags.Arg(0))
+				err := regression.RegressDelete(modeFlags.Arg(0))
 				if err != nil {
 					fmt.Printf("* error deleting regression entry: %s\n", err)
 					os.Exit(2)
@@ -284,35 +293,21 @@ func main() {
 
 			switch len(modeFlags.Args()) {
 			case 0:
-				fmt.Println("* 2600 cartridge required")
+				fmt.Println("* 2600 cartridge or playback file required")
 				os.Exit(2)
 			case 1:
-				err := regression.RegressAddCartridge(modeFlags.Arg(0), *tvType, *numFrames)
+				// TODO: adding different record types
+				newRecord := &regression.FrameRecord{
+					CartridgeFile: modeFlags.Arg(0),
+					TVtype:        *tvType,
+					NumFrames:     *numFrames}
+
+				err := regression.RegressAdd(newRecord)
 				if err != nil {
 					fmt.Printf("* error adding regression test: %s\n", err)
 					os.Exit(2)
 				}
 				fmt.Printf("! added %s to regression database\n", path.Base(modeFlags.Arg(0)))
-			default:
-				fmt.Printf("* too many arguments for %s mode\n", mode)
-				os.Exit(2)
-			}
-		case "UPDATE":
-			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
-			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
-			modeFlagsParse()
-
-			switch len(modeFlags.Args()) {
-			case 0:
-				fmt.Println("* 2600 cartridge required")
-				os.Exit(2)
-			case 1:
-				err := regression.RegressUpdateCartridge(modeFlags.Arg(0), *tvType, *numFrames)
-				if err != nil {
-					fmt.Printf("* error updating regression test: %s\n", err)
-					os.Exit(2)
-				}
-				fmt.Printf("! updated %s in regression database\n", path.Base(modeFlags.Arg(0)))
 			default:
 				fmt.Printf("* too many arguments for %s mode\n", mode)
 				os.Exit(2)

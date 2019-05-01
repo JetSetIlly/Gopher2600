@@ -1,32 +1,65 @@
 package regression
 
 import (
-	"encoding/csv"
 	"fmt"
 	"gopher2600/errors"
 	"io"
+	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 const regressionDBFile = ".gopher2600/regressionDB"
+const fieldSep = ","
+const recordSep = "\n"
 
-type regressionEntry struct {
-	cartridgePath string
-	tvMode        string
-	numOFrames    int
-	screenDigest  string
-}
-
-const numFields = 4
-
-func (entry regressionEntry) String() string {
-	return fmt.Sprintf("%s [%s] frames=%d", entry.cartridgePath, entry.tvMode, entry.numOFrames)
-}
+// arbitrary number of records
+const maxRecords = 1000
 
 type regressionDB struct {
 	dbfile  *os.File
-	entries map[string]regressionEntry
+	records map[int]record
+
+	// sorted list of keys. used for:
+	// - displaying records in correct order in listRecords()
+	// - saving in correct order in endSession()
+	keys []int
+}
+
+type record interface {
+	// getID returns the string that is used to identify the record type in the
+	// database
+	getID() string
+
+	// String implements the Stringer interface
+	String() string
+
+	// setKey sets the key value for the record
+	setKey(int)
+
+	// getKey returns the key assigned to the record
+	getKey() int
+
+	// getCSV returns the comma separated string representing the record.
+	// without record separator. the first two fields should be the result of
+	// csvRecordLeader()
+	getCSV() string
+
+	// Run performs the regression test for the record type
+	regress(newRecord bool) (bool, error)
+}
+
+const (
+	leaderFieldKey int = iota
+	leaderFieldID
+	numLeaderFields
+)
+
+// csvRecordLeader returns the first two fields required for every record type
+func csvLeader(rec record) string {
+	return fmt.Sprintf("%03d%s%s", rec.getKey(), fieldSep, rec.getID())
 }
 
 func startSession() (*regressionDB, error) {
@@ -39,7 +72,7 @@ func startSession() (*regressionDB, error) {
 		return nil, err
 	}
 
-	err = db.readEntries()
+	err = db.readRecords()
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +81,8 @@ func startSession() (*regressionDB, error) {
 }
 
 func (db *regressionDB) endSession(commitChanges bool) error {
-	// write entries to regression database
+	// write records to regression database
 	if commitChanges {
-		csvw := csv.NewWriter(db.dbfile)
-
 		err := db.dbfile.Truncate(0)
 		if err != nil {
 			return err
@@ -59,24 +90,9 @@ func (db *regressionDB) endSession(commitChanges bool) error {
 
 		db.dbfile.Seek(0, os.SEEK_SET)
 
-		for _, entry := range db.entries {
-			rec := make([]string, numFields)
-			rec[0] = entry.cartridgePath
-			rec[1] = entry.tvMode
-			rec[2] = strconv.Itoa(entry.numOFrames)
-			rec[3] = entry.screenDigest
-
-			err := csvw.Write(rec)
-			if err != nil {
-				return err
-			}
-		}
-
-		// make sure everything's been written
-		csvw.Flush()
-		err = csvw.Error()
-		if err != nil {
-			return err
+		for _, key := range db.keys {
+			db.dbfile.WriteString(db.records[key].getCSV())
+			db.dbfile.WriteString(recordSep)
 		}
 	}
 
@@ -91,78 +107,115 @@ func (db *regressionDB) endSession(commitChanges bool) error {
 	return nil
 }
 
-func (db *regressionDB) readEntries() error {
-	// readEntries clobbers the contents of db.entries
-	db.entries = make(map[string]regressionEntry, len(db.entries))
+func (db *regressionDB) readRecords() error {
+	// readrecords clobbers the contents of db.entrie
+	db.records = make(map[int]record, len(db.records))
 
-	// treat the file as a CSV file
-	csvr := csv.NewReader(db.dbfile)
-	csvr.Comment = rune('#')
-	csvr.TrimLeadingSpace = true
-	csvr.ReuseRecord = true
-	csvr.FieldsPerRecord = numFields
-
+	// make sure we're at the beginning of the file
 	db.dbfile.Seek(0, os.SEEK_SET)
 
-	for {
-		// loop through file until EOF is reached
-		rec, err := csvr.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		numOfFrames, err := strconv.Atoi(rec[2])
-		if err != nil {
-			return err
-		}
-
-		// add entry to database
-		entry := regressionEntry{
-			cartridgePath: rec[0],
-			tvMode:        rec[1],
-			numOFrames:    numOfFrames,
-			screenDigest:  rec[3]}
-
-		db.entries[entry.cartridgePath] = entry
+	buffer, err := ioutil.ReadAll(db.dbfile)
+	if err != nil {
+		return errors.NewFormattedError(errors.RegressionDBError, err)
 	}
+
+	// split records
+	lines := strings.Split(string(buffer), recordSep)
+
+	for i := 0; i < len(lines); i++ {
+		lines[i] = strings.TrimSpace(lines[i])
+		if len(lines[i]) == 0 {
+			continue
+		}
+
+		// loop through file until EOF is reached
+		fields := strings.SplitN(lines[i], fieldSep, numLeaderFields+1)
+
+		key, err := strconv.Atoi(fields[leaderFieldKey])
+		if err != nil {
+			msg := fmt.Sprintf("invalid key [%s] at line %d", fields[leaderFieldKey], i+1)
+			return errors.NewFormattedError(errors.RegressionDBError, msg)
+		}
+
+		if _, ok := db.records[key]; ok {
+			msg := fmt.Sprintf("duplicate key [%v] at line %d", key, i+1)
+			return errors.NewFormattedError(errors.RegressionDBError, msg)
+		}
+
+		var rec record
+
+		switch fields[leaderFieldID] {
+		case "frame":
+			rec, err = newFrameRecord(key, fields[numLeaderFields])
+			if err != nil {
+				return err
+			}
+		default:
+			msg := fmt.Sprintf("unrecognised record type [%s]", fields[leaderFieldID])
+			return errors.NewFormattedError(errors.RegressionDBError, msg)
+		}
+
+		db.records[key] = rec
+
+		// add key to list
+		db.keys = append(db.keys, key)
+	}
+
+	// sort key list
+	sort.Ints(db.keys)
 
 	return nil
 }
 
-// RegressAddCartridge adds a cartridge to the regression db
-func addCartridge(cartridgeFile string, tvMode string, numOfFrames int, allowUpdate bool) error {
-	db, err := startSession()
-	if err != nil {
-		return err
+func (db regressionDB) listRecords(output io.Writer) {
+	for k := range db.keys {
+		output.Write([]byte(fmt.Sprintf("%03d [%s] ", db.keys[k], db.records[db.keys[k]].getID())))
+		output.Write([]byte(db.records[db.keys[k]].String()))
+		output.Write([]byte("\n"))
 	}
-	defer db.endSession(true)
+}
 
-	// run cartdrige and get digest
-	digest, err := run(cartridgeFile, tvMode, numOfFrames)
-	if err != nil {
-		return err
-	}
+// addRecord adds a cartridge to the regression db
+func (db *regressionDB) addRecord(rec record) error {
+	var key int
 
-	entry := regressionEntry{
-		cartridgePath: cartridgeFile,
-		tvMode:        tvMode,
-		numOFrames:    numOfFrames,
-		screenDigest:  digest}
-
-	if allowUpdate == false {
-		if existEntry, ok := db.entries[entry.cartridgePath]; ok {
-			if existEntry.cartridgePath == entry.cartridgePath {
-				return errors.NewFormattedError(errors.RegressionEntryExists, entry)
-			}
-
-			return errors.NewFormattedError(errors.RegressionEntryCollision, entry.cartridgePath, existEntry.cartridgePath)
+	// find spare key
+	for key = 0; key < maxRecords; key++ {
+		if _, ok := db.records[key]; !ok {
+			break
 		}
 	}
 
-	db.entries[entry.cartridgePath] = entry
+	if key == maxRecords {
+		msg := fmt.Sprintf("%d record maximum exceeded", maxRecords)
+		return errors.NewFormattedError(errors.RegressionDBError, msg)
+	}
+
+	rec.setKey(key)
+	db.records[key] = rec
+
+	// add key to list and resort
+	db.keys = append(db.keys, key)
+	sort.Ints(db.keys)
+
+	return nil
+}
+
+func (db *regressionDB) delRecord(key int) error {
+	if _, ok := db.records[key]; ok == false {
+		msg := fmt.Sprintf("key not found [%d]", key)
+		return errors.NewFormattedError(errors.RegressionDBError, msg)
+	}
+
+	delete(db.records, key)
+
+	// find key in list and delete
+	for i := 0; i < len(db.keys); i++ {
+		if db.keys[i] == key {
+			db.keys = append(db.keys[:i], db.keys[i+1:]...)
+			break // for loop
+		}
+	}
 
 	return nil
 }
