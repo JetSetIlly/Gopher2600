@@ -64,5 +64,5 @@ func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, erro
 
 // Poke is the implementation of Memory.Area.Poke
 func (area ChipMemory) Poke(address uint16, value uint8) error {
-	return errors.NewFormattedError(errors.UnPokeableAddress, address)
+	return errors.NewFormattedError(errors.UnpokeableAddress, address)
 }

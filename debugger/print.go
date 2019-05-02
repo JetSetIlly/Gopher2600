@@ -20,6 +20,6 @@ func (dbg *Debugger) print(pp console.PrintProfile, s string, a ...interface{}) 
 
 	// output to script file
 	if pp.IncludeInScriptOutput() {
-		dbg.recording.WriteOutput(s, a...)
+		dbg.scriptScribe.WriteOutput(s, a...)
 	}
 }

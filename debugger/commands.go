@@ -92,7 +92,7 @@ var commandTemplate = []string{
 	cmdRIOT,
 	cmdReset,
 	cmdRun,
-	cmdScript + " [RECORD [%S]|END|%F]",
+	cmdScript + " [WRITE [%S]|END|%F]",
 	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
@@ -108,7 +108,7 @@ var commandTemplate = []string{
 
 // list of commands that should not be executed when recording/playing scripts
 var scriptUnsafeTemplate = []string{
-	cmdScript + " [RECORD [%S]]",
+	cmdScript + " [WRITE [%S]]",
 	cmdRun,
 }
 
@@ -195,7 +195,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.recording.IsRecording() || !interactive {
+	if dbg.scriptScribe.IsActive() || !interactive {
 		tokens.Reset()
 
 		err := scriptUnsafeCommands.ValidateTokens(tokens)
@@ -250,18 +250,18 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdScript:
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
-		case "RECORD":
+		case "WRITE":
 			var err error
 			saveFile, _ := tokens.Get()
-			err = dbg.recording.Start(saveFile)
+			err = dbg.scriptScribe.StartSession(saveFile)
 			if err != nil {
 				return doNothing, err
 			}
 			return scriptRecordStarted, nil
 
 		case "END":
-			dbg.recording.Rollback()
-			err := dbg.recording.End()
+			dbg.scriptScribe.Rollback()
+			err := dbg.scriptScribe.EndSession()
 			return scriptRecordEnded, err
 
 		default:
@@ -271,20 +271,20 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				return doNothing, err
 			}
 
-			if dbg.recording.IsRecording() {
+			if dbg.scriptScribe.IsActive() {
 				// if we're currently recording a script we want to write this
 				// command to the new script file...
-				err = dbg.recording.Commit()
+
 				if err != nil {
 					return doNothing, err
 				}
 
 				// ... but indicate that we'll be entering a new script and so
 				// don't want to repeat the commands from that script
-				dbg.recording.StartPlayback()
+				dbg.scriptScribe.StartPlayback()
 
 				defer func() {
-					dbg.recording.EndPlayback()
+					dbg.scriptScribe.EndPlayback()
 				}()
 
 				// TODO: provide a recording option to allow insertion of

@@ -25,7 +25,7 @@ func init() {
 
 	// sanity check that the table has looped correctly
 	if table6bits[63] != "000000" {
-		panic(fmt.Errorf("error during 6 bit polycounter generation"))
+		panic(fmt.Sprintf("error during 6 bit polycounter generation"))
 	}
 
 	// force the final value to be the invalid polycounter value. this is only
@@ -40,7 +40,7 @@ func (tab polycounterTable) LookupPattern(pattern string) int {
 			return i
 		}
 	}
-	panic(fmt.Errorf("could not find pattern (%s) in 6 bit lookup table", pattern))
+	panic(fmt.Sprintf("could not find pattern (%s) in 6 bit lookup table", pattern))
 }
 
 // New6Bit initialises a new instance of a 6 bit polycounter

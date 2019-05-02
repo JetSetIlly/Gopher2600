@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"gopher2600/errors"
 )
 
 // VCSMemory presents a monolithic representation of system memory to the CPU -
@@ -37,7 +38,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 	mem.PIA = newPIA()
 	mem.Cart = NewCart()
 	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
-		return nil, fmt.Errorf("error creating memory areas")
+		return nil, errors.NewFormattedError(errors.MemoryError, "cannot create memory areas")
 	}
 
 	// create the memory map; each address in the memory map points to the
@@ -97,7 +98,7 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address, true)
 	area, present := mem.Memmap[ma]
 	if !present {
-		panic(fmt.Errorf("%04x not mapped correctly", address))
+		return 0, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 	mem.LastAddressAccessed = ma
 	mem.LastAddressAccessWrite = false
@@ -111,7 +112,7 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma := mem.MapAddress(address, false)
 	area, present := mem.Memmap[ma]
 	if !present {
-		return fmt.Errorf("%04x not mapped correctly", address)
+		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 	mem.LastAddressAccessed = ma
 	mem.LastAddressAccessWrite = true

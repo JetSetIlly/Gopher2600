@@ -72,7 +72,7 @@ func (wtc *watches) clear() {
 
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
-		return errors.NewFormattedError(errors.CommandError, fmt.Errorf("watch #%d is not defined", num))
+		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("watch #%d is not defined", num))
 	}
 
 	h := wtc.watches[:num]
@@ -133,7 +133,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// read mode
 	mode, present := tokens.Get()
 	if !present {
-		return fmt.Errorf("watch address required")
+		return errors.NewFormattedError(errors.CommandError, "watch address required")
 	}
 	mode = strings.ToUpper(mode)
 	switch mode {
@@ -149,7 +149,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// get address. required.
 	a, present := tokens.Get()
 	if !present {
-		return fmt.Errorf("watch address required")
+		return errors.NewFormattedError(errors.CommandError, "watch address required")
 	}
 
 	var addr uint16
@@ -176,7 +176,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 
 	// mapping of the address was unsucessful
 	if err != nil {
-		return fmt.Errorf("invalid watch address: %s", err)
+		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch address: %s", err))
 	}
 
 	// get watch value if possible
@@ -185,7 +185,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	if useVal {
 		val, err = strconv.ParseUint(a, 0, 8)
 		if err != nil {
-			return fmt.Errorf("invalid watch value (%s)", a)
+			return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch value (%s)", a))
 		}
 	}
 

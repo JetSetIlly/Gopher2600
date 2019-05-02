@@ -45,7 +45,7 @@ func (pk *Polycounter) SetResetPattern(resetPattern string) {
 // SetResetPoint specifies the point at which the polycounter automatically
 func (pk *Polycounter) SetResetPoint(resetPoint int) {
 	if resetPoint > len(pk.table) {
-		panic(fmt.Errorf("cannot set reset point to %d for a polycounter table of length %d", resetPoint, len(pk.table)))
+		panic(fmt.Sprintf("cannot set reset point to %d for a polycounter table of length %d", resetPoint, len(pk.table)))
 	}
 	pk.ResetPoint = resetPoint
 }
@@ -66,7 +66,7 @@ func (pk *Polycounter) Reset() {
 // -- used for moving missile position to the player position
 func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
 	if pk.ResetPoint != pko.ResetPoint {
-		panic(fmt.Errorf("cannot Sync() two polycounters with different reset points"))
+		panic(fmt.Sprintf("cannot Sync() two polycounters with different reset points"))
 	}
 
 	pk.Count = pko.Count

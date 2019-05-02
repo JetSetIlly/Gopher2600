@@ -84,7 +84,7 @@ func (imtv *ImageTV) Save(fileNameBase string) error {
 	f, err := os.Open(imageName)
 	if f != nil {
 		f.Close()
-		return errors.NewFormattedError(errors.ImageTV, fmt.Errorf("image file (%s) already exists", imageName))
+		return errors.NewFormattedError(errors.ImageTV, fmt.Sprintf("image file (%s) already exists", imageName))
 	}
 	if err != nil && !os.IsNotExist(err) {
 		return errors.NewFormattedError(errors.ImageTV, err)

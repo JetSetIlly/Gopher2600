@@ -32,6 +32,8 @@ type playbackSequence struct {
 // Playback is an implementation of the controller interface. it reads from an
 // existing recording file and responds to GetInput() requests
 type Playback struct {
+	transcript string
+
 	CartFile string
 	CartHash string
 	TVtype   string
@@ -45,7 +47,7 @@ type Playback struct {
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
-	plb := &Playback{}
+	plb := &Playback{transcript: transcript}
 	plb.sequences = make(map[string]*playbackSequence)
 
 	tf, err := os.Open(transcript)
@@ -192,8 +194,7 @@ func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.String() {
-			msg := fmt.Sprintf("line %d", nextEvent.line)
-			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, msg)
+			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 
 		seq.eventCt++

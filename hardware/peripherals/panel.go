@@ -98,7 +98,7 @@ func (pan *Panel) Handle(event Event) error {
 	case PanelPowerOff:
 		return errors.NewFormattedError(errors.PowerOff)
 	default:
-		return errors.NewFormattedError(errors.UnknownPeripheralEvent, pan.id, event)
+		return errors.NewFormattedError(errors.UnknownPeriphEvent, pan.id, event)
 	}
 
 	pan.commit()

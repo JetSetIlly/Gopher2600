@@ -19,7 +19,7 @@ func (r *Register) Load(v interface{}) {
 	case uint16:
 		r.value = uint32(v) & r.mask
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 }
 
@@ -56,7 +56,7 @@ func (r *Register) Add(v interface{}, carry bool) (bool, bool) {
 			r.value++
 		}
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 
 	// decide on overflow flag
@@ -85,7 +85,7 @@ func (r *Register) Subtract(v interface{}, carry bool) (bool, bool) {
 	case uint8:
 		vval = uint16(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 
 	// one's complement
@@ -105,7 +105,7 @@ func (r *Register) AND(v interface{}) {
 	case uint8:
 		r.value &= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }
@@ -130,7 +130,7 @@ func (r *Register) EOR(v interface{}) {
 	case uint8:
 		r.value ^= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }
@@ -155,7 +155,7 @@ func (r *Register) ORA(v interface{}) {
 	case uint8:
 		r.value |= uint32(v)
 	default:
-		panic(fmt.Errorf("unsupported value type (%T)", v))
+		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}
 	r.value &= r.mask
 }

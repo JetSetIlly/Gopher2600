@@ -2,6 +2,7 @@ package disassembly
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
 	"gopher2600/symbols"
@@ -65,7 +66,6 @@ func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
 	// ignore errors caused by loading of symbols table
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
-		fmt.Println(err)
 		symtable = symbols.StandardSymbolTable()
 	}
 
@@ -73,13 +73,13 @@ func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
 
 	err = cart.Attach(cartridgeFilename)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.DisasmError, err)
 	}
 
 	dsm := new(Disassembly)
 	err = dsm.FromMemory(cart, symtable)
 	if err != nil {
-		return dsm, err
+		return dsm, err // no need to wrap error
 	}
 
 	return dsm, nil
@@ -96,13 +96,13 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	// create new memory
 	mem, err := newDisasmMemory(dsm.Cart)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 
 	// create a new non-branching CPU to disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 	mc.NoFlowControl = true
 
@@ -114,9 +114,12 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	mc.LoadPCIndirect(memory.AddressReset)
 	err = dsm.linearDisassembly(mc)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 
-	mc.LoadPCIndirect(memory.AddressReset)
-	return dsm.flowDisassembly(mc)
+	err = mc.LoadPCIndirect(memory.AddressReset)
+	if err != nil {
+		return errors.NewFormattedError(errors.DisasmError, err)
+	}
+	return nil
 }

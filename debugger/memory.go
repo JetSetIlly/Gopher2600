@@ -92,7 +92,7 @@ func (mem memoryDebug) peek(address interface{}) (uint8, uint16, string, string,
 
 	area, present := mem.mem.Memmap[ma]
 	if !present {
-		panic(fmt.Errorf("%04x not mapped correctly", address))
+		panic(fmt.Sprintf("%04x not mapped correctly", address))
 	}
 
 	return area.Peek(ma)
@@ -107,7 +107,7 @@ func (mem memoryDebug) poke(address interface{}, value uint8) error {
 
 	area, present := mem.mem.Memmap[ma]
 	if !present {
-		panic(fmt.Errorf("%04x not mapped correctly", address))
+		panic(fmt.Sprintf("%04x not mapped correctly", address))
 	}
 
 	return area.Poke(ma, value)

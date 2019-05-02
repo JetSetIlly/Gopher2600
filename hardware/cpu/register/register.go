@@ -30,7 +30,7 @@ func NewAnonRegister(value interface{}, size uint) *Register {
 // the value
 func NewRegister(value interface{}, size uint, label string, shortLabel string) *Register {
 	if size < 2 || size > 32 {
-		panic(fmt.Errorf("cannot create register (%s) - unsupported bit size (%d)", label, size))
+		panic(fmt.Sprintf("cannot create register (%s) - unsupported bit size (%d)", label, size))
 	}
 
 	r := new(Register)
@@ -47,7 +47,7 @@ func NewRegister(value interface{}, size uint, label string, shortLabel string) 
 	case uint16:
 		r.value = uint32(value)
 	default:
-		panic(fmt.Errorf("cannot create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value)))
+		panic(fmt.Sprintf("cannot create register (%s) - unsupported value type (%s)", label, reflect.TypeOf(value)))
 	}
 
 	r.label = label

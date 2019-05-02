@@ -146,13 +146,13 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	}
 
-	panic(fmt.Errorf("unserviced register (%s=%v)", register, value))
+	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
 // StepVideoCycle moves the state of the tia forward one video cycle
 // returns the state of the CPU (conceptually, we're attaching the result of
 // this function to pin 3 of the 6507)
-func (tia *TIA) StepVideoCycle() bool {
+func (tia *TIA) StepVideoCycle() (bool, error) {
 	tia.videoCycles++
 	if tia.videoCycles%3 == 0 {
 		tia.cpuCycles++
@@ -235,8 +235,8 @@ func (tia *TIA) StepVideoCycle() bool {
 		Pixel:      television.ColorSignal(pixelColor),
 		AltPixel:   television.ColorSignal(debugColor)})
 	if err != nil {
-		panic(err)
+		return !tia.wsync, err
 	}
 
-	return !tia.wsync
+	return !tia.wsync, nil
 }

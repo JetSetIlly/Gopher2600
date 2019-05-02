@@ -24,7 +24,7 @@ func StartPlayback(scriptfile string) (*Playback, error) {
 	// open script and defer closing
 	sf, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.ScriptFileCannotOpen, err)
+		return nil, errors.NewFormattedError(errors.ScriptFileUnavailable, err)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -35,8 +35,7 @@ func StartPlayback(scriptfile string) (*Playback, error) {
 		return nil, errors.NewFormattedError(errors.ScriptFileError, err)
 	}
 
-	rps := new(Playback)
-	rps.scriptFile = scriptfile
+	rps := &Playback{scriptFile: scriptfile}
 
 	// convert buffer to an array of lines
 	rps.lines = strings.Split(string(buffer), "\n")
@@ -71,8 +70,7 @@ func (rps *Playback) UserRead(buffer []byte, prompt string, _ chan gui.Event, _ 
 	copy(buffer, []byte(rps.lines[rps.nextLine]))
 	rps.nextLine++
 
-	// build output expected as a result of running the command. we can use this
-	// to verify whether live output matches the recorded output
+	// build output expected as a result of running the command
 	rps.expectedOuput = ""
 	for rps.nextLine < len(rps.lines) && strings.HasPrefix(rps.lines[rps.nextLine], outputDelimiter) {
 		rps.expectedOuput = fmt.Sprintf("%s%s", rps.expectedOuput, rps.lines[rps.nextLine])

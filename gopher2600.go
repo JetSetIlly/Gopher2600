@@ -127,7 +127,7 @@ func main() {
 		case 1:
 			err := playmode.Play(modeFlags.Arg(0), *tvType, float32(*scaling), *stable, *recording, *record)
 			if err != nil {
-				fmt.Printf("* error running: %s\n", err)
+				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
 			if *record == true {
@@ -147,7 +147,7 @@ func main() {
 
 		dbg, err := debugger.NewDebugger()
 		if err != nil {
-			fmt.Printf("* error starting debugger: %s\n", err)
+			fmt.Printf("* %s\n", err)
 			os.Exit(2)
 		}
 
@@ -171,7 +171,7 @@ func main() {
 		case 1:
 			err := dbg.Start(term, *initScript, modeFlags.Arg(0))
 			if err != nil {
-				fmt.Printf("* error running debugger: %s\n", err)
+				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
 		default:
@@ -196,7 +196,7 @@ func main() {
 						dsm.Dump(os.Stdout)
 					}
 				}
-				fmt.Printf("* error during disassembly: %s\n", err)
+				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
 			dsm.Dump(os.Stdout)
@@ -220,7 +220,7 @@ func main() {
 		case 1:
 			err := fps(*profile, modeFlags.Arg(0), *display, *tvType, float32(*scaling), *runTime)
 			if err != nil {
-				fmt.Printf("* error starting fps profiler: %s\n", err)
+				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
 		default:
@@ -288,7 +288,7 @@ func main() {
 
 				ok, err := regression.RegressDelete(os.Stdout, confirmation, modeFlags.Arg(0))
 				if err != nil {
-					fmt.Printf("* error deleting regression entry: %s\n", err)
+					fmt.Printf("* error deleting regression test: %s\n", err)
 					os.Exit(2)
 				}
 				if ok {
@@ -343,39 +343,39 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	if display {
 		fpstv, err = sdl.NewGUI(tvType, scaling, nil)
 		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 
 		err = fpstv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 	} else {
 		fpstv, err = television.NewBasicTelevision("NTSC")
 		if err != nil {
-			return fmt.Errorf("error preparing television: %s", err)
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 	}
 
 	vcs, err := hardware.NewVCS(fpstv)
 	if err != nil {
-		return fmt.Errorf("error preparing VCS: %s", err)
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 
 	err = vcs.AttachCartridge(cartridgeFile)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 
 	// write cpu profile
 	if profile {
 		f, err := os.Create("cpu.profile")
 		if err != nil {
-			return err
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
-			return err
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -383,7 +383,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	// get starting frame number
 	fn, err := fpstv.GetState(television.ReqFramenum)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 	startFrame := fn
 
@@ -392,7 +392,7 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	// -- parse supplied duration
 	duration, err := time.ParseDuration(runTime)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 
 	// -- setup trigger that expires when duration has elapsed
@@ -402,13 +402,8 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	go func() {
 		// force a two second leadtime to allow framerate to settle down
 		time.AfterFunc(2*time.Second, func() {
-			fn, err = fpstv.GetState(television.ReqFramenum)
-			if err != nil {
-				panic(err)
-			}
-
+			fn, _ = fpstv.GetState(television.ReqFramenum)
 			startFrame = fn
-
 			time.AfterFunc(duration, func() {
 				timerRunning.Store(-1)
 			})
@@ -420,13 +415,13 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 		return timerRunning.Load().(int) > 0, nil
 	})
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 
 	// get ending frame number
 	fn, err = vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.FPSError, err)
 	}
 	endFrame := fn
 
@@ -439,12 +434,12 @@ func fps(profile bool, cartridgeFile string, display bool, tvType string, scalin
 	if profile {
 		f, err := os.Create("mem.profile")
 		if err != nil {
-			return err
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 		runtime.GC()
 		err = pprof.WriteHeapProfile(f)
 		if err != nil {
-			return fmt.Errorf("could not write memory profile: %s", err)
+			return errors.NewFormattedError(errors.FPSError, err)
 		}
 		f.Close()
 	}

@@ -42,7 +42,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	if tv == nil {
 		gtv.Television, err = television.NewBasicTelevision(tvType)
 		if err != nil {
-			return nil, err
+			return nil, errors.NewFormattedError(errors.SDL, err)
 		}
 	} else {
 		// check that the quoted tvType matches the specification of the
@@ -58,13 +58,13 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 	gtv.fpsLimiter, err = newFPSLimiter(50)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
 
 	// set up sdl
 	err = sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
 
 	// initialise the screens we'll be using
@@ -73,7 +73,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	// set window size and scaling
 	err = gtv.scr.setScaling(scale)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
 
 	// register ourselves as a television.Renderer
@@ -82,7 +82,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	// update tv (with a black image)
 	err = gtv.update()
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
 
 	// gui events are serviced by a separate loop

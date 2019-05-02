@@ -325,7 +325,7 @@ func (mc *CPU) branch(flag bool, address uint16, result *result.Instruction) err
 func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error) (*result.Instruction, error) {
 	// sanity check
 	if mc.IsExecuting() {
-		panic(fmt.Errorf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
+		panic(fmt.Sprintf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
 	}
 
 	// do nothing and return nothing if ready flag is false

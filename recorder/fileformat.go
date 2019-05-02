@@ -66,7 +66,7 @@ func (rec *Recorder) writeHeader() error {
 
 func (plb *Playback) readHeader(lines []string) error {
 	if lines[lineMagicString] != magicString {
-		return errors.NewFormattedError(errors.PlaybackInvalidFile)
+		return errors.NewFormattedError(errors.PlaybackError, fmt.Sprintf("not a valid playback transcript (%s)", plb.transcript))
 	}
 
 	// read header

@@ -2,6 +2,7 @@ package commandline
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"strconv"
 	"strings"
 )
@@ -25,7 +26,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 			err := cmds[n].validate(tokens, false)
 			if err != nil {
-				return fmt.Errorf("%s for %s", err, cmd)
+				return errors.NewFormattedError(errors.ValidationError, err, cmd)
 			}
 
 			if tokens.Remaining() > 0 {
@@ -36,7 +37,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 				//
 				// we need a way to detect that situation if we reach this
 				// point.
-				return fmt.Errorf("too many arguments for %s", cmd)
+				return errors.NewFormattedError(errors.ValidationError, "too many arguments", cmd)
 			}
 
 			return nil

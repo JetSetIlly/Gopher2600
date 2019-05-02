@@ -47,30 +47,83 @@ var PenStyles map[string]string
 var NormalPen string
 
 func init() {
+	var err error
+
 	PenColor = make(map[string]string)
 	DimPens = make(map[string]string)
 	PenStyles = make(map[string]string)
 
-	NormalPen, _ = ColorBuild("", "", "", false, false)
+	NormalPen, err = ColorBuild("", "", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	PenColor["red"], _ = ColorBuild("red", "normal", "", true, false)
-	PenColor["green"], _ = ColorBuild("green", "normal", "", true, false)
-	PenColor["yellow"], _ = ColorBuild("yellow", "normal", "", true, false)
-	PenColor["blue"], _ = ColorBuild("blue", "normal", "", true, false)
-	PenColor["magenta"], _ = ColorBuild("magenta", "normal", "", true, false)
-	PenColor["cyan"], _ = ColorBuild("cyan", "normal", "", true, false)
-	PenColor["white"], _ = ColorBuild("white", "normal", "", true, false)
+	PenColor["red"], err = ColorBuild("red", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["green"], err = ColorBuild("green", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["yellow"], err = ColorBuild("yellow", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["blue"], err = ColorBuild("blue", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["magenta"], err = ColorBuild("magenta", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["cyan"], err = ColorBuild("cyan", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenColor["white"], err = ColorBuild("white", "normal", "", true, false)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	DimPens["red"], _ = ColorBuild("red", "normal", "", false, false)
-	DimPens["green"], _ = ColorBuild("green", "normal", "", false, false)
-	DimPens["yellow"], _ = ColorBuild("yellow", "normal", "", false, false)
-	DimPens["blue"], _ = ColorBuild("blue", "normal", "", false, false)
-	DimPens["magenta"], _ = ColorBuild("magenta", "normal", "", false, false)
-	DimPens["cyan"], _ = ColorBuild("cyan", "normal", "", false, false)
-	DimPens["white"], _ = ColorBuild("white", "normal", "", false, false)
+	DimPens["red"], err = ColorBuild("red", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["green"], err = ColorBuild("green", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["yellow"], err = ColorBuild("yellow", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["blue"], err = ColorBuild("blue", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["magenta"], err = ColorBuild("magenta", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["cyan"], err = ColorBuild("cyan", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	DimPens["white"], err = ColorBuild("white", "normal", "", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	PenStyles["bold"], _ = ColorBuild("", "", "bold", false, false)
-	PenStyles["underline"], _ = ColorBuild("", "", "underline", false, false)
+	PenStyles["bold"], err = ColorBuild("", "", "bold", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	PenStyles["underline"], err = ColorBuild("", "", "underline", false, false)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // ColorBuild creates the ANSI sequence to create the pen with the correct

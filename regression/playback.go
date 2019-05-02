@@ -64,27 +64,27 @@ func (reg PlaybackRegression) String() string {
 func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	digest, err := renderers.NewDigestTV(plb.TVtype, nil)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	vcs, err := hardware.NewVCS(digest)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	err = vcs.AttachCartridge(plb.CartFile)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	err = vcs.Run(func() (bool, error) {
@@ -97,10 +97,10 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		switch err := err.(type) {
 		case errors.FormattedError:
 			if err.Errno != errors.PowerOff {
-				return false, err
+				return false, errors.NewFormattedError(errors.RegressionFail, err)
 			}
 		default:
-			return false, err
+			return false, errors.NewFormattedError(errors.RegressionFail, err)
 		}
 	}
 
@@ -108,7 +108,8 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		// make sure regression script directory exists
 		err = os.MkdirAll(regressionScripts, 0755)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("cannot store playback script: %s", err)
+			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 
 		// create a (hopefully) unique name for copied script file
@@ -122,14 +123,16 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		// check that the filename is unique
 		nf, err := os.Open(newScript)
 		if nf != nil {
-			return false, errors.NewFormattedError(errors.RegressionFail, "cannot store playback file in regression database")
+			msg := fmt.Sprintf("script already exists (%s)", newScript)
+			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 		nf.Close()
 
 		// create new file
 		nf, err = os.Create(newScript)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("error copying playback script: %s", err)
+			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 		defer func() {
 			nf.Close()
@@ -138,7 +141,8 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		// open old file
 		of, err := os.Open(reg.Script)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("error copying playback script: %s", err)
+			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 		defer func() {
 			of.Close()
@@ -147,7 +151,8 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		// copy old file to new file
 		_, err = io.Copy(nf, of)
 		if err != nil {
-			return false, err
+			msg := fmt.Sprintf("error copying playback script: %s", err)
+			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 
 		// update script name in regression type

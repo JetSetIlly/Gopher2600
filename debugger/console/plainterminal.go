@@ -3,15 +3,20 @@ package console
 import (
 	"fmt"
 	"gopher2600/gui"
+	"io"
 	"os"
 )
 
 // PlainTerminal is the default, most basic terminal interface
 type PlainTerminal struct {
+	read  io.Reader
+	write io.Writer
 }
 
 // Initialise perfoms any setting up required for the terminal
 func (pt *PlainTerminal) Initialise() error {
+	pt.read = os.Stdin
+	pt.write = os.Stdout
 	return nil
 }
 
@@ -32,10 +37,11 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 		s = fmt.Sprintf("  %s", s)
 	}
 
-	fmt.Printf(s, a...)
+	s = fmt.Sprintf(s, a...)
+	pt.write.Write([]byte(s))
 
 	if pp != Prompt {
-		fmt.Println("")
+		pt.write.Write([]byte("\n"))
 	}
 }
 
@@ -43,7 +49,7 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 func (pt PlainTerminal) UserRead(input []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	pt.UserPrint(Prompt, prompt)
 
-	n, err := os.Stdin.Read(input)
+	n, err := pt.read.Read(input)
 	if err != nil {
 		return n, err
 	}

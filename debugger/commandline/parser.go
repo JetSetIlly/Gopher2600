@@ -2,6 +2,7 @@ package commandline
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"strings"
 )
 
@@ -40,7 +41,7 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
 		if err != nil {
-			return nil, NewParseError(defn, d, fmt.Errorf("%s: %s", err, defn))
+			return nil, errors.NewFormattedError(errors.ParserError, defn, err, d)
 		}
 
 		// add to list of commands (order doesn't matter at this stage)
@@ -48,7 +49,7 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 
 		// check that parsing was complete
 		if d < len(defn)-1 {
-			return nil, NewParseError(defn, len(defn), fmt.Errorf("outstanding characters in command definition"))
+			return nil, errors.NewFormattedError(errors.ParserError, defn, "outstanding characters in definition")
 		}
 	}
 

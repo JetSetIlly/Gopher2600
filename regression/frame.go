@@ -75,22 +75,22 @@ func (reg FrameRegression) String() string {
 func (reg *FrameRegression) regress(newRegression bool) (bool, error) {
 	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
-		return false, fmt.Errorf("error preparing television: %s", err)
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, fmt.Errorf("error preparing VCS: %s", err)
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	err = vcs.AttachCartridge(reg.CartFile)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	err = vcs.RunForFrameCount(reg.NumFrames)
 	if err != nil {
-		return false, err
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
 	if newRegression {

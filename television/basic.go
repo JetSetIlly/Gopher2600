@@ -130,33 +130,26 @@ func (btv *BasicTelevision) Reset() error {
 
 // Signal is principle method of communication between the VCS and televsion
 //
-// the function will panic if an unexpected signal is received (or not received,
-// as the case may be).
-//
 // if a signal is not entirely unexpected but is none-the-less out-of-spec then
 // then the tv object will be flagged outOfSpec and the emulation allowed to
 // continue.
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	if sig.HSync && !btv.prevSignal.HSync {
 		if btv.horizPos < -52 || btv.horizPos > -49 {
-			//panic(fmt.Errorf("bad HSYNC (on at %d)", tv.horizPos))
-			fmt.Println("hysnc on", btv.horizPos)
+			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (on at %d)", btv.horizPos))
 		}
 	} else if !sig.HSync && btv.prevSignal.HSync {
 		if btv.horizPos < -36 || btv.horizPos > -33 {
-			//panic(fmt.Errorf("bad HSYNC (off at %d)", tv.horizPos))
-			fmt.Println("hysnc off", btv.horizPos)
+			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (off at %d)", btv.horizPos))
 		}
 	}
 	if sig.CBurst && !btv.prevSignal.CBurst {
 		if btv.horizPos < -28 || btv.horizPos > -17 {
-			//panic(fmt.Errorf("bad CBURST (on)"))
-			fmt.Println("cburst on", btv.horizPos)
+			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (on at %d)", btv.horizPos))
 		}
 	} else if !sig.CBurst && btv.prevSignal.CBurst {
 		if btv.horizPos < -19 || btv.horizPos > -16 {
-			//panic(fmt.Errorf("bad CBURST (off)"))
-			fmt.Println("cburst off", btv.horizPos)
+			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (off at %d)", btv.horizPos))
 		}
 	}
 
@@ -211,9 +204,8 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		btv.horizPos++
 
 		// check to see if frontporch has been encountered
-		// we're panicking because this shouldn't ever happen
 		if btv.horizPos > btv.spec.ClocksPerVisible {
-			panic(fmt.Errorf("no FRONTPORCH"))
+			return errors.NewFormattedError(errors.OutOfSpec, "no FRONTPORCH")
 		}
 	}
 

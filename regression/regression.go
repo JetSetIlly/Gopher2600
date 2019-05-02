@@ -118,7 +118,7 @@ func RegressRunTests(output io.Writer, keys []string) (int, int, int, error) {
 	for k := range keys {
 		v, err := strconv.Atoi(keys[k])
 		if err != nil {
-			fmt.Printf("invalid key [%s]\n", keys[k])
+			output.Write([]byte(fmt.Sprintf("invalid key [%s]\n", keys[k])))
 		}
 		keysV = append(keysV, v)
 	}

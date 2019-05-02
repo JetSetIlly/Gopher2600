@@ -2,67 +2,80 @@ package errors
 
 // list of error numbers
 const (
-	// Debugger
+	// sentinal
 	UserInterrupt Errno = iota
-	CommandError
+	ScriptEnd
+	PowerOff
+	PeriphUnplugged
+	OutOfSpec
+
+	// program modes
+	PlayError
+	DebuggerError
+	DisasmError
+	FPSError
+
+	// debugger
+	ParserError
+	ValidationError
 	InvalidTarget
+	CommandError
+	TerminalError
 
-	// Symbols
-	SymbolsFileCannotOpen
-	SymbolsFileError
-	SymbolUnknown
-
-	// Script
-	ScriptRecordingError
-	ScriptFileCannotOpen
+	// script
+	ScriptScribeError
+	ScriptFileUnavailable
 	ScriptFileError
 	ScriptRunError
-	ScriptEnd
 
-	// Regression
+	// recorder
+	RecordingError
+	PlaybackError
+	PlaybackHashError
+
+	// regression
 	RegressionDBError
 	RegressionFail
 
-	// CPU
+	// symbols
+	SymbolsFileUnavailable
+	SymbolsFileError
+	SymbolUnknown
+
+	// vcs
+	VCSError
+
+	// cpu
 	UnimplementedInstruction
 	InvalidOpcode
+	InvalidResult
 	ProgramCounterCycled
 	InvalidOperationMidInstruction
 
-	// Memory
-	UnservicedChipWrite
-	UnknownRegisterName
+	// memory
+	MemoryError
 	UnreadableAddress
 	UnwritableAddress
+	UnpokeableAddress
 	UnrecognisedAddress
-	UnPokeableAddress
 
-	// Cartridges
+	// cartridges
 	CartridgeFileError
-	CartridgeUnsupported
+	CartridgeFileUnavailable
+	CartridgeError
 	CartridgeMissing
-	CartridgeNoSuchBank
 
-	// TV
+	// peripherals
+	PeriphHardwareUnavailable
+	UnknownPeriphEvent
+
+	// tv
 	UnknownTVRequest
 	BasicTelevision
 	ImageTV
 	DigestTV
 
-	// GUI
+	// gui
 	UnknownGUIRequest
 	SDL
-
-	// Peripherals
-	NoControllerHardware
-	NoPlayerPort
-	ControllerUnplugged
-	UnknownPeripheralEvent
-	PowerOff
-
-	// Recorder
-	RecordingError
-	PlaybackInvalidFile
-	PlaybackError
-	PlaybackHashError
 )

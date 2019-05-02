@@ -73,8 +73,8 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 			// implementation of UserRead() puts the terminal into raw
 			// mode and so must handle ctrl-c events differently.
 
-			if dbg.recording.IsRecording() {
-				dbg.recording.End()
+			if dbg.scriptScribe.IsActive() {
+				dbg.scriptScribe.EndSession()
 			} else {
 				dbg.running = false
 			}

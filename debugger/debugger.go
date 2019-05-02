@@ -121,7 +121,7 @@ type Debugger struct {
 	guiChan chan gui.Event
 
 	// record user input to a script file
-	recording script.Recorder
+	scriptScribe script.Scribe
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -131,35 +131,33 @@ func NewDebugger() (*Debugger, error) {
 
 	dbg := new(Debugger)
 
-	dbg.console = new(console.PlainTerminal)
-
 	// prepare gui/tv
 	btv, err := television.NewBasicTelevision("NTSC")
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
 	dbg.digest, err = renderers.NewDigestTV("NTSC", btv)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
 	dbg.gui, err = sdl.NewGUI("NTSC", 2.0, btv)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(btv)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing VCS: %s", err)
+		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
 	// create and attach a controller
 	stk, err := sticks.NewSplaceStick()
 	if err != nil {
-		return nil, fmt.Errorf("error preparing VCS: %s", err)
+		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 	dbg.vcs.Ports.Player0.Attach(stk)
 
@@ -204,13 +202,15 @@ func NewDebugger() (*Debugger, error) {
 // Start the main debugger sequence
 func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartridge string) error {
 	// prepare user interface
-	if cons != nil {
+	if cons == nil {
+		dbg.console = new(console.PlainTerminal)
+	} else {
 		dbg.console = cons
 	}
 
 	err := dbg.console.Initialise()
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DebuggerError, err)
 	}
 	defer dbg.console.CleanUp()
 
@@ -218,7 +218,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 	err = dbg.loadCartridge(cartridge)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
 	dbg.running = true
@@ -232,7 +232,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 		err = dbg.inputLoop(plb, false)
 		if err != nil {
-			return err
+			return errors.NewFormattedError(errors.DebuggerError, err)
 		}
 	}
 
@@ -240,7 +240,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 	// debugger is to exit
 	err = dbg.inputLoop(dbg.console, false)
 	if err != nil {
-		return err
+		return errors.NewFormattedError(errors.DebuggerError, err)
 	}
 	return nil
 }
@@ -393,7 +393,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				case errors.FormattedError:
 					switch err.Errno {
 					case errors.UserInterrupt:
-						if dbg.recording.IsRecording() {
+						if dbg.scriptScribe.IsActive() {
 							dbg.parseInput("SCRIPT END", false, false)
 							continue // for loop
 						} else {
@@ -401,14 +401,23 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						}
 						fallthrough
 					case errors.ScriptEnd:
+						// convert ScriptEnd errors to a simple print call.
+						// unless we're in a video cycle input loop, in which
+						// case don't print anything
+
 						if !videoCycle {
+							// TODO: prevent printing of ScriptEnd error for
+							// initialisation script
 							dbg.print(console.Feedback, err.Error())
 						}
 						return nil
-					}
-				}
 
-				return err
+					default:
+						return err
+					}
+				default:
+					return err
+				}
 			}
 
 			dbg.checkInterruptsAndEvents()
@@ -463,7 +472,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						if err != nil {
 							dbg.print(console.Error, "%s", dbg.lastResult.Defn)
 							dbg.print(console.Error, "%s", dbg.lastResult)
-							panic(err)
+							return errors.NewFormattedError(errors.DebuggerError, err)
 						}
 					}
 				}
@@ -501,7 +510,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 
 	var prompt = "["
 
-	if dbg.recording.IsRecording() {
+	if dbg.scriptScribe.IsActive() {
 		prompt = fmt.Sprintf("%s(rec)", prompt)
 	}
 
@@ -551,13 +560,13 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 		// (ONSTEP, ONHALT). if there's an error as a result of parsing, it
 		// will be rolled back before committing
 		if !auto {
-			dbg.recording.WriteInput(commands[i])
+			dbg.scriptScribe.WriteInput(commands[i])
 		}
 
 		// parse command. format of command[i] wil be normalised
 		result, err = dbg.parseCommand(&commands[i], interactive)
 		if err != nil {
-			dbg.recording.Rollback()
+			dbg.scriptScribe.Rollback()
 			return false, err
 		}
 
@@ -588,7 +597,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 			// command has caused input script recording to begin. rollback the
 			// call to recordCommand() above because we don't want to record
 			// the fact that we've starting recording in the script itsel
-			dbg.recording.Rollback()
+			dbg.scriptScribe.Rollback()
 
 		case scriptRecordEnded:
 			// nothing special required when script recording has completed

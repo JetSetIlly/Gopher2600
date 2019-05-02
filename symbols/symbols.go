@@ -70,7 +70,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 		if cartridgeFilename == "" {
 			return table, nil
 		}
-		return nil, errors.NewFormattedError(errors.SymbolsFileCannotOpen, cartridgeFilename)
+		return nil, errors.NewFormattedError(errors.SymbolsFileUnavailable, cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()

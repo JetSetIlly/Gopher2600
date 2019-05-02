@@ -1,7 +1,7 @@
 package hardware
 
 import (
-	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
@@ -45,22 +45,22 @@ func NewVCS(tv television.Television) (*VCS, error) {
 
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
-		return nil, fmt.Errorf("can't create TIA")
+		return nil, errors.NewFormattedError(errors.VCSError, "can't create TIA")
 	}
 
 	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
-		return nil, fmt.Errorf("can't create RIOT")
+		return nil, errors.NewFormattedError(errors.VCSError, "can't create RIOT")
 	}
 
 	vcs.Panel = peripherals.NewPanel(vcs.Mem.RIOT)
 	if vcs.Panel == nil {
-		return nil, fmt.Errorf("can't create console control panel")
+		return nil, errors.NewFormattedError(errors.VCSError, "can't create control panel")
 	}
 
 	vcs.Ports = peripherals.NewPorts(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
 	if vcs.Ports == nil {
-		return nil, fmt.Errorf("can't create ports")
+		return nil, errors.NewFormattedError(errors.VCSError, "can't create player ports")
 	}
 
 	return vcs, nil
@@ -98,12 +98,12 @@ func (vcs *VCS) Reset() error {
 
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
-		return fmt.Errorf("can't create TIA")
+		return errors.NewFormattedError(errors.VCSError, "can't create TIA")
 	}
 
 	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
-		return fmt.Errorf("can't create RIOT")
+		return errors.NewFormattedError(errors.VCSError, "can't create RIOT")
 	}
 
 	err := vcs.MC.LoadPCIndirect(memory.AddressReset)
@@ -168,13 +168,22 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		vcs.TIA.ReadTIAMemory()
 
 		// three color clocks per CPU cycle so we run video cycle three times
-		vcs.TIA.StepVideoCycle()
+		_, err = vcs.TIA.StepVideoCycle()
+		if err != nil {
+			return err
+		}
 		videoCycleCallback(r)
 
-		vcs.TIA.StepVideoCycle()
+		_, err = vcs.TIA.StepVideoCycle()
+		if err != nil {
+			return err
+		}
 		videoCycleCallback(r)
 
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
+		vcs.MC.RdyFlg, err = vcs.TIA.StepVideoCycle()
+		if err != nil {
+			return err
+		}
 		videoCycleCallback(r)
 
 		return nil
@@ -211,8 +220,8 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.TIA.ReadTIAMemory()
 		vcs.TIA.StepVideoCycle()
 		vcs.TIA.StepVideoCycle()
-		vcs.MC.RdyFlg = vcs.TIA.StepVideoCycle()
-		return nil
+		vcs.MC.RdyFlg, err = vcs.TIA.StepVideoCycle()
+		return err
 	}
 
 	cont := true

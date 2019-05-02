@@ -143,7 +143,7 @@ func (cart *Cartridge) readBanks(file io.ReadSeeker, numBanks int) error {
 func (cart *Cartridge) Attach(filename string) error {
 	cf, err := os.Open(filename)
 	if err != nil {
-		return errors.NewFormattedError(errors.CartridgeFileError, err)
+		return errors.NewFormattedError(errors.CartridgeFileUnavailable, filename)
 	}
 	defer func() {
 		_ = cf.Close()
@@ -258,7 +258,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		// o Montezuma's Revenge
 
 	case 12288:
-		return errors.NewFormattedError(errors.CartridgeUnsupported, "12288 bytes not yet supported")
+		return errors.NewFormattedError(errors.CartridgeFileError, "12288 bytes not yet supported")
 
 	case 16384:
 		cart.readBanks(cf, 4)
@@ -363,11 +363,11 @@ func (cart *Cartridge) Attach(filename string) error {
 		cart.addCartridgeRAM()
 
 	case 65536:
-		return errors.NewFormattedError(errors.CartridgeUnsupported, "65536 bytes not yet supported")
+		return errors.NewFormattedError(errors.CartridgeFileError, "65536 bytes not yet supported")
 
 	default:
 		cart.Eject()
-		return errors.NewFormattedError(errors.CartridgeUnsupported, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
+		return errors.NewFormattedError(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
 	// note name of cartridge
@@ -426,7 +426,8 @@ func (cart *Cartridge) addCartridgeRAM() bool {
 // BankSwitch changes the current bank number
 func (cart *Cartridge) BankSwitch(bank int) error {
 	if bank > cart.NumBanks {
-		return errors.NewFormattedError(errors.CartridgeNoSuchBank, bank, cart.NumBanks)
+		msg := fmt.Sprintf("cartridge error: bank out of range (%d, max=%d)", bank, cart.NumBanks)
+		return errors.NewFormattedError(errors.CartridgeError, msg)
 	}
 	cart.Bank = bank
 	return nil
@@ -458,5 +459,5 @@ func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error
 func (cart Cartridge) Poke(address uint16, value uint8) error {
 	// if we want to poke cartridge memory we need to account for different
 	// cartridge sizes.
-	return errors.NewFormattedError(errors.UnPokeableAddress, address)
+	return errors.NewFormattedError(errors.UnpokeableAddress, address)
 }

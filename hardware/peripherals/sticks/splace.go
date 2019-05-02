@@ -25,7 +25,7 @@ func NewSplaceStick() (*SplaceStick, error) {
 		// system assigned index: typically increments on each new controller added.
 		sps.device = joysticks.Connect(1)
 		if sps.device == nil {
-			sps.err = errors.NewFormattedError(errors.NoControllerHardware, nil)
+			sps.err = errors.NewFormattedError(errors.PeriphHardwareUnavailable, "splace")
 			return
 		}
 
