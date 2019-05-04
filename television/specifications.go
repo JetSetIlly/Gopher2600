@@ -16,22 +16,14 @@ type Specification struct {
 
 	VsyncClocks int
 
-	Colors []color
+	Colors colors
 
 	IdealTop       int
 	IdealBottom    int
 	IdealScanlines int
-}
 
-// TranslateColorSignal decodaes color signal to an RGB value
-func (spec Specification) TranslateColorSignal(sig ColorSignal) (byte, byte, byte) {
-	red, green, blue := byte(0), byte(0), byte(0)
-	if sig != VideoBlack {
-		col := spec.Colors[sig]
-		red, green, blue = byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-	}
-
-	return red, green, blue
+	FramesPerSecond float64
+	SecondsPerFrame float64
 }
 
 // SpecNTSC is the specification for NTSC television typee
@@ -51,11 +43,13 @@ func init() {
 	SpecNTSC.ScanlinesPerVisible = 192
 	SpecNTSC.ScanlinesPerOverscan = 30
 	SpecNTSC.ScanlinesTotal = 262
-	SpecNTSC.Colors = ntscColors
+	SpecNTSC.Colors = colorsNTSC
 	SpecNTSC.VsyncClocks = SpecNTSC.ScanlinesPerVSync * SpecNTSC.ClocksPerScanline
 	SpecNTSC.IdealTop = SpecNTSC.ScanlinesPerVSync + SpecNTSC.ScanlinesPerVBlank
 	SpecNTSC.IdealBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesPerOverscan
 	SpecNTSC.IdealScanlines = SpecNTSC.IdealBottom - SpecNTSC.IdealTop
+	SpecNTSC.FramesPerSecond = 60.0
+	SpecNTSC.SecondsPerFrame = 1.0 / SpecNTSC.FramesPerSecond
 
 	SpecPAL = new(Specification)
 	SpecPAL.ID = "PAL"
@@ -70,8 +64,10 @@ func init() {
 	SpecPAL.IdealTop = SpecPAL.ScanlinesPerVSync + SpecPAL.ScanlinesPerVBlank
 	SpecPAL.IdealBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesPerOverscan
 	SpecPAL.IdealScanlines = SpecPAL.IdealBottom - SpecPAL.IdealTop
+	SpecPAL.FramesPerSecond = 50.0
+	SpecPAL.SecondsPerFrame = 1.0 / SpecPAL.FramesPerSecond
 
 	// use NTSC colors for PAL specification for now
 	// TODO: implement PAL colors
-	SpecPAL.Colors = ntscColors
+	SpecPAL.Colors = colorsNTSC
 }

@@ -95,26 +95,26 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 		n, err := strconv.Atoi(toks[fieldEvent])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:2], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 		event.event = peripherals.Event(n)
 
 		event.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:3], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 
 		event.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:4], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 
 		event.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:5], fieldSep)))
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
 

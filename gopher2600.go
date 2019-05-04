@@ -8,21 +8,14 @@ import (
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/gui/sdl"
-	"gopher2600/hardware"
+	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
 	"gopher2600/regression"
-	"gopher2600/television"
 	"io"
 	"os"
 	"path"
-	"runtime"
-	"runtime/pprof"
 	"strings"
-	"sync/atomic"
-	"time"
 )
 
 const defaultInitScript = ".gopher2600/debuggerInit"
@@ -35,12 +28,12 @@ func main() {
 	var modeFlags *flag.FlagSet
 	var modeFlagsParse func()
 
-	progModes := []string{"RUN", "PLAY", "DEBUG", "DISASM", "FPS", "REGRESS"}
+	progModes := []string{"RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS"}
 	defaultMode := "RUN"
 
 	progFlags := flag.NewFlagSet(progName, flag.ContinueOnError)
 
-	// prevent Parse() from outputting it's own error messages
+	// prevent Parse() (part of the flag package) from outputting it's own error messages
 	progFlags.SetOutput(&nopWriter{})
 
 	err := progFlags.Parse(os.Args[1:])
@@ -205,7 +198,7 @@ func main() {
 			os.Exit(2)
 		}
 
-	case "FPS":
+	case "PERFORMANCE":
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
 		tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
@@ -218,7 +211,7 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := fps(*profile, modeFlags.Arg(0), *display, *tvType, float32(*scaling), *runTime)
+			err := performance.Check(os.Stdout, *profile, modeFlags.Arg(0), *display, *tvType, float32(*scaling), *runTime)
 			if err != nil {
 				fmt.Printf("* %s\n", err)
 				os.Exit(2)
@@ -334,117 +327,6 @@ func main() {
 			}
 		}
 	}
-}
-
-func fps(profile bool, cartridgeFile string, display bool, tvType string, scaling float32, runTime string) error {
-	var fpstv television.Television
-	var err error
-
-	if display {
-		fpstv, err = sdl.NewGUI(tvType, scaling, nil)
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-
-		err = fpstv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-	} else {
-		fpstv, err = television.NewBasicTelevision("NTSC")
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-	}
-
-	vcs, err := hardware.NewVCS(fpstv)
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-
-	err = vcs.AttachCartridge(cartridgeFile)
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-
-	// write cpu profile
-	if profile {
-		f, err := os.Create("cpu.profile")
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-		err = pprof.StartCPUProfile(f)
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-		defer pprof.StopCPUProfile()
-	}
-
-	// get starting frame number
-	fn, err := fpstv.GetState(television.ReqFramenum)
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-	startFrame := fn
-
-	// run for specified period of time
-
-	// -- parse supplied duration
-	duration, err := time.ParseDuration(runTime)
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-
-	// -- setup trigger that expires when duration has elapsed
-	var timerRunning atomic.Value
-	timerRunning.Store(1)
-
-	go func() {
-		// force a two second leadtime to allow framerate to settle down
-		time.AfterFunc(2*time.Second, func() {
-			fn, _ = fpstv.GetState(television.ReqFramenum)
-			startFrame = fn
-			time.AfterFunc(duration, func() {
-				timerRunning.Store(-1)
-			})
-		})
-	}()
-
-	// -- run until specified time elapses (running is changed to -1)
-	err = vcs.Run(func() (bool, error) {
-		return timerRunning.Load().(int) > 0, nil
-	})
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-
-	// get ending frame number
-	fn, err = vcs.TV.GetState(television.ReqFramenum)
-	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
-	}
-	endFrame := fn
-
-	// calculate and display frames-per-second
-	frameCount := endFrame - startFrame
-	fps := float64(frameCount) / duration.Seconds()
-	fmt.Printf("%.2f fps (%d frames in %.2f seconds)\n", fps, frameCount, duration.Seconds())
-
-	// write memory profile
-	if profile {
-		f, err := os.Create("mem.profile")
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-		runtime.GC()
-		err = pprof.WriteHeapProfile(f)
-		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
-		}
-		f.Close()
-	}
-
-	return nil
 }
 
 // special purpose io.Reader / io.Writer

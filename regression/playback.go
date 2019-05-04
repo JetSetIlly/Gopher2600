@@ -19,8 +19,10 @@ const (
 	numPlaybackFields
 )
 
-// PlaybackRegression represents a regression type that processes vcs playback
-// recording
+// PlaybackRegression represents a regression type that processes a VCS
+// recording. playback regressions can take a while to run because by their
+// nature they extend over many frames - many more than is typical with the
+// FrameRegression type.
 type PlaybackRegression struct {
 	key    int
 	Script string
@@ -163,5 +165,6 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 }
 
 func (reg PlaybackRegression) cleanUp() {
+	// ignore errors from remove process
 	_ = os.Remove(reg.Script)
 }

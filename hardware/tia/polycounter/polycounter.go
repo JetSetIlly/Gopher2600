@@ -110,36 +110,36 @@ func (pk *Polycounter) Tick() bool {
 }
 
 // Match check whether polycounter is at the given count, any phase
-func (pk Polycounter) Match(count int) bool {
+func (pk *Polycounter) Match(count int) bool {
 	return pk.Count == count
 }
 
 // MatchPhase checks whether polycounter is at the given count and given phase
-func (pk Polycounter) MatchPhase(count, phase int) bool {
+func (pk *Polycounter) MatchPhase(count, phase int) bool {
 	return pk.Count == count && pk.Phase == phase
 }
 
 // MatchEnd checks whether polycounter is at the *end* (ie. last phase) of the given count
-func (pk Polycounter) MatchEnd(count int) bool {
+func (pk *Polycounter) MatchEnd(count int) bool {
 	return pk.Count == count && pk.Phase == MaxPhase
 }
 
 // MatchBeginning checks whether polycounter is at the *beginning* (ie. first phase) of the given count
-func (pk Polycounter) MatchBeginning(count int) bool {
+func (pk *Polycounter) MatchBeginning(count int) bool {
 	return pk.Count == count && pk.Phase == 0
 }
 
 // Pixel returns the color clock when expressed as a pixel
-func (pk Polycounter) Pixel() int {
+func (pk *Polycounter) Pixel() int {
 	return (pk.Count * 4) + pk.Phase - 68
 }
 
 // CycleOnNextTick checks to see if polycounter is about to cycle
-func (pk Polycounter) CycleOnNextTick() bool {
+func (pk *Polycounter) CycleOnNextTick() bool {
 	return pk.Count == pk.ResetPoint && pk.Phase == MaxPhase
 }
 
 // CycledOnLastTick checks to see if polycounter has just cycled
-func (pk Polycounter) CycledOnLastTick() bool {
+func (pk *Polycounter) CycledOnLastTick() bool {
 	return pk.Count == 0 && pk.Phase == 0
 }

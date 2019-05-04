@@ -17,7 +17,10 @@ const (
 	numFrameFields
 )
 
-// FrameRegression is the simplest regression type
+// FrameRegression is the simplest regression type. it works by running the
+// emulation for N frames and the screen digest recorded at that point.
+// regression tests pass if the screen digest after N frames matches the stored
+// value.
 type FrameRegression struct {
 	key          int
 	CartFile     string
@@ -102,4 +105,5 @@ func (reg *FrameRegression) regress(newRegression bool) (bool, error) {
 }
 
 func (reg FrameRegression) cleanUp() {
+	// no cleanup required for frame regression type
 }

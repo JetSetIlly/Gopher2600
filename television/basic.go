@@ -227,7 +227,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	y := int32(btv.scanline)
 
 	// decode color using the regular color signal
-	red, green, blue := btv.spec.TranslateColorSignal(sig.Pixel)
+	red, green, blue := getColor(btv.spec, sig.Pixel)
 	for f := range btv.renderers {
 		err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
 		if err != nil {
@@ -236,7 +236,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	}
 
 	// decode color using the alternative color signal
-	red, green, blue = btv.spec.TranslateColorSignal(sig.AltPixel)
+	red, green, blue = getColor(btv.spec, sig.AltPixel)
 	for f := range btv.renderers {
 		err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
 		if err != nil {

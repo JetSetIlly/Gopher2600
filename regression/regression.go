@@ -14,9 +14,6 @@ type Handler interface {
 	// the database
 	getID() string
 
-	// String implements the Stringer interface
-	String() string
-
 	// setKey sets the key value for the regression
 	setKey(int)
 
@@ -34,6 +31,9 @@ type Handler interface {
 	// action perfomed when regression entry is removed from database. for
 	// example, removing additional files from disk
 	cleanUp()
+
+	// String implements the Stringer interface
+	String() string
 }
 
 // RegressList displays all entries in the database

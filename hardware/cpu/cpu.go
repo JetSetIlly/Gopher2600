@@ -44,11 +44,13 @@ type CPU struct {
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
 
-	// NoFlowControl sets whehter the cpu responds accurately to instructions that
-	// affect the flow of the program (branches, JPS, subroutines and interrupts).
-	// we use this in the disassembly package to make sure we reach every part of
-	// the program. note that the alteration flow as a result of bank switching is
-	// still possible.
+	// NoFlowControl sets whehter the cpu responds accurately to instructions
+	// that affect the flow of the program (branches, JPS, subroutines and
+	// interrupts).  we use this in the disassembly package to make sure we
+	// reach every part of the program.
+	//
+	// note that the alteration of flow as a result of bank switching is still
+	// possible even if NoFlowControl is true
 	NoFlowControl bool
 }
 
@@ -202,9 +204,15 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 		}
 	}
 
-	return val, mc.endCycle()
+	err = mc.endCycle()
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
+// note that read16Bit calls endCycle as appropriate
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {

@@ -31,7 +31,7 @@ type screen struct {
 
 	// altPixels mirrors the pixels array with alternative color palette
 	// -- useful for switching between regular and debug colors
-	// -- allocated but only used if tv.allowDebugging and useAltPixels is true
+	// -- allocated but only used if gtv.allowDebugging and useAltPixels is true
 	altPixels     []byte
 	altPixelsFade []byte
 	useAltPixels  bool
@@ -208,7 +208,8 @@ func (scr *screen) setPixel(pixels *[]byte, x, y int32, red, green, blue byte, v
 	scr.lastX = x
 	scr.lastY = y
 
-	// do not plot pixel if VBLANK is on. some ROMs use VBLANK to output black
+	// do not plot pixel if VBLANK is on. some ROMs use VBLANK to output black,
+	// rather than having to play around with the current color of the sprites
 	//
 	// ROMs affected:
 	//	* Custer's Revenge
