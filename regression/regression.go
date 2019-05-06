@@ -144,7 +144,7 @@ func RegressRunTests(output io.Writer, keys []string) (int, int, int, error) {
 			k++
 		}
 
-		reg := db.regressions[key]
+		reg := db.regressions[db.keys[key]]
 
 		output.Write([]byte(fmt.Sprintf("running: %s\r", reg)))
 		ok, err := reg.regress(false)
