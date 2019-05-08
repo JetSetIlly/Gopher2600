@@ -233,15 +233,7 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	// apply priorities to get pixel color
 	if vd.Playfield.priority {
 		if pfu { // priority 1
-			if vd.Playfield.scoremode == true {
-				if vd.Playfield.screenRegion == 2 {
-					col = p1c
-				} else {
-					col = p0c
-				}
-			} else {
-				col = pfc
-			}
+			col = pfc
 			dcol = debugColPlayfield
 		} else if blu {
 			col = blc
