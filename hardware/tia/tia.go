@@ -2,6 +2,7 @@ package tia
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/audio"
 	"gopher2600/hardware/tia/polycounter"
@@ -234,8 +235,17 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		CBurst:     cburst,
 		Pixel:      television.ColorSignal(pixelColor),
 		AltPixel:   television.ColorSignal(debugColor)})
+
 	if err != nil {
-		return !tia.wsync, err
+		switch err := err.(type) {
+		case errors.FormattedError:
+			// filter out-of-spec errors for now. this should be optional -
+			if err.Errno != errors.OutOfSpec {
+				return !tia.wsync, err
+			}
+		default:
+			return !tia.wsync, err
+		}
 	}
 
 	return !tia.wsync, nil
