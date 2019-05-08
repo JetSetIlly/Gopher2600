@@ -22,8 +22,13 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 	style := result.StyleFlagSymbols | result.StyleFlagCompact
 
 	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
-		dsm.Cart.BankSwitch(bank)
 		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
+
+			// we have to bank switch every iteratino because an instruction
+			// may have caused the bank to switch "naturally" because of a memory
+			// write.
+			dsm.Cart.BankSwitch(bank)
+
 			mc.PC.Load(address)
 			r, _ := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 
