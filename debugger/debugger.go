@@ -149,7 +149,7 @@ func NewDebugger() (*Debugger, error) {
 	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(btv)
+	dbg.vcs, err = hardware.NewVCS(dbg.gui)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}

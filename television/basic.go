@@ -216,7 +216,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 
 	// push screen limits outwards as required
 	if !sig.VBlank {
-		if btv.endOfScreen && btv.scanline > btv.pendingVisibleBottom {
+		if !btv.endOfScreen && btv.scanline > btv.pendingVisibleBottom {
 			btv.pendingVisibleBottom = btv.scanline + 2
 
 			// keep within limits

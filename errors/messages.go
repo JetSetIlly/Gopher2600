@@ -71,12 +71,12 @@ var messages = map[Errno]string{
 	UnknownPeriphEvent:        "periperal error: %s: unsupported event (%v)",
 
 	// tv
-	UnknownTVRequest: "tv error: unsupported tv request (%v)",
+	UnknownTVRequest: "tv error: unsupported request (%v)",
 	BasicTelevision:  "tv error: BasicTelevision: %s",
 	ImageTV:          "tv error: ImageTV: %s",
 	DigestTV:         "tv error: DigestTV: %s",
 
 	// gui
-	UnknownGUIRequest: "gui error: unsupported gui request (%v)",
+	UnknownGUIRequest: "gui error: unsupported request (%v)",
 	SDL:               "gui error: SDL: %s",
 }
