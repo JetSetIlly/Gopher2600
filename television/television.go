@@ -48,8 +48,8 @@ type Television interface {
 
 // Renderer implementations display information from a television
 type Renderer interface {
-	NewFrame() error
-	NewScanline() error
+	NewFrame(frameNum int) error
+	NewScanline(scanline int) error
 	SetPixel(x, y int32, red, green, blue byte, vblank bool) error
 	SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error
 }

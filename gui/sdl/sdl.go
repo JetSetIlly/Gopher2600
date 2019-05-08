@@ -114,7 +114,7 @@ func (gtv *GUI) setDebugging(allow bool) {
 }
 
 // NewFrame implements television.Renderer interface
-func (gtv *GUI) NewFrame() error {
+func (gtv *GUI) NewFrame(frameNum int) error {
 	defer gtv.scr.clearPixels()
 	err := gtv.scr.stb.checkStableFrame()
 	if err != nil {
@@ -124,7 +124,7 @@ func (gtv *GUI) NewFrame() error {
 }
 
 // NewScanline implements television.Renderer interface
-func (gtv *GUI) NewScanline() error {
+func (gtv *GUI) NewScanline(scanline int) error {
 	return nil
 }
 

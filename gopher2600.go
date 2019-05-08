@@ -285,7 +285,7 @@ func main() {
 					os.Exit(2)
 				}
 				if ok {
-					fmt.Printf("! deleted %s from regression database\n", path.Base(modeFlags.Arg(0)))
+					fmt.Printf("! deleted test #%s from regression database\n", path.Base(modeFlags.Arg(0)))
 				}
 			default:
 				fmt.Printf("* only one entry can be deleted at at time when using %s/%s \n", mode, subMode)
@@ -315,7 +315,7 @@ func main() {
 						NumFrames: *numFrames}
 				}
 
-				err := regression.RegressAdd(rec)
+				err := regression.RegressAdd(os.Stdout, rec)
 				if err != nil {
 					fmt.Printf("* error adding regression test: %s\n", err)
 					os.Exit(2)

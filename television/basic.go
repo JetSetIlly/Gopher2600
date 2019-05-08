@@ -19,6 +19,12 @@ type BasicTelevision struct {
 	// the outOfSpec flags will be true
 	outOfSpec bool
 
+	// endOfScreen is set to true once the scanline value has reached the value
+	// of spec.ScanlinesTotal. it remains true until a new frame is triggered
+	//
+	// pixels will not be sent to the renderer when endOfScreen is true
+	endOfScreen bool
+
 	// state of the television
 	//	- the current horizontal position. the position where the next pixel will be
 	//  drawn. also used to check we're receiving the correct signals at the
@@ -91,12 +97,11 @@ func (btv BasicTelevision) MachineInfoTerse() string {
 // MachineInfo returns the television information in verbose format
 func (btv BasicTelevision) MachineInfo() string {
 	s := strings.Builder{}
-	outOfSpec := ""
+	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
 	if btv.outOfSpec {
-		outOfSpec = " !!"
+		s.WriteString(" !! ")
 	}
-	s.WriteString(fmt.Sprintf("TV (%s)%s:\n", btv.spec.ID, outOfSpec))
-	s.WriteString(fmt.Sprintf("   Frame: %d\n", btv.frameNum))
+	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
 	s.WriteString(fmt.Sprintf("   Scanline: %d\n", btv.scanline))
 	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", btv.horizPos, btv.horizPos+btv.spec.ClocksPerHblank))
 
@@ -159,7 +164,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	} else {
 		if btv.vsyncCount >= btv.spec.VsyncClocks {
 			btv.outOfSpec = btv.vsyncCount != btv.spec.VsyncClocks
-
+			btv.endOfScreen = false
 			btv.frameNum++
 			btv.scanline = 0
 			btv.vsyncCount = 0
@@ -169,7 +174,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 			btv.visibleBottom = btv.pendingVisibleBottom
 
 			for f := range btv.renderers {
-				err := btv.renderers[f].NewFrame()
+				err := btv.renderers[f].NewFrame(btv.frameNum)
 				if err != nil {
 					return err
 				}
@@ -186,7 +191,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		btv.horizPos = -btv.spec.ClocksPerHblank
 		btv.scanline++
 		for f := range btv.renderers {
-			err := btv.renderers[f].NewScanline()
+			err := btv.renderers[f].NewScanline(btv.scanline)
 			if err != nil {
 				return err
 			}
@@ -197,8 +202,8 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 			// continue with an implied VSYNC
 			btv.outOfSpec = true
 
-			// repeat the last scanline (over and over if necessary)
-			btv.scanline--
+			// indicate end of screen has been reached
+			btv.endOfScreen = true
 		}
 	} else {
 		btv.horizPos++
@@ -211,36 +216,48 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 
 	// push screen limits outwards as required
 	if !sig.VBlank {
-		if btv.scanline > btv.pendingVisibleBottom {
+		if btv.endOfScreen && btv.scanline > btv.pendingVisibleBottom {
 			btv.pendingVisibleBottom = btv.scanline + 2
+
+			// keep within limits
+			if btv.pendingVisibleBottom > btv.spec.ScanlinesTotal {
+				btv.pendingVisibleBottom = btv.spec.ScanlinesTotal
+			}
 		}
 		if btv.scanline < btv.pendingVisibleTop {
 			btv.pendingVisibleTop = btv.scanline - 2
+
+			// keep within limits
+			if btv.pendingVisibleTop < 0 {
+				btv.pendingVisibleTop = 0
+			}
 		}
 	}
 
 	// record the current signal settings so they can be used for reference
 	btv.prevSignal = sig
 
-	// current coordinates
-	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
-	y := int32(btv.scanline)
+	if !btv.endOfScreen {
+		// current coordinates
+		x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
+		y := int32(btv.scanline)
 
-	// decode color using the regular color signal
-	red, green, blue := getColor(btv.spec, sig.Pixel)
-	for f := range btv.renderers {
-		err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
-		if err != nil {
-			return err
+		// decode color using the regular color signal
+		red, green, blue := getColor(btv.spec, sig.Pixel)
+		for f := range btv.renderers {
+			err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
+			if err != nil {
+				return err
+			}
 		}
-	}
 
-	// decode color using the alternative color signal
-	red, green, blue = getColor(btv.spec, sig.AltPixel)
-	for f := range btv.renderers {
-		err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
-		if err != nil {
-			return err
+		// decode color using the alternative color signal
+		red, green, blue = getColor(btv.spec, sig.AltPixel)
+		for f := range btv.renderers {
+			err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

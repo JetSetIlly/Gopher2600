@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/television"
+	"os"
 )
 
 // DigestTV is a television implementation that
 type DigestTV struct {
 	television.Television
-	screenData []byte
-	digest     [sha1.Size]byte
+	digest [sha1.Size]byte
+
+	frameData []byte
+	frameNum  int
 }
 
 // NewDigestTV initialises a new instance of DigestTV
@@ -42,25 +45,29 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 	// register ourselves as a television.Renderer
 	dtv.AddRenderer(dtv)
 
-	// memory for screenData has to be sufficient for the entirety of the
+	// memory for frameData has to be sufficient for the entirety of the
 	// screen plus the size of a fingerprint. we'll use the additional space to
 	// chain fingerprint hashes
-	dtv.screenData = make([]byte, len(dtv.digest)+((dtv.GetSpec().ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
+	dtv.frameData = make([]byte, len(dtv.digest)+((dtv.GetSpec().ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
 
 	return dtv, nil
 }
 
 // NewFrame implements television.Renderer interface
-func (dtv *DigestTV) NewFrame() error {
+func (dtv *DigestTV) NewFrame(frameNum int) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the screen data
-	copy(dtv.screenData, dtv.digest[:len(dtv.digest)])
-	dtv.digest = sha1.Sum(dtv.screenData)
+	n := copy(dtv.frameData, dtv.digest[:])
+	if n != len(dtv.digest) {
+		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("unexpected amount of data copied"))
+	}
+	dtv.digest = sha1.Sum(dtv.frameData)
+	dtv.frameNum = frameNum
 	return nil
 }
 
 // NewScanline implements television.Renderer interface
-func (dtv *DigestTV) NewScanline() error {
+func (dtv *DigestTV) NewScanline(scanline int) error {
 	return nil
 }
 
@@ -69,14 +76,16 @@ func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) er
 	// preserve the first few bytes for a chained fingerprint
 	offset := len(dtv.digest)
 
-	offset += dtv.GetSpec().ClocksPerScanline * int(y) * 3
+	offset = dtv.GetSpec().ClocksPerScanline * int(y) * 3
 	offset += int(x) * 3
 
-	// allow indexing to naturally fail if offset is too big
+	if offset >= len(dtv.frameData) {
+		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("the coordinates (%d, %d) passed to SetPixel will cause an invalid access of the frameData array", x, y))
+	}
 
-	dtv.screenData[offset] = red
-	dtv.screenData[offset+1] = green
-	dtv.screenData[offset+2] = blue
+	dtv.frameData[offset] = red
+	dtv.frameData[offset+1] = green
+	dtv.frameData[offset+2] = blue
 
 	return nil
 }
@@ -95,4 +104,36 @@ func (dtv *DigestTV) ResetDigest() {
 	for i := range dtv.digest {
 		dtv.digest[i] = 0
 	}
+}
+
+// Save current frame data to filename - filename base supplied as an argument, the
+// frame number and file extension is appended by the function
+func (dtv *DigestTV) Save(fileNameBase string) error {
+	// prepare filename for image
+	outName := fmt.Sprintf("%s_digest_%d.bin", fileNameBase, dtv.frameNum)
+
+	f, err := os.Open(outName)
+	if f != nil {
+		f.Close()
+		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("output file (%s) already exists", outName))
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return errors.NewFormattedError(errors.DigestTV, err)
+	}
+
+	f, err = os.Create(outName)
+	if err != nil {
+		return errors.NewFormattedError(errors.DigestTV, err)
+	}
+	defer f.Close()
+
+	n, err := f.Write(dtv.frameData)
+	if n != len(dtv.frameData) {
+		return errors.NewFormattedError(errors.DigestTV, "output truncated")
+	}
+	if err != nil {
+		return errors.NewFormattedError(errors.DigestTV, err)
+	}
+
+	return nil
 }

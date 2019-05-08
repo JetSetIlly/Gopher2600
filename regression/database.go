@@ -156,7 +156,11 @@ func (db regressionDB) list(output io.Writer) {
 		output.Write([]byte(db.regressions[db.keys[k]].String()))
 		output.Write([]byte("\n"))
 	}
-	output.Write([]byte(fmt.Sprintf("Total: %d\n", len(db.keys))))
+	if len(db.keys) == 0 {
+		output.Write([]byte("regression DB is empty\n"))
+	} else {
+		output.Write([]byte(fmt.Sprintf("Total: %d\n", len(db.keys))))
+	}
 }
 
 // add adds a cartridge to the regression db

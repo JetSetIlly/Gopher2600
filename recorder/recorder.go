@@ -14,8 +14,8 @@ import (
 // Recorder records controller events to disk, intended for future playback
 type Recorder struct {
 	vcs    *hardware.VCS
-	digest *renderers.DigestTV
 	output *os.File
+	digest *renderers.DigestTV
 }
 
 // NewRecorder is the preferred method of implementation for the FileRecorder type

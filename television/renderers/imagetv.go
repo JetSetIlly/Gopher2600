@@ -18,13 +18,13 @@ type ImageTV struct {
 
 	screenGeom image.Rectangle
 
-	// currImage is the image we write to, until newFrame() is called again
-	currImage    *image.NRGBA
-	currFrameNum int
+	// currFrameData is the image we write to, until newFrame() is called again
+	currFrameData *image.NRGBA
+	currFrameNum  int
 
 	// this is the image we'll be saving when Save() is called
-	lastImage    *image.NRGBA
-	lastFrameNum int
+	lastFrameData *image.NRGBA
+	lastFrameNum  int
 }
 
 // NewImageTV initialises a new instance of ImageTV
@@ -58,7 +58,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	}
 	// start a new frame
 	imtv.currFrameNum = -1 // we'll be adding 1 to this value immediately in newFrame()
-	err = imtv.NewFrame()
+	err = imtv.NewFrame(imtv.currFrameNum)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +72,22 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 // Save last frame to filename - filename base supplied as an argument, the
 // frame number and file extension is appended by the function
 //
+// currentFrame should be true if the current frame (which may be incomplete)
+// should be save. if the value is false then the previous frame will be saved
+//
 // return tv.Save(filepath.Join(state.Group, state.Label))
-func (imtv *ImageTV) Save(fileNameBase string) error {
-	if imtv.lastImage == nil {
+func (imtv *ImageTV) Save(fileNameBase string, currentFrame bool) error {
+	if imtv.lastFrameData == nil {
 		return errors.NewFormattedError(errors.ImageTV, "no data to save")
 	}
 
 	// prepare filename for image
-	imageName := fmt.Sprintf("%s_%d.png", fileNameBase, imtv.lastFrameNum)
+	var imageName string
+	if currentFrame {
+		imageName = fmt.Sprintf("%s_%d.png", fileNameBase, imtv.currFrameNum)
+	} else {
+		imageName = fmt.Sprintf("%s_%d.png", fileNameBase, imtv.lastFrameNum)
+	}
 
 	f, err := os.Open(imageName)
 	if f != nil {
@@ -97,7 +105,11 @@ func (imtv *ImageTV) Save(fileNameBase string) error {
 
 	defer f.Close()
 
-	err = png.Encode(f, imtv.lastImage)
+	if currentFrame {
+		err = png.Encode(f, imtv.currFrameData)
+	} else {
+		err = png.Encode(f, imtv.lastFrameData)
+	}
 	if err != nil {
 		return errors.NewFormattedError(errors.ImageTV, err)
 	}
@@ -106,24 +118,24 @@ func (imtv *ImageTV) Save(fileNameBase string) error {
 }
 
 // NewFrame implements television.Renderer interface
-func (imtv *ImageTV) NewFrame() error {
-	imtv.lastImage = imtv.currImage
+func (imtv *ImageTV) NewFrame(frameNum int) error {
+	imtv.lastFrameData = imtv.currFrameData
 	imtv.lastFrameNum = imtv.currFrameNum
-	imtv.currImage = image.NewNRGBA(imtv.screenGeom)
+	imtv.currFrameData = image.NewNRGBA(imtv.screenGeom)
 	imtv.currFrameNum++
 	return nil
 }
 
 // NewScanline implements television.Renderer interface
-func (imtv *ImageTV) NewScanline() error {
+func (imtv *ImageTV) NewScanline(scanline int) error {
 	return nil
 }
 
 // SetPixel implements television.Renderer interface
 func (imtv *ImageTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	col := color.NRGBA{R: red, G: green, B: blue, A: 255}
-	imtv.currImage.Set(int(x)*imtv.pixelWidth, int(y), col)
-	imtv.currImage.Set(int(x)*imtv.pixelWidth+1, int(y), col)
+	imtv.currFrameData.Set(int(x)*imtv.pixelWidth, int(y), col)
+	imtv.currFrameData.Set(int(x)*imtv.pixelWidth+1, int(y), col)
 	return nil
 }
 

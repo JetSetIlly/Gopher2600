@@ -41,9 +41,23 @@ type Playback struct {
 	sequences map[string]*playbackSequence
 	vcs       *hardware.VCS
 	digest    *renderers.DigestTV
+
+	// image tv will produce an image if playback crashes
+	image *renderers.ImageTV
+
+	// the last frame where an event occurs
+	endFrame int
 }
 
-// NewPlayback is hte preferred method of implementation for the Playback type
+func (plb Playback) String() string {
+	currFrame, err := plb.digest.GetState(television.ReqFramenum)
+	if err != nil {
+		currFrame = plb.endFrame
+	}
+	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
+}
+
+// NewPlayback is the preferred method of implementation for the Playback type
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
@@ -73,7 +87,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	}
 
 	// loop through transcript and divide events according to the first field
-	// (the ID)
+	// (the peripheral ID)
 	for i := numHeaderLines; i < len(lines)-1; i++ {
 		toks := strings.Split(lines[i], fieldSep)
 
@@ -105,6 +119,10 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
+
+		// assuming that frames are listed in order in the file. update
+		// endFrame with the most recent frame every time
+		plb.endFrame = event.frame
 
 		event.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
@@ -142,17 +160,24 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 		return errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
 	}
 
+	var err error
+
 	// create digesttv, piggybacking on the tv already being used by vcs;
 	// unless that tv is already a digesttv
 	switch tv := plb.vcs.TV.(type) {
 	case *renderers.DigestTV:
 		plb.digest = tv
 	default:
-		var err error
 		plb.digest, err = renderers.NewDigestTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
 		if err != nil {
 			return errors.NewFormattedError(errors.RecordingError, err)
 		}
+	}
+
+	// image tv will produce an image if playback crashes
+	plb.image, err = renderers.NewImageTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
+	if err != nil {
+		return errors.NewFormattedError(errors.RecordingError, err)
 	}
 
 	// attach playback to controllers
@@ -190,10 +215,13 @@ func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
 		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
 	}
 
-	// compare current state with the state in the transcript
+	// compare current state with the recording
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.String() {
+			if plb.image != nil {
+				plb.image.Save(fmt.Sprintf("playback_crash_%s", plb.transcript), true)
+			}
 			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 

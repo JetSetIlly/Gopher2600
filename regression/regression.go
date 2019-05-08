@@ -88,11 +88,13 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) (bool, 
 }
 
 // RegressAdd adds a new regression handler to the database
-func RegressAdd(reg Handler) error {
+func RegressAdd(output io.Writer, reg Handler) error {
+	output.Write([]byte(fmt.Sprintf("adding: %s\r", reg)))
 	ok, err := reg.regress(true)
 	if !ok || err != nil {
 		return err
 	}
+	output.Write([]byte(fmt.Sprintf("added: %s\r", reg)))
 
 	db, err := startSession()
 	if err != nil {
@@ -118,7 +120,8 @@ func RegressRunTests(output io.Writer, keys []string) (int, int, int, error) {
 	for k := range keys {
 		v, err := strconv.Atoi(keys[k])
 		if err != nil {
-			output.Write([]byte(fmt.Sprintf("invalid key [%s]\n", keys[k])))
+			msg := fmt.Sprintf("invalid key [%s]", keys[k])
+			return -1, -1, -1, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 		keysV = append(keysV, v)
 	}
