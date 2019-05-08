@@ -1,21 +1,23 @@
-package sdl
+package limiter
 
 import (
 	"fmt"
 	"time"
 )
 
-type fpsLimiter struct {
+// FpsLimiter will trigger every frames per second
+type FpsLimiter struct {
 	framesPerSecond int
 	secondsPerFrame time.Duration
 
 	tick chan bool
 }
 
-func newFPSLimiter(framesPerSecond int) (*fpsLimiter, error) {
+// NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
+func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
 	var err error
 
-	lim := new(fpsLimiter)
+	lim := new(FpsLimiter)
 
 	lim.framesPerSecond = framesPerSecond
 	lim.secondsPerFrame, err = time.ParseDuration(fmt.Sprintf("%fs", float64(1.0)/float64(framesPerSecond)))
@@ -41,6 +43,18 @@ func newFPSLimiter(framesPerSecond int) (*fpsLimiter, error) {
 	return lim, nil
 }
 
-func (lim *fpsLimiter) wait() {
+// Wait will block until trigger
+func (lim *FpsLimiter) Wait() {
 	<-lim.tick
+}
+
+// HasWaited will return true if time has already elapsed and false it it is
+// still yet to happen
+func (lim *FpsLimiter) HasWaited() bool {
+	select {
+	case <-lim.tick:
+		return true
+	default:
+		return false
+	}
 }

@@ -230,24 +230,16 @@ func main() {
 			fallthrough
 
 		case "RUN":
-			verbose := modeFlags.Bool("verbose", false, "display details of each test")
+			// no additional arguments
 			modeFlagsParse()
-
-			var output io.Writer
-			if *verbose == true {
-				output = os.Stdout
-			} else {
-				output = &nopWriter{}
-			}
-
-			succeed, fail, skipped, err := regression.RegressRunTests(output, modeFlags.Args())
+			err := regression.RegressRunTests(os.Stdout, modeFlags.Args())
 			if err != nil {
 				fmt.Printf("* error during regression tests: %s\n", err)
 				os.Exit(2)
 			}
-			fmt.Printf("regression tests: %d succeed, %d fail, %d skipped\n", succeed, fail, skipped)
 
 		case "LIST":
+			// no additional arguments
 			modeFlagsParse()
 			switch len(modeFlags.Args()) {
 			case 0:
@@ -279,13 +271,10 @@ func main() {
 					confirmation = os.Stdin
 				}
 
-				ok, err := regression.RegressDelete(os.Stdout, confirmation, modeFlags.Arg(0))
+				err := regression.RegressDelete(os.Stdout, confirmation, modeFlags.Arg(0))
 				if err != nil {
 					fmt.Printf("* error deleting regression test: %s\n", err)
 					os.Exit(2)
-				}
-				if ok {
-					fmt.Printf("! deleted test #%s from regression database\n", path.Base(modeFlags.Arg(0)))
 				}
 			default:
 				fmt.Printf("* only one entry can be deleted at at time when using %s/%s \n", mode, subMode)
@@ -293,8 +282,8 @@ func main() {
 			}
 
 		case "ADD":
-			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
-			numFrames := modeFlags.Int("frames", 10, "number of frames to run")
+			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL (cartridge args only)")
+			numFrames := modeFlags.Int("frames", 10, "number of frames to run (cartridge args only)")
 			modeFlagsParse()
 
 			switch len(modeFlags.Args()) {
@@ -320,7 +309,6 @@ func main() {
 					fmt.Printf("* error adding regression test: %s\n", err)
 					os.Exit(2)
 				}
-				fmt.Printf("! added %s to regression database\n", path.Base(modeFlags.Arg(0)))
 			default:
 				fmt.Printf("* regression tests must be added one at a time when using %s/%s mode\n", mode, subMode)
 				os.Exit(2)

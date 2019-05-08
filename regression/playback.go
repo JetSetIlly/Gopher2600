@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
 	"gopher2600/television/renderers"
 	"io"
@@ -52,7 +53,7 @@ func (reg PlaybackRegression) getKey() int {
 	return reg.key
 }
 
-func (reg *PlaybackRegression) getCSV() string {
+func (reg *PlaybackRegression) generateCSV() string {
 	return fmt.Sprintf("%s%s%s",
 		csvLeader(reg), fieldSep,
 		reg.Script,
@@ -63,7 +64,9 @@ func (reg PlaybackRegression) String() string {
 	return fmt.Sprintf("[%s] %s", reg.getID(), reg.Script)
 }
 
-func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, message string) (bool, error) {
+	output.Write([]byte(message))
+
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
 		return false, errors.NewFormattedError(errors.RegressionFail, err)
@@ -89,8 +92,15 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		return false, errors.NewFormattedError(errors.RegressionFail, err)
 	}
 
+	// run emulation and display progress meter every 1 second
+	limiter, err := limiter.NewFPSLimiter(1)
+	if err != nil {
+		return false, errors.NewFormattedError(errors.RegressionFail, err)
+	}
 	err = vcs.Run(func() (bool, error) {
-		// TODO: timeout option
+		if limiter.HasWaited() {
+			output.Write([]byte(fmt.Sprintf("\r%s [%s]", message, plb)))
+		}
 		return true, nil
 	})
 	if err != nil {
@@ -106,6 +116,8 @@ func (reg *PlaybackRegression) regress(newRegression bool) (bool, error) {
 		}
 	}
 
+	// if this is a new regression we want to store the script in the
+	// regressionScripts directory
 	if newRegression {
 		// make sure regression script directory exists
 		err = os.MkdirAll(regressionScripts, 0755)

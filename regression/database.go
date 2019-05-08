@@ -69,7 +69,7 @@ func (db *regressionDB) endSession(commitChanges bool) error {
 		db.dbfile.Seek(0, os.SEEK_SET)
 
 		for _, key := range db.keys {
-			db.dbfile.WriteString(db.regressions[key].getCSV())
+			db.dbfile.WriteString(db.regressions[key].generateCSV())
 			db.dbfile.WriteString(regressionSep)
 		}
 	}

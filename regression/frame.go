@@ -5,6 +5,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/television/renderers"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -61,7 +62,7 @@ func (reg FrameRegression) getKey() int {
 	return reg.key
 }
 
-func (reg *FrameRegression) getCSV() string {
+func (reg *FrameRegression) generateCSV() string {
 	return fmt.Sprintf("%s%s%s%s%s%s%d%s%s",
 		csvLeader(reg), fieldSep,
 		reg.CartFile, fieldSep,
@@ -75,7 +76,9 @@ func (reg FrameRegression) String() string {
 	return fmt.Sprintf("[%s] %s [%s] frames=%d", reg.getID(), reg.CartFile, reg.TVtype, reg.NumFrames)
 }
 
-func (reg *FrameRegression) regress(newRegression bool) (bool, error) {
+func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, error) {
+	output.Write([]byte(msg))
+
 	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
 		return false, errors.NewFormattedError(errors.RegressionFail, err)

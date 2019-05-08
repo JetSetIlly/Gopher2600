@@ -3,6 +3,7 @@ package sdl
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/performance/limiter"
 	"gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -16,7 +17,7 @@ type GUI struct {
 	scr *screen
 
 	// regulates how often the screen is updated
-	fpsLimiter *fpsLimiter
+	fpsLimiter *limiter.FpsLimiter
 
 	// connects SDL guiLoop with the parent process
 	eventChannel chan gui.Event
@@ -56,7 +57,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		gtv.Television = tv
 	}
 
-	gtv.fpsLimiter, err = newFPSLimiter(50)
+	gtv.fpsLimiter, err = limiter.NewFPSLimiter(50)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
@@ -96,7 +97,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 // update the gui so that it reflects changes to buffered data in the tv struct
 func (gtv *GUI) update() error {
-	gtv.fpsLimiter.wait()
+	gtv.fpsLimiter.Wait()
 
 	// abbrogate most of the updating to the screen instance
 	err := gtv.scr.update(gtv.paused)

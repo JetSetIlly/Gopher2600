@@ -2,8 +2,10 @@ package errors
 
 // list of error numbers
 const (
+	FatalError Errno = iota
+
 	// sentinal
-	UserInterrupt Errno = iota
+	UserInterrupt
 	ScriptEnd
 	PowerOff
 	PeriphUnplugged

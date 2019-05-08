@@ -1,6 +1,8 @@
 package errors
 
 var messages = map[Errno]string{
+	FatalError: "fatality: %s: %s",
+
 	// sentinals
 	UserInterrupt:   "user interrupt",                        // sentinal
 	ScriptEnd:       "end of script (%s)",                    // sentinal
