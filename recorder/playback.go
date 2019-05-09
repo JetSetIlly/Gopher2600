@@ -38,12 +38,9 @@ type Playback struct {
 	CartHash string
 	TVtype   string
 
-	sequences map[string]*playbackSequence
+	sequences []*playbackSequence
 	vcs       *hardware.VCS
 	digest    *renderers.DigestTV
-
-	// image tv will produce an image if playback crashes
-	image *renderers.ImageTV
 
 	// the last frame where an event occurs
 	endFrame int
@@ -62,7 +59,10 @@ func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
 	plb := &Playback{transcript: transcript}
-	plb.sequences = make(map[string]*playbackSequence)
+	plb.sequences = make([]*playbackSequence, peripherals.NumPeriphIDs)
+	for i := range plb.sequences {
+		plb.sequences[i] = &playbackSequence{}
+	}
 
 	tf, err := os.Open(transcript)
 	if err != nil {
@@ -98,16 +98,18 @@ func NewPlayback(transcript string) (*Playback, error) {
 		}
 
 		// add a new playbackSequence for the id if it doesn't exist
-		id := toks[fieldID]
-		if _, ok := plb.sequences[id]; !ok {
-			plb.sequences[id] = &playbackSequence{}
+		n, err := strconv.Atoi(toks[fieldID])
+		if err != nil {
+			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
+			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
 		}
+		id := peripherals.PeriphID(n)
 
 		// create a new event and convert tokens accordingly
 		// any errors in the transcript causes failure
 		event := event{line: i + 1}
 
-		n, err := strconv.Atoi(toks[fieldEvent])
+		n, err = strconv.Atoi(toks[fieldEvent])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
 			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
@@ -174,12 +176,6 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 		}
 	}
 
-	// image tv will produce an image if playback crashes
-	plb.image, err = renderers.NewImageTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
-	if err != nil {
-		return errors.NewFormattedError(errors.RecordingError, err)
-	}
-
 	// attach playback to controllers
 	vcs.Ports.Player0.Attach(plb)
 	vcs.Ports.Player1.Attach(plb)
@@ -189,12 +185,9 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 }
 
 // GetInput implements peripherals.Controller interface
-func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
+func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Event, error) {
 	// there's no events for this id at all
-	seq, ok := plb.sequences[id]
-	if !ok {
-		return peripherals.NoEvent, nil
-	}
+	seq := plb.sequences[id]
 
 	// we've reached the end of the list of events for this id
 	if seq.eventCt >= len(seq.events) {
@@ -219,9 +212,6 @@ func (plb *Playback) GetInput(id string) (peripherals.Event, error) {
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.String() {
-			if plb.image != nil {
-				plb.image.Save(fmt.Sprintf("playback_crash_%s", plb.transcript), true)
-			}
 			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 

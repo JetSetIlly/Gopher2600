@@ -93,7 +93,7 @@ func NewSplaceStick() (*SplaceStick, error) {
 }
 
 // GetInput implements the Controller interface
-func (sps *SplaceStick) GetInput(_ string) (peripherals.Event, error) {
+func (sps *SplaceStick) GetInput(_ peripherals.PeriphID) (peripherals.Event, error) {
 	select {
 	case ev := <-sps.event:
 		return ev, nil

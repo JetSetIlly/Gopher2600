@@ -12,5 +12,5 @@ package peripherals
 // be used as the source for controller input (by implementing the Controller
 // interface).
 type Transcriber interface {
-	Transcribe(id string, event Event) error
+	Transcribe(id PeriphID, event Event) error
 }

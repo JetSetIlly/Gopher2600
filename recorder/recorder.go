@@ -68,7 +68,7 @@ func (rec *Recorder) End() error {
 }
 
 // Transcribe implements the Transcriber interface
-func (rec *Recorder) Transcribe(id string, event peripherals.Event) error {
+func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event) error {
 	// don't do anything if event is the NoEvent
 	if event == peripherals.NoEvent {
 		return nil

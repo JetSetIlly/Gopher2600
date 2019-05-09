@@ -6,12 +6,6 @@ import (
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
-// Player0ID is used to identify events from the player 0 port
-const Player0ID = "Player0"
-
-// Player1ID is used to identify events from the player 1 port
-const Player1ID = "Player1"
-
 // Ports is the containing structure for the two player ports
 type Ports struct {
 	Player0 *player
@@ -37,7 +31,7 @@ type player struct {
 	// player instances need to know what lastJoystickValue is
 	ports *Ports
 
-	id string
+	id PeriphID
 
 	riot  memory.PeriphBus
 	tia   memory.PeriphBus
@@ -58,7 +52,7 @@ type player struct {
 
 func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
 	pl := &player{
-		id:           Player0ID,
+		id:           PlayerOneID,
 		ports:        pt,
 		riot:         riot,
 		tia:          tia,
@@ -82,7 +76,7 @@ func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 
 func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
 	pl := &player{
-		id:           Player1ID,
+		id:           PlayerTwoID,
 		ports:        pt,
 		riot:         riot,
 		tia:          tia,

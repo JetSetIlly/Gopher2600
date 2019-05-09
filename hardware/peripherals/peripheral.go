@@ -2,8 +2,19 @@ package peripherals
 
 import "gopher2600/errors"
 
+// PeriphID differentiates peripherals attached to the console
+type PeriphID int
+
+// list of defined PeriphIDs
+const (
+	PlayerOneID PeriphID = iota
+	PlayerTwoID
+	PanelID
+	NumPeriphIDs
+)
+
 type peripheral struct {
-	id     string
+	id     PeriphID
 	handle func(Event) error
 
 	controller     Controller

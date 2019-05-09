@@ -6,5 +6,5 @@ package peripherals
 // Peripherals can also be controlled more directly by calling the Handle
 // function of that peripheral.
 type Controller interface {
-	GetInput(id string) (Event, error)
+	GetInput(id PeriphID) (Event, error)
 }

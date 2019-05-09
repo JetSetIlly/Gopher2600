@@ -8,14 +8,11 @@ import (
 	"gopher2600/hardware/memory/vcssymbols"
 )
 
-// PanelID is the name used to identify panel events
-const PanelID = "Panel"
-
 // Panel represents the console's front control panel
 type Panel struct {
 	peripheral
 
-	id string
+	id PeriphID
 
 	riot          memory.PeriphBus
 	p0pro         bool
