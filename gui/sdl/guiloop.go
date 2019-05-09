@@ -20,17 +20,21 @@ func (gtv *GUI) guiLoop() {
 		case *sdl.KeyboardEvent:
 			switch sdlEvent.Type {
 			case sdl.KEYDOWN:
-				gtv.eventChannel <- gui.Event{
-					ID: gui.EventKeyboard,
-					Data: gui.EventDataKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-						Down: true}}
+				if sdlEvent.Repeat == 0 {
+					gtv.eventChannel <- gui.Event{
+						ID: gui.EventKeyboard,
+						Data: gui.EventDataKeyboard{
+							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+							Down: true}}
+				}
 			case sdl.KEYUP:
-				gtv.eventChannel <- gui.Event{
-					ID: gui.EventKeyboard,
-					Data: gui.EventDataKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-						Down: false}}
+				if sdlEvent.Repeat == 0 {
+					gtv.eventChannel <- gui.Event{
+						ID: gui.EventKeyboard,
+						Data: gui.EventDataKeyboard{
+							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+							Down: false}}
+				}
 			}
 
 		case *sdl.MouseButtonEvent:

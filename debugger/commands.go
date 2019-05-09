@@ -95,7 +95,7 @@ var commandTemplate = []string{
 	cmdScript + " [WRITE [%S]|END|%F]",
 	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
 	cmdStepMode + " (CPU|VIDEO)",
-	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|CENTRE|NOFIRE]",
+	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " %V (ALL)",
 	cmdTIA + " (FUTURE|HMOVE)",
 	cmdTV + " (SPEC)",
@@ -959,8 +959,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			event = peripherals.Left
 		case "RIGHT":
 			event = peripherals.Right
-		case "CENTRE", "CENTER":
-			event = peripherals.Centre
+		case "NOUP":
+			event = peripherals.NoUp
+		case "NODOWN":
+			event = peripherals.NoDown
+		case "NOLEFT":
+			event = peripherals.NoLeft
+		case "NORIGHT":
+			event = peripherals.NoRight
 		case "FIRE":
 			event = peripherals.Fire
 		case "NOFIRE":

@@ -43,13 +43,13 @@ func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardw
 		case "F2":
 			err = vcs.Panel.Handle(peripherals.PanelResetRelease)
 		case "Left":
-			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+			err = vcs.Ports.Player0.Handle(peripherals.NoLeft)
 		case "Right":
-			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+			err = vcs.Ports.Player0.Handle(peripherals.NoRight)
 		case "Up":
-			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+			err = vcs.Ports.Player0.Handle(peripherals.NoUp)
 		case "Down":
-			err = vcs.Ports.Player0.Handle(peripherals.Centre)
+			err = vcs.Ports.Player0.Handle(peripherals.NoDown)
 		case "Space":
 			err = vcs.Ports.Player0.Handle(peripherals.NoFire)
 		}

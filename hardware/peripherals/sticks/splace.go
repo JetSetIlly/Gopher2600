@@ -13,6 +13,8 @@ type SplaceStick struct {
 
 	device *joysticks.HID
 	err    error
+
+	x, y float32
 }
 
 // NewSplaceStick is the preferred method of initialisation for the Stick type
@@ -47,17 +49,27 @@ func NewSplaceStick() (*SplaceStick, error) {
 			case ev := <-stickMove:
 				x := ev.(joysticks.CoordsEvent).X
 				y := ev.(joysticks.CoordsEvent).Y
-				if x < -0.5 {
+
+				if x < -0.5 && sps.x >= -0.5 && sps.x <= 0 {
 					sps.event <- peripherals.Left
-				} else if x > 0.5 {
+				} else if x >= -0.5 && sps.x < -0.5 {
+					sps.event <- peripherals.NoLeft
+				} else if x > 0.5 && sps.x <= 0.5 && sps.x >= 0 {
 					sps.event <- peripherals.Right
-				} else if y < -0.5 {
+				} else if x <= 0.5 && sps.x > 0.5 {
+					sps.event <- peripherals.NoRight
+				} else if y < -0.5 && sps.y >= -0.5 && sps.y <= 0 {
 					sps.event <- peripherals.Up
-				} else if y > 0.5 {
+				} else if y >= -0.5 && sps.y < -0.5 {
+					sps.event <- peripherals.NoUp
+				} else if y > 0.5 && sps.y <= 0.5 && sps.y >= 0 {
 					sps.event <- peripherals.Down
-				} else {
-					sps.event <- peripherals.Centre
+				} else if y <= 0.5 && sps.y > 0.5 {
+					sps.event <- peripherals.NoDown
 				}
+
+				sps.x = x
+				sps.y = y
 
 			case <-buttonPress:
 				sps.event <- peripherals.Fire

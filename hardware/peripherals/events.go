@@ -15,10 +15,13 @@ const (
 	Fire
 	NoFire
 	Up
+	NoUp
 	Down
+	NoDown
 	Left
+	NoLeft
 	Right
-	Centre
+	NoRight
 
 	// TODO: paddle and keyboard controllers
 
