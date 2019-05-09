@@ -99,27 +99,41 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 
-	// create a new non-branching CPU to disassemble memory
+	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 	mc.NoFlowControl = true
 
+	// disassemble linearly
+
 	// make sure we're in the starting bank - at the beginning of the
 	// disassembly and at the end
 	dsm.Cart.BankSwitch(0)
 	defer dsm.Cart.BankSwitch(0)
 
-	mc.LoadPCIndirect(memory.AddressReset)
+	err = mc.LoadPCIndirect(memory.AddressReset)
+	if err != nil {
+		return errors.NewFormattedError(errors.DisasmError, err)
+	}
 	err = dsm.linearDisassembly(mc)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 
+	// disassemble as best we can with (manual) flow control
+
+	mc.Reset()
+
 	err = mc.LoadPCIndirect(memory.AddressReset)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
+	err = dsm.flowDisassembly(mc)
+	if err != nil {
+		return errors.NewFormattedError(errors.DisasmError, err)
+	}
+
 	return nil
 }
