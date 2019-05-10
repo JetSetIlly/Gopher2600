@@ -98,6 +98,12 @@ func (ms *missileSprite) tick() {
 		// start of the drawing of the sprite, unless the position of the
 		// sprite has been moved with HMOVE.
 		//
+		// the first part of the condition was tuned with the help of the
+		// "player testcard" roms. the additional condition, regarding the
+		// effects of HMOVE, was added after seeing errors in Mott's test code,
+		// "Games that do bad things to HMOVE...". not at all sure this is an
+		// accurate solution.
+		//
 		// (concept shared with player sprite)
 		if ms.resetFuture != nil && !ms.resetTriggered && ms.resetPixel == ms.currentPixel {
 			ms.deferDrawStart = true
@@ -153,7 +159,7 @@ func (ms *missileSprite) tick() {
 }
 
 // pixel returns the color of the missile at the current time.  returns
-// (false, 0) if no pixel is to be seen; and (true, col) if there is
+// (false, col) if no pixel is to be seen; and (true, col) if there is
 func (ms *missileSprite) pixel() (bool, uint8) {
 	if ms.enable && !ms.resetToPlayerPos {
 		switch ms.graphicsScanCounter {

@@ -86,7 +86,7 @@ func (bs *ballSprite) tick() {
 }
 
 // pixel returns the color of the ball at the current time.  returns
-// (false, 0) if no pixel is to be seen; and (true, col) if there is
+// (false, col) if no pixel is to be seen; and (true, col) if there is
 func (bs *ballSprite) pixel() (bool, uint8) {
 	// ball should be pixelled if:
 	//  o ball is enabled and vertical delay is not enabled

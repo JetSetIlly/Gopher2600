@@ -56,20 +56,20 @@ func (hm hmove) String() string {
 	return hm.MachineInfo()
 }
 
-// set begins the horizontal movement sequence
-func (hm *hmove) set() {
+// setLatch begins the horizontal movement sequence
+func (hm *hmove) setLatch() {
 	hm.latch = true
 	hm.count = 15
 	hm.phase = hm.colorClock.Phase
 }
 
-// unset send the horizontal movement sequence
-func (hm *hmove) unset() {
+// unsetLatch send the horizontal movement sequence
+func (hm *hmove) unsetLatch() {
 	hm.latch = false
 }
 
-// isset check to see if the horiztonal movement sequence is currently running
-func (hm *hmove) isset() bool {
+// isLatched check to see if the horiztonal movement sequence is currently running
+func (hm *hmove) isLatched() bool {
 	return hm.latch
 }
 

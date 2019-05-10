@@ -62,10 +62,6 @@ func (rs *rsync) set() {
 	rs.colorClock.ResetPhase()
 }
 
-func (rs *rsync) isjustset() bool {
-	return rs.remainingCycles == 5
-}
-
 func (rs *rsync) tick() bool {
 	if rs.remainingCycles == -1 {
 		return false

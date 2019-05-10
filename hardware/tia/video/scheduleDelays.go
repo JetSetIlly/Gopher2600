@@ -27,6 +27,6 @@ const (
 	delayResetPlayer  = 5
 	delayResetBall    = 5
 
-	// see comment in sprite.tickSpritesForHMOVE()
+	// see comment in sprite.resolveHorizMovement()
 	delayForceReset = 3
 )

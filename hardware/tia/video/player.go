@@ -211,9 +211,9 @@ func (ps *playerSprite) tick() {
 	} else {
 		// if player.position.tick() has not caused the position counter to
 		// cycle then progress draw signal according to color clock phase and
-		// nusiz_player_width. for nusiz_player_width and 0b101 and 0b111,
-		// pixels are smeared over additional cycles in order to create the
-		// double and quadruple sized sprites
+		// ps.size. for ps.size and 0b101 and 0b111, pixels are smeared over
+		// additional cycles in order to create the double and quadruple sized
+		// sprites
 		if ps.size == 0x05 {
 			if ps.graphicsScanFilter%2 == 0 {
 				ps.tickGraphicsScan()
@@ -235,7 +235,7 @@ func (ps *playerSprite) tick() {
 }
 
 // pixel returns the color of the player at the current time.  returns
-// (false, 0) if no pixel is to be seen; and (true, col) if there is
+// (false, col) if no pixel is to be seen; and (true, col) if there is
 func (ps *playerSprite) pixel() (bool, uint8) {
 	// select which graphics register to use
 	gfxData := ps.gfxDataA

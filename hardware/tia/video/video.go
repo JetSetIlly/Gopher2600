@@ -30,8 +30,8 @@ type Video struct {
 	// writing playfield bits, player bits and enable flags for missiles and
 	// the ball.
 	//
-	// the second future instance is FutureMotionClock. this is for those
-	// writes that only occur during the "motion clock", resetting sprite
+	// the second future instance is OnFutureMotionClock. this is for those
+	// writes that only occur during the "motion clock". eg. resetting sprite
 	// positions
 	OnFutureColorClock  future.Group
 	OnFutureMotionClock future.Group
@@ -120,20 +120,29 @@ func (vd *Video) TickSprites() {
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
 func (vd *Video) PrepareSpritesForHMOVE() {
-	vd.Player0.PrepareForHMOVE()
-	vd.Player1.PrepareForHMOVE()
-	vd.Missile0.PrepareForHMOVE()
-	vd.Missile1.PrepareForHMOVE()
-	vd.Ball.PrepareForHMOVE()
+	vd.Player0.prepareForHMOVE()
+	vd.Player1.prepareForHMOVE()
+	vd.Missile0.prepareForHMOVE()
+	vd.Missile1.prepareForHMOVE()
+	vd.Ball.prepareForHMOVE()
+}
+
+// EndHMOVE is called whenever HMOVE activity is manually unset
+func (vd *Video) EndHMOVE() {
+	vd.Player0.endHMOVE()
+	vd.Player1.endHMOVE()
+	vd.Missile0.endHMOVE()
+	vd.Missile1.endHMOVE()
+	vd.Ball.endHMOVE()
 }
 
 // ResolveHorizMovement is only called when HMOVE is active
 func (vd *Video) ResolveHorizMovement(count int) {
-	vd.Player0.resolveHorizMovement(count)
-	vd.Player1.resolveHorizMovement(count)
-	vd.Missile0.resolveHorizMovement(count)
-	vd.Missile1.resolveHorizMovement(count)
-	vd.Ball.resolveHorizMovement(count)
+	vd.Player0.resolveHMOVE(count)
+	vd.Player1.resolveHMOVE(count)
+	vd.Missile0.resolveHMOVE(count)
+	vd.Missile1.resolveHMOVE(count)
+	vd.Ball.resolveHMOVE(count)
 }
 
 // ForceHMOVE is an ungodly hack

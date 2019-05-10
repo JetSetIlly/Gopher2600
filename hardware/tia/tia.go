@@ -127,14 +127,11 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.rsync.set()
 		return
 	case "HMOVE":
-		if tia.colorClock.Count < 15 {
+		if tia.colorClock.Count < 15 || tia.colorClock.Count >= 54 {
 			tia.Video.PrepareSpritesForHMOVE()
-			tia.Hmove.set()
+			tia.Hmove.setLatch()
 		} else if tia.colorClock.Count > 39 && tia.colorClock.Count < 55 {
 			tia.Video.ForceHMOVE(-39 + tia.colorClock.Count)
-		} else if tia.colorClock.Count >= 54 {
-			tia.Video.PrepareSpritesForHMOVE()
-			tia.Hmove.set()
 		}
 		return
 	}
@@ -169,38 +166,56 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		tia.hsync = false
 	} else if tia.colorClock.MatchEnd(12) {
 		cburst = true
-	} else if tia.colorClock.MatchEnd(15) {
-		tia.motionClock = true
 	} else if tia.colorClock.MatchEnd(16) {
-		if !tia.Hmove.isset() {
+		if !tia.Hmove.isLatched() {
 			// HBLANK off (early)
 			tia.hblank = false
+		} else {
+			// short circuit HMOVE activity but don't unlatch it
+			tia.Hmove.count = -1
 		}
-		tia.Hmove.count = -1
-	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isset() {
+	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isLatched() {
 		// HBLANK off (late)
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(54) {
-		tia.Hmove.unset()
-	} else if tia.colorClock.MatchEnd(56) {
-		tia.motionClock = false
+		tia.Hmove.unsetLatch()
+		tia.Video.EndHMOVE()
+	} else {
+		// motion clock is turned on/off depending on whether hmove is
+		// currently active. if HMOVE is not set then motion clock is set
+		// "early"; if HMOVE is set then motion clock is set "late".
+		//
+		// the original assumption was that motion clock would always be set
+		// "early"
+		//
+		// this surely affects many ROMs but I first noticed the disparity when
+		// viewing the Pole Position ROM
+		if tia.Hmove.isLatched() {
+			// set motion clock "late"
+			if tia.colorClock.MatchEnd(17) {
+				tia.motionClock = true
+			} else if tia.colorClock.MatchEnd(1) {
+				tia.motionClock = false
+			}
+		} else {
+			// set motion clock "early"
+			if tia.colorClock.MatchEnd(15) {
+				tia.motionClock = true
+			} else if tia.colorClock.MatchEnd(56) {
+				tia.motionClock = false
+			}
+		}
 	}
 
 	// set up new scanline if colorClock has ticked its way to the reset point or if
 	// an rsync has matured (see rsync.go commentary)
-	if tia.rsync.tick() {
-		frontPorch = true
-		tia.wsync = false
-		tia.hblank = true
-		tia.Hmove.unset()
-		tia.colorClock.Reset()
-	} else if tia.colorClock.Tick() {
+	if tia.rsync.tick() || tia.colorClock.Tick() {
 		frontPorch = true
 		tia.wsync = false
 		tia.hblank = true
 		tia.videoCycles = 0
 		tia.cpuCycles = 0
-		// not sure if we need to reset rsync
+		tia.colorClock.Reset()
 	}
 
 	// HMOVE clock stuffing
@@ -222,8 +237,16 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 
 	// decide on pixel color
 	var pixelColor, debugColor uint8
-	if !tia.hblank {
+	if tia.motionClock {
 		pixelColor, debugColor = tia.Video.Pixel()
+	}
+
+	var pixel television.ColorSignal
+
+	if tia.hblank {
+		pixel = television.VideoBlack
+	} else {
+		pixel = television.ColorSignal(pixelColor)
 	}
 
 	// at the end of the video cycle we want to finally signal the televison
@@ -233,7 +256,7 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		FrontPorch: frontPorch,
 		HSync:      tia.hsync,
 		CBurst:     cburst,
-		Pixel:      television.ColorSignal(pixelColor),
+		Pixel:      pixel,
 		AltPixel:   television.ColorSignal(debugColor)})
 
 	if err != nil {
