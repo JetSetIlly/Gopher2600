@@ -11,6 +11,9 @@ package video
 // values are used.
 
 const (
+	// VBLANK revealed by the scoring box of homebrew donkey kong
+	delayVBLANK = 2
+
 	// playfield write delay of two cycles is optimal - the effect of three
 	// cycles is hard to see but can be clearly shown with homebrew Thrust
 	delayWritePlayfield = 2

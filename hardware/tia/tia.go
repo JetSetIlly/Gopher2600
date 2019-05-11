@@ -88,7 +88,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.NewVideo(tia.colorClock, mem)
+	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.vblank)
 	if tia.Video == nil {
 		return nil
 	}
@@ -117,9 +117,9 @@ func (tia *TIA) ReadTIAMemory() {
 		_ = value&vsyncLatchTriggerMask == vsyncLatchTriggerMask
 		_ = value&vsyncGroundedPaddleMask == vsyncGroundedPaddleMask
 		return
-	case "VBLANK":
-		tia.vblank = value&vblankMask == vblankMask
-		return
+
+	// VBLANK moved to ReadVideoMemory()
+
 	case "WSYNC":
 		tia.wsync = true
 		return

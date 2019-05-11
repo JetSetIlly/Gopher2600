@@ -11,6 +11,8 @@ import (
 type Video struct {
 	colorClock *polycounter.Polycounter
 
+	vblank *bool
+
 	// collision matrix
 	collisions *collisions
 
@@ -39,7 +41,7 @@ type Video struct {
 
 // colors to use for debugging
 const (
-	debugColBackground = uint8(0x00) // black (stella uses a light grey)
+	debugColBackground = uint8(0x02) // black (stella uses a light grey)
 	debugColBall       = uint8(0xb4) // cyan
 	debugColPlayfield  = uint8(0x62) // purple
 	debugColPlayer0    = uint8(0x32) // red
@@ -49,9 +51,8 @@ const (
 )
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus) *Video {
-	vd := new(Video)
-	vd.colorClock = colorClock
+func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, vblank *bool) *Video {
+	vd := &Video{colorClock: colorClock, vblank: vblank}
 
 	// collision matrix
 	vd.collisions = newCollision(mem)
@@ -323,10 +324,17 @@ func createTriggerList(playerSize uint8) []int {
 // ReadVideoMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
 // for those where a "schedule" function is called.
+//
+// returns true if memory has been serviced
 func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	switch register {
 	default:
 		return false
+
+	case "VBLANK":
+		vd.OnFutureColorClock.Schedule(delayVBLANK, func() {
+			*vd.vblank = (value&0x02 == 0x02)
+		}, "setting VBLANK")
 
 	// colours
 	case "COLUP0":
