@@ -44,9 +44,9 @@ type watcher struct {
 func (wtr watcher) String() string {
 	val := ""
 	if wtr.matchValue {
-		val = fmt.Sprintf("(value=%#02x)", wtr.value)
+		val = fmt.Sprintf(" (value=%#02x)", wtr.value)
 	}
-	return fmt.Sprintf("%#04x %s %s", wtr.address, wtr.event, val)
+	return fmt.Sprintf("%#04x %s%s", wtr.address, wtr.event, val)
 }
 
 type watches struct {
@@ -89,31 +89,36 @@ func (wtc *watches) drop(num int) error {
 func (wtc *watches) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
+
 	for i := range wtc.watches {
 		// match addresses if memory has been accessed recently (LastAddressFlag)
-		if wtc.watches[i].address == wtc.vcsmem.LastAddressAccessed {
+		if wtc.watches[i].address == wtc.vcsmem.LastAccessAddress {
+			if wtc.lastAddressAccessed != wtc.vcsmem.LastAccessAddress {
+				// match watch event to the type of memory access
+				if wtc.watches[i].event == watchEventAny ||
+					(wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAccessWrite) ||
+					(wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAccessWrite) {
 
-			if wtc.lastAddressAccessed != wtc.vcsmem.LastAddressAccessed {
-				wtc.lastAddressAccessed = wtc.vcsmem.LastAddressAccessed
-
-				// match events
-				if wtc.watches[i].event == watchEventAny || (wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAddressAccessWrite) || (wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAddressAccessWrite) {
-
-					// match value
-					if !wtc.watches[i].matchValue || (wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAddressAccessValue)) {
+					// match watched-for value to the value that was read/written to the
+					// watched address
+					if !wtc.watches[i].matchValue ||
+						(wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAccessValue)) {
 
 						// prepare string according to event
-						if wtc.vcsmem.LastAddressAccessWrite {
-							checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAddressAccessValue))
+						if wtc.vcsmem.LastAccessWrite {
+							checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
 						} else {
 							checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
 						}
-
 					}
 				}
 			}
 		}
 	}
+
+	// note what the last address accessed was
+	wtc.lastAddressAccessed = wtc.vcsmem.LastAccessAddress
+
 	return checkString.String()
 }
 
@@ -161,16 +166,16 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// perspective or not. for our purposes, this means that READ watch
 	// events are and WRITE watch events are not.
 
-	switch mode {
-	case "READ":
+	switch event {
+	case watchEventRead:
 		addr, err = dbgmem.mapAddress(a, true)
-	case "WRITE":
+	case watchEventWrite:
 		addr, err = dbgmem.mapAddress(a, false)
 	default:
 		// try both perspectives
-		addr, err = dbgmem.mapAddress(a, true)
+		addr, err = dbgmem.mapAddress(a, false)
 		if err != nil {
-			addr, err = dbgmem.mapAddress(a, false)
+			addr, err = dbgmem.mapAddress(a, true)
 		}
 	}
 

@@ -52,10 +52,10 @@ func (mon *Monitor) Check() error {
 		return nil
 	}
 
-	if mon.Mem.LastAddressAccessWrite && mon.Mem.LastAddressAccessed != mon.lastAddress {
+	if mon.Mem.LastAccessWrite && mon.Mem.LastAccessAddress != mon.lastAddress {
 		sendSignal := true
 
-		switch mon.Mem.LastAddressAccessed {
+		switch mon.Mem.LastAccessAddress {
 		case 0x03: // RSYNC
 			sig = MetaSignalAttributes{Label: "RSYNC", Red: 255, Green: 0, Blue: 0}
 		case 0x2a: // HMOVE
@@ -84,7 +84,7 @@ func (mon *Monitor) Check() error {
 		}
 
 		// note address
-		mon.lastAddress = mon.Mem.LastAddressAccessed
+		mon.lastAddress = mon.Mem.LastAccessAddress
 	}
 
 	return nil

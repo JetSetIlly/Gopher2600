@@ -21,11 +21,15 @@ type VCSMemory struct {
 	PIA  *PIA
 	Cart *Cartridge
 
-	// a note of the last memory location to be accessed
-	// this address is the mapped address
-	LastAddressAccessed    uint16
-	LastAddressAccessWrite bool
-	LastAddressAccessValue uint8
+	// a note of the last memory location to be accessed.  this address is the
+	// mapped address
+	LastAccessAddress uint16
+
+	// the value that was written/read from the last address accessed
+	LastAccessValue uint8
+
+	// whether the last addres accessed was written (true) or read (false)
+	LastAccessWrite bool
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
@@ -100,10 +104,10 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	if !present {
 		return 0, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
-	mem.LastAddressAccessed = ma
-	mem.LastAddressAccessWrite = false
+	mem.LastAccessAddress = ma
+	mem.LastAccessWrite = false
 	data, err := area.(CPUBus).Read(ma)
-	mem.LastAddressAccessValue = data
+	mem.LastAccessValue = data
 	return data, err
 }
 
@@ -114,8 +118,8 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	if !present {
 		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
-	mem.LastAddressAccessed = ma
-	mem.LastAddressAccessWrite = true
-	mem.LastAddressAccessValue = data
+	mem.LastAccessAddress = ma
+	mem.LastAccessWrite = true
+	mem.LastAccessValue = data
 	return area.(CPUBus).Write(ma, data)
 }

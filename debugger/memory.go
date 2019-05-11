@@ -34,7 +34,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 
 	switch address := address.(type) {
 	case uint16:
-		ma = mem.mem.MapAddress(address, true)
+		ma = mem.mem.MapAddress(address, cpuPerspective)
 	case string:
 		// search for symbolic address in standard vcs read symbols
 		for a, sym := range symbolTable {
@@ -65,7 +65,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuPerspective bool) (uin
 		na, err := strconv.ParseUint(address, 0, 16)
 		if err == nil {
 			ma = uint16(na)
-			ma = mem.mem.MapAddress(ma, true)
+			ma = mem.mem.MapAddress(ma, cpuPerspective)
 			mapped = true
 		}
 
