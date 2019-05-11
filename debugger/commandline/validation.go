@@ -99,6 +99,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// check to see if input matches this node. using placeholder matching if
 	// appropriate
 
+	tentativeMatch := false
 	match := true
 
 	// default error in case nothing matches - replaced as necessary
@@ -120,17 +121,22 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		}
 
 	case "%S":
-		// string placeholders do not cause a match if the node has branches.
-		// if they did then they would be acting in the same way as the %*
-		// placeholder and any subsequent branches will not be considered at
-		// all.
+		// string placeholders do not cause an immediate match if the node has
+		// branches.  if they did then they would be acting in the same way as
+		// the %* placeholder and any subsequent branches will not be
+		// considered at all. we do however flag a tentative match. in this
+		// way, if none of the branches cause a better match, then this match
+		// will do
 
+		tentativeMatch = true
 		match = n.branch == nil
 
 	case "%F":
 		// TODO: check for file existance
 
 		// see commentary for %S above
+
+		tentativeMatch = true
 		match = n.branch == nil
 
 	case "%*":
@@ -163,6 +169,10 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 				return nil
 			}
 		}
+
+		// there's no explicit match in any of the matches. if we've
+		// encountered a tentative match however, we can use that
+		match = tentativeMatch
 	}
 
 	if !match {

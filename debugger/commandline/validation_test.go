@@ -280,3 +280,17 @@ func TestValidation_singluarOption(t *testing.T) {
 		fmt.Println(err)
 	}
 }
+
+func TestValidation_foo(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"SYMBOL [%S (ALL|MIRRORS)|LIST]"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	err = cmds.Validate("SYMBOL enabl")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+}

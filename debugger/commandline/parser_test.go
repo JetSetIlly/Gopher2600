@@ -156,6 +156,7 @@ func TestParser(t *testing.T) {
 		"GREP %V",
 		"TEST [FOO [%S]|BAR] (EGG [%S]|FOG|NOG NUG) (TUG)",
 		"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]",
+		"SYMBOL [%S (ALL|MIRRORS)|LIST]",
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
