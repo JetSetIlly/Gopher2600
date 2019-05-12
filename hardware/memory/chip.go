@@ -2,7 +2,7 @@ package memory
 
 import (
 	"gopher2600/errors"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 )
 
 // ChipMemory defines the information for and operations allowed for those
@@ -18,7 +18,7 @@ type ChipMemory struct {
 	memory []uint8
 
 	// additional mask to further reduce address space when read from the CPU
-	readMask uint16
+	cpuReadMask uint16
 
 	// when the CPU writes to chip memory it is not writing to memory in the
 	// way we might expect. instead we note the address that has been written
@@ -54,12 +54,12 @@ func (area ChipMemory) Memtop() uint16 {
 }
 
 // Peek is the implementation of Memory.Area.Peek. returns:
-func (area ChipMemory) Peek(address uint16) (uint8, uint16, string, string, error) {
-	sym := vcssymbols.ReadSymbols[address]
+func (area ChipMemory) Peek(address uint16) (uint8, error) {
+	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, 0, "", "", errors.NewFormattedError(errors.UnreadableAddress, address)
+		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
 	}
-	return area.memory[address-area.origin], address, area.Label(), sym, nil
+	return area.memory[address-area.origin], nil
 }
 
 // Poke is the implementation of Memory.Area.Poke

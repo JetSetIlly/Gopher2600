@@ -3,7 +3,7 @@ package peripherals
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 )
 
 // Ports is the containing structure for the two player ports
@@ -57,8 +57,8 @@ func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 		riot:         riot,
 		tia:          tia,
 		panel:        panel,
-		joystick:     vcssymbols.SWCHA,
-		fireButton:   vcssymbols.INPT4,
+		joystick:     addresses.SWCHA,
+		fireButton:   addresses.INPT4,
 		currentState: 0xf0,
 		joystickFunc: func(n uint8) uint8 { return n }}
 
@@ -81,8 +81,8 @@ func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *P
 		riot:         riot,
 		tia:          tia,
 		panel:        panel,
-		joystick:     vcssymbols.SWCHA,
-		fireButton:   vcssymbols.INPT5,
+		joystick:     addresses.SWCHA,
+		fireButton:   addresses.INPT5,
 		currentState: 0xf0,
 		joystickFunc: func(n uint8) uint8 { return (n >> 4) | (n << 4) }}
 

@@ -75,7 +75,7 @@ var commandTemplate = []string{
 	cmdDrop + " [BREAK|TRAP|WATCH] %V",
 	cmdGrep + " %S",
 	cmdHelp + " %*",
-	cmdHexLoad + " %V %*",
+	cmdHexLoad + " %V %V %*",
 	cmdInsert + " %F",
 	cmdLast + " (DEFN)",
 	cmdList + " [BREAKS|TRAPS|WATCHES]",
@@ -83,10 +83,10 @@ var commandTemplate = []string{
 	cmdMissile + "(0|1)",
 	cmdOnHalt + " (OFF|RESTORE|%*)",
 	cmdOnStep + " (OFF|RESTORE|%*)",
-	cmdPeek + " %V %*",
+	cmdPeek + " [%V|%S] %*",
 	cmdPlayer + "(0|1)",
 	cmdPlayfield,
-	cmdPoke + " %V %*",
+	cmdPoke + " [%V|%S] %V",
 	cmdQuit,
 	cmdRAM,
 	cmdRIOT,
@@ -96,14 +96,14 @@ var commandTemplate = []string{
 	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
-	cmdSymbol + " %V (ALL)",
-	cmdTIA + " (FUTURE|HMOVE)",
+	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
+	cmdTIA,
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%*]",
 	cmdVerbose,
 	cmdVerbosity,
-	cmdWatch + " (READ|WRITE) [%V]",
+	cmdWatch + " (READ|WRITE) %V (%V)",
 }
 
 // list of commands that should not be executed when recording/playing scripts
@@ -169,15 +169,21 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 	}
 
 	// check validity of tokenised input
-	//
-	// the absolute best thing about this is that we don't need to worrying too
-	// much about the success of tokens.Get() in the enactCommand() function
-	// below:
+	err := debuggerCommands.ValidateTokens(tokens)
+	if err != nil {
+		return doNothing, err
+	}
+
+	// the absolute best thing about the ValidateTokens() function is that we
+	// don't need to worrying too much about the success of tokens.Get() in the
+	// enactCommand() function below:
 	//
 	//   arg, _ := tokens.Get()
 	//
-	// is an acceptable pattern even when an argument is required. default
-	// values can be handled thus:
+	// is an acceptable pattern even when an argument is required. the
+	// ValidateTokens() function has already caught invalid attempts.
+	//
+	// default values can be handled thus:
 	//
 	//  arg, ok := tokens.Get()
 	//  if ok {
@@ -189,10 +195,10 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 	//    ...
 	//  }
 	//
-	err := debuggerCommands.ValidateTokens(tokens)
-	if err != nil {
-		return doNothing, err
-	}
+	// unfortunately, there is no way currently to handle the case where the
+	// command templates don't match expectation in the code below. the code
+	// won't break but some error messages may be misleading but hopefully, it
+	// will be obvious something went wrong.
 
 	// test to see if command is allowed when recording/playing a script
 	if dbg.scriptScribe.IsActive() || !interactive {
@@ -299,8 +305,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdDisassembly:
-		// TODO: put through debugger.print() command so we can capture it
-		dbg.disasm.Dump(os.Stdout)
+		dbg.disasm.Dump(dbg)
 
 	case cmdGrep:
 		search, _ := tokens.Get()
@@ -313,58 +318,81 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdSymbol:
-		// TODO: change this so that it uses debugger.memory front-end
-		symbol, _ := tokens.Get()
-		table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
-		if err != nil {
-			switch err := err.(type) {
-			case errors.FormattedError:
-				if err.Errno == errors.SymbolUnknown {
-					dbg.print(console.Feedback, "%s -> not found", symbol)
-					return doNothing, nil
+		tok, _ := tokens.Get()
+		switch strings.ToUpper(tok) {
+		case "LIST":
+			option, present := tokens.Get()
+			if present {
+				switch strings.ToUpper(option) {
+				default:
+					// already caught by command line ValidateTokens()
+
+				case "LOCATIONS":
+					dbg.disasm.Symtable.ListLocations(dbg)
+
+				case "READ":
+					dbg.disasm.Symtable.ListReadSymbols(dbg)
+
+				case "WRITE":
+					dbg.disasm.Symtable.ListWriteSymbols(dbg)
 				}
+			} else {
+				dbg.disasm.Symtable.ListSymbols(dbg)
 			}
-			return doNothing, err
-		}
 
-		option, present := tokens.Get()
-		if present {
-			option = strings.ToUpper(option)
-			switch option {
-			case "ALL":
-				dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
-
-				// find all instances of symbol address in memory space
-				// assumption: the address returned by SearchSymbol is the
-				// first address in the complete list
-				for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
-					if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
-						dbg.print(console.Feedback, "%s -> %#04x", symbol, m)
+		default:
+			symbol := tok
+			table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
+			if err != nil {
+				switch err := err.(type) {
+				case errors.FormattedError:
+					if err.Errno == errors.SymbolUnknown {
+						dbg.print(console.Feedback, "%s -> not found", symbol)
+						return doNothing, nil
 					}
 				}
-			default:
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown option for SYMBOL command (%s)", option))
+				return doNothing, err
 			}
-		} else {
-			dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
+
+			option, present := tokens.Get()
+			if present {
+				switch strings.ToUpper(option) {
+				default:
+					// already caught by command line ValidateTokens()
+
+				case "ALL", "MIRRORS":
+					dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
+
+					// find all instances of symbol address in memory space
+					// assumption: the address returned by SearchSymbol is the
+					// first address in the complete list
+					for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
+						if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
+							dbg.print(console.Feedback, "%s -> %#04x", symbol, m)
+						}
+					}
+				}
+			} else {
+				dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
+			}
 		}
 
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on break: %s", err))
+			return doNothing, errors.NewFormattedError(errors.CommandError, err)
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on trap: %s", err))
+			return doNothing, errors.NewFormattedError(errors.CommandError, err)
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("error on watch: %s", err))
+			return doNothing, errors.NewFormattedError(errors.CommandError, err)
 		}
 
 	case cmdList:
@@ -378,7 +406,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		case "WATCHES":
 			dbg.watches.list()
 		default:
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown list option (%s)", list))
+			// already caught by command line ValidateTokens()
 		}
 
 	case cmdClear:
@@ -395,7 +423,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.watches.clear()
 			dbg.print(console.Feedback, "watches cleared")
 		default:
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown clear option (%s)", clear))
+			// already caught by command line ValidateTokens()
 		}
 
 	case cmdDrop:
@@ -404,7 +432,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("drop attribute must be a decimal number (%s)", s))
+			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
 		}
 
 		drop = strings.ToUpper(drop)
@@ -428,7 +456,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			}
 			dbg.print(console.Feedback, "watch #%d dropped", num)
 		default:
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown drop option (%s)", drop))
+			// already caught by command line ValidateTokens()
 		}
 
 	case cmdOnHalt:
@@ -556,14 +584,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.inputEveryVideoCycle = false
 		case "VIDEO":
 			dbg.inputEveryVideoCycle = true
-		default:
-			// try to parse trap
+		case "SCANLINE":
+			dbg.inputEveryVideoCycle = false
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
 				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 			dbg.runUntilHalt = true
+		default:
+			// already caught by command line ValidateTokens()
 		}
 
 		return setDefaultStep, nil
@@ -578,7 +608,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			case "VIDEO":
 				dbg.inputEveryVideoCycle = true
 			default:
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
+				// already caught by command line ValidateTokens()
 			}
 		}
 		if dbg.inputEveryVideoCycle {
@@ -626,23 +656,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdPeek:
 		// get first address token
 		a, present := tokens.Get()
-		if !present {
-			dbg.print(console.Error, "peek address required")
-			return doNothing, nil
-		}
 
 		for present {
 			// perform peek
-			val, mappedAddress, areaName, addressLabel, err := dbg.dbgmem.peek(a)
+			ai, err := dbg.dbgmem.peek(a)
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			} else {
-				// format results
-				msg := fmt.Sprintf("%#04x -> %#02x :: %s", mappedAddress, val, areaName)
-				if addressLabel != "" {
-					msg = fmt.Sprintf("%s [%s]", msg, addressLabel)
-				}
-				dbg.print(console.MachineInfo, msg)
+				dbg.print(console.MachineInfo, ai.String())
 			}
 
 			// loop through all addresses
@@ -651,78 +672,56 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdPoke:
 		// get address token
-		a, present := tokens.Get()
-		if !present {
-			dbg.print(console.Error, "poke address required")
-			return doNothing, nil
-		}
-
-		addr, err := dbg.dbgmem.mapAddress(a, true)
-		if err != nil {
-			dbg.print(console.Error, "invalid poke address (%v)", a)
-			return doNothing, nil
-		}
+		a, _ := tokens.Get()
 
 		// get value token
-		a, present = tokens.Get()
-		if !present {
-			dbg.print(console.Error, "poke value required")
-			return doNothing, nil
-		}
+		v, _ := tokens.Get()
 
-		val, err := strconv.ParseUint(a, 0, 8)
+		val, err := strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			dbg.print(console.Error, "poke value must be numeric (%s)", a)
+			dbg.print(console.Error, "poke value must be 8bit number (%s)", v)
 			return doNothing, nil
 		}
 
 		// perform single poke
-		err = dbg.dbgmem.poke(addr, uint8(val))
+		ai, err := dbg.dbgmem.poke(a, uint8(val))
 		if err != nil {
 			dbg.print(console.Error, "%s", err)
 		} else {
-			dbg.print(console.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
+			dbg.print(console.MachineInfo, ai.String())
 		}
 
 	case cmdHexLoad:
 		// get address token
-		a, present := tokens.Get()
-		if !present {
-			dbg.print(console.Error, "hexload address required")
-			return doNothing, nil
-		}
+		a, _ := tokens.Get()
 
-		addr, err := dbg.dbgmem.mapAddress(a, true)
+		addr, err := strconv.ParseUint(a, 0, 16)
 		if err != nil {
-			dbg.print(console.Error, "invalid hexload address (%s)", a)
+			dbg.print(console.Error, "hexload address must be 16bit number (%s)", a)
 			return doNothing, nil
 		}
 
 		// get (first) value token
-		a, present = tokens.Get()
-		if !present {
-			dbg.print(console.Error, "at least one hexload value required")
-			return doNothing, nil
-		}
+		v, present := tokens.Get()
 
 		for present {
-			val, err := strconv.ParseUint(a, 0, 8)
+			val, err := strconv.ParseUint(v, 0, 8)
 			if err != nil {
-				dbg.print(console.Error, "hexload value must be numeric (%s)", a)
-				a, present = tokens.Get()
-				continue // for loop
+				dbg.print(console.Error, "hexload value must be 8bit number (%s)", addr)
+				v, present = tokens.Get()
+				continue // for loop (without advancing address)
 			}
 
 			// perform individual poke
-			err = dbg.dbgmem.poke(uint16(addr), uint8(val))
+			ai, err := dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
 				dbg.print(console.Error, "%s", err)
 			} else {
-				dbg.print(console.MachineInfo, fmt.Sprintf("%#04x -> %#02x", addr, uint16(val)))
+				dbg.print(console.MachineInfo, ai.String())
 			}
 
 			// loop through all values
-			a, present = tokens.Get()
+			v, present = tokens.Get()
 			addr++
 		}
 
@@ -733,25 +732,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		dbg.printMachineInfo(dbg.vcs.RIOT)
 
 	case cmdTIA:
-		option, present := tokens.Get()
-		if present {
-			option = strings.ToUpper(option)
-			switch option {
-			case "FUTURE":
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.OnFutureColorClock)
-			case "HMOVE":
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Hmove.EmulatorInfo())
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Player0.EmulatorInfo())
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Player1.EmulatorInfo())
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Missile0.EmulatorInfo())
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Missile1.EmulatorInfo())
-				dbg.print(console.EmulatorInfo, dbg.vcs.TIA.Video.Ball.EmulatorInfo())
-			default:
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown request (%s)", option))
-			}
-		} else {
-			dbg.printMachineInfo(dbg.vcs.TIA)
-		}
+		dbg.printMachineInfo(dbg.vcs.TIA)
 
 	case cmdTV:
 		option, present := tokens.Get()
@@ -762,7 +743,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				spec := dbg.gui.GetSpec()
 				dbg.print(console.MachineInfo, spec.ID)
 			default:
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown request (%s)", option))
+				// already caught by command line ValidateTokens()
 			}
 		} else {
 			dbg.printMachineInfo(dbg.gui)
@@ -934,7 +915,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					return doNothing, err
 				}
 			default:
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown display action (%s)", action))
+				// already caught by command line ValidateTokens()
 			}
 		} else {
 			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)

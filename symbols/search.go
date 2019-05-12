@@ -19,27 +19,27 @@ const (
 
 // SearchSymbol return the address of the supplied symbol. search is
 // case-insensitive
-func (sym *Table) SearchSymbol(symbol string, table TableType) (TableType, string, uint16, error) {
+func (tab *Table) SearchSymbol(symbol string, tType TableType) (TableType, string, uint16, error) {
 	symbolUpper := strings.ToUpper(symbol)
 
-	if table == UnspecifiedSymTable || table == LocationSymTable {
-		for k, v := range sym.Locations {
+	if tType == UnspecifiedSymTable || tType == LocationSymTable {
+		for k, v := range tab.Locations {
 			if strings.ToUpper(v) == symbolUpper {
 				return LocationSymTable, symbol, k, nil
 			}
 		}
 	}
 
-	if table == UnspecifiedSymTable || table == ReadSymTable {
-		for k, v := range sym.ReadSymbols {
+	if tType == UnspecifiedSymTable || tType == ReadSymTable {
+		for k, v := range tab.ReadSymbols {
 			if strings.ToUpper(v) == symbolUpper {
 				return ReadSymTable, v, k, nil
 			}
 		}
 	}
 
-	if table == UnspecifiedSymTable || table == WriteSymTable {
-		for k, v := range sym.WriteSymbols {
+	if tType == UnspecifiedSymTable || tType == WriteSymTable {
+		for k, v := range tab.WriteSymbols {
 			if strings.ToUpper(v) == symbolUpper {
 				return WriteSymTable, v, k, nil
 			}

@@ -3,7 +3,7 @@ package video
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 )
 
 type collisions struct {
@@ -34,36 +34,36 @@ func (col *collisions) clear() {
 	col.cxm1fb = 0
 	col.cxblpf = 0
 	col.cxppmm = 0
-	col.mem.ChipWrite(vcssymbols.CXM0P, 0)
-	col.mem.ChipWrite(vcssymbols.CXM1P, 0)
-	col.mem.ChipWrite(vcssymbols.CXP0FB, 0)
-	col.mem.ChipWrite(vcssymbols.CXP1FB, 0)
-	col.mem.ChipWrite(vcssymbols.CXM0FB, 0)
-	col.mem.ChipWrite(vcssymbols.CXM1FB, 0)
-	col.mem.ChipWrite(vcssymbols.CXBLPF, 0)
-	col.mem.ChipWrite(vcssymbols.CXPPMM, 0)
+	col.mem.ChipWrite(addresses.CXM0P, 0)
+	col.mem.ChipWrite(addresses.CXM1P, 0)
+	col.mem.ChipWrite(addresses.CXP0FB, 0)
+	col.mem.ChipWrite(addresses.CXP1FB, 0)
+	col.mem.ChipWrite(addresses.CXM0FB, 0)
+	col.mem.ChipWrite(addresses.CXM1FB, 0)
+	col.mem.ChipWrite(addresses.CXBLPF, 0)
+	col.mem.ChipWrite(addresses.CXPPMM, 0)
 }
 
 // NOTE that collisions are detected in the video.Pixel() command
 
 func (col *collisions) SetMemory(collisionAddress uint16) {
 	switch collisionAddress {
-	case vcssymbols.CXM0P:
-		col.mem.ChipWrite(vcssymbols.CXM0P, col.cxm0p)
-	case vcssymbols.CXM1P:
-		col.mem.ChipWrite(vcssymbols.CXM1P, col.cxm1p)
-	case vcssymbols.CXP0FB:
-		col.mem.ChipWrite(vcssymbols.CXP0FB, col.cxp0fb)
-	case vcssymbols.CXP1FB:
-		col.mem.ChipWrite(vcssymbols.CXP1FB, col.cxp1fb)
-	case vcssymbols.CXM0FB:
-		col.mem.ChipWrite(vcssymbols.CXM0FB, col.cxm0fb)
-	case vcssymbols.CXM1FB:
-		col.mem.ChipWrite(vcssymbols.CXM1FB, col.cxm1fb)
-	case vcssymbols.CXBLPF:
-		col.mem.ChipWrite(vcssymbols.CXBLPF, col.cxblpf)
-	case vcssymbols.CXPPMM:
-		col.mem.ChipWrite(vcssymbols.CXPPMM, col.cxppmm)
+	case addresses.CXM0P:
+		col.mem.ChipWrite(addresses.CXM0P, col.cxm0p)
+	case addresses.CXM1P:
+		col.mem.ChipWrite(addresses.CXM1P, col.cxm1p)
+	case addresses.CXP0FB:
+		col.mem.ChipWrite(addresses.CXP0FB, col.cxp0fb)
+	case addresses.CXP1FB:
+		col.mem.ChipWrite(addresses.CXP1FB, col.cxp1fb)
+	case addresses.CXM0FB:
+		col.mem.ChipWrite(addresses.CXM0FB, col.cxm0fb)
+	case addresses.CXM1FB:
+		col.mem.ChipWrite(addresses.CXM1FB, col.cxm1fb)
+	case addresses.CXBLPF:
+		col.mem.ChipWrite(addresses.CXBLPF, col.cxblpf)
+	case addresses.CXPPMM:
+		col.mem.ChipWrite(addresses.CXPPMM, col.cxppmm)
 	default:
 		panic(fmt.Sprintf("unkown collision address (%04x)", collisionAddress))
 	}

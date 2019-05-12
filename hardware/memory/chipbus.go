@@ -1,6 +1,6 @@
 package memory
 
-import "gopher2600/hardware/memory/vcssymbols"
+import "gopher2600/hardware/memory/addresses"
 
 // ChipRead is an implementation of ChipBus. returns:
 // - whether a chip was last written to
@@ -9,7 +9,7 @@ import "gopher2600/hardware/memory/vcssymbols"
 func (area *ChipMemory) ChipRead() (bool, string, uint8) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, vcssymbols.WriteSymbols[area.lastWriteAddress], area.writeData
+		return true, addresses.Write[area.lastWriteAddress], area.writeData
 	}
 
 	return false, "", 0

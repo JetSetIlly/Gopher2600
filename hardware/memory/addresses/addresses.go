@@ -1,7 +1,7 @@
-package vcssymbols
+package addresses
 
-// ReadSymbols are the canonical names for VCS read addresses
-var ReadSymbols = map[uint16]string{
+// Read map contains the canonical names for VCS read addresses
+var Read = map[uint16]string{
 	0x00:  "CXM0P",
 	0x01:  "CXM1P",
 	0x02:  "CXP0F",
@@ -23,8 +23,8 @@ var ReadSymbols = map[uint16]string{
 	0x284: "INTIM",
 }
 
-// WriteSymbols are the canonical names for VCS write addresses
-var WriteSymbols = map[uint16]string{
+// Write map contains the canonical names for VCS write addresses
+var Write = map[uint16]string{
 	0x00:  "VSYNC",
 	0x01:  "VBLANK",
 	0x02:  "WSYNC",

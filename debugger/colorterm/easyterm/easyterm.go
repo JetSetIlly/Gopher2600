@@ -27,9 +27,9 @@ type TermGeometry struct {
 	y uint16
 }
 
-// Terminal is the main container for posix terminals. usually embedded in
+// EasyTerm is the main container for posix terminals. usually embedded in
 // other struct types
-type Terminal struct {
+type EasyTerm struct {
 	input  *os.File
 	output *os.File
 
@@ -51,7 +51,7 @@ type Terminal struct {
 }
 
 // Initialise the fields in the Terminal struct
-func (et *Terminal) Initialise(inputFile, outputFile *os.File) error {
+func (et *EasyTerm) Initialise(inputFile, outputFile *os.File) error {
 	// not which files we're using for input and output
 	if inputFile == nil {
 		return fmt.Errorf("easyterm Terminal requires an input file")
@@ -95,7 +95,7 @@ func (et *Terminal) Initialise(inputFile, outputFile *os.File) error {
 }
 
 // CleanUp closes resources created in the Initialise() function
-func (et *Terminal) CleanUp() {
+func (et *EasyTerm) CleanUp() {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -105,7 +105,7 @@ func (et *Terminal) CleanUp() {
 
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
 // output terminal
-func (et *Terminal) UpdateGeometry() error {
+func (et *EasyTerm) UpdateGeometry() error {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -117,7 +117,7 @@ func (et *Terminal) UpdateGeometry() error {
 }
 
 // CanonicalMode puts terminal into normal, everyday canonical mode
-func (et *Terminal) CanonicalMode() {
+func (et *EasyTerm) CanonicalMode() {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -125,7 +125,7 @@ func (et *Terminal) CanonicalMode() {
 }
 
 // RawMode puts terminal into raw mode
-func (et *Terminal) RawMode() {
+func (et *EasyTerm) RawMode() {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -133,7 +133,7 @@ func (et *Terminal) RawMode() {
 }
 
 // CBreakMode puts terminal into cbreak mode
-func (et *Terminal) CBreakMode() {
+func (et *EasyTerm) CBreakMode() {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -141,7 +141,7 @@ func (et *Terminal) CBreakMode() {
 }
 
 // Flush makes sure the terminal's input/output buffers are empty
-func (et *Terminal) Flush() error {
+func (et *EasyTerm) Flush() error {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
@@ -155,7 +155,7 @@ func (et *Terminal) Flush() error {
 }
 
 // Print writes string to the output file
-func (et *Terminal) Print(s string) {
+func (et *EasyTerm) Print(s string) {
 	// no need to take hold of the mutex
 	et.output.WriteString(s)
 }

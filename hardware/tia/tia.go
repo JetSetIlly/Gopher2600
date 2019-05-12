@@ -11,11 +11,6 @@ import (
 	"strings"
 )
 
-const vblankMask = 0x02
-const vsyncMask = 0x02
-const vsyncLatchTriggerMask = 0x40
-const vsyncGroundedPaddleMask = 0x80
-
 // TIA contains all the sub-components of the VCS TIA sub-system
 type TIA struct {
 	tv  television.Television
@@ -112,10 +107,10 @@ func (tia *TIA) ReadTIAMemory() {
 
 	switch register {
 	case "VSYNC":
-		tia.vsync = value&vsyncMask == vsyncMask
+		tia.vsync = value&0x02 == 0x02
 		// TODO: do something with controller settings below
-		_ = value&vsyncLatchTriggerMask == vsyncLatchTriggerMask
-		_ = value&vsyncGroundedPaddleMask == vsyncGroundedPaddleMask
+		_ = value&0x40 == 0x40
+		_ = value&0x80 == 0x80
 		return
 
 	// VBLANK moved to ReadVideoMemory()

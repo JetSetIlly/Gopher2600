@@ -76,9 +76,9 @@ func (pia PIA) String() string {
 }
 
 // Peek is the implementation of Memory.Area.Peek
-func (pia PIA) Peek(address uint16) (uint8, uint16, string, string, error) {
+func (pia PIA) Peek(address uint16) (uint8, error) {
 	oa := address - pia.origin
-	return pia.memory[oa], address, pia.Label(), "", nil
+	return pia.memory[oa], nil
 }
 
 // Poke is the implementation of Memory.Area.Poke

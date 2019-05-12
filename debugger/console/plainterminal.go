@@ -9,14 +9,14 @@ import (
 
 // PlainTerminal is the default, most basic terminal interface
 type PlainTerminal struct {
-	read  io.Reader
-	write io.Writer
+	input  io.Reader
+	output io.Writer
 }
 
 // Initialise perfoms any setting up required for the terminal
 func (pt *PlainTerminal) Initialise() error {
-	pt.read = os.Stdin
-	pt.write = os.Stdout
+	pt.input = os.Stdin
+	pt.output = os.Stdout
 	return nil
 }
 
@@ -38,10 +38,10 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 	}
 
 	s = fmt.Sprintf(s, a...)
-	pt.write.Write([]byte(s))
+	pt.output.Write([]byte(s))
 
 	if pp != Prompt {
-		pt.write.Write([]byte("\n"))
+		pt.output.Write([]byte("\n"))
 	}
 }
 
@@ -49,7 +49,7 @@ func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
 func (pt PlainTerminal) UserRead(input []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	pt.UserPrint(Prompt, prompt)
 
-	n, err := pt.read.Read(input)
+	n, err := pt.input.Read(input)
 	if err != nil {
 		return n, err
 	}

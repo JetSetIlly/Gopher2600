@@ -12,24 +12,24 @@ import (
 
 type watchEvent int
 
-func (ev watchEvent) String() string {
-	switch ev {
-	case watchEventRead:
-		return "read-only"
-	case watchEventWrite:
-		return "write-only"
-	case watchEventAny:
-		fallthrough
-	default:
-		return ""
-	}
-}
-
 const (
 	watchEventAny watchEvent = iota
 	watchEventRead
 	watchEventWrite
 )
+
+func (ev watchEvent) String() string {
+	switch ev {
+	case watchEventRead:
+		return "read"
+	case watchEventWrite:
+		return "write"
+	case watchEventAny:
+		return "read/write"
+	default:
+		return ""
+	}
+}
 
 type watcher struct {
 	address uint16
@@ -157,47 +157,77 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 		return errors.NewFormattedError(errors.CommandError, "watch address required")
 	}
 
-	var addr uint16
-	var err error
-
-	// convert address:
-	// we're using mapAddress in the memoryDebug instance for this. the
-	// second argument to mapAddress is whether the mapping is from the cpu
-	// perspective or not. for our purposes, this means that READ watch
-	// events are and WRITE watch events are not.
-
+	// convert address
+	var ai *addressInfo
 	switch event {
 	case watchEventRead:
-		addr, err = dbgmem.mapAddress(a, true)
+		ai = dbgmem.mapAddress(a, true)
 	case watchEventWrite:
-		addr, err = dbgmem.mapAddress(a, false)
+		ai = dbgmem.mapAddress(a, false)
 	default:
 		// try both perspectives
-		addr, err = dbgmem.mapAddress(a, false)
-		if err != nil {
-			addr, err = dbgmem.mapAddress(a, true)
+		ai = dbgmem.mapAddress(a, false)
+		if ai == nil {
+			ai = dbgmem.mapAddress(a, true)
 		}
 	}
 
 	// mapping of the address was unsucessful
-	if err != nil {
-		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch address: %s", err))
+	if ai == nil {
+		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch address: %s", a))
 	}
 
-	// get watch value if possible
+	// get value if possible
 	var val uint64
-	a, useVal := tokens.Get()
+	var err error
+	v, useVal := tokens.Get()
 	if useVal {
-		val, err = strconv.ParseUint(a, 0, 8)
+		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
 			return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch value (%s)", a))
 		}
 	}
 
-	// add watch
-	wtc.watches = append(wtc.watches, watcher{address: uint16(addr), matchValue: useVal, value: uint8(val), event: event})
+	nw := watcher{
+		address:    ai.mappedAddress,
+		matchValue: useVal,
+		value:      uint8(val),
+		event:      event,
+	}
 
-	a, present = tokens.Get()
+	// check to see if watch already exists
+	for i, w := range wtc.watches {
+		if w.address == nw.address && w.matchValue == nw.matchValue && w.value == nw.value {
+
+			// we've found a matching watcher (address and value if
+			// appropriate). the following switch handles how the watcher event
+			// matches:
+			//  o if the existing entry is looking for read/write events then
+			//		this is duplicate watcher
+			//  o if the existing entry is looking for read events and new
+			//		watcher is not then update exising entry
+			//  o ditto for write events
+			switch w.event {
+			case watchEventRead:
+				if nw.event == watchEventRead {
+					return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+				}
+				wtc.watches[i].event = watchEventAny
+				return nil
+			case watchEventWrite:
+				if nw.event == watchEventWrite {
+					return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+				}
+				wtc.watches[i].event = watchEventAny
+				return nil
+			case watchEventAny:
+				return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+			}
+		}
+	}
+
+	// add watch
+	wtc.watches = append(wtc.watches, nw)
 
 	return nil
 }

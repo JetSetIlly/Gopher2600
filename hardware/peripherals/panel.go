@@ -5,7 +5,7 @@ package peripherals
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 )
 
 // Panel represents the console's front control panel
@@ -67,7 +67,7 @@ func (pan *Panel) commit() {
 		strobe |= 0x01
 	}
 
-	pan.riot.PeriphWrite(vcssymbols.SWCHB, strobe)
+	pan.riot.PeriphWrite(addresses.SWCHB, strobe)
 }
 
 // Handle interprets an event into the correct sequence of memory addressing

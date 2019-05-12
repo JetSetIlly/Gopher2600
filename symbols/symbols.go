@@ -3,20 +3,44 @@ package symbols
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 	"io/ioutil"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 )
+
+type keys []uint16
+
+// Len is the number of elements in the collection
+func (k keys) Len() int {
+	return len(k)
+}
+
+// Less reports whether the element with index i should sort before the element
+// with index j
+func (k keys) Less(i, j int) bool {
+	return k[i] < k[j]
+}
+
+// Swap swaps the elements with indexes i and j
+func (k keys) Swap(i, j int) {
+	k[i], k[j] = k[j], k[i]
+}
 
 // Table is the symbols table for the loaded programme
 type Table struct {
 	Locations    map[uint16]string
 	ReadSymbols  map[uint16]string
 	WriteSymbols map[uint16]string
+
+	// sorted keys
+	locations    keys
+	readSymbols  keys
+	writeSymbols keys
 
 	MaxLocationWidth int
 	MaxSymbolWidth   int
@@ -25,8 +49,8 @@ type Table struct {
 // StandardSymbolTable initialises a symbols table using the standard VCS symbols
 func StandardSymbolTable() *Table {
 	table := new(Table)
-	table.ReadSymbols = vcssymbols.ReadSymbols
-	table.WriteSymbols = vcssymbols.WriteSymbols
+	table.ReadSymbols = addresses.Read
+	table.WriteSymbols = addresses.Write
 	table.genMaxWidths()
 	return table
 }
@@ -38,14 +62,17 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	table.Locations = make(map[uint16]string)
 	table.ReadSymbols = make(map[uint16]string)
 	table.WriteSymbols = make(map[uint16]string)
+	table.locations = make(keys, 0)
+	table.readSymbols = make(keys, 0)
+	table.writeSymbols = make(keys, 0)
 
 	// prioritise symbols with reference symbols for the VCS. do this in all
 	// instances, even if there is an error with the symbols file
 	defer func() {
-		for k, v := range vcssymbols.ReadSymbols {
+		for k, v := range addresses.Read {
 			table.ReadSymbols[k] = v
 		}
-		for k, v := range vcssymbols.WriteSymbols {
+		for k, v := range addresses.Write {
 			table.WriteSymbols[k] = v
 		}
 
@@ -107,31 +134,38 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 				continue // for loop
 			}
 			table.Locations[uint16(address)] = symbol[i:]
+			table.locations = append(table.locations, uint16(address))
 		} else {
 			// put symbol in table
 			table.ReadSymbols[uint16(address)] = symbol
 			table.WriteSymbols[uint16(address)] = symbol
+			table.readSymbols = append(table.locations, uint16(address))
+			table.writeSymbols = append(table.locations, uint16(address))
 		}
 	}
+
+	sort.Sort(table.locations)
+	sort.Sort(table.readSymbols)
+	sort.Sort(table.writeSymbols)
 
 	return table, nil
 }
 
 // find the widest location and read/write symbol
-func (table *Table) genMaxWidths() {
-	for _, s := range table.Locations {
-		if len(s) > table.MaxLocationWidth {
-			table.MaxLocationWidth = len(s)
+func (tab *Table) genMaxWidths() {
+	for _, s := range tab.Locations {
+		if len(s) > tab.MaxLocationWidth {
+			tab.MaxLocationWidth = len(s)
 		}
 	}
-	for _, s := range table.ReadSymbols {
-		if len(s) > table.MaxSymbolWidth {
-			table.MaxSymbolWidth = len(s)
+	for _, s := range tab.ReadSymbols {
+		if len(s) > tab.MaxSymbolWidth {
+			tab.MaxSymbolWidth = len(s)
 		}
 	}
-	for _, s := range table.WriteSymbols {
-		if len(s) > table.MaxSymbolWidth {
-			table.MaxSymbolWidth = len(s)
+	for _, s := range tab.WriteSymbols {
+		if len(s) > tab.MaxSymbolWidth {
+			tab.MaxSymbolWidth = len(s)
 		}
 	}
 }

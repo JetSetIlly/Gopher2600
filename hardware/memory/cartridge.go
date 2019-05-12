@@ -448,11 +448,11 @@ func (cart *Cartridge) Eject() {
 }
 
 // Peek is the implementation of Memory.Area.Peek
-func (cart Cartridge) Peek(address uint16) (uint8, uint16, string, string, error) {
+func (cart Cartridge) Peek(address uint16) (uint8, error) {
 	if len(cart.memory) == 0 {
-		return 0, 0, "", "", errors.NewFormattedError(errors.CartridgeMissing)
+		return 0, errors.NewFormattedError(errors.CartridgeMissing)
 	}
-	return cart.memory[cart.Bank][cart.origin|address^cart.origin], address, cart.Label(), "", nil
+	return cart.memory[cart.Bank][cart.origin|address^cart.origin], nil
 }
 
 // Poke is the implementation of Memory.Area.Poke

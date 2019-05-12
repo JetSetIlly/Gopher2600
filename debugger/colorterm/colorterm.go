@@ -8,7 +8,7 @@ import (
 
 // ColorTerminal implements debugger UI interface with a basic ANSI terminal
 type ColorTerminal struct {
-	easyterm.Terminal
+	easyterm.EasyTerm
 
 	reader         runeReader
 	commandHistory []command
@@ -21,13 +21,13 @@ type command struct {
 
 // Initialise perfoms any setting up required for the terminal
 func (ct *ColorTerminal) Initialise() error {
-	err := ct.Terminal.Initialise(os.Stdin, os.Stdout)
+	err := ct.EasyTerm.Initialise(os.Stdin, os.Stdout)
 	if err != nil {
 		return err
 	}
 
 	ct.commandHistory = make([]command, 0)
-	ct.reader = initRuneReader()
+	ct.reader = initRuneReader(os.Stdin)
 
 	return nil
 }
@@ -36,7 +36,7 @@ func (ct *ColorTerminal) Initialise() error {
 func (ct *ColorTerminal) CleanUp() {
 	ct.Print("\r")
 	_ = ct.Flush()
-	ct.Terminal.CleanUp()
+	ct.EasyTerm.CleanUp()
 }
 
 // RegisterTabCompleter adds an implementation of TabCompleter to the

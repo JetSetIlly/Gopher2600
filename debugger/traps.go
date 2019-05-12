@@ -24,6 +24,10 @@ type trapper struct {
 	origValue interface{}
 }
 
+func (tr trapper) String() string {
+	return tr.target.Label()
+}
+
 // newTraps is the preferred method of initialisation for traps
 func newTraps(dbg *Debugger) *traps {
 	tr := new(traps)
@@ -86,9 +90,9 @@ func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 
 		addNewTrap := true
 		for _, t := range tr.traps {
-			if t.target == tgt {
+			if t.target.Label() == tgt.Label() {
 				addNewTrap = false
-				tr.dbg.print(console.Feedback, "trap already exists")
+				tr.dbg.print(console.Error, fmt.Sprintf("trap already exists (%s)", t))
 				break // for loop
 			}
 		}

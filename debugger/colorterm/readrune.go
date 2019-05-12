@@ -8,7 +8,7 @@ package colorterm
 
 import (
 	"bufio"
-	"os"
+	"io"
 )
 
 type readRune struct {
@@ -19,13 +19,13 @@ type readRune struct {
 
 type runeReader chan readRune
 
-func initRuneReader() runeReader {
-	reader := bufio.NewReader(os.Stdin)
+func initRuneReader(reader io.Reader) runeReader {
+	bufReader := bufio.NewReader(reader)
 	ch := make(runeReader)
 	go func() {
 		var readRune readRune
 		for {
-			readRune.r, readRune.n, readRune.err = reader.ReadRune()
+			readRune.r, readRune.n, readRune.err = bufReader.ReadRune()
 			ch <- readRune
 		}
 	}()

@@ -2,7 +2,7 @@ package video
 
 import (
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video/future"
 )
@@ -171,71 +171,71 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	// collisions
 	if m0u && p1u {
 		vd.collisions.cxm0p |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXM0P)
+		vd.collisions.SetMemory(addresses.CXM0P)
 	}
 	if m0u && p0u {
 		vd.collisions.cxm0p |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXM0P)
+		vd.collisions.SetMemory(addresses.CXM0P)
 	}
 
 	if m1u && p0u {
 		vd.collisions.cxm1p |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXM1P)
+		vd.collisions.SetMemory(addresses.CXM1P)
 	}
 	if m1u && p1u {
 		vd.collisions.cxm1p |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXM1P)
+		vd.collisions.SetMemory(addresses.CXM1P)
 	}
 
 	if p0u && pfu {
 		vd.collisions.cxp0fb |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXP0FB)
+		vd.collisions.SetMemory(addresses.CXP0FB)
 	}
 	if p0u && blu {
 		vd.collisions.cxp0fb |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXP0FB)
+		vd.collisions.SetMemory(addresses.CXP0FB)
 	}
 
 	if p1u && pfu {
 		vd.collisions.cxp1fb |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXP1FB)
+		vd.collisions.SetMemory(addresses.CXP1FB)
 	}
 	if p1u && blu {
 		vd.collisions.cxp1fb |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXP1FB)
+		vd.collisions.SetMemory(addresses.CXP1FB)
 	}
 
 	if m0u && pfu {
 		vd.collisions.cxm0fb |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXM0FB)
+		vd.collisions.SetMemory(addresses.CXM0FB)
 	}
 	if m0u && blu {
 		vd.collisions.cxm0fb |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXM0FB)
+		vd.collisions.SetMemory(addresses.CXM0FB)
 	}
 
 	if m1u && pfu {
 		vd.collisions.cxm1fb |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXM1FB)
+		vd.collisions.SetMemory(addresses.CXM1FB)
 	}
 	if m1u && blu {
 		vd.collisions.cxm1fb |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXM1FB)
+		vd.collisions.SetMemory(addresses.CXM1FB)
 	}
 
 	if blu && pfu {
 		vd.collisions.cxblpf |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXBLPF)
+		vd.collisions.SetMemory(addresses.CXBLPF)
 	}
 	// no bit 6 for CXBLPF
 
 	if p0u && p1u {
 		vd.collisions.cxppmm |= 0x80
-		vd.collisions.SetMemory(vcssymbols.CXPPMM)
+		vd.collisions.SetMemory(addresses.CXPPMM)
 	}
 	if m0u && m1u {
 		vd.collisions.cxppmm |= 0x40
-		vd.collisions.SetMemory(vcssymbols.CXPPMM)
+		vd.collisions.SetMemory(addresses.CXPPMM)
 	}
 
 	var col, dcol uint8

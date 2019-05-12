@@ -23,3 +23,9 @@ func (dbg *Debugger) print(pp console.PrintProfile, s string, a ...interface{}) 
 		dbg.scriptScribe.WriteOutput(s, a...)
 	}
 }
+
+// convenient but inflexible alternative to print()
+func (dbg *Debugger) Write(p []byte) (n int, err error) {
+	dbg.print(console.Feedback, string(p))
+	return len(p), nil
+}

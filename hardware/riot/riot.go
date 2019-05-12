@@ -3,7 +3,7 @@ package riot
 import (
 	"fmt"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/vcssymbols"
+	"gopher2600/hardware/memory/addresses"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
@@ -86,7 +86,7 @@ func (riot *RIOT) ReadRIOTMemory() {
 		}
 
 		// write value to INTIM straight-away
-		riot.mem.ChipWrite(vcssymbols.INTIM, uint8(riot.timerINTIMvalue))
+		riot.mem.ChipWrite(addresses.INTIM, uint8(riot.timerINTIMvalue))
 	}
 }
 
@@ -121,7 +121,7 @@ func (riot *RIOT) Step() {
 			} else {
 				riot.timerINTIMvalue--
 			}
-			riot.mem.ChipWrite(vcssymbols.INTIM, riot.timerINTIMvalue)
+			riot.mem.ChipWrite(addresses.INTIM, riot.timerINTIMvalue)
 			riot.timerCycles = riot.timerInterval
 		}
 	}
