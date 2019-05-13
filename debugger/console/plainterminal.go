@@ -29,7 +29,7 @@ func (pt *PlainTerminal) RegisterTabCompleter(TabCompleter) {
 }
 
 // UserPrint is the plain terminal print routine
-func (pt PlainTerminal) UserPrint(pp PrintProfile, s string, a ...interface{}) {
+func (pt PlainTerminal) UserPrint(pp Style, s string, a ...interface{}) {
 	switch pp {
 	case Error:
 		s = fmt.Sprintf("* %s", s)

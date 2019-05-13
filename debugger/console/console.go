@@ -13,7 +13,7 @@ type UserInput interface {
 // UserOutput defines the operations required by an interface that allows
 // output
 type UserOutput interface {
-	UserPrint(PrintProfile, string, ...interface{})
+	UserPrint(Style, string, ...interface{})
 }
 
 // UserInterface defines the user interface operations required by the debugger

@@ -305,7 +305,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdDisassembly:
-		dbg.disasm.Dump(dbg)
+		dbg.disasm.Dump(dbg.printStyle(console.Feedback))
 
 	case cmdGrep:
 		search, _ := tokens.Get()
@@ -328,16 +328,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					// already caught by command line ValidateTokens()
 
 				case "LOCATIONS":
-					dbg.disasm.Symtable.ListLocations(dbg)
+					dbg.disasm.Symtable.ListLocations(dbg.printStyle(console.Feedback))
 
 				case "READ":
-					dbg.disasm.Symtable.ListReadSymbols(dbg)
+					dbg.disasm.Symtable.ListReadSymbols(dbg.printStyle(console.Feedback))
 
 				case "WRITE":
-					dbg.disasm.Symtable.ListWriteSymbols(dbg)
+					dbg.disasm.Symtable.ListWriteSymbols(dbg.printStyle(console.Feedback))
 				}
 			} else {
-				dbg.disasm.Symtable.ListSymbols(dbg)
+				dbg.disasm.Symtable.ListSymbols(dbg.printStyle(console.Feedback))
 			}
 
 		default:
@@ -544,7 +544,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					dbg.print(console.Feedback, "%s", dbg.lastResult.Defn)
 				}
 			} else {
-				var printTag console.PrintProfile
+				var printTag console.Style
 				if dbg.lastResult.Final {
 					printTag = console.CPUStep
 				} else {

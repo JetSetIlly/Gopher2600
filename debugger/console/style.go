@@ -1,14 +1,12 @@
 package console
 
-// PrintProfile specifies the printing mode
-type PrintProfile int
+// Style specifies the printing mode
+type Style int
 
-// enumeration of print profile types
+// enumeration of print styles
 const (
-	// the following profiles are generated as a result of the emulation
-
 	// disassembly output at cpu cycle boundaries
-	CPUStep PrintProfile = iota
+	CPUStep Style = iota
 
 	// disassembly output at video cycle boundaries
 	VideoStep
@@ -36,10 +34,10 @@ const (
 	Error
 )
 
-// IncludeInScriptOutput returns true if print profile is to be included in the
+// IncludeInScriptOutput returns true if print styles is to be included in the
 // output of a script recording
-func (pp PrintProfile) IncludeInScriptOutput() bool {
-	switch pp {
+func (sty Style) IncludeInScriptOutput() bool {
+	switch sty {
 	case Error, Input, Prompt:
 		return false
 	default:

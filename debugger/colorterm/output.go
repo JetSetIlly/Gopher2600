@@ -7,12 +7,12 @@ import (
 )
 
 // UserPrint is the top level output function
-func (ct *ColorTerminal) UserPrint(profile console.PrintProfile, s string, a ...interface{}) {
-	if profile != console.Input {
+func (ct *ColorTerminal) UserPrint(sty console.Style, s string, a ...interface{}) {
+	if sty != console.Input {
 		ct.Print("\r")
 	}
 
-	switch profile {
+	switch sty {
 	case console.CPUStep:
 		ct.Print(ansi.PenColor["yellow"])
 	case console.VideoStep:
@@ -40,8 +40,8 @@ func (ct *ColorTerminal) UserPrint(profile console.PrintProfile, s string, a ...
 	}
 	ct.Print(ansi.NormalPen)
 
-	// add a newline if print profile is anything other than prompt
-	if profile != console.Prompt && profile != console.Input {
+	// add a newline if print style is anything other than prompt
+	if sty != console.Prompt && sty != console.Input {
 		ct.Print("\n")
 	}
 }
