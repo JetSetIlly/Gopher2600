@@ -45,10 +45,6 @@ type Instruction struct {
 	Bug string
 }
 
-func (result Instruction) String() string {
-	return result.GetString(symbols.StandardSymbolTable(), StyleFlagAddress|StyleFlagSymbols)
-}
-
 // GetString returns a human readable version of InstructionResult, addresses
 // replaced with symbols if supplied symbols argument is not null. prefer this
 // function to implicit calls to String()
@@ -68,7 +64,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 	if result.Final && style.Has(StyleFlagAddress) {
 		programCounter = fmt.Sprintf("0x%04x", result.Address)
 		if symtable != nil && style.Has(StyleFlagLocation) {
-			if v, ok := symtable.Locations[result.Address]; ok {
+			if v, ok := symtable.Locations.Symbols[result.Address]; ok {
 				label = v
 			}
 		}
@@ -147,23 +143,23 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 						pc.Add(idx, false)
 
 						// -- look up mock program counter value in symbol table
-						if v, ok := symtable.Locations[pc.ToUint16()]; ok {
+						if v, ok := symtable.Locations.Symbols[pc.ToUint16()]; ok {
 							operand = v
 						}
 
 					} else {
-						if v, ok := symtable.Locations[idx]; ok {
+						if v, ok := symtable.Locations.Symbols[idx]; ok {
 							operand = v
 						}
 					}
 				case definitions.Read:
-					if v, ok := symtable.ReadSymbols[idx]; ok {
+					if v, ok := symtable.Read.Symbols[idx]; ok {
 						operand = v
 					}
 				case definitions.Write:
 					fallthrough
 				case definitions.RMW:
-					if v, ok := symtable.WriteSymbols[idx]; ok {
+					if v, ok := symtable.Write.Symbols[idx]; ok {
 						operand = v
 					}
 				}

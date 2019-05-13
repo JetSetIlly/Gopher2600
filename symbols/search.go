@@ -23,26 +23,20 @@ func (tab *Table) SearchSymbol(symbol string, tType TableType) (TableType, strin
 	symbolUpper := strings.ToUpper(symbol)
 
 	if tType == UnspecifiedSymTable || tType == LocationSymTable {
-		for k, v := range tab.Locations {
-			if strings.ToUpper(v) == symbolUpper {
-				return LocationSymTable, symbol, k, nil
-			}
+		if addr, ok := tab.Locations.search(symbolUpper); ok {
+			return LocationSymTable, symbol, addr, nil
 		}
 	}
 
 	if tType == UnspecifiedSymTable || tType == ReadSymTable {
-		for k, v := range tab.ReadSymbols {
-			if strings.ToUpper(v) == symbolUpper {
-				return ReadSymTable, v, k, nil
-			}
+		if addr, ok := tab.Read.search(symbolUpper); ok {
+			return ReadSymTable, symbol, addr, nil
 		}
 	}
 
 	if tType == UnspecifiedSymTable || tType == WriteSymTable {
-		for k, v := range tab.WriteSymbols {
-			if strings.ToUpper(v) == symbolUpper {
-				return WriteSymTable, v, k, nil
-			}
+		if addr, ok := tab.Write.search(symbolUpper); ok {
+			return WriteSymTable, symbol, addr, nil
 		}
 	}
 

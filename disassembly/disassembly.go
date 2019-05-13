@@ -63,15 +63,13 @@ func (dsm *Disassembly) Dump(output io.Writer) {
 // disassembly from the supplied cartridge filename. - useful for one-shot
 // disassemblies, like the gopher2600 "disasm" mode
 func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
-	// ignore errors caused by loading of symbols table
-	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
-	if err != nil {
-		symtable = symbols.StandardSymbolTable()
-	}
+	// ignore errors caused by loading of symbols table - we always get a
+	// standard symbols table even in the event of an error
+	symtable, _ := symbols.ReadSymbolsFile(cartridgeFilename)
 
 	cart := memory.NewCart()
 
-	err = cart.Attach(cartridgeFilename)
+	err := cart.Attach(cartridgeFilename)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DisasmError, err)
 	}

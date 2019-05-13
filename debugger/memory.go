@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/addresses"
 	"gopher2600/symbols"
 	"strconv"
 	"strings"
@@ -75,9 +74,9 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInf
 	var symbolTable map[uint16]string
 
 	if cpuRead {
-		symbolTable = (*mem.symtable).ReadSymbols
+		symbolTable = (*mem.symtable).Read.Symbols
 	} else {
-		symbolTable = addresses.Write
+		symbolTable = (*mem.symtable).Write.Symbols
 	}
 
 	switch address := address.(type) {
