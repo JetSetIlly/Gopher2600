@@ -123,11 +123,11 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 
 	match := true
 	switch n.tag {
-	case "%V":
+	case "%N":
 		_, err := strconv.ParseInt(tok, 0, 32)
 		match = err == nil
 
-	case "%I":
+	case "%P":
 		_, err := strconv.ParseFloat(tok, 32)
 		match = err == nil
 

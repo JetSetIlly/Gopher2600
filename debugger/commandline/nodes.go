@@ -5,14 +5,8 @@ import (
 	"strings"
 )
 
-// Commands is the root of the command tree
-//
-// currently, the top-level of the Commands tree is an array of nodes. each
-// entry in this array is effectively a branch off a conceptual root-node. with
-// a bit of work, we could alter the command tree such that the array is a
-// sequence of branches off an otherwise unused root-node. this would simplify
-// validation and tab-completion a little bit. as it is though, this is fine
-// for now.
+// Commands is the root of the command tree. the top-level of the Commands tree
+// is an array of nodes. each of these nodes is the start of a command.
 type Commands []*node
 
 // Len implements Sort package interface
@@ -50,6 +44,7 @@ const (
 	groupOptional
 )
 
+// nodes are chained together throught the next and branch arrays.
 type node struct {
 	// tag should always be non-empty
 	tag string

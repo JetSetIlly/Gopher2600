@@ -84,7 +84,7 @@ func TestTabCompletion_placeholders(t *testing.T) {
 	var err error
 
 	cmds, err = commandline.ParseCommandTemplate([]string{
-		"TEST %V (foo|bar)",
+		"TEST %P (foo|bar)",
 	})
 	if err != nil {
 		t.Fatalf("%s", err)
@@ -163,7 +163,7 @@ func TestTabCompletion_complex(t *testing.T) {
 	var completion, expected string
 	var err error
 
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%V|bar]|foo) %*"})
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%P|bar]|foo) %*"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}

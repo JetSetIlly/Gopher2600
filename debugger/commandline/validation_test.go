@@ -73,7 +73,7 @@ func TestValidation_branchesAndNumeric(t *testing.T) {
 	var cmds *commandline.Commands
 	var err error
 
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%V]|foo) %*"})
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%N]|foo) %*"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -111,7 +111,7 @@ func TestValidation_branchesAndNumeric(t *testing.T) {
 
 	// ---------------
 
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg|foo) %V"})
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg|foo) %N"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -139,7 +139,7 @@ func TestValidation_deepBranches(t *testing.T) {
 	var err error
 
 	// retry numeric argument matching but with an option for a specific string
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%V|bar]|foo) %*"})
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%N|bar]|foo) %*"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}

@@ -2,6 +2,8 @@ package cpu
 
 import "fmt"
 
+// TODO: Status register N,V,Z flag bug
+
 // StatusRegister is the special purpose register that stores the flags of the CPU
 type StatusRegister struct {
 	label            string

@@ -18,8 +18,8 @@ import (
 // groups can be embedded in one another
 //
 // Placeholders
-//   %V		numeric value
-//   %I		irrational number value
+//   %N		numeric value
+//   %P		irrational number value
 //   %S     string
 //   %F     file name
 //   %*     allow anything to follow this point
@@ -249,7 +249,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			// add placeholder to working node if it is recognised
 			p := string(defn[i+1])
 
-			if p != "V" && p != "I" && p != "S" && p != "F" && p != "*" && p != "%" {
+			if p != "N" && p != "P" && p != "S" && p != "F" && p != "*" && p != "%" {
 				return nil, i, fmt.Errorf("unknown placeholder directive (%s)", wn.tag)
 			}
 

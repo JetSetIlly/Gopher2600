@@ -150,10 +150,10 @@ func TestParser(t *testing.T) {
 	var err error
 
 	template = []string{
-		"DISPLAY (OFF|DEBUG|SCALE [%V]|DEBUGCOLORS)",
+		"DISPLAY (OFF|DEBUG|SCALE [%N]|DEBUGCOLORS)",
 		"SCRIPT [%F|RECORD [%F]|END]",
 		"DROP [BREAK|TRAP|WATCH] [%S]",
-		"GREP %V",
+		"GREP %N",
 		"TEST [FOO [%S]|BAR] (EGG [%S]|FOG|NOG NUG) (TUG)",
 		"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]",
 		"SYMBOL [%S (ALL|MIRRORS)|LIST]",

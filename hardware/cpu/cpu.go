@@ -475,6 +475,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
 
+		// TODO: zero page index bug
+
 		// +1 cycle
 		err = mc.endCycle()
 		if err != nil {
@@ -493,6 +495,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
+
+		// TODO: zero page index bug
 
 		// +1 cycle
 		err = mc.endCycle()
@@ -567,6 +571,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
 
+		// TODO: indirect addressing / page boundary bug
+
 		// +2 cycles
 		address, err = mc.read16Bit(adder.ToUint16())
 		if err != nil {
@@ -588,6 +594,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		if err != nil {
 			return nil, err
 		}
+
+		// TODO: indirect addressing / page boundary bug
 
 		adder := register.NewAnonRegister(mc.Y, 16)
 		adder.Add(indexedAddress&0x00ff, false)

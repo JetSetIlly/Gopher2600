@@ -6,6 +6,8 @@ import (
 	"reflect"
 )
 
+// TODO: handle "invalid" BCD values (ie. nibble values A to F) correctly
+
 // Register is an array of of type bit, used for register representation
 type Register struct {
 	value      uint32

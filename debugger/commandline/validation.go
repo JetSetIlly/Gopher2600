@@ -50,12 +50,12 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 func placeHolderText(text string) string {
 	switch text {
 	case "%*":
-		return "required arguments"
+		return "additional arguments"
 	case "%S":
 		return "string argument"
-	case "%V":
+	case "%N":
 		return "numeric argument"
-	case "%I":
+	case "%P":
 		return "floating-point argument"
 	case "%F":
 		return "filename argument"
@@ -106,14 +106,14 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	err := fmt.Errorf("unrecognised argument (%s)", tok)
 
 	switch n.tag {
-	case "%V":
+	case "%N":
 		_, e := strconv.ParseInt(tok, 0, 32)
 		if e != nil {
 			err = fmt.Errorf("numeric argument required (%s is not numeric)", tok)
 			match = false
 		}
 
-	case "%I":
+	case "%P":
 		_, e := strconv.ParseFloat(tok, 32)
 		if e != nil {
 			err = fmt.Errorf("float argument required (%s is not numeric)", tok)

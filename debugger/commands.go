@@ -71,11 +71,11 @@ var commandTemplate = []string{
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
 	cmdDisassembly,
-	cmdDisplay + " (OFF|DEBUG|SCALE [%I]|DEBUGCOLORS)", // see notes
-	cmdDrop + " [BREAK|TRAP|WATCH] %V",
+	cmdDisplay + " (OFF|DEBUG|SCALE [%P]|DEBUGCOLORS)", // see notes
+	cmdDrop + " [BREAK|TRAP|WATCH] %N",
 	cmdGrep + " %S",
 	cmdHelp + " %*",
-	cmdHexLoad + " %V %V %*",
+	cmdHexLoad + " %N %N %*",
 	cmdInsert + " %F",
 	cmdLast + " (DEFN)",
 	cmdList + " [BREAKS|TRAPS|WATCHES]",
@@ -83,10 +83,10 @@ var commandTemplate = []string{
 	cmdMissile + "(0|1)",
 	cmdOnHalt + " (OFF|RESTORE|%*)",
 	cmdOnStep + " (OFF|RESTORE|%*)",
-	cmdPeek + " [%V|%S] %*",
+	cmdPeek + " [%N|%S] %*",
 	cmdPlayer + "(0|1)",
 	cmdPlayfield,
-	cmdPoke + " [%V|%S] %V",
+	cmdPoke + " [%N|%S] %N",
 	cmdQuit,
 	cmdRAM,
 	cmdRIOT,
@@ -103,7 +103,7 @@ var commandTemplate = []string{
 	cmdTrap + " [%*]",
 	cmdVerbose,
 	cmdVerbosity,
-	cmdWatch + " (READ|WRITE) %V (%V)",
+	cmdWatch + " (READ|WRITE) %N (%N)",
 }
 
 // list of commands that should not be executed when recording/playing scripts
