@@ -163,7 +163,7 @@ func TestTabCompletion_complex(t *testing.T) {
 	var completion, expected string
 	var err error
 
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%P|bar]|foo) %*"})
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%P|bar]|foo)"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -208,6 +208,99 @@ func TestTabCompletion_filenameFirstOption(t *testing.T) {
 
 	completion = "TEST f"
 	expected = "TEST FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+}
+
+func TestTabCompletion_nestedGroups(t *testing.T) {
+	var cmds *commandline.Commands
+	var tc *commandline.TabCompletion
+	var completion, expected string
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{
+		"TEST [(foo)|bar]",
+	})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	tc = commandline.NewTabCompletion(cmds)
+
+	completion = "TEST f"
+	expected = "TEST FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	completion = "TEST FOO bA"
+	expected = "TEST FOO bA"
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	completion = "TEST bA"
+	expected = "TEST BAR "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+}
+
+func TestTabCompletion_repeatGroups(t *testing.T) {
+	var cmds *commandline.Commands
+	var tc *commandline.TabCompletion
+	var completion, expected string
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST {foo}"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	tc = commandline.NewTabCompletion(cmds)
+
+	completion = "TEST f"
+	expected = "TEST FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	completion = "TEST FOO fo"
+	expected = "TEST FOO FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST {foo|bar}"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	tc = commandline.NewTabCompletion(cmds)
+
+	completion = "TEST f"
+	expected = "TEST FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	completion = "TEST FOO fo"
+	expected = "TEST FOO FOO "
+	completion = tc.Complete(completion)
+	if completion != expected {
+		t.Errorf("expecting '%s' got '%s'", expected, completion)
+	}
+
+	completion = "TEST FOO b"
+	expected = "TEST FOO BAR "
 	completion = tc.Complete(completion)
 	if completion != expected {
 		t.Errorf("expecting '%s' got '%s'", expected, completion)

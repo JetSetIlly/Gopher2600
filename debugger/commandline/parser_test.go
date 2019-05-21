@@ -3,7 +3,6 @@ package commandline_test
 import (
 	"gopher2600/debugger/commandline"
 	"os"
-	"sort"
 	"strings"
 	"testing"
 
@@ -44,6 +43,29 @@ func expectEquality(t *testing.T, template []string, cmds *commandline.Commands)
 	return true
 }
 
+// dur to the parsing method it's not always possible to recreate the original
+// template from the parsed nodes. but that's okay, the parsed nodes have
+// effectively been optimised. in these test cases, rather than using the
+// expectEquality() function, we can use this expectEquivalency() function.
+//
+// rather than using the original template, this function runs the result of
+// the parsed Commands back through itself. if the results of the second pass
+// are the same as the first then we've successfully parsed the original
+// template.
+func expectEquivalency(t *testing.T, cmds *commandline.Commands) bool {
+	t.Helper()
+
+	var err error
+
+	template := strings.Split(cmds.String(), "\n")
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		return expectEquality(t, template, cmds)
+	}
+
+	return false
+}
+
 // memvizOutput produces a dot file that can be used to identify how elements
 // in the Commands object are connected
 func memvizOutput(t *testing.T, filename string, cmds *commandline.Commands) {
@@ -57,6 +79,39 @@ func memvizOutput(t *testing.T, filename string, cmds *commandline.Commands) {
 		t.Errorf("%s", err)
 	} else {
 		memviz.Map(f, cmds)
+	}
+}
+
+func TestParser_optimised(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{"TEST [1 [2] [3] [4] [5]]"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquivalency(t, cmds)
+	}
+
+	template = []string{"TEST (egg|fog|(nug nog)|big) (tug)"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquivalency(t, cmds)
+	}
+}
+
+func TestParser_nestedGroups(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{"TEST (foo|bar (a|b c|d) baz)"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
 	}
 }
 
@@ -84,7 +139,28 @@ func TestParser_goodGroupings(t *testing.T) {
 		expectEquality(t, template, cmds)
 	}
 
-	template = []string{"TEST [1 [2] [3] [4] [5]]"}
+}
+
+func TestParser_nestedGroupings(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{"TEST [(foo)|bar]"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST (foo|[bar])"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST (foo|[bar|(baz|qux)]|wibble)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
@@ -97,7 +173,7 @@ func TestParser_rootGroupings(t *testing.T) {
 	var cmds *commandline.Commands
 	var err error
 
-	template = []string{"TEST (arg) %*"}
+	template = []string{"TEST (arg)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
@@ -135,33 +211,99 @@ func TestParser_doubleArgs(t *testing.T) {
 	var cmds *commandline.Commands
 	var err error
 
+	template = []string{"TEST foo bar"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST (foo bar baz)"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
 	template = []string{"TEST (egg|fog|nug nog|big) (tug)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
-		sort.Stable(cmds)
 		expectEquality(t, template, cmds)
 	}
 }
 
-func TestParser(t *testing.T) {
+func TestParser_repeatGroups(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{"TEST {foo}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST {foo|bar}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST {[foo|bar]}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST {foo|bar|baz}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST {foo %f}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		expectEquality(t, template, cmds)
+	}
+
+	template = []string{"TEST {foo|bar %f}"}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if expectSuccess(t, err) {
+		//memvizOutput(t, "1", cmds)
+		expectEquality(t, template, cmds)
+	}
+}
+
+func TestParser_addHelp(t *testing.T) {
 	var template []string
 	var cmds *commandline.Commands
 	var err error
 
 	template = []string{
 		"DISPLAY (OFF|DEBUG|SCALE [%N]|DEBUGCOLORS)",
-		"SCRIPT [%F|RECORD [%F]|END]",
+		"SCRIPT [%F|RECORD %F|END]",
 		"DROP [BREAK|TRAP|WATCH] [%S]",
 		"GREP %N",
-		"TEST [FOO [%S]|BAR] (EGG [%S]|FOG|NOG NUG) (TUG)",
-		"SCRIPT [RECORD (REGRESSION) [%S]|END|%F]",
 		"SYMBOL [%S (ALL|MIRRORS)|LIST]",
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
 		expectEquality(t, template, cmds)
-		//memvizOutput(t, "1", cmds)
 	}
+
+	err = cmds.AddHelp("HELP")
+	expectSuccess(t, err)
+
+	// adding a second HELP command is not allowed
+	err = cmds.AddHelp("HELP")
+	expectFailure(t, err)
 }

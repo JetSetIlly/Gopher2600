@@ -26,18 +26,23 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 			err := cmds[n].validate(tokens, false)
 			if err != nil {
+				// preserve FormattedError type
+				if _, ok := err.(errors.FormattedError); ok {
+					return err
+				}
 				return errors.NewFormattedError(errors.ValidationError, err, cmd)
 			}
 
+			// if we've reached this point and there are still oustanding
+			// tokens in the queue then something has gone wrong.
+			//
+			// the "unrecognised argument" message seems to make sense in all
+			// scenarios where this situation can arise. originally, the error
+			// message was "too many arguments" but this was sometimes
+			// misleading.
 			if tokens.Remaining() > 0 {
-				// TODO: this error message is misleading when the last
-				// argument in a branch is optional and the supplied argument
-				// does not match. in those instances, it should say something
-				// like: "argument does not match option"
-				//
-				// we need a way to detect that situation if we reach this
-				// point.
-				return errors.NewFormattedError(errors.ValidationError, "too many arguments", cmd)
+				arg, _ := tokens.Get()
+				return errors.NewFormattedError(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s)", arg), cmd)
 			}
 
 			return nil
@@ -47,125 +52,137 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 	return fmt.Errorf("unrecognised command (%s)", cmd)
 }
 
-func placeHolderText(text string) string {
-	switch text {
-	case "%*":
-		return "additional arguments"
-	case "%S":
-		return "string argument"
-	case "%N":
-		return "numeric argument"
-	case "%P":
-		return "floating-point argument"
-	case "%F":
-		return "filename argument"
-	default:
-		return text
-	}
-}
-
-// branchesText creates a readable string, listing all the branchesText of the node
-func branchesText(n *node) string {
-	s := strings.Builder{}
-	s.WriteString(placeHolderText(n.tag))
-	for bi := range n.branch {
-		s.WriteString(" or ")
-		s.WriteString(placeHolderText(n.branch[bi].tag))
-	}
-	return s.String()
-}
-
 func (n *node) validate(tokens *Tokens, speculative bool) error {
-	// if there is no more input then return true (validation has passed) if
-	// the node is optional, false if it is required
+	// we cannot do anything useful with a node with an empty tag, but if there
+	// is a "next" node then we can move immediately to validation of that node
+	// instead.
+	//
+	// empty tags like this, happen as a result of parsing nested groups
+	//
+	// a node with an empty tag but no next array (or a next array with too
+	// many entries) is an illegal node and should not have been parsed
+	if n.tag == "" {
+		if n.next == nil || len(n.next) > 1 {
+			return errors.NewFormattedError(errors.FatalError, "commandline validation", "illegal empty node")
+		}
+
+		// speculatively validate the next node. don't do anything with any
+		// error just yet. if there is an error we need to validate against nay
+		// branches. if there is still no match we cam return the error then
+
+		err := n.next[0].validate(tokens, true)
+		match := err == nil
+
+		if match == false {
+			for bi := range n.branch {
+				tokens.Unget()
+				if n.branch[bi].validate(tokens, true) == nil {
+					match = true
+					break // for loop
+				}
+			}
+		}
+
+		if match {
+			return nil
+		}
+
+		return err
+	}
+
+	// make a note of the token queue before we proceed. we'll use this to
+	// decide whether to proceed with any repeat loops.
+	remainder := tokens.Remainder()
+
+	// get the next token in the token queue
+	//
+	// in the event of there being no more tokens, then we need to consider
+	// whether the current node is optional or not. if it's optional then the
+	// validation has passed and we return with no error. if the node is not
+	// optional then we return a meaningful and descriptive error.
 	tok, ok := tokens.Get()
 	if !ok {
-		// we treat arguments in the root-group as though they are required,
-		// with the exception of the %* placeholder
-		if n.group == groupRequired || (n.group == groupRoot && n.tag != "%*") {
-			// replace placeholder arguments with something a little less cryptic
+		// we treat arguments in the root-group as though they are required
+		if n.typ == nodeRequired || n.typ == nodeRoot {
 			s := strings.Builder{}
 			if len(n.branch) > 0 {
-				return fmt.Errorf("missing a required argument (%s)", branchesText(n))
+				return fmt.Errorf("missing a required argument (%s)", n.branchesText())
 			}
 			s.WriteString("missing ")
-			s.WriteString(placeHolderText(n.tag))
+			s.WriteString(n.tagVerbose())
 			return fmt.Errorf(s.String())
 		}
 
 		return nil
 	}
 
-	// check to see if input matches this node. using placeholder matching if
-	// appropriate
+	// check the current token against the node's tag, using placeholder
+	// matching if appropriate.
+	//
+	// to help we use two boolean variables: match and tentativeMatch
+	//
+	// match is used to indicate that there is a definite match.
+	//
+	// tentativeMatch meanwhile is used to indicate that there is a match but
+	// there may be a better one for example, the word "foo" matches the %S
+	// placeholder but if another branch expects the exact argument "foo" then
+	// that would be a better match.
 
+	match := false
 	tentativeMatch := false
-	match := true
-
-	// default error in case nothing matches - replaced as necessary
-	err := fmt.Errorf("unrecognised argument (%s)", tok)
 
 	switch n.tag {
 	case "%N":
 		_, e := strconv.ParseInt(tok, 0, 32)
-		if e != nil {
-			err = fmt.Errorf("numeric argument required (%s is not numeric)", tok)
-			match = false
-		}
+		match = e == nil
 
 	case "%P":
 		_, e := strconv.ParseFloat(tok, 32)
-		if e != nil {
-			err = fmt.Errorf("float argument required (%s is not numeric)", tok)
-			match = false
-		}
+		match = e == nil
+
+		// I originally thought that an error message describing how the
+		// argument is "not a number" or "not a float" would be helpful but in
+		// practice, it wasn't as useful as you might expect. for instance if
+		// we had the template:
+		//
+		// WATCH (READ|WRITE) %N
+		//
+		// the command:
+		//
+		// WATCH ANY 0x80
+		//
+		// would result in an error message like "ANY is not a number", because
+		// ANY does not match the optional group. I think this is misleading.
+		//
+		// with a bit of work we could craft the validation algorithm to notice
+		// that "0x80" does match the %N argument and so ANY was supposed to be
+		// an attempt at the optional argument, but that's a lot more work.
+		// however, for now, we've opted to resond to all bad arguments with a
+		// catch-all "unrecognised argument" message (see below).
 
 	case "%S":
-		// string placeholders do not cause an immediate match if the node has
-		// branches.  if they did then they would be acting in the same way as
-		// the %* placeholder and any subsequent branches will not be
-		// considered at all. we do however flag a tentative match. in this
-		// way, if none of the branches cause a better match, then this match
-		// will do
-
 		tentativeMatch = true
 		match = n.branch == nil
 
 	case "%F":
-		// TODO: check for file existance
-
-		// see commentary for %S above
-
+		// not checking for file existence
 		tentativeMatch = true
 		match = n.branch == nil
 
-	case "%*":
-		// this placeholder indicates that the rest of the tokens can be
-		// ignored.
-
-		// consume the rest of the tokens without a care
-		for ok {
-			_, ok = tokens.Get()
-		}
-
-		return nil
-
 	default:
-		// case sensitive matching
-		tok = strings.ToUpper(tok)
-		match = tok == n.tag
+		// case insensitive matching. node tags should already have been
+		// converted to upper case
+		match = strings.ToUpper(tok) == n.tag
 	}
 
-	// if input doesn't match this node, check branches
+	// if input doesn't match this node we need to check branches. we may well
+	// have a tentative match at this point but we need to put that to one side
+	// until we've checked all other options.
 	if !match && n.branch != nil {
 		for bi := range n.branch {
-			// recursing into the validate function means we need to use the
-			// same token as above. Unget() prepares the tokens object for
-			// that.
 			tokens.Unget()
 
 			if n.branch[bi].validate(tokens, true) == nil {
-				match = true
 				return nil
 			}
 		}
@@ -176,28 +193,44 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	}
 
 	if !match {
-		// there's no match but the speculative flags means we were half
-		// expecting it. return error without further consideration of whether
-		// node is an optional group
+		err := fmt.Errorf("unrecognised argument (%s)", tok)
+
+		// there's still no match but the speculative flag means we were half
+		// expecting it. return error without further consideration
+		//
+		// the fact that this is a speculative validation means that the error
+		// may well be ignored; but that's not a decision to make here
 		if speculative {
 			return err
 		}
 
-		// if we've not found anything in any branches and this is an optional
-		// group, then claim that we have matched this group and prepare tokens
-		// object for additional nodes. if group is not optional then return
-		// error.
-		if n.group == groupOptional {
-			match = true
-			tokens.Unget()
-		} else {
+		// if the node is not optional then failing to match is a definite
+		// error. return the previously prepared error back to the caller
+		if n.typ != nodeOptional {
+			return err
+		}
+
+		// the node is optional so we can simply carry on to the "next" nodes.
+		// however, because the current token did not match we'll need to
+		// examine it again
+		//
+		// The Unget() function "pushes" the current token back onto the queue.
+		tokens.Unget()
+	}
+
+	// check nodes that follow on from the current node
+	for ni := range n.next {
+		err := n.next[ni].validate(tokens, false)
+		if err != nil {
 			return err
 		}
 	}
 
-	// input does match this node. check nodes that follow on.
-	for ni := range n.next {
-		err = n.next[ni].validate(tokens, false)
+	// no more nodes in the next array. move to the repeat node if there is one
+	// and if the tokens queue has changed since the beginning of this
+	// function.
+	if n.repeat != nil && remainder != tokens.Remainder() {
+		err := n.repeat.validate(tokens, false)
 		if err != nil {
 			return err
 		}

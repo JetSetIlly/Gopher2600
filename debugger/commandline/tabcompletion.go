@@ -114,6 +114,32 @@ func (tc *TabCompletion) Reset() {
 }
 
 func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
+	// we cannot do anything with a node with no tag, but if there is a "next"
+	// node then we can move immediately to validation of that node instead.
+	//
+	// empty tags like this, happen as a result of parsing nested groups
+	//
+	// a node with an empty tag but no next array (or a next array with to
+	// many entries) is an illegal node and should not have been parsed
+	if n.tag == "" {
+		if n.next == nil || len(n.next) > 1 {
+			return
+		}
+
+		tc.buildMatches(n.next[0], tokens)
+
+		for bi := range n.branch {
+			// we want to use the current token again so we unget() the
+			// last token so that it is available at the beginning of the
+			// recursed function
+			tokens.Unget()
+
+			tc.buildMatches(n.branch[bi], tokens)
+		}
+
+		return
+	}
+
 	// if there is no more input then return true (validation has passed) if
 	// the node is optional, false if it is required
 	tok, ok := tokens.Get()
@@ -133,9 +159,7 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 
 	case "%S":
 		// against expectations, string placeholders do not cause a match. if
-		// they did then they would be acting in the same way as the %*
-		// placeholder and any subsequent branches will not be considered at
-		// all.
+		// they did then any subsequent branches will not be considered at all.
 		match = false
 
 	case "%F":
@@ -143,11 +167,6 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 
 		// see commentary for %S above
 		match = false
-
-	case "%*":
-		// this placeholder indicates that the rest of the tokens can be
-		// ignored.
-		return
 
 	default:
 		// case sensitive matching
@@ -177,8 +196,8 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		tokenAt := tokens.curr
 
 		for bi := range n.branch {
-			// we want to use the current token again so we unget() the last token
-			// so that it is available at the beginning of the recursed validate()
+			// we want to use the current token again so we unget() the last
+			// token so that it is available at the beginning of the recursed
 			// function
 			tokens.Unget()
 
@@ -186,7 +205,7 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		}
 
 		// the key to this condition is the tokenAt variable. see note above.
-		if n.group == groupOptional && len(tc.matches) == 0 && tokenAt == tokens.curr {
+		if n.typ == nodeOptional && len(tc.matches) == 0 && tokenAt == tokens.curr {
 			tokens.Unget()
 		} else {
 			return
@@ -209,6 +228,11 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 	// token does match this node. check nodes that follow on.
 	for nx := range n.next {
 		tc.buildMatches(n.next[nx], tokens)
+	}
+
+	// no more nodes in the next array. move to the repeat node if there is one
+	if n.repeat != nil {
+		tc.buildMatches(n.repeat, tokens)
 	}
 
 	return

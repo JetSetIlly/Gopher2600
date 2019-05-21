@@ -3,6 +3,7 @@ package commandline
 import (
 	"fmt"
 	"gopher2600/errors"
+	"io"
 	"strings"
 )
 
@@ -20,13 +21,29 @@ import (
 // Placeholders
 //   %N		numeric value
 //   %P		irrational number value
-//   %S     string
+//   %S     string (numbers can be strings too)
 //   %F     file name
-//   %*     allow anything to follow this point
 //
-// note that a placeholder will implicitly be treated as a separate token
+// TODO: the following pattern parses correctly but doesn't yet mean anything
+// and will never validate.
+//
+//    {[arg]}
+//
+// an idea would be to expand this to:
+//
+//    [arg] {arg}
+//
+// meaning one or more repetition of the arg pattern.
 //
 func ParseCommandTemplate(template []string) (*Commands, error) {
+	return ParseCommandTemplateWithOutput(template, nil)
+}
+
+// ParseCommandTemplateWithOutput is the same as ParseCommandTemplate but with
+// the outputting of optimised definitions
+//
+// an output argument of nil is valid
+func ParseCommandTemplateWithOutput(template []string, output io.Writer) (*Commands, error) {
 	cmds := make(Commands, 0, 10)
 	for t := range template {
 		defn := template[t]
@@ -44,12 +61,20 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 			return nil, errors.NewFormattedError(errors.ParserError, defn, err, d)
 		}
 
-		// add to list of commands (order doesn't matter at this stage)
-		cmds = append(cmds, p)
-
 		// check that parsing was complete
 		if d < len(defn)-1 {
 			return nil, errors.NewFormattedError(errors.ParserError, defn, "outstanding characters in definition")
+		}
+
+		// add to list of commands (order doesn't matter at this stage)
+		cmds = append(cmds, p)
+
+		// output optimisations
+		if output != nil && p.String() != defn {
+			output.Write([]byte(defn))
+			output.Write([]byte(" -> "))
+			output.Write([]byte(p.String()))
+			output.Write([]byte("\n"))
 		}
 	}
 
@@ -57,47 +82,39 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 }
 
 func parseDefinition(defn string, trigger string) (*node, int, error) {
-	// handle special conditions before parsing loop
-	if defn[0] == '(' || defn[0] == '[' {
-		return nil, 0, fmt.Errorf("first argument of a group should not be itself be the start of a group")
-	}
-
 	// working nodes should be initialised with this function
 	newWorkingNode := func() *node {
-		if trigger == "(" {
-			return &node{group: groupOptional}
-		} else if trigger == "[" {
-			return &node{group: groupRequired}
-		} else if trigger == "|" {
+		switch trigger {
+		case "(":
+			return &node{typ: nodeOptional}
+		case "[":
+			return &node{typ: nodeRequired}
+		case "{":
+			return &node{typ: nodeOptional}
+		case "|":
 			// group is left unset for the branch trigger. value will be set
 			// once parseDefinition() has returned
 			return &node{}
-		} else if trigger == "" {
-			return &node{group: groupRoot}
+		case "":
+			return &node{typ: nodeRoot}
+		default:
+			panic("unknown trigger")
 		}
-
-		panic("unknown trigger")
 	}
 
 	wn := newWorkingNode() // working node (attached to the end of the sequence when required)
 	sn := wn               // start node (of the sequence)
 
-	addNext := func(nx *node) error {
+	addNext := func(nn *node) error {
 		// new node is already in the correct place
-		if sn == nx {
+		if sn == nn {
 			wn = newWorkingNode()
 			return nil
 		}
 
 		// do not add nodes that have no content
-		if nx.tag == "" {
+		if nn.tag == "" && nn.next == nil {
 			return nil
-		}
-
-		// sanity check to make sure we're not clobbering an active working
-		// node
-		if wn != nx && wn.tag != "" {
-			return fmt.Errorf("orphaned working node: %s", wn.tag)
 		}
 
 		// create a new next array if necessary, and add new node to the end of
@@ -105,7 +122,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		if sn.next == nil {
 			sn.next = make([]*node, 0)
 		}
-		sn.next = append(sn.next, nx)
+		sn.next = append(sn.next, nn)
 
 		// create new working node
 		wn = newWorkingNode()
@@ -113,16 +130,10 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		return nil
 	}
 
-	addBranch := func(bx *node) error {
+	addBranch := func(bn *node) error {
 		// do not add nodes that have no content
-		if bx.tag == "" {
+		if bn.tag == "" && bn.next == nil {
 			return nil
-		}
-
-		// sanity check to make sure we're not clobbering an active working
-		// node
-		if wn != bx && wn.tag != "" {
-			return fmt.Errorf("orphaned working node: %s", wn.tag)
 		}
 
 		// create a new next array if necessary, and add new node to the end of
@@ -130,7 +141,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		if sn.branch == nil {
 			sn.branch = make([]*node, 0)
 		}
-		sn.branch = append(sn.branch, bx)
+		sn.branch = append(sn.branch, bn)
 
 		// create new working node
 		wn = newWorkingNode()
@@ -151,7 +162,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			if err != nil {
 				return nil, i + e, err
 			}
-			ns.group = groupRequired
+			ns.typ = nodeRequired
 
 			err = addNext(ns)
 			if err != nil {
@@ -171,7 +182,46 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			if err != nil {
 				return nil, i + e, err
 			}
-			ns.group = groupOptional
+			ns.typ = nodeOptional
+
+			err = addNext(ns)
+
+			if err != nil {
+				return nil, i, err
+			}
+
+			i += e
+
+		case '{':
+			err := addNext(wn)
+			if err != nil {
+				return nil, i, err
+			}
+
+			i++
+			ns, e, err := parseDefinition(defn[i:], "{")
+			if err != nil {
+				return nil, i + e, err
+			}
+			ns.typ = nodeOptional
+
+			// add repeat information to new nodes
+			ns.repeatStart = true
+			if ns.next != nil {
+				ns.next[len(ns.next)-1].repeat = ns
+			} else {
+				ns.repeat = ns
+			}
+
+			// include branches in the repeating
+			for bi := range ns.branch {
+				n := ns.branch[bi]
+				if n.next != nil {
+					n.next[len(n.next)-1].repeat = ns
+				} else {
+					n.repeat = ns
+				}
+			}
 
 			err = addNext(ns)
 
@@ -209,6 +259,20 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			}
 			return nil, i, fmt.Errorf("unexpected )")
 
+		case '}':
+			err := addNext(wn)
+			if err != nil {
+				return nil, i, err
+			}
+
+			if trigger == "{" {
+				return sn, i, nil
+			}
+			if trigger == "|" {
+				return sn, i - 1, nil
+			}
+			return nil, i, fmt.Errorf("unexpected }")
+
 		case '|':
 			err := addNext(wn)
 			if err != nil {
@@ -226,9 +290,8 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 				return nil, i + e, err
 			}
 
-			// change group to current group - we don't want any unresolved
-			// instances of groupUndefined
-			nb.group = sn.group
+			// change group to current group
+			nb.typ = sn.typ
 
 			err = addBranch(nb)
 			if err != nil {
@@ -249,7 +312,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			// add placeholder to working node if it is recognised
 			p := string(defn[i+1])
 
-			if p != "N" && p != "P" && p != "S" && p != "F" && p != "*" && p != "%" {
+			if p != "N" && p != "P" && p != "S" && p != "F" && p != "%" {
 				return nil, i, fmt.Errorf("unknown placeholder directive (%s)", wn.tag)
 			}
 

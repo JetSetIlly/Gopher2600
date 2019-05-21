@@ -30,7 +30,6 @@ const (
 	cmdDisplay       = "DISPLAY"
 	cmdDrop          = "DROP"
 	cmdGrep          = "GREP"
-	cmdHelp          = "HELP"
 	cmdHexLoad       = "HEXLOAD"
 	cmdInsert        = "INSERT"
 	cmdLast          = "LAST"
@@ -62,9 +61,11 @@ const (
 	cmdWatch         = "WATCH"
 )
 
+const cmdHelp = "HELP"
+
 var commandTemplate = []string{
 	cmdBall,
-	cmdBreak + " [%*]",
+	cmdBreak + " [%S %N|%N] {%S %N|%N}",
 	cmdCPU,
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
@@ -74,17 +75,16 @@ var commandTemplate = []string{
 	cmdDisplay + " (OFF|DEBUG|SCALE [%P]|DEBUGCOLORS)", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %N",
 	cmdGrep + " %S",
-	cmdHelp + " %*",
-	cmdHexLoad + " %N %N %*",
+	cmdHexLoad + " %N %N {%N}",
 	cmdInsert + " %F",
 	cmdLast + " (DEFN)",
 	cmdList + " [BREAKS|TRAPS|WATCHES]",
 	cmdMemMap,
-	cmdMissile + "(0|1)",
-	cmdOnHalt + " (OFF|RESTORE|%*)",
-	cmdOnStep + " (OFF|RESTORE|%*)",
-	cmdPeek + " [%N|%S] %*",
-	cmdPlayer + "(0|1)",
+	cmdMissile + " (0|1)",
+	cmdOnHalt + " (OFF|RESTORE|%S {%S})",
+	cmdOnStep + " (OFF|RESTORE|%S {%S})",
+	cmdPeek + " [%S] {%S}",
+	cmdPlayer + " (0|1)",
 	cmdPlayfield,
 	cmdPoke + " [%N|%S] %N",
 	cmdQuit,
@@ -92,15 +92,15 @@ var commandTemplate = []string{
 	cmdRIOT,
 	cmdReset,
 	cmdRun,
-	cmdScript + " [WRITE [%S]|END|%F]",
+	cmdScript + " [WRITE %S|END|%F]",
 	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
 	cmdStepMode + " (CPU|VIDEO)",
-	cmdStick + "[0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
+	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdTIA,
 	cmdTV + " (SPEC)",
 	cmdTerse,
-	cmdTrap + " [%*]",
+	cmdTrap + " [%S] {%S}",
 	cmdVerbose,
 	cmdVerbosity,
 	cmdWatch + " (READ|WRITE) %N (%N)",
@@ -120,7 +120,13 @@ func init() {
 	var err error
 
 	// parse command template
-	debuggerCommands, err = commandline.ParseCommandTemplate(commandTemplate)
+	debuggerCommands, err = commandline.ParseCommandTemplateWithOutput(commandTemplate, os.Stdout)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(100)
+	}
+
+	err = debuggerCommands.AddHelp(cmdHelp)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(100)
