@@ -5,6 +5,8 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/audio"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
@@ -42,6 +44,18 @@ type TIA struct {
 
 	Video *video.Video
 	Audio *audio.Audio
+
+	// there's a slight delay when changing the state of video objects. we're
+	// using two future instances to emulate what happens in the 2600. the
+	// first is onFutureColorClock, which *ticks* every video cycle. we use this for
+	// writing playfield bits, player bits and enable flags for missiles and
+	// the ball.
+	//
+	// the second future instance is OnFutureMotionClock. this is for those
+	// writes that only occur during the "motion clock". eg. resetting sprite
+	// positions
+	onFutureColorClock  future.Group
+	onFutureMotionClock future.Group
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -83,7 +97,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.vblank)
+	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.onFutureColorClock, &tia.onFutureMotionClock)
 	if tia.Video == nil {
 		return nil
 	}
@@ -113,7 +127,11 @@ func (tia *TIA) ReadTIAMemory() {
 		_ = value&0x80 == 0x80
 		return
 
-	// VBLANK moved to ReadVideoMemory()
+	case "VBLANK":
+		tia.onFutureColorClock.Schedule(delay.TriggerVBLANK, func() {
+			tia.vblank = (value&0x02 == 0x02)
+		}, "setting VBLANK")
+		return
 
 	case "WSYNC":
 		tia.wsync = true
@@ -228,7 +246,12 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 	// position resets to happen *after* sprite ticking; in particular, when
 	// the draw signal has been resolved
 	tia.Video.TickPlayfield()
-	tia.Video.TickFutures(tia.motionClock)
+
+	// tick futures
+	tia.onFutureColorClock.Tick()
+	if tia.motionClock {
+		tia.onFutureMotionClock.Tick()
+	}
 
 	// decide on pixel color
 	var pixelColor, debugColor uint8

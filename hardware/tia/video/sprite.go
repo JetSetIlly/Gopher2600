@@ -2,8 +2,9 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 	"strings"
 )
 
@@ -246,7 +247,7 @@ func (sp *sprite) resolveHMOVE(count int) {
 					sp.resetFuture.Force()
 					sp.forceReset = 0
 				} else if sp.forceReset == 0 {
-					sp.forceReset = delayForceReset
+					sp.forceReset = delay.ForceReset
 				} else {
 					sp.forceReset--
 				}

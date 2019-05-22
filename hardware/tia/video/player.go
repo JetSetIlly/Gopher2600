@@ -2,8 +2,9 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 	"math/bits"
 	"strings"
 )
@@ -263,7 +264,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 
 func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {
 	ps.resetTriggered = true
-	ps.resetFuture = onFutureWrite.Schedule(delayResetPlayer, func() {
+	ps.resetFuture = onFutureWrite.Schedule(delay.ResetPlayer, func() {
 		ps.resetFuture = nil
 		ps.resetTriggered = false
 		ps.resetPosition()
@@ -275,22 +276,22 @@ func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {
 }
 
 func (ps *playerSprite) scheduleWrite(data uint8, onFutureWrite *future.Group) {
-	onFutureWrite.Schedule(delayWritePlayer, func() {
+	onFutureWrite.Schedule(delay.WritePlayer, func() {
 		ps.otherPlayer.gfxDataB = ps.otherPlayer.gfxDataA
 	}, fmt.Sprintf("%s updating vdel gfx register", ps.otherPlayer.label))
 
-	onFutureWrite.Schedule(delayWritePlayer, func() {
+	onFutureWrite.Schedule(delay.WritePlayer, func() {
 		ps.gfxDataA = data
 	}, fmt.Sprintf("%s writing data", ps.label))
 }
 
-func (ps *playerSprite) scheduleVerticalDelay(delay bool, onFutureWrite *future.Group) {
+func (ps *playerSprite) scheduleVerticalDelay(vdelay bool, onFutureWrite *future.Group) {
 	label := "enabling vertical delay"
-	if !delay {
+	if !vdelay {
 		label = "disabling vertical delay"
 	}
 
-	onFutureWrite.Schedule(delayVDELP, func() {
-		ps.verticalDelay = delay
+	onFutureWrite.Schedule(delay.SetVDELP, func() {
+		ps.verticalDelay = vdelay
 	}, fmt.Sprintf("%s %s", ps.label, label))
 }

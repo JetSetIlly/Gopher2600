@@ -2,8 +2,9 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 	"strings"
 )
 
@@ -185,7 +186,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 
 func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
 	ms.resetTriggered = true
-	ms.resetFuture = onFutureWrite.Schedule(delayResetMissile, func() {
+	ms.resetFuture = onFutureWrite.Schedule(delay.ResetMissile, func() {
 		ms.resetFuture = nil
 		ms.resetTriggered = false
 		ms.resetPosition()
@@ -201,13 +202,13 @@ func (ms *missileSprite) scheduleEnable(enable bool, onFutureWrite *future.Group
 	if !enable {
 		label = "disabling missile"
 	}
-	onFutureWrite.Schedule(delayEnableMissile, func() {
+	onFutureWrite.Schedule(delay.EnableMissile, func() {
 		ms.enable = enable
 	}, fmt.Sprintf("%s %s", ms.label, label))
 }
 
 func (ms *missileSprite) scheduleResetToPlayer(reset bool, onFutureWrite *future.Group) {
-	onFutureWrite.Schedule(delayResetMissileToPlayerPos, func() {
+	onFutureWrite.Schedule(delay.ResetMissileToPlayerPos, func() {
 		ms.resetToPlayerPos = reset
 	}, fmt.Sprintf("%s resetting to player pos", ms.label))
 }

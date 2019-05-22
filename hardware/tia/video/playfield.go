@@ -2,8 +2,9 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 	"strings"
 )
 
@@ -156,5 +157,5 @@ func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future
 		}
 	}
 
-	futureWrite.Schedule(delayWritePlayfield, f, "writing")
+	futureWrite.Schedule(delay.WritePlayfield, f, "writing")
 }

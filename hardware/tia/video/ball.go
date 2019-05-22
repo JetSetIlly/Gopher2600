@@ -2,8 +2,9 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 	"strings"
 )
 
@@ -123,7 +124,7 @@ func (bs *ballSprite) scheduleReset(onFuture *future.Group) {
 		bs.pixelDelayAfterReset = 0
 	}
 
-	bs.resetFuture = onFuture.Schedule(delayResetBall, func() {
+	bs.resetFuture = onFuture.Schedule(delay.ResetBall, func() {
 		bs.resetFuture = nil
 		bs.resetPosition()
 		bs.startDrawing()
@@ -136,18 +137,18 @@ func (bs *ballSprite) scheduleEnable(enable bool, onFuture *future.Group) {
 		label = "disabling"
 	}
 
-	onFuture.Schedule(delayEnableBall, func() {
+	onFuture.Schedule(delay.EnableBall, func() {
 		bs.enable = enable
 	}, fmt.Sprintf("%s %s", bs.label, label))
 }
 
-func (bs *ballSprite) scheduleVerticalDelay(delay bool, onFuture *future.Group) {
+func (bs *ballSprite) scheduleVerticalDelay(vdelay bool, onFuture *future.Group) {
 	label := "enabling vertical delay"
-	if !delay {
+	if !vdelay {
 		label = "disabling vertical delay"
 	}
 
-	onFuture.Schedule(delayVDELBL, func() {
-		bs.verticalDelay = delay
+	onFuture.Schedule(delay.SetVDELBL, func() {
+		bs.verticalDelay = vdelay
 	}, fmt.Sprintf("%s %s", bs.label, label))
 }

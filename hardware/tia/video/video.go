@@ -3,15 +3,14 @@ package video
 import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/tia/delay"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video/future"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
 	colorClock *polycounter.Polycounter
-
-	vblank *bool
 
 	// collision matrix
 	collisions *collisions
@@ -26,22 +25,13 @@ type Video struct {
 	Missile1 *missileSprite
 	Ball     *ballSprite
 
-	// there's a slight delay when changing the state of video objects. we're
-	// using two future instances to emulate what happens in the 2600. the
-	// first is OnFutureColorClock, which *ticks* every video cycle. we use this for
-	// writing playfield bits, player bits and enable flags for missiles and
-	// the ball.
-	//
-	// the second future instance is OnFutureMotionClock. this is for those
-	// writes that only occur during the "motion clock". eg. resetting sprite
-	// positions
-	OnFutureColorClock  future.Group
-	OnFutureMotionClock future.Group
+	onFutureColorClock  *future.Group
+	onFutureMotionClock *future.Group
 }
 
 // colors to use for debugging
 const (
-	debugColBackground = uint8(0x02) // black (stella uses a light grey)
+	debugColBackground = uint8(0x02) // light gray
 	debugColBall       = uint8(0xb4) // cyan
 	debugColPlayfield  = uint8(0x62) // purple
 	debugColPlayer0    = uint8(0x32) // red
@@ -51,8 +41,8 @@ const (
 )
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, vblank *bool) *Video {
-	vd := &Video{colorClock: colorClock, vblank: vblank}
+func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, onFutureColorClock, onFutureMotionClock *future.Group) *Video {
+	vd := &Video{colorClock: colorClock, onFutureColorClock: onFutureColorClock, onFutureMotionClock: onFutureMotionClock}
 
 	// collision matrix
 	vd.collisions = newCollision(mem)
@@ -91,16 +81,6 @@ func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, vblank *b
 	vd.Missile1.parentPlayer = vd.Player1
 
 	return vd
-}
-
-// TickFutures is called *every* video clock
-func (vd *Video) TickFutures(sprites bool) {
-	// resolve delayed write operations
-	vd.OnFutureColorClock.Tick()
-
-	if sprites {
-		vd.OnFutureMotionClock.Tick()
-	}
 }
 
 // TickPlayfield is called *every* video clock
@@ -331,11 +311,6 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 	default:
 		return false
 
-	case "VBLANK":
-		vd.OnFutureColorClock.Schedule(delayVBLANK, func() {
-			*vd.vblank = (value&0x02 == 0x02)
-		}, "setting VBLANK")
-
 	// colours
 	case "COLUP0":
 		// TODO: write delay?
@@ -351,12 +326,12 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		// this delay works and fixes a graphical issue with the "Keystone
 		// Kapers" rom. I'm not entirely sure this is the correct fix however.
 		// and I'm definitely not sure about the delay time
-		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
+		vd.onFutureColorClock.Schedule(delay.WritePlayfield, func() {
 			vd.Playfield.backgroundColor = value & 0xfe
 		}, "setting COLUBK")
 	case "COLUPF":
 		// similar to COLUBK this fixes a bug with "Pressure Cooker"
-		vd.OnFutureColorClock.Schedule(delayWritePlayfield, func() {
+		vd.onFutureColorClock.Schedule(delay.WritePlayfield, func() {
 			vd.Playfield.foregroundColor = value & 0xfe
 			vd.Ball.color = value & 0xfe
 		}, "setting COLUPF")
@@ -373,58 +348,58 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 		// TODO: write delay?
 		vd.Player1.reflected = value&0x08 == 0x08
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value, &vd.OnFutureColorClock)
+		vd.Playfield.scheduleWrite(0, value, vd.onFutureColorClock)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value, &vd.OnFutureColorClock)
+		vd.Playfield.scheduleWrite(1, value, vd.onFutureColorClock)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value, &vd.OnFutureColorClock)
+		vd.Playfield.scheduleWrite(2, value, vd.onFutureColorClock)
 
 	// ball sprite
 	case "ENABL":
-		vd.Ball.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
 	case "RESBL":
-		vd.Ball.scheduleReset(&vd.OnFutureMotionClock)
+		vd.Ball.scheduleReset(vd.onFutureMotionClock)
 	case "VDELBL":
-		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
+		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
 
 	// player sprites
 	case "GRP0":
-		vd.Player0.scheduleWrite(value, &vd.OnFutureColorClock)
+		vd.Player0.scheduleWrite(value, vd.onFutureColorClock)
 	case "GRP1":
-		vd.Player1.scheduleWrite(value, &vd.OnFutureColorClock)
+		vd.Player1.scheduleWrite(value, vd.onFutureColorClock)
 	case "RESP0":
-		vd.Player0.scheduleReset(&vd.OnFutureMotionClock)
+		vd.Player0.scheduleReset(vd.onFutureMotionClock)
 	case "RESP1":
-		vd.Player1.scheduleReset(&vd.OnFutureMotionClock)
+		vd.Player1.scheduleReset(vd.onFutureMotionClock)
 	case "VDELP0":
-		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
+		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
 	case "VDELP1":
-		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, &vd.OnFutureMotionClock)
+		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
 
 	// missile sprites
 	case "ENAM0":
-		vd.Missile0.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
 	case "ENAM1":
-		vd.Missile1.scheduleEnable(value&0x02 == 0x02, &vd.OnFutureColorClock)
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
 	case "RESM0":
-		vd.Missile0.scheduleReset(&vd.OnFutureMotionClock)
+		vd.Missile0.scheduleReset(vd.onFutureMotionClock)
 	case "RESM1":
-		vd.Missile1.scheduleReset(&vd.OnFutureMotionClock)
+		vd.Missile1.scheduleReset(vd.onFutureMotionClock)
 	case "RESMP0":
-		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
+		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, vd.onFutureColorClock)
 	case "RESMP1":
-		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, &vd.OnFutureColorClock)
+		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, vd.onFutureColorClock)
 
 	// player & missile sprites
 	case "NUSIZ0":
-		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+		vd.onFutureColorClock.Schedule(delay.SetNUSIZ, func() {
 			vd.Missile0.size = (value & 0x30) >> 4
 			vd.Player0.size = value & 0x07
 			vd.Player0.triggerList = createTriggerList(vd.Player0.size)
 			vd.Missile0.triggerList = vd.Player0.triggerList
 		}, "adjusting NUSIZ0")
 	case "NUSIZ1":
-		vd.OnFutureColorClock.Schedule(delayNUSIZ, func() {
+		vd.onFutureColorClock.Schedule(delay.SetNUSIZ, func() {
 			vd.Missile1.size = (value & 0x30) >> 4
 			vd.Player1.size = value & 0x07
 			vd.Player1.triggerList = createTriggerList(vd.Player1.size)
