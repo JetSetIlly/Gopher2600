@@ -65,7 +65,7 @@ const cmdHelp = "HELP"
 
 var commandTemplate = []string{
 	cmdBall,
-	cmdBreak + " [%S %N|%N] {%S %N|%N}",
+	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdCPU,
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES]",
@@ -93,7 +93,7 @@ var commandTemplate = []string{
 	cmdReset,
 	cmdRun,
 	cmdScript + " [WRITE %S|END|%F]",
-	cmdStep + " (CPU|VIDEO|SCANLINE)", // see notes
+	cmdStep + " (CPU|VIDEO|%S)",
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
@@ -590,7 +590,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.inputEveryVideoCycle = false
 		case "VIDEO":
 			dbg.inputEveryVideoCycle = true
-		case "SCANLINE":
+		default:
 			dbg.inputEveryVideoCycle = false
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
@@ -598,8 +598,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 			dbg.runUntilHalt = true
-		default:
-			// already caught by command line ValidateTokens()
 		}
 
 		return setDefaultStep, nil

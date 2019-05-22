@@ -54,10 +54,10 @@ func (trg genericTarget) FormatValue(fv interface{}) string {
 		case error:
 			panic(v)
 		default:
-			return fmt.Sprintf("%v", fv)
+			return fmt.Sprintf("%#v", fv)
 		}
 	default:
-		return fmt.Sprintf("%v", fv)
+		return fmt.Sprintf("%#v", fv)
 	}
 }
 

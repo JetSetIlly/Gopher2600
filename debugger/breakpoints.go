@@ -27,56 +27,48 @@ type breaker struct {
 
 	// basic linked list to implement AND-conditions
 	next *breaker
-	prev *breaker
 }
 
 func (bk breaker) String() string {
-	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("%s->%s", bk.target.ShortLabel(), bk.target.FormatValue(bk.value)))
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s->%s", bk.target.ShortLabel(), bk.target.FormatValue(bk.value)))
 	n := bk.next
 	for n != nil {
-		b.WriteString(fmt.Sprintf(" & %s->%s", n.target.ShortLabel(), bk.target.FormatValue(n.value)))
+		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.ShortLabel(), n.target.FormatValue(n.value)))
 		n = n.next
 	}
-	return b.String()
+	return s.String()
 }
 
 // breaker.check checks the specific break condition with the current value of
 // the break target
 func (bk *breaker) check() bool {
 	currVal := bk.target.Value()
-	b := currVal == bk.value
-
-	if bk.next == nil {
-		b = b && currVal != bk.ignoreValue
-
-		// this is either a single, unconnected break condition or the last
-		// condition in a list. the ignore value depends on that.
-		if bk.prev == nil {
-			bk.ignoreValue = currVal
-		} else {
-			bk.ignoreValue = nil
-		}
-		return b
-	}
-
-	// this breaker is part of list so we need to recurse into the list
-	b = b && bk.next.check()
-	if b {
-		b = b && currVal != bk.ignoreValue
-		bk.ignoreValue = currVal
-	} else {
+	m := currVal == bk.value
+	if !m {
 		bk.ignoreValue = nil
+		return false
 	}
 
-	return b
+	if currVal == bk.ignoreValue {
+		return false
+	}
+
+	if bk.next != nil {
+		if !bk.next.check() {
+			return false
+		}
+	}
+
+	bk.ignoreValue = currVal
+
+	return true
 }
 
 // breaker.add links a new breaker object to an existing breaker object
 func (bk *breaker) add(nbk *breaker) {
 	n := &bk.next
 	for *n != nil {
-		nbk.prev = *n
 		*n = (*n).next
 	}
 	*n = nbk
