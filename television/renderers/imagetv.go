@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"strings"
 )
 
 // ImageTV is a television implementation that writes images to disk
@@ -44,18 +45,16 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 		// becuase we're implying that tvType is required, even when an
 		// instance of BasicTelevision has been supplied, the caller may be
 		// expecting an error
-		if tvType != tv.GetSpec().ID {
+		tvType = strings.ToUpper(tvType)
+		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
 			return nil, errors.NewFormattedError(errors.ImageTV, "trying to piggyback a tv of a different spec")
 		}
 		imtv.Television = tv
 	}
 
-	// screen geometry
-	imtv.pixelWidth = 2
-	imtv.screenGeom = image.Rectangle{
-		Min: image.Point{X: 0, Y: 0},
-		Max: image.Point{X: imtv.GetSpec().ClocksPerScanline * imtv.pixelWidth, Y: imtv.GetSpec().ScanlinesTotal},
-	}
+	// set attributes that depend on the television specification
+	imtv.ChangeTVSpec()
+
 	// start a new frame
 	imtv.currFrameNum = -1 // we'll be adding 1 to this value immediately in newFrame()
 	err = imtv.NewFrame(imtv.currFrameNum)
@@ -67,6 +66,16 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	imtv.AddRenderer(imtv)
 
 	return imtv, nil
+}
+
+// ChangeTVSpec implements television.Television interface
+func (imtv *ImageTV) ChangeTVSpec() error {
+	imtv.pixelWidth = 2
+	imtv.screenGeom = image.Rectangle{
+		Min: image.Point{X: 0, Y: 0},
+		Max: image.Point{X: imtv.GetSpec().ClocksPerScanline * imtv.pixelWidth, Y: imtv.GetSpec().ScanlinesTotal},
+	}
+	return nil
 }
 
 // Save last frame to filename - filename base supplied as an argument, the

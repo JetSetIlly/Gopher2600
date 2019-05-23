@@ -6,6 +6,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/television"
 	"os"
+	"strings"
 )
 
 // DigestTV is a television implementation that
@@ -36,7 +37,8 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 		// becuase we're implying that tvType is required, even when an
 		// instance of BasicTelevision has been supplied, the caller may be
 		// expecting an error
-		if tvType != tv.GetSpec().ID {
+		tvType = strings.ToUpper(tvType)
+		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
 			return nil, errors.NewFormattedError(errors.DigestTV, "trying to piggyback a tv of a different spec")
 		}
 		dtv.Television = tv
@@ -45,12 +47,19 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 	// register ourselves as a television.Renderer
 	dtv.AddRenderer(dtv)
 
+	// set attributes that depend on the television specification
+	dtv.ChangeTVSpec()
+
+	return dtv, nil
+}
+
+// ChangeTVSpec implements television.Television interface
+func (dtv *DigestTV) ChangeTVSpec() error {
 	// memory for frameData has to be sufficient for the entirety of the
 	// screen plus the size of a fingerprint. we'll use the additional space to
 	// chain fingerprint hashes
 	dtv.frameData = make([]byte, len(dtv.digest)+((dtv.GetSpec().ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
-
-	return dtv, nil
+	return nil
 }
 
 // NewFrame implements television.Renderer interface

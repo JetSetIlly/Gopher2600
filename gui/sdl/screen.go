@@ -1,6 +1,9 @@
 package sdl
 
 import (
+	"gopher2600/errors"
+	"gopher2600/performance/limiter"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -10,6 +13,9 @@ const scrDepth int32 = 4
 
 type screen struct {
 	gtv *GUI
+
+	// regulates how often the screen is updated
+	fpsLimiter *limiter.FpsLimiter
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -87,42 +93,11 @@ func newScreen(gtv *GUI) (*screen, error) {
 		return nil, err
 	}
 
-	scr.maxWidth = int32(gtv.GetSpec().ClocksPerScanline)
-	scr.maxHeight = int32(gtv.GetSpec().ScanlinesTotal)
-	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
-
-	scr.playWidth = int32(gtv.GetSpec().ClocksPerVisible)
-	scr.setPlayHeight(int32(gtv.GetSpec().ScanlinesPerVisible), int32(gtv.GetSpec().ScanlinesPerVBlank+gtv.GetSpec().ScanlinesPerVSync))
-
-	// pixelWidth is the number of tv pixels per color clock. we don't need to
-	// worry about this again once we've created the window and set the scaling
-	// for the renderer
-	scr.pixelWidth = 2
-
-	// screen texture is used to draw the pixels onto the sdl window (by the
-	// renderer). it is used evey frame, regardless of whether the tv is paused
-	// or unpaused
-	scr.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
+	// set attributes that depend on the television specification
+	err = scr.changeTVSpec()
 	if err != nil {
 		return nil, err
 	}
-	scr.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-
-	// fade texture is only used when the tv is paused. it is used to display
-	// the previous frame as a guide, in case the current frame is not completely
-	// rendered
-	scr.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
-	if err != nil {
-		return nil, err
-	}
-	scr.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-	scr.textureFade.SetAlphaMod(50)
-
-	// our acutal screen data
-	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
-	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
-	scr.altPixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
-	scr.altPixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
 	// new stabiliser
 	scr.stb = newScreenStabiliser(scr)
@@ -134,6 +109,57 @@ func newScreen(gtv *GUI) (*screen, error) {
 	}
 
 	return scr, nil
+}
+
+func (scr *screen) changeTVSpec() error {
+	var err error
+
+	spec := scr.gtv.GetSpec()
+
+	scr.maxWidth = int32(spec.ClocksPerScanline)
+	scr.maxHeight = int32(spec.ScanlinesTotal)
+	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
+
+	scr.playWidth = int32(spec.ClocksPerVisible)
+	scr.setPlayHeight(int32(spec.ScanlinesPerVisible), int32(spec.ScanlinesPerVBlank+spec.ScanlinesPerVSync))
+
+	// pixelWidth is the number of tv pixels per color clock. we don't need to
+	// worry about this again once we've created the window and set the scaling
+	// for the renderer
+	scr.pixelWidth = 2
+
+	// screen texture is used to draw the pixels onto the sdl window (by the
+	// renderer). it is used evey frame, regardless of whether the tv is paused
+	// or unpaused
+	scr.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
+	if err != nil {
+		return err
+	}
+	scr.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+
+	// fade texture is only used when the tv is paused. it is used to display
+	// the previous frame as a guide, in case the current frame is not completely
+	// rendered
+	scr.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
+	if err != nil {
+		return err
+	}
+	scr.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	scr.textureFade.SetAlphaMod(50)
+
+	// our acutal screen data
+	scr.pixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.pixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.altPixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+	scr.altPixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
+
+	// frame limiter
+	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(spec.FramesPerSecond))
+	if err != nil {
+		return errors.NewFormattedError(errors.SDL, err)
+	}
+
+	return nil
 }
 
 // setPlayHeight should be used when the number of visible scanlines change.
@@ -187,10 +213,11 @@ func (scr *screen) setMasking(unmasked bool) error {
 	}
 
 	// minimum window size
-	if h < int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible)*scr.pixelScale) {
-		h = int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible) * scr.pixelScale)
-	}
+	// if h < int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible)*scr.pixelScale) {
+	// 	h = int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible) * scr.pixelScale)
+	// }
 
+	// BUG: SetSize causes window to gain focus
 	scr.window.SetSize(w, h)
 
 	return nil
@@ -228,6 +255,9 @@ func (scr *screen) setPixel(pixels *[]byte, x, y int32, red, green, blue byte, v
 }
 
 func (scr *screen) update(paused bool) error {
+	// enforce a maximum frames-per-second
+	scr.fpsLimiter.Wait()
+
 	var err error
 
 	// clear image from rendered. using a non-video-black color if screen is

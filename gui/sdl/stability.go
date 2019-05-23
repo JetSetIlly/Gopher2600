@@ -24,10 +24,6 @@ type screenStabiliser struct {
 	visibleTopReference    int32
 	visibleBottomReference int32
 
-	// the current number of (stable) visible scanlines. only changes once the
-	// frame is considered stable
-	visibleScanlines int32
-
 	// has a ReqSetVisibilityStable been received recently? we don't want to
 	// open the window until the screen is stable
 	queuedShowRequest bool
@@ -69,19 +65,26 @@ func (stb *screenStabiliser) checkStableFrame() error {
 	}
 
 	// update play height (which in turn updates masking and window size)
-	if stb.visibleTopReference != int32(visibleTop) || stb.visibleBottomReference != int32(visibleBottom) {
-		stb.visibleTopReference = int32(visibleTop)
-		stb.visibleBottomReference = int32(visibleBottom)
-		stb.visibleScanlines = int32(stb.visibleBottomReference - stb.visibleTopReference)
-		stb.count = 0
-	}
-
 	if stb.count < stabilityThreshold {
-		stb.count++
+		if stb.visibleTopReference != int32(visibleTop) || stb.visibleBottomReference != int32(visibleBottom) {
+			stb.visibleTopReference = int32(visibleTop)
+			stb.visibleBottomReference = int32(visibleBottom)
+			stb.count = 0
+		} else {
+			stb.count++
+		}
 	} else if stb.count == stabilityThreshold {
 		stb.count++
 
-		err := stb.scr.setPlayHeight(int32(stb.visibleScanlines), int32(stb.visibleTopReference))
+		// calculate the play height from the top and bottom values with a
+		// minimum according to the tv specification
+		height := int32(stb.visibleBottomReference - stb.visibleTopReference)
+		minHeight := int32(stb.scr.gtv.GetSpec().ScanlinesPerVisible)
+		if height < minHeight {
+			height = minHeight
+		}
+
+		err := stb.scr.setPlayHeight(height, int32(stb.visibleTopReference))
 		if err != nil {
 			return err
 		}

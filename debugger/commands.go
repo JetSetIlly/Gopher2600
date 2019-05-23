@@ -744,8 +744,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				spec := dbg.gui.GetSpec()
-				dbg.print(console.MachineInfo, spec.ID)
+				dbg.print(console.MachineInfo, dbg.gui.GetSpec().ID)
 			default:
 				// already caught by command line ValidateTokens()
 			}

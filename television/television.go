@@ -52,4 +52,10 @@ type Renderer interface {
 	NewScanline(scanline int) error
 	SetPixel(x, y int32, red, green, blue byte, vblank bool) error
 	SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error
+
+	// ChangeTVSpec is called when the television implementation decides to
+	// change which TV specification is being used. Renderer implementations
+	// should make sure that any data structures that depend on the
+	// specification being used are still adequate.
+	ChangeTVSpec() error
 }

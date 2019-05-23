@@ -14,13 +14,7 @@ type Specification struct {
 	ScanlinesPerOverscan int
 	ScanlinesTotal       int
 
-	VsyncClocks int
-
 	Colors colors
-
-	IdealTop       int
-	IdealBottom    int
-	IdealScanlines int
 
 	FramesPerSecond float64
 	SecondsPerFrame float64
@@ -44,10 +38,6 @@ func init() {
 	SpecNTSC.ScanlinesPerOverscan = 30
 	SpecNTSC.ScanlinesTotal = 262
 	SpecNTSC.Colors = colorsNTSC
-	SpecNTSC.VsyncClocks = SpecNTSC.ScanlinesPerVSync * SpecNTSC.ClocksPerScanline
-	SpecNTSC.IdealTop = SpecNTSC.ScanlinesPerVSync + SpecNTSC.ScanlinesPerVBlank
-	SpecNTSC.IdealBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesPerOverscan
-	SpecNTSC.IdealScanlines = SpecNTSC.IdealBottom - SpecNTSC.IdealTop
 	SpecNTSC.FramesPerSecond = 60.0
 	SpecNTSC.SecondsPerFrame = 1.0 / SpecNTSC.FramesPerSecond
 
@@ -56,14 +46,11 @@ func init() {
 	SpecPAL.ClocksPerHblank = 68
 	SpecPAL.ClocksPerVisible = 160
 	SpecPAL.ClocksPerScanline = 228
+	SpecPAL.ScanlinesPerVSync = 3
 	SpecPAL.ScanlinesPerVBlank = 45
 	SpecPAL.ScanlinesPerVisible = 228
 	SpecPAL.ScanlinesPerOverscan = 36
 	SpecPAL.ScanlinesTotal = 312
-	SpecPAL.VsyncClocks = SpecPAL.ScanlinesPerVSync * SpecPAL.ClocksPerScanline
-	SpecPAL.IdealTop = SpecPAL.ScanlinesPerVSync + SpecPAL.ScanlinesPerVBlank
-	SpecPAL.IdealBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesPerOverscan
-	SpecPAL.IdealScanlines = SpecPAL.IdealBottom - SpecPAL.IdealTop
 	SpecPAL.FramesPerSecond = 50.0
 	SpecPAL.SecondsPerFrame = 1.0 / SpecPAL.FramesPerSecond
 

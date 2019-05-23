@@ -122,6 +122,7 @@ func (tia *TIA) ReadTIAMemory() {
 	switch register {
 	case "VSYNC":
 		tia.vsync = value&0x02 == 0x02
+
 		// TODO: do something with controller settings below
 		_ = value&0x40 == 0x40
 		_ = value&0x80 == 0x80

@@ -126,23 +126,23 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger() (*Debugger, error) {
+func NewDebugger(tvType string) (*Debugger, error) {
 	var err error
 
 	dbg := new(Debugger)
 
 	// prepare gui/tv
-	btv, err := television.NewBasicTelevision("NTSC")
+	btv, err := television.NewBasicTelevision(tvType)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
-	dbg.digest, err = renderers.NewDigestTV("NTSC", btv)
+	dbg.digest, err = renderers.NewDigestTV(tvType, btv)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}
 
-	dbg.gui, err = sdl.NewGUI("NTSC", 2.0, btv)
+	dbg.gui, err = sdl.NewGUI(tvType, 2.0, btv)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}

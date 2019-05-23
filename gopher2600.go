@@ -103,7 +103,7 @@ func main() {
 		fallthrough
 
 	case "PLAY":
-		tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
 		record := modeFlags.Bool("record", false, "record user input to a file")
@@ -134,11 +134,12 @@ func main() {
 		}
 
 	case "DEBUG":
+		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		termType := modeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
 		modeFlagsParse()
 
-		dbg, err := debugger.NewDebugger()
+		dbg, err := debugger.NewDebugger(*tvType)
 		if err != nil {
 			fmt.Printf("* %s\n", err)
 			os.Exit(2)
@@ -200,7 +201,7 @@ func main() {
 
 	case "PERFORMANCE":
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
-		tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL")
+		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		runTime := modeFlags.String("time", "5s", "run duration (note: there is a 2s overhead)")
 		profile := modeFlags.Bool("profile", false, "perform cpu and memory profiling")
@@ -282,7 +283,7 @@ func main() {
 			}
 
 		case "ADD":
-			tvType := modeFlags.String("tv", "NTSC", "television specification: NTSC, PAL (cartridge args only)")
+			tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
 			numFrames := modeFlags.Int("frames", 10, "number of frames to run (cartridge args only)")
 			modeFlagsParse()
 

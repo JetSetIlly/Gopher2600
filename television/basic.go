@@ -14,16 +14,12 @@ type BasicTelevision struct {
 	// television specification (NTSC or PAL)
 	spec *Specification
 
-	// if the most recently received signal is not as expected, according to
-	// the television protocol definition in the Stella Programmer's Guide, the
-	// the outOfSpec flags will be true
-	outOfSpec bool
-
-	// endOfScreen is set to true once the scanline value has reached the value
-	// of spec.ScanlinesTotal. it remains true until a new frame is triggered
+	// auto flag indicates that the tv type/specification should switch if it
+	// appears to be outside of the current spec.
 	//
-	// pixels will not be sent to the renderer when endOfScreen is true
-	endOfScreen bool
+	// in practice this means that if auto is true then we start with the NTSC
+	// spec and move to PAL if the number of scanlines exceeds the NTSC maximum
+	auto bool
 
 	// state of the television
 	//	- the current horizontal position. the position where the next pixel will be
@@ -41,6 +37,7 @@ type BasicTelevision struct {
 	// vsyncCount records the number of consecutive colorClocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
+	vsyncPos   int
 
 	// the scanline at which the visible part of the screen begins and ends
 	// - we start off with ideal values and push the screen outwards as
@@ -48,11 +45,11 @@ type BasicTelevision struct {
 	visibleTop    int
 	visibleBottom int
 
-	// pendingVisibleTop/Bottom records visible part of the screen (as
-	// described above) during the frame. we use these to update the real
+	// thisVisibleTop/Bottom records visible part of the screen (as described
+	// above) during the current frame. we use these to update the real
 	// variables at the end of a frame
-	pendingVisibleTop    int
-	pendingVisibleBottom int
+	thisVisibleTop    int
+	thisVisibleBottom int
 
 	// list of renderer implementations to consult
 	renderers []Renderer
@@ -68,6 +65,9 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 		btv.spec = SpecNTSC
 	case "PAL":
 		btv.spec = SpecPAL
+	case "AUTO":
+		btv.spec = SpecNTSC
+		btv.auto = true
 	default:
 		return nil, errors.NewFormattedError(errors.BasicTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
 	}
@@ -87,20 +87,13 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 
 // MachineInfoTerse returns the television information in terse format
 func (btv BasicTelevision) MachineInfoTerse() string {
-	specExclaim := ""
-	if btv.outOfSpec {
-		specExclaim = " !!"
-	}
-	return fmt.Sprintf("FR=%d SL=%d HP=%d %s", btv.frameNum, btv.scanline, btv.horizPos, specExclaim)
+	return fmt.Sprintf("FR=%d SL=%d HP=%d", btv.frameNum, btv.scanline, btv.horizPos)
 }
 
 // MachineInfo returns the television information in verbose format
 func (btv BasicTelevision) MachineInfo() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
-	if btv.outOfSpec {
-		s.WriteString(" !! ")
-	}
 	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
 	s.WriteString(fmt.Sprintf("   Scanline: %d\n", btv.scanline))
 	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", btv.horizPos, btv.horizPos+btv.spec.ClocksPerHblank))
@@ -127,17 +120,32 @@ func (btv *BasicTelevision) Reset() error {
 	btv.prevSignal = SignalAttributes{}
 
 	// default top/bottom to the "ideal" values
-	btv.pendingVisibleTop = btv.spec.IdealTop
-	btv.pendingVisibleBottom = btv.spec.IdealBottom
+	btv.thisVisibleTop = btv.spec.ScanlinesTotal
+	btv.thisVisibleBottom = 0
 
 	return nil
 }
 
+func (btv *BasicTelevision) autoSpec() (bool, error) {
+	if !btv.auto {
+		return false, nil
+	}
+
+	if btv.spec == SpecPAL {
+		return false, nil
+	}
+
+	btv.spec = SpecPAL
+	for f := range btv.renderers {
+		err := btv.renderers[f].ChangeTVSpec()
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
 // Signal is principle method of communication between the VCS and televsion
-//
-// if a signal is not entirely unexpected but is none-the-less out-of-spec then
-// then the tv object will be flagged outOfSpec and the emulation allowed to
-// continue.
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	if sig.HSync && !btv.prevSignal.HSync {
 		if btv.horizPos < -52 || btv.horizPos > -49 {
@@ -158,21 +166,51 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// simple implementation of vsync
-	if sig.VSync {
-		btv.vsyncCount++
+	// start a new scanline if a frontporch signal has been received
+	if sig.FrontPorch {
+		btv.horizPos = -btv.spec.ClocksPerHblank
+
+		// the frontporch signal implies the start of a new scanline
+		btv.scanline++
+
+		if btv.scanline > btv.spec.ScanlinesTotal {
+			btv.scanline = btv.spec.ScanlinesTotal
+		} else {
+			for f := range btv.renderers {
+				err := btv.renderers[f].NewScanline(btv.scanline)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	} else {
-		if btv.vsyncCount >= btv.spec.VsyncClocks {
-			btv.outOfSpec = btv.vsyncCount != btv.spec.VsyncClocks
-			btv.endOfScreen = false
+		btv.horizPos++
+
+		if btv.horizPos > btv.spec.ClocksPerVisible {
+			return errors.NewFormattedError(errors.OutOfSpec, "no FRONTPORCH")
+		}
+	}
+
+	// simple vsync implementation
+	if sig.VSync {
+		// if this a new vsync sequence note the horizontal position
+		if !btv.prevSignal.VSync {
+			btv.vsyncPos = btv.horizPos
+		}
+		// bump the vsync count whenever vsync is set
+		btv.vsyncCount++
+	} else if btv.prevSignal.VSync {
+		// if vsync has just be turned off then check that it has been held for
+		// the requisite number of scanlines for a new frame to be started
+		if btv.vsyncCount >= btv.spec.ScanlinesPerVSync {
 			btv.frameNum++
 			btv.scanline = 0
-			btv.vsyncCount = 0
 
 			// record visible top/bottom for this frame
-			btv.visibleTop = btv.pendingVisibleTop
-			btv.visibleBottom = btv.pendingVisibleBottom
+			btv.visibleTop = btv.thisVisibleTop
+			btv.visibleBottom = btv.thisVisibleBottom
 
+			// call new frame for all renderers
 			for f := range btv.renderers {
 				err := btv.renderers[f].NewFrame(btv.frameNum)
 				if err != nil {
@@ -181,55 +219,35 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 			}
 
 			// default top/bottom to the "ideal" values
-			btv.pendingVisibleTop = btv.spec.IdealTop
-			btv.pendingVisibleBottom = btv.spec.IdealBottom
-		}
-	}
-
-	// start a new scanline if a frontporch signal has been received
-	if sig.FrontPorch {
-		btv.horizPos = -btv.spec.ClocksPerHblank
-		btv.scanline++
-		for f := range btv.renderers {
-			err := btv.renderers[f].NewScanline(btv.scanline)
-			if err != nil {
-				return err
-			}
+			btv.thisVisibleTop = btv.spec.ScanlinesTotal
+			btv.thisVisibleBottom = 0
 		}
 
-		if btv.scanline > btv.spec.ScanlinesTotal {
-			// we've not yet received a correct vsync signal
-			// continue with an implied VSYNC
-			btv.outOfSpec = true
-
-			// indicate end of screen has been reached
-			btv.endOfScreen = true
-		}
-	} else {
-		btv.horizPos++
-
-		// check to see if frontporch has been encountered
-		if btv.horizPos > btv.spec.ClocksPerVisible {
-			return errors.NewFormattedError(errors.OutOfSpec, "no FRONTPORCH")
-		}
+		btv.vsyncCount = 0
 	}
 
 	// push screen limits outwards as required
 	if !sig.VBlank {
-		if !btv.endOfScreen && btv.scanline > btv.pendingVisibleBottom {
-			btv.pendingVisibleBottom = btv.scanline + 2
+		if btv.scanline > btv.thisVisibleBottom {
+			btv.thisVisibleBottom = btv.scanline + 2
 
 			// keep within limits
-			if btv.pendingVisibleBottom > btv.spec.ScanlinesTotal {
-				btv.pendingVisibleBottom = btv.spec.ScanlinesTotal
+			if btv.thisVisibleBottom > btv.spec.ScanlinesTotal {
+				ok, err := btv.autoSpec()
+				if err != nil {
+					return err
+				}
+				if ok == false {
+					btv.thisVisibleBottom = btv.spec.ScanlinesTotal
+				}
 			}
 		}
-		if btv.scanline < btv.pendingVisibleTop {
-			btv.pendingVisibleTop = btv.scanline - 2
+		if btv.scanline < btv.thisVisibleTop {
+			btv.thisVisibleTop = btv.scanline - 2
 
 			// keep within limits
-			if btv.pendingVisibleTop < 0 {
-				btv.pendingVisibleTop = 0
+			if btv.thisVisibleTop < 0 {
+				btv.thisVisibleTop = 0
 			}
 		}
 	}
@@ -237,27 +255,25 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	// record the current signal settings so they can be used for reference
 	btv.prevSignal = sig
 
-	if !btv.endOfScreen {
-		// current coordinates
-		x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
-		y := int32(btv.scanline)
+	// current coordinates
+	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
+	y := int32(btv.scanline)
 
-		// decode color using the regular color signal
-		red, green, blue := getColor(btv.spec, sig.Pixel)
-		for f := range btv.renderers {
-			err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
-			if err != nil {
-				return err
-			}
+	// decode color using the regular color signal
+	red, green, blue := getColor(btv.spec, sig.Pixel)
+	for f := range btv.renderers {
+		err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
+		if err != nil {
+			return err
 		}
+	}
 
-		// decode color using the alternative color signal
-		red, green, blue = getColor(btv.spec, sig.AltPixel)
-		for f := range btv.renderers {
-			err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
-			if err != nil {
-				return err
-			}
+	// decode color using the alternative color signal
+	red, green, blue = getColor(btv.spec, sig.AltPixel)
+	for f := range btv.renderers {
+		err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
+		if err != nil {
+			return err
 		}
 	}
 

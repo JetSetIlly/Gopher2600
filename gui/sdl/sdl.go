@@ -3,8 +3,8 @@ package sdl
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/performance/limiter"
 	"gopher2600/television"
+	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -15,9 +15,6 @@ type GUI struct {
 
 	// much of the sdl magic happens in the screen object
 	scr *screen
-
-	// regulates how often the screen is updated
-	fpsLimiter *limiter.FpsLimiter
 
 	// connects SDL guiLoop with the parent process
 	eventChannel chan gui.Event
@@ -51,15 +48,11 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		// becuase we're implying that tvType is required, even when an
 		// instance of BasicTelevision has been supplied, the caller may be
 		// expecting an error
-		if tvType != tv.GetSpec().ID {
+		tvType = strings.ToUpper(tvType)
+		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
 			return nil, errors.NewFormattedError(errors.SDL, "trying to piggyback a tv of a different spec")
 		}
 		gtv.Television = tv
-	}
-
-	gtv.fpsLimiter, err = limiter.NewFPSLimiter(50)
-	if err != nil {
-		return nil, errors.NewFormattedError(errors.SDL, err)
 	}
 
 	// set up sdl
@@ -97,8 +90,6 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 // update the gui so that it reflects changes to buffered data in the tv struct
 func (gtv *GUI) update() error {
-	gtv.fpsLimiter.Wait()
-
 	// abbrogate most of the updating to the screen instance
 	err := gtv.scr.update(gtv.paused)
 	if err != nil {
@@ -112,6 +103,11 @@ func (gtv *GUI) update() error {
 
 func (gtv *GUI) setDebugging(allow bool) {
 	gtv.allowDebugging = allow
+}
+
+// ChangeTVSpec implements television.Television interface
+func (gtv *GUI) ChangeTVSpec() error {
+	return gtv.scr.changeTVSpec()
 }
 
 // NewFrame implements television.Renderer interface
