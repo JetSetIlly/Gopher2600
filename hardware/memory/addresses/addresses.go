@@ -21,6 +21,7 @@ var Read = map[uint16]string{
 	0x282: "SWCHB",
 	0x283: "SWBCNT",
 	0x284: "INTIM",
+	0x285: "TIMINT",
 }
 
 // Write map contains the canonical names for VCS write addresses
@@ -105,4 +106,5 @@ const (
 	SWCHB
 	SWBCNT
 	INTIM
+	TIMINT
 )

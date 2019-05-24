@@ -36,19 +36,24 @@ type RIOT struct {
 // NewRIOT creates a RIOT, to be used in a VCS emulation
 func NewRIOT(mem memory.ChipBus) *RIOT {
 	riot := new(RIOT)
-	riot.timerRegister = "no timer"
 	riot.mem = mem
+
+	riot.timerRegister = "TIM1024"
+	riot.timerInterval = 1024
+	riot.timerINTIMvalue = 0x3c
+	riot.timerCycles = 1024
+
 	return riot
 }
 
 // MachineInfoTerse returns the RIOT information in terse format
 func (riot RIOT) MachineInfoTerse() string {
-	return fmt.Sprintf("INTIM=%d clks=%d (%s)", riot.timerINTIMvalue, riot.timerCycles, riot.timerRegister)
+	return fmt.Sprintf("INTIM=%#02x clks=%#04x (%s)", riot.timerINTIMvalue, riot.timerCycles, riot.timerRegister)
 }
 
 // MachineInfo returns the RIOT information in verbose format
 func (riot RIOT) MachineInfo() string {
-	return fmt.Sprintf("%s\nINTIM: %d (%02x)\nINTIM clocks = %d (%02x)", riot.timerRegister, riot.timerINTIMvalue, riot.timerINTIMvalue, riot.timerCycles, riot.timerCycles)
+	return fmt.Sprintf("%s\nINTIM: %d (%#02x)\nINTIM clocks = %d (%#02x)", riot.timerRegister, riot.timerINTIMvalue, riot.timerINTIMvalue, riot.timerCycles, riot.timerCycles)
 }
 
 // map String to MachineInfo
@@ -87,6 +92,9 @@ func (riot *RIOT) ReadRIOTMemory() {
 
 		// write value to INTIM straight-away
 		riot.mem.ChipWrite(addresses.INTIM, uint8(riot.timerINTIMvalue))
+
+		// reset TIMINT register
+		riot.mem.ChipWrite(addresses.TIMINT, 0)
 	}
 }
 
@@ -109,20 +117,21 @@ func (riot *RIOT) Step() {
 		}
 	}
 
-	if riot.timerRegister != "no timer" {
-		riot.timerCycles--
-		if riot.timerCycles == 0 {
-			if riot.timerINTIMvalue == 0 {
-				// reset INTIM value
-				riot.timerINTIMvalue = 255
+	riot.timerCycles--
+	if riot.timerCycles == 0 {
+		if riot.timerINTIMvalue == 0 {
+			// set bit 7 of TIMINT register
+			riot.mem.ChipWrite(addresses.TIMINT, 128)
 
-				// because INTIM value has cycled we flip timer interval to 1
-				riot.timerInterval = 1
-			} else {
-				riot.timerINTIMvalue--
-			}
-			riot.mem.ChipWrite(addresses.INTIM, riot.timerINTIMvalue)
-			riot.timerCycles = riot.timerInterval
+			// reset INTIM value
+			riot.timerINTIMvalue = 255
+
+			// because INTIM value has cycled we flip timer interval to 1
+			riot.timerInterval = 1
+		} else {
+			riot.timerINTIMvalue--
 		}
+		riot.mem.ChipWrite(addresses.INTIM, riot.timerINTIMvalue)
+		riot.timerCycles = riot.timerInterval
 	}
 }
