@@ -18,6 +18,10 @@ func (r *Register) Load(v interface{}) {
 		r.value = uint32(v) & r.mask
 	case uint16:
 		r.value = uint32(v) & r.mask
+	case uint32:
+		r.value = uint32(v) & r.mask
+	case uint64:
+		r.value = uint32(v) & r.mask
 	default:
 		panic(fmt.Sprintf("unsupported value type (%T)", v))
 	}

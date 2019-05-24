@@ -7,6 +7,7 @@ import (
 	"gopher2600/debugger/script"
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
@@ -66,9 +67,9 @@ const cmdHelp = "HELP"
 var commandTemplate = []string{
 	cmdBall,
 	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
-	cmdCPU,
+	cmdCPU + " (SET [PC|A|X|Y|SP] [%N])",
 	cmdCartridge + " (ANALYSIS)",
-	cmdClear + " [BREAKS|TRAPS|WATCHES]",
+	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
 	cmdDisassembly,
@@ -78,7 +79,7 @@ var commandTemplate = []string{
 	cmdHexLoad + " %N %N {%N}",
 	cmdInsert + " %F",
 	cmdLast + " (DEFN)",
-	cmdList + " [BREAKS|TRAPS|WATCHES]",
+	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
 	cmdMissile + " (0|1)",
 	cmdOnHalt + " (OFF|RESTORE|%S {%S})",
@@ -411,6 +412,11 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.traps.list()
 		case "WATCHES":
 			dbg.watches.list()
+		case "ALL":
+			// TODO: refine output. requires headings
+			dbg.breakpoints.list()
+			dbg.traps.list()
+			dbg.watches.list()
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -428,6 +434,11 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		case "WATCHES":
 			dbg.watches.clear()
 			dbg.print(console.Feedback, "watches cleared")
+		case "ALL":
+			dbg.breakpoints.clear()
+			dbg.traps.clear()
+			dbg.watches.clear()
+			dbg.print(console.Feedback, "breakpoints, traps and watches cleared")
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -655,7 +666,41 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdCPU:
-		dbg.printMachineInfo(dbg.vcs.MC)
+		action, present := tokens.Get()
+		if present {
+			switch strings.ToUpper(action) {
+			case "SET":
+				target, _ := tokens.Get()
+
+				var reg *register.Register
+				switch strings.ToUpper(target) {
+				case "PC":
+					reg = dbg.vcs.MC.PC
+				case "A":
+					reg = dbg.vcs.MC.A
+				case "X":
+					reg = dbg.vcs.MC.X
+				case "Y":
+					reg = dbg.vcs.MC.Y
+				case "SP":
+					reg = dbg.vcs.MC.SP
+				}
+
+				value, _ := tokens.Get()
+
+				v, err := strconv.ParseUint(value, 0, int(reg.Size()))
+				if err != nil {
+					dbg.print(console.Error, "value must be a positive %dbit number", reg.Size())
+				}
+
+				reg.Load(v)
+
+			default:
+				// already caught by command line ValidateTokens()
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.MC)
+		}
 
 	case cmdPeek:
 		// get first address token

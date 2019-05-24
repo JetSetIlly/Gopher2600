@@ -126,6 +126,7 @@ func (wtc *watches) list() {
 	if len(wtc.watches) == 0 {
 		wtc.dbg.print(console.Feedback, "no watches")
 	} else {
+		wtc.dbg.print(console.Feedback, "watches")
 		for i := range wtc.watches {
 			wtc.dbg.print(console.Feedback, "% 2d: %s", i, wtc.watches[i])
 		}
