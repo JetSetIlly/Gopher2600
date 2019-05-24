@@ -212,13 +212,11 @@ func (scr *screen) setMasking(unmasked bool) error {
 		scr.srcRect = scr.playSrcMask
 	}
 
-	// minimum window size
-	// if h < int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible)*scr.pixelScale) {
-	// 	h = int32(float32(scr.gtv.GetSpec().ScanlinesPerVisible) * scr.pixelScale)
-	// }
-
-	// BUG: SetSize causes window to gain focus
-	scr.window.SetSize(w, h)
+	cw, ch := scr.window.GetSize()
+	if cw != w || ch != h {
+		// BUG: SetSize causes window to gain focus
+		scr.window.SetSize(w, h)
+	}
 
 	return nil
 }
