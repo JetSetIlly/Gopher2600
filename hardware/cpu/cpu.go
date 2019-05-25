@@ -1278,6 +1278,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
+	case "sax":
+		mc.X.AND(mc.A)
+		mc.X.Subtract(value, true)
+		mc.Status.Zero = mc.X.IsZero()
+		mc.Status.Sign = mc.X.IsNegative()
+
 	default:
 		// this should never, ever happen
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
