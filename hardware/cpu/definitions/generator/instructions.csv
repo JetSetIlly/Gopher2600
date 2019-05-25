@@ -258,4 +258,5 @@
 0x4b, asr, 2, IMMEDIATE, False			# alr
 
 0xcb, sax, 2, IMMEDIATE, False
+0x6b, arr, 2, IMMEDIATE, False
 

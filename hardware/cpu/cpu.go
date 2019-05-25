@@ -1284,6 +1284,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
+	case "arr":
+		mc.A.AND(value)
+		mc.Status.Carry = mc.A.ROR(mc.Status.Carry)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
+
 	default:
 		// this should never, ever happen
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
