@@ -113,7 +113,7 @@ func (gtv *GUI) ChangeTVSpec() error {
 // NewFrame implements television.Renderer interface
 func (gtv *GUI) NewFrame(frameNum int) error {
 	defer gtv.scr.clearPixels()
-	err := gtv.scr.stb.checkStableFrame()
+	err := gtv.scr.stb.stabiliseFrame()
 	if err != nil {
 		return err
 	}

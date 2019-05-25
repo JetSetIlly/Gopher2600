@@ -121,7 +121,7 @@ func (scr *screen) changeTVSpec() error {
 	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
 
 	scr.playWidth = int32(spec.ClocksPerVisible)
-	scr.setPlayHeight(int32(spec.ScanlinesPerVisible), int32(spec.ScanlinesPerVBlank+spec.ScanlinesPerVSync))
+	scr.setPlayArea(int32(spec.ScanlinesPerVisible), int32(spec.ScanlinesPerVBlank+spec.ScanlinesPerVSync))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -162,15 +162,18 @@ func (scr *screen) changeTVSpec() error {
 	return nil
 }
 
-// setPlayHeight should be used when the number of visible scanlines change.
-// when we want to show the overscan areas then we should use the setMasking()
-// function.
-func (scr *screen) setPlayHeight(scanlines int32, top int32) error {
+// setPlayArea defines the limits of the "play area"
+func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
 	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
+}
+
+// adjustPlayArea is used to move the play area up/down by the specified amount
+func (scr *screen) adjustPlayArea(adjust int32) {
+	scr.playSrcMask.Y += adjust
 }
 
 // setScaling alters how big each pixel is on the physical screen. any change

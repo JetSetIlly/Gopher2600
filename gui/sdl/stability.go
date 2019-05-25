@@ -17,19 +17,13 @@ type screenStabiliser struct {
 	// how many count have been observed that look like they might be stable?
 	count int
 
-	// the scanline number of the first visible scanline. this is currently
-	// defined to be the scanline at which VBlank is turned off when the image
-	// first passes the stability threshold. it is used to adjust the viewport
-	// for wobbly frames. see "shift viewport" comment below.
-	visibleTopReference    int32
-	visibleBottomReference int32
+	top       int
+	bottom    int
+	scanlines int
 
 	// has a ReqSetVisibilityStable been received recently? we don't want to
 	// open the window until the screen is stable
 	queuedShowRequest bool
-
-	// record of how many scanlines the viewport has been shifted
-	viewportShift int32
 }
 
 func newScreenStabiliser(scr *screen) *screenStabiliser {
@@ -43,32 +37,35 @@ func newScreenStabiliser(scr *screen) *screenStabiliser {
 // sophisticated approach may be worth investigating
 const stabilityThreshold int = 6
 
-// checkStableFrame checks to see if the screen dimensions have been stable for
+// stabiliseFrame checks to see if the screen dimensions have been stable for
 // a count of "stabilityThreshold"
 //
 // currently: once it's been determined that the screen dimensions are stable
 // then any changes are ignored
-func (stb *screenStabiliser) checkStableFrame() error {
+func (stb *screenStabiliser) stabiliseFrame() error {
 	// measures the consistency of the generated television frame and alters
 	// window sizing appropriately
 
 	var err error
 
-	visibleTop, err := stb.scr.gtv.GetState(television.ReqVisibleTop)
+	top, err := stb.scr.gtv.GetState(television.ReqVisibleTop)
 	if err != nil {
 		return err
 	}
 
-	visibleBottom, err := stb.scr.gtv.GetState(television.ReqVisibleBottom)
+	bottom, err := stb.scr.gtv.GetState(television.ReqVisibleBottom)
 	if err != nil {
 		return err
 	}
+
+	scanlines := bottom - top
 
 	// update play height (which in turn updates masking and window size)
 	if stb.count < stabilityThreshold {
-		if stb.visibleTopReference != int32(visibleTop) || stb.visibleBottomReference != int32(visibleBottom) {
-			stb.visibleTopReference = int32(visibleTop)
-			stb.visibleBottomReference = int32(visibleBottom)
+		if stb.top != top || stb.bottom != bottom {
+			stb.top = top
+			stb.bottom = bottom
+			stb.scanlines = bottom - top
 			stb.count = 0
 		} else {
 			stb.count++
@@ -78,30 +75,51 @@ func (stb *screenStabiliser) checkStableFrame() error {
 
 		// calculate the play height from the top and bottom values with a
 		// minimum according to the tv specification
-		height := int32(stb.visibleBottomReference - stb.visibleTopReference)
-		minHeight := int32(stb.scr.gtv.GetSpec().ScanlinesPerVisible)
-		if height < minHeight {
-			height = minHeight
+		minScanlines := stb.scr.gtv.GetSpec().ScanlinesPerVisible
+		if scanlines < minScanlines {
+			scanlines = minScanlines
 		}
 
-		err := stb.scr.setPlayHeight(height, int32(stb.visibleTopReference))
+		err := stb.scr.setPlayArea(int32(scanlines), int32(stb.top))
 		if err != nil {
 			return err
 		}
 
 		// show window if a show request has been queued up
 		if stb.queuedShowRequest {
-			err := stb.resolveSetVisibilityStable()
+			err := stb.resolveSetVisibility()
 			if err != nil {
 				return err
 			}
+		}
+	} else {
+		// some ROMs turn VBLANK on/off at different times (no more than a
+		// scanline or two I would say) but maintain the number of scanlines in
+		// the visiible area. in these instances, because of how we've
+		// implemented play area masking in the SDL interface, we need to
+		// adjust the play area.
+		//
+		// ROMs affected:
+		//	* Plaque Attack
+		//
+		// some other ROMs turn VBLANK on/off at different time but also allow
+		// the number of scanlines to change. in these instances, we do not
+		// make the play area adjustment.
+		//
+		// ROMs (not) affected:
+		//  * 28c3intro
+		//
+		if scanlines == stb.scanlines && stb.top != top {
+			stb.scr.adjustPlayArea(int32(top - stb.top))
+			stb.top = top
+			stb.bottom = bottom
 		}
 	}
 
 	return nil
 }
 
-func (stb *screenStabiliser) resolveSetVisibilityStable() error {
+func (stb *screenStabiliser) resolveSetVisibility() error {
 	if stb.count > stabilityThreshold {
 		err := stb.scr.gtv.SetFeature(gui.ReqSetVisibility, true, true)
 		if err != nil {

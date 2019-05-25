@@ -120,7 +120,7 @@ func (gtv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	if gtv.scr.unmasked {
 		sl = int(float32(sdlEvent.Y) / sy)
 	} else {
-		sl = int(float32(sdlEvent.Y)/sy) + int(gtv.scr.stb.visibleTopReference)
+		sl = int(float32(sdlEvent.Y)/sy) + gtv.scr.stb.top
 	}
 
 	return hp, sl

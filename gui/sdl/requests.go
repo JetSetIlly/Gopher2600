@@ -9,7 +9,7 @@ import (
 func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 	switch request {
 	case gui.ReqSetVisibilityStable:
-		err := gtv.scr.stb.resolveSetVisibilityStable()
+		err := gtv.scr.stb.resolveSetVisibility()
 		if err != nil {
 			return err
 		}

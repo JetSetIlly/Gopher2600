@@ -249,7 +249,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 
 	// after the first frame, if there are "extra" scanlines then try changing
 	// the tv specification
-	if btv.frameNum > 1 && btv.extraScanlines > 0 {
+	if btv.frameNum > 1 && btv.extraScanlines > 1 {
 		_, err := btv.autoSpec()
 		if err != nil {
 			return err
