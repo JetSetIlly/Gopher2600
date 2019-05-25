@@ -242,6 +242,12 @@
 0x04, dop, 3, ZERO_PAGE, False
 0x80, dop, 2, IMMEDIATE, False
 0x0c, skw, 4, ABSOLUTE, False
+0x1c, skw, 4, ABSOLUTE_INDEXED_X, True
+0x3c, skw, 4, ABSOLUTE_INDEXED_X, True
+0x5c, skw, 4, ABSOLUTE_INDEXED_X, True
+0x7c, skw, 4, ABSOLUTE_INDEXED_X, True
+0xdc, skw, 4, ABSOLUTE_INDEXED_X, True
+0xfc, skw, 4, ABSOLUTE_INDEXED_X, True
 0xa7, lax, 3, ZERO_PAGE, False
 0xb3, lax, 5, POST_INDEX_INDIRECT, True
 0xbf, lax, 4, ABSOLUTE_INDEXED_Y, True
