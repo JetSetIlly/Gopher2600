@@ -30,6 +30,9 @@ type BasicTelevision struct {
 	frameNum int
 	//	- the current scanline number
 	scanline int
+	//  - the number of scanlines past the specification limit. used to
+	//  trigger a change of tv specification
+	extraScanlines int
 
 	// record of signal attributes from the last call to Signal()
 	prevSignal SignalAttributes
@@ -79,6 +82,7 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 
 	// empty list of renderers
 	btv.renderers = make([]Renderer, 0)
+	//
 
 	btv.Reset()
 
@@ -175,6 +179,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 
 		if btv.scanline > btv.spec.ScanlinesTotal {
 			btv.scanline = btv.spec.ScanlinesTotal
+			btv.extraScanlines++
 		} else {
 			for f := range btv.renderers {
 				err := btv.renderers[f].NewScanline(btv.scanline)
@@ -205,6 +210,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		if btv.vsyncCount >= btv.spec.ScanlinesPerVSync {
 			btv.frameNum++
 			btv.scanline = 0
+			btv.extraScanlines = 0
 
 			// record visible top/bottom for this frame
 			btv.visibleTop = btv.thisVisibleTop
@@ -229,26 +235,24 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	// push screen limits outwards as required
 	if !sig.VBlank {
 		if btv.scanline > btv.thisVisibleBottom {
-			btv.thisVisibleBottom = btv.scanline + 2
+			btv.thisVisibleBottom = btv.scanline
 
 			// keep within limits
 			if btv.thisVisibleBottom > btv.spec.ScanlinesTotal {
-				ok, err := btv.autoSpec()
-				if err != nil {
-					return err
-				}
-				if ok == false {
-					btv.thisVisibleBottom = btv.spec.ScanlinesTotal
-				}
+				btv.thisVisibleBottom = btv.spec.ScanlinesTotal
 			}
 		}
 		if btv.scanline < btv.thisVisibleTop {
-			btv.thisVisibleTop = btv.scanline - 2
+			btv.thisVisibleTop = btv.scanline
+		}
+	}
 
-			// keep within limits
-			if btv.thisVisibleTop < 0 {
-				btv.thisVisibleTop = 0
-			}
+	// after the first frame, if there are "extra" scanlines then try changing
+	// the tv specification
+	if btv.frameNum > 1 && btv.extraScanlines > 0 {
+		_, err := btv.autoSpec()
+		if err != nil {
+			return err
 		}
 	}
 
