@@ -13,27 +13,31 @@ import (
 	"gopher2600/recorder"
 	"gopher2600/regression"
 	"io"
+	"math/rand"
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 const defaultInitScript = ".gopher2600/debuggerInit"
 
 func main() {
+	// we generate random numbers in some places. seed the generator with the
+	// current time
+	rand.Seed(int64(time.Now().Second()))
+
 	progName := path.Base(os.Args[0])
 
 	var mode string
 	var modeArgPos int
-	var modeFlags *flag.FlagSet
-	var modeFlagsParse func()
 
 	progModes := []string{"RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS"}
 	defaultMode := "RUN"
 
 	progFlags := flag.NewFlagSet(progName, flag.ContinueOnError)
 
-	// prevent Parse() (part of the flag package) from outputting it's own error messages
+	// we never want progFlags.Parse() to print out its own error messages
 	progFlags.SetOutput(&nopWriter{})
 
 	err := progFlags.Parse(os.Args[1:])
@@ -48,12 +52,6 @@ func main() {
 		// and try again
 		mode = defaultMode
 		modeArgPos = 0
-		modeFlags = flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
-		modeFlagsParse = func() {
-			if len(progFlags.Args()) >= modeArgPos {
-				modeFlags.Parse(os.Args[1:])
-			}
-		}
 	} else {
 		switch progFlags.NArg() {
 		case 0:
@@ -78,19 +76,49 @@ func main() {
 				}
 			}
 		default:
-			// many arguments have been supplied. the first argument must be
-			// the mode (the switch below will compalin if it's invalid)
+			// many arguments have been supplied
 			mode = strings.ToUpper(progFlags.Arg(0))
 			modeArgPos = 1
 		}
 
-		// all modes can have their own sets of flags. the following prepares
-		// the foundations.
-		modeFlags = flag.NewFlagSet(fmt.Sprintf("%s %s", progName, mode), flag.ExitOnError)
-		modeFlagsParse = func() {
-			if len(progFlags.Args()) >= modeArgPos {
-				modeFlags.Parse(progFlags.Args()[modeArgPos:])
+	}
+
+	// modes can have their own sets of flags
+	usageBanner := strings.Join(progFlags.Args()[:len(progFlags.Args())-1], " ")
+	usageBanner = strings.ToUpper(usageBanner)
+	usageBanner = fmt.Sprintf("%s %s", progName, usageBanner)
+
+	modeFlags := flag.NewFlagSet(usageBanner, flag.ContinueOnError)
+
+	var subMode string
+	var defaultSubMode string
+	var validSubModes []string
+
+	modeFlagsParse := func() {
+		// return immediately if there are no more flags to parse
+		if len(progFlags.Args()) < modeArgPos {
+			return
+		}
+
+		// we don't want the regular -help message to be printed if a list of
+		// sub-modes has been supplied
+		if len(validSubModes) > 0 {
+			modeFlags.SetOutput(&nopWriter{})
+		}
+
+		err := modeFlags.Parse(progFlags.Args()[modeArgPos:])
+		if err != nil && err == flag.ErrHelp {
+			if len(validSubModes) > 0 {
+				fmt.Printf("available sub-modes for %s: %s\n", mode, strings.Join(validSubModes, ", "))
+				if defaultSubMode != "" {
+					fmt.Printf("default: %s\n", defaultSubMode)
+				}
 			}
+
+			// error handling is less fancy than for progFlag parsing. the
+			// default sub-modes can be handled by a fallthrough
+
+			os.Exit(2)
 		}
 	}
 
@@ -223,10 +251,13 @@ func main() {
 		}
 
 	case "REGRESS":
-		subMode := strings.ToUpper(progFlags.Arg(1))
+		subMode = strings.ToUpper(progFlags.Arg(1))
 		modeArgPos++
 		switch subMode {
 		default:
+			validSubModes = []string{"RUN", "LIST", "DELETE", "ADD"}
+			defaultSubMode = "RUN"
+			modeFlagsParse()
 			modeArgPos-- // undo modeArgPos adjustment
 			fallthrough
 
@@ -301,7 +332,7 @@ func main() {
 				} else {
 					rec = &regression.FrameRegression{
 						CartFile:  modeFlags.Arg(0),
-						TVtype:    *tvType,
+						TVtype:    strings.ToUpper(*tvType),
 						NumFrames: *numFrames}
 				}
 
