@@ -107,6 +107,7 @@ func (gtv *GUI) setDebugging(allow bool) {
 
 // ChangeTVSpec implements television.Television interface
 func (gtv *GUI) ChangeTVSpec() error {
+	gtv.scr.stb.restart()
 	return gtv.scr.changeTVSpec()
 }
 

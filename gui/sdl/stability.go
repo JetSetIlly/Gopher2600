@@ -33,9 +33,16 @@ func newScreenStabiliser(scr *screen) *screenStabiliser {
 }
 
 // number of consistent frames that needs to elapse before the screen is
-// considered "stable" -- this value has been set arbitrarily. a more
-// sophisticated approach may be worth investigating
-const stabilityThreshold int = 6
+// considered "stable". the value has been set arbitrarily, a more
+// sophisticated approach may be worth investigating. for now, the lower the
+// value the better.
+const stabilityThreshold int = 2
+
+// restart resets the stability count to zero thereby forcing the play area to
+// be reconsidered
+func (stb *screenStabiliser) restart() {
+	stb.count = 0
+}
 
 // stabiliseFrame checks to see if the screen dimensions have been stable for
 // a count of "stabilityThreshold"
