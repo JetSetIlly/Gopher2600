@@ -90,7 +90,7 @@ var commandTemplate = []string{
 	cmdPoke + " [%N|%S] %N",
 	cmdQuit,
 	cmdRAM,
-	cmdRIOT,
+	cmdRIOT + " (TIMER)",
 	cmdReset,
 	cmdRun,
 	cmdScript + " [WRITE %S|END|%F]",
@@ -778,7 +778,18 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		dbg.printMachineInfo(dbg.vcs.Mem.PIA)
 
 	case cmdRIOT:
-		dbg.printMachineInfo(dbg.vcs.RIOT)
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "TIMER":
+				dbg.printMachineInfo(dbg.vcs.RIOT.Timer)
+			default:
+				// already caught by command line ValidateTokens()
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.RIOT)
+		}
 
 	case cmdTIA:
 		dbg.printMachineInfo(dbg.vcs.TIA)
