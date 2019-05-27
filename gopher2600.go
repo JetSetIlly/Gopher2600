@@ -30,7 +30,8 @@ func main() {
 	progName := path.Base(os.Args[0])
 
 	var mode string
-	var modeArgPos int
+	var argList []string
+	var argListPos int
 
 	progModes := []string{"RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS"}
 	defaultMode := "RUN"
@@ -51,7 +52,7 @@ func main() {
 		// flags have been set that are not recognised. default to the RUN mode
 		// and try again
 		mode = defaultMode
-		modeArgPos = 0
+		argList = os.Args[1:]
 	} else {
 		switch progFlags.NArg() {
 		case 0:
@@ -62,7 +63,7 @@ func main() {
 			// a single argument has been supplied. assume it's a cartridge
 			// name and set the mode to the default mode ...
 			mode = defaultMode
-			modeArgPos = 0
+			argList = progFlags.Args()
 
 			// ... unless it apears in the list of modes. in which case, the
 			// single argument is a specified mode. let the mode switch below
@@ -71,14 +72,16 @@ func main() {
 			for i := range progModes {
 				if progModes[i] == arg {
 					mode = arg
-					modeArgPos = 1
+					argList = progFlags.Args()
+					argListPos = 1
 					break
 				}
 			}
 		default:
 			// many arguments have been supplied
 			mode = strings.ToUpper(progFlags.Arg(0))
-			modeArgPos = 1
+			argList = progFlags.Args()
+			argListPos = 1
 		}
 
 	}
@@ -96,7 +99,7 @@ func main() {
 
 	modeFlagsParse := func() {
 		// return immediately if there are no more flags to parse
-		if len(progFlags.Args()) < modeArgPos {
+		if len(argList) < 1 || argListPos > len(argList) {
 			return
 		}
 
@@ -106,7 +109,7 @@ func main() {
 			modeFlags.SetOutput(&nopWriter{})
 		}
 
-		err := modeFlags.Parse(progFlags.Args()[modeArgPos:])
+		err := modeFlags.Parse(argList[argListPos:])
 		if err != nil && err == flag.ErrHelp {
 			if len(validSubModes) > 0 {
 				fmt.Printf("available sub-modes for %s: %s\n", mode, strings.Join(validSubModes, ", "))
@@ -252,13 +255,13 @@ func main() {
 
 	case "REGRESS":
 		subMode = strings.ToUpper(progFlags.Arg(1))
-		modeArgPos++
+		argListPos++
 		switch subMode {
 		default:
 			validSubModes = []string{"RUN", "LIST", "DELETE", "ADD"}
 			defaultSubMode = "RUN"
 			modeFlagsParse()
-			modeArgPos-- // undo modeArgPos adjustment
+			argListPos-- // undo modeArgPos adjustment
 			fallthrough
 
 		case "RUN":
