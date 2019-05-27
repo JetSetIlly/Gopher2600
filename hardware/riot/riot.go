@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"math/rand"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
@@ -15,22 +16,32 @@ type RIOT struct {
 	timerRegister string
 
 	// timerInterval indicates how often (in CPU cycles) the timer value
-	// descreases
+	// descreases. the following rules apply
+	//		* set to 1, 8, 64 or 1024 depending on which address has been
+	//			written to by the CPU
+	//		* is used to reset the timerTickCyclesRemaining
+	//		* is changed to 1 once timerValue reaches 0
+	//		* is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
+	//			is read by the CPU
 	timerInterval int
 
-	// timerINTIMvalue is the current timer value and is reflected in the INTIM
-	// register (RIOT memory)
-	timerINTIMvalue uint8
+	// timerValue is the current timer value and is a reflection of the INTIM
+	// RIO memory register
+	timerValue uint8
 
-	// timerCycles is the number of CPU cycles remainng before INTIM is decreased
-	// when a new time is started, timerCycles is always set to two (decrease
-	// occurs almost immediately) and thereafter set to the selected
-	// timerInterval
+	// timerTickCyclesRemaining is the number of CPU cycles remaining before
+	// the timerValue is decreased. the following rules apply:
+	//		* set to 1 when new timer is set
+	//		* causes timerValue to decrease whenever it reaches 0
+	//		* is reset to timerInterval whenever timerValue is decreased
 	//
-	// the initial reset value is 2 because the first decrease of INTIM occurs on
-	// the *next* machine cycle - timerCycles will be reduced to 1 on the same
-	// machine cycle it is set to 2, and to 0 on the *next* cycle. phew.
-	timerCycles int
+	// with regards to the last point, note that timerInterval changes to 1
+	// once timerValue reaches 0 (see timerInterval commentary above)
+	//
+	// the initial reset value is 1 because the first decrease of INTIM occurs
+	// immediately after ReadRIOTMemory(); we want the timer cycle to hit 0 at
+	// that time
+	timerTickCyclesRemaining int
 }
 
 // NewRIOT creates a RIOT, to be used in a VCS emulation
@@ -40,20 +51,23 @@ func NewRIOT(mem memory.ChipBus) *RIOT {
 
 	riot.timerRegister = "TIM1024"
 	riot.timerInterval = 1024
-	riot.timerINTIMvalue = 0x3c
-	riot.timerCycles = 1024
+	riot.timerTickCyclesRemaining = 1024
+	riot.timerValue = uint8(rand.Intn(255))
+
+	riot.mem.ChipWrite(addresses.INTIM, uint8(riot.timerValue))
+	riot.mem.ChipWrite(addresses.TIMINT, 0)
 
 	return riot
 }
 
 // MachineInfoTerse returns the RIOT information in terse format
 func (riot RIOT) MachineInfoTerse() string {
-	return fmt.Sprintf("INTIM=%#02x clks=%#04x (%s)", riot.timerINTIMvalue, riot.timerCycles, riot.timerRegister)
+	return fmt.Sprintf("INTIM=%#02x clks=%#04x (%s)", riot.timerValue, riot.timerTickCyclesRemaining, riot.timerRegister)
 }
 
 // MachineInfo returns the RIOT information in verbose format
 func (riot RIOT) MachineInfo() string {
-	return fmt.Sprintf("%s\nINTIM: %d (%#02x)\nINTIM clocks = %d (%#02x)", riot.timerRegister, riot.timerINTIMvalue, riot.timerINTIMvalue, riot.timerCycles, riot.timerCycles)
+	return fmt.Sprintf("%s\nINTIM: %d (%#02x)\nINTIM clocks = %d (%#02x)", riot.timerRegister, riot.timerValue, riot.timerValue, riot.timerTickCyclesRemaining, riot.timerTickCyclesRemaining)
 }
 
 // map String to MachineInfo
@@ -69,32 +83,32 @@ func (riot *RIOT) ReadRIOTMemory() {
 		case "TIM1T":
 			riot.timerRegister = register
 			riot.timerInterval = 1
-			riot.timerINTIMvalue = value
-			riot.timerCycles = 2
+			riot.timerTickCyclesRemaining = 1
+			riot.timerValue = value
 		case "TIM8T":
 			riot.timerRegister = register
 			riot.timerInterval = 8
-			riot.timerINTIMvalue = value
-			riot.timerCycles = 2
+			riot.timerTickCyclesRemaining = 1
+			riot.timerValue = value
 		case "TIM64T":
 			riot.timerRegister = register
 			riot.timerInterval = 64
-			riot.timerINTIMvalue = value
-			riot.timerCycles = 2
+			riot.timerTickCyclesRemaining = 1
+			riot.timerValue = value
 		case "TIM1024":
 			riot.timerRegister = register
 			riot.timerInterval = 1024
-			riot.timerINTIMvalue = value
-			riot.timerCycles = 2
+			riot.timerTickCyclesRemaining = 1
+			riot.timerValue = value
 
 			// TODO: handle other RIOT registers
 		}
 
 		// write value to INTIM straight-away
-		riot.mem.ChipWrite(addresses.INTIM, uint8(riot.timerINTIMvalue))
+		riot.mem.ChipWrite(addresses.INTIM, uint8(riot.timerValue))
 
-		// reset TIMINT register
-		riot.mem.ChipWrite(addresses.TIMINT, 0)
+		// clear bit 7 of TIMINT register
+		riot.mem.ChipWrite(addresses.TIMINT, 0x0)
 	}
 }
 
@@ -115,23 +129,28 @@ func (riot *RIOT) Step() {
 		case "TIM1024":
 			riot.timerInterval = 1024
 		}
+
+		// reading the INTIM register always clears TIMINT
+		riot.mem.ChipWrite(addresses.TIMINT, 0x0)
 	}
 
-	riot.timerCycles--
-	if riot.timerCycles == 0 {
-		if riot.timerINTIMvalue == 0 {
+	riot.timerTickCyclesRemaining--
+	if riot.timerTickCyclesRemaining <= 0 {
+		if riot.timerValue == 0 {
 			// set bit 7 of TIMINT register
-			riot.mem.ChipWrite(addresses.TIMINT, 128)
+			riot.mem.ChipWrite(addresses.TIMINT, 0x80)
 
-			// reset INTIM value
-			riot.timerINTIMvalue = 255
+			// reset timer value
+			riot.timerValue = 255
 
-			// because INTIM value has cycled we flip timer interval to 1
+			// because timer value has cycled we flip timer interval to 1
 			riot.timerInterval = 1
 		} else {
-			riot.timerINTIMvalue--
+			riot.timerValue--
 		}
-		riot.mem.ChipWrite(addresses.INTIM, riot.timerINTIMvalue)
-		riot.timerCycles = riot.timerInterval
+
+		// copy timerValue to INTIM memory register
+		riot.mem.ChipWrite(addresses.INTIM, riot.timerValue)
+		riot.timerTickCyclesRemaining = riot.timerInterval
 	}
 }
