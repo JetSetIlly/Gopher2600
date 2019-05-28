@@ -2,6 +2,7 @@ package future
 
 import (
 	"container/list"
+	"strings"
 )
 
 // Group is used to buffer payloads for future triggering.
@@ -11,12 +12,30 @@ type Group struct {
 
 // MachineInfo returns future group information in verbose format
 func (fut Group) MachineInfo() string {
-	return "not implemented"
+	s := strings.Builder{}
+	for e := fut.instances.Front(); e != nil; e = e.Next() {
+		s.WriteString(e.Value.(*Instance).String())
+		s.WriteString("\n")
+	}
+	return s.String()
 }
 
 // MachineInfoTerse returns future group information in terse format
 func (fut Group) MachineInfoTerse() string {
-	return "not implemented"
+	e := fut.instances.Front()
+	if e == nil {
+		return ""
+	}
+
+	s := strings.Builder{}
+
+	// terse return just the first instance in the list
+	s.WriteString(e.Value.(*Instance).String())
+	if e.Next() != nil {
+		s.WriteString(" [+]")
+	}
+
+	return s.String()
 }
 
 // Schedule the pending future action

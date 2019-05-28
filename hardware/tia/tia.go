@@ -47,15 +47,15 @@ type TIA struct {
 
 	// there's a slight delay when changing the state of video objects. we're
 	// using two future instances to emulate what happens in the 2600. the
-	// first is onFutureColorClock, which *ticks* every video cycle. we use this for
+	// first is OnFutureColorClock, which *ticks* every video cycle. we use this for
 	// writing playfield bits, player bits and enable flags for missiles and
 	// the ball.
 	//
 	// the second future instance is OnFutureMotionClock. this is for those
 	// writes that only occur during the "motion clock". eg. resetting sprite
 	// positions
-	onFutureColorClock  future.Group
-	onFutureMotionClock future.Group
+	OnFutureColorClock  future.Group
+	OnFutureMotionClock future.Group
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -97,7 +97,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hblank = true
 
-	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.onFutureColorClock, &tia.onFutureMotionClock)
+	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.OnFutureColorClock, &tia.OnFutureMotionClock)
 	if tia.Video == nil {
 		return nil
 	}
@@ -112,9 +112,9 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 // ReadTIAMemory checks for side effects in the TIA sub-system
 func (tia *TIA) ReadTIAMemory() {
-	valueRead, register, value := tia.mem.ChipRead()
+	service, register, value := tia.mem.ChipRead()
 
-	if !valueRead {
+	if !service {
 		// nothing to service
 		return
 	}
@@ -129,7 +129,7 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 
 	case "VBLANK":
-		tia.onFutureColorClock.Schedule(delay.TriggerVBLANK, func() {
+		tia.OnFutureColorClock.Schedule(delay.TriggerVBLANK, func() {
 			tia.vblank = (value&0x02 == 0x02)
 		}, "setting VBLANK")
 		return
@@ -150,11 +150,11 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	}
 
-	if tia.Video.ReadVideoMemory(register, value) {
+	if tia.Video.ReadMemory(register, value) {
 		return
 	}
 
-	if tia.Audio.ReadAudioMemory(register, value) {
+	if tia.Audio.ReadMemory(register, value) {
 		return
 	}
 
@@ -249,9 +249,9 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 	tia.Video.TickPlayfield()
 
 	// tick futures
-	tia.onFutureColorClock.Tick()
+	tia.OnFutureColorClock.Tick()
 	if tia.motionClock {
-		tia.onFutureMotionClock.Tick()
+		tia.OnFutureMotionClock.Tick()
 	}
 
 	// decide on pixel color

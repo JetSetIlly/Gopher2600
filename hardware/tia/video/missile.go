@@ -33,10 +33,6 @@ type missileSprite struct {
 	// the player to which the missile is paired. we use this when resetting
 	// the missile position to the player
 	parentPlayer *playerSprite
-
-	// notes whether a reset has just occurred on the last cycle -- used to
-	// delay the drawing of the sprite in certain circumstances
-	resetTriggered bool
 }
 
 func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
@@ -94,7 +90,7 @@ func (ms missileSprite) MachineInfo() string {
 // tick moves the counters along for the missile sprite
 func (ms *missileSprite) tick() {
 	// position
-	if ms.checkForGfxStart(ms.triggerList) {
+	if ok, _ := ms.checkForGfxStart(ms.triggerList); ok {
 		// this is a wierd one. if a reset has just occured then we delay the
 		// start of the drawing of the sprite, unless the position of the
 		// sprite has been moved with HMOVE.
@@ -106,9 +102,11 @@ func (ms *missileSprite) tick() {
 		// accurate solution.
 		//
 		// (concept shared with player sprite)
-		if ms.resetFuture != nil && !ms.resetTriggered && ms.resetPixel == ms.currentPixel {
-			ms.deferDrawStart = true
-		} else {
+		ms.deferDrawStart = ms.resetFuture != nil &&
+			ms.resetFuture.RemainingCycles < ms.resetFuture.InitialCycles &&
+			ms.resetPixel == ms.currentPixel
+
+		if !ms.deferDrawStart {
 			ms.startDrawing()
 		}
 	} else {
@@ -155,8 +153,6 @@ func (ms *missileSprite) tick() {
 			ms.position.Sync(&ms.parentPlayer.position, 5)
 		}
 	}
-
-	ms.resetTriggered = false
 }
 
 // pixel returns the color of the missile at the current time.  returns
@@ -185,10 +181,8 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 }
 
 func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
-	ms.resetTriggered = true
 	ms.resetFuture = onFutureWrite.Schedule(delay.ResetMissile, func() {
 		ms.resetFuture = nil
-		ms.resetTriggered = false
 		ms.resetPosition()
 		if ms.deferDrawStart {
 			ms.startDrawing()
@@ -211,4 +205,11 @@ func (ms *missileSprite) scheduleResetToPlayer(reset bool, onFutureWrite *future
 	onFutureWrite.Schedule(delay.ResetMissileToPlayerPos, func() {
 		ms.resetToPlayerPos = reset
 	}, fmt.Sprintf("%s resetting to player pos", ms.label))
+}
+
+func (ms *missileSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
+	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
+		ms.size = (value & 0x30) >> 4
+		ms.triggerList = createTriggerList(value & 0x07)
+	}, fmt.Sprintf("%s adjusting NUSIZ", ms.label))
 }

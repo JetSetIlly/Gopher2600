@@ -22,7 +22,7 @@ type playerSprite struct {
 
 	// we need access to the other player sprite. when we write new gfxData, it
 	// triggers the other player's gfxDataPrev value to equal its gfxData --
-	// this wasn't clear to me originally and was crystal clear after reading
+	// this wasn't clear to me originally but was crystal clear after reading
 	// Erik Mooney's post, "48-pixel highres routine explained!"
 	otherPlayer *playerSprite
 
@@ -37,14 +37,21 @@ type playerSprite struct {
 	deferDrawStart bool
 
 	// the player sprite can be stretched to create single, double or quadruple
-	// width sprites. it does this by only ticking the graphics scan counter
+	// width sprites. it does this by only ticking the graphicsScanCounter
 	// occassionaly (the missile sprite achieves stretching by a different
-	// method).
+	// method). to achieve this "occasional" ticking, we use the
+	// graphicsScanFilter. the following summarises its operation:
+	//
+	//	* the graphicsScanFilter variable increases every video cycle
+	//	* if (graphicsScanFilter % N == 0) then graphicsScanCounter ++
+	//	* N == 2 for double sized sprites
+	//	* N == 4 for quadruple sized sprites
+	//	* graphicsScanFilter is initialised to N-1 when drawing starts (see
+	//		comment in tick() function for more detail)
+	//	* it has no effect for single sized sprites
+	//	* it is carefully adjusted if size changes if sprite is currently being
+	//		drawn (see scheduleSetNUSIZ() below)
 	graphicsScanFilter int
-
-	// notes whether a reset has just occurred on the last cycle -- used to
-	// delay the drawing of the sprite in certain circumstances
-	resetTriggered bool
 }
 
 func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerSprite {
@@ -53,13 +60,10 @@ func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerS
 	return ps
 }
 
-// visual pixel tells us where the left-most bit of the graphics register will
+// visualPixel tells us where the left-most bit of the graphics register will
 // appear. due to the delayed tick of the player sprite the player will appear
 // one pixel later in the scanline (or two pixels, depending on the player's
 // size register)
-//
-// the result of this function apes the "Pos#" information in the TIA tab of
-// the Stella debugger.
 func (ps playerSprite) visualPixel() string {
 	// visual pixel is always one pixel later than the hmoved horizontal
 	// reset position; or two pixels if the size of the player sprite is double
@@ -185,7 +189,7 @@ func (ps playerSprite) MachineInfo() string {
 // tick moves the counters along for the player sprite
 func (ps *playerSprite) tick() {
 	// position
-	if ps.checkForGfxStart(ps.triggerList) {
+	if ok, _ := ps.checkForGfxStart(ps.triggerList); ok {
 		// this is a wierd one. if a reset has just occured then we delay the
 		// start of the drawing of the sprite, unless the position of the
 		// sprite has been moved with HMOVE.
@@ -197,12 +201,19 @@ func (ps *playerSprite) tick() {
 		// accurate solution.
 		//
 		// (concept shared with missile sprite)
-		if ps.resetFuture != nil && !ps.resetTriggered && ps.resetPixel == ps.currentPixel {
-			ps.deferDrawStart = true
-		} else {
+		ps.deferDrawStart = ps.resetFuture != nil &&
+			ps.resetFuture.RemainingCycles < ps.resetFuture.InitialCycles &&
+			ps.resetPixel == ps.currentPixel
+
+		if !ps.deferDrawStart {
 			ps.startDrawing()
 		}
 
+		// if player size is double or quadruple then we need to reset
+		// graphicsScanFilter, but not to zero. we reset it so that the next
+		// video cycle the modulo division (see below) equals zero. this has
+		// the effect of the first player "pixel" being dead, and more
+		// importantly, that pixel not being stretched.
 		if ps.size == 0x05 {
 			ps.graphicsScanFilter = 1
 		} else if ps.size == 0x07 {
@@ -211,10 +222,10 @@ func (ps *playerSprite) tick() {
 
 	} else {
 		// if player.position.tick() has not caused the position counter to
-		// cycle then progress draw signal according to color clock phase and
-		// ps.size. for ps.size and 0b101 and 0b111, pixels are smeared over
-		// additional cycles in order to create the double and quadruple sized
-		// sprites
+		// cycle then progress draw signal according to the phase of
+		// graphicsScanFilter and ps.size. for ps.size and 0x05 and 0x07,
+		// pixels are smeared over additional cycles in order to create the
+		// double and quadruple sized sprites
 		if ps.size == 0x05 {
 			if ps.graphicsScanFilter%2 == 0 {
 				ps.tickGraphicsScan()
@@ -231,8 +242,6 @@ func (ps *playerSprite) tick() {
 			ps.graphicsScanFilter++
 		}
 	}
-
-	ps.resetTriggered = false
 }
 
 // pixel returns the color of the player at the current time.  returns
@@ -263,10 +272,8 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 }
 
 func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {
-	ps.resetTriggered = true
 	ps.resetFuture = onFutureWrite.Schedule(delay.ResetPlayer, func() {
 		ps.resetFuture = nil
-		ps.resetTriggered = false
 		ps.resetPosition()
 		if ps.deferDrawStart {
 			ps.startDrawing()
@@ -294,4 +301,36 @@ func (ps *playerSprite) scheduleVerticalDelay(vdelay bool, onFutureWrite *future
 	onFutureWrite.Schedule(delay.SetVDELP, func() {
 		ps.verticalDelay = vdelay
 	}, fmt.Sprintf("%s %s", ps.label, label))
+}
+
+func (ps *playerSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
+	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
+		oldSize := ps.size
+		ps.size = value & 0x07
+		ps.triggerList = createTriggerList(ps.size)
+
+		// if the player sprite is currently being drawn *and the size has
+		// changed* we need to adjust the graphicsScanFilter according to the
+		// new size
+		//
+		// tuned with the help of:
+		//   * RSBoxing
+		//   * DirtyHairy's test ROMs from atariage thread "Properly model
+		//   NUSIZ during player decode and draw"
+		if ps.isDrawing() && ps.size != oldSize {
+			if ps.size == 0x05 {
+				if ps.graphicsScanFilter%2 == 0 {
+					ps.graphicsScanFilter--
+				} else {
+					ps.graphicsScanFilter++
+				}
+			} else if ps.size == 0x07 {
+				if ps.graphicsScanFilter%4 == 0 {
+					ps.graphicsScanFilter--
+				} else {
+					ps.graphicsScanFilter++
+				}
+			}
+		}
+	}, fmt.Sprintf("%s adjusting NUSIZ", ps.label))
 }

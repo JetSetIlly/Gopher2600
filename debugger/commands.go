@@ -98,7 +98,7 @@ var commandTemplate = []string{
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA,
+	cmdTIA + " (FUTURES)",
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%S] {%S}",
@@ -792,7 +792,19 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdTIA:
-		dbg.printMachineInfo(dbg.vcs.TIA)
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "FUTURES":
+				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureColorClock)
+				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureMotionClock)
+			default:
+				// already caught by command line ValidateTokens()
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.TIA)
+		}
 
 	case cmdTV:
 		option, present := tokens.Get()

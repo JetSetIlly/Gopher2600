@@ -16,9 +16,9 @@ func NewAudio() *Audio {
 	return au
 }
 
-// ReadAudioMemory checks the TIA memory for changes to registers that are
+// ReadMemory checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
-func (au *Audio) ReadAudioMemory(register string, value uint8) bool {
+func (au *Audio) ReadMemory(register string, value uint8) bool {
 	switch register {
 	default:
 		return false

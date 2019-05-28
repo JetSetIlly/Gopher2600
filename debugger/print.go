@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"fmt"
 	"gopher2600/debugger/console"
 	"strings"
 )
@@ -10,17 +11,23 @@ import (
 // directives such as the silent directive without passing the burden onto UI
 // implementors
 func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
-	// trim *all* trailing newlines - UserPrint() will add newlines if required
-	s = strings.TrimRight(s, "\n")
-	if s == "" {
+	// resolve string placeholders and return if the resulting string is empty
+	s = fmt.Sprintf(s, a...)
+	if len(s) == 0 {
 		return
 	}
 
-	dbg.console.UserPrint(sty, s, a...)
+	// trim *all* trailing newlines - UserPrint() will add newlines if required
+	s = strings.TrimRight(s, "\n")
+	if len(s) == 0 {
+		return
+	}
+
+	dbg.console.UserPrint(sty, s)
 
 	// output to script file
 	if sty.IncludeInScriptOutput() {
-		dbg.scriptScribe.WriteOutput(s, a...)
+		dbg.scriptScribe.WriteOutput(s)
 	}
 }
 

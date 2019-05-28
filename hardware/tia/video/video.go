@@ -29,7 +29,8 @@ type Video struct {
 	onFutureMotionClock *future.Group
 }
 
-// colors to use for debugging
+// colors to use for debugging - these are the same colours used by the Stella
+// emulator
 const (
 	debugColBackground = uint8(0x02) // light gray
 	debugColBall       = uint8(0xb4) // cyan
@@ -301,12 +302,12 @@ func createTriggerList(playerSize uint8) []int {
 	return triggerList
 }
 
-// ReadVideoMemory checks the TIA memory for changes to registers that are
+// ReadMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
 // for those where a "schedule" function is called.
 //
 // returns true if memory has been serviced
-func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
+func (vd *Video) ReadMemory(register string, value uint8) bool {
 	switch register {
 	default:
 		return false
@@ -392,19 +393,12 @@ func (vd *Video) ReadVideoMemory(register string, value uint8) bool {
 
 	// player & missile sprites
 	case "NUSIZ0":
-		vd.onFutureColorClock.Schedule(delay.SetNUSIZ, func() {
-			vd.Missile0.size = (value & 0x30) >> 4
-			vd.Player0.size = value & 0x07
-			vd.Player0.triggerList = createTriggerList(vd.Player0.size)
-			vd.Missile0.triggerList = vd.Player0.triggerList
-		}, "adjusting NUSIZ0")
+		vd.Player0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
+		vd.Missile0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
+
 	case "NUSIZ1":
-		vd.onFutureColorClock.Schedule(delay.SetNUSIZ, func() {
-			vd.Missile1.size = (value & 0x30) >> 4
-			vd.Player1.size = value & 0x07
-			vd.Player1.triggerList = createTriggerList(vd.Player1.size)
-			vd.Missile1.triggerList = vd.Player1.triggerList
-		}, "adjusting NUSIZ1")
+		vd.Player1.scheduleSetNUSIZ(value, vd.onFutureColorClock)
+		vd.Missile1.scheduleSetNUSIZ(value, vd.onFutureColorClock)
 
 	// clear collisions
 	case "CXCLR":

@@ -164,19 +164,19 @@ func (sp *sprite) resetPosition() {
 	sp.currentPixel = sp.resetPixel
 }
 
-func (sp *sprite) checkForGfxStart(triggerList []int) bool {
+func (sp *sprite) checkForGfxStart(triggerList []int) (bool, bool) {
 	if sp.position.Tick() {
-		return true
+		return true, false
 	}
 
 	// check for start positions of additional copies of the sprite
 	for _, v := range triggerList {
 		if v == sp.position.Count && sp.position.Phase == 0 {
-			return true
+			return true, true
 		}
 	}
 
-	return false
+	return false, false
 }
 
 func (sp *sprite) forceHMOVE(adjustment int) {
