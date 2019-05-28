@@ -343,11 +343,9 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "REFP0":
-		// TODO: write delay?
-		vd.Player0.reflected = value&0x08 == 0x08
+		vd.Player0.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
 	case "REFP1":
-		// TODO: write delay?
-		vd.Player1.reflected = value&0x08 == 0x08
+		vd.Player1.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
 	case "PF0":
 		vd.Playfield.scheduleWrite(0, value, vd.onFutureColorClock)
 	case "PF1":

@@ -303,6 +303,14 @@ func (ps *playerSprite) scheduleVerticalDelay(vdelay bool, onFutureWrite *future
 	}, fmt.Sprintf("%s %s", ps.label, label))
 }
 
+func (ps *playerSprite) scheduleReflect(value bool, onFutureWrite *future.Group) {
+	// delay added to player reflection after observation of Midnight Madness
+	// ROM. the area around the central spinner is affected by this delay.
+	onFutureWrite.Schedule(delay.WritePlayer, func() {
+		ps.reflected = value
+	}, fmt.Sprintf("%s reflecting %v", ps.label, value))
+}
+
 func (ps *playerSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
 	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
 		oldSize := ps.size
