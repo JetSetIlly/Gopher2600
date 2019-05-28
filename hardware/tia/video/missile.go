@@ -207,6 +207,12 @@ func (ms *missileSprite) scheduleResetToPlayer(reset bool, onFutureWrite *future
 	}, fmt.Sprintf("%s resetting to player pos", ms.label))
 }
 
+func (ms *missileSprite) scheduleSetColor(value uint8, onFutureWrite *future.Group) {
+	onFutureWrite.Schedule(delay.WritePlayer, func() {
+		ms.color = value
+	}, fmt.Sprintf("%s color", ms.label))
+}
+
 func (ms *missileSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
 	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
 		ms.size = (value & 0x30) >> 4

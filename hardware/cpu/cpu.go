@@ -245,7 +245,7 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	}
 	carry, _ := mc.PC.Add(1, false)
 	if carry {
-		return 0, errors.NewFormattedError(errors.ProgramCounterCycled, nil)
+		return 0, errors.NewFormattedError(errors.ProgramCounterCycled)
 	}
 	return op, nil
 }
@@ -260,7 +260,7 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	// the next instruction but I don't believe this has any side-effects
 	carry, _ := mc.PC.Add(2, false)
 	if carry {
-		return 0, errors.NewFormattedError(errors.ProgramCounterCycled, nil)
+		return 0, errors.NewFormattedError(errors.ProgramCounterCycled)
 	}
 
 	return val, nil

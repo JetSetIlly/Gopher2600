@@ -312,17 +312,15 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 	default:
 		return false
 
-	// colours
+	// colour
 	case "COLUP0":
-		// TODO: write delay?
-		vd.Player0.color = value & 0xfe
-		vd.Missile0.color = value & 0xfe
+		vd.Player0.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
+		vd.Missile0.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
 	case "COLUP1":
-		// TODO: write delay?
-		vd.Player1.color = value & 0xfe
-		vd.Missile1.color = value & 0xfe
+		vd.Player1.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
+		vd.Missile1.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
 
-	// playfield
+	// playfield / color
 	case "COLUBK":
 		// this delay works and fixes a graphical issue with the "Keystone
 		// Kapers" rom. I'm not entirely sure this is the correct fix however.
@@ -336,16 +334,14 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 			vd.Playfield.foregroundColor = value & 0xfe
 			vd.Ball.color = value & 0xfe
 		}, "setting COLUPF")
+
+	// playfield
 	case "CTRLPF":
 		// TODO: write delay?
 		vd.Ball.size = (value & 0x30) >> 4
 		vd.Playfield.reflected = value&0x01 == 0x01
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
-	case "REFP0":
-		vd.Player0.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
-	case "REFP1":
-		vd.Player1.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
 	case "PF0":
 		vd.Playfield.scheduleWrite(0, value, vd.onFutureColorClock)
 	case "PF1":
@@ -374,6 +370,10 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
 	case "VDELP1":
 		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
+	case "REFP0":
+		vd.Player0.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
+	case "REFP1":
+		vd.Player1.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
 
 	// missile sprites
 	case "ENAM0":
@@ -393,7 +393,6 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 	case "NUSIZ0":
 		vd.Player0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
 		vd.Missile0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
-
 	case "NUSIZ1":
 		vd.Player1.scheduleSetNUSIZ(value, vd.onFutureColorClock)
 		vd.Missile1.scheduleSetNUSIZ(value, vd.onFutureColorClock)

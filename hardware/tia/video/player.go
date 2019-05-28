@@ -311,6 +311,14 @@ func (ps *playerSprite) scheduleReflect(value bool, onFutureWrite *future.Group)
 	}, fmt.Sprintf("%s reflecting %v", ps.label, value))
 }
 
+func (ps *playerSprite) scheduleSetColor(value uint8, onFutureWrite *future.Group) {
+	// delay added to player reflection after observation of Midnight Madness
+	// ROM. the two lower bumpers when hit are affected by this delay
+	onFutureWrite.Schedule(delay.WritePlayer, func() {
+		ps.color = value
+	}, fmt.Sprintf("%s color", ps.label))
+}
+
 func (ps *playerSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
 	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
 		oldSize := ps.size
