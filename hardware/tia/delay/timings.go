@@ -14,6 +14,13 @@ const (
 	// cycles is hard to see but can be clearly shown with homebrew Thrust
 	WritePlayfield = 2
 
+	// writing of playfield color is different to writing of playfield data.
+	// ROMs used for tuning
+	//	* Keystone Kapers requires a delay on COLUBK
+	//	* Tapper requires a delay on COLUBK
+	//  * Pressure Cooker requires a delay on COLUPF
+	WritePlayfieldColor = 1
+
 	// the almost certain value of a two cycle delay for writing playfield data
 	// points us to a similar delay for other events
 	WritePlayer             = 2

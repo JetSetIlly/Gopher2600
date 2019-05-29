@@ -322,11 +322,9 @@ func (scr *screen) update(paused bool) error {
 			return err
 		}
 
-		if scr.unmasked {
-			err = scr.renderer.Copy(scr.metaPixels.texture, scr.srcRect, scr.destRect)
-			if err != nil {
-				return err
-			}
+		err = scr.renderer.Copy(scr.metaPixels.texture, scr.srcRect, scr.destRect)
+		if err != nil {
+			return err
 		}
 	}
 

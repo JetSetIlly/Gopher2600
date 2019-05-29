@@ -91,15 +91,11 @@ func (ms missileSprite) MachineInfo() string {
 func (ms *missileSprite) tick() {
 	// position
 	if ok, _ := ms.checkForGfxStart(ms.triggerList); ok {
-		// this is a wierd one. if a reset has just occured then we delay the
-		// start of the drawing of the sprite, unless the position of the
-		// sprite has been moved with HMOVE.
-		//
-		// the first part of the condition was tuned with the help of the
-		// "player testcard" roms. the additional condition, regarding the
-		// effects of HMOVE, was added after seeing errors in Mott's test code,
-		// "Games that do bad things to HMOVE...". not at all sure this is an
-		// accurate solution.
+		// if a reset of this sprite is pending then we need to defer the start
+		// of the drawing until the reset has occurred. we also need to
+		// consider:
+		//	* the reset request has not *just* happened (within a video cycle)
+		//	* the sprite has not been moved by HMOVE
 		//
 		// (concept shared with player sprite)
 		ms.deferDrawStart = ms.resetFuture != nil &&

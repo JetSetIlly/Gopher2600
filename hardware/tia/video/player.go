@@ -189,21 +189,24 @@ func (ps playerSprite) MachineInfo() string {
 // tick moves the counters along for the player sprite
 func (ps *playerSprite) tick() {
 	// position
-	if ok, _ := ps.checkForGfxStart(ps.triggerList); ok {
-		// this is a wierd one. if a reset has just occured then we delay the
-		// start of the drawing of the sprite, unless the position of the
-		// sprite has been moved with HMOVE.
-		//
-		// the first part of the condition was tuned with the help of the
-		// "player testcard" roms. the additional condition, regarding the
-		// effects of HMOVE, was added after seeing errors in Mott's test code,
-		// "Games that do bad things to HMOVE...". not at all sure this is an
-		// accurate solution.
+	if ok, fromList := ps.checkForGfxStart(ps.triggerList); ok {
+		// if a reset of this sprite is pending then we need to defer the start
+		// of the drawing until the reset has occurred. we also need to
+		// consider:
+		//	* the reset request has not *just* happened (within a video cycle)
+		//	* the sprite has not been moved by HMOVE
 		//
 		// (concept shared with missile sprite)
+		//
+		// there's an additional rule that says that these rules only
+		// apply when triggering the "primary" copy and not for the second or
+		// third copies. this rule was added to satisfy the Tapper ROM
+		//
+		// (the above only applies to the player sprite. not sure yet if it
+		// should also apply to the missile sprite)
 		ps.deferDrawStart = ps.resetFuture != nil &&
 			ps.resetFuture.RemainingCycles < ps.resetFuture.InitialCycles &&
-			ps.resetPixel == ps.currentPixel
+			ps.resetPixel == ps.currentPixel && !fromList
 
 		if !ps.deferDrawStart {
 			ps.startDrawing()

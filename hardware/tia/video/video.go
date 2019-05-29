@@ -323,15 +323,11 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// playfield / color
 	case "COLUBK":
-		// this delay works and fixes a graphical issue with the "Keystone
-		// Kapers" rom. I'm not entirely sure this is the correct fix however.
-		// and I'm definitely not sure about the delay time
-		vd.onFutureColorClock.Schedule(delay.WritePlayfield, func() {
+		vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
 			vd.Playfield.backgroundColor = value & 0xfe
 		}, "setting COLUBK")
 	case "COLUPF":
-		// similar to COLUBK this fixes a bug with "Pressure Cooker"
-		vd.onFutureColorClock.Schedule(delay.WritePlayfield, func() {
+		vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
 			vd.Playfield.foregroundColor = value & 0xfe
 			vd.Ball.color = value & 0xfe
 		}, "setting COLUPF")
