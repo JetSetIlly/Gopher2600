@@ -142,9 +142,12 @@ func (tia *TIA) ReadTIAMemory() {
 		return
 	case "HMOVE":
 		if tia.colorClock.Count < 15 || tia.colorClock.Count >= 54 {
+			// this is the regular HMOVE branch
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.Hmove.setLatch()
-		} else if tia.colorClock.Count > 39 && tia.colorClock.Count < 55 {
+		} else if tia.colorClock.Count > 39 && tia.colorClock.Count < 54 {
+			// if HMOVE is called after colorclock 39 then we "force" the HMOVE
+			// instead of simply setting the HMOVE latch
 			tia.Video.ForceHMOVE(-39 + tia.colorClock.Count)
 		}
 		return
@@ -254,11 +257,14 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		tia.OnFutureMotionClock.Tick()
 	}
 
-	// decide on pixel color
-	var pixelColor, debugColor uint8
-	if tia.motionClock {
-		pixelColor, debugColor = tia.Video.Pixel()
-	}
+	// decide on pixel color. we always want to do this even if HBLANK is
+	// active. this is because we also set the collision registers in this
+	// function and they need to be set even if there is nothing visual
+	// being sent to the TV
+	//
+	// * Fatal Run uses collision detection on otherwise unseen pixels to turn
+	// off the ball sprite being used to draw the edge of the road
+	pixelColor, debugColor := tia.Video.Resolve()
 
 	var pixel television.ColorSignal
 

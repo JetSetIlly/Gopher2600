@@ -248,8 +248,13 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	}
 
 	// after the first frame, if there are "extra" scanlines then try changing
-	// the tv specification
-	if btv.frameNum > 1 && btv.extraScanlines > 1 {
+	// the tv specification.
+	//
+	// we are currently defining "extra" as 10. one extra scanline is too few.
+	// for example, when using a value of one, the Fatal Run ROM experiences a
+	// false change from NTSC to PAL between the resume/new screen and the game
+	// "intro" screen. 10 is maybe too high but it's good for now.
+	if btv.frameNum > 1 && btv.extraScanlines > 10 {
 		_, err := btv.autoSpec()
 		if err != nil {
 			return err

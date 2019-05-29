@@ -86,7 +86,6 @@ func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, onFutureC
 
 // TickPlayfield is called *every* video clock
 func (vd *Video) TickPlayfield() {
-	// tick playfield forward
 	vd.Playfield.tick()
 }
 
@@ -136,11 +135,10 @@ func (vd *Video) ForceHMOVE(adjustment int) {
 	vd.Ball.forceHMOVE(adjustment)
 }
 
-// Pixel returns the color of the pixel at the current time. it will default
-// to returning the background color if no sprite or playfield pixel is
-// present. it also sets the collision registers
-// - it need not be called therefore during VBLANK or HBLANK
-func (vd *Video) Pixel() (uint8, uint8) {
+// Resolve returns the color of the pixel at the current clock and also sets the
+// collision registers. it will default to returning the background color if no
+// sprite or playfield pixel is present.
+func (vd *Video) Resolve() (uint8, uint8) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	blu, blc := vd.Ball.pixel()
@@ -283,6 +281,9 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	return col, dcol
 }
 
+// createTriggerList is used by both player and missile sprites to decide on
+// which color clocks past the sprite's reset position the sprite drawing
+// routines should be triggered
 func createTriggerList(playerSize uint8) []int {
 	var triggerList []int
 	switch playerSize {
