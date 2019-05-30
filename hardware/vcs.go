@@ -5,6 +5,7 @@ import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/hardware/riot"
 	"gopher2600/hardware/tia"
@@ -106,7 +107,7 @@ func (vcs *VCS) Reset() error {
 		return errors.NewFormattedError(errors.VCSError, "can't create RIOT")
 	}
 
-	err := vcs.MC.LoadPCIndirect(memory.AddressReset)
+	err := vcs.MC.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return err
 	}

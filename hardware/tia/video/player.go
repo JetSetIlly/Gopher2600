@@ -141,7 +141,7 @@ func (ps playerSprite) MachineInfo() string {
 	s := strings.Builder{}
 
 	s.WriteString(fmt.Sprintf("   visual pixel: %s", ps.visualPixel()))
-	if ps.horizMovementLatch {
+	if ps.moreMovementRequired {
 		s.WriteString(fmt.Sprintf(" *\n"))
 	} else {
 		s.WriteString(fmt.Sprintf("\n"))

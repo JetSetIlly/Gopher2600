@@ -13,6 +13,7 @@ import (
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/addresses"
 	"log"
 )
 
@@ -1194,7 +1195,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Break = true
 
 		// perform jump
-		brkAddress, err := mc.read16Bit(memory.AddressIRQ)
+		brkAddress, err := mc.read16Bit(addresses.IRQ)
 		if err != nil {
 			return nil, err
 		}

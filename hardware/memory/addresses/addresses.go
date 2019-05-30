@@ -1,5 +1,12 @@
 package addresses
 
+// Reset is the address where the reset address is stored
+// - used by VCS.Reset() and Disassembly module
+const Reset = uint16(0xfffc)
+
+// IRQ is the address where the interrupt address is stored
+const IRQ = 0xfffe
+
 // Read map contains the canonical names for VCS read addresses
 var Read = map[uint16]string{
 	0x00:  "CXM0P",

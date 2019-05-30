@@ -145,7 +145,7 @@ func (tia *TIA) ReadTIAMemory() {
 			// this is the regular HMOVE branch
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.Hmove.setLatch()
-		} else if tia.colorClock.Count > 39 && tia.colorClock.Count < 54 {
+		} else if tia.colorClock.Count > 39 {
 			// if HMOVE is called after colorclock 39 then we "force" the HMOVE
 			// instead of simply setting the HMOVE latch
 			tia.Video.ForceHMOVE(-39 + tia.colorClock.Count)
@@ -234,26 +234,25 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		tia.colorClock.Reset()
 	}
 
-	// HMOVE clock stuffing
-	if ct, ok := tia.Hmove.tick(); ok {
-		tia.Video.ResolveHorizMovement(ct)
-	}
-
 	// tick all sprites according to hblank
 	if !tia.hblank {
 		tia.Video.TickSprites()
 	}
 
-	// tick playfield and scheduled writes
-	// -- important that this happens after TickSprites because we want
-	// position resets to happen *after* sprite ticking; in particular, when
-	// the draw signal has been resolved
+	// tick playfield
 	tia.Video.TickPlayfield()
 
-	// tick futures
+	// tick futures -- important that this happens after TickSprites() because
+	// we want position resets in particular, have been tuned to happen after
+	// sprite ticking and playfield drawing
 	tia.OnFutureColorClock.Tick()
 	if tia.motionClock {
 		tia.OnFutureMotionClock.Tick()
+	}
+
+	// HMOVE clock stuffing
+	if ct, ok := tia.Hmove.tick(); ok {
+		tia.Video.ResolveHorizMovement(ct)
 	}
 
 	// decide on pixel color. we always want to do this even if HBLANK is

@@ -5,6 +5,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/symbols"
 	"io"
 )
@@ -111,7 +112,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	dsm.Cart.BankSwitch(0)
 	defer dsm.Cart.BankSwitch(0)
 
-	err = mc.LoadPCIndirect(memory.AddressReset)
+	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
@@ -124,7 +125,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 
 	mc.Reset()
 
-	err = mc.LoadPCIndirect(memory.AddressReset)
+	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}

@@ -44,7 +44,7 @@ type sprite struct {
 	// -- normalised into the 0 to 15 range
 	horizMovement int
 	// -- whether HMOVE is still affecting this sprite
-	horizMovementLatch bool
+	moreMovementRequired bool
 
 	// each type of sprite has slightly different spriteTick logic which needs
 	// to be called from within the HMOVE logic common to all sprite types
@@ -127,7 +127,7 @@ func (sp sprite) MachineInfo() string {
 
 	s.WriteString(fmt.Sprintf("   reset pixel: %d\n", sp.resetPixel))
 	s.WriteString(fmt.Sprintf("   current pixel: %d", sp.currentPixel))
-	if sp.horizMovementLatch {
+	if sp.moreMovementRequired {
 		s.WriteString(" *\n")
 	} else {
 		s.WriteString("\n")
@@ -140,7 +140,7 @@ func (sp sprite) MachineInfo() string {
 func (sp sprite) EmulatorInfo() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%04b ", sp.horizMovement))
-	if sp.horizMovementLatch {
+	if sp.moreMovementRequired {
 		s.WriteString("*")
 	} else {
 		s.WriteString(" ")
@@ -190,7 +190,7 @@ func (sp *sprite) forceHMOVE(adjustment int) {
 
 func (sp *sprite) prepareForHMOVE() {
 	// start horizontal movment of this sprite
-	sp.horizMovementLatch = true
+	sp.moreMovementRequired = true
 
 	// at beginning of hmove sequence, without knowing anything else, the final
 	// position of the sprite will be the current position plus 8. the actual
@@ -202,56 +202,57 @@ func (sp *sprite) prepareForHMOVE() {
 	sp.currentPixel += 8
 }
 
+func compareBits(a, b uint8) bool {
+	// return true if any corresponding bits in the lower nibble are the same
+	return a&0x08 == b&0x08 || a&0x04 == b&0x04 || a&0x02 == b&0x02 || a&0x01 == b&0x01
+}
+
 func (sp *sprite) resolveHMOVE(count int) {
-	if sp.horizMovementLatch {
-		// bitwise comparison - if no bits match then unset the latch,
-		// otherwise continue with the HMOVE for this sprite
-		if sp.horizMovement&count == 0 {
-			sp.horizMovementLatch = false
-		} else {
-			// this mental construct is designed to fix a problem in the Keystone
-			// Kapers ROM. I don't believe for a moment that this is a perfect
-			// solution but it makes sense in the context of that ROM.
-			//
-			// What seems to be happening in Keystone Kapers ROM is this:
-			//
-			//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
-			//  o HMOVE is tripped at beginning of line 96
-			//  o but reset doesn't occur until we resume motion clocks, by which
-			//		time HMOVE is finished
-			//  o moreover, the game doesn't want the ball to appear at the
-			//		beginning of the visible part of the screen; it wants the ball
-			//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
-			//		move adjustments needs to happen such that the ball really
-			//		appears at the end of the scanline
-			//  o to cut a long story short, the game needs the ball to have been
-			//		reset before the HMOVE has completed on line 96
-			//
-			// confusing huh?  this delay construct fixes the above issue while not
-			// breaking other regression tests. I don't know if this is a generally
-			// correct solution or if it's specific to the ball sprite but I'm
-			// keeping it in for now.
-			if sp.resetFuture != nil {
-				if sp.forceReset == 1 {
-					sp.resetFuture.Force()
-					sp.forceReset = 0
-				} else if sp.forceReset == 0 {
-					sp.forceReset = delay.ForceReset
-				} else {
-					sp.forceReset--
-				}
-			}
+	sp.moreMovementRequired = sp.moreMovementRequired && compareBits(uint8(count), uint8(sp.horizMovement))
 
-			// adjust position information
-			sp.currentPixel--
-			if sp.currentPixel < 0 {
-				sp.currentPixel = 159
+	if sp.moreMovementRequired {
+		// this mental construct is designed to fix a problem in the Keystone
+		// Kapers ROM. I don't believe for a moment that this is a perfect
+		// solution but it makes sense in the context of that ROM.
+		//
+		// What seems to be happening in Keystone Kapers ROM is this:
+		//
+		//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
+		//  o HMOVE is tripped at beginning of line 96
+		//  o but reset doesn't occur until we resume motion clocks, by which
+		//		time HMOVE is finished
+		//  o moreover, the game doesn't want the ball to appear at the
+		//		beginning of the visible part of the screen; it wants the ball
+		//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
+		//		move adjustments needs to happen such that the ball really
+		//		appears at the end of the scanline
+		//  o to cut a long story short, the game needs the ball to have been
+		//		reset before the HMOVE has completed on line 96
+		//
+		// confusing huh?  this delay construct fixes the above issue while not
+		// breaking other regression tests. I don't know if this is a generally
+		// correct solution or if it's specific to the ball sprite but I'm
+		// keeping it in for now.
+		if sp.resetFuture != nil {
+			if sp.forceReset == 1 {
+				sp.resetFuture.Force()
+				sp.forceReset = 0
+			} else if sp.forceReset == 0 {
+				sp.forceReset = delay.ForceReset
+			} else {
+				sp.forceReset--
 			}
-
-			// perform an additional tick of the sprite (different sprite types
-			// have different tick logic)
-			sp.spriteTick()
 		}
+
+		// adjust position information
+		sp.currentPixel--
+		if sp.currentPixel < 0 {
+			sp.currentPixel = 159
+		}
+
+		// perform an additional tick of the sprite (different sprite types
+		// have different tick logic)
+		sp.spriteTick()
 	}
 }
 

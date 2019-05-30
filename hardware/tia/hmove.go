@@ -12,7 +12,6 @@ import (
 
 type hmove struct {
 	count      int
-	phase      int
 	colorClock *polycounter.Polycounter
 
 	// latch is set whenever HMOVE is triggered and resets whenever
@@ -60,7 +59,6 @@ func (hm hmove) String() string {
 func (hm *hmove) setLatch() {
 	hm.latch = true
 	hm.count = 15
-	hm.phase = hm.colorClock.Phase
 }
 
 // unsetLatch send the horizontal movement sequence
@@ -75,21 +73,19 @@ func (hm *hmove) isLatched() bool {
 
 // tick returns the current hmove ripple counter and whether a tick has occurred
 func (hm *hmove) tick() (int, bool) {
-	// if we've reached a count of -1 then no tick will occur
-	if hm.count == -1 {
-		return -1, false
+	if hm.colorClock.Phase != 0 {
+		return hm.count, false
 	}
 
-	// count has not yet concluded so whenever the color clock reaches the same
-	// phase as when we started, return the current count and the fact that a
-	// tick has occurred. reduce the current count by 1
-	if hm.phase == hm.colorClock.Phase {
+	switch hm.count {
+	case -1:
+		return -1, false
+	case 0:
+		hm.count--
+		return 0, true
+	default:
 		ct := hm.count
 		hm.count--
 		return ct, true
 	}
-
-	// count has not yet concluded but nothing else has happened this video
-	// cycle. return the current count and the fact that no tick has occurred.
-	return hm.count, false
 }

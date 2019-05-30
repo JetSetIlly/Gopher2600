@@ -181,7 +181,7 @@ func RegressRunTests(output io.Writer, keys []string) error {
 
 				// output any error message on following line
 				if err != nil {
-					output.Write([]byte(fmt.Sprintf("%s\n", err)))
+					output.Write([]byte(fmt.Sprintf("\t%s\n", err)))
 				}
 			}
 
