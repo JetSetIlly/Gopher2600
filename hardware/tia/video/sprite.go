@@ -45,9 +45,6 @@ type sprite struct {
 	horizMovement int
 	// -- whether HMOVE is still affecting this sprite
 	horizMovementLatch bool
-	// -- active bool is not the same as the latch bool. we use this bool only
-	// for reporting purposes. see MachineInfo functions
-	horizMovementActive bool
 
 	// each type of sprite has slightly different spriteTick logic which needs
 	// to be called from within the HMOVE logic common to all sprite types
@@ -87,9 +84,6 @@ func (sp sprite) MachineInfoTerse() string {
 	s.WriteString(": ")
 	s.WriteString(sp.position.String())
 	s.WriteString(fmt.Sprintf(" pos=%d", sp.currentPixel))
-	if sp.horizMovementActive {
-		s.WriteString("*")
-	}
 	if sp.isDrawing() {
 		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
 	} else {
@@ -197,7 +191,6 @@ func (sp *sprite) forceHMOVE(adjustment int) {
 func (sp *sprite) prepareForHMOVE() {
 	// start horizontal movment of this sprite
 	sp.horizMovementLatch = true
-	sp.horizMovementActive = true
 
 	// at beginning of hmove sequence, without knowing anything else, the final
 	// position of the sprite will be the current position plus 8. the actual
@@ -207,10 +200,6 @@ func (sp *sprite) prepareForHMOVE() {
 	//   o whether the ticking is occuring during the hblank period
 	// both these factors are considered in the resolveHorizMovement() function
 	sp.currentPixel += 8
-}
-
-func (sp *sprite) endHMOVE() {
-	sp.horizMovementActive = false
 }
 
 func (sp *sprite) resolveHMOVE(count int) {

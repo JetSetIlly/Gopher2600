@@ -108,15 +108,6 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 	vd.Ball.prepareForHMOVE()
 }
 
-// EndHMOVE is called whenever HMOVE activity is manually unset
-func (vd *Video) EndHMOVE() {
-	vd.Player0.endHMOVE()
-	vd.Player1.endHMOVE()
-	vd.Missile0.endHMOVE()
-	vd.Missile1.endHMOVE()
-	vd.Ball.endHMOVE()
-}
-
 // ResolveHorizMovement is only called when HMOVE is active
 func (vd *Video) ResolveHorizMovement(count int) {
 	vd.Player0.resolveHMOVE(count)

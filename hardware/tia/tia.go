@@ -196,7 +196,6 @@ func (tia *TIA) StepVideoCycle() (bool, error) {
 		tia.hblank = false
 	} else if tia.colorClock.MatchEnd(54) {
 		tia.Hmove.unsetLatch()
-		tia.Video.EndHMOVE()
 	} else {
 		// motion clock is turned on/off depending on whether hmove is
 		// currently active. if HMOVE is not set then motion clock is set
