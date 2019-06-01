@@ -506,7 +506,8 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 		// the next one to be stepped into.
 		promptAddress = dbg.lastResult.Address
 	}
-	promptBank = dbg.vcs.Mem.Cart.Bank
+
+	promptBank = dbg.vcs.Mem.Cart.CurrentBank()
 
 	var prompt = "["
 

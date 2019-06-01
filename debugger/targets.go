@@ -154,43 +154,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
 			}
 
-		// cartridge
-		case "CARTRIDGE", "CART":
-			subkey, present := tokens.Get()
-			if present {
-				subkey = strings.ToUpper(subkey)
-				switch subkey {
-				case "BANK":
-					trg = &genericTarget{
-						label:      "BANK",
-						shortLabel: "BANK",
-						value: func() interface{} {
-							return dbg.vcs.Mem.Cart.Bank
-						},
-					}
-
-				case "WITCHSPACE", "WITCH":
-					var witchspace bool
-
-					trg = &genericTarget{
-						label:      "CART WITCHSPACE",
-						shortLabel: "CART WITCH",
-						value: func() interface{} {
-							if dbg.lastResult != nil && dbg.lastResult.Final {
-								_, ok := dbg.disasm.Get(dbg.vcs.Mem.Cart.Bank, dbg.vcs.MC.PC.ToUint16())
-								witchspace = !ok
-							}
-							return witchspace
-						},
-					}
-
-				default:
-					return nil, errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
-				}
-			} else {
-				return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
-			}
-
 		default:
 			return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
 		}

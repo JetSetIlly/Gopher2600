@@ -10,9 +10,9 @@ import (
 	"io"
 )
 
-const bankMask = 0x0fff
+const disasmMask = 0x0fff
 
-type bank [bankMask + 1]Entry
+type bank [disasmMask + 1]Entry
 
 // Disassembly represents the annotated disassembly of a 6502 binary
 type Disassembly struct {
@@ -42,13 +42,13 @@ func (dsm Disassembly) String() string {
 
 // Get returns the disassembled entry at the specified bank/address
 func (dsm Disassembly) Get(bank int, address uint16) (Entry, bool) {
-	entry := dsm.linear[bank][address&bankMask]
+	entry := dsm.linear[bank][address&disasmMask]
 	return entry, entry.IsInstruction()
 }
 
 // Dump writes the entire disassembly to the write interface
 func (dsm *Disassembly) Dump(output io.Writer) {
-	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
+	for bank := 0; bank < len(dsm.flow); bank++ {
 		output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
 		for i := range dsm.flow[bank] {
@@ -68,7 +68,7 @@ func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
 	// standard symbols table even in the event of an error
 	symtable, _ := symbols.ReadSymbolsFile(cartridgeFilename)
 
-	cart := memory.NewCart()
+	cart := memory.NewCartridge()
 
 	err := cart.Attach(cartridgeFilename)
 	if err != nil {
@@ -89,8 +89,8 @@ func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
 func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Table) error {
 	dsm.Cart = cart
 	dsm.Symtable = symtable
-	dsm.flow = make([]bank, dsm.Cart.NumBanks)
-	dsm.linear = make([]bank, dsm.Cart.NumBanks)
+	dsm.flow = make([]bank, dsm.Cart.NumBanks())
+	dsm.linear = make([]bank, dsm.Cart.NumBanks())
 
 	// create new memory
 	mem, err := newDisasmMemory(dsm.Cart)
@@ -109,8 +109,9 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 
 	// make sure we're in the starting bank - at the beginning of the
 	// disassembly and at the end
-	dsm.Cart.BankSwitch(0)
-	defer dsm.Cart.BankSwitch(0)
+	state := dsm.Cart.SaveState()
+	dsm.Cart.Initialise()
+	defer dsm.Cart.RestoreState(state)
 
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {

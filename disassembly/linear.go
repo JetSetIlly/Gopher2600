@@ -21,13 +21,14 @@ import (
 func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 	style := result.StyleFlagSymbols | result.StyleFlagCompact
 
-	for bank := 0; bank < dsm.Cart.NumBanks; bank++ {
-		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
+	state := dsm.Cart.SaveState()
 
-			// we have to bank switch every iteratino because an instruction
+	for bank := 0; bank < len(dsm.linear); bank++ {
+		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
+			// we have to bank switch every iteration because an instruction
 			// may have caused the bank to switch "naturally" because of a memory
 			// write.
-			dsm.Cart.BankSwitch(bank)
+			dsm.Cart.RestoreState(state)
 
 			mc.PC.Load(address)
 			r, _ := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
@@ -35,11 +36,13 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 			// check validity of instruction result and add if it "executed"
 			// correctly
 			if r != nil && r.IsValid() == nil {
-				dsm.linear[bank][address&bankMask] = Entry{
+				dsm.linear[bank][address&disasmMask] = Entry{
 					Style:                 style,
 					instruction:           r.GetString(dsm.Symtable, style),
 					instructionDefinition: r.Defn}
 			}
+
+			state = dsm.Cart.SaveState()
 		}
 	}
 

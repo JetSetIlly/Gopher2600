@@ -65,7 +65,7 @@ const (
 	CartridgeFileError
 	CartridgeFileUnavailable
 	CartridgeError
-	CartridgeMissing
+	CartridgeEjected
 
 	// peripherals
 	PeriphHardwareUnavailable

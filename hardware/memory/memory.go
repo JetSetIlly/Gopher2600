@@ -34,10 +34,7 @@ type Area interface {
 	Label() string
 	Origin() uint16
 	Memtop() uint16
-
-	// peek returns value
 	Peek(address uint16) (uint8, error)
-
 	Poke(address uint16, value uint8) error
 }
 
