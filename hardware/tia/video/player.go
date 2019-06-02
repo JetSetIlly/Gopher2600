@@ -189,7 +189,7 @@ func (ps playerSprite) MachineInfo() string {
 // tick moves the counters along for the player sprite
 func (ps *playerSprite) tick() {
 	// position
-	if ok, fromList := ps.checkForGfxStart(ps.triggerList); ok {
+	if ok, _ := ps.checkForGfxStart(ps.triggerList); ok {
 		// if a reset of this sprite is pending then we need to defer the start
 		// of the drawing until the reset has occurred. we also need to
 		// consider:
@@ -197,16 +197,9 @@ func (ps *playerSprite) tick() {
 		//	* the sprite has not been moved by HMOVE
 		//
 		// (concept shared with missile sprite)
-		//
-		// there's an additional rule that says that these rules only
-		// apply when triggering the "primary" copy and not for the second or
-		// third copies. this rule was added to satisfy the Tapper ROM
-		//
-		// (the above only applies to the player sprite. not sure yet if it
-		// should also apply to the missile sprite)
 		ps.deferDrawStart = ps.resetFuture != nil &&
 			ps.resetFuture.RemainingCycles < ps.resetFuture.InitialCycles &&
-			ps.resetPixel == ps.currentPixel && !fromList
+			ps.resetPixel == ps.currentPixel
 
 		if !ps.deferDrawStart {
 			ps.startDrawing()
