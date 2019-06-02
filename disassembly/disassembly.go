@@ -92,6 +92,11 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	dsm.flow = make([]bank, dsm.Cart.NumBanks())
 	dsm.linear = make([]bank, dsm.Cart.NumBanks())
 
+	state := dsm.Cart.SaveBanks()
+	defer dsm.Cart.RestoreBanks(state)
+
+	dsm.Cart.Initialise()
+
 	// create new memory
 	mem, err := newDisasmMemory(dsm.Cart)
 	if err != nil {
@@ -107,12 +112,6 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 
 	// disassemble linearly
 
-	// make sure we're in the starting bank - at the beginning of the
-	// disassembly and at the end
-	state := dsm.Cart.SaveState()
-	dsm.Cart.Initialise()
-	defer dsm.Cart.RestoreState(state)
-
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
@@ -125,6 +124,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	// disassemble as best we can with (manual) flow control
 
 	mc.Reset()
+	dsm.Cart.Initialise()
 
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {

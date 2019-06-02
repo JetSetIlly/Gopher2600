@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"io"
 )
@@ -30,7 +31,7 @@ func fingerprintParkerBros(byts []byte) bool {
 //  o etc.
 type parkerBros struct {
 	method string
-	memory [][]uint8
+	banks  [][]uint8
 
 	// parker bros. cartridges divide memory into 4 segments
 	//  o each segment can point to one of eight banks in the ROM
@@ -44,16 +45,16 @@ func newparkerBros(cf io.ReadSeeker) (cartMapper, error) {
 	cart := &parkerBros{method: "parker bros. (E0)"}
 	cart.initialise()
 
-	cart.memory = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.numBanks())
 
 	cf.Seek(0, io.SeekStart)
 
 	for b := 0; b < cart.numBanks(); b++ {
 		// bank sizes are 1028 in the parkerBros format
-		cart.memory[b] = make([]uint8, 1024)
+		cart.banks[b] = make([]uint8, 1024)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[b])
+		n, err := cf.Read(cart.banks[b])
 		if err != nil {
 			return nil, err
 		}
@@ -62,11 +63,13 @@ func newparkerBros(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
+	cart.initialise()
+
 	return cart, nil
 }
 
 func (cart parkerBros) String() string {
-	return cart.method
+	return fmt.Sprintf("%s Banks: %d, %d, %d, %d", cart.method, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
 func (cart *parkerBros) initialise() {
@@ -79,27 +82,27 @@ func (cart *parkerBros) initialise() {
 func (cart *parkerBros) read(addr uint16) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
-		data = cart.memory[cart.segment[0]][addr&0x03ff]
+		data = cart.banks[cart.segment[0]][addr&0x03ff]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		data = cart.memory[cart.segment[1]][addr&0x03ff]
+		data = cart.banks[cart.segment[1]][addr&0x03ff]
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		data = cart.memory[cart.segment[2]][addr&0x03ff]
+		data = cart.banks[cart.segment[2]][addr&0x03ff]
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		data = cart.memory[cart.segment[3]][addr&0x03ff]
-		cart.bankSwitch(addr)
+		data = cart.banks[cart.segment[3]][addr&0x03ff]
+		cart.bankSwitchAddress(addr)
 	}
 	return data, nil
 }
 
 func (cart *parkerBros) write(addr uint16, data uint8, isPoke bool) error {
 	if addr >= 0x0fe0 && addr <= 0x0ff7 {
-		cart.bankSwitch(addr)
+		cart.bankSwitchAddress(addr)
 		return nil
 	}
 	return errors.NewFormattedError(errors.UnwritableAddress, addr)
 }
 
-func (cart *parkerBros) bankSwitch(addr uint16) {
+func (cart *parkerBros) bankSwitchAddress(addr uint16) {
 	switch addr {
 	// segment 0
 	case 0x0fe0:
@@ -163,7 +166,7 @@ func (cart parkerBros) numBanks() int {
 	return 8
 }
 
-func (cart parkerBros) addressBank(addr uint16) int {
+func (cart parkerBros) getAddressBank(addr uint16) int {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.segment[0]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
@@ -174,11 +177,31 @@ func (cart parkerBros) addressBank(addr uint16) int {
 	return cart.segment[3]
 }
 
-func (cart *parkerBros) saveState() interface{} {
+func (cart *parkerBros) setAddressBank(addr uint16, bank int) error {
+	if bank < 0 || bank > cart.numBanks() {
+		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+	}
+
+	if addr >= 0x0000 && addr <= 0x03ff {
+		cart.segment[0] = bank
+	} else if addr >= 0x0400 && addr <= 0x07ff {
+		cart.segment[1] = bank
+	} else if addr >= 0x0800 && addr <= 0x0bff {
+		cart.segment[2] = bank
+	} else if addr >= 0x0c00 && addr <= 0x0fff {
+		// segment 4 always points to bank 7
+	} else {
+		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
+	}
+
+	return nil
+}
+
+func (cart *parkerBros) saveBanks() interface{} {
 	return cart.segment
 }
 
-func (cart *parkerBros) restoreState(state interface{}) error {
+func (cart *parkerBros) restoreBanks(state interface{}) error {
 	cart.segment = state.([4]int)
 	return nil
 }

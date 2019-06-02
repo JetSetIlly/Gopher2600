@@ -1,6 +1,9 @@
 package memory
 
-import "gopher2600/errors"
+import (
+	"fmt"
+	"gopher2600/errors"
+)
 
 const ejectedName = "ejected"
 const ejectedHash = "nohash"
@@ -13,7 +16,9 @@ type ejected struct {
 }
 
 func newEjected() *ejected {
-	return &ejected{method: ejectedMethod}
+	cart := &ejected{method: ejectedMethod}
+	cart.initialise()
+	return cart
 }
 
 func (cart ejected) String() string {
@@ -35,14 +40,18 @@ func (cart ejected) numBanks() int {
 	return 0
 }
 
-func (cart ejected) addressBank(addr uint16) int {
+func (cart *ejected) setAddressBank(addr uint16, bank int) error {
+	return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+}
+
+func (cart ejected) getAddressBank(addr uint16) int {
 	return 0
 }
 
-func (cart *ejected) saveState() interface{} {
+func (cart *ejected) saveBanks() interface{} {
 	return nil
 }
 
-func (cart *ejected) restoreState(state interface{}) error {
+func (cart *ejected) restoreBanks(state interface{}) error {
 	return nil
 }

@@ -52,7 +52,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			return err
 		}
 
-		bank := dsm.Cart.CurrentBank()
+		bank := dsm.Cart.GetAddressBank(r.Address)
 
 		// if we've seen this before then finish the disassembly
 		if dsm.flow[bank][r.Address&disasmMask].IsInstruction() {
@@ -60,7 +60,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 		}
 
 		dsm.flow[bank][r.Address&disasmMask] = Entry{
-			Style:                 result.StyleDisasm,
+			style:                 result.StyleDisasm,
 			instruction:           r.GetString(dsm.Symtable, result.StyleDisasm),
 			instructionDefinition: r.Defn}
 
@@ -74,7 +74,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				if r.Defn.AddressingMode == definitions.Indirect {
 					if r.InstructionData.(uint16) > dsm.Cart.Origin() {
 						// note current location
-						state := dsm.Cart.SaveState()
+						state := dsm.Cart.SaveBanks()
 						retPC := mc.PC.ToUint16()
 
 						// adjust program counter
@@ -87,7 +87,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 						}
 
 						// resume from where we left off
-						dsm.Cart.RestoreState(state)
+						dsm.Cart.RestoreBanks(state)
 						mc.PC.Load(retPC)
 					} else {
 						// it's entirely possible for the program to jump
@@ -105,7 +105,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 					// absolute JMP addressing
 
 					// note current location
-					state := dsm.Cart.SaveState()
+					state := dsm.Cart.SaveBanks()
 					retPC := mc.PC.ToUint16()
 
 					// adjust program counter
@@ -118,14 +118,14 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 					}
 
 					// resume from where we left off
-					dsm.Cart.RestoreState(state)
+					dsm.Cart.RestoreBanks(state)
 					mc.PC.Load(retPC)
 				}
 			} else {
 				// branch instructions
 
 				// note current location
-				state := dsm.Cart.SaveState()
+				state := dsm.Cart.SaveBanks()
 				retPC := mc.PC.ToUint16()
 
 				// sign extend address and add to program counter
@@ -142,7 +142,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				}
 
 				// resume from where we left off
-				dsm.Cart.RestoreState(state)
+				dsm.Cart.RestoreBanks(state)
 				mc.PC.Load(retPC)
 			}
 

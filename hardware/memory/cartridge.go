@@ -8,14 +8,19 @@ import (
 	"os"
 )
 
+// cartMapper implementations hold the actual data from the loaded ROM and
+// keeps track of which banks are mapped to individual addresses. for
+// convenience, functions with an address argument recieve that address
+// normalised to a range of 0x0000 to 0x0fff
 type cartMapper interface {
 	initialise()
-	read(uint16) (uint8, error)
-	write(uint16, uint8, bool) error
+	read(addr uint16) (data uint8, err error)
+	write(addr uint16, data uint8, isPoke bool) error
 	numBanks() int
-	addressBank(uint16) int
-	saveState() interface{}
-	restoreState(interface{}) error
+	getAddressBank(addr uint16) (bank int)
+	setAddressBank(addr uint16, bank int) error
+	saveBanks() interface{}
+	restoreBanks(interface{}) error
 }
 
 // Cartridge defines the information and operations for a VCS cartridge
@@ -30,10 +35,6 @@ type Cartridge struct {
 	// hash of binary loaded from disk. any subsequent pokes to cartridge
 	// memory will not be reflected in the value
 	Hash string
-
-	// the last address that was used for either a read or a write. used by
-	// LastBankAccessed() to help decide which bank is current
-	lastAddressAccessed uint16
 
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
@@ -84,29 +85,27 @@ func (cart *Cartridge) Eject() {
 }
 
 // Implementation of CPUBus.Read
-func (cart Cartridge) Read(address uint16) (uint8, error) {
-	address ^= cart.origin
-	cart.lastAddressAccessed = address
-	return cart.mapper.read(address)
+func (cart Cartridge) Read(addr uint16) (uint8, error) {
+	addr &= cart.Origin() - 1
+	return cart.mapper.read(addr)
 }
 
 // Implementation of CPUBus.Write
-func (cart *Cartridge) Write(address uint16, data uint8) error {
-	address ^= cart.origin
-	cart.lastAddressAccessed = address
-	return cart.mapper.write(address, data, false)
+func (cart *Cartridge) Write(addr uint16, data uint8) error {
+	addr &= cart.Origin() - 1
+	return cart.mapper.write(addr, data, false)
 }
 
 // Peek is the implementation of Memory.Area.Peek
-func (cart Cartridge) Peek(address uint16) (uint8, error) {
-	address ^= cart.origin
-	return cart.mapper.read(address)
+func (cart Cartridge) Peek(addr uint16) (uint8, error) {
+	addr &= cart.Origin() - 1
+	return cart.mapper.read(addr)
 }
 
 // Poke is the implementation of Memory.Area.Poke
-func (cart Cartridge) Poke(address uint16, data uint8) error {
-	address ^= cart.origin
-	return cart.mapper.write(address, data, true)
+func (cart Cartridge) Poke(addr uint16, data uint8) error {
+	addr &= cart.Origin() - 1
+	return cart.mapper.write(addr, data, true)
 }
 
 func (cart Cartridge) fingerprint8k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
@@ -139,6 +138,7 @@ func (cart *Cartridge) Attach(filename string) error {
 
 	// note name of cartridge
 	cart.Filename = filename
+	cart.mapper = newEjected()
 
 	// generate hash
 	key := sha1.New()
@@ -191,7 +191,6 @@ func (cart *Cartridge) Attach(filename string) error {
 		return errors.NewFormattedError(errors.CartridgeFileError, "65536 bytes not yet supported")
 
 	default:
-		cart.Eject()
 		return errors.NewFormattedError(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
@@ -208,17 +207,26 @@ func (cart Cartridge) NumBanks() int {
 	return cart.mapper.numBanks()
 }
 
-// CurrentBank calls the current mapper's addressBank function
-func (cart Cartridge) CurrentBank() int {
-	return cart.mapper.addressBank(cart.lastAddressAccessed)
+// GetAddressBank calls the current mapper's addressBank function. it returns
+// the current bank number for the specified address
+func (cart Cartridge) GetAddressBank(addr uint16) int {
+	addr &= cart.Origin() - 1
+	return cart.mapper.getAddressBank(addr)
 }
 
-// SaveState calls the current mapper's saveState function
-func (cart *Cartridge) SaveState() interface{} {
-	return cart.mapper.saveState()
+// SetAddressBank sets the bank for the specificed address. it sets the
+// specified address to reference the specified bank
+func (cart *Cartridge) SetAddressBank(addr uint16, bank int) error {
+	addr &= cart.Origin() - 1
+	return cart.mapper.setAddressBank(addr, bank)
 }
 
-// RestoreState calls the current mapper's restoreState function
-func (cart *Cartridge) RestoreState(state interface{}) error {
-	return cart.mapper.restoreState(state)
+// SaveBanks calls the current mapper's saveState function
+func (cart *Cartridge) SaveBanks() interface{} {
+	return cart.mapper.saveBanks()
+}
+
+// RestoreBanks calls the current mapper's restoreState function
+func (cart *Cartridge) RestoreBanks(state interface{}) error {
+	return cart.mapper.restoreBanks(state)
 }

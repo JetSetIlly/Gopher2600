@@ -10,69 +10,88 @@ import (
 
 type atari struct {
 	method string
-	memory [][]uint8
-	bank   int
 
-	extraRAM []uint8
+	// atari formats apart from 2k and 4k are divided into banks. 2k and 4k
+	// ROMs conceptually have one bank
+	banks [][]uint8
+
+	// identifies the currently selected bank
+	bank int
+
+	// some ROMs support aditional RAM. in these instances the first 128 bytes
+	// of each bank is mapped to RAM. this is sometimes referred to as the
+	// superchip
+	superchip []uint8
 }
 
 func (cart atari) String() string {
-	return cart.method
+	return fmt.Sprintf("%s bank: %d", cart.method, cart.bank)
 }
 
 func (cart *atari) initialise() {
-	cart.bank = 0
+	cart.bank = len(cart.banks) - 1
 }
 
-func (cart atari) addressBank(addr uint16) int {
+func (cart atari) getAddressBank(addr uint16) int {
+	// because atari bank switching swaps out the entire memory space, every
+	// address points to whatever the current bank is. compare to parker bros.
+	// cartridges.
 	return cart.bank
 }
 
-func (cart *atari) saveState() interface{} {
+func (cart *atari) setAddressBank(addr uint16, bank int) error {
+	if bank < 0 || bank > len(cart.banks) {
+		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+	}
+	cart.bank = bank
+	return nil
+}
+
+func (cart *atari) saveBanks() interface{} {
 	return cart.bank
 }
 
-func (cart *atari) restoreState(state interface{}) error {
+func (cart *atari) restoreBanks(state interface{}) error {
 	cart.bank = state.(int)
 	return nil
 }
 
 func (cart *atari) read(addr uint16) (uint8, bool) {
-	if cart.extraRAM != nil {
+	if cart.superchip != nil {
 		if addr > 127 && addr < 256 {
-			return cart.extraRAM[addr-128], true
+			return cart.superchip[addr-128], true
 		}
 	}
 	return 0, false
 }
 
 func (cart *atari) write(addr uint16, data uint8) bool {
-	if cart.extraRAM != nil {
+	if cart.superchip != nil {
 		if addr <= 127 {
-			cart.extraRAM[addr] = data
+			cart.superchip[addr] = data
 			return true
 		}
 	}
 	return false
 }
 
-func (cart *atari) addCartridgeRAM() bool {
+func (cart *atari) addSuperchip() bool {
 	// check for cartridge memory:
 	//  - this method of detection simply checks whether the first 256 of each
 	// bank are empty
 	//  - I've guessed that this is a good method. if there's another one I
 	// don't know about it.
-	nullChar := cart.memory[0][0]
-	for b := 0; b < len(cart.memory); b++ {
+	nullChar := cart.banks[0][0]
+	for b := 0; b < len(cart.banks); b++ {
 		for a := 0; a < 256; a++ {
-			if cart.memory[b][a] != nullChar {
+			if cart.banks[b][a] != nullChar {
 				return false
 			}
 		}
 	}
 
 	// allocate RAM
-	cart.extraRAM = make([]uint8, 128)
+	cart.superchip = make([]uint8, 128)
 
 	// update method string
 	cart.method = fmt.Sprintf("%s (inc. extra RAM)", cart.method)
@@ -98,14 +117,14 @@ func newAtari4k(cf io.ReadSeeker) (*atari4k, error) {
 	cart := &atari4k{}
 
 	cart.method = "atari 4k"
-	cart.memory = make([][]uint8, 1)
-	cart.memory[0] = make([]uint8, 4096)
+	cart.banks = make([][]uint8, 1)
+	cart.banks[0] = make([]uint8, 4096)
 
 	if cf != nil {
 		cf.Seek(0, io.SeekStart)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[0])
+		n, err := cf.Read(cart.banks[0])
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +133,8 @@ func newAtari4k(cf io.ReadSeeker) (*atari4k, error) {
 		}
 	}
 
-	cart.addCartridgeRAM()
+	cart.addSuperchip()
+	cart.initialise()
 
 	return cart, nil
 }
@@ -127,7 +147,7 @@ func (cart *atari4k) read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.read(addr); ok {
 		return data, nil
 	}
-	return cart.memory[0][addr], nil
+	return cart.banks[0][addr], nil
 }
 
 func (cart *atari4k) write(addr uint16, data uint8, isPoke bool) error {
@@ -156,14 +176,14 @@ func newAtari2k(cf io.ReadSeeker) (*atari2k, error) {
 	cart := &atari2k{}
 
 	cart.method = "atari 2k"
-	cart.memory = make([][]uint8, 1)
-	cart.memory[0] = make([]uint8, 2048)
+	cart.banks = make([][]uint8, 1)
+	cart.banks[0] = make([]uint8, 2048)
 
 	if cf != nil {
 		cf.Seek(0, io.SeekStart)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[0])
+		n, err := cf.Read(cart.banks[0])
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +192,8 @@ func newAtari2k(cf io.ReadSeeker) (*atari2k, error) {
 		}
 	}
 
-	cart.addCartridgeRAM()
+	cart.addSuperchip()
+	cart.initialise()
 
 	return cart, nil
 }
@@ -185,7 +206,7 @@ func (cart *atari2k) read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.read(addr); ok {
 		return data, nil
 	}
-	return cart.memory[0][addr&0x07ff], nil
+	return cart.banks[0][addr&0x07ff], nil
 }
 
 func (cart *atari2k) write(addr uint16, data uint8, isPoke bool) error {
@@ -212,15 +233,15 @@ func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
 	cart := &atari8k{}
 
 	cart.method = "atari 8k (F8)"
-	cart.memory = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.numBanks())
 
 	cf.Seek(0, io.SeekStart)
 
 	for b := 0; b < cart.numBanks(); b++ {
-		cart.memory[b] = make([]uint8, 4096)
+		cart.banks[b] = make([]uint8, 4096)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[b])
+		n, err := cf.Read(cart.banks[b])
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +250,8 @@ func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addCartridgeRAM()
+	cart.addSuperchip()
+	cart.initialise()
 
 	return cart, nil
 }
@@ -243,7 +265,7 @@ func (cart *atari8k) read(addr uint16) (uint8, error) {
 		return data, nil
 	}
 
-	data := cart.memory[cart.bank][addr]
+	data := cart.banks[cart.bank][addr]
 
 	if addr == 0x0ff8 {
 		cart.bank = 0
@@ -287,15 +309,15 @@ func newAtari16k(cf io.ReadSeeker) (*atari16k, error) {
 	cart := &atari16k{}
 
 	cart.method = "atari 16k (F6)"
-	cart.memory = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.numBanks())
 
 	cf.Seek(0, io.SeekStart)
 
 	for b := 0; b < cart.numBanks(); b++ {
-		cart.memory[b] = make([]uint8, 4096)
+		cart.banks[b] = make([]uint8, 4096)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[b])
+		n, err := cf.Read(cart.banks[b])
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +326,8 @@ func newAtari16k(cf io.ReadSeeker) (*atari16k, error) {
 		}
 	}
 
-	cart.addCartridgeRAM()
+	cart.addSuperchip()
+	cart.initialise()
 
 	return cart, nil
 }
@@ -318,7 +341,7 @@ func (cart *atari16k) read(addr uint16) (uint8, error) {
 		return data, nil
 	}
 
-	data := cart.memory[cart.bank][addr]
+	data := cart.banks[cart.bank][addr]
 
 	if addr == 0x0ff6 {
 		cart.bank = 0
@@ -370,15 +393,15 @@ func newAtari32k(cf io.ReadSeeker) (*atari32k, error) {
 	cart := &atari32k{}
 
 	cart.method = "atari 32k (F4)"
-	cart.memory = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.numBanks())
 
 	cf.Seek(0, io.SeekStart)
 
 	for b := 0; b < cart.numBanks(); b++ {
-		cart.memory[b] = make([]uint8, 4096)
+		cart.banks[b] = make([]uint8, 4096)
 
 		// read cartridge
-		n, err := cf.Read(cart.memory[b])
+		n, err := cf.Read(cart.banks[b])
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +410,8 @@ func newAtari32k(cf io.ReadSeeker) (*atari32k, error) {
 		}
 	}
 
-	cart.addCartridgeRAM()
+	cart.addSuperchip()
+	cart.initialise()
 
 	return cart, nil
 }
@@ -401,7 +425,7 @@ func (cart *atari32k) read(addr uint16) (uint8, error) {
 		return data, nil
 	}
 
-	data := cart.memory[cart.bank][addr]
+	data := cart.banks[cart.bank][addr]
 
 	if addr == 0x0ff4 {
 		cart.bank = 0

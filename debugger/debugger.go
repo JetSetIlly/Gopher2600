@@ -507,7 +507,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 		promptAddress = dbg.lastResult.Address
 	}
 
-	promptBank = dbg.vcs.Mem.Cart.CurrentBank()
+	promptBank = dbg.vcs.Mem.Cart.GetAddressBank(promptAddress)
 
 	var prompt = "["
 
@@ -518,7 +518,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 	if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
-		prompt = fmt.Sprintf("%s %#04x %s ]", prompt, promptAddress, entry)
+		prompt = fmt.Sprintf("%s %#04x %s ]", prompt, promptAddress, entry.String())
 	} else {
 		// incomplete disassembly, prepare witchspace prompt
 		prompt = fmt.Sprintf("%s %#04x (%d) witchspace ]", prompt, promptAddress, promptBank)

@@ -15,34 +15,29 @@ import (
 // doesn't mind. self modifying code is still invisible.
 //
 // the downside of this method is that a lot of addresses in data segments will
-// also be deemed to be valid instructions; so lienar disassembly is no good
+// also be deemed to be valid instructions; so linear disassembly is no good
 // for presenting the entire program.
 
 func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
-	style := result.StyleFlagSymbols | result.StyleFlagCompact
-
-	state := dsm.Cart.SaveState()
-
 	for bank := 0; bank < len(dsm.linear); bank++ {
 		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
-			// we have to bank switch every iteration because an instruction
-			// may have caused the bank to switch "naturally" because of a memory
-			// write.
-			dsm.Cart.RestoreState(state)
+			if err := dsm.Cart.SetAddressBank(address, bank); err != nil {
+				return err
+			}
 
 			mc.PC.Load(address)
+
+			// deliberately ignoring errors
 			r, _ := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 
 			// check validity of instruction result and add if it "executed"
 			// correctly
 			if r != nil && r.IsValid() == nil {
 				dsm.linear[bank][address&disasmMask] = Entry{
-					Style:                 style,
-					instruction:           r.GetString(dsm.Symtable, style),
+					style:                 result.StyleBrief,
+					instruction:           r.GetString(dsm.Symtable, result.StyleBrief),
 					instructionDefinition: r.Defn}
 			}
-
-			state = dsm.Cart.SaveState()
 		}
 	}
 

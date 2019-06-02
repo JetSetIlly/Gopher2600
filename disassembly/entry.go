@@ -12,7 +12,7 @@ type Entry struct {
 	instructionDefinition *definitions.InstructionDefinition
 
 	// to keep things simple, we're only keeping a string representation of the
-	// disassembly. we used to keep a instance of result.instruction but after
+	// disassembly. we used to keep a instance of result.verbose but after
 	// some consideration, I don't like that - the result was obtained with an
 	// incomplete or misleading context, and so cannot be relied upon to give
 	// accurate information with regards to pagefaults etc. the simplest way
@@ -22,9 +22,8 @@ type Entry struct {
 	// undefined if InstructionDefinition == nil
 	instruction string
 
-	// Style idicates which flags were used when formatting the instruction
-	// string
-	Style result.Style
+	// the styling used to format the instruction member above
+	style result.Style
 }
 
 func (ent Entry) String() string {

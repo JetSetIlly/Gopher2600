@@ -203,7 +203,10 @@ func (sp *sprite) prepareForHMOVE() {
 }
 
 func compareBits(a, b uint8) bool {
-	// return true if any corresponding bits in the lower nibble are the same
+	// return true if any corresponding bits in the lower nibble are the same.
+	// not the same test as a&b!=0. from Towers' TIA_HW_Notes:
+	// "When the comparator for a given object detects that none of the 4 bits
+	// match the bits in the counter state, it clears this latch"
 	return a&0x08 == b&0x08 || a&0x04 == b&0x04 || a&0x02 == b&0x02 || a&0x01 == b&0x01
 }
 

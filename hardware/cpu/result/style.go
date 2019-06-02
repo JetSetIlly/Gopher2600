@@ -31,6 +31,7 @@ const (
 	// compound style
 	StyleExecution = StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagCycles | StyleFlagNotes | StyleFlagColumns
 	StyleDisasm    = StyleFlagByteCode | StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns
+	StyleBrief     = StyleFlagSymbols | StyleFlagCompact
 )
 
 // Has tests to see if style has the supplied flag in its definition
