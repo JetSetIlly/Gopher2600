@@ -1,130 +1,52 @@
 package polycounter
 
-import (
-	"fmt"
-)
+// polycounter implements the counting method used in the VCS TIA chip and as
+// described in TIA_HW_Notes.txt
+//
+// there's nothing particularly noteworthy about the implementation except that
+// the Count value can be used to index the predefined polycounter table, which
+// maybe useful for debugging.
+//
+// intended to be used in conjunction with TIAClock
 
-// Polycounter implements the VCS method of counting. It is doesn't require
-// special initialisation so is a good candidate for struct embedding
+import "fmt"
+
+// Polycounter counts from 0 to Limit. can be used to index a polycounter
+// table
 type Polycounter struct {
-	table polycounterTable
-
-	// this implementation of the VCS polycounter uses a regular go-integer
 	Count int
-
-	// the phase ranges from 0 and MaxPhase
-	Phase int
-
-	// reset point is the value of count at which the polycounter should reset
-	// to 0
-	ResetPoint int
+	limit int
 }
 
-// MachineInfoTerse returns the polycounter information in terse format
-func (pk Polycounter) MachineInfoTerse() string {
-	return fmt.Sprintf("%d@%d", pk.Count, pk.Phase)
+func (pcnt Polycounter) String() string {
+	// assumes maximum limit of 2 digits
+	return fmt.Sprintf("%02d", pcnt.Count)
 }
 
-// MachineInfo returns the polycounter information in verbose format
-func (pk Polycounter) MachineInfo() string {
-	return fmt.Sprintf("(%d) %s@%d", pk.Count, pk.table[pk.Count], pk.Phase)
-}
-
-// map String to MachineInfo
-func (pk Polycounter) String() string {
-	return pk.MachineInfo()
-}
-
-// SetResetPattern specifies the pattern at which the polycounter automatically
-// resets during a Tick(). this should be called at least once or the reset
-// pattern will be "000000" which is probably not what you want
-func (pk *Polycounter) SetResetPattern(resetPattern string) {
-	pk.ResetPoint = pk.table.LookupPattern(resetPattern)
-}
-
-// SetResetPoint specifies the point at which the polycounter automatically
-func (pk *Polycounter) SetResetPoint(resetPoint int) {
-	if resetPoint > len(pk.table) {
-		panic(fmt.Sprintf("cannot set reset point to %d for a polycounter table of length %d", resetPoint, len(pk.table)))
+// SetLimit sets the point after which the counter will return to 0
+// will panic if limit is greater than 64
+func (pcnt *Polycounter) SetLimit(limit int) {
+	if limit < 0 {
+		panic("polycounter SetLimit minimum is 0")
 	}
-	pk.ResetPoint = resetPoint
-}
-
-// ResetPhase resets the phase *only*
-func (pk *Polycounter) ResetPhase() {
-	pk.Phase = 0
-}
-
-// Reset leaves the polycounter in its "zero" state. resetPattern
-func (pk *Polycounter) Reset() {
-	pk.Count = 0
-	pk.Phase = 0
-}
-
-// Sync is used to synchronise two polycounters
-// -- positive offsets adjusts the reset point to the right
-// -- used for moving missile position to the player position
-func (pk *Polycounter) Sync(pko *Polycounter, offset int) {
-	if pk.ResetPoint != pko.ResetPoint {
-		panic(fmt.Sprintf("cannot Sync() two polycounters with different reset points"))
+	if limit > 64 {
+		panic("polycounter SetLimit maximum is 64")
 	}
-
-	pk.Count = pko.Count
-	pk.Phase = pko.Phase
-
-	// moving to the right means subtracting from the polycounter count/phase
-	pk.Count -= offset / (MaxPhase + 1)
-	if pk.Count > pk.ResetPoint {
-		pk.Count = pk.Count - pk.ResetPoint
-	} else if pk.Count < 0 {
-		pk.Count = pk.ResetPoint
-	}
-	pk.Phase -= offset % (MaxPhase + 1)
-	if pk.Phase > MaxPhase {
-		pk.Phase = pk.Phase - MaxPhase
-	} else if pk.Phase < 0 {
-		pk.Phase = (MaxPhase + 1) + pk.Phase
-		pk.Count--
-		if pk.Count < 0 {
-			pk.Count = pk.ResetPoint
-		}
-	}
+	pcnt.limit = limit
 }
 
-// Tick advances the count to the next state - returns true if counter has
-// looped. the force argument allows the function to be called and for the loop
-// to definitely take place. we use this in the VCS during for the RSYNC check
-func (pk *Polycounter) Tick() bool {
-	if pk.CycleOnNextTick() {
-		pk.Reset()
+// Reset is a convenience function to reset count value to 0
+func (pcnt *Polycounter) Reset() {
+	pcnt.Count = 0
+}
+
+// Tick advances the Polycounter and resets when it reaches the limit.
+// returns true if counter has reset
+func (pcnt *Polycounter) Tick() bool {
+	if pcnt.Count == pcnt.limit {
+		pcnt.Count = 0
 		return true
 	}
-
-	pk.Phase++
-	if pk.Phase > MaxPhase {
-		pk.ResetPhase()
-		pk.Count++
-	}
-
+	pcnt.Count++
 	return false
-}
-
-// MatchEnd checks whether polycounter is at the *end* (ie. last phase) of the given count
-func (pk *Polycounter) MatchEnd(count int) bool {
-	return pk.Count == count && pk.Phase == MaxPhase
-}
-
-// MatchBeginning checks whether polycounter is at the *beginning* (ie. first phase) of the given count
-func (pk *Polycounter) MatchBeginning(count int) bool {
-	return pk.Count == count && pk.Phase == 0
-}
-
-// Pixel returns the color clock when expressed as a pixel
-func (pk *Polycounter) Pixel() int {
-	return (pk.Count * 4) + pk.Phase - 68
-}
-
-// CycleOnNextTick checks to see if polycounter is about to cycle
-func (pk *Polycounter) CycleOnNextTick() bool {
-	return pk.Count == pk.ResetPoint && pk.Phase == MaxPhase
 }

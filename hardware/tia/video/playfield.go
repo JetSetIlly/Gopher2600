@@ -5,11 +5,13 @@ import (
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
 type playfield struct {
-	colorClock *polycounter.Polycounter
+	clk   *tiaclock.TIAClock
+	hsync *polycounter.Polycounter
 
 	foregroundColor uint8
 	backgroundColor uint8
@@ -42,19 +44,21 @@ type playfield struct {
 	idx int
 
 	// a playfield "pixel" is sustained for the duration 3 video cycles, even
-	// if the playfield register is changed
-	currentPixel bool
+	// if the playfield register is changed. we therefore need to decide if the
+	// "current bit is on" at the tick() and not when pixel() is called
+	currentPixelIsOn bool
 }
 
-func newPlayfield(colorClock *polycounter.Polycounter) *playfield {
-	pf := new(playfield)
-	pf.colorClock = colorClock
-	return pf
+func newPlayfield(clk *tiaclock.TIAClock, hsync *polycounter.Polycounter) *playfield {
+	pf := playfield{clk: clk, hsync: hsync}
+	return &pf
 }
 
 func (pf playfield) MachineInfoTerse() string {
 	s := strings.Builder{}
 	s.WriteString("playfield: ")
+
+	// playfield bits - first half
 	for i := 0; i < len(pf.data); i++ {
 		if pf.data[i] {
 			s.WriteString("1")
@@ -62,42 +66,97 @@ func (pf playfield) MachineInfoTerse() string {
 			s.WriteString("0")
 		}
 	}
+
+	// playfield bits - second half
+	for i := len(pf.data) - 1; i >= 0; i-- {
+		if pf.data[i] {
+			s.WriteString("1")
+		} else {
+			s.WriteString("0")
+		}
+	}
+
+	// sundry playfield information
 	if pf.reflected {
 		s.WriteString(" reflected")
 	}
+	if pf.scoremode {
+		s.WriteString(" scoremode")
+	}
+	if pf.priority {
+		s.WriteString(" priority")
+	}
+
 	return s.String()
 }
 
 func (pf playfield) MachineInfo() string {
 	s := strings.Builder{}
-	s.WriteString(pf.MachineInfoTerse())
+	s.WriteString("playfield: ")
+
+	// prepare a line to point to the current playfield bit; or a suitable
+	// message to indcate no playfield output
+	idxPointer := ""
+	switch pf.screenRegion {
+	case 0:
+		idxPointer = "no playfield during hblank period"
+	case 1:
+		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx))
+	case 2:
+		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx+len(pf.data)))
+	}
+
+	// playfield bits - first half
+	for i := 0; i < len(pf.data); i++ {
+		if pf.data[i] {
+			s.WriteString("1")
+		} else {
+			s.WriteString("0")
+		}
+	}
+	// playfield bits - second half
+	for i := len(pf.data) - 1; i >= 0; i-- {
+		if pf.data[i] {
+			s.WriteString("1")
+		} else {
+			s.WriteString("0")
+		}
+	}
+
+	// output the pointer line we prepared earlier
+	s.WriteString(fmt.Sprintf("\n%s", idxPointer))
+
+	// sundry playfield information
 	s.WriteString(fmt.Sprintf("\n   pf0: %08b\n   pf1: %08b\n   pf2: %08b", pf.pf0, pf.pf1, pf.pf2))
 	s.WriteString(fmt.Sprintf("\n   fg color: %d", pf.foregroundColor))
 	s.WriteString(fmt.Sprintf("\n   bg color: %d", pf.backgroundColor))
+	s.WriteString(fmt.Sprintf("\n   reflected: %v\n   scoremode: %v\n   priority %v\n", pf.reflected, pf.scoremode, pf.priority))
+
 	return s.String()
 }
 
 func (pf *playfield) tick() {
 	newPixel := false
-	if pf.colorClock.MatchBeginning(17) {
-		// start of visible screen (playfield not affected by HMOVE)
-		// 101110
-		pf.screenRegion = 1
-		pf.idx = 0
-		newPixel = true
-	} else if pf.colorClock.MatchBeginning(37) {
-		// just past the centre of the visible screen
-		// 110110
-		pf.screenRegion = 2
-		pf.idx = 0
-		newPixel = true
-	} else if pf.colorClock.MatchBeginning(0) {
-		// start of scanline
-		// 000000
-		pf.screenRegion = 0
-	} else if pf.screenRegion != 0 && pf.colorClock.Phase == 0 {
-		pf.idx++
-		newPixel = true
+
+	if pf.clk.IsLatched() {
+		switch pf.hsync.Count {
+		case 16:
+			// start of visible screen (playfield not affected by HMOVE)
+			pf.screenRegion = 1
+			pf.idx = 0
+			newPixel = true
+		case 36:
+			// just past the centre of the visible screen
+			pf.screenRegion = 2
+			pf.idx = 0
+			newPixel = true
+		case 56:
+			// start of scanline
+			pf.screenRegion = 0
+		default:
+			pf.idx++
+			newPixel = true
+		}
 	}
 
 	// pixel returns the color of the playfield at the current time.
@@ -105,16 +164,16 @@ func (pf *playfield) tick() {
 	if newPixel && pf.screenRegion != 0 {
 		if pf.screenRegion == 1 || !pf.reflected {
 			// normal, non-reflected playfield
-			pf.currentPixel = pf.data[pf.idx]
+			pf.currentPixelIsOn = pf.data[pf.idx]
 		} else {
 			// reflected playfield
-			pf.currentPixel = pf.data[len(pf.data)-pf.idx-1]
+			pf.currentPixelIsOn = pf.data[len(pf.data)-pf.idx-1]
 		}
 	}
 }
 
 func (pf *playfield) pixel() (bool, uint8) {
-	if pf.currentPixel {
+	if pf.currentPixelIsOn {
 		return true, pf.foregroundColor
 	}
 	return false, pf.backgroundColor

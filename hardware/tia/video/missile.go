@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
@@ -35,9 +35,9 @@ type missileSprite struct {
 	parentPlayer *playerSprite
 }
 
-func newMissileSprite(label string, colorClock *polycounter.Polycounter) *missileSprite {
+func newMissileSprite(label string, clk *tiaclock.TIAClock) *missileSprite {
 	ms := new(missileSprite)
-	ms.sprite = newSprite(label, colorClock, ms.tick)
+	ms.sprite = newSprite(label, clk, ms.tick)
 	return ms
 }
 
@@ -72,7 +72,7 @@ func (ms missileSprite) MachineInfo() string {
 	s.WriteString("   trigger list: ")
 	if len(ms.triggerList) > 0 {
 		for i := 0; i < len(ms.triggerList); i++ {
-			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*(polycounter.MaxPhase+1))+ms.currentPixel))
+			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*tiaclock.NumStates)+ms.currentPixel))
 		}
 		s.WriteString(fmt.Sprintf(" %v\n", ms.triggerList))
 	} else {
@@ -91,63 +91,14 @@ func (ms missileSprite) MachineInfo() string {
 func (ms *missileSprite) tick() {
 	// position
 	if ok, _ := ms.checkForGfxStart(ms.triggerList); ok {
-		// if a reset of this sprite is pending then we need to defer the start
-		// of the drawing until the reset has occurred. we also need to
-		// consider:
-		//	* the reset request has not *just* happened (within a video cycle)
-		//	* the sprite has not been moved by HMOVE
-		//
-		// (concept shared with player sprite)
-		ms.deferDrawStart = ms.resetFuture != nil &&
-			ms.resetFuture.RemainingCycles < ms.resetFuture.InitialCycles &&
-			ms.resetPixel == ms.currentPixel
-
-		if !ms.deferDrawStart {
-			ms.startDrawing()
-		}
+		ms.startDrawing()
 	} else {
-		// tick graphics scan only if sprite is:
-		//	a) not resetting
-		//  b) or if it is resetting then only when the position counter is in
-		//  a particular configuration
-		if ms.resetFuture == nil {
-			ms.tickGraphicsScan()
-		} else {
-			// special conditions based on size
-			//
-			// note sure about this logic at all. this is what was required for
-			// the "missile testcards" to work correctly.
-			switch ms.size {
-			case 0x0:
-				ms.tickGraphicsScan()
-			case 0x1:
-				ms.tickGraphicsScan()
-			case 0x2:
-				if ms.position.Phase != 1 {
-					ms.tickGraphicsScan()
-				}
-			case 0x3:
-				if ms.position.Phase != 2 {
-					ms.tickGraphicsScan()
-				}
-			}
-		}
+		ms.tickGraphicsScan()
 	}
 
-	// when RESMP bit is on the missile's position is constantly updated
-	// ready for when the bit is reset. this doesn't match the behaviour of
-	// stella, which seems to only reset the position at the moment the bit is
-	// reset. however, it is easier to do it like this and I don't think it has
-	// any effect on the emulation.
 	if ms.resetToPlayerPos {
-		switch ms.parentPlayer.size {
-		case 0x05:
-			ms.position.Sync(&ms.parentPlayer.position, 9)
-		case 0x07:
-			ms.position.Sync(&ms.parentPlayer.position, 12)
-		default:
-			ms.position.Sync(&ms.parentPlayer.position, 5)
-		}
+		// TODO: this isn't right. needs to consider playersize
+		ms.position.Count = ms.parentPlayer.position.Count
 	}
 }
 

@@ -3,14 +3,15 @@ package video
 import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
-	colorClock *polycounter.Polycounter
+	clk   *tiaclock.TIAClock
+	hsync *polycounter.Polycounter
 
 	// collision matrix
 	collisions *collisions
@@ -42,33 +43,33 @@ const (
 )
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(colorClock *polycounter.Polycounter, mem memory.ChipBus, onFutureColorClock, onFutureMotionClock *future.Group) *Video {
-	vd := &Video{colorClock: colorClock, onFutureColorClock: onFutureColorClock, onFutureMotionClock: onFutureMotionClock}
+func NewVideo(clk *tiaclock.TIAClock, hsync *polycounter.Polycounter, mem memory.ChipBus, onFutureColorClock, onFutureMotionClock *future.Group) *Video {
+	vd := &Video{clk: clk, hsync: hsync, onFutureColorClock: onFutureColorClock, onFutureMotionClock: onFutureMotionClock}
 
 	// collision matrix
 	vd.collisions = newCollision(mem)
 
 	// playfield
-	vd.Playfield = newPlayfield(vd.colorClock)
+	vd.Playfield = newPlayfield(vd.clk, vd.hsync)
 
 	// sprite objects
-	vd.Player0 = newPlayerSprite("player0", vd.colorClock)
+	vd.Player0 = newPlayerSprite("player0", vd.clk)
 	if vd.Player0 == nil {
 		return nil
 	}
-	vd.Player1 = newPlayerSprite("player1", vd.colorClock)
+	vd.Player1 = newPlayerSprite("player1", vd.clk)
 	if vd.Player1 == nil {
 		return nil
 	}
-	vd.Missile0 = newMissileSprite("missile0", vd.colorClock)
+	vd.Missile0 = newMissileSprite("missile0", vd.clk)
 	if vd.Missile0 == nil {
 		return nil
 	}
-	vd.Missile1 = newMissileSprite("missile1", vd.colorClock)
+	vd.Missile1 = newMissileSprite("missile1", vd.clk)
 	if vd.Missile1 == nil {
 		return nil
 	}
-	vd.Ball = newBallSprite("ball", vd.colorClock)
+	vd.Ball = newBallSprite("ball", vd.clk)
 	if vd.Ball == nil {
 		return nil
 	}
@@ -115,15 +116,6 @@ func (vd *Video) ResolveHorizMovement(count int) {
 	vd.Missile0.resolveHMOVE(count)
 	vd.Missile1.resolveHMOVE(count)
 	vd.Ball.resolveHMOVE(count)
-}
-
-// ForceHMOVE is an ungodly hack
-func (vd *Video) ForceHMOVE(adjustment int) {
-	vd.Player0.forceHMOVE(adjustment)
-	vd.Player1.forceHMOVE(adjustment)
-	vd.Missile0.forceHMOVE(adjustment)
-	vd.Missile1.forceHMOVE(adjustment)
-	vd.Ball.forceHMOVE(adjustment)
 }
 
 // Resolve returns the color of the pixel at the current clock and also sets the
@@ -272,28 +264,6 @@ func (vd *Video) Resolve() (uint8, uint8) {
 	return col, dcol
 }
 
-// createTriggerList is used by both player and missile sprites to decide on
-// which color clocks past the sprite's reset position the sprite drawing
-// routines should be triggered
-func createTriggerList(playerSize uint8) []int {
-	var triggerList []int
-	switch playerSize {
-	case 0x0, 0x05, 0x07:
-		// empty trigger list - single sprite of varying widths
-	case 0x01:
-		triggerList = []int{4}
-	case 0x02:
-		triggerList = []int{8}
-	case 0x03:
-		triggerList = []int{4, 8}
-	case 0x04:
-		triggerList = []int{16}
-	case 0x06:
-		triggerList = []int{8, 16}
-	}
-	return triggerList
-}
-
 // ReadMemory checks the TIA memory for changes to registers that are
 // interesting to the video sub-system. all changes happen immediately except
 // for those where a "schedule" function is called.
@@ -314,14 +284,14 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// playfield / color
 	case "COLUBK":
-		vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
-			vd.Playfield.backgroundColor = value & 0xfe
-		}, "setting COLUBK")
+		// vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
+		vd.Playfield.backgroundColor = value & 0xfe
+		// }, "setting COLUBK")
 	case "COLUPF":
-		vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
-			vd.Playfield.foregroundColor = value & 0xfe
-			vd.Ball.color = value & 0xfe
-		}, "setting COLUPF")
+		// vd.onFutureColorClock.Schedule(delay.WritePlayfieldColor, func() {
+		vd.Playfield.foregroundColor = value & 0xfe
+		vd.Ball.color = value & 0xfe
+		// }, "setting COLUPF")
 
 	// playfield
 	case "CTRLPF":

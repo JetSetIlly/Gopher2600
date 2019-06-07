@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"math/bits"
 	"strings"
 )
@@ -54,9 +54,9 @@ type playerSprite struct {
 	graphicsScanFilter int
 }
 
-func newPlayerSprite(label string, colorClock *polycounter.Polycounter) *playerSprite {
+func newPlayerSprite(label string, clk *tiaclock.TIAClock) *playerSprite {
 	ps := new(playerSprite)
-	ps.sprite = newSprite(label, colorClock, ps.tick)
+	ps.sprite = newSprite(label, clk, ps.tick)
 	return ps
 }
 
@@ -172,7 +172,7 @@ func (ps playerSprite) MachineInfo() string {
 		for i := 0; i < len(ps.triggerList); i++ {
 			// additional pixels when the graphics scan is triggered (NOT the
 			// visual pixel)
-			s.WriteString(fmt.Sprintf("%d ", (ps.triggerList[i]*(polycounter.MaxPhase+1))+ps.currentPixel))
+			s.WriteString(fmt.Sprintf("%d ", (ps.triggerList[i]*tiaclock.NumStates)+ps.currentPixel))
 		}
 		s.WriteString(fmt.Sprintf(" %v\n", ps.triggerList))
 	} else {
@@ -190,20 +190,7 @@ func (ps playerSprite) MachineInfo() string {
 func (ps *playerSprite) tick() {
 	// position
 	if ok, _ := ps.checkForGfxStart(ps.triggerList); ok {
-		// if a reset of this sprite is pending then we need to defer the start
-		// of the drawing until the reset has occurred. we also need to
-		// consider:
-		//	* the reset request has not *just* happened (within a video cycle)
-		//	* the sprite has not been moved by HMOVE
-		//
-		// (concept shared with missile sprite)
-		ps.deferDrawStart = ps.resetFuture != nil &&
-			ps.resetFuture.RemainingCycles < ps.resetFuture.InitialCycles &&
-			ps.resetPixel == ps.currentPixel
-
-		if !ps.deferDrawStart {
-			ps.startDrawing()
-		}
+		ps.startDrawing()
 
 		// if player size is double or quadruple then we need to reset
 		// graphicsScanFilter, but not to zero. we reset it so that the next
@@ -268,8 +255,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 }
 
 func (ps *playerSprite) scheduleReset(onFutureWrite *future.Group) {
-	ps.resetFuture = onFutureWrite.Schedule(delay.ResetPlayer, func() {
-		ps.resetFuture = nil
+	onFutureWrite.Schedule(delay.ResetPlayer, func() {
 		ps.resetPosition()
 		if ps.deferDrawStart {
 			ps.startDrawing()

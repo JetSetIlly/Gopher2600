@@ -2,9 +2,9 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
@@ -16,28 +16,26 @@ type sprite struct {
 	// missile 1)
 	label string
 
-	// colorClock references the VCS wide color clock. we only use it to note
-	// the Pixel() value of the color clock at the reset point of the sprite.
-	colorClock *polycounter.Polycounter
+	clk *tiaclock.TIAClock
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
 	// circulates to zero
 	position polycounter.Polycounter
 
+	// the draw signal controls which "bit" of the sprite is to be drawn next.
+	// generally, the draw signal is activated when the position polycounter
+	// matches the hsync polycounter, but differenct sprite types handle
+	// this differently in certain circumstances
+	graphicsScanCounter int
+	graphicsScanMax     int
+	graphicsScanOff     int
+
 	// horizontal position of the sprite - may be affected by HMOVE
 	resetPixel int
 
 	// horizontal position after hmove has been applied
 	currentPixel int
-
-	// the draw signal controls which "bit" of the sprite is to be drawn next.
-	// generally, the draw signal is activated when the position polycounter
-	// matches the colorClock polycounter, but differenct sprite types handle
-	// this differently in certain circumstances
-	graphicsScanCounter int
-	graphicsScanMax     int
-	graphicsScanOff     int
 
 	// the amount of horizontal movement for the sprite
 	// -- as set by the 6502 - written into the HMP0/P1/M0/M1/BL register
@@ -52,29 +50,19 @@ type sprite struct {
 
 	// a note on whether the sprite is about to be reset its position
 	resetFuture *future.Instance
-
-	// 0 = force reset is off
-	// 1 = force reset trigger
-	// n = wait for trigger
-	forceReset int
-	// see comment in resolveHorizMovement()
 }
 
-func newSprite(label string, colorClock *polycounter.Polycounter, spriteTick func()) *sprite {
-	sp := new(sprite)
-	sp.label = label
-	sp.colorClock = colorClock
-	sp.spriteTick = spriteTick
+func newSprite(label string, clk *tiaclock.TIAClock, spriteTick func()) *sprite {
+	sp := sprite{label: label, clk: clk, spriteTick: spriteTick}
 
-	sp.position = *polycounter.New6Bit()
-	sp.position.SetResetPoint(39) // "101101"
+	sp.position.SetLimit(39)
 
 	// the direction of count and max is important - don't monkey with it
 	sp.graphicsScanMax = 8
 	sp.graphicsScanOff = sp.graphicsScanMax + 1
 	sp.graphicsScanCounter = sp.graphicsScanOff
 
-	return sp
+	return &sp
 }
 
 // MachineInfoTerse returns the sprite information in terse format
@@ -154,38 +142,25 @@ func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
 	// note reset position of sprite, in pixels
-	sp.resetPixel = sp.colorClock.Pixel()
+	sp.resetPixel = -68 + int((sp.position.Count * 4)) + int(*sp.clk)
 	sp.currentPixel = sp.resetPixel
 }
 
 func (sp *sprite) checkForGfxStart(triggerList []int) (bool, bool) {
-	if sp.position.Tick() {
-		return true, false
-	}
+	if sp.clk.IsLatched() {
+		if sp.position.Tick() {
+			return true, false
+		}
 
-	// check for start positions of additional copies of the sprite
-	for _, v := range triggerList {
-		if v == sp.position.Count && sp.position.Phase == 0 {
-			return true, true
+		// check for start positions of additional copies of the sprite
+		for _, v := range triggerList {
+			if v == int(sp.position.Count) {
+				return true, true
+			}
 		}
 	}
 
 	return false, false
-}
-
-func (sp *sprite) forceHMOVE(adjustment int) {
-	hm := (sp.horizMovement - (15 - adjustment))
-	for i := 0; i < hm; i++ {
-		// adjust position information
-		sp.currentPixel--
-		if sp.currentPixel < 0 {
-			sp.currentPixel = 159
-		}
-
-		// perform an additional tick of the sprite (different sprite types
-		// have different tick logic)
-		sp.spriteTick()
-	}
 }
 
 func (sp *sprite) prepareForHMOVE() {
@@ -214,39 +189,6 @@ func (sp *sprite) resolveHMOVE(count int) {
 	sp.moreMovementRequired = sp.moreMovementRequired && compareBits(uint8(count), uint8(sp.horizMovement))
 
 	if sp.moreMovementRequired {
-		// this mental construct is designed to fix a problem in the Keystone
-		// Kapers ROM. I don't believe for a moment that this is a perfect
-		// solution but it makes sense in the context of that ROM.
-		//
-		// What seems to be happening in Keystone Kapers ROM is this:
-		//
-		//	o Ball is reset at end of scanline 95 ($f756); and other scanlines
-		//  o HMOVE is tripped at beginning of line 96
-		//  o but reset doesn't occur until we resume motion clocks, by which
-		//		time HMOVE is finished
-		//  o moreover, the game doesn't want the ball to appear at the
-		//		beginning of the visible part of the screen; it wants the ball
-		//		to appear in the HMOVE gutter on scanlines 97 and 98; so the
-		//		move adjustments needs to happen such that the ball really
-		//		appears at the end of the scanline
-		//  o to cut a long story short, the game needs the ball to have been
-		//		reset before the HMOVE has completed on line 96
-		//
-		// confusing huh?  this delay construct fixes the above issue while not
-		// breaking other regression tests. I don't know if this is a generally
-		// correct solution or if it's specific to the ball sprite but I'm
-		// keeping it in for now.
-		if sp.resetFuture != nil {
-			if sp.forceReset == 1 {
-				sp.resetFuture.Force()
-				sp.forceReset = 0
-			} else if sp.forceReset == 0 {
-				sp.forceReset = delay.ForceReset
-			} else {
-				sp.forceReset--
-			}
-		}
-
 		// adjust position information
 		sp.currentPixel--
 		if sp.currentPixel < 0 {

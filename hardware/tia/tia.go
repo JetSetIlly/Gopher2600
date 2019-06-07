@@ -8,6 +8,7 @@ import (
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"gopher2600/hardware/tia/video"
 	"gopher2600/television"
 	"strings"
@@ -19,31 +20,30 @@ type TIA struct {
 	mem memory.ChipBus
 
 	// number of cycles since the last WSYNC
-	cpuCycles   int
+	cpuCycles   float64
 	videoCycles int
 
-	colorClock *polycounter.Polycounter
+	Clk   tiaclock.TIAClock
+	hsync polycounter.Polycounter
 
-	// motion clock is an out-of-phase colorClock, running 2 cycles ahead of
-	// the main color clock (according to the document, "Atari 2600 TIA
-	// Hardware Notes" by Andrew Towers) - currently used to indicate when
-	// calling tickFutures()
-	motionClock bool
+	hmove   bool
+	hmoveCt int
 
-	Hmove *hmove
-	rsync *rsync
-
-	// TIA state -- controlled by the CPU
-	vsync  bool
-	vblank bool
-
-	// TIA state -- set automatically by the TIA
+	// the tia keeps track of whether to send color information to the
+	// television with the hblank boolean. compare to vblank which is a set and
+	// unset at specific times.
 	hblank bool
-	hsync  bool
-	wsync  bool
 
+	// wsync records whether the cpu is to halt until hsync resets to 000000
+	wsync bool
+
+	// for clarity we think of tia video and audio as sub-systems
 	Video *video.Video
 	Audio *audio.Audio
+
+	// the last signal sent to the television. many signal attributes are
+	// sustained over many cycles; we use this to store that information
+	sig television.SignalAttributes
 
 	// there's a slight delay when changing the state of video objects. we're
 	// using two future instances to emulate what happens in the 2600. the
@@ -60,44 +60,34 @@ type TIA struct {
 
 // MachineInfoTerse returns the TIA information in terse format
 func (tia TIA) MachineInfoTerse() string {
-	return fmt.Sprintf("%s %s %s", tia.colorClock.MachineInfoTerse(), tia.rsync.MachineInfoTerse(), tia.Hmove.MachineInfoTerse())
+	return tia.String()
 }
 
 // MachineInfo returns the TIA information in verbose format
 func (tia TIA) MachineInfo() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("TIA:\n   colour clock: %v\n   %v\n   %v\n", tia.colorClock, tia.rsync, tia.Hmove))
-	s.WriteString(fmt.Sprintf("   Cycles since WSYNC:\n     CPU=%d\n     Video=%d", tia.cpuCycles, tia.videoCycles))
-	return s.String()
+	return tia.String()
 }
 
 // map String to MachineInfo
 func (tia TIA) String() string {
-	return tia.MachineInfo()
+	s := strings.Builder{}
+	s.WriteString(polycounter.Table[tia.hsync.Count])
+	s.WriteString(fmt.Sprintf(" %s %03d  %04.01f", tia.hsync, tia.videoCycles, tia.cpuCycles))
+
+	// NOTE: TIA_HW_Notes includes playfield, pixel and control information.
+	// we're choosing not to include that information here
+
+	return s.String()
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
 func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
-	tia := new(TIA)
-	tia.tv = tv
-	tia.mem = mem
+	tia := TIA{tv: tv, mem: mem, hblank: true}
 
-	tia.colorClock = polycounter.New6Bit()
-	tia.colorClock.SetResetPoint(56) // "010100"
+	tia.Clk.Reset()
+	tia.hsync.SetLimit(56)
 
-	tia.Hmove = newHmove(tia.colorClock)
-	if tia.Hmove == nil {
-		return nil
-	}
-
-	tia.rsync = newRsync(tia.colorClock)
-	if tia.rsync == nil {
-		return nil
-	}
-
-	tia.hblank = true
-
-	tia.Video = video.NewVideo(tia.colorClock, mem, &tia.OnFutureColorClock, &tia.OnFutureMotionClock)
+	tia.Video = video.NewVideo(&tia.Clk, &tia.hsync, mem, &tia.OnFutureColorClock, &tia.OnFutureMotionClock)
 	if tia.Video == nil {
 		return nil
 	}
@@ -107,7 +97,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 		return nil
 	}
 
-	return tia
+	return &tia
 }
 
 // ReadTIAMemory checks for side effects in the TIA sub-system
@@ -121,7 +111,7 @@ func (tia *TIA) ReadTIAMemory() {
 
 	switch register {
 	case "VSYNC":
-		tia.vsync = value&0x02 == 0x02
+		tia.sig.VSync = value&0x02 == 0x02
 
 		// TODO: do something with controller settings below
 		_ = value&0x40 == 0x40
@@ -130,7 +120,7 @@ func (tia *TIA) ReadTIAMemory() {
 
 	case "VBLANK":
 		tia.OnFutureColorClock.Schedule(delay.TriggerVBLANK, func() {
-			tia.vblank = (value&0x02 == 0x02)
+			tia.sig.VBlank = (value&0x02 == 0x02)
 		}, "setting VBLANK")
 		return
 
@@ -138,18 +128,12 @@ func (tia *TIA) ReadTIAMemory() {
 		tia.wsync = true
 		return
 	case "RSYNC":
-		tia.rsync.set()
+		// TODO: rsync
 		return
 	case "HMOVE":
-		if tia.colorClock.Count < 15 || tia.colorClock.Count >= 54 {
-			// this is the regular HMOVE branch
-			tia.Video.PrepareSpritesForHMOVE()
-			tia.Hmove.setLatch()
-		} else if tia.colorClock.Count > 39 {
-			// if HMOVE is called after colorclock 39 then we "force" the HMOVE
-			// instead of simply setting the HMOVE latch
-			tia.Video.ForceHMOVE(-39 + tia.colorClock.Count)
-		}
+		tia.Video.PrepareSpritesForHMOVE()
+		tia.hmove = true
+		tia.hmoveCt = 15
 		return
 	}
 
@@ -168,127 +152,87 @@ func (tia *TIA) ReadTIAMemory() {
 // returns the state of the CPU (conceptually, we're attaching the result of
 // this function to pin 3 of the 6507)
 func (tia *TIA) StepVideoCycle() (bool, error) {
+	// set up tv signal for this tick
+	tia.sig.FrontPorch = false
+	tia.sig.CBurst = false
+
+	// update "two-phase clock generator"
+	tia.Clk.Tick()
+
+	// update debugging information
 	tia.videoCycles++
-	if tia.videoCycles%3 == 0 {
-		tia.cpuCycles++
-	}
+	tia.cpuCycles = float64(tia.videoCycles) / 3.0
 
-	frontPorch := false
-	cburst := false
+	// when phase clock reaches the correct state, tick hsync counter
+	if tia.Clk.IsLatched() {
+		tia.hsync.Tick()
 
-	// color clock
-	if tia.colorClock.MatchEnd(4) {
-		tia.hsync = true
-	} else if tia.colorClock.MatchEnd(8) {
-		tia.hsync = false
-	} else if tia.colorClock.MatchEnd(12) {
-		cburst = true
-	} else if tia.colorClock.MatchEnd(16) {
-		if !tia.Hmove.isLatched() {
-			// HBLANK off (early)
-			tia.hblank = false
-		} else {
-			// short circuit HMOVE activity but don't unlatch it
-			tia.Hmove.count = -1
-		}
-	} else if tia.colorClock.MatchEnd(18) && tia.Hmove.isLatched() {
-		// HBLANK off (late)
-		tia.hblank = false
-	} else if tia.colorClock.MatchEnd(54) {
-		tia.Hmove.unsetLatch()
-	} else {
-		// motion clock is turned on/off depending on whether hmove is
-		// currently active. if HMOVE is not set then motion clock is set
-		// "early"; if HMOVE is set then motion clock is set "late".
-		//
-		// the original assumption was that motion clock would always be set
-		// "early"
-		//
-		// this surely affects many ROMs but I first noticed the disparity when
-		// viewing the Pole Position ROM
-		if tia.Hmove.isLatched() {
-			// set motion clock "late"
-			if tia.colorClock.MatchEnd(17) {
-				tia.motionClock = true
-			} else if tia.colorClock.MatchEnd(1) {
-				tia.motionClock = false
+		switch tia.hsync.Count {
+		case 0:
+			tia.sig.FrontPorch = true
+			tia.wsync = false
+			tia.videoCycles = 0
+			tia.cpuCycles = 0
+		case 4:
+			tia.sig.HSync = true
+		case 8:
+			tia.sig.HSync = false
+		case 13:
+			tia.sig.CBurst = true
+		case 16:
+			// early HBLANK reset
+			if tia.hmove == false {
+				tia.hblank = false
 			}
-		} else {
-			// set motion clock "early"
-			if tia.colorClock.MatchEnd(15) {
-				tia.motionClock = true
-			} else if tia.colorClock.MatchEnd(56) {
-				tia.motionClock = false
+		case 18:
+			// late HBLANK reset
+			if tia.hmove == true {
+				tia.hblank = false
 			}
+		case 56:
+			tia.hblank = true
 		}
 	}
-
-	// set up new scanline if colorClock has ticked its way to the reset point or if
-	// an rsync has matured (see rsync.go commentary)
-	if tia.rsync.tick() || tia.colorClock.Tick() {
-		frontPorch = true
-		tia.wsync = false
-		tia.hblank = true
-		tia.videoCycles = 0
-		tia.cpuCycles = 0
-		tia.colorClock.Reset()
-	}
-
-	// tick all sprites according to hblank
-	if !tia.hblank {
-		tia.Video.TickSprites()
-	}
-
-	// tick playfield
-	tia.Video.TickPlayfield()
 
 	// tick futures -- important that this happens after TickSprites() because
 	// we want position resets in particular, have been tuned to happen after
 	// sprite ticking and playfield drawing
 	tia.OnFutureColorClock.Tick()
-	if tia.motionClock {
-		tia.OnFutureMotionClock.Tick()
-	}
+	tia.OnFutureMotionClock.Tick()
+
+	// if !tia.hblank {
+	// 	tia.Video.TickSprites()
+	// }
+	tia.Video.TickPlayfield()
 
 	// HMOVE clock stuffing
-	if ct, ok := tia.Hmove.tick(); ok {
-		tia.Video.ResolveHorizMovement(ct)
-	}
+	// if ct, ok := tia.Hmove.tick(); ok {
+	// 	tia.Video.ResolveHorizMovement(ct)
+	// }
 
-	// decide on pixel color. we always want to do this even if HBLANK is
-	// active. this is because we also set the collision registers in this
-	// function and they need to be set even if there is nothing visual
-	// being sent to the TV
-	//
-	// * Fatal Run uses collision detection on otherwise unseen pixels to turn
-	// off the ball sprite being used to draw the edge of the road
+	// resolve video pixels
 	pixelColor, debugColor := tia.Video.Resolve()
 
-	var pixel television.ColorSignal
-
+	// color signal is video black in case of hblank being on
 	if tia.hblank {
-		pixel = television.VideoBlack
+		tia.sig.Pixel = television.VideoBlack
 	} else {
-		pixel = television.ColorSignal(pixelColor)
+		tia.sig.Pixel = television.ColorSignal(pixelColor)
 	}
 
-	// at the end of the video cycle we want to finally signal the televison
-	err := tia.tv.Signal(television.SignalAttributes{
-		VSync:      tia.vsync,
-		VBlank:     tia.vblank,
-		FrontPorch: frontPorch,
-		HSync:      tia.hsync,
-		CBurst:     cburst,
-		Pixel:      pixel,
-		AltPixel:   television.ColorSignal(debugColor)})
+	// we always send the debug color regardless of hblank
+	tia.sig.AltPixel = television.ColorSignal(debugColor)
+
+	// signal the television at the end of the video cycle
+	err := tia.tv.Signal(tia.sig)
 
 	if err != nil {
 		switch err := err.(type) {
 		case errors.FormattedError:
-			// filter out-of-spec errors for now. this should be optional -
-			if err.Errno != errors.OutOfSpec {
-				return !tia.wsync, err
-			}
+			// filter out-of-spec errors for now. this should be optional
+			//if err.Errno != errors.OutOfSpec {
+			return !tia.wsync, err
+			//}
 		default:
 			return !tia.wsync, err
 		}

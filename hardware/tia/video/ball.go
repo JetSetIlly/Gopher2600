@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
@@ -17,22 +17,11 @@ type ballSprite struct {
 	verticalDelay bool
 	enable        bool
 	enablePrev    bool
-
-	// pixelDelayAfterReset is an horrendous hack intended to emulate the
-	// effect caused by resetting the ball sprite on the exact pixel a graphics
-	// scan starts.  I've tried all manner of other solutions but none seem to
-	// work while keeping all other desirable emulation traits intact.
-	//
-	// if the reset is /scheduled/ on the exact pixel that the ball is sprite
-	// is to be drawn then there is a short delay. the ball continues to tick
-	// in the normal way but if this delay is still active then the pixel is
-	// not drawn.
-	pixelDelayAfterReset int
 }
 
-func newBallSprite(label string, colorClock *polycounter.Polycounter) *ballSprite {
+func newBallSprite(label string, clk *tiaclock.TIAClock) *ballSprite {
 	bs := new(ballSprite)
-	bs.sprite = newSprite(label, colorClock, bs.tick)
+	bs.sprite = newSprite(label, clk, bs.tick)
 	return bs
 }
 
@@ -80,10 +69,6 @@ func (bs *ballSprite) tick() {
 	} else {
 		bs.tickGraphicsScan()
 	}
-
-	if bs.pixelDelayAfterReset > 0 {
-		bs.pixelDelayAfterReset--
-	}
 }
 
 // pixel returns the color of the ball at the current time.  returns
@@ -92,24 +77,21 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// ball should be pixelled if:
 	//  o ball is enabled and vertical delay is not enabled
 	//  o OR ball was previously enabled and vertical delay is enabled
-	//  o AND a reset signal (RESBL) has not recently been triggered
 	if (!bs.verticalDelay && bs.enable) || (bs.verticalDelay && bs.enablePrev) {
-		if bs.resetFuture == nil || (bs.resetFuture != nil && bs.pixelDelayAfterReset > 0) {
-			switch bs.graphicsScanCounter {
-			case 0:
+		switch bs.graphicsScanCounter {
+		case 0:
+			return true, bs.color
+		case 1:
+			if bs.size >= 0x1 {
 				return true, bs.color
-			case 1:
-				if bs.size >= 0x1 {
-					return true, bs.color
-				}
-			case 2, 3:
-				if bs.size >= 0x2 {
-					return true, bs.color
-				}
-			case 4, 5, 6, 7:
-				if bs.size == 0x3 {
-					return true, bs.color
-				}
+			}
+		case 2, 3:
+			if bs.size >= 0x2 {
+				return true, bs.color
+			}
+		case 4, 5, 6, 7:
+			if bs.size == 0x3 {
+				return true, bs.color
 			}
 		}
 	}
@@ -118,12 +100,6 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 }
 
 func (bs *ballSprite) scheduleReset(onFuture *future.Group) {
-	if bs.position.CycleOnNextTick() {
-		bs.pixelDelayAfterReset = 3
-	} else {
-		bs.pixelDelayAfterReset = 0
-	}
-
 	bs.resetFuture = onFuture.Schedule(delay.ResetBall, func() {
 		bs.resetFuture = nil
 		bs.resetPosition()

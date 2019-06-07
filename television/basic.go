@@ -152,20 +152,20 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 // Signal is principle method of communication between the VCS and televsion
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	if sig.HSync && !btv.prevSignal.HSync {
-		if btv.horizPos < -52 || btv.horizPos > -49 {
+		if btv.horizPos != -53 {
 			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (on at %d)", btv.horizPos))
 		}
 	} else if !sig.HSync && btv.prevSignal.HSync {
-		if btv.horizPos < -36 || btv.horizPos > -33 {
+		if btv.horizPos != -37 {
 			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (off at %d)", btv.horizPos))
 		}
 	}
 	if sig.CBurst && !btv.prevSignal.CBurst {
-		if btv.horizPos < -28 || btv.horizPos > -17 {
+		if btv.horizPos != -17 {
 			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (on at %d)", btv.horizPos))
 		}
 	} else if !sig.CBurst && btv.prevSignal.CBurst {
-		if btv.horizPos < -19 || btv.horizPos > -16 {
+		if btv.horizPos != -16 {
 			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (off at %d)", btv.horizPos))
 		}
 	}

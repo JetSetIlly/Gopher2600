@@ -98,7 +98,7 @@ var commandTemplate = []string{
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA + " (FUTURES|HMOVE)",
+	cmdTIA + " (FUTURES|CLOCK)",
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%S] {%S}",
@@ -799,8 +799,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			case "FUTURES":
 				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureColorClock)
 				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureMotionClock)
-			case "HMOVE":
-				dbg.printMachineInfo(dbg.vcs.TIA.Hmove)
+			case "CLOCK":
+				dbg.printMachineInfo(dbg.vcs.TIA.Clk)
 			default:
 				// already caught by command line ValidateTokens()
 			}
