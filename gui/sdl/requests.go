@@ -64,14 +64,14 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		gtv.update()
 
 	case gui.ReqIncScale:
-		if gtv.scr.pixelScale < 4.0 {
-			gtv.scr.setScaling(gtv.scr.pixelScale + 0.1)
+		if gtv.scr.pixelScaleY < 4.0 {
+			gtv.scr.setScaling(gtv.scr.pixelScaleY + 0.1)
 			gtv.update()
 		}
 
 	case gui.ReqDecScale:
-		if gtv.scr.pixelScale > 0.5 {
-			gtv.scr.setScaling(gtv.scr.pixelScale - 0.1)
+		if gtv.scr.pixelScaleY > 0.5 {
+			gtv.scr.setScaling(gtv.scr.pixelScaleY - 0.1)
 			gtv.update()
 		}
 

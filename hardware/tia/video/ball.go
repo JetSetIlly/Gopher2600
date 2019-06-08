@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/tiaclock"
+	"gopher2600/hardware/tia/phaseclock"
 	"strings"
 )
 
@@ -19,46 +19,22 @@ type ballSprite struct {
 	enablePrev    bool
 }
 
-func newBallSprite(label string, clk *tiaclock.TIAClock) *ballSprite {
+func newBallSprite(label string, tiaclk *phaseclock.PhaseClock) *ballSprite {
 	bs := new(ballSprite)
-	bs.sprite = newSprite(label, clk, bs.tick)
+	bs.sprite = newSprite(label, tiaclk, bs.tick)
 	return bs
 }
 
 // MachineInfo returns the ball sprite information in terse format
 func (bs ballSprite) MachineInfoTerse() string {
-	msg := ""
-	if bs.enable {
-		msg = "[+]"
-	} else {
-		msg = "[-]"
-	}
-	return fmt.Sprintf("%s %s", msg, bs.sprite.MachineInfoTerse())
+	s := strings.Builder{}
+	return s.String()
 }
 
 // MachineInfo returns the ball sprite information in verbose format
 func (bs ballSprite) MachineInfo() string {
 	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("   color: %d\n", bs.color))
-	s.WriteString(fmt.Sprintf("   size: %d\n", bs.size))
-	if bs.verticalDelay {
-		s.WriteString("   vert delay: yes\n")
-		if bs.enablePrev {
-			s.WriteString("   enabled: yes")
-		} else {
-			s.WriteString("   enabled: no")
-		}
-	} else {
-		s.WriteString("   vert delay: no\n")
-		if bs.enable {
-			s.WriteString("   enabled: yes")
-		} else {
-			s.WriteString("   enabled: no")
-		}
-	}
-
-	return fmt.Sprintf("%s%s", bs.sprite.MachineInfo(), s.String())
+	return s.String()
 }
 
 // tick moves the counters along for the ball sprite
@@ -99,7 +75,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	return false, bs.color
 }
 
-func (bs *ballSprite) scheduleReset(onFuture *future.Group) {
+func (bs *ballSprite) scheduleReset(onFuture future.Scheduler) {
 	bs.resetFuture = onFuture.Schedule(delay.ResetBall, func() {
 		bs.resetFuture = nil
 		bs.resetPosition()
@@ -107,7 +83,7 @@ func (bs *ballSprite) scheduleReset(onFuture *future.Group) {
 	}, fmt.Sprintf("%s resetting", bs.label))
 }
 
-func (bs *ballSprite) scheduleEnable(enable bool, onFuture *future.Group) {
+func (bs *ballSprite) scheduleEnable(enable bool, onFuture future.Scheduler) {
 	label := "enabling"
 	if !enable {
 		label = "disabling"
@@ -118,7 +94,7 @@ func (bs *ballSprite) scheduleEnable(enable bool, onFuture *future.Group) {
 	}, fmt.Sprintf("%s %s", bs.label, label))
 }
 
-func (bs *ballSprite) scheduleVerticalDelay(vdelay bool, onFuture *future.Group) {
+func (bs *ballSprite) scheduleVerticalDelay(vdelay bool, onFuture future.Scheduler) {
 	label := "enabling vertical delay"
 	if !vdelay {
 		label = "disabling vertical delay"

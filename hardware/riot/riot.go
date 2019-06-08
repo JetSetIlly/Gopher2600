@@ -34,8 +34,8 @@ func (riot RIOT) String() string {
 	return riot.MachineInfo()
 }
 
-// ReadRIOTMemory checks for side effects to the RIOT sub-system
-func (riot *RIOT) ReadRIOTMemory() {
+// ReadMemory checks for side effects to the RIOT sub-system
+func (riot *RIOT) ReadMemory() {
 	service, register, value := riot.mem.ChipRead()
 	if !service {
 		return

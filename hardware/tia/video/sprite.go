@@ -1,10 +1,9 @@
 package video
 
 import (
-	"fmt"
 	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
@@ -16,7 +15,7 @@ type sprite struct {
 	// missile 1)
 	label string
 
-	clk *tiaclock.TIAClock
+	tiaclk *phaseclock.PhaseClock
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
@@ -49,11 +48,11 @@ type sprite struct {
 	spriteTick func()
 
 	// a note on whether the sprite is about to be reset its position
-	resetFuture *future.Instance
+	resetFuture *future.Event
 }
 
-func newSprite(label string, clk *tiaclock.TIAClock, spriteTick func()) *sprite {
-	sp := sprite{label: label, clk: clk, spriteTick: spriteTick}
+func newSprite(label string, tiaclk *phaseclock.PhaseClock, spriteTick func()) *sprite {
+	sp := sprite{label: label, tiaclk: tiaclk, spriteTick: spriteTick}
 
 	sp.position.SetLimit(39)
 
@@ -68,73 +67,12 @@ func newSprite(label string, clk *tiaclock.TIAClock, spriteTick func()) *sprite 
 // MachineInfoTerse returns the sprite information in terse format
 func (sp sprite) MachineInfoTerse() string {
 	s := strings.Builder{}
-	s.WriteString(sp.label)
-	s.WriteString(": ")
-	s.WriteString(sp.position.String())
-	s.WriteString(fmt.Sprintf(" pos=%d", sp.currentPixel))
-	if sp.isDrawing() {
-		s.WriteString(fmt.Sprintf(" drw=%d", sp.graphicsScanMax-sp.graphicsScanCounter))
-	} else {
-		s.WriteString(" drw=-")
-	}
-	if sp.resetFuture == nil {
-		s.WriteString(" res=-")
-	} else {
-		s.WriteString(fmt.Sprintf(" res=%d", sp.resetFuture.RemainingCycles))
-	}
-
 	return s.String()
 }
 
 // MachineInfo returns the Video information in verbose format
 func (sp sprite) MachineInfo() string {
 	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("%s:\n", sp.label))
-	s.WriteString(fmt.Sprintf("   polycounter: %s\n", sp.position))
-	if sp.isDrawing() {
-		s.WriteString(fmt.Sprintf("   drawing: %d\n", sp.graphicsScanMax-sp.graphicsScanCounter))
-	} else {
-		s.WriteString("   drawing: inactive\n")
-	}
-	if sp.resetFuture == nil {
-		s.WriteString("   reset: none scheduled\n")
-	} else {
-		s.WriteString(fmt.Sprintf("   reset: %d cycles\n", sp.resetFuture.RemainingCycles))
-	}
-
-	// information about horizontal movement.
-	// - horizMovement value normalised and inverted so that positive numbers
-	// indicate movement to the right and negative numbers indicate movement to
-	// the left
-	// - value in square brackets is the value that was originally poked into
-	// the move register
-	// - the 4 bit binary number at the end is the representation of what the HMOVE
-	// circuitry interacts with, bit-by-bit - see resolveHorizMovement()
-	s.WriteString(fmt.Sprintf("   hmove: %d [%#02x] %04b\n", -sp.horizMovement+8, (sp.horizMovement<<4)^0x80, sp.horizMovement))
-
-	s.WriteString(fmt.Sprintf("   reset pixel: %d\n", sp.resetPixel))
-	s.WriteString(fmt.Sprintf("   current pixel: %d", sp.currentPixel))
-	if sp.moreMovementRequired {
-		s.WriteString(" *\n")
-	} else {
-		s.WriteString("\n")
-	}
-
-	return s.String()
-}
-
-// EmulatorInfo returns low state information about the type
-func (sp sprite) EmulatorInfo() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%04b ", sp.horizMovement))
-	if sp.moreMovementRequired {
-		s.WriteString("*")
-	} else {
-		s.WriteString(" ")
-	}
-	s.WriteString(" ")
-	s.WriteString(sp.label)
 	return s.String()
 }
 
@@ -142,12 +80,12 @@ func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
 	// note reset position of sprite, in pixels
-	sp.resetPixel = -68 + int((sp.position.Count * 4)) + int(*sp.clk)
+	sp.resetPixel = -68 + int((sp.position.Count * 4)) + int(*sp.tiaclk)
 	sp.currentPixel = sp.resetPixel
 }
 
 func (sp *sprite) checkForGfxStart(triggerList []int) (bool, bool) {
-	if sp.clk.IsLatched() {
+	if sp.tiaclk.InPhase() {
 		if sp.position.Tick() {
 			return true, false
 		}

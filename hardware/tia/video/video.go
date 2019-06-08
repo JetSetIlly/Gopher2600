@@ -4,15 +4,12 @@ import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/tiaclock"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
-	clk   *tiaclock.TIAClock
-	hsync *polycounter.Polycounter
-
 	// collision matrix
 	collisions *collisions
 
@@ -26,8 +23,7 @@ type Video struct {
 	Missile1 *missileSprite
 	Ball     *ballSprite
 
-	onFutureColorClock  *future.Group
-	onFutureMotionClock *future.Group
+	tiaDelay future.Scheduler
 }
 
 // colors to use for debugging - these are the same colours used by the Stella
@@ -43,33 +39,48 @@ const (
 )
 
 // NewVideo is the preferred method of initialisation for the Video structure
-func NewVideo(clk *tiaclock.TIAClock, hsync *polycounter.Polycounter, mem memory.ChipBus, onFutureColorClock, onFutureMotionClock *future.Group) *Video {
-	vd := &Video{clk: clk, hsync: hsync, onFutureColorClock: onFutureColorClock, onFutureMotionClock: onFutureMotionClock}
+//
+// the playfield and sprite objects have access to both tiaClk and hsync.
+// in the case of the playfield, they are used to decide which part of the
+// playfield is to be drawn. in the case of the the sprite objects, they
+// are used only for information purposes - namely the reset and current
+// pisel locatoin of the sprites in relation to the hsync counter (or
+// screen)
+//
+// the tiaDelay scheduler is used to queue up sprite reset events and a few
+// other events (TODO: figuring out what is delayed and how is not yet
+// completed)
+func NewVideo(tiaClk *phaseclock.PhaseClock,
+	hsync *polycounter.Polycounter,
+	tiaDelay future.Scheduler,
+	mem memory.ChipBus) *Video {
+
+	vd := &Video{tiaDelay: tiaDelay}
 
 	// collision matrix
 	vd.collisions = newCollision(mem)
 
 	// playfield
-	vd.Playfield = newPlayfield(vd.clk, vd.hsync)
+	vd.Playfield = newPlayfield(tiaClk, hsync, tiaDelay)
 
 	// sprite objects
-	vd.Player0 = newPlayerSprite("player0", vd.clk)
+	vd.Player0 = newPlayerSprite("player0", tiaClk, hsync, tiaDelay)
 	if vd.Player0 == nil {
 		return nil
 	}
-	vd.Player1 = newPlayerSprite("player1", vd.clk)
+	vd.Player1 = newPlayerSprite("player1", tiaClk, hsync, tiaDelay)
 	if vd.Player1 == nil {
 		return nil
 	}
-	vd.Missile0 = newMissileSprite("missile0", vd.clk)
+	vd.Missile0 = newMissileSprite("missile0", tiaClk)
 	if vd.Missile0 == nil {
 		return nil
 	}
-	vd.Missile1 = newMissileSprite("missile1", vd.clk)
+	vd.Missile1 = newMissileSprite("missile1", tiaClk)
 	if vd.Missile1 == nil {
 		return nil
 	}
-	vd.Ball = newBallSprite("ball", vd.clk)
+	vd.Ball = newBallSprite("ball", tiaClk)
 	if vd.Ball == nil {
 		return nil
 	}
@@ -92,9 +103,9 @@ func (vd *Video) TickPlayfield() {
 
 // TickSprites moves all video elements forward one video cycle and is only
 // called when motion clock is active
-func (vd *Video) TickSprites() {
-	vd.Player0.tick()
-	vd.Player1.tick()
+func (vd *Video) TickSprites(visibleScreen bool, hmoveCt uint8) {
+	vd.Player0.tick(visibleScreen, hmoveCt)
+	vd.Player1.tick(visibleScreen, hmoveCt)
 	vd.Missile0.tick()
 	vd.Missile1.tick()
 	vd.Ball.tick()
@@ -109,26 +120,17 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 	vd.Ball.prepareForHMOVE()
 }
 
-// ResolveHorizMovement is only called when HMOVE is active
-func (vd *Video) ResolveHorizMovement(count int) {
-	vd.Player0.resolveHMOVE(count)
-	vd.Player1.resolveHMOVE(count)
-	vd.Missile0.resolveHMOVE(count)
-	vd.Missile1.resolveHMOVE(count)
-	vd.Ball.resolveHMOVE(count)
-}
-
 // Resolve returns the color of the pixel at the current clock and also sets the
 // collision registers. it will default to returning the background color if no
 // sprite or playfield pixel is present.
 func (vd *Video) Resolve() (uint8, uint8) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
-	blu, blc := vd.Ball.pixel()
 	p0u, p0c := vd.Player0.pixel()
 	p1u, p1c := vd.Player1.pixel()
 	m0u, m0c := vd.Missile0.pixel()
 	m1u, m1c := vd.Missile1.pixel()
+	blu, blc := vd.Ball.pixel()
 
 	// collisions
 	if m0u && p1u {
@@ -276,11 +278,11 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// colour
 	case "COLUP0":
-		vd.Player0.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
-		vd.Missile0.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
+		vd.Player0.setColor(value & 0xfe)
+		vd.Missile0.scheduleSetColor(value&0xfe, vd.tiaDelay)
 	case "COLUP1":
-		vd.Player1.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
-		vd.Missile1.scheduleSetColor(value&0xfe, vd.onFutureColorClock)
+		vd.Player1.setColor(value & 0xfe)
+		vd.Missile1.scheduleSetColor(value&0xfe, vd.tiaDelay)
 
 	// playfield / color
 	case "COLUBK":
@@ -301,59 +303,59 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value, vd.onFutureColorClock)
+		vd.Playfield.scheduleWrite(0, value, vd.tiaDelay)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value, vd.onFutureColorClock)
+		vd.Playfield.scheduleWrite(1, value, vd.tiaDelay)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value, vd.onFutureColorClock)
+		vd.Playfield.scheduleWrite(2, value, vd.tiaDelay)
 
 	// ball sprite
 	case "ENABL":
-		vd.Ball.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
+		vd.Ball.scheduleEnable(value&0x02 == 0x02, vd.tiaDelay)
 	case "RESBL":
-		vd.Ball.scheduleReset(vd.onFutureMotionClock)
+		vd.Ball.scheduleReset(vd.tiaDelay)
 	case "VDELBL":
-		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
+		vd.Ball.scheduleVerticalDelay(value&0x01 == 0x01, vd.tiaDelay)
 
 	// player sprites
 	case "GRP0":
-		vd.Player0.scheduleWrite(value, vd.onFutureColorClock)
+		vd.Player0.setGfxData(value)
 	case "GRP1":
-		vd.Player1.scheduleWrite(value, vd.onFutureColorClock)
+		vd.Player1.setGfxData(value)
 	case "RESP0":
-		vd.Player0.scheduleReset(vd.onFutureMotionClock)
+		vd.Player0.resetPosition()
 	case "RESP1":
-		vd.Player1.scheduleReset(vd.onFutureMotionClock)
+		vd.Player1.resetPosition()
 	case "VDELP0":
-		vd.Player0.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
+		vd.Player0.setVerticalDelay(value&0x01 == 0x01)
 	case "VDELP1":
-		vd.Player1.scheduleVerticalDelay(value&0x01 == 0x01, vd.onFutureMotionClock)
+		vd.Player1.setVerticalDelay(value&0x01 == 0x01)
 	case "REFP0":
-		vd.Player0.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
+		vd.Player0.setReflection(value&0x08 == 0x08)
 	case "REFP1":
-		vd.Player1.scheduleReflect(value&0x08 == 0x08, vd.onFutureColorClock)
+		vd.Player1.setReflection(value&0x08 == 0x08)
 
 	// missile sprites
 	case "ENAM0":
-		vd.Missile0.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
+		vd.Missile0.scheduleEnable(value&0x02 == 0x02, vd.tiaDelay)
 	case "ENAM1":
-		vd.Missile1.scheduleEnable(value&0x02 == 0x02, vd.onFutureColorClock)
+		vd.Missile1.scheduleEnable(value&0x02 == 0x02, vd.tiaDelay)
 	case "RESM0":
-		vd.Missile0.scheduleReset(vd.onFutureMotionClock)
+		vd.Missile0.scheduleReset(vd.tiaDelay)
 	case "RESM1":
-		vd.Missile1.scheduleReset(vd.onFutureMotionClock)
+		vd.Missile1.scheduleReset(vd.tiaDelay)
 	case "RESMP0":
-		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, vd.onFutureColorClock)
+		vd.Missile0.scheduleResetToPlayer(value&0x02 == 0x002, vd.tiaDelay)
 	case "RESMP1":
-		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, vd.onFutureColorClock)
+		vd.Missile1.scheduleResetToPlayer(value&0x02 == 0x002, vd.tiaDelay)
 
 	// player & missile sprites
 	case "NUSIZ0":
-		vd.Player0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
-		vd.Missile0.scheduleSetNUSIZ(value, vd.onFutureColorClock)
+		vd.Player0.setNUSIZ(value)
+		vd.Missile0.scheduleSetNUSIZ(value, vd.tiaDelay)
 	case "NUSIZ1":
-		vd.Player1.scheduleSetNUSIZ(value, vd.onFutureColorClock)
-		vd.Missile1.scheduleSetNUSIZ(value, vd.onFutureColorClock)
+		vd.Player1.setNUSIZ(value)
+		vd.Missile1.scheduleSetNUSIZ(value, vd.tiaDelay)
 
 	// clear collisions
 	case "CXCLR":
@@ -361,30 +363,38 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// horizontal movement
 	case "HMCLR":
-		vd.Player0.horizMovement = 0x08
-		vd.Player1.horizMovement = 0x08
+		vd.Player0.hmove = 0x08
+		vd.Player1.hmove = 0x08
 		vd.Missile0.horizMovement = 0x08
 		vd.Missile1.horizMovement = 0x08
 		vd.Ball.horizMovement = 0x08
 
 	// horizontal movement values range from -8 to +7 for convenience we
-	// convert this to the range 0 to 15
+	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
+	//
+	// "You may have noticed that the [...] discussion ignores the
+	// fact that HMxx values are specified in the range +7 to -8.
+	// In an odd twist, this was done purely for the convenience
+	// of the programmer! The comparator for D7 in each HMxx latch
+	// is wired up in reverse, costing nothing in silicon and
+	// effectively inverting this bit so that the value can be
+	// treated as a simple 0-15 count for movement left. It might
+	// be easier to think of this as having D7 inverted when it
+	// is stored in the first place."
 
 	case "HMP0":
-		// TODO: write delay?
-		vd.Player0.horizMovement = (int(value) ^ 0x80) >> 4
+		vd.Player0.setHmoveValue(value & 0xf0)
 	case "HMP1":
-		// TODO: write delay?
-		vd.Player1.horizMovement = (int(value) ^ 0x80) >> 4
+		vd.Player1.setHmoveValue(value & 0xf0)
 	case "HMM0":
 		// TODO: write delay?
-		vd.Missile0.horizMovement = (int(value) ^ 0x80) >> 4
+		vd.Missile0.horizMovement = int(value^0x80) >> 4
 	case "HMM1":
 		// TODO: write delay?
-		vd.Missile1.horizMovement = (int(value) ^ 0x80) >> 4
+		vd.Missile1.horizMovement = int(value^0x80) >> 4
 	case "HMBL":
 		// TODO: write delay?
-		vd.Ball.horizMovement = (int(value) ^ 0x80) >> 4
+		vd.Ball.horizMovement = int(value^0x80) >> 4
 	}
 
 	return true

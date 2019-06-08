@@ -9,7 +9,7 @@ const (
 	ScriptEnd
 	PowerOff
 	PeriphUnplugged
-	OutOfSpec
+	TVOutOfSpec
 
 	// program modes
 	PlayError

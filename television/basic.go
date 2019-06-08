@@ -76,7 +76,7 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 	}
 
 	// initialise TVState
-	btv.horizPos = -btv.spec.ClocksPerHblank
+	btv.horizPos = -btv.spec.ClocksPerHblankPre
 	btv.frameNum = 0
 	btv.scanline = 0
 
@@ -100,7 +100,7 @@ func (btv BasicTelevision) MachineInfo() string {
 	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
 	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
 	s.WriteString(fmt.Sprintf("   Scanline: %d\n", btv.scanline))
-	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", btv.horizPos, btv.horizPos+btv.spec.ClocksPerHblank))
+	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", btv.horizPos, btv.horizPos+btv.spec.ClocksPerHblankPre))
 
 	return s.String()
 }
@@ -117,7 +117,7 @@ func (btv *BasicTelevision) AddRenderer(r Renderer) {
 
 // Reset all the values for the television
 func (btv *BasicTelevision) Reset() error {
-	btv.horizPos = -btv.spec.ClocksPerHblank
+	btv.horizPos = -btv.spec.ClocksPerHblankPre
 	btv.frameNum = 0
 	btv.scanline = 0
 	btv.vsyncCount = 0
@@ -151,30 +151,13 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 
 // Signal is principle method of communication between the VCS and televsion
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
+	// start a new scanline if a HSYNC signal has been received
 	if sig.HSync && !btv.prevSignal.HSync {
-		if btv.horizPos != -53 {
-			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (on at %d)", btv.horizPos))
+		if btv.horizPos > 175 {
+			return errors.NewFormattedError(errors.TVOutOfSpec, "late HSYNC")
 		}
-	} else if !sig.HSync && btv.prevSignal.HSync {
-		if btv.horizPos != -37 {
-			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad HSYNC (off at %d)", btv.horizPos))
-		}
-	}
-	if sig.CBurst && !btv.prevSignal.CBurst {
-		if btv.horizPos != -17 {
-			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (on at %d)", btv.horizPos))
-		}
-	} else if !sig.CBurst && btv.prevSignal.CBurst {
-		if btv.horizPos != -16 {
-			return errors.NewFormattedError(errors.OutOfSpec, fmt.Sprintf("bad CBURST (off at %d)", btv.horizPos))
-		}
-	}
 
-	// start a new scanline if a frontporch signal has been received
-	if sig.FrontPorch {
-		btv.horizPos = -btv.spec.ClocksPerHblank
-
-		// the frontporch signal implies the start of a new scanline
+		btv.horizPos = -btv.spec.ClocksPerHblankPre
 		btv.scanline++
 
 		if btv.scanline > btv.spec.ScanlinesTotal {
@@ -190,10 +173,6 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		}
 	} else {
 		btv.horizPos++
-
-		if btv.horizPos > btv.spec.ClocksPerVisible {
-			return errors.NewFormattedError(errors.OutOfSpec, "no FRONTPORCH")
-		}
 	}
 
 	// simple vsync implementation
@@ -265,7 +244,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	btv.prevSignal = sig
 
 	// current coordinates
-	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
+	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblankPre)
 	y := int32(btv.scanline)
 
 	// decode color using the regular color signal

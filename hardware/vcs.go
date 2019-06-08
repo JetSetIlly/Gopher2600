@@ -162,26 +162,26 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		// TODO: is this something that can drift, thereby causing subtly different
 		// results / graphical effects? is this what RSYNC is for?
 
-		vcs.RIOT.ReadRIOTMemory()
+		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
 		// read tia memory just once and before we cycle the tia
-		vcs.TIA.ReadTIAMemory()
+		vcs.TIA.ReadMemory()
 
 		// three color clocks per CPU cycle so we run video cycle three times
-		_, err = vcs.TIA.StepVideoCycle()
+		_, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
 		videoCycleCallback(r)
 
-		_, err = vcs.TIA.StepVideoCycle()
+		_, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
 		videoCycleCallback(r)
 
-		vcs.MC.RdyFlg, err = vcs.TIA.StepVideoCycle()
+		vcs.MC.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
@@ -216,12 +216,12 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		vcs.RIOT.ReadRIOTMemory()
+		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
-		vcs.TIA.ReadTIAMemory()
-		vcs.TIA.StepVideoCycle()
-		vcs.TIA.StepVideoCycle()
-		vcs.MC.RdyFlg, err = vcs.TIA.StepVideoCycle()
+		vcs.TIA.ReadMemory()
+		vcs.TIA.Step()
+		vcs.TIA.Step()
+		vcs.MC.RdyFlg, err = vcs.TIA.Step()
 		return err
 	}
 

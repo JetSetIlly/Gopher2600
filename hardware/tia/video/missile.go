@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/tiaclock"
+	"gopher2600/hardware/tia/phaseclock"
 	"strings"
 )
 
@@ -35,56 +35,22 @@ type missileSprite struct {
 	parentPlayer *playerSprite
 }
 
-func newMissileSprite(label string, clk *tiaclock.TIAClock) *missileSprite {
+func newMissileSprite(label string, tiaclk *phaseclock.PhaseClock) *missileSprite {
 	ms := new(missileSprite)
-	ms.sprite = newSprite(label, clk, ms.tick)
+	ms.sprite = newSprite(label, tiaclk, ms.tick)
 	return ms
 }
 
 // MachineInfo returns the missile sprite information in terse format
 func (ms missileSprite) MachineInfoTerse() string {
-	msg := ""
-	if ms.enable {
-		msg = "[+]"
-	} else {
-		msg = "[-]"
-	}
-	return fmt.Sprintf("%s %s", msg, ms.sprite.MachineInfoTerse())
+	s := strings.Builder{}
+	return s.String()
 }
 
 // MachineInfo returns the missile sprite information in verbose format
 func (ms missileSprite) MachineInfo() string {
 	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("   color: %d\n", ms.color))
-	s.WriteString(fmt.Sprintf("   size: %03b [", ms.size))
-	switch ms.size {
-	case 0:
-		s.WriteString("normal")
-	case 1:
-		s.WriteString("double")
-	case 2:
-		s.WriteString("quadruple")
-	case 3:
-		s.WriteString("double-quad")
-	}
-	s.WriteString("]\n")
-	s.WriteString("   trigger list: ")
-	if len(ms.triggerList) > 0 {
-		for i := 0; i < len(ms.triggerList); i++ {
-			s.WriteString(fmt.Sprintf("%d ", (ms.triggerList[i]*tiaclock.NumStates)+ms.currentPixel))
-		}
-		s.WriteString(fmt.Sprintf(" %v\n", ms.triggerList))
-	} else {
-		s.WriteString("none\n")
-	}
-	if ms.enable {
-		s.WriteString("   enabled: yes")
-	} else {
-		s.WriteString("   enabled: no")
-	}
-
-	return fmt.Sprintf("%s%s", ms.sprite.MachineInfo(), s.String())
+	return s.String()
 }
 
 // tick moves the counters along for the missile sprite
@@ -127,7 +93,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	return false, ms.color
 }
 
-func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
+func (ms *missileSprite) scheduleReset(onFutureWrite future.Scheduler) {
 	ms.resetFuture = onFutureWrite.Schedule(delay.ResetMissile, func() {
 		ms.resetFuture = nil
 		ms.resetPosition()
@@ -138,7 +104,7 @@ func (ms *missileSprite) scheduleReset(onFutureWrite *future.Group) {
 	}, fmt.Sprintf("%s resetting", ms.label))
 }
 
-func (ms *missileSprite) scheduleEnable(enable bool, onFutureWrite *future.Group) {
+func (ms *missileSprite) scheduleEnable(enable bool, onFutureWrite future.Scheduler) {
 	label := "enabling missile"
 	if !enable {
 		label = "disabling missile"
@@ -148,19 +114,19 @@ func (ms *missileSprite) scheduleEnable(enable bool, onFutureWrite *future.Group
 	}, fmt.Sprintf("%s %s", ms.label, label))
 }
 
-func (ms *missileSprite) scheduleResetToPlayer(reset bool, onFutureWrite *future.Group) {
+func (ms *missileSprite) scheduleResetToPlayer(reset bool, onFutureWrite future.Scheduler) {
 	onFutureWrite.Schedule(delay.ResetMissileToPlayerPos, func() {
 		ms.resetToPlayerPos = reset
 	}, fmt.Sprintf("%s resetting to player pos", ms.label))
 }
 
-func (ms *missileSprite) scheduleSetColor(value uint8, onFutureWrite *future.Group) {
+func (ms *missileSprite) scheduleSetColor(value uint8, onFutureWrite future.Scheduler) {
 	onFutureWrite.Schedule(delay.WritePlayer, func() {
 		ms.color = value
 	}, fmt.Sprintf("%s color", ms.label))
 }
 
-func (ms *missileSprite) scheduleSetNUSIZ(value uint8, onFutureWrite *future.Group) {
+func (ms *missileSprite) scheduleSetNUSIZ(value uint8, onFutureWrite future.Scheduler) {
 	onFutureWrite.Schedule(delay.SetNUSIZ, func() {
 		ms.size = (value & 0x30) >> 4
 		ms.triggerList = createTriggerList(value & 0x07)

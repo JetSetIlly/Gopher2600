@@ -11,6 +11,11 @@ import (
 // 4 == red + green + blue + alpha
 const scrDepth int32 = 4
 
+// stella seems to have uneven scaling across the vertical and horizontal axis.
+// the following bias value is applied to the scale value passed to
+// setScaling() in order to replicate the stella image. useful for A/B testing
+const scaleBias float32 = 0.91
+
 type screen struct {
 	gtv *GUI
 
@@ -50,7 +55,8 @@ type screen struct {
 	pixelWidth int
 
 	// by how much each pixel should be scaled
-	pixelScale float32
+	pixelScaleY float32
+	pixelScaleX float32
 
 	// play variables differ depending on the ROM
 	playWidth   int32
@@ -70,7 +76,7 @@ type screen struct {
 
 	// overlay for screen showing metasignal information
 	// -- always allocated but only used when tv.allowDebugging and
-	// showMetaPixels is true
+	// showMetaPixels are true
 	metaPixels     *metaVideoOverlay
 	showMetaPixels bool
 }
@@ -166,7 +172,7 @@ func (scr *screen) changeTVSpec() error {
 func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblankPre), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -182,10 +188,11 @@ func (scr *screen) adjustPlayArea(adjust int32) {
 func (scr *screen) setScaling(scale float32) error {
 	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
 	// the screen
-	scr.pixelScale = scale
+	scr.pixelScaleY = scale
+	scr.pixelScaleX = scale * scaleBias
 
 	// make sure everything drawn through the renderer is correctly scaled
-	err := scr.renderer.SetScale(float32(scr.pixelWidth)*scr.pixelScale, scr.pixelScale)
+	err := scr.renderer.SetScale(float32(scr.pixelWidth)*scr.pixelScaleX, scr.pixelScaleY)
 	if err != nil {
 		return err
 	}
@@ -204,13 +211,13 @@ func (scr *screen) setMasking(unmasked bool) error {
 	scr.unmasked = unmasked
 
 	if scr.unmasked {
-		w = int32(float32(scr.maxWidth) * scr.pixelScale * float32(scr.pixelWidth))
-		h = int32(float32(scr.maxHeight) * scr.pixelScale)
+		w = int32(float32(scr.maxWidth) * scr.pixelScaleX * float32(scr.pixelWidth))
+		h = int32(float32(scr.maxHeight) * scr.pixelScaleY)
 		scr.destRect = scr.maxMask
 		scr.srcRect = scr.maxMask
 	} else {
-		w = int32(float32(scr.playWidth) * scr.pixelScale * float32(scr.pixelWidth))
-		h = int32(float32(scr.playHeight) * scr.pixelScale)
+		w = int32(float32(scr.playWidth) * scr.pixelScaleX * float32(scr.pixelWidth))
+		h = int32(float32(scr.playHeight) * scr.pixelScaleY)
 		scr.destRect = scr.playDstMask
 		scr.srcRect = scr.playSrcMask
 	}
@@ -312,7 +319,13 @@ func (scr *screen) update(paused bool) error {
 	if scr.unmasked {
 		scr.renderer.SetDrawColor(100, 100, 100, 20)
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.gtv.GetSpec().ClocksPerHblank), H: int32(scr.gtv.GetSpec().ScanlinesTotal)})
+		spec := scr.gtv.GetSpec()
+		cphpre := int32(spec.ClocksPerHblankPre)
+		cphpost := int32(spec.ClocksPerHblankPost)
+		cps := int32(spec.ClocksPerScanline)
+		st := int32(spec.ScanlinesTotal)
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: cphpre, H: st})
+		scr.renderer.FillRect(&sdl.Rect{X: cps - cphpost, Y: 0, W: cphpost, H: st})
 	}
 
 	// show metasignal overlay
@@ -337,7 +350,7 @@ func (scr *screen) update(paused bool) error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblank {
+		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblankPre {
 			x = 0
 			y++
 		}

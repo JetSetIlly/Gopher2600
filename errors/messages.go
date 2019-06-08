@@ -8,7 +8,7 @@ var messages = map[Errno]string{
 	ScriptEnd:       "end of script (%s)",                    // sentinal
 	PowerOff:        "emulated machine has been powered off", // sentinal
 	PeriphUnplugged: "controller unplugged from '%s'",        // sentinal
-	OutOfSpec:       "out of spec: %s",                       // sentinal
+	TVOutOfSpec:     "tv out of spec: %s",                    // sentinal
 
 	// program modes
 	PlayError:     "error emulating vcs: %s",

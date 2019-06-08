@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/tiaclock"
 	"strings"
 )
 
 type playfield struct {
-	clk   *tiaclock.TIAClock
-	hsync *polycounter.Polycounter
+	tiaClk   *phaseclock.PhaseClock
+	hsync    *polycounter.Polycounter
+	tiaDelay future.Scheduler
 
+	// the color for the when playfield is on/off
 	foregroundColor uint8
 	backgroundColor uint8
 
@@ -49,8 +51,8 @@ type playfield struct {
 	currentPixelIsOn bool
 }
 
-func newPlayfield(clk *tiaclock.TIAClock, hsync *polycounter.Polycounter) *playfield {
-	pf := playfield{clk: clk, hsync: hsync}
+func newPlayfield(tiaClk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, tiaDelay future.Scheduler) *playfield {
+	pf := playfield{tiaClk: tiaClk, hsync: hsync, tiaDelay: tiaDelay}
 	return &pf
 }
 
@@ -138,21 +140,31 @@ func (pf playfield) MachineInfo() string {
 func (pf *playfield) tick() {
 	newPixel := false
 
-	if pf.clk.IsLatched() {
+	if pf.tiaClk.InPhase() {
+		// this switch statement is based on the "Horizontal Sync Counter"
+		// table in TIA_HW_Notes.txt. for convenience we're not using the
+		// colorclock delay but simply looking for the hsync.Count 4 cycles
+		// beyond the trigger point described in the TIA_HW_Notes.txt document.
+		// we believe this has the same effect.
 		switch pf.hsync.Count {
-		case 16:
+		case 17: // [RHB]
 			// start of visible screen (playfield not affected by HMOVE)
+			// * reset at 16 and delayed 4 clocks
 			pf.screenRegion = 1
 			pf.idx = 0
 			newPixel = true
-		case 36:
+		case 37: // [CNT]
 			// just past the centre of the visible screen
+			// * reset at 36 and delayed 4 clocks
 			pf.screenRegion = 2
 			pf.idx = 0
 			newPixel = true
-		case 56:
+		case 0:
 			// start of scanline
+			// * reset at 56 and delayed 4 clocks
 			pf.screenRegion = 0
+			pf.idx = 0
+			newPixel = true
 		default:
 			pf.idx++
 			newPixel = true
@@ -179,7 +191,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.backgroundColor
 }
 
-func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite *future.Group) {
+func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite future.Scheduler) {
 	var f func()
 	switch segment {
 	case 0:

@@ -98,7 +98,7 @@ var commandTemplate = []string{
 	cmdStepMode + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA + " (FUTURES|CLOCK)",
+	cmdTIA + " (DELAY|CLOCK)",
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%S] {%S}",
@@ -796,11 +796,15 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if present {
 			option = strings.ToUpper(option)
 			switch option {
-			case "FUTURES":
-				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureColorClock)
-				dbg.printMachineInfo(dbg.vcs.TIA.OnFutureMotionClock)
+			case "DELAY":
+				dbg.printMachineInfo(dbg.vcs.TIA.TIAdelay)
+
+				// for convience asking for TIA delays also prints delays for
+				// the sprites
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0.SprDelay)
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1.SprDelay)
 			case "CLOCK":
-				dbg.printMachineInfo(dbg.vcs.TIA.Clk)
+				dbg.print(console.Error, "not supported yet")
 			default:
 				// already caught by command line ValidateTokens()
 			}

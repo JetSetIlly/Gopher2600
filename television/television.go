@@ -17,12 +17,11 @@ const (
 
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
-	VSync      bool
-	VBlank     bool
-	FrontPorch bool
-	HSync      bool
-	CBurst     bool
-	Pixel      ColorSignal
+	VSync  bool
+	VBlank bool
+	CBurst bool
+	HSync  bool
+	Pixel  ColorSignal
 
 	// AltPixel allows the emulator to set an alternative color for each pixel
 	// - used to signal the debug color in addition to the regular color
