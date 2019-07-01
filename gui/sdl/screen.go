@@ -11,11 +11,6 @@ import (
 // 4 == red + green + blue + alpha
 const scrDepth int32 = 4
 
-// stella seems to have uneven scaling across the vertical and horizontal axis.
-// the following bias value is applied to the scale value passed to
-// setScaling() in order to replicate the stella image. useful for A/B testing
-const scaleBias float32 = 0.91
-
 type screen struct {
 	gtv *GUI
 
@@ -189,7 +184,7 @@ func (scr *screen) setScaling(scale float32) error {
 	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
 	// the screen
 	scr.pixelScaleY = scale
-	scr.pixelScaleX = scale * scaleBias
+	scr.pixelScaleX = scale * scr.gtv.GetSpec().AspectBias
 
 	// make sure everything drawn through the renderer is correctly scaled
 	err := scr.renderer.SetScale(float32(scr.pixelWidth)*scr.pixelScaleX, scr.pixelScaleY)

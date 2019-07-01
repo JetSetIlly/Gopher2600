@@ -19,6 +19,9 @@ type Specification struct {
 
 	FramesPerSecond float64
 	SecondsPerFrame float64
+
+	// AspectBias transforms the scaling factor for the X axis.
+	AspectBias float32
 }
 
 // SpecNTSC is the specification for NTSC television typee
@@ -30,8 +33,8 @@ var SpecPAL *Specification
 func init() {
 	SpecNTSC = new(Specification)
 	SpecNTSC.ID = "NTSC"
-	SpecNTSC.ClocksPerHblankPre = 52
-	SpecNTSC.ClocksPerHblankPost = 16
+	SpecNTSC.ClocksPerHblankPre = 53
+	SpecNTSC.ClocksPerHblankPost = 15
 	SpecNTSC.ClocksPerVisible = 160
 	SpecNTSC.ClocksPerScanline = 228
 	SpecNTSC.ScanlinesPerVSync = 3
@@ -45,8 +48,8 @@ func init() {
 
 	SpecPAL = new(Specification)
 	SpecPAL.ID = "PAL"
-	SpecPAL.ClocksPerHblankPre = 52
-	SpecPAL.ClocksPerHblankPost = 16
+	SpecPAL.ClocksPerHblankPre = 53
+	SpecPAL.ClocksPerHblankPost = 15
 	SpecPAL.ClocksPerVisible = 160
 	SpecPAL.ClocksPerScanline = 228
 	SpecPAL.ScanlinesPerVSync = 3
@@ -60,4 +63,10 @@ func init() {
 	// use NTSC colors for PAL specification for now
 	// TODO: implement PAL colors
 	SpecPAL.Colors = colorsNTSC
+
+	// AaspectBias transforms the scaling factor for the X axis.
+	// values taken from Stella emualtor. i've no idea from where these values
+	// were originated but they're useful for A/B testing
+	SpecNTSC.AspectBias = 0.91
+	SpecPAL.AspectBias = 1.09
 }
