@@ -61,7 +61,7 @@ func NewVideo(tiaClk *phaseclock.PhaseClock,
 	vd.collisions = newCollision(mem)
 
 	// playfield
-	vd.Playfield = newPlayfield(tiaClk, hsync, tiaDelay)
+	vd.Playfield = newPlayfield(tiaClk, hsync)
 
 	// sprite objects
 	vd.Player0 = newPlayerSprite("player0", tiaClk, hsync, tiaDelay)
@@ -94,11 +94,6 @@ func NewVideo(tiaClk *phaseclock.PhaseClock,
 	vd.Missile1.parentPlayer = vd.Player1
 
 	return vd
-}
-
-// TickPlayfield is called *every* video clock
-func (vd *Video) TickPlayfield() {
-	vd.Playfield.tick()
 }
 
 // TickSprites moves all video elements forward one video cycle and is only

@@ -23,10 +23,10 @@ type PhaseClock int
 // convenient to think of risingPhi2 as the first state, rather than
 // risingPhi1.
 const (
-	risingPhi2 PhaseClock = iota
-	fallingPhi2
-	risingPhi1
+	risingPhi1 PhaseClock = iota
 	fallingPhi1
+	risingPhi2
+	fallingPhi2
 )
 
 // NumStates is the number of phases the clock can be in
@@ -60,8 +60,12 @@ func (clk PhaseClock) MachineInfo() string {
 }
 
 // Reset puts the clock into a known initial state
-func (clk *PhaseClock) Reset() {
-	*clk = risingPhi2
+func (clk *PhaseClock) Reset(outOfPhase bool) {
+	if outOfPhase {
+		*clk = risingPhi1
+	} else {
+		*clk = risingPhi2
+	}
 }
 
 // Tick moves PhaseClock to next state

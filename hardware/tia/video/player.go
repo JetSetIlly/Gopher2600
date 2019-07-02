@@ -133,39 +133,19 @@ func (ps playerSprite) String() string {
 		s.WriteString("]")
 	}
 
+	// notes
+
 	if ps.moreHMOVE {
 		s.WriteString(" hmoving")
 	}
 
-	// the following processes the scanCounter value and presents the
-	// scancounter information for the pixel that has /just been drawn/ and not
-	// the pixel that will be drawn on the next video step
-	//
-	// displaying of the scancounter information is tricky only because of the
-	// order in which things happen in the emulation. to summarise, the TIA
-	// steps like this:
-	//
-	//  1. step TIA delayed events
-	//  2. signal TV with color information
-	//  3. step TIA clocks including sprite clocks
-	//
-	// if the debugger is halted at this point then the scanCounter has been
-	// ticked ready for step 2 of the next video cycle. the scanCounter
-	// information therefore does not relate to the pixel that has just been
-	// drawn - which would be horribly misleading
-	//
-	// an alternative solution would be to tick the scanCounter in the pixel()
-	// function but due to HMOVE mechanics, we need to perform the tick whether
-	// a pixel is drawn or not
-	sc := ps.scanCounter + 1
-	scActive := sc < 8 && sc >= 0
+	if ps.scanCounter.active() {
+		// add a comma if we've already noted something else
+		if ps.moreHMOVE {
+			s.WriteString(",")
+		}
 
-	if ps.moreHMOVE && scActive {
-		s.WriteString(",")
-	}
-
-	if scActive {
-		s.WriteString(fmt.Sprintf(" drw (px %d)", sc))
+		s.WriteString(fmt.Sprintf(" drw (px %d)", ps.scanCounter))
 	}
 
 	return s.String()
@@ -224,7 +204,9 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 			// startDrawingEvent is delay by 5 ticks. from TIA_HW_Notes.txt:
 			//
 			// "Each START decode is delayed by 4 CLK in decoding, plus a
-			// further 1 CLK to latch the STARTat the graphics scan counter..."
+			// further 1 CLK to latch the graphics scan counter..."
+			const startDelay = 5
+
 			startDrawingEvent := func() {
 				ps.scanCounter.start()
 				ps.startDrawingEvent = nil
@@ -235,18 +217,18 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 			switch ps.position.Count {
 			case 3:
 				if ps.size == 0x01 || ps.size == 0x03 {
-					ps.startDrawingEvent = ps.SprDelay.Schedule(5, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
+					ps.startDrawingEvent = ps.SprDelay.Schedule(startDelay, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
 				}
 			case 7:
 				if ps.size == 0x03 || ps.size == 0x02 || ps.size == 0x06 {
-					ps.startDrawingEvent = ps.SprDelay.Schedule(5, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
+					ps.startDrawingEvent = ps.SprDelay.Schedule(startDelay, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
 				}
 			case 15:
 				if ps.size == 0x04 || ps.size == 0x06 {
-					ps.startDrawingEvent = ps.SprDelay.Schedule(5, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
+					ps.startDrawingEvent = ps.SprDelay.Schedule(startDelay, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
 				}
 			case 39:
-				ps.startDrawingEvent = ps.SprDelay.Schedule(5, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
+				ps.startDrawingEvent = ps.SprDelay.Schedule(startDelay, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
 			}
 		}
 	}
@@ -277,7 +259,7 @@ func (ps *playerSprite) resetPosition() {
 	// There are 5 CLK worth of clocking/latching to take into account,
 	// so the actual position ends up 5 pixels to the right of the
 	// reset pixel (approx. 9 pixels after the start of STA RESP0)."
-	ps.tiaDelay.Schedule(5, func() {
+	ps.SprDelay.Schedule(5, func() {
 		// the pixel at which the sprite has been reset, in relation to the
 		// left edge of the screen
 		ps.resetPixel = (ps.hsync.Count * phaseclock.NumStates) + ps.tiaClk.Count()
@@ -295,9 +277,14 @@ func (ps *playerSprite) resetPosition() {
 
 		// reset both sprite position and clock
 		ps.position.Reset()
-		ps.sprClk.Reset()
-	}, fmt.Sprintf("%s resetting position", ps.label))
+		ps.sprClk.Reset(false)
 
+		// drop a running startDrawaingEvent from the delay queue
+		if ps.startDrawingEvent != nil {
+			ps.startDrawingEvent.Drop()
+			ps.startDrawingEvent = nil
+		}
+	}, fmt.Sprintf("%s resetting position", ps.label))
 }
 
 // pixel returns the color of the player at the current time.  returns
@@ -322,7 +309,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	}
 
 	// always return player color because when in "scoremode" the playfield
-	// wants to know what the color should be
+	// wants to know the color of the player
 	return false, ps.color
 }
 

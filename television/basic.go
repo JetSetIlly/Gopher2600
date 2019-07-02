@@ -100,8 +100,7 @@ func (btv BasicTelevision) MachineInfo() string {
 	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
 	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
 	s.WriteString(fmt.Sprintf("   Scanline: %d\n", btv.scanline))
-	s.WriteString(fmt.Sprintf("   Horiz Pos: %d [%d]", btv.horizPos, btv.horizPos+btv.spec.ClocksPerHblankPre))
-
+	s.WriteString(fmt.Sprintf("   Horiz Pos: %d", btv.horizPos))
 	return s.String()
 }
 
@@ -153,10 +152,6 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	// start a new scanline if a HSYNC signal has been received
 	if sig.HSync && !btv.prevSignal.HSync {
-		if btv.horizPos > 175 {
-			return errors.NewFormattedError(errors.TVOutOfSpec, "late HSYNC")
-		}
-
 		btv.horizPos = -btv.spec.ClocksPerHblankPre
 		btv.scanline++
 

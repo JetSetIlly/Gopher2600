@@ -10,9 +10,8 @@ import (
 )
 
 type playfield struct {
-	tiaClk   *phaseclock.PhaseClock
-	hsync    *polycounter.Polycounter
-	tiaDelay future.Scheduler
+	tiaClk *phaseclock.PhaseClock
+	hsync  *polycounter.Polycounter
 
 	// the color for the when playfield is on/off
 	foregroundColor uint8
@@ -46,13 +45,12 @@ type playfield struct {
 	idx int
 
 	// a playfield "pixel" is sustained for the duration 3 video cycles, even
-	// if the playfield register is changed. we therefore need to decide if the
-	// "current bit is on" at the tick() and not when pixel() is called
+	// if the playfield register is changed. see pixel() function below
 	currentPixelIsOn bool
 }
 
-func newPlayfield(tiaClk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, tiaDelay future.Scheduler) *playfield {
-	pf := playfield{tiaClk: tiaClk, hsync: hsync, tiaDelay: tiaDelay}
+func newPlayfield(tiaClk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *playfield {
+	pf := playfield{tiaClk: tiaClk, hsync: hsync}
 	return &pf
 }
 
@@ -137,7 +135,10 @@ func (pf playfield) MachineInfo() string {
 	return s.String()
 }
 
-func (pf *playfield) tick() {
+func (pf *playfield) pixel() (bool, uint8) {
+	// because playfield is closely related to the HSYNC counter there is no
+	// separate tick() function
+
 	newPixel := false
 
 	if pf.tiaClk.InPhase() {
@@ -149,19 +150,16 @@ func (pf *playfield) tick() {
 		switch pf.hsync.Count {
 		case 17: // [RHB]
 			// start of visible screen (playfield not affected by HMOVE)
-			// * reset at 16 and delayed 4 clocks
 			pf.screenRegion = 1
 			pf.idx = 0
 			newPixel = true
 		case 37: // [CNT]
 			// just past the centre of the visible screen
-			// * reset at 36 and delayed 4 clocks
 			pf.screenRegion = 2
 			pf.idx = 0
 			newPixel = true
 		case 0:
 			// start of scanline
-			// * reset at 56 and delayed 4 clocks
 			pf.screenRegion = 0
 			pf.idx = 0
 			newPixel = true
@@ -182,9 +180,7 @@ func (pf *playfield) tick() {
 			pf.currentPixelIsOn = pf.data[len(pf.data)-pf.idx-1]
 		}
 	}
-}
 
-func (pf *playfield) pixel() (bool, uint8) {
 	if pf.currentPixelIsOn {
 		return true, pf.foregroundColor
 	}

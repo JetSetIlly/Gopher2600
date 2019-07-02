@@ -63,6 +63,12 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 		if dbg.runUntilHalt {
 			// stop emulation at the next step
 			dbg.runUntilHalt = false
+
+			// TODO: rather than halting immediately set a flag that says to
+			// halt at the next manual-break point. if there is no manual break
+			// point then stop immediately (or end of current frame might be
+			// better)
+
 		} else {
 			// runUntilHalt is false which means that the emulation is
 			// not running. at this point, an input loop is probably
