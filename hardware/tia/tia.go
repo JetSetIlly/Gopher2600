@@ -177,10 +177,6 @@ func (tia *TIA) ReadMemory() {
 	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
-// hsyncDelay is the number of cycles required before, for example, hblank
-// is reset
-const hsyncDelay = 4
-
 // Step moves the state of the tia forward one video cycle
 // returns the state of the CPU (conceptually, we're attaching the result of
 // this function to pin 3 of the 6507)
@@ -198,6 +194,10 @@ func (tia *TIA) Step() (bool, error) {
 	// when phase clock reaches the correct state, tick hsync counter
 	if tia.tiaClk.InPhase() {
 		tia.hsync.Tick()
+
+		// hsyncDelay is the number of cycles required before, for example, hblank
+		// is reset
+		const hsyncDelay = 4
 
 		// this switch statement is based on the "Horizontal Sync Counter"
 		// table in TIA_HW_Notes.txt. the "key" at the end of that table
@@ -303,6 +303,10 @@ func (tia *TIA) Step() (bool, error) {
 	if tia.hmoveCt >= 0 {
 		tia.hmoveCt--
 	}
+
+	// note that there is no TickPlayfield(). earlier versions of the code
+	// required us to tick the playfield explicitely but because the playfield
+	// is so closely tied to the hysnc counter the ticking is now implicit
 
 	// resolve video pixels
 	pixelColor, debugColor := tia.Video.Resolve()

@@ -12,9 +12,11 @@ import (
 // implementors
 func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
 	// resolve string placeholders and return if the resulting string is empty
-	s = fmt.Sprintf(s, a...)
-	if len(s) == 0 {
-		return
+	if sty != console.Help {
+		s = fmt.Sprintf(s, a...)
+		if len(s) == 0 {
+			return
+		}
 	}
 
 	// trim *all* trailing newlines - UserPrint() will add newlines if required

@@ -1,0 +1,49 @@
+debugger
+--------
+
+o resolve symbols for WATCH command
+	- and probably BREAK, TRAP commands
+
+o confirmation of quit (on ctrl-c)
+
+o LAST to include additional information; such as, what memory address was touched.
+
+o honour ctrl-z
+
+o commandline
+	- custom placeholders. for example:
+	
+		PEEK %address
+
+	 would validate true only if it passes a custom test for %address
+
+
+o display of colors in the terminal (check for 256 color terminal)
+
+o check validity of ONSTEP and ONHALT before committing the new command sequence
+
+o RUN without ONSTEP output or a DISPLAY should produce a warning note
+
+o set halting place (screen reference) for manual break (ctrl-c)
+	- set break with mouse should set manual break rather than an auto-break
+
+
+sdl screen
+----------
+
+o faded copy of metasignal overlay for incomplete frames (when halted)
+
+o info under mouse. floating tooltip
+
+
+regression db
+-------------
+
+o lock file
+
+o notes field
+
+o groupings
+
+o progress meter for "frame" entry type
+
