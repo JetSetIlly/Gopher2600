@@ -5,6 +5,7 @@ import (
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/television"
 	"math/bits"
 	"strings"
 )
@@ -26,15 +27,17 @@ func (sc *scanCounter) tick() {
 }
 
 type playerSprite struct {
-	// we need access to the TIA wide phase-clock and hsync polycounter in
-	// order to ascertain both the reset position and current position of the
-	// sprite in relation to the screen
-	tiaClk *phaseclock.PhaseClock
-	hsync  *polycounter.Polycounter
-
-	// plus acces to the TIA wide delay "circuitry" when resetting sprite
-	// position
-	tiaDelay future.Scheduler
+	// we need a reference to the attached television so that we can note the
+	// reset position of the sprite
+	//
+	// should we rely on the television implementation to report this
+	// information? I think so. the purpose of noting the reset position at all
+	// is so that we can debug (both the emulator and any games we're
+	// developing) more easily. if we calculate the reset position another way,
+	// using only information from the TIA, there's a risk that the debugging
+	// information from the TV and from the sprite will differ - to the point
+	// of confusion.
+	tv television.Television
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
@@ -104,9 +107,8 @@ type playerSprite struct {
 	startDrawingEvent *future.Event
 }
 
-func newPlayerSprite(label string, tiaclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, tiaDelay future.Scheduler) *playerSprite {
-
-	ps := playerSprite{label: label, tiaClk: tiaclk, hsync: hsync, tiaDelay: tiaDelay}
+func newPlayerSprite(label string, tv television.Television) *playerSprite {
+	ps := playerSprite{label: label, tv: tv}
 	ps.position.SetLimit(39)
 	ps.position.Reset()
 	return &ps
@@ -201,7 +203,7 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 			// sprite's clock is out of phase
 			ps.position.Tick()
 
-			// startDrawingEvent is delay by 5 ticks. from TIA_HW_Notes.txt:
+			// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
 			//
 			// "Each START decode is delayed by 4 CLK in decoding, plus a
 			// further 1 CLK to latch the graphics scan counter..."
@@ -250,8 +252,7 @@ func (ps *playerSprite) prepareForHMOVE() {
 }
 
 func (ps *playerSprite) resetPosition() {
-	// delay of 5 clocks using tiaDelay rather than sprite delay. from
-	// TIA_HW_Notes.txt:
+	// delay of 5 clocks using. from TIA_HW_Notes.txt:
 	//
 	// "This arrangement means that resetting the player counter on any
 	// visible pixel will cause the main copy of the player to appear
@@ -262,14 +263,9 @@ func (ps *playerSprite) resetPosition() {
 	ps.SprDelay.Schedule(5, func() {
 		// the pixel at which the sprite has been reset, in relation to the
 		// left edge of the screen
-		ps.resetPixel = (ps.hsync.Count * phaseclock.NumStates) + ps.tiaClk.Count()
+		ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
 
-		// adjust for screen boundaries
-		ps.resetPixel -= 68
-		if ps.resetPixel < -68 {
-			d := ps.resetPixel + 68
-			ps.resetPixel = 160 + d
-		}
+		// no need to adjust for screen boundaries
 
 		// by definition the current pixel is the same as the reset pixel at
 		// the moment of reset

@@ -6,6 +6,7 @@ import (
 	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
+	"gopher2600/television"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
@@ -53,7 +54,8 @@ const (
 func NewVideo(tiaClk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter,
 	tiaDelay future.Scheduler,
-	mem memory.ChipBus) *Video {
+	mem memory.ChipBus,
+	tv television.Television) *Video {
 
 	vd := &Video{tiaDelay: tiaDelay}
 
@@ -61,14 +63,14 @@ func NewVideo(tiaClk *phaseclock.PhaseClock,
 	vd.collisions = newCollision(mem)
 
 	// playfield
-	vd.Playfield = newPlayfield(tiaClk, hsync)
+	vd.Playfield = newPlayfield(tiaClk, hsync, tiaDelay)
 
 	// sprite objects
-	vd.Player0 = newPlayerSprite("player0", tiaClk, hsync, tiaDelay)
+	vd.Player0 = newPlayerSprite("player0", tv)
 	if vd.Player0 == nil {
 		return nil
 	}
-	vd.Player1 = newPlayerSprite("player1", tiaClk, hsync, tiaDelay)
+	vd.Player1 = newPlayerSprite("player1", tv)
 	if vd.Player1 == nil {
 		return nil
 	}

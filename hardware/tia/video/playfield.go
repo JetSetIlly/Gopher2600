@@ -13,6 +13,9 @@ type playfield struct {
 	tiaClk *phaseclock.PhaseClock
 	hsync  *polycounter.Polycounter
 
+	// tiaDelay is not currently used
+	tiaDelay future.Scheduler
+
 	// the color for the when playfield is on/off
 	foregroundColor uint8
 	backgroundColor uint8
@@ -49,8 +52,8 @@ type playfield struct {
 	currentPixelIsOn bool
 }
 
-func newPlayfield(tiaClk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *playfield {
-	pf := playfield{tiaClk: tiaClk, hsync: hsync}
+func newPlayfield(tiaClk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, tiaDelay future.Scheduler) *playfield {
+	pf := playfield{tiaClk: tiaClk, hsync: hsync, tiaDelay: tiaDelay}
 	return &pf
 }
 
@@ -143,10 +146,10 @@ func (pf *playfield) pixel() (bool, uint8) {
 
 	if pf.tiaClk.InPhase() {
 		// this switch statement is based on the "Horizontal Sync Counter"
-		// table in TIA_HW_Notes.txt. for convenience we're not using the
-		// colorclock delay but simply looking for the hsync.Count 4 cycles
-		// beyond the trigger point described in the TIA_HW_Notes.txt document.
-		// we believe this has the same effect.
+		// table in TIA_HW_Notes.txt. for convenience we're not using a
+		// colorclock (tia) delay but simply looking for the hsync.Count 4
+		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
+		// document.  we believe this has the same effect.
 		switch pf.hsync.Count {
 		case 17: // [RHB]
 			// start of visible screen (playfield not affected by HMOVE)

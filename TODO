@@ -1,12 +1,28 @@
 debugger
 --------
 
+o custom error messages for command line package
+	- for example "unrecognised argument" command for HELP should be something
+	  like "no help available for ..."
+
 o resolve symbols for WATCH command
 	- and probably BREAK, TRAP commands
 
+o a way of specifying where to stop when manually breaking (with ctrl-c)
+	- so, continue to this scanline before stopping
+	- set break with mouse should set this manual breakpoint rather than the
+	  current behaviour (adding to the list of auto-breaks)
+
+o a way of outputting information at a particular point if the information has
+changed since the last iteration
+	- for example: "player 0" at scanline 150 if changed
+
 o confirmation of quit (on ctrl-c)
 
-o LAST to include additional information; such as, what memory address was touched.
+o LAST to include additional information
+	- such as, what memory address was touched.
+	- defaults to CPU instruction like now but optional arguments to output
+	  different LAST information. for example: LAST MEM
 
 o honour ctrl-z
 
@@ -17,15 +33,12 @@ o commandline
 
 	 would validate true only if it passes a custom test for %address
 
-
 o display of colors in the terminal (check for 256 color terminal)
 
 o check validity of ONSTEP and ONHALT before committing the new command sequence
 
 o RUN without ONSTEP output or a DISPLAY should produce a warning note
 
-o set halting place (screen reference) for manual break (ctrl-c)
-	- set break with mouse should set manual break rather than an auto-break
 
 
 sdl screen

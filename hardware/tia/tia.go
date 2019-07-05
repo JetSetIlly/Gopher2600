@@ -80,8 +80,9 @@ func (tia TIA) MachineInfo() string {
 // map String to MachineInfo
 func (tia TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %03d %04.01f %d",
+	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f %d",
 		tia.hsync,
+		tia.tiaClk.String(),
 		tia.videoCycles,
 		tia.cpuCycles,
 
@@ -104,7 +105,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.hsync.SetLimit(56)
 	tia.hmoveCt = -1
 
-	tia.Video = video.NewVideo(&tia.tiaClk, &tia.hsync, &tia.TIAdelay, mem)
+	tia.Video = video.NewVideo(&tia.tiaClk, &tia.hsync, &tia.TIAdelay, mem, tv)
 	if tia.Video == nil {
 		return nil
 	}
@@ -180,13 +181,66 @@ func (tia *TIA) ReadMemory() {
 // Step moves the state of the tia forward one video cycle
 // returns the state of the CPU (conceptually, we're attaching the result of
 // this function to pin 3 of the 6507)
+//
+// the meat of the Step() function can be divided into 9 parts. the ordering of
+// these parts is important. the currently defined steps and the ordering are
+// as follows:
+//
+// 1.0. resolve scheduled changes to TIA state
+// 2.0. decide on color signal to send to television
+// 3.0. send signal to television
+// 4.0. tick forward phase-clock
+// 5.0. if phase-clock is now "in phase" then:
+//		- tick forward HSYNC counter
+//		- schedule changes to TIA state depending on the value of HSYNC counter
+// 6.0. tick sprites
+// 7.0. update HMOVE count
+//
+// steps 2.0 and 6.0 contain a lot more work important to the correct operation
+// of the TIA but from this perspective each step is monolithic
+//
+// note that there is no TickPlayfield(). earlier versions of the code required
+// us to tick the playfield explicitely but because the playfield is so closely
+// tied to the hysnc counter it was decided to make the ticking implicit.
+// removing the redundent moving part made the above ordering of steps obvious.
 func (tia *TIA) Step() (bool, error) {
 	// update debugging information
 	tia.videoCycles++
 	tia.cpuCycles = float64(tia.videoCycles) / 3.0
 
-	// tick future events
+	// tick future events. ticking here so that it happens at the same time as
+	// the regular TIA clock. this is important because then the delay values
+	// work out as you would expect.
+	//
+	// (this may seem like an obvious fact but I spent enough time fiddling with
+	// this and convincing myself that it was true that it seems worthy of a
+	// note)
 	tia.TIAdelay.Tick()
+
+	// resolve video pixels. note that we always send the debug color
+	// regardless of hblank
+	pixelColor, debugColor := tia.Video.Resolve()
+	tia.sig.AltPixel = television.ColorSignal(debugColor)
+	if tia.hblank {
+		// if hblank is on then we don't sent the resolved color but the video
+		// black signal instead
+		tia.sig.Pixel = television.VideoBlack
+	} else {
+		tia.sig.Pixel = television.ColorSignal(pixelColor)
+	}
+
+	// send signal to television
+	if err := tia.tv.Signal(tia.sig); err != nil {
+		switch err := err.(type) {
+		case errors.FormattedError:
+			// filter out-of-spec errors for now. this should be optional
+			if err.Errno != errors.TVOutOfSpec {
+				return !tia.wsync, err
+			}
+		default:
+			return !tia.wsync, err
+		}
+	}
 
 	// update "two-phase clock generator"
 	tia.tiaClk.Tick()
@@ -210,6 +264,13 @@ func (tia *TIA) Step() (bool, error) {
 				tia.hblank = true
 
 				// the CPU's WSYNC concludes at the beginning of a scanline
+				// from the TIA_1A document:
+				//
+				// "...WYNC latch is automatically reset to zero by the leading
+				// edge of the next horizontal blank timing signal, releasing
+				// the RDY line"
+				//
+				// the reutrn value of this Step() function is the RDY line
 				tia.wsync = false
 
 				// not sure when to reset HMOVE latch but here seems good
@@ -218,7 +279,7 @@ func (tia *TIA) Step() (bool, error) {
 				// reset debugging information
 				tia.videoCycles = 0
 				tia.cpuCycles = 0
-			}, "SHB (TV)")
+			}, "RESET")
 
 		case 4: // [SHS]
 			// start HSYNC. start of new scanline for the television
@@ -282,7 +343,7 @@ func (tia *TIA) Step() (bool, error) {
 	// each scanline, when HBlank is off; exactly 160 CLK per scanline
 	// (except during HMOVE)"
 	//
-	// from this we can say that the concept of the visible screen conincides
+	// from this we can say that the concept of the visible screen coincides
 	// exactly with when HBLANK is disabled.
 	//
 	// the second argument is the current hmove counter value. from
@@ -302,36 +363,6 @@ func (tia *TIA) Step() (bool, error) {
 	// course 0b11111111)
 	if tia.hmoveCt >= 0 {
 		tia.hmoveCt--
-	}
-
-	// note that there is no TickPlayfield(). earlier versions of the code
-	// required us to tick the playfield explicitely but because the playfield
-	// is so closely tied to the hysnc counter the ticking is now implicit
-
-	// resolve video pixels
-	pixelColor, debugColor := tia.Video.Resolve()
-
-	// color signal is video black in case of hblank being on
-	if tia.hblank {
-		tia.sig.Pixel = television.VideoBlack
-	} else {
-		tia.sig.Pixel = television.ColorSignal(pixelColor)
-	}
-
-	// we always send the debug color regardless of hblank
-	tia.sig.AltPixel = television.ColorSignal(debugColor)
-
-	// send signal to television
-	if err := tia.tv.Signal(tia.sig); err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			// filter out-of-spec errors for now. this should be optional
-			if err.Errno != errors.TVOutOfSpec {
-				return !tia.wsync, err
-			}
-		default:
-			return !tia.wsync, err
-		}
 	}
 
 	return !tia.wsync, nil
