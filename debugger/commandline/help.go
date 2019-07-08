@@ -9,12 +9,17 @@ import (
 // the top-level nodes of the Commands instance as arguments for the specified
 // helpCommand
 func (cmds *Commands) AddHelp(helpCommand string) error {
+
+	// iterate through command tree and return error if HELP command is already
+	// defined
 	for i := 1; i < len(*cmds); i++ {
 		if (*cmds)[i].tag == helpCommand {
-			return errors.NewFormattedError(errors.ParserError, helpCommand, "already present", 0)
+			return errors.NewFormattedError(errors.ParserError, helpCommand, "already defined", 0)
 		}
 	}
 
+	// HELP command consist of the helpCommand string followed by all the other
+	// commands as optional arguments
 	defn := strings.Builder{}
 	defn.WriteString(helpCommand)
 	defn.WriteString(" (")
@@ -27,13 +32,20 @@ func (cmds *Commands) AddHelp(helpCommand string) error {
 		}
 	}
 
+	// add HELP command itself to list of possible HELP arguments
+	defn.WriteString("|")
+	defn.WriteString(helpCommand)
+
+	// close argument list
 	defn.WriteString(")")
 
+	// parse the constructed definition
 	p, d, err := parseDefinition(defn.String(), "")
 	if err != nil {
 		return errors.NewFormattedError(errors.ParserError, helpCommand, err, d)
 	}
 
+	// add parsed definition to list of commands
 	*cmds = append((*cmds), p)
 
 	return nil

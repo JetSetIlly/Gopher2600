@@ -241,8 +241,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		keyword, present := tokens.Get()
 		if present {
 			keyword = strings.ToUpper(keyword)
-			helpTxt, prs := Help[keyword]
-			if prs == false {
+
+			helpTxt, ok := Help[keyword]
+			if ok == false {
 				dbg.print(console.Help, "no help for %s", keyword)
 			} else {
 				helpTxt = fmt.Sprintf("%s\n\n  Usage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
