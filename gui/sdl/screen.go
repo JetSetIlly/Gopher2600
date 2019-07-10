@@ -167,7 +167,7 @@ func (scr *screen) changeTVSpec() error {
 func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblankPre), Y: top, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -315,12 +315,7 @@ func (scr *screen) update(paused bool) error {
 		scr.renderer.SetDrawColor(100, 100, 100, 20)
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
 		spec := scr.gtv.GetSpec()
-		cphpre := int32(spec.ClocksPerHblankPre)
-		cphpost := int32(spec.ClocksPerHblankPost)
-		cps := int32(spec.ClocksPerScanline)
-		st := int32(spec.ScanlinesTotal)
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: cphpre, H: st})
-		scr.renderer.FillRect(&sdl.Rect{X: cps - cphpost, Y: 0, W: cphpost, H: st})
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(spec.ClocksPerHblank), H: int32(spec.ScanlinesTotal)})
 	}
 
 	// show metasignal overlay
@@ -345,7 +340,7 @@ func (scr *screen) update(paused bool) error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblankPre {
+		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblank {
 			x = 0
 			y++
 		}

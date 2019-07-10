@@ -116,11 +116,11 @@ func (btv *BasicTelevision) AddRenderer(r Renderer) {
 
 // Reset all the values for the television
 func (btv *BasicTelevision) Reset() error {
-	btv.horizPos = -btv.spec.ClocksPerHblankPre
+	btv.horizPos = -btv.spec.ClocksPerHblank
 	btv.frameNum = 0
 	btv.scanline = 0
 	btv.vsyncCount = 0
-	btv.prevSignal = SignalAttributes{}
+	btv.prevSignal = SignalAttributes{Pixel: VideoBlack}
 
 	// default top/bottom to the "ideal" values
 	btv.thisVisibleTop = btv.spec.ScanlinesTotal
@@ -150,9 +150,28 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 
 // Signal is principle method of communication between the VCS and televsion
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
-	// start a new scanline if a HSYNC signal has been received
-	if sig.HSync && !btv.prevSignal.HSync {
-		btv.horizPos = -btv.spec.ClocksPerHblankPre
+	// the following condition detects a new scanline by looking for the start
+	// of a new HBLANK. the tv signal doesn't actually send a HBLANK signal as
+	// such, so we have to look for a VideoBlack signal - which amounts to the
+	// same thing
+	//
+	// the correct way to detect for a new scanline is to check for the HSYNC
+	// signal. the HSYNC signal indicates the start of horizontal flyback,
+	// which is literally the start of the a new scanline. the condition should
+	// really be something like this:
+	//
+	//		sig.HSync && btv.prevSignal.HSync
+	//
+	// however, because HSYNC is not sent until sometime after the start of
+	// HBLANK, the resulting coordinates, as reported by this tv
+	// implementation, would, in my view, be misleading. especially when
+	// compared to how Stella reports on TV coordinates, the "correct" way
+	// would make A/B testing difficult
+	//
+	// summary: using HBLANK rather than HSYNC to detect new scanlines is
+	// technically incorrect but is more intuitive to work with
+	if sig.Pixel == VideoBlack && btv.prevSignal.Pixel != VideoBlack {
+		btv.horizPos = -btv.spec.ClocksPerHblank
 		btv.scanline++
 
 		if btv.scanline > btv.spec.ScanlinesTotal {
@@ -239,7 +258,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 	btv.prevSignal = sig
 
 	// current coordinates
-	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblankPre)
+	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
 	y := int32(btv.scanline)
 
 	// decode color using the regular color signal

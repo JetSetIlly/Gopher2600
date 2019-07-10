@@ -109,7 +109,7 @@ func (gtv *GUI) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
 	if gtv.scr.unmasked {
-		hp = int(float32(sdlEvent.X)/sx) - gtv.GetSpec().ClocksPerHblankPre
+		hp = int(float32(sdlEvent.X)/sx) - gtv.GetSpec().ClocksPerHblank
 	} else {
 		hp = int(float32(sdlEvent.X) / sx)
 	}
