@@ -524,6 +524,12 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 		prompt = fmt.Sprintf("%s %#04x (%d) witchspace ]", prompt, promptAddress, promptBank)
 	}
 
+	// display indicator that the CPU is waiting for WSYNC to end. only applies
+	// when in video step mode.
+	if videoCycle && !dbg.vcs.MC.RdyFlg {
+		prompt = fmt.Sprintf("%s ! ", prompt)
+	}
+
 	// - additional annotation if we're not showing the prompt in the main loop
 	if videoCycle && !dbg.lastResult.Final {
 		prompt = fmt.Sprintf("%s < ", prompt)
