@@ -49,7 +49,7 @@ const (
 // screen)
 //
 // the tiaDelay scheduler is used to queue up sprite reset events and a few
-// other events (TODO: figuring out what is delayed and how is not yet
+// other events (!!TODO: figuring out what is delayed and how is not yet
 // completed)
 func NewVideo(tiaClk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter,
@@ -294,7 +294,7 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// playfield
 	case "CTRLPF":
-		// TODO: write delay?
+		// !!TODO: write delay?
 		vd.Ball.size = (value & 0x30) >> 4
 		vd.Playfield.reflected = value&0x01 == 0x01
 		vd.Playfield.scoremode = value&0x02 == 0x02
@@ -384,13 +384,13 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 	case "HMP1":
 		vd.Player1.setHmoveValue(value & 0xf0)
 	case "HMM0":
-		// TODO: write delay?
+		// !!TODO: write delay?
 		vd.Missile0.horizMovement = int(value^0x80) >> 4
 	case "HMM1":
-		// TODO: write delay?
+		// !!TODO: write delay?
 		vd.Missile1.horizMovement = int(value^0x80) >> 4
 	case "HMBL":
-		// TODO: write delay?
+		// !!TODO: write delay?
 		vd.Ball.horizMovement = int(value^0x80) >> 4
 	}
 

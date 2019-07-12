@@ -153,7 +153,7 @@ func (bp breakpoints) list() {
 //
 //  & SL 100 HP 0 | X 10
 //
-// TODO: more sophisticated breakpoints parser
+// !!TODO: more sophisticated breakpoints parser
 func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	andBreaks := false
 
@@ -264,7 +264,7 @@ func (bp *breakpoints) checkNewBreakpoints(newBreaks []breaker) error {
 				// note that this method of duplication detection only works if
 				// targets are ANDed in the same order.
 				//
-				// TODO: sort conditions before comparison
+				// !!TODO: sort conditions before comparison
 				duplicate = duplicate && (oand.target.Label() == and.target.Label() && oand.value == and.value)
 
 				and = and.next

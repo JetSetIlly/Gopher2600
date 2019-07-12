@@ -14,7 +14,7 @@ type Tokens struct {
 }
 
 func (tk *Tokens) String() string {
-	// TODO: normalise tokens to uppercase except those that match %F and %S
+	// !!TODO: normalise tokens to uppercase except those that match %F and %S
 	return tk.input
 }
 

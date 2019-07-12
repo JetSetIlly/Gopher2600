@@ -58,7 +58,7 @@ func init() {
 	SpecPAL.SecondsPerFrame = 1.0 / SpecPAL.FramesPerSecond
 
 	// use NTSC colors for PAL specification for now
-	// TODO: implement PAL colors
+	// !!TODO: implement PAL colors
 	SpecPAL.Colors = colorsNTSC
 
 	// AaspectBias transforms the scaling factor for the X axis.

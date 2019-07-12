@@ -90,10 +90,10 @@ func (gtv *GUI) guiLoop() {
 			}
 
 		case *sdl.MouseMotionEvent:
-			// TODO: panning of zoomed image
+			// !!TODO: panning of zoomed image
 
 		case *sdl.MouseWheelEvent:
-			// TODO: zoom image
+			// !!TODO: zoom image
 
 		default:
 		}

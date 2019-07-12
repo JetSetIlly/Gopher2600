@@ -64,7 +64,7 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 			// stop emulation at the next step
 			dbg.runUntilHalt = false
 
-			// TODO: rather than halting immediately set a flag that says to
+			// !!TODO: rather than halting immediately set a flag that says to
 			// halt at the next manual-break point. if there is no manual break
 			// point then stop immediately (or end of current frame might be
 			// better)

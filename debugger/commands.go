@@ -301,7 +301,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					dbg.scriptScribe.EndPlayback()
 				}()
 
-				// TODO: provide a recording option to allow insertion of
+				// !!TODO: provide a recording option to allow insertion of
 				// the actual script commands rather than the call to the
 				// script itself
 			}
@@ -414,7 +414,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		case "WATCHES":
 			dbg.watches.list()
 		case "ALL":
-			// TODO: refine output. requires headings
+			// !!TODO: refine output. requires headings
 			dbg.breakpoints.list()
 			dbg.traps.list()
 			dbg.watches.list()
@@ -483,7 +483,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			return doNothing, nil
 		}
 
-		// TODO: non-interactive check of tokens against scriptUnsafeTemplate
+		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
 
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
@@ -500,7 +500,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.commandOnHalt = strings.Replace(dbg.commandOnHalt, ",", ";", -1)
 
 			// store the new command so we can reuse it
-			// TODO: normalise case of specified command sequence
+			// !!TODO: normalise case of specified command sequence
 			dbg.commandOnHaltStored = dbg.commandOnHalt
 		}
 
@@ -521,7 +521,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			return doNothing, nil
 		}
 
-		// TODO: non-interactive check of tokens against scriptUnsafeTemplate
+		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
 
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
@@ -538,7 +538,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.commandOnStep = strings.Replace(dbg.commandOnStep, ",", ";", -1)
 
 			// store the new command so we can reuse it
-			// TODO: normalise case of specified command sequence
+			// !!TODO: normalise case of specified command sequence
 			dbg.commandOnStepStored = dbg.commandOnStep
 		}
 

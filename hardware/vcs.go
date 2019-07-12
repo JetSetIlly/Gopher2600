@@ -94,7 +94,7 @@ func (vcs *VCS) Reset() error {
 		return err
 	}
 
-	// TODO: consider implementing tia.Reset and riot.Reset instead of
+	// !!TODO: consider implementing tia.Reset and riot.Reset instead of
 	// recreating the two components
 
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
@@ -169,13 +169,13 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		vcs.TIA.ReadMemory()
 
 		// three color clocks per CPU cycle so we run video cycle three times
-		_, err = vcs.TIA.Step()
+		vcs.MC.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
 		videoCycleCallback(r)
 
-		_, err = vcs.TIA.Step()
+		vcs.MC.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}

@@ -23,7 +23,7 @@ const (
 	Right
 	NoRight
 
-	// TODO: paddle and keyboard controllers
+	// !!TODO: paddle and keyboard controllers
 
 	// for convenience, a controller implementation can interact with the panel
 	PanelSelectPress

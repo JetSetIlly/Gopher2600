@@ -63,7 +63,7 @@ func (ms *missileSprite) tick() {
 	}
 
 	if ms.resetToPlayerPos {
-		// TODO: this isn't right. needs to consider playersize
+		// !!TODO: this isn't right. needs to consider playersize
 		ms.position.Count = ms.parentPlayer.position.Count
 	}
 }

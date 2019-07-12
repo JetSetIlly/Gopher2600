@@ -163,7 +163,7 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		match = false
 
 	case "%F":
-		// TODO: filename completion
+		// !!TODO: filename completion
 
 		// see commentary for %S above
 		match = false

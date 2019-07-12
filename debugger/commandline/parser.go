@@ -24,7 +24,7 @@ import (
 //   %S     string (numbers can be strings too)
 //   %F     file name
 //
-// TODO: the following pattern parses correctly but doesn't yet mean anything
+// !!TODO: the following pattern parses correctly but doesn't yet mean anything
 // and will never validate.
 //
 //    {[arg]}

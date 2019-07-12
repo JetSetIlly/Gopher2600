@@ -131,7 +131,7 @@ func (tia *TIA) ReadMemory() {
 	case "VSYNC":
 		tia.sig.VSync = value&0x02 == 0x02
 
-		// TODO: do something with controller settings below
+		// !!TODO: do something with controller settings below
 		_ = value&0x40 == 0x40
 		_ = value&0x80 == 0x80
 		return
@@ -186,15 +186,7 @@ func (tia *TIA) ReadMemory() {
 // these parts is important. the currently defined steps and the ordering are
 // as follows:
 //
-// 1.0. resolve scheduled changes to TIA state
-// 2.0. decide on color signal to send to television
-// 3.0. send signal to television
-// 4.0. tick forward phase-clock
-// 5.0. if phase-clock is now "in phase" then:
-//		- tick forward HSYNC counter
-//		- schedule changes to TIA state depending on the value of HSYNC counter
-// 6.0. tick sprites
-// 7.0. update HMOVE count
+// !!TODO: summary of steps
 //
 // steps 2.0 and 6.0 contain a lot more work important to the correct operation
 // of the TIA but from this perspective each step is monolithic

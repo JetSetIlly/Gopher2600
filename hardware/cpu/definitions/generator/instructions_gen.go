@@ -29,7 +29,7 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 		// can't open definitions csv file using full path, so try to open
 		// it from the current directory. this allows us to run "go test" on
 		// the cpu
-		// TODO: fix how we deal with paths to external resources
+		// !!TODO: fix how we deal with paths to external resources
 		_, fn := path.Split(definitionsCSVFile)
 		df, err = os.Open(fn)
 		if err != nil {

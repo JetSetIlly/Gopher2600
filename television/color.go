@@ -42,7 +42,7 @@ func init() {
 		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 		colorsNTSC = append(colorsNTSC, color{red, green, blue})
 
-		// TODO: implement PAL colors correctly. just use NTSC palette for now
+		// !!TODO: implement PAL colors correctly. just use NTSC palette for now
 		colorsPAL = append(colorsPAL, color{red, green, blue})
 	}
 }

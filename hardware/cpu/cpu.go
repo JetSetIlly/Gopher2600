@@ -1,10 +1,10 @@
 package cpu
 
-// TODO List
-// ---------
-// o NMOS indexed addressing extra read when crossing page boundaries
-// o check that NoFlowControl is consistent in its intention
-// o check that all calls to endCycle() occur when they're supposed to
+// TODO: List
+// ----------
+// !!TODO NMOS indexed addressing extra read when crossing page boundaries
+// !!TODO check that NoFlowControl is consistent in its intention
+// !!TODO check that all calls to endCycle() occur when they're supposed to
 
 import (
 	"fmt"
@@ -476,7 +476,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
 
-		// TODO: zero page index bug
+		// !!TODO: zero page index bug
 
 		// +1 cycle
 		err = mc.endCycle()
@@ -497,7 +497,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
 
-		// TODO: zero page index bug
+		// !!TODO: zero page index bug
 
 		// +1 cycle
 		err = mc.endCycle()
@@ -572,7 +572,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
 
-		// TODO: indirect addressing / page boundary bug
+		// !!TODO: indirect addressing / page boundary bug
 
 		// +2 cycles
 		address, err = mc.read16Bit(adder.ToUint16())
@@ -596,7 +596,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			return nil, err
 		}
 
-		// TODO: indirect addressing / page boundary bug
+		// !!TODO: indirect addressing / page boundary bug
 
 		adder := register.NewAnonRegister(mc.Y, 16)
 		adder.Add(indexedAddress&0x00ff, false)

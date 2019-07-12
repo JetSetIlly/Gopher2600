@@ -406,7 +406,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						// case don't print anything
 
 						if !videoCycle {
-							// TODO: prevent printing of ScriptEnd error for
+							// !!TODO: prevent printing of ScriptEnd error for
 							// initialisation script
 							dbg.print(console.Feedback, err.Error())
 						}
