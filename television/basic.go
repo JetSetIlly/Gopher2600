@@ -75,15 +75,10 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 		return nil, errors.NewFormattedError(errors.BasicTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
 	}
 
-	// initialise TVState
-	btv.horizPos = -btv.spec.ClocksPerHblankPre
-	btv.frameNum = 0
-	btv.scanline = 0
-
 	// empty list of renderers
 	btv.renderers = make([]Renderer, 0)
-	//
 
+	// initialise TVState
 	btv.Reset()
 
 	return btv, nil
@@ -150,46 +145,60 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 
 // Signal is principle method of communication between the VCS and televsion
 func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
-	// the following condition detects a new scanline by looking for the start
-	// of a new HBLANK. the tv signal doesn't actually send a HBLANK signal as
-	// such, so we have to look for a VideoBlack signal - which amounts to the
-	// same thing
+	// the following condition detects a new scanline by looking for the
+	// non-textbook HSyncSimple signal
 	//
-	// the correct way to detect for a new scanline is to check for the HSYNC
-	// signal. the HSYNC signal indicates the start of horizontal flyback,
-	// which is literally the start of the a new scanline. the condition should
-	// really be something like this:
-	//
-	//		sig.HSync && btv.prevSignal.HSync
-	//
-	// however, because HSYNC is not sent until sometime after the start of
-	// HBLANK, the resulting coordinates, as reported by this tv
-	// implementation, would, in my view, be misleading. especially when
-	// compared to how Stella reports on TV coordinates, the "correct" way
-	// would make A/B testing difficult
-	//
-	// summary: using HBLANK rather than HSYNC to detect new scanlines is
-	// technically incorrect but is more intuitive to work with
-	if sig.Pixel == VideoBlack && btv.prevSignal.Pixel != VideoBlack {
+	// see SignalAttributes type definition for notes about the HSyncSimple
+	// attribute
+	if sig.HSyncSimple && !btv.prevSignal.HSyncSimple {
 		btv.horizPos = -btv.spec.ClocksPerHblank
 		btv.scanline++
 
-		if btv.scanline > btv.spec.ScanlinesTotal {
-			btv.scanline = btv.spec.ScanlinesTotal
-			btv.extraScanlines++
-		} else {
-			for f := range btv.renderers {
-				err := btv.renderers[f].NewScanline(btv.scanline)
-				if err != nil {
-					return err
+		if btv.scanline <= btv.spec.ScanlinesTotal {
+			// when observing Stella we can see that on the first frame (frame
+			// number zero) the next frame begins when the scanline reaches 51.
+			// it does this with every ROM and regardless of what signals have
+			// been sent.
+			//
+			// I'm not sure why it does this but we emulate the behaviour here
+			// in order to facilitate A/B testing.
+			if btv.frameNum == 0 && btv.scanline > 50 {
+				btv.scanline = 0
+				btv.frameNum++
+
+				// notify renderers of new frame
+				for f := range btv.renderers {
+					err := btv.renderers[f].NewFrame(btv.frameNum)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				// notify renderers of new scanline
+				for f := range btv.renderers {
+					err := btv.renderers[f].NewScanline(btv.scanline)
+					if err != nil {
+						return err
+					}
 				}
 			}
+		} else {
+			// if we're above the scanline limit for the specification then don't
+			// notify the renderers of a new scanline, instead repeat drawing to
+			// the last scanline and note the number of "extra" scanlines we've
+			// encountered
+			btv.scanline = btv.spec.ScanlinesTotal
+			btv.extraScanlines++
 		}
+
 	} else {
 		btv.horizPos++
 	}
 
-	// simple vsync implementation
+	// simple vsync implementation. when compared to the HSync detection above,
+	// the following is correct (front porch at the end of the display and back
+	// porch at the beginning). it is also in keeping with how Stella counts
+	// scanlines, meaning A/B testing is relatively straightforward.
 	if sig.VSync {
 		// if this a new vsync sequence note the horizontal position
 		if !btv.prevSignal.VSync {

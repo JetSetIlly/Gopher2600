@@ -105,11 +105,11 @@ type playerSprite struct {
 	// a record of the delayed start drawing event. resets to nil once drawing
 	// commences
 	startDrawingEvent *future.Event
+	resetEvent        *future.Event
 }
 
 func newPlayerSprite(label string, tv television.Television) *playerSprite {
 	ps := playerSprite{label: label, tv: tv}
-	ps.position.SetLimit(39)
 	ps.position.Reset()
 	return &ps
 }
@@ -189,9 +189,6 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 			ps.scanCounter.tick()
 		}
 
-		// tick future events that are goverened by the sprite
-		ps.SprDelay.Tick()
-
 		// from TIA_HW_Notes.txt:
 		//
 		// "The [MOTCK] (motion clock?) line supplies the CLK signals
@@ -209,9 +206,28 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 			// further 1 CLK to latch the graphics scan counter..."
 			const startDelay = 5
 
+			// I have not seen any mention, in TIA_HW_Notes or anywhere else,
+			// of a need for a delay to drawing in the event of a reset.
+			// however, through observation, particularly of
+			// "my_test_rom/player/testCards", the need for the following
+			// conditions are clear. I'd be interested to know if it is all
+			// encompassing and accurate in all instances.
+			// startDrawingEvent := func() {
+			// 	ps.startDrawingEvent = nil
+
+			// 	if ps.resetEvent == nil || ps.resetEvent.RemainingCycles < 3 {
+			// 		ps.scanCounter.start()
+			// 	} else {
+			// 		ps.startDrawingEvent = ps.SprDelay.Schedule(8-ps.resetEvent.RemainingCycles, func() {
+			// 			ps.startDrawingEvent = nil
+			// 			ps.scanCounter.start()
+			// 		}, fmt.Sprintf("start delayed drawing %s", ps.label))
+			// 	}
+			// }
+
 			startDrawingEvent := func() {
-				ps.scanCounter.start()
 				ps.startDrawingEvent = nil
+				ps.scanCounter.start()
 			}
 
 			// "... The START decodes are ANDed with flags from the NUSIZ register
@@ -231,8 +247,14 @@ func (ps *playerSprite) tick(visibleScreen bool, hmoveCt uint8) {
 				}
 			case 39:
 				ps.startDrawingEvent = ps.SprDelay.Schedule(startDelay, startDrawingEvent, fmt.Sprintf("start drawing %s", ps.label))
+
+			case 40:
+				ps.position.Reset()
 			}
 		}
+
+		// tick future events that are goverened by the sprite
+		ps.SprDelay.Tick()
 	}
 }
 
@@ -260,7 +282,7 @@ func (ps *playerSprite) resetPosition() {
 	// There are 5 CLK worth of clocking/latching to take into account,
 	// so the actual position ends up 5 pixels to the right of the
 	// reset pixel (approx. 9 pixels after the start of STA RESP0)."
-	ps.SprDelay.Schedule(5, func() {
+	ps.resetEvent = ps.SprDelay.Schedule(5, func() {
 		// the pixel at which the sprite has been reset, in relation to the
 		// left edge of the screen
 		ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
@@ -273,13 +295,15 @@ func (ps *playerSprite) resetPosition() {
 
 		// reset both sprite position and clock
 		ps.position.Reset()
-		ps.sprClk.Reset(false)
+		ps.sprClk.Reset(true)
 
-		// drop a running startDrawaingEvent from the delay queue
+		// drop a running startDrawingEvent from the delay queue
 		if ps.startDrawingEvent != nil {
 			ps.startDrawingEvent.Drop()
 			ps.startDrawingEvent = nil
 		}
+
+		ps.resetEvent = nil
 	}, fmt.Sprintf("%s resetting position", ps.label))
 }
 

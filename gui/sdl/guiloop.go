@@ -18,6 +18,19 @@ func (gtv *GUI) guiLoop() {
 			gtv.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 		case *sdl.KeyboardEvent:
+			var mod gui.KeyMod
+
+			switch sdl.GetModState() {
+			case sdl.KMOD_NONE:
+				mod = gui.KeyModNone
+			case sdl.KMOD_SHIFT:
+				mod = gui.KeyModShift
+			case sdl.KMOD_CTRL:
+				mod = gui.KeyModCtrl
+			case sdl.KMOD_ALT:
+				mod = gui.KeyModAlt
+			}
+
 			switch sdlEvent.Type {
 			case sdl.KEYDOWN:
 				if sdlEvent.Repeat == 0 {
@@ -25,6 +38,7 @@ func (gtv *GUI) guiLoop() {
 						ID: gui.EventKeyboard,
 						Data: gui.EventDataKeyboard{
 							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+							Mod:  mod,
 							Down: true}}
 				}
 			case sdl.KEYUP:
@@ -33,6 +47,7 @@ func (gtv *GUI) guiLoop() {
 						ID: gui.EventKeyboard,
 						Data: gui.EventDataKeyboard{
 							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+							Mod:  mod,
 							Down: false}}
 				}
 			}

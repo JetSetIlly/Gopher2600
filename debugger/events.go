@@ -21,7 +21,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 			break // switch event.ID
 		}
 
-		if data.Down == true {
+		if data.Down == true && data.Mod == gui.KeyModNone {
 			switch data.Key {
 			case "`":
 				// back-tick: toggle masking

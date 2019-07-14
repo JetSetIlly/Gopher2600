@@ -71,15 +71,15 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 		switch keyword {
 		// cpu registers
 		case "PC":
-			trg = dbg.vcs.MC.PC
+			trg = dbg.vcs.CPU.PC
 		case "A":
-			trg = dbg.vcs.MC.A
+			trg = dbg.vcs.CPU.A
 		case "X":
-			trg = dbg.vcs.MC.X
+			trg = dbg.vcs.CPU.X
 		case "Y":
-			trg = dbg.vcs.MC.Y
+			trg = dbg.vcs.CPU.Y
 		case "SP":
-			trg = dbg.vcs.MC.SP
+			trg = dbg.vcs.CPU.SP
 
 		// tv state
 		case "FRAMENUM", "FRAME", "FR":

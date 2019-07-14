@@ -145,31 +145,36 @@ func (pf *playfield) pixel() (bool, uint8) {
 	newPixel := false
 
 	if pf.tiaClk.InPhase() {
+		newPixel = true
+
+		// RSYNC can monkey with the current hsync value unexpectedly and
+		// because of this we need an extra effort to make sure we're in the
+		// correct screen region.
+		if pf.hsync.Count >= 37 {
+			// just past the centre of the visible screen
+			pf.screenRegion = 2
+		} else if pf.hsync.Count >= 17 {
+			// start of visible screen (playfield not affected by HMOVE)
+			pf.screenRegion = 1
+		} else {
+			// start of scanline
+			pf.screenRegion = 0
+		}
+
 		// this switch statement is based on the "Horizontal Sync Counter"
 		// table in TIA_HW_Notes.txt. for convenience we're not using a
 		// colorclock (tia) delay but simply looking for the hsync.Count 4
 		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
 		// document.  we believe this has the same effect.
-		switch pf.hsync.Count {
-		case 17: // [RHB]
-			// start of visible screen (playfield not affected by HMOVE)
-			pf.screenRegion = 1
-			pf.idx = 0
-			newPixel = true
-		case 37: // [CNT]
-			// just past the centre of the visible screen
-			pf.screenRegion = 2
-			pf.idx = 0
-			newPixel = true
+		switch pf.screenRegion {
 		case 0:
-			// start of scanline
-			pf.screenRegion = 0
-			pf.idx = 0
-			newPixel = true
-		default:
-			pf.idx++
-			newPixel = true
+			pf.idx = pf.hsync.Count
+		case 1:
+			pf.idx = pf.hsync.Count - 17
+		case 2:
+			pf.idx = pf.hsync.Count - 37
 		}
+		newPixel = true
 	}
 
 	// pixel returns the color of the playfield at the current time.

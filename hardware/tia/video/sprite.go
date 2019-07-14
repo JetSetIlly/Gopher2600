@@ -54,8 +54,6 @@ type sprite struct {
 func newSprite(label string, tiaclk *phaseclock.PhaseClock, spriteTick func()) *sprite {
 	sp := sprite{label: label, tiaclk: tiaclk, spriteTick: spriteTick}
 
-	sp.position.SetLimit(39)
-
 	// the direction of count and max is important - don't monkey with it
 	sp.graphicsScanMax = 8
 	sp.graphicsScanOff = sp.graphicsScanMax + 1

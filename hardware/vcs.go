@@ -14,7 +14,7 @@ import (
 
 // VCS struct is the main container for the emulated components of the VCS
 type VCS struct {
-	MC   *cpu.CPU
+	CPU  *cpu.CPU
 	Mem  *memory.VCSMemory
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
@@ -39,7 +39,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	vcs.MC, err = cpu.NewCPU(vcs.Mem)
+	vcs.CPU, err = cpu.NewCPU(vcs.Mem)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (vcs *VCS) AttachCartridge(filename string) error {
 //  - destroy and create the TIA and RIOT
 //  - load reset address into the PC
 func (vcs *VCS) Reset() error {
-	if err := vcs.MC.Reset(); err != nil {
+	if err := vcs.CPU.Reset(); err != nil {
 		return err
 	}
 
@@ -107,7 +107,7 @@ func (vcs *VCS) Reset() error {
 		return errors.NewFormattedError(errors.VCSError, "can't create RIOT")
 	}
 
-	err := vcs.MC.LoadPCIndirect(addresses.Reset)
+	err := vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-func (vcs *VCS) strobe() error {
+func (vcs *VCS) strobeUserInput() error {
 	var err error
 	if vcs.Ports.Player0 != nil {
 		err = vcs.Ports.Player0.Strobe()
@@ -133,55 +133,46 @@ func (vcs *VCS) strobe() error {
 	return vcs.Panel.Strobe()
 }
 
-// Step the emulator state one CPU instruction
-// -- we can put this function in a loop for an effective debugging loop
-// ths videoCycleCallback function for an additional callback point in the
-// debugger.
-func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *result.Instruction, error) {
+// Step the emulator state one CPU instruction. we can put this function in a
+// loop for an effective debugging loop ths videoCycleCallback function for an
+// additional callback point in the debugger.
+func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*result.Instruction, error) {
 	var r *result.Instruction
 	var err error
-
-	// the number of CPU cycles that have elapsed.  note this is *not* the same
-	// as Instructionresult.ActualCycles because in the event of a WSYNC
-	// cpuCycles will continue to accumulate until the WSYNC has been resolved.
-	cpuCycles := 0
 
 	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
 	// function defines the order of operation for the rest of the VCS for
 	// every CPU cycle.
+	//
+	// !!TODO: the following would be a good test case for the proposed try()
+	// function, coming in a future language version
 	cycleVCS := func(r *result.Instruction) error {
-		cpuCycles++
-
 		// ensure controllers have updated their input
-		if err := vcs.strobe(); err != nil {
+		if err := vcs.strobeUserInput(); err != nil {
 			return err
 		}
 
-		// run riot only once per CPU cycle
-		// TODO: not sure when in the video cycle sequence it should be run
-		// TODO: is this something that can drift, thereby causing subtly different
-		// results / graphical effects? is this what RSYNC is for?
-
+		// read riot memory and step once per CPU cycle
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		// read tia memory just once and before we cycle the tia
+		// read tia memory once per cpu cycle
 		vcs.TIA.ReadMemory()
 
 		// three color clocks per CPU cycle so we run video cycle three times
-		vcs.MC.RdyFlg, err = vcs.TIA.Step()
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
 		videoCycleCallback(r)
 
-		vcs.MC.RdyFlg, err = vcs.TIA.Step()
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
 		videoCycleCallback(r)
 
-		vcs.MC.RdyFlg, err = vcs.TIA.Step()
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
@@ -190,18 +181,18 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (int, *
 		return nil
 	}
 
-	r, err = vcs.MC.ExecuteInstruction(cycleVCS)
+	r, err = vcs.CPU.ExecuteInstruction(cycleVCS)
 	if err != nil {
-		return cpuCycles, nil, err
+		return nil, err
 	}
 
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
-	for !vcs.MC.RdyFlg {
+	for !vcs.CPU.RdyFlg {
 		cycleVCS(r)
 	}
 
-	return cpuCycles, r, nil
+	return r, nil
 }
 
 // Run sets the emulation running as quickly as possible.  eventHandler()
@@ -212,7 +203,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 
 	cycleVCS := func(r *result.Instruction) error {
 		// ensure controllers have updated their inpu
-		if err := vcs.strobe(); err != nil {
+		if err := vcs.strobeUserInput(); err != nil {
 			return err
 		}
 
@@ -221,13 +212,13 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.TIA.ReadMemory()
 		vcs.TIA.Step()
 		vcs.TIA.Step()
-		vcs.MC.RdyFlg, err = vcs.TIA.Step()
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		return err
 	}
 
 	cont := true
 	for cont {
-		_, err = vcs.MC.ExecuteInstruction(cycleVCS)
+		_, err = vcs.CPU.ExecuteInstruction(cycleVCS)
 		if err != nil {
 			return err
 		}
@@ -249,7 +240,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int) error {
 	targetFrame := fn + numFrames
 
 	for fn != targetFrame {
-		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
+		_, err = vcs.Step(func(*result.Instruction) error { return nil })
 		fn, err = vcs.TV.GetState(television.ReqFramenum)
 		if err != nil {
 			return err

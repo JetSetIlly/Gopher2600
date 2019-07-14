@@ -27,6 +27,23 @@ type SignalAttributes struct {
 	// - used to signal the debug color in addition to the regular color
 	// - arguable that this be sent as a metasignal
 	AltPixel ColorSignal
+
+	// the HSyncSimple attribute is not part of the real TV spec. The signal
+	// for a real flyback is the HSync signal (held for 8 color clocks).
+	// however, this results in a confusing way of counting pixels - confusing
+	// at least to people who are used to the Stella method of counting.
+	//
+	// if we were to use HSync to detect a new scanline then we have to treat
+	// the front porch and back porch separately.  the convenient HSyncSimple
+	// attribute effectively pushes the front and back porches together meaning
+	// we can count from -68 to 159 - the same as Stella. this is helpful when
+	// A/B testing.
+	//
+	// the TIA emulation sends both HSync and HSyncSimple signals.  television
+	// implementations can use either, it doesn't really make any difference
+	// except to debugging information. the "basic" television implementation
+	// uses HSyncSimple instead of HSync
+	HSyncSimple bool
 }
 
 // Television defines the operations that can be performed on television

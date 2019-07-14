@@ -169,7 +169,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
 	// set up metapixel monitor
-	dbg.videomon = &metavideo.Monitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.MC, Rend: dbg.vcs.TV}
+	dbg.videomon = &metavideo.Monitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.CPU, Rend: dbg.vcs.TV}
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -447,9 +447,9 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		if dbg.inputloopNext {
 			if !videoCycle {
 				if dbg.inputEveryVideoCycle {
-					_, dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
+					dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
 				} else {
-					_, dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
+					dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
 				}
 
 				if err != nil {
@@ -498,7 +498,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 	var promptBank int
 
 	if dbg.lastResult == nil || dbg.lastResult.Final {
-		promptAddress = dbg.vcs.MC.PC.ToUint16()
+		promptAddress = dbg.vcs.CPU.PC.ToUint16()
 	} else {
 		// if we're in the middle of an instruction then use the
 		// addresss in lastResult - in video-stepping mode we want the
@@ -526,7 +526,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 
 	// display indicator that the CPU is waiting for WSYNC to end. only applies
 	// when in video step mode.
-	if videoCycle && !dbg.vcs.MC.RdyFlg {
+	if videoCycle && !dbg.vcs.CPU.RdyFlg {
 		prompt = fmt.Sprintf("%s ! ", prompt)
 	}
 

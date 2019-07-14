@@ -102,7 +102,6 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
 
 	tia.tiaClk.Reset(false)
-	tia.hsync.SetLimit(56)
 	tia.hmoveCt = -1
 
 	tia.Video = video.NewVideo(&tia.tiaClk, &tia.hsync, &tia.TIAdelay, mem, tv)
@@ -142,22 +141,24 @@ func (tia *TIA) ReadMemory() {
 
 	case "WSYNC":
 		// CPU has indicated that it wants to wait for the beginning of the
-		// next scanline. wsync is reset to false when hsync.Count reaches 0
+		// next scanline. value is reset to false when TIA reaches end of
+		// scanline
 		tia.wsync = true
 		return
 
 	case "RSYNC":
-		// tia.tiaClk.Reset(true)
-		// tia.TIAdelay.Schedule(5, func() {
-		// 	tia.hsync.Reset()
+		tia.tiaClk.Reset(true)
+		tia.TIAdelay.Schedule(5, func() {
+			tia.hsync.Reset()
 
-		// 	// the same as what happens at SHB
-		// 	tia.hblank = true
-		// 	tia.wsync = false
-		// 	tia.hmoveLatch = false
-		// 	tia.videoCycles = 0
-		// 	tia.cpuCycles = 0
-		// }, "RSYNC")
+			// the same as what happens at SHB
+			tia.hblank = true
+			tia.wsync = false
+			tia.hmoveLatch = false
+			tia.videoCycles = 0
+			tia.cpuCycles = 0
+			tia.sig.HSyncSimple = true
+		}, "RSYNC")
 		return
 
 	case "HMOVE":
@@ -178,9 +179,9 @@ func (tia *TIA) ReadMemory() {
 	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
-// Step moves the state of the tia forward one video cycle
-// returns the state of the CPU (conceptually, we're attaching the result of
-// this function to pin 3 of the 6507)
+// Step moves the state of the tia forward one video cycle returns the state of
+// the CPU (conceptually, we're attaching the result of this function to pin 3
+// of the 6507)
 //
 // the meat of the Step() function can be divided into 9 parts. the ordering of
 // these parts is important. the currently defined steps and the ordering are
@@ -194,67 +195,40 @@ func (tia *TIA) ReadMemory() {
 // note that there is no TickPlayfield(). earlier versions of the code required
 // us to tick the playfield explicitely but because the playfield is so closely
 // tied to the hysnc counter it was decided to make the ticking implicit.
-// removing the redundent moving part made the above ordering of steps obvious.
+// removing the redundent moving part made the ordering of the individual steps
+// obvious.
 func (tia *TIA) Step() (bool, error) {
 	// update debugging information
 	tia.videoCycles++
 	tia.cpuCycles = float64(tia.videoCycles) / 3.0
 
-	// tick future events. ticking here so that it happens at the same time as
-	// the regular TIA clock. this is important because then the delay values
-	// work out as you would expect.
-	//
-	// (this may seem like an obvious fact but I spent enough time fiddling with
-	// this and convincing myself that it was true that it seems worthy of a
-	// note)
-	tia.TIAdelay.Tick()
-
-	// resolve video pixels. note that we always send the debug color
-	// regardless of hblank
-	pixelColor, debugColor := tia.Video.Resolve()
-	tia.sig.AltPixel = television.ColorSignal(debugColor)
-	if tia.hblank {
-		// if hblank is on then we don't sent the resolved color but the video
-		// black signal instead
-		tia.sig.Pixel = television.VideoBlack
-	} else {
-		tia.sig.Pixel = television.ColorSignal(pixelColor)
-	}
-
-	// send signal to television
-	if err := tia.tv.Signal(tia.sig); err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			// filter out-of-spec errors for now. this should be optional
-			if err.Errno != errors.TVOutOfSpec {
-				return !tia.wsync, err
-			}
-		default:
-			return !tia.wsync, err
-		}
-	}
-
 	// update "two-phase clock generator"
 	tia.tiaClk.Tick()
+
+	// hsyncDelay is the number of cycles required before, for example, hblank
+	// is reset
+	const hsyncDelay = 4
 
 	// when phase clock reaches the correct state, tick hsync counter
 	if tia.tiaClk.InPhase() {
 		tia.hsync.Tick()
-
-		// hsyncDelay is the number of cycles required before, for example, hblank
-		// is reset
-		const hsyncDelay = 4
 
 		// this switch statement is based on the "Horizontal Sync Counter"
 		// table in TIA_HW_Notes.txt. the "key" at the end of that table
 		// suggests that (most of) the events are delayed by 4 clocks due to
 		// "latching".
 		switch tia.hsync.Count {
-		case 56: // [SHB/SHS]
-			tia.TIAdelay.Schedule(hsyncDelay, func() {
-				// start HBLANK. start of new scanline for the TIA. turn hblank on
-				tia.hblank = true
+		case 57:
+			// from TIA_HW_Notes.txt:
+			//
+			// "The HSync counter resets itself after 57 counts; the decode on
+			// HCount=56 performs a reset to 000000 delayed by 4 CLK, so
+			// HCount=57 becomes HCount=0. This gives a period of 57 counts
+			// or 228 CLK."
+			tia.hsync.Reset()
 
+		case 56: // [SHB]
+			tia.TIAdelay.Schedule(hsyncDelay, func() {
 				// the CPU's WSYNC concludes at the beginning of a scanline
 				// from the TIA_1A document:
 				//
@@ -265,13 +239,30 @@ func (tia *TIA) Step() (bool, error) {
 				// the reutrn value of this Step() function is the RDY line
 				tia.wsync = false
 
+				// start HBLANK. start of new scanline for the TIA. turn hblank on
+				tia.hblank = true
+
 				// not sure when to reset HMOVE latch but here seems good
 				tia.hmoveLatch = false
 
 				// reset debugging information
 				tia.videoCycles = 0
 				tia.cpuCycles = 0
+
+				// rather than include the reset signal in the delay, we will
+				// manually reset hsync counter when it reaches a count of 57
+
+				// see SignalAttributes type definition for notes about the
+				// HSyncSimple attribute
+				tia.sig.HSyncSimple = true
 			}, "RESET")
+
+		case 1:
+			// reset the HSyncSimple attribute as soon as is practical
+			//
+			// see SignalAttributes type definition for notes about the
+			// HSyncSimple attribute
+			tia.sig.HSyncSimple = false
 
 		case 4: // [SHS]
 			// start HSYNC. start of new scanline for the television
@@ -308,7 +299,7 @@ func (tia *TIA) Step() (bool, error) {
 			if !tia.hmoveLatch {
 				tia.TIAdelay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
-				}, "HRB (TV)")
+				}, "HRB")
 			}
 
 		// ... and "two counts of the HSync Counter" later ...
@@ -318,10 +309,19 @@ func (tia *TIA) Step() (bool, error) {
 			if tia.hmoveLatch {
 				tia.TIAdelay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
-				}, "LHRB (TV)")
+				}, "LHRB")
 			}
 		}
 	}
+
+	// tick future events. ticking here so that it happens at the same time as
+	// the regular TIA clock. this is important because then the delay values
+	// work out as you would expect.
+	//
+	// (this may seem like an obvious fact but I spent enough time fiddling with
+	// this and convincing myself that it was true that it seems worthy of a
+	// note)
+	tia.TIAdelay.Tick()
 
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
@@ -355,6 +355,31 @@ func (tia *TIA) Step() (bool, error) {
 	// course 0b11111111)
 	if tia.hmoveCt >= 0 {
 		tia.hmoveCt--
+	}
+
+	// resolve video pixels. note that we always send the debug color
+	// regardless of hblank
+	pixelColor, debugColor := tia.Video.Resolve()
+	tia.sig.AltPixel = television.ColorSignal(debugColor)
+	if tia.hblank {
+		// if hblank is on then we don't sent the resolved color but the video
+		// black signal instead
+		tia.sig.Pixel = television.VideoBlack
+	} else {
+		tia.sig.Pixel = television.ColorSignal(pixelColor)
+	}
+
+	// send signal to television
+	if err := tia.tv.Signal(tia.sig); err != nil {
+		switch err := err.(type) {
+		case errors.FormattedError:
+			// filter out-of-spec errors for now. this should be optional
+			if err.Errno != errors.TVOutOfSpec {
+				return !tia.wsync, err
+			}
+		default:
+			return !tia.wsync, err
+		}
 	}
 
 	return !tia.wsync, nil

@@ -35,7 +35,7 @@ func BenchmarkSDL(b *testing.B) {
 	b.ResetTimer()
 
 	for steps := 0; steps < b.N; steps++ {
-		_, _, err = vcs.Step(func(*result.Instruction) error { return nil })
+		_, err = vcs.Step(func(*result.Instruction) error { return nil })
 		if err != nil {
 			panic(err)
 		}

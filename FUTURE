@@ -1,6 +1,8 @@
 debugger
 --------
 
+o reset command to reset screen
+
 o custom error messages for command line package
 	- for example "unrecognised argument" command for HELP should be something
 	  like "no help available for ..."
@@ -17,7 +19,8 @@ o a way of outputting information at a particular point if the information has
 changed since the last iteration
 	- for example: "player 0" at scanline 150 if changed
 
-o confirmation of quit (on ctrl-c)
+o clear current input on ctrl-c
+	- if current input is empty then confirm quit (with another ctrl-c)
 
 o LAST to include additional information
 	- such as, what memory address was touched.

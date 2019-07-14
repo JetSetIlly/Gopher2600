@@ -49,6 +49,17 @@ const (
 	EventMouseRight
 )
 
+// KeyMod identifies
+type KeyMod int
+
+// list of valud key modifiers
+const (
+	KeyModNone KeyMod = iota
+	KeyModShift
+	KeyModCtrl
+	KeyModAlt
+)
+
 // EventData represents the data that is associated with an event
 type EventData interface{}
 
@@ -62,6 +73,7 @@ type Event struct {
 type EventDataKeyboard struct {
 	Key  string
 	Down bool
+	Mod  KeyMod
 }
 
 // EventDataMouse is the data that accompanies EventMouse events

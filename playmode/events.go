@@ -13,7 +13,7 @@ import (
 func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardware.VCS) error {
 	var err error
 
-	if keyEvent.Down {
+	if keyEvent.Down && keyEvent.Mod == gui.KeyModNone {
 		switch keyEvent.Key {
 		case "F1":
 			err = vcs.Panel.Handle(peripherals.PanelSelectPress)

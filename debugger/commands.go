@@ -676,15 +676,15 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				var reg *register.Register
 				switch strings.ToUpper(target) {
 				case "PC":
-					reg = dbg.vcs.MC.PC
+					reg = dbg.vcs.CPU.PC
 				case "A":
-					reg = dbg.vcs.MC.A
+					reg = dbg.vcs.CPU.A
 				case "X":
-					reg = dbg.vcs.MC.X
+					reg = dbg.vcs.CPU.X
 				case "Y":
-					reg = dbg.vcs.MC.Y
+					reg = dbg.vcs.CPU.Y
 				case "SP":
-					reg = dbg.vcs.MC.SP
+					reg = dbg.vcs.CPU.SP
 				}
 
 				value, _ := tokens.Get()
@@ -700,7 +700,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.MC)
+			dbg.printMachineInfo(dbg.vcs.CPU)
 		}
 
 	case cmdPeek:

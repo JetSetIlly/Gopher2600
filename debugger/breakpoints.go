@@ -161,7 +161,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	// being set on the PC. breaking on PC is probably the most common type of
 	// breakpoint. the target will change value when the input string sees
 	// something appropriate
-	tgt := target(bp.dbg.vcs.MC.PC)
+	tgt := target(bp.dbg.vcs.CPU.PC)
 
 	// resolvedTarget keeps track of whether we have specified a target but not
 	// given any values for that target. we set it to true initially because
