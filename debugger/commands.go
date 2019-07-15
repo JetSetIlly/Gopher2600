@@ -44,6 +44,7 @@ const (
 	cmdPlayfield     = "PLAYFIELD"
 	cmdPoke          = "POKE"
 	cmdQuit          = "QUIT"
+	cmdExit          = "EXIT"
 	cmdRAM           = "RAM"
 	cmdRIOT          = "RIOT"
 	cmdReset         = "RESET"
@@ -89,6 +90,7 @@ var commandTemplate = []string{
 	cmdPlayfield,
 	cmdPoke + " [%N|%S] %N",
 	cmdQuit,
+	cmdExit,
 	cmdRAM,
 	cmdRIOT + " (TIMER)",
 	cmdReset,
@@ -574,6 +576,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdMemMap:
 		dbg.print(console.StyleMachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+
+	case cmdExit:
+		fallthrough
 
 	case cmdQuit:
 		dbg.running = false

@@ -7,12 +7,12 @@ import (
 )
 
 // UserPrint is the top level output function
-func (ct *ColorTerminal) UserPrint(sty console.Style, s string, a ...interface{}) {
-	if sty != console.StyleInput {
+func (ct *ColorTerminal) UserPrint(style console.Style, s string, a ...interface{}) {
+	if style != console.StyleInput {
 		ct.Print("\r")
 	}
 
-	switch sty {
+	switch style {
 	case console.StyleCPUStep:
 		ct.Print(ansi.PenColor["yellow"])
 	case console.StyleVideoStep:
@@ -33,6 +33,8 @@ func (ct *ColorTerminal) UserPrint(sty console.Style, s string, a ...interface{}
 		ct.Print(ansi.PenStyles["bold"])
 	case console.StylePromptAlt:
 		// nothing special
+	case console.StylePromptConfirm:
+		ct.Print(ansi.PenColor["green"])
 	}
 
 	if len(a) > 0 {
@@ -43,7 +45,7 @@ func (ct *ColorTerminal) UserPrint(sty console.Style, s string, a ...interface{}
 	ct.Print(ansi.NormalPen)
 
 	// add a newline if print style is anything other than prompt
-	if sty != console.StylePrompt && sty != console.StylePromptAlt && sty != console.StyleInput {
+	if style != console.StylePrompt && style != console.StylePromptAlt && style != console.StylePromptConfirm && style != console.StyleInput {
 		ct.Print("\n")
 	}
 }

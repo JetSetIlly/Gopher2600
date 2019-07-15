@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 )
 
 const defaultOnHalt = "CPU; TV"
@@ -397,9 +398,43 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 							dbg.parseInput("SCRIPT END", false, false)
 							continue // for loop
 						} else {
-							dbg.running = false
+
+							// be polite and ask if the user really wants to
+							// quit
+							confirm := make([]byte, 1)
+							_, err := inputter.UserRead(confirm,
+								console.Prompt{
+									Content: "really quit (y/n) ",
+									Style:   console.StylePromptConfirm},
+								nil, nil)
+
+							if err != nil {
+								switch err := err.(type) {
+								case errors.FormattedError:
+									if err.Errno == errors.UserInterrupt {
+										// treat another ctrl-c press to indicate 'yes'
+										confirm[0] = 'y'
+									}
+								default:
+									dbg.print(console.StyleError, err.Error())
+								}
+							}
+
+							if confirm[0] == 'y' || confirm[0] == 'Y' {
+								dbg.parseInput("EXIT", false, false)
+							}
 						}
-						fallthrough
+
+					case errors.UserSuspend:
+						// ctrl-z like process suspension
+						p, err := os.FindProcess(os.Getppid())
+						if err != nil {
+							dbg.print(console.StyleError, "debugger doesn't seem to have a parent process")
+						} else {
+							// send TSTP signal to parent proces
+							p.Signal(syscall.SIGTSTP)
+						}
+
 					case errors.ScriptEnd:
 						// convert ScriptEnd errors to a simple print call.
 						// unless we're in a video cycle input loop, in which

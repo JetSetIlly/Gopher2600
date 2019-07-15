@@ -5,6 +5,7 @@ var messages = map[Errno]string{
 
 	// sentinals
 	UserInterrupt:   "user interrupt",                        // sentinal
+	UserSuspend:     "user suspend",                          // sentinal
 	ScriptEnd:       "end of script (%s)",                    // sentinal
 	PowerOff:        "emulated machine has been powered off", // sentinal
 	PeriphUnplugged: "controller unplugged from '%s'",        // sentinal

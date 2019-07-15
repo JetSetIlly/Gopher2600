@@ -6,6 +6,7 @@ const (
 
 	// sentinal
 	UserInterrupt
+	UserSuspend
 	ScriptEnd
 	PowerOff
 	PeriphUnplugged

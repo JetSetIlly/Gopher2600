@@ -20,6 +20,7 @@ const (
 	// the input prompt
 	StylePrompt
 	StylePromptAlt
+	StylePromptConfirm
 
 	// non-error information from a command
 	StyleFeedback

@@ -56,7 +56,7 @@ func (pt PlainTerminal) UserRead(input []byte, prompt Prompt, _ chan gui.Event, 
 	return n, nil
 }
 
-// IsInteractive satisfies the console.UserInput interface
+// IsInteractive implements the console.UserInput interface
 func (pt *PlainTerminal) IsInteractive() bool {
 	return true
 }

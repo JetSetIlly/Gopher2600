@@ -2,7 +2,8 @@ package easyterm
 
 // list of ASCII codes for non-alphanumeric characters
 const (
-	KeyCtrlC          = 3
+	KeyInterrupt      = 3  // end-of-text character
+	KeySuspend        = 26 // substitute character
 	KeyTab            = 9
 	KeyCarriageReturn = 13
 	KeyEsc            = 27

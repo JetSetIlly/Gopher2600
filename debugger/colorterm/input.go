@@ -95,12 +95,26 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 					inputLen += d
 				}
 
-			case easyterm.KeyCtrlC:
+			case easyterm.KeyInterrupt:
 				// CTRL-C -- note that there is a ctrl-c signal handler, set up in
 				// debugger.Start(), that controls the main debugging loop. this
 				// ctrl-c handler by contrast, controls the user input loop
-				ct.Print("\n")
-				return inputLen + 1, errors.NewFormattedError(errors.UserInterrupt)
+
+				if inputLen > 0 {
+					// clear current input
+					inputLen = 0
+					cursorPos = 0
+					ct.Print("\r")
+					ct.Print(ansi.CursorMove(len(prompt.Content)))
+				} else {
+					// there is no input so return UserInterrupt error
+					ct.Print("\n")
+					return inputLen + 1, errors.NewFormattedError(errors.UserInterrupt)
+				}
+
+			case easyterm.KeySuspend:
+				// CTRL-Z
+				return inputLen + 1, errors.NewFormattedError(errors.UserSuspend)
 
 			case easyterm.KeyCarriageReturn:
 				// CARRIAGE RETURN
@@ -230,20 +244,24 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 
 			default:
 				if unicode.IsDigit(readRune.r) || unicode.IsLetter(readRune.r) || unicode.IsSpace(readRune.r) || unicode.IsPunct(readRune.r) || unicode.IsSymbol(readRune.r) {
-					ct.Print(ansi.CursorForwardOne)
-					l := utf8.EncodeRune(er, readRune.r)
 
-					// insert new character into input stream at current cursor
-					// position
-					copy(input[cursorPos+l:], input[cursorPos:])
-					copy(input[cursorPos:], er[:l])
-					cursorPos++
+					// make sure we don't overflow the input buffer
+					if inputLen < len(input) {
+						ct.Print(ansi.CursorForwardOne)
+						l := utf8.EncodeRune(er, readRune.r)
 
-					inputLen += l
+						// insert new character into input stream at current cursor
+						// position
+						copy(input[cursorPos+l:], input[cursorPos:])
+						copy(input[cursorPos:], er[:l])
+						cursorPos++
 
-					// make sure history pointer is at the end of the command
-					// history array
-					history = len(ct.commandHistory)
+						inputLen += l
+
+						// make sure history pointer is at the end of the command
+						// history array
+						history = len(ct.commandHistory)
+					}
 				}
 			}
 		}
