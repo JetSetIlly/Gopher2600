@@ -150,3 +150,9 @@ func (gtv *GUI) Reset() error {
 	gtv.scr.lastY = 0
 	return nil
 }
+
+// IsVisible implements gui.GUI interface
+func (gtv GUI) IsVisible() bool {
+	flgs := gtv.scr.window.GetFlags()
+	return flgs&sdl.WINDOW_SHOWN == sdl.WINDOW_SHOWN
+}

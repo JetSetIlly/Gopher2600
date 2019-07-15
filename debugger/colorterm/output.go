@@ -34,7 +34,7 @@ func (ct *ColorTerminal) UserPrint(style console.Style, s string, a ...interface
 	case console.StylePromptAlt:
 		// nothing special
 	case console.StylePromptConfirm:
-		ct.Print(ansi.PenColor["green"])
+		ct.Print(ansi.PenColor["blue"])
 	}
 
 	if len(a) > 0 {

@@ -18,8 +18,6 @@ changed since the last iteration
 	- for example: "player 0" at scanline 150 if changed
 	- ONDIFF command?
 
-o if current input is empty then confirm quit (with another ctrl-c)
-
 o LAST to include additional information
 	- such as, what memory address was touched.
 	- defaults to CPU instruction like now but optional arguments to output
@@ -35,9 +33,6 @@ o commandline
 o display of colors in the terminal (check for 256 color terminal)
 
 o check validity of ONSTEP and ONHALT before committing the new command sequence
-
-o RUN without ONSTEP output or a DISPLAY should produce a warning note
-
 
 
 sdl screen

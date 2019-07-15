@@ -595,6 +595,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		dbg.print(console.StyleFeedback, "machine reset")
 
 	case cmdRun:
+		if !dbg.gui.IsVisible() && dbg.commandOnStep == "" {
+			dbg.print(console.StyleEmulatorInfo, "running with no display or terminal output")
+		}
 		dbg.runUntilHalt = true
 		return stepContinue, nil
 

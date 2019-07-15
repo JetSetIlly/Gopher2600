@@ -28,6 +28,9 @@ type GUI interface {
 	television.Television
 	television.Renderer
 
+	// returns true if GUI is currently visible. false if not
+	IsVisible() bool
+
 	// send a request to set a gui feature
 	SetFeature(request FeatureReq, args ...interface{}) error
 
