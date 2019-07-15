@@ -156,9 +156,9 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 
 		if btv.scanline <= btv.spec.ScanlinesTotal {
 			// when observing Stella we can see that on the first frame (frame
-			// number zero) the next frame begins when the scanline reaches 51.
-			// it does this with every ROM and regardless of what signals have
-			// been sent.
+			// number zero) a new frame is triggered when the scanline reaches
+			// 51.  it does this with every ROM and regardless of what signals
+			// have been sent.
 			//
 			// I'm not sure why it does this but we emulate the behaviour here
 			// in order to facilitate A/B testing.
