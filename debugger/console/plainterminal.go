@@ -31,23 +31,23 @@ func (pt *PlainTerminal) RegisterTabCompleter(TabCompleter) {
 // UserPrint is the plain terminal print routine
 func (pt PlainTerminal) UserPrint(pp Style, s string, a ...interface{}) {
 	switch pp {
-	case Error:
+	case StyleError:
 		s = fmt.Sprintf("* %s", s)
-	case Help:
+	case StyleHelp:
 		s = fmt.Sprintf("  %s", s)
 	}
 
 	s = fmt.Sprintf(s, a...)
 	pt.output.Write([]byte(s))
 
-	if pp != Prompt {
+	if pp != StylePrompt {
 		pt.output.Write([]byte("\n"))
 	}
 }
 
 // UserRead is the plain terminal read routine
-func (pt PlainTerminal) UserRead(input []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
-	pt.UserPrint(Prompt, prompt)
+func (pt PlainTerminal) UserRead(input []byte, prompt Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
+	pt.UserPrint(prompt.Style, prompt.Content)
 
 	n, err := pt.input.Read(input)
 	if err != nil {

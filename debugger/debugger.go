@@ -227,7 +227,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 	if initScript != "" {
 		plb, err := script.StartPlayback(initScript)
 		if err != nil {
-			dbg.print(console.Error, "error running debugger initialisation script: %s\n", err)
+			dbg.print(console.StyleError, "error running debugger initialisation script: %s\n", err)
 		}
 
 		err = dbg.inputLoop(plb, false)
@@ -260,7 +260,7 @@ func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
 	if err != nil {
-		dbg.print(console.Error, "%s", err)
+		dbg.print(console.StyleError, "%s", err)
 		// continuing because symtable is always valid even if err non-nil
 	}
 
@@ -316,7 +316,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 			if err != nil {
-				dbg.print(console.Error, "%s", err)
+				dbg.print(console.StyleError, "%s", err)
 			}
 		}
 		return dbg.inputLoop(inputter, true)
@@ -359,15 +359,15 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
 				_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
 				if err != nil {
-					dbg.print(console.Error, "%s", err)
+					dbg.print(console.StyleError, "%s", err)
 				}
 			}
 		}
 
 		// print and reset accumulated break and trap messages
-		dbg.print(console.Feedback, dbg.breakMessages)
-		dbg.print(console.Feedback, dbg.trapMessages)
-		dbg.print(console.Feedback, dbg.watchMessages)
+		dbg.print(console.StyleFeedback, dbg.breakMessages)
+		dbg.print(console.StyleFeedback, dbg.trapMessages)
+		dbg.print(console.StyleFeedback, dbg.watchMessages)
 		dbg.breakMessages = ""
 		dbg.trapMessages = ""
 		dbg.watchMessages = ""
@@ -408,7 +408,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						if !videoCycle {
 							// !!TODO: prevent printing of ScriptEnd error for
 							// initialisation script
-							dbg.print(console.Feedback, err.Error())
+							dbg.print(console.StyleFeedback, err.Error())
 						}
 						return nil
 
@@ -428,7 +428,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			// parse user input
 			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]), inputter.IsInteractive(), false)
 			if err != nil {
-				dbg.print(console.Error, "%s", err)
+				dbg.print(console.StyleError, "%s", err)
 			}
 
 			// prepare for next loop
@@ -461,7 +461,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						dbg.lastStepError = true
 
 						// print gopher error message
-						dbg.print(console.Error, "%s", err)
+						dbg.print(console.StyleError, "%s", err)
 					default:
 						return err
 					}
@@ -470,8 +470,8 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 					if dbg.lastResult.Final {
 						err := dbg.lastResult.IsValid()
 						if err != nil {
-							dbg.print(console.Error, "%s", dbg.lastResult.Defn)
-							dbg.print(console.Error, "%s", dbg.lastResult)
+							dbg.print(console.StyleError, "%s", dbg.lastResult.Defn)
+							dbg.print(console.StyleError, "%s", dbg.lastResult)
 							return errors.NewFormattedError(errors.DebuggerError, err)
 						}
 					}
@@ -480,7 +480,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				if dbg.commandOnStep != "" {
 					_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 					if err != nil {
-						dbg.print(console.Error, "%s", err)
+						dbg.print(console.StyleError, "%s", err)
 					}
 				}
 			} else {
@@ -492,7 +492,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 	return nil
 }
 
-func (dbg *Debugger) buildPrompt(videoCycle bool) string {
+func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
 	// decide which address value to use
 	var promptAddress uint16
 	var promptBank int
@@ -530,14 +530,15 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) string {
 		prompt = fmt.Sprintf("%s ! ", prompt)
 	}
 
-	// - additional annotation if we're not showing the prompt in the main loop
+	// video cycle prompt
 	if videoCycle && !dbg.lastResult.Final {
-		prompt = fmt.Sprintf("%s < ", prompt)
-	} else {
 		prompt = fmt.Sprintf("%s > ", prompt)
+		return console.Prompt{Content: prompt, Style: console.StylePromptAlt}
 	}
 
-	return prompt
+	// cpu cycle prompt
+	prompt = fmt.Sprintf("%s >> ", prompt)
+	return console.Prompt{Content: prompt, Style: console.StylePrompt}
 }
 
 // parseInput splits the input into individual commands. each command is then

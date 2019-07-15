@@ -4,9 +4,16 @@ import (
 	"gopher2600/gui"
 )
 
+// Prompt represents the text that is to pose as a prompt to the user when user
+// input is required
+type Prompt struct {
+	Content string
+	Style   Style
+}
+
 // UserInput defines the operations required by an interface that allows input
 type UserInput interface {
-	UserRead(buffer []byte, prompt string, eventChannel chan gui.Event, eventHandler func(gui.Event) error) (int, error)
+	UserRead(buffer []byte, prompt Prompt, eventChannel chan gui.Event, eventHandler func(gui.Event) error) (int, error)
 	IsInteractive() bool
 }
 

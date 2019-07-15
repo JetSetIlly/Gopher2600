@@ -12,7 +12,7 @@ import (
 // implementors
 func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
 	// resolve string placeholders and return if the resulting string is empty
-	if sty != console.Help {
+	if sty != console.StyleHelp {
 		s = fmt.Sprintf(s, a...)
 		if len(s) == 0 {
 			return

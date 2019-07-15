@@ -13,7 +13,7 @@ type machineInformer interface {
 }
 
 func (dbg *Debugger) printMachineInfo(mi machineInformer) {
-	dbg.print(console.MachineInfo, "%s", dbg.getMachineInfo(mi))
+	dbg.print(console.StyleMachineInfo, "%s", dbg.getMachineInfo(mi))
 }
 
 func (dbg *Debugger) getMachineInfo(mi machineInformer) string {

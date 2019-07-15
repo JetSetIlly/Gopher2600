@@ -49,7 +49,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 		data := event.Data.(gui.EventDataMouse)
 		_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false, false)
 		if err == nil {
-			dbg.print(console.Feedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
+			dbg.print(console.StyleFeedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
 		}
 	}
 

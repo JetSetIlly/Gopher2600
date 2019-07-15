@@ -11,7 +11,7 @@ import (
 )
 
 // UserRead is the top level input function
-func (ct *ColorTerminal) UserRead(input []byte, prompt string, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
+func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
 	// ctrl-c handling: currently, we put the terminal into rawmode and listen
 	// for ctrl-c event using the readRune reader.
@@ -43,12 +43,12 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt string, events chan gui.E
 	// for this to work we need to place the cursor in it's initial position
 	// before we begin the loop
 	ct.Print("\r")
-	ct.Print(ansi.CursorMove(len(prompt)))
+	ct.Print(ansi.CursorMove(len(prompt.Content)))
 
 	for {
 		ct.Print(ansi.CursorStore)
-		ct.UserPrint(console.Prompt, "%s%s", ansi.ClearLine, prompt)
-		ct.UserPrint(console.Input, string(input[:inputLen]))
+		ct.UserPrint(prompt.Style, "%s%s", ansi.ClearLine, prompt.Content)
+		ct.UserPrint(console.StyleInput, string(input[:inputLen]))
 		ct.Print(ansi.CursorRestore)
 
 		select {

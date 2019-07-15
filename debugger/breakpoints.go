@@ -116,11 +116,11 @@ func (bp *breakpoints) check(previousResult string) string {
 
 func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
-		bp.dbg.print(console.Feedback, "no breakpoints")
+		bp.dbg.print(console.StyleFeedback, "no breakpoints")
 	} else {
-		bp.dbg.print(console.Feedback, "breakpoints")
+		bp.dbg.print(console.StyleFeedback, "breakpoints")
 		for i := range bp.breaks {
-			bp.dbg.print(console.Feedback, "% 2d: %s", i, bp.breaks[i])
+			bp.dbg.print(console.StyleFeedback, "% 2d: %s", i, bp.breaks[i])
 		}
 	}
 }

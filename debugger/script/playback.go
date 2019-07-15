@@ -2,6 +2,7 @@ package script
 
 import (
 	"fmt"
+	"gopher2600/debugger/console"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"io/ioutil"
@@ -61,7 +62,7 @@ func (rps *Playback) IsInteractive() bool {
 }
 
 // UserRead implements ui.UserInput interface
-func (rps *Playback) UserRead(buffer []byte, prompt string, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
+func (rps *Playback) UserRead(buffer []byte, _ console.Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	if rps.nextLine > len(rps.lines)-1 {
 		return -1, errors.NewFormattedError(errors.ScriptEnd, rps.scriptFile)
 	}

@@ -72,11 +72,11 @@ func (tr *traps) check(previousResult string) string {
 
 func (tr traps) list() {
 	if len(tr.traps) == 0 {
-		tr.dbg.print(console.Feedback, "no traps")
+		tr.dbg.print(console.StyleFeedback, "no traps")
 	} else {
-		tr.dbg.print(console.Feedback, "traps")
+		tr.dbg.print(console.StyleFeedback, "traps")
 		for i := range tr.traps {
-			tr.dbg.print(console.Feedback, "% 2d: %s", i, tr.traps[i].target.ShortLabel())
+			tr.dbg.print(console.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.ShortLabel())
 		}
 	}
 }
@@ -93,7 +93,7 @@ func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 		for _, t := range tr.traps {
 			if t.target.Label() == tgt.Label() {
 				addNewTrap = false
-				tr.dbg.print(console.Error, fmt.Sprintf("trap already exists (%s)", t))
+				tr.dbg.print(console.StyleError, fmt.Sprintf("trap already exists (%s)", t))
 				break // for loop
 			}
 		}

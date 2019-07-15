@@ -50,7 +50,7 @@ const (
 	cmdRun           = "RUN"
 	cmdScript        = "SCRIPT"
 	cmdStep          = "STEP"
-	cmdStepMode      = "STEPMODE"
+	cmdGranularity   = "GRANULARITY"
 	cmdStick         = "STICK"
 	cmdSymbol        = "SYMBOL"
 	cmdTIA           = "TIA"
@@ -95,7 +95,7 @@ var commandTemplate = []string{
 	cmdRun,
 	cmdScript + " [WRITE %S|END|%F]",
 	cmdStep + " (CPU|VIDEO|%S)",
-	cmdStepMode + " (CPU|VIDEO)",
+	cmdGranularity + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdTIA + " (DELAY|CLOCK)",
@@ -244,13 +244,13 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 			helpTxt, ok := Help[keyword]
 			if ok == false {
-				dbg.print(console.Help, "no help for %s", keyword)
+				dbg.print(console.StyleHelp, "no help for %s", keyword)
 			} else {
 				helpTxt = fmt.Sprintf("%s\n\n  Usage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
-				dbg.print(console.Help, helpTxt)
+				dbg.print(console.StyleHelp, helpTxt)
 			}
 		} else {
-			dbg.print(console.Help, debuggerCommands.String())
+			dbg.print(console.StyleHelp, debuggerCommands.String())
 		}
 
 	case cmdInsert:
@@ -259,7 +259,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if err != nil {
 			return doNothing, err
 		}
-		dbg.print(console.Feedback, "machine reset with new cartridge (%s)", cart)
+		dbg.print(console.StyleFeedback, "machine reset with new cartridge (%s)", cart)
 
 	case cmdScript:
 		option, _ := tokens.Get()
@@ -313,16 +313,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdDisassembly:
-		dbg.disasm.Dump(dbg.printStyle(console.Feedback))
+		dbg.disasm.Dump(dbg.printStyle(console.StyleFeedback))
 
 	case cmdGrep:
 		search, _ := tokens.Get()
 		output := strings.Builder{}
 		dbg.disasm.Grep(search, &output, false, 3)
 		if output.Len() == 0 {
-			dbg.print(console.Error, "%s not found in disassembly", search)
+			dbg.print(console.StyleError, "%s not found in disassembly", search)
 		} else {
-			dbg.print(console.Feedback, output.String())
+			dbg.print(console.StyleFeedback, output.String())
 		}
 
 	case cmdSymbol:
@@ -336,16 +336,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					// already caught by command line ValidateTokens()
 
 				case "LOCATIONS":
-					dbg.disasm.Symtable.ListLocations(dbg.printStyle(console.Feedback))
+					dbg.disasm.Symtable.ListLocations(dbg.printStyle(console.StyleFeedback))
 
 				case "READ":
-					dbg.disasm.Symtable.ListReadSymbols(dbg.printStyle(console.Feedback))
+					dbg.disasm.Symtable.ListReadSymbols(dbg.printStyle(console.StyleFeedback))
 
 				case "WRITE":
-					dbg.disasm.Symtable.ListWriteSymbols(dbg.printStyle(console.Feedback))
+					dbg.disasm.Symtable.ListWriteSymbols(dbg.printStyle(console.StyleFeedback))
 				}
 			} else {
-				dbg.disasm.Symtable.ListSymbols(dbg.printStyle(console.Feedback))
+				dbg.disasm.Symtable.ListSymbols(dbg.printStyle(console.StyleFeedback))
 			}
 
 		default:
@@ -355,7 +355,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				switch err := err.(type) {
 				case errors.FormattedError:
 					if err.Errno == errors.SymbolUnknown {
-						dbg.print(console.Feedback, "%s -> not found", symbol)
+						dbg.print(console.StyleFeedback, "%s -> not found", symbol)
 						return doNothing, nil
 					}
 				}
@@ -369,19 +369,19 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					// already caught by command line ValidateTokens()
 
 				case "ALL", "MIRRORS":
-					dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
+					dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, address)
 
 					// find all instances of symbol address in memory space
 					// assumption: the address returned by SearchSymbol is the
 					// first address in the complete list
 					for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
 						if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
-							dbg.print(console.Feedback, "%s -> %#04x", symbol, m)
+							dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, m)
 						}
 					}
 				}
 			} else {
-				dbg.print(console.Feedback, "%s -> %#04x", symbol, address)
+				dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, address)
 			}
 		}
 
@@ -428,18 +428,18 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		switch clear {
 		case "BREAKS":
 			dbg.breakpoints.clear()
-			dbg.print(console.Feedback, "breakpoints cleared")
+			dbg.print(console.StyleFeedback, "breakpoints cleared")
 		case "TRAPS":
 			dbg.traps.clear()
-			dbg.print(console.Feedback, "traps cleared")
+			dbg.print(console.StyleFeedback, "traps cleared")
 		case "WATCHES":
 			dbg.watches.clear()
-			dbg.print(console.Feedback, "watches cleared")
+			dbg.print(console.StyleFeedback, "watches cleared")
 		case "ALL":
 			dbg.breakpoints.clear()
 			dbg.traps.clear()
 			dbg.watches.clear()
-			dbg.print(console.Feedback, "breakpoints, traps and watches cleared")
+			dbg.print(console.StyleFeedback, "breakpoints, traps and watches cleared")
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -460,26 +460,26 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(console.Feedback, "breakpoint #%d dropped", num)
+			dbg.print(console.StyleFeedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(console.Feedback, "trap #%d dropped", num)
+			dbg.print(console.StyleFeedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(console.Feedback, "watch #%d dropped", num)
+			dbg.print(console.StyleFeedback, "watch #%d dropped", num)
 		default:
 			// already caught by command line ValidateTokens()
 		}
 
 	case cmdOnHalt:
 		if tokens.Remaining() == 0 {
-			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 			return doNothing, nil
 		}
 
@@ -506,9 +506,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		// display the new/restored onhalt command(s)
 		if dbg.commandOnHalt == "" {
-			dbg.print(console.Feedback, "auto-command on halt: OFF")
+			dbg.print(console.StyleFeedback, "auto-command on halt: OFF")
 		} else {
-			dbg.print(console.Feedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 		}
 
 		// run the new/restored onhalt command(s)
@@ -517,7 +517,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
-			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+			dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 			return doNothing, nil
 		}
 
@@ -544,9 +544,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		// display the new/restored onstep command(s)
 		if dbg.commandOnStep == "" {
-			dbg.print(console.Feedback, "auto-command on step: OFF")
+			dbg.print(console.StyleFeedback, "auto-command on step: OFF")
 		} else {
-			dbg.print(console.Feedback, "auto-command on step: %s", dbg.commandOnStep)
+			dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 		}
 
 		// run the new/restored onstep command(s)
@@ -559,21 +559,21 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			if ok {
 				switch strings.ToUpper(option) {
 				case "DEFN":
-					dbg.print(console.Feedback, "%s", dbg.lastResult.Defn)
+					dbg.print(console.StyleFeedback, "%s", dbg.lastResult.Defn)
 				}
 			} else {
 				var printTag console.Style
 				if dbg.lastResult.Final {
-					printTag = console.CPUStep
+					printTag = console.StyleCPUStep
 				} else {
-					printTag = console.VideoStep
+					printTag = console.StyleVideoStep
 				}
 				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleExecution))
 			}
 		}
 
 	case cmdMemMap:
-		dbg.print(console.MachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(console.StyleMachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case cmdQuit:
 		dbg.running = false
@@ -587,7 +587,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if err != nil {
 			return doNothing, err
 		}
-		dbg.print(console.Feedback, "machine reset")
+		dbg.print(console.StyleFeedback, "machine reset")
 
 	case cmdRun:
 		dbg.runUntilHalt = true
@@ -598,9 +598,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		mode = strings.ToUpper(mode)
 		switch mode {
 		case "":
+			// calling step with no argument is the normal case
 		case "CPU":
+			// changes granularity
 			dbg.inputEveryVideoCycle = false
 		case "VIDEO":
+			// changes granularity
 			dbg.inputEveryVideoCycle = true
 		default:
 			dbg.inputEveryVideoCycle = false
@@ -614,7 +617,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		return setDefaultStep, nil
 
-	case cmdStepMode:
+	case cmdGranularity:
 		mode, present := tokens.Get()
 		if present {
 			mode = strings.ToUpper(mode)
@@ -632,21 +635,21 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		} else {
 			mode = "CPU"
 		}
-		dbg.print(console.Feedback, "step mode: %s", mode)
+		dbg.print(console.StyleFeedback, "granularity: %s", mode)
 
 	case cmdTerse:
 		dbg.machineInfoVerbose = false
-		dbg.print(console.Feedback, "verbosity: terse")
+		dbg.print(console.StyleFeedback, "verbosity: terse")
 
 	case cmdVerbose:
 		dbg.machineInfoVerbose = true
-		dbg.print(console.Feedback, "verbosity: verbose")
+		dbg.print(console.StyleFeedback, "verbosity: verbose")
 
 	case cmdVerbosity:
 		if dbg.machineInfoVerbose {
-			dbg.print(console.Feedback, "verbosity: verbose")
+			dbg.print(console.StyleFeedback, "verbosity: verbose")
 		} else {
-			dbg.print(console.Feedback, "verbosity: terse")
+			dbg.print(console.StyleFeedback, "verbosity: terse")
 		}
 
 	case cmdDebuggerState:
@@ -660,7 +663,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if ok {
 			switch arg {
 			case "ANALYSIS":
-				dbg.print(console.Feedback, dbg.disasm.String())
+				dbg.print(console.StyleFeedback, dbg.disasm.String())
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.Mem.Cart)
@@ -691,7 +694,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 				v, err := strconv.ParseUint(value, 0, int(reg.Size()))
 				if err != nil {
-					dbg.print(console.Error, "value must be a positive %dbit number", reg.Size())
+					dbg.print(console.StyleError, "value must be a positive %dbit number", reg.Size())
 				}
 
 				reg.Load(v)
@@ -711,9 +714,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			// perform peek
 			ai, err := dbg.dbgmem.peek(a)
 			if err != nil {
-				dbg.print(console.Error, "%s", err)
+				dbg.print(console.StyleError, "%s", err)
 			} else {
-				dbg.print(console.MachineInfo, ai.String())
+				dbg.print(console.StyleMachineInfo, ai.String())
 			}
 
 			// loop through all addresses
@@ -729,16 +732,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		val, err := strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			dbg.print(console.Error, "poke value must be 8bit number (%s)", v)
+			dbg.print(console.StyleError, "poke value must be 8bit number (%s)", v)
 			return doNothing, nil
 		}
 
 		// perform single poke
 		ai, err := dbg.dbgmem.poke(a, uint8(val))
 		if err != nil {
-			dbg.print(console.Error, "%s", err)
+			dbg.print(console.StyleError, "%s", err)
 		} else {
-			dbg.print(console.MachineInfo, ai.String())
+			dbg.print(console.StyleMachineInfo, ai.String())
 		}
 
 	case cmdHexLoad:
@@ -747,7 +750,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		addr, err := strconv.ParseUint(a, 0, 16)
 		if err != nil {
-			dbg.print(console.Error, "hexload address must be 16bit number (%s)", a)
+			dbg.print(console.StyleError, "hexload address must be 16bit number (%s)", a)
 			return doNothing, nil
 		}
 
@@ -757,7 +760,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		for present {
 			val, err := strconv.ParseUint(v, 0, 8)
 			if err != nil {
-				dbg.print(console.Error, "hexload value must be 8bit number (%s)", addr)
+				dbg.print(console.StyleError, "hexload value must be 8bit number (%s)", addr)
 				v, present = tokens.Get()
 				continue // for loop (without advancing address)
 			}
@@ -765,9 +768,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			// perform individual poke
 			ai, err := dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
-				dbg.print(console.Error, "%s", err)
+				dbg.print(console.StyleError, "%s", err)
 			} else {
-				dbg.print(console.MachineInfo, ai.String())
+				dbg.print(console.StyleMachineInfo, ai.String())
 			}
 
 			// loop through all values
@@ -805,7 +808,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0.SprDelay)
 				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1.SprDelay)
 			case "CLOCK":
-				dbg.print(console.Error, "not supported yet")
+				dbg.print(console.StyleError, "not supported yet")
 			default:
 				// already caught by command line ValidateTokens()
 			}
@@ -819,7 +822,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				dbg.print(console.MachineInfo, dbg.gui.GetSpec().ID)
+				dbg.print(console.StyleMachineInfo, dbg.gui.GetSpec().ID)
 			default:
 				// already caught by command line ValidateTokens()
 			}
@@ -848,11 +851,11 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			switch plyr {
 			case 0:
 				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
-				dbg.print(console.MachineInfo, strings.Join(p0, "\n"))
+				dbg.print(console.StyleMachineInfo, strings.Join(p0, "\n"))
 
 			case 1:
 				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
-				dbg.print(console.MachineInfo, strings.Join(p1, "\n"))
+				dbg.print(console.StyleMachineInfo, strings.Join(p1, "\n"))
 
 			default:
 				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
@@ -871,7 +874,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 						s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
 					}
 				}
-				dbg.print(console.MachineInfo, s.String())
+				dbg.print(console.StyleMachineInfo, s.String())
 			}
 		} else {
 			switch plyr {
@@ -904,11 +907,11 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			switch mssl {
 			case 0:
 				m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				dbg.print(console.MachineInfo, strings.Join(m0, "\n"))
+				dbg.print(console.StyleMachineInfo, strings.Join(m0, "\n"))
 
 			case 1:
 				m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				dbg.print(console.MachineInfo, strings.Join(m1, "\n"))
+				dbg.print(console.StyleMachineInfo, strings.Join(m1, "\n"))
 
 			default:
 				// arrange the two missile's information side by side in order to
@@ -930,7 +933,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 						s.WriteString(fmt.Sprintf("%s %s | %s\n", m0[i], strings.Repeat(" ", ml-len(m0[i])), m1[i]))
 					}
 				}
-				dbg.print(console.MachineInfo, s.String())
+				dbg.print(console.StyleMachineInfo, s.String())
 			}
 		} else {
 			switch mssl {
@@ -1052,7 +1055,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				dbg.digest.ResetDigest()
 			}
 		} else {
-			dbg.print(console.Feedback, dbg.digest.String())
+			dbg.print(console.StyleFeedback, dbg.digest.String())
 		}
 	}
 
