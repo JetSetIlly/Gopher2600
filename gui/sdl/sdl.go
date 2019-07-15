@@ -113,7 +113,7 @@ func (gtv *GUI) ChangeTVSpec() error {
 
 // NewFrame implements television.Renderer interface
 func (gtv *GUI) NewFrame(frameNum int) error {
-	defer gtv.scr.clearPixels()
+	defer gtv.scr.clearPixels(true)
 	err := gtv.scr.stb.stabiliseFrame()
 	if err != nil {
 		return err
@@ -137,4 +137,16 @@ func (gtv *GUI) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) erro
 		return nil
 	}
 	return gtv.scr.setAltPixel(x, y, red, green, blue, vblank)
+}
+
+// Reset implements television.Renderer interface
+func (gtv *GUI) Reset() error {
+	err := gtv.Television.Reset()
+	if err != nil {
+		return err
+	}
+	gtv.scr.clearPixels(false)
+	gtv.scr.lastX = 0
+	gtv.scr.lastY = 0
+	return nil
 }

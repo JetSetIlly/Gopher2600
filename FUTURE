@@ -1,8 +1,6 @@
 debugger
 --------
 
-o reset command to reset screen
-
 o custom error messages for command line package
 	- for example "unrecognised argument" command for HELP should be something
 	  like "no help available for ..."

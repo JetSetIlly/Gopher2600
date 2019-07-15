@@ -26,22 +26,6 @@ type screen struct {
 	maxHeight int32
 	maxMask   *sdl.Rect
 
-	// last plot coordinates
-	lastX int32
-	lastY int32
-
-	// pixels arrays are of maximum screen size - actual smaller play screens
-	// are masked appropriately
-	pixels     []byte
-	pixelsFade []byte
-
-	// altPixels mirrors the pixels array with alternative color palette
-	// -- useful for switching between regular and debug colors
-	// -- allocated but only used if gtv.allowDebugging and useAltPixels is true
-	altPixels     []byte
-	altPixelsFade []byte
-	useAltPixels  bool
-
 	// textures are used to present the pixels to the renderer
 	texture     *sdl.Texture
 	textureFade *sdl.Texture
@@ -59,15 +43,34 @@ type screen struct {
 	playSrcMask *sdl.Rect
 	playDstMask *sdl.Rect
 
-	// whether we're using an unmasked screen
-	unmasked bool
-
 	// destRect and srcRect change depending on the value of unmasked
 	srcRect  *sdl.Rect
 	destRect *sdl.Rect
 
 	// stabiliser to make sure image remains solid
 	stb *screenStabiliser
+
+	// whether we're using an unmasked screen
+	// -- changed by user request
+	unmasked bool
+
+	// the remaining attributes change every update
+
+	// last plot coordinates
+	lastX int32
+	lastY int32
+
+	// pixels arrays are of maximum screen size - actual smaller play screens
+	// are masked appropriately
+	pixels     []byte
+	pixelsFade []byte
+
+	// altPixels mirrors the pixels array with alternative color palette
+	// -- useful for switching between regular and debug colors
+	// -- allocated but only used if gtv.allowDebugging and useAltPixels is true
+	altPixels     []byte
+	altPixelsFade []byte
+	useAltPixels  bool
 
 	// overlay for screen showing metasignal information
 	// -- always allocated but only used when tv.allowDebugging and
@@ -380,23 +383,30 @@ func (scr *screen) update(paused bool) error {
 	return nil
 }
 
-func (scr *screen) clearPixels() {
+func (scr *screen) clearPixels(fade bool) {
 	if scr.gtv.allowDebugging {
-		// "fade" alternative pixels and clear
-		swp := scr.altPixels
-		scr.altPixels = scr.altPixelsFade
-		scr.altPixelsFade = swp
-		for i := 0; i < len(scr.altPixels); i++ {
-			scr.altPixels[i] = 0
-		}
-
 		// clear pixels in additional overlays
 		scr.metaPixels.clearPixels()
 
-		// "fade" regular pixels
-		swp = scr.pixels
-		scr.pixels = scr.pixelsFade
-		scr.pixelsFade = swp
+		if fade {
+			// "fade" alternative pixels and clear
+			swp := scr.altPixels
+			scr.altPixels = scr.altPixelsFade
+			scr.altPixelsFade = swp
+			for i := 0; i < len(scr.altPixels); i++ {
+				scr.altPixels[i] = 0
+			}
+
+			// "fade" regular pixels
+			swp = scr.pixels
+			scr.pixels = scr.pixelsFade
+			scr.pixelsFade = swp
+		} else {
+			// clear "faded" pixels
+			for i := 0; i < len(scr.pixelsFade); i++ {
+				scr.pixelsFade[i] = 0
+			}
+		}
 	}
 
 	// clear regular pixels
