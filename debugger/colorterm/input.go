@@ -29,8 +29,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 	// liveBuffInput is used to store the latest input when we scroll through
 	// history - we don't want to lose what we've typed in case the user wants
 	// to resume where we left off
-	liveBuffInput := make([]byte, cap(input))
-	liveBuffInputLen := 0
+	liveHistory := make([]byte, cap(input))
+	liveHistoryLen := 0
 
 	// the method for cursor placement is as follows:
 	//	 for each iteration in the loop
@@ -82,17 +82,19 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 					// input
 					d := len(s) - cursorPos
 
-					// append everythin after the cursor to the new string and copy
-					// into input array
-					s += string(input[cursorPos:])
-					copy(input, []byte(s))
+					if inputLen+d <= len(input) {
+						// append everything after the cursor to the new string and copy
+						// into input array
+						s += string(input[cursorPos:])
+						copy(input, []byte(s))
 
-					// advance character to end of completed word
-					ct.Print(ansi.CursorMove(d))
-					cursorPos += d
+						// advance character to end of completed word
+						ct.Print(ansi.CursorMove(d))
+						cursorPos += d
 
-					// note new used-length of input array
-					inputLen += d
+						// note new used-length of input array
+						inputLen += d
+					}
 				}
 
 			case easyterm.KeyInterrupt:
@@ -169,16 +171,23 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 							// if we're at the end of the command history then store
 							// the current input in liveBuffInput for possible later editing
 							if history == len(ct.commandHistory) {
-								copy(liveBuffInput, input[:inputLen])
-								liveBuffInputLen = inputLen
+								copy(liveHistory, input[:inputLen])
+								liveHistoryLen = inputLen
 							}
 
 							if history > 0 {
 								history--
-								copy(input, ct.commandHistory[history].input)
-								inputLen = len(ct.commandHistory[history].input)
-								ct.Print(ansi.CursorMove(inputLen - cursorPos))
-								cursorPos = inputLen
+								l := len(ct.commandHistory[history].input)
+
+								// length check in case input buffer is
+								// shorted from when history entry was added
+								if l < len(input) {
+									inputLen = l
+									copy(input, ct.commandHistory[history].input)
+									inputLen = len(ct.commandHistory[history].input)
+									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									cursorPos = inputLen
+								}
 							}
 						}
 					case easyterm.CursorDown:
@@ -186,16 +195,27 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 						if len(ct.commandHistory) > 0 {
 							if history < len(ct.commandHistory)-1 {
 								history++
-								copy(input, ct.commandHistory[history].input)
-								inputLen = len(ct.commandHistory[history].input)
-								ct.Print(ansi.CursorMove(inputLen - cursorPos))
-								cursorPos = inputLen
+								l := len(ct.commandHistory[history].input)
+								if l < len(input) {
+									inputLen = l
+									copy(input, ct.commandHistory[history].input)
+									inputLen = len(ct.commandHistory[history].input)
+									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									cursorPos = inputLen
+								}
 							} else if history == len(ct.commandHistory)-1 {
 								history++
-								copy(input, liveBuffInput)
-								inputLen = liveBuffInputLen
-								ct.Print(ansi.CursorMove(inputLen - cursorPos))
-								cursorPos = inputLen
+
+								// length check not really required because
+								// liveHistroy should not ever be greater
+								// in length than that of input buffer
+								if liveHistoryLen < len(input) {
+									inputLen = liveHistoryLen
+									copy(input, liveHistory)
+									inputLen = liveHistoryLen
+									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									cursorPos = inputLen
+								}
 							}
 						}
 					case easyterm.CursorForward:
@@ -245,10 +265,11 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 			default:
 				if unicode.IsDigit(readRune.r) || unicode.IsLetter(readRune.r) || unicode.IsSpace(readRune.r) || unicode.IsPunct(readRune.r) || unicode.IsSymbol(readRune.r) {
 
+					l := utf8.EncodeRune(er, readRune.r)
+
 					// make sure we don't overflow the input buffer
-					if inputLen < len(input) {
+					if cursorPos+l <= len(input) {
 						ct.Print(ansi.CursorForwardOne)
-						l := utf8.EncodeRune(er, readRune.r)
 
 						// insert new character into input stream at current cursor
 						// position

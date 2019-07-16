@@ -32,8 +32,6 @@ o commandline
 
 o display of colors in the terminal (check for 256 color terminal)
 
-o check validity of ONSTEP and ONHALT before committing the new command sequence
-
 
 sdl screen
 ----------

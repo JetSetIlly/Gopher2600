@@ -83,8 +83,8 @@ var commandTemplate = []string{
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
 	cmdMissile + " (0|1)",
-	cmdOnHalt + " (OFF|RESTORE|%S {%S})",
-	cmdOnStep + " (OFF|RESTORE|%S {%S})",
+	cmdOnHalt + " (OFF|ON|%S {%S})",
+	cmdOnStep + " (OFF|ON|%S {%S})",
 	cmdPeek + " [%S] {%S}",
 	cmdPlayer + " (0|1)",
 	cmdPlayfield,
@@ -481,79 +481,103 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdOnHalt:
 		if tokens.Remaining() == 0 {
-			dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			if dbg.commandOnHalt == "" {
+				dbg.print(console.StyleFeedback, "auto-command on halt: OFF")
+			} else {
+				dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			}
 			return doNothing, nil
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
+		//
+		var newCommands string
 
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			dbg.commandOnHalt = ""
-		case "RESTORE":
-			dbg.commandOnHalt = dbg.commandOnHaltStored
+			newCommands = ""
+		case "ON":
+			newCommands = dbg.commandOnHaltStored
 		default:
 			// use remaininder of command line to form the ONHALT command sequence
-			dbg.commandOnHalt = tokens.Remainder()
+			newCommands = tokens.Remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
-			dbg.commandOnHalt = strings.Replace(dbg.commandOnHalt, ",", ";", -1)
-
-			// store the new command so we can reuse it
-			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnHaltStored = dbg.commandOnHalt
+			newCommands = strings.Replace(newCommands, ",", ";", -1)
 		}
 
-		// display the new/restored onhalt command(s)
-		if dbg.commandOnHalt == "" {
+		// run the new/restored ONHALT command(s)
+		_, err := dbg.parseInput(newCommands, false, false)
+		if err != nil {
+			return doNothing, err
+		}
+
+		dbg.commandOnHalt = newCommands
+
+		// display the new/restored ONHALT command(s)
+		if newCommands == "" {
 			dbg.print(console.StyleFeedback, "auto-command on halt: OFF")
 		} else {
 			dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+
+			// store the new command so we can reuse it after an ONHALT OFF
+			// !!TODO: normalise case of specified command sequence
+			dbg.commandOnHaltStored = newCommands
 		}
 
-		// run the new/restored onhalt command(s)
-		_, err := dbg.parseInput(dbg.commandOnHalt, false, false)
-		return doNothing, err
+		return doNothing, nil
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
-			dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+			if dbg.commandOnHalt == "" {
+				dbg.print(console.StyleFeedback, "auto-command on step: OFF")
+			} else {
+				dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+			}
 			return doNothing, nil
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
 
+		var newCommands string
+
 		option, _ := tokens.Peek()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			dbg.commandOnStep = ""
-		case "RESTORE":
-			dbg.commandOnStep = dbg.commandOnStepStored
+			newCommands = ""
+		case "ON":
+			newCommands = dbg.commandOnStepStored
 		default:
 			// use remaininder of command line to form the ONSTEP command sequence
-			dbg.commandOnStep = tokens.Remainder()
+			newCommands = tokens.Remainder()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
-			dbg.commandOnStep = strings.Replace(dbg.commandOnStep, ",", ";", -1)
-
-			// store the new command so we can reuse it
-			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnStepStored = dbg.commandOnStep
+			newCommands = strings.Replace(newCommands, ",", ";", -1)
 		}
 
-		// display the new/restored onstep command(s)
-		if dbg.commandOnStep == "" {
+		// run the new/restored ONSTEP command(s)
+		_, err := dbg.parseInput(newCommands, false, false)
+		if err != nil {
+			return doNothing, err
+		}
+
+		dbg.commandOnStep = newCommands
+
+		// display the new/restored ONSTEP command(s)
+		if newCommands == "" {
 			dbg.print(console.StyleFeedback, "auto-command on step: OFF")
 		} else {
 			dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+
+			// store the new command so we can reuse it after an ONSTEP OFF
+			// !!TODO: normalise case of specified command sequence
+			dbg.commandOnStepStored = newCommands
 		}
 
-		// run the new/restored onstep command(s)
-		_, err := dbg.parseInput(dbg.commandOnStep, false, false)
-		return doNothing, err
+		return doNothing, nil
 
 	case cmdLast:
 		if dbg.lastResult != nil {
