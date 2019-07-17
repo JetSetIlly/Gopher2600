@@ -36,8 +36,6 @@ o display of colors in the terminal (check for 256 color terminal)
 sdl screen
 ----------
 
-o faded copy of metasignal overlay for incomplete frames (when halted)
-
 o info under mouse. floating tooltip
 
 

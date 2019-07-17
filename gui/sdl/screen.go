@@ -3,6 +3,7 @@ package sdl
 import (
 	"gopher2600/errors"
 	"gopher2600/performance/limiter"
+	"gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -12,7 +13,8 @@ import (
 const scrDepth int32 = 4
 
 type screen struct {
-	gtv *GUI
+	gtv  *GUI
+	spec *television.Specification
 
 	// regulates how often the screen is updated
 	fpsLimiter *limiter.FpsLimiter
@@ -74,9 +76,9 @@ type screen struct {
 
 	// overlay for screen showing metasignal information
 	// -- always allocated but only used when tv.allowDebugging and
-	// showMetaPixels are true
-	metaPixels     *metaVideoOverlay
-	showMetaPixels bool
+	// showMetaVideo are true
+	metaVideo     *metaVideoOverlay
+	showMetaVideo bool
 }
 
 func newScreen(gtv *GUI) (*screen, error) {
@@ -107,7 +109,7 @@ func newScreen(gtv *GUI) (*screen, error) {
 	scr.stb = newScreenStabiliser(scr)
 
 	// new overlay
-	scr.metaPixels, err = newMetaVideoOverlay(scr)
+	scr.metaVideo, err = newMetaVideoOverlay(scr)
 	if err != nil {
 		return nil, err
 	}
@@ -118,14 +120,14 @@ func newScreen(gtv *GUI) (*screen, error) {
 func (scr *screen) changeTVSpec() error {
 	var err error
 
-	spec := scr.gtv.GetSpec()
+	scr.spec = scr.gtv.GetSpec()
 
-	scr.maxWidth = int32(spec.ClocksPerScanline)
-	scr.maxHeight = int32(spec.ScanlinesTotal)
+	scr.maxWidth = int32(scr.spec.ClocksPerScanline)
+	scr.maxHeight = int32(scr.spec.ScanlinesTotal)
 	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
 
-	scr.playWidth = int32(spec.ClocksPerVisible)
-	scr.setPlayArea(int32(spec.ScanlinesPerVisible), int32(spec.ScanlinesPerVBlank+spec.ScanlinesPerVSync))
+	scr.playWidth = int32(scr.spec.ClocksPerVisible)
+	scr.setPlayArea(int32(scr.spec.ScanlinesPerVisible), int32(scr.spec.ScanlinesPerVBlank+scr.spec.ScanlinesPerVSync))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
 	// worry about this again once we've created the window and set the scaling
@@ -158,7 +160,7 @@ func (scr *screen) changeTVSpec() error {
 	scr.altPixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
 	// frame limiter
-	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(spec.FramesPerSecond))
+	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(scr.spec.FramesPerSecond))
 	if err != nil {
 		return errors.NewFormattedError(errors.SDL, err)
 	}
@@ -170,7 +172,7 @@ func (scr *screen) changeTVSpec() error {
 func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.gtv.GetSpec().ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(scr.spec.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -317,18 +319,12 @@ func (scr *screen) update(paused bool) error {
 	if scr.unmasked {
 		scr.renderer.SetDrawColor(100, 100, 100, 20)
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-		spec := scr.gtv.GetSpec()
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(spec.ClocksPerHblank), H: int32(spec.ScanlinesTotal)})
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.spec.ClocksPerHblank), H: int32(scr.spec.ScanlinesTotal)})
 	}
 
 	// show metasignal overlay
-	if scr.gtv.allowDebugging && scr.showMetaPixels {
-		err = scr.metaPixels.update()
-		if err != nil {
-			return err
-		}
-
-		err = scr.renderer.Copy(scr.metaPixels.texture, scr.srcRect, scr.destRect)
+	if scr.gtv.allowDebugging && scr.showMetaVideo {
+		err = scr.metaVideo.update(paused)
 		if err != nil {
 			return err
 		}
@@ -343,7 +339,7 @@ func (scr *screen) update(paused bool) error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= scr.gtv.GetSpec().ClocksPerScanline+scr.gtv.GetSpec().ClocksPerHblank {
+		if x >= scr.spec.ClocksPerScanline+scr.spec.ClocksPerHblank {
 			x = 0
 			y++
 		}
@@ -383,29 +379,28 @@ func (scr *screen) update(paused bool) error {
 	return nil
 }
 
-func (scr *screen) clearPixels(fade bool) {
+func (scr *screen) newFrame() {
 	if scr.gtv.allowDebugging {
-		// clear pixels in additional overlays
-		scr.metaPixels.clearPixels()
+		// swap pixel array with pixelsFade array
+		// -- note that we don't do this with the texture instead because
+		// updating the the extra texture if we don't need to (faded pixels
+		// only show when the emulation is paused) is expensive
+		swp := scr.pixels
+		scr.pixels = scr.pixelsFade
+		scr.pixelsFade = swp
 
-		if fade {
-			// "fade" alternative pixels and clear
-			swp := scr.altPixels
-			scr.altPixels = scr.altPixelsFade
-			scr.altPixelsFade = swp
-			for i := 0; i < len(scr.altPixels); i++ {
-				scr.altPixels[i] = 0
-			}
+		// clear pixels in metavideo overlay
+		scr.metaVideo.newFrame()
 
-			// "fade" regular pixels
-			swp = scr.pixels
-			scr.pixels = scr.pixelsFade
-			scr.pixelsFade = swp
-		} else {
-			// clear "faded" pixels
-			for i := 0; i < len(scr.pixelsFade); i++ {
-				scr.pixelsFade[i] = 0
-			}
+		// swap pixel array with pixelsFade array
+		// -- see comment above
+		swp = scr.altPixels
+		scr.altPixels = scr.altPixelsFade
+		scr.altPixelsFade = swp
+
+		// clear altpixels
+		for i := 0; i < len(scr.altPixels); i++ {
+			scr.altPixels[i] = 0
 		}
 	}
 

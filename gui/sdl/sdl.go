@@ -90,7 +90,6 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 // update the gui so that it reflects changes to buffered data in the tv struct
 func (gtv *GUI) update() error {
-	// abbrogate most of the updating to the screen instance
 	err := gtv.scr.update(gtv.paused)
 	if err != nil {
 		return err
@@ -113,12 +112,19 @@ func (gtv *GUI) ChangeTVSpec() error {
 
 // NewFrame implements television.Renderer interface
 func (gtv *GUI) NewFrame(frameNum int) error {
-	defer gtv.scr.clearPixels(true)
 	err := gtv.scr.stb.stabiliseFrame()
 	if err != nil {
 		return err
 	}
-	return gtv.update()
+
+	err = gtv.update()
+	if err != nil {
+		return err
+	}
+
+	gtv.scr.newFrame()
+
+	return nil
 }
 
 // NewScanline implements television.Renderer interface
@@ -145,7 +151,7 @@ func (gtv *GUI) Reset() error {
 	if err != nil {
 		return err
 	}
-	gtv.scr.clearPixels(false)
+	gtv.scr.newFrame()
 	gtv.scr.lastX = 0
 	gtv.scr.lastY = 0
 	return nil

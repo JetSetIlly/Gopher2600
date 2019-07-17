@@ -1,32 +1,36 @@
 package gui
 
-import "gopher2600/television"
+import (
+	"gopher2600/gui/metavideo"
+	"gopher2600/television"
+)
 
 // FeatureReq is used to request the setting of a gui attribute
-// eg. toggling the metapixel layer
+// eg. toggling the metavideo layer
 type FeatureReq int
 
 // list of valid feature requests
 const (
-	ReqSetVisibility        FeatureReq = iota // bool, optional bool (update on show)
-	ReqSetVisibilityStable                    // none
-	ReqSetAllowDebugging                      // bool
-	ReqSetPause                               // bool
-	ReqSetMasking                             // bool
-	ReqToggleMasking                          // none
-	ReqSetAltColors                           // bool
-	ReqToggleAltColors                        // none
-	ReqSetShowMetaPixels                      // bool
-	ReqToggleShowMetaPixels                   // none
-	ReqSetScale                               // float
-	ReqIncScale                               // none
-	ReqDecScale                               // none
+	ReqSetVisibility       FeatureReq = iota // bool, optional bool (update on show)
+	ReqSetVisibilityStable                   // none
+	ReqSetAllowDebugging                     // bool
+	ReqSetPause                              // bool
+	ReqSetMasking                            // bool
+	ReqToggleMasking                         // none
+	ReqSetAltColors                          // bool
+	ReqToggleAltColors                       // none
+	ReqSetShowMetaVideo                      // bool
+	ReqToggleShowMetaVideo                   // none
+	ReqSetScale                              // float
+	ReqIncScale                              // none
+	ReqDecScale                              // none
 )
 
 // GUI defines the operations that can be performed on GUIs
 type GUI interface {
 	television.Television
 	television.Renderer
+	metavideo.Renderer
 
 	// returns true if GUI is currently visible. false if not
 	IsVisible() bool

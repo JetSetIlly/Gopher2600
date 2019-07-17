@@ -51,12 +51,12 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		gtv.scr.useAltPixels = !gtv.scr.useAltPixels
 		gtv.update()
 
-	case gui.ReqSetShowMetaPixels:
-		gtv.scr.showMetaPixels = args[0].(bool)
+	case gui.ReqSetShowMetaVideo:
+		gtv.scr.showMetaVideo = args[0].(bool)
 		gtv.update()
 
-	case gui.ReqToggleShowMetaPixels:
-		gtv.scr.showMetaPixels = !gtv.scr.showMetaPixels
+	case gui.ReqToggleShowMetaVideo:
+		gtv.scr.showMetaVideo = !gtv.scr.showMetaVideo
 		gtv.update()
 
 	case gui.ReqSetScale:

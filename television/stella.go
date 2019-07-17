@@ -2,7 +2,6 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/debugger/metavideo"
 	"gopher2600/errors"
 	"strings"
 )
@@ -288,11 +287,6 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	return nil
-}
-
-// MetaSignal recieves (and processes) additional emulator information from the emulator
-func (btv *BasicTelevision) MetaSignal(metavideo.MetaSignalAttributes) error {
 	return nil
 }
 

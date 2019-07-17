@@ -32,7 +32,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
 			case "2":
 				// toggle metasignals overlay
-				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaPixels)
+				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaVideo)
 
 			case "=":
 				fallthrough // equal sign is the same as plus, for convenience

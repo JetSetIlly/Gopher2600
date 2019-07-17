@@ -1023,7 +1023,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					return doNothing, err
 				}
 			case "METASIGNALS":
-				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaPixels)
+				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaVideo)
 				if err != nil {
 					return doNothing, err
 				}

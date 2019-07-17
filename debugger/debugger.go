@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
-	"gopher2600/debugger/metavideo"
 	"gopher2600/debugger/script"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
@@ -50,9 +49,9 @@ type Debugger struct {
 	// metavideo is additional information about the emulation state (ie.
 	// if a sprite was reset or if WSYNC is active, etc.)
 	//
-	// videomon.Check() is called every video cycle to inform the gui of
+	// metavideo.Check() is called every video cycle to inform the gui of
 	// the metainformation of the last television signal
-	videomon *metavideo.Monitor
+	metavideo *metavideoMonitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -169,8 +168,8 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	// set up debugging interface to memory
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
-	// set up metapixel monitor
-	dbg.videomon = &metavideo.Monitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.CPU, Rend: dbg.vcs.TV}
+	// set up metavideo monitor
+	dbg.metavideo = &metavideoMonitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.CPU, Renderer: dbg.gui}
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -298,7 +297,7 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	return dbg.videomon.Check()
+	return dbg.metavideo.Check()
 }
 
 // inputLoop has two modes, defined by the videoCycle argument.  when

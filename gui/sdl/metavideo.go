@@ -1,7 +1,7 @@
 package sdl
 
 import (
-	"gopher2600/debugger/metavideo"
+	"gopher2600/gui/metavideo"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -9,66 +9,102 @@ import (
 type metaVideoOverlay struct {
 	scr *screen
 
-	pixels  []byte
-	texture *sdl.Texture
+	texture     *sdl.Texture
+	textureFade *sdl.Texture
+
+	pixels     []byte
+	pixelsFade []byte
 
 	labels [][]string
 }
 
 func newMetaVideoOverlay(scr *screen) (*metaVideoOverlay, error) {
-	mpx := new(metaVideoOverlay)
-	mpx.scr = scr
+	mv := new(metaVideoOverlay)
+	mv.scr = scr
 
 	// our acutal screen data
-	mpx.pixels = make([]byte, mpx.scr.maxWidth*mpx.scr.maxHeight*scrDepth)
+	mv.pixels = make([]byte, mv.scr.maxWidth*mv.scr.maxHeight*scrDepth)
+	mv.pixelsFade = make([]byte, mv.scr.maxWidth*mv.scr.maxHeight*scrDepth)
 
 	// labels
-	mpx.labels = make([][]string, mpx.scr.maxHeight)
-	for i := 0; i < len(mpx.labels); i++ {
-		mpx.labels[i] = make([]string, mpx.scr.maxWidth)
+	mv.labels = make([][]string, mv.scr.maxHeight)
+	for i := 0; i < len(mv.labels); i++ {
+		mv.labels[i] = make([]string, mv.scr.maxWidth)
 	}
 
 	var err error
 
-	mpx.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(mpx.scr.maxWidth), int32(mpx.scr.maxHeight))
+	mv.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(mv.scr.maxWidth), int32(mv.scr.maxHeight))
 	if err != nil {
 		return nil, err
 	}
-	mpx.texture.SetAlphaMod(100)
-	mpx.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	mv.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	mv.texture.SetAlphaMod(100)
 
-	return mpx, nil
+	mv.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(mv.scr.maxWidth), int32(mv.scr.maxHeight))
+	if err != nil {
+		return nil, err
+	}
+	mv.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	mv.textureFade.SetAlphaMod(50)
+
+	return mv, nil
 }
 
-func (mpx *metaVideoOverlay) setPixel(sig metavideo.MetaSignalAttributes) error {
-	i := (mpx.scr.lastY*mpx.scr.maxWidth + mpx.scr.lastX) * scrDepth
+func (mv *metaVideoOverlay) setPixel(sig metavideo.MetaSignalAttributes) error {
+	i := (mv.scr.lastY*mv.scr.maxWidth + mv.scr.lastX) * scrDepth
 
-	if i >= int32(len(mpx.pixels)) {
+	if i >= int32(len(mv.pixels)) {
 		return nil
 	}
 
-	mpx.pixels[i] = sig.Red
-	mpx.pixels[i+1] = sig.Green
-	mpx.pixels[i+2] = sig.Blue
-	mpx.pixels[i+3] = 255
+	mv.pixels[i] = sig.Red
+	mv.pixels[i+1] = sig.Green
+	mv.pixels[i+2] = sig.Blue
+	mv.pixels[i+3] = 255
 
 	// silently allow empty labels
-	mpx.labels[mpx.scr.lastY][mpx.scr.lastX] = sig.Label
+	mv.labels[mv.scr.lastY][mv.scr.lastX] = sig.Label
 
 	return nil
 }
 
-func (mpx *metaVideoOverlay) clearPixels() {
-	for i := 0; i < len(mpx.pixels); i++ {
-		mpx.pixels[i] = 0
+func (mv *metaVideoOverlay) newFrame() {
+	// swap pixel array with pixelsFade array
+	// -- see comment in sdl.screen.newFrame() function for why we do this
+	swp := mv.pixels
+	mv.pixels = mv.pixelsFade
+	mv.pixelsFade = swp
+
+	// clear regular pixels
+	for i := 0; i < len(mv.pixels); i++ {
+		mv.pixels[i] = 0
 	}
 }
 
-func (mpx *metaVideoOverlay) update() error {
-	err := mpx.texture.Update(nil, mpx.pixels, int(mpx.scr.maxWidth*scrDepth))
+func (mv *metaVideoOverlay) update(paused bool) error {
+	if paused {
+		err := mv.textureFade.Update(nil, mv.pixelsFade, int(mv.scr.maxWidth*scrDepth))
+		if err != nil {
+			return err
+		}
+
+		err = mv.scr.renderer.Copy(mv.textureFade, mv.scr.srcRect, mv.scr.destRect)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := mv.texture.Update(nil, mv.pixels, int(mv.scr.maxWidth*scrDepth))
 	if err != nil {
 		return err
 	}
+
+	err = mv.scr.renderer.Copy(mv.texture, mv.scr.srcRect, mv.scr.destRect)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -79,10 +115,5 @@ func (gtv *GUI) MetaSignal(sig metavideo.MetaSignalAttributes) error {
 		return nil
 	}
 
-	err := gtv.Television.MetaSignal(sig)
-	if err != nil {
-		return err
-	}
-
-	return gtv.scr.metaPixels.setPixel(sig)
+	return gtv.scr.metaVideo.setPixel(sig)
 }
