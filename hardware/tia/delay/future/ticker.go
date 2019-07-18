@@ -40,7 +40,7 @@ func (tck Ticker) MachineInfoTerse() string {
 
 // Schedule the pending future action
 func (tck *Ticker) Schedule(cycles int, payload func(), label string) *Event {
-	ins := schedule(tck, cycles, payload, label)
+	ins := &Event{ticker: tck, label: label, initialCycles: cycles, RemainingCycles: cycles, payload: payload}
 	tck.events.PushBack(ins)
 	return ins
 }
@@ -56,7 +56,7 @@ func (tck *Ticker) Tick() bool {
 
 	e := tck.events.Front()
 	for e != nil {
-		t := e.Value.(*Event).tick()
+		t := e.Value.(*Event).Tick()
 		r = r || t
 
 		if t {

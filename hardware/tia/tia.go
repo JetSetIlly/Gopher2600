@@ -36,21 +36,21 @@ type TIA struct {
 	// counters are ticked.
 	hblank bool
 
+	// a flag to say if the hblank will be turning off on the next cycle
+	// -- used by the sprite objects to apply the correct delay for position
+	// resets (see sprite code for details)
+	hblankOffNext bool
+
+	// the MOTCK signal is sent to the sprite objects every cycle when hblank
+	// is false. the schematics show a one cycle delay after hblank is changed
+	motck bool
+
 	// wsync records whether the cpu is to halt until hsync resets to 000000
 	wsync bool
 
 	// HMOVE information. each sprite object also contains HOMVE information
 	hmoveLatch bool
 	hmoveCt    int
-
-	// "Beside each counter there is a two-phase clock generator. This
-	// takes the incoming 3.58 MHz colour clock (CLK) and divides by
-	// 4 using a couple of flip-flops. Two AND gates are then used to
-	// generate two independent clock signals"
-	//
-	// we use tiaClk by waiting for InPhase() signals and then ticking the
-	// hsync counter.
-	tiaClk phaseclock.PhaseClock
 
 	// TIA_HW_Notes.txt describes the hsync counter:
 	//
@@ -59,6 +59,7 @@ type TIA struct {
 	// The counter decodes shown below provide all the horizontal timing for
 	// the control lines used to construct a valid TV signal."
 	hsync polycounter.Polycounter
+	pclk  phaseclock.PhaseClock
 
 	// TIA_HW_Notes.txt talks about there being a delay when altering some
 	// video objects/attributes. the following future.Group ticks every color
@@ -80,15 +81,11 @@ func (tia TIA) MachineInfo() string {
 // map String to MachineInfo
 func (tia TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f %d",
+	s.WriteString(fmt.Sprintf("%s %03d %d %04.01f",
 		tia.hsync,
-		tia.tiaClk.String(),
+		tia.pclk.Count(),
 		tia.videoCycles,
 		tia.cpuCycles,
-
-		// pixel information below is not the same as the pixel column in
-		// TIA_HW_Notes
-		tia.hsync.NumSteps(&tia.tiaClk),
 	))
 
 	// NOTE: TIA_HW_Notes also includes playfield and control information.
@@ -100,11 +97,14 @@ func (tia TIA) String() string {
 // NewTIA creates a TIA, to be used in a VCS emulation
 func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
+	tia.pclk.Reset()
 
-	tia.tiaClk.Reset(false)
 	tia.hmoveCt = -1
 
-	tia.Video = video.NewVideo(&tia.tiaClk, &tia.hsync, &tia.TIAdelay, mem, tv)
+	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync,
+		&tia.TIAdelay,
+		mem, tv,
+		&tia.hblank, &tia.hblankOffNext, &tia.hmoveLatch)
 	if tia.Video == nil {
 		return nil
 	}
@@ -147,9 +147,10 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "RSYNC":
-		tia.tiaClk.Reset(true)
-		tia.TIAdelay.Schedule(5, func() {
+		tia.pclk.Align()
+		tia.TIAdelay.Schedule(4, func() {
 			tia.hsync.Reset()
+			tia.pclk.Reset()
 
 			// the same as what happens at SHB
 			tia.hblank = true
@@ -162,9 +163,13 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "HMOVE":
-		tia.Video.PrepareSpritesForHMOVE()
-		tia.hmoveLatch = true
-		tia.hmoveCt = 15
+		// TODO: the schematics definitely show a delay but I'm not sure if
+		// it's 4 cycles.
+		tia.TIAdelay.Schedule(4, func() {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.hmoveLatch = true
+			tia.hmoveCt = 15
+		}, "HMOVE")
 		return
 	}
 
@@ -187,10 +192,17 @@ func (tia *TIA) ReadMemory() {
 // these parts is important. the currently defined steps and the ordering are
 // as follows:
 //
-// !!TODO: summary of steps
+// 1. tick two-phase clock
+// 2. if clock is now on the rising edge of Phi2
+//	2.1. tick hsync counter
+//	2.2. schedule hsync events as required
+// 3. tick delayed events
+// 4. tick sprites
+// 5. adjust HMOVE value
+// 6. send signal to television
 //
-// steps 2.0 and 6.0 contain a lot more work important to the correct operation
-// of the TIA but from this perspective each step is monolithic
+// step 4 contains a lot more work important to the correct operation of the
+// TIA but from this perspective the step is monolithic
 //
 // note that there is no TickPlayfield(). earlier versions of the code required
 // us to tick the playfield explicitely but because the playfield is so closely
@@ -202,15 +214,27 @@ func (tia *TIA) Step() (bool, error) {
 	tia.videoCycles++
 	tia.cpuCycles = float64(tia.videoCycles) / 3.0
 
-	// update "two-phase clock generator"
-	tia.tiaClk.Tick()
+	tia.pclk.Tick()
 
 	// hsyncDelay is the number of cycles required before, for example, hblank
 	// is reset
 	const hsyncDelay = 4
 
-	// when phase clock reaches the correct state, tick hsync counter
-	if tia.tiaClk.InPhase() {
+	// the TIA schematics for the MOTCK signal show a one cycle delay after
+	// HBLANK has been changed
+	const motckDelay = 1
+
+	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
+	//
+	// "This table shows the elapsed number of CLK, CPU cycles, Playfield
+	// (PF) bits and Playfield pixels at the start of each counter state
+	// (ie when the counter changes to this state on the rising edge of
+	// the H@2 clock)."
+	//
+	// the context of this passage is the Horizontal Sync Counter. It is
+	// explicitely saying that the HSYNC counter ticks forward on the rising
+	// edge of Phi2.
+	if tia.pclk.Phi2() {
 		tia.hsync.Tick()
 
 		// this switch statement is based on the "Horizontal Sync Counter"
@@ -232,15 +256,19 @@ func (tia *TIA) Step() (bool, error) {
 				// the CPU's WSYNC concludes at the beginning of a scanline
 				// from the TIA_1A document:
 				//
-				// "...WYNC latch is automatically reset to zero by the leading
-				// edge of the next horizontal blank timing signal, releasing
-				// the RDY line"
-				//
-				// the reutrn value of this Step() function is the RDY line
+				// "...WSYNC latch is automatically reset to zero by the
+				// leading edge of the next horizontal blank timing signal,
+				// releasing the RDY line"
 				tia.wsync = false
 
-				// start HBLANK. start of new scanline for the TIA. turn hblank on
+				// start HBLANK. start of new scanline for the TIA. turn hblank
+				// on
 				tia.hblank = true
+
+				// MOTCK is one cycle behind the HBALNK state
+				tia.TIAdelay.Schedule(motckDelay, func() {
+					tia.motck = false
+				}, "MOTCK [reset]")
 
 				// not sure when to reset HMOVE latch but here seems good
 				tia.hmoveLatch = false
@@ -249,12 +277,12 @@ func (tia *TIA) Step() (bool, error) {
 				tia.videoCycles = 0
 				tia.cpuCycles = 0
 
-				// rather than include the reset signal in the delay, we will
-				// manually reset hsync counter when it reaches a count of 57
-
 				// see SignalAttributes type definition for notes about the
 				// HSyncSimple attribute
 				tia.sig.HSyncSimple = true
+
+				// rather than include the reset signal in the delay, we will
+				// manually reset hsync counter when it reaches a count of 57
 			}, "RESET")
 
 		case 1:
@@ -297,8 +325,23 @@ func (tia *TIA) Step() (bool, error) {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.hmoveLatch {
+
+				// one cycle before HBLANK is turned off raise the
+				// hblankOffNext flag. we'll lower it next cycle when HBLANK is
+				// actually turned off
+				tia.TIAdelay.Schedule(hsyncDelay-1, func() {
+					tia.hblankOffNext = true
+				}, "")
+
 				tia.TIAdelay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
+					tia.hblankOffNext = false
+
+					// the signal used to tick the sprites is one cycle behind
+					// the HBLANK state
+					tia.TIAdelay.Schedule(motckDelay, func() {
+						tia.motck = true
+					}, "MOTCK")
 				}, "HRB")
 			}
 
@@ -306,9 +349,18 @@ func (tia *TIA) Step() (bool, error) {
 
 		case 18:
 			// late HBLANK off if hmoveLatch is true
+			//
+			// see swtich-case 16 for commentary
 			if tia.hmoveLatch {
+				tia.TIAdelay.Schedule(hsyncDelay-1, func() {
+					tia.hblankOffNext = true
+				}, "")
 				tia.TIAdelay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
+					tia.hblankOffNext = false
+					tia.TIAdelay.Schedule(motckDelay, func() {
+						tia.motck = true
+					}, "MOTCK [late]")
 				}, "LHRB")
 			}
 		}
@@ -326,30 +378,7 @@ func (tia *TIA) Step() (bool, error) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	//
-	// the first argument is whether or not we're in the visible part of the
-	// screen. from TIA_HW_Notes.txt:
-	//
-	// "The most important thing to note about the player counter is
-	// that it only receives CLK signals during the visible part of
-	// each scanline, when HBlank is off; exactly 160 CLK per scanline
-	// (except during HMOVE)"
-	//
-	// from this we can say that the concept of the visible screen coincides
-	// exactly with when HBLANK is disabled.
-	//
-	// the second argument is the current hmove counter value. from
-	// TIA_HW_Notes.txt:
-	//
-	// "In this case the extra HMOVE clock pulses act to perform
-	// 'plugging' instead of the normal 'stuffing'; by this I mean that
-	// the extra pulses plug up the gaps in the normal [MOTCK] pulses,
-	// preventing them from counting as clock pulses. This only works
-	// because the extra HMOVE pulses are derived from the two-phase
-	// clock on the HSync counter, which is itself derived from CLK
-	// (the TIA colour clock input), whereas [MOTCK] is an inverted CLK
-	// signal - so they are more or less precisely out of phase :)"
-	tia.Video.TickSprites(!tia.hblank, uint8(tia.hmoveCt)&0x0f)
+	tia.Video.Tick(tia.motck, uint8(tia.hmoveCt)&0x0f)
 
 	// update HMOVE counter. leaving the value as -1 (the binary for -1 is of
 	// course 0b11111111)

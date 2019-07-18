@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/phaseclock"
 	"strings"
 )
 
@@ -19,9 +18,9 @@ type ballSprite struct {
 	enablePrev    bool
 }
 
-func newBallSprite(label string, tiaclk *phaseclock.PhaseClock) *ballSprite {
+func newBallSprite(label string) *ballSprite {
 	bs := new(ballSprite)
-	bs.sprite = newSprite(label, tiaclk, bs.tick)
+	bs.sprite = newSprite(label, bs.tick)
 	return bs
 }
 

@@ -1,6 +1,8 @@
 debugger
 --------
 
+o RESET command to work when mid-instruction (during video step)
+
 o custom error messages for command line package
 	- for example "unrecognised argument" command for HELP should be something
 	  like "no help available for ..."
@@ -31,6 +33,8 @@ o commandline
 	 would validate true only if it passes a custom test for %address
 
 o display of colors in the terminal (check for 256 color terminal)
+
+o MachineInfoDebug() in addition to Terse and Verbose
 
 
 sdl screen

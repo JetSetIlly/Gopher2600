@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/hardware/tia/delay"
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/phaseclock"
 	"strings"
 )
 
@@ -35,9 +34,9 @@ type missileSprite struct {
 	parentPlayer *playerSprite
 }
 
-func newMissileSprite(label string, tiaclk *phaseclock.PhaseClock) *missileSprite {
+func newMissileSprite(label string) *missileSprite {
 	ms := new(missileSprite)
-	ms.sprite = newSprite(label, tiaclk, ms.tick)
+	ms.sprite = newSprite(label, ms.tick)
 	return ms
 }
 

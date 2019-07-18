@@ -14,14 +14,19 @@ import "strings"
 //        __          __          __
 // _______| |_________| |_________| |___  PHASE-2 (H@2)
 
-// PhaseClock is four-phase ticker
+// PhaseClock is four-phase ticker. even though Phi1 and Phi2 are independent
+// these types of clocks never overlap (the skew margin is always positive).
+// this means that we can simply count from one to four to account for all
+// possible outputs.
+//
+// note that the labels H@1 and H@2 are used in the TIA schematics for the
+// HSYNC circuit. the phase clocks for the other polycounters are labelled
+// differently, eg. P@1 and P@2 for the player sprites. to avoid confusion,
+// we're using the labels Phi1 and Phi2, applicable to all polycounter
+// phaseclocks.
 type PhaseClock int
 
-// valid PhaseClock values/states. we are ordering the states differently to
-// that suggested by the diagram above and the String() function below. this is
-// because the clock starts at the beginning of Phase-2 and as such, it is more
-// convenient to think of risingPhi2 as the first state, rather than
-// risingPhi1.
+// valid PhaseClock values/states
 const (
 	risingPhi1 PhaseClock = iota
 	fallingPhi1
@@ -32,7 +37,7 @@ const (
 // NumStates is the number of phases the clock can be in
 const NumStates = 4
 
-// String creates a two line ASCII representation of the current state of
+// String creates a single line ASCII representation of the current state of
 // the PhaseClock
 func (clk PhaseClock) String() string {
 	s := strings.Builder{}
@@ -56,16 +61,32 @@ func (clk PhaseClock) MachineInfoTerse() string {
 
 // MachineInfo returns the PhaseClock information in verbose format
 func (clk PhaseClock) MachineInfo() string {
-	return clk.String()
+	s := strings.Builder{}
+	switch clk {
+	case risingPhi1:
+		s.WriteString("_*--._______\n")
+		s.WriteString("_______.--._\n")
+	case fallingPhi1:
+		s.WriteString("_.--*_______\n")
+		s.WriteString("_______.--._\n")
+	case risingPhi2:
+		s.WriteString("_.--._______\n")
+		s.WriteString("_______*--._\n")
+	case fallingPhi2:
+		s.WriteString("_.--._______\n")
+		s.WriteString("_______.--*_\n")
+	}
+	return s.String()
 }
 
-// Reset puts the clock into a known initial state
-func (clk *PhaseClock) Reset(outOfPhase bool) {
-	if outOfPhase {
-		*clk = risingPhi1
-	} else {
-		*clk = risingPhi2
-	}
+// Align the phaseclock with the master clock
+func (clk *PhaseClock) Align() {
+	*clk = risingPhi1
+}
+
+// Reset the phaseclock to the rise of Phi2
+func (clk *PhaseClock) Reset() {
+	*clk = risingPhi2
 }
 
 // Tick moves PhaseClock to next state
@@ -87,18 +108,12 @@ func (clk PhaseClock) Count() int {
 	return int(clk)
 }
 
-// InPhase returns true if the clock is at the tick point that polycounters
-// should be advanced
-func (clk PhaseClock) InPhase() bool {
-	return clk == risingPhi2
+// Phi1 returns true if the Phi1 clock is on its rising edge
+func (clk PhaseClock) Phi1() bool {
+	return clk == risingPhi1
 }
 
-// OutOfPhase returns true if the clock suggests that events goverened by MOTCK
-// should take place. from TIA_HW_Notes.txt:
-//
-// "The [MOTCK] (motion clock?) line supplies the CLK signals
-// for all movable graphics objects during the visible part of
-// the scanline. It is an inverted (out of phase) CLK signal."
-func (clk PhaseClock) OutOfPhase() bool {
-	return clk == risingPhi1
+// Phi2 returns true if the Phi2 clock is on its rising edge
+func (clk PhaseClock) Phi2() bool {
+	return clk == risingPhi2
 }

@@ -1,6 +1,9 @@
 package future
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Event represents a single occurence (contained in payload) that is to be
 // deployed in the future
@@ -17,45 +20,66 @@ type Event struct {
 	// the number of remaining ticks before the pending action is resolved
 	RemainingCycles int
 
+	paused bool
+
 	// the value that is to be the result of the pending action
 	payload func()
-
-	// arguments to the payload function
-	args []interface{}
 }
 
-func (ins Event) String() string {
-	return fmt.Sprintf("%s -> %d", ins.label, ins.RemainingCycles)
+func (ev Event) String() string {
+	label := strings.TrimSpace(ev.label)
+	if label == "" {
+		label = "[unlabelled event]"
+	}
+	return fmt.Sprintf("%s -> %d", label, ev.RemainingCycles)
 }
 
-func schedule(ticker *Ticker, cycles int, payload func(), label string) *Event {
-	return &Event{ticker: ticker, label: label, initialCycles: cycles, RemainingCycles: cycles, payload: payload}
-}
+// Tick event forward one cycle
+func (ev *Event) Tick() bool {
+	if ev.paused {
+		return false
+	}
 
-func (ins *Event) tick() bool {
 	// 0 is the trigger state
-	if ins.RemainingCycles == 0 {
-		ins.RemainingCycles--
-		ins.payload()
+	if ev.RemainingCycles == 0 {
+		ev.RemainingCycles--
+		ev.payload()
 		return true
 	}
 
 	// -1 is the off state
-	if ins.RemainingCycles != -1 {
-		ins.RemainingCycles--
+	if ev.RemainingCycles != -1 {
+		ev.RemainingCycles--
 	}
 
 	return false
 }
 
 // Force can be used to immediately run the event's payload
-func (ins *Event) Force() {
-	ins.payload()
-	ins.ticker.Drop(ins)
+func (ev *Event) Force() {
+	ev.payload()
+	ev.ticker.Drop(ev)
 }
 
 // Drop can be used to remove the event from the ticker queue without running
 // the payload
-func (ins *Event) Drop() {
-	ins.ticker.Drop(ins)
+func (ev *Event) Drop() {
+	ev.ticker.Drop(ev)
+}
+
+// Pause prevents the event from ticking any further until Resume or Restart is
+// called
+func (ev *Event) Pause() {
+	ev.paused = true
+}
+
+// Resume a previously paused event
+func (ev *Event) Resume() {
+	ev.paused = false
+}
+
+// Restart an event
+func (ev *Event) Restart() {
+	ev.RemainingCycles = ev.initialCycles
+	ev.paused = false
 }

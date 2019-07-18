@@ -31,8 +31,7 @@ type VCS struct {
 func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
-	vcs := new(VCS)
-	vcs.TV = tv
+	vcs := &VCS{TV: tv}
 
 	vcs.Mem, err = memory.NewVCSMemory()
 	if err != nil {
@@ -140,48 +139,68 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 	var r *result.Instruction
 	var err error
 
-	// the cpu calls the cycleVCS function after every CPU cycle. the cycleVCS
-	// function defines the order of operation for the rest of the VCS for
-	// every CPU cycle.
+	// the cpu calls the videoCycle function after every CPU cycle. the
+	// videoCycle function defines the order of operation for the rest of the
+	// VCS for every CPU cycle.
+	//
+	// this block represents the Q0 cycle
 	//
 	// !!TODO: the following would be a good test case for the proposed try()
 	// function, coming in a future language version
-	cycleVCS := func(r *result.Instruction) error {
+	videoCycle := func(r *result.Instruction) error {
 		// ensure controllers have updated their input
 		if err := vcs.strobeUserInput(); err != nil {
 			return err
 		}
-
-		// read riot memory and step once per CPU cycle
+		// update RIOT memory and step
+		//
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		// read tia memory once per cpu cycle
+		// three color clocks per CPU cycle so we run video cycle three times.
+		// step one ...
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
+		if err != nil {
+			return err
+		}
+		_ = videoCycleCallback(r)
+
+		// update TIA from memory. from "TIA 1A" document:
+		//
+		// "if the read-write line is low, the data [...] will be writted in
+		// the addressed write location when the Q2 clock goes from high to
+		// low."
+		//
+		// from my understanding, we can say that this always happens after the
+		// first TIA step and before the second.
 		vcs.TIA.ReadMemory()
 
-		// three color clocks per CPU cycle so we run video cycle three times
+		// ... tia step two ...
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
-		videoCycleCallback(r)
+		_ = videoCycleCallback(r)
 
+		// ... tia step three
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		if err != nil {
 			return err
 		}
-		videoCycleCallback(r)
+		_ = videoCycleCallback(r)
 
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
-		if err != nil {
-			return err
-		}
-		videoCycleCallback(r)
+		// also from the "TIA 1A" document:
+		//
+		// "If the read-write line is high, the addressed location can be read
+		// by the microprocessor..."
+		//
+		// we don't need to do anything here. any writes that have happened are
+		// sitting in memory ready for the CPU.
 
 		return nil
 	}
 
-	r, err = vcs.CPU.ExecuteInstruction(cycleVCS)
+	r, err = vcs.CPU.ExecuteInstruction(videoCycle)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +208,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
 	for !vcs.CPU.RdyFlg {
-		cycleVCS(r)
+		_ = videoCycle(r)
 	}
 
 	return r, nil
@@ -201,24 +220,24 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	var err error
 
-	cycleVCS := func(r *result.Instruction) error {
-		// ensure controllers have updated their inpu
+	videoCycle := func(r *result.Instruction) error {
+		// see videoCycle in Step() function for an explanation for what's
+		// going on here
 		if err := vcs.strobeUserInput(); err != nil {
 			return err
 		}
-
+		_, _ = vcs.TIA.Step()
+		vcs.TIA.ReadMemory()
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
-		vcs.TIA.ReadMemory()
-		vcs.TIA.Step()
-		vcs.TIA.Step()
+		_, _ = vcs.TIA.Step()
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
 		return err
 	}
 
 	cont := true
 	for cont {
-		_, err = vcs.CPU.ExecuteInstruction(cycleVCS)
+		_, err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
 			return err
 		}
@@ -241,6 +260,9 @@ func (vcs *VCS) RunForFrameCount(numFrames int) error {
 
 	for fn != targetFrame {
 		_, err = vcs.Step(func(*result.Instruction) error { return nil })
+		if err != nil {
+			return err
+		}
 		fn, err = vcs.TV.GetState(television.ReqFramenum)
 		if err != nil {
 			return err

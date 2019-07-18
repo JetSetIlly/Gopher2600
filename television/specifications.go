@@ -33,7 +33,7 @@ func init() {
 	SpecNTSC = new(Specification)
 	SpecNTSC.ID = "NTSC"
 	SpecNTSC.ClocksPerHblank = 68
-	SpecNTSC.ClocksPerVisible = 160
+	SpecNTSC.ClocksPerVisible = 160 // counting from 0
 	SpecNTSC.ClocksPerScanline = 228
 	SpecNTSC.ScanlinesPerVSync = 3
 	SpecNTSC.ScanlinesPerVBlank = 37
@@ -47,7 +47,7 @@ func init() {
 	SpecPAL = new(Specification)
 	SpecPAL.ID = "PAL"
 	SpecPAL.ClocksPerHblank = 68
-	SpecPAL.ClocksPerVisible = 160
+	SpecPAL.ClocksPerVisible = 160 // counting from 0
 	SpecPAL.ClocksPerScanline = 228
 	SpecPAL.ScanlinesPerVSync = 3
 	SpecPAL.ScanlinesPerVBlank = 45

@@ -1,17 +1,10 @@
 package polycounter
 
 // polycounter implements the counting method used in the VCS TIA chip and as
-// described in TIA_HW_Notes.txt
-//
-// there's nothing particularly noteworthy about the implementation except that
-// the Count value can be used to index the predefined polycounter table, which
-// maybe useful for debugging.
-//
-// intended to be used in conjunction with Phaseclock
+// described in "TIA_HW_Notes.txt"
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/phaseclock"
 )
 
 // Polycounter counts from 0 to Limit. can be used to index a polycounter
@@ -39,10 +32,4 @@ func (pcnt *Polycounter) Tick() bool {
 		return true
 	}
 	return false
-}
-
-// NumSteps uses the Phaseclock (that is driving the polycounter) to figure out the
-// number of steps taken since the Reset point
-func (pcnt Polycounter) NumSteps(clk *phaseclock.PhaseClock) int {
-	return (pcnt.Count * phaseclock.NumStates) + clk.Count()
 }

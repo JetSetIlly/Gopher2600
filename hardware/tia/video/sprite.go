@@ -2,7 +2,6 @@ package video
 
 import (
 	"gopher2600/hardware/tia/delay/future"
-	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"strings"
 )
@@ -14,8 +13,6 @@ type sprite struct {
 	// label is the name of a particular instance of a sprite (eg. player0 or
 	// missile 1)
 	label string
-
-	tiaclk *phaseclock.PhaseClock
 
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing of the sprite when position
@@ -51,8 +48,8 @@ type sprite struct {
 	resetFuture *future.Event
 }
 
-func newSprite(label string, tiaclk *phaseclock.PhaseClock, spriteTick func()) *sprite {
-	sp := sprite{label: label, tiaclk: tiaclk, spriteTick: spriteTick}
+func newSprite(label string, spriteTick func()) *sprite {
+	sp := sprite{label: label, spriteTick: spriteTick}
 
 	// the direction of count and max is important - don't monkey with it
 	sp.graphicsScanMax = 8
@@ -78,24 +75,11 @@ func (sp *sprite) resetPosition() {
 	sp.position.Reset()
 
 	// note reset position of sprite, in pixels
-	sp.resetPixel = -68 + int((sp.position.Count * 4)) + int(*sp.tiaclk)
+	//sp.resetPixel = -68 + int((sp.position.Count * 4)) + int(*sp.pclk)
 	sp.currentPixel = sp.resetPixel
 }
 
 func (sp *sprite) checkForGfxStart(triggerList []int) (bool, bool) {
-	if sp.tiaclk.InPhase() {
-		if sp.position.Tick() {
-			return true, false
-		}
-
-		// check for start positions of additional copies of the sprite
-		for _, v := range triggerList {
-			if v == int(sp.position.Count) {
-				return true, true
-			}
-		}
-	}
-
 	return false, false
 }
 

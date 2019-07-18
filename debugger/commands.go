@@ -25,6 +25,7 @@ const (
 	cmdCPU           = "CPU"
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
+	cmdClocks        = "CLOCKS"
 	cmdDebuggerState = "DEBUGGERSTATE"
 	cmdDigest        = "DIGEST"
 	cmdDisassembly   = "DISASSEMBLY"
@@ -71,6 +72,7 @@ var commandTemplate = []string{
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N])",
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
+	cmdClocks,
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
 	cmdDisassembly,
@@ -100,7 +102,7 @@ var commandTemplate = []string{
 	cmdGranularity + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA + " (DELAY|CLOCK)",
+	cmdTIA + " (DELAY|DELAYS)",
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%S] {%S}",
@@ -245,7 +247,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			keyword = strings.ToUpper(keyword)
 
 			helpTxt, ok := Help[keyword]
-			if ok == false {
+			if !ok {
 				dbg.print(console.StyleHelp, "no help for %s", keyword)
 			} else {
 				helpTxt = fmt.Sprintf("%s\n\n  Usage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
@@ -289,14 +291,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 			if dbg.scriptScribe.IsActive() {
 				// if we're currently recording a script we want to write this
-				// command to the new script file...
-
-				if err != nil {
-					return doNothing, err
-				}
-
-				// ... but indicate that we'll be entering a new script and so
-				// don't want to repeat the commands from that script
+				// command to the new script file but indicate that we'll be
+				// entering a new script and so don't want to repeat the
+				// commands from that script
 				dbg.scriptScribe.StartPlayback()
 
 				defer func() {
@@ -813,6 +810,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdRAM:
 		dbg.printMachineInfo(dbg.vcs.Mem.PIA)
 
+	case cmdClocks:
+		dbg.print(console.StyleMachineInfo, "not implemented yet")
+
 	case cmdRIOT:
 		option, present := tokens.Get()
 		if present {
@@ -837,10 +837,8 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 				// for convience asking for TIA delays also prints delays for
 				// the sprites
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0.SprDelay)
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1.SprDelay)
-			case "CLOCK":
-				dbg.print(console.StyleError, "not supported yet")
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0.Delay)
+				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1.Delay)
 			default:
 				// already caught by command line ValidateTokens()
 			}
