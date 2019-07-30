@@ -98,6 +98,7 @@ func main() {
 	var validSubModes []string
 
 	modeFlagsParse := func() {
+
 		// return immediately if there are no more flags to parse
 		if len(argList) < 1 || argListPos > len(argList) {
 			return
@@ -154,7 +155,7 @@ func main() {
 				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
-			if *record == true {
+			if *record {
 				fmt.Println("! recording completed")
 			} else if *recording != "" {
 				fmt.Println("! playback completed")
@@ -266,10 +267,18 @@ func main() {
 
 		case "RUN":
 			// no additional arguments
+			verbose := modeFlags.Bool("verbose", false, "output more detail (eg. error messages)")
+			failOnError := modeFlags.Bool("fail", false, "fail on error")
 			modeFlagsParse()
-			err := regression.RegressRunTests(os.Stdout, modeFlags.Args())
-			if err != nil {
-				fmt.Printf("* error during regression tests: %s\n", err)
+			switch len(modeFlags.Args()) {
+			case 0:
+				err := regression.RegressRunTests(os.Stdout, *verbose, *failOnError, modeFlags.Args())
+				if err != nil {
+					fmt.Printf("* error during regression tests: %s\n", err)
+					os.Exit(2)
+				}
+			default:
+				fmt.Printf("* no additional arguments required when using %s/%s mode\n", mode, subMode)
 				os.Exit(2)
 			}
 
@@ -300,7 +309,7 @@ func main() {
 
 				// use stdin for confirmation unless "yes" flag has been sent
 				var confirmation io.Reader
-				if *answerYes == true {
+				if *answerYes {
 					confirmation = new(yesReader)
 				} else {
 					confirmation = os.Stdin
@@ -319,6 +328,8 @@ func main() {
 		case "ADD":
 			tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
 			numFrames := modeFlags.Int("frames", 10, "number of frames to run (cartridge args only)")
+			state := modeFlags.Bool("state", false, "record TV state at every CPU step")
+			notes := modeFlags.String("notes", "", "annotation for the database")
 			modeFlagsParse()
 
 			switch len(modeFlags.Args()) {
@@ -326,22 +337,33 @@ func main() {
 				fmt.Println("* 2600 cartridge or playback file required")
 				os.Exit(2)
 			case 1:
-				var rec regression.Handler
+				var rec regression.Regressor
 
 				if recorder.IsPlaybackFile(modeFlags.Arg(0)) {
+					// check and warn if unneeded arguments have been specified
+					modeFlags.Visit(func(flg *flag.Flag) {
+						if flg.Name == "frames" {
+							fmt.Printf("! ignored %s flag when adding playback entry\n", flg.Name)
+						}
+					})
+
 					rec = &regression.PlaybackRegression{
 						Script: modeFlags.Arg(0),
+						Notes:  *notes,
 					}
 				} else {
 					rec = &regression.FrameRegression{
 						CartFile:  modeFlags.Arg(0),
 						TVtype:    strings.ToUpper(*tvType),
-						NumFrames: *numFrames}
+						NumFrames: *numFrames,
+						State:     *state,
+						Notes:     *notes,
+					}
 				}
 
 				err := regression.RegressAdd(os.Stdout, rec)
 				if err != nil {
-					fmt.Printf("* error adding regression test: %s\n", err)
+					fmt.Printf("\r* error adding regression test: %s\n", err)
 					os.Exit(2)
 				}
 			default:

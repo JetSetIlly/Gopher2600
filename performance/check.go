@@ -29,7 +29,7 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 			return errors.NewFormattedError(errors.FPSError, err)
 		}
 	} else {
-		ftv, err = television.NewBasicTelevision(tvType)
+		ftv, err = television.NewStellaTelevision(tvType)
 		if err != nil {
 			return errors.NewFormattedError(errors.FPSError, err)
 		}

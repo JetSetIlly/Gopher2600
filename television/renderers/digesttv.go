@@ -27,7 +27,7 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 
 	// create or attach television implementation
 	if tv == nil {
-		dtv.Television, err = television.NewBasicTelevision(tvType)
+		dtv.Television, err = television.NewStellaTelevision(tvType)
 		if err != nil {
 			return nil, err
 		}
@@ -83,9 +83,7 @@ func (dtv *DigestTV) NewScanline(scanline int) error {
 // SetPixel implements television.Renderer interface
 func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
-	offset := len(dtv.digest)
-
-	offset = dtv.GetSpec().ClocksPerScanline * int(y) * 3
+	offset := dtv.GetSpec().ClocksPerScanline * int(y) * 3
 	offset += int(x) * 3
 
 	if offset >= len(dtv.frameData) {

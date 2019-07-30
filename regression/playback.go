@@ -6,6 +6,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
+	"gopher2600/regression/database"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -15,8 +16,11 @@ import (
 	"time"
 )
 
+const playbackEntryID = "playback"
+
 const (
 	playbackFieldScript int = iota
+	playbackFieldNotes
 	numPlaybackFields
 )
 
@@ -27,41 +31,66 @@ const (
 type PlaybackRegression struct {
 	key    int
 	Script string
+	Notes  string
 }
 
-func (reg PlaybackRegression) getID() string {
-	return "playback"
-}
+func deserialisePlaybackEntry(key int, csv string) (database.Entry, error) {
+	reg := &PlaybackRegression{key: key}
 
-func newPlaybackRegression(key int, csv string) (*PlaybackRegression, error) {
-	// loop through file until EOF is reached
 	fields := strings.Split(csv, ",")
 
-	reg := &PlaybackRegression{
-		key:    key,
-		Script: fields[playbackFieldScript],
+	// basic sanity check
+	if len(fields) > numPlaybackFields {
+		return nil, errors.NewFormattedError(errors.RegressionDBError, "too many fields in frame playback entry")
 	}
+	if len(fields) < numPlaybackFields {
+		return nil, errors.NewFormattedError(errors.RegressionDBError, "too few fields in frame playback entry")
+	}
+
+	// string fields need no conversion
+	reg.Script = fields[playbackFieldScript]
+	reg.Notes = fields[playbackFieldNotes]
 
 	return reg, nil
 }
 
-func (reg *PlaybackRegression) setKey(key int) {
+// GetID implements the database.Entry interface
+func (reg PlaybackRegression) GetID() string {
+	return playbackEntryID
+}
+
+// SetKey implements the database.Entry interface
+func (reg *PlaybackRegression) SetKey(key int) {
 	reg.key = key
 }
 
-func (reg PlaybackRegression) getKey() int {
+// GetKey implements the database.Entry interface
+func (reg PlaybackRegression) GetKey() int {
 	return reg.key
 }
 
-func (reg *PlaybackRegression) generateCSV() string {
-	return fmt.Sprintf("%s%s%s",
-		csvLeader(reg), fieldSep,
-		reg.Script,
-	)
+// Serialise implements the database.Entry interface
+func (reg *PlaybackRegression) Serialise() (database.SerialisedEntry, error) {
+	return database.SerialisedEntry{
+			reg.Script,
+			reg.Notes,
+		},
+		nil
+}
+
+// CleanUp implements the database.Entry interface
+func (reg PlaybackRegression) CleanUp() {
+	// ignore errors from remove process
+	_ = os.Remove(reg.Script)
 }
 
 func (reg PlaybackRegression) String() string {
-	return fmt.Sprintf("[%s] %s", reg.getID(), reg.Script)
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("[%s] %s", reg.GetID(), path.Base(reg.Script)))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, message string) (bool, error) {
@@ -69,33 +98,33 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	digest, err := renderers.NewDigestTV(plb.TVtype, nil)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	vcs, err := hardware.NewVCS(digest)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	err = vcs.AttachCartridge(plb.CartFile)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	// run emulation and display progress meter every 1 second
 	limiter, err := limiter.NewFPSLimiter(1)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionFail, err)
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 	err = vcs.Run(func() (bool, error) {
 		if limiter.HasWaited() {
@@ -104,28 +133,28 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		return true, nil
 	})
 	if err != nil {
-		// the PowerOff error is expected. if we receive it then that means
-		// the regression test has succeeded
 		switch err := err.(type) {
 		case errors.FormattedError:
-			if err.Errno != errors.PowerOff {
-				return false, errors.NewFormattedError(errors.RegressionFail, err)
+			switch err.Errno {
+			// the PowerOff error is expected. if we receive it then that means
+			// the regression test has succeeded
+			case errors.PowerOff:
+				break // switch
+
+			// PlaybackHashError means that a screen digest somewhere in the
+			// playback script did not work. filter error and return false to
+			// indicate failure
+			case errors.PlaybackHashError:
+				return false, nil
 			}
-		default:
-			return false, errors.NewFormattedError(errors.RegressionFail, err)
 		}
+
+		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	// if this is a new regression we want to store the script in the
 	// regressionScripts directory
 	if newRegression {
-		// make sure regression script directory exists
-		err = os.MkdirAll(regressionScripts, 0755)
-		if err != nil {
-			msg := fmt.Sprintf("cannot store playback script: %s", err)
-			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
-		}
-
 		// create a (hopefully) unique name for copied script file
 		shortCartName := path.Base(plb.CartFile)
 		shortCartName = strings.TrimSuffix(shortCartName, path.Ext(plb.CartFile))
@@ -135,7 +164,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		newScript = filepath.Join(regressionScripts, newScript)
 
 		// check that the filename is unique
-		nf, err := os.Open(newScript)
+		nf, _ := os.Open(newScript)
+		// no need to bother with returned error. nf tells us everything we
+		// need
 		if nf != nil {
 			msg := fmt.Sprintf("script already exists (%s)", newScript)
 			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
@@ -148,9 +179,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 			msg := fmt.Sprintf("error copying playback script: %s", err)
 			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
-		defer func() {
-			nf.Close()
-		}()
+		defer nf.Close()
 
 		// open old file
 		of, err := os.Open(reg.Script)
@@ -158,9 +187,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 			msg := fmt.Sprintf("error copying playback script: %s", err)
 			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
-		defer func() {
-			of.Close()
-		}()
+		defer of.Close()
 
 		// copy old file to new file
 		_, err = io.Copy(nf, of)
@@ -174,9 +201,4 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 	}
 
 	return true, nil
-}
-
-func (reg PlaybackRegression) cleanUp() {
-	// ignore errors from remove process
-	_ = os.Remove(reg.Script)
 }

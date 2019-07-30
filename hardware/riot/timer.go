@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
-	"math/rand"
 )
 
 type timer struct {
@@ -50,7 +49,7 @@ func newTimer(mem memory.ChipBus) *timer {
 	tmr.register = "TIM1024"
 	tmr.interval = 1024
 	tmr.tickCyclesRemaining = 1024
-	tmr.value = uint8(rand.Intn(255))
+	tmr.value = 0
 
 	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
 	tmr.mem.ChipWrite(addresses.TIMINT, 0)

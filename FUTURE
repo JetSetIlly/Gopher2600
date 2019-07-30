@@ -36,6 +36,13 @@ o display of colors in the terminal (check for 256 color terminal)
 
 o MachineInfoDebug() in addition to Terse and Verbose
 
+vcs
+---
+
+o randomised initialisation
+
+o optional to prevent regression tests from failing
+
 
 sdl screen
 ----------
@@ -46,11 +53,16 @@ o info under mouse. floating tooltip
 regression db
 -------------
 
+o better separation fo database and regression packages
+
 o lock file
 
-o notes field
-
-o groupings
+o group by notes
 
 o progress meter for "frame" entry type
 
+o CLEAN mode
+	- removes entries where ROMs or script file is missing
+	- removes orphaned script files
+
+o parallel execution of tests

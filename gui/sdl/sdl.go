@@ -38,7 +38,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 	// create or attach television implementation
 	if tv == nil {
-		gtv.Television, err = television.NewBasicTelevision(tvType)
+		gtv.Television, err = television.NewStellaTelevision(tvType)
 		if err != nil {
 			return nil, errors.NewFormattedError(errors.SDL, err)
 		}

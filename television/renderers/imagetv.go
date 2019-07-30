@@ -35,7 +35,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 
 	// create or attach television implementation
 	if tv == nil {
-		imtv.Television, err = television.NewBasicTelevision(tvType)
+		imtv.Television, err = television.NewStellaTelevision(tvType)
 		if err != nil {
 			return nil, err
 		}

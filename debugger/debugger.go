@@ -132,7 +132,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg := new(Debugger)
 
 	// prepare gui/tv
-	btv, err := television.NewBasicTelevision(tvType)
+	btv, err := television.NewStellaTelevision(tvType)
 	if err != nil {
 		return nil, errors.NewFormattedError(errors.DebuggerError, err)
 	}

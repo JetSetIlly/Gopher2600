@@ -6,10 +6,13 @@ import (
 	"strings"
 )
 
-// BasicTelevision is the minimalist implementation of the Television interface - a
+// StellaTelevision is the minimalist implementation of the Television interface - a
 // television without a screen. Fuller implementations of the television can
 // use this as the basis of the emulation by struct embedding
-type BasicTelevision struct {
+//
+// the reporting of TV state is meant to mirror exactly, the state as reported
+// by stella. this makes it easier to perform A/B testing
+type StellaTelevision struct {
 	// television specification (NTSC or PAL)
 	spec *Specification
 
@@ -57,10 +60,10 @@ type BasicTelevision struct {
 	renderers []Renderer
 }
 
-// NewBasicTelevision creates a new instance of BasicTelevision for a minimalist
-// implementation of a televsion for the VCS emulation
-func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
-	btv := new(BasicTelevision)
+// NewStellaTelevision creates a new instance of StellaTelevision for a
+// minimalist implementation of a televsion for the VCS emulation
+func NewStellaTelevision(tvType string) (*StellaTelevision, error) {
+	btv := new(StellaTelevision)
 
 	switch strings.ToUpper(tvType) {
 	case "NTSC":
@@ -71,45 +74,59 @@ func NewBasicTelevision(tvType string) (*BasicTelevision, error) {
 		btv.spec = SpecNTSC
 		btv.auto = true
 	default:
-		return nil, errors.NewFormattedError(errors.BasicTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
+		return nil, errors.NewFormattedError(errors.StellaTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
 	}
 
 	// empty list of renderers
 	btv.renderers = make([]Renderer, 0)
 
 	// initialise TVState
-	btv.Reset()
+	err := btv.Reset()
+	if err != nil {
+		return nil, err
+	}
 
 	return btv, nil
 }
 
 // MachineInfoTerse returns the television information in terse format
-func (btv BasicTelevision) MachineInfoTerse() string {
-	return fmt.Sprintf("FR=%d SL=%d HP=%d", btv.frameNum, btv.scanline, btv.horizPos)
+func (btv StellaTelevision) MachineInfoTerse() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("FR=%d SL=%d", btv.frameNum, btv.scanline))
+	if btv.extraScanlines > 0 {
+		s.WriteString(fmt.Sprintf(" [%d]", btv.extraScanlines))
+	}
+	s.WriteString(fmt.Sprintf(" HP=%d", btv.horizPos))
+	return s.String()
 }
 
 // MachineInfo returns the television information in verbose format
-func (btv BasicTelevision) MachineInfo() string {
+func (btv StellaTelevision) MachineInfo() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
 	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
-	s.WriteString(fmt.Sprintf("   Scanline: %d\n", btv.scanline))
+	s.WriteString(fmt.Sprintf("   Scanline: %d", btv.scanline))
+	if btv.extraScanlines > 0 {
+		s.WriteString(fmt.Sprintf(" [%d]\n", btv.extraScanlines))
+	} else {
+		s.WriteString("\n")
+	}
 	s.WriteString(fmt.Sprintf("   Horiz Pos: %d", btv.horizPos))
 	return s.String()
 }
 
 // map String to MachineInfo
-func (btv BasicTelevision) String() string {
+func (btv StellaTelevision) String() string {
 	return btv.MachineInfo()
 }
 
 // AddRenderer adds a renderer implementation to the list
-func (btv *BasicTelevision) AddRenderer(r Renderer) {
+func (btv *StellaTelevision) AddRenderer(r Renderer) {
 	btv.renderers = append(btv.renderers, r)
 }
 
 // Reset all the values for the television
-func (btv *BasicTelevision) Reset() error {
+func (btv *StellaTelevision) Reset() error {
 	btv.horizPos = -btv.spec.ClocksPerHblank
 	btv.frameNum = 0
 	btv.scanline = 0
@@ -123,7 +140,7 @@ func (btv *BasicTelevision) Reset() error {
 	return nil
 }
 
-func (btv *BasicTelevision) autoSpec() (bool, error) {
+func (btv *StellaTelevision) autoSpec() (bool, error) {
 	if !btv.auto {
 		return false, nil
 	}
@@ -143,7 +160,7 @@ func (btv *BasicTelevision) autoSpec() (bool, error) {
 }
 
 // Signal is principle method of communication between the VCS and televsion
-func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
+func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	// the following condition detects a new scanline by looking for the
 	// non-textbook HSyncSimple signal
 	//
@@ -294,7 +311,7 @@ func (btv *BasicTelevision) Signal(sig SignalAttributes) error {
 // implementations in other packages will difficulty extending this function
 // because TVStateReq does not expose its members. (although it may need to if
 // television is running in it's own goroutine)
-func (btv *BasicTelevision) GetState(request StateReq) (int, error) {
+func (btv *StellaTelevision) GetState(request StateReq) (int, error) {
 	switch request {
 	default:
 		return 0, errors.NewFormattedError(errors.UnknownTVRequest, request)
@@ -312,6 +329,6 @@ func (btv *BasicTelevision) GetState(request StateReq) (int, error) {
 }
 
 // GetSpec returns the television specification
-func (btv BasicTelevision) GetSpec() *Specification {
+func (btv StellaTelevision) GetSpec() *Specification {
 	return btv.spec
 }

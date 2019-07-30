@@ -36,8 +36,8 @@ var messages = map[Errno]string{
 	PlaybackHashError: "controller playback error: hash error: %s",
 
 	// regression
-	RegressionDBError: "regression database error: %s",
-	RegressionFail:    "regression fail: %s",
+	RegressionDBError:    "regression database error: %s",
+	RegressionSetupError: "regression setup error: %s",
 
 	// symbols
 	SymbolsFileError:       "symbols error: error processing symbols file: %s",
@@ -73,7 +73,7 @@ var messages = map[Errno]string{
 
 	// tv
 	UnknownTVRequest: "tv error: unsupported request (%v)",
-	BasicTelevision:  "tv error: BasicTelevision: %s",
+	StellaTelevision: "tv error: BasicTelevision: %s",
 	ImageTV:          "tv error: ImageTV: %s",
 	DigestTV:         "tv error: DigestTV: %s",
 

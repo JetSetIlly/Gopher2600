@@ -250,7 +250,8 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 // RunForFrameCount sets emulator running for the specified number of frames
 // - not used by the debugger because traps and steptraps are more flexible
 // - useful for fps and regression tests
-func (vcs *VCS) RunForFrameCount(numFrames int) error {
+// - callback is a simple hook called every video step
+func (vcs *VCS) RunForFrameCount(numFrames int, callback func()) error {
 	fn, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
@@ -259,7 +260,8 @@ func (vcs *VCS) RunForFrameCount(numFrames int) error {
 	targetFrame := fn + numFrames
 
 	for fn != targetFrame {
-		_, err = vcs.Step(func(*result.Instruction) error { return nil })
+		callback()
+		_, err = vcs.Step(func(_ *result.Instruction) error { return nil })
 		if err != nil {
 			return err
 		}

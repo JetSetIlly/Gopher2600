@@ -57,9 +57,12 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End closes the output file.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	rec.Transcribe(peripherals.PanelID, peripherals.PanelPowerOff)
+	err := rec.Transcribe(peripherals.PanelID, peripherals.PanelPowerOff)
+	if err != nil {
+		return errors.NewFormattedError(errors.RecordingError, err)
+	}
 
-	err := rec.output.Close()
+	err = rec.output.Close()
 	if err != nil {
 		return errors.NewFormattedError(errors.RecordingError, err)
 	}

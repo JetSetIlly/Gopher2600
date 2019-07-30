@@ -38,7 +38,7 @@ const (
 
 	// regression
 	RegressionDBError
-	RegressionFail
+	RegressionSetupError
 
 	// symbols
 	SymbolsFileUnavailable
@@ -74,7 +74,7 @@ const (
 
 	// tv
 	UnknownTVRequest
-	BasicTelevision
+	StellaTelevision
 	ImageTV
 	DigestTV
 

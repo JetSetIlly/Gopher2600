@@ -4,27 +4,19 @@ import (
 	"fmt"
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/errors"
+	"gopher2600/regression/database"
 	"io"
+	"os"
 	"sort"
 	"strconv"
 )
 
-// Handler represents the generic entry in the regression database
-type Handler interface {
-	// getID returns the string that is used to identify the regression type in
-	// the database
-	getID() string
+const regressionScripts = ".gopher2600/regressionScripts"
+const regressionDBFile = ".gopher2600/regressionDB"
 
-	// set the key value for the regression
-	setKey(int)
-
-	// return the key assigned to the regression
-	getKey() int
-
-	// return the comma separated string representing the regression.  without
-	// regression separator. the first two fields should be the result of
-	// csvLeader()
-	generateCSV() string
+// Regressor represents the generic entry in the regression database
+type Regressor interface {
+	database.Entry
 
 	// perform the regression test for the regression type. the newRegression
 	// flag is for convenience really (or "logical binding", as the structured
@@ -32,12 +24,26 @@ type Handler interface {
 	//
 	// message is the string that is to be printed during the regression
 	regress(newRegression bool, output io.Writer, message string) (bool, error)
+}
 
-	// action perfomed when regression entry is removed from database
-	cleanUp()
+// when starting a database session we need to register what entries we will
+// find in the database
+func initialiseDatabase(db *database.Session) error {
+	if err := db.AddEntryType(frameEntryID, deserialiseFrameEntry); err != nil {
+		return err
+	}
 
-	// String implements the Stringer interface
-	String() string
+	if err := db.AddEntryType(playbackEntryID, deserialisePlaybackEntry); err != nil {
+		return err
+	}
+
+	// make sure regression script directory exists
+	if err := os.MkdirAll(regressionScripts, 0755); err != nil {
+		msg := fmt.Sprintf("regression script directory: %s", err)
+		return errors.NewFormattedError(errors.RegressionDBError, msg)
+	}
+
+	return nil
 }
 
 // RegressList displays all entries in the database
@@ -46,15 +52,13 @@ func RegressList(output io.Writer) error {
 		return errors.NewFormattedError(errors.FatalError, "RegressList", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := startSession()
+	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
 	if err != nil {
 		return err
 	}
-	defer db.endSession(false)
+	defer db.EndSession(false)
 
-	db.list(output)
-
-	return nil
+	return db.List(output)
 }
 
 // RegressDelete removes a cartridge from the regression db
@@ -69,27 +73,27 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 		return errors.NewFormattedError(errors.RegressionDBError, msg)
 	}
 
-	db, err := startSession()
+	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
 	if err != nil {
 		return err
 	}
-	defer db.endSession(true)
+	defer db.EndSession(true)
 
-	reg, err := db.get(v)
+	reg, err := db.Get(v)
 	if err != nil {
 		return err
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", reg)))
 
-	confirm := make([]byte, 1024)
+	confirm := make([]byte, 32)
 	_, err = confirmation.Read(confirm)
 	if err != nil {
 		return err
 	}
 
 	if confirm[0] == 'y' || confirm[0] == 'Y' {
-		err = db.del(reg)
+		err = db.Delete(reg)
 		if err != nil {
 			return err
 		}
@@ -100,10 +104,16 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 }
 
 // RegressAdd adds a new regression handler to the database
-func RegressAdd(output io.Writer, reg Handler) error {
+func RegressAdd(output io.Writer, reg Regressor) error {
 	if output == nil {
 		return errors.NewFormattedError(errors.FatalError, "RegressAdd()", "io.Writer should not be nil (use nopWriter)")
 	}
+
+	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
+	if err != nil {
+		return err
+	}
+	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
 	ok, err := reg.regress(true, output, msg)
@@ -114,86 +124,119 @@ func RegressAdd(output io.Writer, reg Handler) error {
 	output.Write([]byte(ansi.ClearLine))
 	output.Write([]byte(fmt.Sprintf("\radded: %s\n", reg)))
 
-	db, err := startSession()
-	if err != nil {
-		return err
-	}
-	defer db.endSession(true)
-
-	return db.add(reg)
+	return db.Add(reg)
 }
 
 // RegressRunTests runs all the tests in the regression database
-// keys list specified which entries to test. an empty keys list means that
-// every entry should be tested
-func RegressRunTests(output io.Writer, keys []string) error {
+// o filterKeys list specified which entries to test. an empty keys list means that
+//	every entry should be tested
+func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKeys []string) error {
 	if output == nil {
 		return errors.NewFormattedError(errors.FatalError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := startSession()
+	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
 	if err != nil {
 		return err
 	}
-	defer db.endSession(false)
+	defer db.EndSession(false)
 
 	// make sure any supplied keys list is in order
-	keysV := make([]int, 0, len(keys))
-	for k := range keys {
-		v, err := strconv.Atoi(keys[k])
+	keysV := make([]int, 0, len(filterKeys))
+	for k := range filterKeys {
+		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
-			msg := fmt.Sprintf("invalid key [%s]", keys[k])
+			msg := fmt.Sprintf("invalid key [%s]", filterKeys[k])
 			return errors.NewFormattedError(errors.RegressionDBError, msg)
 		}
 		keysV = append(keysV, v)
 	}
 	sort.Ints(keysV)
-	k := 0
+	filterIdx := 0
 
 	numSucceed := 0
 	numFail := 0
+	numError := 0
 	numSkipped := 0
-	for key := 0; key < len(db.keys); key++ {
+
+	defer func() {
+		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail, %d skipped", numSucceed, numFail, numSkipped)))
+
+		if numError > 0 {
+			output.Write([]byte(" [with errors]"))
+		}
+		output.Write([]byte("\n"))
+	}()
+
+	onSelect := func(ent database.Entry) (bool, error) {
+		key := ent.GetKey()
+
 		// if a list of keys has been supplied then check key in the database
-		// against that list (both lists are sorted
+		// against that list (both lists are sorted)
 		if len(keysV) > 0 {
-			if k >= len(keysV) {
-				numSkipped += len(db.keys) - key
-				break // for loop
+			// if we've come to the end of the list of filter keys then update
+			// the number of skipped entries and return false to indicate that
+			// the Select() function should not continue
+			if filterIdx >= len(keysV) {
+				numSkipped += db.NumEntries() - key
+				return false, nil
 			}
-			if keysV[k] != key {
+
+			// if entry key is not in list of keys then update number of
+			// skipped entries and return true to indicate that the Select()
+			// function should countinue
+			if keysV[filterIdx] != key {
 				numSkipped++
-				continue // for loop
+				return true, nil
 			}
-			k++
+
+			// entry key is in list: because we're receiving database entries
+			// in order and because the list of filter keys is also sorted, we
+			// can bump the filterIdx to the next entry
+			filterIdx++
 		}
 
-		reg := db.regressions[db.keys[key]]
+		// datbase entry should also satisfy Regressor interface
+		reg, ok := ent.(Regressor)
+		if !ok {
+			return false, errors.NewFormattedError(errors.FatalError, "database entry does not satisfy Regressor interface")
+		}
 
+		// run regress() function with message. message does not have a
+		// trailing newline
 		msg := fmt.Sprintf("running: %s", reg)
 		ok, err := reg.regress(false, output, msg)
+
+		// once regress() has completed we clear the line ready for the
+		// completion message
 		output.Write([]byte(ansi.ClearLine))
 
-		if !ok || err != nil {
-			numFail++
-			if output != nil {
-				output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
+		// print completion message depending on result of regress()
+		if err != nil {
+			numError++
+			output.Write([]byte(fmt.Sprintf("\r ERROR: %s\n", reg)))
 
-				// output any error message on following line
-				if err != nil {
-					output.Write([]byte(fmt.Sprintf("\t%s\n", err)))
-				}
+			// output any error message on following line
+			if verbose {
+				output.Write([]byte(fmt.Sprintf("%s\n", err)))
 			}
+
+			if failOnError {
+				return false, nil
+			}
+		} else if !ok {
+			numFail++
+			output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
 
 		} else {
 			numSucceed++
-			if output != nil {
-				output.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
-			}
+			output.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
 		}
+
+		return true, nil
 	}
 
-	output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail, %d skipped\n", numSucceed, numFail, numSkipped)))
+	db.Select("", onSelect)
 
 	return nil
 }
