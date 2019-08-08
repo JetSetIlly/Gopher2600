@@ -18,17 +18,17 @@ func (gtv *GUI) guiLoop() {
 			gtv.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 		case *sdl.KeyboardEvent:
-			var mod gui.KeyMod
+			mod := gui.KeyModNone
 
-			switch sdl.GetModState() {
-			case sdl.KMOD_NONE:
-				mod = gui.KeyModNone
-			case sdl.KMOD_SHIFT:
-				mod = gui.KeyModShift
-			case sdl.KMOD_CTRL:
-				mod = gui.KeyModCtrl
-			case sdl.KMOD_ALT:
+			if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+				sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
 				mod = gui.KeyModAlt
+			} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+				sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+				mod = gui.KeyModShift
+			} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+				sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+				mod = gui.KeyModCtrl
 			}
 
 			switch sdlEvent.Type {
