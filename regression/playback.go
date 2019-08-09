@@ -139,17 +139,22 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 			// the PowerOff error is expected. if we receive it then that means
 			// the regression test has succeeded
 			case errors.PowerOff:
-				break // switch
+				break
 
 			// PlaybackHashError means that a screen digest somewhere in the
 			// playback script did not work. filter error and return false to
 			// indicate failure
 			case errors.PlaybackHashError:
 				return false, nil
+
+			default:
+				return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 			}
+
+		default:
+			return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 		}
 
-		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
 	// if this is a new regression we want to store the script in the
@@ -197,6 +202,8 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		}
 
 		// update script name in regression type
+		fmt.Println("foo")
+		fmt.Println(newScript)
 		reg.Script = newScript
 	}
 

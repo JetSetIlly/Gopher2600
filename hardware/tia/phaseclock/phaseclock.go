@@ -79,7 +79,7 @@ func (clk PhaseClock) MachineInfo() string {
 	return s.String()
 }
 
-// Align the phaseclock with the master clock
+// Align the phaseclock with the master clock by resetting to the rise of Phi1
 func (clk *PhaseClock) Align() {
 	*clk = risingPhi1
 }

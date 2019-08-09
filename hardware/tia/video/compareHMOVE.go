@@ -12,4 +12,9 @@ package video
 //
 func compareHMOVE(a uint8, b uint8) bool {
 	return a&0x08 == b&0x08 || a&0x04 == b&0x04 || a&0x02 == b&0x02 || a&0x01 == b&0x01
+
+	// at first sight TIA_HW_Notes.txt seems to be saying "a&b!=0" but after
+	// some thought, I don't believe it is.
+	//
+	//return a&b != 0
 }

@@ -101,9 +101,9 @@ func NewVideo(pclk *phaseclock.PhaseClock,
 
 // Tick moves all video elements forward one video cycle and is only
 // called when motion clock is active
-func (vd *Video) Tick(motck bool, hmoveCt uint8) {
-	vd.Player0.tick(motck, hmoveCt)
-	vd.Player1.tick(motck, hmoveCt)
+func (vd *Video) Tick(motck bool, hmove bool, hmoveCt uint8) {
+	vd.Player0.tick(motck, hmove, hmoveCt)
+	vd.Player1.tick(motck, hmove, hmoveCt)
 	vd.Missile0.tick()
 	vd.Missile1.tick()
 	vd.Ball.tick()

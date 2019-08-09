@@ -2,11 +2,8 @@ package commandline_test
 
 import (
 	"gopher2600/debugger/commandline"
-	"os"
 	"strings"
 	"testing"
-
-	"github.com/bradleyjkemp/memviz"
 )
 
 func expectFailure(t *testing.T, err error) {
@@ -64,22 +61,6 @@ func expectEquivalency(t *testing.T, cmds *commandline.Commands) bool {
 	}
 
 	return false
-}
-
-// memvizOutput produces a dot file that can be used to identify how elements
-// in the Commands object are connected
-func memvizOutput(t *testing.T, filename string, cmds *commandline.Commands) {
-	if len(filename) < 4 || strings.ToLower(filename[len(filename)-4:]) != ".dot" {
-		filename += ".dot"
-	}
-
-	f, err := os.Create(filename)
-	defer f.Close()
-	if err != nil {
-		t.Errorf("%s", err)
-	} else {
-		memviz.Map(f, cmds)
-	}
 }
 
 func TestParser_optimised(t *testing.T) {
@@ -277,7 +258,6 @@ func TestParser_repeatGroups(t *testing.T) {
 
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if expectSuccess(t, err) {
-		//memvizOutput(t, "1", cmds)
 		expectEquality(t, template, cmds)
 	}
 }

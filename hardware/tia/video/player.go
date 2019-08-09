@@ -57,6 +57,8 @@ type playerSprite struct {
 	// of confusion.
 	tv television.Television
 
+	// references to some fundamental TIA properties. various combinations of
+	// these affect the latching delay when resetting the sprite
 	hblank        *bool
 	hblankOffNext *bool
 	hmoveLatch    *bool
@@ -171,9 +173,14 @@ func (ps playerSprite) MachineInfo() string {
 }
 
 func (ps playerSprite) String() string {
+	// the hmove value as maintained by the sprite type is normalised for
+	// for purposes of presentation. put the sign bit back to reflect the
+	// original value as used in the ROM.
+	normalisedHmove := int(ps.hmove) | 0x08
+
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s %d [%03d ", ps.position, ps.pclk.Count(), ps.resetPixel))
-	s.WriteString(fmt.Sprintf("(%d)", int(ps.hmove)))
+	s.WriteString(fmt.Sprintf("(%1x)", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))
 	if ps.moreHMOVE && ps.hmove != 8 {
 		s.WriteString("*]")
@@ -203,7 +210,15 @@ func (ps playerSprite) String() string {
 			s.WriteString(",")
 		}
 		s.WriteString(" vdel")
-		//extra = true
+		extra = true
+	}
+
+	if ps.reflected {
+		if extra {
+			s.WriteString(",")
+		}
+		s.WriteString(" ref")
+		// extra = true
 	}
 
 	return s.String()
@@ -216,11 +231,13 @@ func (ps playerSprite) String() string {
 // function, depending on the supplied hmoveCt and the whether the sprite's own
 // HMOVE value suggests that there should be more movement. see compareHMOVE()
 // for details
-func (ps *playerSprite) tick(motck bool, hmoveCt uint8) {
+func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
-	ps.moreHMOVE = ps.moreHMOVE && compareHMOVE(hmoveCt, ps.hmove)
+	if hmove {
+		ps.moreHMOVE = ps.moreHMOVE && compareHMOVE(hmoveCt, ps.hmove)
+	}
 
-	if motck || ps.moreHMOVE {
+	if (hmove && ps.moreHMOVE) || motck {
 		// tick graphics scan counter during visible screen and during HMOVE.
 		// from TIA_HW_Notes.txt:
 		//
@@ -297,6 +314,7 @@ func (ps *playerSprite) tick(motck bool, hmoveCt uint8) {
 			case 40:
 				ps.position.Reset()
 			}
+
 		}
 
 		// tick future events that are goverened by the sprite
@@ -331,31 +349,36 @@ func (ps *playerSprite) resetPosition() {
 	delay := 5
 
 	// if we're scheduling the reset during a HBLANK however there are extra
-	// conditions: if during the NEXT cycle HBLANK is still active and there has
-	// been no HMOVE then the delay is just 1 CLK; if there has been a HMOVE
-	// then the delay is 2 CLKs
+	// conditions which adjust the delay value:
 	//
-	// NOTE: some other combinations too
+	//   o if hblank is turning off next cycle and HMOVE has not been latched,
+	//		the delay is four
+	//   o if hblank is currently on and will be for the next cycle and HMOVE
+	//		has been latched, the dealy is 2
+	//   o if hblank is currently on and will be for the next cycle and HMOVE
+	//		has not been latched, the delay is 1
 	//
 	// these figures have been gleaned through observation. with some
-	// supporting notes from the following thread
+	// supporting notes from the following thread.
 	//
 	// https://atariage.com/forums/topic/207444-questionproblem-about-sprite-positioning-during-hblank/
 	//
-	if *ps.hblank && *ps.hblankOffNext && !*ps.hmoveLatch {
-		delay = 4
-	} else if *ps.hblank && !*ps.hblankOffNext && *ps.hmoveLatch {
-		delay = 2
-	} else if *ps.hblank && !*ps.hblankOffNext && !*ps.hmoveLatch {
-		delay = 1
+	// that said, I'm not entirely sure what's going on and why these
+	// adjustments are required.
+	if *ps.hblank {
+		if *ps.hblankOffNext && !*ps.hmoveLatch {
+			delay = 4
+		} else if !*ps.hblankOffNext && *ps.hmoveLatch {
+			delay = 2
+		} else if !*ps.hblankOffNext && !*ps.hmoveLatch {
+			delay = 1
+		}
 	}
 
 	// pause pending start drawing events
 	if ps.startDrawingEvent != nil {
 		ps.startDrawingEvent.Pause()
 	}
-
-	scheduledDuringHBLANK := *ps.hblank && ps.startDrawingEvent == nil
 
 	ps.resetEvent = ps.Delay.Schedule(delay, func() {
 		// the pixel at which the sprite has been reset, in relation to the
@@ -367,7 +390,7 @@ func (ps *playerSprite) resetPosition() {
 		// for player sprites after the start signal
 		ps.resetPixel += 2
 
-		// if size is 2x or 4x then we need an additional pixel
+		// if size is 2x or 4x then we need an additional reset pixel
 		//
 		// note that we need to monkey with resetPixel whenever NUSIZ changes.
 		// see setNUSIZ() function below
@@ -395,9 +418,9 @@ func (ps *playerSprite) resetPosition() {
 		// if a pending drawing event was more than two cycles away it is
 		// dropped
 		//
-		// rule discovered through observation
+		// rules discovered through observation
 		if ps.startDrawingEvent != nil {
-			if ps.startDrawingEvent.RemainingCycles <= 2 && !scheduledDuringHBLANK {
+			if ps.startDrawingEvent.RemainingCycles <= 2 {
 				ps.startDrawingEvent.Force()
 			} else {
 				ps.startDrawingEvent.Drop()
@@ -437,14 +460,18 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 }
 
 func (ps *playerSprite) setGfxData(delay future.Scheduler, data uint8) {
-	// no delay necessary. from TIA_HW_Notes.txt:
+	// from TIA_HW_Notes.txt:
 	//
-	// "Writes to GRP0 always modify the "new" P0 value, and the
-	// contents of the "new" P0 are copied into "old" P0 whenever
-	// GRP1 is written. (Likewise, writes to GRP1 always modify the
-	// "new" P1 value, and the contents of the "new" P1 are copied
-	// into "old" P1 whenever GRP0 is written). It is safe to modify
-	// GRPn at any time, with immediate effect."
+	// "Writes to GRP0 always modify the "new" P0 value, and the contents of
+	// the "new" P0 are copied into "old" P0 whenever GRP1 is written.
+	// (Likewise, writes to GRP1 always modify the "new" P1 value, and the
+	// contents of the "new" P1 are copied into "old" P1 whenever GRP0 is
+	// written). It is safe to modify GRPn at any time, with immediate effect."
+	//
+	// observation suggests that rather than being safe to "modify GRPn at any
+	// time", a delay of 2 cycles is required.
+	//
+	// * Barnstormer scanline 61 demonstrates perfectly why we need this delay
 	delay.Schedule(2, func() {
 		ps.otherPlayer.gfxDataOld = ps.otherPlayer.gfxDataNew
 		ps.gfxDataNew = data
@@ -454,16 +481,15 @@ func (ps *playerSprite) setGfxData(delay future.Scheduler, data uint8) {
 func (ps *playerSprite) setVerticalDelay(vdelay bool) {
 	// from TIA_HW_Notes.txt:
 	//
-	// "Vertical Delay bit - this is also read every time a pixel is
-	// generated and used to select which of the "new" (0) or "old" (1)
-	// Player Graphics registers is used to generate the pixel. (ie
-	// the pixel is retrieved from both registers in parallel, and
-	// this flag used to choose between them at the graphics output).
-	// It is safe to modify VDELPn at any time, with immediate effect."
-	//
-	// the phrase "any time, with immediate effect" suggests that no delay is
-	// required. however, observations suggests that a delay of 1 cycle is
-	// needed.
+	// "Vertical Delay bit - this is also read every time a pixel is generated
+	// and used to select which of the "new" (0) or "old" (1) Player Graphics
+	// registers is used to generate the pixel. (ie the pixel is retrieved from
+	// both registers in parallel, and this flag used to choose between them at
+	// the graphics output).  It is safe to modify VDELPn at any time, with
+	// immediate effect."
+
+	// although it is "safe to modify at any time", nonetheless there seems to
+	// be a requirement for a 1 cycle delay.
 	ps.Delay.Schedule(1, func() {
 		ps.verticalDelay = vdelay
 	}, fmt.Sprintf("%s VDEL", ps.label))
@@ -486,7 +512,7 @@ func (ps *playerSprite) setHmoveValue(value uint8) {
 }
 
 func (ps *playerSprite) setReflection(value bool) {
-	// no delay necessary. from TIA_HW_Notes.txt:
+	// from TIA_HW_Notes.txt:
 	//
 	// "Player Reflect bit - this is read every time a pixel is generated,
 	// and used to conditionally invert the bits of the source pixel
@@ -504,14 +530,12 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		ps.hmovedPixel--
 	}
 
-	// no delay necessary. from TIA_HW_Notes.txt:
+	// from TIA_HW_Notes.txt:
 	//
 	// "The NUSIZ register can be changed at any time in order to alter
 	// the counting frequency, since it is read every graphics CLK.
 	// This should allow possible player graphics warp effects etc."
-	ps.Delay.Schedule(2, func() {
-		ps.size = value & 0x07
-	}, fmt.Sprintf("%s NUSIZ", ps.label))
+	ps.size = value & 0x07
 
 	// if size is 2x or 4x then we need to record an additional pixel on the
 	// reset point value

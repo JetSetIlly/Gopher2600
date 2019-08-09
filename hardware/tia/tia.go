@@ -163,9 +163,30 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "HMOVE":
-		// TODO: the schematics definitely show a delay but I'm not sure if
-		// it's 4 cycles.
-		tia.TIAdelay.Schedule(4, func() {
+		// from TIA_HW_Notes.txt:
+		//
+		// "It takes 3 CLK after the HMOVE command is received to decode the
+		// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
+		// a further 4 CLK to set 'more movement required' latches."
+		//
+		var delay int
+
+		// delay is slighty different depending on which clock phase the reset
+		// is scheduled on
+		switch tia.pclk.Count() {
+		case 0:
+			delay = 8
+		case 1:
+			delay = 7
+		case 2:
+			delay = 7
+		case 3:
+			delay = 9
+		}
+
+		// TODO: something odd happens when HMOVE is triggered at hsync 14/0
+
+		tia.TIAdelay.Schedule(delay, func() {
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.hmoveLatch = true
 			tia.hmoveCt = 15
@@ -216,13 +237,23 @@ func (tia *TIA) Step() (bool, error) {
 
 	tia.pclk.Tick()
 
-	// hsyncDelay is the number of cycles required before, for example, hblank
-	// is reset
-	const hsyncDelay = 4
-
-	// the TIA schematics for the MOTCK signal show a one cycle delay after
-	// HBLANK has been changed
-	const motckDelay = 1
+	// hmoveck is the counterpart to the motck. when hmove has been latch,
+	// according to TIA_HW_Notes.txt:
+	//
+	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
+	// as an extra 'stuffed' clock signal."
+	//
+	// note: that hmoveck is not dependent on hmoveLatch being set. this means
+	// that the trick to remove the HMOVE "comb" will work. from
+	// TIA_HW_Notes.txt:
+	//
+	// "Also of note, the HMOVE latch used to extend the HBlank time
+	// is cleared when the HSync Counter wraps around. This fact is
+	// exploited by the trick that invloves hitting HMOVE on the 74th
+	// CPU cycle of the scanline; the CLK stuffing will still take
+	// place during the HBlank and the HSYNC latch will be set just
+	// before the counter wraps around."
+	hmoveck := tia.pclk.Phi1()
 
 	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
 	//
@@ -236,6 +267,14 @@ func (tia *TIA) Step() (bool, error) {
 	// edge of Phi2.
 	if tia.pclk.Phi2() {
 		tia.hsync.Tick()
+
+		// hsyncDelay is the number of cycles required before, for example, hblank
+		// is reset
+		const hsyncDelay = 4
+
+		// the TIA schematics for the MOTCK signal show a one cycle delay after
+		// HBLANK has been changed
+		const motckDelay = 1
 
 		// this switch statement is based on the "Horizontal Sync Counter"
 		// table in TIA_HW_Notes.txt. the "key" at the end of that table
@@ -325,7 +364,6 @@ func (tia *TIA) Step() (bool, error) {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.hmoveLatch {
-
 				// one cycle before HBLANK is turned off raise the
 				// hblankOffNext flag. we'll lower it next cycle when HBLANK is
 				// actually turned off
@@ -378,12 +416,14 @@ func (tia *TIA) Step() (bool, error) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(tia.motck, uint8(tia.hmoveCt)&0x0f)
+	tia.Video.Tick(tia.motck, hmoveck, uint8(tia.hmoveCt)&0x0f)
 
-	// update HMOVE counter. leaving the value as -1 (the binary for -1 is of
-	// course 0b11111111)
-	if tia.hmoveCt >= 0 {
-		tia.hmoveCt--
+	// if this was tick where we sent a hmove clock then we need to also
+	// update the HMOVE counter.
+	if hmoveck {
+		if tia.hmoveCt >= 0 {
+			tia.hmoveCt--
+		}
 	}
 
 	// resolve video pixels. note that we always send the debug color

@@ -270,15 +270,10 @@ func main() {
 			verbose := modeFlags.Bool("verbose", false, "output more detail (eg. error messages)")
 			failOnError := modeFlags.Bool("fail", false, "fail on error")
 			modeFlagsParse()
-			switch len(modeFlags.Args()) {
-			case 0:
-				err := regression.RegressRunTests(os.Stdout, *verbose, *failOnError, modeFlags.Args())
-				if err != nil {
-					fmt.Printf("* error during regression tests: %s\n", err)
-					os.Exit(2)
-				}
-			default:
-				fmt.Printf("* no additional arguments required when using %s/%s mode\n", mode, subMode)
+
+			err := regression.RegressRunTests(os.Stdout, *verbose, *failOnError, modeFlags.Args())
+			if err != nil {
+				fmt.Printf("* error during regression tests: %s\n", err)
 				os.Exit(2)
 			}
 
