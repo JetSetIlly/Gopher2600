@@ -39,8 +39,17 @@ func (tck Ticker) MachineInfoTerse() string {
 }
 
 // Schedule the pending future action
-func (tck *Ticker) Schedule(cycles int, payload func(), label string) *Event {
-	ins := &Event{ticker: tck, label: label, initialCycles: cycles, RemainingCycles: cycles, payload: payload}
+func (tck *Ticker) Schedule(delay int, payload func(), label string) *Event {
+	if delay < 0 {
+		return nil
+	}
+
+	if delay == 0 {
+		payload()
+		return nil
+	}
+
+	ins := &Event{ticker: tck, label: label, initialCycles: delay, RemainingCycles: delay, payload: payload}
 	tck.events.PushBack(ins)
 	return ins
 }

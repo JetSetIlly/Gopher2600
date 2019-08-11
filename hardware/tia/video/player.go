@@ -104,6 +104,12 @@ type playerSprite struct {
 	// prepareForHMOVE() for a note on the presentation of hmovedPixel
 	hmovedPixel int
 
+	// the number of times the sprite has been ticked since last reset or since
+	// the position polycounter cycled
+	//
+	// cpu cycles can be attained by dividing numTicks by 3
+	videoCycles int
+
 	// ^^^ the above are common to all sprite types ^^^
 
 	// player sprite attributes
@@ -273,7 +279,11 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		// HSYNC counter ticks forward on the rising edge of Phi2. it is
 		// reasonable to assume that the sprite position counters do likewise.
 		if ps.pclk.Phi2() {
-			ps.position.Tick()
+			if ps.position.Tick() {
+				ps.videoCycles = 0
+			} else {
+				ps.videoCycles++
+			}
 
 			// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
 			//
@@ -428,8 +438,11 @@ func (ps *playerSprite) resetPosition() {
 			}
 		}
 
-		ps.resetEvent = nil
+		// reset cycle counter
+		ps.videoCycles = 0
 
+		// dump resetEvent now that is has completed
+		ps.resetEvent = nil
 	}, fmt.Sprintf("%s resetting position", ps.label))
 }
 

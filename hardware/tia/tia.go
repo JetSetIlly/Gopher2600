@@ -18,8 +18,10 @@ type TIA struct {
 	tv  television.Television
 	mem memory.ChipBus
 
-	// number of cycles since the last WSYNC
-	cpuCycles   float64
+	// number of video cycles since the last WSYNC. also cycles back to 0 on
+	// RSYNC and when polycounter reaches count 56
+	//
+	// cpu cycles can be attained by dividing videoCycles by 3
 	videoCycles int
 
 	// the last signal sent to the television. many signal attributes are
@@ -85,7 +87,7 @@ func (tia TIA) String() string {
 		tia.hsync,
 		tia.pclk.Count(),
 		tia.videoCycles,
-		tia.cpuCycles,
+		float64(tia.videoCycles)/3.0,
 	))
 
 	// NOTE: TIA_HW_Notes also includes playfield and control information.
@@ -157,7 +159,6 @@ func (tia *TIA) ReadMemory() {
 			tia.wsync = false
 			tia.hmoveLatch = false
 			tia.videoCycles = 0
-			tia.cpuCycles = 0
 			tia.sig.HSyncSimple = true
 		}, "RSYNC")
 		return
@@ -172,7 +173,7 @@ func (tia *TIA) ReadMemory() {
 		var delay int
 
 		// delay is slighty different depending on which clock phase the reset
-		// is scheduled on
+		// is scheduled on. I don't know why this is.
 		switch tia.pclk.Count() {
 		case 0:
 			delay = 8
@@ -230,10 +231,12 @@ func (tia *TIA) ReadMemory() {
 // tied to the hysnc counter it was decided to make the ticking implicit.
 // removing the redundent moving part made the ordering of the individual steps
 // obvious.
-func (tia *TIA) Step() (bool, error) {
-	// update debugging information
+func (tia *TIA) Step(readMemory bool) (bool, error) {
 	tia.videoCycles++
-	tia.cpuCycles = float64(tia.videoCycles) / 3.0
+
+	if readMemory {
+		tia.ReadMemory()
+	}
 
 	tia.pclk.Tick()
 
@@ -314,7 +317,6 @@ func (tia *TIA) Step() (bool, error) {
 
 				// reset debugging information
 				tia.videoCycles = 0
-				tia.cpuCycles = 0
 
 				// see SignalAttributes type definition for notes about the
 				// HSyncSimple attribute

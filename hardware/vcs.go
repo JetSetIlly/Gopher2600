@@ -184,14 +184,6 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		// three color clocks per CPU cycle so we run video cycle three times.
-		// step one ...
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
-		if err != nil {
-			return err
-		}
-		_ = videoCycleCallback(r)
-
 		// in addition to the ϕ0 clock, which is connected from the TIA to the
 		// CPU, there is the ϕ2 clock. The ϕ2 clock is connected from the CPU
 		// to the TIA. in that sense at least, this emulation is correct.
@@ -228,18 +220,23 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		// edge conincides with the 2nd step of the OSC clock; or, in the
 		// context of this emulation, sometime between the 1st and 2nd call to
 		// vcs.TIA.Step() in this videoCycle function.
-		//
-		vcs.TIA.ReadMemory()
+
+		// step one ...
+		_, err = vcs.TIA.Step(false)
+		if err != nil {
+			return err
+		}
+		_ = videoCycleCallback(r)
 
 		// ... tia step two ...
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
+		_, err = vcs.TIA.Step(true)
 		if err != nil {
 			return err
 		}
 		_ = videoCycleCallback(r)
 
 		// ... tia step three
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
@@ -278,10 +275,9 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		_, _ = vcs.TIA.Step()
-		vcs.TIA.ReadMemory()
-		_, _ = vcs.TIA.Step()
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step()
+		_, _ = vcs.TIA.Step(false)
+		_, _ = vcs.TIA.Step(true)
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 
 		return err
 	}
