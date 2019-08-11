@@ -1,7 +1,6 @@
 package debugger
 
 import (
-	"fmt"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
 	"gopher2600/debugger/script"
@@ -169,7 +168,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
 	// set up metavideo monitor
-	dbg.metavideo = &metavideoMonitor{Mem: dbg.vcs.Mem, MC: dbg.vcs.CPU, Renderer: dbg.gui}
+	dbg.metavideo = newMetavideoMonitor(dbg.vcs, dbg.gui)
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -524,55 +523,6 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 	}
 
 	return nil
-}
-
-func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
-	// decide which address value to use
-	var promptAddress uint16
-	var promptBank int
-
-	if dbg.lastResult == nil || dbg.lastResult.Final {
-		promptAddress = dbg.vcs.CPU.PC.ToUint16()
-	} else {
-		// if we're in the middle of an instruction then use the
-		// addresss in lastResult - in video-stepping mode we want the
-		// prompt to report the instruction that we're working on, not
-		// the next one to be stepped into.
-		promptAddress = dbg.lastResult.Address
-	}
-
-	promptBank = dbg.vcs.Mem.Cart.GetAddressBank(promptAddress)
-
-	var prompt = "["
-
-	if dbg.scriptScribe.IsActive() {
-		prompt = fmt.Sprintf("%s(rec)", prompt)
-	}
-
-	if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
-		// because we're using the raw disassmebly the reported address
-		// in that disassembly may be misleading.
-		prompt = fmt.Sprintf("%s %#04x %s ]", prompt, promptAddress, entry.String())
-	} else {
-		// incomplete disassembly, prepare witchspace prompt
-		prompt = fmt.Sprintf("%s %#04x (%d) witchspace ]", prompt, promptAddress, promptBank)
-	}
-
-	// display indicator that the CPU is waiting for WSYNC to end. only applies
-	// when in video step mode.
-	if videoCycle && !dbg.vcs.CPU.RdyFlg {
-		prompt = fmt.Sprintf("%s ! ", prompt)
-	}
-
-	// video cycle prompt
-	if videoCycle && !dbg.lastResult.Final {
-		prompt = fmt.Sprintf("%s > ", prompt)
-		return console.Prompt{Content: prompt, Style: console.StylePromptAlt}
-	}
-
-	// cpu cycle prompt
-	prompt = fmt.Sprintf("%s >> ", prompt)
-	return console.Prompt{Content: prompt, Style: console.StylePrompt}
 }
 
 // parseInput splits the input into individual commands. each command is then

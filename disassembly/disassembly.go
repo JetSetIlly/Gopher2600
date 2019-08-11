@@ -121,7 +121,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
 
-	// disassemble as best we can with (manual) flow control
+	// disassemble as best we can with manual flow control
 
 	mc.Reset()
 	dsm.Cart.Initialise()
@@ -130,6 +130,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)
 	}
+
 	err = dsm.flowDisassembly(mc)
 	if err != nil {
 		return errors.NewFormattedError(errors.DisasmError, err)

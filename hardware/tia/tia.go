@@ -38,15 +38,6 @@ type TIA struct {
 	// counters are ticked.
 	hblank bool
 
-	// a flag to say if the hblank will be turning off on the next cycle
-	// -- used by the sprite objects to apply the correct delay for position
-	// resets (see sprite code for details)
-	hblankOffNext bool
-
-	// the MOTCK signal is sent to the sprite objects every cycle when hblank
-	// is false. the schematics show a one cycle delay after hblank is changed
-	motck bool
-
 	// wsync records whether the cpu is to halt until hsync resets to 000000
 	wsync bool
 
@@ -67,7 +58,7 @@ type TIA struct {
 	// video objects/attributes. the following future.Group ticks every color
 	// clock. in addition to this, each sprite has it's own future.Group that
 	// only ticks under certain conditions.
-	TIAdelay future.Ticker
+	Delay future.Ticker
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -83,11 +74,9 @@ func (tia TIA) MachineInfo() string {
 // map String to MachineInfo
 func (tia TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %03d %d %04.01f",
-		tia.hsync,
-		tia.pclk.Count(),
-		tia.videoCycles,
-		float64(tia.videoCycles)/3.0,
+	s.WriteString(fmt.Sprintf("%s %s %d %04.01f",
+		tia.hsync, tia.pclk,
+		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 
 	// NOTE: TIA_HW_Notes also includes playfield and control information.
@@ -104,9 +93,9 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.hmoveCt = -1
 
 	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync,
-		&tia.TIAdelay,
+		&tia.Delay,
 		mem, tv,
-		&tia.hblank, &tia.hblankOffNext, &tia.hmoveLatch)
+		&tia.hblank, &tia.hmoveLatch)
 	if tia.Video == nil {
 		return nil
 	}
@@ -149,18 +138,25 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "RSYNC":
+		// from TIA_HW_Notes.txt:
+		//
+		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
+		// rising edge when strobed."
 		tia.pclk.Align()
-		tia.TIAdelay.Schedule(4, func() {
+
+		// from TIA_HW_Notes.txt:
+		//
+		// "A full H@1-H@2 cycle after RSYNC is strobed, the
+		// HSync counter is also reset to 000000 and HBlank is turned on."
+		tia.Delay.Schedule(1, func() {
 			tia.hsync.Reset()
 			tia.pclk.Reset()
-
-			// the same as what happens at SHB
-			tia.hblank = true
-			tia.wsync = false
-			tia.hmoveLatch = false
-			tia.videoCycles = 0
-			tia.sig.HSyncSimple = true
+			tia.newScanline()
 		}, "RSYNC")
+
+		// TIA_HW_notes.txt also says that, "This one requires more
+		// investigation", so the above may not be correct
+
 		return
 
 	case "HMOVE":
@@ -176,18 +172,30 @@ func (tia *TIA) ReadMemory() {
 		// is scheduled on. I don't know why this is.
 		switch tia.pclk.Count() {
 		case 0:
+			// from TIA_HW_Notes.txt:
+			//
+			// "Also of note, the HMOVE latch used to extend the HBlank time is
+			// cleared when the HSync Counter wraps around. This fact is exploited
+			// by the trick that invloves hitting HMOVE on the 74th CPU cycle of
+			// the scanline; the CLK stuffing will still take place during the
+			// HBlank and the HSYNC latch will be set just before the counter wraps
+			// around. It will then be cleared again immediately (and therefore
+			// ignored) when the counter wraps, preventing the HMOVE comb effect."
+			//
+			// for the above to work correctly it's important that we get the
+			// delay correct for pclk.Count() == 0
 			delay = 8
 		case 1:
 			delay = 7
 		case 2:
 			delay = 7
 		case 3:
-			delay = 9
+			delay = 6
 		}
 
-		// TODO: something odd happens when HMOVE is triggered at hsync 14/0
+		// !!TODO: something odd happens when HMOVE is triggered at hsync 14/0
 
-		tia.TIAdelay.Schedule(delay, func() {
+		tia.Delay.Schedule(delay, func() {
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.hmoveLatch = true
 			tia.hmoveCt = 15
@@ -206,39 +214,167 @@ func (tia *TIA) ReadMemory() {
 	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
+func (tia *TIA) newScanline() {
+	// the CPU's WSYNC concludes at the beginning of a scanline
+	// from the TIA_1A document:
+	//
+	// "...WSYNC latch is automatically reset to zero by the
+	// leading edge of the next horizontal blank timing signal,
+	// releasing the RDY line"
+	tia.wsync = false
+
+	// start HBLANK. start of new scanline for the TIA. turn hblank
+	// on
+	tia.hblank = true
+
+	// reset debugging information
+	tia.videoCycles = 0
+
+	// see SignalAttributes type definition for notes about the
+	// HSyncSimple attribute
+	tia.sig.HSyncSimple = true
+
+	// rather than include the reset signal in the delay, we will
+	// manually reset hsync counter when it reaches a count of 57
+
+}
+
 // Step moves the state of the tia forward one video cycle returns the state of
 // the CPU (conceptually, we're attaching the result of this function to pin 3
 // of the 6507)
 //
-// the meat of the Step() function can be divided into 9 parts. the ordering of
-// these parts is important. the currently defined steps and the ordering are
-// as follows:
+// the meat of the Step() function can be divided into 9 (important) sub-steps.
+// the ordering of these sub-steps is important. the currently defined steps
+// and the ordering are as follows:
 //
-// 1. tick two-phase clock
-// 2. if clock is now on the rising edge of Phi2
-//	2.1. tick hsync counter
-//	2.2. schedule hsync events as required
+// 1. read memory (if required)
+// 2. tick phase clock
 // 3. tick delayed events
-// 4. tick sprites
-// 5. adjust HMOVE value
-// 6. send signal to television
+// 4. if phase clock is on the rising edge of Phi2
+//		4.1. tick hsync counter
+//		4.2. schedule hsync events as required
+// 5. tick video objects/events
+// 6. adjust HMOVE value
+// 7. send signal to television
 //
-// step 4 contains a lot more work important to the correct operation of the
+// step 5 contains a lot more work important to the correct operation of the
 // TIA but from this perspective the step is monolithic
-//
-// note that there is no TickPlayfield(). earlier versions of the code required
-// us to tick the playfield explicitely but because the playfield is so closely
-// tied to the hysnc counter it was decided to make the ticking implicit.
-// removing the redundent moving part made the ordering of the individual steps
-// obvious.
 func (tia *TIA) Step(readMemory bool) (bool, error) {
+
+	// update debugging information
 	tia.videoCycles++
 
+	// read memory if required
+	//
+	// * the precise moment when memory is read affects debugger/metavideo
 	if readMemory {
 		tia.ReadMemory()
 	}
 
+	// tick phase clock
 	tia.pclk.Tick()
+
+	// tick delayed events
+	tia.Delay.Tick()
+
+	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
+	//
+	// "This table shows the elapsed number of CLK, CPU cycles, Playfield
+	// (PF) bits and Playfield pixels at the start of each counter state
+	// (ie when the counter changes to this state on the rising edge of
+	// the H@2 clock)."
+	//
+	// the context of this passage is the Horizontal Sync Counter. It is
+	// explicitely saying that the HSYNC counter ticks forward on the rising
+	// edge of Phi2.
+	if tia.pclk.Phi2() {
+		tia.hsync.Tick()
+
+		// hsyncDelay is the number of cycles required before, for example, hblank
+		// is reset
+		const hsyncDelay = 3
+
+		// this switch statement is based on the "Horizontal Sync Counter"
+		// table in TIA_HW_Notes.txt. the "key" at the end of that table
+		// suggests that (most of) the events are delayed by 4 clocks due to
+		// "latching".
+		switch tia.hsync.Count {
+		case 57:
+			// from TIA_HW_Notes.txt:
+			//
+			// "The HSync counter resets itself after 57 counts; the decode on
+			// HCount=56 performs a reset to 000000 delayed by 4 CLK, so
+			// HCount=57 becomes HCount=0. This gives a period of 57 counts
+			// or 228 CLK."
+			tia.hsync.Reset()
+
+			tia.Delay.Schedule(hsyncDelay, func() {
+				tia.hmoveLatch = false
+			}, "HMOVE reset")
+
+		case 56: // [SHB]
+			tia.Delay.Schedule(hsyncDelay, func() {
+				tia.newScanline()
+			}, "RESET")
+
+		case 2:
+			// reset the HSyncSimple attribute as soon as is practical
+			//
+			// see SignalAttributes type definition for notes about the
+			// HSyncSimple attribute
+			tia.sig.HSyncSimple = false
+
+		case 4: // [SHS]
+			// start HSYNC. start of new scanline for the television
+			// * TIA_HW_Notes.txt does not say there is a 4 clock delay for
+			// this even
+			tia.sig.HSync = true
+
+		case 8: // [RHS]
+			tia.Delay.Schedule(hsyncDelay, func() {
+				// reset HSYNC
+				tia.sig.HSync = false
+				tia.sig.CBurst = true
+			}, "RHS (TV)")
+
+		case 12: // [RCB]
+			tia.Delay.Schedule(hsyncDelay, func() {
+				// reset color burst
+				tia.sig.CBurst = false
+			}, "RCB (TV)")
+
+		// the two cases below handle the turning off of the hblank flag. from
+		// TIA_HW_Notes.txt:
+		//
+		// "In principle the operation of HMOVE is quite straight-forward; if a
+		// HMOVE is initiated immediately after HBlank starts, which is the
+		// case when HMOVE is used as documented, the [HMOVE] signal is latched
+		// and used to delay the end of the HBlank by exactly 8 CLK, or two
+		// counts of the HSync Counter. This is achieved in the TIA by
+		// resetting the HB (HBlank) latch on the [LRHB] (Late Reset H-Blank)
+		// counter decode rather than the normal [RHB] (Reset H-Blank) decode."
+
+		case 16: // [RHB]
+			// early HBLANK off if hmoveLatch is false
+			if !tia.hmoveLatch {
+				tia.Delay.Schedule(hsyncDelay, func() {
+					tia.hblank = false
+				}, "HRB")
+			}
+
+		// ... and "two counts of the HSync Counter" later ...
+
+		case 18:
+			// late HBLANK off if hmoveLatch is true
+			//
+			// see swtich-case 16 for commentary
+			if tia.hmoveLatch {
+				tia.Delay.Schedule(hsyncDelay, func() {
+					tia.hblank = false
+				}, "LHRB")
+			}
+		}
+	}
 
 	// hmoveck is the counterpart to the motck. when hmove has been latch,
 	// according to TIA_HW_Notes.txt:
@@ -258,167 +394,10 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// before the counter wraps around."
 	hmoveck := tia.pclk.Phi1()
 
-	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
-	//
-	// "This table shows the elapsed number of CLK, CPU cycles, Playfield
-	// (PF) bits and Playfield pixels at the start of each counter state
-	// (ie when the counter changes to this state on the rising edge of
-	// the H@2 clock)."
-	//
-	// the context of this passage is the Horizontal Sync Counter. It is
-	// explicitely saying that the HSYNC counter ticks forward on the rising
-	// edge of Phi2.
-	if tia.pclk.Phi2() {
-		tia.hsync.Tick()
-
-		// hsyncDelay is the number of cycles required before, for example, hblank
-		// is reset
-		const hsyncDelay = 4
-
-		// the TIA schematics for the MOTCK signal show a one cycle delay after
-		// HBLANK has been changed
-		const motckDelay = 1
-
-		// this switch statement is based on the "Horizontal Sync Counter"
-		// table in TIA_HW_Notes.txt. the "key" at the end of that table
-		// suggests that (most of) the events are delayed by 4 clocks due to
-		// "latching".
-		switch tia.hsync.Count {
-		case 57:
-			// from TIA_HW_Notes.txt:
-			//
-			// "The HSync counter resets itself after 57 counts; the decode on
-			// HCount=56 performs a reset to 000000 delayed by 4 CLK, so
-			// HCount=57 becomes HCount=0. This gives a period of 57 counts
-			// or 228 CLK."
-			tia.hsync.Reset()
-
-		case 56: // [SHB]
-			tia.TIAdelay.Schedule(hsyncDelay, func() {
-				// the CPU's WSYNC concludes at the beginning of a scanline
-				// from the TIA_1A document:
-				//
-				// "...WSYNC latch is automatically reset to zero by the
-				// leading edge of the next horizontal blank timing signal,
-				// releasing the RDY line"
-				tia.wsync = false
-
-				// start HBLANK. start of new scanline for the TIA. turn hblank
-				// on
-				tia.hblank = true
-
-				// MOTCK is one cycle behind the HBALNK state
-				tia.TIAdelay.Schedule(motckDelay, func() {
-					tia.motck = false
-				}, "MOTCK [reset]")
-
-				// not sure when to reset HMOVE latch but here seems good
-				tia.hmoveLatch = false
-
-				// reset debugging information
-				tia.videoCycles = 0
-
-				// see SignalAttributes type definition for notes about the
-				// HSyncSimple attribute
-				tia.sig.HSyncSimple = true
-
-				// rather than include the reset signal in the delay, we will
-				// manually reset hsync counter when it reaches a count of 57
-			}, "RESET")
-
-		case 1:
-			// reset the HSyncSimple attribute as soon as is practical
-			//
-			// see SignalAttributes type definition for notes about the
-			// HSyncSimple attribute
-			tia.sig.HSyncSimple = false
-
-		case 4: // [SHS]
-			// start HSYNC. start of new scanline for the television
-			// * TIA_HW_Notes.txt does not say there is a 4 clock delay for
-			// this even
-			tia.sig.HSync = true
-
-		case 8: // [RHS]
-			tia.TIAdelay.Schedule(hsyncDelay, func() {
-				// reset HSYNC
-				tia.sig.HSync = false
-				tia.sig.CBurst = true
-			}, "RHS (TV)")
-
-		case 12: // [RCB]
-			tia.TIAdelay.Schedule(hsyncDelay, func() {
-				// reset color burst
-				tia.sig.CBurst = false
-			}, "RCB (TV)")
-
-		// the two cases below handle the turning off of the hblank flag. from
-		// TIA_HW_Notes.txt:
-		//
-		// "In principle the operation of HMOVE is quite straight-forward; if a
-		// HMOVE is initiated immediately after HBlank starts, which is the
-		// case when HMOVE is used as documented, the [HMOVE] signal is latched
-		// and used to delay the end of the HBlank by exactly 8 CLK, or two
-		// counts of the HSync Counter. This is achieved in the TIA by
-		// resetting the HB (HBlank) latch on the [LRHB] (Late Reset H-Blank)
-		// counter decode rather than the normal [RHB] (Reset H-Blank) decode."
-
-		case 16: // [RHB]
-			// early HBLANK off if hmoveLatch is false
-			if !tia.hmoveLatch {
-				// one cycle before HBLANK is turned off raise the
-				// hblankOffNext flag. we'll lower it next cycle when HBLANK is
-				// actually turned off
-				tia.TIAdelay.Schedule(hsyncDelay-1, func() {
-					tia.hblankOffNext = true
-				}, "")
-
-				tia.TIAdelay.Schedule(hsyncDelay, func() {
-					tia.hblank = false
-					tia.hblankOffNext = false
-
-					// the signal used to tick the sprites is one cycle behind
-					// the HBLANK state
-					tia.TIAdelay.Schedule(motckDelay, func() {
-						tia.motck = true
-					}, "MOTCK")
-				}, "HRB")
-			}
-
-		// ... and "two counts of the HSync Counter" later ...
-
-		case 18:
-			// late HBLANK off if hmoveLatch is true
-			//
-			// see swtich-case 16 for commentary
-			if tia.hmoveLatch {
-				tia.TIAdelay.Schedule(hsyncDelay-1, func() {
-					tia.hblankOffNext = true
-				}, "")
-				tia.TIAdelay.Schedule(hsyncDelay, func() {
-					tia.hblank = false
-					tia.hblankOffNext = false
-					tia.TIAdelay.Schedule(motckDelay, func() {
-						tia.motck = true
-					}, "MOTCK [late]")
-				}, "LHRB")
-			}
-		}
-	}
-
-	// tick future events. ticking here so that it happens at the same time as
-	// the regular TIA clock. this is important because then the delay values
-	// work out as you would expect.
-	//
-	// (this may seem like an obvious fact but I spent enough time fiddling with
-	// this and convincing myself that it was true that it seems worthy of a
-	// note)
-	tia.TIAdelay.Tick()
-
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(tia.motck, hmoveck, uint8(tia.hmoveCt)&0x0f)
+	tia.Video.Tick(!tia.hblank, hmoveck, uint8(tia.hmoveCt)&0x0f)
 
 	// if this was tick where we sent a hmove clock then we need to also
 	// update the HMOVE counter.

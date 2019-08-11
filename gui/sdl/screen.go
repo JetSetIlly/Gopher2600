@@ -108,12 +108,6 @@ func newScreen(gtv *GUI) (*screen, error) {
 	// new stabiliser
 	scr.stb = newScreenStabiliser(scr)
 
-	// new overlay
-	scr.metaVideo, err = newMetaVideoOverlay(scr)
-	if err != nil {
-		return nil, err
-	}
-
 	return scr, nil
 }
 
@@ -163,6 +157,12 @@ func (scr *screen) changeTVSpec() error {
 	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(scr.spec.FramesPerSecond))
 	if err != nil {
 		return errors.NewFormattedError(errors.SDL, err)
+	}
+
+	// new overlay
+	scr.metaVideo, err = newMetaVideoOverlay(scr)
+	if err != nil {
+		return err
 	}
 
 	return nil

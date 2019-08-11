@@ -61,7 +61,7 @@ func (mv *metaVideoOverlay) setPixel(sig metavideo.MetaSignalAttributes) error {
 	mv.pixels[i] = sig.Red
 	mv.pixels[i+1] = sig.Green
 	mv.pixels[i+2] = sig.Blue
-	mv.pixels[i+3] = 255
+	mv.pixels[i+3] = sig.Alpha
 
 	// silently allow empty labels
 	mv.labels[mv.scr.lastY][mv.scr.lastX] = sig.Label

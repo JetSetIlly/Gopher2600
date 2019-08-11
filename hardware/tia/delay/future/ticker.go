@@ -38,27 +38,6 @@ func (tck Ticker) MachineInfoTerse() string {
 	return s.String()
 }
 
-// Schedule the pending future action
-func (tck *Ticker) Schedule(delay int, payload func(), label string) *Event {
-	if delay < 0 {
-		return nil
-	}
-
-	if delay == 0 {
-		payload()
-		return nil
-	}
-
-	ins := &Event{ticker: tck, label: label, initialCycles: delay, RemainingCycles: delay, payload: payload}
-	tck.events.PushBack(ins)
-	return ins
-}
-
-// IsScheduled returns true if there are any outstanding future events
-func (tck Ticker) IsScheduled() bool {
-	return tck.events.Len() > 0
-}
-
 // Tick moves the pending action counter on one step
 func (tck *Ticker) Tick() bool {
 	r := false

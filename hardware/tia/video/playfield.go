@@ -2,7 +2,6 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"strings"
@@ -189,7 +188,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.backgroundColor
 }
 
-func (pf *playfield) scheduleWrite(segment int, value uint8, futureWrite future.Scheduler) {
+func (pf *playfield) scheduleWrite(segment int, value uint8) {
 	switch segment {
 	case 0:
 		pf.pf0 = value & 0xf0

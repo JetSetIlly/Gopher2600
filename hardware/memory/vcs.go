@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
+	"time"
 )
 
 // VCSMemory presents a monolithic representation of system memory to the CPU -
@@ -21,15 +22,17 @@ type VCSMemory struct {
 	PIA  *PIA
 	Cart *Cartridge
 
-	// a note of the last memory location to be accessed.  this address is the
-	// mapped address
-	LastAccessAddress uint16
-
-	// the value that was written/read from the last address accessed
-	LastAccessValue uint8
-
-	// whether the last addres accessed was written (true) or read (false)
-	LastAccessWrite bool
+	// the following are only used by the debugging interface. it would be
+	// lovely to remove these for non-debugging emulation but there's not much
+	// impact on performance so they can stay for now.
+	//  * a note of the last (mapperd) memory address to be accessed
+	//  * the value that was written/read from the last address accessed
+	//  * whether the last addres accessed was written or read
+	//  * the timestamp of the last memory access
+	LastAccessAddress   uint16
+	LastAccessValue     uint8
+	LastAccessWrite     bool
+	LastAccessTimeStamp time.Time
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
@@ -108,6 +111,7 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	mem.LastAccessWrite = false
 	data, err := area.(CPUBus).Read(ma)
 	mem.LastAccessValue = data
+	mem.LastAccessTimeStamp = time.Now()
 	return data, err
 }
 
@@ -121,5 +125,6 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = true
 	mem.LastAccessValue = data
+	mem.LastAccessTimeStamp = time.Now()
 	return area.(CPUBus).Write(ma, data)
 }

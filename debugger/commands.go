@@ -833,7 +833,10 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "DELAY":
-				dbg.printMachineInfo(dbg.vcs.TIA.TIAdelay)
+				fallthrough
+
+			case "DELAYS":
+				dbg.printMachineInfo(dbg.vcs.TIA.Delay)
 
 				// for convience asking for TIA delays also prints delays for
 				// the sprites

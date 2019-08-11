@@ -13,5 +13,5 @@ type MetaSignalAttributes struct {
 
 	// Renderer implementations are free to use the color information
 	// as they wish (adding alpha information seems a probable scenario).
-	Red, Green, Blue byte
+	Red, Green, Blue, Alpha byte
 }

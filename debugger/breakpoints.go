@@ -203,7 +203,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		}
 
 		if err == nil {
-			if andBreaks == true {
+			if andBreaks {
 				if len(newBreaks) == 0 {
 					newBreaks = append(newBreaks, breaker{target: tgt, value: val})
 				} else {

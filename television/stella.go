@@ -209,6 +209,9 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 
 	} else {
 		btv.horizPos++
+		if btv.horizPos > btv.spec.ClocksPerScanline {
+			return errors.NewFormattedError(errors.StellaTelevision, "no flyback signal")
+		}
 	}
 
 	// simple vsync implementation. when compared to the HSync detection above,

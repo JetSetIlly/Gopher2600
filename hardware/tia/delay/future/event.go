@@ -20,7 +20,8 @@ type Event struct {
 	// the number of remaining ticks before the pending action is resolved
 	RemainingCycles int
 
-	paused bool
+	paused    bool
+	completed bool
 
 	// the value that is to be the result of the pending action
 	payload func()
@@ -44,6 +45,7 @@ func (ev *Event) Tick() bool {
 	if ev.RemainingCycles == 0 {
 		ev.RemainingCycles--
 		ev.payload()
+		ev.completed = true
 		return true
 	}
 
@@ -59,12 +61,15 @@ func (ev *Event) Tick() bool {
 func (ev *Event) Force() {
 	ev.payload()
 	ev.ticker.Drop(ev)
+	ev.completed = true
 }
 
 // Drop can be used to remove the event from the ticker queue without running
-// the payload
+// the payload. Because the payload is not run then you should be careful to
+// handle any cleanup that might otherwise occur (in the payload).
 func (ev *Event) Drop() {
 	ev.ticker.Drop(ev)
+	ev.completed = true
 }
 
 // Pause prevents the event from ticking any further until Resume or Restart is
@@ -82,4 +87,9 @@ func (ev *Event) Resume() {
 func (ev *Event) Restart() {
 	ev.RemainingCycles = ev.initialCycles
 	ev.paused = false
+}
+
+// Completed indicates whether the events has run it's course
+func (ev Event) Completed() bool {
+	return ev.completed
 }

@@ -117,3 +117,13 @@ func (clk PhaseClock) Phi1() bool {
 func (clk PhaseClock) Phi2() bool {
 	return clk == risingPhi2
 }
+
+// LatePhi1 returns true if the Phi1 clock is on its falling edge
+func (clk PhaseClock) LatePhi1() bool {
+	return clk == fallingPhi1
+}
+
+// LatePhi2 returns true if the Phi2 clock is on its falling edge
+func (clk PhaseClock) LatePhi2() bool {
+	return clk == fallingPhi2
+}

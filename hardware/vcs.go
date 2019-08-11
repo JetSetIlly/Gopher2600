@@ -218,7 +218,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		// we've already mentioned how memory should be read by the TIA on the
 		// lowering edge of ϕ2. according to the ammednded diagram above, this
 		// edge conincides with the 2nd step of the OSC clock; or, in the
-		// context of this emulation, sometime between the 1st and 2nd call to
+		// context of this emulation, sometime between the 2nd and 3rd call to
 		// vcs.TIA.Step() in this videoCycle function.
 
 		// step one ...
@@ -229,14 +229,14 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		_ = videoCycleCallback(r)
 
 		// ... tia step two ...
-		_, err = vcs.TIA.Step(true)
+		_, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
 		_ = videoCycleCallback(r)
 
 		// ... tia step three
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
 		if err != nil {
 			return err
 		}
@@ -276,8 +276,8 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.RIOT.Step()
 
 		_, _ = vcs.TIA.Step(false)
-		_, _ = vcs.TIA.Step(true)
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		_, _ = vcs.TIA.Step(false)
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
 
 		return err
 	}

@@ -56,7 +56,7 @@ func NewVideo(pclk *phaseclock.PhaseClock,
 	Delay future.Scheduler,
 	mem memory.ChipBus,
 	tv television.Television,
-	hblank, hblankOffNext, hmoveLatch *bool) *Video {
+	hblank, hmoveLatch *bool) *Video {
 
 	vd := &Video{Delay: Delay}
 
@@ -67,11 +67,11 @@ func NewVideo(pclk *phaseclock.PhaseClock,
 	vd.Playfield = newPlayfield(pclk, hsync)
 
 	// sprite objects
-	vd.Player0 = newPlayerSprite("player0", tv, hblank, hblankOffNext, hmoveLatch)
+	vd.Player0 = newPlayerSprite("player0", tv, hblank, hmoveLatch)
 	if vd.Player0 == nil {
 		return nil
 	}
-	vd.Player1 = newPlayerSprite("player1", tv, hblank, hblankOffNext, hmoveLatch)
+	vd.Player1 = newPlayerSprite("player1", tv, hblank, hmoveLatch)
 	if vd.Player1 == nil {
 		return nil
 	}
@@ -297,11 +297,11 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value, vd.Delay)
+		vd.Playfield.scheduleWrite(0, value)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value, vd.Delay)
+		vd.Playfield.scheduleWrite(1, value)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value, vd.Delay)
+		vd.Playfield.scheduleWrite(2, value)
 
 	// ball sprite
 	case "ENABL":
@@ -313,9 +313,9 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// player sprites
 	case "GRP0":
-		vd.Player0.setGfxData(vd.Delay, value)
+		vd.Player0.setGfxData(value)
 	case "GRP1":
-		vd.Player1.setGfxData(vd.Delay, value)
+		vd.Player1.setGfxData(value)
 	case "RESP0":
 		vd.Player0.resetPosition()
 	case "RESP1":

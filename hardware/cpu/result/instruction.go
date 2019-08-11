@@ -63,7 +63,7 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 	// this particular instruction
 	if result.Final && style.Has(StyleFlagAddress) {
 		programCounter = fmt.Sprintf("0x%04x", result.Address)
-		if symtable != nil && style.Has(StyleFlagLocation) {
+		if style.Has(StyleFlagLocation) {
 			if v, ok := symtable.Locations.Symbols[result.Address]; ok {
 				label = v
 			}
