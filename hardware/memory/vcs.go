@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware/memory/addresses"
 	"time"
 )
 
@@ -14,7 +15,7 @@ type VCSMemory struct {
 
 	// memmap is a hash for every address in the VCS address space, returning
 	// one of the four memory areas
-	Memmap map[uint16]Area
+	Memmap []Area
 
 	// the four memory areas
 	RIOT *ChipMemory
@@ -38,7 +39,8 @@ type VCSMemory struct {
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
-	mem.Memmap = make(map[uint16]Area)
+
+	mem.Memmap = make([]Area, addresses.NumAddresses)
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
@@ -103,8 +105,8 @@ func (mem VCSMemory) MapAddress(address uint16, cpuRead bool) uint16 {
 // Implementation of CPUBus.Read
 func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address, true)
-	area, present := mem.Memmap[ma]
-	if !present {
+	area := mem.Memmap[ma]
+	if area == nil {
 		return 0, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 	mem.LastAccessAddress = ma
@@ -118,8 +120,8 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 // Implementation of CPUBus.Write
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma := mem.MapAddress(address, false)
-	area, present := mem.Memmap[ma]
-	if !present {
+	area := mem.Memmap[ma]
+	if area == nil {
 		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 	mem.LastAccessAddress = ma

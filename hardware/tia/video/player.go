@@ -282,6 +282,12 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		// The stretched modes are derived from the two-phase clock; the H@2
 		// phase allows 1 in 4 CLK through (4x stretch), both phases ORed
 		// together allow 1 in 2 CLK through (2x stretch)."
+		//
+		//
+		// note that we tick on the falling edges of Phi1 and Phi2. rising on
+		// the rising edge is the same except it affects the accuracy of NUSIZx
+		// I've tried to iron this out (ticking on the rising edge makes more
+		// sense) but to no avail.
 		switch ps.nusiz {
 		case 0x05:
 			if ps.pclk.LatePhi2() || ps.pclk.LatePhi1() || ps.scanCounter.isLatching() {
@@ -581,6 +587,9 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	// at any time. if the sprite is currently been drawn the the tick()
 	// function will immediately draw subsequent pixels immediately. the delay
 	// only effects when the pixel drawing begins.
+
+	// also note how we tick the scancounter on the falling edge, rather than
+	// the rising edge of the phase clock. this helps the accuracy of NUSIZx
 
 	ps.Delay.Schedule(delay, func() {
 		// if size is 2x or 4x currently then take off the additional pixel. we'll

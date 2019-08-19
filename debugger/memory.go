@@ -28,43 +28,29 @@ type addressInfo struct {
 	mappedAddress uint16
 	area          memory.Area
 	addressLabel  string
-	value         memoryValue
-}
 
-func (mem addressInfo) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%#04x", mem.address))
-	if mem.addressLabel != "" {
-		s.WriteString(fmt.Sprintf(" (%s)", mem.addressLabel))
-	}
-	if mem.address != mem.mappedAddress {
-		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", mem.mappedAddress))
-	}
-	if mem.area.Label() != "" {
-		s.WriteString(fmt.Sprintf(" :: %s", mem.area.Label()))
-	}
-	s.WriteString(mem.value.String())
-	return s.String()
-}
-
-// the value associated with an address may or may not be available depending
-// on how the addressInfo was generated. the assign() and String() functions
-// take care of the details.
-type memoryValue struct {
-	available bool
+	// the value at the address, if it has been seen. the boolean value
+	// indicates whether value is valid or not
 	value     uint8
+	valueSeen bool
 }
 
-func (val *memoryValue) assign(value uint8) {
-	val.value = value
-	val.available = true
-}
-
-func (val memoryValue) String() string {
-	if !val.available {
-		return ""
+func (inf addressInfo) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%#04x", inf.address))
+	if inf.addressLabel != "" {
+		s.WriteString(fmt.Sprintf(" (%s)", inf.addressLabel))
 	}
-	return fmt.Sprintf(" -> %#02x", val.value)
+	if inf.address != inf.mappedAddress {
+		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", inf.mappedAddress))
+	}
+	if inf.area.Label() != "" {
+		s.WriteString(fmt.Sprintf(" :: %s", inf.area.Label()))
+	}
+	if inf.valueSeen {
+		s.WriteString(fmt.Sprintf(" -> %#02x", inf.value))
+	}
+	return s.String()
 }
 
 // mapAddress allows addressing by symbols in addition to numerically
@@ -126,9 +112,8 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInf
 		ai.mappedAddress = mem.mem.MapAddress(ai.address, cpuRead)
 	}
 
-	var present bool
-	ai.area, present = mem.mem.Memmap[ai.mappedAddress]
-	if !present {
+	ai.area = mem.mem.Memmap[ai.mappedAddress]
+	if ai.area == nil {
 		return nil
 	}
 
@@ -145,8 +130,9 @@ func (mem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 		return nil, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("%#04x not mapped correctly", address))
 	}
 
-	val, err := ai.area.Peek(ai.mappedAddress)
-	ai.value.assign(val)
+	value, err := ai.area.Peek(ai.mappedAddress)
+	ai.value = value
+	ai.valueSeen = true
 	return ai, err
 }
 
@@ -157,7 +143,8 @@ func (mem memoryDebug) poke(address interface{}, value uint8) (*addressInfo, err
 	if ai == nil {
 		return nil, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("%#04x not mapped correctly", address))
 	}
-	ai.value.assign(value)
+	ai.value = value
+	ai.valueSeen = true
 	err := ai.area.Poke(ai.mappedAddress, value)
 	return ai, err
 }

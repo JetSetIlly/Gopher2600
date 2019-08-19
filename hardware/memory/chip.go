@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/addresses"
 )
@@ -65,4 +66,71 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 // Poke is the implementation of Memory.Area.Poke
 func (area ChipMemory) Poke(address uint16, value uint8) error {
 	return errors.NewFormattedError(errors.UnpokeableAddress, address)
+}
+
+// ChipRead is an implementation of ChipBus. returns:
+// - whether a chip was last written to
+// - the CPU name of the address that was written to
+// - the written value
+func (area *ChipMemory) ChipRead() (bool, string, uint8) {
+	if area.writeSignal {
+		area.writeSignal = false
+		return true, addresses.Write[area.lastWriteAddress], area.writeData
+	}
+
+	return false, "", 0
+}
+
+// ChipWrite is an implementation of ChipBus. it writes the data to the memory
+// area's address
+func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
+	area.memory[address] = data
+}
+
+// LastReadRegister is an implementation of ChipBus. it returns the register
+// name of the last memory location *read* by the CPU
+func (area *ChipMemory) LastReadRegister() string {
+	r := area.lastReadRegister
+	area.lastReadRegister = ""
+	return r
+}
+
+// Read is an implementation of CPUBus. returns the value and/or error
+func (area *ChipMemory) Read(address uint16) (uint8, error) {
+	// note the name of the register that we are reading
+	area.lastReadRegister = addresses.Read[address]
+
+	sym := addresses.Read[address]
+	if sym == "" {
+		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
+	}
+
+	return area.memory[area.origin|address^area.origin], nil
+}
+
+// Write is an implementation of CPUBus. it writes the data to the memory
+// area's address
+func (area *ChipMemory) Write(address uint16, data uint8) error {
+	// check that the last write to this memory area has been serviced
+	if area.writeSignal {
+		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.lastWriteAddress]))
+	}
+
+	sym := addresses.Write[address]
+	if sym == "" {
+		return errors.NewFormattedError(errors.UnwritableAddress, address)
+	}
+
+	// note address of write
+	area.lastWriteAddress = address
+	area.writeSignal = true
+	area.writeData = data
+
+	return nil
+}
+
+// PeriphWrite implements PeriphBus. it writes the data to the memory area's
+// address
+func (area *ChipMemory) PeriphWrite(address uint16, data uint8) {
+	area.memory[address] = data
 }

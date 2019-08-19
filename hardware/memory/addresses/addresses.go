@@ -1,5 +1,11 @@
 package addresses
 
+// NumAddresses is the total numer of addresses available in the system. the
+// 6507 actually only has 13 address lines so the real maximum is 0x1fff but
+// internally, the CPU can still refer to all 65536 addresses. the memory
+// subsystem handles the address remapping.
+const NumAddresses = 0xffff
+
 // Reset is the address where the reset address is stored
 // - used by VCS.Reset() and Disassembly module
 const Reset = uint16(0xfffc)
