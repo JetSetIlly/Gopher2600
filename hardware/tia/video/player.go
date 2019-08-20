@@ -10,12 +10,15 @@ import (
 	"strings"
 )
 
+// once a player sprite has reached a START signal during its
+// position/polycounter cycle, the scanCounter is started and is ticked forward
+// every cycle (subject to MOTCK, HMOVE and NUSIZ rules)
 type scanCounter struct {
-	offset  int
+	pixel   int
 	latches int
 }
 
-const scanCounterLimit int = 7
+const scanCounterStart int = 7
 
 func (sc *scanCounter) start(nusiz uint8) {
 	if nusiz == 0x05 || nusiz == 0x07 {
@@ -26,7 +29,7 @@ func (sc *scanCounter) start(nusiz uint8) {
 }
 
 func (sc scanCounter) active() bool {
-	return sc.offset >= 0 && sc.offset <= scanCounterLimit
+	return sc.pixel >= 0 && sc.pixel <= scanCounterStart
 }
 
 func (sc scanCounter) isLatching() bool {
@@ -37,10 +40,10 @@ func (sc *scanCounter) tick() {
 	if sc.latches > 0 {
 		sc.latches--
 		if sc.latches == 0 {
-			sc.offset = scanCounterLimit
+			sc.pixel = scanCounterStart
 		}
-	} else if sc.offset >= 0 {
-		sc.offset--
+	} else if sc.pixel >= 0 {
+		sc.pixel--
 	}
 }
 
@@ -72,13 +75,9 @@ type playerSprite struct {
 	// "Beside each counter there is a two-phase clock generator..."
 	pclk phaseclock.PhaseClock
 
-	// in addition to the TIA-wide tiaDelay each sprite keeps track of its own
-	// delays. this way, we can carefully control when the sprite events occur
-	// - taking into consideration sprite specific conditions
-	//
-	// sprites mainly use their own delay but some operations require the
-	// TIA-wide delay. for those instances a future.Scheduler instance is
-	// passed to the required function
+	// each sprite keeps track of its own delays. this way, we can carefully
+	// control when the sprite events occur - taking into consideration sprite
+	// specific conditions
 	Delay future.Ticker
 
 	// horizontal movement
@@ -148,6 +147,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 	}
+	ps.Delay.Label = ps.label
 	ps.position.Reset()
 	return &ps
 }
@@ -223,7 +223,7 @@ func (ps playerSprite) String() string {
 		if extra {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw (px %d)", ps.scanCounter.offset))
+		s.WriteString(fmt.Sprintf(" drw (px %d)", ps.scanCounter.pixel))
 		extra = true
 	} else if ps.scanCounter.isLatching() {
 		// add a comma if we've already noted something else
@@ -477,7 +477,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 
 	// pick the pixel from the gfxData register
 	if ps.scanCounter.active() {
-		if gfxData>>uint8(ps.scanCounter.offset)&0x01 == 0x01 {
+		if gfxData>>uint8(ps.scanCounter.pixel)&0x01 == 0x01 {
 			return true, ps.color
 		}
 	}
@@ -561,35 +561,26 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 
 	if ps.startDrawingEvent != nil {
 		// if the sprite is scheduled to start drawing the delay is equal to the
-		// number of pre-draw-latches that are required depending on the current
-		// size.
+		// number of pre-draw-latches that are required depending on:
+		//	o the current size
+		//	o the number of remaining cycles before the sprite begins
+		//		drawing/latching
 		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
-			delay = 2
-		} else {
+			delay = 1
+		} else if ps.startDrawingEvent.InitialCycles == ps.startDrawingEvent.RemainingCycles+1 {
+			// drop start drawing event if it has just started
+			ps.startDrawingEvent.Drop()
+		} else if ps.startDrawingEvent.RemainingCycles <= 1 {
 			delay = 1
 		}
-	} else if ps.scanCounter.active() {
+	} else if ps.scanCounter.active() || ps.scanCounter.isLatching() {
 		// if the sprite is currently in its draw sequence (ie. the scan
-		// counter is active) then the delay depends on waiting for the current
-		// "pixel" to have been completely drawn. This depends on the current
-		// value of NUSIZ and the current state of the phase clock.
+		// counter is active) or is about to be
 		delay = 2
-	} else {
-		// if the there is no scheduled drawing event or one currenty taking place,
-		// then the dealy is equal to the number of latches currently outstanding.
-		// in this instance, if the drawing is actually running then the number of
-		// latches, and therefore the delay, will be zero.
-		delay = ps.scanCounter.latches
 	}
 
-	// note that this delay does not violate the description in
-	// TIA_HW_Notes.txt quoted above. the NUSIZ register can indeed be changed
-	// at any time. if the sprite is currently been drawn the the tick()
-	// function will immediately draw subsequent pixels immediately. the delay
-	// only effects when the pixel drawing begins.
-
-	// also note how we tick the scancounter on the falling edge, rather than
-	// the rising edge of the phase clock. this helps the accuracy of NUSIZx
+	// * note how we tick the scancounter on the falling edge, rather than the
+	// rising edge of the phase clock. this helps the accuracy of NUSIZx
 
 	ps.Delay.Schedule(delay, func() {
 		// if size is 2x or 4x currently then take off the additional pixel. we'll

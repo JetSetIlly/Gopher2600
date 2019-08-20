@@ -924,66 +924,66 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdMissile:
-		mssl := -1
+		// mssl := -1
 
-		arg, _ := tokens.Get()
-		switch arg {
-		case "0":
-			mssl = 0
-		case "1":
-			mssl = 1
-		default:
-			tokens.Unget()
-		}
+		// arg, _ := tokens.Get()
+		// switch arg {
+		// case "0":
+		// 	mssl = 0
+		// case "1":
+		// 	mssl = 1
+		// default:
+		// 	tokens.Unget()
+		// }
 
-		if dbg.machineInfoVerbose {
-			switch mssl {
-			case 0:
-				m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(m0, "\n"))
+		// if dbg.machineInfoVerbose {
+		// 	switch mssl {
+		// 	case 0:
+		// 		m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+		// 		dbg.print(console.StyleMachineInfo, strings.Join(m0, "\n"))
 
-			case 1:
-				m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(m1, "\n"))
+		// 	case 1:
+		// 		m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+		// 		dbg.print(console.StyleMachineInfo, strings.Join(m1, "\n"))
 
-			default:
-				// arrange the two missile's information side by side in order to
-				// save space and to allow for easy comparison
+		// 	default:
+		// 		// arrange the two missile's information side by side in order to
+		// 		// save space and to allow for easy comparison
 
-				m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
+		// 		m0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
+		// 		m1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
 
-				ml := 0
-				for i := range m0 {
-					if len(m0[i]) > ml {
-						ml = len(m0[i])
-					}
-				}
+		// 		ml := 0
+		// 		for i := range m0 {
+		// 			if len(m0[i]) > ml {
+		// 				ml = len(m0[i])
+		// 			}
+		// 		}
 
-				s := strings.Builder{}
-				for i := range m0 {
-					if m0[i] != "" {
-						s.WriteString(fmt.Sprintf("%s %s | %s\n", m0[i], strings.Repeat(" ", ml-len(m0[i])), m1[i]))
-					}
-				}
-				dbg.print(console.StyleMachineInfo, s.String())
-			}
-		} else {
-			switch mssl {
-			case 0:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+		// 		s := strings.Builder{}
+		// 		for i := range m0 {
+		// 			if m0[i] != "" {
+		// 				s.WriteString(fmt.Sprintf("%s %s | %s\n", m0[i], strings.Repeat(" ", ml-len(m0[i])), m1[i]))
+		// 			}
+		// 		}
+		// 		dbg.print(console.StyleMachineInfo, s.String())
+		// 	}
+		// } else {
+		// 	switch mssl {
+		// 	case 0:
+		// 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
 
-			case 1:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+		// 	case 1:
+		// 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
 
-			default:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
-			}
-		}
+		// 	default:
+		// 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
+		// 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
+		// 	}
+		// }
 
 	case cmdBall:
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
+		// dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
 
 	case cmdPlayfield:
 		dbg.printMachineInfo(dbg.vcs.TIA.Video.Playfield)

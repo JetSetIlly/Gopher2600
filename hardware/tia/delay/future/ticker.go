@@ -7,6 +7,7 @@ import (
 
 // Ticker is used to group payloads for future triggering.
 type Ticker struct {
+	Label  string
 	events list.List
 }
 
@@ -14,6 +15,10 @@ type Ticker struct {
 func (tck Ticker) MachineInfo() string {
 	s := strings.Builder{}
 	for e := tck.events.Front(); e != nil; e = e.Next() {
+		if tck.Label != "" {
+			s.WriteString(tck.Label)
+			s.WriteString(": ")
+		}
 		s.WriteString(e.Value.(*Event).String())
 		s.WriteString("\n")
 	}
@@ -22,12 +27,17 @@ func (tck Ticker) MachineInfo() string {
 
 // MachineInfoTerse returns future ticker information in terse format
 func (tck Ticker) MachineInfoTerse() string {
-	e := tck.events.Front()
+	e := tck.events.Back()
 	if e == nil {
 		return ""
 	}
 
 	s := strings.Builder{}
+
+	if tck.Label != "" {
+		s.WriteString(tck.Label)
+		s.WriteString(": ")
+	}
 
 	// terse return just the first event in the list
 	s.WriteString(e.Value.(*Event).String())

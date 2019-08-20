@@ -15,7 +15,7 @@ type Event struct {
 	label string
 
 	// the number of cycles the event began with
-	initialCycles int
+	InitialCycles int
 
 	// the number of remaining ticks before the pending action is resolved
 	RemainingCycles int
@@ -85,7 +85,7 @@ func (ev *Event) Resume() {
 
 // Restart an event
 func (ev *Event) Restart() {
-	ev.RemainingCycles = ev.initialCycles
+	ev.RemainingCycles = ev.InitialCycles
 	ev.paused = false
 }
 

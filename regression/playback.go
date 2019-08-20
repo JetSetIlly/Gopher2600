@@ -202,8 +202,6 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		}
 
 		// update script name in regression type
-		fmt.Println("foo")
-		fmt.Println(newScript)
 		reg.Script = newScript
 	}
 

@@ -93,9 +93,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia.hmoveCt = -1
 
 	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync,
-		&tia.Delay,
-		mem, tv,
-		&tia.hblank, &tia.hmoveLatch)
+		mem, tv, &tia.hblank, &tia.hmoveLatch)
 	if tia.Video == nil {
 		return nil
 	}
