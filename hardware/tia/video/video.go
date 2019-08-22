@@ -291,11 +291,11 @@ func (vd *Video) ReadMemory(tiaDelay future.Scheduler, register string, value ui
 		vd.Playfield.scoremode = value&0x02 == 0x02
 		vd.Playfield.priority = value&0x04 == 0x04
 	case "PF0":
-		vd.Playfield.scheduleWrite(0, value)
+		vd.Playfield.scheduleWrite(tiaDelay, 0, value)
 	case "PF1":
-		vd.Playfield.scheduleWrite(1, value)
+		vd.Playfield.scheduleWrite(tiaDelay, 1, value)
 	case "PF2":
-		vd.Playfield.scheduleWrite(2, value)
+		vd.Playfield.scheduleWrite(tiaDelay, 2, value)
 
 	// ball sprite
 	case "ENABL":

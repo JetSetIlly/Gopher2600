@@ -179,6 +179,7 @@ func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 
 // adjustPlayArea is used to move the play area up/down by the specified amount
 func (scr *screen) adjustPlayArea(adjust int32) {
+	// !!TODO: make screen adjustment optional
 	scr.playSrcMask.Y += adjust
 }
 

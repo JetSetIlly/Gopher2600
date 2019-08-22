@@ -2,6 +2,7 @@ package video
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"strings"
@@ -188,34 +189,43 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.backgroundColor
 }
 
-func (pf *playfield) scheduleWrite(segment int, value uint8) {
+func (pf *playfield) scheduleWrite(delay future.Scheduler, segment int, value uint8) {
+	// * homebrew Donkey Kong shows the need for a delay of at least one cycle
+	// to write new playfield data
+
 	switch segment {
 	case 0:
-		pf.pf0 = value & 0xf0
-		pf.data[0] = pf.pf0&0x10 == 0x10
-		pf.data[1] = pf.pf0&0x20 == 0x20
-		pf.data[2] = pf.pf0&0x40 == 0x40
-		pf.data[3] = pf.pf0&0x80 == 0x80
+		delay.Schedule(1, func() {
+			pf.pf0 = value & 0xf0
+			pf.data[0] = pf.pf0&0x10 == 0x10
+			pf.data[1] = pf.pf0&0x20 == 0x20
+			pf.data[2] = pf.pf0&0x40 == 0x40
+			pf.data[3] = pf.pf0&0x80 == 0x80
+		}, "PF0")
 	case 1:
-		pf.pf1 = value
-		pf.data[4] = pf.pf1&0x80 == 0x80
-		pf.data[5] = pf.pf1&0x40 == 0x40
-		pf.data[6] = pf.pf1&0x20 == 0x20
-		pf.data[7] = pf.pf1&0x10 == 0x10
-		pf.data[8] = pf.pf1&0x08 == 0x08
-		pf.data[9] = pf.pf1&0x04 == 0x04
-		pf.data[10] = pf.pf1&0x02 == 0x02
-		pf.data[11] = pf.pf1&0x01 == 0x01
+		delay.Schedule(1, func() {
+			pf.pf1 = value
+			pf.data[4] = pf.pf1&0x80 == 0x80
+			pf.data[5] = pf.pf1&0x40 == 0x40
+			pf.data[6] = pf.pf1&0x20 == 0x20
+			pf.data[7] = pf.pf1&0x10 == 0x10
+			pf.data[8] = pf.pf1&0x08 == 0x08
+			pf.data[9] = pf.pf1&0x04 == 0x04
+			pf.data[10] = pf.pf1&0x02 == 0x02
+			pf.data[11] = pf.pf1&0x01 == 0x01
+		}, "PF1")
 	case 2:
-		pf.pf2 = value
-		pf.data[12] = pf.pf2&0x01 == 0x01
-		pf.data[13] = pf.pf2&0x02 == 0x02
-		pf.data[14] = pf.pf2&0x04 == 0x04
-		pf.data[15] = pf.pf2&0x08 == 0x08
-		pf.data[16] = pf.pf2&0x10 == 0x10
-		pf.data[17] = pf.pf2&0x20 == 0x20
-		pf.data[18] = pf.pf2&0x40 == 0x40
-		pf.data[19] = pf.pf2&0x80 == 0x80
+		delay.Schedule(1, func() {
+			pf.pf2 = value
+			pf.data[12] = pf.pf2&0x01 == 0x01
+			pf.data[13] = pf.pf2&0x02 == 0x02
+			pf.data[14] = pf.pf2&0x04 == 0x04
+			pf.data[15] = pf.pf2&0x08 == 0x08
+			pf.data[16] = pf.pf2&0x10 == 0x10
+			pf.data[17] = pf.pf2&0x20 == 0x20
+			pf.data[18] = pf.pf2&0x40 == 0x40
+			pf.data[19] = pf.pf2&0x80 == 0x80
+		}, "PF2")
 	}
 }
 

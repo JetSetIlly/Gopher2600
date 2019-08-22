@@ -223,17 +223,22 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		// edge conincides with the 2nd step of the OSC clock; or, in the
 		// context of this emulation, sometime between the 2nd and 3rd call to
 		// vcs.TIA.Step() in this videoCycle function.
-
-		ready := vcs.CPU.RdyFlg
+		//
+		// * I believe we can see the accuracy of this with the ADVNTURE
+		// cartridge. the game does no initialisation of of the VCS and so if
+		// we accept that our other timings are correct, particular with regard
+		// to sprite START signals, then this is the only correct
+		// interpretation of the text
 
 		// step one ...
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
-		_ = videoCycleCallback(r)
-		if !ready && vcs.CPU.RdyFlg {
-			return nil
+
+		err = videoCycleCallback(r)
+		if err != nil {
+			return err
 		}
 
 		// ... tia step two ...
@@ -241,9 +246,10 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		if err != nil {
 			return err
 		}
-		_ = videoCycleCallback(r)
-		if !ready && vcs.CPU.RdyFlg {
-			return nil
+
+		err = videoCycleCallback(r)
+		if err != nil {
+			return err
 		}
 
 		// ... tia step three
@@ -251,9 +257,10 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		if err != nil {
 			return err
 		}
-		_ = videoCycleCallback(r)
 
-		return nil
+		err = videoCycleCallback(r)
+
+		return err
 	}
 
 	r, err = vcs.CPU.ExecuteInstruction(videoCycle)
@@ -286,22 +293,16 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		ready := vcs.CPU.RdyFlg
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		if err != nil {
+			return err
+		}
 
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
-		if !ready && vcs.CPU.RdyFlg {
-			return nil
-		}
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
-		if err != nil {
-			return err
-		}
-		if !ready && vcs.CPU.RdyFlg {
-			return nil
-		}
+
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
 
 		return err

@@ -59,6 +59,11 @@ type TIA struct {
 	// clock. in addition to this, each sprite has it's own future.Group that
 	// only ticks under certain conditions.
 	Delay future.Ticker
+
+	// a reference to the delayed rsync event. we use this to determine if an
+	// rsync has been scheduled and if it has to hold off a natural new
+	// scanline event
+	rsyncEvent *future.Event
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -136,18 +141,6 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "RSYNC":
-		var delay int
-		switch tia.pclk.Count() {
-		case 0:
-			delay = 7
-		case 1:
-			delay = 6
-		case 2:
-			delay = 5
-		case 3:
-			delay = 8
-		}
-
 		// from TIA_HW_Notes.txt:
 		//
 		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
@@ -158,14 +151,31 @@ func (tia *TIA) ReadMemory() {
 		//
 		// "A full H@1-H@2 cycle after RSYNC is strobed, the
 		// HSync counter is also reset to 000000 and HBlank is turned on."
-		tia.Delay.Schedule(delay, func() {
-			tia.hsync.Reset()
-			tia.pclk.Reset()
-			tia.newScanline()
-		}, "RSYNC")
 
-		// TIA_HW_notes.txt also says that, "This one requires more
-		// investigation", so the above may not be correct
+		// the explanation as provided by TIA_HW_Notes was only of limited use.
+		// the following delays were revealed by observation of Stella and how
+		// it reacts to well known ROMs. In particular:
+		//
+		// * Pitfall - many ROMs clear the machine and hit RSYNC during
+		// startup. I just happened to use Pitfall to see how the TV behaves
+		// during startup
+		//
+		// * Extra Terrestrials - uses RSYNC to position ET correctly
+		//
+		// * Test RSYNC - test rom by Omegamatrix
+
+		tia.rsyncEvent = tia.Delay.Schedule(3, func() {
+			tia.newScanline()
+			tia.rsyncEvent = tia.Delay.Schedule(4, func() {
+				tia.hsync.Reset()
+				tia.pclk.Reset()
+				tia.rsyncEvent = nil
+			}, "RSYNC (reset)")
+		}, "RSYNC (new scanline)")
+
+		// I've not test what happens if we reach hsync naturally while the
+		// above RSYNC delay is active.
+		// !!TODO: test how RSYNC scheduling and natural HSYNC cycling interact
 
 		return
 
@@ -187,7 +197,7 @@ func (tia *TIA) ReadMemory() {
 			// "Also of note, the HMOVE latch used to extend the HBlank time is
 			// cleared when the HSync Counter wraps around. This fact is exploited
 			// by the trick that invloves hitting HMOVE on the 74th CPU cycle of
-			// the scanline; the CLK stuffing will still take place during the
+			// the scanline; the CLK stuffing will still take place during th
 			// HBlank and the HSYNC latch will be set just before the counter wraps
 			// around. It will then be cleared again immediately (and therefore
 			// ignored) when the counter wraps, preventing the HMOVE comb effect."
@@ -246,7 +256,6 @@ func (tia *TIA) newScanline() {
 
 	// rather than include the reset signal in the delay, we will
 	// manually reset hsync counter when it reaches a count of 57
-
 }
 
 // Step moves the state of the tia forward one video cycle returns the state of
@@ -323,16 +332,13 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			}, "HMOVE reset")
 
 		case 56: // [SHB]
-			tia.Delay.Schedule(hsyncDelay, func() {
-				tia.newScanline()
-			}, "RESET")
-
-		case 2:
-			// reset the HSyncSimple attribute as soon as is practical
-			//
-			// see SignalAttributes type definition for notes about the
-			// HSyncSimple attribute
-			tia.sig.HSyncSimple = false
+			// if we're in the middle of an rsync event than prohibit the
+			// natural new scanline event.
+			if tia.rsyncEvent == nil {
+				tia.Delay.Schedule(hsyncDelay, func() {
+					tia.newScanline()
+				}, "RESET")
+			}
 
 		case 4: // [SHS]
 			// start HSYNC. start of new scanline for the television
@@ -441,6 +447,11 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			return !tia.wsync, err
 		}
 	}
+
+	// reset the HSyncSimple attribute as soon as the signal has been sent
+	// (see SignalAttributes type definition for notes about the HSyncSimple
+	// attribute)
+	tia.sig.HSyncSimple = false
 
 	return !tia.wsync, nil
 }
