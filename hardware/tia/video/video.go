@@ -3,6 +3,7 @@ package video
 import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/tia/delay/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
@@ -262,7 +263,7 @@ func (vd *Video) Resolve() (uint8, uint8) {
 // for those where a "schedule" function is called.
 //
 // returns true if memory has been serviced
-func (vd *Video) ReadMemory(register string, value uint8) bool {
+func (vd *Video) ReadMemory(tiaDelay future.Scheduler, register string, value uint8) bool {
 	switch register {
 	default:
 		return false
@@ -306,9 +307,9 @@ func (vd *Video) ReadMemory(register string, value uint8) bool {
 
 	// player sprites
 	case "GRP0":
-		vd.Player0.setGfxData(value)
+		vd.Player0.setGfxData(tiaDelay, value)
 	case "GRP1":
-		vd.Player1.setGfxData(value)
+		vd.Player1.setGfxData(tiaDelay, value)
 	case "RESP0":
 		vd.Player0.resetPosition()
 	case "RESP1":

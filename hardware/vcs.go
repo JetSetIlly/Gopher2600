@@ -196,8 +196,11 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		// according to the "TIA 1A" document:
 		//
 		// "if the read-write line is low, the data [...] will be written into
-		// the addressed write location when the Q2 clock goes from high to
+		// the addressed write location when the ϕ2 clock goes from high to
 		// low."
+		//
+		// that is, a ϕ2 rising edge occurs one tick later than a rising  ϕ2
+		// clock
 		//
 		// to help us understand what's going on, the following diagram
 		// replicates the diagram mentioned above.
@@ -207,33 +210,41 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		//  ϕ2  .____.-----._____.-----.____
 		//
 		// to reiterate, each pulse of the OSC is a color-clock, or put another
-		// way, one tick of the TIA. every third causes the ϕ0 to tick. in this
-		// emulation however, we've altered the skew between these two clocks;
-		// so the diagram looks more like this:
+		// way, one tick of the TIA. every third OSC tick causes the ϕ0 to
+		// tick. in this emulation however, we've altered the skew between
+		// these two clocks; so the diagram looks more like this:
 		//
-		// OSC  ._.-._.-._.-._.-._.-._.-._
+		// OSC  .-._.-._.-._.-._.-._.-._.-._
 		//  ϕ0  ___.-----._____.-----._____.
-		//  ϕ2  .____.-----._____.-----.____
+		//  ϕ2  _.-----._____.-----.____.---
 		//
 		// we've already mentioned how memory should be read by the TIA on the
-		// lowering edge of ϕ2. according to the ammednded diagram above, this
+		// lowering edge of ϕ2. according to the ammended diagram above, this
 		// edge conincides with the 2nd step of the OSC clock; or, in the
 		// context of this emulation, sometime between the 2nd and 3rd call to
 		// vcs.TIA.Step() in this videoCycle function.
 
+		ready := vcs.CPU.RdyFlg
+
 		// step one ...
-		_, err = vcs.TIA.Step(false)
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
 		_ = videoCycleCallback(r)
+		if !ready && vcs.CPU.RdyFlg {
+			return nil
+		}
 
 		// ... tia step two ...
-		_, err = vcs.TIA.Step(false)
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
 		_ = videoCycleCallback(r)
+		if !ready && vcs.CPU.RdyFlg {
+			return nil
+		}
 
 		// ... tia step three
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
@@ -275,8 +286,22 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
-		_, _ = vcs.TIA.Step(false)
-		_, _ = vcs.TIA.Step(false)
+		ready := vcs.CPU.RdyFlg
+
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		if err != nil {
+			return err
+		}
+		if !ready && vcs.CPU.RdyFlg {
+			return nil
+		}
+		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		if err != nil {
+			return err
+		}
+		if !ready && vcs.CPU.RdyFlg {
+			return nil
+		}
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
 
 		return err

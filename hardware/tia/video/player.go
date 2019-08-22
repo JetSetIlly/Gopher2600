@@ -78,6 +78,8 @@ type playerSprite struct {
 	// each sprite keeps track of its own delays. this way, we can carefully
 	// control when the sprite events occur - taking into consideration sprite
 	// specific conditions
+	//
+	// note that setGfxData uses the TIA wide future instance
 	Delay future.Ticker
 
 	// horizontal movement
@@ -487,7 +489,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	return false, ps.color
 }
 
-func (ps *playerSprite) setGfxData(data uint8) {
+func (ps *playerSprite) setGfxData(tiaDelay future.Scheduler, data uint8) {
 	// from TIA_HW_Notes.txt:
 	//
 	// "Writes to GRP0 always modify the "new" P0 value, and the contents of
@@ -500,10 +502,10 @@ func (ps *playerSprite) setGfxData(data uint8) {
 	// time", a delay of 1 cycle is required.
 	//
 	// * Barnstormer scanline 61 demonstrates perfectly why we need this delay
-	// * the value of 1 is by no means certain. it could be greater than 1
-	//
-	// !!TODO: more work on player.setGfxData()
-	ps.Delay.Schedule(1, func() {
+	// * Homebrew Donkey Kong shows that a value of two is too much
+	// * Homebrew Donkey Kong also shows that we need to use the TIA wide
+	//	future.Scheduler and not the player sprite's scheduler
+	tiaDelay.Schedule(1, func() {
 		ps.otherPlayer.gfxDataOld = ps.otherPlayer.gfxDataNew
 		ps.gfxDataNew = data
 	}, "GRPx")

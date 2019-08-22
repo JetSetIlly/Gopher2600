@@ -136,6 +136,18 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "RSYNC":
+		var delay int
+		switch tia.pclk.Count() {
+		case 0:
+			delay = 7
+		case 1:
+			delay = 6
+		case 2:
+			delay = 5
+		case 3:
+			delay = 8
+		}
+
 		// from TIA_HW_Notes.txt:
 		//
 		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
@@ -146,7 +158,7 @@ func (tia *TIA) ReadMemory() {
 		//
 		// "A full H@1-H@2 cycle after RSYNC is strobed, the
 		// HSync counter is also reset to 000000 and HBlank is turned on."
-		tia.Delay.Schedule(1, func() {
+		tia.Delay.Schedule(delay, func() {
 			tia.hsync.Reset()
 			tia.pclk.Reset()
 			tia.newScanline()
@@ -201,7 +213,7 @@ func (tia *TIA) ReadMemory() {
 		return
 	}
 
-	if tia.Video.ReadMemory(register, value) {
+	if tia.Video.ReadMemory(&tia.Delay, register, value) {
 		return
 	}
 

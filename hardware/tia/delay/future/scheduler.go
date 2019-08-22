@@ -2,7 +2,7 @@ package future
 
 // Scheduler exposes only the functions relating to scheduling of events
 type Scheduler interface {
-	Schedule(cycles int, payload func(), label string) *Event
+	Schedule(delay int, payload func(), label string) *Event
 	IsScheduled() bool
 }
 
