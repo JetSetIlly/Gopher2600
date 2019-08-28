@@ -1,7 +1,5 @@
 package register
 
-import "fmt"
-
 func addDecimal(a, b uint8, carry bool) (r uint8, rcarry bool) {
 	r = a + b
 	if carry {
@@ -18,12 +16,12 @@ func addDecimal(a, b uint8, carry bool) (r uint8, rcarry bool) {
 // representations. Returns new carry state
 func (r *Register) AddDecimal(v interface{}, carry bool) (rcarry bool) {
 	if r.size != 8 {
-		panic(fmt.Sprintf("decimal mode addition only supported for uint8 values with 8 bit registers"))
+		panic("decimal mode addition only supported for uint8 values with 8 bit registers")
 	}
 
 	val, ok := v.(uint8)
 	if !ok {
-		panic(fmt.Sprintf("decimal mode addition only supported for uint8 values with 8 bit registers"))
+		panic("decimal mode addition only supported for uint8 values with 8 bit registers")
 	}
 
 	runits := uint8(r.value) & 0x0f
@@ -56,12 +54,12 @@ func subtractDecimal(a, b int, carry bool) (r int, rcarry bool) {
 // representations. Returns new carry state
 func (r *Register) SubtractDecimal(v interface{}, carry bool) (rcarry bool) {
 	if r.size != 8 {
-		panic(fmt.Sprintf("decimal mode subtraction only supported for uint8 values with 8 bit registers"))
+		panic("decimal mode subtraction only supported for uint8 values with 8 bit registers")
 	}
 
 	val, ok := v.(uint8)
 	if !ok {
-		panic(fmt.Sprintf("decimal mode subtraction only supported for uint8 values with 8 bit registers"))
+		panic("decimal mode subtraction only supported for uint8 values with 8 bit registers")
 	}
 
 	runits := int(r.value) & 0x0f

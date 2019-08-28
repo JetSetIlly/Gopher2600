@@ -83,32 +83,38 @@ func ParseCommandTemplateWithOutput(template []string, output io.Writer) (*Comma
 
 func parseDefinition(defn string, trigger string) (*node, int, error) {
 	// working nodes should be initialised with this function
-	newWorkingNode := func() *node {
+	newWorkingNode := func() (*node, error) {
 		switch trigger {
 		case "(":
-			return &node{typ: nodeOptional}
+			return &node{typ: nodeOptional}, nil
 		case "[":
-			return &node{typ: nodeRequired}
+			return &node{typ: nodeRequired}, nil
 		case "{":
-			return &node{typ: nodeOptional}
+			return &node{typ: nodeOptional}, nil
 		case "|":
 			// group is left unset for the branch trigger. value will be set
 			// once parseDefinition() has returned
-			return &node{}
+			return &node{}, nil
 		case "":
-			return &node{typ: nodeRoot}
+			return &node{typ: nodeRoot}, nil
 		default:
-			panic("unknown trigger")
+			return nil, errors.NewFormattedError(errors.ParserError, defn, "unknown group type")
 		}
 	}
 
-	wn := newWorkingNode() // working node (attached to the end of the sequence when required)
-	sn := wn               // start node (of the sequence)
+	wn, err := newWorkingNode() // working node (attached to the end of the sequence when required)
+	if err != nil {
+		return nil, 0, err
+	}
+	sn := wn // start node (of the sequence)
 
 	addNext := func(nn *node) error {
 		// new node is already in the correct place
 		if sn == nn {
-			wn = newWorkingNode()
+			wn, err = newWorkingNode()
+			if err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -125,7 +131,10 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		sn.next = append(sn.next, nn)
 
 		// create new working node
-		wn = newWorkingNode()
+		wn, err = newWorkingNode()
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
@@ -144,7 +153,10 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		sn.branch = append(sn.branch, bn)
 
 		// create new working node
-		wn = newWorkingNode()
+		wn, err = newWorkingNode()
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
@@ -336,7 +348,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 	}
 
 	// make sure we've added working node to the sequence
-	err := addNext(wn)
+	err = addNext(wn)
 	if err != nil {
 		return nil, len(defn), err
 	}

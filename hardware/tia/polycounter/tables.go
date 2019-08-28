@@ -23,7 +23,7 @@ func init() {
 
 	// sanity check that the table has looped correctly
 	if Table[63] != "000000" {
-		panic(fmt.Sprintf("error during 6 bit polycounter generation"))
+		panic("error during 6 bit polycounter generation")
 	}
 
 	// force the final value to be the invalid polycounter value. this is only
