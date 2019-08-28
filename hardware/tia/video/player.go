@@ -140,6 +140,10 @@ type playerSprite struct {
 	// a record of the delayed start drawing event. resets to nil once drawing
 	// commences
 	startDrawingEvent *future.Event
+
+	// a record of the delayed reset event. resets to nil once reset has
+	// occurred
+	resetPositionEvent *future.Event
 }
 
 func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *playerSprite {
@@ -184,7 +188,7 @@ func (ps playerSprite) String() string {
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.resetPixel))
-	s.WriteString(fmt.Sprintf("(%1x)", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))
 	if ps.moreHMOVE && ps.hmove != 8 {
 		s.WriteString("*] ")
@@ -316,44 +320,54 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 				ps.videoCycles++
 			}
 
-			// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
+			// drawing must not start if a reset position event has been
+			// scheduled.
 			//
-			// "Each START decode is delayed by 4 CLK in decoding, plus a
-			// further 1 CLK to latch the graphics scan counter..."
+			// * not sure if this applies to all copies (if NUSIZ indicates a
+			// copy) or only to primary copy
 			//
-			// the "further 1 CLK" is actually a further 2 CLKs in the case of
-			// 2x and 4x size sprites. we'll handle the additional latching in
-			// the scan counter
-			//
-			// note that the additional latching has an impact of what we
-			// report as being the reset pixel.
-			const startDelay = 4
+			// !!TODO: check validity of rule for secondary and tertiary copies
+			// of sprite
+			if ps.resetPositionEvent == nil {
+				// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
+				//
+				// "Each START decode is delayed by 4 CLK in decoding, plus a
+				// further 1 CLK to latch the graphics scan counter..."
+				//
+				// the "further 1 CLK" is actually a further 2 CLKs in the case of
+				// 2x and 4x size sprites. we'll handle the additional latching in
+				// the scan counter
+				//
+				// note that the additional latching has an impact of what we
+				// report as being the reset pixel.
+				const startDelay = 4
 
-			startDrawingEvent := func() {
-				ps.startDrawingEvent = nil
-				ps.scanCounter.start(ps.nusiz)
-			}
+				startDrawingEvent := func() {
+					ps.startDrawingEvent = nil
+					ps.scanCounter.start(ps.nusiz)
+				}
 
-			// "... The START decodes are ANDed with flags from the NUSIZ register
-			// before being latched, to determine whether to draw that copy."
-			switch ps.position.Count {
-			case 3:
-				if ps.nusiz == 0x01 || ps.nusiz == 0x03 {
+				// "... The START decodes are ANDed with flags from the NUSIZ register
+				// before being latched, to determine whether to draw that copy."
+				switch ps.position.Count {
+				case 3:
+					if ps.nusiz == 0x01 || ps.nusiz == 0x03 {
+						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					}
+				case 7:
+					if ps.nusiz == 0x03 || ps.nusiz == 0x02 || ps.nusiz == 0x06 {
+						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					}
+				case 15:
+					if ps.nusiz == 0x04 || ps.nusiz == 0x06 {
+						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					}
+				case 39:
 					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
-				}
-			case 7:
-				if ps.nusiz == 0x03 || ps.nusiz == 0x02 || ps.nusiz == 0x06 {
-					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
-				}
-			case 15:
-				if ps.nusiz == 0x04 || ps.nusiz == 0x06 {
-					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
-				}
-			case 39:
-				ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
 
-			case 40:
-				ps.position.Reset()
+				case 40:
+					ps.position.Reset()
+				}
 			}
 		}
 
@@ -410,7 +424,7 @@ func (ps *playerSprite) resetPosition() {
 		ps.startDrawingEvent.Pause()
 	}
 
-	ps.Delay.Schedule(delay, func() {
+	ps.resetPositionEvent = ps.Delay.Schedule(delay, func() {
 		// the pixel at which the sprite has been reset, in relation to the
 		// left edge of the screen
 		ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
@@ -460,6 +474,9 @@ func (ps *playerSprite) resetPosition() {
 
 		// reset cycle counter
 		ps.videoCycles = 0
+
+		// dump reference to reset event
+		ps.resetPositionEvent = nil
 	}, "RESPx")
 }
 

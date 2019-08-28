@@ -61,8 +61,8 @@ type TIA struct {
 	Delay future.Ticker
 
 	// a reference to the delayed rsync event. we use this to determine if an
-	// rsync has been scheduled and if it has to hold off a natural new
-	// scanline event
+	// rsync has been scheduled and to hold off naturally occuring new
+	// scanline events if it has
 	rsyncEvent *future.Event
 }
 
@@ -332,8 +332,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			}, "HMOVE reset")
 
 		case 56: // [SHB]
-			// if we're in the middle of an rsync event than prohibit the
-			// natural new scanline event.
+			// allow a new scanline event to occur naturally only when an RSYNC
+			// has not been scheduled
 			if tia.rsyncEvent == nil {
 				tia.Delay.Schedule(hsyncDelay, func() {
 					tia.newScanline()
@@ -343,7 +343,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 4: // [SHS]
 			// start HSYNC. start of new scanline for the television
 			// * TIA_HW_Notes.txt does not say there is a 4 clock delay for
-			// this even
+			// this. not clear if this is the case.
+			// !!TODO: check accuracy of HSync timing
 			tia.sig.HSync = true
 
 		case 8: // [RHS]
