@@ -64,6 +64,10 @@ type TIA struct {
 	// rsync has been scheduled and to hold off naturally occuring new
 	// scanline events if it has
 	rsyncEvent *future.Event
+
+	// similarly for HMOVE events. we use this to help us decide whether we
+	// have a late or early HBLANK
+	hmoveEvent *future.Event
 }
 
 // MachineInfoTerse returns the TIA information in terse format
@@ -175,7 +179,6 @@ func (tia *TIA) ReadMemory() {
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
-		// !!TODO: test how RSYNC scheduling and natural HSYNC cycling interact
 
 		return
 
@@ -213,12 +216,11 @@ func (tia *TIA) ReadMemory() {
 			delay = 6
 		}
 
-		// !!TODO: something odd happens when HMOVE is triggered at hsync 14/0
-
-		tia.Delay.Schedule(delay, func() {
+		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.hmoveLatch = true
 			tia.hmoveCt = 15
+			tia.hmoveEvent = nil
 		}, "HMOVE")
 		return
 	}
@@ -344,6 +346,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			// start HSYNC. start of new scanline for the television
 			// * TIA_HW_Notes.txt does not say there is a 4 clock delay for
 			// this. not clear if this is the case.
+			//
 			// !!TODO: check accuracy of HSync timing
 			tia.sig.HSync = true
 
@@ -371,9 +374,15 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		// resetting the HB (HBlank) latch on the [LRHB] (Late Reset H-Blank)
 		// counter decode rather than the normal [RHB] (Reset H-Blank) decode."
 
+		// in practice we have to careful about when HMOVE has been triggered.
+		// the condition below for HSYNC=16 includes a test for an active HMOVE
+		// event and whether it is about to be completed. we can see the effect
+		// of this in particular in the test ROM "games that do bad thing to
+		// HMOVE" at value 14
+
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
-			if !tia.hmoveLatch {
+			if !tia.hmoveLatch && (tia.hmoveEvent == nil || tia.hmoveEvent.RemainingCycles >= hsyncDelay) {
 				tia.Delay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
 				}, "HRB")
@@ -383,8 +392,6 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 18:
 			// late HBLANK off if hmoveLatch is true
-			//
-			// see swtich-case 16 for commentary
 			if tia.hmoveLatch {
 				tia.Delay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
