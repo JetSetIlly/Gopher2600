@@ -22,12 +22,14 @@ func NewSplaceStick() (*SplaceStick, error) {
 	sps := new(SplaceStick)
 	sps.event = make(chan peripherals.Event)
 
+	err := make(chan error)
+
 	go func() {
 		// try connecting to specific controller.
 		// system assigned index: typically increments on each new controller added.
 		sps.device = joysticks.Connect(1)
 		if sps.device == nil {
-			sps.err = errors.NewFormattedError(errors.PeriphHardwareUnavailable, "splace")
+			err <- errors.NewFormattedError(errors.PeriphHardwareUnavailable, "splace")
 			return
 		}
 
@@ -42,6 +44,8 @@ func NewSplaceStick() (*SplaceStick, error) {
 
 		// start feeding OS events onto the event channels.
 		go sps.device.ParcelOutEvents()
+
+		err <- nil
 
 		// handle event channels
 		for {
@@ -89,7 +93,7 @@ func NewSplaceStick() (*SplaceStick, error) {
 		}
 	}()
 
-	return sps, nil
+	return sps, <-err
 }
 
 // GetInput implements the Controller interface

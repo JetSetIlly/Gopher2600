@@ -22,7 +22,7 @@ type ChipBus interface {
 // parts of the emulation are peripheral to the operation of the machine. In
 // practice, this includes the front panel in addition to joysticks, etc.
 type PeriphBus interface {
-	PeriphWrite(address uint16, data uint8)
+	PeriphWrite(address uint16, data uint8, mask uint8)
 }
 
 // Area defines the meta-operations for all memory areas. Think of these

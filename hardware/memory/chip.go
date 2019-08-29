@@ -131,6 +131,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 // PeriphWrite implements PeriphBus. it writes the data to the memory area's
 // address
-func (area *ChipMemory) PeriphWrite(address uint16, data uint8) {
-	area.memory[address] = data
+func (area *ChipMemory) PeriphWrite(address uint16, data uint8, mask uint8) {
+	d := area.memory[address] & (mask ^ 0xff)
+	area.memory[address] = data | d
 }

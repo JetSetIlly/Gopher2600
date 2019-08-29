@@ -6,7 +6,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals/sticks"
 	"gopher2600/recorder"
 	"os"
 	"os/signal"
@@ -31,11 +30,11 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 		return errors.NewFormattedError(errors.PlayError, err)
 	}
 
-	stk, err := sticks.NewSplaceStick()
-	if err != nil {
-		return err
-	}
-	vcs.Ports.Player0.Attach(stk)
+	// stk, err := sticks.NewSplaceStick()
+	// if err != nil {
+	// 	return errors.NewFormattedError(errors.PlayError, err)
+	// }
+	// vcs.Ports.Player0.Attach(stk)
 
 	// create default recording file name if no name has been supplied
 	if newRecording && recording == "" {

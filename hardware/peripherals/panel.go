@@ -67,7 +67,7 @@ func (pan *Panel) commit() {
 		strobe |= 0x01
 	}
 
-	pan.riot.PeriphWrite(addresses.SWCHB, strobe)
+	pan.riot.PeriphWrite(addresses.SWCHB, strobe, 0xff)
 }
 
 // Handle interprets an event into the correct sequence of memory addressing

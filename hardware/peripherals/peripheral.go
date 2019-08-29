@@ -7,8 +7,8 @@ type PeriphID int
 
 // list of defined PeriphIDs
 const (
-	PlayerOneID PeriphID = iota
-	PlayerTwoID
+	PlayerZeroID PeriphID = iota
+	PlayerOneID
 	PanelID
 	NumPeriphIDs
 )

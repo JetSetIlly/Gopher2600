@@ -11,7 +11,6 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
-	"gopher2600/hardware/peripherals/sticks"
 	"gopher2600/symbols"
 	"gopher2600/television"
 	"gopher2600/television/renderers"
@@ -154,11 +153,11 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	}
 
 	// create and attach a controller
-	stk, err := sticks.NewSplaceStick()
-	if err != nil {
-		return nil, errors.NewFormattedError(errors.DebuggerError, err)
-	}
-	dbg.vcs.Ports.Player0.Attach(stk)
+	// stk, err := sticks.NewSplaceStick()
+	// if err != nil {
+	// 	return nil, errors.NewFormattedError(errors.DebuggerError, err)
+	// }
+	// dbg.vcs.Ports.Player0.Attach(stk)
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.

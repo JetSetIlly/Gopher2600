@@ -10,16 +10,13 @@ import (
 type Ports struct {
 	Player0 *player
 	Player1 *player
-
-	lastJoystickValue uint8
 }
 
 // NewPorts is the preferred method of initialisation for the Ports type
 func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports {
 	pt := new(Ports)
-	pt.Player0 = newPlayer0(pt, riot, tia, panel)
-	pt.Player1 = newPlayer1(pt, riot, tia, panel)
-	pt.lastJoystickValue = 0xff
+	pt.Player0 = newPlayer0(riot, tia, panel)
+	pt.Player1 = newPlayer1(riot, tia, panel)
 	return pt
 }
 
@@ -27,73 +24,72 @@ func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports 
 type player struct {
 	peripheral
 
-	// pointer back to the containing Ports stuct. we need this because both
-	// player instances need to know what lastJoystickValue is
-	ports *Ports
-
 	id PeriphID
 
 	riot  memory.PeriphBus
 	tia   memory.PeriphBus
 	panel *Panel
 
-	// joysticks
-	joystick   uint16 // RIOT address
-	fireButton uint16 // TIA address
+	// joystick
+	//	o stickAddr is in the RIOT area of memory
+	stickAddr uint16 // RIOT address
+	//  o stickMask indicates which bits in stickValue are relevant
+	stickMask uint8
+	//  o stickValue is sent to the RIOT address where it is masked and written
+	//		apporpriately
+	stickValue uint8
+	//	o poth player ports write to the same joystick address but in a
+	//		slightly different way. the stickFunc allows an easy way to
+	//		transform player0 values to player1 values
+	stickFunc func(uint8) uint8
 
-	// currentState uses the most significant nibble
-	currentState uint8
-
-	// poth player ports write to the same joystick address but in a slightly
-	// different way. the joystickFunc allows an easy way to transform player0
-	// values to player1 values
-	joystickFunc func(uint8) uint8
+	// joystick fire button
+	buttonAddr uint16 // TIA address
+	buttonMask uint8
 }
 
-func newPlayer0(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+func newPlayer0(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
 	pl := &player{
-		id:           PlayerOneID,
-		ports:        pt,
-		riot:         riot,
-		tia:          tia,
-		panel:        panel,
-		joystick:     addresses.SWCHA,
-		fireButton:   addresses.INPT4,
-		currentState: 0xf0,
-		joystickFunc: func(n uint8) uint8 { return n }}
+		id:    PlayerZeroID,
+		riot:  riot,
+		tia:   tia,
+		panel: panel,
+
+		stickAddr:  addresses.SWCHA,
+		stickMask:  0xf0,
+		stickValue: 0xf0,
+		stickFunc:  func(n uint8) uint8 { return n },
+
+		buttonAddr: addresses.INPT4,
+		buttonMask: 0xff,
+	}
 
 	pl.peripheral = peripheral{
 		id:     pl.id,
 		handle: pl.Handle}
-
-	pl.ports.lastJoystickValue |= pl.joystickFunc(pl.currentState)
-	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
-	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
-	pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
 	return pl
 }
 
-func newPlayer1(pt *Ports, riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+func newPlayer1(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
 	pl := &player{
-		id:           PlayerTwoID,
-		ports:        pt,
-		riot:         riot,
-		tia:          tia,
-		panel:        panel,
-		joystick:     addresses.SWCHA,
-		fireButton:   addresses.INPT5,
-		currentState: 0xf0,
-		joystickFunc: func(n uint8) uint8 { return (n >> 4) | (n << 4) }}
+		id:    PlayerOneID,
+		riot:  riot,
+		tia:   tia,
+		panel: panel,
+
+		stickAddr:  addresses.SWCHA,
+		stickMask:  0x0f,
+		stickValue: 0xf0,
+		stickFunc:  func(n uint8) uint8 { return n << 4 },
+
+		buttonAddr: addresses.INPT5,
+		buttonMask: 0xff,
+	}
 
 	pl.peripheral = peripheral{
 		id:     pl.id,
 		handle: pl.Handle}
-
-	pl.ports.lastJoystickValue |= pl.joystickFunc(pl.currentState)
-	pl.ports.lastJoystickValue &= pl.joystickFunc(0xff)
-	pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
-	pl.tia.PeriphWrite(pl.fireButton, 0x80)
 
 	return pl
 }
@@ -107,49 +103,33 @@ func (pl *player) Handle(event Event) error {
 		return nil
 
 	case Left:
-		pl.currentState ^= 0x4f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue ^= 0x4f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case Right:
-		pl.currentState ^= 0x8f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue ^= 0x8f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case Up:
-		pl.currentState ^= 0x1f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue ^= 0x1f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case Down:
-		pl.currentState ^= 0x2f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue ^= 0x2f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case NoLeft:
-		pl.currentState |= 0x4f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue |= 0x4f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case NoRight:
-		pl.currentState |= 0x8f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue |= 0x8f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case NoUp:
-		pl.currentState |= 0x1f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue |= 0x1f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case NoDown:
-		pl.currentState |= 0x2f
-		pl.ports.lastJoystickValue |= pl.joystickFunc(0xf0)
-		pl.ports.lastJoystickValue &= pl.joystickFunc(pl.currentState)
-		pl.riot.PeriphWrite(pl.joystick, pl.ports.lastJoystickValue)
+		pl.stickValue |= 0x2f
+		pl.riot.PeriphWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
 	case Fire:
-		pl.tia.PeriphWrite(pl.fireButton, 0x00)
+		pl.tia.PeriphWrite(pl.buttonAddr, 0x00, pl.buttonMask)
 	case NoFire:
-		pl.tia.PeriphWrite(pl.fireButton, 0x80)
+		pl.tia.PeriphWrite(pl.buttonAddr, 0x80, pl.buttonMask)
 
 	// for convenience, a controller implementation can interact with the panel
 	// note that the function returns the result of panel.Handle straightaway

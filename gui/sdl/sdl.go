@@ -63,6 +63,9 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 	// initialise the screens we'll be using
 	gtv.scr, err = newScreen(gtv)
+	if err != nil {
+		return nil, errors.NewFormattedError(errors.SDL, err)
+	}
 
 	// set window size and scaling
 	err = gtv.scr.setScaling(scale)
