@@ -53,7 +53,9 @@ o info under mouse. floating tooltip
 regression db
 -------------
 
-o better separation fo database and regression packages
+o running tests that match NOTES field (with regex?)
+
+o better separation of database and regression packages
 
 o lock file
 

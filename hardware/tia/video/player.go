@@ -266,6 +266,7 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	}
 
 	if (hmove && ps.moreHMOVE) || motck {
+		// update hmoved pixel value
 		if !motck {
 			ps.hmovedPixel--
 
@@ -591,9 +592,21 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		//		drawing/latching
 		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
 			delay = 1
-		} else if ps.startDrawingEvent.InitialCycles == ps.startDrawingEvent.RemainingCycles+1 {
-			// drop start drawing event if it has just started
-			ps.startDrawingEvent.Drop()
+		} else if ps.startDrawingEvent.RemainingCycles == ps.startDrawingEvent.InitialCycles-1 {
+			// these conditions catch when a drawing event has just started and
+			// NUSIZ is moving to double and quadruple width from a
+			// multiple-copy nusiz
+			//
+			// rule discovered through observation and balancing of test roms:
+			//	o testSize2Copies_A.bin
+			//	o properly_model_nusiz_during_player_decode_and_draw/player8.bin
+			//
+			// !!TODO: precise conditions when start drawing event is dropped
+			// on NUSIZ change
+			if ps.nusiz != value && ps.nusiz != 0x00 && (value == 0x05 || value == 0x07) {
+				ps.startDrawingEvent.Drop()
+			}
+
 		} else if ps.startDrawingEvent.RemainingCycles <= 1 {
 			delay = 1
 		}
@@ -604,7 +617,8 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	}
 
 	// * note how we tick the scancounter on the falling edge, rather than the
-	// rising edge of the phase clock. this helps the accuracy of NUSIZx
+	// rising edge of the phase clock. this helps the accuracy of NUSIZx. see
+	// Tick() function
 
 	ps.Delay.Schedule(delay, func() {
 		// if size is 2x or 4x currently then take off the additional pixel. we'll
