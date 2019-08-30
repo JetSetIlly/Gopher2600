@@ -101,9 +101,9 @@ func (vd *Video) Tick(motck bool, hmove bool, hmoveCt uint8) {
 }
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
-func (vd *Video) PrepareSpritesForHMOVE() {
-	vd.Player0.prepareForHMOVE()
-	vd.Player1.prepareForHMOVE()
+func (vd *Video) PrepareSpritesForHMOVE(hblank bool) {
+	vd.Player0.prepareForHMOVE(hblank)
+	vd.Player1.prepareForHMOVE(hblank)
 	// vd.Missile0.prepareForHMOVE()
 	// vd.Missile1.prepareForHMOVE()
 	// vd.Ball.prepareForHMOVE()

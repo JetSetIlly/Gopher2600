@@ -217,7 +217,7 @@ func (tia *TIA) ReadMemory() {
 		}
 
 		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-			tia.Video.PrepareSpritesForHMOVE()
+			tia.Video.PrepareSpritesForHMOVE(tia.hblank)
 			tia.hmoveLatch = true
 			tia.hmoveCt = 15
 			tia.hmoveEvent = nil
@@ -329,9 +329,15 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			// or 228 CLK."
 			tia.hsync.Reset()
 
-			tia.Delay.Schedule(hsyncDelay, func() {
-				tia.hmoveLatch = false
-			}, "HMOVE reset")
+			// from TIA_HW_Notes.txt:
+			//
+			// "Also of note, the HMOVE latch used to extend the HBlank time
+			// is cleared when the HSync Counter wraps around. This fact is
+			// exploited by the trick that invloves hitting HMOVE on the 74th
+			// CPU cycle of the scanline; the CLK stuffing will still take
+			// place during the HBlank and the HSYNC latch will be set just
+			// before the counter wraps around."
+			tia.hmoveLatch = false
 
 		case 56: // [SHB]
 			// allow a new scanline event to occur naturally only when an RSYNC
@@ -400,22 +406,15 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		}
 	}
 
-	// hmoveck is the counterpart to the motck. when hmove has been latch,
-	// according to TIA_HW_Notes.txt:
+	// hmoveck is the counterpart to the motck (which is associated with the
+	// hblank flag). when hmove has been latched then (from TIA_HW_Notes.txt):
 	//
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
 	//
-	// note: that hmoveck is not dependent on hmoveLatch being set. this means
-	// that the trick to remove the HMOVE "comb" will work. from
-	// TIA_HW_Notes.txt:
-	//
-	// "Also of note, the HMOVE latch used to extend the HBlank time
-	// is cleared when the HSync Counter wraps around. This fact is
-	// exploited by the trick that invloves hitting HMOVE on the 74th
-	// CPU cycle of the scanline; the CLK stuffing will still take
-	// place during the HBlank and the HSYNC latch will be set just
-	// before the counter wraps around."
+	// note that hmoveck is not dependent on hmoveLatch being set. this means
+	// that the sprite will adjust itself on a hmoveck if its moreHMOVE flag is
+	// set.
 	hmoveck := tia.pclk.Phi1()
 
 	// we always call TickSprites but whether or not (and how) the tick

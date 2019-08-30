@@ -253,19 +253,12 @@ func (ps playerSprite) String() string {
 			s.WriteString(",")
 		}
 		s.WriteString(" ref")
-		// extra = true
 	}
 
 	return s.String()
 }
 
 // tick moves the sprite counters along (both position and graphics scan).
-//
-// note that the extra clock value caused by an active HMOVE, is not supplied
-// directly.  that the existance of the extra clock is derived in this tick
-// function, depending on the supplied hmoveCt and the whether the sprite's own
-// HMOVE value suggests that there should be more movement. see compareHMOVE()
-// for details
 func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
 	if hmove {
@@ -273,6 +266,15 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	}
 
 	if (hmove && ps.moreHMOVE) || motck {
+		if !motck {
+			ps.hmovedPixel--
+
+			// adjust for screen boundary
+			if ps.hmovedPixel < 0 {
+				ps.hmovedPixel += ps.tv.GetSpec().ClocksPerVisible
+			}
+		}
+
 		// tick graphics scan counter during visible screen and during HMOVE.
 		// from TIA_HW_Notes.txt:
 		//
@@ -321,14 +323,11 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			}
 
 			// drawing must not start if a reset position event has been
-			// scheduled.
+			// recently scheduled.
 			//
-			// * not sure if this applies to all copies (if NUSIZ indicates a
-			// copy) or only to primary copy
-			//
-			// !!TODO: check validity of rule for secondary and tertiary copies
-			// of sprite
-			if ps.resetPositionEvent == nil {
+			// rules discovered through observation (games that do bad things
+			// to HMOVE)
+			if ps.resetPositionEvent == nil || ps.resetPositionEvent.RemainingCycles > 3 {
 				// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
 				//
 				// "Each START decode is delayed by 4 CLK in decoding, plus a
@@ -376,18 +375,19 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	}
 }
 
-func (ps *playerSprite) prepareForHMOVE() {
+func (ps *playerSprite) prepareForHMOVE(hblank bool) {
 	ps.moreHMOVE = true
 
-	// adjust hmoved pixel now, with the caveat that the value is not valid
-	// until the HMOVE has completed. in the MachineInfo() function this value
-	// is annotated with a "*" to indicate that HMOVE is still in progress
-	ps.hmovedPixel -= int(ps.hmove) - 8
+	if hblank {
+		// adjust hmovedPixel value. this value is subject to further change so
+		// long as moreHMOVE is true. the MachineInfo() function this value is
+		// annotated with a "*" to indicate that HMOVE is still in progress
+		ps.hmovedPixel += 8
 
-	// adjust for screen boundary. silently ignoring values that are outside
-	// the normal/expected range
-	if ps.hmovedPixel < 0 {
-		ps.hmovedPixel += ps.tv.GetSpec().ClocksPerVisible
+		// adjust for screen boundary
+		if ps.hmovedPixel > ps.tv.GetSpec().ClocksPerVisible {
+			ps.hmovedPixel -= ps.tv.GetSpec().ClocksPerVisible
+		}
 	}
 }
 
@@ -419,8 +419,12 @@ func (ps *playerSprite) resetPosition() {
 		}
 	}
 
-	// pause pending start drawing events
-	if ps.startDrawingEvent != nil {
+	// pause pending start drawing events unless it is about to start this
+	// cycle
+	//
+	// rules discovered through observation (games that do bad things
+	// to HMOVE)
+	if ps.startDrawingEvent != nil && ps.startDrawingEvent.RemainingCycles > 0 {
 		ps.startDrawingEvent.Pause()
 	}
 
@@ -462,9 +466,10 @@ func (ps *playerSprite) resetPosition() {
 		// if a pending drawing event was more than two cycles away it is
 		// dropped
 		//
-		// rules discovered through observation
+		// rules discovered through observation (games that do bad things
+		// to HMOVE)
 		if ps.startDrawingEvent != nil {
-			if ps.startDrawingEvent.RemainingCycles <= 2 {
+			if ps.startDrawingEvent.RemainingCycles != ps.startDrawingEvent.InitialCycles {
 				ps.startDrawingEvent.Force()
 			} else {
 				ps.startDrawingEvent.Drop()
