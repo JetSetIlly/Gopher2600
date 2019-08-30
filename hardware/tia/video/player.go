@@ -103,12 +103,6 @@ type playerSprite struct {
 	// prepareForHMOVE() for a note on the presentation of hmovedPixel
 	hmovedPixel int
 
-	// the number of times the sprite has been ticked since last reset or since
-	// the position polycounter cycled
-	//
-	// cpu cycles can be attained by dividing numTicks by 3
-	videoCycles int
-
 	// ^^^ the above are common to all sprite types ^^^
 
 	// player sprite attributes
@@ -158,12 +152,12 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	return &ps
 }
 
-// MachineInfo returns the player sprite information in terse format
+// MachineInfo returns the sprite information in terse format
 func (ps playerSprite) MachineInfoTerse() string {
 	return ps.String()
 }
 
-// MachineInfo returns the player sprite information in verbose format
+// MachineInfo returns the sprite information in verbose format
 func (ps playerSprite) MachineInfo() string {
 	s := strings.Builder{}
 	s.WriteString(ps.String())
@@ -190,7 +184,7 @@ func (ps playerSprite) String() string {
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))
-	if ps.moreHMOVE && ps.hmove != 8 {
+	if ps.moreHMOVE {
 		s.WriteString("*] ")
 	} else {
 		s.WriteString("] ")
@@ -317,11 +311,7 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		// HSYNC counter ticks forward on the rising edge of Phi2. it is
 		// reasonable to assume that the sprite position counters do likewise.
 		if ps.pclk.Phi2() {
-			if ps.position.Tick() {
-				ps.videoCycles = 0
-			} else {
-				ps.videoCycles++
-			}
+			ps.position.Tick()
 
 			// drawing must not start if a reset position event has been
 			// recently scheduled.
@@ -376,10 +366,10 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	}
 }
 
-func (ps *playerSprite) prepareForHMOVE(hblank bool) {
+func (ps *playerSprite) prepareForHMOVE() {
 	ps.moreHMOVE = true
 
-	if hblank {
+	if *ps.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
 		// long as moreHMOVE is true. the MachineInfo() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
@@ -477,9 +467,6 @@ func (ps *playerSprite) resetPosition() {
 				ps.startDrawingEvent = nil
 			}
 		}
-
-		// reset cycle counter
-		ps.videoCycles = 0
 
 		// dump reference to reset event
 		ps.resetPositionEvent = nil

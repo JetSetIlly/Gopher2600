@@ -25,9 +25,12 @@ type metavideoMonitor struct {
 	VCS      *hardware.VCS
 	Renderer metavideo.Renderer
 
-	groupTIA     metavideoGroup
-	groupPlayer0 metavideoGroup
-	groupPlayer1 metavideoGroup
+	groupTIA      metavideoGroup
+	groupPlayer0  metavideoGroup
+	groupPlayer1  metavideoGroup
+	groupMissile0 metavideoGroup
+	groupMissile1 metavideoGroup
+	groupBall     metavideoGroup
 }
 
 func newMetavideoMonitor(vcs *hardware.VCS, renderer metavideo.Renderer) *metavideoMonitor {
@@ -47,6 +50,20 @@ func newMetavideoMonitor(vcs *hardware.VCS, renderer metavideo.Renderer) *metavi
 	mon.groupPlayer1.addresses = metaSignals{
 		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255},
 		0x11: metavideo.MetaSignalAttributes{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255},
+	}
+
+	mon.groupMissile0.addresses = metaSignals{
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+	}
+
+	mon.groupMissile1.addresses = metaSignals{
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+	}
+
+	mon.groupBall.addresses = metaSignals{
+		0x14: metavideo.MetaSignalAttributes{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255},
 	}
 
 	return mon
@@ -97,6 +114,18 @@ func (mon *metavideoMonitor) Check() error {
 	}
 
 	if err := mon.checkGroup(&mon.groupPlayer1, mon.VCS.TIA.Video.Player1.Delay); err != nil {
+		return err
+	}
+
+	if err := mon.checkGroup(&mon.groupMissile0, mon.VCS.TIA.Video.Missile0.Delay); err != nil {
+		return err
+	}
+
+	if err := mon.checkGroup(&mon.groupMissile1, mon.VCS.TIA.Video.Missile1.Delay); err != nil {
+		return err
+	}
+
+	if err := mon.checkGroup(&mon.groupBall, mon.VCS.TIA.Video.Ball.Delay); err != nil {
 		return err
 	}
 

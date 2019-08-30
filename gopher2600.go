@@ -288,7 +288,7 @@ func main() {
 					os.Exit(2)
 				}
 			default:
-				fmt.Printf("* no additional arguments required when using %s/%s mode\n", mode, subMode)
+				fmt.Printf("* no additional arguments required when using %s %s\n", mode, subMode)
 				os.Exit(2)
 			}
 
@@ -316,7 +316,7 @@ func main() {
 					os.Exit(2)
 				}
 			default:
-				fmt.Printf("* only one entry can be deleted at at time when using %s/%s \n", mode, subMode)
+				fmt.Printf("* only one entry can be deleted at at time when using %s %s\n", mode, subMode)
 				os.Exit(2)
 			}
 
@@ -362,7 +362,7 @@ func main() {
 					os.Exit(2)
 				}
 			default:
-				fmt.Printf("* regression tests must be added one at a time when using %s/%s mode\n", mode, subMode)
+				fmt.Printf("* regression tests must be added one at a time when using %s %s\n", mode, subMode)
 				os.Exit(2)
 			}
 		}

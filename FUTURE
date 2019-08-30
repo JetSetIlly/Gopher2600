@@ -55,11 +55,15 @@ regression db
 
 o running tests that match NOTES field (with regex?)
 
+o multiple arguments for DELETE
+
+o a way of adding notes to an entry after it has been added
+
+o SORT BY argument for LIST
+
 o better separation of database and regression packages
 
 o lock file
-
-o group by notes
 
 o progress meter for "frame" entry type
 

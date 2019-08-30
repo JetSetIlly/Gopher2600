@@ -134,7 +134,11 @@ func (tia *TIA) ReadMemory() {
 		return
 
 	case "VBLANK":
-		tia.sig.VBlank = (value&0x02 == 0x02)
+		// homebrew Donkey Kong shows the need for a delay of at least one
+		// cycle for VBLANK. see area just before score box on play screen
+		tia.Delay.Schedule(1, func() {
+			tia.sig.VBlank = (value&0x02 == 0x02)
+		}, "VBLANK")
 		return
 
 	case "WSYNC":
@@ -217,7 +221,7 @@ func (tia *TIA) ReadMemory() {
 		}
 
 		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-			tia.Video.PrepareSpritesForHMOVE(tia.hblank)
+			tia.Video.PrepareSpritesForHMOVE()
 			tia.hmoveLatch = true
 			tia.hmoveCt = 15
 			tia.hmoveEvent = nil
