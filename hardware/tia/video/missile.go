@@ -135,6 +135,8 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	if ms.resetToPlayer {
 		ms.position.Count = ms.parentPlayer.position.Count
 		ms.pclk.Sync(ms.parentPlayer.pclk)
+		// this isn't exactly accuracte but it'll do for now
+		// !!TODO: improve accuracy of reset missile to player
 	} else {
 		if (hmove && ms.moreHMOVE) || motck {
 			// update hmoved pixel value
@@ -266,15 +268,8 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	return ms.enabled && ms.enclockifier.enable, ms.color
 }
 
-func (ms *missileSprite) setEnable(tiaDelay future.Scheduler, enable bool) {
-	// observation shows that a delay of 1 cycle is required when
-	// enabling/disabling the missile sprite
-	//
-	// we have summised that ENAMx is equivalent to the GRPx event and as such
-	// should use the TIA wide delay rather than the sprite's own delay
-	tiaDelay.Schedule(1, func() {
-		ms.enabled = enable
-	}, "ENAMx")
+func (ms *missileSprite) setEnable(enable bool) {
+	ms.enabled = enable
 }
 
 func (ms *missileSprite) setHmoveValue(value uint8) {

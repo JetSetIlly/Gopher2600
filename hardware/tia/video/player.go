@@ -499,7 +499,7 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 	return false, ps.color
 }
 
-func (ps *playerSprite) setGfxData(tiaDelay future.Scheduler, data uint8) {
+func (ps *playerSprite) setGfxData(data uint8) {
 	// from TIA_HW_Notes.txt:
 	//
 	// "Writes to GRP0 always modify the "new" P0 value, and the contents of
@@ -507,18 +507,8 @@ func (ps *playerSprite) setGfxData(tiaDelay future.Scheduler, data uint8) {
 	// (Likewise, writes to GRP1 always modify the "new" P1 value, and the
 	// contents of the "new" P1 are copied into "old" P1 whenever GRP0 is
 	// written). It is safe to modify GRPn at any time, with immediate effect."
-	//
-	// observation suggests that rather than being safe to "modify GRPn at any
-	// time", a delay of 1 cycle is required.
-	//
-	// * Barnstormer scanline 61 demonstrates perfectly why we need this delay
-	// * Homebrew Donkey Kong shows that a value of two is too much
-	// * Homebrew Donkey Kong also shows that we need to use the TIA wide
-	//	future.Scheduler and not the player sprite's scheduler
-	tiaDelay.Schedule(1, func() {
-		ps.otherPlayer.gfxDataOld = ps.otherPlayer.gfxDataNew
-		ps.gfxDataNew = data
-	}, "GRPx")
+	ps.otherPlayer.gfxDataOld = ps.otherPlayer.gfxDataNew
+	ps.gfxDataNew = data
 }
 
 func (ps *playerSprite) setVerticalDelay(vdelay bool) {

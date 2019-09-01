@@ -180,8 +180,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 			return err
 		}
 
-		// update RIOT memory and step
-		vcs.RIOT.ReadMemory()
+		// set RIOT subsystem
 		vcs.RIOT.Step()
 
 		// in addition to the ϕ0 clock, which is connected from the TIA to the
@@ -290,7 +289,6 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		vcs.RIOT.ReadMemory()
 		vcs.RIOT.Step()
 
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)

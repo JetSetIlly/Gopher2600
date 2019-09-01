@@ -249,16 +249,9 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	return bs.enabled && bs.enclockifier.enable, bs.color
 }
 
-func (bs *ballSprite) setEnable(tiaDelay future.Scheduler, enable bool) {
-	// observation shows that a delay of 1 cycle is required when
-	// enabling/disabling the ball sprite
-	//
-	// we have summised that ENABL is equivalent to the GRPx event and as such
-	// should use the TIA wide delay rather than the sprite's own delay
-	tiaDelay.Schedule(1, func() {
-		bs.enabledDelay = bs.enabled
-		bs.enabled = enable
-	}, "ENABL")
+func (bs *ballSprite) setEnable(enable bool) {
+	bs.enabledDelay = bs.enabled
+	bs.enabled = enable
 }
 
 func (bs *ballSprite) setVerticalDelay(vdelay bool) {

@@ -67,28 +67,28 @@ func (tmr timer) MachineInfo() string {
 	return fmt.Sprintf("%s\nINTIM: %d (%#02x)\nClocks Rem: %d (%#03x)", tmr.register, tmr.value, tmr.value, tmr.tickCyclesRemaining, tmr.tickCyclesRemaining)
 }
 
-func (tmr *timer) readMemory(register string, value uint8) bool {
-	switch register {
+func (tmr *timer) serviceMemory(data memory.ChipData) bool {
+	switch data.Name {
 	case "TIM1T":
-		tmr.register = register
+		tmr.register = data.Name
 		tmr.interval = 1
 		tmr.tickCyclesRemaining = 1
-		tmr.value = value
+		tmr.value = data.Value
 	case "TIM8T":
-		tmr.register = register
+		tmr.register = data.Name
 		tmr.interval = 8
 		tmr.tickCyclesRemaining = 1
-		tmr.value = value
+		tmr.value = data.Value
 	case "TIM64T":
-		tmr.register = register
+		tmr.register = data.Name
 		tmr.interval = 64
 		tmr.tickCyclesRemaining = 1
-		tmr.value = value
+		tmr.value = data.Value
 	case "TIM1024":
-		tmr.register = register
+		tmr.register = data.Name
 		tmr.interval = 1024
 		tmr.tickCyclesRemaining = 1
-		tmr.value = value
+		tmr.value = data.Value
 
 	default:
 		return false

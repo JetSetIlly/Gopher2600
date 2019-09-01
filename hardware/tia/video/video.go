@@ -109,10 +109,10 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 	vd.Ball.prepareForHMOVE()
 }
 
-// Resolve returns the color of the pixel at the current clock and also sets the
+// Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. it will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Resolve() (uint8, uint8) {
+func (vd *Video) Pixel() (uint8, uint8) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	p0u, p0c := vd.Player0.pixel()
@@ -255,101 +255,97 @@ func (vd *Video) Resolve() (uint8, uint8) {
 	return col, dcol
 }
 
-// ReadMemory checks the TIA memory for changes to registers that are
-// interesting to the video sub-system. all changes happen immediately except
-// for those where a "schedule" function is called.
-//
-// returns true if memory has been serviced
-func (vd *Video) ReadMemory(tiaDelay future.Scheduler, register string, value uint8) bool {
-	switch register {
-	default:
-		return false
-
-	// colour
-	case "COLUP0":
-		vd.Player0.setColor(value & 0xfe)
-		vd.Missile0.setColor(value & 0xfe)
-	case "COLUP1":
-		vd.Player1.setColor(value & 0xfe)
-		vd.Missile1.setColor(value & 0xfe)
-
-	// playfield / color
-	case "COLUBK":
-		vd.Playfield.setBackground(value & 0xfe)
-	case "COLUPF":
-		vd.Playfield.setColor(value & 0xfe)
-		vd.Ball.setColor(value & 0xfe)
-
-	// playfield
-	case "CTRLPF":
-		vd.Ball.setSize((value & 0x30) >> 4)
-		vd.Playfield.setControlBits(value)
+// AlterPlayfield checks the TIA memory for changes to playfield data
+func (vd *Video) AlterPlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
+	switch data.Name {
 	case "PF0":
-		vd.Playfield.setData(tiaDelay, 0, value)
+		vd.Playfield.setData(tiaDelay, 0, data.Value)
 	case "PF1":
-		vd.Playfield.setData(tiaDelay, 1, value)
+		vd.Playfield.setData(tiaDelay, 1, data.Value)
 	case "PF2":
-		vd.Playfield.setData(tiaDelay, 2, value)
+		vd.Playfield.setData(tiaDelay, 2, data.Value)
+	}
+}
 
-	// ball sprite
-	case "ENABL":
-		vd.Ball.setEnable(tiaDelay, value&0x02 == 0x02)
-	case "RESBL":
-		vd.Ball.resetPosition()
-	case "VDELBL":
-		vd.Ball.setVerticalDelay(value&0x01 == 0x01)
-
-	// player sprites
+// AlterStateAfterPixel checks the TIA memory for attribute changes that must
+// occur after pixel information has been gathered
+func (vd *Video) AlterStateAfterPixel(data memory.ChipData) {
+	switch data.Name {
 	case "GRP0":
-		vd.Player0.setGfxData(tiaDelay, value)
+		vd.Player0.setGfxData(data.Value)
 	case "GRP1":
-		vd.Player1.setGfxData(tiaDelay, value)
+		vd.Player1.setGfxData(data.Value)
+	case "ENAM0":
+		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
+	case "ENAM1":
+		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
+	case "ENABL":
+		vd.Ball.setEnable(data.Value&0x02 == 0x02)
+	}
+}
+
+// AlterState checks the TIA memory for changes to sprite attributes. this
+// function is intended to be called *after* HSYNC ticking and *before* pixel
+// resolution
+func (vd *Video) AlterState(data memory.ChipData) {
+	switch data.Name {
+
+	// the reset registers *must* be serviced after HSYNC has been ticked.
+	//
+	// the barnstormer ROM, scanline 61 demonstrates perfectly how GRP0 is affected by
+	// this. if we write the new data before the pixel output has been decided then
+	// an unwanted artefact is displayed.
 	case "RESP0":
 		vd.Player0.resetPosition()
 	case "RESP1":
 		vd.Player1.resetPosition()
-	case "VDELP0":
-		vd.Player0.setVerticalDelay(value&0x01 == 0x01)
-	case "VDELP1":
-		vd.Player1.setVerticalDelay(value&0x01 == 0x01)
-	case "REFP0":
-		vd.Player0.setReflection(value&0x08 == 0x08)
-	case "REFP1":
-		vd.Player1.setReflection(value&0x08 == 0x08)
-
-	// missile sprites
-	case "ENAM0":
-		vd.Missile0.setEnable(tiaDelay, value&0x02 == 0x02)
-	case "ENAM1":
-		vd.Missile1.setEnable(tiaDelay, value&0x02 == 0x02)
 	case "RESM0":
 		vd.Missile0.resetPosition()
 	case "RESM1":
 		vd.Missile1.resetPosition()
+	case "RESBL":
+		vd.Ball.resetPosition()
+
+	// servicing of the following registers could feasibly and safely occur
+	// after pixel resolution or even before HSYNC has been ticked. but in the
+	// absence of any firm reason to the contrary we'll group them all here
+	//
+	case "COLUP0":
+		vd.Player0.setColor(data.Value & 0xfe)
+		vd.Missile0.setColor(data.Value & 0xfe)
+	case "COLUP1":
+		vd.Player1.setColor(data.Value & 0xfe)
+		vd.Missile1.setColor(data.Value & 0xfe)
+	case "COLUBK":
+		vd.Playfield.setBackground(data.Value & 0xfe)
+	case "COLUPF":
+		vd.Playfield.setColor(data.Value & 0xfe)
+		vd.Ball.setColor(data.Value & 0xfe)
+	case "CTRLPF":
+		vd.Ball.setSize((data.Value & 0x30) >> 4)
+		vd.Playfield.setControlBits(data.Value)
+	case "VDELBL":
+		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
+	case "VDELP0":
+		vd.Player0.setVerticalDelay(data.Value&0x01 == 0x01)
+	case "VDELP1":
+		vd.Player1.setVerticalDelay(data.Value&0x01 == 0x01)
+	case "REFP0":
+		vd.Player0.setReflection(data.Value&0x08 == 0x08)
+	case "REFP1":
+		vd.Player1.setReflection(data.Value&0x08 == 0x08)
 	case "RESMP0":
-		vd.Missile0.setResetToPlayer(value&0x02 == 0x02)
+		vd.Missile0.setResetToPlayer(data.Value&0x02 == 0x02)
 	case "RESMP1":
-		vd.Missile1.setResetToPlayer(value&0x02 == 0x02)
-
-	// player & missile sprites
+		vd.Missile1.setResetToPlayer(data.Value&0x02 == 0x02)
 	case "NUSIZ0":
-		vd.Player0.setNUSIZ(value)
-		vd.Missile0.setNUSIZ(value)
+		vd.Player0.setNUSIZ(data.Value)
+		vd.Missile0.setNUSIZ(data.Value)
 	case "NUSIZ1":
-		vd.Player1.setNUSIZ(value)
-		vd.Missile1.setNUSIZ(value)
-
-	// clear collisions
+		vd.Player1.setNUSIZ(data.Value)
+		vd.Missile1.setNUSIZ(data.Value)
 	case "CXCLR":
 		vd.collisions.clear()
-
-	// horizontal movement
-	case "HMCLR":
-		vd.Player0.hmove = 0x08
-		vd.Player1.hmove = 0x08
-		vd.Missile0.hmove = 0x08
-		vd.Missile1.hmove = 0x08
-		vd.Ball.hmove = 0x08
 
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
@@ -365,16 +361,22 @@ func (vd *Video) ReadMemory(tiaDelay future.Scheduler, register string, value ui
 	// is stored in the first place."
 
 	case "HMP0":
-		vd.Player0.setHmoveValue(value & 0xf0)
+		vd.Player0.setHmoveValue(data.Value & 0xf0)
 	case "HMP1":
-		vd.Player1.setHmoveValue(value & 0xf0)
+		vd.Player1.setHmoveValue(data.Value & 0xf0)
 	case "HMM0":
-		vd.Missile0.setHmoveValue(value & 0xf0)
+		vd.Missile0.setHmoveValue(data.Value & 0xf0)
 	case "HMM1":
-		vd.Missile1.setHmoveValue(value & 0xf0)
+		vd.Missile1.setHmoveValue(data.Value & 0xf0)
 	case "HMBL":
-		vd.Ball.setHmoveValue(value & 0xf0)
-	}
+		vd.Ball.setHmoveValue(data.Value & 0xf0)
 
-	return true
+	case "HMCLR":
+		vd.Player0.hmove = 0x08
+		vd.Player1.hmove = 0x08
+		vd.Missile0.hmove = 0x08
+		vd.Missile1.hmove = 0x08
+		vd.Ball.hmove = 0x08
+
+	}
 }

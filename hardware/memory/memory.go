@@ -10,10 +10,16 @@ type CPUBus interface {
 	Write(address uint16, data uint8) error
 }
 
+// ChipData is returned by ChipBus.ChipRead()
+type ChipData struct {
+	Name  string
+	Value uint8
+}
+
 // ChipBus defines the operations for the memory system when accessed from the
 // VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
 type ChipBus interface {
-	ChipRead() (bool, string, uint8)
+	ChipRead() (bool, ChipData)
 	ChipWrite(address uint16, data uint8)
 	LastReadRegister() string
 }

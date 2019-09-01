@@ -36,17 +36,17 @@ func (riot RIOT) String() string {
 
 // ReadMemory checks for side effects to the RIOT sub-system
 func (riot *RIOT) ReadMemory() {
-	service, register, value := riot.mem.ChipRead()
-	if !service {
+	ok, data := riot.mem.ChipRead()
+	if !ok {
 		return
 	}
+	riot.Timer.serviceMemory(data)
 
-	if riot.Timer.readMemory(register, value) {
-		return
-	}
+	// !!TODO: service other RIOT registers
 }
 
 // Step moves the state of the riot forward one video cycle
 func (riot *RIOT) Step() {
+	riot.ReadMemory()
 	riot.Timer.step()
 }

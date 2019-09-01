@@ -115,29 +115,22 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	return &tia
 }
 
-// ReadMemory checks for side effects in the TIA sub-system
-func (tia *TIA) ReadMemory() {
-	service, register, value := tia.mem.ChipRead()
-
-	if !service {
-		// nothing to service
-		return
-	}
-
-	switch register {
+// AlterVideoState checks for side effects in the TIA sub-system
+func (tia *TIA) AlterVideoState(data memory.ChipData) {
+	switch data.Name {
 	case "VSYNC":
-		tia.sig.VSync = value&0x02 == 0x02
+		tia.sig.VSync = data.Value&0x02 == 0x02
 
 		// !!TODO: do something with controller settings below
-		_ = value&0x40 == 0x40
-		_ = value&0x80 == 0x80
+		_ = data.Value&0x40 == 0x40
+		_ = data.Value&0x80 == 0x80
 		return
 
 	case "VBLANK":
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
 		tia.Delay.Schedule(1, func() {
-			tia.sig.VBlank = (value&0x02 == 0x02)
+			tia.sig.VBlank = (data.Value&0x02 == 0x02)
 		}, "VBLANK")
 		return
 
@@ -228,16 +221,6 @@ func (tia *TIA) ReadMemory() {
 		}, "HMOVE")
 		return
 	}
-
-	if tia.Video.ReadMemory(&tia.Delay, register, value) {
-		return
-	}
-
-	if tia.Audio.ReadMemory(register, value) {
-		return
-	}
-
-	panic(fmt.Sprintf("unserviced register (%s=%v)", register, value))
 }
 
 func (tia *TIA) newScanline() {
@@ -268,32 +251,41 @@ func (tia *TIA) newScanline() {
 // the CPU (conceptually, we're attaching the result of this function to pin 3
 // of the 6507)
 //
-// the meat of the Step() function can be divided into 9 (important) sub-steps.
+// the meat of the Step() function can be divided into 8 sub-steps and 3 phases
+// when the TIA state is altered in response to changes to TIA memory
+//
 // the ordering of these sub-steps is important. the currently defined steps
 // and the ordering are as follows:
 //
-// 1. read memory (if required)
-// 2. tick phase clock
-// 3. tick delayed events
-// 4. if phase clock is on the rising edge of Phi2
-//		4.1. tick hsync counter
-//		4.2. schedule hsync events as required
-// 5. tick video objects/events
-// 6. adjust HMOVE value
-// 7. send signal to television
+// A. service TIA memory / update playfield data
+// 1. tick phase clock
+// 2. tick delayed events
+// 3. if phase clock is on the rising edge of Phi2
+//		3.1. tick hsync counter
+//		3.2. schedule hsync events as required
+// B. service TIA video memory
+// 4. tick video objects/events
+// 5. adjust HMOVE value
+// C. service TIA audio memory / late TIA video attributes
+// 6. send signal to television
 //
 // step 5 contains a lot more work important to the correct operation of the
 // TIA but from this perspective the step is monolithic
 func (tia *TIA) Step(readMemory bool) (bool, error) {
-
 	// update debugging information
 	tia.videoCycles++
 
-	// read memory if required
-	//
-	// * the precise moment when memory is read affects debugger/metavideo
+	var memoryData memory.ChipData
+
+	// update memory if required
 	if readMemory {
-		tia.ReadMemory()
+		readMemory, memoryData = tia.mem.ChipRead()
+	}
+
+	// make alterations to video state and playfield
+	if readMemory {
+		tia.AlterVideoState(memoryData)
+		tia.Video.AlterPlayfield(&tia.Delay, memoryData)
 	}
 
 	// tick phase clock
@@ -410,6 +402,19 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		}
 	}
 
+	// alter state of video subsystem. occuring after ticking of TIA clock
+	// because some the side effects of some registers require that. in
+	// particular, the RESxx registers need to have correct information about
+	// the state of HBLANK and the HMOVE latch.
+	//
+	// to see the effect of this, try moving this function call before the
+	// HSYNC tick and see how the ball sprite is rendered incorrectly in
+	// Keystone Kapers. this is because the ball is reset on the very last
+	// pixel and before HBLANK etc. are in the state they need to be.
+	if readMemory {
+		tia.Video.AlterState(memoryData)
+	}
+
 	// hmoveck is the counterpart to the motck (which is associated with the
 	// hblank flag). when hmove has been latched then (from TIA_HW_Notes.txt):
 	//
@@ -436,7 +441,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// resolve video pixels. note that we always send the debug color
 	// regardless of hblank
-	pixelColor, debugColor := tia.Video.Resolve()
+	pixelColor, debugColor := tia.Video.Pixel()
 	tia.sig.AltPixel = television.ColorSignal(debugColor)
 	if tia.hblank {
 		// if hblank is on then we don't sent the resolved color but the video
@@ -444,6 +449,13 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		tia.sig.Pixel = television.VideoBlack
 	} else {
 		tia.sig.Pixel = television.ColorSignal(pixelColor)
+	}
+
+	// alter state of audio subsystem and video state that require late
+	// consideration
+	if readMemory {
+		tia.Audio.AlterState(memoryData)
+		tia.Video.AlterStateAfterPixel(memoryData)
 	}
 
 	// send signal to television

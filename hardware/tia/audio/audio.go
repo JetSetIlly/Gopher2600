@@ -1,5 +1,7 @@
 package audio
 
+import "gopher2600/hardware/memory"
+
 // Audio contains all the components of the audio sub-system of the VCS TIA chip
 type Audio struct {
 	control0 uint8
@@ -16,25 +18,21 @@ func NewAudio() *Audio {
 	return au
 }
 
-// ReadMemory checks the TIA memory for changes to registers that are
+// AlterState checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
-func (au *Audio) ReadMemory(register string, value uint8) bool {
-	switch register {
-	default:
-		return false
+func (au *Audio) AlterState(data memory.ChipData) {
+	switch data.Name {
 	case "AUDC0":
-		au.control0 = value & 0x0f
+		au.control0 = data.Value & 0x0f
 	case "AUDC1":
-		au.control1 = value & 0x0f
+		au.control1 = data.Value & 0x0f
 	case "AUDF0":
-		au.freq0 = value & 0x1f
+		au.freq0 = data.Value & 0x1f
 	case "AUDF1":
-		au.freq1 = value & 0x1f
+		au.freq1 = data.Value & 0x1f
 	case "AUDV0":
-		au.volume0 = value & 0x0f
+		au.volume0 = data.Value & 0x0f
 	case "AUDV1":
-		au.volume1 = value & 0x0f
+		au.volume1 = data.Value & 0x0f
 	}
-
-	return true
 }

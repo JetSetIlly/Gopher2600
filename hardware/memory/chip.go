@@ -72,13 +72,13 @@ func (area ChipMemory) Poke(address uint16, value uint8) error {
 // - whether a chip was last written to
 // - the CPU name of the address that was written to
 // - the written value
-func (area *ChipMemory) ChipRead() (bool, string, uint8) {
+func (area *ChipMemory) ChipRead() (bool, ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, addresses.Write[area.lastWriteAddress], area.writeData
+		return true, ChipData{Name: addresses.Write[area.lastWriteAddress], Value: area.writeData}
 	}
 
-	return false, "", 0
+	return false, ChipData{}
 }
 
 // ChipWrite is an implementation of ChipBus. it writes the data to the memory
