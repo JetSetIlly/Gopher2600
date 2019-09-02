@@ -77,6 +77,7 @@ func (ms missileSprite) String() string {
 	normalisedHmove := int(ms.hmove) | 0x08
 
 	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s: ", ms.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
@@ -273,7 +274,14 @@ func (ms *missileSprite) setEnable(enable bool) {
 }
 
 func (ms *missileSprite) setHmoveValue(value uint8) {
-	ms.hmove = (value ^ 0x80) >> 4
+	// a delay of 1 on the sprite scheduler, is required for the cosmicark
+	// starfield to work correctly. I'm not not entirely sure if this is the
+	// correct interpretation or if the timing issue with compareHMOVE should
+	// be ironed out somewhere else.
+
+	ms.Delay.Schedule(1, func() {
+		ms.hmove = (value ^ 0x80) >> 4
+	}, "HMMx")
 }
 
 func (ms *missileSprite) setNUSIZ(value uint8) {

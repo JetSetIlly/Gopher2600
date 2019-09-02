@@ -181,6 +181,7 @@ func (ps playerSprite) String() string {
 	normalisedHmove := int(ps.hmove) | 0x08
 
 	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s: ", ps.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))
@@ -536,7 +537,12 @@ func (ps *playerSprite) setHmoveValue(value uint8) {
 	// treated as a simple 0-15 count for movement left. It might
 	// be easier to think of this as having D7 inverted when it
 	// is stored in the first place."
-	ps.hmove = (value ^ 0x80) >> 4
+
+	// see missile sprite for commentary about delay
+
+	ps.Delay.Schedule(1, func() {
+		ps.hmove = (value ^ 0x80) >> 4
+	}, "HMPx")
 }
 
 func (ps *playerSprite) setReflection(value bool) {

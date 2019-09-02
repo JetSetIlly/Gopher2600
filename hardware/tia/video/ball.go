@@ -75,6 +75,7 @@ func (bs ballSprite) String() string {
 	normalisedHmove := int(bs.hmove) | 0x08
 
 	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s: ", bs.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))
@@ -214,18 +215,44 @@ func (bs *ballSprite) resetPosition() {
 		// left edge of the screen
 		bs.resetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
 
-		// resetPixel adjusted by 1 because the tv is not yet in the correct
-		// position
-		bs.resetPixel++
+		if bs.resetPixel >= 0 {
+			// resetPixel adjusted by 1 because the tv is not yet in the correct
+			// position
+			bs.resetPixel++
 
-		// adjust resetPixel for screen boundaries
-		if bs.resetPixel > bs.tv.GetSpec().ClocksPerVisible {
-			bs.resetPixel -= bs.tv.GetSpec().ClocksPerVisible
+			// adjust resetPixel for screen boundaries
+			if bs.resetPixel > bs.tv.GetSpec().ClocksPerVisible {
+				bs.resetPixel -= bs.tv.GetSpec().ClocksPerVisible
+			}
+
+			// by definition the current pixel is the same as the reset pixel at
+			// the moment of reset
+			bs.hmovedPixel = bs.resetPixel
+		} else {
+			// if reset occurs off-screen then force reset pixel to be zero
+			bs.resetPixel = 0
+
+			// a reset of this kind happens when the reset register has been
+			// strobed but not completed before the HBLANK period, and a HMOVE
+			// forces the reset to occur.
+			//
+			// it cannot occur if an HMOVE is not active. sanity check:
+			// !!TODO: remove sanity check once we're convinced that this is true
+			if !*bs.hmoveLatch {
+				panic("sprite reset during HBLANK should not occur without HMOVE")
+			}
+
+			// setting hmovedPixel below: I'm not sure about the value of 7 at
+			// all; but I couldn't figure out how to derive it algorithmically.
+			//
+			// observation of Keystone Kapers suggests that it's okay
+			// (scanlines being 62 and 97 two slightly different scenarios
+			// where the value is correct)
+			//
+			// also a very rough test ROM tries a couple of things to the same
+			// effect: test/my_test_roms/ball/late_reset.bin
+			bs.hmovedPixel = 7
 		}
-
-		// by definition the current pixel is the same as the reset pixel at
-		// the moment of reset
-		bs.hmovedPixel = bs.resetPixel
 
 		// reset both sprite position and clock
 		bs.position.Reset()
@@ -259,7 +286,11 @@ func (bs *ballSprite) setVerticalDelay(vdelay bool) {
 }
 
 func (bs *ballSprite) setHmoveValue(value uint8) {
-	bs.hmove = (value ^ 0x80) >> 4
+	// see missile sprite for commentary about delay
+	//
+	bs.Delay.Schedule(1, func() {
+		bs.hmove = (value ^ 0x80) >> 4
+	}, "HMBL")
 }
 
 func (bs *ballSprite) setSize(value uint8) {
