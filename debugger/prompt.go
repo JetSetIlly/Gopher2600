@@ -21,7 +21,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
 		promptAddress = dbg.lastResult.Address
 	}
 
-	promptBank = dbg.vcs.Mem.Cart.GetAddressBank(promptAddress)
+	promptBank = dbg.vcs.Mem.Cart.GetBank(promptAddress)
 
 	prompt := strings.Builder{}
 	prompt.WriteString("[")

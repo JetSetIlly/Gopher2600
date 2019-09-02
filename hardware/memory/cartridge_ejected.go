@@ -40,18 +40,22 @@ func (cart ejected) numBanks() int {
 	return 0
 }
 
-func (cart *ejected) setAddressBank(addr uint16, bank int) error {
+func (cart *ejected) setBank(addr uint16, bank int) error {
 	return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 }
 
-func (cart ejected) getAddressBank(addr uint16) int {
+func (cart ejected) getBank(addr uint16) int {
 	return 0
 }
 
-func (cart *ejected) saveBanks() interface{} {
+func (cart *ejected) saveState() interface{} {
 	return nil
 }
 
-func (cart *ejected) restoreBanks(state interface{}) error {
+func (cart *ejected) restoreState(state interface{}) error {
 	return nil
+}
+
+func (cart ejected) ram() []uint8 {
+	return []uint8{}
 }

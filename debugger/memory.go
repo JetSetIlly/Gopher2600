@@ -127,7 +127,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInf
 func (mem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 	ai := mem.mapAddress(address, true)
 	if ai == nil {
-		return nil, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("%#04x not mapped correctly", address))
+		return nil, errors.NewFormattedError(errors.UnpeekableAddress, address)
 	}
 
 	value, err := ai.area.Peek(ai.mappedAddress)
@@ -141,7 +141,7 @@ func (mem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 func (mem memoryDebug) poke(address interface{}, value uint8) (*addressInfo, error) {
 	ai := mem.mapAddress(address, true)
 	if ai == nil {
-		return nil, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("%#04x not mapped correctly", address))
+		return nil, errors.NewFormattedError(errors.UnpokeableAddress, address)
 	}
 	ai.value = value
 	ai.valueSeen = true

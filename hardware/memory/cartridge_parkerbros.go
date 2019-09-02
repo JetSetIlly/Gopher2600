@@ -166,7 +166,7 @@ func (cart parkerBros) numBanks() int {
 	return 8
 }
 
-func (cart parkerBros) getAddressBank(addr uint16) int {
+func (cart parkerBros) getBank(addr uint16) int {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.segment[0]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
@@ -177,7 +177,7 @@ func (cart parkerBros) getAddressBank(addr uint16) int {
 	return cart.segment[3]
 }
 
-func (cart *parkerBros) setAddressBank(addr uint16, bank int) error {
+func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
 		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 	}
@@ -197,11 +197,15 @@ func (cart *parkerBros) setAddressBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *parkerBros) saveBanks() interface{} {
+func (cart *parkerBros) saveState() interface{} {
 	return cart.segment
 }
 
-func (cart *parkerBros) restoreBanks(state interface{}) error {
+func (cart *parkerBros) restoreState(state interface{}) error {
 	cart.segment = state.([4]int)
 	return nil
+}
+
+func (cart parkerBros) ram() []uint8 {
+	return []uint8{}
 }

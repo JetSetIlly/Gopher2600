@@ -92,9 +92,13 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	dsm.flow = make([]bank, dsm.Cart.NumBanks())
 	dsm.linear = make([]bank, dsm.Cart.NumBanks())
 
-	state := dsm.Cart.SaveBanks()
-	defer dsm.Cart.RestoreBanks(state)
+	// save cartridge state and defer at end of disassembly. this is necessary
+	// because during the disassembly process we may changed mutable parts of
+	// the cartridge (eg. extra RAM)
+	state := dsm.Cart.SaveState()
+	defer dsm.Cart.RestoreState(state)
 
+	// put cart into its initial state
 	dsm.Cart.Initialise()
 
 	// create new memory

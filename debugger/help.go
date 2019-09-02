@@ -7,7 +7,6 @@ var Help = map[string]string{
 	cmdCPU:           "Display the current state of the CPU",
 	cmdCartridge:     "Display information about the current cartridge",
 	cmdClear:         "Clear all entries in BREAKS and TRAPS",
-	cmdClocks:        "The current state of the VCS clocks",
 	cmdDebuggerState: "Display summary of debugger options",
 	cmdDigest:        "Return the cryptographic hash of the current screen",
 	cmdDisassembly:   "Print the full cartridge disassembly",

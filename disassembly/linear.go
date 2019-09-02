@@ -21,7 +21,7 @@ import (
 func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 	for bank := 0; bank < len(dsm.linear); bank++ {
 		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
-			if err := dsm.Cart.SetAddressBank(address, bank); err != nil {
+			if err := dsm.Cart.SetBank(address, bank); err != nil {
 				return err
 			}
 

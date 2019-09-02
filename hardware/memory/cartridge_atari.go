@@ -30,16 +30,19 @@ func (cart atari) String() string {
 
 func (cart *atari) initialise() {
 	cart.bank = len(cart.banks) - 1
+	if len(cart.superchip) > 0 {
+		cart.superchip = make([]uint8, len(cart.superchip))
+	}
 }
 
-func (cart atari) getAddressBank(addr uint16) int {
+func (cart atari) getBank(addr uint16) int {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
 	return cart.bank
 }
 
-func (cart *atari) setAddressBank(addr uint16, bank int) error {
+func (cart *atari) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > len(cart.banks) {
 		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 	}
@@ -47,12 +50,13 @@ func (cart *atari) setAddressBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *atari) saveBanks() interface{} {
-	return cart.bank
+func (cart *atari) saveState() interface{} {
+	return []interface{}{cart.bank, cart.superchip}
 }
 
-func (cart *atari) restoreBanks(state interface{}) error {
-	cart.bank = state.(int)
+func (cart *atari) restoreState(state interface{}) error {
+	cart.bank = state.([]interface{})[0].(int)
+	copy(cart.superchip, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
@@ -97,6 +101,10 @@ func (cart *atari) addSuperchip() bool {
 	cart.method = fmt.Sprintf("%s (inc. extra RAM)", cart.method)
 
 	return true
+}
+
+func (cart atari) ram() []uint8 {
+	return cart.superchip
 }
 
 // atari4k is the original and most straightforward format

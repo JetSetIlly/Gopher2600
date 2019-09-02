@@ -25,7 +25,6 @@ const (
 	cmdCPU           = "CPU"
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
-	cmdClocks        = "CLOCKS"
 	cmdDebuggerState = "DEBUGGERSTATE"
 	cmdDigest        = "DIGEST"
 	cmdDisassembly   = "DISASSEMBLY"
@@ -72,7 +71,6 @@ var commandTemplate = []string{
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N])",
 	cmdCartridge + " (ANALYSIS)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
-	cmdClocks,
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
 	cmdDisassembly,
@@ -90,10 +88,10 @@ var commandTemplate = []string{
 	cmdPeek + " [%S] {%S}",
 	cmdPlayer + " (0|1)",
 	cmdPlayfield,
-	cmdPoke + " [%N|%S] %N",
+	cmdPoke + " [%S] %N",
 	cmdQuit,
 	cmdExit,
-	cmdRAM,
+	cmdRAM + " (CART)",
 	cmdRIOT + " (TIMER)",
 	cmdReset,
 	cmdRun,
@@ -108,7 +106,7 @@ var commandTemplate = []string{
 	cmdTrap + " [%S] {%S}",
 	cmdVerbose,
 	cmdVerbosity,
-	cmdWatch + " (READ|WRITE) %N (%N)",
+	cmdWatch + " (READ|WRITE) [%S] (%S)",
 }
 
 // list of commands that should not be executed when recording/playing scripts
@@ -808,10 +806,23 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdRAM:
-		dbg.printMachineInfo(dbg.vcs.Mem.PIA)
+		option, present := tokens.Get()
+		if present {
+			option = strings.ToUpper(option)
+			switch option {
+			case "CART":
+				cartRAM := dbg.vcs.Mem.Cart.RAM()
+				if len(cartRAM) > 0 {
+					// !!TODO: better presentation of cartridge RAM
+					dbg.print(console.StyleMachineInfo, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
+				} else {
+					dbg.print(console.StyleFeedback, "cartridge does not contain any additional RAM")
+				}
 
-	case cmdClocks:
-		dbg.print(console.StyleMachineInfo, "not implemented yet")
+			}
+		} else {
+			dbg.printMachineInfo(dbg.vcs.Mem.PIA)
+		}
 
 	case cmdRIOT:
 		option, present := tokens.Get()

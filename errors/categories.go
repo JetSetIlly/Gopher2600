@@ -60,6 +60,7 @@ const (
 	UnreadableAddress
 	UnwritableAddress
 	UnpokeableAddress
+	UnpeekableAddress
 	UnrecognisedAddress
 
 	// cartridges

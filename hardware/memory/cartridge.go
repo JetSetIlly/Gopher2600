@@ -17,10 +17,11 @@ type cartMapper interface {
 	read(addr uint16) (data uint8, err error)
 	write(addr uint16, data uint8, isPoke bool) error
 	numBanks() int
-	getAddressBank(addr uint16) (bank int)
-	setAddressBank(addr uint16, bank int) error
-	saveBanks() interface{}
-	restoreBanks(interface{}) error
+	getBank(addr uint16) (bank int)
+	setBank(addr uint16, bank int) error
+	saveState() interface{}
+	restoreState(interface{}) error
+	ram() []uint8
 }
 
 // Cartridge defines the information and operations for a VCS cartridge
@@ -108,6 +109,8 @@ func (cart Cartridge) Poke(addr uint16, data uint8) error {
 	return cart.mapper.write(addr, data, true)
 }
 
+// fingerprint8k attempts a divination of 8k cartridge data and decide on a
+// suitable cartMapper implementation
 func (cart Cartridge) fingerprint8k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
 	byts := make([]byte, 8192)
 	cf.Seek(0, io.SeekStart)
@@ -207,26 +210,31 @@ func (cart Cartridge) NumBanks() int {
 	return cart.mapper.numBanks()
 }
 
-// GetAddressBank calls the current mapper's addressBank function. it returns
-// the current bank number for the specified address
-func (cart Cartridge) GetAddressBank(addr uint16) int {
+// GetBank calls the current mapper's addressBank function. it returns the
+// current bank number for the specified address
+func (cart Cartridge) GetBank(addr uint16) int {
 	addr &= cart.Origin() - 1
-	return cart.mapper.getAddressBank(addr)
+	return cart.mapper.getBank(addr)
 }
 
-// SetAddressBank sets the bank for the specificed address. it sets the
-// specified address to reference the specified bank
-func (cart *Cartridge) SetAddressBank(addr uint16, bank int) error {
+// SetBank sets the bank for the specificed address. it sets the specified
+// address to reference the specified bank
+func (cart *Cartridge) SetBank(addr uint16, bank int) error {
 	addr &= cart.Origin() - 1
-	return cart.mapper.setAddressBank(addr, bank)
+	return cart.mapper.setBank(addr, bank)
 }
 
-// SaveBanks calls the current mapper's saveState function
-func (cart *Cartridge) SaveBanks() interface{} {
-	return cart.mapper.saveBanks()
+// SaveState calls the current mapper's saveState function
+func (cart *Cartridge) SaveState() interface{} {
+	return cart.mapper.saveState()
 }
 
-// RestoreBanks calls the current mapper's restoreState function
-func (cart *Cartridge) RestoreBanks(state interface{}) error {
-	return cart.mapper.restoreBanks(state)
+// RestoreState calls the current mapper's restoreState function
+func (cart *Cartridge) RestoreState(state interface{}) error {
+	return cart.mapper.restoreState(state)
+}
+
+// RAM returns a read only instance of any cartridge RAM
+func (cart Cartridge) RAM() []uint8 {
+	return cart.mapper.ram()
 }
