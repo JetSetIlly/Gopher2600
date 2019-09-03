@@ -178,7 +178,7 @@ func (ps playerSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation. put the sign bit back to reflect the
 	// original value as used in the ROM.
-	normalisedHmove := int(ps.hmove) | 0x08
+	normalisedHmove := int(ps.hmove) - 8
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ps.label))
@@ -425,27 +425,34 @@ func (ps *playerSprite) resetPosition() {
 		// left edge of the screen
 		ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
 
-		// resetPixel adjusted because the tv is not yet at the position of the
-		// new pixel (+1) and another +1 because of the additional clock
-		// for player sprites after the start signal
-		ps.resetPixel += 2
+		if ps.resetPixel >= 0 {
+			// resetPixel adjusted by 1 because the tv is not yet in the correct
+			// position
+			ps.resetPixel += 2
 
-		// if size is 2x or 4x then we need an additional reset pixel
-		//
-		// note that we need to monkey with resetPixel whenever NUSIZ changes.
-		// see setNUSIZ() function below
-		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
-			ps.resetPixel++
+			// if size is 2x or 4x then we need an additional reset pixel
+			//
+			// note that we need to monkey with resetPixel whenever NUSIZ changes.
+			// see setNUSIZ() function below
+			if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
+				ps.resetPixel++
+			}
+
+			// adjust resetPixel for screen boundaries
+			if ps.resetPixel > ps.tv.GetSpec().ClocksPerVisible {
+				ps.resetPixel -= ps.tv.GetSpec().ClocksPerVisible
+			}
+
+			// by definition the current pixel is the same as the reset pixel at
+			// the moment of reset
+			ps.hmovedPixel = ps.resetPixel
+		} else {
+			// if reset occurs off-screen then force reset pixel to be zero
+			// (see commentary in ball sprite for detailed reasoning of this
+			// branch)
+			ps.resetPixel = 0
+			ps.hmovedPixel = 7
 		}
-
-		// adjust resetPixel for screen boundaries
-		if ps.resetPixel > ps.tv.GetSpec().ClocksPerVisible {
-			ps.resetPixel -= ps.tv.GetSpec().ClocksPerVisible
-		}
-
-		// by definition the current pixel is the same as the reset pixel at
-		// the moment of reset
-		ps.hmovedPixel = ps.resetPixel
 
 		// reset both sprite position and clock
 		ps.position.Reset()
@@ -524,7 +531,7 @@ func (ps *playerSprite) setVerticalDelay(vdelay bool) {
 	ps.verticalDelay = vdelay
 }
 
-func (ps *playerSprite) setHmoveValue(value uint8) {
+func (ps *playerSprite) setHmoveValue(value uint8, clearing bool) {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
 	//
@@ -540,9 +547,14 @@ func (ps *playerSprite) setHmoveValue(value uint8) {
 
 	// see missile sprite for commentary about delay
 
+	msg := "HMPx"
+	if clearing {
+		msg = "HMCLR"
+	}
+
 	ps.Delay.Schedule(1, func() {
 		ps.hmove = (value ^ 0x80) >> 4
-	}, "HMPx")
+	}, msg)
 }
 
 func (ps *playerSprite) setReflection(value bool) {

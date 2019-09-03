@@ -70,9 +70,8 @@ func (bs ballSprite) MachineInfo() string {
 
 func (bs ballSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
-	// for purposes of presentation. put the sign bit back to reflect the
-	// original value as used in the ROM.
-	normalisedHmove := int(bs.hmove) | 0x08
+	// for purposes of presentation.
+	normalisedHmove := int(bs.hmove) - 8
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", bs.label))
@@ -235,12 +234,6 @@ func (bs *ballSprite) resetPosition() {
 			// a reset of this kind happens when the reset register has been
 			// strobed but not completed before the HBLANK period, and a HMOVE
 			// forces the reset to occur.
-			//
-			// it cannot occur if an HMOVE is not active. sanity check:
-			// !!TODO: remove sanity check once we're convinced that this is true
-			if !*bs.hmoveLatch {
-				panic("sprite reset during HBLANK should not occur without HMOVE")
-			}
 
 			// setting hmovedPixel below: I'm not sure about the value of 7 at
 			// all; but I couldn't figure out how to derive it algorithmically.
@@ -285,12 +278,18 @@ func (bs *ballSprite) setVerticalDelay(vdelay bool) {
 	bs.verticalDelay = vdelay
 }
 
-func (bs *ballSprite) setHmoveValue(value uint8) {
-	// see missile sprite for commentary about delay
-	//
+func (bs *ballSprite) setHmoveValue(value uint8, clearing bool) {
+	// see player sprite for details about horizontal movement
+	// and missile sprite for commentary about delay
+
+	msg := "HMBL"
+	if clearing {
+		msg = "HMCLR"
+	}
+
 	bs.Delay.Schedule(1, func() {
 		bs.hmove = (value ^ 0x80) >> 4
-	}, "HMBL")
+	}, msg)
 }
 
 func (bs *ballSprite) setSize(value uint8) {

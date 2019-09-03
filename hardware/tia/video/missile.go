@@ -74,7 +74,7 @@ func (ms missileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation. put the sign bit back to reflect the
 	// original value as used in the ROM.
-	normalisedHmove := int(ms.hmove) | 0x08
+	normalisedHmove := int(ms.hmove) - 8
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ms.label))
@@ -235,18 +235,26 @@ func (ms *missileSprite) resetPosition() {
 		// left edge of the screen
 		ms.resetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
 
-		// resetPixel adjusted by 1 because the tv is not yet in the correct
-		// position
-		ms.resetPixel++
+		if ms.resetPixel >= 0 {
+			// resetPixel adjusted by 1 because the tv is not yet in the correct
+			// position
+			ms.resetPixel++
 
-		// adjust resetPixel for screen boundaries
-		if ms.resetPixel > ms.tv.GetSpec().ClocksPerVisible {
-			ms.resetPixel -= ms.tv.GetSpec().ClocksPerVisible
+			// adjust resetPixel for screen boundaries
+			if ms.resetPixel > ms.tv.GetSpec().ClocksPerVisible {
+				ms.resetPixel -= ms.tv.GetSpec().ClocksPerVisible
+			}
+
+			// by definition the current pixel is the same as the reset pixel at
+			// the moment of reset
+			ms.hmovedPixel = ms.resetPixel
+		} else {
+			// if reset occurs off-screen then force reset pixel to be zero
+			// (see commentary in ball sprite for detailed reasoning of this
+			// branch)
+			ms.resetPixel = 0
+			ms.hmovedPixel = 7
 		}
-
-		// by definition the current pixel is the same as the reset pixel at
-		// the moment of reset
-		ms.hmovedPixel = ms.resetPixel
 
 		// reset both sprite position and clock
 		ms.position.Reset()
@@ -273,15 +281,26 @@ func (ms *missileSprite) setEnable(enable bool) {
 	ms.enabled = enable
 }
 
-func (ms *missileSprite) setHmoveValue(value uint8) {
+func (ms *missileSprite) setHmoveValue(value uint8, clearing bool) {
+	// see player sprite for details about horizontal movement
+	//
+	// (the following applies to all sprites but is described here because the
+	// effect of scheduling most dramatically applies to the missiles in the
+	// cosmic ark starfield.)
+	//
 	// a delay of 1 on the sprite scheduler, is required for the cosmicark
 	// starfield to work correctly. I'm not not entirely sure if this is the
 	// correct interpretation or if the timing issue with compareHMOVE should
 	// be ironed out somewhere else.
 
+	msg := "HMMx"
+	if clearing {
+		msg = "HMCLR"
+	}
+
 	ms.Delay.Schedule(1, func() {
 		ms.hmove = (value ^ 0x80) >> 4
-	}, "HMMx")
+	}, msg)
 }
 
 func (ms *missileSprite) setNUSIZ(value uint8) {

@@ -361,22 +361,21 @@ func (vd *Video) AlterState(data memory.ChipData) {
 	// is stored in the first place."
 
 	case "HMP0":
-		vd.Player0.setHmoveValue(data.Value & 0xf0)
+		vd.Player0.setHmoveValue(data.Value&0xf0, false)
 	case "HMP1":
-		vd.Player1.setHmoveValue(data.Value & 0xf0)
+		vd.Player1.setHmoveValue(data.Value&0xf0, false)
 	case "HMM0":
-		vd.Missile0.setHmoveValue(data.Value & 0xf0)
+		vd.Missile0.setHmoveValue(data.Value&0xf0, false)
 	case "HMM1":
-		vd.Missile1.setHmoveValue(data.Value & 0xf0)
+		vd.Missile1.setHmoveValue(data.Value&0xf0, false)
 	case "HMBL":
-		vd.Ball.setHmoveValue(data.Value & 0xf0)
+		vd.Ball.setHmoveValue(data.Value&0xf0, false)
 
 	case "HMCLR":
-		vd.Player0.hmove = 0x08
-		vd.Player1.hmove = 0x08
-		vd.Missile0.hmove = 0x08
-		vd.Missile1.hmove = 0x08
-		vd.Ball.hmove = 0x08
-
+		vd.Player0.setHmoveValue(0x08, true)
+		vd.Player1.setHmoveValue(0x08, true)
+		vd.Missile0.setHmoveValue(0x08, true)
+		vd.Missile1.setHmoveValue(0x08, true)
+		vd.Ball.setHmoveValue(0x08, true)
 	}
 }
