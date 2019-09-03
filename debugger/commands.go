@@ -9,6 +9,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
 	"os"
@@ -69,7 +70,7 @@ var commandTemplate = []string{
 	cmdBall,
 	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N])",
-	cmdCartridge + " (ANALYSIS)",
+	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
@@ -691,6 +692,15 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			switch arg {
 			case "ANALYSIS":
 				dbg.print(console.StyleFeedback, dbg.disasm.String())
+			case "BANK":
+				bank, _ := tokens.Get()
+				n, _ := strconv.Atoi(bank)
+				dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.ToUint16(), n)
+
+				err := dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
+				if err != nil {
+					return doNothing, err
+				}
 			}
 		} else {
 			dbg.printMachineInfo(dbg.vcs.Mem.Cart)
