@@ -56,10 +56,7 @@ func init() {
 	SpecPAL.ScanlinesTotal = 312
 	SpecPAL.FramesPerSecond = 50.0
 	SpecPAL.SecondsPerFrame = 1.0 / SpecPAL.FramesPerSecond
-
-	// use NTSC colors for PAL specification for now
-	// !!TODO: implement PAL colors
-	SpecPAL.Colors = colorsNTSC
+	SpecPAL.Colors = colorsPAL
 
 	// AaspectBias transforms the scaling factor for the X axis.
 	// values taken from Stella emualtor. i've no idea from where these values
