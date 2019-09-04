@@ -72,9 +72,11 @@ func (ms missileSprite) MachineInfo() string {
 
 func (ms missileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
-	// for purposes of presentation. put the sign bit back to reflect the
-	// original value as used in the ROM.
+	// for purposes of presentation
 	normalisedHmove := int(ms.hmove) - 8
+	if normalisedHmove < 0 {
+		normalisedHmove = 16 + normalisedHmove
+	}
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ms.label))

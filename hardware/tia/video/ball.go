@@ -70,8 +70,11 @@ func (bs ballSprite) MachineInfo() string {
 
 func (bs ballSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
-	// for purposes of presentation.
+	// for purposes of presentation
 	normalisedHmove := int(bs.hmove) - 8
+	if normalisedHmove < 0 {
+		normalisedHmove = 16 + normalisedHmove
+	}
 
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", bs.label))
