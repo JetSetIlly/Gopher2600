@@ -90,6 +90,16 @@ func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	return vd
 }
 
+// RSYNC adjusts the debugging information of the sprites when an RSYNC is
+// triggered
+func (vd *Video) RSYNC(adjustment int) {
+	vd.Player0.rsync(adjustment)
+	vd.Player1.rsync(adjustment)
+	vd.Missile0.rsync(adjustment)
+	vd.Missile1.rsync(adjustment)
+	vd.Ball.rsync(adjustment)
+}
+
 // Tick moves all video elements forward one video cycle and is only
 // called when motion clock is active
 func (vd *Video) Tick(motck bool, hmove bool, hmoveCt uint8) {

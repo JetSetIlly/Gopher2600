@@ -167,6 +167,16 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 
 		tia.rsyncEvent = tia.Delay.Schedule(3, func() {
 			tia.newScanline()
+
+			// adjust video elements by the number of visible pixels that have
+			// been consumed. adding one to the value because the tv pixel we
+			// want to hit has not been reached just yet
+			adj, _ := tia.tv.GetState(television.ReqHorizPos)
+			adj++
+			if adj > 0 {
+				tia.Video.RSYNC(adj)
+			}
+
 			tia.rsyncEvent = tia.Delay.Schedule(4, func() {
 				tia.hsync.Reset()
 				tia.pclk.Reset()

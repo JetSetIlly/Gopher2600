@@ -76,7 +76,7 @@ func (bs ballSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", bs.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))
 	if bs.moreHMOVE {
 		s.WriteString("*]")
@@ -125,6 +125,17 @@ func (bs ballSprite) String() string {
 		s.WriteString(" vdel")
 	}
 	return s.String()
+}
+
+func (bs *ballSprite) rsync(adjustment int) {
+	bs.resetPixel -= adjustment
+	bs.hmovedPixel -= adjustment
+	if bs.resetPixel < 0 {
+		bs.resetPixel += bs.tv.GetSpec().ClocksPerVisible
+	}
+	if bs.hmovedPixel < 0 {
+		bs.hmovedPixel += bs.tv.GetSpec().ClocksPerVisible
+	}
 }
 
 func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {

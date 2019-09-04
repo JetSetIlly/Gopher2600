@@ -79,7 +79,7 @@ func (ms missileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ms.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
 	if ms.moreHMOVE {
 		s.WriteString("*]")
@@ -124,6 +124,17 @@ func (ms missileSprite) String() string {
 	}
 
 	return s.String()
+}
+
+func (ms *missileSprite) rsync(adjustment int) {
+	ms.resetPixel -= adjustment
+	ms.hmovedPixel -= adjustment
+	if ms.resetPixel < 0 {
+		ms.resetPixel += ms.tv.GetSpec().ClocksPerVisible
+	}
+	if ms.hmovedPixel < 0 {
+		ms.hmovedPixel += ms.tv.GetSpec().ClocksPerVisible
+	}
 }
 
 func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {

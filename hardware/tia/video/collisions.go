@@ -44,8 +44,6 @@ func (col *collisions) clear() {
 	col.mem.ChipWrite(addresses.CXPPMM, 0)
 }
 
-// NOTE that collisions are detected in the video.Pixel() command
-
 func (col *collisions) SetMemory(collisionAddress uint16) {
 	switch collisionAddress {
 	case addresses.CXM0P:

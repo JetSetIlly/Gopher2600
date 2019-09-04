@@ -183,7 +183,7 @@ func (ps playerSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ps.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.resetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))
 	if ps.moreHMOVE {
 		s.WriteString("*] ")
@@ -251,6 +251,17 @@ func (ps playerSprite) String() string {
 	}
 
 	return s.String()
+}
+
+func (ps *playerSprite) rsync(adjustment int) {
+	ps.resetPixel -= adjustment
+	ps.hmovedPixel -= adjustment
+	if ps.resetPixel < 0 {
+		ps.resetPixel += ps.tv.GetSpec().ClocksPerVisible
+	}
+	if ps.hmovedPixel < 0 {
+		ps.hmovedPixel += ps.tv.GetSpec().ClocksPerVisible
+	}
 }
 
 // tick moves the sprite counters along (both position and graphics scan).
