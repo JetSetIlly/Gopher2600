@@ -16,7 +16,7 @@ const (
 	PlayError
 	DebuggerError
 	DisasmError
-	FPSError
+	PerformanceError
 
 	// debugger
 	ParserError

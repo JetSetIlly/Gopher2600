@@ -21,46 +21,46 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 	if display {
 		ftv, err = sdl.NewGUI(tvType, scaling, nil)
 		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
+			return errors.NewFormattedError(errors.PerformanceError, err)
 		}
 
 		err = ftv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
+			return errors.NewFormattedError(errors.PerformanceError, err)
 		}
 	} else {
 		ftv, err = television.NewStellaTelevision(tvType)
 		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
+			return errors.NewFormattedError(errors.PerformanceError, err)
 		}
 	}
 
 	// create vcs using the tv created above
 	vcs, err := hardware.NewVCS(ftv)
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	// attach cartridge to te vcs
 	err = vcs.AttachCartridge(cartridgeFile)
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	// parse supplied duration
 	duration, err := time.ParseDuration(runTime)
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	// get starting frame number (should be 0)
 	startFrame, err := ftv.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	// run for specified period of time
-	err = cpuProfile(profile, "cpu.profile", func() error {
+	runner := func() error {
 		// setup trigger that expires when duration has elapsed
 		timesUp := make(chan bool)
 
@@ -85,23 +85,34 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 			}
 		})
 		if err != nil {
-			return errors.NewFormattedError(errors.FPSError, err)
+			return errors.NewFormattedError(errors.PerformanceError, err)
 		}
 		return nil
-	})
+	}
+
+	if profile {
+		err = ProfileCPU("cpu.profile", runner)
+	} else {
+		err = runner()
+	}
+
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	// get ending frame number
 	endFrame, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.NewFormattedError(errors.FPSError, err)
+		return errors.NewFormattedError(errors.PerformanceError, err)
 	}
 
 	numFrames := endFrame - startFrame
 	fps, accuracy := CalcFPS(ftv, numFrames, duration.Seconds())
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
 
-	return memProfile(profile, "mem.profile")
+	if profile {
+		err = ProfileMem("mem.profile")
+	}
+
+	return err
 }

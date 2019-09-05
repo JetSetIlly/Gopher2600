@@ -169,6 +169,7 @@ func main() {
 		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		termType := modeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
+		profile := modeFlags.Bool("profile", false, "run debugger through cpu profiler")
 		modeFlagsParse()
 
 		dbg, err := debugger.NewDebugger(*tvType)
@@ -195,10 +196,27 @@ func main() {
 			// it's okay if DEBUG mode is started with no cartridges
 			fallthrough
 		case 1:
-			err := dbg.Start(term, *initScript, modeFlags.Arg(0))
-			if err != nil {
-				fmt.Printf("* %s\n", err)
-				os.Exit(2)
+			runner := func() error {
+				err := dbg.Start(term, *initScript, modeFlags.Arg(0))
+				if err != nil {
+					return errors.NewFormattedError(errors.PerformanceError, err)
+				}
+				return nil
+			}
+
+			if *profile {
+				err := performance.ProfileCPU("debug.cpu.profile", runner)
+				if err != nil {
+					fmt.Printf("* %s\n", err)
+					os.Exit(2)
+				}
+				err = performance.ProfileMem("debug.mem.profile")
+				if err != nil {
+					fmt.Printf("* %s\n", err)
+					os.Exit(2)
+				}
+			} else {
+				runner()
 			}
 		default:
 			fmt.Printf("* too many arguments for %s mode\n", mode)

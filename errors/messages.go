@@ -12,10 +12,10 @@ var messages = map[Errno]string{
 	TVOutOfSpec:     "tv out of spec: %s",                    // sentinal
 
 	// program modes
-	PlayError:     "error emulating vcs: %s",
-	DebuggerError: "error debugging vcs: %s",
-	FPSError:      "error during fps profiling: %s",
-	DisasmError:   "error during disassembly: %s",
+	PlayError:        "error emulating vcs: %s",
+	DebuggerError:    "error debugging vcs: %s",
+	PerformanceError: "error during performance profiling: %s",
+	DisasmError:      "error during disassembly: %s",
 
 	// debugger
 	ParserError:     "parser error: %s: %s (char %d)", // first placeholder is the command definition
