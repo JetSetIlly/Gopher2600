@@ -8,9 +8,11 @@ import (
 // PIA defines the information for and operation allowed for PIA PIA
 type PIA struct {
 	CPUBus
-	Area
-	AreaInfo
+	DebuggerBus
 
+	label  string
+	origin uint16
+	memtop uint16
 	memory []uint8
 }
 

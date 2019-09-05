@@ -12,10 +12,11 @@ type ChipMemory struct {
 	CPUBus
 	ChipBus
 	PeriphBus
+	DebuggerBus
 
-	Area
-	AreaInfo
-
+	label  string
+	origin uint16
+	memtop uint16
 	memory []uint8
 
 	// additional mask to further reduce address space when read from the CPU

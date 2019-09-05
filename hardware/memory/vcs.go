@@ -15,7 +15,7 @@ type VCSMemory struct {
 
 	// memmap is a hash for every address in the VCS address space, returning
 	// one of the four memory areas
-	Memmap []Area
+	Memmap []DebuggerBus
 
 	// the four memory areas
 	RIOT *ChipMemory
@@ -40,7 +40,7 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := new(VCSMemory)
 
-	mem.Memmap = make([]Area, addresses.NumAddresses)
+	mem.Memmap = make([]DebuggerBus, addresses.NumAddresses)
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()

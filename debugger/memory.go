@@ -26,7 +26,7 @@ type memoryDebug struct {
 type addressInfo struct {
 	address       uint16
 	mappedAddress uint16
-	area          memory.Area
+	area          memory.DebuggerBus
 	addressLabel  string
 
 	// the value at the address, if it has been seen. the boolean value

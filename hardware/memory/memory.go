@@ -36,18 +36,10 @@ type PeriphBus interface {
 // operation of the machine. We also use this interface as the "generic" type
 // when we need to store collections of different types of memory areas (see
 // VCSMemory.memmap)
-type Area interface {
+type DebuggerBus interface {
 	Label() string
 	Origin() uint16
 	Memtop() uint16
 	Peek(address uint16) (uint8, error)
 	Poke(address uint16, value uint8) error
-}
-
-// AreaInfo provides the basic info needed to define a memory area. All memory
-// areas embed AreaInfo alongside the implementation of the Area interface
-type AreaInfo struct {
-	label  string
-	origin uint16
-	memtop uint16
 }

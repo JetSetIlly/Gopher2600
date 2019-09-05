@@ -27,8 +27,11 @@ type cartMapper interface {
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
 	CPUBus
-	Area
-	AreaInfo
+	DebuggerBus
+
+	label  string
+	origin uint16
+	memtop uint16
 
 	// full path to the cartridge as stored on disk
 	Filename string
