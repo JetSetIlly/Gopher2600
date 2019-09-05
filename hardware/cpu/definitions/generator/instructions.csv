@@ -261,3 +261,5 @@
 0xcb, sax, 2, IMMEDIATE, False
 0x6b, arr, 2, IMMEDIATE, False
 
+0x03, slo, 8, INDEXED_ZERO_PAGE_X, False, RMW		# aso
+0x07, slo, 5, ZERO_PAGE, False, RMW					# aso

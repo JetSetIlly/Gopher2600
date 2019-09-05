@@ -38,8 +38,7 @@ func (cmds Commands) String() string {
 type nodeType int
 
 const (
-	nodeUndefined nodeType = iota
-	nodeRoot
+	nodeRoot nodeType = iota + 1
 	nodeRequired
 	nodeOptional
 )
@@ -129,7 +128,7 @@ func (n node) stringBuilder() string {
 				s.WriteString(prefix)
 			}
 
-			s.WriteString(fmt.Sprintf("%s", n.next[i].stringBuilder()))
+			s.WriteString(n.next[i].stringBuilder())
 
 			if n.next[i].typ == nodeRequired && (n.typ != nodeRequired || n.next[i].branch != nil) {
 				s.WriteString("]")

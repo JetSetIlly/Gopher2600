@@ -12,9 +12,9 @@ func newTIA() *ChipMemory {
 	area.cpuReadMask = 0x000f
 
 	// initial values
-	area.memory[addresses.INPT1] = 0x80
-	area.memory[addresses.INPT2] = 0x80
-	area.memory[addresses.INPT3] = 0x80
+	area.memory[addresses.INPT1] = 0x00
+	area.memory[addresses.INPT2] = 0x00
+	area.memory[addresses.INPT3] = 0x00
 	area.memory[addresses.INPT4] = 0x80
 	area.memory[addresses.INPT5] = 0x80
 

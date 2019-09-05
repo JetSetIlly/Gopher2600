@@ -1291,6 +1291,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
+	case "slo":
+		var r *register.Register
+		r = register.NewAnonRegister(value, mc.A.Size())
+		mc.Status.Carry = r.ROL(mc.Status.Carry)
+		value = r.ToUint8()
+		mc.A.ORA(value)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
+
 	default:
 		// this should never, ever happen
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)

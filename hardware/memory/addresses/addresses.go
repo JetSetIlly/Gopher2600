@@ -126,7 +126,8 @@ const (
 // CPUBus.Read(). the zero bits are unchanged
 //
 // only the first 16 memory addresses are affected like this (addresses should
-// be un-mirrored (ie. mapped) before applying the Mask
+// be un-mirrored (ie. mapped) before applying the Mask). the first sixteen
+// addresses corresponds exactly the TIA memory space
 var Masks = []uint8{
 	0b11000000, // CXM0P
 	0b11000000, // CXM1P
