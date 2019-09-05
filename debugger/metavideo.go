@@ -43,23 +43,23 @@ func newMetavideoMonitor(vcs *hardware.VCS, renderer metavideo.Renderer) *metavi
 	}
 
 	mon.groupPlayer0.addresses = metaSignals{
-		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255},
-		0x10: metavideo.MetaSignalAttributes{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255},
+		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZ0", Red: 0, Green: 10, Blue: 255, Alpha: 255},
+		0x10: metavideo.MetaSignalAttributes{Label: "RESP0", Red: 0, Green: 30, Blue: 255, Alpha: 255},
 	}
 
 	mon.groupPlayer1.addresses = metaSignals{
-		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255},
-		0x11: metavideo.MetaSignalAttributes{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255},
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZ1", Red: 0, Green: 50, Blue: 255, Alpha: 255},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESP0", Red: 0, Green: 70, Blue: 255, Alpha: 255},
 	}
 
 	mon.groupMissile0.addresses = metaSignals{
-		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255},
-		0x11: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZ0", Red: 0, Green: 50, Blue: 255, Alpha: 255},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESM0", Red: 0, Green: 70, Blue: 0, Alpha: 255},
 	}
 
 	mon.groupMissile1.addresses = metaSignals{
-		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255},
-		0x11: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZ1", Red: 0, Green: 50, Blue: 0, Alpha: 255},
+		0x12: metavideo.MetaSignalAttributes{Label: "RESM1", Red: 0, Green: 70, Blue: 0, Alpha: 255},
 	}
 
 	mon.groupBall.addresses = metaSignals{

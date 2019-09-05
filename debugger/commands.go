@@ -37,6 +37,7 @@ const (
 	cmdLast          = "LAST"
 	cmdList          = "LIST"
 	cmdMemMap        = "MEMMAP"
+	cmdMetaVideo     = "METAVIDEO"
 	cmdMissile       = "MISSILE"
 	cmdOnHalt        = "ONHALT"
 	cmdOnStep        = "ONSTEP"
@@ -83,6 +84,7 @@ var commandTemplate = []string{
 	cmdLast + " (DEFN)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
+	cmdMetaVideo + " (ON|OFF)",
 	cmdMissile + " (0|1)",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
 	cmdOnStep + " (OFF|ON|%S {%S})",
@@ -596,6 +598,20 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdMemMap:
 		dbg.print(console.StyleMachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+
+	case cmdMetaVideo:
+		option, _ := tokens.Get()
+		switch strings.ToUpper(option) {
+		case "OFF":
+			dbg.metaVideoProcess = false
+		case "ON":
+			dbg.metaVideoProcess = true
+		}
+		if dbg.metaVideoProcess {
+			dbg.print(console.StyleEmulatorInfo, "metavideo processing: ON")
+		} else {
+			dbg.print(console.StyleEmulatorInfo, "metavideo processing: OFF")
+		}
 
 	case cmdExit:
 		fallthrough

@@ -49,7 +49,8 @@ type Debugger struct {
 	//
 	// metavideo.Check() is called every video cycle to inform the gui of
 	// the metainformation of the last television signal
-	metavideo *metavideoMonitor
+	metaVideoProcess bool
+	metavideo        *metavideoMonitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -167,6 +168,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
 	// set up metavideo monitor
+	dbg.metaVideoProcess = true
 	dbg.metavideo = newMetavideoMonitor(dbg.vcs, dbg.gui)
 
 	// set up breakpoints/traps
@@ -295,7 +297,11 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	return dbg.metavideo.Check()
+	if dbg.metaVideoProcess {
+		return dbg.metavideo.Check()
+	}
+
+	return nil
 }
 
 // inputLoop has two modes, defined by the videoCycle argument.  when
