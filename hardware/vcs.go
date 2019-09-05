@@ -106,6 +106,8 @@ func (vcs *VCS) Reset() error {
 		return errors.NewFormattedError(errors.VCSError, "can't create RIOT")
 	}
 
+	vcs.Mem.Cart.SetBank(vcs.CPU.PC.ToUint16(), 0)
+
 	err := vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return err
