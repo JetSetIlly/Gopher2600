@@ -134,7 +134,12 @@ var Masks = []uint8{
 	0b11000000, // CXP1FB
 	0b11000000, // CXM0FB
 	0b11000000, // CXM1FB
-	0b10000000, // CXBLPF
+
+	// event though legitimate usage of CXBLPF suggests only the most
+	// significant bit is used, for the purposes of masking it acts just like
+	// the other collision registers
+	0b11000000, // CXBLPF
+
 	0b11000000, // CXPPMM
 	0b10000000, // INPT0
 	0b10000000, // INPT1
@@ -142,6 +147,10 @@ var Masks = []uint8{
 	0b10000000, // INPT3
 	0b10000000, // INPT4
 	0b10000000, // INPT5
-	0b00000000,
-	0b00000000,
+
+	// the contents of the last two locations are "undefined" according to the
+	// Stella Programmer's Guide but we can see through experiementation that
+	// the mask is as follows
+	0b11000000,
+	0b11000000,
 }

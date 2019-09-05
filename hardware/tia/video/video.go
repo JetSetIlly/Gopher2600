@@ -27,6 +27,7 @@ type Video struct {
 
 // colors to use for debugging - these are the same colours used by the Stella
 // emulator
+// !!TODO: these value are only good for the NTSC palette. fix for PAL palette
 const (
 	debugColBackground = uint8(0x02) // light gray
 	debugColBall       = uint8(0xb4) // cyan

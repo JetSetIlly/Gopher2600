@@ -99,6 +99,7 @@ func (mem VCSMemory) MapAddress(address uint16, cpuRead bool) uint16 {
 	if cpuRead {
 		return address & mem.TIA.memtop & mem.TIA.cpuReadMask
 	}
+
 	return address & mem.TIA.memtop
 }
 
@@ -115,12 +116,18 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	// some memory areas do not change all the bits on the data bus, leaving
 	// some bits of the address in the result
 	//
-	// if the mapped address has an entry in the Masks array then mask some of
-	// the bits from the requested address into the result
+	// if the mapped address has an entry in the Mask array then use the most
+	// significant byte of the supplied address and apply it with the mask to
+	// the retrieved data
 	if ma < uint16(len(addresses.Masks)) {
-		data &= addresses.Masks[ma]
-		d := uint8(address&0x00ff) & (addresses.Masks[ma] ^ 0b11111111)
-		data |= d
+		if address > 0xff {
+			d := uint8((address>>8)&0x00ff) & (addresses.Masks[ma] ^ 0b11111111)
+			data |= d
+		} else {
+			data &= addresses.Masks[ma]
+			d := uint8(address&0x00ff) & (addresses.Masks[ma] ^ 0b11111111)
+			data |= d
+		}
 	}
 
 	mem.LastAccessAddress = ma
