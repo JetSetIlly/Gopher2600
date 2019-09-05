@@ -109,11 +109,25 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	if area == nil {
 		return 0, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
+
+	data, err := area.(CPUBus).Read(ma)
+
+	// some memory areas do not change all the bits on the data bus, leaving
+	// some bits of the address in the result
+	//
+	// if the mapped address has an entry in the Masks array then mask some of
+	// the bits from the requested address into the result
+	if ma < uint16(len(addresses.Masks)) {
+		data &= addresses.Masks[ma]
+		d := uint8(address&0x00ff) & (addresses.Masks[ma] ^ 0b11111111)
+		data |= d
+	}
+
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = false
-	data, err := area.(CPUBus).Read(ma)
 	mem.LastAccessValue = data
 	mem.LastAccessTimeStamp = time.Now()
+
 	return data, err
 }
 
@@ -124,9 +138,11 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	if area == nil {
 		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
+
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = true
 	mem.LastAccessValue = data
 	mem.LastAccessTimeStamp = time.Now()
+
 	return area.(CPUBus).Write(ma, data)
 }

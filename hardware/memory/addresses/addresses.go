@@ -121,3 +121,27 @@ const (
 	INTIM
 	TIMINT
 )
+
+// Masks specify which bits are put on the data bus to the CPU as a result of
+// CPUBus.Read(). the zero bits are unchanged
+//
+// only the first 16 memory addresses are affected like this (addresses should
+// be un-mirrored (ie. mapped) before applying the Mask
+var Masks = []uint8{
+	0b11000000, // CXM0P
+	0b11000000, // CXM1P
+	0b11000000, // CXP0FB
+	0b11000000, // CXP1FB
+	0b11000000, // CXM0FB
+	0b11000000, // CXM1FB
+	0b10000000, // CXBLPF
+	0b11000000, // CXPPMM
+	0b10000000, // INPT0
+	0b10000000, // INPT1
+	0b10000000, // INPT2
+	0b10000000, // INPT3
+	0b10000000, // INPT4
+	0b10000000, // INPT5
+	0b00000000,
+	0b00000000,
+}

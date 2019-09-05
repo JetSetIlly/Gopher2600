@@ -31,11 +31,9 @@ type PeriphBus interface {
 	PeriphWrite(address uint16, data uint8, mask uint8)
 }
 
-// Area defines the meta-operations for all memory areas. Think of these
+// DebuggerBus defines the meta-operations for all memory areas. Think of these
 // functions as "debugging" functions, that is operations outside of the normal
-// operation of the machine. We also use this interface as the "generic" type
-// when we need to store collections of different types of memory areas (see
-// VCSMemory.memmap)
+// operation of the machine.
 type DebuggerBus interface {
 	Label() string
 	Origin() uint16
