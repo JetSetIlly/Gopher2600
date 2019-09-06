@@ -35,14 +35,19 @@ func Assert(t *testing.T, r, x interface{}) {
 			}
 		}
 
+	case string:
+		if r != x.(string) {
+			t.Errorf("assert string failed (%v  - wanted %v", r, x.(string))
+		}
+
 	case bool:
 		if r != x.(bool) {
-			t.Errorf("assert Bool failed (%v  - wanted %v", r, x.(bool))
+			t.Errorf("assert bool failed (%v  - wanted %v", r, x.(bool))
 		}
 
 	case int:
 		if r != x.(int) {
-			t.Errorf("assert Int failed (%d  - wanted %d)", r, x.(int))
+			t.Errorf("assert int failed (%d  - wanted %d)", r, x.(int))
 		}
 	}
 

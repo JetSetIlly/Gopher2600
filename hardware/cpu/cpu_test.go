@@ -224,6 +224,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 }
 
 func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var ai *result.Instruction
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -271,8 +272,9 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// X = 1
 	// INX; LDA (Indirect, X)
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0x0b)
-	step(t, mc) // INX (x equals 2)
-	step(t, mc) // LDA (0x0b,X)
+	step(t, mc)      // INX (x equals 2)
+	ai = step(t, mc) // LDA (0x0b,X)
+	assert.Assert(t, ai.Bug, "")
 	assert.Assert(t, mc.A, 47)
 
 	// post-indexed indirect (see below)
@@ -281,8 +283,9 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// X = 1
 	// INX; LDA (Indirect, X)
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0xff)
-	step(t, mc) // INX (x equals 2)
-	step(t, mc) // LDA (0xff,X)
+	step(t, mc)      // INX (x equals 2)
+	ai = step(t, mc) // LDA (0xff,X)
+	assert.Assert(t, ai.Bug, "indirect addressing bug")
 	assert.Assert(t, mc.A, 47)
 
 	// post-indexed indirect (with page-fault)

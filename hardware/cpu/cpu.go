@@ -517,6 +517,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 
 		// implement NMOS 6502 Indirect JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
+			result.Bug = fmt.Sprintf("indirect addressing bug (JMP bug)")
+
 			lo, err := mc.mem.Read(indirectAddress)
 			if err != nil {
 				return nil, err
@@ -534,8 +536,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			}
 			address = uint16(hi) << 8
 			address |= uint16(lo)
-
-			result.Bug = fmt.Sprintf("Indirect JMP Bug")
 
 			// +1 cycle
 			err = mc.endCycle()
@@ -568,11 +568,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			return nil, err
 		}
 
-		// using 8bit addition because we don't want a page-fault
+		// using 8bit addition because of the 6502's indirect addressing bug -
+		// we don't want indexed address to extend past the first page
 		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
 
-		// !!TODO: indirect addressing / page boundary bug
+		// indirect addressing / page boundary bug
+		if uint16(indirectAddress)+mc.X.ToUint16() > 0x00ff {
+			result.Bug = fmt.Sprintf("indirect addressing bug")
+		}
 
 		// +2 cycles
 		address, err = mc.read16Bit(adder.ToUint16())
