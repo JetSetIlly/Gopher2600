@@ -70,7 +70,7 @@ const cmdHelp = "HELP"
 var commandTemplate = []string{
 	cmdBall,
 	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
-	cmdCPU + " (SET [PC|A|X|Y|SP] [%N])",
+	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
 	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDebuggerState,
@@ -751,6 +751,22 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				}
 
 				reg.Load(v)
+
+			case "BUG":
+				option, _ := tokens.Get()
+
+				switch strings.ToUpper(option) {
+				case "ON":
+					dbg.reportCPUBugs = true
+				case "OFF":
+					dbg.reportCPUBugs = false
+				}
+
+				if dbg.reportCPUBugs {
+					dbg.print(console.StyleFeedback, "CPU bug reporting: ON")
+				} else {
+					dbg.print(console.StyleFeedback, "CPU bug reporting: OFF")
+				}
 
 			default:
 				// already caught by command line ValidateTokens()

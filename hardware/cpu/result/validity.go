@@ -33,19 +33,34 @@ func (result Instruction) IsValid() error {
 	if result.Bug == "" {
 		if result.Defn.AddressingMode == definitions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
-				msg := fmt.Sprintf("number of cycles wrong (%d instead of %d, %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1, result.Defn.Cycles+2)
-				return errors.NewFormattedError(errors.InvalidResult, msg, result)
+				msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
+					result.Defn.ObjectCode,
+					result.Defn.Mnemonic,
+					result.ActualCycles,
+					result.Defn.Cycles,
+					result.Defn.Cycles+1,
+					result.Defn.Cycles+2)
+				return errors.NewFormattedError(errors.InvalidResult, msg)
 			}
 		} else {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
-					msg := fmt.Sprintf("number of cycles wrong (actual %d instead of %d or %d)", result.ActualCycles, result.Defn.Cycles, result.Defn.Cycles+1)
-					return errors.NewFormattedError(errors.InvalidResult, msg, result)
+					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
+						result.Defn.ObjectCode,
+						result.Defn.Mnemonic,
+						result.ActualCycles,
+						result.Defn.Cycles,
+						result.Defn.Cycles+1)
+					return errors.NewFormattedError(errors.InvalidResult, msg)
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					msg := fmt.Sprintf("number of cycles wrong (actual %d instead of %d)", result.ActualCycles, result.Defn.Cycles)
-					return errors.NewFormattedError(errors.InvalidResult, msg, result)
+					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
+						result.Defn.ObjectCode,
+						result.Defn.Mnemonic,
+						result.ActualCycles,
+						result.Defn.Cycles)
+					return errors.NewFormattedError(errors.InvalidResult, msg)
 				}
 			}
 		}

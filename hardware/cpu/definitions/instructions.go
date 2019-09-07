@@ -8,7 +8,7 @@ return []*InstructionDefinition{
 &InstructionDefinition{ObjectCode:0x0, Mnemonic:"BRK", Bytes:1, Cycles:7, AddressingMode:0, PageSensitive:false, Effect:5},
 &InstructionDefinition{ObjectCode:0x1, Mnemonic:"ORA", Bytes:2, Cycles:6, AddressingMode:6, PageSensitive:false, Effect:0},
 nil,
-&InstructionDefinition{ObjectCode:0x3, Mnemonic:"slo", Bytes:2, Cycles:8, AddressingMode:10, PageSensitive:false, Effect:2},
+&InstructionDefinition{ObjectCode:0x3, Mnemonic:"slo", Bytes:2, Cycles:8, AddressingMode:6, PageSensitive:false, Effect:2},
 &InstructionDefinition{ObjectCode:0x4, Mnemonic:"dop", Bytes:2, Cycles:3, AddressingMode:4, PageSensitive:false, Effect:0},
 &InstructionDefinition{ObjectCode:0x5, Mnemonic:"ORA", Bytes:2, Cycles:3, AddressingMode:4, PageSensitive:false, Effect:0},
 &InstructionDefinition{ObjectCode:0x6, Mnemonic:"ASL", Bytes:2, Cycles:5, AddressingMode:4, PageSensitive:false, Effect:2},

@@ -471,12 +471,16 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		if err != nil {
 			return nil, err
 		}
+
 		result.InstructionData = indirectAddress
 		adder := register.NewAnonRegister(indirectAddress, 8)
 		adder.Add(mc.X, false)
 		address = adder.ToUint16()
 
-		// !!TODO: zero page index bug
+		// handle zero page index bug
+		if (uint16(indirectAddress)+mc.X.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
+			result.Bug = fmt.Sprintf("zero page index bug")
+		}
 
 		// +1 cycle
 		err = mc.endCycle()
@@ -497,7 +501,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder.Add(mc.Y, false)
 		address = adder.ToUint16()
 
-		// !!TODO: zero page index bug
+		// handle zero page index bug
+		if (uint16(indirectAddress)+mc.Y.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
+			result.Bug = fmt.Sprintf("zero page index bug")
+		}
 
 		// +1 cycle
 		err = mc.endCycle()
@@ -515,7 +522,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 		result.InstructionData = indirectAddress
 
-		// implement NMOS 6502 Indirect JMP bug
+		// handle indirect addressing JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
 			result.Bug = fmt.Sprintf("indirect addressing bug (JMP bug)")
 
@@ -530,6 +537,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 				return nil, err
 			}
 
+			// in this bug path, the lower byte of the indirect address is on a
+			// page boundary. because of the bug we must read high byte of JMP
+			// address from the zero byte of the same page (rather than the
+			// zero byte of the next page)
 			hi, err := mc.mem.Read(indirectAddress & 0xff00)
 			if err != nil {
 				return nil, err
@@ -573,8 +584,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		adder := register.NewAnonRegister(mc.X, 8)
 		adder.Add(indirectAddress, false)
 
-		// indirect addressing / page boundary bug
-		if uint16(indirectAddress)+mc.X.ToUint16() > 0x00ff {
+		// note whether indirect addressing / page boundary bug has occurred
+		if (uint16(indirectAddress)+mc.X.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
 			result.Bug = fmt.Sprintf("indirect addressing bug")
 		}
 
@@ -1296,9 +1307,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Sign = mc.A.IsNegative()
 
 	case "slo":
-		var r *register.Register
-		r = register.NewAnonRegister(value, mc.A.Size())
-		mc.Status.Carry = r.ROL(mc.Status.Carry)
+		// the slo opcode starts off with an ASL operation
+		// all versions of this opcode are RMW so we always work with
+		// the anonymous register
+		r := register.NewAnonRegister(value, mc.A.Size())
+		mc.Status.Carry = r.ASL()
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 		mc.A.ORA(value)
 		mc.Status.Zero = mc.A.IsZero()
@@ -1311,13 +1326,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == definitions.RMW {
-		err = mc.write8Bit(address, value)
-		if err != nil {
-			return nil, err
-
-		}
 		// +1 cycle
 		err = mc.endCycle()
+		if err != nil {
+			return nil, err
+		}
+
+		err = mc.write8Bit(address, value)
 		if err != nil {
 			return nil, err
 		}

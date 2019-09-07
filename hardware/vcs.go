@@ -310,10 +310,20 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 
 	cont := true
 	for cont {
-		_, err = vcs.CPU.ExecuteInstruction(videoCycle)
+		var r *result.Instruction
+		r, err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
 			return err
 		}
+
+		// check validity of result
+		if r != nil {
+			err = r.IsValid()
+			if err != nil {
+				return err
+			}
+		}
+
 		cont, err = continueCheck()
 	}
 

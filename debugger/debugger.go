@@ -91,6 +91,11 @@ type Debugger struct {
 	// machineInfoVerbose controls the verbosity of commands that echo machine state
 	machineInfoVerbose bool
 
+	// whether to display the triggering of a known CPU bug. these are bugs
+	// that are known about in the emulated hardware but which might catch an
+	// unwary programmer by surprise
+	reportCPUBugs bool
+
 	// input loop fields. we're storing these here because inputLoop can be
 	// called from within another input loop (via a video step callback) and we
 	// want these properties to persist (when a video step input loop has
@@ -290,6 +295,11 @@ func (dbg *Debugger) videoCycle(result *result.Instruction) error {
 	if !result.Final && result.Defn != nil {
 		if result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine || result.Defn.Effect == definitions.Interrupt {
 			return nil
+		}
+
+		// display information about any CPU bugs that may have been triggered
+		if dbg.reportCPUBugs && result.Bug != "" {
+			dbg.print(console.StyleMachineInfo, result.Bug)
 		}
 	}
 

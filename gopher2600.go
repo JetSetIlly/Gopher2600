@@ -199,7 +199,7 @@ func main() {
 			runner := func() error {
 				err := dbg.Start(term, *initScript, modeFlags.Arg(0))
 				if err != nil {
-					return errors.NewFormattedError(errors.PerformanceError, err)
+					return err
 				}
 				return nil
 			}
@@ -216,7 +216,11 @@ func main() {
 					os.Exit(2)
 				}
 			} else {
-				runner()
+				err := runner()
+				if err != nil {
+					fmt.Printf("* %s\n", err)
+					os.Exit(2)
+				}
 			}
 		default:
 			fmt.Printf("* too many arguments for %s mode\n", mode)
