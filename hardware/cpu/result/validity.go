@@ -13,20 +13,20 @@ import (
 // implementation hasn't gone off the rails.
 func (result Instruction) IsValid() error {
 	if !result.Final {
-		return errors.NewFormattedError(errors.InvalidResult, "not checking an unfinalised InstructionResult", result)
+		return errors.NewFormattedError(errors.InvalidResult, "not checking an unfinalised InstructionResult")
 	}
 
 	// check that InstructionData is broadly sensible - is either nil, a uint16 or uint8
 	if result.InstructionData != nil {
 		ot := reflect.TypeOf(result.InstructionData).Kind()
 		if ot != reflect.Uint16 && ot != reflect.Uint8 {
-			return errors.NewFormattedError(errors.InvalidResult, fmt.Sprintf("instruction data is bad (%s)", ot), result)
+			return errors.NewFormattedError(errors.InvalidResult, fmt.Sprintf("instruction data is bad (%s)", ot))
 		}
 	}
 
 	// is PageFault valid given content of Defn
 	if !result.Defn.PageSensitive && result.PageFault {
-		return errors.NewFormattedError(errors.InvalidResult, "unexpected page fault", result)
+		return errors.NewFormattedError(errors.InvalidResult, "unexpected page fault")
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check

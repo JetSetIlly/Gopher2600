@@ -60,13 +60,14 @@ func (mem *mockMem) Write(address uint16, data uint8) error {
 }
 
 func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
+	t.Helper()
 	result, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
-		t.Fatalf("error during CPU step (%v)\n", err)
+		t.Fatal(err)
 	}
 	err = result.IsValid()
 	if err != nil {
-		t.Fatalf("error during CPU step (%v)\n", err)
+		t.Fatal(err)
 	}
 	return result
 }

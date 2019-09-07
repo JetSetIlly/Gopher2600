@@ -564,7 +564,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			}
 		}
 
-	case definitions.PreIndexedIndirect:
+	case definitions.PreIndexedIndirect: // x indexing
 		// +1 cycle
 		indirectAddress, err := mc.read8BitPC()
 		if err != nil {
@@ -597,7 +597,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 
 		// never a page fault wth pre-index indirect addressing
 
-	case definitions.PostIndexedIndirect:
+	case definitions.PostIndexedIndirect: // y indexing
 		// +1 cycle
 		indirectAddress, err := mc.read8BitPC()
 		if err != nil {
@@ -611,14 +611,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			return nil, err
 		}
 
-		// !!TODO: indirect addressing / page boundary bug
-
 		adder := register.NewAnonRegister(mc.Y, 16)
 		adder.Add(indexedAddress&0x00ff, false)
 		address = adder.ToUint16()
 
 		// check for page fault
-		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
+		if defn.PageSensitive && (address&0xff00 == 0x0100) {
+			result.Bug = fmt.Sprintf("indirect addressing bug")
+			result.PageFault = true
+		}
 
 		if result.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
 			// phantom read (always happends for Write and RMW)
