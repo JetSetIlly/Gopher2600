@@ -283,8 +283,13 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	return bs.enabled && bs.enclockifier.enable, bs.color
 }
 
-func (bs *ballSprite) setEnable(enable bool) {
+// the delayed enable bit is copied from the first when the gfx register for
+// player 1 is updated with playerSprite.setGfxData()
+func (bs *ballSprite) setEnableDelay() {
 	bs.enabledDelay = bs.enabled
+}
+
+func (bs *ballSprite) setEnable(enable bool) {
 	bs.enabled = enable
 }
 

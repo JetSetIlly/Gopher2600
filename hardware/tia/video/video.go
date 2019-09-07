@@ -84,6 +84,8 @@ func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	vd.Player0.otherPlayer = vd.Player1
 	vd.Player1.otherPlayer = vd.Player0
 
+	vd.Player1.ball = vd.Ball
+
 	// connect missile sprite to its parent player sprite
 	vd.Missile0.parentPlayer = vd.Player0
 	vd.Missile1.parentPlayer = vd.Player1

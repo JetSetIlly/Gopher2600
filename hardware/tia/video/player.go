@@ -131,6 +131,8 @@ type playerSprite struct {
 	// Erik Mooney's post, "48-pixel highres routine explained!"
 	otherPlayer *playerSprite
 
+	ball *ballSprite
+
 	// a record of the delayed start drawing event. resets to nil once drawing
 	// commences
 	startDrawingEvent *future.Event
@@ -530,6 +532,12 @@ func (ps *playerSprite) setGfxData(data uint8) {
 	// written). It is safe to modify GRPn at any time, with immediate effect."
 	ps.otherPlayer.gfxDataOld = ps.otherPlayer.gfxDataNew
 	ps.gfxDataNew = data
+
+	// if player sprite is connected to the ball sprite then update the delayed
+	// output for the ball
+	if ps.ball != nil {
+		ps.ball.setEnableDelay()
+	}
 }
 
 func (ps *playerSprite) setVerticalDelay(vdelay bool) {
