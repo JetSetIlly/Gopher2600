@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
@@ -14,6 +14,7 @@ import (
 // position/polycounter cycle, the scanCounter is started and is ticked forward
 // every cycle (subject to MOTCK, HMOVE and NUSIZ rules)
 type scanCounter struct {
+	primary bool
 	pixel   int
 	latches int
 }
@@ -34,6 +35,12 @@ func (sc scanCounter) active() bool {
 
 func (sc scanCounter) isLatching() bool {
 	return sc.latches > 0
+}
+
+// isMiddle is used by missile sprite as part of the reset-to-player
+// implementation
+func (sc scanCounter) isMiddle() bool {
+	return sc.pixel == 2
 }
 
 func (sc *scanCounter) tick() {
@@ -130,6 +137,7 @@ type playerSprite struct {
 	// this wasn't clear to me originally but was crystal clear after reading
 	// Erik Mooney's post, "48-pixel highres routine explained!"
 	otherPlayer *playerSprite
+	missile     *missileSprite
 
 	ball *ballSprite
 
@@ -348,9 +356,16 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 				// report as being the reset pixel.
 				const startDelay = 4
 
+				// it is useful to know if the sprite is outputting pixels of
+				// the primary copy of the sprite or the secondary/tertiary
+				// copies. this is used by the missile sprites when in
+				// reset-to-player mode
+				primary := false
+
 				startDrawingEvent := func() {
 					ps.startDrawingEvent = nil
 					ps.scanCounter.start(ps.nusiz)
+					ps.scanCounter.primary = primary
 				}
 
 				// "... The START decodes are ANDed with flags from the NUSIZ register
@@ -369,6 +384,7 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
 					}
 				case 39:
+					primary = true
 					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
 
 				case 40:

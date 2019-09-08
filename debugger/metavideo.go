@@ -12,7 +12,7 @@ package debugger
 import (
 	"gopher2600/gui/metavideo"
 	"gopher2600/hardware"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"time"
 )
 

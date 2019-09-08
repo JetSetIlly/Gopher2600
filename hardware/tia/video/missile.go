@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
@@ -32,15 +32,19 @@ type missileSprite struct {
 
 	// ^^^ the above are common to all sprite types ^^^
 
-	enabled       bool
-	color         uint8
-	size          uint8
-	copies        uint8
-	enclockifier  enclockifier
-	parentPlayer  *playerSprite
-	resetToPlayer bool
-	startEvent    *future.Event
-	resetEvent    *future.Event
+	enabled            bool
+	color              uint8
+	size               uint8
+	copies             uint8
+	enclockifier       enclockifier
+	parentPlayer       *playerSprite
+	resetToPlayer      bool
+	startDrawingEvent  *future.Event
+	resetPositionEvent *future.Event
+
+	// stuffedTick notes whether the last tick was as a result of a HMOVE tick.
+	// see the pixel() function below for a fuller explanation.
+	stuffedTick bool
 }
 
 func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *missileSprite {
@@ -145,66 +149,79 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		ms.moreHMOVE = ms.moreHMOVE && compareHMOVE(hmoveCt, ms.hmove)
 	}
 
-	// update missile location depending on whether resetToPlayer flag is on
-	if ms.resetToPlayer {
-		ms.position.Count = ms.parentPlayer.position.Count
-		ms.pclk.Sync(ms.parentPlayer.pclk)
-		// this isn't exactly accuracte but it'll do for now
-		// !!TODO: improve accuracy of reset missile to player
-	} else {
-		if (hmove && ms.moreHMOVE) || motck {
-			// update hmoved pixel value
-			if !motck {
-				ms.hmovedPixel--
+	// reset missile to player position. from TIA_HW_Notes.txt:
+	//
+	// "The Missile-to-player reset is implemented by resetting the M0 counter
+	// when the P0 graphics scan counter is at %100 (in the middle of drawing
+	// the player graphics) AND the main copy of P0 is being drawn (ie the
+	// missile counter will not be reset when a subsequent copy is drawn, if
+	// any). This second condition is generated from a latch outputting [FSTOB]
+	// that is reset when the P0 counter wraps around, and set when the START
+	// signal is decoded for a 'close', 'medium' or 'far' copy of P0."
+	//
+	// note: the FSTOB output is the primary flag in the parent player's
+	// scancounter
+	if ms.resetToPlayer && ms.parentPlayer.scanCounter.primary && ms.parentPlayer.scanCounter.isMiddle() {
+		ms.position.Reset()
+		ms.pclk.Reset()
+	}
 
-				// adjust for screen boundary
-				if ms.hmovedPixel < 0 {
-					ms.hmovedPixel += ms.tv.GetSpec().ClocksPerVisible
-				}
+	if (hmove && ms.moreHMOVE) || motck {
+		// update hmoved pixel value
+		if !motck {
+			ms.hmovedPixel--
+
+			// adjust for screen boundary
+			if ms.hmovedPixel < 0 {
+				ms.hmovedPixel += ms.tv.GetSpec().ClocksPerVisible
 			}
-
-			ms.pclk.Tick()
-
-			if ms.pclk.Phi2() {
-				ms.position.Tick()
-
-				const startDelay = 4
-				startEvent := func() {
-					ms.enclockifier.start()
-					ms.startEvent = nil
-				}
-
-				switch ms.position.Count {
-				case 3:
-					if ms.copies == 0x01 || ms.copies == 0x03 {
-						if ms.resetEvent == nil {
-							ms.startEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
-						}
-					}
-				case 7:
-					if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
-						if ms.resetEvent == nil {
-							ms.startEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
-						}
-					}
-				case 15:
-					if ms.copies == 0x04 || ms.copies == 0x06 {
-						if ms.resetEvent == nil {
-							ms.startEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
-						}
-					}
-				case 39:
-					if ms.resetEvent == nil {
-						ms.startEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
-					}
-				case 40:
-					ms.position.Reset()
-				}
-			}
-
-			// tick future events that are goverened by the sprite
-			ms.Delay.Tick()
 		}
+
+		// make a note of why this tick has occurred. see pixel() function
+		// below for explanation
+		ms.stuffedTick = hmove && ms.moreHMOVE
+
+		ms.pclk.Tick()
+
+		if ms.pclk.Phi2() {
+			ms.position.Tick()
+
+			const startDelay = 4
+			startEvent := func() {
+				ms.enclockifier.start()
+				ms.startDrawingEvent = nil
+			}
+
+			switch ms.position.Count {
+			case 3:
+				if ms.copies == 0x01 || ms.copies == 0x03 {
+					if ms.resetPositionEvent == nil {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					}
+				}
+			case 7:
+				if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
+					if ms.resetPositionEvent == nil {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					}
+				}
+			case 15:
+				if ms.copies == 0x04 || ms.copies == 0x06 {
+					if ms.resetPositionEvent == nil {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					}
+				}
+			case 39:
+				if ms.resetPositionEvent == nil {
+					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+				}
+			case 40:
+				ms.position.Reset()
+			}
+		}
+
+		// tick future events that are goverened by the sprite
+		ms.Delay.Tick()
 	}
 }
 
@@ -239,11 +256,11 @@ func (ms *missileSprite) resetPosition() {
 	// completion. compare to ball sprite where drawing is ended and then
 	// started under all conditions
 	ms.enclockifier.pause()
-	if ms.startEvent != nil {
-		ms.startEvent.Pause()
+	if ms.startDrawingEvent != nil {
+		ms.startDrawingEvent.Pause()
 	}
 
-	ms.resetEvent = ms.Delay.Schedule(delay, func() {
+	ms.resetPositionEvent = ms.Delay.Schedule(delay, func() {
 		// the pixel at which the sprite has been reset, in relation to the
 		// left edge of the screen
 		ms.resetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
@@ -274,11 +291,11 @@ func (ms *missileSprite) resetPosition() {
 		ms.pclk.Reset()
 
 		ms.enclockifier.force()
-		if ms.startEvent != nil {
-			ms.startEvent.Force()
+		if ms.startDrawingEvent != nil {
+			ms.startDrawingEvent.Force()
 		}
 
-		ms.resetEvent = nil
+		ms.resetPositionEvent = nil
 	}, "RESMx")
 }
 
@@ -287,7 +304,21 @@ func (ms *missileSprite) setResetToPlayer(on bool) {
 }
 
 func (ms *missileSprite) pixel() (bool, uint8) {
-	return ms.enabled && ms.enclockifier.enable, ms.color
+	// the missile sprite is drawn if the enclockifier is on. OR, if it will be
+	// ON next cycle AND the most recent tick was a result of a HMOVE clock
+	// stuff.
+	//
+	// what's the reason for this? it is fully explained in the AtariAge post
+	// "Cosmic Ark Star Field Revisited" by Crsipy, but briefly the
+	// exaplanation is this: the extra HMOVE clock causes the "missile logic"
+	// to think that the start signal has happened early.
+	//
+	// in short, the following condition implements the Cosmic Ark starfield.
+	px := !ms.resetToPlayer &&
+		(ms.enclockifier.enable ||
+			(ms.stuffedTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.RemainingCycles == 0))
+
+	return ms.enabled && px, ms.color
 }
 
 func (ms *missileSprite) setEnable(enable bool) {

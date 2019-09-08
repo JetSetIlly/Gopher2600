@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
@@ -32,13 +32,18 @@ type ballSprite struct {
 
 	// ^^^ the above are common to all sprite types ^^^
 
-	color         uint8
-	size          uint8
-	verticalDelay bool
-	enabled       bool
-	enabledDelay  bool
-	enclockifier  enclockifier
-	startEvent    *future.Event
+	color             uint8
+	size              uint8
+	verticalDelay     bool
+	enabled           bool
+	enabledDelay      bool
+	enclockifier      enclockifier
+	startDrawingEvent *future.Event
+
+	// the stuffedTick boolean notes whether the last tick was as a result of a
+	// HMOVE tick. see the pixel() function in the missile sprite for a
+	// detailed explanation
+	stuffedTick bool
 }
 
 func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *ballSprite {
@@ -158,6 +163,10 @@ func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			}
 		}
 
+		// make a note of why this tick has occurred. see pixel() function
+		// in the missile sprite for an explanation
+		bs.stuffedTick = hmove && bs.moreHMOVE
+
 		bs.pclk.Tick()
 
 		if bs.pclk.Phi2() {
@@ -166,7 +175,7 @@ func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			switch bs.position.Count {
 			case 39:
 				const startDelay = 4
-				bs.startEvent = bs.Delay.Schedule(startDelay, bs.enclockifier.start, "START")
+				bs.startDrawingEvent = bs.Delay.Schedule(startDelay, bs.enclockifier.start, "START")
 			case 40:
 				bs.position.Reset()
 			}
@@ -207,9 +216,9 @@ func (bs *ballSprite) resetPosition() {
 	// drawing of ball sprite must end immediately upon a reset strobe. it will
 	// start drawing again after the reset delay period
 	bs.enclockifier.drop()
-	if bs.startEvent != nil {
-		bs.startEvent.Drop()
-		bs.startEvent = nil
+	if bs.startDrawingEvent != nil {
+		bs.startDrawingEvent.Drop()
+		bs.startDrawingEvent = nil
 	}
 
 	bs.Delay.Schedule(delay, func() {
@@ -219,9 +228,9 @@ func (bs *ballSprite) resetPosition() {
 		// enclockifier works) but debugging information will be confusing if
 		// we did this.
 		bs.enclockifier.drop()
-		if bs.startEvent != nil {
-			bs.startEvent.Drop()
-			bs.startEvent = nil
+		if bs.startDrawingEvent != nil {
+			bs.startDrawingEvent.Drop()
+			bs.startDrawingEvent = nil
 		}
 
 		// the pixel at which the sprite has been reset, in relation to the
@@ -277,10 +286,19 @@ func (bs *ballSprite) resetPosition() {
 }
 
 func (bs *ballSprite) pixel() (bool, uint8) {
+	// the ball sprite pixel is drawn under specific conditions. see pixel()
+	// function in the missile sprite for a detail explanation.
+	px := bs.enclockifier.enable ||
+		(bs.stuffedTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.RemainingCycles == 0)
+
+	// I'm not sure if the above condition applies to both branches below
+	// (verticalDelay true/false) but I don't see why it shouldn't
+	// !!TODO: test px condition for vertical delay on/off in ball sprite
+
 	if bs.verticalDelay {
-		return bs.enabledDelay && bs.enclockifier.enable, bs.color
+		return bs.enabledDelay && px, bs.color
 	}
-	return bs.enabled && bs.enclockifier.enable, bs.color
+	return bs.enabled && px, bs.color
 }
 
 // the delayed enable bit is copied from the first when the gfx register for

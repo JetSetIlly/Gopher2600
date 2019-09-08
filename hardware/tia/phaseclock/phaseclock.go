@@ -81,7 +81,16 @@ func (clk PhaseClock) MachineInfo() string {
 
 // Sync two clocks to the same phase
 func (clk *PhaseClock) Sync(oclk PhaseClock) {
-	*clk = oclk
+	switch oclk {
+	case risingPhi1:
+		*clk = fallingPhi2
+	case fallingPhi1:
+		*clk = risingPhi1
+	case risingPhi2:
+		*clk = fallingPhi1
+	case fallingPhi2:
+		*clk = risingPhi2
+	}
 }
 
 // Align the phaseclock with the master clock by resetting to the rise of Phi1

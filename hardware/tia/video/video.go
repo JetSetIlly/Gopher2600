@@ -3,7 +3,7 @@ package video
 import (
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
@@ -84,6 +84,8 @@ func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	vd.Player0.otherPlayer = vd.Player1
 	vd.Player1.otherPlayer = vd.Player0
 
+	// connect ball to player 1 only - ball sprite's delayed enable set when
+	// gfx register of player 1 is written
 	vd.Player1.ball = vd.Ball
 
 	// connect missile sprite to its parent player sprite
@@ -204,12 +206,44 @@ func (vd *Video) Pixel() (uint8, uint8) {
 		vd.collisions.SetMemory(addresses.CXPPMM)
 	}
 
+	// apply priorities to get pixel color. the interaction of the priority and
+	// scoremode bits are a little more complex than at first glance:
+	//
+	//  o if the priority bit is set then priority ordering applies
+	//  o if it is not set but scoremode is set and we're in the left half of
+	//		the screen, then priority ordering also applies
+	//	o if priority bit is not set but scoremode is set and we're in the
+	//		right hand side of the screen then regular ordering applies, except
+	//		that playfield has priority over the ball
+	//	o phew
+	//
+	//	that scoremode reorders priory regardless of the priority bit is not at
+	//	all obvious but observation proves it to be true. see test.bin ROM
+	//
+	//	also the comment by "supercat" in the discussion "Playfield Score Mode
+	//	- effect on ball" on AtariAge proved useful here.
+	//
+	//	!!TODO: I'm still not 100% sure this is correct. check playfield
+	//	priorties
+	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.screenRegion == 1)
+
 	var col, dcol uint8
 
-	// apply priorities to get pixel color
-	if vd.Playfield.priority {
+	if priority {
 		if pfu { // priority 1
 			col = pfc
+
+			// we don't want score mode coloring if priority is on. we can see
+			// the effect of this on the top line of "Donkey Kong" on the intro
+			// screen of Dietrich's Donkey Kong.
+			if vd.Playfield.scoremode && !vd.Playfield.priority {
+				switch vd.Playfield.screenRegion {
+				case 1:
+					col = p0c
+				case 2:
+					col = p1c
+				}
+			}
 			dcol = debugColPlayfield
 		} else if blu {
 			col = blc
@@ -230,7 +264,6 @@ func (vd *Video) Pixel() (uint8, uint8) {
 			col = bgc
 			dcol = debugColBackground
 		}
-
 	} else {
 		if p0u { // priority 1
 			col = p0c
@@ -244,24 +277,35 @@ func (vd *Video) Pixel() (uint8, uint8) {
 		} else if m1u {
 			col = m1c
 			dcol = debugColMissile1
-		} else if blu { // priority 3
-			col = blc
-			dcol = debugColBall
-		} else if pfu {
-			if vd.Playfield.scoremode {
-				if vd.Playfield.screenRegion == 2 {
-					col = p1c
-				} else {
-					col = p0c
-				}
-			} else {
+		} else if vd.Playfield.scoremode && (blu || pfu) {
+			// priority 3 (scoremode without priority bit)
+			if pfu {
 				col = pfc
+				switch vd.Playfield.screenRegion {
+				case 1:
+					col = p0c
+				case 2:
+					col = p1c
+				}
+				dcol = debugColPlayfield
+			} else if blu { // priority 3
+				col = blc
+				dcol = debugColBall
 			}
-			dcol = debugColPlayfield
 		} else {
-			col = bgc
-			dcol = debugColBackground
+			// priority 3 (no scoremode or priority bit)
+			if blu { // priority 3
+				col = blc
+				dcol = debugColBall
+			} else if pfu {
+				col = pfc
+				dcol = debugColPlayfield
+			} else {
+				col = bgc
+				dcol = debugColBackground
+			}
 		}
+
 	}
 
 	// priority 4

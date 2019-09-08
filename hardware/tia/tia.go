@@ -5,7 +5,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/audio"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/hardware/tia/video"

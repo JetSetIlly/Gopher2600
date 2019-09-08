@@ -2,7 +2,7 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/delay/future"
+	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"strings"
 )

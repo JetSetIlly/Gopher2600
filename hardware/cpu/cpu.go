@@ -26,6 +26,10 @@ type CPU struct {
 	SP     *register.Register
 	Status StatusRegister
 
+	// some operations only need an accumulator
+	acc8  *register.Register
+	acc16 *register.Register
+
 	mem     memory.CPUBus
 	opCodes []*definitions.InstructionDefinition
 
@@ -68,6 +72,9 @@ func NewCPU(mem memory.CPUBus) (*CPU, error) {
 	mc.Y = register.NewRegister(0, 8, "Y", "Y")
 	mc.SP = register.NewRegister(0, 8, "SP", "SP")
 	mc.Status = NewStatusRegister("Status", "SR")
+
+	mc.acc8 = register.NewAnonRegister(0, 8)
+	mc.acc16 = register.NewAnonRegister(0, 16)
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()
 	if err != nil {
@@ -473,9 +480,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		result.InstructionData = indirectAddress
-		adder := register.NewAnonRegister(indirectAddress, 8)
-		adder.Add(mc.X, false)
-		address = adder.ToUint16()
+		mc.acc8.Load(indirectAddress)
+		mc.acc8.Add(mc.X, false)
+		address = mc.acc8.ToUint16()
 
 		// handle zero page index bug
 		if (uint16(indirectAddress)+mc.X.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
@@ -496,10 +503,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		if err != nil {
 			return nil, err
 		}
+
 		result.InstructionData = indirectAddress
-		adder := register.NewAnonRegister(indirectAddress, 8)
-		adder.Add(mc.Y, false)
-		address = adder.ToUint16()
+		mc.acc8.Load(indirectAddress)
+		mc.acc8.Add(mc.Y, false)
+		address = mc.acc8.ToUint16()
 
 		// handle zero page index bug
 		if (uint16(indirectAddress)+mc.Y.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
@@ -580,9 +588,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		// using 8bit addition because of the 6502's indirect addressing bug -
-		// we don't want indexed address to extend past the first page
-		adder := register.NewAnonRegister(mc.X, 8)
-		adder.Add(indirectAddress, false)
+		// we don't want indexed address t8 extend past the first page
+		mc.acc8.Load(mc.X)
+		mc.acc8.Add(indirectAddress, false)
 
 		// note whether indirect addressing / page boundary bug has occurred
 		if (uint16(indirectAddress)+mc.X.ToUint16())&0xff00 != uint16(indirectAddress)&0xff00 {
@@ -590,7 +598,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		// +2 cycles
-		address, err = mc.read16Bit(adder.ToUint16())
+		address, err = mc.read16Bit(mc.acc8.ToUint16())
 		if err != nil {
 			return nil, err
 		}
@@ -611,9 +619,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 			return nil, err
 		}
 
-		adder := register.NewAnonRegister(mc.Y, 16)
-		adder.Add(indexedAddress&0x00ff, false)
-		address = adder.ToUint16()
+		mc.acc16.Load(mc.Y)
+		mc.acc16.Add(indexedAddress&0x00ff, false)
+		address = mc.acc16.ToUint16()
 
 		// check for page fault
 		if defn.PageSensitive && (address&0xff00 == 0x0100) {
@@ -631,8 +639,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		// fix MSB of address
-		adder.Add(indexedAddress&0xff00, false)
-		address = adder.ToUint16()
+		mc.acc16.Add(indexedAddress&0xff00, false)
+		address = mc.acc16.ToUint16()
 
 	case definitions.AbsoluteIndexedX:
 		// +2 cycles
@@ -643,9 +651,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		result.InstructionData = indirectAddress
 
 		// add index to LSB of address
-		adder := register.NewAnonRegister(mc.X, 16)
-		adder.Add(indirectAddress&0x00ff, false)
-		address = adder.ToUint16()
+		mc.acc16.Load(mc.X)
+		mc.acc16.Add(indirectAddress&0x00ff, false)
+		address = mc.acc16.ToUint16()
 
 		// check for page fault
 		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
@@ -659,8 +667,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		// fix MSB of address
-		adder.Add(indirectAddress&0xff00, false)
-		address = adder.ToUint16()
+		mc.acc16.Add(indirectAddress&0xff00, false)
+		address = mc.acc16.ToUint16()
 
 	case definitions.AbsoluteIndexedY:
 		// +2 cycles
@@ -671,9 +679,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		result.InstructionData = indirectAddress
 
 		// add index to LSB of address
-		adder := register.NewAnonRegister(mc.Y, 16)
-		adder.Add(indirectAddress&0x00ff, false)
-		address = adder.ToUint16()
+		mc.acc16.Load(mc.Y)
+		mc.acc16.Add(indirectAddress&0x00ff, false)
+		address = mc.acc16.ToUint16()
 
 		// check for page fault
 		result.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
@@ -687,8 +695,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		}
 
 		// fix MSB of address
-		adder.Add(indirectAddress&0xff00, false)
-		address = adder.ToUint16()
+		mc.acc16.Add(indirectAddress&0xff00, false)
+		address = mc.acc16.ToUint16()
 
 	default:
 		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)
@@ -925,7 +933,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 	case "ASL":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r = register.NewAnonRegister(value, mc.A.Size())
+			r = mc.acc8
+			r.Load(value)
 		} else {
 			r = mc.A
 		}
@@ -937,7 +946,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 	case "LSR":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r = register.NewAnonRegister(value, mc.A.Size())
+			r = mc.acc8
+			r.Load(value)
 		} else {
 			r = mc.A
 		}
@@ -969,7 +979,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 	case "ROR":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r = register.NewAnonRegister(value, mc.A.Size())
+			r = mc.acc8
+			r.Load(value)
 		} else {
 			r = mc.A
 		}
@@ -981,7 +992,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 	case "ROL":
 		var r *register.Register
 		if defn.Effect == definitions.RMW {
-			r = register.NewAnonRegister(value, mc.A.Size())
+			r = mc.acc8
+			r.Load(value)
 		} else {
 			r = mc.A
 		}
@@ -991,21 +1003,24 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		value = r.ToUint8()
 
 	case "INC":
-		r := register.NewAnonRegister(value, 8)
+		r := mc.acc8
+		r.Load(value)
 		r.Add(1, false)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "DEC":
-		r := register.NewAnonRegister(value, 8)
+		r := mc.acc8
+		r.Load(value)
 		r.Add(255, false)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 		value = r.ToUint8()
 
 	case "CMP":
-		cmp := register.NewAnonRegister(mc.A, mc.A.Size())
+		cmp := mc.acc8
+		cmp.Load(mc.A)
 
 		// maybe surprisingly, CMP can be implemented with binary subtract even
 		// if decimal mode is active (the meaning is the same)
@@ -1014,19 +1029,22 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPX":
-		cmp := register.NewAnonRegister(mc.X, mc.X.Size())
+		cmp := mc.acc8
+		cmp.Load(mc.X)
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "CPY":
-		cmp := register.NewAnonRegister(mc.Y, mc.Y.Size())
+		cmp := mc.acc8
+		cmp.Load(mc.Y)
 		mc.Status.Carry, _ = cmp.Subtract(value, true)
 		mc.Status.Zero = cmp.IsZero()
 		mc.Status.Sign = cmp.IsNegative()
 
 	case "BIT":
-		cmp := register.NewAnonRegister(value, mc.A.Size())
+		cmp := mc.acc8
+		cmp.Load(value)
 		mc.Status.Sign = cmp.IsNegative()
 		mc.Status.Overflow = cmp.IsBitV()
 		cmp.AND(mc.A)
@@ -1271,7 +1289,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 	case "dcp":
 		// AND the contents of the A register with value...
 		// decrease value...
-		r := register.NewAnonRegister(value, 8)
+		r := mc.acc8
+		r.Load(value)
 		r.Add(255, false)
 		value = r.ToUint8()
 
@@ -1311,7 +1330,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		// the slo opcode starts off with an ASL operation
 		// all versions of this opcode are RMW so we always work with
 		// the anonymous register
-		r := register.NewAnonRegister(value, mc.A.Size())
+		r := mc.acc8
+		r.Load(value)
 		mc.Status.Carry = r.ASL()
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
