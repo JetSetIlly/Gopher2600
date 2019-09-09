@@ -32,15 +32,28 @@ type missileSprite struct {
 
 	// ^^^ the above are common to all sprite types ^^^
 
-	enabled            bool
-	color              uint8
-	size               uint8
-	copies             uint8
+	enabled bool
+	color   uint8
+
+	// for the missile sprite we split the NUSIZx register into size and copies
+	size   uint8
+	copies uint8
+
 	enclockifier       enclockifier
 	parentPlayer       *playerSprite
 	resetToPlayer      bool
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
+
+	// because resolution of latches is synchronous, we need to untangle
+	// reset and start events a little. the following boolean is true if a
+	// RESMx is encountered when a previous reset has yet to resolve. this
+	// doesn't happen very often but can happen if the opcode writing to the
+	// second RESMx is very quick (eg. zero page INC)
+	//
+	// we use this in the Tick() function below when deciding whether to start
+	// drawing a new copy of the sprite
+	resetPositionRestart bool
 
 	// stuffedTick notes whether the last tick was as a result of a HMOVE tick.
 	// see the pixel() function below for a fuller explanation.
@@ -88,9 +101,25 @@ func (ms missileSprite) String() string {
 	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
 	if ms.moreHMOVE {
-		s.WriteString("*]")
+		s.WriteString("*] ")
 	} else {
-		s.WriteString("]")
+		s.WriteString("] ")
+	}
+
+	// interpret nusiz value
+	switch ms.copies {
+	case 0x0:
+		s.WriteString("|")
+	case 0x1:
+		s.WriteString("|_|")
+	case 0x2:
+		s.WriteString("|__|")
+	case 0x3:
+		s.WriteString("|_|_|")
+	case 0x4:
+		s.WriteString("|___|")
+	case 0x6:
+		s.WriteString("|__|__|")
 	}
 
 	extra := false
@@ -118,7 +147,7 @@ func (ms missileSprite) String() string {
 		if extra {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw (%s)", ms.enclockifier.String()))
+		s.WriteString(fmt.Sprintf(" drw %s", ms.enclockifier.String()))
 		extra = true
 	}
 
@@ -127,6 +156,14 @@ func (ms missileSprite) String() string {
 			s.WriteString(",")
 		}
 		s.WriteString(" disb")
+		extra = true
+	}
+
+	if ms.resetToPlayer {
+		if extra {
+			s.WriteString(",")
+		}
+		s.WriteString(" >pl<")
 	}
 
 	return s.String()
@@ -161,7 +198,7 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	//
 	// note: the FSTOB output is the primary flag in the parent player's
 	// scancounter
-	if ms.resetToPlayer && ms.parentPlayer.scanCounter.primary && ms.parentPlayer.scanCounter.isMiddle() {
+	if ms.resetToPlayer && ms.parentPlayer.scanCounter.cpy == 0 && ms.parentPlayer.scanCounter.isMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
 	}
@@ -186,34 +223,58 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		if ms.pclk.Phi2() {
 			ms.position.Tick()
 
+			// start delay is always 4 cycles
 			const startDelay = 4
-			startEvent := func() {
+
+			// which copy of the sprite will we be drawing
+			cpy := 0
+
+			startDrawingEvent := func() {
 				ms.enclockifier.start()
+				ms.enclockifier.cpy = cpy
 				ms.startDrawingEvent = nil
 			}
+
+			// start drawing if there is no reset or it has just started AND
+			// there wasn't a reset event ongoing when the current event
+			// started
+			startCondition := ms.resetPositionEvent == nil ||
+				ms.resetPositionEvent.JustStarted() &&
+					!ms.resetPositionRestart
 
 			switch ms.position.Count {
 			case 3:
 				if ms.copies == 0x01 || ms.copies == 0x03 {
-					if ms.resetPositionEvent == nil {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					if startCondition {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						cpy = 1
 					}
 				}
 			case 7:
 				if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
-					if ms.resetPositionEvent == nil {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					if startCondition {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						if ms.copies == 0x03 {
+							cpy = 2
+						} else {
+							cpy = 1
+						}
 					}
 				}
 			case 15:
 				if ms.copies == 0x04 || ms.copies == 0x06 {
-					if ms.resetPositionEvent == nil {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+					if startCondition {
+						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						if ms.copies == 0x06 {
+							cpy = 2
+						} else {
+							cpy = 1
+						}
 					}
 				}
 			case 39:
-				if ms.resetPositionEvent == nil {
-					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startEvent, "START")
+				if startCondition {
+					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
 				}
 			case 40:
 				ms.position.Reset()
@@ -258,6 +319,19 @@ func (ms *missileSprite) resetPosition() {
 	ms.enclockifier.pause()
 	if ms.startDrawingEvent != nil {
 		ms.startDrawingEvent.Pause()
+	}
+
+	// stop any existing reset events (it is possible when using a very quick
+	// opcode on the reset register, like INC)
+	if ms.resetPositionEvent != nil {
+		ms.resetPositionEvent.Drop()
+
+		// we'll be starting a new reset event but because we're stopping an
+		// existing one, we want to note that we have, effectively restarted
+		// it
+		ms.resetPositionRestart = true
+	} else {
+		ms.resetPositionRestart = false
 	}
 
 	ms.resetPositionEvent = ms.Delay.Schedule(delay, func() {

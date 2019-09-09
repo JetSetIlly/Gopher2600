@@ -529,7 +529,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
-			if dbg.commandOnHalt == "" {
+			if dbg.commandOnStep == "" {
 				dbg.print(console.StyleFeedback, "auto-command on step: OFF")
 			} else {
 				dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)

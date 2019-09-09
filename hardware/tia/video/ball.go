@@ -32,13 +32,14 @@ type ballSprite struct {
 
 	// ^^^ the above are common to all sprite types ^^^
 
-	color             uint8
-	size              uint8
-	verticalDelay     bool
-	enabled           bool
-	enabledDelay      bool
-	enclockifier      enclockifier
-	startDrawingEvent *future.Event
+	color              uint8
+	size               uint8
+	verticalDelay      bool
+	enabled            bool
+	enabledDelay       bool
+	enclockifier       enclockifier
+	startDrawingEvent  *future.Event
+	resetPositionEvent *future.Event
 
 	// the stuffedTick boolean notes whether the last tick was as a result of a
 	// HMOVE tick. see the pixel() function in the missile sprite for a
@@ -114,7 +115,7 @@ func (bs ballSprite) String() string {
 		if extra {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw (%s)", bs.enclockifier.String()))
+		s.WriteString(fmt.Sprintf(" drw %s", bs.enclockifier.String()))
 		extra = true
 	}
 
@@ -221,7 +222,13 @@ func (bs *ballSprite) resetPosition() {
 		bs.startDrawingEvent = nil
 	}
 
-	bs.Delay.Schedule(delay, func() {
+	// stop any existing reset events (it is possible when using a very quick
+	// opcode on the reset register, like INC)
+	if bs.resetPositionEvent != nil {
+		bs.resetPositionEvent.Drop()
+	}
+
+	bs.resetPositionEvent = bs.Delay.Schedule(delay, func() {
 		// end drawing of sprite in case it has started during the delay
 		// period. believe it or not, we can get rid of this and pixel output
 		// will still be correct (because of how the delayed END signal in the
@@ -282,6 +289,8 @@ func (bs *ballSprite) resetPosition() {
 		// since you can trigger it as many times as you like across the same
 		// scanline and it will start drawing immediately each time :)
 		bs.enclockifier.start()
+
+		bs.resetPositionEvent = nil
 	}, "RESBL")
 }
 

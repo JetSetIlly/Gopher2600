@@ -14,9 +14,12 @@ import (
 // position/polycounter cycle, the scanCounter is started and is ticked forward
 // every cycle (subject to MOTCK, HMOVE and NUSIZ rules)
 type scanCounter struct {
-	primary bool
 	pixel   int
 	latches int
+
+	// which copy of the sprite is being drawn. value of zero means the primary
+	// copy is being drawn (if enable is true)
+	cpy int
 }
 
 const scanCounterStart int = 7
@@ -86,7 +89,7 @@ type playerSprite struct {
 	// control when the sprite events occur - taking into consideration sprite
 	// specific conditions
 	//
-	// note that setGfxData uses the TIA wide future instance
+	// note that setGfxData() uses the TIA wide future instance
 	Delay future.Ticker
 
 	// horizontal movement
@@ -137,8 +140,9 @@ type playerSprite struct {
 	// this wasn't clear to me originally but was crystal clear after reading
 	// Erik Mooney's post, "48-pixel highres routine explained!"
 	otherPlayer *playerSprite
-	missile     *missileSprite
 
+	// reference to ball sprite. only required by player1 sprite. see
+	// setGfxData() function below
 	ball *ballSprite
 
 	// a record of the delayed start drawing event. resets to nil once drawing
@@ -238,6 +242,11 @@ func (ps playerSprite) String() string {
 		}
 		s.WriteString(fmt.Sprintf(" drw (px %d)", ps.scanCounter.pixel))
 		extra = true
+
+		if ps.scanCounter.cpy > 0 {
+			s.WriteString(fmt.Sprintf(" +%d", ps.scanCounter.cpy))
+		}
+
 	} else if ps.scanCounter.isLatching() {
 		// add a comma if we've already noted something else
 		if extra {
@@ -356,16 +365,19 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 				// report as being the reset pixel.
 				const startDelay = 4
 
-				// it is useful to know if the sprite is outputting pixels of
-				// the primary copy of the sprite or the secondary/tertiary
-				// copies. this is used by the missile sprites when in
-				// reset-to-player mode
-				primary := false
+				// it is useful for debugging to know which copy of the sprite is
+				// currently being drawn. we'll update this value in the switch
+				// below, taking great care to note the value of ms.copies at each
+				// trigger point
+				//
+				// this is used by the missile sprites when in reset-to-player
+				// mode
+				cpy := 0
 
 				startDrawingEvent := func() {
 					ps.startDrawingEvent = nil
 					ps.scanCounter.start(ps.nusiz)
-					ps.scanCounter.primary = primary
+					ps.scanCounter.cpy = cpy
 				}
 
 				// "... The START decodes are ANDed with flags from the NUSIZ register
@@ -374,17 +386,27 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 				case 3:
 					if ps.nusiz == 0x01 || ps.nusiz == 0x03 {
 						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						cpy = 1
 					}
 				case 7:
 					if ps.nusiz == 0x03 || ps.nusiz == 0x02 || ps.nusiz == 0x06 {
 						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						if ps.nusiz == 0x03 {
+							cpy = 2
+						} else {
+							cpy = 1
+						}
 					}
 				case 15:
 					if ps.nusiz == 0x04 || ps.nusiz == 0x06 {
 						ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+						if ps.nusiz == 0x06 {
+							cpy = 2
+						} else {
+							cpy = 1
+						}
 					}
 				case 39:
-					primary = true
 					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
 
 				case 40:
@@ -449,6 +471,12 @@ func (ps *playerSprite) resetPosition() {
 	// to HMOVE)
 	if ps.startDrawingEvent != nil && ps.startDrawingEvent.RemainingCycles > 0 {
 		ps.startDrawingEvent.Pause()
+	}
+
+	// stop any existing reset events (it is possible when using a very quick
+	// opcode on the reset register, like INC)
+	if ps.resetPositionEvent != nil {
+		ps.resetPositionEvent.Drop()
 	}
 
 	ps.resetPositionEvent = ps.Delay.Schedule(delay, func() {
@@ -550,7 +578,7 @@ func (ps *playerSprite) setGfxData(data uint8) {
 	ps.gfxDataNew = data
 
 	// if player sprite is connected to the ball sprite then update the delayed
-	// output for the ball
+	// output for the ball. only used by player1 sprite.
 	if ps.ball != nil {
 		ps.ball.setEnableDelay()
 	}

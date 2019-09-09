@@ -93,3 +93,8 @@ func (ev *Event) Restart() {
 func (ev Event) Completed() bool {
 	return ev.completed
 }
+
+// JustStarted is true if no Tick()ing has taken place yet
+func (ev Event) JustStarted() bool {
+	return ev.RemainingCycles == ev.InitialCycles
+}

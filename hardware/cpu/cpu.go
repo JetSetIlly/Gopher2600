@@ -1347,13 +1347,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == definitions.RMW {
-		// +1 cycle
-		err = mc.endCycle()
+		err = mc.write8Bit(address, value)
 		if err != nil {
 			return nil, err
 		}
 
-		err = mc.write8Bit(address, value)
+		// +1 cycle
+		err = mc.endCycle()
 		if err != nil {
 			return nil, err
 		}

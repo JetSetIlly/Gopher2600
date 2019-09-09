@@ -32,13 +32,25 @@ type enclockifier struct {
 	enable     bool
 	secondHalf bool
 	endEvent   *future.Event
+
+	// which copy of the sprite is being drawn (ball sprite only ever has one
+	// copy). value of zero means the primary copy is being drawn (if enable is
+	// true)
+	cpy int
 }
 
 func (en *enclockifier) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("remaining %d", en.endEvent.RemainingCycles))
-	if en.secondHalf {
-		s.WriteString("/2nd")
+	if en.enable {
+		if en.cpy > 0 {
+			s.WriteString(fmt.Sprintf("+%d", en.cpy))
+		}
+
+		s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles))
+		if en.secondHalf {
+			s.WriteString("/2nd")
+		}
+		s.WriteString(")")
 	}
 	return s.String()
 }
@@ -60,13 +72,12 @@ func (en *enclockifier) force() {
 	}
 }
 
+// pause end event. there's no need for a corresponding resume() function
 func (en *enclockifier) pause() {
 	if en.endEvent != nil {
 		en.endEvent.Pause()
 	}
 }
-
-// there's no need for a corresponding resume() function
 
 func (en *enclockifier) start() {
 	en.enable = true
