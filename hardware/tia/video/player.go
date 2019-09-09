@@ -351,7 +351,7 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			//
 			// rules discovered through observation (games that do bad things
 			// to HMOVE)
-			if ps.resetPositionEvent == nil || ps.resetPositionEvent.RemainingCycles > 3 {
+			if ps.resetPositionEvent == nil || ps.resetPositionEvent.JustStarted() {
 				// startDrawingEvent is delayed by 5 ticks. from TIA_HW_Notes.txt:
 				//
 				// "Each START decode is delayed by 4 CLK in decoding, plus a

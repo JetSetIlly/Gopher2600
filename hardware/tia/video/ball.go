@@ -85,7 +85,7 @@ func (bs ballSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", bs.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
-	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))
 	if bs.moreHMOVE {
 		s.WriteString("*]")

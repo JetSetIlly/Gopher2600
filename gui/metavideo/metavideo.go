@@ -14,4 +14,8 @@ type MetaSignalAttributes struct {
 	// Renderer implementations are free to use the color information
 	// as they wish (adding alpha information seems a probable scenario).
 	Red, Green, Blue, Alpha byte
+
+	// whether the meta-signal is one that is "instant" or resolves after a
+	// short scheduled delay
+	Scheduled bool
 }

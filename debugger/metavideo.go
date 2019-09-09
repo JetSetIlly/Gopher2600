@@ -37,33 +37,33 @@ func newMetavideoMonitor(vcs *hardware.VCS, renderer metavideo.Renderer) *metavi
 	mon := &metavideoMonitor{VCS: vcs, Renderer: renderer}
 
 	mon.groupTIA.addresses = metaSignals{
-		0x03: metavideo.MetaSignalAttributes{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255},
-		0x2a: metavideo.MetaSignalAttributes{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255},
-		0x2b: metavideo.MetaSignalAttributes{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255},
+		0x03: metavideo.MetaSignalAttributes{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2a: metavideo.MetaSignalAttributes{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2b: metavideo.MetaSignalAttributes{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255, Scheduled: false},
 	}
 
 	mon.groupPlayer0.addresses = metaSignals{
-		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZ0", Red: 0, Green: 10, Blue: 255, Alpha: 255},
-		0x10: metavideo.MetaSignalAttributes{Label: "RESP0", Red: 0, Green: 30, Blue: 255, Alpha: 255},
+		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255, Scheduled: true},
+		0x10: metavideo.MetaSignalAttributes{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupPlayer1.addresses = metaSignals{
-		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZ1", Red: 0, Green: 50, Blue: 255, Alpha: 255},
-		0x11: metavideo.MetaSignalAttributes{Label: "RESP0", Red: 0, Green: 70, Blue: 255, Alpha: 255},
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: true},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile0.addresses = metaSignals{
-		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZ0", Red: 0, Green: 50, Blue: 255, Alpha: 255},
-		0x11: metavideo.MetaSignalAttributes{Label: "RESM0", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+		0x04: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: false},
+		0x11: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile1.addresses = metaSignals{
-		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZ1", Red: 0, Green: 50, Blue: 0, Alpha: 255},
-		0x12: metavideo.MetaSignalAttributes{Label: "RESM1", Red: 0, Green: 70, Blue: 0, Alpha: 255},
+		0x05: metavideo.MetaSignalAttributes{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255, Scheduled: false},
+		0x12: metavideo.MetaSignalAttributes{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupBall.addresses = metaSignals{
-		0x14: metavideo.MetaSignalAttributes{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255},
+		0x14: metavideo.MetaSignalAttributes{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255, Scheduled: true},
 	}
 
 	return mon
@@ -82,10 +82,7 @@ type metavideoGroup struct {
 	// interested in seeing
 	lastAddress          uint16
 	lastAddressTimestamp time.Time
-
-	// when the CPU has written to a memory location other parts of the VCS
-	// will not necessarily see the new value until sometime later.
-	writeDelay int
+	lastAddressFound     int
 
 	// if the memory write resulted in an effect that won't occur until
 	// sometime in the future then the Delay attribute for the part of the
@@ -149,55 +146,44 @@ func (mon *metavideoMonitor) checkGroup(group *metavideoGroup, delay future.Obse
 	//
 	// we filter on LastAccessTimeStamp rather than LastAccessAddress.
 	// filtering by address will probably work in most instances but it won't
-	// capture repeated writes to the same memory location. timestamp in that
-	// sense, is unique
+	// capture repeated writes to the same memory location.
 	if mon.VCS.Mem.LastAccessWrite && mon.VCS.Mem.LastAccessTimeStamp != group.lastAddressTimestamp {
 		group.lastAddress = mon.VCS.Mem.LastAccessAddress
 		group.lastAddressTimestamp = mon.VCS.Mem.LastAccessTimeStamp
 
-		// when the CPU has written to a memory location the TIA will not see
-		// the new value until sometime later. the delay makes sure the
-		// metavideo subsystem sees it at the same time
-		//
-		// * this is affected by when the call to TIA.ReadMemory() is made
-		group.writeDelay = 3
+		// 4 cycles seems plenty of time for an address to be serviced
+		group.lastAddressFound = 4
 	}
 
-	// when delay reaches 0 check to see if last address written is an address
-	// being monitored by the group
-	//
-	// we wait until now to check if address is of interest because we don't
-	// want to interfere (until as late as possible) any existing events that
-	// may be in the middle of a MetaSignal sequence
-	if group.writeDelay == 1 {
-		if sig, ok := group.addresses[group.lastAddress]; ok {
-			group.signal = sig
+	var signalStart bool
+	var sig metavideo.MetaSignalAttributes
 
-			// associate memory write with delay observation
-			var ok bool
-			if group.lastEvent, ok = delay.Observe(sig.Label); !ok {
+	if group.lastAddressFound > 0 {
+		if sig, signalStart = group.addresses[group.lastAddress]; signalStart {
+			if sig.Scheduled {
+				// associate memory write with delay observation
+				if ev, ok := delay.Observe(sig.Label); ok {
+					group.lastEvent = ev
+					group.signal = sig
+					group.lastAddressFound = 1 // reduced to 0 almost immediately
+				}
+			} else {
 				group.lastEvent = nil
+				group.signal = sig
+				group.lastAddressFound = 1 // reduced to 0 almost immediately
 			}
-		} else {
-			group.writeDelay = 0
 		}
-
+		group.lastAddressFound--
 	}
 
 	// send metasignal if an event is still running or if this is the end of a
 	// writeDelay period. the second condition catches memory writes that do
 	// not have an associated future.Event
-	if (group.lastEvent != nil && !group.lastEvent.Completed()) || group.writeDelay == 1 {
+	if (group.lastEvent != nil && !group.lastEvent.Completed()) || signalStart {
 		err := mon.Renderer.MetaSignal(group.signal)
 		if err != nil {
 			return err
 		}
-	}
-
-	// count down write delay period. doing this after sending of metasignal so
-	// that we don't clobber writeDelay too early
-	if group.writeDelay >= 0 {
-		group.writeDelay--
 	}
 
 	return nil

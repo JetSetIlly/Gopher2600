@@ -88,8 +88,9 @@ func (tia TIA) String() string {
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 
-	// NOTE: TIA_HW_Notes also includes playfield and control information.
-	// we're choosing not to include that information here
+	if tia.hmoveCt >= 0 {
+		s.WriteString(fmt.Sprintf(" hm=%04b", tia.hmoveCt))
+	}
 
 	return s.String()
 }
@@ -443,7 +444,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// if this was tick where we sent a hmove clock then we need to also
 	// update the HMOVE counter.
-	if hmoveck {
+	if tia.pclk.Phi1() {
 		if tia.hmoveCt >= 0 {
 			tia.hmoveCt--
 		}

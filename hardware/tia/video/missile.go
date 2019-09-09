@@ -53,6 +53,9 @@ type missileSprite struct {
 	//
 	// we use this in the Tick() function below when deciding whether to start
 	// drawing a new copy of the sprite
+	//
+	// note that I'm pretty sure that this mechanism is only needed by the
+	// missile sprite.
 	resetPositionRestart bool
 
 	// stuffedTick notes whether the last tick was as a result of a HMOVE tick.
@@ -98,7 +101,7 @@ func (ms missileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s: ", ms.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
-	s.WriteString(fmt.Sprintf("> %d >", normalisedHmove))
+	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
 	if ms.moreHMOVE {
 		s.WriteString("*] ")
@@ -139,6 +142,7 @@ func (ms missileSprite) String() string {
 
 	if ms.moreHMOVE {
 		s.WriteString(" hmoving")
+		s.WriteString(fmt.Sprintf(" [%04b]", ms.hmove))
 		extra = true
 	}
 
