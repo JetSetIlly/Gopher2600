@@ -444,7 +444,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// if this was tick where we sent a hmove clock then we need to also
 	// update the HMOVE counter.
-	if tia.pclk.Phi1() {
+	if hmoveck {
 		if tia.hmoveCt >= 0 {
 			tia.hmoveCt--
 		}

@@ -8,6 +8,14 @@ import (
 	"strings"
 )
 
+type screenRegion int
+
+const (
+	regionOffScreen screenRegion = iota
+	regionLeft
+	regionRight
+)
+
 type playfield struct {
 	pclk  *phaseclock.PhaseClock
 	hsync *polycounter.Polycounter
@@ -33,11 +41,8 @@ type playfield struct {
 	priority  bool
 	scoremode bool
 
-	// screenRegion keeps track of which part of the screen we're currently in
-	//  0 -> hblank
-	//  1 -> left half of screen
-	//  2 -> right half of screen
-	screenRegion int
+	// region keeps track of which part of the screen we're currently in
+	region screenRegion
 
 	// idx is the index into the data field - interpreted depending on
 	// screenRegion and reflection settings
@@ -96,12 +101,12 @@ func (pf playfield) MachineInfo() string {
 	// prepare a line to point to the current playfield bit; or a suitable
 	// message to indcate no playfield output
 	idxPointer := ""
-	switch pf.screenRegion {
-	case 0:
+	switch pf.region {
+	case regionOffScreen:
 		idxPointer = "no playfield during hblank period"
-	case 1:
+	case regionLeft:
 		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx))
-	case 2:
+	case regionRight:
 		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx+len(pf.data)))
 	}
 
@@ -146,13 +151,13 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// correct screen region.
 		if pf.hsync.Count >= 37 {
 			// just past the centre of the visible screen
-			pf.screenRegion = 2
+			pf.region = regionRight
 		} else if pf.hsync.Count >= 17 {
 			// start of visible screen (playfield not affected by HMOVE)
-			pf.screenRegion = 1
+			pf.region = regionLeft
 		} else {
 			// start of scanline
-			pf.screenRegion = 0
+			pf.region = regionOffScreen
 		}
 
 		// this switch statement is based on the "Horizontal Sync Counter"
@@ -160,21 +165,23 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// colorclock (tia) delay but simply looking for the hsync.Count 4
 		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
 		// document.  we believe this has the same effect.
-		switch pf.screenRegion {
+		switch pf.region {
 		case 0:
 			pf.idx = pf.hsync.Count
+			pf.currentPixelIsOn = false
 		case 1:
 			pf.idx = pf.hsync.Count - 17
+			newPixel = true
 		case 2:
 			pf.idx = pf.hsync.Count - 37
+			newPixel = true
 		}
-		newPixel = true
 	}
 
 	// pixel returns the color of the playfield at the current time.
 	// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
-	if newPixel && pf.screenRegion != 0 {
-		if pf.screenRegion == 1 || !pf.reflected {
+	if newPixel && pf.region != regionOffScreen {
+		if pf.region == regionLeft || !pf.reflected {
 			// normal, non-reflected playfield
 			pf.currentPixelIsOn = pf.data[pf.idx]
 		} else {

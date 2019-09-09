@@ -123,7 +123,7 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	m1u, m1c := vd.Missile1.pixel()
 	blu, blc := vd.Ball.pixel()
 
-	// collisions
+	// collision detection only occurs on the visible screen
 	if m0u && p1u {
 		vd.collisions.cxm0p |= 0x80
 		vd.collisions.SetMemory(addresses.CXM0P)
@@ -212,7 +212,7 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield
 	//	priorties
-	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.screenRegion == 1)
+	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft)
 
 	var col, dcol uint8
 
@@ -224,10 +224,10 @@ func (vd *Video) Pixel() (uint8, uint8) {
 			// the effect of this on the top line of "Donkey Kong" on the intro
 			// screen of Dietrich's Donkey Kong.
 			if vd.Playfield.scoremode && !vd.Playfield.priority {
-				switch vd.Playfield.screenRegion {
-				case 1:
+				switch vd.Playfield.region {
+				case regionLeft:
 					col = p0c
-				case 2:
+				case regionRight:
 					col = p1c
 				}
 			}
@@ -268,10 +268,10 @@ func (vd *Video) Pixel() (uint8, uint8) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
 				col = pfc
-				switch vd.Playfield.screenRegion {
-				case 1:
+				switch vd.Playfield.region {
+				case regionLeft:
 					col = p0c
-				case 2:
+				case regionRight:
 					col = p1c
 				}
 				dcol = television.AltColPlayfield
