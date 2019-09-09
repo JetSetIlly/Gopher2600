@@ -25,19 +25,6 @@ type Video struct {
 	Ball     *ballSprite
 }
 
-// colors to use for debugging - these are the same colours used by the Stella
-// emulator
-// !!TODO: these value are only good for the NTSC palette. fix for PAL palette
-const (
-	debugColBackground = uint8(0x02) // light gray
-	debugColBall       = uint8(0xb4) // cyan
-	debugColPlayfield  = uint8(0x62) // purple
-	debugColPlayer0    = uint8(0x32) // red
-	debugColPlayer1    = uint8(0x12) // gold
-	debugColMissile0   = uint8(0xf2) // orange
-	debugColMissile1   = uint8(0xd2) // green
-)
-
 // NewVideo is the preferred method of initialisation for the Video structure
 //
 // the playfield and sprite objects have access to both pclk and hsync.
@@ -244,39 +231,39 @@ func (vd *Video) Pixel() (uint8, uint8) {
 					col = p1c
 				}
 			}
-			dcol = debugColPlayfield
+			dcol = television.AltColPlayfield
 		} else if blu {
 			col = blc
-			dcol = debugColBall
+			dcol = television.AltColBall
 		} else if p0u { // priority 2
 			col = p0c
-			dcol = debugColPlayer0
+			dcol = television.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			dcol = debugColMissile0
+			dcol = television.AltColMissile0
 		} else if p1u { // priority 3
 			col = p1c
-			dcol = debugColPlayer1
+			dcol = television.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			dcol = debugColMissile1
+			dcol = television.AltColMissile1
 		} else {
 			col = bgc
-			dcol = debugColBackground
+			dcol = television.AltColBackground
 		}
 	} else {
 		if p0u { // priority 1
 			col = p0c
-			dcol = debugColPlayer0
+			dcol = television.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			dcol = debugColMissile0
+			dcol = television.AltColMissile0
 		} else if p1u { // priority 2
 			col = p1c
-			dcol = debugColPlayer1
+			dcol = television.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			dcol = debugColMissile1
+			dcol = television.AltColMissile1
 		} else if vd.Playfield.scoremode && (blu || pfu) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
@@ -287,22 +274,22 @@ func (vd *Video) Pixel() (uint8, uint8) {
 				case 2:
 					col = p1c
 				}
-				dcol = debugColPlayfield
+				dcol = television.AltColPlayfield
 			} else if blu { // priority 3
 				col = blc
-				dcol = debugColBall
+				dcol = television.AltColBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
 			if blu { // priority 3
 				col = blc
-				dcol = debugColBall
+				dcol = television.AltColBall
 			} else if pfu {
 				col = pfc
-				dcol = debugColPlayfield
+				dcol = television.AltColPlayfield
 			} else {
 				col = bgc
-				dcol = debugColBackground
+				dcol = television.AltColBackground
 			}
 		}
 

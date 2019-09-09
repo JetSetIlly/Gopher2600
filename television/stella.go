@@ -299,7 +299,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	}
 
 	// decode color using the alternative color signal
-	red, green, blue = getColor(btv.spec, sig.AltPixel)
+	red, green, blue = getAltColor(sig.AltPixel)
 	for f := range btv.renderers {
 		err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
 		if err != nil {

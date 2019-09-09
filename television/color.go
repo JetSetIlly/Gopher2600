@@ -26,6 +26,7 @@ type colors []color
 // the entire palette is made up of many colors
 var colorsNTSC = colors{}
 var colorsPAL = colors{}
+var colorsAlt = colors{}
 
 // the VideoBlack signal results in the following color
 var videoBlack = color{0, 0, 0}
@@ -71,6 +72,24 @@ var colorsPALRaw = []uint32{
 	0x000000, 0x000000, 0x282828, 0x282828, 0x505050, 0x505050, 0x747474, 0x747474, 0x949494, 0x949494, 0xb4b4b4, 0xb4b4b4, 0xd0d0d0, 0xd0d0d0, 0xececec, 0xececec,
 }
 
+// colors used when alternative colors are selected. these colors mirror the
+// so called debug colors used by the Stella emulator
+var colorsAltRaw = []uint32{
+	0x333333, 0x84c8fc, 0x9246c0, 0x901c00, 0xe8e84a, 0xd5824a, 0x328432,
+}
+
+// as used in Stella, the colors above are used as below. note that using a
+// alt pixel ColorSignal not in the following list may result in a panic
+const (
+	AltColBackground = iota
+	AltColBall
+	AltColPlayfield
+	AltColPlayer0
+	AltColPlayer1
+	AltColMissile0
+	AltColMissile1
+)
+
 func init() {
 	for i := range colorsNTSCRaw {
 		col := colorsNTSCRaw[i]
@@ -83,6 +102,12 @@ func init() {
 		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 		colorsPAL = append(colorsPAL, color{red, green, blue})
 	}
+
+	for i := range colorsAltRaw {
+		col := colorsAltRaw[i]
+		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
+		colorsAlt = append(colorsAlt, color{red, green, blue})
+	}
 }
 
 // getColor translates a color signal to the individual color components
@@ -91,5 +116,19 @@ func getColor(spec *Specification, sig ColorSignal) (byte, byte, byte) {
 		return videoBlack[red], videoBlack[green], videoBlack[blue]
 	}
 	col := spec.Colors[sig]
+	return col[red], col[green], col[blue]
+}
+
+// getColor translates a color signal to the individual color components
+func getAltColor(sig ColorSignal) (byte, byte, byte) {
+	if sig == VideoBlack {
+		return videoBlack[red], videoBlack[green], videoBlack[blue]
+	}
+
+	if int(sig) >= len(colorsAlt) {
+		panic("alt color signal too big")
+	}
+
+	col := colorsAlt[sig]
 	return col[red], col[green], col[blue]
 }
