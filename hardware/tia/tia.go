@@ -151,8 +151,8 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 
 		// from TIA_HW_Notes.txt:
 		//
-		// "A full H@1-H@2 cycle after RSYNC is strobed, the
-		// HSync counter is also reset to 000000 and HBlank is turned on."
+		// "A full H@1-H@2 cycle after RSYNC is strobed, the HSync counter is
+		// also reset to 000000 and HBlank is turned on."
 
 		// the explanation as provided by TIA_HW_Notes was only of limited use.
 		// the following delays were revealed by observation of Stella and how
@@ -191,45 +191,51 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 		return
 
 	case "HMOVE":
-		// from TIA_HW_Notes.txt:
-		//
-		// "It takes 3 CLK after the HMOVE command is received to decode the
-		// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
-		// a further 4 CLK to set 'more movement required' latches."
-		//
-		var delay int
-
-		// delay is slighty different depending on which clock phase the reset
-		// is scheduled on. I don't know why this is.
-		switch tia.pclk.Count() {
-		case 0:
+		tia.hmoveEvent = tia.Delay.Schedule(4, func() {
 			// from TIA_HW_Notes.txt:
 			//
-			// "Also of note, the HMOVE latch used to extend the HBlank time is
-			// cleared when the HSync Counter wraps around. This fact is exploited
-			// by the trick that invloves hitting HMOVE on the 74th CPU cycle of
-			// the scanline; the CLK stuffing will still take place during th
-			// HBlank and the HSYNC latch will be set just before the counter wraps
-			// around. It will then be cleared again immediately (and therefore
-			// ignored) when the counter wraps, preventing the HMOVE comb effect."
+			// "It takes 3 CLK after the HMOVE command is received to decode the
+			// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
+			// a further 4 CLK to set 'more movement required' latches."
 			//
-			// for the above to work correctly it's important that we get the
-			// delay correct for pclk.Count() == 0
-			delay = 8
-		case 1:
-			delay = 7
-		case 2:
-			delay = 7
-		case 3:
-			delay = 6
-		}
+			// make of that what you will but the delay values below have been
+			// reached through observation of key test roms
+			var delay int
 
-		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-			tia.Video.PrepareSpritesForHMOVE()
+			// delay is slighty different depending on which clock phase the reset
+			// is scheduled on. I don't know why this is.
+			switch tia.pclk.Count() {
+			case 0:
+				delay = 2
+			case 1:
+				// from TIA_HW_Notes.txt:
+				//
+				// "Also of note, the HMOVE latch used to extend the HBlank time is
+				// cleared when the HSync Counter wraps around. This fact is
+				// exploited by the trick that invloves hitting HMOVE on the 74th
+				// CPU cycle of the scanline; the CLK stuffing will still take
+				// place during the HBlank and the HSYNC latch will be set just
+				// before the counter wraps around. It will then be cleared again
+				// immediately (and therefore ignored) when the counter wraps,
+				// preventing the HMOVE comb effect."
+				//
+				// for the above to work correctly it's important that we get the
+				// delay correct for pclk.Count() == 1
+				delay = 4
+			case 2:
+				delay = 3
+			case 3:
+				delay = 3
+			}
+
+			tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
+				tia.Video.PrepareSpritesForHMOVE()
+				tia.hmoveCt = 15
+				tia.hmoveEvent = nil
+			}, "HMOVE")
+
 			tia.hmoveLatch = true
-			tia.hmoveCt = 15
-			tia.hmoveEvent = nil
-		}, "HMOVE")
+		}, "HMOVE Latch")
 		return
 	}
 }
@@ -395,7 +401,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
-			if !tia.hmoveLatch && (tia.hmoveEvent == nil || tia.hmoveEvent.RemainingCycles >= hsyncDelay) {
+			if !tia.hmoveLatch {
 				tia.Delay.Schedule(hsyncDelay, func() {
 					tia.hblank = false
 				}, "HRB")
