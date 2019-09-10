@@ -469,14 +469,17 @@ func (ps *playerSprite) resetPosition() {
 	//
 	// rules discovered through observation (games that do bad things
 	// to HMOVE)
-	if ps.startDrawingEvent != nil && ps.startDrawingEvent.RemainingCycles > 0 {
+	if ps.startDrawingEvent != nil && !ps.startDrawingEvent.AboutToEnd() {
 		ps.startDrawingEvent.Pause()
 	}
 
-	// stop any existing reset events (it is possible when using a very quick
-	// opcode on the reset register, like INC)
+	// stop any existing reset events. generally, this codepath will not apply
+	// because a resetPositionEvent will conculde before being triggere again.
+	// but it is possible when using a very quick opcode on the reset register,
+	// like a zero page INC, for requests to overlap
 	if ps.resetPositionEvent != nil {
-		ps.resetPositionEvent.Drop()
+		ps.resetPositionEvent.Push()
+		return
 	}
 
 	ps.resetPositionEvent = ps.Delay.Schedule(delay, func() {
@@ -527,7 +530,7 @@ func (ps *playerSprite) resetPosition() {
 		// rules discovered through observation (games that do bad things
 		// to HMOVE)
 		if ps.startDrawingEvent != nil {
-			if ps.startDrawingEvent.RemainingCycles != ps.startDrawingEvent.InitialCycles {
+			if !ps.startDrawingEvent.JustStarted() {
 				ps.startDrawingEvent.Force()
 			} else {
 				ps.startDrawingEvent.Drop()
@@ -632,6 +635,9 @@ func (ps *playerSprite) setReflection(value bool) {
 	// the player, for example this might be used to draw bits 01233210."
 	ps.reflected = value
 }
+
+// !!TODO: the setNUSIZ() function needs untangling. I reckon with a bit of
+// reordering we can simplify it quite a bit
 
 func (ps *playerSprite) setNUSIZ(value uint8) {
 	// from TIA_HW_Notes.txt:

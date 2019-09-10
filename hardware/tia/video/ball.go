@@ -222,10 +222,13 @@ func (bs *ballSprite) resetPosition() {
 		bs.startDrawingEvent = nil
 	}
 
-	// stop any existing reset events (it is possible when using a very quick
-	// opcode on the reset register, like INC)
+	// stop any existing reset events. generally, this codepath will not apply
+	// because a resetPositionEvent will conculde before being triggere again.
+	// but it is possible when using a very quick opcode on the reset register,
+	// like a zero page INC, for requests to overlap
 	if bs.resetPositionEvent != nil {
-		bs.resetPositionEvent.Drop()
+		bs.resetPositionEvent.Push()
+		return
 	}
 
 	bs.resetPositionEvent = bs.Delay.Schedule(delay, func() {
@@ -298,7 +301,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// the ball sprite pixel is drawn under specific conditions. see pixel()
 	// function in the missile sprite for a detail explanation.
 	px := bs.enclockifier.enable ||
-		(bs.stuffedTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.RemainingCycles == 0)
+		(bs.stuffedTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
 	// I'm not sure if the above condition applies to both branches below
 	// (verticalDelay true/false) but I don't see why it shouldn't

@@ -23,6 +23,9 @@ type Event struct {
 	paused    bool
 	completed bool
 
+	// completion of the event has been pushed back at least once
+	pushed bool
+
 	// the value that is to be the result of the pending action
 	payload func()
 }
@@ -72,6 +75,16 @@ func (ev *Event) Drop() {
 	ev.completed = true
 }
 
+// Push back event completion by effectively restarting the event. generally,
+// an event will never need to be pushed back because it will have completed
+// before an equivalent event is triggered. But sometimes, a second trigger
+// will occur very quickly and it is more convenient to push, instead of
+// droping and starting a new event.
+func (ev *Event) Push() {
+	ev.RemainingCycles = ev.InitialCycles
+	ev.pushed = true
+}
+
 // Pause prevents the event from ticking any further until Resume or Restart is
 // called
 func (ev *Event) Pause() {
@@ -96,5 +109,10 @@ func (ev Event) Completed() bool {
 
 // JustStarted is true if no Tick()ing has taken place yet
 func (ev Event) JustStarted() bool {
-	return ev.RemainingCycles == ev.InitialCycles
+	return ev.RemainingCycles == ev.InitialCycles && !ev.pushed
+}
+
+// AboutToEnd is true if event resolves on next Tick()
+func (ev Event) AboutToEnd() bool {
+	return ev.RemainingCycles == 0
 }

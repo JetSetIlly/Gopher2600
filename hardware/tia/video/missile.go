@@ -45,19 +45,6 @@ type missileSprite struct {
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 
-	// because resolution of latches is synchronous, we need to untangle
-	// reset and start events a little. the following boolean is true if a
-	// RESMx is encountered when a previous reset has yet to resolve. this
-	// doesn't happen very often but can happen if the opcode writing to the
-	// second RESMx is very quick (eg. zero page INC)
-	//
-	// we use this in the Tick() function below when deciding whether to start
-	// drawing a new copy of the sprite
-	//
-	// note that I'm pretty sure that this mechanism is only needed by the
-	// missile sprite.
-	resetPositionRestart bool
-
 	// stuffedTick notes whether the last tick was as a result of a HMOVE tick.
 	// see the pixel() function below for a fuller explanation.
 	stuffedTick bool
@@ -244,9 +231,7 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			// start drawing if there is no reset or it has just started AND
 			// there wasn't a reset event ongoing when the current event
 			// started
-			startCondition := ms.resetPositionEvent == nil ||
-				ms.resetPositionEvent.JustStarted() &&
-					!ms.resetPositionRestart
+			startCondition := ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted()
 
 			switch ms.position.Count {
 			case 3:
@@ -327,17 +312,16 @@ func (ms *missileSprite) resetPosition() {
 		ms.startDrawingEvent.Pause()
 	}
 
-	// stop any existing reset events (it is possible when using a very quick
-	// opcode on the reset register, like INC)
+	// stop any existing reset events. generally, this codepath will not apply
+	// because a resetPositionEvent will conculde before being triggere again.
+	// but it is possible when using a very quick opcode on the reset register,
+	// like a zero page INC, for requests to overlap
+	//
+	// in the case of the missile sprite, we can see such an occurance in the
+	// test.bin test ROM
 	if ms.resetPositionEvent != nil {
-		ms.resetPositionEvent.Drop()
-
-		// we'll be starting a new reset event but because we're stopping an
-		// existing one, we want to note that we have, effectively restarted
-		// it
-		ms.resetPositionRestart = true
-	} else {
-		ms.resetPositionRestart = false
+		ms.resetPositionEvent.Push()
+		return
 	}
 
 	ms.resetPositionEvent = ms.Delay.Schedule(delay, func() {
@@ -396,7 +380,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// in short, the following condition implements the Cosmic Ark starfield.
 	px := !ms.resetToPlayer &&
 		(ms.enclockifier.enable ||
-			(ms.stuffedTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.RemainingCycles == 0))
+			(ms.stuffedTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()))
 
 	return ms.enabled && px, ms.color
 }
