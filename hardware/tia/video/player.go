@@ -599,32 +599,6 @@ func (ps *playerSprite) setVerticalDelay(vdelay bool) {
 	ps.verticalDelay = vdelay
 }
 
-func (ps *playerSprite) setHmoveValue(value uint8, clearing bool) {
-	// horizontal movement values range from -8 to +7 for convenience we
-	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
-	//
-	// "You may have noticed that the [...] discussion ignores the
-	// fact that HMxx values are specified in the range +7 to -8.
-	// In an odd twist, this was done purely for the convenience
-	// of the programmer! The comparator for D7 in each HMxx latch
-	// is wired up in reverse, costing nothing in silicon and
-	// effectively inverting this bit so that the value can be
-	// treated as a simple 0-15 count for movement left. It might
-	// be easier to think of this as having D7 inverted when it
-	// is stored in the first place."
-
-	// see missile sprite for commentary about delay
-
-	msg := "HMPx"
-	if clearing {
-		msg = "HMCLR"
-	}
-
-	ps.Delay.Schedule(1, func() {
-		ps.hmove = (value ^ 0x80) >> 4
-	}, msg)
-}
-
 func (ps *playerSprite) setReflection(value bool) {
 	// from TIA_HW_Notes.txt:
 	//
@@ -716,4 +690,33 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 func (ps *playerSprite) setColor(value uint8) {
 	// there is nothing in TIA_HW_Notes.txt about the color registers
 	ps.color = value
+}
+
+func (ps *playerSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
+	// horizontal movement values range from -8 to +7 for convenience we
+	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
+	//
+	// "You may have noticed that the [...] discussion ignores the
+	// fact that HMxx values are specified in the range +7 to -8.
+	// In an odd twist, this was done purely for the convenience
+	// of the programmer! The comparator for D7 in each HMxx latch
+	// is wired up in reverse, costing nothing in silicon and
+	// effectively inverting this bit so that the value can be
+	// treated as a simple 0-15 count for movement left. It might
+	// be easier to think of this as having D7 inverted when it
+	// is stored in the first place."
+
+	tiaDelay.Schedule(4, func() {
+		ps.hmove = (value ^ 0x80) >> 4
+	}, "HMPx")
+}
+
+func (ps *playerSprite) clearHmoveValue(tiaDelay future.Scheduler) {
+	// I can find no evidence that a delay value of 1 is required when
+	// clearing hmove values in the case of the player sprite, but because
+	// a value of 1 is required for both the ball and missiles it is
+	// reasonable to assume the same applies to the players
+	tiaDelay.Schedule(1, func() {
+		ps.hmove = 0x08
+	}, "HMCLR")
 }

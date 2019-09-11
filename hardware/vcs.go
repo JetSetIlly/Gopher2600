@@ -182,9 +182,6 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 			return err
 		}
 
-		// set RIOT subsystem
-		vcs.RIOT.Step()
-
 		// in addition to the ϕ0 clock, which is connected from the TIA to the
 		// CPU, there is the ϕ2 clock. The ϕ2 clock is connected from the CPU
 		// to the TIA. in that sense at least, this emulation is correct.
@@ -261,6 +258,9 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 
 		err = videoCycleCallback(r)
 
+		// step RIOT subsystem
+		vcs.RIOT.Step()
+
 		return err
 	}
 
@@ -291,8 +291,6 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		vcs.RIOT.Step()
-
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
@@ -304,6 +302,8 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		}
 
 		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
+
+		vcs.RIOT.Step()
 
 		return err
 	}

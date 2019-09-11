@@ -45,9 +45,9 @@ type missileSprite struct {
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 
-	// stuffedTick notes whether the last tick was as a result of a HMOVE tick.
+	// extraTick notes whether the last tick was as a result of a HMOVE tick.
 	// see the pixel() function below for a fuller explanation.
-	stuffedTick bool
+	extraTick bool
 }
 
 func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *missileSprite {
@@ -207,9 +207,9 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			}
 		}
 
-		// make a note of why this tick has occurred. see pixel() function
-		// below for explanation
-		ms.stuffedTick = hmove && ms.moreHMOVE
+		// note whether this text is additional hmove tick. see pixel()
+		// function below for explanation
+		ms.extraTick = hmove && ms.moreHMOVE
 
 		ms.pclk.Tick()
 
@@ -313,7 +313,7 @@ func (ms *missileSprite) resetPosition() {
 	}
 
 	// stop any existing reset events. generally, this codepath will not apply
-	// because a resetPositionEvent will conculde before being triggere again.
+	// because a resetPositionEvent will conclude before being triggered again.
 	// but it is possible when using a very quick opcode on the reset register,
 	// like a zero page INC, for requests to overlap
 	//
@@ -380,35 +380,13 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// in short, the following condition implements the Cosmic Ark starfield.
 	px := !ms.resetToPlayer &&
 		(ms.enclockifier.enable ||
-			(ms.stuffedTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()))
+			(ms.extraTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()))
 
 	return ms.enabled && px, ms.color
 }
 
 func (ms *missileSprite) setEnable(enable bool) {
 	ms.enabled = enable
-}
-
-func (ms *missileSprite) setHmoveValue(value uint8, clearing bool) {
-	// see player sprite for details about horizontal movement
-	//
-	// (the following applies to all sprites but is described here because the
-	// effect of scheduling most dramatically applies to the missiles in the
-	// cosmic ark starfield.)
-	//
-	// a delay of 1 on the sprite scheduler, is required for the cosmicark
-	// starfield to work correctly. I'm not not entirely sure if this is the
-	// correct interpretation or if the timing issue with compareHMOVE should
-	// be ironed out somewhere else.
-
-	msg := "HMMx"
-	if clearing {
-		msg = "HMCLR"
-	}
-
-	ms.Delay.Schedule(1, func() {
-		ms.hmove = (value ^ 0x80) >> 4
-	}, msg)
 }
 
 func (ms *missileSprite) setNUSIZ(value uint8) {
@@ -418,4 +396,19 @@ func (ms *missileSprite) setNUSIZ(value uint8) {
 
 func (ms *missileSprite) setColor(value uint8) {
 	ms.color = value
+}
+
+func (ms *missileSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
+	tiaDelay.Schedule(4, func() {
+		ms.hmove = (value ^ 0x80) >> 4
+	}, "HMMx")
+}
+
+func (ms *missileSprite) clearHmoveValue(tiaDelay future.Scheduler) {
+	// like the ball sprite, essential delay value for HMCLR is essential.
+	// Midnight Magic requires it for accurate placement of a missile on
+	// scanlines 164-168
+	tiaDelay.Schedule(1, func() {
+		ms.hmove = 0x08
+	}, "HMCLR")
 }

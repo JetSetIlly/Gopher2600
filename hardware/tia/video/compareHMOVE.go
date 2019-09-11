@@ -13,5 +13,11 @@ package video
 func compareHMOVE(a uint8, b uint8) bool {
 	return a&0x08 == b&0x08 || a&0x04 == b&0x04 || a&0x02 == b&0x02 || a&0x01 == b&0x01
 
-	// return a&b&0x0f != 0
+	// at first flush the quotation above appears to be saying the following:
+	//
+	//	return a&b&0x0f != 0
+	//
+	// but it does not. this simpler construct does not check whether zero bits
+	// are the same. the actual comparison, which we're using, compares one and
+	// zero bits equally.
 }

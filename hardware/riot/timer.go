@@ -17,7 +17,7 @@ type timer struct {
 	// the following rules apply
 	//		* set to 1, 8, 64 or 1024 depending on which address has been
 	//			written to by the CPU
-	//		* is used to reset the tickCyclesRemaining
+	//		* is used to reset the cyclesRemaining
 	//		* is changed to 1 once value reaches 0
 	//		* is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
 	//			is read by the CPU
@@ -27,7 +27,7 @@ type timer struct {
 	// RIO memory register
 	value uint8
 
-	// tickCyclesRemaining is the number of CPU cycles remaining before the
+	// cyclesRemaining is the number of CPU cycles remaining before the
 	// value is decreased. the following rules apply:
 	//		* set to 1 when new timer is set
 	//		* causes value to decrease whenever it reaches 0
@@ -39,7 +39,11 @@ type timer struct {
 	// the initial reset value is 1 because the first decrease of INTIM occurs
 	// immediately after ReadRIOTMemory(); we want the timer cycle to hit 0 at
 	// that time
-	tickCyclesRemaining int
+	cyclesRemaining int
+
+	// the number of CPU cyles taken place since last write to a TIMxxx
+	// register
+	cyclesElapsed int
 }
 
 func newTimer(mem memory.ChipBus) *timer {
@@ -48,7 +52,8 @@ func newTimer(mem memory.ChipBus) *timer {
 
 	tmr.register = "TIM1024"
 	tmr.interval = 1024
-	tmr.tickCyclesRemaining = 1024
+	tmr.cyclesRemaining = 1024
+	tmr.cyclesElapsed = 0
 	tmr.value = 0
 
 	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
@@ -59,12 +64,18 @@ func newTimer(mem memory.ChipBus) *timer {
 
 // MachineInfoTerse returns the RIOT information in terse format
 func (tmr timer) MachineInfoTerse() string {
-	return fmt.Sprintf("INTIM=%#02x clks=%#04x (%s)", tmr.value, tmr.tickCyclesRemaining, tmr.register)
+	return fmt.Sprintf("INTIM=%#02x elpsd=%02d remn=%#04x intv=%d (%s)",
+		tmr.value,
+		tmr.cyclesElapsed,
+		tmr.cyclesRemaining,
+		tmr.interval,
+		tmr.register,
+	)
 }
 
 // MachineInfo returns the RIOT information in verbose format
 func (tmr timer) MachineInfo() string {
-	return fmt.Sprintf("%s\nINTIM: %d (%#02x)\nClocks Rem: %d (%#03x)", tmr.register, tmr.value, tmr.value, tmr.tickCyclesRemaining, tmr.tickCyclesRemaining)
+	return tmr.MachineInfoTerse()
 }
 
 func (tmr *timer) serviceMemory(data memory.ChipData) bool {
@@ -72,27 +83,29 @@ func (tmr *timer) serviceMemory(data memory.ChipData) bool {
 	case "TIM1T":
 		tmr.register = data.Name
 		tmr.interval = 1
-		tmr.tickCyclesRemaining = 1
+		tmr.cyclesRemaining = 1
 		tmr.value = data.Value
 	case "TIM8T":
 		tmr.register = data.Name
 		tmr.interval = 8
-		tmr.tickCyclesRemaining = 1
+		tmr.cyclesRemaining = 1
 		tmr.value = data.Value
 	case "TIM64T":
 		tmr.register = data.Name
 		tmr.interval = 64
-		tmr.tickCyclesRemaining = 1
+		tmr.cyclesRemaining = 1
 		tmr.value = data.Value
 	case "TIM1024":
 		tmr.register = data.Name
 		tmr.interval = 1024
-		tmr.tickCyclesRemaining = 1
+		tmr.cyclesRemaining = 1
 		tmr.value = data.Value
 
 	default:
 		return false
 	}
+
+	tmr.cyclesElapsed = 0
 
 	// write value to INTIM straight-away
 	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
@@ -124,8 +137,8 @@ func (tmr *timer) step() {
 		tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
 	}
 
-	tmr.tickCyclesRemaining--
-	if tmr.tickCyclesRemaining <= 0 {
+	tmr.cyclesRemaining--
+	if tmr.cyclesRemaining <= 0 {
 		if tmr.value == 0 {
 			// set bit 7 of TIMINT register
 			tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
@@ -141,6 +154,8 @@ func (tmr *timer) step() {
 
 		// copy value to INTIM memory register
 		tmr.mem.ChipWrite(addresses.INTIM, tmr.value)
-		tmr.tickCyclesRemaining = tmr.interval
+		tmr.cyclesRemaining = tmr.interval
 	}
+
+	tmr.cyclesElapsed++
 }

@@ -42,8 +42,12 @@ type TIA struct {
 	wsync bool
 
 	// HMOVE information. each sprite object also contains HOMVE information
+	// - hmoveLatch indicates whether HMOVE has been triggered this scanline.
+	// it is reset when a new scanline begins
 	hmoveLatch bool
-	hmoveCt    int
+	// - hmoveCt counts from 15 to -1. the value is used by the sprites to
+	// decide whether they should honour non-motck ticks
+	hmoveCt int
 
 	// TIA_HW_Notes.txt describes the hsync counter:
 	//
@@ -102,8 +106,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 
 	tia.hmoveCt = -1
 
-	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync,
-		mem, tv, &tia.hblank, &tia.hmoveLatch)
+	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync, mem, tv, &tia.hblank, &tia.hmoveLatch)
 	if tia.Video == nil {
 		return nil
 	}
@@ -426,10 +429,15 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	//
 	// to see the effect of this, try moving this function call before the
 	// HSYNC tick and see how the ball sprite is rendered incorrectly in
-	// Keystone Kapers. this is because the ball is reset on the very last
-	// pixel and before HBLANK etc. are in the state they need to be.
+	// Keystone Kapers (this is because the ball is reset on the very last
+	// pixel and before HBLANK etc. are in the state they need to be)
 	if readMemory {
-		tia.Video.AlterState(memoryData)
+		tia.Video.AlterStateWithDelay(&tia.Delay, memoryData)
+
+		// AlterStateImmediate() could feasibly and safely occur after pixel
+		// resolution or even before HSYNC has been ticked. but in the absence
+		// of any firm reason to the contrary we'll call it here.
+		tia.Video.AlterStateImmediate(memoryData)
 	}
 
 	// hmoveck is the counterpart to the motck (which is associated with the
@@ -468,11 +476,10 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		tia.sig.Pixel = television.ColorSignal(pixelColor)
 	}
 
-	// alter state of audio subsystem and video state that require late
-	// consideration
+	// alter state of audio subsystem and make final alteration video
 	if readMemory {
-		tia.Audio.AlterState(memoryData)
 		tia.Video.AlterStateAfterPixel(memoryData)
+		tia.Audio.AlterState(memoryData)
 	}
 
 	// send signal to television

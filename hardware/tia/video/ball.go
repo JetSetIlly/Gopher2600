@@ -41,10 +41,10 @@ type ballSprite struct {
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 
-	// the stuffedTick boolean notes whether the last tick was as a result of a
+	// the extraTick boolean notes whether the last tick was as a result of a
 	// HMOVE tick. see the pixel() function in the missile sprite for a
 	// detailed explanation
-	stuffedTick bool
+	extraTick bool
 }
 
 func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *ballSprite {
@@ -164,9 +164,9 @@ func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			}
 		}
 
-		// make a note of why this tick has occurred. see pixel() function
-		// in the missile sprite for an explanation
-		bs.stuffedTick = hmove && bs.moreHMOVE
+		// note whether this text is additional hmove tick. see pixel()
+		// function in the missile sprite below for explanation
+		bs.extraTick = hmove && bs.moreHMOVE
 
 		bs.pclk.Tick()
 
@@ -301,7 +301,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// the ball sprite pixel is drawn under specific conditions. see pixel()
 	// function in the missile sprite for a detail explanation.
 	px := bs.enclockifier.enable ||
-		(bs.stuffedTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+		(bs.extraTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
 	// I'm not sure if the above condition applies to both branches below
 	// (verticalDelay true/false) but I don't see why it shouldn't
@@ -327,24 +327,28 @@ func (bs *ballSprite) setVerticalDelay(vdelay bool) {
 	bs.verticalDelay = vdelay
 }
 
-func (bs *ballSprite) setHmoveValue(value uint8, clearing bool) {
-	// see player sprite for details about horizontal movement
-	// and missile sprite for commentary about delay
-
-	msg := "HMBL"
-	if clearing {
-		msg = "HMCLR"
-	}
-
-	bs.Delay.Schedule(1, func() {
-		bs.hmove = (value ^ 0x80) >> 4
-	}, msg)
-}
-
 func (bs *ballSprite) setSize(value uint8) {
 	bs.size = value
 }
 
 func (bs *ballSprite) setColor(value uint8) {
 	bs.color = value
+}
+
+func (bs *ballSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
+	tiaDelay.Schedule(4, func() {
+		bs.hmove = (value ^ 0x80) >> 4
+	}, "HMBL")
+}
+
+func (bs *ballSprite) clearHmoveValue(tiaDelay future.Scheduler) {
+	// a delay of 1 is required when clearing hmove values. an accurate
+	// delay is essential because we need the clearing and the call to
+	// compareHMOVE() to mesh accurately. more often than not, it simply
+	// doesn't matter but some ROMs do rely on it. for instance, Fatal Run
+	// moves the ball very precisely to create a black bar on the left hand
+	// side of screen during the intro screen.
+	tiaDelay.Schedule(1, func() {
+		bs.hmove = 0x08
+	}, "HMCLR")
 }

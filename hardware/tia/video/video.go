@@ -299,7 +299,7 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	return col, dcol
 }
 
-// AlterPlayfield checks the TIA memory for changes to playfield data
+// AlterPlayfield checks the TIA memory for new playfield data
 func (vd *Video) AlterPlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
 	switch data.Name {
 	case "PF0":
@@ -311,34 +311,42 @@ func (vd *Video) AlterPlayfield(tiaDelay future.Scheduler, data memory.ChipData)
 	}
 }
 
-// AlterStateAfterPixel checks the TIA memory for attribute changes that must
-// occur after pixel information has been gathered
-func (vd *Video) AlterStateAfterPixel(data memory.ChipData) {
+// AlterStateWithDelay checks the TIA memory for changes to state that
+// require a short pause, using the TIA scheduler
+func (vd *Video) AlterStateWithDelay(tiaDelay future.Scheduler, data memory.ChipData) {
 	switch data.Name {
-	case "GRP0":
-		vd.Player0.setGfxData(data.Value)
-	case "GRP1":
-		vd.Player1.setGfxData(data.Value)
-	case "ENAM0":
-		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
-	case "ENAM1":
-		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
-	case "ENABL":
-		vd.Ball.setEnable(data.Value&0x02 == 0x02)
-	}
-}
+	// horizontal movement values range from -8 to +7 for convenience we
+	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
+	//
+	// "You may have noticed that the [...] discussion ignores the
+	// fact that HMxx values are specified in the range +7 to -8.
+	// In an odd twist, this was done purely for the convenience
+	// of the programmer! The comparator for D7 in each HMxx latch
+	// is wired up in reverse, costing nothing in silicon and
+	// effectively inverting this bit so that the value can be
+	// treated as a simple 0-15 count for movement left. It might
+	// be easier to think of this as having D7 inverted when it
+	// is stored in the first place."
+	case "HMP0":
+		vd.Player0.setHmoveValue(tiaDelay, data.Value&0xf0, false)
+	case "HMP1":
+		vd.Player1.setHmoveValue(tiaDelay, data.Value&0xf0, false)
+	case "HMM0":
+		vd.Missile0.setHmoveValue(tiaDelay, data.Value&0xf0, false)
+	case "HMM1":
+		vd.Missile1.setHmoveValue(tiaDelay, data.Value&0xf0, false)
+	case "HMBL":
+		vd.Ball.setHmoveValue(tiaDelay, data.Value&0xf0, false)
 
-// AlterState checks the TIA memory for changes to sprite attributes. this
-// function is intended to be called *after* HSYNC ticking and *before* pixel
-// resolution
-func (vd *Video) AlterState(data memory.ChipData) {
-	switch data.Name {
+	case "HMCLR":
+		vd.Player0.clearHmoveValue(tiaDelay)
+		vd.Player1.clearHmoveValue(tiaDelay)
+		vd.Missile0.clearHmoveValue(tiaDelay)
+		vd.Missile1.clearHmoveValue(tiaDelay)
+		vd.Ball.clearHmoveValue(tiaDelay)
 
 	// the reset registers *must* be serviced after HSYNC has been ticked.
-	//
-	// the barnstormer ROM, scanline 61 demonstrates perfectly how GRP0 is affected by
-	// this. if we write the new data before the pixel output has been decided then
-	// an unwanted artefact is displayed.
+	// resets are resolved after a short delay, governed by the sprite itself
 	case "RESP0":
 		vd.Player0.resetPosition()
 	case "RESP1":
@@ -349,11 +357,12 @@ func (vd *Video) AlterState(data memory.ChipData) {
 		vd.Missile1.resetPosition()
 	case "RESBL":
 		vd.Ball.resetPosition()
+	}
+}
 
-	// servicing of the following registers could feasibly and safely occur
-	// after pixel resolution or even before HSYNC has been ticked. but in the
-	// absence of any firm reason to the contrary we'll group them all here
-	//
+// AlterStateImmediate checks the TIA memory for changes to sprite attributes that require no delay
+func (vd *Video) AlterStateImmediate(data memory.ChipData) {
+	switch data.Name {
 	case "COLUP0":
 		vd.Player0.setColor(data.Value & 0xfe)
 		vd.Missile0.setColor(data.Value & 0xfe)
@@ -390,36 +399,25 @@ func (vd *Video) AlterState(data memory.ChipData) {
 		vd.Missile1.setNUSIZ(data.Value)
 	case "CXCLR":
 		vd.collisions.clear()
+	}
+}
 
-	// horizontal movement values range from -8 to +7 for convenience we
-	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
-	//
-	// "You may have noticed that the [...] discussion ignores the
-	// fact that HMxx values are specified in the range +7 to -8.
-	// In an odd twist, this was done purely for the convenience
-	// of the programmer! The comparator for D7 in each HMxx latch
-	// is wired up in reverse, costing nothing in silicon and
-	// effectively inverting this bit so that the value can be
-	// treated as a simple 0-15 count for movement left. It might
-	// be easier to think of this as having D7 inverted when it
-	// is stored in the first place."
-
-	case "HMP0":
-		vd.Player0.setHmoveValue(data.Value&0xf0, false)
-	case "HMP1":
-		vd.Player1.setHmoveValue(data.Value&0xf0, false)
-	case "HMM0":
-		vd.Missile0.setHmoveValue(data.Value&0xf0, false)
-	case "HMM1":
-		vd.Missile1.setHmoveValue(data.Value&0xf0, false)
-	case "HMBL":
-		vd.Ball.setHmoveValue(data.Value&0xf0, false)
-
-	case "HMCLR":
-		vd.Player0.setHmoveValue(0x08, true)
-		vd.Player1.setHmoveValue(0x08, true)
-		vd.Missile0.setHmoveValue(0x08, true)
-		vd.Missile1.setHmoveValue(0x08, true)
-		vd.Ball.setHmoveValue(0x08, true)
+// AlterStateAfterPixel checks the TIA memory for attribute changes that *must*
+// occur after a call to Pixel()
+func (vd *Video) AlterStateAfterPixel(data memory.ChipData) {
+	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
+	// alter its state before a call to Pixel().  if we write do alter state
+	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
+	switch data.Name {
+	case "GRP0":
+		vd.Player0.setGfxData(data.Value)
+	case "GRP1":
+		vd.Player1.setGfxData(data.Value)
+	case "ENAM0":
+		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
+	case "ENAM1":
+		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
+	case "ENABL":
+		vd.Ball.setEnable(data.Value&0x02 == 0x02)
 	}
 }
