@@ -232,6 +232,7 @@ func (ps playerSprite) String() string {
 
 	if ps.moreHMOVE {
 		s.WriteString(" hmoving")
+		s.WriteString(fmt.Sprintf(" [%04b]", ps.hmove))
 		extra = true
 	}
 

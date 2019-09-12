@@ -107,6 +107,7 @@ func (bs ballSprite) String() string {
 
 	if bs.moreHMOVE {
 		s.WriteString(" hmoving")
+		s.WriteString(fmt.Sprintf(" [%04b]", bs.hmove))
 		extra = true
 	}
 
