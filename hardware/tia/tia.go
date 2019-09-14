@@ -45,9 +45,9 @@ type TIA struct {
 	// - hmoveLatch indicates whether HMOVE has been triggered this scanline.
 	// it is reset when a new scanline begins
 	hmoveLatch bool
-	// - hmoveCt counts from 15 to -1. the value is used by the sprites to
+	// - hmoveCt counts from 15 to 255. the value is used by the sprites to
 	// decide whether they should honour non-motck ticks
-	hmoveCt int
+	hmoveCt uint8
 
 	// TIA_HW_Notes.txt describes the hsync counter:
 	//
@@ -92,7 +92,7 @@ func (tia TIA) String() string {
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 
-	if tia.hmoveCt >= 0 {
+	if tia.hmoveCt != 0xff {
 		s.WriteString(fmt.Sprintf(" hm=%04b", tia.hmoveCt))
 	}
 
@@ -104,7 +104,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
 	tia.pclk.Reset()
 
-	tia.hmoveCt = -1
+	tia.hmoveCt = 0xff
 
 	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync, mem, tv, &tia.hblank, &tia.hmoveLatch)
 	if tia.Video == nil {
@@ -454,12 +454,12 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(!tia.hblank, hmoveck, uint8(tia.hmoveCt)&0x0f)
+	tia.Video.Tick(!tia.hblank, hmoveck, tia.hmoveCt)
 
 	// if this was tick where we sent a hmove clock then we need to also
 	// update the HMOVE counter.
 	if hmoveck {
-		if tia.hmoveCt >= 0 {
+		if tia.hmoveCt != 0xff {
 			tia.hmoveCt--
 		}
 	}

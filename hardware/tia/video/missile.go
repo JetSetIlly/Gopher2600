@@ -189,9 +189,7 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 	//
 	// note: the FSTOB output is the primary flag in the parent player's
 	// scancounter
-	//
-	// !!TODO: test with double and quadruple size player sprite
-	if ms.resetToPlayer && ms.parentPlayer.scanCounter.cpy == 0 && ms.parentPlayer.scanCounter.isMiddle() {
+	if ms.resetToPlayer && ms.parentPlayer.scanCounter.cpy == 0 && ms.parentPlayer.scanCounter.isMissileMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
 	}

@@ -14,18 +14,25 @@ import (
 // position/polycounter cycle, the scanCounter is started and is ticked forward
 // every cycle (subject to MOTCK, HMOVE and NUSIZ rules)
 type scanCounter struct {
-	pixel   int
+	nusiz   *uint8
 	latches int
+
+	// pixel counts from 7 to -1 for a total of 8 active pixels. we're counting
+	// backwards because it is more convenient for the Pixel() function
+	pixel int
+
+	// for the wider player sizes, real ticks are only made every two or every
+	// four clocks. pixelCt counts how many ticks the scanCounter has been on
+	// the current pixel value
+	pixelCt int
 
 	// which copy of the sprite is being drawn. value of zero means the primary
 	// copy is being drawn (if enable is true)
 	cpy int
 }
 
-const scanCounterStart int = 7
-
-func (sc *scanCounter) start(nusiz uint8) {
-	if nusiz == 0x05 || nusiz == 0x07 {
+func (sc *scanCounter) start() {
+	if *sc.nusiz == 0x05 || *sc.nusiz == 0x07 {
 		sc.latches = 2
 	} else {
 		sc.latches = 1
@@ -33,27 +40,38 @@ func (sc *scanCounter) start(nusiz uint8) {
 }
 
 func (sc scanCounter) active() bool {
-	return sc.pixel >= 0 && sc.pixel <= scanCounterStart
+	return sc.pixel != -1
 }
 
 func (sc scanCounter) isLatching() bool {
 	return sc.latches > 0
 }
 
-// isMiddle is used by missile sprite as part of the reset-to-player
+// isMissileMiddle is used by missile sprite as part of the reset-to-player
 // implementation
-func (sc scanCounter) isMiddle() bool {
+func (sc scanCounter) isMissileMiddle() bool {
+	switch *sc.nusiz {
+	case 0x05:
+		return sc.pixel == 3 && sc.pixelCt == 0
+	case 0x07:
+		return sc.pixel == 5 && sc.pixelCt == 3
+	}
 	return sc.pixel == 2
 }
 
-func (sc *scanCounter) tick() {
+func (sc *scanCounter) tick(nextPixel bool) {
 	if sc.latches > 0 {
 		sc.latches--
 		if sc.latches == 0 {
-			sc.pixel = scanCounterStart
+			sc.pixel = 7
 		}
 	} else if sc.pixel >= 0 {
-		sc.pixel--
+		if nextPixel {
+			sc.pixelCt = 0
+			sc.pixel--
+		} else {
+			sc.pixelCt++
+		}
 	}
 }
 
@@ -162,6 +180,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 		hmoveLatch: hmoveLatch,
 	}
 	ps.Delay.Label = ps.label
+	ps.scanCounter.nusiz = &ps.nusiz
 	ps.position.Reset()
 	return &ps
 }
@@ -327,15 +346,11 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		// sense) but to no avail.
 		switch ps.nusiz {
 		case 0x05:
-			if ps.pclk.LatePhi2() || ps.pclk.LatePhi1() || ps.scanCounter.isLatching() {
-				ps.scanCounter.tick()
-			}
+			ps.scanCounter.tick(ps.pclk.LatePhi2() || ps.pclk.LatePhi1())
 		case 0x07:
-			if ps.pclk.LatePhi2() || ps.scanCounter.isLatching() {
-				ps.scanCounter.tick()
-			}
+			ps.scanCounter.tick(ps.pclk.LatePhi2())
 		default:
-			ps.scanCounter.tick()
+			ps.scanCounter.tick(true)
 		}
 
 		ps.pclk.Tick()
@@ -377,7 +392,7 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 
 				startDrawingEvent := func() {
 					ps.startDrawingEvent = nil
-					ps.scanCounter.start(ps.nusiz)
+					ps.scanCounter.start()
 					ps.scanCounter.cpy = cpy
 				}
 

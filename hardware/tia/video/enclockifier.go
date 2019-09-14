@@ -82,13 +82,13 @@ func (en *enclockifier) pause() {
 func (en *enclockifier) start() {
 	en.enable = true
 
-	endFunc := func() {
+	endEvent := func() {
 		en.enable = false
 		en.endEvent = nil
 	}
 
 	// upon receiving a start signal, we decide for how long the enable flag
-	// should be true. after the requisite number of clocks endFunc() is run,
+	// should be true. after the requisite number of clocks endEvent() is run,
 	// disabling the flag.
 	//
 	// what's not clear as yet is what happens if the size value of the sprite
@@ -98,24 +98,21 @@ func (en *enclockifier) start() {
 
 	switch *en.size {
 	case 0x00:
-		en.endEvent = en.delay.Schedule(1, endFunc, "END")
+		en.endEvent = en.delay.Schedule(1, endEvent, "END")
 	case 0x01:
-		en.endEvent = en.delay.Schedule(2, endFunc, "END")
+		en.endEvent = en.delay.Schedule(2, endEvent, "END")
 	case 0x02:
-		en.endEvent = en.delay.Schedule(4, endFunc, "END")
+		en.endEvent = en.delay.Schedule(4, endEvent, "END")
 	case 0x03:
 		// from TIA_HW_Notes.txt:
 		//
 		// "The second half is added if both D4 and D5 are set; a delayed copy
 		// of the Start signal (4 colour CLK wide again) is OR-ed into the
 		// Enable signal at the final OR gate."
-		//
-		// in our interpretation, the copyOfStartSignal always runs unless
-		// first endEvent has been ended() prematurely.
 		copyOfStartSignal := func() {
 			en.secondHalf = true
 			en.endEvent = en.delay.Schedule(4, func() {
-				endFunc()
+				endEvent()
 				en.secondHalf = false
 			}, "END (2nd half)")
 		}
