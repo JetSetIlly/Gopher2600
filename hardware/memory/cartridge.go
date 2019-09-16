@@ -15,13 +15,19 @@ import (
 type cartMapper interface {
 	initialise()
 	read(addr uint16) (data uint8, err error)
-	write(addr uint16, data uint8, isPoke bool) error
+	write(addr uint16, data uint8) error
 	numBanks() int
 	getBank(addr uint16) (bank int)
 	setBank(addr uint16, bank int) error
 	saveState() interface{}
 	restoreState(interface{}) error
 	ram() []uint8
+
+	// listen differs from write in that the address is the unmapped address on
+	// the address bus. for convenience, memory functions deal with addresses
+	// that have been mapped and normalised so they count from zero.
+	// cartMapper.listen() is the exception.
+	listen(addr uint16, data uint8) error
 }
 
 // Cartridge defines the information and operations for a VCS cartridge
@@ -97,7 +103,7 @@ func (cart Cartridge) Read(addr uint16) (uint8, error) {
 // Implementation of CPUBus.Write
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
 	addr &= cart.Origin() - 1
-	return cart.mapper.write(addr, data, false)
+	return cart.mapper.write(addr, data)
 }
 
 // Peek is the implementation of Memory.Area.Peek
@@ -108,22 +114,39 @@ func (cart Cartridge) Peek(addr uint16) (uint8, error) {
 
 // Poke is the implementation of Memory.Area.Poke
 func (cart Cartridge) Poke(addr uint16, data uint8) error {
-	addr &= cart.Origin() - 1
-	return cart.mapper.write(addr, data, true)
+	return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 }
 
 // fingerprint8k attempts a divination of 8k cartridge data and decide on a
 // suitable cartMapper implementation
 func (cart Cartridge) fingerprint8k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
-	byts := make([]byte, 8192)
+	b := make([]byte, 8192)
 	cf.Seek(0, io.SeekStart)
-	cf.Read(byts)
+	cf.Read(b)
 
-	if fingerprintParkerBros(byts) {
+	if fingerprintTigervision(b) {
+		return newTigervision
+	}
+
+	if fingerprintParkerBros(b) {
 		return newparkerBros
 	}
 
 	return newAtari8k
+}
+
+// fingerprint16k attempts a divination of 16k cartridge data and decide on a
+// suitable cartMapper implementation
+func (cart Cartridge) fingerprint16k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
+	b := make([]byte, 16384)
+	cf.Seek(0, io.SeekStart)
+	cf.Read(b)
+
+	if fingerprintMnetwork(b) {
+		return newMnetwork
+	}
+
+	return newAtari16k
 }
 
 // Attach loads the bytes from a cartridge (represented by 'filename')
@@ -171,9 +194,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		}
 
 	case 8192:
-		newMapper := cart.fingerprint8k(cf)
-
-		cart.mapper, err = newMapper(cf)
+		cart.mapper, err = cart.fingerprint8k(cf)(cf)
 		if err != nil {
 			return err
 		}
@@ -182,7 +203,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		return errors.NewFormattedError(errors.CartridgeFileError, "12288 bytes not yet supported")
 
 	case 16384:
-		cart.mapper, err = newAtari16k(cf)
+		cart.mapper, err = cart.fingerprint16k(cf)(cf)
 		if err != nil {
 			return err
 		}
@@ -240,4 +261,11 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 // RAM returns a read only instance of any cartridge RAM
 func (cart Cartridge) RAM() []uint8 {
 	return cart.mapper.ram()
+}
+
+// Listen for data at the specified address. return CartridgeListen error if
+// nothing was done with the information. Callers to Listen() will probably
+// want to filter out that error.
+func (cart Cartridge) Listen(addr uint16, data uint8) error {
+	return cart.mapper.listen(addr, data)
 }

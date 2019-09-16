@@ -6,7 +6,45 @@ import (
 	"io"
 )
 
-// these atari* types implement the cartMapper interface
+// from bankswitch_sizes.txt:
+//
+// 2K:
+//
+// -These carts are not bankswitched, however the data repeats twice in the
+// 4K address space.  You'll need to manually double-up these images to 4K
+// if you want to put these in say, a 4K cart.
+//
+// 4K:
+//
+// -These images are not bankswitched.
+//
+// 8K:
+//
+// -F8: This is the 'standard' method to implement 8K carts.  There are two
+// addresses which select between two unique 4K sections.  They are 1FF8
+// and 1FF9.  Any access to either one of these locations switches banks.
+// Accessing 1FF8 switches in the first 4K, and accessing 1FF9 switches in
+// the last 4K.  Note that you can only access one 4K at a time!
+//
+// 16K:
+//
+// -F6: The 'standard' method for implementing 16K of data.  It is identical
+// to the F8 method above, except there are 4 4K banks.  You select which
+// 4K bank by accessing 1FF6, 1FF7, 1FF8, and 1FF9.
+//
+// 32K:
+//
+// -F4: The 'standard' method for implementing 32K.  Only one cart is known
+// to use it- Fatal Run.  Like the F6 method, however there are 8 4K
+// banks instead of 4.  You use 1FF4 to 1FFB to select the desired bank.
+//
+//
+// Some carts have extra RAM; There are three known formats for this:
+//
+// Atari's 'Super Chip' is nothing more than a 128-byte RAM chip that maps
+// itsself in the first 256 bytes of cart memory.  (1000-10FFh)
+// The first 128 bytes is the write port, while the second 128 bytes is the
+// read port.  This is needed, because there is no R/W line to the cart.
 
 type atari struct {
 	method string
@@ -86,9 +124,9 @@ func (cart *atari) addSuperchip() bool {
 	//  - I've guessed that this is a good method. if there's another one I
 	// don't know about it.
 	nullChar := cart.banks[0][0]
-	for b := 0; b < len(cart.banks); b++ {
+	for k := 0; k < len(cart.banks); k++ {
 		for a := 0; a < 256; a++ {
-			if cart.banks[b][a] != nullChar {
+			if cart.banks[k][a] != nullChar {
 				return false
 			}
 		}
@@ -107,6 +145,10 @@ func (cart atari) ram() []uint8 {
 	return cart.superchip
 }
 
+func (cart atari) listen(addr uint16, data uint8) error {
+	return errors.NewFormattedError(errors.CartridgeListen, addr)
+}
+
 // atari4k is the original and most straightforward format
 //  o Pitfall
 //  o River Raid
@@ -121,12 +163,13 @@ type atari4k struct {
 //  o Adventure
 //  o Yars Revenge
 //  o etc.
-func newAtari4k(cf io.ReadSeeker) (*atari4k, error) {
+func newAtari4k(cf io.ReadSeeker) (cartMapper, error) {
+	const bankSize = 4096
 	cart := &atari4k{}
 
 	cart.method = "atari 4k"
 	cart.banks = make([][]uint8, 1)
-	cart.banks[0] = make([]uint8, 4096)
+	cart.banks[0] = make([]uint8, bankSize)
 
 	if cf != nil {
 		cf.Seek(0, io.SeekStart)
@@ -136,7 +179,7 @@ func newAtari4k(cf io.ReadSeeker) (*atari4k, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n != 4096 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -158,13 +201,9 @@ func (cart *atari4k) read(addr uint16) (uint8, error) {
 	return cart.banks[0][addr], nil
 }
 
-func (cart *atari4k) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *atari4k) write(addr uint16, data uint8) error {
 	if ok := cart.atari.write(addr, data); ok {
 		return nil
-	}
-
-	if isPoke {
-		return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 	}
 
 	return errors.NewFormattedError(errors.UnwritableAddress, addr)
@@ -180,12 +219,13 @@ type atari2k struct {
 	atari
 }
 
-func newAtari2k(cf io.ReadSeeker) (*atari2k, error) {
+func newAtari2k(cf io.ReadSeeker) (cartMapper, error) {
+	const bankSize = 2048
 	cart := &atari2k{}
 
 	cart.method = "atari 2k"
 	cart.banks = make([][]uint8, 1)
-	cart.banks[0] = make([]uint8, 2048)
+	cart.banks[0] = make([]uint8, bankSize)
 
 	if cf != nil {
 		cf.Seek(0, io.SeekStart)
@@ -195,7 +235,7 @@ func newAtari2k(cf io.ReadSeeker) (*atari2k, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n != 2048 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -217,13 +257,9 @@ func (cart *atari2k) read(addr uint16) (uint8, error) {
 	return cart.banks[0][addr&0x07ff], nil
 }
 
-func (cart *atari2k) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *atari2k) write(addr uint16, data uint8) error {
 	if ok := cart.atari.write(addr, data); ok {
 		return nil
-	}
-
-	if isPoke {
-		return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 	}
 
 	return errors.NewFormattedError(errors.UnwritableAddress, addr)
@@ -238,6 +274,7 @@ type atari8k struct {
 }
 
 func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
+	const bankSize = 4096
 	cart := &atari8k{}
 
 	cart.method = "atari 8k (F8)"
@@ -245,15 +282,15 @@ func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
 
 	cf.Seek(0, io.SeekStart)
 
-	for b := 0; b < cart.numBanks(); b++ {
-		cart.banks[b] = make([]uint8, 4096)
+	for k := 0; k < cart.numBanks(); k++ {
+		cart.banks[k] = make([]uint8, bankSize)
 
 		// read cartridge
-		n, err := cf.Read(cart.banks[b])
+		n, err := cf.Read(cart.banks[k])
 		if err != nil {
 			return nil, err
 		}
-		if n != 4096 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -284,13 +321,9 @@ func (cart *atari8k) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *atari8k) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *atari8k) write(addr uint16, data uint8) error {
 	if ok := cart.atari.write(addr, data); ok {
 		return nil
-	}
-
-	if isPoke {
-		return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 	}
 
 	if addr == 0x0ff8 {
@@ -313,7 +346,8 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(cf io.ReadSeeker) (*atari16k, error) {
+func newAtari16k(cf io.ReadSeeker) (cartMapper, error) {
+	const bankSize = 4096
 	cart := &atari16k{}
 
 	cart.method = "atari 16k (F6)"
@@ -321,15 +355,15 @@ func newAtari16k(cf io.ReadSeeker) (*atari16k, error) {
 
 	cf.Seek(0, io.SeekStart)
 
-	for b := 0; b < cart.numBanks(); b++ {
-		cart.banks[b] = make([]uint8, 4096)
+	for k := 0; k < cart.numBanks(); k++ {
+		cart.banks[k] = make([]uint8, bankSize)
 
 		// read cartridge
-		n, err := cf.Read(cart.banks[b])
+		n, err := cf.Read(cart.banks[k])
 		if err != nil {
 			return nil, err
 		}
-		if n != 4096 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -364,13 +398,9 @@ func (cart *atari16k) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *atari16k) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *atari16k) write(addr uint16, data uint8) error {
 	if ok := cart.atari.write(addr, data); ok {
 		return nil
-	}
-
-	if isPoke {
-		return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 	}
 
 	if addr == 0x0ff6 {
@@ -397,7 +427,8 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(cf io.ReadSeeker) (*atari32k, error) {
+func newAtari32k(cf io.ReadSeeker) (cartMapper, error) {
+	const bankSize = 4096
 	cart := &atari32k{}
 
 	cart.method = "atari 32k (F4)"
@@ -405,15 +436,15 @@ func newAtari32k(cf io.ReadSeeker) (*atari32k, error) {
 
 	cf.Seek(0, io.SeekStart)
 
-	for b := 0; b < cart.numBanks(); b++ {
-		cart.banks[b] = make([]uint8, 4096)
+	for k := 0; k < cart.numBanks(); k++ {
+		cart.banks[k] = make([]uint8, bankSize)
 
 		// read cartridge
-		n, err := cf.Read(cart.banks[b])
+		n, err := cf.Read(cart.banks[k])
 		if err != nil {
 			return nil, err
 		}
-		if n != 4096 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -456,13 +487,9 @@ func (cart *atari32k) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *atari32k) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *atari32k) write(addr uint16, data uint8) error {
 	if ok := cart.atari.write(addr, data); ok {
 		return nil
-	}
-
-	if isPoke {
-		return errors.NewFormattedError(errors.UnpokeableAddress, addr)
 	}
 
 	if addr == 0x0ff4 {

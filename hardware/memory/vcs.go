@@ -151,5 +151,23 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	mem.LastAccessValue = data
 	mem.LastAccessTimeStamp = time.Now()
 
+	// as incredible as it may seem some cartridges react to memory writes to
+	// addresses not in the cartridge space. for example, tigervision
+	// cartridges switch banks whenever any (non-mapped) address in the range
+	// 0x00 to 0x3f is written to.
+	err := mem.Cart.Listen(address, data)
+
+	// the only error we expect from the cartMapper is and UnwritableAddress
+	// error, which most cartridge types will respond with in all circumstances
+	if err != nil {
+		if _, ok := err.(errors.FormattedError); !ok {
+			return err
+		}
+
+		if err.(errors.FormattedError).Errno != errors.CartridgeListen {
+			return err
+		}
+	}
+
 	return area.(CPUBus).Write(ma, data)
 }

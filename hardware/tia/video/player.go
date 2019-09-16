@@ -649,9 +649,9 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
 			delay = 1
 		} else if ps.startDrawingEvent.RemainingCycles == ps.startDrawingEvent.InitialCycles-1 {
-			// these conditions catch when a drawing event has just started and
-			// NUSIZ is moving to double and quadruple width from a
-			// multiple-copy nusiz
+			// these conditions apply when a drawing event has just started
+			// (above) and NUSIZ is moving to double and quadruple width from a
+			// multiple-copy nusiz (below)
 			//
 			// rule discovered through observation and balancing of test roms:
 			//	o testSize2Copies_A.bin

@@ -32,7 +32,7 @@ func (cart *ejected) read(addr uint16) (uint8, error) {
 	return 0, errors.NewFormattedError(errors.CartridgeEjected)
 }
 
-func (cart *ejected) write(addr uint16, data uint8, isPoke bool) error {
+func (cart *ejected) write(addr uint16, data uint8) error {
 	return errors.NewFormattedError(errors.CartridgeEjected)
 }
 
@@ -58,4 +58,8 @@ func (cart *ejected) restoreState(state interface{}) error {
 
 func (cart ejected) ram() []uint8 {
 	return []uint8{}
+}
+
+func (cart ejected) listen(addr uint16, data uint8) error {
+	return errors.NewFormattedError(errors.CartridgeListen, addr)
 }

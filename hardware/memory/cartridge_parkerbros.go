@@ -6,17 +6,27 @@ import (
 	"io"
 )
 
-func fingerprintParkerBros(byts []byte) bool {
+// from bankswitch_sizes.txt:
+//
+// -E0: Parker Brothers was the main user of this method.  This cart is
+// segmented into 4 1K segments.  Each segment can point to one 1K slice of the
+// ROM image.  You select the desired 1K slice by accessing 1FE0 to 1FE7 for
+// the first 1K (1FE0 selects slice 0, 1FE1 selects slice 1, etc).  1FE8 to
+// 1FEF selects the slice for the second 1K, and 1FF0 to 1FF8 selects the slice
+// for the third 1K.  The last 1K always points to the last 1K of the ROM image
+// so that the cart always starts up in the exact same place.
+
+func fingerprintParkerBros(b []byte) bool {
 	// fingerprint patterns taken from Stella CartDetector.cxx
-	for i := 0; i <= len(byts)-3; i++ {
-		if (byts[i] == 0x8d && byts[i+1] == 0xe0 && byts[i+2] == 0x1f) ||
-			(byts[i] == 0x8d && byts[i+1] == 0xe0 && byts[i+2] == 0x5f) ||
-			(byts[i] == 0x8d && byts[i+1] == 0xe9 && byts[i+2] == 0xff) ||
-			(byts[i] == 0x0c && byts[i+1] == 0xe0 && byts[i+2] == 0x1f) ||
-			(byts[i] == 0xad && byts[i+1] == 0xe0 && byts[i+2] == 0x1f) ||
-			(byts[i] == 0xad && byts[i+1] == 0xe9 && byts[i+2] == 0xff) ||
-			(byts[i] == 0xad && byts[i+1] == 0xed && byts[i+2] == 0xff) ||
-			(byts[i] == 0xad && byts[i+1] == 0xf3 && byts[i+2] == 0xbf) {
+	for i := 0; i <= len(b)-3; i++ {
+		if (b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x5f) ||
+			(b[i] == 0x8d && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
+			(b[i] == 0x0c && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0xad && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0xad && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
+			(b[i] == 0xad && b[i+1] == 0xed && b[i+2] == 0xff) ||
+			(b[i] == 0xad && b[i+1] == 0xf3 && b[i+2] == 0xbf) {
 			return true
 		}
 
@@ -34,31 +44,31 @@ type parkerBros struct {
 	banks  [][]uint8
 
 	// parker bros. cartridges divide memory into 4 segments
-	//  o each segment can point to one of eight banks in the ROM
 	//  o the last segment always points to the last bank
-	//  o the other segments can be be pointed to different banks by accessing
-	//		specific addresses (see below)
+	//  o the other segments can point to any one of the eight banks in the ROM
+	//		(including the last bank)
+	//
+	// switching of segments is performed by the bankSwitchOnAccess() function
 	segment [4]int
 }
 
 func newparkerBros(cf io.ReadSeeker) (cartMapper, error) {
 	cart := &parkerBros{method: "parker bros. (E0)"}
-	cart.initialise()
 
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	cf.Seek(0, io.SeekStart)
 
-	for b := 0; b < cart.numBanks(); b++ {
-		// bank sizes are 1028 in the parkerBros format
-		cart.banks[b] = make([]uint8, 1024)
+	for k := 0; k < cart.numBanks(); k++ {
+		const bankSize = 1024
+		cart.banks[k] = make([]uint8, bankSize)
 
 		// read cartridge
-		n, err := cf.Read(cart.banks[b])
+		n, err := cf.Read(cart.banks[k])
 		if err != nil {
 			return nil, err
 		}
-		if n != 1024 {
+		if n != bankSize {
 			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
@@ -73,10 +83,10 @@ func (cart parkerBros) String() string {
 }
 
 func (cart *parkerBros) initialise() {
-	cart.segment[0] = 4
-	cart.segment[1] = 5
-	cart.segment[2] = 6
-	cart.segment[3] = 7
+	cart.segment[0] = cart.numBanks() - 4
+	cart.segment[1] = cart.numBanks() - 3
+	cart.segment[2] = cart.numBanks() - 2
+	cart.segment[3] = cart.numBanks() - 1
 }
 
 func (cart *parkerBros) read(addr uint16) (uint8, error) {
@@ -89,20 +99,19 @@ func (cart *parkerBros) read(addr uint16) (uint8, error) {
 		data = cart.banks[cart.segment[2]][addr&0x03ff]
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		data = cart.banks[cart.segment[3]][addr&0x03ff]
-		cart.bankSwitchAddress(addr)
+		cart.bankSwitchOnAccess(addr)
 	}
 	return data, nil
 }
 
-func (cart *parkerBros) write(addr uint16, data uint8, isPoke bool) error {
-	if addr >= 0x0fe0 && addr <= 0x0ff7 {
-		cart.bankSwitchAddress(addr)
+func (cart *parkerBros) write(addr uint16, data uint8) error {
+	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
 	return errors.NewFormattedError(errors.UnwritableAddress, addr)
 }
 
-func (cart *parkerBros) bankSwitchAddress(addr uint16) {
+func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
 	switch addr {
 	// segment 0
 	case 0x0fe0:
@@ -157,9 +166,14 @@ func (cart *parkerBros) bankSwitchAddress(addr uint16) {
 		cart.segment[2] = 6
 	case 0x0ff7:
 		cart.segment[2] = 7
-	}
 
 	// segment 3 always points to bank 7
+
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (cart parkerBros) numBanks() int {
@@ -189,7 +203,7 @@ func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0bff {
 		cart.segment[2] = bank
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		// segment 4 always points to bank 7
+		// last segment always points to the last bank
 	} else {
 		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
 	}
@@ -202,10 +216,14 @@ func (cart *parkerBros) saveState() interface{} {
 }
 
 func (cart *parkerBros) restoreState(state interface{}) error {
-	cart.segment = state.([4]int)
+	cart.segment = state.([len(cart.segment)]int)
 	return nil
 }
 
 func (cart parkerBros) ram() []uint8 {
 	return []uint8{}
+}
+
+func (cart parkerBros) listen(addr uint16, data uint8) error {
+	return errors.NewFormattedError(errors.CartridgeListen, addr)
 }

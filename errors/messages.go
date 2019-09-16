@@ -67,6 +67,7 @@ var messages = map[Errno]string{
 	CartridgeFileUnavailable: "cartridge error: cannot open cartridge file (%s)",
 	CartridgeError:           "cartridge error: %s",
 	CartridgeEjected:         "cartridge error: no cartridge attached",
+	CartridgeListen:          "cartridge error: cartridge does not listen at this address (%#04x)",
 
 	// peripherals
 	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%s)",
