@@ -24,6 +24,7 @@ var Help = map[string]string{
 	cmdOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	cmdOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",
 	cmdPeek:          "Inspect an individual memory address",
+	cmdPanel:         "Inspect front panel settings",
 	cmdPlayer:        "Display the current state of the player 0/1 sprite",
 	cmdPlayfield:     "Display the current playfield data",
 	cmdPoke:          "Modify an individual memory address",

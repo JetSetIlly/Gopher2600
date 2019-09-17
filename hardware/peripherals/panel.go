@@ -6,6 +6,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"strings"
 )
 
 // Panel represents the console's front control panel
@@ -36,6 +37,45 @@ func NewPanel(riot memory.PeriphBus) *Panel {
 	pan.commit()
 
 	return pan
+}
+
+// MachineInfoTerse returns the panel information in terse format
+func (pan *Panel) MachineInfoTerse() string {
+	return pan.MachineInfo()
+}
+
+// MachineInfo returns the panel information in verbose format
+func (pan *Panel) MachineInfo() string {
+	s := strings.Builder{}
+
+	s.WriteString("p0=")
+	if pan.p0pro {
+		s.WriteString("pro")
+	} else {
+		s.WriteString("am")
+	}
+
+	s.WriteString(", p1=")
+	if pan.p1pro {
+		s.WriteString("pro")
+	} else {
+		s.WriteString("am")
+	}
+
+	s.WriteString(", ")
+
+	if pan.color {
+		s.WriteString("col")
+	} else {
+		s.WriteString("b&w")
+	}
+
+	return s.String()
+}
+
+// map String to MachineInfo
+func (pan *Panel) String() string {
+	return pan.MachineInfo()
 }
 
 func (pan *Panel) commit() {
@@ -92,6 +132,18 @@ func (pan *Panel) Handle(event Event) error {
 		pan.p0pro = !pan.p0pro
 	case PanelTogglePlayer1Pro:
 		pan.p1pro = !pan.p1pro
+	case PanelSetColor:
+		pan.color = true
+	case PanelSetBlackAndWhite:
+		pan.color = false
+	case PanelSetPlayer0Am:
+		pan.p0pro = false
+	case PanelSetPlayer1Am:
+		pan.p1pro = false
+	case PanelSetPlayer0Pro:
+		pan.p0pro = true
+	case PanelSetPlayer1Pro:
+		pan.p1pro = true
 	case PanelPowerOff:
 		return errors.NewFormattedError(errors.PowerOff)
 	default:

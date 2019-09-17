@@ -4,7 +4,10 @@ package peripherals
 // controller
 type Event int
 
-// list of defined Events
+// list of defined events
+//
+// *** do not monkey with the ordering of these constants unless you know what
+// you're doing. existing playback scripts will probably break ***
 const (
 	NoEvent Event = iota
 
@@ -23,8 +26,6 @@ const (
 	Right
 	NoRight
 
-	// !!TODO: paddle and keyboard controllers
-
 	// for convenience, a controller implementation can interact with the panel
 	PanelSelectPress
 	PanelSelectRelease
@@ -33,8 +34,14 @@ const (
 	PanelToggleColor
 	PanelTogglePlayer0Pro
 	PanelTogglePlayer1Pro
+	PanelSetColor
+	PanelSetBlackAndWhite
+	PanelSetPlayer0Am
+	PanelSetPlayer1Am
+	PanelSetPlayer0Pro
+	PanelSetPlayer1Pro
 
-	// PanelPowerOff is a special event and should probably be handled outside
-	// of the panel implementation
-	PanelPowerOff
+	// !!TODO: paddle and keyboard controllers
+
+	PanelPowerOff Event = 255
 )

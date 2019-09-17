@@ -42,6 +42,7 @@ const (
 	cmdOnHalt        = "ONHALT"
 	cmdOnStep        = "ONSTEP"
 	cmdPeek          = "PEEK"
+	cmdPanel         = "PANEL"
 	cmdPlayer        = "PLAYER"
 	cmdPlayfield     = "PLAYFIELD"
 	cmdPoke          = "POKE"
@@ -89,6 +90,7 @@ var commandTemplate = []string{
 	cmdOnHalt + " (OFF|ON|%S {%S})",
 	cmdOnStep + " (OFF|ON|%S {%S})",
 	cmdPeek + " [%S] {%S}",
+	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
 	cmdPlayer + " (0|1)",
 	cmdPlayfield,
 	cmdPoke + " [%S] %N",
@@ -923,6 +925,38 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		} else {
 			dbg.printMachineInfo(dbg.gui)
 		}
+
+	case cmdPanel:
+		mode, _ := tokens.Get()
+		switch strings.ToUpper(mode) {
+		case "TOGGLE":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "P0":
+				dbg.vcs.Panel.Handle(peripherals.PanelTogglePlayer0Pro)
+			case "P1":
+				dbg.vcs.Panel.Handle(peripherals.PanelTogglePlayer1Pro)
+			case "COL":
+				dbg.vcs.Panel.Handle(peripherals.PanelToggleColor)
+			}
+		case "SET":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "P0PRO":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer0Pro)
+			case "P1PRO":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer1Pro)
+			case "P0AM":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer0Am)
+			case "P1AM":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer1Am)
+			case "COL":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetColor)
+			case "BW":
+				dbg.vcs.Panel.Handle(peripherals.PanelSetBlackAndWhite)
+			}
+		}
+		dbg.printMachineInfo(dbg.vcs.Panel)
 
 	// information about the machine (sprites, playfield)
 	case cmdPlayer:
