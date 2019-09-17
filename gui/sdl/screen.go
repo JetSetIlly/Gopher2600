@@ -116,11 +116,11 @@ func (scr *screen) changeTVSpec() error {
 
 	scr.spec = scr.gtv.GetSpec()
 
-	scr.maxWidth = int32(scr.spec.ClocksPerScanline)
+	scr.maxWidth = int32(television.ClocksPerScanline)
 	scr.maxHeight = int32(scr.spec.ScanlinesTotal)
 	scr.maxMask = &sdl.Rect{X: 0, Y: 0, W: scr.maxWidth, H: scr.maxHeight}
 
-	scr.playWidth = int32(scr.spec.ClocksPerVisible)
+	scr.playWidth = int32(television.ClocksPerVisible)
 	scr.setPlayArea(int32(scr.spec.ScanlinesPerVisible), int32(scr.spec.ScanlinesPerVBlank+scr.spec.ScanlinesPerVSync))
 
 	// pixelWidth is the number of tv pixels per color clock. we don't need to
@@ -172,7 +172,7 @@ func (scr *screen) changeTVSpec() error {
 func (scr *screen) setPlayArea(scanlines int32, top int32) error {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
-	scr.playSrcMask = &sdl.Rect{X: int32(scr.spec.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
+	scr.playSrcMask = &sdl.Rect{X: int32(television.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
 
 	return scr.setMasking(scr.unmasked)
 }
@@ -320,7 +320,7 @@ func (scr *screen) update(paused bool) error {
 	if scr.unmasked {
 		scr.renderer.SetDrawColor(100, 100, 100, 20)
 		scr.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(scr.spec.ClocksPerHblank), H: int32(scr.spec.ScanlinesTotal)})
+		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(television.ClocksPerHblank), H: int32(scr.spec.ScanlinesTotal)})
 	}
 
 	// show metasignal overlay
@@ -340,7 +340,7 @@ func (scr *screen) update(paused bool) error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= scr.spec.ClocksPerScanline+scr.spec.ClocksPerHblank {
+		if x >= television.ClocksPerScanline {
 			x = 0
 			y++
 		}

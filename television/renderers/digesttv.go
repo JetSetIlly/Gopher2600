@@ -58,7 +58,7 @@ func (dtv *DigestTV) ChangeTVSpec() error {
 	// memory for frameData has to be sufficient for the entirety of the
 	// screen plus the size of a fingerprint. we'll use the additional space to
 	// chain fingerprint hashes
-	dtv.frameData = make([]byte, len(dtv.digest)+((dtv.GetSpec().ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
+	dtv.frameData = make([]byte, len(dtv.digest)+((television.ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (dtv *DigestTV) NewScanline(scanline int) error {
 // SetPixel implements television.Renderer interface
 func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
-	offset := dtv.GetSpec().ClocksPerScanline * int(y) * 3
+	offset := television.ClocksPerScanline * int(y) * 3
 	offset += int(x) * 3
 
 	if offset >= len(dtv.frameData) {

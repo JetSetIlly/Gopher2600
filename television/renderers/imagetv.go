@@ -73,7 +73,7 @@ func (imtv *ImageTV) ChangeTVSpec() error {
 	imtv.pixelWidth = 2
 	imtv.screenGeom = image.Rectangle{
 		Min: image.Point{X: 0, Y: 0},
-		Max: image.Point{X: imtv.GetSpec().ClocksPerScanline * imtv.pixelWidth, Y: imtv.GetSpec().ScanlinesTotal},
+		Max: image.Point{X: television.ClocksPerScanline * imtv.pixelWidth, Y: imtv.GetSpec().ScanlinesTotal},
 	}
 	return nil
 }

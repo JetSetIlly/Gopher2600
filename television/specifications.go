@@ -4,10 +4,6 @@ package television
 type Specification struct {
 	ID string
 
-	ClocksPerHblank   int
-	ClocksPerVisible  int
-	ClocksPerScanline int
-
 	ScanlinesPerVSync    int
 	ScanlinesPerVBlank   int
 	ScanlinesPerVisible  int
@@ -23,6 +19,15 @@ type Specification struct {
 	AspectBias float32
 }
 
+// ClocksPerHblank is the same for all tv specifications
+const ClocksPerHblank = 68
+
+// ClocksPerVisible is the same for all tv specifications
+const ClocksPerVisible = 160
+
+// ClocksPerScanline is the same for all tv specifications
+const ClocksPerScanline = 228
+
 // SpecNTSC is the specification for NTSC television typee
 var SpecNTSC *Specification
 
@@ -32,23 +37,17 @@ var SpecPAL *Specification
 func init() {
 	SpecNTSC = new(Specification)
 	SpecNTSC.ID = "NTSC"
-	SpecNTSC.ClocksPerHblank = 68
-	SpecNTSC.ClocksPerVisible = 160 // counting from 0
-	SpecNTSC.ClocksPerScanline = 228
 	SpecNTSC.ScanlinesPerVSync = 3
 	SpecNTSC.ScanlinesPerVBlank = 37
 	SpecNTSC.ScanlinesPerVisible = 192
 	SpecNTSC.ScanlinesPerOverscan = 30
 	SpecNTSC.ScanlinesTotal = 262
-	SpecNTSC.Colors = colorsNTSC
 	SpecNTSC.FramesPerSecond = 60.0
 	SpecNTSC.SecondsPerFrame = 1.0 / SpecNTSC.FramesPerSecond
+	SpecNTSC.Colors = colorsNTSC
 
 	SpecPAL = new(Specification)
 	SpecPAL.ID = "PAL"
-	SpecPAL.ClocksPerHblank = 68
-	SpecPAL.ClocksPerVisible = 160 // counting from 0
-	SpecPAL.ClocksPerScanline = 228
 	SpecPAL.ScanlinesPerVSync = 3
 	SpecPAL.ScanlinesPerVBlank = 45
 	SpecPAL.ScanlinesPerVisible = 228

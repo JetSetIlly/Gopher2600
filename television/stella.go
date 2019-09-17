@@ -127,7 +127,7 @@ func (btv *StellaTelevision) AddRenderer(r Renderer) {
 
 // Reset all the values for the television
 func (btv *StellaTelevision) Reset() error {
-	btv.horizPos = -btv.spec.ClocksPerHblank
+	btv.horizPos = -ClocksPerHblank
 	btv.frameNum = 0
 	btv.scanline = 0
 	btv.vsyncCount = 0
@@ -167,7 +167,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	// see SignalAttributes type definition for notes about the HSyncSimple
 	// attribute
 	if sig.HSyncSimple && !btv.prevSignal.HSyncSimple {
-		btv.horizPos = -btv.spec.ClocksPerHblank
+		btv.horizPos = -ClocksPerHblank
 		btv.scanline++
 
 		if btv.scanline <= btv.spec.ScanlinesTotal {
@@ -209,7 +209,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 
 	} else {
 		btv.horizPos++
-		if btv.horizPos > btv.spec.ClocksPerScanline {
+		if btv.horizPos > ClocksPerScanline {
 			return errors.NewFormattedError(errors.StellaTelevision, "no flyback signal")
 		}
 	}
@@ -286,7 +286,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	btv.prevSignal = sig
 
 	// current coordinates
-	x := int32(btv.horizPos) + int32(btv.spec.ClocksPerHblank)
+	x := int32(btv.horizPos) + int32(ClocksPerHblank)
 	y := int32(btv.scanline)
 
 	// decode color using the regular color signal
