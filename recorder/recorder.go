@@ -24,7 +24,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return nil, errors.NewFormattedError(errors.RecordingError, "hardware is not suitable for recording")
+		return nil, errors.New(errors.RecordingError, "hardware is not suitable for recording")
 	}
 
 	rec := &Recorder{vcs: vcs}
@@ -32,7 +32,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	// create digesttv, piggybacking on the tv already being used by vcs
 	rec.digest, err = renderers.NewDigestTV(vcs.TV.GetSpec().ID, vcs.TV)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.RecordingError, err)
+		return nil, errors.New(errors.RecordingError, err)
 	}
 
 	// open file
@@ -40,10 +40,10 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	if os.IsNotExist(err) {
 		rec.output, err = os.Create(transcript)
 		if err != nil {
-			return nil, errors.NewFormattedError(errors.RecordingError, "can't create file")
+			return nil, errors.New(errors.RecordingError, "can't create file")
 		}
 	} else {
-		return nil, errors.NewFormattedError(errors.RecordingError, "file already exists")
+		return nil, errors.New(errors.RecordingError, "file already exists")
 	}
 
 	err = rec.writeHeader()
@@ -59,12 +59,12 @@ func (rec *Recorder) End() error {
 	// write the power off event to the transcript
 	err := rec.Transcribe(peripherals.PanelID, peripherals.PanelPowerOff)
 	if err != nil {
-		return errors.NewFormattedError(errors.RecordingError, err)
+		return errors.New(errors.RecordingError, err)
 	}
 
 	err = rec.output.Close()
 	if err != nil {
-		return errors.NewFormattedError(errors.RecordingError, err)
+		return errors.New(errors.RecordingError, err)
 	}
 
 	return nil
@@ -79,11 +79,11 @@ func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event
 
 	// sanity checks
 	if rec.output == nil {
-		return errors.NewFormattedError(errors.RecordingError, "recording file is not open")
+		return errors.New(errors.RecordingError, "recording file is not open")
 	}
 
 	if rec.vcs == nil || rec.vcs.TV == nil {
-		return errors.NewFormattedError(errors.RecordingError, "hardware is not suitable for recording")
+		return errors.New(errors.RecordingError, "hardware is not suitable for recording")
 	}
 
 	// create line and write to file
@@ -115,10 +115,10 @@ func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event
 
 	n, err := io.WriteString(rec.output, line)
 	if err != nil {
-		return errors.NewFormattedError(errors.RecordingError, err)
+		return errors.New(errors.RecordingError, err)
 	}
 	if n != len(line) {
-		return errors.NewFormattedError(errors.RecordingError, "output truncated")
+		return errors.New(errors.RecordingError, "output truncated")
 	}
 
 	return nil

@@ -53,12 +53,12 @@ func (rec *Recorder) writeHeader() error {
 
 	if err != nil {
 		rec.output.Close()
-		return errors.NewFormattedError(errors.RecordingError, err)
+		return errors.New(errors.RecordingError, err)
 	}
 
 	if n != len(line) {
 		rec.output.Close()
-		return errors.NewFormattedError(errors.RecordingError, "output truncated")
+		return errors.New(errors.RecordingError, "output truncated")
 	}
 
 	return nil
@@ -66,7 +66,7 @@ func (rec *Recorder) writeHeader() error {
 
 func (plb *Playback) readHeader(lines []string) error {
 	if lines[lineMagicString] != magicString {
-		return errors.NewFormattedError(errors.PlaybackError, fmt.Sprintf("not a valid playback transcript (%s)", plb.transcript))
+		return errors.New(errors.PlaybackError, fmt.Sprintf("not a valid playback transcript (%s)", plb.transcript))
 	}
 
 	// read header

@@ -111,12 +111,12 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 				} else {
 					// there is no input so return UserInterrupt error
 					ct.Print("\n")
-					return inputLen + 1, errors.NewFormattedError(errors.UserInterrupt)
+					return inputLen + 1, errors.New(errors.UserInterrupt)
 				}
 
 			case easyterm.KeySuspend:
 				// CTRL-Z
-				return inputLen + 1, errors.NewFormattedError(errors.UserSuspend)
+				return inputLen + 1, errors.New(errors.UserSuspend)
 
 			case easyterm.KeyCarriageReturn:
 				// CARRIAGE RETURN

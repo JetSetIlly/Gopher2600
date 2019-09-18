@@ -14,7 +14,7 @@ func (cmds *Commands) AddHelp(helpCommand string) error {
 	// defined
 	for i := 1; i < len(*cmds); i++ {
 		if (*cmds)[i].tag == helpCommand {
-			return errors.NewFormattedError(errors.ParserError, helpCommand, "already defined", 0)
+			return errors.New(errors.ParserError, helpCommand, "already defined", 0)
 		}
 	}
 
@@ -42,7 +42,7 @@ func (cmds *Commands) AddHelp(helpCommand string) error {
 	// parse the constructed definition
 	p, d, err := parseDefinition(defn.String(), "")
 	if err != nil {
-		return errors.NewFormattedError(errors.ParserError, helpCommand, err, d)
+		return errors.New(errors.ParserError, helpCommand, err, d)
 	}
 
 	// add parsed definition to list of commands

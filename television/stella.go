@@ -74,7 +74,7 @@ func NewStellaTelevision(tvType string) (*StellaTelevision, error) {
 		btv.spec = SpecNTSC
 		btv.auto = true
 	default:
-		return nil, errors.NewFormattedError(errors.StellaTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
+		return nil, errors.New(errors.StellaTelevision, fmt.Sprintf("unsupported tv type (%s)", tvType))
 	}
 
 	// empty list of renderers
@@ -210,7 +210,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	} else {
 		btv.horizPos++
 		if btv.horizPos > ClocksPerScanline {
-			return errors.NewFormattedError(errors.StellaTelevision, "no flyback signal")
+			return errors.New(errors.StellaTelevision, "no flyback signal")
 		}
 	}
 
@@ -317,7 +317,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 func (btv *StellaTelevision) GetState(request StateReq) (int, error) {
 	switch request {
 	default:
-		return 0, errors.NewFormattedError(errors.UnknownTVRequest, request)
+		return 0, errors.New(errors.UnknownTVRequest, request)
 	case ReqFramenum:
 		return btv.frameNum, nil
 	case ReqScanline:

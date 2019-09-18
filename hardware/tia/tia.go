@@ -484,13 +484,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			// filter out-of-spec errors for now. this should be optional
-			if err.Errno != errors.TVOutOfSpec {
-				return !tia.wsync, err
-			}
-		default:
+		// allow out-of-spec errors for now. this should be optional
+		if !errors.Is(err, errors.TVOutOfSpec) {
 			return !tia.wsync, err
 		}
 	}

@@ -40,5 +40,5 @@ func (tab *Table) SearchSymbol(symbol string, tType TableType) (TableType, strin
 		}
 	}
 
-	return UnspecifiedSymTable, symbol, 0, errors.NewFormattedError(errors.SymbolUnknown, symbol)
+	return UnspecifiedSymTable, symbol, 0, errors.New(errors.SymbolUnknown, symbol)
 }

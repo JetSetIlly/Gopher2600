@@ -110,7 +110,7 @@ func (mc *CPU) IsExecuting() bool {
 func (mc *CPU) Reset() error {
 	// sanity check
 	if mc.IsExecuting() {
-		return errors.NewFormattedError(errors.InvalidOperationMidInstruction, "reset")
+		return errors.New(errors.InvalidOperationMidInstruction, "reset")
 	}
 
 	mc.PC.Load(0)
@@ -133,7 +133,7 @@ func (mc *CPU) Reset() error {
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
-		return errors.NewFormattedError(errors.InvalidOperationMidInstruction, "load PC")
+		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
 	}
 
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
@@ -157,7 +157,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 func (mc *CPU) LoadPC(directAddress uint16) error {
 	// sanity check
 	if mc.IsExecuting() {
-		return errors.NewFormattedError(errors.InvalidOperationMidInstruction, "load PC")
+		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
 	}
 
 	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
@@ -180,14 +180,9 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			// don't worry about unwritable addresses (unless strict addressing
-			// is on)
-			if mc.StrictAddressing || err.Errno != errors.UnwritableAddress {
-				return err
-			}
-		default:
+		// don't worry about unwritable addresses (unless strict addressing
+		// is on)
+		if mc.StrictAddressing || !errors.Is(err, errors.UnwritableAddress) {
 			return err
 		}
 	}
@@ -200,14 +195,9 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
-		switch err := err.(type) {
-		case errors.FormattedError:
-			// don't worry about unreadable addresses (unless strict addressing
-			// is on)
-			if mc.StrictAddressing || err.Errno != errors.UnreadableAddress {
-				return 0, err
-			}
-		default:
+		// don't worry about unreadable addresses (unless strict addressing
+		// is on)
+		if mc.StrictAddressing || !errors.Is(err, errors.UnreadableAddress) {
 			return 0, err
 		}
 	}
@@ -253,7 +243,7 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	}
 	carry, _ := mc.PC.Add(1, false)
 	if carry {
-		return 0, errors.NewFormattedError(errors.ProgramCounterCycled)
+		return 0, errors.New(errors.ProgramCounterCycled)
 	}
 	return op, nil
 }
@@ -268,7 +258,7 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	// the next instruction but I don't believe this has any side-effects
 	carry, _ := mc.PC.Add(2, false)
 	if carry {
-		return 0, errors.NewFormattedError(errors.ProgramCounterCycled)
+		return 0, errors.New(errors.ProgramCounterCycled)
 	}
 
 	return val, nil
@@ -378,10 +368,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func(*result.Instruction) error)
 		// has wandered into data memory - most likely to occur during
 		// disassembly.
 		if (operator>>4)%2 == 1 {
-			return nil, errors.NewFormattedError(errors.InvalidOpcode, fmt.Sprintf("%02x", operator))
+			return nil, errors.New(errors.InvalidOpcode, fmt.Sprintf("%02x", operator))
 		}
 
-		return nil, errors.NewFormattedError(errors.UnimplementedInstruction, operator, mc.PC.ToUint16()-1)
+		return nil, errors.New(errors.UnimplementedInstruction, operator, mc.PC.ToUint16()-1)
 	}
 	result.Defn = defn
 

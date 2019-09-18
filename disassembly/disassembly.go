@@ -72,7 +72,7 @@ func FromCartrige(cartridgeFilename string) (*Disassembly, error) {
 
 	err := cart.Attach(cartridgeFilename)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.DisasmError, err)
+		return nil, errors.New(errors.DisasmError, err)
 	}
 
 	dsm := new(Disassembly)
@@ -104,13 +104,13 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	// create new memory
 	mem, err := newDisasmMemory(dsm.Cart)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 	mc.NoFlowControl = true
 
@@ -118,11 +118,11 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 	err = dsm.linearDisassembly(mc)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 
 	// disassemble as best we can with manual flow control
@@ -132,12 +132,12 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 
 	err = dsm.flowDisassembly(mc)
 	if err != nil {
-		return errors.NewFormattedError(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 
 	return nil

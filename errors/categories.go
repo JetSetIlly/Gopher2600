@@ -2,7 +2,16 @@ package errors
 
 // list of error numbers
 const (
-	FatalError Errno = iota
+	// PanicErrors should be used only as an alternative to panic(). that is
+	// errors where there is no good response beyond suggesting that a terrible
+	// mistake has been made. PanicErrors should be treated like actual
+	// panic()s and cause the program (or the sub-system) to cease as soon as
+	// possible.
+	//
+	// actual panic()s should only be used when the mistake is so heinous that
+	// it suggests a fundamental misunderstanding has taken place and so, as it
+	// were, all bets are off.
+	PanicError Errno = iota
 
 	// sentinal
 	UserInterrupt
@@ -36,9 +45,15 @@ const (
 	PlaybackError
 	PlaybackHashError
 
+	// database
+	DatabaseError
+	DatabaseFileUnavailable
+
 	// regression
-	RegressionDBError
-	RegressionSetupError
+	RegressionError
+
+	// setup
+	SetupError
 
 	// symbols
 	SymbolsFileUnavailable

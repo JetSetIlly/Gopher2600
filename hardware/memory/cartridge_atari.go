@@ -82,7 +82,7 @@ func (cart atari) getBank(addr uint16) int {
 
 func (cart *atari) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > len(cart.banks) {
-		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 	}
 	cart.bank = bank
 	return nil
@@ -146,7 +146,7 @@ func (cart atari) ram() []uint8 {
 }
 
 func (cart atari) listen(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.CartridgeListen, addr)
+	return errors.New(errors.CartridgeListen, addr)
 }
 
 // atari4k is the original and most straightforward format
@@ -180,7 +180,7 @@ func newAtari4k(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -206,7 +206,7 @@ func (cart *atari4k) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.NewFormattedError(errors.UnwritableAddress, addr)
+	return errors.New(errors.UnwritableAddress, addr)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes
@@ -236,7 +236,7 @@ func newAtari2k(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -262,7 +262,7 @@ func (cart *atari2k) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.NewFormattedError(errors.UnwritableAddress, addr)
+	return errors.New(errors.UnwritableAddress, addr)
 }
 
 // atari8k (F8)
@@ -291,7 +291,7 @@ func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -331,7 +331,7 @@ func (cart *atari8k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ff9 {
 		cart.bank = 1
 	} else {
-		return errors.NewFormattedError(errors.UnwritableAddress, addr)
+		return errors.New(errors.UnwritableAddress, addr)
 	}
 
 	return nil
@@ -364,7 +364,7 @@ func newAtari16k(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -412,7 +412,7 @@ func (cart *atari16k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ff9 {
 		cart.bank = 3
 	} else {
-		return errors.NewFormattedError(errors.UnwritableAddress, addr)
+		return errors.New(errors.UnwritableAddress, addr)
 	}
 
 	return nil
@@ -445,7 +445,7 @@ func newAtari32k(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -509,7 +509,7 @@ func (cart *atari32k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ffb {
 		cart.bank = 7
 	} else {
-		return errors.NewFormattedError(errors.UnwritableAddress, addr)
+		return errors.New(errors.UnwritableAddress, addr)
 	}
 
 	return nil

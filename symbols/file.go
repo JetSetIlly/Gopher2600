@@ -71,7 +71,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sf, err := os.Open(symFilename)
 	if err != nil {
-		return table, errors.NewFormattedError(errors.SymbolsFileUnavailable, cartridgeFilename)
+		return table, errors.New(errors.SymbolsFileUnavailable, cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -79,7 +79,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sym, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.SymbolsFileError, err)
+		return nil, errors.New(errors.SymbolsFileError, err)
 	}
 	lines := strings.Split(string(sym), "\n")
 

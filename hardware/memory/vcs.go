@@ -47,7 +47,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 	mem.PIA = newPIA()
 	mem.Cart = NewCartridge()
 	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
-		return nil, errors.NewFormattedError(errors.MemoryError, "cannot create memory areas")
+		return nil, errors.New(errors.MemoryError, "cannot create memory areas")
 	}
 
 	// create the memory map; each address in the memory map points to the
@@ -108,7 +108,7 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address, true)
 	area := mem.Memmap[ma]
 	if area == nil {
-		return 0, errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
+		return 0, errors.New(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 
 	data, err := area.(CPUBus).Read(ma)
@@ -143,7 +143,7 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma := mem.MapAddress(address, false)
 	area := mem.Memmap[ma]
 	if area == nil {
-		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
+		return errors.New(errors.MemoryError, fmt.Sprintf("address %#04x not mapped correctly", address))
 	}
 
 	mem.LastAccessAddress = ma
@@ -160,11 +160,11 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	// the only error we expect from the cartMapper is and UnwritableAddress
 	// error, which most cartridge types will respond with in all circumstances
 	if err != nil {
-		if _, ok := err.(errors.FormattedError); !ok {
+		if _, ok := err.(errors.AtariError); !ok {
 			return err
 		}
 
-		if err.(errors.FormattedError).Errno != errors.CartridgeListen {
+		if err.(errors.AtariError).Errno != errors.CartridgeListen {
 			return err
 		}
 	}

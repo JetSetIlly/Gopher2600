@@ -139,24 +139,24 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	// prepare gui/tv
 	btv, err := television.NewStellaTelevision(tvType)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.DebuggerError, err)
+		return nil, errors.New(errors.DebuggerError, err)
 	}
 
 	dbg.digest, err = renderers.NewDigestTV(tvType, btv)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.DebuggerError, err)
+		return nil, errors.New(errors.DebuggerError, err)
 	}
 
 	dbg.gui, err = sdl.NewGUI(tvType, 2.0, btv)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.DebuggerError, err)
+		return nil, errors.New(errors.DebuggerError, err)
 	}
 	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(dbg.gui)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.DebuggerError, err)
+		return nil, errors.New(errors.DebuggerError, err)
 	}
 
 	// create and attach a controller
@@ -216,7 +216,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 	err := dbg.console.Initialise()
 	if err != nil {
-		return errors.NewFormattedError(errors.DebuggerError, err)
+		return errors.New(errors.DebuggerError, err)
 	}
 	defer dbg.console.CleanUp()
 
@@ -224,7 +224,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 	err = dbg.loadCartridge(cartridge)
 	if err != nil {
-		return errors.NewFormattedError(errors.DebuggerError, err)
+		return errors.New(errors.DebuggerError, err)
 	}
 
 	dbg.running = true
@@ -238,7 +238,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 		err = dbg.inputLoop(plb, false)
 		if err != nil {
-			return errors.NewFormattedError(errors.DebuggerError, err)
+			return errors.New(errors.DebuggerError, err)
 		}
 	}
 
@@ -246,7 +246,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 	// debugger is to exit
 	err = dbg.inputLoop(dbg.console, false)
 	if err != nil {
-		return errors.NewFormattedError(errors.DebuggerError, err)
+		return errors.New(errors.DebuggerError, err)
 	}
 	return nil
 }
@@ -403,67 +403,62 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			// get user input
 			n, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
 			if err != nil {
-				switch err := err.(type) {
+				if !errors.IsAny(err) {
+					return err
+				}
 
-				case errors.FormattedError:
-					switch err.Errno {
-					case errors.UserInterrupt:
-						if dbg.scriptScribe.IsActive() {
-							dbg.parseInput("SCRIPT END", false, false)
-							continue // for loop
-						} else {
+				switch err.(errors.AtariError).Errno {
+				case errors.UserInterrupt:
+					if dbg.scriptScribe.IsActive() {
+						dbg.parseInput("SCRIPT END", false, false)
+						continue // for loop
+					} else {
 
-							// be polite and ask if the user really wants to
-							// quit
-							confirm := make([]byte, 1)
-							_, err := inputter.UserRead(confirm,
-								console.Prompt{
-									Content: "really quit (y/n) ",
-									Style:   console.StylePromptConfirm},
-								nil, nil)
+						// be polite and ask if the user really wants to
+						// quit
+						confirm := make([]byte, 1)
+						_, err := inputter.UserRead(confirm,
+							console.Prompt{
+								Content: "really quit (y/n) ",
+								Style:   console.StylePromptConfirm},
+							nil, nil)
 
-							if err != nil {
-								switch err := err.(type) {
-								case errors.FormattedError:
-									if err.Errno == errors.UserInterrupt {
-										// treat another ctrl-c press to indicate 'yes'
-										confirm[0] = 'y'
-									}
-								default:
-									dbg.print(console.StyleError, err.Error())
-								}
-							}
-
-							if confirm[0] == 'y' || confirm[0] == 'Y' {
-								dbg.parseInput("EXIT", false, false)
-							}
-						}
-
-					case errors.UserSuspend:
-						// ctrl-z like process suspension
-						p, err := os.FindProcess(os.Getppid())
 						if err != nil {
-							dbg.print(console.StyleError, "debugger doesn't seem to have a parent process")
-						} else {
-							// send TSTP signal to parent proces
-							p.Signal(syscall.SIGTSTP)
+							if errors.Is(err, errors.UserInterrupt) {
+								// treat another ctrl-c press to indicate 'yes'
+								confirm[0] = 'y'
+							} else {
+								dbg.print(console.StyleError, err.Error())
+							}
 						}
 
-					case errors.ScriptEnd:
-						// convert ScriptEnd errors to a simple print call.
-						// unless we're in a video cycle input loop, in which
-						// case don't print anything
-
-						if !videoCycle {
-							// !!TODO: prevent printing of ScriptEnd error for
-							// initialisation script
-							dbg.print(console.StyleFeedback, err.Error())
+						if confirm[0] == 'y' || confirm[0] == 'Y' {
+							dbg.parseInput("EXIT", false, false)
 						}
-						return nil
-
-					default:
-						return err
 					}
+
+				case errors.UserSuspend:
+					// ctrl-z like process suspension
+					p, err := os.FindProcess(os.Getppid())
+					if err != nil {
+						dbg.print(console.StyleError, "debugger doesn't seem to have a parent process")
+					} else {
+						// send TSTP signal to parent proces
+						p.Signal(syscall.SIGTSTP)
+					}
+
+				case errors.ScriptEnd:
+					// convert ScriptEnd errors to a simple print call.
+					// unless we're in a video cycle input loop, in which
+					// case don't print anything
+
+					if !videoCycle {
+						// !!TODO: prevent printing of ScriptEnd error for
+						// initialisation script
+						dbg.print(console.StyleFeedback, err.Error())
+					}
+					return nil
+
 				default:
 					return err
 				}
@@ -502,18 +497,16 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				}
 
 				if err != nil {
-					switch err := err.(type) {
-					case errors.FormattedError:
-						// do not exit input loop when error is a gopher error
-						// set lastStepError instead and allow emulation to
-						// halt
-						dbg.lastStepError = true
-
-						// print gopher error message
-						dbg.print(console.StyleError, "%s", err)
-					default:
+					if !errors.IsAny(err) {
 						return err
 					}
+
+					// do not exit input loop when error is a of a known type
+					// set lastStepError instead and allow emulation to
+					// halt
+					dbg.lastStepError = true
+					dbg.print(console.StyleError, "%s", err)
+
 				} else {
 					// check validity of instruction result
 					if dbg.lastResult.Final {
@@ -521,7 +514,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						if err != nil {
 							dbg.print(console.StyleError, "%s", dbg.lastResult.Defn)
 							dbg.print(console.StyleError, "%s", dbg.lastResult)
-							return errors.NewFormattedError(errors.DebuggerError, err)
+							return errors.New(errors.DebuggerError, err)
 						}
 					}
 				}

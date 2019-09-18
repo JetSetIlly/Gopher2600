@@ -76,7 +76,7 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		}
 
 	default:
-		return errors.NewFormattedError(errors.UnknownGUIRequest, request)
+		return errors.New(errors.UnknownGUIRequest, request)
 	}
 
 	return nil

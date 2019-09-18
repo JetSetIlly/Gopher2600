@@ -51,10 +51,10 @@ func deserialiseFrameEntry(key int, csv string) (database.Entry, error) {
 
 	// basic sanity check
 	if len(fields) > numFrameFields {
-		return nil, errors.NewFormattedError(errors.RegressionDBError, "too many fields in frame regression entry")
+		return nil, errors.New(errors.DatabaseError, "too many fields in frame regression entry")
 	}
 	if len(fields) < numFrameFields {
-		return nil, errors.NewFormattedError(errors.RegressionDBError, "too few fields in frame regression entry")
+		return nil, errors.New(errors.DatabaseError, "too few fields in frame regression entry")
 	}
 
 	// string fields need no conversion
@@ -69,7 +69,7 @@ func deserialiseFrameEntry(key int, csv string) (database.Entry, error) {
 	reg.NumFrames, err = strconv.Atoi(fields[frameFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[frameFieldNumFrames])
-		return nil, errors.NewFormattedError(errors.RegressionDBError, msg)
+		return nil, errors.New(errors.DatabaseError, msg)
 	}
 
 	// convert state field
@@ -133,17 +133,17 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
+		return false, errors.New(errors.RegressionError, err)
 	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
+		return false, errors.New(errors.RegressionError, err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartFile)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
+		return false, errors.New(errors.RegressionError, err)
 	}
 
 	state := make([]string, 0, 1024)
@@ -157,14 +157,13 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	err = vcs.RunForFrameCount(reg.NumFrames, f)
 	if err != nil {
-		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
+		return false, errors.New(errors.RegressionError, err)
 	}
 
 	if newRegression {
 		reg.screenDigest = tv.String()
 
 		if reg.State {
-
 			// construct state script filename
 			shortCartName := path.Base(reg.CartFile)
 			shortCartName = strings.TrimSuffix(shortCartName, path.Ext(reg.CartFile))
@@ -179,7 +178,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			// need
 			if nf != nil {
 				msg := fmt.Sprintf("state recording file already exists (%s)", reg.stateFile)
-				return false, errors.NewFormattedError(errors.RegressionDBError, msg)
+				return false, errors.New(errors.DatabaseError, msg)
 			}
 			nf.Close()
 
@@ -187,7 +186,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
 				msg := fmt.Sprintf("error creating state recording file: %s", err)
-				return false, errors.NewFormattedError(errors.RegressionDBError, msg)
+				return false, errors.New(errors.DatabaseError, msg)
 			}
 			defer nf.Close()
 
@@ -195,7 +194,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
 					msg := fmt.Sprintf("error writing state recording file: %s", err)
-					return false, errors.NewFormattedError(errors.RegressionDBError, msg)
+					return false, errors.New(errors.DatabaseError, msg)
 				}
 			}
 		}
@@ -211,7 +210,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)
-			return false, errors.NewFormattedError(errors.RegressionDBError, msg)
+			return false, errors.New(errors.DatabaseError, msg)
 		}
 		defer nf.Close()
 

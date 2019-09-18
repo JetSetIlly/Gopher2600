@@ -223,7 +223,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
 		if err == nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
+			return doNothing, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
 		}
 	}
 
@@ -242,7 +242,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	switch command {
 	default:
-		return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
+		return doNothing, errors.New(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
 
 	case cmdHelp:
 		keyword, present := tokens.Get()
@@ -354,12 +354,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			symbol := tok
 			table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
 			if err != nil {
-				switch err := err.(type) {
-				case errors.FormattedError:
-					if err.Errno == errors.SymbolUnknown {
-						dbg.print(console.StyleFeedback, "%s -> not found", symbol)
-						return doNothing, nil
-					}
+				if errors.Is(err, errors.SymbolUnknown) {
+					dbg.print(console.StyleFeedback, "%s -> not found", symbol)
+					return doNothing, nil
 				}
 				return doNothing, err
 			}
@@ -390,19 +387,19 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, err)
+			return doNothing, errors.New(errors.CommandError, err)
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, err)
+			return doNothing, errors.New(errors.CommandError, err)
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, err)
+			return doNothing, errors.New(errors.CommandError, err)
 		}
 
 	case cmdList:
@@ -452,7 +449,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
+			return doNothing, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
 		}
 
 		drop = strings.ToUpper(drop)
@@ -656,7 +653,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
-				return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
+				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 			dbg.runUntilHalt = true
 		}
@@ -1103,12 +1100,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			case "SCALE":
 				scl, present := tokens.Get()
 				if !present {
-					return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
+					return doNothing, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
 				}
 
 				scale, err := strconv.ParseFloat(scl, 32)
 				if err != nil {
-					return doNothing, errors.NewFormattedError(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
+					return doNothing, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
 				}
 
 				err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))

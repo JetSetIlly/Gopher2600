@@ -18,17 +18,17 @@ import (
 // Play sets the emulation running - without any debugging features
 func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording string, newRecording bool) error {
 	if recorder.IsPlaybackFile(cartridgeFile) {
-		return errors.NewFormattedError(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
+		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
 	}
 
 	playtv, err := sdl.NewGUI(tvType, scaling, nil)
 	if err != nil {
-		return errors.NewFormattedError(errors.PlayError, err)
+		return errors.New(errors.PlayError, err)
 	}
 
 	vcs, err := hardware.NewVCS(playtv)
 	if err != nil {
-		return errors.NewFormattedError(errors.PlayError, err)
+		return errors.New(errors.PlayError, err)
 	}
 
 	// stk, err := sticks.NewSplaceStick()
@@ -57,12 +57,12 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 		if newRecording {
 			err = setup.AttachCartridge(vcs, cartridgeFile)
 			if err != nil {
-				return errors.NewFormattedError(errors.PlayError, err)
+				return errors.New(errors.PlayError, err)
 			}
 
 			rec, err = recorder.NewRecorder(recording, vcs)
 			if err != nil {
-				return errors.NewFormattedError(errors.PlayError, err)
+				return errors.New(errors.PlayError, err)
 			}
 
 			defer func() {
@@ -79,7 +79,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			}
 
 			if cartridgeFile != "" && cartridgeFile != plb.CartFile {
-				return errors.NewFormattedError(errors.PlayError, "cartridge doesn't match name in the playback recording")
+				return errors.New(errors.PlayError, "cartridge doesn't match name in the playback recording")
 			}
 
 			// if no cartridge filename has been provided then use the one in
@@ -88,25 +88,25 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 
 			err = setup.AttachCartridge(vcs, cartridgeFile)
 			if err != nil {
-				return errors.NewFormattedError(errors.PlayError, err)
+				return errors.New(errors.PlayError, err)
 			}
 
 			err = plb.AttachToVCS(vcs)
 			if err != nil {
-				return errors.NewFormattedError(errors.PlayError, err)
+				return errors.New(errors.PlayError, err)
 			}
 		}
 	} else {
 		err = setup.AttachCartridge(vcs, cartridgeFile)
 		if err != nil {
-			return errors.NewFormattedError(errors.PlayError, err)
+			return errors.New(errors.PlayError, err)
 		}
 	}
 
 	// now that we've attached the cartridge check the hash against the
 	// playback has (if it exists)
 	if plb != nil && plb.CartHash != vcs.Mem.Cart.Hash {
-		return errors.NewFormattedError(errors.PlayError, "cartridge hash doesn't match hash in playback recording")
+		return errors.New(errors.PlayError, "cartridge hash doesn't match hash in playback recording")
 	}
 
 	// connect debugger to gui
@@ -120,7 +120,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 	}
 	err = playtv.SetFeature(request, true)
 	if err != nil {
-		return errors.NewFormattedError(errors.PlayError, err)
+		return errors.New(errors.PlayError, err)
 	}
 
 	// we need to make sure we call the deferred function rec.End() even when
@@ -147,14 +147,10 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 	})
 
 	if err != nil {
-		// filter PowerOff errors
-		switch err := err.(type) {
-		case errors.FormattedError:
-			if err.Errno == errors.PowerOff {
-				return nil
-			}
+		if errors.Is(err, errors.PowerOff) {
+			return nil
 		}
-		return errors.NewFormattedError(errors.PlayError, err)
+		return errors.New(errors.PlayError, err)
 	}
 
 	return nil

@@ -114,7 +114,7 @@ func (cart Cartridge) Peek(addr uint16) (uint8, error) {
 
 // Poke is the implementation of Memory.Area.Poke
 func (cart Cartridge) Poke(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.UnpokeableAddress, addr)
+	return errors.New(errors.UnpokeableAddress, addr)
 }
 
 // fingerprint8k attempts a divination of 8k cartridge data and decide on a
@@ -153,7 +153,7 @@ func (cart Cartridge) fingerprint16k(cf io.ReadSeeker) func(io.ReadSeeker) (cart
 func (cart *Cartridge) Attach(filename string) error {
 	cf, err := os.Open(filename)
 	if err != nil {
-		return errors.NewFormattedError(errors.CartridgeFileUnavailable, filename)
+		return errors.New(errors.CartridgeFileUnavailable, filename)
 	}
 	defer func() {
 		_ = cf.Close()
@@ -200,7 +200,7 @@ func (cart *Cartridge) Attach(filename string) error {
 		}
 
 	case 12288:
-		return errors.NewFormattedError(errors.CartridgeFileError, "12288 bytes not yet supported")
+		return errors.New(errors.CartridgeFileError, "12288 bytes not yet supported")
 
 	case 16384:
 		cart.mapper, err = cart.fingerprint16k(cf)(cf)
@@ -215,10 +215,10 @@ func (cart *Cartridge) Attach(filename string) error {
 		}
 
 	case 65536:
-		return errors.NewFormattedError(errors.CartridgeFileError, "65536 bytes not yet supported")
+		return errors.New(errors.CartridgeFileError, "65536 bytes not yet supported")
 
 	default:
-		return errors.NewFormattedError(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
+		return errors.New(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
 	return nil

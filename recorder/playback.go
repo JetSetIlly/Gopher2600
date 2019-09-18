@@ -66,15 +66,15 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 	tf, err := os.Open(transcript)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, err)
+		return nil, errors.New(errors.PlaybackError, err)
 	}
 	buffer, err := ioutil.ReadAll(tf)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, err)
+		return nil, errors.New(errors.PlaybackError, err)
 	}
 	err = tf.Close()
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.PlaybackError, err)
+		return nil, errors.New(errors.PlaybackError, err)
 	}
 
 	// convert file contents to an array of lines
@@ -94,14 +94,14 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// ignore lines that don't have enough fields
 		if len(toks) != numFields {
 			msg := fmt.Sprintf("expected %d fields at line %d", numFields, i+1)
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
 		// add a new playbackSequence for the id if it doesn't exist
 		n, err := strconv.Atoi(toks[fieldID])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 		id := peripherals.PeriphID(n)
 
@@ -112,14 +112,14 @@ func NewPlayback(transcript string) (*Playback, error) {
 		n, err = strconv.Atoi(toks[fieldEvent])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 		event.event = peripherals.Event(n)
 
 		event.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
 		// assuming that frames are listed in order in the file. update
@@ -129,13 +129,13 @@ func NewPlayback(transcript string) (*Playback, error) {
 		event.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
 		event.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
-			return nil, errors.NewFormattedError(errors.PlaybackError, msg)
+			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
 		event.hash = toks[fieldHash]
@@ -153,13 +153,13 @@ func NewPlayback(transcript string) (*Playback, error) {
 func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return errors.NewFormattedError(errors.PlaybackError, "no playback hardware available")
+		return errors.New(errors.PlaybackError, "no playback hardware available")
 	}
 	plb.vcs = vcs
 
 	// validate header
 	if plb.vcs.TV.GetSpec().ID != plb.TVtype {
-		return errors.NewFormattedError(errors.PlaybackError, "current TV type does not match that in the recording")
+		return errors.New(errors.PlaybackError, "current TV type does not match that in the recording")
 	}
 
 	var err error
@@ -172,7 +172,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	default:
 		plb.digest, err = renderers.NewDigestTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
 		if err != nil {
-			return errors.NewFormattedError(errors.RecordingError, err)
+			return errors.New(errors.RecordingError, err)
 		}
 	}
 
@@ -197,22 +197,22 @@ func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Event, error
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackError, err)
+		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.String() {
-			return peripherals.NoEvent, errors.NewFormattedError(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
+			return peripherals.NoEvent, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 
 		seq.eventCt++

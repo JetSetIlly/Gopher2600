@@ -40,7 +40,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	if tv == nil {
 		gtv.Television, err = television.NewStellaTelevision(tvType)
 		if err != nil {
-			return nil, errors.NewFormattedError(errors.SDL, err)
+			return nil, errors.New(errors.SDL, err)
 		}
 	} else {
 		// check that the quoted tvType matches the specification of the
@@ -50,7 +50,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		// expecting an error
 		tvType = strings.ToUpper(tvType)
 		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.NewFormattedError(errors.SDL, "trying to piggyback a tv of a different spec")
+			return nil, errors.New(errors.SDL, "trying to piggyback a tv of a different spec")
 		}
 		gtv.Television = tv
 	}
@@ -58,19 +58,19 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	// set up sdl
 	err = sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.SDL, err)
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// initialise the screens we'll be using
 	gtv.scr, err = newScreen(gtv)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.SDL, err)
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// set window size and scaling
 	err = gtv.scr.setScaling(scale)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.SDL, err)
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// register ourselves as a television.Renderer
@@ -79,7 +79,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	// update tv (with a black image)
 	err = gtv.update()
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.SDL, err)
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// gui events are serviced by a separate loop

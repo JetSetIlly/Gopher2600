@@ -22,42 +22,42 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 	if display {
 		ftv, err = sdl.NewGUI(tvType, scaling, nil)
 		if err != nil {
-			return errors.NewFormattedError(errors.PerformanceError, err)
+			return errors.New(errors.PerformanceError, err)
 		}
 
 		err = ftv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 		if err != nil {
-			return errors.NewFormattedError(errors.PerformanceError, err)
+			return errors.New(errors.PerformanceError, err)
 		}
 	} else {
 		ftv, err = television.NewStellaTelevision(tvType)
 		if err != nil {
-			return errors.NewFormattedError(errors.PerformanceError, err)
+			return errors.New(errors.PerformanceError, err)
 		}
 	}
 
 	// create vcs using the tv created above
 	vcs, err := hardware.NewVCS(ftv)
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	// attach cartridge to te vcs
 	err = setup.AttachCartridge(vcs, cartridgeFile)
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	// parse supplied duration
 	duration, err := time.ParseDuration(runTime)
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	// get starting frame number (should be 0)
 	startFrame, err := ftv.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	// run for specified period of time
@@ -86,7 +86,7 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 			}
 		})
 		if err != nil {
-			return errors.NewFormattedError(errors.PerformanceError, err)
+			return errors.New(errors.PerformanceError, err)
 		}
 		return nil
 	}
@@ -98,13 +98,13 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 	}
 
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	// get ending frame number
 	endFrame, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.NewFormattedError(errors.PerformanceError, err)
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	numFrames := endFrame - startFrame

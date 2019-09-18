@@ -59,14 +59,14 @@ func (area ChipMemory) Memtop() uint16 {
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.UnreadableAddress, address)
 	}
 	return area.memory[address-area.origin], nil
 }
 
 // Poke is the implementation of Memory.Area.Poke
 func (area ChipMemory) Poke(address uint16, value uint8) error {
-	return errors.NewFormattedError(errors.UnpokeableAddress, address)
+	return errors.New(errors.UnpokeableAddress, address)
 }
 
 // ChipRead is an implementation of ChipBus. returns:
@@ -103,7 +103,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.UnreadableAddress, address)
 	}
 
 	return area.memory[area.origin|address^area.origin], nil
@@ -114,12 +114,12 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
-		return errors.NewFormattedError(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.lastWriteAddress]))
+		return errors.New(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.lastWriteAddress]))
 	}
 
 	sym := addresses.Write[address]
 	if sym == "" {
-		return errors.NewFormattedError(errors.UnwritableAddress, address)
+		return errors.New(errors.UnwritableAddress, address)
 	}
 
 	// note address of write

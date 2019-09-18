@@ -1,26 +1,28 @@
 package errors
 
 var messages = map[Errno]string{
-	FatalError: "fatality: %s: %s",
+	// panics
+	PanicError: "fatality: %s: %s",
 
 	// sentinals
-	UserInterrupt:   "user interrupt",                        // sentinal
-	UserSuspend:     "user suspend",                          // sentinal
-	ScriptEnd:       "end of script (%s)",                    // sentinal
-	PowerOff:        "emulated machine has been powered off", // sentinal
-	PeriphUnplugged: "controller unplugged from '%s'",        // sentinal
-	TVOutOfSpec:     "tv out of spec: %s",                    // sentinal
+	UserInterrupt:   "user interrupt",
+	UserSuspend:     "user suspend",
+	ScriptEnd:       "end of script (%s)",
+	PowerOff:        "emulated machine has been powered off",
+	PeriphUnplugged: "controller unplugged from '%s'",
+	TVOutOfSpec:     "tv out of spec: %s",
 
 	// program modes
 	PlayError:        "error emulating vcs: %s",
 	DebuggerError:    "error debugging vcs: %s",
 	PerformanceError: "error during performance profiling: %s",
 	DisasmError:      "error during disassembly: %s",
+	RegressionError:  "regression error: %s",
 
 	// debugger
 	ParserError:     "parser error: %s: %s (char %d)", // first placeholder is the command definition
 	ValidationError: "%s for %s",
-	InvalidTarget:   "invalid target: %s",
+	InvalidTarget:   "invalid target (%s)",
 	CommandError:    "%s",
 	TerminalError:   "%s",
 
@@ -35,9 +37,12 @@ var messages = map[Errno]string{
 	PlaybackError:     "controller playback error: %s",
 	PlaybackHashError: "controller playback error: hash error: %s",
 
-	// regression
-	RegressionDBError:    "regression database error: %s",
-	RegressionSetupError: "regression setup error: %s",
+	// database
+	DatabaseError:           "database error: %s",
+	DatabaseFileUnavailable: "database error: cannot open database (%s)",
+
+	// setup
+	SetupError: "setup error: %s",
 
 	// symbols
 	SymbolsFileError:       "symbols error: error processing symbols file: %s",
@@ -45,7 +50,7 @@ var messages = map[Errno]string{
 	SymbolUnknown:          "symbols error: unrecognised symbol (%s)",
 
 	// vcs
-	VCSError: "error creating vcs: %s",
+	VCSError: "vcs error: %s",
 
 	// cpu
 	UnimplementedInstruction:       "cpu error: unimplemented instruction (%0#x) at (%#04x)",
@@ -71,7 +76,7 @@ var messages = map[Errno]string{
 
 	// peripherals
 	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%s)",
-	UnknownPeriphEvent:        "periperal error: %s: unsupported event (%v)",
+	UnknownPeriphEvent:        "peripheral error: %s: unsupported event (%v)",
 
 	// tv
 	UnknownTVRequest: "tv error: unsupported request (%v)",

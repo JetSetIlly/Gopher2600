@@ -47,7 +47,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 		// expecting an error
 		tvType = strings.ToUpper(tvType)
 		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.NewFormattedError(errors.ImageTV, "trying to piggyback a tv of a different spec")
+			return nil, errors.New(errors.ImageTV, "trying to piggyback a tv of a different spec")
 		}
 		imtv.Television = tv
 	}
@@ -87,7 +87,7 @@ func (imtv *ImageTV) ChangeTVSpec() error {
 // return tv.Save(filepath.Join(state.Group, state.Label))
 func (imtv *ImageTV) Save(fileNameBase string, currentFrame bool) error {
 	if imtv.lastFrameData == nil {
-		return errors.NewFormattedError(errors.ImageTV, "no data to save")
+		return errors.New(errors.ImageTV, "no data to save")
 	}
 
 	// prepare filename for image
@@ -101,15 +101,15 @@ func (imtv *ImageTV) Save(fileNameBase string, currentFrame bool) error {
 	f, err := os.Open(imageName)
 	if f != nil {
 		f.Close()
-		return errors.NewFormattedError(errors.ImageTV, fmt.Sprintf("image file (%s) already exists", imageName))
+		return errors.New(errors.ImageTV, fmt.Sprintf("image file (%s) already exists", imageName))
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return errors.NewFormattedError(errors.ImageTV, err)
+		return errors.New(errors.ImageTV, err)
 	}
 
 	f, err = os.Create(imageName)
 	if err != nil {
-		return errors.NewFormattedError(errors.ImageTV, err)
+		return errors.New(errors.ImageTV, err)
 	}
 
 	defer f.Close()
@@ -120,7 +120,7 @@ func (imtv *ImageTV) Save(fileNameBase string, currentFrame bool) error {
 		err = png.Encode(f, imtv.lastFrameData)
 	}
 	if err != nil {
-		return errors.NewFormattedError(errors.ImageTV, err)
+		return errors.New(errors.ImageTV, err)
 	}
 
 	return nil

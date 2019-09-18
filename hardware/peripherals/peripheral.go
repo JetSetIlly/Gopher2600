@@ -49,15 +49,10 @@ func (prp *peripheral) Strobe() error {
 
 		err = prp.handle(ev)
 		if err != nil {
-			switch err := err.(type) {
-			case errors.FormattedError:
-				if err.Errno != errors.PeriphUnplugged {
-					return err
-				}
-				prp.Attach(nil)
-			default:
+			if !errors.Is(err, errors.PeriphUnplugged) {
 				return err
 			}
+			prp.Attach(nil)
 		}
 	}
 

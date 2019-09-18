@@ -39,7 +39,7 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 		// expecting an error
 		tvType = strings.ToUpper(tvType)
 		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.NewFormattedError(errors.DigestTV, "trying to piggyback a tv of a different spec")
+			return nil, errors.New(errors.DigestTV, "trying to piggyback a tv of a different spec")
 		}
 		dtv.Television = tv
 	}
@@ -68,7 +68,7 @@ func (dtv *DigestTV) NewFrame(frameNum int) error {
 	// to the head of the screen data
 	n := copy(dtv.frameData, dtv.digest[:])
 	if n != len(dtv.digest) {
-		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("unexpected amount of data copied"))
+		return errors.New(errors.DigestTV, fmt.Sprintf("unexpected amount of data copied"))
 	}
 	dtv.digest = sha1.Sum(dtv.frameData)
 	dtv.frameNum = frameNum
@@ -87,7 +87,7 @@ func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) er
 	offset += int(x) * 3
 
 	if offset >= len(dtv.frameData) {
-		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("the coordinates (%d, %d) passed to SetPixel will cause an invalid access of the frameData array", x, y))
+		return errors.New(errors.DigestTV, fmt.Sprintf("the coordinates (%d, %d) passed to SetPixel will cause an invalid access of the frameData array", x, y))
 	}
 
 	dtv.frameData[offset] = red
@@ -122,24 +122,24 @@ func (dtv *DigestTV) Save(fileNameBase string) error {
 	f, err := os.Open(outName)
 	if f != nil {
 		f.Close()
-		return errors.NewFormattedError(errors.DigestTV, fmt.Sprintf("output file (%s) already exists", outName))
+		return errors.New(errors.DigestTV, fmt.Sprintf("output file (%s) already exists", outName))
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return errors.NewFormattedError(errors.DigestTV, err)
+		return errors.New(errors.DigestTV, err)
 	}
 
 	f, err = os.Create(outName)
 	if err != nil {
-		return errors.NewFormattedError(errors.DigestTV, err)
+		return errors.New(errors.DigestTV, err)
 	}
 	defer f.Close()
 
 	n, err := f.Write(dtv.frameData)
 	if n != len(dtv.frameData) {
-		return errors.NewFormattedError(errors.DigestTV, "output truncated")
+		return errors.New(errors.DigestTV, "output truncated")
 	}
 	if err != nil {
-		return errors.NewFormattedError(errors.DigestTV, err)
+		return errors.New(errors.DigestTV, err)
 	}
 
 	return nil

@@ -88,7 +88,7 @@ func (bp *breakpoints) clear() {
 
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
-		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("breakpoint #%d is not defined", num))
+		return errors.New(errors.CommandError, fmt.Sprintf("breakpoint #%d is not defined", num))
 	}
 
 	h := bp.breaks[:num]
@@ -196,10 +196,10 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 			case "false":
 				val = false
 			default:
-				err = errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid value (%s) for target (%s)", tok, tgt.Label()))
+				err = errors.New(errors.CommandError, fmt.Sprintf("invalid value (%s) for target (%s)", tok, tgt.Label()))
 			}
 		default:
-			return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.Value(), tgt.Label()))
+			return errors.New(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.Value(), tgt.Label()))
 		}
 
 		if err == nil {
@@ -218,7 +218,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		} else {
 			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
-				return errors.NewFormattedError(errors.CommandError, err)
+				return errors.New(errors.CommandError, err)
 			}
 
 			// possibly switch composition mode
@@ -232,7 +232,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 				tokens.Unget()
 				tgt, err = parseTarget(bp.dbg, tokens)
 				if err != nil {
-					return errors.NewFormattedError(errors.CommandError, err)
+					return errors.New(errors.CommandError, err)
 				}
 				resolvedTarget = false
 			}
@@ -242,7 +242,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.Value(), tgt.Label()))
+		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.Value(), tgt.Label()))
 	}
 
 	return bp.checkNewBreakpoints(newBreaks)
@@ -273,7 +273,7 @@ func (bp *breakpoints) checkNewBreakpoints(newBreaks []breaker) error {
 
 			// fail if this is a duplicate and if both lists were of the same length
 			if duplicate && and == nil && oand == nil {
-				return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("breakpoint already exists (%s)", ob))
+				return errors.New(errors.CommandError, fmt.Sprintf("breakpoint already exists (%s)", ob))
 			}
 		}
 

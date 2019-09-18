@@ -45,22 +45,22 @@ func NewVCS(tv television.Television) (*VCS, error) {
 
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
-		return nil, errors.NewFormattedError(errors.VCSError, "can't create TIA")
+		return nil, errors.New(errors.VCSError, "can't create TIA")
 	}
 
 	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
-		return nil, errors.NewFormattedError(errors.VCSError, "can't create RIOT")
+		return nil, errors.New(errors.VCSError, "can't create RIOT")
 	}
 
 	vcs.Panel = peripherals.NewPanel(vcs.Mem.RIOT)
 	if vcs.Panel == nil {
-		return nil, errors.NewFormattedError(errors.VCSError, "can't create control panel")
+		return nil, errors.New(errors.VCSError, "can't create control panel")
 	}
 
 	vcs.Ports = peripherals.NewPorts(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
 	if vcs.Ports == nil {
-		return nil, errors.NewFormattedError(errors.VCSError, "can't create player ports")
+		return nil, errors.New(errors.VCSError, "can't create player ports")
 	}
 
 	return vcs, nil
@@ -102,12 +102,12 @@ func (vcs *VCS) Reset() error {
 
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
 	if vcs.TIA == nil {
-		return errors.NewFormattedError(errors.VCSError, "can't create TIA")
+		return errors.New(errors.VCSError, "can't create TIA")
 	}
 
 	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
 	if vcs.RIOT == nil {
-		return errors.NewFormattedError(errors.VCSError, "can't create RIOT")
+		return errors.New(errors.VCSError, "can't create RIOT")
 	}
 
 	vcs.Mem.Cart.SetBank(vcs.CPU.PC.ToUint16(), 0)

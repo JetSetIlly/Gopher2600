@@ -63,6 +63,6 @@ func (col *collisions) SetMemory(collisionAddress uint16) {
 	case addresses.CXPPMM:
 		col.mem.ChipWrite(addresses.CXPPMM, col.cxppmm)
 	default:
-		panic(fmt.Sprintf("unkown collision address (%04x)", collisionAddress))
+		panic(fmt.Sprintf("not a collision address (%04x)", collisionAddress))
 	}
 }

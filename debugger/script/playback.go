@@ -25,7 +25,7 @@ func StartPlayback(scriptfile string) (*Playback, error) {
 	// open script and defer closing
 	sf, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.ScriptFileUnavailable, err)
+		return nil, errors.New(errors.ScriptFileUnavailable, err)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -33,7 +33,7 @@ func StartPlayback(scriptfile string) (*Playback, error) {
 
 	buffer, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return nil, errors.NewFormattedError(errors.ScriptFileError, err)
+		return nil, errors.New(errors.ScriptFileError, err)
 	}
 
 	rps := &Playback{scriptFile: scriptfile}
@@ -64,7 +64,7 @@ func (rps *Playback) IsInteractive() bool {
 // UserRead implements ui.UserInput interface
 func (rps *Playback) UserRead(buffer []byte, _ console.Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	if rps.nextLine > len(rps.lines)-1 {
-		return -1, errors.NewFormattedError(errors.ScriptEnd, rps.scriptFile)
+		return -1, errors.New(errors.ScriptEnd, rps.scriptFile)
 	}
 
 	command := len(rps.lines[rps.nextLine]) + 1

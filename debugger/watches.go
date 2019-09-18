@@ -72,7 +72,7 @@ func (wtc *watches) clear() {
 
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
-		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("watch #%d is not defined", num))
+		return errors.New(errors.CommandError, fmt.Sprintf("watch #%d is not defined", num))
 	}
 
 	h := wtc.watches[:num]
@@ -139,7 +139,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// read mode
 	mode, present := tokens.Get()
 	if !present {
-		return errors.NewFormattedError(errors.CommandError, "watch address required")
+		return errors.New(errors.CommandError, "watch address required")
 	}
 	mode = strings.ToUpper(mode)
 	switch mode {
@@ -155,7 +155,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// get address. required.
 	a, present := tokens.Get()
 	if !present {
-		return errors.NewFormattedError(errors.CommandError, "watch address required")
+		return errors.New(errors.CommandError, "watch address required")
 	}
 
 	// convert address
@@ -175,7 +175,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 
 	// mapping of the address was unsucessful
 	if ai == nil {
-		return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch address: %s", a))
+		return errors.New(errors.CommandError, fmt.Sprintf("invalid watch address: %s", a))
 	}
 
 	// get value if possible
@@ -185,7 +185,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	if useVal {
 		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("invalid watch value (%s)", a))
+			return errors.New(errors.CommandError, fmt.Sprintf("invalid watch value (%s)", a))
 		}
 	}
 
@@ -211,18 +211,18 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 			switch w.event {
 			case watchEventRead:
 				if nw.event == watchEventRead {
-					return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+					return errors.New(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
 				}
 				wtc.watches[i].event = watchEventAny
 				return nil
 			case watchEventWrite:
 				if nw.event == watchEventWrite {
-					return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+					return errors.New(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
 				}
 				wtc.watches[i].event = watchEventAny
 				return nil
 			case watchEventAny:
-				return errors.NewFormattedError(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+				return errors.New(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
 			}
 		}
 	}

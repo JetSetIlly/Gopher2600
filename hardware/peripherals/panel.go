@@ -145,9 +145,9 @@ func (pan *Panel) Handle(event Event) error {
 	case PanelSetPlayer1Pro:
 		pan.p1pro = true
 	case PanelPowerOff:
-		return errors.NewFormattedError(errors.PowerOff)
+		return errors.New(errors.PowerOff)
 	default:
-		return errors.NewFormattedError(errors.UnknownPeriphEvent, pan.id, event)
+		return errors.New(errors.UnknownPeriphEvent, pan.id, event)
 	}
 
 	pan.commit()

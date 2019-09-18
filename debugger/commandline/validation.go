@@ -27,10 +27,10 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 			err := cmds[n].validate(tokens, false)
 			if err != nil {
 				// preserve FormattedError type
-				if _, ok := err.(errors.FormattedError); ok {
+				if _, ok := err.(errors.AtariError); ok {
 					return err
 				}
-				return errors.NewFormattedError(errors.ValidationError, err, cmd)
+				return errors.New(errors.ValidationError, err, cmd)
 			}
 
 			// if we've reached this point and there are still oustanding
@@ -42,7 +42,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 			// misleading.
 			if tokens.Remaining() > 0 {
 				arg, _ := tokens.Get()
-				return errors.NewFormattedError(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s)", arg), cmd)
+				return errors.New(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s)", arg), cmd)
 			}
 
 			return nil
@@ -63,7 +63,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// many entries) is an illegal node and should not have been parsed
 	if n.tag == "" {
 		if n.next == nil || len(n.next) > 1 {
-			return errors.NewFormattedError(errors.FatalError, "commandline validation", "illegal empty node")
+			return errors.New(errors.PanicError, "commandline validation", "illegal empty node")
 		}
 
 		// speculatively validate the next node. don't do anything with any

@@ -58,12 +58,12 @@ func ParseCommandTemplateWithOutput(template []string, output io.Writer) (*Comma
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
 		if err != nil {
-			return nil, errors.NewFormattedError(errors.ParserError, defn, err, d)
+			return nil, errors.New(errors.ParserError, defn, err, d)
 		}
 
 		// check that parsing was complete
 		if d < len(defn)-1 {
-			return nil, errors.NewFormattedError(errors.ParserError, defn, "outstanding characters in definition")
+			return nil, errors.New(errors.ParserError, defn, "outstanding characters in definition")
 		}
 
 		// add to list of commands (order doesn't matter at this stage)
@@ -98,7 +98,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		case "":
 			return &node{typ: nodeRoot}, nil
 		default:
-			return nil, errors.NewFormattedError(errors.ParserError, defn, "unknown group type")
+			return nil, errors.New(errors.ParserError, defn, "unknown group type")
 		}
 	}
 

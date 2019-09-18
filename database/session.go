@@ -11,9 +11,25 @@ import (
 	"strings"
 )
 
+// ActivityType is used to specify the general activity of what will be
+// occuring during the database session
+type ActivityType int
+
+// a list of valid ActivityType. the "higher level" activities inherit the
+// activity abilities of the activity levels lower down the scale. in other
+// words:
+//		- Modifying implies Reading
+//		- Creating implies Modifying (which in turn implies Reading)
+const (
+	ActivityReading ActivityType = iota
+	ActivityModifying
+	ActivityCreating
+)
+
 // Session keeps track of a database session
 type Session struct {
-	dbfile *os.File
+	dbfile   *os.File
+	activity ActivityType
 
 	entries map[int]Entry
 
@@ -27,15 +43,29 @@ type Session struct {
 
 // StartSession starts/initialises a new DB session. argument is the function to call when
 // database has been succesfully opened
-func StartSession(path string, init func(*Session) error) (*Session, error) {
+func StartSession(path string, activity ActivityType, init func(*Session) error) (*Session, error) {
 	var err error
 
-	db := &Session{}
+	db := &Session{activity: activity}
 	db.entryTypes = make(map[string]deserialiser)
 
-	db.dbfile, err = os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0600)
+	var flags int
+	switch activity {
+	case ActivityReading:
+		flags = os.O_RDONLY
+	case ActivityModifying:
+		flags = os.O_RDWR
+	case ActivityCreating:
+		flags = os.O_RDWR | os.O_CREATE
+	}
+
+	db.dbfile, err = os.OpenFile(path, flags, 0600)
 	if err != nil {
-		return nil, err
+		switch err.(type) {
+		case *os.PathError:
+			return nil, errors.New(errors.DatabaseFileUnavailable, path)
+		}
+		return nil, errors.New(errors.DatabaseError, err)
 	}
 
 	// closing of db.dbfile requires a call to endSession()
@@ -57,6 +87,10 @@ func StartSession(path string, init func(*Session) error) (*Session, error) {
 func (db *Session) EndSession(commitChanges bool) error {
 	// write entries to database
 	if commitChanges {
+		if db.activity == ActivityReading {
+			return errors.New(errors.DatabaseError, "cannot commit to a read-only database")
+		}
+
 		err := db.dbfile.Truncate(0)
 		if err != nil {
 			return err
@@ -113,7 +147,7 @@ func (db *Session) readDBFile() error {
 
 	buffer, err := ioutil.ReadAll(db.dbfile)
 	if err != nil {
-		return errors.NewFormattedError(errors.RegressionDBError, err)
+		return errors.New(errors.DatabaseError, err)
 	}
 
 	// split entries
@@ -131,12 +165,12 @@ func (db *Session) readDBFile() error {
 		key, err := strconv.Atoi(fields[leaderFieldKey])
 		if err != nil {
 			msg := fmt.Sprintf("invalid key [%s] at line %d", fields[leaderFieldKey], i+1)
-			return errors.NewFormattedError(errors.RegressionDBError, msg)
+			return errors.New(errors.DatabaseError, msg)
 		}
 
 		if _, ok := db.entries[key]; ok {
 			msg := fmt.Sprintf("duplicate key [%v] at line %d", key, i+1)
-			return errors.NewFormattedError(errors.RegressionDBError, msg)
+			return errors.New(errors.DatabaseError, msg)
 		}
 
 		var ent Entry
@@ -144,7 +178,7 @@ func (db *Session) readDBFile() error {
 		init, ok := db.entryTypes[fields[leaderFieldID]]
 		if !ok {
 			msg := fmt.Sprintf("unrecognised entry type [%s]", fields[leaderFieldID])
-			return errors.NewFormattedError(errors.RegressionDBError, msg)
+			return errors.New(errors.DatabaseError, msg)
 		}
 		ent, err = init(key, fields[numLeaderFields])
 		if err != nil {

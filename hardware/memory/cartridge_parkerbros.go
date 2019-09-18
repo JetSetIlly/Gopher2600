@@ -69,7 +69,7 @@ func newparkerBros(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -108,7 +108,7 @@ func (cart *parkerBros) write(addr uint16, data uint8) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
-	return errors.NewFormattedError(errors.UnwritableAddress, addr)
+	return errors.New(errors.UnwritableAddress, addr)
 }
 
 func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
@@ -193,7 +193,7 @@ func (cart parkerBros) getBank(addr uint16) int {
 
 func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 	}
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -205,7 +205,7 @@ func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
 	}
 
 	return nil
@@ -225,5 +225,5 @@ func (cart parkerBros) ram() []uint8 {
 }
 
 func (cart parkerBros) listen(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.CartridgeListen, addr)
+	return errors.New(errors.CartridgeListen, addr)
 }

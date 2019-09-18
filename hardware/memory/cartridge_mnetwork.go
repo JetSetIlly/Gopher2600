@@ -88,7 +88,7 @@ func newMnetwork(cf io.ReadSeeker) (cartMapper, error) {
 			return nil, err
 		}
 		if n != bankSize {
-			return nil, errors.NewFormattedError(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 		}
 	}
 
@@ -132,7 +132,7 @@ func (cart *mnetwork) read(addr uint16) (uint8, error) {
 			cart.bankSwitchOnAccess(addr)
 		}
 	} else {
-		return 0, errors.NewFormattedError(errors.UnreadableAddress, addr)
+		return 0, errors.New(errors.UnreadableAddress, addr)
 	}
 
 	return data, nil
@@ -151,7 +151,7 @@ func (cart *mnetwork) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.NewFormattedError(errors.UnwritableAddress, addr)
+	return errors.New(errors.UnwritableAddress, addr)
 }
 
 func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
@@ -213,7 +213,7 @@ func (cart *mnetwork) getBank(addr uint16) (bank int) {
 
 func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -221,7 +221,7 @@ func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
 	}
 
 	return nil
@@ -243,5 +243,5 @@ func (cart *mnetwork) ram() []uint8 {
 }
 
 func (cart *mnetwork) listen(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.CartridgeListen, addr)
+	return errors.New(errors.CartridgeListen, addr)
 }

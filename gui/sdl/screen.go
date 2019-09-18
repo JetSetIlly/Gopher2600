@@ -156,7 +156,7 @@ func (scr *screen) changeTVSpec() error {
 	// frame limiter
 	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(scr.spec.FramesPerSecond))
 	if err != nil {
-		return errors.NewFormattedError(errors.SDL, err)
+		return errors.New(errors.SDL, err)
 	}
 
 	// new overlay

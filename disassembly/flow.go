@@ -25,22 +25,21 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 		// filter out the predictable errors
 		if err != nil {
-			switch err := err.(type) {
-			case errors.FormattedError:
-				switch err.Errno {
-				case errors.ProgramCounterCycled:
-					// originally, a cycled program counter caused the
-					// disassembly to end but thinking about it a bit more,
-					// we can see that simply continuing with the loop makes
-					// more sense
-					continue // for loop
-				case errors.UnimplementedInstruction:
-					continue // for loop
-				case errors.InvalidOpcode:
-					continue // for loop
-				default:
-					return err
-				}
+			if !errors.IsAny(err) {
+				return err
+			}
+
+			switch err.(errors.AtariError).Errno {
+			case errors.ProgramCounterCycled:
+				// originally, a cycled program counter caused the
+				// disassembly to end but thinking about it a bit more,
+				// we can see that simply continuing with the loop makes
+				// more sense
+				continue // for loop
+			case errors.UnimplementedInstruction:
+				continue // for loop
+			case errors.InvalidOpcode:
+				continue // for loop
 			default:
 				return err
 			}

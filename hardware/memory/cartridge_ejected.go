@@ -29,11 +29,11 @@ func (cart *ejected) initialise() {
 }
 
 func (cart *ejected) read(addr uint16) (uint8, error) {
-	return 0, errors.NewFormattedError(errors.CartridgeEjected)
+	return 0, errors.New(errors.CartridgeEjected)
 }
 
 func (cart *ejected) write(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.CartridgeEjected)
+	return errors.New(errors.CartridgeEjected)
 }
 
 func (cart ejected) numBanks() int {
@@ -41,7 +41,7 @@ func (cart ejected) numBanks() int {
 }
 
 func (cart *ejected) setBank(addr uint16, bank int) error {
-	return errors.NewFormattedError(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+	return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
 }
 
 func (cart ejected) getBank(addr uint16) int {
@@ -61,5 +61,5 @@ func (cart ejected) ram() []uint8 {
 }
 
 func (cart ejected) listen(addr uint16, data uint8) error {
-	return errors.NewFormattedError(errors.CartridgeListen, addr)
+	return errors.New(errors.CartridgeListen, addr)
 }

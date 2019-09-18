@@ -145,11 +145,11 @@ func (pl *player) Handle(event Event) error {
 		return pl.panel.Handle(PanelResetRelease)
 
 	case Unplugged:
-		return errors.NewFormattedError(errors.PeriphUnplugged, pl.id)
+		return errors.New(errors.PeriphUnplugged, pl.id)
 
 	// return now if there is no event to process
 	default:
-		return errors.NewFormattedError(errors.UnknownPeriphEvent, pl.id, event)
+		return errors.New(errors.UnknownPeriphEvent, pl.id, event)
 	}
 
 	// record event with the transcriber

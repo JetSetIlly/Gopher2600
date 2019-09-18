@@ -66,7 +66,7 @@ func (db *Session) Add(ent Entry) error {
 
 	if key == maxEntries {
 		msg := fmt.Sprintf("%d maximum entries exceeded", maxEntries)
-		return errors.NewFormattedError(errors.RegressionDBError, msg)
+		return errors.New(errors.DatabaseError, msg)
 	}
 
 	ent.SetKey(key)
@@ -101,7 +101,7 @@ func (db Session) Get(key int) (Entry, error) {
 	ent, ok := db.entries[key]
 	if !ok {
 		msg := fmt.Sprintf("key not found [%d]", key)
-		return nil, errors.NewFormattedError(errors.RegressionDBError, msg)
+		return nil, errors.New(errors.DatabaseError, msg)
 	}
 	return ent, nil
 }

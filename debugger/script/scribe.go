@@ -31,7 +31,7 @@ func (rec Scribe) IsActive() bool {
 // StartSession a new script
 func (rec *Scribe) StartSession(scriptfile string) error {
 	if rec.IsActive() {
-		return errors.NewFormattedError(errors.ScriptScribeError, "already active")
+		return errors.New(errors.ScriptScribeError, "already active")
 	}
 
 	rec.scriptfile = scriptfile
@@ -40,10 +40,10 @@ func (rec *Scribe) StartSession(scriptfile string) error {
 	if os.IsNotExist(err) {
 		rec.file, err = os.Create(scriptfile)
 		if err != nil {
-			return errors.NewFormattedError(errors.ScriptScribeError, "cannot create new script file")
+			return errors.New(errors.ScriptScribeError, "cannot create new script file")
 		}
 	} else {
-		return errors.NewFormattedError(errors.ScriptScribeError, "file already exists")
+		return errors.New(errors.ScriptScribeError, "file already exists")
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func (rec *Scribe) EndSession() error {
 
 	errClose := rec.file.Close()
 	if errClose != nil {
-		return errors.NewFormattedError(errors.ScriptScribeError, errClose)
+		return errors.New(errors.ScriptScribeError, errClose)
 	}
 
 	return err
@@ -153,20 +153,20 @@ func (rec *Scribe) Commit() error {
 	if rec.inputLine != "" {
 		n, err := io.WriteString(rec.file, rec.inputLine)
 		if err != nil {
-			return errors.NewFormattedError(errors.ScriptScribeError, err)
+			return errors.New(errors.ScriptScribeError, err)
 		}
 		if n != len(rec.inputLine) {
-			return errors.NewFormattedError(errors.ScriptScribeError, "output truncated")
+			return errors.New(errors.ScriptScribeError, "output truncated")
 		}
 	}
 
 	if rec.outputLine != "" {
 		n, err := io.WriteString(rec.file, rec.outputLine)
 		if err != nil {
-			return errors.NewFormattedError(errors.ScriptScribeError, err)
+			return errors.New(errors.ScriptScribeError, err)
 		}
 		if n != len(rec.outputLine) {
-			return errors.NewFormattedError(errors.ScriptScribeError, "output truncated")
+			return errors.New(errors.ScriptScribeError, "output truncated")
 		}
 	}
 

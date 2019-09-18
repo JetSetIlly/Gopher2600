@@ -148,14 +148,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 						},
 					}
 				default:
-					return nil, errors.NewFormattedError(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
+					return nil, errors.New(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
 				}
 			} else {
-				return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
+				return nil, errors.New(errors.InvalidTarget, keyword)
 			}
 
 		default:
-			return nil, errors.NewFormattedError(errors.InvalidTarget, keyword)
+			return nil, errors.New(errors.InvalidTarget, keyword)
 		}
 	}
 

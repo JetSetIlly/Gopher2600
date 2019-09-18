@@ -7,7 +7,6 @@ import (
 	"gopher2600/debugger/colorterm"
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
-	"gopher2600/errors"
 	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
@@ -237,13 +236,12 @@ func main() {
 		case 1:
 			dsm, err := disassembly.FromCartrige(modeFlags.Arg(0))
 			if err != nil {
-				switch err.(type) {
-				case errors.FormattedError:
-					// print what disassembly output we do have
-					if dsm != nil {
-						dsm.Dump(os.Stdout)
-					}
+				// print what disassembly output we do have
+				if dsm != nil {
+					dsm.Dump(os.Stdout)
 				}
+
+				// exit with error message
 				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}

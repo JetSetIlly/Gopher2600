@@ -46,14 +46,14 @@ func (mem *mockMem) Clear() {
 
 func (mem mockMem) Read(address uint16) (uint8, error) {
 	if address&0xff00 == 0xff00 {
-		return 0, errors.NewFormattedError(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.UnreadableAddress, address)
 	}
 	return mem.internal[address], nil
 }
 
 func (mem *mockMem) Write(address uint16, data uint8) error {
 	if address&0xff00 == 0xff00 {
-		return errors.NewFormattedError(errors.UnwritableAddress, address)
+		return errors.New(errors.UnwritableAddress, address)
 	}
 	mem.internal[address] = data
 	return nil
@@ -543,7 +543,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
 	_, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
-		if err.(errors.FormattedError).Errno == errors.UnwritableAddress {
+		if err.(errors.AtariError).Errno == errors.UnwritableAddress {
 			t.Fatalf("recieved an UnwritableAddress error when we shouldn't")
 		}
 		t.Fatalf("error during CPU step (%v)\n", err)
@@ -556,7 +556,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	if err == nil {
 		t.Fatalf("not recieved an UnwritableAddress error when we should")
 	}
-	if err.(errors.FormattedError).Errno == errors.UnwritableAddress {
+	if err.(errors.AtariError).Errno == errors.UnwritableAddress {
 		// this is okay
 	} else {
 		t.Fatalf("error during CPU step (%v)\n", err)
@@ -567,7 +567,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
 	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
 	if err != nil {
-		if err.(errors.FormattedError).Errno == errors.UnreadableAddress {
+		if err.(errors.AtariError).Errno == errors.UnreadableAddress {
 			t.Fatalf("recieved an UnreadableAddress we shouldn't")
 		}
 		t.Fatalf("error during CPU step (%v)\n", err)
@@ -580,7 +580,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	if err == nil {
 		t.Fatalf("not recieved an UnreadableAddress error when we should")
 	}
-	if err.(errors.FormattedError).Errno == errors.UnreadableAddress {
+	if err.(errors.AtariError).Errno == errors.UnreadableAddress {
 		// this is okay
 	} else {
 		t.Fatalf("error during CPU step (%v)\n", err)
