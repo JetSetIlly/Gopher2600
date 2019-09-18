@@ -6,6 +6,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
+	"gopher2600/setup"
 	"gopher2600/television"
 	"io"
 	"time"
@@ -42,7 +43,7 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 	}
 
 	// attach cartridge to te vcs
-	err = vcs.AttachCartridge(cartridgeFile)
+	err = setup.AttachCartridge(vcs, cartridgeFile)
 	if err != nil {
 		return errors.NewFormattedError(errors.PerformanceError, err)
 	}

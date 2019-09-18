@@ -2,11 +2,12 @@ package regression
 
 import (
 	"fmt"
+	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
-	"gopher2600/regression/database"
+	"gopher2600/setup"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -111,7 +112,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
-	err = vcs.AttachCartridge(plb.CartFile)
+	err = setup.AttachCartridge(vcs, plb.CartFile)
 	if err != nil {
 		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}

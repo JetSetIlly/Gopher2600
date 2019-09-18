@@ -2,9 +2,9 @@ package regression
 
 import (
 	"fmt"
+	"gopher2600/database"
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/errors"
-	"gopher2600/regression/database"
 	"io"
 	"os"
 	"sort"
@@ -28,7 +28,7 @@ type Regressor interface {
 
 // when starting a database session we need to register what entries we will
 // find in the database
-func initialiseDatabase(db *database.Session) error {
+func initDBSession(db *database.Session) error {
 	if err := db.AddEntryType(frameEntryID, deserialiseFrameEntry); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func RegressList(output io.Writer) error {
 		return errors.NewFormattedError(errors.FatalError, "RegressList", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
+	db, err := database.StartSession(regressionDBFile, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 		return errors.NewFormattedError(errors.RegressionDBError, msg)
 	}
 
-	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
+	db, err := database.StartSession(regressionDBFile, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 		return errors.NewFormattedError(errors.FatalError, "RegressAdd()", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
+	db, err := database.StartSession(regressionDBFile, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		return errors.NewFormattedError(errors.FatalError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, initialiseDatabase)
+	db, err := database.StartSession(regressionDBFile, initDBSession)
 	if err != nil {
 		return err
 	}

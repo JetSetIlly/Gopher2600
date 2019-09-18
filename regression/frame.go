@@ -3,9 +3,10 @@ package regression
 import (
 	"bufio"
 	"fmt"
+	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/regression/database"
+	"gopher2600/setup"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -140,7 +141,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}
 
-	err = vcs.AttachCartridge(reg.CartFile)
+	err = setup.AttachCartridge(vcs, reg.CartFile)
 	if err != nil {
 		return false, errors.NewFormattedError(errors.RegressionSetupError, err)
 	}

@@ -7,6 +7,7 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/recorder"
+	"gopher2600/setup"
 	"os"
 	"os/signal"
 	"path"
@@ -54,7 +55,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 
 	if recording != "" {
 		if newRecording {
-			err = vcs.AttachCartridge(cartridgeFile)
+			err = setup.AttachCartridge(vcs, cartridgeFile)
 			if err != nil {
 				return errors.NewFormattedError(errors.PlayError, err)
 			}
@@ -85,7 +86,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			// the playback file
 			cartridgeFile = plb.CartFile
 
-			err = vcs.AttachCartridge(cartridgeFile)
+			err = setup.AttachCartridge(vcs, cartridgeFile)
 			if err != nil {
 				return errors.NewFormattedError(errors.PlayError, err)
 			}
@@ -96,7 +97,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			}
 		}
 	} else {
-		err = vcs.AttachCartridge(cartridgeFile)
+		err = setup.AttachCartridge(vcs, cartridgeFile)
 		if err != nil {
 			return errors.NewFormattedError(errors.PlayError, err)
 		}

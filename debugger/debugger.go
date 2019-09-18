@@ -11,6 +11,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/setup"
 	"gopher2600/symbols"
 	"gopher2600/television"
 	"gopher2600/television/renderers"
@@ -258,7 +259,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 // this is the glue that hold the cartridge and disassembly packages
 // together
 func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
-	err := dbg.vcs.AttachCartridge(cartridgeFilename)
+	err := setup.AttachCartridge(dbg.vcs, cartridgeFilename)
 	if err != nil {
 		return err
 	}
