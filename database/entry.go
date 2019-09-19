@@ -5,7 +5,7 @@ import (
 	"gopher2600/errors"
 )
 
-// Key type is only used within Entry type. it is intended to obfuscate the
+// Key type is only used within the Entry type. it is intended to obfuscate the
 // key's real type and to discourage the Entry implementation from altering the
 // key in any way
 type Key struct {
@@ -33,7 +33,7 @@ type Entry interface {
 	// return the key assigned to the entry
 	GetKey() Key
 
-	// return the comma separated string representing the entry
+	// return the Entry data as an instance of SerialisedEntry
 	Serialise() (SerialisedEntry, error)
 
 	// action perfomed when entry is removed from database

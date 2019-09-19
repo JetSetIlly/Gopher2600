@@ -7,7 +7,6 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
-	"gopher2600/setup"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -110,12 +109,15 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		return false, errors.New(errors.RegressionError, err)
 	}
 
-	err = setup.AttachCartridge(vcs, plb.CartFile)
+	err = plb.AttachToVCS(vcs)
 	if err != nil {
 		return false, errors.New(errors.RegressionError, err)
 	}
 
-	err = plb.AttachToVCS(vcs)
+	// not using setup.AttachCartridge. if the playback was recorded with setup
+	// changes the events will have been copied into the playback script and
+	// will be applied that way
+	err = vcs.AttachCartridge(plb.CartFile)
 	if err != nil {
 		return false, errors.New(errors.RegressionError, err)
 	}

@@ -46,21 +46,13 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 		recording = fmt.Sprintf("recording_%s_%s", shortCartName, timestamp)
 	}
 
-	var rec *recorder.Recorder
-	var plb *recorder.Playback
-
 	// note that we attach the cartridge in three different branches below - we
 	// need to do this at different times depending on whether a new recording
 	// or playback is taking place; or if it's just a regular playback
 
 	if recording != "" {
 		if newRecording {
-			err = setup.AttachCartridge(vcs, cartridgeFile)
-			if err != nil {
-				return errors.New(errors.PlayError, err)
-			}
-
-			rec, err = recorder.NewRecorder(recording, vcs)
+			rec, err := recorder.NewRecorder(recording, vcs)
 			if err != nil {
 				return errors.New(errors.PlayError, err)
 			}
@@ -72,8 +64,17 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			vcs.Ports.Player0.AttachTranscriber(rec)
 			vcs.Ports.Player1.AttachTranscriber(rec)
 			vcs.Panel.AttachTranscriber(rec)
+
+			// attaching cartridge after recorder and transcribers have been
+			// setup because we want to catch any setup events in the recording
+
+			err = setup.AttachCartridge(vcs, cartridgeFile)
+			if err != nil {
+				return errors.New(errors.PlayError, err)
+			}
+
 		} else {
-			plb, err = recorder.NewPlayback(recording)
+			plb, err := recorder.NewPlayback(recording)
 			if err != nil {
 				return err
 			}
@@ -82,13 +83,18 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 				return errors.New(errors.PlayError, "cartridge doesn't match name in the playback recording")
 			}
 
-			// if no cartridge filename has been provided then use the one in
-			// the playback file
-			cartridgeFile = plb.CartFile
-
-			err = setup.AttachCartridge(vcs, cartridgeFile)
+			// not using setup.AttachCartridge. if the playback was recorded with setup
+			// changes the events will have been copied into the playback script and
+			// will be applied that way
+			err = vcs.AttachCartridge(plb.CartFile)
 			if err != nil {
 				return errors.New(errors.PlayError, err)
+			}
+
+			// now that we've attached the cartridge check the hash against the
+			// playback has (if it exists)
+			if plb.CartHash != vcs.Mem.Cart.Hash {
+				return errors.New(errors.PlayError, "cartridge hash doesn't match hash in playback recording")
 			}
 
 			err = plb.AttachToVCS(vcs)
@@ -103,13 +109,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 		}
 	}
 
-	// now that we've attached the cartridge check the hash against the
-	// playback has (if it exists)
-	if plb != nil && plb.CartHash != vcs.Mem.Cart.Hash {
-		return errors.New(errors.PlayError, "cartridge hash doesn't match hash in playback recording")
-	}
-
-	// connect debugger to gui
+	// connect gui
 	guiChannel := make(chan gui.Event, 2)
 	playtv.SetEventChannel(guiChannel)
 

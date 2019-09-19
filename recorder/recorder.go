@@ -16,6 +16,8 @@ type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
 	digest *renderers.DigestTV
+
+	headerWritten bool
 }
 
 // NewRecorder is the preferred method of implementation for the FileRecorder type
@@ -46,10 +48,14 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 		return nil, errors.New(errors.RecordingError, "file already exists")
 	}
 
-	err = rec.writeHeader()
-	if err != nil {
-		return nil, err
-	}
+	// delay writing of header until the first call to transcribe. we're
+	// delaying this because we want to prepare the NewRecorder before we
+	// attach the cartridge but writing the header requires the cartridge to
+	// have been attached.
+	//
+	// the reason we want to create the NewRecorder before attaching the
+	// cartridge is because we want to catch the setup events caused by the
+	// attachement.
 
 	return rec, nil
 }
@@ -72,6 +78,17 @@ func (rec *Recorder) End() error {
 
 // Transcribe implements the Transcriber interface
 func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event) error {
+	var err error
+
+	// write header if it's not been written already
+	if !rec.headerWritten {
+		err = rec.writeHeader()
+		if err != nil {
+			return errors.New(errors.RecordingError, err)
+		}
+		rec.headerWritten = true
+	}
+
 	// don't do anything if event is the NoEvent
 	if event == peripherals.NoEvent {
 		return nil
