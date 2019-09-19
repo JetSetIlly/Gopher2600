@@ -34,7 +34,7 @@ const (
 // regression tests pass if the screen digest after N frames matches the stored
 // value.
 type FrameRegression struct {
-	key          int
+	key          database.Key
 	CartFile     string
 	TVtype       string
 	NumFrames    int
@@ -44,17 +44,15 @@ type FrameRegression struct {
 	screenDigest string
 }
 
-func deserialiseFrameEntry(key int, csv string) (database.Entry, error) {
+func deserialiseFrameEntry(key database.Key, fields []string) (database.Entry, error) {
 	reg := &FrameRegression{key: key}
-
-	fields := strings.Split(csv, ",")
 
 	// basic sanity check
 	if len(fields) > numFrameFields {
-		return nil, errors.New(errors.DatabaseError, "too many fields in frame regression entry")
+		return nil, errors.New(errors.RegressionFrameError, "too many fields")
 	}
 	if len(fields) < numFrameFields {
-		return nil, errors.New(errors.DatabaseError, "too few fields in frame regression entry")
+		return nil, errors.New(errors.RegressionFrameError, "too few fields")
 	}
 
 	// string fields need no conversion
@@ -69,7 +67,7 @@ func deserialiseFrameEntry(key int, csv string) (database.Entry, error) {
 	reg.NumFrames, err = strconv.Atoi(fields[frameFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[frameFieldNumFrames])
-		return nil, errors.New(errors.DatabaseError, msg)
+		return nil, errors.New(errors.RegressionFrameError, msg)
 	}
 
 	// convert state field
@@ -87,12 +85,12 @@ func (reg FrameRegression) GetID() string {
 }
 
 // SetKey implements the database.Entry interface
-func (reg *FrameRegression) SetKey(key int) {
+func (reg *FrameRegression) SetKey(key database.Key) {
 	reg.key = key
 }
 
 // GetKey implements the database.Entry interface
-func (reg FrameRegression) GetKey() int {
+func (reg FrameRegression) GetKey() database.Key {
 	return reg.key
 }
 
@@ -178,7 +176,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			// need
 			if nf != nil {
 				msg := fmt.Sprintf("state recording file already exists (%s)", reg.stateFile)
-				return false, errors.New(errors.DatabaseError, msg)
+				return false, errors.New(errors.RegressionFrameError, msg)
 			}
 			nf.Close()
 
@@ -186,7 +184,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
 				msg := fmt.Sprintf("error creating state recording file: %s", err)
-				return false, errors.New(errors.DatabaseError, msg)
+				return false, errors.New(errors.RegressionFrameError, msg)
 			}
 			defer nf.Close()
 
@@ -194,7 +192,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
 					msg := fmt.Sprintf("error writing state recording file: %s", err)
-					return false, errors.New(errors.DatabaseError, msg)
+					return false, errors.New(errors.RegressionFrameError, msg)
 				}
 			}
 		}
@@ -210,7 +208,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)
-			return false, errors.New(errors.DatabaseError, msg)
+			return false, errors.New(errors.RegressionFrameError, msg)
 		}
 		defer nf.Close()
 

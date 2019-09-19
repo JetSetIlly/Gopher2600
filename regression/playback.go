@@ -30,22 +30,20 @@ const (
 // nature they extend over many frames - many more than is typical with the
 // FrameRegression type.
 type PlaybackRegression struct {
-	key    int
+	key    database.Key
 	Script string
 	Notes  string
 }
 
-func deserialisePlaybackEntry(key int, csv string) (database.Entry, error) {
+func deserialisePlaybackEntry(key database.Key, fields []string) (database.Entry, error) {
 	reg := &PlaybackRegression{key: key}
-
-	fields := strings.Split(csv, ",")
 
 	// basic sanity check
 	if len(fields) > numPlaybackFields {
-		return nil, errors.New(errors.DatabaseError, "too many fields in frame playback entry")
+		return nil, errors.New(errors.RegressionPlaybackError, "too many fields")
 	}
 	if len(fields) < numPlaybackFields {
-		return nil, errors.New(errors.DatabaseError, "too few fields in frame playback entry")
+		return nil, errors.New(errors.RegressionPlaybackError, "too few fields")
 	}
 
 	// string fields need no conversion
@@ -61,12 +59,12 @@ func (reg PlaybackRegression) GetID() string {
 }
 
 // SetKey implements the database.Entry interface
-func (reg *PlaybackRegression) SetKey(key int) {
+func (reg *PlaybackRegression) SetKey(key database.Key) {
 	reg.key = key
 }
 
 // GetKey implements the database.Entry interface
-func (reg PlaybackRegression) GetKey() int {
+func (reg PlaybackRegression) GetKey() database.Key {
 	return reg.key
 }
 
@@ -173,7 +171,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		// need
 		if nf != nil {
 			msg := fmt.Sprintf("script already exists (%s)", newScript)
-			return false, errors.New(errors.DatabaseError, msg)
+			return false, errors.New(errors.RegressionPlaybackError, msg)
 		}
 		nf.Close()
 
@@ -181,7 +179,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		nf, err = os.Create(newScript)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.DatabaseError, msg)
+			return false, errors.New(errors.RegressionPlaybackError, msg)
 		}
 		defer nf.Close()
 
@@ -189,7 +187,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		of, err := os.Open(reg.Script)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.DatabaseError, msg)
+			return false, errors.New(errors.RegressionPlaybackError, msg)
 		}
 		defer of.Close()
 
@@ -197,7 +195,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 		_, err = io.Copy(nf, of)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.DatabaseError, msg)
+			return false, errors.New(errors.RegressionPlaybackError, msg)
 		}
 
 		// update script name in regression type

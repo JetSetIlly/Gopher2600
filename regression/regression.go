@@ -11,10 +11,14 @@ import (
 	"strconv"
 )
 
-const regressionScripts = ".gopher2600/regressionScripts"
+// the location of the regressoionDB file and the location of any regression
+// scripts
 const regressionDBFile = ".gopher2600/regressionDB"
+const regressionScripts = ".gopher2600/regressionScripts"
 
-// Regressor represents the generic entry in the regression database
+// Regressor is the generic entry type in the regressionDB
+//
+// * exported because we use it directly from the main package
 type Regressor interface {
 	database.Entry
 
@@ -79,12 +83,12 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	}
 	defer db.EndSession(true)
 
-	reg, err := db.Get(v)
+	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
 		return err
 	}
 
-	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", reg)))
+	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
 
 	confirm := make([]byte, 32)
 	_, err = confirmation.Read(confirm)
@@ -93,7 +97,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	}
 
 	if confirm[0] == 'y' || confirm[0] == 'Y' {
-		err = db.Delete(reg)
+		err = db.Delete(ent)
 		if err != nil {
 			return err
 		}
@@ -152,7 +156,6 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		keysV = append(keysV, v)
 	}
 	sort.Ints(keysV)
-	filterIdx := 0
 
 	numSucceed := 0
 	numFail := 0
@@ -169,37 +172,10 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	}()
 
 	onSelect := func(ent database.Entry) (bool, error) {
-		key := ent.GetKey()
-
-		// if a list of keys has been supplied then check key in the database
-		// against that list (both lists are sorted)
-		if len(keysV) > 0 {
-			// if we've come to the end of the list of filter keys then update
-			// the number of skipped entries and return false to indicate that
-			// the Select() function should not continue
-			if filterIdx >= len(keysV) {
-				numSkipped += db.NumEntries() - key
-				return false, nil
-			}
-
-			// if entry key is not in list of keys then update number of
-			// skipped entries and return true to indicate that the Select()
-			// function should countinue
-			if keysV[filterIdx] != key {
-				numSkipped++
-				return true, nil
-			}
-
-			// entry key is in list: because we're receiving database entries
-			// in order and because the list of filter keys is also sorted, we
-			// can bump the filterIdx to the next entry
-			filterIdx++
-		}
-
 		// datbase entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
-			return false, errors.New(errors.PanicError, "database entry does not satisfy Regressor interface")
+			return false, errors.New(errors.PanicError, "RegressRunTests()", "database entry does not satisfy Regressor interface")
 		}
 
 		// run regress() function with message. message does not have a
@@ -236,7 +212,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		return true, nil
 	}
 
-	db.Select("", onSelect)
+	db.SelectKeys(onSelect, keysV...)
 
 	return nil
 }

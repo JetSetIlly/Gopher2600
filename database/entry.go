@@ -5,8 +5,15 @@ import (
 	"gopher2600/errors"
 )
 
+// Key type is only used within Entry type. it is intended to obfuscate the
+// key's real type and to discourage the Entry implementation from altering the
+// key in any way
+type Key struct {
+	hiddenKey int
+}
+
 // the initialisation function when creating a new entry
-type deserialiser func(key int, csv string) (Entry, error)
+type deserialiser func(key Key, fields []string) (Entry, error)
 
 // SerialisedEntry is the Entry data represented as an array of strings
 type SerialisedEntry []string
@@ -21,10 +28,10 @@ type Entry interface {
 	GetID() string
 
 	// set the key value for the entry
-	SetKey(int)
+	SetKey(Key)
 
 	// return the key assigned to the entry
-	GetKey() int
+	GetKey() Key
 
 	// return the comma separated string representing the entry
 	Serialise() (SerialisedEntry, error)

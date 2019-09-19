@@ -19,8 +19,8 @@ const (
 	numLeaderFields
 )
 
-func recordHeader(ent Entry) string {
-	return fmt.Sprintf("%03d%s%s", ent.GetKey(), fieldSep, ent.GetID())
+func recordHeader(key int, ent Entry) string {
+	return fmt.Sprintf("%03d%s%s", key, fieldSep, ent.GetID())
 }
 
 // NumEntries returns the number of entries in the database
@@ -69,7 +69,7 @@ func (db *Session) Add(ent Entry) error {
 		return errors.New(errors.DatabaseError, msg)
 	}
 
-	ent.SetKey(key)
+	ent.SetKey(Key{hiddenKey: key})
 	db.entries[key] = ent
 
 	// add key to list and resort
@@ -83,38 +83,12 @@ func (db *Session) Add(ent Entry) error {
 func (db *Session) Delete(ent Entry) error {
 	ent.CleanUp()
 
-	delete(db.entries, ent.GetKey())
+	delete(db.entries, ent.GetKey().hiddenKey)
 
 	// find key in list and delete
 	for i := 0; i < len(db.keys); i++ {
-		if db.keys[i] == ent.GetKey() {
+		if db.keys[i] == ent.GetKey().hiddenKey {
 			db.keys = append(db.keys[:i], db.keys[i+1:]...)
-			break // for loop
-		}
-	}
-
-	return nil
-}
-
-// Get an entry from the database
-func (db Session) Get(key int) (Entry, error) {
-	ent, ok := db.entries[key]
-	if !ok {
-		msg := fmt.Sprintf("key not found [%d]", key)
-		return nil, errors.New(errors.DatabaseError, msg)
-	}
-	return ent, nil
-}
-
-// Select entries based on match calling onSelect for each matched entry
-// !!TODO: match not implemented yet. function will match on every entry
-func (db Session) Select(match string, onSelect func(Entry) (bool, error)) error {
-	for i := range db.keys {
-		cont, err := onSelect(db.entries[db.keys[i]])
-		if err != nil {
-			return err
-		}
-		if !cont {
 			break // for loop
 		}
 	}

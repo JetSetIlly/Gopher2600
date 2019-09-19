@@ -17,7 +17,6 @@ var messages = map[Errno]string{
 	DebuggerError:    "error debugging vcs: %s",
 	PerformanceError: "error during performance profiling: %s",
 	DisasmError:      "error during disassembly: %s",
-	RegressionError:  "regression error: %s",
 
 	// debugger
 	ParserError:     "parser error: %s: %s (char %d)", // first placeholder is the command definition
@@ -41,8 +40,14 @@ var messages = map[Errno]string{
 	DatabaseError:           "database error: %s",
 	DatabaseFileUnavailable: "database error: cannot open database (%s)",
 
+	// regression
+	RegressionError:         "regression error: %s",
+	RegressionFrameError:    "regression error: frame entry: %s",
+	RegressionPlaybackError: "regression error: playback entry: %s",
+
 	// setup
-	SetupError: "setup error: %s",
+	SetupError:      "setup error: %s",
+	SetupPanelError: "setup error: panel entry: %s",
 
 	// symbols
 	SymbolsFileError:       "symbols error: error processing symbols file: %s",

@@ -38,11 +38,14 @@ type Session struct {
 	// - saving in correct order in endSession()
 	keys []int
 
+	// deserialisers for the different entries that may appear in the database
 	entryTypes map[string]deserialiser
 }
 
-// StartSession starts/initialises a new DB session. argument is the function to call when
-// database has been succesfully opened
+// StartSession starts/initialises a new DB session. argument is the function
+// to call when database has been succesfully opened. this function should be
+// used to add information about the different entries that are to be used in
+// the database (see AddEntryType() function)
 func StartSession(path string, activity ActivityType, init func(*Session) error) (*Session, error) {
 	var err error
 
@@ -108,7 +111,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 				return err
 			}
 
-			s.WriteString(recordHeader(db.entries[key]))
+			s.WriteString(recordHeader(key, db.entries[key]))
 
 			for i := 0; i < len(ser); i++ {
 				s.WriteString(fieldSep)
@@ -175,12 +178,13 @@ func (db *Session) readDBFile() error {
 
 		var ent Entry
 
-		init, ok := db.entryTypes[fields[leaderFieldID]]
+		deserialise, ok := db.entryTypes[fields[leaderFieldID]]
 		if !ok {
 			msg := fmt.Sprintf("unrecognised entry type [%s]", fields[leaderFieldID])
 			return errors.New(errors.DatabaseError, msg)
 		}
-		ent, err = init(key, fields[numLeaderFields])
+
+		ent, err = deserialise(Key{hiddenKey: key}, strings.Split(fields[numLeaderFields], ","))
 		if err != nil {
 			return err
 		}

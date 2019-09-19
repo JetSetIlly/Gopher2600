@@ -51,9 +51,12 @@ const (
 
 	// regression
 	RegressionError
+	RegressionFrameError
+	RegressionPlaybackError
 
 	// setup
 	SetupError
+	SetupPanelError
 
 	// symbols
 	SymbolsFileUnavailable
