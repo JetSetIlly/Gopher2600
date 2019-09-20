@@ -22,7 +22,6 @@ const (
 
 // PanelSetup is used to adjust the VCS's front panel
 type PanelSetup struct {
-	key      database.Key
 	cartHash string
 
 	p0  bool
@@ -32,8 +31,8 @@ type PanelSetup struct {
 	notes string
 }
 
-func deserialisePanelSetupEntry(key database.Key, fields []string) (database.Entry, error) {
-	set := &PanelSetup{key: key}
+func deserialisePanelSetupEntry(fields []string) (database.Entry, error) {
+	set := &PanelSetup{}
 
 	// basic sanity check
 	if len(fields) > numPanelSetupFields {
@@ -64,19 +63,14 @@ func deserialisePanelSetupEntry(key database.Key, fields []string) (database.Ent
 	return set, nil
 }
 
-// GetID implements the database.Entry interface
-func (set PanelSetup) GetID() string {
+// ID implements the database.Entry interface
+func (set PanelSetup) ID() string {
 	return panelSetupID
 }
 
-// SetKey implements the database.Entry interface
-func (set *PanelSetup) SetKey(key database.Key) {
-	set.key = key
-}
-
-// GetKey implements the database.Entry interface
-func (set PanelSetup) GetKey() database.Key {
-	return set.key
+// String implements the database.Entry interface
+func (set PanelSetup) String() string {
+	return fmt.Sprintf("%s, p0=%v, p1=%v, col=%v\n", set.cartHash, set.p0, set.p1, set.col)
 }
 
 // Serialise implements the database.Entry interface
@@ -94,10 +88,6 @@ func (set *PanelSetup) Serialise() (database.SerialisedEntry, error) {
 // CleanUp implements the database.Entry interface
 func (set PanelSetup) CleanUp() {
 	// no cleanup necessary
-}
-
-func (set PanelSetup) String() string {
-	return fmt.Sprintf("%s, p0=%v, p1=%v, col=%v\n", set.cartHash, set.p0, set.p1, set.col)
 }
 
 // matchCartHash implements setupEntry interface

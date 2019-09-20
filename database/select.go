@@ -1,5 +1,7 @@
 package database
 
+import "gopher2600/errors"
+
 // SelectAll entries in the database. onSelect can be nil.
 //
 // returns last matched entry in selection or an error with the last entry
@@ -11,9 +13,10 @@ func (db Session) SelectAll(onSelect func(Entry) (bool, error)) (Entry, error) {
 		onSelect = func(_ Entry) (bool, error) { return true, nil }
 	}
 
-	for i := range db.keys {
-		entry = db.entries[db.keys[i]]
+	keyList := db.SortedKeyList()
 
+	for k := range keyList {
+		entry := db.entries[keyList[k]]
 		cont, err := onSelect(entry)
 		if err != nil {
 			return entry, err
@@ -41,7 +44,7 @@ func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (E
 
 	keyList := keys
 	if len(keys) == 0 {
-		keyList = db.keys
+		keyList = db.SortedKeyList()
 	}
 
 	for i := range keyList {
@@ -53,6 +56,10 @@ func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (E
 		if !cont {
 			break // for loop
 		}
+	}
+
+	if entry == nil {
+		return nil, errors.New(errors.DatabaseSelectEmpty)
 	}
 
 	return entry, nil

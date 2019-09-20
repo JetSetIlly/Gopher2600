@@ -38,12 +38,14 @@ var messages = map[Errno]string{
 
 	// database
 	DatabaseError:           "database error: %s",
+	DatabaseSelectEmpty:     "database error: no selected entries",
+	DatabaseKeyError:        "database error: no such key in database [%v]",
 	DatabaseFileUnavailable: "database error: cannot open database (%s)",
 
 	// regression
-	RegressionError:         "regression error: %s",
-	RegressionFrameError:    "regression error: frame entry: %s",
-	RegressionPlaybackError: "regression error: playback entry: %s",
+	RegressionError:         "regression test error: %s",
+	RegressionFrameError:    "regression test error: frame entry: %s",
+	RegressionPlaybackError: "regression test error: playback entry: %s",
 
 	// setup
 	SetupError:      "setup error: %s",

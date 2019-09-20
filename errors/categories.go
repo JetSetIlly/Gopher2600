@@ -47,6 +47,8 @@ const (
 
 	// database
 	DatabaseError
+	DatabaseSelectEmpty
+	DatabaseKeyError
 	DatabaseFileUnavailable
 
 	// regression

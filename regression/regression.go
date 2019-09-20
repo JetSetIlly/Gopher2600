@@ -33,18 +33,18 @@ type Regressor interface {
 // when starting a database session we need to register what entries we will
 // find in the database
 func initDBSession(db *database.Session) error {
-	if err := db.AddEntryType(frameEntryID, deserialiseFrameEntry); err != nil {
+	if err := db.RegisterEntryType(frameEntryID, deserialiseFrameEntry); err != nil {
 		return err
 	}
 
-	if err := db.AddEntryType(playbackEntryID, deserialisePlaybackEntry); err != nil {
+	if err := db.RegisterEntryType(playbackEntryID, deserialisePlaybackEntry); err != nil {
 		return err
 	}
 
 	// make sure regression script directory exists
 	if err := os.MkdirAll(regressionScripts, 0755); err != nil {
 		msg := fmt.Sprintf("regression script directory: %s", err)
-		return errors.New(errors.DatabaseError, msg)
+		return errors.New(errors.RegressionError, msg)
 	}
 
 	return nil
@@ -63,48 +63,6 @@ func RegressList(output io.Writer) error {
 	defer db.EndSession(false)
 
 	return db.List(output)
-}
-
-// RegressDelete removes a cartridge from the regression db
-func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
-	if output == nil {
-		return errors.New(errors.PanicError, "RegressDelete()", "io.Writer should not be nil (use nopWriter)")
-	}
-
-	v, err := strconv.Atoi(key)
-	if err != nil {
-		msg := fmt.Sprintf("invalid key [%s]", key)
-		return errors.New(errors.DatabaseError, msg)
-	}
-
-	db, err := database.StartSession(regressionDBFile, database.ActivityModifying, initDBSession)
-	if err != nil {
-		return err
-	}
-	defer db.EndSession(true)
-
-	ent, err := db.SelectKeys(nil, v)
-	if err != nil {
-		return err
-	}
-
-	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
-
-	confirm := make([]byte, 32)
-	_, err = confirmation.Read(confirm)
-	if err != nil {
-		return err
-	}
-
-	if confirm[0] == 'y' || confirm[0] == 'Y' {
-		err = db.Delete(ent)
-		if err != nil {
-			return err
-		}
-		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
-	}
-
-	return nil
 }
 
 // RegressAdd adds a new regression handler to the database
@@ -131,6 +89,54 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	return db.Add(reg)
 }
 
+// RegressDelete removes a cartridge from the regression db
+func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
+	if output == nil {
+		return errors.New(errors.PanicError, "RegressDelete()", "io.Writer should not be nil (use nopWriter)")
+	}
+
+	v, err := strconv.Atoi(key)
+	if err != nil {
+		msg := fmt.Sprintf("invalid key [%s]", key)
+		return errors.New(errors.RegressionError, msg)
+	}
+
+	db, err := database.StartSession(regressionDBFile, database.ActivityModifying, initDBSession)
+	if err != nil {
+		return err
+	}
+	defer db.EndSession(true)
+
+	ent, err := db.SelectKeys(nil, v)
+	if err != nil {
+		if !errors.Is(err, errors.DatabaseSelectEmpty) {
+			return err
+		}
+
+		// select returned no entries; create DatabaseKeyError and wrap it in a
+		// RegressionError
+		return errors.New(errors.RegressionError, errors.New(errors.DatabaseKeyError, v))
+	}
+
+	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
+
+	confirm := make([]byte, 32)
+	_, err = confirmation.Read(confirm)
+	if err != nil {
+		return err
+	}
+
+	if confirm[0] == 'y' || confirm[0] == 'Y' {
+		err = db.Delete(v)
+		if err != nil {
+			return err
+		}
+		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
+	}
+
+	return nil
+}
+
 // RegressRunTests runs all the tests in the regression database
 // o filterKeys list specified which entries to test. an empty keys list means that
 //	every entry should be tested
@@ -151,7 +157,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
 			msg := fmt.Sprintf("invalid key [%s]", filterKeys[k])
-			return errors.New(errors.DatabaseError, msg)
+			return errors.New(errors.RegressionError, msg)
 		}
 		keysV = append(keysV, v)
 	}

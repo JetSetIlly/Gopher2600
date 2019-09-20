@@ -29,13 +29,12 @@ const (
 // nature they extend over many frames - many more than is typical with the
 // FrameRegression type.
 type PlaybackRegression struct {
-	key    database.Key
 	Script string
 	Notes  string
 }
 
-func deserialisePlaybackEntry(key database.Key, fields []string) (database.Entry, error) {
-	reg := &PlaybackRegression{key: key}
+func deserialisePlaybackEntry(fields []string) (database.Entry, error) {
+	reg := &PlaybackRegression{}
 
 	// basic sanity check
 	if len(fields) > numPlaybackFields {
@@ -52,19 +51,19 @@ func deserialisePlaybackEntry(key database.Key, fields []string) (database.Entry
 	return reg, nil
 }
 
-// GetID implements the database.Entry interface
-func (reg PlaybackRegression) GetID() string {
+// ID implements the database.Entry interface
+func (reg PlaybackRegression) ID() string {
 	return playbackEntryID
 }
 
-// SetKey implements the database.Entry interface
-func (reg *PlaybackRegression) SetKey(key database.Key) {
-	reg.key = key
-}
-
-// GetKey implements the database.Entry interface
-func (reg PlaybackRegression) GetKey() database.Key {
-	return reg.key
+// String implements the database.Entry interface
+func (reg PlaybackRegression) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("[%s] %s", reg.ID(), path.Base(reg.Script)))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 // Serialise implements the database.Entry interface
@@ -82,15 +81,7 @@ func (reg PlaybackRegression) CleanUp() {
 	_ = os.Remove(reg.Script)
 }
 
-func (reg PlaybackRegression) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("[%s] %s", reg.GetID(), path.Base(reg.Script)))
-	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
-	}
-	return s.String()
-}
-
+// regress implements the regression.Regressor interface
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, message string) (bool, error) {
 	output.Write([]byte(message))
 

@@ -19,37 +19,57 @@ const (
 	numLeaderFields
 )
 
-func recordHeader(key int, ent Entry) string {
-	return fmt.Sprintf("%03d%s%s", key, fieldSep, ent.GetID())
+func recordHeader(key int, id string) string {
+	return fmt.Sprintf("%03d%s%s", key, fieldSep, id)
 }
 
 // NumEntries returns the number of entries in the database
 func (db Session) NumEntries() int {
-	return len(db.keys)
+	return len(db.entries)
+}
+
+// SortedKeyList returns a sorted list of database keys
+func (db Session) SortedKeyList() []int {
+	// sort entries into key order
+	keyList := make([]int, 0, len(db.entries))
+	for k := range db.entries {
+		keyList = append(keyList, k)
+	}
+	sort.Ints(keyList)
+	return keyList
 }
 
 // List the enties in key order
 func (db Session) List(output io.Writer) error {
-	for k := range db.keys {
-		if _, err := output.Write([]byte(fmt.Sprintf("%03d ", db.keys[k]))); err != nil {
+	if db.NumEntries() == 0 {
+		if _, err := output.Write([]byte("database is empty\n")); err != nil {
 			return err
 		}
-		if _, err := output.Write([]byte(db.entries[db.keys[k]].String())); err != nil {
+		return nil
+	}
+
+	keyList := db.SortedKeyList()
+
+	for k := range keyList {
+		key := keyList[k]
+		ent := db.entries[key]
+
+		if _, err := output.Write([]byte(fmt.Sprintf("%03d ", key))); err != nil {
+			return err
+		}
+
+		if _, err := output.Write([]byte(ent.String())); err != nil {
 			return err
 		}
 		if _, err := output.Write([]byte("\n")); err != nil {
 			return err
 		}
 	}
-	if len(db.keys) == 0 {
-		if _, err := output.Write([]byte("database is empty\n")); err != nil {
-			return err
-		}
-	} else {
-		if _, err := output.Write([]byte(fmt.Sprintf("Total: %d\n", len(db.keys)))); err != nil {
-			return err
-		}
+
+	if _, err := output.Write([]byte(fmt.Sprintf("Total: %d\n", db.NumEntries()))); err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -69,29 +89,19 @@ func (db *Session) Add(ent Entry) error {
 		return errors.New(errors.DatabaseError, msg)
 	}
 
-	ent.SetKey(Key{hiddenKey: key})
 	db.entries[key] = ent
-
-	// add key to list and resort
-	db.keys = append(db.keys, key)
-	sort.Ints(db.keys)
 
 	return nil
 }
 
-// Delete an entry from the database
-func (db *Session) Delete(ent Entry) error {
-	ent.CleanUp()
-
-	delete(db.entries, ent.GetKey().hiddenKey)
-
-	// find key in list and delete
-	for i := 0; i < len(db.keys); i++ {
-		if db.keys[i] == ent.GetKey().hiddenKey {
-			db.keys = append(db.keys[:i], db.keys[i+1:]...)
-			break // for loop
-		}
+// Delete deletes an entry with the specified key. returns DatabaseKeyError
+// if not such entry exists
+func (db *Session) Delete(key int) error {
+	if _, ok := db.entries[key]; !ok {
+		return errors.New(errors.DatabaseKeyError, key)
 	}
+
+	delete(db.entries, key)
 
 	return nil
 }

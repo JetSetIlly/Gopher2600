@@ -293,7 +293,7 @@ func main() {
 
 			err := regression.RegressRunTests(os.Stdout, *verbose, *failOnError, modeFlags.Args())
 			if err != nil {
-				fmt.Printf("* error during regression tests: %s\n", err)
+				fmt.Printf("* %s\n", err)
 				os.Exit(2)
 			}
 
@@ -304,7 +304,7 @@ func main() {
 			case 0:
 				err := regression.RegressList(os.Stdout)
 				if err != nil {
-					fmt.Printf("* error during regression listing: %s\n", err)
+					fmt.Printf("*  %s\n", err)
 					os.Exit(2)
 				}
 			default:
@@ -332,7 +332,7 @@ func main() {
 
 				err := regression.RegressDelete(os.Stdout, confirmation, modeFlags.Arg(0))
 				if err != nil {
-					fmt.Printf("* error deleting regression test: %s\n", err)
+					fmt.Printf("* %s\n", err)
 					os.Exit(2)
 				}
 			default:

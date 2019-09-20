@@ -23,7 +23,7 @@ type setupEntry interface {
 // when starting a database session we must add the details of the entry types
 // that will be found in the database
 func initDBSession(db *database.Session) error {
-	if err := db.AddEntryType(panelSetupID, deserialisePanelSetupEntry); err != nil {
+	if err := db.RegisterEntryType(panelSetupID, deserialisePanelSetupEntry); err != nil {
 		return err
 	}
 	return nil

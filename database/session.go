@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -32,11 +31,6 @@ type Session struct {
 	activity ActivityType
 
 	entries map[int]Entry
-
-	// sorted list of keys. used for:
-	// - displaying entries in correct order in list()
-	// - saving in correct order in endSession()
-	keys []int
 
 	// deserialisers for the different entries that may appear in the database
 	entryTypes map[string]deserialiser
@@ -104,14 +98,14 @@ func (db *Session) EndSession(commitChanges bool) error {
 			return err
 		}
 
-		for _, key := range db.keys {
+		for k, v := range db.entries {
 			s := strings.Builder{}
-			ser, err := db.entries[key].Serialise()
+			ser, err := v.Serialise()
 			if err != nil {
 				return err
 			}
 
-			s.WriteString(recordHeader(key, db.entries[key]))
+			s.WriteString(recordHeader(k, v.ID()))
 
 			for i := 0; i < len(ser); i++ {
 				s.WriteString(fieldSep)
@@ -184,19 +178,13 @@ func (db *Session) readDBFile() error {
 			return errors.New(errors.DatabaseError, msg)
 		}
 
-		ent, err = deserialise(Key{hiddenKey: key}, strings.Split(fields[numLeaderFields], ","))
+		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
 		if err != nil {
 			return err
 		}
 
 		db.entries[key] = ent
-
-		// add key to list
-		db.keys = append(db.keys, key)
 	}
-
-	// sort key list
-	sort.Ints(db.keys)
 
 	return nil
 }

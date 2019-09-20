@@ -34,7 +34,6 @@ const (
 // regression tests pass if the screen digest after N frames matches the stored
 // value.
 type FrameRegression struct {
-	key          database.Key
 	CartFile     string
 	TVtype       string
 	NumFrames    int
@@ -44,8 +43,8 @@ type FrameRegression struct {
 	screenDigest string
 }
 
-func deserialiseFrameEntry(key database.Key, fields []string) (database.Entry, error) {
-	reg := &FrameRegression{key: key}
+func deserialiseFrameEntry(fields []string) (database.Entry, error) {
+	reg := &FrameRegression{}
 
 	// basic sanity check
 	if len(fields) > numFrameFields {
@@ -79,19 +78,23 @@ func deserialiseFrameEntry(key database.Key, fields []string) (database.Entry, e
 	return reg, nil
 }
 
-// GetID implements the database.Entry interface
-func (reg FrameRegression) GetID() string {
+// ID implements the database.Entry interface
+func (reg FrameRegression) ID() string {
 	return frameEntryID
 }
 
-// SetKey implements the database.Entry interface
-func (reg *FrameRegression) SetKey(key database.Key) {
-	reg.key = key
-}
-
-// GetKey implements the database.Entry interface
-func (reg FrameRegression) GetKey() database.Key {
-	return reg.key
+// String implements the database.Entry interface
+func (reg FrameRegression) String() string {
+	s := strings.Builder{}
+	stateFile := ""
+	if reg.State {
+		stateFile = "[with state]"
+	}
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), path.Base(reg.CartFile), reg.TVtype, reg.NumFrames, stateFile))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 // Serialise implements the database.Entry interface
@@ -113,19 +116,7 @@ func (reg FrameRegression) CleanUp() {
 	_ = os.Remove(reg.stateFile)
 }
 
-func (reg FrameRegression) String() string {
-	s := strings.Builder{}
-	stateFile := ""
-	if reg.State {
-		stateFile = "[with state]"
-	}
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.GetID(), path.Base(reg.CartFile), reg.TVtype, reg.NumFrames, stateFile))
-	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
-	}
-	return s.String()
-}
-
+// regress implements the regression.Regressor interface
 func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, error) {
 	output.Write([]byte(msg))
 
