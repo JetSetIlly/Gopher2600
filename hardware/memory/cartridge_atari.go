@@ -68,8 +68,8 @@ func (cart atari) String() string {
 
 func (cart *atari) initialise() {
 	cart.bank = len(cart.banks) - 1
-	if len(cart.superchip) > 0 {
-		cart.superchip = make([]uint8, len(cart.superchip))
+	for i := range cart.superchip {
+		cart.superchip[i] = 0x00
 	}
 }
 
@@ -89,7 +89,9 @@ func (cart *atari) setBank(addr uint16, bank int) error {
 }
 
 func (cart *atari) saveState() interface{} {
-	return []interface{}{cart.bank, cart.superchip}
+	superchip := make([]uint8, len(cart.superchip))
+	copy(superchip, cart.superchip)
+	return []interface{}{cart.bank, superchip}
 }
 
 func (cart *atari) restoreState(state interface{}) error {

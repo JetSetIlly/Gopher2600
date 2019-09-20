@@ -64,11 +64,8 @@ type mnetwork struct {
 	//
 	// switching of both segment pointers is performed by the function
 	// bankSwitchOnAccess()
-	ramLower [1024]uint8
-	ramUpper [4][256]uint8
-
-	// (not all m-network cartridges have any RAM but we'll allocate it for all
-	// instances)
+	ramLower []uint8
+	ramUpper [4][]uint8
 }
 
 func newMnetwork(cf io.ReadSeeker) (cartMapper, error) {
@@ -92,6 +89,13 @@ func newMnetwork(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
+	// not all m-network cartridges have any RAM but we'll allocate it for all
+	// instances
+	cart.ramLower = make([]uint8, 1024)
+	for i := range cart.ramUpper {
+		cart.ramUpper[i] = make([]uint8, 256)
+	}
+
 	cart.initialise()
 
 	return cart, nil
@@ -110,6 +114,16 @@ func (cart mnetwork) String() string {
 func (cart *mnetwork) initialise() {
 	cart.lowerSegment = cart.numBanks() - 2
 	cart.upperSegment = 0
+
+	for i := range cart.ramLower {
+		cart.ramLower[i] = 0x00
+	}
+
+	for i := range cart.ramUpper {
+		for j := range cart.ramUpper[i] {
+			cart.ramUpper[i][j] = 0x00
+		}
+	}
 }
 
 func (cart *mnetwork) read(addr uint16) (uint8, error) {
@@ -228,18 +242,39 @@ func (cart *mnetwork) setBank(addr uint16, bank int) error {
 }
 
 func (cart *mnetwork) saveState() interface{} {
-	// !!TODO: ram
-	return cart.lowerSegment
+	ramLower := make([]uint8, len(cart.ramLower))
+	copy(ramLower, cart.ramLower)
+
+	ramUpper := [4][]uint8{}
+	for i := range ramUpper {
+		ramUpper[i] = make([]uint8, len(cart.ramUpper[i]))
+		copy(ramUpper[i], cart.ramUpper[i])
+	}
+
+	return []interface{}{cart.lowerSegment, ramLower, ramUpper}
 }
 
 func (cart *mnetwork) restoreState(state interface{}) error {
-	// !!TODO: ram
-	cart.lowerSegment = state.(int)
+	cart.lowerSegment = state.([]interface{})[0].(int)
+
+	ramLower := state.([]interface{})[1].([]uint8)
+	copy(cart.ramLower, ramLower)
+
+	ramUpper := state.([]interface{})[2].([4][]uint8)
+	for i := range cart.ramUpper {
+		copy(cart.ramUpper[i], ramUpper[i])
+	}
+
 	return nil
 }
 
 func (cart *mnetwork) ram() []uint8 {
-	return []uint8{}
+	mem := make([]uint8, 0, 2048)
+	mem = append(mem, cart.ramLower...)
+	for i := range cart.ramUpper {
+		mem = append(mem, cart.ramUpper[i]...)
+	}
+	return mem
 }
 
 func (cart *mnetwork) listen(addr uint16, data uint8) error {

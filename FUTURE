@@ -3,7 +3,11 @@ debugger
 
 o RESET command to work when mid-instruction (during video step)
 
-o custom error messages for command line package
+o better presentation of cartridge ram (RAM CART)
+
+o simplify MachineInfo()
+
+o better error messages for command line package
 	- for example "unrecognised argument" command for HELP should be something
 	  like "no help available for ..."
 
@@ -34,14 +38,11 @@ o commandline
 
 o display of colors in the terminal (check for 256 color terminal)
 
-o MachineInfoDebug() in addition to Terse and Verbose
-
 vcs
 ---
 
 o randomised initialisation
-
-o optional to prevent regression tests from failing
+	- optional to prevent regression tests from failing
 
 
 sdl screen

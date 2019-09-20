@@ -200,7 +200,10 @@ func (cart *Cartridge) Attach(filename string) error {
 		}
 
 	case 12288:
-		return errors.New(errors.CartridgeFileError, "12288 bytes not yet supported")
+		cart.mapper, err = newCBS(cf)
+		if err != nil {
+			return err
+		}
 
 	case 16384:
 		cart.mapper, err = cart.fingerprint16k(cf)(cf)
