@@ -82,27 +82,27 @@ func (reg PlaybackRegression) CleanUp() {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, message string) (bool, error) {
-	output.Write([]byte(message))
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (bool, error) {
+	output.Write([]byte(msg))
 
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	digest, err := renderers.NewDigestTV(plb.TVtype, nil)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	vcs, err := hardware.NewVCS(digest)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	// not using setup.AttachCartridge. if the playback was recorded with setup
@@ -110,23 +110,26 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 	// will be applied that way
 	err = vcs.AttachCartridge(plb.CartFile)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	// run emulation and display progress meter every 1 second
+	// display progress meter every 1 second
 	limiter, err := limiter.NewFPSLimiter(1)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
+
+	// run emulation
 	err = vcs.Run(func() (bool, error) {
 		if limiter.HasWaited() {
-			output.Write([]byte(fmt.Sprintf("\r%s [%s]", message, plb)))
+			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
 		}
 		return true, nil
 	})
+
 	if err != nil {
 		if !errors.IsAny(err) {
-			return false, errors.New(errors.RegressionError, err)
+			return false, errors.New(errors.RegressionPlaybackError, err)
 		}
 
 		switch err.(errors.AtariError).Errno {
@@ -142,7 +145,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, mes
 			return false, nil
 
 		default:
-			return false, errors.New(errors.RegressionError, err)
+			return false, errors.New(errors.RegressionPlaybackError, err)
 		}
 
 	}

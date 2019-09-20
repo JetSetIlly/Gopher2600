@@ -6,6 +6,7 @@ import (
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/performance/limiter"
 	"gopher2600/setup"
 	"gopher2600/television/renderers"
 	"io"
@@ -122,31 +123,41 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartFile)
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
 	state := make([]string, 0, 1024)
 
-	f := func() {}
-	if reg.State {
-		f = func() {
-			state = append(state, vcs.TV.MachineInfoTerse())
-		}
+	// display progress meter every 1 second
+	limiter, err := limiter.NewFPSLimiter(1)
+	if err != nil {
+		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
-	err = vcs.RunForFrameCount(reg.NumFrames, f)
+	// run emaulation
+	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
+		if limiter.HasWaited() {
+			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+		}
+
+		if reg.State {
+			state = append(state, vcs.TV.MachineInfoTerse())
+		}
+		return true, nil
+	})
+
 	if err != nil {
-		return false, errors.New(errors.RegressionError, err)
+		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
 	if newRegression {
@@ -163,6 +174,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 			// check that the filename is unique
 			nf, _ := os.Open(reg.stateFile)
+
 			// no need to bother with returned error. nf tells us everything we
 			// need
 			if nf != nil {

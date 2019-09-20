@@ -288,6 +288,10 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	var err error
 
+	if continueCheck == nil {
+		continueCheck = func() (bool, error) { return true, nil }
+	}
+
 	videoCycle := func(r *result.Instruction) error {
 		// see videoCycle in Step() function for an explanation for what's
 		// going on here
@@ -337,8 +341,11 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 // RunForFrameCount sets emulator running for the specified number of frames
 // - not used by the debugger because traps and steptraps are more flexible
 // - useful for fps and regression tests
-// - callback is a simple hook called every video step
-func (vcs *VCS) RunForFrameCount(numFrames int, callback func()) error {
+func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (bool, error)) error {
+	if continueCheck == nil {
+		continueCheck = func(frame int) (bool, error) { return true, nil }
+	}
+
 	fn, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
 		return err
@@ -346,13 +353,18 @@ func (vcs *VCS) RunForFrameCount(numFrames int, callback func()) error {
 
 	targetFrame := fn + numFrames
 
-	for fn != targetFrame {
-		callback()
+	cont := true
+	for fn != targetFrame && cont {
 		_, err = vcs.Step(func(_ *result.Instruction) error { return nil })
 		if err != nil {
 			return err
 		}
 		fn, err = vcs.TV.GetState(television.ReqFramenum)
+		if err != nil {
+			return err
+		}
+
+		cont, err = continueCheck(fn)
 		if err != nil {
 			return err
 		}

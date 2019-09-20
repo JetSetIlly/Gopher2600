@@ -65,8 +65,6 @@ o better separation of database and regression packages
 
 o lock file
 
-o progress meter for "frame" entry type
-
 o CLEAN mode
 	- removes entries where ROMs or script file is missing
 	- removes orphaned script files
