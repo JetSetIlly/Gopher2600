@@ -4,6 +4,7 @@ import (
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/hardware/memory"
 )
 
 // the location of the setupDB file
@@ -30,8 +31,8 @@ func initDBSession(db *database.Session) error {
 }
 
 // AttachCartridge to the VCS and apply setup information from the setupDB
-func AttachCartridge(vcs *hardware.VCS, filename string) error {
-	err := vcs.AttachCartridge(filename)
+func AttachCartridge(vcs *hardware.VCS, cartload memory.CartridgeLoader) error {
+	err := vcs.AttachCartridge(cartload)
 	if err != nil {
 		return err
 	}

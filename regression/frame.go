@@ -6,22 +6,21 @@ import (
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/hardware/memory"
 	"gopher2600/performance/limiter"
 	"gopher2600/setup"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
-	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const frameEntryID = "frame"
 
 const (
 	frameFieldCartName int = iota
+	frameFieldCartFormat
 	frameFieldTVtype
 	frameFieldNumFrames
 	frameFieldState
@@ -35,7 +34,7 @@ const (
 // regression tests pass if the screen digest after N frames matches the stored
 // value.
 type FrameRegression struct {
-	CartFile     string
+	CartLoad     memory.CartridgeLoader
 	TVtype       string
 	NumFrames    int
 	State        bool
@@ -57,7 +56,8 @@ func deserialiseFrameEntry(fields []string) (database.Entry, error) {
 
 	// string fields need no conversion
 	reg.screenDigest = fields[frameFieldDigest]
-	reg.CartFile = fields[frameFieldCartName]
+	reg.CartLoad.Filename = fields[frameFieldCartName]
+	reg.CartLoad.Format = fields[frameFieldCartFormat]
 	reg.TVtype = fields[frameFieldTVtype]
 	reg.Notes = fields[frameFieldNotes]
 
@@ -91,7 +91,7 @@ func (reg FrameRegression) String() string {
 	if reg.State {
 		stateFile = "[with state]"
 	}
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), path.Base(reg.CartFile), reg.TVtype, reg.NumFrames, stateFile))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, stateFile))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -101,7 +101,8 @@ func (reg FrameRegression) String() string {
 // Serialise implements the database.Entry interface
 func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			reg.CartFile,
+			reg.CartLoad.Filename,
+			reg.CartLoad.Format,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.stateFile,
@@ -131,7 +132,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
-	err = setup.AttachCartridge(vcs, reg.CartFile)
+	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
 		return false, errors.New(errors.RegressionFrameError, err)
 	}
@@ -164,13 +165,8 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		reg.screenDigest = tv.String()
 
 		if reg.State {
-			// construct state script filename
-			shortCartName := path.Base(reg.CartFile)
-			shortCartName = strings.TrimSuffix(shortCartName, path.Ext(reg.CartFile))
-			n := time.Now()
-			timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-			reg.stateFile = fmt.Sprintf("%s_%s", shortCartName, timestamp)
-			reg.stateFile = filepath.Join(regressionScripts, reg.stateFile)
+			// create a unique filename
+			reg.stateFile = uniqueFilename(reg.CartLoad)
 
 			// check that the filename is unique
 			nf, _ := os.Open(reg.stateFile)

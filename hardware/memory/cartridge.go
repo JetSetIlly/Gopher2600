@@ -6,7 +6,30 @@ import (
 	"gopher2600/errors"
 	"io"
 	"os"
+	"path"
+	"strings"
 )
+
+// CartridgeLoader is used to specify the cartridge to use when Attach()ing to
+// the VCS. it also permits the called to specify the format of the cartridge
+// (if necessary. fingerprinting is pretty good)
+type CartridgeLoader struct {
+	Filename string
+
+	// empty string or "AUTO" indicates automatic fingerprinting
+	Format string
+
+	// expected hash of the loaded cartridge. empty string indicates that the
+	// hash is unknown and need not be validated
+	Hash string
+}
+
+// ShortName returns a shortened version of the CartridgeLoader filename
+func (cl CartridgeLoader) ShortName() string {
+	shortCartName := path.Base(cl.Filename)
+	shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cl.Filename))
+	return shortCartName
+}
 
 // cartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
@@ -41,6 +64,9 @@ type Cartridge struct {
 
 	// full path to the cartridge as stored on disk
 	Filename string
+
+	// the format requested by the CartridgeLoader
+	RequestedFormat string
 
 	// hash of binary loaded from disk. any subsequent pokes to cartridge
 	// memory will not be reflected in the value
@@ -150,10 +176,10 @@ func (cart Cartridge) fingerprint16k(cf io.ReadSeeker) func(io.ReadSeeker) (cart
 }
 
 // Attach loads the bytes from a cartridge (represented by 'filename')
-func (cart *Cartridge) Attach(filename string) error {
-	cf, err := os.Open(filename)
+func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
+	cf, err := os.Open(cartload.Filename)
 	if err != nil {
-		return errors.New(errors.CartridgeFileUnavailable, filename)
+		return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
 	}
 	defer func() {
 		_ = cf.Close()
@@ -166,7 +192,8 @@ func (cart *Cartridge) Attach(filename string) error {
 	}
 
 	// note name of cartridge
-	cart.Filename = filename
+	cart.Filename = cartload.Filename
+	cart.RequestedFormat = cartload.Format
 	cart.mapper = newEjected()
 
 	// generate hash
@@ -175,6 +202,11 @@ func (cart *Cartridge) Attach(filename string) error {
 		return err
 	}
 	cart.Hash = fmt.Sprintf("%x", key.Sum(nil))
+
+	// check that the hash matches the expected value
+	if cartload.Hash != "" && cartload.Hash != cart.Hash {
+		return errors.New(errors.CartridgeError, "unexpected hash value")
+	}
 
 	// how cartridges are mapped into the 4k space can differs dramatically.
 	// the following implementation details have been cribbed from Kevin

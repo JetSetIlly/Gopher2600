@@ -9,6 +9,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
@@ -262,7 +263,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
-		err := dbg.loadCartridge(cart)
+		err := dbg.loadCartridge(memory.CartridgeLoader{Filename: cart})
 		if err != nil {
 			return doNothing, err
 		}

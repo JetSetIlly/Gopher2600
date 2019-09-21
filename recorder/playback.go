@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/hardware/memory"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/television"
 	"gopher2600/television/renderers"
@@ -34,8 +35,7 @@ type playbackSequence struct {
 type Playback struct {
 	transcript string
 
-	CartFile string
-	CartHash string
+	CartLoad memory.CartridgeLoader
 	TVtype   string
 
 	sequences []*playbackSequence

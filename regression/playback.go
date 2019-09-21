@@ -11,9 +11,7 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
-	"time"
 )
 
 const playbackEntryID = "playback"
@@ -108,7 +106,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// not using setup.AttachCartridge. if the playback was recorded with setup
 	// changes the events will have been copied into the playback script and
 	// will be applied that way
-	err = vcs.AttachCartridge(plb.CartFile)
+	err = vcs.AttachCartridge(plb.CartLoad)
 	if err != nil {
 		return false, errors.New(errors.RegressionPlaybackError, err)
 	}
@@ -153,13 +151,8 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// if this is a new regression we want to store the script in the
 	// regressionScripts directory
 	if newRegression {
-		// create a (hopefully) unique name for copied script file
-		shortCartName := path.Base(plb.CartFile)
-		shortCartName = strings.TrimSuffix(shortCartName, path.Ext(plb.CartFile))
-		n := time.Now()
-		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-		newScript := fmt.Sprintf("%s_%s", shortCartName, timestamp)
-		newScript = filepath.Join(regressionScripts, newScript)
+		// create a unique filename
+		newScript := uniqueFilename(plb.CartLoad)
 
 		// check that the filename is unique
 		nf, _ := os.Open(newScript)

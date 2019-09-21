@@ -70,11 +70,11 @@ func NewVCS(tv television.Television) (*VCS, error) {
 // memory. While this function can be called directly it is advised that the
 // equivalent function call in the setup package is used. that function in turn
 // calls this function in this package
-func (vcs *VCS) AttachCartridge(filename string) error {
-	if filename == "" {
+func (vcs *VCS) AttachCartridge(cartload memory.CartridgeLoader) error {
+	if cartload.Filename == "" {
 		vcs.Mem.Cart.Eject()
 	} else {
-		err := vcs.Mem.Cart.Attach(filename)
+		err := vcs.Mem.Cart.Attach(cartload)
 		if err != nil {
 			return err
 		}

@@ -6,6 +6,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
+	"gopher2600/hardware/memory"
 	"gopher2600/setup"
 	"gopher2600/television"
 	"io"
@@ -13,7 +14,7 @@ import (
 )
 
 // Check is a very rough and ready calculation of the emulator's performance
-func Check(output io.Writer, profile bool, cartridgeFile string, display bool, tvType string, scaling float32, runTime string) error {
+func Check(output io.Writer, profile bool, display bool, tvType string, scaling float32, runTime string, cartload memory.CartridgeLoader) error {
 	var ftv television.Television
 	var err error
 
@@ -43,7 +44,7 @@ func Check(output io.Writer, profile bool, cartridgeFile string, display bool, t
 	}
 
 	// attach cartridge to te vcs
-	err = setup.AttachCartridge(vcs, cartridgeFile)
+	err = setup.AttachCartridge(vcs, cartload)
 	if err != nil {
 		return errors.New(errors.PerformanceError, err)
 	}

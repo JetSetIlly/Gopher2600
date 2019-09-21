@@ -6,6 +6,7 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func BenchmarkSDL(b *testing.B) {
 		panic(fmt.Errorf("error preparing VCS: %s", err))
 	}
 
-	err = vcs.AttachCartridge("../roms/ROMs/Pitfall.bin")
+	err = vcs.AttachCartridge(memory.CartridgeLoader{Filename: "../roms/ROMs/Pitfall.bin"})
 	if err != nil {
 		panic(err)
 	}

@@ -11,6 +11,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory"
 	"gopher2600/setup"
 	"gopher2600/symbols"
 	"gopher2600/television"
@@ -206,7 +207,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 }
 
 // Start the main debugger sequence
-func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartridge string) error {
+func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload memory.CartridgeLoader) error {
 	// prepare user interface
 	if cons == nil {
 		dbg.console = new(console.PlainTerminal)
@@ -222,7 +223,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 
 	dbg.console.RegisterTabCompleter(commandline.NewTabCompletion(debuggerCommands))
 
-	err = dbg.loadCartridge(cartridge)
+	err = dbg.loadCartridge(cartload)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
@@ -258,13 +259,13 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartri
 //
 // this is the glue that hold the cartridge and disassembly packages
 // together
-func (dbg *Debugger) loadCartridge(cartridgeFilename string) error {
-	err := setup.AttachCartridge(dbg.vcs, cartridgeFilename)
+func (dbg *Debugger) loadCartridge(cartload memory.CartridgeLoader) error {
+	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil {
 		return err
 	}
 
-	symtable, err := symbols.ReadSymbolsFile(cartridgeFilename)
+	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
 	if err != nil {
 		dbg.print(console.StyleError, "%s", err)
 		// continuing because symtable is always valid even if err non-nil

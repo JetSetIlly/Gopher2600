@@ -7,6 +7,7 @@ import (
 	"gopher2600/debugger/colorterm"
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
+	"gopher2600/hardware/memory"
 	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
@@ -82,7 +83,6 @@ func main() {
 			argList = progFlags.Args()
 			argListPos = 1
 		}
-
 	}
 
 	// modes can have their own sets of flags
@@ -97,7 +97,6 @@ func main() {
 	var validSubModes []string
 
 	modeFlagsParse := func() {
-
 		// return immediately if there are no more flags to parse
 		if len(argList) < 1 || argListPos > len(argList) {
 			return
@@ -134,6 +133,7 @@ func main() {
 		fallthrough
 
 	case "PLAY":
+		cartFormat := modeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
 		stable := modeFlags.Bool("stable", true, "wait for stable frame before opening display")
@@ -149,7 +149,12 @@ func main() {
 			}
 			fallthrough
 		case 1:
-			err := playmode.Play(modeFlags.Arg(0), *tvType, float32(*scaling), *stable, *recording, *record)
+			cartload := memory.CartridgeLoader{
+				Filename: modeFlags.Arg(0),
+				Format:   *cartFormat,
+			}
+
+			err := playmode.Play(*tvType, float32(*scaling), *stable, *recording, *record, cartload)
 			if err != nil {
 				fmt.Printf("* %s\n", err)
 				os.Exit(2)
@@ -165,6 +170,7 @@ func main() {
 		}
 
 	case "DEBUG":
+		cartFormat := modeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		termType := modeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 		initScript := modeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
@@ -196,7 +202,11 @@ func main() {
 			fallthrough
 		case 1:
 			runner := func() error {
-				err := dbg.Start(term, *initScript, modeFlags.Arg(0))
+				cartload := memory.CartridgeLoader{
+					Filename: modeFlags.Arg(0),
+					Format:   *cartFormat,
+				}
+				err := dbg.Start(term, *initScript, cartload)
 				if err != nil {
 					return err
 				}
@@ -227,6 +237,7 @@ func main() {
 		}
 
 	case "DISASM":
+		cartFormat := modeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 		modeFlagsParse()
 
 		switch len(modeFlags.Args()) {
@@ -234,7 +245,11 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			dsm, err := disassembly.FromCartrige(modeFlags.Arg(0))
+			cartload := memory.CartridgeLoader{
+				Filename: modeFlags.Arg(0),
+				Format:   *cartFormat,
+			}
+			dsm, err := disassembly.FromCartrige(cartload)
 			if err != nil {
 				// print what disassembly output we do have
 				if dsm != nil {
@@ -252,6 +267,7 @@ func main() {
 		}
 
 	case "PERFORMANCE":
+		cartFormat := modeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 		display := modeFlags.Bool("display", false, "display TV output: boolean")
 		tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 		scaling := modeFlags.Float64("scale", 3.0, "television scaling")
@@ -264,7 +280,11 @@ func main() {
 			fmt.Println("* 2600 cartridge required")
 			os.Exit(2)
 		case 1:
-			err := performance.Check(os.Stdout, *profile, modeFlags.Arg(0), *display, *tvType, float32(*scaling), *runTime)
+			cartload := memory.CartridgeLoader{
+				Filename: modeFlags.Arg(0),
+				Format:   *cartFormat,
+			}
+			err := performance.Check(os.Stdout, *profile, *display, *tvType, float32(*scaling), *runTime, cartload)
 			if err != nil {
 				fmt.Printf("* %s\n", err)
 				os.Exit(2)
@@ -341,6 +361,7 @@ func main() {
 			}
 
 		case "ADD":
+			cartFormat := modeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 			tvType := modeFlags.String("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
 			numFrames := modeFlags.Int("frames", 10, "number of frames to run (cartridge args only)")
 			state := modeFlags.Bool("state", false, "record TV state at every CPU step")
@@ -367,8 +388,12 @@ func main() {
 						Notes:  *notes,
 					}
 				} else {
+					cartload := memory.CartridgeLoader{
+						Filename: modeFlags.Arg(0),
+						Format:   *cartFormat,
+					}
 					rec = &regression.FrameRegression{
-						CartFile:  modeFlags.Arg(0),
+						CartLoad:  cartload,
 						TVtype:    strings.ToUpper(*tvType),
 						NumFrames: *numFrames,
 						State:     *state,

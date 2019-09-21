@@ -31,6 +31,7 @@ const fieldSep = ", "
 const (
 	lineMagicString int = iota
 	lineCartName
+	lineCartFormat
 	lineCartHash
 	lineTVtype
 	numHeaderLines
@@ -44,6 +45,7 @@ func (rec *Recorder) writeHeader() error {
 	// add header information
 	lines[lineMagicString] = magicString
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
+	lines[lineCartFormat] = rec.vcs.Mem.Cart.RequestedFormat
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
 	lines[lineTVtype] = fmt.Sprintf("%v\n", rec.vcs.TV.GetSpec().ID)
 
@@ -70,8 +72,9 @@ func (plb *Playback) readHeader(lines []string) error {
 	}
 
 	// read header
-	plb.CartFile = lines[lineCartName]
-	plb.CartHash = lines[lineCartHash]
+	plb.CartLoad.Filename = lines[lineCartName]
+	plb.CartLoad.Format = lines[lineCartFormat]
+	plb.CartLoad.Hash = lines[lineCartHash]
 	plb.TVtype = lines[lineTVtype]
 
 	return nil

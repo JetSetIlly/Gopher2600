@@ -6,18 +6,17 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
+	"gopher2600/hardware/memory"
 	"gopher2600/recorder"
 	"gopher2600/setup"
 	"os"
 	"os/signal"
-	"path"
-	"strings"
 	"time"
 )
 
 // Play sets the emulation running - without any debugging features
-func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording string, newRecording bool) error {
-	if recorder.IsPlaybackFile(cartridgeFile) {
+func Play(tvType string, scaling float32, stable bool, transcript string, newRecording bool, cartload memory.CartridgeLoader) error {
+	if recorder.IsPlaybackFile(cartload.Filename) {
 		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
 	}
 
@@ -38,21 +37,19 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 	// vcs.Ports.Player0.Attach(stk)
 
 	// create default recording file name if no name has been supplied
-	if newRecording && recording == "" {
-		shortCartName := path.Base(cartridgeFile)
-		shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cartridgeFile))
+	if newRecording && transcript == "" {
 		n := time.Now()
 		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-		recording = fmt.Sprintf("recording_%s_%s", shortCartName, timestamp)
+		transcript = fmt.Sprintf("recording_%s_%s", cartload.ShortName(), timestamp)
 	}
 
 	// note that we attach the cartridge in three different branches below - we
 	// need to do this at different times depending on whether a new recording
 	// or playback is taking place; or if it's just a regular playback
 
-	if recording != "" {
+	if transcript != "" {
 		if newRecording {
-			rec, err := recorder.NewRecorder(recording, vcs)
+			rec, err := recorder.NewRecorder(transcript, vcs)
 			if err != nil {
 				return errors.New(errors.PlayError, err)
 			}
@@ -68,33 +65,27 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			// attaching cartridge after recorder and transcribers have been
 			// setup because we want to catch any setup events in the recording
 
-			err = setup.AttachCartridge(vcs, cartridgeFile)
+			err = setup.AttachCartridge(vcs, cartload)
 			if err != nil {
 				return errors.New(errors.PlayError, err)
 			}
 
 		} else {
-			plb, err := recorder.NewPlayback(recording)
+			plb, err := recorder.NewPlayback(transcript)
 			if err != nil {
 				return err
 			}
 
-			if cartridgeFile != "" && cartridgeFile != plb.CartFile {
+			if cartload.Filename != "" && cartload.Filename != plb.CartLoad.Filename {
 				return errors.New(errors.PlayError, "cartridge doesn't match name in the playback recording")
 			}
 
 			// not using setup.AttachCartridge. if the playback was recorded with setup
 			// changes the events will have been copied into the playback script and
 			// will be applied that way
-			err = vcs.AttachCartridge(plb.CartFile)
+			err = vcs.AttachCartridge(plb.CartLoad)
 			if err != nil {
 				return errors.New(errors.PlayError, err)
-			}
-
-			// now that we've attached the cartridge check the hash against the
-			// playback has (if it exists)
-			if plb.CartHash != vcs.Mem.Cart.Hash {
-				return errors.New(errors.PlayError, "cartridge hash doesn't match hash in playback recording")
 			}
 
 			err = plb.AttachToVCS(vcs)
@@ -103,7 +94,7 @@ func Play(cartridgeFile, tvType string, scaling float32, stable bool, recording 
 			}
 		}
 	} else {
-		err = setup.AttachCartridge(vcs, cartridgeFile)
+		err = setup.AttachCartridge(vcs, cartload)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}
