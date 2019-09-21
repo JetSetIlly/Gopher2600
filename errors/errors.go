@@ -1,6 +1,9 @@
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Errno is used specified the specific error
 type Errno int
@@ -24,10 +27,18 @@ func New(errno Errno, values ...interface{}) AtariError {
 }
 
 func (er AtariError) Error() string {
-	return fmt.Sprintf(messages[er.Errno], er.Values...)
+	s := fmt.Sprintf(messages[er.Errno], er.Values...)
+
+	// de-duplicate error message parts
+	p := strings.SplitN(s, ": ", 3)
+	if len(p) > 1 && p[0] == p[1] {
+		return strings.Join(p[1:], ": ")
+	}
+
+	return strings.Join(p, ": ")
 }
 
-// Is checks if error is a AtariError with a specific errno
+// Is checks if most recently wrapped error is a AtariError with a specific errno
 func Is(err error, errno Errno) bool {
 	switch er := err.(type) {
 	case AtariError:
@@ -36,11 +47,29 @@ func Is(err error, errno Errno) bool {
 	return false
 }
 
-// IsAny checks if error is a AtariError with any errno
+// IsAny checks if most recently wrapped error is a AtariError with any errno
 func IsAny(err error) bool {
 	switch err.(type) {
 	case AtariError:
 		return true
 	}
+	return false
+}
+
+// Has checks to see if the specified AtariError appears somewhere in the
+// sequence of wrapped errors
+func Has(err error, errno Errno) bool {
+	if Is(err, errno) {
+		return true
+	}
+
+	for i := range err.(AtariError).Values {
+		if e, ok := err.(AtariError).Values[i].(error); ok {
+			if Has(e, errno) {
+				return true
+			}
+		}
+	}
+
 	return false
 }

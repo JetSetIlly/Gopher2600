@@ -47,15 +47,15 @@ func deserialisePanelSetupEntry(fields []string) (database.Entry, error) {
 	set.cartHash = fields[panelSetupFieldCartHash]
 
 	if set.p0, err = strconv.ParseBool(fields[panelSetupFieldP0]); err != nil {
-		return nil, errors.New(errors.DatabaseError, err)
+		return nil, errors.New(errors.SetupPanelError, "invalid player 0 setting")
 	}
 
 	if set.p1, err = strconv.ParseBool(fields[panelSetupFieldP1]); err != nil {
-		return nil, errors.New(errors.DatabaseError, err)
+		return nil, errors.New(errors.SetupPanelError, "invalid player 1 setting")
 	}
 
 	if set.col, err = strconv.ParseBool(fields[panelSetupFieldCol]); err != nil {
-		return nil, errors.New(errors.DatabaseError, err)
+		return nil, errors.New(errors.SetupPanelError, "invalid color setting")
 	}
 
 	set.notes = fields[panelSetupFieldNotes]
