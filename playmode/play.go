@@ -30,12 +30,6 @@ func Play(tvType string, scaling float32, stable bool, transcript string, newRec
 		return errors.New(errors.PlayError, err)
 	}
 
-	// stk, err := sticks.NewSplaceStick()
-	// if err != nil {
-	// 	return errors.NewFormattedError(errors.PlayError, err)
-	// }
-	// vcs.Ports.Player0.Attach(stk)
-
 	// create default recording file name if no name has been supplied
 	if newRecording && transcript == "" {
 		n := time.Now()

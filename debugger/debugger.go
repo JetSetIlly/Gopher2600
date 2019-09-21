@@ -160,13 +160,6 @@ func NewDebugger(tvType string) (*Debugger, error) {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
-	// create and attach a controller
-	// stk, err := sticks.NewSplaceStick()
-	// if err != nil {
-	// 	return nil, errors.NewFormattedError(errors.DebuggerError, err)
-	// }
-	// dbg.vcs.Ports.Player0.Attach(stk)
-
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.
 	dbg.disasm = &disassembly.Disassembly{}
