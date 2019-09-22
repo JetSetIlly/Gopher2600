@@ -53,6 +53,12 @@ type cartMapper interface {
 	listen(addr uint16, data uint8) error
 }
 
+// optionalSuperchip are implemented by cartMappers that have an optional
+// superchip
+type optionalSuperchip interface {
+	addSuperchip() bool
+}
+
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
 	CPUBus
@@ -175,42 +181,12 @@ func (cart Cartridge) fingerprint16k(cf io.ReadSeeker) func(io.ReadSeeker) (cart
 	return newAtari16k
 }
 
-// Attach loads the bytes from a cartridge (represented by 'filename')
-func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
-	cf, err := os.Open(cartload.Filename)
-	if err != nil {
-		return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
-	}
-	defer func() {
-		_ = cf.Close()
-	}()
-
+func (cart *Cartridge) fingerprint(cf *os.File) error {
 	// get file info
 	cfi, err := cf.Stat()
 	if err != nil {
 		return err
 	}
-
-	// note name of cartridge
-	cart.Filename = cartload.Filename
-	cart.RequestedFormat = cartload.Format
-	cart.mapper = newEjected()
-
-	// generate hash
-	key := sha1.New()
-	if _, err := io.Copy(key, cf); err != nil {
-		return err
-	}
-	cart.Hash = fmt.Sprintf("%x", key.Sum(nil))
-
-	// check that the hash matches the expected value
-	if cartload.Hash != "" && cartload.Hash != cart.Hash {
-		return errors.New(errors.CartridgeError, "unexpected hash value")
-	}
-
-	// how cartridges are mapped into the 4k space can differs dramatically.
-	// the following implementation details have been cribbed from Kevin
-	// Horton's "Cart Information" document [sizes.txt]
 
 	switch cfi.Size() {
 	case 2048:
@@ -256,7 +232,107 @@ func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
 		return errors.New(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
 	}
 
+	// if cartridge mapper implements the optionalSuperChip interface then try
+	// to add the additional RAM
+	if superchip, ok := cart.mapper.(optionalSuperchip); ok {
+		superchip.addSuperchip()
+	}
+
 	return nil
+}
+
+// Attach loads the bytes from a cartridge (represented by 'filename')
+func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
+	cf, err := os.Open(cartload.Filename)
+	if err != nil {
+		return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
+	}
+	defer func() {
+		_ = cf.Close()
+	}()
+
+	// note name of cartridge
+	cart.Filename = cartload.Filename
+	cart.RequestedFormat = cartload.Format
+	cart.mapper = newEjected()
+
+	// generate hash
+	key := sha1.New()
+	if _, err := io.Copy(key, cf); err != nil {
+		return err
+	}
+	cart.Hash = fmt.Sprintf("%x", key.Sum(nil))
+
+	// check that the hash matches the expected value
+	if cartload.Hash != "" && cartload.Hash != cart.Hash {
+		return errors.New(errors.CartridgeError, "unexpected hash value")
+	}
+
+	// how cartridges are mapped into the 4k space can differs dramatically.
+	// the following implementation details have been cribbed from Kevin
+	// Horton's "Cart Information" document [sizes.txt]
+
+	cartload.Format = strings.ToUpper(cartload.Format)
+
+	if cartload.Format == "" || cartload.Format == "AUTO" {
+		return cart.fingerprint(cf)
+	}
+
+	addSuperchip := false
+
+	switch cartload.Format {
+	case "2k":
+		cart.mapper, err = newAtari2k(cf)
+	case "4k":
+		cart.mapper, err = newAtari4k(cf)
+	case "F8":
+		cart.mapper, err = newAtari8k(cf)
+	case "F6":
+		cart.mapper, err = newAtari16k(cf)
+	case "F4":
+		cart.mapper, err = newAtari32k(cf)
+
+	case "2k+SC":
+		cart.mapper, err = newAtari2k(cf)
+		addSuperchip = true
+	case "4k+SC":
+		cart.mapper, err = newAtari4k(cf)
+		addSuperchip = true
+	case "F8+SC":
+		cart.mapper, err = newAtari8k(cf)
+		addSuperchip = true
+	case "F6+SC":
+		cart.mapper, err = newAtari16k(cf)
+		addSuperchip = true
+	case "F4+SC":
+		cart.mapper, err = newAtari32k(cf)
+		addSuperchip = true
+
+	case "FA":
+		cart.mapper, err = newCBS(cf)
+	case "FE":
+		// TODO
+	case "E0":
+		cart.mapper, err = newparkerBros(cf)
+	case "E7":
+		cart.mapper, err = newMnetwork(cf)
+	case "3F":
+		cart.mapper, err = newTigervision(cf)
+	case "AR":
+		// TODO
+	}
+
+	if addSuperchip {
+		if superchip, ok := cart.mapper.(optionalSuperchip); ok {
+			if !superchip.addSuperchip() {
+				err = errors.New(errors.CartridgeError, "error adding superchip")
+			}
+		} else {
+			err = errors.New(errors.CartridgeError, "error adding superchip")
+		}
+	}
+
+	return err
 }
 
 // Initialise calls the current mapper's initialise function
@@ -303,4 +379,9 @@ func (cart Cartridge) RAM() []uint8 {
 // want to filter out that error.
 func (cart Cartridge) Listen(addr uint16, data uint8) error {
 	return cart.mapper.listen(addr, data)
+}
+
+// CartFormat returns the actual format of the loaded cartridge
+func (cart Cartridge) CartFormat() string {
+	return ""
 }

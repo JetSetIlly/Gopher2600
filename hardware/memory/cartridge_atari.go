@@ -186,7 +186,6 @@ func newAtari4k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addSuperchip()
 	cart.initialise()
 
 	return cart, nil
@@ -242,7 +241,6 @@ func newAtari2k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addSuperchip()
 	cart.initialise()
 
 	return cart, nil
@@ -297,7 +295,6 @@ func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addSuperchip()
 	cart.initialise()
 
 	return cart, nil
@@ -370,7 +367,6 @@ func newAtari16k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addSuperchip()
 	cart.initialise()
 
 	return cart, nil
@@ -451,7 +447,6 @@ func newAtari32k(cf io.ReadSeeker) (cartMapper, error) {
 		}
 	}
 
-	cart.addSuperchip()
 	cart.initialise()
 
 	return cart, nil
