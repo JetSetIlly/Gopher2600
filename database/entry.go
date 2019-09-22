@@ -26,7 +26,7 @@ type Entry interface {
 	Serialise() (SerialisedEntry, error)
 
 	// a clenaup is perfomed when entry is deleted from the database
-	CleanUp()
+	CleanUp() error
 }
 
 // RegisterEntryType tells the database what entries it may expect in the database

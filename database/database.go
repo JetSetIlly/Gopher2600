@@ -97,8 +97,13 @@ func (db *Session) Add(ent Entry) error {
 // Delete deletes an entry with the specified key. returns DatabaseKeyError
 // if not such entry exists
 func (db *Session) Delete(key int) error {
-	if _, ok := db.entries[key]; !ok {
+	ent, ok := db.entries[key]
+	if !ok {
 		return errors.New(errors.DatabaseKeyError, key)
+	}
+
+	if err := ent.CleanUp(); err != nil {
+		return errors.New(errors.DatabaseError, err)
 	}
 
 	delete(db.entries, key)

@@ -113,9 +113,8 @@ func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
 }
 
 // CleanUp implements the database.Entry interface
-func (reg FrameRegression) CleanUp() {
-	// ignore errors from remove process
-	_ = os.Remove(reg.stateFile)
+func (reg FrameRegression) CleanUp() error {
+	return os.Remove(reg.stateFile)
 }
 
 // regress implements the regression.Regressor interface
@@ -145,14 +144,10 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, errors.New(errors.RegressionFrameError, err)
 	}
 
-	// run emaulation
+	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
 		if limiter.HasWaited() {
 			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
-		}
-
-		if reg.State {
-			state = append(state, vcs.TV.MachineInfoTerse())
 		}
 		return true, nil
 	})

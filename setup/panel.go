@@ -86,8 +86,9 @@ func (set *PanelSetup) Serialise() (database.SerialisedEntry, error) {
 }
 
 // CleanUp implements the database.Entry interface
-func (set PanelSetup) CleanUp() {
+func (set PanelSetup) CleanUp() error {
 	// no cleanup necessary
+	return nil
 }
 
 // matchCartHash implements setupEntry interface
