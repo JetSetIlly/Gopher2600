@@ -3,6 +3,7 @@ package renderers
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware/tia/audio"
 	"gopher2600/television"
 	"image"
 	"image/color"
@@ -150,5 +151,10 @@ func (imtv *ImageTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) er
 
 // SetAltPixel implements television.Renderer interface
 func (imtv *ImageTV) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	return nil
+}
+
+// SetAudio implements television.AudioMixer interface
+func (imtv *ImageTV) SetAudio(audio audio.Audio) error {
 	return nil
 }

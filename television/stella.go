@@ -58,6 +58,9 @@ type StellaTelevision struct {
 
 	// list of renderer implementations to consult
 	renderers []Renderer
+
+	// list of audio mixers to consult
+	mixers []AudioMixer
 }
 
 // NewStellaTelevision creates a new instance of StellaTelevision for a
@@ -123,6 +126,11 @@ func (btv StellaTelevision) String() string {
 // AddRenderer adds a renderer implementation to the list
 func (btv *StellaTelevision) AddRenderer(r Renderer) {
 	btv.renderers = append(btv.renderers, r)
+}
+
+// AddMixer adds a renderer implementation to the list
+func (btv *StellaTelevision) AddMixer(m AudioMixer) {
+	btv.mixers = append(btv.mixers, m)
 }
 
 // Reset all the values for the television
@@ -304,6 +312,16 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 		err := btv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
 		if err != nil {
 			return err
+		}
+	}
+
+	// mix audio every other scanline
+	if btv.scanline%2 == 0 {
+		for f := range btv.mixers {
+			err := btv.mixers[f].SetAudio(sig.Audio)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

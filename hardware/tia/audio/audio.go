@@ -4,12 +4,12 @@ import "gopher2600/hardware/memory"
 
 // Audio contains all the components of the audio sub-system of the VCS TIA chip
 type Audio struct {
-	control0 uint8
-	control1 uint8
-	freq0    uint8
-	freq1    uint8
-	volume0  uint8
-	volume1  uint8
+	Control0 uint8
+	Control1 uint8
+	Freq0    uint8
+	Freq1    uint8
+	Volume0  uint8
+	Volume1  uint8
 }
 
 // NewAudio is the preferred method of initialisation for the Video structure
@@ -23,16 +23,16 @@ func NewAudio() *Audio {
 func (au *Audio) AlterState(data memory.ChipData) {
 	switch data.Name {
 	case "AUDC0":
-		au.control0 = data.Value & 0x0f
+		au.Control0 = data.Value & 0x0f
 	case "AUDC1":
-		au.control1 = data.Value & 0x0f
+		au.Control1 = data.Value & 0x0f
 	case "AUDF0":
-		au.freq0 = data.Value & 0x1f
+		au.Freq0 = data.Value & 0x1f
 	case "AUDF1":
-		au.freq1 = data.Value & 0x1f
+		au.Freq1 = data.Value & 0x1f
 	case "AUDV0":
-		au.volume0 = data.Value & 0x0f
+		au.Volume0 = data.Value & 0x0f
 	case "AUDV1":
-		au.volume1 = data.Value & 0x0f
+		au.Volume1 = data.Value & 0x0f
 	}
 }

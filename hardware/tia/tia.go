@@ -482,6 +482,9 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		tia.Audio.AlterState(memoryData)
 	}
 
+	// copy audio to television signal
+	tia.sig.Audio = *tia.Audio
+
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
 		// allow out-of-spec errors for now. this should be optional

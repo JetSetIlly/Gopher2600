@@ -16,6 +16,9 @@ type GUI struct {
 	// much of the sdl magic happens in the screen object
 	scr *screen
 
+	// audio
+	snd *sound
+
 	// connects SDL guiLoop with the parent process
 	eventChannel chan gui.Event
 
@@ -67,6 +70,12 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		return nil, errors.New(errors.SDL, err)
 	}
 
+	// initialise the sound system
+	gtv.snd, err = newSound(gtv)
+	if err != nil {
+		return nil, errors.New(errors.SDL, err)
+	}
+
 	// set window size and scaling
 	err = gtv.scr.setScaling(scale)
 	if err != nil {
@@ -75,6 +84,9 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 
 	// register ourselves as a television.Renderer
 	gtv.AddRenderer(gtv)
+
+	// register ourselves as a television.AudioMixer
+	gtv.AddMixer(gtv)
 
 	// update tv (with a black image)
 	err = gtv.update()

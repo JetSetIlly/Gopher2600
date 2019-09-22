@@ -30,6 +30,7 @@ const (
 type GUI interface {
 	television.Television
 	television.Renderer
+	television.AudioMixer
 	metavideo.Renderer
 
 	// returns true if GUI is currently visible. false if not

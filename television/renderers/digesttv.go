@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware/tia/audio"
 	"gopher2600/television"
 	"os"
 	"strings"
@@ -99,6 +100,11 @@ func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) er
 
 // SetAltPixel implements television.Renderer interface
 func (dtv *DigestTV) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+	return nil
+}
+
+// SetAudio implements television.AudioMixer interface
+func (dtv *DigestTV) SetAudio(audio audio.Audio) error {
 	return nil
 }
 

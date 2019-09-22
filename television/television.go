@@ -1,5 +1,7 @@
 package television
 
+import "gopher2600/hardware/tia/audio"
+
 // StateReq is used to identify which television attribute is being asked
 // with the GetState() function
 type StateReq int
@@ -42,6 +44,10 @@ type SignalAttributes struct {
 	// except to debugging information. the "basic" television implementation
 	// uses HSyncSimple instead of HSync
 	HSyncSimple bool
+
+	// audio signal is just the content of the VCS audio registers. for now,
+	// sounds is generated/mixed by the television or gui implementation
+	Audio audio.Audio
 }
 
 // Television defines the operations that can be performed on television
@@ -51,6 +57,7 @@ type Television interface {
 	MachineInfo() string
 
 	AddRenderer(Renderer)
+	AddMixer(AudioMixer)
 
 	Reset() error
 	Signal(SignalAttributes) error
@@ -71,4 +78,9 @@ type Renderer interface {
 	// should make sure that any data structures that depend on the
 	// specification being used are still adequate.
 	ChangeTVSpec() error
+}
+
+// AudioMixer implementations play sound
+type AudioMixer interface {
+	SetAudio(audio audio.Audio) error
 }
