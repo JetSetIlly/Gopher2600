@@ -114,7 +114,11 @@ func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
 
 // CleanUp implements the database.Entry interface
 func (reg FrameRegression) CleanUp() error {
-	return os.Remove(reg.stateFile)
+	err := os.Remove(reg.stateFile)
+	if _, ok := err.(*os.PathError); ok {
+		return nil
+	}
+	return err
 }
 
 // regress implements the regression.Regressor interface

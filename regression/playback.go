@@ -75,7 +75,11 @@ func (reg *PlaybackRegression) Serialise() (database.SerialisedEntry, error) {
 
 // CleanUp implements the database.Entry interface
 func (reg PlaybackRegression) CleanUp() error {
-	return os.Remove(reg.Script)
+	err := os.Remove(reg.Script)
+	if _, ok := err.(*os.PathError); ok {
+		return nil
+	}
+	return err
 }
 
 // regress implements the regression.Regressor interface

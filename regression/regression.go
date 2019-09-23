@@ -129,6 +129,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if confirm[0] == 'y' || confirm[0] == 'Y' {
 		err = db.Delete(v)
 		if err != nil {
+			fmt.Println(1)
 			return err
 		}
 		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
