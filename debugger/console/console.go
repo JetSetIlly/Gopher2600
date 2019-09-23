@@ -28,6 +28,7 @@ type UserInterface interface {
 	Initialise() error
 	CleanUp()
 	RegisterTabCompleter(TabCompleter)
+	Disable(disable bool)
 	UserInput
 	UserOutput
 }

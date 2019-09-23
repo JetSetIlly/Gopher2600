@@ -10,7 +10,6 @@ import (
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"gopher2600/setup"
 	"gopher2600/symbols"
@@ -109,10 +108,6 @@ type Debugger struct {
 	// -- also affects when emulation will halt on breaks, traps and watches.
 	// if inputeveryvideocycle is true then the halt may occur mid-cpu-cycle
 	inputEveryVideoCycle bool
-
-	// the last result from vcs.Step() - could be a complete result or an
-	// intermediate result when video-stepping
-	lastResult *result.Instruction
 
 	// console interface
 	console console.UserInterface
@@ -225,6 +220,8 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 
 	// run initialisation script
 	if initScript != "" {
+		dbg.console.Disable(true)
+
 		plb, err := script.StartPlayback(initScript)
 		if err != nil {
 			dbg.print(console.StyleError, "error running debugger initialisation script: %s\n", err)
@@ -232,8 +229,11 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 
 		err = dbg.inputLoop(plb, false)
 		if err != nil {
+			dbg.console.Disable(false)
 			return errors.New(errors.DebuggerError, err)
 		}
+
+		dbg.console.Disable(false)
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
@@ -278,23 +278,23 @@ func (dbg *Debugger) loadCartridge(cartload memory.CartridgeLoader) error {
 }
 
 // videoCycle() to be used with vcs.Step()
-func (dbg *Debugger) videoCycle(result *result.Instruction) error {
-	// note result as lastResult immediately
-	dbg.lastResult = result
-
+func (dbg *Debugger) videoCycle() error {
 	// because we call this callback mid-instruction, the program counter
 	// maybe in its non-final state - we don't want to break or trap in those
 	// instances when the final effect of the instruction changes the program
 	// counter to some other value (ie. a flow, subroutine or interrupt
 	// instruction)
-	if !result.Final && result.Defn != nil {
-		if result.Defn.Effect == definitions.Flow || result.Defn.Effect == definitions.Subroutine || result.Defn.Effect == definitions.Interrupt {
+	if !dbg.vcs.CPU.LastResult.Final &&
+		dbg.vcs.CPU.LastResult.Defn != nil {
+		if dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Flow ||
+			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Subroutine ||
+			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Interrupt {
 			return nil
 		}
 
 		// display information about any CPU bugs that may have been triggered
-		if dbg.reportCPUBugs && result.Bug != "" {
-			dbg.print(console.StyleMachineInfo, result.Bug)
+		if dbg.reportCPUBugs && dbg.vcs.CPU.LastResult.Bug != "" {
+			dbg.print(console.StyleMachineInfo, dbg.vcs.CPU.LastResult.Bug)
 		}
 	}
 
@@ -320,8 +320,8 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
 	// when in video-step mode
-	videoCycleWithInput := func(result *result.Instruction) error {
-		dbg.videoCycle(result)
+	videoCycleWithInput := func() error {
+		dbg.videoCycle()
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 			if err != nil {
@@ -357,7 +357,11 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
 		// check for halt conditions
-		dbg.inputloopHalt = stepTrapMessage != "" || dbg.breakMessages != "" || dbg.trapMessages != "" || dbg.watchMessages != "" || dbg.lastStepError
+		dbg.inputloopHalt = stepTrapMessage != "" ||
+			dbg.breakMessages != "" ||
+			dbg.trapMessages != "" ||
+			dbg.watchMessages != "" ||
+			dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
@@ -485,9 +489,9 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		if dbg.inputloopNext {
 			if !videoCycle {
 				if dbg.inputEveryVideoCycle {
-					dbg.lastResult, err = dbg.vcs.Step(videoCycleWithInput)
+					err = dbg.vcs.Step(videoCycleWithInput)
 				} else {
-					dbg.lastResult, err = dbg.vcs.Step(dbg.videoCycle)
+					err = dbg.vcs.Step(dbg.videoCycle)
 				}
 
 				if err != nil {
@@ -503,11 +507,11 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 
 				} else {
 					// check validity of instruction result
-					if dbg.lastResult.Final {
-						err := dbg.lastResult.IsValid()
+					if dbg.vcs.CPU.LastResult.Final {
+						err := dbg.vcs.CPU.LastResult.IsValid()
 						if err != nil {
-							dbg.print(console.StyleError, "%s", dbg.lastResult.Defn)
-							dbg.print(console.StyleError, "%s", dbg.lastResult)
+							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
+							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult)
 							return errors.New(errors.DebuggerError, err)
 						}
 					}

@@ -8,6 +8,10 @@ import (
 
 // UserPrint is the top level output function
 func (ct *ColorTerminal) UserPrint(style console.Style, s string, a ...interface{}) {
+	if ct.disabled {
+		return
+	}
+
 	if style != console.StyleInput {
 		ct.Print("\r")
 	}

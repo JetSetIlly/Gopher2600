@@ -5,7 +5,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdl"
 	"gopher2600/hardware"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"testing"
 )
@@ -36,7 +35,7 @@ func BenchmarkSDL(b *testing.B) {
 	b.ResetTimer()
 
 	for steps := 0; steps < b.N; steps++ {
-		_, err = vcs.Step(func(*result.Instruction) error { return nil })
+		err = vcs.Step(nil)
 		if err != nil {
 			panic(err)
 		}

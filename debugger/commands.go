@@ -578,22 +578,20 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		return doNothing, nil
 
 	case cmdLast:
-		if dbg.lastResult != nil {
-			option, ok := tokens.Get()
-			if ok {
-				switch strings.ToUpper(option) {
-				case "DEFN":
-					dbg.print(console.StyleFeedback, "%s", dbg.lastResult.Defn)
-				}
-			} else {
-				var printTag console.Style
-				if dbg.lastResult.Final {
-					printTag = console.StyleCPUStep
-				} else {
-					printTag = console.StyleVideoStep
-				}
-				dbg.print(printTag, "%s", dbg.lastResult.GetString(dbg.disasm.Symtable, result.StyleExecution))
+		option, ok := tokens.Get()
+		if ok {
+			switch strings.ToUpper(option) {
+			case "DEFN":
+				dbg.print(console.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
 			}
+		} else {
+			var printTag console.Style
+			if dbg.vcs.CPU.LastResult.Final {
+				printTag = console.StyleCPUStep
+			} else {
+				printTag = console.StyleVideoStep
+			}
+			dbg.print(printTag, "%s", dbg.vcs.CPU.LastResult.GetString(dbg.disasm.Symtable, result.StyleExecution))
 		}
 
 	case cmdMemMap:

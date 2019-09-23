@@ -13,6 +13,10 @@ import (
 // UserRead is the top level input function
 func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
+	if ct.disabled {
+		return 0, nil
+	}
+
 	// ctrl-c handling: currently, we put the terminal into rawmode and listen
 	// for ctrl-c event using the readRune reader.
 

@@ -3,7 +3,6 @@ package hardware
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
@@ -138,11 +137,18 @@ func (vcs *VCS) strobeUserInput() error {
 	return vcs.Panel.Strobe()
 }
 
+func nullVideoCycleCallback() error {
+	return nil
+}
+
 // Step the emulator state one CPU instruction. we can put this function in a
 // loop for an effective debugging loop ths videoCycleCallback function for an
 // additional callback point in the debugger.
-func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*result.Instruction, error) {
-	var r *result.Instruction
+func (vcs *VCS) Step(videoCycleCallback func() error) error {
+	if videoCycleCallback == nil {
+		videoCycleCallback = nullVideoCycleCallback
+	}
+
 	var err error
 
 	// the videoCycle function defines the order of operation for the rest of
@@ -180,7 +186,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 	//
 	// I don't believe any visual or audible artefacts of the VCS (undocumented
 	// or not) rely on the details of the CPU-TIA relationship.
-	videoCycle := func(r *result.Instruction) error {
+	videoCycle := func() error {
 		// ensure controllers have updated their input
 		if err := vcs.strobeUserInput(); err != nil {
 			return err
@@ -238,7 +244,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 			return err
 		}
 
-		err = videoCycleCallback(r)
+		err = videoCycleCallback()
 		if err != nil {
 			return err
 		}
@@ -249,7 +255,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 			return err
 		}
 
-		err = videoCycleCallback(r)
+		err = videoCycleCallback()
 		if err != nil {
 			return err
 		}
@@ -260,7 +266,7 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 			return err
 		}
 
-		err = videoCycleCallback(r)
+		err = videoCycleCallback()
 
 		// step RIOT subsystem
 		vcs.RIOT.Step()
@@ -268,18 +274,18 @@ func (vcs *VCS) Step(videoCycleCallback func(*result.Instruction) error) (*resul
 		return err
 	}
 
-	r, err = vcs.CPU.ExecuteInstruction(videoCycle)
+	err = vcs.CPU.ExecuteInstruction(videoCycle)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
 	for !vcs.CPU.RdyFlg {
-		_ = videoCycle(r)
+		_ = videoCycle()
 	}
 
-	return r, nil
+	return nil
 }
 
 // Run sets the emulation running as quickly as possible.  eventHandler()
@@ -292,7 +298,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		continueCheck = func() (bool, error) { return true, nil }
 	}
 
-	videoCycle := func(r *result.Instruction) error {
+	videoCycle := func() error {
 		// see videoCycle in Step() function for an explanation for what's
 		// going on here
 		if err := vcs.strobeUserInput(); err != nil {
@@ -318,18 +324,15 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 
 	cont := true
 	for cont {
-		var r *result.Instruction
-		r, err = vcs.CPU.ExecuteInstruction(videoCycle)
+		err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
 			return err
 		}
 
 		// check validity of result
-		if r != nil {
-			err = r.IsValid()
-			if err != nil {
-				return err
-			}
+		err = vcs.CPU.LastResult.IsValid()
+		if err != nil {
+			return err
 		}
 
 		cont, err = continueCheck()
@@ -355,7 +358,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (b
 
 	cont := true
 	for fn != targetFrame && cont {
-		_, err = vcs.Step(func(_ *result.Instruction) error { return nil })
+		err = vcs.Step(nil)
 		if err != nil {
 			return err
 		}

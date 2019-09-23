@@ -21,7 +21,7 @@ import (
 
 func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 	for {
-		r, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+		err := mc.ExecuteInstruction(nil)
 
 		// filter out the predictable errors
 		if err != nil {
@@ -46,38 +46,38 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 		}
 
 		// check validity of instruction result
-		err = r.IsValid()
+		err = mc.LastResult.IsValid()
 		if err != nil {
 			return err
 		}
 
-		bank := dsm.Cart.GetBank(r.Address)
+		bank := dsm.Cart.GetBank(mc.LastResult.Address)
 
 		// if we've seen this before then finish the disassembly
-		if dsm.flow[bank][r.Address&disasmMask].IsInstruction() {
+		if dsm.flow[bank][mc.LastResult.Address&disasmMask].IsInstruction() {
 			return nil
 		}
 
-		dsm.flow[bank][r.Address&disasmMask] = Entry{
+		dsm.flow[bank][mc.LastResult.Address&disasmMask] = Entry{
 			style:                 result.StyleDisasm,
-			instruction:           r.GetString(dsm.Symtable, result.StyleDisasm),
-			instructionDefinition: r.Defn}
+			instruction:           mc.LastResult.GetString(dsm.Symtable, result.StyleDisasm),
+			instructionDefinition: mc.LastResult.Defn}
 
 		// we've disabled flow-control in the cpu but we still need to pay
 		// attention to what's going on or we won't get to see all the areas of
 		// the ROM.
-		switch r.Defn.Effect {
+		switch mc.LastResult.Defn.Effect {
 
 		case definitions.Flow:
-			if r.Defn.Mnemonic == "JMP" {
-				if r.Defn.AddressingMode == definitions.Indirect {
-					if r.InstructionData.(uint16) > dsm.Cart.Origin() {
+			if mc.LastResult.Defn.Mnemonic == "JMP" {
+				if mc.LastResult.Defn.AddressingMode == definitions.Indirect {
+					if mc.LastResult.InstructionData.(uint16) > dsm.Cart.Origin() {
 						// note current location
 						state := dsm.Cart.SaveState()
 						retPC := mc.PC.ToUint16()
 
 						// adjust program counter
-						mc.LoadPCIndirect(r.InstructionData.(uint16))
+						mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
 
 						// recurse
 						err = dsm.flowDisassembly(mc)
@@ -108,7 +108,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 					retPC := mc.PC.ToUint16()
 
 					// adjust program counter
-					mc.PC.Load(r.InstructionData.(uint16))
+					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
 
 					// recurse
 					err = dsm.flowDisassembly(mc)
@@ -128,7 +128,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				retPC := mc.PC.ToUint16()
 
 				// sign extend address and add to program counter
-				address := uint16(r.InstructionData.(uint8))
+				address := uint16(mc.LastResult.InstructionData.(uint8))
 				if address&0x0080 == 0x0080 {
 					address |= 0xff00
 				}
@@ -146,7 +146,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			}
 
 		case definitions.Subroutine:
-			if r.Defn.Mnemonic == "RTS" {
+			if mc.LastResult.Defn.Mnemonic == "RTS" {
 				// sometimes, a ROM will call RTS despite never having called
 				// JSR. in these instances, the ROM has probably stuffed the
 				// stack manually with a return address. this disassembly
@@ -163,7 +163,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			retPC := mc.PC.ToUint16()
 
 			// adjust program counter
-			mc.PC.Load(r.InstructionData.(uint16))
+			mc.PC.Load(mc.LastResult.InstructionData.(uint16))
 
 			// recurse
 			err = dsm.flowDisassembly(mc)

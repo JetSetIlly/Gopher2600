@@ -13,6 +13,8 @@ type ColorTerminal struct {
 	reader         runeReader
 	commandHistory []command
 	tabCompleter   console.TabCompleter
+
+	disabled bool
 }
 
 type command struct {
@@ -48,4 +50,9 @@ func (ct *ColorTerminal) RegisterTabCompleter(tc console.TabCompleter) {
 // IsInteractive satisfies the console.UserInput interface
 func (ct *ColorTerminal) IsInteractive() bool {
 	return true
+}
+
+// Disable implements console.UserOutput interface
+func (ct *ColorTerminal) Disable(disable bool) {
+	ct.disabled = disable
 }

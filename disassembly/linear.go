@@ -28,15 +28,15 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 			mc.PC.Load(address)
 
 			// deliberately ignoring errors
-			r, _ := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+			_ = mc.ExecuteInstruction(nil)
 
 			// check validity of instruction result and add if it "executed"
 			// correctly
-			if r != nil && r.IsValid() == nil {
+			if mc.LastResult.IsValid() == nil {
 				dsm.linear[bank][address&disasmMask] = Entry{
 					style:                 result.StyleBrief,
-					instruction:           r.GetString(dsm.Symtable, result.StyleBrief),
-					instructionDefinition: r.Defn}
+					instruction:           mc.LastResult.GetString(dsm.Symtable, result.StyleBrief),
+					instructionDefinition: mc.LastResult.Defn}
 			}
 		}
 	}

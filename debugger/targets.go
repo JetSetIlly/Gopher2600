@@ -87,9 +87,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				label:      "Frame",
 				shortLabel: "FR",
 				value: func() interface{} {
-					if dbg.lastResult == nil {
-						return -1
-					}
 					fr, err := dbg.vcs.TV.GetState(television.ReqFramenum)
 					if err != nil {
 						return err
@@ -102,9 +99,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				label:      "Scanline",
 				shortLabel: "SL",
 				value: func() interface{} {
-					if dbg.lastResult == nil {
-						return -1
-					}
 					sl, err := dbg.vcs.TV.GetState(television.ReqScanline)
 					if err != nil {
 						return err
@@ -117,9 +111,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				label:      "Horiz Pos",
 				shortLabel: "HP",
 				value: func() interface{} {
-					if dbg.lastResult == nil {
-						return -1
-					}
 					hp, err := dbg.vcs.TV.GetState(television.ReqHorizPos)
 					if err != nil {
 						return err
@@ -141,10 +132,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 						label:      "INSTRUCTION EFFECT",
 						shortLabel: "INS EFF",
 						value: func() interface{} {
-							if dbg.lastResult == nil {
+							if !dbg.vcs.CPU.LastResult.Final {
 								return -1
 							}
-							return int(dbg.lastResult.Defn.Effect)
+							return int(dbg.vcs.CPU.LastResult.Defn.Effect)
 						},
 					}
 				default:

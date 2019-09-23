@@ -4,7 +4,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/register/assert"
-	"gopher2600/hardware/cpu/result"
 	"testing"
 )
 
@@ -24,7 +23,7 @@ func newMockMem() *mockMem {
 
 func (mem *mockMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	for i, b := range bytes {
-		mem.Write(uint16(i)+origin, b)
+		_ = mem.Write(uint16(i)+origin, b)
 	}
 	return origin + uint16(len(bytes))
 }
@@ -59,23 +58,22 @@ func (mem *mockMem) Write(address uint16, data uint8) error {
 	return nil
 }
 
-func step(t *testing.T, mc *cpu.CPU) *result.Instruction {
+func step(t *testing.T, mc *cpu.CPU) {
 	t.Helper()
-	result, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+	err := mc.ExecuteInstruction(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = result.IsValid()
+	err = mc.LastResult.IsValid()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return result
 }
 
 func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
@@ -95,7 +93,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	assert.Assert(t, mc.Status, "sv-bdIZc")
 
 	// PHP; PLP
-	origin = mem.putInstructions(origin, 0x08, 0x28)
+	_ = mem.putInstructions(origin, 0x08, 0x28)
 	step(t, mc) // PHP
 	assert.Assert(t, mc.Status, "sv-bdIZc")
 	assert.Assert(t, mc.SP, 254)
@@ -114,7 +112,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// LDA immediate; ADC immediate
 	origin = mem.putInstructions(origin, 0xa9, 1, 0x69, 10)
@@ -123,7 +121,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	assert.Assert(t, mc.A, 11)
 
 	// SEC; SBC immediate
-	origin = mem.putInstructions(origin, 0x38, 0xe9, 8)
+	_ = mem.putInstructions(origin, 0x38, 0xe9, 8)
 	step(t, mc) // SEC
 	step(t, mc) // SBC #8
 	assert.Assert(t, mc.A, 3)
@@ -132,7 +130,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// ORA immediate; EOR immediate; AND immediate
 	origin = mem.putInstructions(origin, 0x09, 0xff, 0x49, 0xf0, 0x29, 0x01)
@@ -157,7 +155,7 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	assert.Assert(t, mc.Status, "sv-bdiZC")
 
 	// ROL implied; ROR implied; ROR implied; ROR implied
-	origin = mem.putInstructions(origin, 0x2a, 0x6a, 0x6a, 0x6a)
+	_ = mem.putInstructions(origin, 0x2a, 0x6a, 0x6a, 0x6a)
 	step(t, mc) // ROL
 	assert.Assert(t, mc.A, 1)
 	assert.Assert(t, mc.Status, "sv-bdizc")
@@ -175,7 +173,7 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// LDX immediate; INX; DEX
 	origin = mem.putInstructions(origin, 0xa2, 5, 0xe8, 0xca)
@@ -216,7 +214,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	assert.Assert(t, mc.Y, 2)
 
 	// TSX; LDX immediate; TXS
-	origin = mem.putInstructions(origin, 0xba, 0xa2, 100, 0x9a)
+	_ = mem.putInstructions(origin, 0xba, 0xa2, 100, 0x9a)
 	step(t, mc) // TSX
 	assert.Assert(t, mc.X, 255)
 	step(t, mc) // LDX #100
@@ -225,10 +223,9 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 }
 
 func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
-	var ai *result.Instruction
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	mem.putInstructions(0x0100, 123, 43)
 	mem.putInstructions(0x01a2, 47)
@@ -273,9 +270,9 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// X = 1
 	// INX; LDA (Indirect, X)
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0x0b)
-	step(t, mc)      // INX (x equals 2)
-	ai = step(t, mc) // LDA (0x0b,X)
-	assert.Assert(t, ai.Bug, "")
+	step(t, mc) // INX (x equals 2)
+	step(t, mc) // LDA (0x0b,X)
+	assert.Assert(t, mc.LastResult.Bug, "")
 	assert.Assert(t, mc.A, 47)
 
 	// post-indexed indirect (see below)
@@ -284,27 +281,27 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// X = 1
 	// INX; LDA (Indirect, X)
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0xff)
-	step(t, mc)      // INX (x equals 2)
-	ai = step(t, mc) // LDA (0xff,X)
-	assert.Assert(t, ai.Bug, "indirect addressing bug")
+	step(t, mc) // INX (x equals 2)
+	step(t, mc) // LDA (0xff,X)
+	assert.Assert(t, mc.LastResult.Bug, "indirect addressing bug")
 	assert.Assert(t, mc.A, 47)
 
 	// post-indexed indirect (with page-fault)
 	// Y = 1
 	// INY; INY; LDA (Indirect), Y
 	mem.putInstructions(0xc0, 0xfd, 0x00)
-	origin = mem.putInstructions(origin, 0xc8, 0xc8, 0xb1, 0xc0)
-	step(t, mc)           // INY (y = 2)
-	step(t, mc)           // INY (y = 2)
-	result := step(t, mc) // LDA (0x0b),Y
+	_ = mem.putInstructions(origin, 0xc8, 0xc8, 0xb1, 0xc0)
+	step(t, mc) // INY (y = 2)
+	step(t, mc) // INY (y = 2)
+	step(t, mc) // LDA (0x0b),Y
 	assert.Assert(t, mc.A, 123)
-	assert.Assert(t, result.PageFault, true)
+	assert.Assert(t, mc.LastResult.PageFault, true)
 }
 
 func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	mem.putInstructions(0xee00, 0x01, 0x02, 0x03)
 
@@ -313,7 +310,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0xa0, 0x01)
 	step(t, mc)
 	assert.Assert(t, mc.Y, 1)
-	origin = mem.putInstructions(origin, 0xb1, 0x00)
+	_ = mem.putInstructions(origin, 0xb1, 0x00)
 	step(t, mc)
 	assert.Assert(t, mc.A, 0x03)
 }
@@ -321,7 +318,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// LDA immediate; STA absolute
 	origin = mem.putInstructions(origin, 0xa9, 0x54, 0x8d, 0x00, 0x01)
@@ -347,7 +344,7 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	mem.assert(t, 0x01, 0x55)
 
 	// DEC absolute
-	origin = mem.putInstructions(origin, 0xce, 0x00, 0x01)
+	_ = mem.putInstructions(origin, 0xce, 0x00, 0x01)
 	step(t, mc) // DEC 0x0100
 	mem.assert(t, 0x0100, 0x53)
 }
@@ -358,64 +355,64 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0x10, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0x10, 0x10)
 	step(t, mc) // BPL $10
 	assert.Assert(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0x50, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0x50, 0x10)
 	step(t, mc) // BVC $10
 	assert.Assert(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0x90, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0x90, 0x10)
 	step(t, mc) // BCC $10
 	assert.Assert(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0x38, 0xb0, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0x38, 0xb0, 0x10)
 	step(t, mc) // SEC
 	step(t, mc) // BCS $10
 	assert.Assert(t, mc.PC, 0x13)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0xe8, 0xd0, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0xe8, 0xd0, 0x10)
 	step(t, mc) // INX
 	step(t, mc) // BNE $10
 	assert.Assert(t, mc.PC, 0x13)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
-	origin = mem.putInstructions(origin, 0xca, 0x30, 0x10)
+	_ = mc.Reset()
+	_ = mem.putInstructions(origin, 0xca, 0x30, 0x10)
 	step(t, mc) // DEX
 	step(t, mc) // BMI $10
 	assert.Assert(t, mc.PC, 0x13)
 
-	origin = mem.putInstructions(0x13, 0xe8, 0xf0, 0x10)
+	_ = mem.putInstructions(0x13, 0xe8, 0xf0, 0x10)
 	step(t, mc) // INX
 	step(t, mc) // BEQ $10
 	assert.Assert(t, mc.PC, 0x26)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 	// fudging overflow test
 	mc.Status.Overflow = true
-	origin = mem.putInstructions(origin, 0x70, 0x10)
+	_ = mem.putInstructions(origin, 0x70, 0x10)
 	step(t, mc) // BVS $10
 	assert.Assert(t, mc.PC, 0x12)
 }
@@ -423,31 +420,31 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// JMP absolute
-	origin = mem.putInstructions(origin, 0x4c, 0x00, 0x01)
+	_ = mem.putInstructions(origin, 0x4c, 0x00, 0x01)
 	step(t, mc) // JMP $100
 	assert.Assert(t, mc.PC, 0x0100)
 
 	// JMP indirect
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	mem.putInstructions(0x0050, 0x49, 0x01)
-	origin = mem.putInstructions(origin, 0x6c, 0x50, 0x00)
+	_ = mem.putInstructions(origin, 0x6c, 0x50, 0x00)
 	step(t, mc) // JMP ($50)
 	assert.Assert(t, mc.PC, 0x0149)
 
 	// JMP indirect (bug)
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	mem.putInstructions(0x01FF, 0x03)
 	mem.putInstructions(0x0100, 0x00)
-	origin = mem.putInstructions(origin, 0x6c, 0xFF, 0x01)
+	_ = mem.putInstructions(origin, 0x6c, 0xFF, 0x01)
 	step(t, mc) // JMP ($0x01FF)
 	assert.Assert(t, mc.PC, 0x0003)
 }
@@ -455,7 +452,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
@@ -492,7 +489,7 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	assert.Assert(t, mc.Status, "sv-bdiZc")
 
 	// BIT immediate
-	origin = mem.putInstructions(origin, 0x24, 0x01)
+	_ = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
 	assert.Assert(t, mc.Status, "sv-bdiZc")
 }
@@ -500,17 +497,17 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// JSR absolute
-	origin = mem.putInstructions(origin, 0x20, 0x00, 0x01)
+	_ = mem.putInstructions(origin, 0x20, 0x00, 0x01)
 	step(t, mc) // JSR $0100
 	assert.Assert(t, mc.PC, 0x0100)
 	mem.assert(t, 255, 0x00)
 	mem.assert(t, 254, 0x02)
 	assert.Assert(t, mc.SP, 253)
 
-	origin = mem.putInstructions(0x100, 0x60)
+	_ = mem.putInstructions(0x100, 0x60)
 	step(t, mc) // RTS
 	assert.Assert(t, mc.PC, 0x0003)
 	mem.assert(t, 255, 0x00)
@@ -521,9 +518,9 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
-	origin = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
+	_ = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
 	step(t, mc) // SED
 	step(t, mc) // LDA #$20
 	step(t, mc) // SEC
@@ -534,16 +531,16 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 
 	// non-strict addressing (Writing)
 	mem.Clear()
-	mc.Reset()
+	_ = mc.Reset()
 	mc.StrictAddressing = false
 	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	_, err := mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+	err := mc.ExecuteInstruction(nil)
 	if err != nil {
-		if err.(errors.AtariError).Errno == errors.UnwritableAddress {
+		if errors.Is(err, errors.UnwritableAddress) {
 			t.Fatalf("recieved an UnwritableAddress error when we shouldn't")
 		}
 		t.Fatalf("error during CPU step (%v)\n", err)
@@ -552,22 +549,21 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// strict addressing (Writing)
 	mc.StrictAddressing = true
 	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+	err = mc.ExecuteInstruction(nil)
 	if err == nil {
 		t.Fatalf("not recieved an UnwritableAddress error when we should")
 	}
-	if err.(errors.AtariError).Errno == errors.UnwritableAddress {
-		// this is okay
-	} else {
+
+	if !errors.Is(err, errors.UnwritableAddress) {
 		t.Fatalf("error during CPU step (%v)\n", err)
 	}
 
 	// non-strict addressing (Reading)
 	mc.StrictAddressing = false
 	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+	err = mc.ExecuteInstruction(nil)
 	if err != nil {
-		if err.(errors.AtariError).Errno == errors.UnreadableAddress {
+		if errors.Is(err, errors.UnreadableAddress) {
 			t.Fatalf("recieved an UnreadableAddress we shouldn't")
 		}
 		t.Fatalf("error during CPU step (%v)\n", err)
@@ -575,8 +571,8 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	// strict addressing (Reading)
 	mc.StrictAddressing = true
-	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	_, err = mc.ExecuteInstruction(func(*result.Instruction) error { return nil })
+	_ = mem.putInstructions(origin, 0xad, 0x00, 0xff)
+	err = mc.ExecuteInstruction(nil)
 	if err == nil {
 		t.Fatalf("not recieved an UnreadableAddress error when we should")
 	}
