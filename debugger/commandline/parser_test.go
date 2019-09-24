@@ -183,7 +183,7 @@ func TestParser_placeholders(t *testing.T) {
 	}
 
 	// placeholder directives must be separated from surrounding text
-	cmds, err = commandline.ParseCommandTemplate([]string{"TEST foo%%"})
+	_, err = commandline.ParseCommandTemplate([]string{"TEST foo%%"})
 	expectFailure(t, err)
 }
 

@@ -179,7 +179,8 @@ func (mon *metavideoMonitor) checkGroup(group *metavideoGroup, delay future.Obse
 	// send metasignal if an event is still running or if this is the end of a
 	// writeDelay period. the second condition catches memory writes that do
 	// not have an associated future.Event
-	if (group.lastEvent != nil && !group.lastEvent.Completed()) || signalStart {
+	if group.lastEvent != nil || signalStart {
+		group.lastEvent = nil
 		err := mon.Renderer.MetaSignal(group.signal)
 		if err != nil {
 			return err

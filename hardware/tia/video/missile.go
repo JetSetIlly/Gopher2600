@@ -20,7 +20,7 @@ type missileSprite struct {
 
 	position  polycounter.Polycounter
 	pclk      phaseclock.PhaseClock
-	Delay     future.Ticker
+	Delay     *future.Ticker
 	moreHMOVE bool
 	hmove     uint8
 
@@ -58,10 +58,11 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 		label:      label,
 	}
 
-	ms.Delay.Label = label
+	ms.Delay = future.NewTicker(label)
+
 	ms.enclockifier.size = &ms.size
 	ms.enclockifier.pclk = &ms.pclk
-	ms.enclockifier.delay = &ms.Delay
+	ms.enclockifier.delay = ms.Delay
 	ms.position.Reset()
 	return &ms
 
@@ -355,8 +356,10 @@ func (ms *missileSprite) resetPosition() {
 		ms.enclockifier.force()
 		if ms.startDrawingEvent != nil {
 			ms.startDrawingEvent.Force()
+			ms.startDrawingEvent = nil
 		}
 
+		// dump reference to reset event
 		ms.resetPositionEvent = nil
 	}, "RESMx")
 }

@@ -15,13 +15,13 @@ type Event struct {
 	label string
 
 	// the number of cycles the event began with
-	InitialCycles int
+	initialCycles int
 
 	// the number of remaining ticks before the pending action is resolved
 	RemainingCycles int
 
-	paused    bool
-	completed bool
+	// temporary cessation of ticks
+	paused bool
 
 	// completion of the event has been pushed back at least once
 	pushed bool
@@ -39,40 +39,51 @@ func (ev Event) String() string {
 }
 
 // Tick event forward one cycle
-func (ev *Event) Tick() bool {
+func (ev *Event) tick() bool {
+	if ev.RemainingCycles < 0 {
+		panic("events should not be ticked once they have expired under any circumstances")
+	}
+
 	if ev.paused {
 		return false
 	}
 
-	// 0 is the trigger state
-	if ev.RemainingCycles == 0 {
-		ev.RemainingCycles--
-		ev.payload()
-		ev.completed = true
-		return true
-	}
+	ev.RemainingCycles--
 
-	// -1 is the off state
-	if ev.RemainingCycles != -1 {
-		ev.RemainingCycles--
+	if ev.RemainingCycles == -1 {
+		ev.payload()
+		return true
 	}
 
 	return false
 }
 
 // Force can be used to immediately run the event's payload
+//
+// it is very important that the reference to the event is forgotten once
+// Force() has been called
 func (ev *Event) Force() {
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
+
 	ev.payload()
-	ev.ticker.Drop(ev)
-	ev.completed = true
+	ev.ticker.drop(ev)
+	ev.RemainingCycles = -1
 }
 
 // Drop can be used to remove the event from the ticker queue without running
 // the payload. Because the payload is not run then you should be careful to
 // handle any cleanup that might otherwise occur (in the payload).
+//
+// it is very important that the reference to the event is forgotten once
+// Drop() has been called
 func (ev *Event) Drop() {
-	ev.ticker.Drop(ev)
-	ev.completed = true
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
+	ev.ticker.drop(ev)
+	ev.RemainingCycles = -1
 }
 
 // Push back event completion by effectively restarting the event. generally,
@@ -81,38 +92,34 @@ func (ev *Event) Drop() {
 // will occur very quickly and it is more convenient to push, instead of
 // droping and starting a new event.
 func (ev *Event) Push() {
-	ev.RemainingCycles = ev.InitialCycles
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
+	ev.RemainingCycles = ev.initialCycles
 	ev.pushed = true
 }
 
 // Pause prevents the event from ticking any further until Resume or Restart is
 // called
 func (ev *Event) Pause() {
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
 	ev.paused = true
-}
-
-// Resume a previously paused event
-func (ev *Event) Resume() {
-	ev.paused = false
-}
-
-// Restart an event
-func (ev *Event) Restart() {
-	ev.RemainingCycles = ev.InitialCycles
-	ev.paused = false
-}
-
-// Completed indicates whether the events has run it's course
-func (ev Event) Completed() bool {
-	return ev.completed
 }
 
 // JustStarted is true if no Tick()ing has taken place yet
 func (ev Event) JustStarted() bool {
-	return ev.RemainingCycles == ev.InitialCycles && !ev.pushed
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
+	return ev.RemainingCycles == ev.initialCycles && !ev.pushed
 }
 
 // AboutToEnd is true if event resolves on next Tick()
 func (ev Event) AboutToEnd() bool {
+	if ev.RemainingCycles < 0 {
+		panic("cannot do that to a completed event")
+	}
 	return ev.RemainingCycles == 0
 }

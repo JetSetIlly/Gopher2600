@@ -62,7 +62,7 @@ type TIA struct {
 	// video objects/attributes. the following future.Group ticks every color
 	// clock. in addition to this, each sprite has it's own future.Group that
 	// only ticks under certain conditions.
-	Delay future.Ticker
+	Delay *future.Ticker
 
 	// a reference to the delayed rsync event. we use this to determine if an
 	// rsync has been scheduled and to hold off naturally occuring new
@@ -102,8 +102,10 @@ func (tia TIA) String() string {
 // NewTIA creates a TIA, to be used in a VCS emulation
 func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
-	tia.pclk.Reset()
 
+	tia.Delay = future.NewTicker("TIA")
+
+	tia.pclk.Reset()
 	tia.hmoveCt = 0xff
 
 	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync, mem, tv, &tia.hblank, &tia.hmoveLatch)
@@ -305,7 +307,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// make alterations to video state and playfield
 	if readMemory {
 		tia.AlterVideoState(memoryData)
-		tia.Video.AlterPlayfield(&tia.Delay, memoryData)
+		tia.Video.AlterPlayfield(tia.Delay, memoryData)
 	}
 
 	// tick phase clock
@@ -432,7 +434,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// Keystone Kapers (this is because the ball is reset on the very last
 	// pixel and before HBLANK etc. are in the state they need to be)
 	if readMemory {
-		tia.Video.AlterStateWithDelay(&tia.Delay, memoryData)
+		tia.Video.AlterStateWithDelay(tia.Delay, memoryData)
 
 		// AlterStateImmediate() could feasibly and safely occur after pixel
 		// resolution or even before HSYNC has been ticked. but in the absence

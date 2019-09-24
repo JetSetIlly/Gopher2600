@@ -9,6 +9,18 @@ import (
 type Ticker struct {
 	Label  string
 	events list.List
+	pool   list.List
+}
+
+// NewTicker is the only method of initialisation for the Ticker type
+func NewTicker(label string) *Ticker {
+	tck := &Ticker{Label: label}
+
+	for i := 0; i < 6; i++ {
+		tck.pool.PushBack(&Event{ticker: tck, RemainingCycles: -1})
+	}
+
+	return tck
 }
 
 // MachineInfo returns future ticker information in verbose format
@@ -54,13 +66,12 @@ func (tck *Ticker) Tick() bool {
 
 	e := tck.events.Front()
 	for e != nil {
-		t := e.Value.(*Event).Tick()
-		r = r || t
-
-		if t {
-			f := e.Next()
-			tck.events.Remove(e)
-			e = f
+		if e.Value.(*Event).tick() {
+			r = true
+			n := e.Next()
+			v := tck.events.Remove(e)
+			tck.pool.PushBack(v)
+			e = n
 		} else {
 			e = e.Next()
 		}
@@ -69,16 +80,16 @@ func (tck *Ticker) Tick() bool {
 	return r
 }
 
-// Drop can be used to immediately run the future payload
-func (tck *Ticker) Drop(ins *Event) {
+func (tck *Ticker) drop(ev *Event) {
 	e := tck.events.Front()
 	for e != nil {
-		i := e.Value.(*Event)
-		if i == ins {
-			tck.events.Remove(e)
-			break
-		} else {
-			e = e.Next()
+		if ev == e.Value.(*Event) {
+			v := tck.events.Remove(e)
+			tck.pool.PushBack(v)
+			return
 		}
+		e = e.Next()
 	}
+
+	panic("cannot drop an event that is not in the list of active events")
 }

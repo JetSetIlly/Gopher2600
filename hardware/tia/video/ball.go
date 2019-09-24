@@ -20,7 +20,7 @@ type ballSprite struct {
 
 	position  polycounter.Polycounter
 	pclk      phaseclock.PhaseClock
-	Delay     future.Ticker
+	Delay     *future.Ticker
 	moreHMOVE bool
 	hmove     uint8
 
@@ -55,10 +55,10 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 		label:      label,
 	}
 
-	bs.Delay.Label = label
+	bs.Delay = future.NewTicker(label)
 	bs.enclockifier.size = &bs.size
 	bs.enclockifier.pclk = &bs.pclk
-	bs.enclockifier.delay = &bs.Delay
+	bs.enclockifier.delay = bs.Delay
 	bs.position.Reset()
 
 	return &bs
@@ -177,7 +177,10 @@ func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 			switch bs.position.Count {
 			case 39:
 				const startDelay = 4
-				bs.startDrawingEvent = bs.Delay.Schedule(startDelay, bs.enclockifier.start, "START")
+				bs.startDrawingEvent = bs.Delay.Schedule(startDelay, func() {
+					bs.enclockifier.start()
+					bs.startDrawingEvent = nil
+				}, "START")
 			case 40:
 				bs.position.Reset()
 			}
@@ -294,6 +297,7 @@ func (bs *ballSprite) resetPosition() {
 		// scanline and it will start drawing immediately each time :)
 		bs.enclockifier.start()
 
+		// dump reference to reset event
 		bs.resetPositionEvent = nil
 	}, "RESBL")
 }

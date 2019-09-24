@@ -108,7 +108,7 @@ type playerSprite struct {
 	// specific conditions
 	//
 	// note that setGfxData() uses the TIA wide future instance
-	Delay future.Ticker
+	Delay *future.Ticker
 
 	// horizontal movement
 	moreHMOVE bool
@@ -179,7 +179,9 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 	}
-	ps.Delay.Label = ps.label
+
+	ps.Delay = future.NewTicker(label)
+
 	ps.scanCounter.nusiz = &ps.nusiz
 	ps.position.Reset()
 	return &ps
@@ -391,9 +393,9 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 				cpy := 0
 
 				startDrawingEvent := func() {
-					ps.startDrawingEvent = nil
 					ps.scanCounter.start()
 					ps.scanCounter.cpy = cpy
+					ps.startDrawingEvent = nil
 				}
 
 				// "... The START decodes are ANDed with flags from the NUSIZ register
@@ -548,6 +550,7 @@ func (ps *playerSprite) resetPosition() {
 		if ps.startDrawingEvent != nil {
 			if !ps.startDrawingEvent.JustStarted() {
 				ps.startDrawingEvent.Force()
+				ps.startDrawingEvent = nil
 			} else {
 				ps.startDrawingEvent.Drop()
 				ps.startDrawingEvent = nil
@@ -637,8 +640,12 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	// This should allow possible player graphics warp effects etc."
 
 	// whilst the notes say that the register can be changed at any time, there
-	// is a delay of sorts in certain situations:
-	var delay int
+	// is a delay of sorts in certain situations; although  under most
+	// circumstances, TIA_HW_Notes is correct, there is no delay.
+	//
+	// for convenience, we still call the Schedule() function but with a delay
+	// value of -1 (see Schedule() function notes)
+	delay := -1
 
 	if ps.startDrawingEvent != nil {
 		// if the sprite is scheduled to start drawing the delay is equal to the
@@ -648,22 +655,25 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		//		drawing/latching
 		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
 			delay = 1
-		} else if ps.startDrawingEvent.RemainingCycles == ps.startDrawingEvent.InitialCycles-1 {
-			// these conditions apply when a drawing event has just started
-			// (above) and NUSIZ is moving to double and quadruple width from a
-			// multiple-copy nusiz (below)
+		} else if ps.startDrawingEvent.RemainingCycles >= 3 &&
+			ps.nusiz != value && ps.nusiz != 0x00 &&
+			(value == 0x05 || value == 0x07) {
+			// this branch applies when a sprite is changing from a
+			// multi-copy sprite to a double/quadruple width sprite. in that
+			// instance we drop the drawing event if it has only recently
+			// started
 			//
-			// rule discovered through observation and balancing of test roms:
+			// I'm not convinced by this branch at all but the rule was
+			// discovered through observation of the test roms:
+			//
 			//	o testSize2Copies_A.bin
 			//	o properly_model_nusiz_during_player_decode_and_draw/player8.bin
 			//
-			// !!TODO: precise conditions when start drawing event is dropped
-			// on NUSIZ change
-			if ps.nusiz != value && ps.nusiz != 0x00 && (value == 0x05 || value == 0x07) {
-				ps.startDrawingEvent.Drop()
-			}
-
-		} else if ps.startDrawingEvent.RemainingCycles <= 1 {
+			// there rules maybe more subtle or more general than this, I don't
+			// know. this is an area of improvement for sure.
+			ps.startDrawingEvent.Drop()
+			ps.startDrawingEvent = nil
+		} else if ps.startDrawingEvent.RemainingCycles <= 2 {
 			delay = 1
 		}
 	} else if ps.scanCounter.active() || ps.scanCounter.isLatching() {
