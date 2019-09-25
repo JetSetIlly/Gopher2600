@@ -7,6 +7,7 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
+	"gopher2600/television"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -83,27 +84,27 @@ func (reg PlaybackRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (bool, error) {
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	digest, err := renderers.NewDigestTV(plb.TVtype, nil)
+	tv, err := renderers.NewDigestTV(plb.TVtype, nil)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	vcs, err := hardware.NewVCS(digest)
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	// not using setup.AttachCartridge. if the playback was recorded with setup
@@ -111,13 +112,13 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// will be applied that way
 	err = vcs.AttachCartridge(plb.CartLoad)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	// display progress meter every 1 second
 	limiter, err := limiter.NewFPSLimiter(1)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
 	// run emulation
@@ -130,7 +131,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	if err != nil {
 		if !errors.IsAny(err) {
-			return false, errors.New(errors.RegressionPlaybackError, err)
+			return false, "", errors.New(errors.RegressionPlaybackError, err)
 		}
 
 		switch err.(errors.AtariError).Errno {
@@ -143,10 +144,14 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		// playback script did not work. filter error and return false to
 		// indicate failure
 		case errors.PlaybackHashError:
-			return false, nil
+			fr, _ := tv.GetState(television.ReqFramenum)
+			sl, _ := tv.GetState(television.ReqScanline)
+			hp, _ := tv.GetState(television.ReqHorizPos)
+			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, hp=%d", err, fr, sl, hp)
+			return false, failm, nil
 
 		default:
-			return false, errors.New(errors.RegressionPlaybackError, err)
+			return false, "", errors.New(errors.RegressionPlaybackError, err)
 		}
 
 	}
@@ -163,7 +168,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		// need
 		if nf != nil {
 			msg := fmt.Sprintf("script already exists (%s)", newScript)
-			return false, errors.New(errors.RegressionPlaybackError, msg)
+			return false, "", errors.New(errors.RegressionPlaybackError, msg)
 		}
 		nf.Close()
 
@@ -171,7 +176,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		nf, err = os.Create(newScript)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.RegressionPlaybackError, msg)
+			return false, "", errors.New(errors.RegressionPlaybackError, msg)
 		}
 		defer nf.Close()
 
@@ -179,7 +184,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		of, err := os.Open(reg.Script)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.RegressionPlaybackError, msg)
+			return false, "", errors.New(errors.RegressionPlaybackError, msg)
 		}
 		defer of.Close()
 
@@ -187,12 +192,12 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		_, err = io.Copy(nf, of)
 		if err != nil {
 			msg := fmt.Sprintf("error copying playback script: %s", err)
-			return false, errors.New(errors.RegressionPlaybackError, msg)
+			return false, "", errors.New(errors.RegressionPlaybackError, msg)
 		}
 
 		// update script name in regression type
 		reg.Script = newScript
 	}
 
-	return true, nil
+	return true, "", nil
 }

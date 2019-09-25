@@ -122,30 +122,38 @@ func (reg FrameRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, error) {
+func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
 	if err != nil {
-		return false, errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
-		return false, errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
+	// list of state information. we'll either save this in the event of
+	// newRegression being true; or we'll use it to compare to the entries in
+	// the specified state file
 	state := make([]string, 0, 1024)
 
 	// display progress meter every 1 second
 	limiter, err := limiter.NewFPSLimiter(1)
 	if err != nil {
-		return false, errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionFrameError, err)
+	}
+
+	// add the starting state of the tv
+	if reg.State {
+		state = append(state, vcs.TV.MachineInfoTerse())
 	}
 
 	// run emulation
@@ -153,11 +161,17 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		if limiter.HasWaited() {
 			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		}
+
+		// store tv state at every step
+		if reg.State {
+			state = append(state, vcs.TV.MachineInfoTerse())
+		}
+
 		return true, nil
 	})
 
 	if err != nil {
-		return false, errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
 	if newRegression {
@@ -174,7 +188,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			// need
 			if nf != nil {
 				msg := fmt.Sprintf("state recording file already exists (%s)", reg.stateFile)
-				return false, errors.New(errors.RegressionFrameError, msg)
+				return false, "", errors.New(errors.RegressionFrameError, msg)
 			}
 			nf.Close()
 
@@ -182,7 +196,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
 				msg := fmt.Sprintf("error creating state recording file: %s", err)
-				return false, errors.New(errors.RegressionFrameError, msg)
+				return false, "", errors.New(errors.RegressionFrameError, msg)
 			}
 			defer nf.Close()
 
@@ -190,12 +204,12 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
 					msg := fmt.Sprintf("error writing state recording file: %s", err)
-					return false, errors.New(errors.RegressionFrameError, msg)
+					return false, "", errors.New(errors.RegressionFrameError, msg)
 				}
 			}
 		}
 
-		return true, nil
+		return true, "", nil
 	}
 
 	// if we reach this point then this is a regression test (not adding a new
@@ -206,7 +220,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)
-			return false, errors.New(errors.RegressionFrameError, msg)
+			return false, "", errors.New(errors.RegressionFrameError, msg)
 		}
 		defer nf.Close()
 
@@ -215,14 +229,30 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		for i := range state {
 			s, _ := reader.ReadString('\n')
 			s = strings.TrimRight(s, "\n")
+
+			// ignore blank lines
+			if s == "" {
+				continue
+			}
+
 			if s != state[i] {
-				fmt.Println("\n", i, s, state[i])
-				return false, nil
+				failm := fmt.Sprintf("state mismatch line %d: expected %s", i, s)
+				return false, failm, nil
 			}
 		}
+
+		// check that we've consumed all the lines in the recorded state file
+		_, err = reader.ReadString('\n')
+		if err == nil || err != io.EOF {
+			failm := "unexpected end of state. entries remaining in recorded state file"
+			return false, failm, nil
+		}
+
 	}
 
-	success := tv.String() == reg.screenDigest
+	if tv.String() != reg.screenDigest {
+		return false, "screen digest mismatch", nil
+	}
 
-	return success, nil
+	return true, "", nil
 }

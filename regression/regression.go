@@ -27,7 +27,10 @@ type Regressor interface {
 	// programmers would have it)
 	//
 	// message is the string that is to be printed during the regression
-	regress(newRegression bool, output io.Writer, message string) (bool, error)
+	//
+	// returns: success boolean; any failure message (not always appropriate;
+	// and error state
+	regress(newRegression bool, output io.Writer, message string) (bool, string, error)
 }
 
 // when starting a database session we need to register what entries we will
@@ -78,8 +81,8 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
-	ok, err := reg.regress(true, output, msg)
-	if !ok || err != nil {
+	_, _, err = reg.regress(true, output, msg)
+	if err != nil {
 		return err
 	}
 
@@ -188,7 +191,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		// run regress() function with message. message does not have a
 		// trailing newline
 		msg := fmt.Sprintf("running: %s", reg)
-		ok, err := reg.regress(false, output, msg)
+		ok, failm, err := reg.regress(false, output, msg)
 
 		// once regress() has completed we clear the line ready for the
 		// completion message
@@ -210,6 +213,9 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		} else if !ok {
 			numFail++
 			output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
+			if verbose && failm != "" {
+				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", failm)))
+			}
 
 		} else {
 			numSucceed++
