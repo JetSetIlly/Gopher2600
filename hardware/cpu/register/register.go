@@ -64,6 +64,21 @@ func NewRegister(value interface{}, size uint, label string, shortLabel string) 
 	return r
 }
 
+// MachineInfoTerse returns the register information in terse format
+func (r Register) MachineInfoTerse() string {
+	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
+}
+
+// MachineInfo returns the register information in verbose format
+func (r Register) MachineInfo() string {
+	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.value, r.ToHex(), r.ToBits())
+}
+
+// map String to MachineInfo
+func (r Register) String() string {
+	return r.MachineInfo()
+}
+
 // Size returns the number of bits in register
 func (r Register) Size() uint {
 	return r.size
@@ -79,49 +94,9 @@ func (r Register) IsZero() bool {
 	return r.value == 0
 }
 
-// IsBitV is used by the BIT instruction and returns the state of Bit6 (the bit
-// next to the sign bit. it's a bit odd because it is only ever used by the BIT
-// instruction and the BIT instruction only ever uses 8 bit registers.
-// none-the-less, we've generalised it so it can be used with 16 bit registers
-// too (for completion)
+// IsBitV returns the state of the second MSB
 func (r Register) IsBitV() bool {
 	return r.value&r.vbit == r.vbit
-}
-
-// FromInt returns the string representation of an arbitrary integer
-func (r Register) FromInt(v interface{}) string {
-	switch v.(type) {
-	case int:
-		tr := NewRegister(v, r.size, r.label, r.shortLabel)
-		return fmt.Sprintf("%s=%s", tr.shortLabel, tr.ToHex())
-	default:
-		return r.shortLabel
-	}
-}
-
-// Label returns the verbose label of the register
-func (r Register) Label() string {
-	return r.label
-}
-
-// ShortLabel returns the terse labelname of the register
-func (r Register) ShortLabel() string {
-	return r.shortLabel
-}
-
-// MachineInfoTerse returns the register information in terse format
-func (r Register) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
-}
-
-// MachineInfo returns the register information in verbose format
-func (r Register) MachineInfo() string {
-	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.value, r.ToHex(), r.ToBits())
-}
-
-// map String to MachineInfo
-func (r Register) String() string {
-	return r.MachineInfo()
 }
 
 // ToBits returns the register as bit pattern (of '0' and '1')
@@ -154,14 +129,22 @@ func (r Register) ToUint16() uint16 {
 	return uint16(r.value)
 }
 
-// Value returns the canonical value for the register
-// -- implements target interface
+// Label implements the target interface
+func (r Register) Label() string {
+	return r.label
+}
+
+// ShortLabel implements the target interface
+func (r Register) ShortLabel() string {
+	return r.shortLabel
+}
+
+// Value implements the target interface
 func (r Register) Value() interface{} {
 	return r.ToInt()
 }
 
-// FormatValue returns an arbitrary value in the format of the register
-// -- implements target interface
+// FormatValue implements the target interface
 func (r Register) FormatValue(fv interface{}) string {
 	return fmt.Sprintf(r.hexformat, fv)
 }
