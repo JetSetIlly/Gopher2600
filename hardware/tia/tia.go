@@ -196,51 +196,67 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 		return
 
 	case "HMOVE":
-		tia.hmoveEvent = tia.Delay.Schedule(4, func() {
-			// from TIA_HW_Notes.txt:
-			//
-			// "It takes 3 CLK after the HMOVE command is received to decode the
-			// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
-			// a further 4 CLK to set 'more movement required' latches."
-			//
-			// make of that what you will but the delay values below have been
-			// reached through observation of key test roms
-			var delay int
+		// the scheduling for HMOVE is divided into two tranches, starting at
+		// the same time:
+		//
+		//	1. the setting of the hmove latch happens after 4 cycles and is
+		//	scheduled below. the latch is used to decide whether to use an
+		//	early or late HBLANK reset and must happen at this time.
 
-			// delay is slighty different depending on which clock phase the reset
-			// is scheduled on. I don't know why this is.
-			switch tia.pclk.Count() {
-			case 0:
-				delay = 2
-			case 1:
-				// from TIA_HW_Notes.txt:
-				//
-				// "Also of note, the HMOVE latch used to extend the HBlank time is
-				// cleared when the HSync Counter wraps around. This fact is
-				// exploited by the trick that invloves hitting HMOVE on the 74th
-				// CPU cycle of the scanline; the CLK stuffing will still take
-				// place during the HBlank and the HSYNC latch will be set just
-				// before the counter wraps around. It will then be cleared again
-				// immediately (and therefore ignored) when the counter wraps,
-				// preventing the HMOVE comb effect."
-				//
-				// for the above to work correctly it's important that we get the
-				// delay correct for pclk.Count() == 1
-				delay = 4
-			case 2:
-				delay = 3
-			case 3:
-				delay = 3
-			}
-
-			tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-				tia.Video.PrepareSpritesForHMOVE()
-				tia.hmoveCt = 15
-				tia.hmoveEvent = nil
-			}, "HMOVE")
-
+		tia.Delay.Schedule(4, func() {
 			tia.hmoveLatch = true
-		}, "HMOVE Latch")
+		}, "HMOVE (latch)")
+
+		//  2. meanwhile, preparation of the sprites and the actual start of
+		//  the hmove process is scheduled depending upon which clockphase the
+		//  HMOVE was triggered.
+		//
+		// the TIA_HW_Notes.txt says this about HMOVE:
+		//
+		// "It takes 3 CLK after the HMOVE command is received to decode the
+		// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
+		// a further 4 CLK to set 'more movement required' latches."
+		//
+		// make of that what you will but the delay values below have been
+		// reached through observation of key test roms. the key to these delay
+		// values is, according to the TIA_HW_Notes.txt:
+		//
+		// "Also of note, the HMOVE latch used to extend the HBlank time is
+		// cleared when the HSync Counter wraps around. This fact is
+		// exploited by the trick that invloves hitting HMOVE on the 74th
+		// CPU cycle of the scanline; the CLK stuffing will still take
+		// place during the HBlank and the HSYNC latch will be set just
+		// before the counter wraps around. It will then be cleared again
+		// immediately (and therefore ignored) when the counter wraps,
+		// preventing the HMOVE comb effect."
+		//
+		// for the this "trick" to work correctly it's important that we get
+		// the delay correct for pclk.Count() == 1. once that value had been
+		// settled the other values fell into place.
+
+		var delay int
+
+		switch tia.pclk.Count() {
+		case 0:
+			delay = 8
+		case 1:
+			delay = 7
+		case 2:
+			delay = 7
+		case 3:
+			delay = 6
+		}
+
+		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.hmoveCt = 15
+			tia.hmoveEvent = nil
+		}, "HMOVE")
+
+		// (note that when comparing to the the stella emulator, the "queued
+		// write" reported by the debugger is the equivalent to the second
+		// scheduled event and not the latching event)
+
 		return
 	}
 }
@@ -448,10 +464,14 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
 	//
-	// note that hmoveck is not dependent on hmoveLatch being set. this means
-	// that the sprite will adjust itself on a hmoveck if its moreHMOVE flag is
-	// set.
-	hmoveck := tia.pclk.Phi1()
+	// contrary to what the document says the additional tick occurs on the H@2
+	// signal, at least my interpretation of it. this requires further
+	// meditation.
+	//
+	// also note that hmoveck is not dependent on hmoveLatch being set. this
+	// means that the sprite will adjust itself on a hmoveck if its moreHMOVE
+	// flag is set
+	hmoveck := tia.pclk.Phi2()
 
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the

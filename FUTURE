@@ -1,3 +1,27 @@
+accuracy questions
+------------------
+
+o accuracy of cosmic stars
+	- cosmic 3 stars
+    - cosmic ark itself
+
+o resetDuringHmove/missile/10.bin
+
+o resetDuringHmove/player/07.bin
+
+o extra hmove clock on Phi2 instead of Phi1 (latter documented in TIA_HW_Notes)
+
+o player stretching on LatePhi1 and LatePhi2 rather than the rising edge
+
+o in the sprite resetPosition() function there is a condition in which the
+second part doesn't seem to apply in Z26 v4.07 . unsure if Stella or Z26 is
+more accurate
+
+	if ps.startDrawingEvent != nil && !ps.startDrawingEvent.AboutToEnd() {
+		ps.startDrawingEvent.Pause()
+	}
+
+
 debugger
 --------
 
@@ -43,6 +67,11 @@ vcs
 
 o randomised initialisation
 	- optional to prevent regression tests from failing
+
+o cartridge
+	- CartridgeLoader should replace filename with name and a copy of the
+	  bytes in the file. this will allow loading of cartridges through some
+		other mechanism apart from the filesystem (eg. archive, network)
 
 
 sdl screen

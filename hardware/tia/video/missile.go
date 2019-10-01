@@ -18,11 +18,12 @@ type missileSprite struct {
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position  polycounter.Polycounter
-	pclk      phaseclock.PhaseClock
-	Delay     *future.Ticker
-	moreHMOVE bool
-	hmove     uint8
+	position    polycounter.Polycounter
+	pclk        phaseclock.PhaseClock
+	Delay       *future.Ticker
+	moreHMOVE   bool
+	hmove       uint8
+	lastHmoveCt uint8
 
 	// the following attributes are used for information purposes only:
 
@@ -31,6 +32,7 @@ type missileSprite struct {
 	hmovedPixel int
 
 	// ^^^ the above are common to all sprite types ^^^
+	//		(see player sprite for commentary)
 
 	enabled bool
 	color   uint8
@@ -173,6 +175,8 @@ func (ms *missileSprite) rsync(adjustment int) {
 }
 
 func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
+	ms.lastHmoveCt = hmoveCt
+
 	// check to see if there is more movement required for this sprite
 	if hmove {
 		ms.moreHMOVE = ms.moreHMOVE && compareHMOVE(hmoveCt, ms.hmove)
@@ -296,18 +300,24 @@ func (ms *missileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.hblank {
-		if *ms.hmoveLatch {
-			delay = 3
-		} else {
+		if !*ms.hmoveLatch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
 			delay = 2
+		} else {
+			delay = 3
 		}
 	}
 
 	// drawing of missile sprite is paused and will resume upon reset
 	// completion. compare to ball sprite where drawing is ended and then
-	// started under all conditions
-	ms.enclockifier.pause()
-	if ms.startDrawingEvent != nil {
+	// re-started under all conditions
+	//
+	// important to note we only pause if the draw/start events are not about
+	// to end. in other words, if they are not about to end they are allowed to
+	// continue naturally while reset event is waiting to conclude
+	if !ms.enclockifier.aboutToEnd() {
+		ms.enclockifier.pause()
+	}
+	if ms.startDrawingEvent != nil && !ms.startDrawingEvent.AboutToEnd() {
 		ms.startDrawingEvent.Pause()
 	}
 
@@ -369,19 +379,16 @@ func (ms *missileSprite) setResetToPlayer(on bool) {
 }
 
 func (ms *missileSprite) pixel() (bool, uint8) {
-	// the missile sprite is drawn if the enclockifier is on. OR, if it will be
-	// ON next cycle AND the most recent tick was a result of a HMOVE clock
-	// stuff.
+	// the missile sprite has a special state where a stuffed HMOVE clock
+	// causes the sprite to this the start signal has happened one cycle early.
 	//
-	// what's the reason for this? it is fully explained in the AtariAge post
-	// "Cosmic Ark Star Field Revisited" by Crsipy, but briefly the
-	// exaplanation is this: the extra HMOVE clock causes the "missile logic"
-	// to think that the start signal has happened early.
-	//
-	// in short, the following condition implements the Cosmic Ark starfield.
-	px := !ms.resetToPlayer &&
-		(ms.enclockifier.enable ||
-			(ms.extraTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()))
+	// the condition is fully explained in the AtariAge post "Cosmic Ark Star
+	// Field Revisited" by crispy. as suggested by the post title this is the
+	// key to implementing the starfield in the Cosmic Ark ROM
+	crispy := ms.extraTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
+
+	// whether a pixel is output also depends on whether resetToPlayer is off
+	px := !ms.resetToPlayer && (ms.enclockifier.enable || crispy)
 
 	return ms.enabled && px, ms.color
 }
@@ -400,16 +407,21 @@ func (ms *missileSprite) setColor(value uint8) {
 }
 
 func (ms *missileSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
-	tiaDelay.Schedule(4, func() {
+	// delay of at least zero (1 additiona cycle) is required. we can see this
+	// in the Midnight Magic ROM where the left gutter separator requires it
+	//
+	// a delay too high (3 or higher) causes the barber pole test ROM to fail
+	//
+	// not sure what the actual shoudld except that it should be somewhere
+	// between 0 and 3 (inclusive)
+	tiaDelay.Schedule(2, func() {
 		ms.hmove = (value ^ 0x80) >> 4
 	}, "HMMx")
 }
 
 func (ms *missileSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// like the ball sprite, essential delay value for HMCLR is essential.
-	// Midnight Magic requires it for accurate placement of a missile on
-	// scanlines 164-168
-	tiaDelay.Schedule(1, func() {
+	// see setHmoveValue() commentary for delay value reasoning
+	tiaDelay.Schedule(2, func() {
 		ms.hmove = 0x08
 	}, "HMCLR")
 }

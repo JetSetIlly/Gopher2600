@@ -49,6 +49,10 @@ type playerSprite struct {
 	moreHMOVE bool
 	hmove     uint8
 
+	// the last hmovect value seen by the Tick() function. used to accurately
+	// decide the delay period when resetting the sprite position
+	lastHmoveCt uint8
+
 	// the following attributes are used for information purposes only:
 
 	// the name of the sprite instance (eg. "player 0")
@@ -197,7 +201,12 @@ func (ps playerSprite) String() string {
 		if extra {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw (px %d)", ps.scanCounter.pixel))
+		s.WriteString(fmt.Sprintf(" drw (px %d", ps.scanCounter.pixel))
+		if ps.scanCounter.pixelCt > 0 {
+			// add "sub-pixel" information
+			s.WriteString(fmt.Sprintf(".%d", ps.scanCounter.pixelCt))
+		}
+		s.WriteString(")")
 		extra = true
 
 		if ps.scanCounter.cpy > 0 {
@@ -244,6 +253,8 @@ func (ps *playerSprite) rsync(adjustment int) {
 
 // tick moves the sprite counters along (both position and graphics scan).
 func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
+	ps.lastHmoveCt = hmoveCt
+
 	// check to see if there is more movement required for this sprite
 	if hmove {
 		ps.moreHMOVE = ps.moreHMOVE && compareHMOVE(hmoveCt, ps.hmove)
@@ -270,17 +281,17 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		//
 		// "The count frequency is determined by the NUSIZ register for that
 		// player; this is used to selectively mask off the clock signals to
-		// the Graphics Scan Counter. Depending on the player stretch mode,
-		// one clock signal is allowed through every 1, 2 or 4 graphics CLK.
-		// The stretched modes are derived from the two-phase clock; the H@2
-		// phase allows 1 in 4 CLK through (4x stretch), both phases ORed
-		// together allow 1 in 2 CLK through (2x stretch)."
+		// the Graphics Scan Counter. Depending on the player stretch mode, one
+		// clock signal is allowed through every 1, 2 or 4 graphics CLK.  The
+		// stretched modes are derived from the two-phase clock; the H@2 phase
+		// allows 1 in 4 CLK through (4x stretch), both phases ORed together
+		// allow 1 in 2 CLK through (2x stretch)."
 		//
 		//
 		// note that we tick on the falling edges of Phi1 and Phi2. rising on
-		// the rising edge is the same except it affects the accuracy of NUSIZx
-		// I've tried to iron this out (ticking on the rising edge makes more
-		// sense) but to no avail.
+		// the rising edge appears to be the same except that it affects the
+		// accuracy of NUSIZx I've tried to iron this out (ticking on the
+		// rising edge makes more sense) but to no avail.
 		switch ps.nusiz {
 		case 0x05:
 			ps.scanCounter.tick(ps.pclk.LatePhi2() || ps.pclk.LatePhi1())
@@ -374,6 +385,9 @@ func (ps *playerSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 }
 
 func (ps *playerSprite) prepareForHMOVE() {
+	// the latching delay should already have been consumed when servicing the
+	// HMOVE signal in tia.go
+
 	ps.moreHMOVE = true
 
 	if *ps.hblank {
@@ -410,10 +424,13 @@ func (ps *playerSprite) resetPosition() {
 	// that said, I'm not entirely sure what's going on and why these
 	// adjustments are required.
 	if *ps.hblank {
-		if *ps.hmoveLatch {
-			delay = 3
-		} else {
+		// this tricky branch happens when reset is triggered inside the
+		// HBLANK period and HMOVE is active. in this instance we're defining
+		// active to be whether the last HmoveCt value was between 15 and 0
+		if !*ps.hmoveLatch || ps.lastHmoveCt >= 1 && ps.lastHmoveCt <= 15 {
 			delay = 2
+		} else {
+			delay = 3
 		}
 	}
 
@@ -427,7 +444,7 @@ func (ps *playerSprite) resetPosition() {
 	}
 
 	// stop any existing reset events. generally, this codepath will not apply
-	// because a resetPositionEvent will conculde before being triggere again.
+	// because a resetPositionEvent will conculde before being triggered again.
 	// but it is possible when using a very quick opcode on the reset register,
 	// like a zero page INC, for requests to overlap
 	if ps.resetPositionEvent != nil {
@@ -494,6 +511,7 @@ func (ps *playerSprite) resetPosition() {
 
 		// dump reference to reset event
 		ps.resetPositionEvent = nil
+
 	}, "RESPx")
 }
 
@@ -604,8 +622,7 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 			//	o testSize2Copies_A.bin
 			//	o properly_model_nusiz_during_player_decode_and_draw/player8.bin
 			//
-			// there rules maybe more subtle or more general than this, I don't
-			// know. this is an area of improvement for sure.
+			// the rules maybe more subtle or more general than this
 			ps.startDrawingEvent.Drop()
 			ps.startDrawingEvent = nil
 		} else if ps.startDrawingEvent.RemainingCycles <= 2 {
@@ -667,17 +684,18 @@ func (ps *playerSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, cl
 	// be easier to think of this as having D7 inverted when it
 	// is stored in the first place."
 
-	tiaDelay.Schedule(4, func() {
+	// there is no information about whether response to HMOVE value changes
+	// are immediate or take effect after a short delay. experimentation
+	// reveals that a delay is required. see missile.setHmoveValue() commentary
+	// for the reasoning behind the delay value
+	tiaDelay.Schedule(2, func() {
 		ps.hmove = (value ^ 0x80) >> 4
 	}, "HMPx")
 }
 
 func (ps *playerSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// I can find no evidence that a delay value of 1 is required when
-	// clearing hmove values in the case of the player sprite, but because
-	// a value of 1 is required for both the ball and missiles it is
-	// reasonable to assume the same applies to the players
-	tiaDelay.Schedule(1, func() {
+	// see missile.setHmoveValue() commentary for delay value reasoning
+	tiaDelay.Schedule(2, func() {
 		ps.hmove = 0x08
 	}, "HMCLR")
 }

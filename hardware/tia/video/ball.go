@@ -18,11 +18,12 @@ type ballSprite struct {
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position  polycounter.Polycounter
-	pclk      phaseclock.PhaseClock
-	Delay     *future.Ticker
-	moreHMOVE bool
-	hmove     uint8
+	position    polycounter.Polycounter
+	pclk        phaseclock.PhaseClock
+	Delay       *future.Ticker
+	moreHMOVE   bool
+	hmove       uint8
+	lastHmoveCt uint8
 
 	// the following attributes are used for information purposes only:
 
@@ -31,6 +32,7 @@ type ballSprite struct {
 	hmovedPixel int
 
 	// ^^^ the above are common to all sprite types ^^^
+	//		(see player sprite for commentary)
 
 	color              uint8
 	size               uint8
@@ -149,6 +151,8 @@ func (bs *ballSprite) rsync(adjustment int) {
 }
 
 func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
+	bs.lastHmoveCt = hmoveCt
+
 	// check to see if there is more movement required for this sprite
 	if hmove {
 		bs.moreHMOVE = bs.moreHMOVE && compareHMOVE(hmoveCt, bs.hmove)
@@ -211,10 +215,10 @@ func (bs *ballSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *bs.hblank {
-		if *bs.hmoveLatch {
-			delay = 3
-		} else {
+		if !*bs.hmoveLatch || bs.lastHmoveCt >= 1 && bs.lastHmoveCt <= 15 {
 			delay = 2
+		} else {
+			delay = 3
 		}
 	}
 
@@ -315,6 +319,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	if bs.verticalDelay {
 		return bs.enabledDelay && px, bs.color
 	}
+
 	return bs.enabled && px, bs.color
 }
 
@@ -341,19 +346,15 @@ func (bs *ballSprite) setColor(value uint8) {
 }
 
 func (bs *ballSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
-	tiaDelay.Schedule(4, func() {
+	// see missile.setHmoveValue() commentary for delay value reasoning
+	tiaDelay.Schedule(2, func() {
 		bs.hmove = (value ^ 0x80) >> 4
 	}, "HMBL")
 }
 
 func (bs *ballSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// a delay of 1 is required when clearing hmove values. an accurate
-	// delay is essential because we need the clearing and the call to
-	// compareHMOVE() to mesh accurately. more often than not, it simply
-	// doesn't matter but some ROMs do rely on it. for instance, Fatal Run
-	// moves the ball very precisely to create a black bar on the left hand
-	// side of screen during the intro screen.
-	tiaDelay.Schedule(1, func() {
+	// see missile.setHmoveValue() commentary for delay value reasoning
+	tiaDelay.Schedule(2, func() {
 		bs.hmove = 0x08
 	}, "HMCLR")
 }

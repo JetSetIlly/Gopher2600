@@ -79,6 +79,13 @@ func (en *enclockifier) pause() {
 	}
 }
 
+func (en *enclockifier) aboutToEnd() bool {
+	if en.endEvent == nil {
+		return false
+	}
+	return en.endEvent.AboutToEnd()
+}
+
 func (en *enclockifier) start() {
 	en.enable = true
 
@@ -109,13 +116,13 @@ func (en *enclockifier) start() {
 		// "The second half is added if both D4 and D5 are set; a delayed copy
 		// of the Start signal (4 colour CLK wide again) is OR-ed into the
 		// Enable signal at the final OR gate."
-		copyOfStartSignal := func() {
+		triggerSecond := func() {
 			en.secondHalf = true
 			en.endEvent = en.delay.Schedule(4, func() {
 				endEvent()
 				en.secondHalf = false
 			}, "END (2nd half)")
 		}
-		en.endEvent = en.delay.Schedule(4, copyOfStartSignal, "END (1st half)")
+		en.endEvent = en.delay.Schedule(4, triggerSecond, "END (1st half)")
 	}
 }
