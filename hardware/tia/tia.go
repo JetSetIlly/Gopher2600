@@ -45,8 +45,12 @@ type TIA struct {
 	// - hmoveLatch indicates whether HMOVE has been triggered this scanline.
 	// it is reset when a new scanline begins
 	hmoveLatch bool
-	// - hmoveCt counts from 15 to 255. the value is used by the sprites to
-	// decide whether they should honour non-motck ticks
+
+	// - hmoveCt counts from 15 to 255. note that unlike how it is described in
+	// TIA_HW_Notes.txt, we always send the extra tick to the sprites on Phi1.
+	// however, we also send the hmoveCt value, whether or not the extra should
+	// be honoured is up to the sprite. (TIA_HW_Notes.txt says that hmoveCt is
+	// checked *before* sending the extra tick)
 	hmoveCt uint8
 
 	// TIA_HW_Notes.txt describes the hsync counter:
@@ -110,8 +114,8 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	return &tia
 }
 
-// AlterVideoState checks for side effects in the TIA sub-system
-func (tia *TIA) AlterVideoState(data memory.ChipData) {
+// UpdateTIA checks for side effects in the TIA sub-system
+func (tia *TIA) UpdateTIA(data memory.ChipData) {
 	switch data.Name {
 	case "VSYNC":
 		tia.sig.VSync = data.Value&0x02 == 0x02
@@ -188,27 +192,40 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 		// the scheduling for HMOVE is divided into two tranches, starting at
 		// the same time:
 		//
-		//	1. the setting of the hmove latch happens after 4 cycles and is
-		//	scheduled below. the latch is used to decide whether to use an
-		//	early or late HBLANK reset and must happen at this time.
-
-		tia.Delay.Schedule(4, func() {
-			tia.hmoveLatch = true
-		}, "HMOVE (latch)")
-
-		//  2. meanwhile, preparation of the sprites and the actual start of
-		//  the hmove process is scheduled depending upon which clockphase the
-		//  HMOVE was triggered.
-		//
 		// the TIA_HW_Notes.txt says this about HMOVE:
 		//
 		// "It takes 3 CLK after the HMOVE command is received to decode the
 		// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
 		// a further 4 CLK to set 'more movement required' latches."
-		//
-		// make of that what you will but the delay values below have been
-		// reached through observation of key test roms. the key to these delay
-		// values is, according to the TIA_HW_Notes.txt:
+
+		var delay int
+
+		// not forgetting that we count from zero, the following delay
+		// values range from 3 to 6, like the notes say
+		switch tia.pclk.Count() {
+		case 0:
+			delay = 5
+		case 1:
+			delay = 4
+		case 2:
+			delay = 4
+		case 3:
+			delay = 2
+		}
+
+		tia.Delay.Schedule(delay, func() {
+			tia.hmoveLatch = true
+		}, "HMOVE")
+
+		delay += 3
+
+		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.hmoveCt = 15
+			tia.hmoveEvent = nil
+		}, "HMOVE (mode movement latches)")
+
+		// from TIA_HW_Notes:
 		//
 		// "Also of note, the HMOVE latch used to extend the HBlank time is
 		// cleared when the HSync Counter wraps around. This fact is
@@ -220,31 +237,8 @@ func (tia *TIA) AlterVideoState(data memory.ChipData) {
 		// preventing the HMOVE comb effect."
 		//
 		// for the this "trick" to work correctly it's important that we get
-		// the delay correct for pclk.Count() == 1. once that value had been
-		// settled the other values fell into place.
-
-		var delay int
-
-		switch tia.pclk.Count() {
-		case 0:
-			delay = 8
-		case 1:
-			delay = 7
-		case 2:
-			delay = 7
-		case 3:
-			delay = 6
-		}
-
-		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-			tia.Video.PrepareSpritesForHMOVE()
-			tia.hmoveCt = 15
-			tia.hmoveEvent = nil
-		}, "HMOVE")
-
-		// (note that when comparing to the the stella emulator, the "queued
-		// write" reported by the debugger is the equivalent to the second
-		// scheduled event and not the latching event)
+		// the delay correct for pclk.Count() == 1 above. once that value had
+		// been settled the other values fell into place.
 
 		return
 	}
@@ -311,8 +305,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// make alterations to video state and playfield
 	if readMemory {
-		tia.AlterVideoState(memoryData)
-		tia.Video.AlterPlayfield(tia.Delay, memoryData)
+		tia.UpdateTIA(memoryData)
+		tia.Video.UpdatePlayfield(tia.Delay, memoryData)
 	}
 
 	// tick phase clock
@@ -439,37 +433,21 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// Keystone Kapers (this is because the ball is reset on the very last
 	// pixel and before HBLANK etc. are in the state they need to be)
 	if readMemory {
-		tia.Video.AlterStateWithDelay(tia.Delay, memoryData)
-
-		// AlterStateImmediate() could feasibly and safely occur after pixel
-		// resolution or even before HSYNC has been ticked. but in the absence
-		// of any firm reason to the contrary we'll call it here.
-		tia.Video.AlterStateImmediate(memoryData)
+		tia.Video.UpdateSpritePositioning(memoryData)
+		tia.Video.UpdateColor(memoryData)
 	}
 
-	// hmoveck is the counterpart to the motck (which is associated with the
-	// hblank flag). when hmove has been latched then (from TIA_HW_Notes.txt):
-	//
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
-	//
-	// contrary to what the document says the additional tick occurs on the H@2
-	// signal, at least my interpretation of it. this requires further
-	// meditation.
-	//
-	// also note that hmoveck is not dependent on hmoveLatch being set. this
-	// means that the sprite will adjust itself on a hmoveck if its moreHMOVE
-	// flag is set
-	hmoveck := tia.pclk.Phi2()
+	isHmove := tia.pclk.Phi1()
 
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(!tia.hblank, hmoveck, tia.hmoveCt)
+	tia.Video.Tick(!tia.hblank, isHmove, tia.hmoveCt)
 
-	// if this was tick where we sent a hmove clock then we need to also
-	// update the HMOVE counter.
-	if hmoveck {
+	// update hmove counter value
+	if isHmove {
 		if tia.hmoveCt != 0xff {
 			tia.hmoveCt--
 		}
@@ -487,10 +465,13 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		tia.sig.Pixel = television.ColorSignal(pixelColor)
 	}
 
-	// alter state of audio subsystem and make final alteration video
 	if readMemory {
-		tia.Video.AlterStateAfterPixel(memoryData)
-		tia.Audio.AlterState(memoryData)
+		tia.Video.UpdateSpriteHMOVE(tia.Delay, memoryData)
+		tia.Video.UpdateSpriteVariations(memoryData)
+		tia.Video.UpdateSpritePixels(memoryData)
+
+		// update audio signal
+		tia.Audio.UpdateOutput(memoryData)
 	}
 
 	// copy audio to television signal

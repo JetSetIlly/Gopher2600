@@ -43,10 +43,9 @@ type ballSprite struct {
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 
-	// the extraTick boolean notes whether the last tick was as a result of a
-	// HMOVE tick. see the pixel() function in the missile sprite for a
-	// detailed explanation
-	extraTick bool
+	// note whether the last tick was as a result of a HMOVE tick. see the
+	// pixel() function in the missile sprite for a detailed explanation
+	lastTickFromHmove bool
 }
 
 func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *ballSprite {
@@ -140,49 +139,52 @@ func (bs *ballSprite) rsync(adjustment int) {
 	}
 }
 
-func (bs *ballSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
-	bs.lastHmoveCt = hmoveCt
-
+func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
-	if hmove {
+	if isHmove {
 		bs.moreHMOVE = bs.moreHMOVE && compareHMOVE(hmoveCt, bs.hmove)
 	}
 
-	if (hmove && bs.moreHMOVE) || motck {
-		// update hmoved pixel value
-		if !motck {
-			bs.hmovedPixel--
+	bs.lastHmoveCt = hmoveCt
 
-			// adjust for screen boundary
-			if bs.hmovedPixel < 0 {
-				bs.hmovedPixel += television.ClocksPerVisible
-			}
-		}
-
-		// note whether this text is additional hmove tick. see pixel()
-		// function in the missile sprite below for explanation
-		bs.extraTick = hmove && bs.moreHMOVE
-
-		bs.pclk.Tick()
-
-		if bs.pclk.Phi2() {
-			bs.position.Tick()
-
-			switch bs.position.Count {
-			case 39:
-				const startDelay = 4
-				bs.startDrawingEvent = bs.Delay.Schedule(startDelay, func() {
-					bs.enclockifier.start()
-					bs.startDrawingEvent = nil
-				}, "START")
-			case 40:
-				bs.position.Reset()
-			}
-		}
-
-		// tick future events that are goverened by the sprite
-		bs.Delay.Tick()
+	// early return if nothing to do
+	if !(isHmove && bs.moreHMOVE) && !visible {
+		return
 	}
+
+	// note whether this text is additional hmove tick. see pixel() function
+	// in missile sprite for details
+	bs.lastTickFromHmove = isHmove && bs.moreHMOVE
+
+	// update hmoved pixel value
+	if !visible {
+		bs.hmovedPixel--
+
+		// adjust for screen boundary
+		if bs.hmovedPixel < 0 {
+			bs.hmovedPixel += television.ClocksPerVisible
+		}
+	}
+
+	bs.pclk.Tick()
+
+	if bs.pclk.Phi2() {
+		bs.position.Tick()
+
+		switch bs.position.Count {
+		case 39:
+			const startDelay = 4
+			bs.startDrawingEvent = bs.Delay.Schedule(startDelay, func() {
+				bs.enclockifier.start()
+				bs.startDrawingEvent = nil
+			}, "START")
+		case 40:
+			bs.position.Reset()
+		}
+	}
+
+	// tick future events that are goverened by the sprite
+	bs.Delay.Tick()
 }
 
 func (bs *ballSprite) prepareForHMOVE() {
@@ -205,7 +207,7 @@ func (bs *ballSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *bs.hblank {
-		if !*bs.hmoveLatch || bs.lastHmoveCt >= 1 && bs.lastHmoveCt <= 15 {
+		if !*bs.hmoveLatch {
 			delay = 2
 		} else {
 			delay = 3
@@ -300,7 +302,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// the ball sprite pixel is drawn under specific conditions. see pixel()
 	// function in the missile sprite for a detail explanation.
 	px := bs.enclockifier.enable ||
-		(bs.extraTick && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+		(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
 	// I'm not sure if the above condition applies to both branches below
 	// (verticalDelay true/false) but I don't see why it shouldn't

@@ -92,14 +92,15 @@ func (vd *Video) RSYNC(adjustment int) {
 	vd.Ball.rsync(adjustment)
 }
 
-// Tick moves all video elements forward one video cycle and is only
-// called when motion clock is active
-func (vd *Video) Tick(motck bool, hmove bool, hmoveCt uint8) {
-	vd.Player0.tick(motck, hmove, hmoveCt)
-	vd.Player1.tick(motck, hmove, hmoveCt)
-	vd.Missile0.tick(motck, hmove, hmoveCt)
-	vd.Missile1.tick(motck, hmove, hmoveCt)
-	vd.Ball.tick(motck, hmove, hmoveCt)
+// Tick moves all video elements forward one video cycle. this is the
+// conceptual equivalent of the MOTCK line. ticks when HBLANK is off and hmove
+// stuffing ticks are all resolved with the Tick function
+func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
+	vd.Player0.tick(visible, hmove, hmoveCt)
+	vd.Player1.tick(visible, hmove, hmoveCt)
+	vd.Missile0.tick(visible, hmove, hmoveCt)
+	vd.Missile1.tick(visible, hmove, hmoveCt)
+	vd.Ball.tick(visible, hmove, hmoveCt)
 }
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
@@ -299,8 +300,9 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	return col, dcol
 }
 
-// AlterPlayfield checks the TIA memory for new playfield data
-func (vd *Video) AlterPlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
+// UpdatePlayfield checks the TIA memory for new playfield data. note that
+// CTRLPF is serviced in UpdateSpriteVariations()
+func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
 	switch data.Name {
 	case "PF0":
 		vd.Playfield.setData(tiaDelay, 0, data.Value)
@@ -311,9 +313,9 @@ func (vd *Video) AlterPlayfield(tiaDelay future.Scheduler, data memory.ChipData)
 	}
 }
 
-// AlterStateWithDelay checks the TIA memory for changes to state that
+// UpdateSpriteHMOVE checks the TIA memory for changes to state that
 // require a short pause, using the TIA scheduler
-func (vd *Video) AlterStateWithDelay(tiaDelay future.Scheduler, data memory.ChipData) {
+func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipData) {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
@@ -344,7 +346,13 @@ func (vd *Video) AlterStateWithDelay(tiaDelay future.Scheduler, data memory.Chip
 		vd.Missile0.clearHmoveValue(tiaDelay)
 		vd.Missile1.clearHmoveValue(tiaDelay)
 		vd.Ball.clearHmoveValue(tiaDelay)
+	}
+}
 
+// UpdateSpritePositioning checks the TIA memory for strobing of reset
+// registers
+func (vd *Video) UpdateSpritePositioning(data memory.ChipData) {
+	switch data.Name {
 	// the reset registers *must* be serviced after HSYNC has been ticked.
 	// resets are resolved after a short delay, governed by the sprite itself
 	case "RESP0":
@@ -360,8 +368,8 @@ func (vd *Video) AlterStateWithDelay(tiaDelay future.Scheduler, data memory.Chip
 	}
 }
 
-// AlterStateImmediate checks the TIA memory for changes to sprite attributes that require no delay
-func (vd *Video) AlterStateImmediate(data memory.ChipData) {
+// UpdateColor checks the TIA memory for changes to color registers
+func (vd *Video) UpdateColor(data memory.ChipData) {
 	switch data.Name {
 	case "COLUP0":
 		vd.Player0.setColor(data.Value & 0xfe)
@@ -374,6 +382,34 @@ func (vd *Video) AlterStateImmediate(data memory.ChipData) {
 	case "COLUPF":
 		vd.Playfield.setColor(data.Value & 0xfe)
 		vd.Ball.setColor(data.Value & 0xfe)
+	}
+}
+
+// UpdateSpritePixels checks the TIA memory for attribute changes that *must*
+// occur after a call to Pixel()
+func (vd *Video) UpdateSpritePixels(data memory.ChipData) {
+	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
+	// alter its state before a call to Pixel().  if we write do alter state
+	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
+	switch data.Name {
+	case "GRP0":
+		vd.Player0.setGfxData(data.Value)
+	case "GRP1":
+		vd.Player1.setGfxData(data.Value)
+	case "ENAM0":
+		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
+	case "ENAM1":
+		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
+	case "ENABL":
+		vd.Ball.setEnable(data.Value&0x02 == 0x02)
+	}
+}
+
+// UpdateSpriteVariations checks the TIA memory for writes to registers that
+// affect how sprite pixels are output. note that CTRLPF is serviced here
+// because it affects the ball sprite.
+func (vd *Video) UpdateSpriteVariations(data memory.ChipData) {
+	switch data.Name {
 	case "CTRLPF":
 		vd.Ball.setSize((data.Value & 0x30) >> 4)
 		vd.Playfield.setControlBits(data.Value)
@@ -399,25 +435,5 @@ func (vd *Video) AlterStateImmediate(data memory.ChipData) {
 		vd.Missile1.setNUSIZ(data.Value)
 	case "CXCLR":
 		vd.collisions.clear()
-	}
-}
-
-// AlterStateAfterPixel checks the TIA memory for attribute changes that *must*
-// occur after a call to Pixel()
-func (vd *Video) AlterStateAfterPixel(data memory.ChipData) {
-	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
-	// alter its state before a call to Pixel().  if we write do alter state
-	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
-	switch data.Name {
-	case "GRP0":
-		vd.Player0.setGfxData(data.Value)
-	case "GRP1":
-		vd.Player1.setGfxData(data.Value)
-	case "ENAM0":
-		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
-	case "ENAM1":
-		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
-	case "ENABL":
-		vd.Ball.setEnable(data.Value&0x02 == 0x02)
 	}
 }

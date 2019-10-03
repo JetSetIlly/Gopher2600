@@ -18,9 +18,9 @@ func NewAudio() *Audio {
 	return au
 }
 
-// AlterState checks the TIA memory for changes to registers that are
+// UpdateOutput checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
-func (au *Audio) AlterState(data memory.ChipData) {
+func (au *Audio) UpdateOutput(data memory.ChipData) {
 	switch data.Name {
 	case "AUDC0":
 		au.Control0 = data.Value & 0x0f

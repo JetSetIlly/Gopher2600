@@ -47,9 +47,9 @@ type missileSprite struct {
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 
-	// extraTick notes whether the last tick was as a result of a HMOVE tick.
-	// see the pixel() function below for a fuller explanation.
-	extraTick bool
+	// note whether the last tick was as a result of a HMOVE tick. see the
+	// pixel() function below for a fuller explanation.
+	lastTickFromHmove bool
 }
 
 func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *missileSprite {
@@ -164,13 +164,13 @@ func (ms *missileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
-	ms.lastHmoveCt = hmoveCt
-
+func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
-	if hmove {
+	if isHmove {
 		ms.moreHMOVE = ms.moreHMOVE && compareHMOVE(hmoveCt, ms.hmove)
 	}
+
+	ms.lastHmoveCt = hmoveCt
 
 	// reset missile to player position. from TIA_HW_Notes.txt:
 	//
@@ -189,85 +189,88 @@ func (ms *missileSprite) tick(motck bool, hmove bool, hmoveCt uint8) {
 		ms.pclk.Reset()
 	}
 
-	if (hmove && ms.moreHMOVE) || motck {
-		// update hmoved pixel value
-		if !motck {
-			ms.hmovedPixel--
+	// early return if nothing to do
+	if !(isHmove && ms.moreHMOVE) && !visible {
+		return
+	}
 
-			// adjust for screen boundary
-			if ms.hmovedPixel < 0 {
-				ms.hmovedPixel += television.ClocksPerVisible
-			}
+	// note whether this text is additional hmove tick. see pixel() function
+	// below for explanation
+	ms.lastTickFromHmove = isHmove && ms.moreHMOVE
+
+	// update hmoved pixel value
+	if !visible {
+		ms.hmovedPixel--
+
+		// adjust for screen boundary
+		if ms.hmovedPixel < 0 {
+			ms.hmovedPixel += television.ClocksPerVisible
+		}
+	}
+
+	ms.pclk.Tick()
+
+	if ms.pclk.Phi2() {
+		ms.position.Tick()
+
+		// start delay is always 4 cycles
+		const startDelay = 4
+
+		// which copy of the sprite will we be drawing
+		cpy := 0
+
+		startDrawingEvent := func() {
+			ms.enclockifier.start()
+			ms.enclockifier.cpy = cpy
+			ms.startDrawingEvent = nil
 		}
 
-		// note whether this text is additional hmove tick. see pixel()
-		// function below for explanation
-		ms.extraTick = hmove && ms.moreHMOVE
+		// start drawing if there is no reset or it has just started AND
+		// there wasn't a reset event ongoing when the current event
+		// started
+		startCondition := ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted()
 
-		ms.pclk.Tick()
-
-		if ms.pclk.Phi2() {
-			ms.position.Tick()
-
-			// start delay is always 4 cycles
-			const startDelay = 4
-
-			// which copy of the sprite will we be drawing
-			cpy := 0
-
-			startDrawingEvent := func() {
-				ms.enclockifier.start()
-				ms.enclockifier.cpy = cpy
-				ms.startDrawingEvent = nil
+		switch ms.position.Count {
+		case 3:
+			if ms.copies == 0x01 || ms.copies == 0x03 {
+				if startCondition {
+					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					cpy = 1
+				}
 			}
-
-			// start drawing if there is no reset or it has just started AND
-			// there wasn't a reset event ongoing when the current event
-			// started
-			startCondition := ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted()
-
-			switch ms.position.Count {
-			case 3:
-				if ms.copies == 0x01 || ms.copies == 0x03 {
-					if startCondition {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+		case 7:
+			if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
+				if startCondition {
+					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					if ms.copies == 0x03 {
+						cpy = 2
+					} else {
 						cpy = 1
 					}
 				}
-			case 7:
-				if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
-					if startCondition {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
-						if ms.copies == 0x03 {
-							cpy = 2
-						} else {
-							cpy = 1
-						}
-					}
-				}
-			case 15:
-				if ms.copies == 0x04 || ms.copies == 0x06 {
-					if startCondition {
-						ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
-						if ms.copies == 0x06 {
-							cpy = 2
-						} else {
-							cpy = 1
-						}
-					}
-				}
-			case 39:
+			}
+		case 15:
+			if ms.copies == 0x04 || ms.copies == 0x06 {
 				if startCondition {
 					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					if ms.copies == 0x06 {
+						cpy = 2
+					} else {
+						cpy = 1
+					}
 				}
-			case 40:
-				ms.position.Reset()
 			}
+		case 39:
+			if startCondition {
+				ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+			}
+		case 40:
+			ms.position.Reset()
 		}
-
-		// tick future events that are goverened by the sprite
-		ms.Delay.Tick()
 	}
+
+	// tick future events that are goverened by the sprite
+	ms.Delay.Tick()
 }
 
 func (ms *missileSprite) prepareForHMOVE() {
@@ -290,7 +293,7 @@ func (ms *missileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.hblank {
-		if !*ms.hmoveLatch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
+		if !*ms.hmoveLatch {
 			delay = 2
 		} else {
 			delay = 3
@@ -375,7 +378,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// the condition is fully explained in the AtariAge post "Cosmic Ark Star
 	// Field Revisited" by crispy. as suggested by the post title this is the
 	// key to implementing the starfield in the Cosmic Ark ROM
-	crispy := ms.extraTick && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
+	crispy := ms.lastTickFromHmove && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
 
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.resetToPlayer && (ms.enclockifier.enable || crispy)
