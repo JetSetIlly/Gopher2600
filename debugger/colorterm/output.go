@@ -21,7 +21,7 @@ func (ct *ColorTerminal) UserPrint(style console.Style, s string, a ...interface
 		ct.Print(ansi.PenColor["yellow"])
 	case console.StyleVideoStep:
 		ct.Print(ansi.DimPens["yellow"])
-	case console.StyleMachineInfo:
+	case console.StyleInstrument:
 		ct.Print(ansi.PenColor["cyan"])
 	case console.StyleEmulatorInfo:
 		ct.Print(ansi.PenColor["blue"])

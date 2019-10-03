@@ -9,6 +9,7 @@ import (
 	"gopher2600/hardware/memory"
 	"gopher2600/performance/limiter"
 	"gopher2600/setup"
+	"gopher2600/television"
 	"gopher2600/television/renderers"
 	"io"
 	"os"
@@ -125,12 +126,17 @@ func (reg FrameRegression) CleanUp() error {
 func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
-	tv, err := renderers.NewDigestTV(reg.TVtype, nil)
+	stv, err := television.NewStellaTelevision(reg.TVtype)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	dtv, err := renderers.NewDigestTV(reg.TVtype, stv)
+	if err != nil {
+		return false, "", errors.New(errors.RegressionFrameError, err)
+	}
+
+	vcs, err := hardware.NewVCS(dtv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
@@ -153,7 +159,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	// add the starting state of the tv
 	if reg.State {
-		state = append(state, vcs.TV.MachineInfoTerse())
+		state = append(state, stv.String())
 	}
 
 	// run emulation
@@ -164,7 +170,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 		// store tv state at every step
 		if reg.State {
-			state = append(state, vcs.TV.MachineInfoTerse())
+			state = append(state, stv.String())
 		}
 
 		return true, nil
@@ -175,7 +181,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 
 	if newRegression {
-		reg.screenDigest = tv.String()
+		reg.screenDigest = dtv.String()
 
 		if reg.State {
 			// create a unique filename
@@ -236,7 +242,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			}
 
 			if s != state[i] {
-				failm := fmt.Sprintf("state mismatch line %d: expected %s", i, s)
+				failm := fmt.Sprintf("state mismatch line %d: expected %s (%s)", i, s, state[i])
 				return false, failm, nil
 			}
 		}
@@ -250,7 +256,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	}
 
-	if tv.String() != reg.screenDigest {
+	if dtv.String() != reg.screenDigest {
 		return false, "screen digest mismatch", nil
 	}
 

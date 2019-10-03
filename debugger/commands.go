@@ -106,7 +106,7 @@ var commandTemplate = []string{
 	cmdGranularity + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA + " (DELAY|DELAYS)",
+	cmdTIA + " (DELAYS)",
 	cmdTV + " (SPEC)",
 	cmdTerse,
 	cmdTrap + " [%S] {%S}",
@@ -595,7 +595,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdMemMap:
-		dbg.print(console.StyleMachineInfo, "%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(console.StyleInstrument, "%v", dbg.vcs.Mem.MemoryMap())
 
 	case cmdMetaVideo:
 		option, _ := tokens.Get()
@@ -680,19 +680,10 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		dbg.print(console.StyleFeedback, "granularity: %s", mode)
 
 	case cmdTerse:
-		dbg.machineInfoVerbose = false
-		dbg.print(console.StyleFeedback, "verbosity: terse")
 
 	case cmdVerbose:
-		dbg.machineInfoVerbose = true
-		dbg.print(console.StyleFeedback, "verbosity: verbose")
 
 	case cmdVerbosity:
-		if dbg.machineInfoVerbose {
-			dbg.print(console.StyleFeedback, "verbosity: verbose")
-		} else {
-			dbg.print(console.StyleFeedback, "verbosity: terse")
-		}
 
 	case cmdDebuggerState:
 		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT; ONSTEP", false, false)
@@ -717,7 +708,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				}
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.Mem.Cart)
+			dbg.printInstrument(dbg.vcs.Mem.Cart)
 		}
 
 	case cmdCPU:
@@ -770,7 +761,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.CPU)
+			dbg.printInstrument(dbg.vcs.CPU)
 		}
 
 	case cmdPeek:
@@ -783,7 +774,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			if err != nil {
 				dbg.print(console.StyleError, "%s", err)
 			} else {
-				dbg.print(console.StyleMachineInfo, ai.String())
+				dbg.print(console.StyleInstrument, ai.String())
 			}
 
 			// loop through all addresses
@@ -808,7 +799,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if err != nil {
 			dbg.print(console.StyleError, "%s", err)
 		} else {
-			dbg.print(console.StyleMachineInfo, ai.String())
+			dbg.print(console.StyleInstrument, ai.String())
 		}
 
 	case cmdHexLoad:
@@ -837,7 +828,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			if err != nil {
 				dbg.print(console.StyleError, "%s", err)
 			} else {
-				dbg.print(console.StyleMachineInfo, ai.String())
+				dbg.print(console.StyleInstrument, ai.String())
 			}
 
 			// loop through all values
@@ -854,14 +845,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				cartRAM := dbg.vcs.Mem.Cart.RAM()
 				if len(cartRAM) > 0 {
 					// !!TODO: better presentation of cartridge RAM
-					dbg.print(console.StyleMachineInfo, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
+					dbg.print(console.StyleInstrument, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
 				} else {
 					dbg.print(console.StyleFeedback, "cartridge does not contain any additional RAM")
 				}
 
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.Mem.PIA)
+			dbg.printInstrument(dbg.vcs.Mem.PIA)
 		}
 
 	case cmdRIOT:
@@ -870,42 +861,30 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "TIMER":
-				dbg.printMachineInfo(dbg.vcs.RIOT.Timer)
+				dbg.printInstrument(dbg.vcs.RIOT.Timer)
 			default:
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.RIOT)
+			dbg.printInstrument(dbg.vcs.RIOT)
 		}
 
 	case cmdTIA:
 		option, present := tokens.Get()
 		if present {
-			// which machine info printing function we use depends on the
-			// precise argument provided
-			printFunc := dbg.printMachineInfoVerbose
-
 			option = strings.ToUpper(option)
 			switch option {
-			case "DELAY":
-				printFunc = dbg.printMachineInfo
-				fallthrough
-
 			case "DELAYS":
-				printFunc(dbg.vcs.TIA.Delay)
-
 				// for convience asking for TIA delays also prints delays for
 				// the sprites
-				printFunc(dbg.vcs.TIA.Video.Player0.Delay)
-				printFunc(dbg.vcs.TIA.Video.Player1.Delay)
-				printFunc(dbg.vcs.TIA.Video.Missile0.Delay)
-				printFunc(dbg.vcs.TIA.Video.Missile1.Delay)
-				printFunc(dbg.vcs.TIA.Video.Ball.Delay)
-			default:
-				// already caught by command line ValidateTokens()
+				dbg.printInstrument(dbg.vcs.TIA.Video.Player0.Delay)
+				dbg.printInstrument(dbg.vcs.TIA.Video.Player1.Delay)
+				dbg.printInstrument(dbg.vcs.TIA.Video.Missile0.Delay)
+				dbg.printInstrument(dbg.vcs.TIA.Video.Missile1.Delay)
+				dbg.printInstrument(dbg.vcs.TIA.Video.Ball.Delay)
 			}
 		} else {
-			dbg.printMachineInfo(dbg.vcs.TIA)
+			dbg.printInstrument(dbg.vcs.TIA)
 		}
 
 	case cmdTV:
@@ -914,12 +893,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				dbg.print(console.StyleMachineInfo, dbg.gui.GetSpec().ID)
+				dbg.print(console.StyleInstrument, dbg.gui.GetSpec().ID)
 			default:
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printMachineInfo(dbg.gui)
+			dbg.printInstrument(dbg.gui)
 		}
 
 	case cmdPanel:
@@ -952,7 +931,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				dbg.vcs.Panel.Handle(peripherals.PanelSetBlackAndWhite)
 			}
 		}
-		dbg.printMachineInfo(dbg.vcs.Panel)
+		dbg.printInstrument(dbg.vcs.Panel)
 
 	// information about the machine (sprites, playfield)
 	case cmdPlayer:
@@ -968,50 +947,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			tokens.Unget()
 		}
 
-		if dbg.machineInfoVerbose {
-			// arrange the two player's information side by side in order to
-			// save space and to allow for easy comparison
+		switch plyr {
+		case 0:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Player0)
 
-			switch plyr {
-			case 0:
-				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(p0, "\n"))
+		case 1:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Player1)
 
-			case 1:
-				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(p1, "\n"))
-
-			default:
-				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player0), "\n")
-				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Player1), "\n")
-
-				ml := 0
-				for i := range p0 {
-					if len(p0[i]) > ml {
-						ml = len(p0[i])
-					}
-				}
-
-				s := strings.Builder{}
-				for i := range p0 {
-					if p0[i] != "" {
-						s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
-					}
-				}
-				dbg.print(console.StyleMachineInfo, s.String())
-			}
-		} else {
-			switch plyr {
-			case 0:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
-
-			case 1:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
-
-			default:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player0)
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Player1)
-			}
+		default:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Player0)
+			dbg.printInstrument(dbg.vcs.TIA.Video.Player1)
 		}
 
 	case cmdMissile:
@@ -1027,57 +972,23 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			tokens.Unget()
 		}
 
-		if dbg.machineInfoVerbose {
-			// arrange the two missile'sinformation side by side in order to
-			// save space and to allow for easy comparison
+		switch miss {
+		case 0:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Missile0)
 
-			switch miss {
-			case 0:
-				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(p0, "\n"))
+		case 1:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Missile1)
 
-			case 1:
-				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
-				dbg.print(console.StyleMachineInfo, strings.Join(p1, "\n"))
-
-			default:
-				p0 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile0), "\n")
-				p1 := strings.Split(dbg.getMachineInfo(dbg.vcs.TIA.Video.Missile1), "\n")
-
-				ml := 0
-				for i := range p0 {
-					if len(p0[i]) > ml {
-						ml = len(p0[i])
-					}
-				}
-
-				s := strings.Builder{}
-				for i := range p0 {
-					if p0[i] != "" {
-						s.WriteString(fmt.Sprintf("%s %s | %s\n", p0[i], strings.Repeat(" ", ml-len(p0[i])), p1[i]))
-					}
-				}
-				dbg.print(console.StyleMachineInfo, s.String())
-			}
-		} else {
-			switch miss {
-			case 0:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
-
-			case 1:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
-
-			default:
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile0)
-				dbg.printMachineInfo(dbg.vcs.TIA.Video.Missile1)
-			}
+		default:
+			dbg.printInstrument(dbg.vcs.TIA.Video.Missile0)
+			dbg.printInstrument(dbg.vcs.TIA.Video.Missile1)
 		}
 
 	case cmdBall:
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Ball)
+		dbg.printInstrument(dbg.vcs.TIA.Video.Ball)
 
 	case cmdPlayfield:
-		dbg.printMachineInfo(dbg.vcs.TIA.Video.Playfield)
+		dbg.printInstrument(dbg.vcs.TIA.Video.Playfield)
 
 	case cmdDisplay:
 		var err error

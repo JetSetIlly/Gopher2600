@@ -93,14 +93,8 @@ func NewCartridge() *Cartridge {
 	return cart
 }
 
-// MachineInfoTerse returns the cartridge information in terse format
-func (cart Cartridge) MachineInfoTerse() string {
+func (cart Cartridge) String() string {
 	return fmt.Sprintf("%s [%s]", cart.Filename, cart.mapper)
-}
-
-// MachineInfo returns the cartridge information in verbose format
-func (cart Cartridge) MachineInfo() string {
-	return cart.MachineInfoTerse()
 }
 
 // Label is an implementation of Area.Label

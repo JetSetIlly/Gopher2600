@@ -66,16 +66,6 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 	return &bs
 }
 
-// MachineInfo returns the sprite information in terse format
-func (bs ballSprite) MachineInfoTerse() string {
-	return bs.String()
-}
-
-// MachineInfo returns the sprite information in verbose format
-func (bs ballSprite) MachineInfo() string {
-	return bs.String()
-}
-
 func (bs ballSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -200,7 +190,7 @@ func (bs *ballSprite) prepareForHMOVE() {
 
 	if *bs.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
-		// long as moreHMOVE is true. the MachineInfo() function this value is
+		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
 		bs.hmovedPixel += 8
 

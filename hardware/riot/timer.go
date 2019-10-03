@@ -62,8 +62,7 @@ func newTimer(mem memory.ChipBus) *timer {
 	return tmr
 }
 
-// MachineInfoTerse returns the RIOT information in terse format
-func (tmr timer) MachineInfoTerse() string {
+func (tmr timer) String() string {
 	return fmt.Sprintf("INTIM=%#02x elpsd=%02d remn=%#04x intv=%d (%s)",
 		tmr.value,
 		tmr.cyclesElapsed,
@@ -71,11 +70,6 @@ func (tmr timer) MachineInfoTerse() string {
 		tmr.interval,
 		tmr.register,
 	)
-}
-
-// MachineInfo returns the RIOT information in verbose format
-func (tmr timer) MachineInfo() string {
-	return tmr.MachineInfoTerse()
 }
 
 func (tmr *timer) serviceMemory(data memory.ChipData) bool {

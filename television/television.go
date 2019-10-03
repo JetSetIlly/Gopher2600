@@ -53,8 +53,7 @@ type SignalAttributes struct {
 // Television defines the operations that can be performed on television
 // implementations
 type Television interface {
-	MachineInfoTerse() string
-	MachineInfo() string
+	String() string
 
 	AddRenderer(Renderer)
 	AddMixer(AudioMixer)

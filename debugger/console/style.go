@@ -12,7 +12,7 @@ const (
 	StyleVideoStep
 
 	// information about the machine
-	StyleMachineInfo
+	StyleInstrument
 
 	// information about the emulator, rather than the emulated machine
 	StyleEmulatorInfo

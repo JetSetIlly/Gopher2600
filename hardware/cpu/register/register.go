@@ -64,19 +64,9 @@ func NewRegister(value interface{}, size uint, label string, shortLabel string) 
 	return r
 }
 
-// MachineInfoTerse returns the register information in terse format
-func (r Register) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
-}
-
-// MachineInfo returns the register information in verbose format
-func (r Register) MachineInfo() string {
-	return fmt.Sprintf("%s: %d [%s] %s", r.label, r.value, r.ToHex(), r.ToBits())
-}
-
-// map String to MachineInfo
 func (r Register) String() string {
-	return r.MachineInfo()
+	return fmt.Sprintf("%s=%s", r.shortLabel, r.ToHex())
+	//return fmt.Sprintf("%s: %d [%s] %s", r.label, r.value, r.ToHex(), r.ToBits())
 }
 
 // Size returns the number of bits in register

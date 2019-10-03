@@ -89,9 +89,6 @@ type Debugger struct {
 	commandOnStep       string
 	commandOnStepStored string
 
-	// machineInfoVerbose controls the verbosity of commands that echo machine state
-	machineInfoVerbose bool
-
 	// whether to display the triggering of a known CPU bug. these are bugs
 	// that are known about in the emulated hardware but which might catch an
 	// unwary programmer by surprise
@@ -294,7 +291,7 @@ func (dbg *Debugger) videoCycle() error {
 
 		// display information about any CPU bugs that may have been triggered
 		if dbg.reportCPUBugs && dbg.vcs.CPU.LastResult.Bug != "" {
-			dbg.print(console.StyleMachineInfo, dbg.vcs.CPU.LastResult.Bug)
+			dbg.print(console.StyleInstrument, dbg.vcs.CPU.LastResult.Bug)
 		}
 	}
 

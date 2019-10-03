@@ -1,7 +1,6 @@
 package video
 
 import (
-	"fmt"
 	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
@@ -31,7 +30,7 @@ type playfield struct {
 
 	// the data field is a combination of three segments: pf0, pf1 and pf2.
 	// these represent the three registers in VCS memory but we don't actually
-	// use then, except in the MachineInfo() functions
+	// use then, except in the String() functions
 	pf0 uint8
 	pf1 uint8
 	pf2 uint8
@@ -58,7 +57,7 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 	return &pf
 }
 
-func (pf playfield) MachineInfoTerse() string {
+func (pf playfield) String() string {
 	s := strings.Builder{}
 	s.WriteString("playfield: ")
 
@@ -90,51 +89,6 @@ func (pf playfield) MachineInfoTerse() string {
 	if pf.priority {
 		s.WriteString(" priority")
 	}
-
-	return s.String()
-}
-
-func (pf playfield) MachineInfo() string {
-	s := strings.Builder{}
-	s.WriteString("playfield: ")
-
-	// prepare a line to point to the current playfield bit; or a suitable
-	// message to indcate no playfield output
-	idxPointer := ""
-	switch pf.region {
-	case regionOffScreen:
-		idxPointer = "no playfield during hblank period"
-	case regionLeft:
-		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx))
-	case regionRight:
-		idxPointer = fmt.Sprintf("%s^", strings.Repeat(" ", len(s.String())+pf.idx+len(pf.data)))
-	}
-
-	// playfield bits - first half
-	for i := 0; i < len(pf.data); i++ {
-		if pf.data[i] {
-			s.WriteString("1")
-		} else {
-			s.WriteString("0")
-		}
-	}
-	// playfield bits - second half
-	for i := len(pf.data) - 1; i >= 0; i-- {
-		if pf.data[i] {
-			s.WriteString("1")
-		} else {
-			s.WriteString("0")
-		}
-	}
-
-	// output the pointer line we prepared earlier
-	s.WriteString(fmt.Sprintf("\n%s", idxPointer))
-
-	// sundry playfield information
-	s.WriteString(fmt.Sprintf("\n   pf0: %08b\n   pf1: %08b\n   pf2: %08b", pf.pf0, pf.pf1, pf.pf2))
-	s.WriteString(fmt.Sprintf("\n   fg color: %d", pf.foregroundColor))
-	s.WriteString(fmt.Sprintf("\n   bg color: %d", pf.backgroundColor))
-	s.WriteString(fmt.Sprintf("\n   reflected: %v\n   scoremode: %v\n   priority %v\n", pf.reflected, pf.scoremode, pf.priority))
 
 	return s.String()
 }

@@ -74,17 +74,6 @@ type TIA struct {
 	hmoveEvent *future.Event
 }
 
-// MachineInfoTerse returns the TIA information in terse format
-func (tia TIA) MachineInfoTerse() string {
-	return tia.String()
-}
-
-// MachineInfo returns the TIA information in verbose format
-func (tia TIA) MachineInfo() string {
-	return tia.String()
-}
-
-// map String to MachineInfo
 func (tia TIA) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s %s %d %04.01f",

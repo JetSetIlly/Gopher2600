@@ -126,28 +126,6 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	return &ps
 }
 
-// MachineInfo returns the sprite information in terse format
-func (ps playerSprite) MachineInfoTerse() string {
-	return ps.String()
-}
-
-// MachineInfo returns the sprite information in verbose format
-func (ps playerSprite) MachineInfo() string {
-	s := strings.Builder{}
-	s.WriteString(ps.String())
-	s.WriteString("\n")
-	s.WriteString(fmt.Sprintf("gfx new: %08b", ps.gfxDataNew))
-	if !ps.verticalDelay {
-		s.WriteString(" *")
-	}
-	s.WriteString("\n")
-	s.WriteString(fmt.Sprintf("gfx old: %08b", ps.gfxDataOld))
-	if ps.verticalDelay {
-		s.WriteString(" *")
-	}
-	return s.String()
-}
-
 func (ps playerSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -236,6 +214,17 @@ func (ps playerSprite) String() string {
 		}
 		s.WriteString(" ref")
 	}
+
+	// 	s.WriteString("\n")
+	// 	s.WriteString(fmt.Sprintf("gfx new: %08b", ps.gfxDataNew))
+	// 	if !ps.verticalDelay {
+	// 		s.WriteString(" *")
+	// 	}
+	// 	s.WriteString("\n")
+	// 	s.WriteString(fmt.Sprintf("gfx old: %08b", ps.gfxDataOld))
+	// 	if ps.verticalDelay {
+	// 		s.WriteString(" *")
+	// 	}
 
 	return s.String()
 }
@@ -392,7 +381,7 @@ func (ps *playerSprite) prepareForHMOVE() {
 
 	if *ps.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
-		// long as moreHMOVE is true. the MachineInfo() function this value is
+		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
 		ps.hmovedPixel += 8
 

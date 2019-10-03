@@ -2,6 +2,7 @@ package riot
 
 import (
 	"gopher2600/hardware/memory"
+	"strings"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
@@ -19,19 +20,10 @@ func NewRIOT(mem memory.ChipBus) *RIOT {
 	return riot
 }
 
-// MachineInfoTerse returns the RIOT information in terse format
-func (riot RIOT) MachineInfoTerse() string {
-	return riot.Timer.MachineInfoTerse()
-}
-
-// MachineInfo returns the RIOT information in verbose format
-func (riot RIOT) MachineInfo() string {
-	return riot.Timer.MachineInfo()
-}
-
-// map String to MachineInfo
 func (riot RIOT) String() string {
-	return riot.MachineInfo()
+	s := strings.Builder{}
+	s.WriteString(riot.Timer.String())
+	return s.String()
 }
 
 // ReadMemory checks for side effects to the RIOT sub-system

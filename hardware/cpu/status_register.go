@@ -26,19 +26,8 @@ func NewStatusRegister(label string, shortLabel string) StatusRegister {
 	return *sr
 }
 
-// MachineInfoTerse returns the status register information in terse format
-func (sr StatusRegister) MachineInfoTerse() string {
-	return fmt.Sprintf("%s=%s", sr.shortLabel, sr.ToBits())
-}
-
-// MachineInfo returns the status register information in verbose format
-func (sr StatusRegister) MachineInfo() string {
-	return fmt.Sprintf("%s: %v", sr.label, sr.ToBits())
-}
-
-// map String to MachineInfo
 func (sr StatusRegister) String() string {
-	return sr.MachineInfo()
+	return fmt.Sprintf("%s=%s", sr.label, sr.ToBits())
 }
 
 // ToBits returns the register as a labelled bit pattern

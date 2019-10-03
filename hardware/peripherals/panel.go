@@ -39,13 +39,7 @@ func NewPanel(riot memory.PeriphBus) *Panel {
 	return pan
 }
 
-// MachineInfoTerse returns the panel information in terse format
-func (pan *Panel) MachineInfoTerse() string {
-	return pan.MachineInfo()
-}
-
-// MachineInfo returns the panel information in verbose format
-func (pan *Panel) MachineInfo() string {
+func (pan *Panel) String() string {
 	s := strings.Builder{}
 
 	s.WriteString("p0=")
@@ -71,11 +65,6 @@ func (pan *Panel) MachineInfo() string {
 	}
 
 	return s.String()
-}
-
-// map String to MachineInfo
-func (pan *Panel) String() string {
-	return pan.MachineInfo()
 }
 
 func (pan *Panel) commit() {

@@ -23,8 +23,7 @@ func NewTicker(label string) *Ticker {
 	return tck
 }
 
-// MachineInfo returns future ticker information in verbose format
-func (tck Ticker) MachineInfo() string {
+func (tck Ticker) String() string {
 	s := strings.Builder{}
 	for e := tck.events.Front(); e != nil; e = e.Next() {
 		if tck.Label != "" {
@@ -34,29 +33,6 @@ func (tck Ticker) MachineInfo() string {
 		s.WriteString(e.Value.(*Event).String())
 		s.WriteString("\n")
 	}
-	return s.String()
-}
-
-// MachineInfoTerse returns future ticker information in terse format
-func (tck Ticker) MachineInfoTerse() string {
-	e := tck.events.Back()
-	if e == nil {
-		return ""
-	}
-
-	s := strings.Builder{}
-
-	if tck.Label != "" {
-		s.WriteString(tck.Label)
-		s.WriteString(": ")
-	}
-
-	// terse return just the first event in the list
-	s.WriteString(e.Value.(*Event).String())
-	if e.Next() != nil {
-		s.WriteString(" [+]")
-	}
-
 	return s.String()
 }
 

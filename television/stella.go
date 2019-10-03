@@ -92,8 +92,7 @@ func NewStellaTelevision(tvType string) (*StellaTelevision, error) {
 	return btv, nil
 }
 
-// MachineInfoTerse returns the television information in terse format
-func (btv StellaTelevision) MachineInfoTerse() string {
+func (btv StellaTelevision) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("FR=%d SL=%d", btv.frameNum, btv.scanline))
 	if btv.extraScanlines > 0 {
@@ -101,26 +100,6 @@ func (btv StellaTelevision) MachineInfoTerse() string {
 	}
 	s.WriteString(fmt.Sprintf(" HP=%d", btv.horizPos))
 	return s.String()
-}
-
-// MachineInfo returns the television information in verbose format
-func (btv StellaTelevision) MachineInfo() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("TV (%s)", btv.spec.ID))
-	s.WriteString(fmt.Sprintf("\n   Frame: %d\n", btv.frameNum))
-	s.WriteString(fmt.Sprintf("   Scanline: %d", btv.scanline))
-	if btv.extraScanlines > 0 {
-		s.WriteString(fmt.Sprintf(" [%d]\n", btv.extraScanlines))
-	} else {
-		s.WriteString("\n")
-	}
-	s.WriteString(fmt.Sprintf("   Horiz Pos: %d", btv.horizPos))
-	return s.String()
-}
-
-// map String to MachineInfo
-func (btv StellaTelevision) String() string {
-	return btv.MachineInfo()
 }
 
 // AddRenderer adds a renderer implementation to the list

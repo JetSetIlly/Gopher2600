@@ -70,16 +70,6 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 
 }
 
-// MachineInfo returns the sprite information in terse format
-func (ms missileSprite) MachineInfoTerse() string {
-	return ms.String()
-}
-
-// MachineInfo returns the sprite information in verbose format
-func (ms missileSprite) MachineInfo() string {
-	return ms.String()
-}
-
 func (ms missileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -285,7 +275,7 @@ func (ms *missileSprite) prepareForHMOVE() {
 
 	if *ms.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
-		// long as moreHMOVE is true. the MachineInfo() function this value is
+		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
 		ms.hmovedPixel += 8
 
