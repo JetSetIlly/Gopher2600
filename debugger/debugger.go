@@ -3,6 +3,7 @@ package debugger
 import (
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
+	"gopher2600/debugger/reflection"
 	"gopher2600/debugger/script"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
@@ -45,13 +46,11 @@ type Debugger struct {
 	// most fruitfully performed through this structure
 	dbgmem *memoryDebug
 
-	// metavideo is additional information about the emulation state (ie.
-	// if a sprite was reset or if WSYNC is active, etc.)
-	//
-	// metavideo.Check() is called every video cycle to inform the gui of
-	// the metainformation of the last television signal
-	metaVideoProcess bool
-	metavideo        *metavideoMonitor
+	// reflection is used to provideo additional information about the
+	// emulation. it is inherently slow so can be turned on/off with the
+	// reflectProcess switch
+	reflectProcess bool
+	relfectMonitor *reflection.Monitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -159,9 +158,9 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	// set up debugging interface to memory
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
-	// set up metavideo monitor
-	dbg.metaVideoProcess = true
-	dbg.metavideo = newMetavideoMonitor(dbg.vcs, dbg.gui)
+	// set up reflection monitor
+	dbg.reflectProcess = true
+	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.gui)
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -299,8 +298,8 @@ func (dbg *Debugger) videoCycle() error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	if dbg.metaVideoProcess {
-		return dbg.metavideo.Check()
+	if dbg.reflectProcess {
+		return dbg.relfectMonitor.Check()
 	}
 
 	return nil
@@ -329,7 +328,11 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 	}
 
 	for {
-		dbg.checkInterruptsAndEvents()
+		err = dbg.checkInterruptsAndEvents()
+		if err != nil {
+			return err
+		}
+
 		if !dbg.running {
 			break // for loop
 		}
@@ -459,7 +462,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				}
 			}
 
-			dbg.checkInterruptsAndEvents()
+			err = dbg.checkInterruptsAndEvents()
+			if err != nil {
+				dbg.print(console.StyleError, err.Error())
+			}
 			if !dbg.running {
 				break // for loop
 			}

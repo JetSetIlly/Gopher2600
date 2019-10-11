@@ -25,7 +25,7 @@ type SignalAttributes struct {
 
 	// AltPixel allows the emulator to set an alternative color for each pixel
 	// - used to signal the debug color in addition to the regular color
-	// - arguable that this be sent as a metasignal
+	// - arguable that this be sent as some sort of meta-signal
 	AltPixel ColorSignal
 
 	// the HSyncSimple attribute is not part of the real TV spec. The signal

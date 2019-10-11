@@ -38,7 +38,7 @@ const (
 	cmdLast          = "LAST"
 	cmdList          = "LIST"
 	cmdMemMap        = "MEMMAP"
-	cmdMetaVideo     = "METAVIDEO"
+	cmdReflect       = "REFLECT"
 	cmdMissile       = "MISSILE"
 	cmdOnHalt        = "ONHALT"
 	cmdOnStep        = "ONSTEP"
@@ -78,7 +78,7 @@ var commandTemplate = []string{
 	cmdDebuggerState,
 	cmdDigest + " (RESET)",
 	cmdDisassembly,
-	cmdDisplay + " (OFF|DEBUG|SCALE [%P]|DEBUGCOLORS)", // see notes
+	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %N",
 	cmdGrep + " %S",
 	cmdHexLoad + " %N %N {%N}",
@@ -86,7 +86,7 @@ var commandTemplate = []string{
 	cmdLast + " (DEFN)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
-	cmdMetaVideo + " (ON|OFF)",
+	cmdReflect + " (ON|OFF)",
 	cmdMissile + " (0|1)",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
 	cmdOnStep + " (OFF|ON|%S {%S})",
@@ -187,6 +187,17 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 	err := debuggerCommands.ValidateTokens(tokens)
 	if err != nil {
 		return doNothing, err
+	}
+
+	// make sure all tokens have been handled. this should only happen if
+	// input has been allowed by ValidateTokens() but has not been
+	// explicitely consumed by entactCommand()
+	if interactive {
+		defer func() {
+			if !tokens.IsEnd() {
+				dbg.print(console.StyleError, fmt.Sprintf("unhandled arguments in user input (%s)", tokens.Remainder()))
+			}
+		}()
 	}
 
 	// the absolute best thing about the ValidateTokens() function is that we
@@ -597,18 +608,22 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdMemMap:
 		dbg.print(console.StyleInstrument, "%v", dbg.vcs.Mem.MemoryMap())
 
-	case cmdMetaVideo:
+	case cmdReflect:
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			dbg.metaVideoProcess = false
+			dbg.reflectProcess = false
+			err := dbg.gui.SetFeature(gui.ReqSetOverlay, false)
+			if err != nil {
+				dbg.print(console.StyleError, err.Error())
+			}
 		case "ON":
-			dbg.metaVideoProcess = true
+			dbg.reflectProcess = true
 		}
-		if dbg.metaVideoProcess {
-			dbg.print(console.StyleEmulatorInfo, "metavideo processing: ON")
+		if dbg.reflectProcess {
+			dbg.print(console.StyleEmulatorInfo, "reflection: ON")
 		} else {
-			dbg.print(console.StyleEmulatorInfo, "metavideo processing: OFF")
+			dbg.print(console.StyleEmulatorInfo, "reflection: OFF")
 		}
 
 	case cmdExit:
@@ -993,48 +1008,98 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdDisplay:
 		var err error
 
-		action, present := tokens.Get()
-		if present {
+		action, _ := tokens.Get()
+		action = strings.ToUpper(action)
+		switch action {
+		case "ON":
+			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
+			if err != nil {
+				return doNothing, err
+			}
+		case "OFF":
+			err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
+			if err != nil {
+				return doNothing, err
+			}
+		case "DEBUG":
+			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
+				err = dbg.gui.SetFeature(gui.ReqSetMasking, false)
 				if err != nil {
 					return doNothing, err
 				}
-			case "DEBUG":
-				err = dbg.gui.SetFeature(gui.ReqToggleMasking)
-				if err != nil {
-					return doNothing, err
-				}
-			case "SCALE":
-				scl, present := tokens.Get()
-				if !present {
-					return doNothing, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
-				}
-
-				scale, err := strconv.ParseFloat(scl, 32)
-				if err != nil {
-					return doNothing, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
-				}
-
-				err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))
-				return doNothing, err
-			case "DEBUGCOLORS":
-				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
-				if err != nil {
-					return doNothing, err
-				}
-			case "METASIGNALS":
-				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaVideo)
+			case "ON":
+				err = dbg.gui.SetFeature(gui.ReqSetMasking, true)
 				if err != nil {
 					return doNothing, err
 				}
 			default:
-				// already caught by command line ValidateTokens()
+				err = dbg.gui.SetFeature(gui.ReqToggleMasking)
+				if err != nil {
+					return doNothing, err
+				}
 			}
-		} else {
-			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
+		case "SCALE":
+			scl, present := tokens.Get()
+			if !present {
+				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
+			}
+
+			scale, err := strconv.ParseFloat(scl, 32)
+			if err != nil {
+				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
+			}
+
+			err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))
+			return doNothing, err
+		case "ALT":
+			action, _ := tokens.Get()
+			action = strings.ToUpper(action)
+			switch action {
+			case "OFF":
+				err = dbg.gui.SetFeature(gui.ReqSetAltColors, false)
+				if err != nil {
+					return doNothing, err
+				}
+			case "ON":
+				err = dbg.gui.SetFeature(gui.ReqSetAltColors, true)
+				if err != nil {
+					return doNothing, err
+				}
+			default:
+				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
+				if err != nil {
+					return doNothing, err
+				}
+			}
+		case "OVERLAY":
+			if !dbg.reflectProcess {
+				return doNothing, errors.New(errors.ReflectionNotRunning)
+			}
+
+			action, _ := tokens.Get()
+			action = strings.ToUpper(action)
+			switch action {
+			case "OFF":
+				err = dbg.gui.SetFeature(gui.ReqSetOverlay, false)
+				if err != nil {
+					return doNothing, err
+				}
+			case "ON":
+				err = dbg.gui.SetFeature(gui.ReqSetOverlay, true)
+				if err != nil {
+					return doNothing, err
+				}
+			default:
+				err = dbg.gui.SetFeature(gui.ReqToggleOverlay)
+				if err != nil {
+					return doNothing, err
+				}
+			}
+		default:
+			err = dbg.gui.SetFeature(gui.ReqToggleVisibility)
 			if err != nil {
 				return doNothing, err
 			}

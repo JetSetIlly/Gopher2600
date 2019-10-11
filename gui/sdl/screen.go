@@ -74,11 +74,11 @@ type screen struct {
 	altPixelsFade []byte
 	useAltPixels  bool
 
-	// overlay for screen showing metasignal information
+	// overlay for screen showing additional debugging information
 	// -- always allocated but only used when tv.allowDebugging and
-	// showMetaVideo are true
-	metaVideo     *metaVideoOverlay
-	showMetaVideo bool
+	// overlayActive are true
+	overlay       *sdlOverlay
+	overlayActive bool
 }
 
 func newScreen(gtv *GUI) (*screen, error) {
@@ -160,7 +160,7 @@ func (scr *screen) changeTVSpec() error {
 	}
 
 	// new overlay
-	scr.metaVideo, err = newMetaVideoOverlay(scr)
+	scr.overlay, err = newSdlOverlay(scr)
 	if err != nil {
 		return err
 	}
@@ -323,9 +323,9 @@ func (scr *screen) update(paused bool) error {
 		scr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(television.ClocksPerHblank), H: int32(scr.spec.ScanlinesTotal)})
 	}
 
-	// show metasignal overlay
-	if scr.gtv.allowDebugging && scr.showMetaVideo {
-		err = scr.metaVideo.update(paused)
+	// show overlay
+	if scr.gtv.allowDebugging && scr.overlayActive {
+		err = scr.overlay.update(paused)
 		if err != nil {
 			return err
 		}
@@ -390,8 +390,8 @@ func (scr *screen) newFrame() {
 		scr.pixels = scr.pixelsFade
 		scr.pixelsFade = swp
 
-		// clear pixels in metavideo overlay
-		scr.metaVideo.newFrame()
+		// clear pixels in overlay
+		scr.overlay.newFrame()
 
 		// swap pixel array with pixelsFade array
 		// -- see comment above

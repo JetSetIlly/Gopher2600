@@ -56,7 +56,7 @@ func initDBSession(db *database.Session) error {
 // RegressList displays all entries in the database
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressList", "io.Writer should not be nil (use nopWriter)")
+		return errors.New(errors.PanicError, "RegressList()", "io.Writer should not be nil (use nopWriter)")
 	}
 
 	db, err := database.StartSession(regressionDBFile, database.ActivityReading, initDBSession)

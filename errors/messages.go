@@ -2,7 +2,7 @@ package errors
 
 var messages = map[Errno]string{
 	// panics
-	PanicError: "fatality: %s: %s",
+	PanicError: "FATALITY: %s: %s",
 
 	// sentinals
 	UserInterrupt:   "user interrupt",
@@ -19,11 +19,12 @@ var messages = map[Errno]string{
 	DisasmError:      "error during disassembly: %s",
 
 	// debugger
-	ParserError:     "parser error: %s: %s (char %d)", // first placeholder is the command definition
-	ValidationError: "%s for %s",
-	InvalidTarget:   "invalid target (%s)",
-	CommandError:    "%s",
-	TerminalError:   "%s",
+	ParserError:          "parser error: %s: %s (char %d)", // first placeholder is the command definition
+	ValidationError:      "%s for %s",
+	InvalidTarget:        "invalid target (%s)",
+	CommandError:         "%s",
+	TerminalError:        "%s",
+	ReflectionNotRunning: "reflection process is not running",
 
 	// script
 	ScriptFileError:       "script error: %s",

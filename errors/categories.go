@@ -8,6 +8,10 @@ const (
 	// panic()s and cause the program (or the sub-system) to cease as soon as
 	// possible.
 	//
+	// if is not practical to cause the program to cease then at the very
+	// least, the PanicError should result in the display of the error message
+	// in big, friendly letters.
+	//
 	// actual panic()s should only be used when the mistake is so heinous that
 	// it suggests a fundamental misunderstanding has taken place and so, as it
 	// were, all bets are off.
@@ -33,6 +37,7 @@ const (
 	InvalidTarget
 	CommandError
 	TerminalError
+	ReflectionNotRunning
 
 	// script
 	ScriptScribeError

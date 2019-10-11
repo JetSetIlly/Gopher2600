@@ -1,12 +1,12 @@
 package sdl
 
 import (
-	"gopher2600/gui/metavideo"
+	"gopher2600/gui/overlay"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-type metaVideoOverlay struct {
+type sdlOverlay struct {
 	scr *screen
 
 	texture     *sdl.Texture
@@ -18,8 +18,8 @@ type metaVideoOverlay struct {
 	labels [][]string
 }
 
-func newMetaVideoOverlay(scr *screen) (*metaVideoOverlay, error) {
-	mv := new(metaVideoOverlay)
+func newSdlOverlay(scr *screen) (*sdlOverlay, error) {
+	mv := new(sdlOverlay)
 	mv.scr = scr
 
 	// our acutal screen data
@@ -51,7 +51,7 @@ func newMetaVideoOverlay(scr *screen) (*metaVideoOverlay, error) {
 	return mv, nil
 }
 
-func (mv *metaVideoOverlay) setPixel(sig metavideo.MetaSignalAttributes) error {
+func (mv *sdlOverlay) setPixel(sig overlay.Signal) error {
 	i := (mv.scr.lastY*mv.scr.maxWidth + mv.scr.lastX) * scrDepth
 
 	if i >= int32(len(mv.pixels)) {
@@ -69,7 +69,7 @@ func (mv *metaVideoOverlay) setPixel(sig metavideo.MetaSignalAttributes) error {
 	return nil
 }
 
-func (mv *metaVideoOverlay) newFrame() {
+func (mv *sdlOverlay) newFrame() {
 	// swap pixel array with pixelsFade array
 	// -- see comment in sdl.screen.newFrame() function for why we do this
 	swp := mv.pixels
@@ -82,7 +82,7 @@ func (mv *metaVideoOverlay) newFrame() {
 	}
 }
 
-func (mv *metaVideoOverlay) update(paused bool) error {
+func (mv *sdlOverlay) update(paused bool) error {
 	if paused {
 		err := mv.textureFade.Update(nil, mv.pixelsFade, int(mv.scr.maxWidth*scrDepth))
 		if err != nil {
@@ -108,12 +108,12 @@ func (mv *metaVideoOverlay) update(paused bool) error {
 	return nil
 }
 
-// MetaSignal recieves (and processes) additional emulator information from the emulator
-func (gtv *GUI) MetaSignal(sig metavideo.MetaSignalAttributes) error {
+// OverlaySignal recieves (and processes) additional emulator information from the emulator
+func (gtv *GUI) OverlaySignal(sig overlay.Signal) error {
 	// don't do anything if debugging is not enabled
 	if !gtv.allowDebugging {
 		return nil
 	}
 
-	return gtv.scr.metaVideo.setPixel(sig)
+	return gtv.scr.overlay.setPixel(sig)
 }

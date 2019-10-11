@@ -31,8 +31,14 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 				// toggle debugging colours
 				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
 			case "2":
-				// toggle metasignals overlay
-				err = dbg.gui.SetFeature(gui.ReqToggleShowMetaVideo)
+				// toggle overlay
+
+				// !!TODO: handle error if reflection is not being processed
+				// if !dbg.reflectProcess {
+				// 	return errors.New(errors.ReflectionNotRunning)
+				// }
+
+				err = dbg.gui.SetFeature(gui.ReqToggleOverlay)
 
 			case "=":
 				fallthrough // equal sign is the same as plus, for convenience
@@ -56,7 +62,9 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 	return err
 }
 
-func (dbg *Debugger) checkInterruptsAndEvents() {
+func (dbg *Debugger) checkInterruptsAndEvents() error {
+	var err error
+
 	// check interrupt channel and run any functions we find in there
 	select {
 	case <-dbg.intChan:
@@ -86,9 +94,11 @@ func (dbg *Debugger) checkInterruptsAndEvents() {
 			}
 		}
 	case ev := <-dbg.guiChan:
-		dbg.guiEventHandler(ev)
+		err = dbg.guiEventHandler(ev)
 	default:
 		// pro-tip: default case required otherwise the select will block
 		// indefinately.
 	}
+
+	return err
 }

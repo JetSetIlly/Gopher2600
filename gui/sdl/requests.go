@@ -3,10 +3,19 @@ package sdl
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 // SetFeature is used to set a television attribute
-func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
+func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+	// lazy (but clear) handling of type assertion errors
+	defer func() {
+		if r := recover(); r != nil {
+			returnedErr = errors.New(errors.PanicError, "sdl.SetFeature()", r)
+		}
+	}()
+
 	switch request {
 	case gui.ReqSetVisibilityStable:
 		err := gtv.scr.stb.resolveSetVisibility()
@@ -16,6 +25,19 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 
 	case gui.ReqSetVisibility:
 		if args[0].(bool) {
+			gtv.scr.window.Show()
+
+			// update screen
+			// -- default args[1] of true if not present
+			if len(args) < 2 || args[1].(bool) {
+				gtv.update()
+			}
+		} else {
+			gtv.scr.window.Hide()
+		}
+
+	case gui.ReqToggleVisibility:
+		if gtv.scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
 			gtv.scr.window.Show()
 
 			// update screen
@@ -51,12 +73,12 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
 		gtv.scr.useAltPixels = !gtv.scr.useAltPixels
 		gtv.update()
 
-	case gui.ReqSetShowMetaVideo:
-		gtv.scr.showMetaVideo = args[0].(bool)
+	case gui.ReqSetOverlay:
+		gtv.scr.overlayActive = args[0].(bool)
 		gtv.update()
 
-	case gui.ReqToggleShowMetaVideo:
-		gtv.scr.showMetaVideo = !gtv.scr.showMetaVideo
+	case gui.ReqToggleOverlay:
+		gtv.scr.overlayActive = !gtv.scr.overlayActive
 		gtv.update()
 
 	case gui.ReqSetScale:
