@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -19,10 +20,11 @@ const generatedGoFile = "../instructions.go"
 const leadingBoilerPlate = "// generated code - do not change\n\npackage definitions\n\n// GetInstructionDefinitions returns the opcode table for the MC6502\nfunc GetInstructionDefinitions() ([]*InstructionDefinition, error) {\nreturn []*InstructionDefinition{"
 const trailingBoilerPlate = "}, nil\n}"
 
+type opCodes map[uint8]definitions.InstructionDefinition
+
 // parseCSV reads & parses the definitions CSV file and creates & returns a map
 // of InstructionDefinitions
-func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
-
+func parseCSV() (opCodes, error) {
 	// open file
 	df, err := os.Open(definitionsCSVFile)
 	if err != nil {
@@ -46,11 +48,12 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 	csvr.TrimLeadingSpace = true
 	csvr.ReuseRecord = true
 
-	// csv file can have a variable number of fields per record
+	// instructions file can have a variable number of fields per definition.
+	// instruction effect field is optional (defaulting to READ)
 	csvr.FieldsPerRecord = -1
 
 	// create new definitions table
-	deftable := make(map[uint8]definitions.InstructionDefinition)
+	deftable := make(opCodes)
 
 	for {
 		// loop through file until EOF is reached
@@ -77,31 +80,34 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 
 		newDef := definitions.InstructionDefinition{}
 
-		// parse object code -- we'll use this for the hash key too
+		// field: parse object code
 		objectCode := rec[0]
 		if objectCode[:2] == "0x" {
 			objectCode = objectCode[2:]
 		}
 		objectCode = strings.ToUpper(objectCode)
 
-		// store the decimal number in the hash table
+		// store the decimal number in the new instruction definition
+		// -- we'll use this for the hash key too
 		n, err := strconv.ParseInt(objectCode, 16, 16)
 		if err != nil {
 			return nil, fmt.Errorf("invalid object code (0x%s)", objectCode)
 		}
 		newDef.ObjectCode = uint8(n)
 
-		// instruction mnemonic
+		// field: instruction mnemonic
 		newDef.Mnemonic = rec[1]
 
-		// cycle count
+		// field: cycle count
 		newDef.Cycles, err = strconv.Atoi(rec[2])
 		if err != nil {
 			return nil, fmt.Errorf("invalid cycle count for 0x%s (%s)", objectCode, rec[2])
 		}
 
-		// addressing Mode - also taking the opportunity to record the number of bytes used
-		// by the instruction - inferred from the addressing mode
+		// field: addressing mode
+		//
+		// the addressing mode also defines how many bytes an instruction
+		// requires
 		am := strings.ToUpper(rec[3])
 		switch am {
 		default:
@@ -144,7 +150,7 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 			newDef.Bytes = 2
 		}
 
-		// page sensitive
+		// field: page sensitive
 		ps := strings.ToUpper(rec[4])
 		switch ps {
 		default:
@@ -155,9 +161,10 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 			newDef.PageSensitive = false
 		}
 
-		// effect category
+		// field: effect category
 		if len(rec) == 5 {
-			// default category
+			// effect field is optional. if it hasn't been included then
+			// default instruction effect defaults to 'Read'
 			newDef.Effect = definitions.Read
 		} else {
 			switch rec[5] {
@@ -178,15 +185,54 @@ func parseCSV() (map[uint8]definitions.InstructionDefinition, error) {
 			}
 		}
 
-		// insert new definition into the table
+		// add new definition to deftable, using object code as the hash key
 		deftable[newDef.ObjectCode] = newDef
 	}
 
 	return deftable, nil
 }
 
-func main() {
+func printSummary(deftable opCodes) {
+	missing := make([]int, 0, 255)
 
+	// walk deftable and note missing opcodes
+	for i := 0; i <= 255; i++ {
+		if _, ok := deftable[uint8(i)]; !ok {
+			missing = append(missing, i)
+		}
+	}
+
+	// if no missing opcodes were found then there is nothing more to do
+	if len(missing) == 0 {
+		return
+	}
+
+	fmt.Println("6510 implementation / undefined opcodes")
+	fmt.Println("---------------------------------------")
+
+	// sort missing opcodes
+	missing = sort.IntSlice(missing)
+
+	// print and columnise missing opcodes
+	c := 0
+	for i := range missing {
+		fmt.Printf("%#02x\t", missing[i])
+		c++
+		if c > 4 {
+			c = 0
+			fmt.Printf("\n")
+		}
+	}
+	if c != 0 {
+		fmt.Printf("\n")
+	}
+
+	// print summary
+	fmt.Printf("%d missing, %02.0f%% defined\n", len(missing), float32(100*(256-len(missing))/256))
+	fmt.Println("(defined means that the taxonomy of the opcode has been identified, not necessarily implemented)")
+}
+
+func main() {
 	// parse definitions files
 	deftable, err := parseCSV()
 	if err != nil {
@@ -225,4 +271,6 @@ func main() {
 		fmt.Printf("error during opcode generation (%s)", err)
 		os.Exit(10)
 	}
+
+	printSummary(deftable)
 }
