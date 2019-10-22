@@ -191,7 +191,8 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 	// make sure all tokens have been handled. this should only happen if
 	// input has been allowed by ValidateTokens() but has not been
-	// explicitely consumed by entactCommand()
+	// explicitely consumed by entactCommand(). a false positive might occur if
+	// the token queue has been Peek()ed rather than Get()ed
 	if interactive {
 		defer func() {
 			if !tokens.IsEnd() {
@@ -502,13 +503,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		//
 		var newCommands string
 
-		option, _ := tokens.Peek()
+		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
 			newCommands = ""
 		case "ON":
 			newCommands = dbg.commandOnHaltStored
 		default:
+			// token isn't one we recognise so push it back onto the token queue
+			tokens.Unget()
+
 			// use remaininder of command line to form the ONHALT command sequence
 			newCommands = tokens.Remainder()
 
@@ -552,13 +556,16 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		var newCommands string
 
-		option, _ := tokens.Peek()
+		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
 			newCommands = ""
 		case "ON":
 			newCommands = dbg.commandOnStepStored
 		default:
+			// token isn't one we recognise so push it back onto the token queue
+			tokens.Unget()
+
 			// use remaininder of command line to form the ONSTEP command sequence
 			newCommands = tokens.Remainder()
 
