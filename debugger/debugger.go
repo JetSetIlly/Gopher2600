@@ -330,7 +330,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 	for {
 		err = dbg.checkInterruptsAndEvents()
 		if err != nil {
-			return err
+			dbg.print(console.StyleError, "%s", err)
 		}
 
 		if !dbg.running {
@@ -457,17 +457,12 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 					}
 					return nil
 
+				case errors.GUIEventError:
+					dbg.print(console.StyleError, err.Error())
+
 				default:
 					return err
 				}
-			}
-
-			err = dbg.checkInterruptsAndEvents()
-			if err != nil {
-				dbg.print(console.StyleError, err.Error())
-			}
-			if !dbg.running {
-				break // for loop
 			}
 
 			// parse user input

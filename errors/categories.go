@@ -37,6 +37,7 @@ const (
 	InvalidTarget
 	CommandError
 	TerminalError
+	GUIEventError
 	ReflectionNotRunning
 
 	// script

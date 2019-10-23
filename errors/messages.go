@@ -24,6 +24,7 @@ var messages = map[Errno]string{
 	InvalidTarget:        "invalid target (%s)",
 	CommandError:         "%s",
 	TerminalError:        "%s",
+	GUIEventError:        "%v",
 	ReflectionNotRunning: "reflection process is not running",
 
 	// script

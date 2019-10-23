@@ -3,6 +3,7 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/console"
+	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/playmode"
 )
@@ -53,13 +54,21 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 
 	case gui.EventMouseRight:
 		data := event.Data.(gui.EventDataMouse)
-		_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false, false)
-		if err == nil {
-			dbg.print(console.StyleFeedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
+		if !data.Down {
+			_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false, false)
+			if err == nil {
+				dbg.print(console.StyleFeedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
+			}
 		}
 	}
 
+	// wrap error in GUIEventError
+	if err != nil {
+		err = errors.New(errors.GUIEventError, err)
+	}
+
 	return err
+
 }
 
 func (dbg *Debugger) checkInterruptsAndEvents() error {

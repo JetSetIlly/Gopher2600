@@ -61,8 +61,11 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
 			ct.Print(ansi.CursorStore)
-			eventHandler(event)
+			err := eventHandler(event)
 			ct.Print(ansi.CursorRestore)
+			if err != nil {
+				return inputLen + 1, err
+			}
 
 		case readRune := <-ct.reader:
 			if readRune.err != nil {
