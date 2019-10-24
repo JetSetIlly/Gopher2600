@@ -190,7 +190,8 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	return dbg, nil
 }
 
-// Start the main debugger sequence
+// Start the main debugger sequence. starting the debugger is a distinct
+// operation to creating the debugger.
 func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload memory.CartridgeLoader) error {
 	// prepare user interface
 	if cons == nil {
@@ -233,7 +234,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
-	// debugger is to exit
+	// debugging session is to be terminated
 	err = dbg.inputLoop(dbg.console, false)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
@@ -310,7 +311,7 @@ func (dbg *Debugger) videoCycle() error {
 // to only every cpu instruction.
 //
 // inputter is an instance of type UserInput. this will usually be dbg.ui but
-// it could equally be an instance of debuggingScript.
+// it could equally be a script.
 func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) error {
 	var err error
 
@@ -408,7 +409,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				switch err.(errors.AtariError).Errno {
 				case errors.UserInterrupt:
 					if dbg.scriptScribe.IsActive() {
-						dbg.parseInput("SCRIPT END", false, false)
+						_, err = dbg.parseInput("SCRIPT END", false, false)
+						if err != nil {
+							dbg.print(console.StyleError, "%s", err)
+						}
 						continue // for loop
 					} else {
 
@@ -423,7 +427,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 
 						if err != nil {
 							if errors.Is(err, errors.UserInterrupt) {
-								// treat another ctrl-c press to indicate 'yes'
+								// treat UserInterrupt as thought 'y' was pressed
 								confirm[0] = 'y'
 							} else {
 								dbg.print(console.StyleError, err.Error())
@@ -431,7 +435,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						}
 
 						if confirm[0] == 'y' || confirm[0] == 'Y' {
-							dbg.parseInput("EXIT", false, false)
+							_, err = dbg.parseInput("EXIT", false, false)
+							if err != nil {
+								dbg.print(console.StyleError, "%s", err)
+							}
 						}
 					}
 
@@ -483,7 +490,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			}
 		}
 
-		// move emulation on one step if user has requested/implied it
+		// move emulation on one step if user has requested it or if it is implied by the run state
 		if dbg.inputloopNext {
 			if !videoCycle {
 				if dbg.inputEveryVideoCycle {
@@ -493,13 +500,12 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				}
 
 				if err != nil {
+					// exit input loop only if error is not an AtariError...
 					if !errors.IsAny(err) {
 						return err
 					}
 
-					// do not exit input loop when error is a of a known type
-					// set lastStepError instead and allow emulation to
-					// halt
+					// ...set lastStepError instead and allow emulation to halt
 					dbg.lastStepError = true
 					dbg.print(console.StyleError, "%s", err)
 
@@ -531,14 +537,14 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 }
 
 // parseInput splits the input into individual commands. each command is then
-// passed to parseCommand for final processing
+// passed to parseCommand for processing
 //
-// interactive argument should be true only for input that has immediately come from
-// the user. only interactive input will be added to a new script file.
+// interactive argument should be true if  the input that has just come from
+// the user (ie. via an interactive terminal). only interactive input will be
+// added to a new script file.
 //
-// returns "step" status - whether or not the input should cause the emulation
-// to continue at least one step (a command in the input may have set the
-// runUntilHalt flag)
+// returns step status - whether or not emulation should honour the step is
+// decided in the inputLoop() function
 func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
 	var result parseCommandResult
 	var err error

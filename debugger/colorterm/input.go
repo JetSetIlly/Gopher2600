@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 )
 
+// #cursor #keys #tab #completion
+
 // UserRead is the top level input function
 func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
@@ -181,7 +183,6 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								// length check in case input buffer is
 								// shorted from when history entry was added
 								if l < len(input) {
-									inputLen = l
 									copy(input, ct.commandHistory[history].input)
 									inputLen = len(ct.commandHistory[history].input)
 									ct.Print(ansi.CursorMove(inputLen - cursorPos))
@@ -196,7 +197,6 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								history++
 								l := len(ct.commandHistory[history].input)
 								if l < len(input) {
-									inputLen = l
 									copy(input, ct.commandHistory[history].input)
 									inputLen = len(ct.commandHistory[history].input)
 									ct.Print(ansi.CursorMove(inputLen - cursorPos))
@@ -209,7 +209,6 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								// liveHistroy should not ever be greater
 								// in length than that of input buffer
 								if liveHistoryLen < len(input) {
-									inputLen = liveHistoryLen
 									copy(input, liveHistory)
 									inputLen = liveHistoryLen
 									ct.Print(ansi.CursorMove(inputLen - cursorPos))

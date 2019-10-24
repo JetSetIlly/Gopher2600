@@ -109,7 +109,10 @@ func (et *EasyTerm) UpdateGeometry() error {
 	et.mu.Lock()
 	defer et.mu.Unlock()
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, et.output.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&et.Geometry)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, et.output.Fd(),
+		uintptr(syscall.TIOCGWINSZ),
+		uintptr(unsafe.Pointer(&et.Geometry)))
+
 	if errno != 0 {
 		return fmt.Errorf("error updating terminal geometry information (%d)", errno)
 	}

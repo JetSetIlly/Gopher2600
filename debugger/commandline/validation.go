@@ -73,7 +73,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		err := n.next[0].validate(tokens, true)
 		match := err == nil
 
-		if match == false {
+		if !match {
 			for bi := range n.branch {
 				tokens.Unget()
 				if n.branch[bi].validate(tokens, true) == nil {

@@ -19,8 +19,7 @@ import (
 	"strings"
 )
 
-// debugger keywords. not a useful data structure but we can use these to form
-// the more useful DebuggerCommands and Help structures
+// debugger keywords
 const (
 	cmdBall          = "BALL"
 	cmdBreak         = "BREAK"

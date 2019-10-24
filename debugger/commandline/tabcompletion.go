@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
-const cycleDuration = 500 * time.Millisecond
+// #tab #completion
 
 // TabCompletion keeps track of the most recent tab completion attempt
 type TabCompletion struct {
@@ -235,6 +234,4 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 	if n.repeat != nil {
 		tc.buildMatches(n.repeat, tokens)
 	}
-
-	return
 }

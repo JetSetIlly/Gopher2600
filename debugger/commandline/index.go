@@ -9,7 +9,7 @@ type Index map[string]*node
 
 // CreateIndex returns an index of the Commands structure
 func CreateIndex(cmds *Commands) *Index {
-	idx := make(Index, 0)
+	idx := make(Index)
 
 	for ci := range *cmds {
 		idx[(*cmds)[ci].tag] = (*cmds)[ci]
