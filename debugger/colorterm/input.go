@@ -72,14 +72,6 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 				return inputLen, readRune.err
 			}
 
-			// reset tabcompletion state if anything other than the tab key has
-			// been pressed
-			if readRune.r != easyterm.KeyTab {
-				if ct.tabCompleter != nil {
-					ct.tabCompleter.Reset()
-				}
-			}
-
 			switch readRune.r {
 			case easyterm.KeyTab:
 				if ct.tabCompleter != nil {

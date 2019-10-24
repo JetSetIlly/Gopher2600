@@ -35,7 +35,8 @@ func (tc *TabCompletion) Complete(input string) string {
 	// split input tokens -- it's easier to work with tokens
 	tokens := TokeniseInput(input)
 
-	// common function that polishes off a successful Complete()
+	// common function that polishes off a successful Complete(). not using a
+	// deferred function because we don't want to call this in all instances
 	endGuess := func() string {
 		if tc.match >= 0 {
 			tokens.ReplaceEnd(tc.matches[tc.match])
@@ -48,9 +49,11 @@ func (tc *TabCompletion) Complete(input string) string {
 		return tc.lastCompletion
 	}
 
+	input = strings.TrimRight(input, " ")
+
 	// if the input argument is the same as what we returned last time, then
 	// cycle through the options that were compiled last time
-	if tc.lastCompletion == input && tc.match >= 0 {
+	if strings.TrimRight(tc.lastCompletion, " ") == input && tc.match >= 0 {
 		tc.match++
 		if tc.match >= len(tc.matches) {
 			tc.match = 0
@@ -104,10 +107,7 @@ func (tc *TabCompletion) Complete(input string) string {
 	return endGuess()
 }
 
-// Reset is used to clear an outstanding completion session. note that this
-// only really needs to be called if the input argument to Complete() is not
-// different to the previous return value from that function, and you want to
-// start a new completion session.
+// Reset is used to clear an outstanding completion session
 func (tc *TabCompletion) Reset() {
 	tc.matches = make([]string, 0)
 	tc.match = -1
@@ -147,7 +147,8 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		return
 	}
 
-	match := true
+	var match bool
+
 	switch n.tag {
 	case "%N":
 		_, err := strconv.ParseInt(tok, 0, 32)
