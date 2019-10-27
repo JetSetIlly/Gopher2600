@@ -54,6 +54,22 @@ func (plb Playback) String() string {
 	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
 }
 
+// EndFrame returns true if emulation has gone past the last frame of the
+// playback
+func (plb Playback) EndFrame() (bool, error) {
+	currFrame, err := plb.digest.GetState(television.ReqFramenum)
+	if err != nil {
+		return false, errors.New(errors.RegressionPlaybackError, err)
+	}
+
+	if currFrame > plb.endFrame {
+		return true, nil
+	}
+
+	return false, nil
+
+}
+
 // NewPlayback is the preferred method of implementation for the Playback type
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error

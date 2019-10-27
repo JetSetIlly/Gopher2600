@@ -123,6 +123,14 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	// run emulation
 	err = vcs.Run(func() (bool, error) {
+		hasEnded, err := plb.EndFrame()
+		if err != nil {
+			return false, errors.New(errors.RegressionPlaybackError, err)
+		}
+		if hasEnded {
+			return false, errors.New(errors.RegressionPlaybackError, "playback has not ended as expected")
+		}
+
 		if limiter.HasWaited() {
 			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
 		}
