@@ -207,7 +207,7 @@ func (bs *ballSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *bs.hblank {
-		if !*bs.hmoveLatch {
+		if !*bs.hmoveLatch || bs.lastHmoveCt >= 1 && bs.lastHmoveCt <= 15 {
 			delay = 2
 		} else {
 			delay = 3

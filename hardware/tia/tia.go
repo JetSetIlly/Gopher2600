@@ -439,7 +439,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
-	isHmove := tia.pclk.Phi1()
+	isHmove := tia.pclk.Phi2()
 
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the

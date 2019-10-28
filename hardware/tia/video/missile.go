@@ -293,7 +293,7 @@ func (ms *missileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.hblank {
-		if !*ms.hmoveLatch {
+		if !*ms.hmoveLatch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
 			delay = 2
 		} else {
 			delay = 3

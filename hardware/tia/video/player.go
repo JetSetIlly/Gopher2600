@@ -410,7 +410,10 @@ func (ps *playerSprite) resetPosition() {
 	// that said, I'm not entirely sure what's going on and why these
 	// adjustments are required.
 	if *ps.hblank {
-		if !*ps.hmoveLatch {
+		// this tricky branch happens when reset is triggered inside the
+		// HBLANK period and HMOVE is active. in this instance we're defining
+		// active to be whether the last HmoveCt value was between 15 and 0
+		if !*ps.hmoveLatch || ps.lastHmoveCt >= 1 && ps.lastHmoveCt <= 15 {
 			delay = 2
 		} else {
 			delay = 3
