@@ -193,8 +193,11 @@ func (ps playerSprite) String() string {
 		s.WriteString(")")
 		extra = true
 
-		if ps.scanCounter.cpy > 0 {
-			s.WriteString(fmt.Sprintf(" +%d", ps.scanCounter.cpy))
+		switch ps.scanCounter.cpy {
+		case 1:
+			s.WriteString(" near")
+		case 2:
+			s.WriteString(" far")
 		}
 
 	} else if ps.scanCounter.isLatching() {
@@ -588,21 +591,23 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	delay := -1
 
 	if ps.startDrawingEvent != nil {
-		if ps.startDrawingEvent.RemainingCycles == 0 {
-			delay = 1
-		} else if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
+		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
 			delay = 0
+		} else if ps.startDrawingEvent.RemainingCycles == 0 {
+			delay = 1
 		} else if ps.startDrawingEvent.RemainingCycles >= 2 &&
 			ps.nusiz != value && ps.nusiz != 0x00 &&
 			(value == 0x05 || value == 0x07) {
-			// this branch applies when a sprite is changing from a
-			// multi-copy sprite to a double/quadruple width sprite. in that
+
+			// this branch applies when a sprite is changing from a single
+			// width sprite to a double/quadruple width sprite. in that
 			// instance we drop the drawing event if it has only recently
 			// started
 			//
 			// I'm not convinced by this branch at all but the rule was
-			// discovered through observation of the test roms:
+			// discovered through observation and balancing of the test roms:
 			//
+			//  o player_switching.bin
 			//	o testSize2Copies_A.bin
 			//	o properly_model_nusiz_during_player_decode_and_draw/player8.bin
 			//
@@ -612,15 +617,11 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		}
 	} else if ps.scanCounter.isLatching() || ps.scanCounter.isActive() {
 		if (ps.nusiz == 0x05 || ps.nusiz == 0x07) && (value == 0x05 || value == 0x07) {
+			// minimal delay current if future/current NUSIZ is double/quadruple width
 			delay = 0
 		} else {
 			delay = 1
 		}
-
-		// TODO: differentiation for secondary copies -- they don't seem to follow
-		// the same logic
-		//
-		// see test/test_roms/testSize2Copies_A.bin
 	}
 
 	ps.Delay.Schedule(delay, func() {

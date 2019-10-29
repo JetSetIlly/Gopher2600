@@ -68,19 +68,6 @@ func (sc scanCounter) isMissileMiddle() bool {
 }
 
 func (sc *scanCounter) tick() {
-	// latch the nusiz value depending on the phase of the player clock
-	if *sc.nusiz == 0x05 {
-		if sc.pclk.Phi1() || sc.pclk.Phi2() {
-			sc.latchedNusiz = *sc.nusiz
-		}
-	} else if *sc.nusiz == 0x07 {
-		if sc.pclk.Phi1() {
-			sc.latchedNusiz = *sc.nusiz
-		}
-	} else {
-		sc.latchedNusiz = *sc.nusiz
-	}
-
 	// handle the additional latching
 	if sc.latch > 0 {
 		sc.latch--
@@ -92,16 +79,53 @@ func (sc *scanCounter) tick() {
 		return
 	}
 
-	// use latched nusiz value to decided whether to tick scan counter forward
 	tick := true
 
-	if sc.latchedNusiz == 0x05 {
-		if sc.count < 1 {
-			tick = false
+	// tick pixels differently depending on whether this is the primary copy or
+	// the secondary copies. this is all a but magical for my liking but it
+	// works and there's some sense to it at least.
+	//
+	// for the primary copy, we delay the use of the live nusiz value until the
+	// correct clock phase. once the nusiz value has been latched then we tick
+	// according to how long the scancounter has been on the current pixel
+	//
+	// for the secondary copies we always use the live nusiz value and a skewed
+	// phase-clock. not sure why the skewed clock is required but the effects
+	// can clearly be seen with test/test_roms/testSize2Copies_B.bin
+
+	if sc.cpy == 0 {
+		// latch the nusiz value depending on the phase of the player clock
+		if *sc.nusiz == 0x05 {
+			if sc.pclk.Phi1() || sc.pclk.Phi2() {
+				sc.latchedNusiz = *sc.nusiz
+			}
+		} else if *sc.nusiz == 0x07 {
+			if sc.pclk.Phi1() {
+				sc.latchedNusiz = *sc.nusiz
+			}
+		} else {
+			sc.latchedNusiz = *sc.nusiz
 		}
-	} else if sc.latchedNusiz == 0x07 {
-		if sc.count < 3 {
-			tick = false
+
+		if sc.latchedNusiz == 0x05 {
+			if sc.count < 1 {
+				tick = false
+			}
+		} else if sc.latchedNusiz == 0x07 {
+			if sc.count < 3 {
+				tick = false
+			}
+		}
+	} else {
+		// timing of ticks for non-primary copies is skewed
+		if *sc.nusiz == 0x05 {
+			if !(sc.pclk.LatePhi2() || sc.pclk.LatePhi1()) {
+				tick = false
+			}
+		} else if *sc.nusiz == 0x07 {
+			if !sc.pclk.LatePhi2() {
+				tick = false
+			}
 		}
 	}
 
@@ -109,6 +133,16 @@ func (sc *scanCounter) tick() {
 		if sc.pixel >= 0 {
 			sc.count = 0
 			sc.pixel--
+
+			// default to primary copy whenever we finish drawing. we need this
+			// otherwise the above branch, sc.cpy == 0, will not trigger
+			// correctly in all instances - if we look at the Player.tick()
+			// function we can see why. scanCounter.cpy is set only when the
+			// startDrawingEvent has concluded but we need to update the
+			// latchedNusiz value for the primary copy before then.
+			if sc.pixel < 0 {
+				sc.cpy = 0
+			}
 		}
 	} else {
 		sc.count++
