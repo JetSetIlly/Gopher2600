@@ -12,17 +12,26 @@ func (tck *Ticker) Schedule(delay int, payload func(), label string) *Event {
 		return nil
 	}
 
-	v := tck.pool.Remove(tck.pool.Front()).(*Event)
-	tck.events.PushBack(v)
+	// take element from the back of the pool (the inactive half)
+	e := tck.pool.Back()
+	v := e.Value.(*Event)
 
+	// sanity check to make sure the active and inactive lists have not collided
+	// this should never happen. if it does then poolSize is too small
+	if e == tck.activeSentinal || v.isActive() {
+		panic("pool of future events has been exhausted")
+	}
+
+	// move to the back of the active list (in front of the active sentinal)
+	tck.pool.MoveBefore(e, tck.activeSentinal)
+
+	// update event information
 	v.label = label
 	v.initialCycles = delay
 	v.RemainingCycles = delay
 	v.paused = false
 	v.pushed = false
 	v.payload = payload
-
-	// no need to update the pointer to the Ticker instance
 
 	return v
 }

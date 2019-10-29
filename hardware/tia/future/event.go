@@ -38,9 +38,13 @@ func (ev Event) String() string {
 	return fmt.Sprintf("%s -> %d", label, ev.RemainingCycles)
 }
 
+func (ev *Event) isActive() bool {
+	return ev.RemainingCycles >= 0
+}
+
 // Tick event forward one cycle
 func (ev *Event) tick() bool {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("events should not be ticked once they have expired under any circumstances")
 	}
 
@@ -63,7 +67,7 @@ func (ev *Event) tick() bool {
 // it is very important that the reference to the event is forgotten once
 // Force() has been called
 func (ev *Event) Force() {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 
@@ -79,7 +83,7 @@ func (ev *Event) Force() {
 // it is very important that the reference to the event is forgotten once
 // Drop() has been called
 func (ev *Event) Drop() {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	ev.ticker.drop(ev)
@@ -92,7 +96,7 @@ func (ev *Event) Drop() {
 // will occur very quickly and it is more convenient to push, instead of
 // droping and starting a new event.
 func (ev *Event) Push() {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	ev.RemainingCycles = ev.initialCycles
@@ -102,7 +106,7 @@ func (ev *Event) Push() {
 // Pause prevents the event from ticking any further until Resume or Restart is
 // called
 func (ev *Event) Pause() {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	ev.paused = true
@@ -110,7 +114,7 @@ func (ev *Event) Pause() {
 
 // JustStarted is true if no Tick()ing has taken place yet
 func (ev Event) JustStarted() bool {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	return ev.RemainingCycles == ev.initialCycles && !ev.pushed
@@ -118,7 +122,7 @@ func (ev Event) JustStarted() bool {
 
 // AboutToEnd is true if event resolves on next Tick()
 func (ev Event) AboutToEnd() bool {
-	if ev.RemainingCycles < 0 {
+	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	return ev.RemainingCycles == 0

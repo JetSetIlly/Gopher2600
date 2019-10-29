@@ -10,8 +10,9 @@ type Observer interface {
 // it is not found, then the most recent event (with whatever label) is
 // returned along with false to indicate no match
 func (tck Ticker) Observe(label string) (*Event, bool) {
-	// start fromt the back of the list for the most recent entry
-	e := tck.events.Back()
+	// start from the back of the active list. i.e the entry just in front of
+	// the active sentinal
+	e := tck.activeSentinal.Prev()
 	for e != nil {
 		v := e.Value.(*Event)
 
@@ -24,9 +25,10 @@ func (tck Ticker) Observe(label string) (*Event, bool) {
 	}
 
 	// return most recent event if no match found
-	e = tck.events.Back()
+	e = tck.activeSentinal.Prev()
 	if e == nil {
 		return nil, false
 	}
+
 	return e.Value.(*Event), false
 }
