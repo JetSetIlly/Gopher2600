@@ -28,6 +28,9 @@ type Event struct {
 
 	// the value that is to be the result of the pending action
 	payload func()
+
+	payloadWithArg func(interface{})
+	payloadArg     interface{}
 }
 
 func (ev Event) String() string {
@@ -40,6 +43,14 @@ func (ev Event) String() string {
 
 func (ev *Event) isActive() bool {
 	return ev.RemainingCycles >= 0
+}
+
+func (ev *Event) runPayload() {
+	if ev.payloadWithArg != nil {
+		ev.payloadWithArg(ev.payloadArg)
+	} else {
+		ev.payload()
+	}
 }
 
 // Tick event forward one cycle
@@ -55,7 +66,7 @@ func (ev *Event) tick() bool {
 	ev.RemainingCycles--
 
 	if ev.RemainingCycles == -1 {
-		ev.payload()
+		ev.runPayload()
 		return true
 	}
 
@@ -71,7 +82,7 @@ func (ev *Event) Force() {
 		panic("cannot do that to a completed event")
 	}
 
-	ev.payload()
+	ev.runPayload()
 	ev.ticker.drop(ev)
 	ev.RemainingCycles = -1
 }

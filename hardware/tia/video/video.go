@@ -303,13 +303,15 @@ func (vd *Video) Pixel() (uint8, uint8) {
 // UpdatePlayfield checks the TIA memory for new playfield data. note that
 // CTRLPF is serviced in UpdateSpriteVariations()
 func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
+	// homebrew Donkey Kong shows the need for a delay of at least two cycles
+	// to write new playfield data
 	switch data.Name {
 	case "PF0":
-		vd.Playfield.setData(tiaDelay, 0, data.Value)
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment0, data.Value, "PF0")
 	case "PF1":
-		vd.Playfield.setData(tiaDelay, 1, data.Value)
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment1, data.Value, "PF1")
 	case "PF2":
-		vd.Playfield.setData(tiaDelay, 2, data.Value)
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment2, data.Value, "PF2")
 	}
 }
 
@@ -318,7 +320,7 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData
 func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipData) {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
-	// convert this to the range 0 to 15. From TIA_HW_Notes.txt:
+	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
 	//
 	// "You may have noticed that the [...] discussion ignores the
 	// fact that HMxx values are specified in the range +7 to -8.
@@ -329,23 +331,34 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipDa
 	// treated as a simple 0-15 count for movement left. It might
 	// be easier to think of this as having D7 inverted when it
 	// is stored in the first place."
-	case "HMP0":
-		vd.Player0.setHmoveValue(tiaDelay, data.Value&0xf0, false)
-	case "HMP1":
-		vd.Player1.setHmoveValue(tiaDelay, data.Value&0xf0, false)
-	case "HMM0":
-		vd.Missile0.setHmoveValue(tiaDelay, data.Value&0xf0, false)
-	case "HMM1":
-		vd.Missile1.setHmoveValue(tiaDelay, data.Value&0xf0, false)
-	case "HMBL":
-		vd.Ball.setHmoveValue(tiaDelay, data.Value&0xf0, false)
 
+	// there is no information about whether response to HMOVE value changes
+	// are immediate or take effect after a short delay. experimentation
+	// reveals that a delay is required. the reasoning is as below:
+	//
+	// delay of at least zero (1 additiona cycle) is required. we can see this
+	// in the Midnight Magic ROM where the left gutter separator requires it
+	//
+	// a delay too high (3 or higher) causes the barber pole test ROM to fail
+	//
+	// not sure what the actual value should be except that it should be
+	// somewhere between 0 and 3 (inclusive)
+	case "HMP0":
+		tiaDelay.ScheduleWithArg(2, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
+	case "HMP1":
+		tiaDelay.ScheduleWithArg(2, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
+	case "HMM0":
+		tiaDelay.ScheduleWithArg(2, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
+	case "HMM1":
+		tiaDelay.ScheduleWithArg(2, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
+	case "HMBL":
+		tiaDelay.ScheduleWithArg(2, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
 	case "HMCLR":
-		vd.Player0.clearHmoveValue(tiaDelay)
-		vd.Player1.clearHmoveValue(tiaDelay)
-		vd.Missile0.clearHmoveValue(tiaDelay)
-		vd.Missile1.clearHmoveValue(tiaDelay)
-		vd.Ball.clearHmoveValue(tiaDelay)
+		tiaDelay.Schedule(2, vd.Player0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(2, vd.Player1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(2, vd.Missile0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(2, vd.Missile1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(2, vd.Ball.clearHmoveValue, "HMCLR")
 	}
 }
 

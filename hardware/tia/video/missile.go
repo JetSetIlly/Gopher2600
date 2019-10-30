@@ -213,18 +213,6 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	if ms.pclk.Phi2() {
 		ms.position.Tick()
 
-		// start delay is always 4 cycles
-		const startDelay = 4
-
-		// which copy of the sprite will we be drawing
-		cpy := 0
-
-		startDrawingEvent := func() {
-			ms.enclockifier.start()
-			ms.enclockifier.cpy = cpy
-			ms.startDrawingEvent = nil
-		}
-
 		// start drawing if there is no reset or it has just started AND
 		// there wasn't a reset event ongoing when the current event
 		// started
@@ -234,35 +222,32 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		case 3:
 			if ms.copies == 0x01 || ms.copies == 0x03 {
 				if startCondition {
-					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
-					cpy = 1
+					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 1, "START")
 				}
 			}
 		case 7:
 			if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
 				if startCondition {
-					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					cpy := 1
 					if ms.copies == 0x03 {
 						cpy = 2
-					} else {
-						cpy = 1
 					}
+					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
 				}
 			}
 		case 15:
 			if ms.copies == 0x04 || ms.copies == 0x06 {
 				if startCondition {
-					ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					cpy := 1
 					if ms.copies == 0x06 {
 						cpy = 2
-					} else {
-						cpy = 1
 					}
+					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
 				}
 			}
 		case 39:
 			if startCondition {
-				ms.startDrawingEvent = ms.Delay.Schedule(startDelay, startDrawingEvent, "START")
+				ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 0, "START")
 			}
 		case 40:
 			ms.position.Reset()
@@ -271,6 +256,12 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	ms.Delay.Tick()
+}
+
+func (ms *missileSprite) _futureStartDrawingEvent(v interface{}) {
+	ms.enclockifier.start()
+	ms.enclockifier.cpy = v.(int)
+	ms.startDrawingEvent = nil
 }
 
 func (ms *missileSprite) prepareForHMOVE() {
@@ -326,45 +317,47 @@ func (ms *missileSprite) resetPosition() {
 		return
 	}
 
-	ms.resetPositionEvent = ms.Delay.Schedule(delay, func() {
-		// the pixel at which the sprite has been reset, in relation to the
-		// left edge of the screen
-		ms.resetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
+	ms.resetPositionEvent = ms.Delay.Schedule(delay, ms._futureResetPosition, "RESMx")
+}
 
-		if ms.resetPixel >= 0 {
-			// resetPixel adjusted by 1 because the tv is not yet in the correct
-			// position
-			ms.resetPixel++
+func (ms *missileSprite) _futureResetPosition() {
+	// the pixel at which the sprite has been reset, in relation to the
+	// left edge of the screen
+	ms.resetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
 
-			// adjust resetPixel for screen boundaries
-			if ms.resetPixel > television.ClocksPerVisible {
-				ms.resetPixel -= television.ClocksPerVisible
-			}
+	if ms.resetPixel >= 0 {
+		// resetPixel adjusted by 1 because the tv is not yet in the correct
+		// position
+		ms.resetPixel++
 
-			// by definition the current pixel is the same as the reset pixel at
-			// the moment of reset
-			ms.hmovedPixel = ms.resetPixel
-		} else {
-			// if reset occurs off-screen then force reset pixel to be zero
-			// (see commentary in ball sprite for detailed reasoning of this
-			// branch)
-			ms.resetPixel = 0
-			ms.hmovedPixel = 7
+		// adjust resetPixel for screen boundaries
+		if ms.resetPixel > television.ClocksPerVisible {
+			ms.resetPixel -= television.ClocksPerVisible
 		}
 
-		// reset both sprite position and clock
-		ms.position.Reset()
-		ms.pclk.Reset()
+		// by definition the current pixel is the same as the reset pixel at
+		// the moment of reset
+		ms.hmovedPixel = ms.resetPixel
+	} else {
+		// if reset occurs off-screen then force reset pixel to be zero
+		// (see commentary in ball sprite for detailed reasoning of this
+		// branch)
+		ms.resetPixel = 0
+		ms.hmovedPixel = 7
+	}
 
-		ms.enclockifier.force()
-		if ms.startDrawingEvent != nil {
-			ms.startDrawingEvent.Force()
-			ms.startDrawingEvent = nil
-		}
+	// reset both sprite position and clock
+	ms.position.Reset()
+	ms.pclk.Reset()
 
-		// dump reference to reset event
-		ms.resetPositionEvent = nil
-	}, "RESMx")
+	ms.enclockifier.force()
+	if ms.startDrawingEvent != nil {
+		ms.startDrawingEvent.Force()
+		ms.startDrawingEvent = nil
+	}
+
+	// dump reference to reset event
+	ms.resetPositionEvent = nil
 }
 
 func (ms *missileSprite) setResetToPlayer(on bool) {
@@ -399,22 +392,10 @@ func (ms *missileSprite) setColor(value uint8) {
 	ms.color = value
 }
 
-func (ms *missileSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
-	// delay of at least zero (1 additiona cycle) is required. we can see this
-	// in the Midnight Magic ROM where the left gutter separator requires it
-	//
-	// a delay too high (3 or higher) causes the barber pole test ROM to fail
-	//
-	// not sure what the actual shoudld except that it should be somewhere
-	// between 0 and 3 (inclusive)
-	tiaDelay.Schedule(2, func() {
-		ms.hmove = (value ^ 0x80) >> 4
-	}, "HMMx")
+func (ms *missileSprite) setHmoveValue(v interface{}) {
+	ms.hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
-func (ms *missileSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// see setHmoveValue() commentary for delay value reasoning
-	tiaDelay.Schedule(2, func() {
-		ms.hmove = 0x08
-	}, "HMCLR")
+func (ms *missileSprite) clearHmoveValue() {
+	ms.hmove = 0x08
 }

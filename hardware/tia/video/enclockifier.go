@@ -89,11 +89,6 @@ func (en *enclockifier) aboutToEnd() bool {
 func (en *enclockifier) start() {
 	en.enable = true
 
-	endEvent := func() {
-		en.enable = false
-		en.endEvent = nil
-	}
-
 	// upon receiving a start signal, we decide for how long the enable flag
 	// should be true. after the requisite number of clocks endEvent() is run,
 	// disabling the flag.
@@ -105,24 +100,31 @@ func (en *enclockifier) start() {
 
 	switch *en.size {
 	case 0x00:
-		en.endEvent = en.delay.Schedule(1, endEvent, "END")
+		en.endEvent = en.delay.Schedule(1, en._futureOnEnd, "END")
 	case 0x01:
-		en.endEvent = en.delay.Schedule(2, endEvent, "END")
+		en.endEvent = en.delay.Schedule(2, en._futureOnEnd, "END")
 	case 0x02:
-		en.endEvent = en.delay.Schedule(4, endEvent, "END")
+		en.endEvent = en.delay.Schedule(4, en._futureOnEnd, "END")
 	case 0x03:
 		// from TIA_HW_Notes.txt:
 		//
 		// "The second half is added if both D4 and D5 are set; a delayed copy
 		// of the Start signal (4 colour CLK wide again) is OR-ed into the
 		// Enable signal at the final OR gate."
-		triggerSecond := func() {
-			en.secondHalf = true
-			en.endEvent = en.delay.Schedule(4, func() {
-				endEvent()
-				en.secondHalf = false
-			}, "END (2nd half)")
-		}
-		en.endEvent = en.delay.Schedule(4, triggerSecond, "END (1st half)")
+		en.endEvent = en.delay.Schedule(4, en._futureOnEndSecond, "END (1st half)")
 	}
+}
+
+// called at very end of enclockifier sequence
+func (en *enclockifier) _futureOnEnd() {
+	en.enable = false
+	en.endEvent = nil
+	en.secondHalf = false
+}
+
+// called at end of enclockifier sequence for quadruple width sprites. calls
+// _futureOnEnd at end of second half
+func (en *enclockifier) _futureOnEndSecond() {
+	en.secondHalf = true
+	en.endEvent = en.delay.Schedule(4, en._futureOnEnd, "END (2nd half)")
 }

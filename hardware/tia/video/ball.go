@@ -174,10 +174,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		switch bs.position.Count {
 		case 39:
 			const startDelay = 4
-			bs.startDrawingEvent = bs.Delay.Schedule(startDelay, func() {
-				bs.enclockifier.start()
-				bs.startDrawingEvent = nil
-			}, "START")
+			bs.startDrawingEvent = bs.Delay.Schedule(startDelay, bs._futureStartDrawingEvent, "START")
 		case 40:
 			bs.position.Reset()
 		}
@@ -185,6 +182,11 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	bs.Delay.Tick()
+}
+
+func (bs *ballSprite) _futureStartDrawingEvent() {
+	bs.enclockifier.start()
+	bs.startDrawingEvent = nil
 }
 
 func (bs *ballSprite) prepareForHMOVE() {
@@ -231,71 +233,73 @@ func (bs *ballSprite) resetPosition() {
 		return
 	}
 
-	bs.resetPositionEvent = bs.Delay.Schedule(delay, func() {
-		// end drawing of sprite in case it has started during the delay
-		// period. believe it or not, we can get rid of this and pixel output
-		// will still be correct (because of how the delayed END signal in the
-		// enclockifier works) but debugging information will be confusing if
-		// we did this.
-		bs.enclockifier.drop()
-		if bs.startDrawingEvent != nil {
-			bs.startDrawingEvent.Drop()
-			bs.startDrawingEvent = nil
+	bs.resetPositionEvent = bs.Delay.Schedule(delay, bs._futureResetPosition, "RESBL")
+}
+
+func (bs *ballSprite) _futureResetPosition() {
+	// end drawing of sprite in case it has started during the delay
+	// period. believe it or not, we can get rid of this and pixel output
+	// will still be correct (because of how the delayed END signal in the
+	// enclockifier works) but debugging information will be confusing if
+	// we did this.
+	bs.enclockifier.drop()
+	if bs.startDrawingEvent != nil {
+		bs.startDrawingEvent.Drop()
+		bs.startDrawingEvent = nil
+	}
+
+	// the pixel at which the sprite has been reset, in relation to the
+	// left edge of the screen
+	bs.resetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
+
+	if bs.resetPixel >= 0 {
+		// resetPixel adjusted by 1 because the tv is not yet in the correct
+		// position
+		bs.resetPixel++
+
+		// adjust resetPixel for screen boundaries
+		if bs.resetPixel > television.ClocksPerVisible {
+			bs.resetPixel -= television.ClocksPerVisible
 		}
 
-		// the pixel at which the sprite has been reset, in relation to the
-		// left edge of the screen
-		bs.resetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
+		// by definition the current pixel is the same as the reset pixel at
+		// the moment of reset
+		bs.hmovedPixel = bs.resetPixel
+	} else {
+		// if reset occurs off-screen then force reset pixel to be zero
+		bs.resetPixel = 0
 
-		if bs.resetPixel >= 0 {
-			// resetPixel adjusted by 1 because the tv is not yet in the correct
-			// position
-			bs.resetPixel++
+		// a reset of this kind happens when the reset register has been
+		// strobed but not completed before the HBLANK period, and a HMOVE
+		// forces the reset to occur.
 
-			// adjust resetPixel for screen boundaries
-			if bs.resetPixel > television.ClocksPerVisible {
-				bs.resetPixel -= television.ClocksPerVisible
-			}
-
-			// by definition the current pixel is the same as the reset pixel at
-			// the moment of reset
-			bs.hmovedPixel = bs.resetPixel
-		} else {
-			// if reset occurs off-screen then force reset pixel to be zero
-			bs.resetPixel = 0
-
-			// a reset of this kind happens when the reset register has been
-			// strobed but not completed before the HBLANK period, and a HMOVE
-			// forces the reset to occur.
-
-			// setting hmovedPixel below: I'm not sure about the value of 7 at
-			// all; but I couldn't figure out how to derive it algorithmically.
-			//
-			// observation of Keystone Kapers suggests that it's okay
-			// (scanlines being 62 and 97 two slightly different scenarios
-			// where the value is correct)
-			//
-			// also a very rough test ROM tries a couple of things to the same
-			// effect: test/my_test_roms/ball/late_reset.bin
-			bs.hmovedPixel = 7
-		}
-
-		// reset both sprite position and clock
-		bs.position.Reset()
-		bs.pclk.Reset()
-
-		// from TIA_HW_Notes.txt:
+		// setting hmovedPixel below: I'm not sure about the value of 7 at
+		// all; but I couldn't figure out how to derive it algorithmically.
 		//
-		// If you look closely at the START signal for the ball, unlike all
-		// the other position counters - the ball reset RESBL does send a START
-		// signal for graphics output! This makes the ball incredibly useful
-		// since you can trigger it as many times as you like across the same
-		// scanline and it will start drawing immediately each time :)
-		bs.enclockifier.start()
+		// observation of Keystone Kapers suggests that it's okay
+		// (scanlines being 62 and 97 two slightly different scenarios
+		// where the value is correct)
+		//
+		// also a very rough test ROM tries a couple of things to the same
+		// effect: test/my_test_roms/ball/late_reset.bin
+		bs.hmovedPixel = 7
+	}
 
-		// dump reference to reset event
-		bs.resetPositionEvent = nil
-	}, "RESBL")
+	// reset both sprite position and clock
+	bs.position.Reset()
+	bs.pclk.Reset()
+
+	// from TIA_HW_Notes.txt:
+	//
+	// If you look closely at the START signal for the ball, unlike all
+	// the other position counters - the ball reset RESBL does send a START
+	// signal for graphics output! This makes the ball incredibly useful
+	// since you can trigger it as many times as you like across the same
+	// scanline and it will start drawing immediately each time :)
+	bs.enclockifier.start()
+
+	// dump reference to reset event
+	bs.resetPositionEvent = nil
 }
 
 func (bs *ballSprite) pixel() (bool, uint8) {
@@ -337,16 +341,10 @@ func (bs *ballSprite) setColor(value uint8) {
 	bs.color = value
 }
 
-func (bs *ballSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
-	// see missile.setHmoveValue() commentary for delay value reasoning
-	tiaDelay.Schedule(2, func() {
-		bs.hmove = (value ^ 0x80) >> 4
-	}, "HMBL")
+func (bs *ballSprite) setHmoveValue(v interface{}) {
+	bs.hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
-func (bs *ballSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// see missile.setHmoveValue() commentary for delay value reasoning
-	tiaDelay.Schedule(2, func() {
-		bs.hmove = 0x08
-	}, "HMCLR")
+func (bs *ballSprite) clearHmoveValue() {
+	bs.hmove = 0x08
 }

@@ -317,51 +317,32 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 			//
 			// note that the additional latching has an impact of what we
 			// report as being the reset pixel.
-			const startDelay = 4
-
-			// it is useful for debugging to know which copy of the sprite is
-			// currently being drawn. we'll update this value in the switch
-			// below, taking great care to note the value of ms.copies at each
-			// trigger point
-			//
-			// this is used by the missile sprites when in reset-to-player
-			// mode
-			cpy := 0
-
-			startDrawingEvent := func() {
-				ps.scanCounter.start()
-				ps.scanCounter.cpy = cpy
-				ps.startDrawingEvent = nil
-			}
 
 			// "... The START decodes are ANDed with flags from the NUSIZ register
 			// before being latched, to determine whether to draw that copy."
 			switch ps.position.Count {
 			case 3:
 				if ps.nusiz == 0x01 || ps.nusiz == 0x03 {
-					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
-					cpy = 1
+					ps.startDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, 1, "START")
 				}
 			case 7:
 				if ps.nusiz == 0x03 || ps.nusiz == 0x02 || ps.nusiz == 0x06 {
-					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					cpy := 1
 					if ps.nusiz == 0x03 {
 						cpy = 2
-					} else {
-						cpy = 1
 					}
+					ps.startDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, cpy, "START")
 				}
 			case 15:
 				if ps.nusiz == 0x04 || ps.nusiz == 0x06 {
-					ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+					cpy := 1
 					if ps.nusiz == 0x06 {
 						cpy = 2
-					} else {
-						cpy = 1
 					}
+					ps.startDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, cpy, "START")
 				}
 			case 39:
-				ps.startDrawingEvent = ps.Delay.Schedule(startDelay, startDrawingEvent, "START")
+				ps.startDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, 0, "START")
 
 			case 40:
 				ps.position.Reset()
@@ -371,6 +352,20 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	ps.Delay.Tick()
+}
+
+func (ps *playerSprite) _futureStartDrawingEvent(v interface{}) {
+	// it is useful for debugging to know which copy of the sprite is
+	// currently being drawn. we'll update this value in the switch
+	// below, taking great care to note the value of ms.copies at each
+	// trigger point
+	//
+	// this is used by the missile sprites when in reset-to-player
+	// mode
+	ps.scanCounter.cpy = v.(int)
+
+	ps.scanCounter.start()
+	ps.startDrawingEvent = nil
 }
 
 func (ps *playerSprite) prepareForHMOVE() {
@@ -441,68 +436,69 @@ func (ps *playerSprite) resetPosition() {
 		return
 	}
 
-	ps.resetPositionEvent = ps.Delay.Schedule(delay, func() {
-		// the pixel at which the sprite has been reset, in relation to the
-		// left edge of the screen
-		ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
+	ps.resetPositionEvent = ps.Delay.Schedule(delay, ps._futureResetPosition, "RESPx")
+}
 
-		if ps.resetPixel >= 0 {
-			// resetPixel adjusted by +1 because the tv is not yet in the correct.
-			// position. and another +1 because of the latching required before
-			// player sprites begin drawing
-			ps.resetPixel += 2
+func (ps *playerSprite) _futureResetPosition() {
+	// the pixel at which the sprite has been reset, in relation to the
+	// left edge of the screen
+	ps.resetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
 
-			// if size is 2x or 4x then we need an additional reset pixel
-			//
-			// note that we need to monkey with resetPixel whenever NUSIZ changes.
-			// see setNUSIZ() function below
-			if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
-				ps.resetPixel++
-			}
+	if ps.resetPixel >= 0 {
+		// resetPixel adjusted by +1 because the tv is not yet in the correct.
+		// position. and another +1 because of the latching required before
+		// player sprites begin drawing
+		ps.resetPixel += 2
 
-			// adjust resetPixel for screen boundaries
-			if ps.resetPixel > television.ClocksPerVisible {
-				ps.resetPixel -= television.ClocksPerVisible
-			}
+		// if size is 2x or 4x then we need an additional reset pixel
+		//
+		// note that we need to monkey with resetPixel whenever NUSIZ changes.
+		// see setNUSIZ() function below
+		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
+			ps.resetPixel++
+		}
 
-			// by definition the current pixel is the same as the reset pixel at
-			// the moment of reset
-			ps.hmovedPixel = ps.resetPixel
+		// adjust resetPixel for screen boundaries
+		if ps.resetPixel > television.ClocksPerVisible {
+			ps.resetPixel -= television.ClocksPerVisible
+		}
+
+		// by definition the current pixel is the same as the reset pixel at
+		// the moment of reset
+		ps.hmovedPixel = ps.resetPixel
+	} else {
+		// if reset occurs off-screen then force reset pixel to be zero
+		// (see commentary in ball sprite for detailed reasoning of this
+		// branch)
+		ps.resetPixel = 0
+		ps.hmovedPixel = 7
+	}
+
+	// reset both sprite position and clock
+	ps.position.Reset()
+	ps.pclk.Reset()
+
+	// a player reset doesn't normally start drawing straight away unless
+	// one was a about to start (within 2 cycles from when the reset was first
+	// triggered)
+	//
+	// if a pending drawing event was more than two cycles away it is
+	// dropped
+	//
+	// rules discovered through observation (games that do bad things
+	// to HMOVE)
+	if ps.startDrawingEvent != nil {
+		if !ps.startDrawingEvent.JustStarted() {
+			ps.startDrawingEvent.Force()
+			ps.startDrawingEvent = nil
 		} else {
-			// if reset occurs off-screen then force reset pixel to be zero
-			// (see commentary in ball sprite for detailed reasoning of this
-			// branch)
-			ps.resetPixel = 0
-			ps.hmovedPixel = 7
+			ps.startDrawingEvent.Drop()
+			ps.startDrawingEvent = nil
 		}
+	}
 
-		// reset both sprite position and clock
-		ps.position.Reset()
-		ps.pclk.Reset()
-
-		// a player reset doesn't normally start drawing straight away unless
-		// one was a about to start (within 2 cycles from when the reset was first
-		// triggered)
-		//
-		// if a pending drawing event was more than two cycles away it is
-		// dropped
-		//
-		// rules discovered through observation (games that do bad things
-		// to HMOVE)
-		if ps.startDrawingEvent != nil {
-			if !ps.startDrawingEvent.JustStarted() {
-				ps.startDrawingEvent.Force()
-				ps.startDrawingEvent = nil
-			} else {
-				ps.startDrawingEvent.Drop()
-				ps.startDrawingEvent = nil
-			}
-		}
-
-		// dump reference to reset event
-		ps.resetPositionEvent = nil
-
-	}, "RESPx")
+	// dump reference to reset event
+	ps.resetPositionEvent = nil
 }
 
 // pixel returns the color of the player at the current time.  returns
@@ -624,31 +620,33 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		}
 	}
 
-	ps.Delay.Schedule(delay, func() {
-		// if size is 2x or 4x currently then take off the additional pixel. we'll
-		// add it back on afterwards if needs be
-		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
-			ps.resetPixel--
-			ps.hmovedPixel--
-		}
+	ps.Delay.ScheduleWithArg(delay, ps._futureSetNusiz, value, "NUSIZx")
+}
 
-		ps.nusiz = value & 0x07
+func (ps *playerSprite) _futureSetNusiz(v interface{}) {
+	// if size is 2x or 4x currently then take off the additional pixel. we'll
+	// add it back on afterwards if needs be
+	if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
+		ps.resetPixel--
+		ps.hmovedPixel--
+	}
 
-		// if size is 2x or 4x then we need to record an additional pixel on the
-		// reset point value
-		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
-			ps.resetPixel++
-			ps.hmovedPixel++
-		}
+	ps.nusiz = v.(uint8) & 0x07
 
-		// adjust reset pixel for screen boundaries
-		if ps.resetPixel > television.ClocksPerVisible {
-			ps.resetPixel -= television.ClocksPerVisible
-		}
-		if ps.hmovedPixel > television.ClocksPerVisible {
-			ps.hmovedPixel -= television.ClocksPerVisible
-		}
-	}, "NUSIZx")
+	// if size is 2x or 4x then we need to record an additional pixel on the
+	// reset point value
+	if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
+		ps.resetPixel++
+		ps.hmovedPixel++
+	}
+
+	// adjust reset pixel for screen boundaries
+	if ps.resetPixel > television.ClocksPerVisible {
+		ps.resetPixel -= television.ClocksPerVisible
+	}
+	if ps.hmovedPixel > television.ClocksPerVisible {
+		ps.hmovedPixel -= television.ClocksPerVisible
+	}
 }
 
 func (ps *playerSprite) setColor(value uint8) {
@@ -656,32 +654,10 @@ func (ps *playerSprite) setColor(value uint8) {
 	ps.color = value
 }
 
-func (ps *playerSprite) setHmoveValue(tiaDelay future.Scheduler, value uint8, clearing bool) {
-	// horizontal movement values range from -8 to +7 for convenience we
-	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
-	//
-	// "You may have noticed that the [...] discussion ignores the
-	// fact that HMxx values are specified in the range +7 to -8.
-	// In an odd twist, this was done purely for the convenience
-	// of the programmer! The comparator for D7 in each HMxx latch
-	// is wired up in reverse, costing nothing in silicon and
-	// effectively inverting this bit so that the value can be
-	// treated as a simple 0-15 count for movement left. It might
-	// be easier to think of this as having D7 inverted when it
-	// is stored in the first place."
-
-	// there is no information about whether response to HMOVE value changes
-	// are immediate or take effect after a short delay. experimentation
-	// reveals that a delay is required. see missile.setHmoveValue() commentary
-	// for the reasoning behind the delay value
-	tiaDelay.Schedule(2, func() {
-		ps.hmove = (value ^ 0x80) >> 4
-	}, "HMPx")
+func (ps *playerSprite) setHmoveValue(v interface{}) {
+	ps.hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
-func (ps *playerSprite) clearHmoveValue(tiaDelay future.Scheduler) {
-	// see missile.setHmoveValue() commentary for delay value reasoning
-	tiaDelay.Schedule(2, func() {
-		ps.hmove = 0x08
-	}, "HMCLR")
+func (ps *playerSprite) clearHmoveValue() {
+	ps.hmove = 0x08
 }
