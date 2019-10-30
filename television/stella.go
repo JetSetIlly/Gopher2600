@@ -294,8 +294,8 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// mix audio every other scanline
-	if btv.scanline%2 == 0 {
+	// mix audio on UpdateAudio signal
+	if sig.UpdateAudio {
 		for f := range btv.mixers {
 			err := btv.mixers[f].SetAudio(sig.Audio)
 			if err != nil {

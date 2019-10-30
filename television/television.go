@@ -47,7 +47,8 @@ type SignalAttributes struct {
 
 	// audio signal is just the content of the VCS audio registers. for now,
 	// sounds is generated/mixed by the television or gui implementation
-	Audio audio.Audio
+	Audio       audio.Audio
+	UpdateAudio bool
 }
 
 // Television defines the operations that can be performed on television

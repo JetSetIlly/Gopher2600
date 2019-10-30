@@ -6,23 +6,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 const samplePath = ".gopher2600/samples/little-scale_atari_2600_sample_pack"
-const sampleSubPath = "Atari_2600_No_Env"
+const sampleSubPath = "Atari_2600_Cropped"
 
 type sound struct {
 	prevAud audio.Audio
 
 	samples [16][32]*mix.Chunk
-
-	chan0  time.Time
-	chan1  time.Time
-	repeat time.Duration
 }
 
 func newSound(gtv *GUI) (*sound, error) {
@@ -73,8 +68,6 @@ func newSound(gtv *GUI) (*sound, error) {
 		return nil, err
 	}
 
-	snd.repeat, _ = time.ParseDuration("0.49s")
-
 	return snd, nil
 }
 
@@ -87,16 +80,20 @@ func (gtv *GUI) SetAudio(aud audio.Audio) error {
 		mix.Volume(1, int(aud.Volume1*8))
 	}
 
-	t := time.Now()
-
-	if t.Sub(gtv.snd.chan0) > gtv.snd.repeat || aud.Control0 != gtv.snd.prevAud.Control0 || aud.Freq0 != gtv.snd.prevAud.Freq0 {
-		gtv.snd.samples[aud.Control0][31-aud.Freq0].Play(0, 0)
-		gtv.snd.chan0 = t
+	if aud.Control0 != gtv.snd.prevAud.Control0 || aud.Freq0 != gtv.snd.prevAud.Freq0 {
+		if aud.Control0 == 0 {
+			mix.HaltChannel(0)
+		} else {
+			gtv.snd.samples[aud.Control0][31-aud.Freq0].Play(0, -1)
+		}
 	}
 
-	if t.Sub(gtv.snd.chan1) > gtv.snd.repeat || aud.Control1 != gtv.snd.prevAud.Control1 || aud.Freq1 != gtv.snd.prevAud.Freq1 {
-		gtv.snd.samples[aud.Control1][31-aud.Freq1].Play(1, 0)
-		gtv.snd.chan1 = t
+	if aud.Control1 != gtv.snd.prevAud.Control1 || aud.Freq1 != gtv.snd.prevAud.Freq1 {
+		if aud.Control1 == 0 {
+			mix.HaltChannel(1)
+		} else {
+			gtv.snd.samples[aud.Control1][31-aud.Freq1].Play(1, -1)
+		}
 	}
 
 	gtv.snd.prevAud = aud
