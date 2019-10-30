@@ -61,5 +61,5 @@ func (cart ejected) ram() []uint8 {
 }
 
 func (cart ejected) listen(addr uint16, data uint8) error {
-	return errors.New(errors.CartridgeListen, addr)
+	return nil
 }

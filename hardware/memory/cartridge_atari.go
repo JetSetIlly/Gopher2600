@@ -148,7 +148,7 @@ func (cart atari) ram() []uint8 {
 }
 
 func (cart atari) listen(addr uint16, data uint8) error {
-	return errors.New(errors.CartridgeListen, addr)
+	return nil
 }
 
 // atari4k is the original and most straightforward format

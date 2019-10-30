@@ -144,7 +144,7 @@ func (cart *tigervision) ram() []uint8 {
 func (cart *tigervision) listen(addr uint16, data uint8) error {
 	// tigervision is seemingly unique in that in bank-switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
-	// listen() function .
+	// listen() function.
 
 	// althought address 3F is used primarily for bank switching in actual
 	// fact writing anywhere in TIA space is okay
@@ -153,5 +153,5 @@ func (cart *tigervision) listen(addr uint16, data uint8) error {
 		cart.segment[0] = int(data & 0x03)
 		return nil
 	}
-	return errors.New(errors.CartridgeListen, addr)
+	return nil
 }

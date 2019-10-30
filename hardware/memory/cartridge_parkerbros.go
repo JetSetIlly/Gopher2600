@@ -225,5 +225,5 @@ func (cart parkerBros) ram() []uint8 {
 }
 
 func (cart parkerBros) listen(addr uint16, data uint8) error {
-	return errors.New(errors.CartridgeListen, addr)
+	return nil
 }

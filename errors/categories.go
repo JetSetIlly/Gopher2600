@@ -94,7 +94,6 @@ const (
 	CartridgeFileUnavailable
 	CartridgeError
 	CartridgeEjected
-	CartridgeListen
 
 	// peripherals
 	PeriphHardwareUnavailable

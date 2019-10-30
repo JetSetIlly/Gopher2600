@@ -278,5 +278,5 @@ func (cart *mnetwork) ram() []uint8 {
 }
 
 func (cart *mnetwork) listen(addr uint16, data uint8) error {
-	return errors.New(errors.CartridgeListen, addr)
+	return nil
 }
