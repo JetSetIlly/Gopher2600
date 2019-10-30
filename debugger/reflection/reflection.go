@@ -149,9 +149,9 @@ func (adm *addressMonitor) check(rend overlay.Renderer, mem *memory.VCSMemory, d
 	// we filter on LastAccessTimeStamp rather than LastAccessAddress.
 	// filtering by address will probably work in most instances but it won't
 	// capture repeated writes to the same memory location.
-	if mem.LastAccessWrite && mem.LastAccessTimeStamp != adm.lastAddressTimestamp {
+	if mem.LastAccessWrite && mem.LastAccessID != adm.lastAddressTimestamp {
 		adm.lastAddress = mem.LastAccessAddress
-		adm.lastAddressTimestamp = mem.LastAccessTimeStamp
+		adm.lastAddressTimestamp = mem.LastAccessID
 
 		// 4 cycles seems plenty of time for an address to be serviced
 		adm.lastAddressFound = 4

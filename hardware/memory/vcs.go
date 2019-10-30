@@ -29,11 +29,15 @@ type VCSMemory struct {
 	//  * a note of the last (mapperd) memory address to be accessed
 	//  * the value that was written/read from the last address accessed
 	//  * whether the last addres accessed was written or read
-	//  * the timestamp of the last memory access
-	LastAccessAddress   uint16
-	LastAccessValue     uint8
-	LastAccessWrite     bool
-	LastAccessTimeStamp time.Time
+	//  * the ID of the last memory access (currently a timestamp)
+	LastAccessAddress uint16
+	LastAccessValue   uint8
+	LastAccessWrite   bool
+	LastAccessID      time.Time
+
+	// generating unique access ID is needlessly expensive so it can be turned
+	// on/off. should be off for normal operation
+	LastAccessIDActive bool
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
@@ -133,7 +137,7 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = false
 	mem.LastAccessValue = data
-	mem.LastAccessTimeStamp = time.Now()
+	// mem.LastAccessTimeStamp = time.Now()
 
 	return data, err
 }
@@ -149,7 +153,12 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = true
 	mem.LastAccessValue = data
-	mem.LastAccessTimeStamp = time.Now()
+
+	// note time of memory access. not required except for certain debugging
+	// functions so it should be inactive for normal operation
+	if mem.LastAccessIDActive {
+		mem.LastAccessID = time.Now()
+	}
 
 	// as incredible as it may seem some cartridges react to memory writes to
 	// addresses not in the cartridge space. for example, tigervision
@@ -161,10 +170,6 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	// error, which most cartridge types will respond with in all circumstances
 	if err != nil {
 		if _, ok := err.(errors.AtariError); !ok {
-			return err
-		}
-
-		if err.(errors.AtariError).Errno != errors.CartridgeListen {
 			return err
 		}
 	}

@@ -618,13 +618,19 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			dbg.reflectProcess = false
 			err := dbg.gui.SetFeature(gui.ReqSetOverlay, false)
 			if err != nil {
 				dbg.print(console.StyleError, err.Error())
 			}
+			dbg.reflectProcess = false
+			dbg.vcs.Mem.LastAccessIDActive = false
 		case "ON":
+			err := dbg.gui.SetFeature(gui.ReqSetOverlay, true)
+			if err != nil {
+				dbg.print(console.StyleError, err.Error())
+			}
 			dbg.reflectProcess = true
+			dbg.vcs.Mem.LastAccessIDActive = true
 		}
 		if dbg.reflectProcess {
 			dbg.print(console.StyleEmulatorInfo, "reflection: ON")
