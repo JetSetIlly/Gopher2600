@@ -33,18 +33,20 @@ type CPU struct {
 	mem     memory.CPUBus
 	opCodes []*definitions.InstructionDefinition
 
-	// endCycle is called at the end of the imaginary CPU cycle. for example,
-	// reading a byte from memory takes one cycle and so the emulation will
-	// call endCycle() at that point. ExecuteInstruction() accepts an argument
-	// cycleCallback which is called by endCycle for additional functionality
-	//
-	// by definition: if it is undefined then no execution is currently being
-	// executed (see IsExecutingInstruction method)
-	endCycle func() error
+	// executing is used for sanity checks - to make sure we're not calling CPU
+	// functions when we shouldn't
+	executing bool
+
+	// cycleCallback is called by endCycle() for additional emulator
+	// functionality
+	cycleCallback func() error
 
 	// controls whether cpu executes a cycle when it receives a clock tick (pin
 	// 3 of the 6507)
 	RdyFlg bool
+
+	// last result
+	LastResult result.Instruction
 
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
@@ -57,9 +59,6 @@ type CPU struct {
 	// note that the alteration of flow as a result of bank switching is still
 	// possible even if NoFlowControl is true
 	NoFlowControl bool
-
-	// last result
-	LastResult result.Instruction
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure
@@ -91,15 +90,10 @@ func (mc *CPU) String() string {
 	return fmt.Sprintf("%s %s %s %s %s %s", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
 }
 
-// IsExecuting returns true if it is called during an ExecuteInstruction() callback
-func (mc *CPU) IsExecuting() bool {
-	return mc.endCycle != nil
-}
-
 // Reset reinitialises all registers
 func (mc *CPU) Reset() error {
 	// sanity check
-	if mc.IsExecuting() {
+	if mc.executing {
 		return errors.New(errors.InvalidOperationMidInstruction, "reset")
 	}
 
@@ -113,8 +107,11 @@ func (mc *CPU) Reset() error {
 	mc.Status.Sign = mc.A.IsNegative()
 	mc.Status.InterruptDisable = false
 	mc.Status.Break = false
-	mc.endCycle = nil
+	mc.executing = false
+	mc.cycleCallback = nil
 	mc.RdyFlg = true
+
+	// not touching StrictAddressing and NoFlowControl
 
 	return nil
 }
@@ -122,17 +119,9 @@ func (mc *CPU) Reset() error {
 // LoadPCIndirect loads the contents of indirectAddress into the PC
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	// sanity check
-	if mc.IsExecuting() {
+	if mc.executing {
 		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
 	}
-
-	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
-	// cycle we need to make sure endCycle() is in a valid state for the duration
-	// of the function
-	mc.endCycle = func() error { return nil }
-	defer func() {
-		mc.endCycle = nil
-	}()
 
 	val, err := mc.read16Bit(indirectAddress)
 	if err != nil {
@@ -146,17 +135,9 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 // LoadPC loads the contents of directAddress into the PC
 func (mc *CPU) LoadPC(directAddress uint16) error {
 	// sanity check
-	if mc.IsExecuting() {
+	if mc.executing {
 		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
 	}
-
-	// because we call this LoadPC() outside of the CPU's ExecuteInstruction()
-	// cycle we need to make sure endCycle() is in a valid state for the duration
-	// of the function
-	mc.endCycle = func() error { return nil }
-	defer func() {
-		mc.endCycle = nil
-	}()
 
 	mc.PC.Load(directAddress)
 
@@ -316,22 +297,28 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 	return nil
 }
 
-func nullCycleCallback() error {
-	return nil
+// endCycle is called at the end of the imaginary CPU cycle. for example,
+// reading a byte from memory takes one cycle and so the emulation will
+// call endCycle() at that point. ExecuteInstruction() accepts an argument
+// cycleCallback which is called by endCycle for additional functionality
+func (mc *CPU) endCycle() error {
+	mc.LastResult.ActualCycles++
+	if mc.cycleCallback == nil {
+		return nil
+	}
+	return mc.cycleCallback()
 }
 
 // ExecuteInstruction steps CPU forward one instruction, calling
 // cycleCallback() after every cycle
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// sanity check
-	if mc.IsExecuting() {
+	if mc.executing {
 		panic(fmt.Sprintf("can't call cpu.ExecuteInstruction() in the middle of another cpu.ExecuteInstruction()"))
 	}
 
-	// default cycleCallback
-	if cycleCallback == nil {
-		cycleCallback = nullCycleCallback
-	}
+	// update cycle callback
+	mc.cycleCallback = cycleCallback
 
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {
@@ -348,12 +335,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	mc.LastResult.Bug = ""
 
 	// register end cycle callback
-	mc.endCycle = func() error {
-		mc.LastResult.ActualCycles++
-		return cycleCallback()
-	}
 	defer func() {
-		mc.endCycle = nil
+		mc.executing = false
+		mc.cycleCallback = nil
 	}()
 
 	var err error

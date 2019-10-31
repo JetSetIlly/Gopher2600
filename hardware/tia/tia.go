@@ -114,6 +114,78 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	return &tia
 }
 
+func (tia *TIA) newScanline() {
+	// the CPU's WSYNC concludes at the beginning of a scanline
+	// from the TIA_1A document:
+	//
+	// "...WSYNC latch is automatically reset to zero by the
+	// leading edge of the next horizontal blank timing signal,
+	// releasing the RDY line"
+	tia.wsync = false
+
+	// start HBLANK. start of new scanline for the TIA. turn hblank
+	// on
+	tia.hblank = true
+
+	// reset debugging information
+	tia.videoCycles = 0
+
+	// see SignalAttributes type definition for notes about the
+	// HSyncSimple attribute
+	tia.sig.HSyncSimple = true
+
+	// rather than include the reset signal in the delay, we will
+	// manually reset hsync counter when it reaches a count of 57
+}
+
+func (tia *TIA) _futureVBLANK(v interface{}) {
+	tia.sig.VBlank = v.(bool)
+}
+
+func (tia *TIA) _futureRSYNCreset() {
+	tia.hsync.Reset()
+	tia.pclk.Reset()
+	tia.rsyncEvent = nil
+}
+
+func (tia *TIA) _futureRSYNCnewScanline() {
+	tia.newScanline()
+
+	// adjust video elements by the number of visible pixels that have
+	// been consumed. adding one to the value because the tv pixel we
+	// want to hit has not been reached just yet
+	adj, _ := tia.tv.GetState(television.ReqHorizPos)
+	adj++
+	if adj > 0 {
+		tia.Video.RSYNC(adj)
+	}
+
+	tia.rsyncEvent = tia.Delay.Schedule(4, tia._futureRSYNCreset, "RSYNC (reset)")
+}
+
+func (tia *TIA) _futureHMOVElatch() {
+	tia.hmoveLatch = true
+}
+
+func (tia *TIA) _futureHMOVEprep() {
+	tia.Video.PrepareSpritesForHMOVE()
+	tia.hmoveCt = 15
+	tia.hmoveEvent = nil
+}
+
+func (tia *TIA) _futureResetHSYNC() {
+	tia.sig.HSync = false
+	tia.sig.CBurst = true
+}
+
+func (tia *TIA) _futureResetColorBurst() {
+	tia.sig.CBurst = false
+}
+
+func (tia *TIA) _futureResetHBlank() {
+	tia.hblank = false
+}
+
 // UpdateTIA checks for side effects in the TIA sub-system
 func (tia *TIA) UpdateTIA(data memory.ChipData) {
 	switch data.Name {
@@ -128,9 +200,7 @@ func (tia *TIA) UpdateTIA(data memory.ChipData) {
 	case "VBLANK":
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
-		tia.Delay.Schedule(1, func() {
-			tia.sig.VBlank = (data.Value&0x02 == 0x02)
-		}, "VBLANK")
+		tia.Delay.ScheduleWithArg(1, tia._futureVBLANK, data.Value&0x02 == 0x02, "VBLANK")
 		return
 
 	case "WSYNC":
@@ -164,24 +234,7 @@ func (tia *TIA) UpdateTIA(data memory.ChipData) {
 		//
 		// * Test RSYNC - test rom by Omegamatrix
 
-		tia.rsyncEvent = tia.Delay.Schedule(3, func() {
-			tia.newScanline()
-
-			// adjust video elements by the number of visible pixels that have
-			// been consumed. adding one to the value because the tv pixel we
-			// want to hit has not been reached just yet
-			adj, _ := tia.tv.GetState(television.ReqHorizPos)
-			adj++
-			if adj > 0 {
-				tia.Video.RSYNC(adj)
-			}
-
-			tia.rsyncEvent = tia.Delay.Schedule(4, func() {
-				tia.hsync.Reset()
-				tia.pclk.Reset()
-				tia.rsyncEvent = nil
-			}, "RSYNC (reset)")
-		}, "RSYNC (new scanline)")
+		tia.rsyncEvent = tia.Delay.Schedule(3, tia._futureRSYNCnewScanline, "RSYNC (new scanline)")
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
@@ -213,17 +266,11 @@ func (tia *TIA) UpdateTIA(data memory.ChipData) {
 			delay = 2
 		}
 
-		tia.Delay.Schedule(delay, func() {
-			tia.hmoveLatch = true
-		}, "HMOVE")
+		tia.Delay.Schedule(delay, tia._futureHMOVElatch, "HMOVE")
 
 		delay += 3
 
-		tia.hmoveEvent = tia.Delay.Schedule(delay, func() {
-			tia.Video.PrepareSpritesForHMOVE()
-			tia.hmoveCt = 15
-			tia.hmoveEvent = nil
-		}, "HMOVE (mode movement latches)")
+		tia.hmoveEvent = tia.Delay.Schedule(delay, tia._futureHMOVEprep, "HMOVE (prep)")
 
 		// from TIA_HW_Notes:
 		//
@@ -242,30 +289,6 @@ func (tia *TIA) UpdateTIA(data memory.ChipData) {
 
 		return
 	}
-}
-
-func (tia *TIA) newScanline() {
-	// the CPU's WSYNC concludes at the beginning of a scanline
-	// from the TIA_1A document:
-	//
-	// "...WSYNC latch is automatically reset to zero by the
-	// leading edge of the next horizontal blank timing signal,
-	// releasing the RDY line"
-	tia.wsync = false
-
-	// start HBLANK. start of new scanline for the TIA. turn hblank
-	// on
-	tia.hblank = true
-
-	// reset debugging information
-	tia.videoCycles = 0
-
-	// see SignalAttributes type definition for notes about the
-	// HSyncSimple attribute
-	tia.sig.HSyncSimple = true
-
-	// rather than include the reset signal in the delay, we will
-	// manually reset hsync counter when it reaches a count of 57
 }
 
 // Step moves the state of the tia forward one video cycle returns the state of
@@ -360,9 +383,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			// allow a new scanline event to occur naturally only when an RSYNC
 			// has not been scheduled
 			if tia.rsyncEvent == nil {
-				tia.Delay.Schedule(hsyncDelay, func() {
-					tia.newScanline()
-				}, "RESET")
+				tia.Delay.Schedule(hsyncDelay, tia.newScanline, "RESET")
 			}
 
 		case 4: // [SHS]
@@ -374,17 +395,12 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			tia.sig.HSync = true
 
 		case 8: // [RHS]
-			tia.Delay.Schedule(hsyncDelay, func() {
-				// reset HSYNC
-				tia.sig.HSync = false
-				tia.sig.CBurst = true
-			}, "RHS (TV)")
+			// reset HSYNC
+			tia.Delay.Schedule(hsyncDelay, tia._futureResetHSYNC, "RHS (TV)")
 
 		case 12: // [RCB]
-			tia.Delay.Schedule(hsyncDelay, func() {
-				// reset color burst
-				tia.sig.CBurst = false
-			}, "RCB (TV)")
+			// reset color burst
+			tia.Delay.Schedule(hsyncDelay, tia._futureResetColorBurst, "RCB (TV)")
 
 		// the two cases below handle the turning off of the hblank flag. from
 		// TIA_HW_Notes.txt:
@@ -406,9 +422,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.hmoveLatch {
-				tia.Delay.Schedule(hsyncDelay, func() {
-					tia.hblank = false
-				}, "HRB")
+				tia.Delay.Schedule(hsyncDelay, tia._futureResetHBlank, "HRB")
 			}
 
 		// ... and "two counts of the HSync Counter" later ...
@@ -416,9 +430,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 18:
 			// late HBLANK off if hmoveLatch is true
 			if tia.hmoveLatch {
-				tia.Delay.Schedule(hsyncDelay, func() {
-					tia.hblank = false
-				}, "LHRB")
+				tia.Delay.Schedule(hsyncDelay, tia._futureResetHBlank, "LHRB")
 			}
 		}
 	}
