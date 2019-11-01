@@ -20,7 +20,7 @@ type sound struct {
 	samples [16][32]*mix.Chunk
 }
 
-func newSound(gtv *GUI) (*sound, error) {
+func newSound(pxtv *PixelTV) (*sound, error) {
 	snd := &sound{}
 
 	// prerequisite: SDL_INIT_AUDIO must be included in the call to sdl.Init()
@@ -72,31 +72,31 @@ func newSound(gtv *GUI) (*sound, error) {
 }
 
 // SetAudio implements the television.AudioMixer interface
-func (gtv *GUI) SetAudio(aud audio.Audio) error {
-	if aud.Volume0 != gtv.snd.prevAud.Volume0 {
+func (pxtv *PixelTV) SetAudio(aud audio.Audio) error {
+	if aud.Volume0 != pxtv.snd.prevAud.Volume0 {
 		mix.Volume(0, int(aud.Volume0*8))
 	}
-	if aud.Volume1 != gtv.snd.prevAud.Volume1 {
+	if aud.Volume1 != pxtv.snd.prevAud.Volume1 {
 		mix.Volume(1, int(aud.Volume1*8))
 	}
 
-	if aud.Control0 != gtv.snd.prevAud.Control0 || aud.Freq0 != gtv.snd.prevAud.Freq0 {
+	if aud.Control0 != pxtv.snd.prevAud.Control0 || aud.Freq0 != pxtv.snd.prevAud.Freq0 {
 		if aud.Control0 == 0 {
 			mix.HaltChannel(0)
 		} else {
-			gtv.snd.samples[aud.Control0][31-aud.Freq0].Play(0, -1)
+			pxtv.snd.samples[aud.Control0][31-aud.Freq0].Play(0, -1)
 		}
 	}
 
-	if aud.Control1 != gtv.snd.prevAud.Control1 || aud.Freq1 != gtv.snd.prevAud.Freq1 {
+	if aud.Control1 != pxtv.snd.prevAud.Control1 || aud.Freq1 != pxtv.snd.prevAud.Freq1 {
 		if aud.Control1 == 0 {
 			mix.HaltChannel(1)
 		} else {
-			gtv.snd.samples[aud.Control1][31-aud.Freq1].Play(1, -1)
+			pxtv.snd.samples[aud.Control1][31-aud.Freq1].Play(1, -1)
 		}
 	}
 
-	gtv.snd.prevAud = aud
+	pxtv.snd.prevAud = aud
 
 	return nil
 }

@@ -6,12 +6,17 @@ import (
 	"strings"
 )
 
-// StellaTelevision is the minimalist implementation of the Television interface - a
-// television without a screen. Fuller implementations of the television can
-// use this as the basis of the emulation by struct embedding
+// StellaTelevision is the minimalist implementation of the Television
+// interface. It is so called because the reporting of the TV state, via
+// GetState(), is meant to mirror exactly the state as reported by the stella
+// emulator. The intention is to make it easier to perform A/B testing.
 //
-// the reporting of TV state is meant to mirror exactly, the state as reported
-// by stella. this makes it easier to perform A/B testing
+// To make the state reporting as intuitive as possible, StellaTelevision makes
+// use of the HSyncSimple sigal attribute (see SignalAttributes type in the
+// television package for details). Consequently, calls to NewScanline() for
+// any attached renderers, are made when the HSyncSimple signal is recieved.
+// This will have an effect on how the renderer displays off screen information
+// (if it chooses to that is).
 type StellaTelevision struct {
 	// television specification (NTSC or PAL)
 	spec *Specification
@@ -57,7 +62,7 @@ type StellaTelevision struct {
 	thisVisibleBottom int
 
 	// list of renderer implementations to consult
-	renderers []Renderer
+	renderers []PixelRenderer
 
 	// list of audio mixers to consult
 	mixers []AudioMixer
@@ -81,7 +86,7 @@ func NewStellaTelevision(tvType string) (*StellaTelevision, error) {
 	}
 
 	// empty list of renderers
-	btv.renderers = make([]Renderer, 0)
+	btv.renderers = make([]PixelRenderer, 0)
 
 	// initialise TVState
 	err := btv.Reset()
@@ -102,13 +107,13 @@ func (btv StellaTelevision) String() string {
 	return s.String()
 }
 
-// AddRenderer adds a renderer implementation to the list
-func (btv *StellaTelevision) AddRenderer(r Renderer) {
+// AddPixelRenderer adds a renderer implementation to the list
+func (btv *StellaTelevision) AddPixelRenderer(r PixelRenderer) {
 	btv.renderers = append(btv.renderers, r)
 }
 
-// AddMixer adds a renderer implementation to the list
-func (btv *StellaTelevision) AddMixer(m AudioMixer) {
+// AddAudioMixer adds a renderer implementation to the list
+func (btv *StellaTelevision) AddAudioMixer(m AudioMixer) {
 	btv.mixers = append(btv.mixers, m)
 }
 
@@ -273,8 +278,8 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	btv.prevSignal = sig
 
 	// current coordinates
-	x := int32(btv.horizPos) + int32(ClocksPerHblank)
-	y := int32(btv.scanline)
+	x := btv.horizPos + ClocksPerHblank
+	y := btv.scanline
 
 	// decode color using the regular color signal
 	red, green, blue := getColor(btv.spec, sig.Pixel)
@@ -307,10 +312,7 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	return nil
 }
 
-// GetState returns the TVState object for the named state. television
-// implementations in other packages will difficulty extending this function
-// because TVStateReq does not expose its members. (although it may need to if
-// television is running in it's own goroutine)
+// GetState returns the value for the named state. eg. the current frame number
 func (btv *StellaTelevision) GetState(request StateReq) (int, error) {
 	switch request {
 	default:

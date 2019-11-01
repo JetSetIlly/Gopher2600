@@ -1,9 +1,34 @@
 package gui
 
 import (
-	"gopher2600/gui/overlay"
 	"gopher2600/television"
 )
+
+// GUI defines the operations that can be performed on visual user interfaces.
+//
+// Currently, GUI implementations expect also to be an instance of
+// television.Television. This way a single object can be used in both GUI and
+// television contexts. In practice, the GUI instance may also implement the
+// Renderer and AudioMixer interfaces from the television packages but this is
+// not mandated by the GUI interface.
+type GUI interface {
+	television.Television
+
+	// All GUIs should implement a MetaPixelRenderer even if only as a stub
+	MetaPixelRenderer
+
+	// returns true if GUI is currently visible. false if not
+	IsVisible() bool
+
+	// send a request to set a gui feature
+	SetFeature(request FeatureReq, args ...interface{}) error
+
+	// the event channel is used to by the GUI implementation to send
+	// information back to the main program. the GUI may or may not be in its
+	// own go routine but in regardless, the event channel is used for this
+	// purpose.
+	SetEventChannel(chan (Event))
+}
 
 // FeatureReq is used to request the setting of a gui attribute
 // eg. toggling the overlay
@@ -28,26 +53,6 @@ const (
 	ReqIncScale                              // none
 	ReqDecScale                              // none
 )
-
-// GUI defines the operations that can be performed on GUIs
-type GUI interface {
-	television.Television
-	television.Renderer
-	television.AudioMixer
-	overlay.Renderer
-
-	// returns true if GUI is currently visible. false if not
-	IsVisible() bool
-
-	// send a request to set a gui feature
-	SetFeature(request FeatureReq, args ...interface{}) error
-
-	// the event channel is used to by the GUI implementation to send
-	// information back to the main program. the GUI may or may not be in its
-	// own go routine but in regardless, the event channel is used for this
-	// purpose.
-	SetEventChannel(chan (Event))
-}
 
 // EventID idintifies the type of event taking place
 type EventID int

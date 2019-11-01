@@ -1,12 +1,12 @@
 package sdl
 
 import (
-	"gopher2600/gui/overlay"
+	"gopher2600/gui"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-type sdlOverlay struct {
+type metapixelOverlay struct {
 	scr *screen
 
 	texture     *sdl.Texture
@@ -18,89 +18,89 @@ type sdlOverlay struct {
 	labels [][]string
 }
 
-func newSdlOverlay(scr *screen) (*sdlOverlay, error) {
-	mv := new(sdlOverlay)
-	mv.scr = scr
+func newMetapixelOverlay(scr *screen) (*metapixelOverlay, error) {
+	ovl := new(metapixelOverlay)
+	ovl.scr = scr
 
 	// our acutal screen data
-	mv.pixels = make([]byte, mv.scr.maxWidth*mv.scr.maxHeight*scrDepth)
-	mv.pixelsFade = make([]byte, mv.scr.maxWidth*mv.scr.maxHeight*scrDepth)
+	ovl.pixels = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*scrDepth)
+	ovl.pixelsFade = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*scrDepth)
 
 	// labels
-	mv.labels = make([][]string, mv.scr.maxHeight)
-	for i := 0; i < len(mv.labels); i++ {
-		mv.labels[i] = make([]string, mv.scr.maxWidth)
+	ovl.labels = make([][]string, ovl.scr.maxHeight)
+	for i := 0; i < len(ovl.labels); i++ {
+		ovl.labels[i] = make([]string, ovl.scr.maxWidth)
 	}
 
 	var err error
 
-	mv.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(mv.scr.maxWidth), int32(mv.scr.maxHeight))
+	ovl.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(ovl.scr.maxWidth), int32(ovl.scr.maxHeight))
 	if err != nil {
 		return nil, err
 	}
-	mv.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-	mv.texture.SetAlphaMod(100)
+	ovl.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	ovl.texture.SetAlphaMod(100)
 
-	mv.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(mv.scr.maxWidth), int32(mv.scr.maxHeight))
+	ovl.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(ovl.scr.maxWidth), int32(ovl.scr.maxHeight))
 	if err != nil {
 		return nil, err
 	}
-	mv.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-	mv.textureFade.SetAlphaMod(50)
+	ovl.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
+	ovl.textureFade.SetAlphaMod(50)
 
-	return mv, nil
+	return ovl, nil
 }
 
-func (mv *sdlOverlay) setPixel(sig overlay.Signal) error {
-	i := (mv.scr.lastY*mv.scr.maxWidth + mv.scr.lastX) * scrDepth
+func (ovl *metapixelOverlay) setPixel(sig gui.MetaPixel) error {
+	i := (ovl.scr.lastY*ovl.scr.maxWidth + ovl.scr.lastX) * scrDepth
 
-	if i >= int32(len(mv.pixels)) {
+	if i >= int32(len(ovl.pixels)) {
 		return nil
 	}
 
-	mv.pixels[i] = sig.Red
-	mv.pixels[i+1] = sig.Green
-	mv.pixels[i+2] = sig.Blue
-	mv.pixels[i+3] = sig.Alpha
+	ovl.pixels[i] = sig.Red
+	ovl.pixels[i+1] = sig.Green
+	ovl.pixels[i+2] = sig.Blue
+	ovl.pixels[i+3] = sig.Alpha
 
 	// silently allow empty labels
-	mv.labels[mv.scr.lastY][mv.scr.lastX] = sig.Label
+	ovl.labels[ovl.scr.lastY][ovl.scr.lastX] = sig.Label
 
 	return nil
 }
 
-func (mv *sdlOverlay) newFrame() {
+func (ovl *metapixelOverlay) newFrame() {
 	// swap pixel array with pixelsFade array
 	// -- see comment in sdl.screen.newFrame() function for why we do this
-	swp := mv.pixels
-	mv.pixels = mv.pixelsFade
-	mv.pixelsFade = swp
+	swp := ovl.pixels
+	ovl.pixels = ovl.pixelsFade
+	ovl.pixelsFade = swp
 
 	// clear regular pixels
-	for i := 0; i < len(mv.pixels); i++ {
-		mv.pixels[i] = 0
+	for i := 0; i < len(ovl.pixels); i++ {
+		ovl.pixels[i] = 0
 	}
 }
 
-func (mv *sdlOverlay) update(paused bool) error {
+func (ovl *metapixelOverlay) update(paused bool) error {
 	if paused {
-		err := mv.textureFade.Update(nil, mv.pixelsFade, int(mv.scr.maxWidth*scrDepth))
+		err := ovl.textureFade.Update(nil, ovl.pixelsFade, int(ovl.scr.maxWidth*scrDepth))
 		if err != nil {
 			return err
 		}
 
-		err = mv.scr.renderer.Copy(mv.textureFade, mv.scr.srcRect, mv.scr.destRect)
+		err = ovl.scr.renderer.Copy(ovl.textureFade, ovl.scr.srcRect, ovl.scr.destRect)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := mv.texture.Update(nil, mv.pixels, int(mv.scr.maxWidth*scrDepth))
+	err := ovl.texture.Update(nil, ovl.pixels, int(ovl.scr.maxWidth*scrDepth))
 	if err != nil {
 		return err
 	}
 
-	err = mv.scr.renderer.Copy(mv.texture, mv.scr.srcRect, mv.scr.destRect)
+	err = ovl.scr.renderer.Copy(ovl.texture, ovl.scr.srcRect, ovl.scr.destRect)
 	if err != nil {
 		return err
 	}
@@ -108,12 +108,12 @@ func (mv *sdlOverlay) update(paused bool) error {
 	return nil
 }
 
-// OverlaySignal recieves (and processes) additional emulator information from the emulator
-func (gtv *GUI) OverlaySignal(sig overlay.Signal) error {
+// SetMetaPixel recieves (and processes) additional emulator information from the emulator
+func (pxtv *PixelTV) SetMetaPixel(sig gui.MetaPixel) error {
 	// don't do anything if debugging is not enabled
-	if !gtv.allowDebugging {
+	if !pxtv.allowDebugging {
 		return nil
 	}
 
-	return gtv.scr.overlay.setPixel(sig)
+	return pxtv.scr.overlay.setPixel(sig)
 }

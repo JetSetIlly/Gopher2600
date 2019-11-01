@@ -8,7 +8,7 @@ import (
 )
 
 // SetFeature is used to set a television attribute
-func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+func (pxtv *PixelTV) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -18,83 +18,83 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) (returne
 
 	switch request {
 	case gui.ReqSetVisibilityStable:
-		err := gtv.scr.stb.resolveSetVisibility()
+		err := pxtv.scr.stb.resolveSetVisibility()
 		if err != nil {
 			return err
 		}
 
 	case gui.ReqSetVisibility:
 		if args[0].(bool) {
-			gtv.scr.window.Show()
+			pxtv.scr.window.Show()
 
 			// update screen
 			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
-				gtv.update()
+				pxtv.scr.update()
 			}
 		} else {
-			gtv.scr.window.Hide()
+			pxtv.scr.window.Hide()
 		}
 
 	case gui.ReqToggleVisibility:
-		if gtv.scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			gtv.scr.window.Show()
+		if pxtv.scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
+			pxtv.scr.window.Show()
 
 			// update screen
 			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
-				gtv.update()
+				pxtv.scr.update()
 			}
 		} else {
-			gtv.scr.window.Hide()
+			pxtv.scr.window.Hide()
 		}
 
 	case gui.ReqSetAllowDebugging:
-		gtv.setDebugging(args[0].(bool))
-		gtv.update()
+		pxtv.allowDebugging = (args[0].(bool))
+		pxtv.scr.update()
 
 	case gui.ReqSetPause:
-		gtv.paused = args[0].(bool)
-		gtv.update()
+		pxtv.paused = args[0].(bool)
+		pxtv.scr.update()
 
 	case gui.ReqSetMasking:
-		gtv.scr.setMasking(args[0].(bool))
-		gtv.update()
+		pxtv.scr.setMasking(args[0].(bool))
+		pxtv.scr.update()
 
 	case gui.ReqToggleMasking:
-		gtv.scr.setMasking(!gtv.scr.unmasked)
-		gtv.update()
+		pxtv.scr.setMasking(!pxtv.scr.unmasked)
+		pxtv.scr.update()
 
 	case gui.ReqSetAltColors:
-		gtv.scr.useAltPixels = args[0].(bool)
-		gtv.update()
+		pxtv.scr.useAltPixels = args[0].(bool)
+		pxtv.scr.update()
 
 	case gui.ReqToggleAltColors:
-		gtv.scr.useAltPixels = !gtv.scr.useAltPixels
-		gtv.update()
+		pxtv.scr.useAltPixels = !pxtv.scr.useAltPixels
+		pxtv.scr.update()
 
 	case gui.ReqSetOverlay:
-		gtv.scr.overlayActive = args[0].(bool)
-		gtv.update()
+		pxtv.scr.overlayActive = args[0].(bool)
+		pxtv.scr.update()
 
 	case gui.ReqToggleOverlay:
-		gtv.scr.overlayActive = !gtv.scr.overlayActive
-		gtv.update()
+		pxtv.scr.overlayActive = !pxtv.scr.overlayActive
+		pxtv.scr.update()
 
 	case gui.ReqSetScale:
-		gtv.scr.setScaling(args[0].(float32))
-		gtv.update()
+		pxtv.scr.setScaling(args[0].(float32))
+		pxtv.scr.update()
 
 	case gui.ReqIncScale:
-		if gtv.scr.pixelScaleY < 4.0 {
-			gtv.scr.setScaling(gtv.scr.pixelScaleY + 0.1)
-			gtv.update()
+		if pxtv.scr.pixelScaleY < 4.0 {
+			pxtv.scr.setScaling(pxtv.scr.pixelScaleY + 0.1)
+			pxtv.scr.update()
 		}
 
 	case gui.ReqDecScale:
-		if gtv.scr.pixelScaleY > 0.5 {
-			gtv.scr.setScaling(gtv.scr.pixelScaleY - 0.1)
-			gtv.update()
+		if pxtv.scr.pixelScaleY > 0.5 {
+			pxtv.scr.setScaling(pxtv.scr.pixelScaleY - 0.1)
+			pxtv.scr.update()
 		}
 
 	default:
@@ -105,6 +105,6 @@ func (gtv *GUI) SetFeature(request gui.FeatureReq, args ...interface{}) (returne
 }
 
 // SetEventChannel implements the GUI interface
-func (gtv *GUI) SetEventChannel(eventChannel chan gui.Event) {
-	gtv.eventChannel = eventChannel
+func (pxtv *PixelTV) SetEventChannel(eventChannel chan gui.Event) {
+	pxtv.eventChannel = eventChannel
 }

@@ -55,12 +55,12 @@ func (stb *screenStabiliser) stabiliseFrame() error {
 
 	var err error
 
-	top, err := stb.scr.gtv.GetState(television.ReqVisibleTop)
+	top, err := stb.scr.pxtv.GetState(television.ReqVisibleTop)
 	if err != nil {
 		return err
 	}
 
-	bottom, err := stb.scr.gtv.GetState(television.ReqVisibleBottom)
+	bottom, err := stb.scr.pxtv.GetState(television.ReqVisibleBottom)
 	if err != nil {
 		return err
 	}
@@ -82,15 +82,12 @@ func (stb *screenStabiliser) stabiliseFrame() error {
 
 		// calculate the play height from the top and bottom values with a
 		// minimum according to the tv specification
-		minScanlines := stb.scr.gtv.GetSpec().ScanlinesPerVisible
+		minScanlines := stb.scr.pxtv.GetSpec().ScanlinesPerVisible
 		if scanlines < minScanlines {
 			scanlines = minScanlines
 		}
 
-		err := stb.scr.setPlayArea(int32(scanlines), int32(stb.top))
-		if err != nil {
-			return err
-		}
+		stb.scr.setPlayArea(int32(scanlines), int32(stb.top))
 
 		// show window if a show request has been queued up
 		if stb.queuedShowRequest {
@@ -101,9 +98,9 @@ func (stb *screenStabiliser) stabiliseFrame() error {
 		}
 	} else {
 		// some ROMs turn VBLANK on/off at different times (no more than a
-		// scanline or two I would say) but maintain the number of scanlines in
-		// the visiible area. in these instances, because of how we've
-		// implemented play area masking in the SDL interface, we need to
+		// scanline or two I would say) but the number of scanlines in the
+		// visiible area remains consistent. in these instances, because of how
+		// we've implemented play area masking in the SDL interface, we need to
 		// adjust the play area.
 		//
 		// ROMs affected:
@@ -128,7 +125,7 @@ func (stb *screenStabiliser) stabiliseFrame() error {
 
 func (stb *screenStabiliser) resolveSetVisibility() error {
 	if stb.count > stabilityThreshold {
-		err := stb.scr.gtv.SetFeature(gui.ReqSetVisibility, true, true)
+		err := stb.scr.pxtv.SetFeature(gui.ReqSetVisibility, true, true)
 		if err != nil {
 			return err
 		}

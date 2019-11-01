@@ -12,7 +12,9 @@ import (
 	"strings"
 )
 
-// ImageTV is a television implementation that writes images to disk
+// ImageTV is an implementation of the television.Renderer interface with an
+// embedded television for convenience. It generates individual image files of
+// each frame and saves them to disk on request.
 type ImageTV struct {
 	television.Television
 
@@ -29,7 +31,9 @@ type ImageTV struct {
 	lastFrameNum  int
 }
 
-// NewImageTV initialises a new instance of ImageTV
+// NewImageTV initialises a new instance of ImageTV. For convenience, the
+// television argument can be nil, in which case an instance of
+// StellaTelevision will be created.
 func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	var err error
 	imtv := new(ImageTV)
@@ -64,7 +68,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	}
 
 	// register ourselves as a television.Renderer
-	imtv.AddRenderer(imtv)
+	imtv.AddPixelRenderer(imtv)
 
 	return imtv, nil
 }
@@ -142,15 +146,15 @@ func (imtv *ImageTV) NewScanline(scanline int) error {
 }
 
 // SetPixel implements television.Renderer interface
-func (imtv *ImageTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
+func (imtv *ImageTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	col := color.NRGBA{R: red, G: green, B: blue, A: 255}
-	imtv.currFrameData.Set(int(x)*imtv.pixelWidth, int(y), col)
-	imtv.currFrameData.Set(int(x)*imtv.pixelWidth+1, int(y), col)
+	imtv.currFrameData.Set(x*imtv.pixelWidth, y, col)
+	imtv.currFrameData.Set(x*imtv.pixelWidth+1, y, col)
 	return nil
 }
 
 // SetAltPixel implements television.Renderer interface
-func (imtv *ImageTV) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+func (imtv *ImageTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 

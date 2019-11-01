@@ -139,7 +139,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
-	dbg.gui, err = sdl.NewGUI(tvType, 2.0, btv)
+	dbg.gui, err = sdl.NewPixelTV(tvType, 2.0, btv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}

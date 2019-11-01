@@ -21,7 +21,7 @@ func Check(output io.Writer, profile bool, display bool, tvType string, scaling 
 	// create the "correct" type of TV depending on whether the display flag is
 	// set or not
 	if display {
-		ftv, err = sdl.NewGUI(tvType, scaling, nil)
+		ftv, err = sdl.NewPixelTV(tvType, scaling, nil)
 		if err != nil {
 			return errors.New(errors.PerformanceError, err)
 		}

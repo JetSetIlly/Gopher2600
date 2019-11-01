@@ -10,16 +10,22 @@ import (
 	"strings"
 )
 
-// DigestTV is a television implementation that
+// DigestTV is an implementation of the television.Renderer interface with an
+// embedded television for convenience. It generates a sha1 value of the
+// image every frame. it does not display the image anywhere.
+//
+// Note that the use of sha1 is fine for this application because this is not a
+// cryptographic task.
 type DigestTV struct {
 	television.Television
-	digest [sha1.Size]byte
-
+	digest    [sha1.Size]byte
 	frameData []byte
 	frameNum  int
 }
 
-// NewDigestTV initialises a new instance of DigestTV
+// NewDigestTV initialises a new instance of DigestTV. For convenience, the
+// television argument can be nil, in which case an instance of
+// StellaTelevision will be created.
 func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 	var err error
 
@@ -46,7 +52,7 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 	}
 
 	// register ourselves as a television.Renderer
-	dtv.AddRenderer(dtv)
+	dtv.AddPixelRenderer(dtv)
 
 	// set attributes that depend on the television specification
 	dtv.ChangeTVSpec()
@@ -82,10 +88,10 @@ func (dtv *DigestTV) NewScanline(scanline int) error {
 }
 
 // SetPixel implements television.Renderer interface
-func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
+func (dtv *DigestTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
-	offset := television.ClocksPerScanline * int(y) * 3
-	offset += int(x) * 3
+	offset := television.ClocksPerScanline * y * 3
+	offset += x * 3
 
 	if offset >= len(dtv.frameData) {
 		return errors.New(errors.DigestTV, fmt.Sprintf("the coordinates (%d, %d) passed to SetPixel will cause an invalid access of the frameData array", x, y))
@@ -99,7 +105,7 @@ func (dtv *DigestTV) SetPixel(x, y int32, red, green, blue byte, vblank bool) er
 }
 
 // SetAltPixel implements television.Renderer interface
-func (dtv *DigestTV) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
+func (dtv *DigestTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 

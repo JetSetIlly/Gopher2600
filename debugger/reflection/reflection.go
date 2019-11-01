@@ -10,7 +10,7 @@ package reflection
 // in that case emulation performance should remain the priority.
 
 import (
-	"gopher2600/gui/overlay"
+	"gopher2600/gui"
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/future"
@@ -18,13 +18,13 @@ import (
 )
 
 // Monitor watches for writes to specific video related memory locations. when
-// these locations are written to, a signal is sent to the overlay.Renderer
+// these locations are written to, a signal is sent to the metapixels.Renderer
 // implementation. moreover, if the monitor detects that the effect of the
 // memory write is delayed or sustained, then the signal is repeated as
 // appropriate.
 type Monitor struct {
 	vcs      *hardware.VCS
-	renderer overlay.Renderer
+	renderer gui.MetaPixelRenderer
 
 	groupTIA      addressMonitor
 	groupPlayer0  addressMonitor
@@ -35,37 +35,37 @@ type Monitor struct {
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type
-func NewMonitor(vcs *hardware.VCS, renderer overlay.Renderer) *Monitor {
+func NewMonitor(vcs *hardware.VCS, renderer gui.MetaPixelRenderer) *Monitor {
 	mon := &Monitor{vcs: vcs, renderer: renderer}
 
 	mon.groupTIA.addresses = overlaySignals{
-		0x03: overlay.Signal{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255, Scheduled: true},
-		0x2a: overlay.Signal{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255, Scheduled: true},
-		0x2b: overlay.Signal{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255, Scheduled: false},
+		0x03: gui.MetaPixel{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2a: gui.MetaPixel{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2b: gui.MetaPixel{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255, Scheduled: false},
 	}
 
 	mon.groupPlayer0.addresses = overlaySignals{
-		0x04: overlay.Signal{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255, Scheduled: true},
-		0x10: overlay.Signal{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255, Scheduled: true},
+		0x04: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255, Scheduled: true},
+		0x10: gui.MetaPixel{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupPlayer1.addresses = overlaySignals{
-		0x05: overlay.Signal{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: true},
-		0x11: overlay.Signal{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255, Scheduled: true},
+		0x05: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: true},
+		0x11: gui.MetaPixel{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile0.addresses = overlaySignals{
-		0x04: overlay.Signal{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: false},
-		0x11: overlay.Signal{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
+		0x04: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: false},
+		0x11: gui.MetaPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile1.addresses = overlaySignals{
-		0x05: overlay.Signal{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255, Scheduled: false},
-		0x12: overlay.Signal{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
+		0x05: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255, Scheduled: false},
+		0x12: gui.MetaPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupBall.addresses = overlaySignals{
-		0x14: overlay.Signal{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255, Scheduled: true},
+		0x14: gui.MetaPixel{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255, Scheduled: true},
 	}
 
 	return mon
@@ -112,11 +112,11 @@ func (mon *Monitor) checkWSYNC() error {
 
 	// special handling of WSYNC signal - we want every pixel to be coloured
 	// while the RdyFlag is false, not just when WSYNC is first triggered.
-	sig := overlay.Signal{Label: "WSYNC", Red: 0, Green: 0, Blue: 0, Alpha: 200}
-	return mon.renderer.OverlaySignal(sig)
+	sig := gui.MetaPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 0, Alpha: 200}
+	return mon.renderer.SetMetaPixel(sig)
 }
 
-type overlaySignals map[uint16]overlay.Signal
+type overlaySignals map[uint16]gui.MetaPixel
 
 type addressMonitor struct {
 	// the map of memory addresses to monitor
@@ -139,10 +139,10 @@ type addressMonitor struct {
 	// a copy of the last signal sent to the overlay renderer. we use
 	// this to repeat a signal when lastEvent is not nil and has not yet
 	// completed
-	signal overlay.Signal
+	signal gui.MetaPixel
 }
 
-func (adm *addressMonitor) check(rend overlay.Renderer, mem *memory.VCSMemory, delay future.Observer) error {
+func (adm *addressMonitor) check(rend gui.MetaPixelRenderer, mem *memory.VCSMemory, delay future.Observer) error {
 	// if a new memory location (any memory location) has been written, then
 	// note the new address and begin the delayed signalling process
 	//
@@ -158,7 +158,7 @@ func (adm *addressMonitor) check(rend overlay.Renderer, mem *memory.VCSMemory, d
 	}
 
 	var signalStart bool
-	var sig overlay.Signal
+	var sig gui.MetaPixel
 
 	if adm.lastAddressFound > 0 {
 		if sig, signalStart = adm.addresses[adm.lastAddress]; signalStart {
@@ -183,7 +183,7 @@ func (adm *addressMonitor) check(rend overlay.Renderer, mem *memory.VCSMemory, d
 	// not have an associated future.Event
 	if adm.lastEvent != nil || signalStart {
 		adm.lastEvent = nil
-		err := rend.OverlaySignal(adm.signal)
+		err := rend.SetMetaPixel(adm.signal)
 		if err != nil {
 			return err
 		}

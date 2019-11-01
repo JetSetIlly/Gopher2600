@@ -15,15 +15,8 @@ type FpsLimiter struct {
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
 func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
-	var err error
-
 	lim := new(FpsLimiter)
-
-	lim.framesPerSecond = framesPerSecond
-	lim.secondsPerFrame, err = time.ParseDuration(fmt.Sprintf("%fs", float64(1.0)/float64(framesPerSecond)))
-	if err != nil {
-		return nil, err
-	}
+	lim.SetLimit(framesPerSecond)
 
 	lim.tick = make(chan bool)
 
@@ -36,11 +29,20 @@ func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
 			nt := time.Now()
 			lim.tick <- true
 			adjustedSecondPerFrame -= nt.Sub(t) - lim.secondsPerFrame
+			if adjustedSecondPerFrame < 0 {
+				adjustedSecondPerFrame = 0
+			}
 			t = nt
 		}
 	}()
 
 	return lim, nil
+}
+
+// SetLimit defines how frame limiter rate
+func (lim *FpsLimiter) SetLimit(framesPerSecond int) {
+	lim.framesPerSecond = framesPerSecond
+	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float64(1.0)/float64(framesPerSecond)))
 }
 
 // Wait will block until trigger

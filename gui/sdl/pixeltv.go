@@ -9,8 +9,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// GUI is the SDL implementation of a the gui/television
-type GUI struct {
+// PixelTV is a simple SDL implementation of the television.Renderer interface
+// with an embedded television for convenience. It treats every SetPixel() call
+// as gospel - no refraction or blurring of adjacent pixels. It is imagined
+// that other SDL implementations will be more imaginitive with SetPixel() and
+// produce a more convincing image.
+type PixelTV struct {
 	television.Television
 
 	// much of the sdl magic happens in the screen object
@@ -32,16 +36,18 @@ type GUI struct {
 	allowDebugging bool
 }
 
-// NewGUI initiliases a new instance of an SDL based display for the VCS
-func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, error) {
+// NewPixelTV creates a new instance of PixelTV. For convenience, the
+// television argument can be nil, in which case an instance of
+// StellaTelevision will be created.
+func NewPixelTV(tvType string, scale float32, tv television.Television) (gui.GUI, error) {
 	var err error
 
 	// set up gui
-	gtv := new(GUI)
+	pxtv := new(PixelTV)
 
 	// create or attach television implementation
 	if tv == nil {
-		gtv.Television, err = television.NewStellaTelevision(tvType)
+		pxtv.Television, err = television.NewStellaTelevision(tvType)
 		if err != nil {
 			return nil, errors.New(errors.SDL, err)
 		}
@@ -55,7 +61,7 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
 			return nil, errors.New(errors.SDL, "trying to piggyback a tv of a different spec")
 		}
-		gtv.Television = tv
+		pxtv.Television = tv
 	}
 
 	// set up sdl
@@ -65,115 +71,99 @@ func NewGUI(tvType string, scale float32, tv television.Television) (gui.GUI, er
 	}
 
 	// initialise the screens we'll be using
-	gtv.scr, err = newScreen(gtv)
+	pxtv.scr, err = newScreen(pxtv)
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
 
 	// initialise the sound system
-	gtv.snd, err = newSound(gtv)
+	pxtv.snd, err = newSound(pxtv)
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
 
 	// set window size and scaling
-	err = gtv.scr.setScaling(scale)
+	err = pxtv.scr.setScaling(scale)
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
 
 	// register ourselves as a television.Renderer
-	gtv.AddRenderer(gtv)
+	pxtv.AddPixelRenderer(pxtv)
 
 	// register ourselves as a television.AudioMixer
-	gtv.AddMixer(gtv)
+	pxtv.AddAudioMixer(pxtv)
 
 	// update tv (with a black image)
-	err = gtv.update()
+	err = pxtv.scr.update()
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
 
-	// gui events are serviced by a separate loop
-	go gtv.guiLoop()
+	// gui events are serviced by a separate go rountine
+	go pxtv.guiLoop()
 
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request
 
-	return gtv, nil
-}
-
-// update the gui so that it reflects changes to buffered data in the tv struct
-func (gtv *GUI) update() error {
-	err := gtv.scr.update(gtv.paused)
-	if err != nil {
-		return err
-	}
-
-	gtv.scr.renderer.Present()
-
-	return nil
-}
-
-func (gtv *GUI) setDebugging(allow bool) {
-	gtv.allowDebugging = allow
+	return pxtv, nil
 }
 
 // ChangeTVSpec implements television.Television interface
-func (gtv *GUI) ChangeTVSpec() error {
-	gtv.scr.stb.restart()
-	return gtv.scr.changeTVSpec()
+func (pxtv *PixelTV) ChangeTVSpec() error {
+	pxtv.scr.stb.restart()
+	return pxtv.scr.initialiseScreen()
 }
 
 // NewFrame implements television.Renderer interface
-func (gtv *GUI) NewFrame(frameNum int) error {
-	err := gtv.scr.stb.stabiliseFrame()
+func (pxtv *PixelTV) NewFrame(frameNum int) error {
+	err := pxtv.scr.stb.stabiliseFrame()
 	if err != nil {
 		return err
 	}
 
-	err = gtv.update()
+	err = pxtv.scr.update()
 	if err != nil {
 		return err
 	}
 
-	gtv.scr.newFrame()
+	pxtv.scr.newFrame()
 
 	return nil
 }
 
 // NewScanline implements television.Renderer interface
-func (gtv *GUI) NewScanline(scanline int) error {
+func (pxtv *PixelTV) NewScanline(scanline int) error {
 	return nil
 }
 
 // SetPixel implements television.Renderer interface
-func (gtv *GUI) SetPixel(x, y int32, red, green, blue byte, vblank bool) error {
-	return gtv.scr.setRegPixel(x, y, red, green, blue, vblank)
+func (pxtv *PixelTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+	return pxtv.scr.setRegPixel(int32(x), int32(y), red, green, blue, vblank)
 }
 
 // SetAltPixel implements television.Renderer interface
-func (gtv *GUI) SetAltPixel(x, y int32, red, green, blue byte, vblank bool) error {
-	if !gtv.allowDebugging {
+func (pxtv *PixelTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
+	if !pxtv.allowDebugging {
 		return nil
 	}
-	return gtv.scr.setAltPixel(x, y, red, green, blue, vblank)
+	return pxtv.scr.setAltPixel(int32(x), int32(y), red, green, blue, vblank)
 }
 
 // Reset implements television.Renderer interface
-func (gtv *GUI) Reset() error {
-	err := gtv.Television.Reset()
+func (pxtv *PixelTV) Reset() error {
+	err := pxtv.Television.Reset()
 	if err != nil {
 		return err
 	}
-	gtv.scr.newFrame()
-	gtv.scr.lastX = 0
-	gtv.scr.lastY = 0
+	pxtv.scr.newFrame()
+	pxtv.scr.lastX = 0
+	pxtv.scr.lastY = 0
 	return nil
 }
 
 // IsVisible implements gui.GUI interface
-func (gtv GUI) IsVisible() bool {
-	flgs := gtv.scr.window.GetFlags()
+func (pxtv PixelTV) IsVisible() bool {
+	flgs := pxtv.scr.window.GetFlags()
 	return flgs&sdl.WINDOW_SHOWN == sdl.WINDOW_SHOWN
 }

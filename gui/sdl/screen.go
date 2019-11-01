@@ -13,7 +13,7 @@ import (
 const scrDepth int32 = 4
 
 type screen struct {
-	gtv  *GUI
+	pxtv *PixelTV
 	spec *television.Specification
 
 	// regulates how often the screen is updated
@@ -69,7 +69,7 @@ type screen struct {
 
 	// altPixels mirrors the pixels array with alternative color palette
 	// -- useful for switching between regular and debug colors
-	// -- allocated but only used if gtv.allowDebugging and useAltPixels is true
+	// -- allocated but only used if pxtv.allowDebugging and useAltPixels is true
 	altPixels     []byte
 	altPixelsFade []byte
 	useAltPixels  bool
@@ -77,32 +77,32 @@ type screen struct {
 	// overlay for screen showing additional debugging information
 	// -- always allocated but only used when tv.allowDebugging and
 	// overlayActive are true
-	overlay       *sdlOverlay
+	overlay       *metapixelOverlay
 	overlayActive bool
 }
 
-func newScreen(gtv *GUI) (*screen, error) {
+func newScreen(pxtv *PixelTV) (*screen, error) {
 	var err error
 
 	scr := new(screen)
-	scr.gtv = gtv
+	scr.pxtv = pxtv
 
 	// SDL window - the correct size for the window will be determined below
-	scr.window, err = sdl.CreateWindow("Gopher2600", int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED), 0, 0, uint32(sdl.WINDOW_HIDDEN)|uint32(sdl.WINDOW_OPENGL))
+	scr.window, err = sdl.CreateWindow("Gopher2600", int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED), 0, 0, uint32(sdl.WINDOW_HIDDEN))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// SDL renderer
 	scr.renderer, err = sdl.CreateRenderer(scr.window, -1, uint32(sdl.RENDERER_ACCELERATED)|uint32(sdl.RENDERER_PRESENTVSYNC))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// set attributes that depend on the television specification
-	err = scr.changeTVSpec()
+	err = scr.initialiseScreen()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDL, err)
 	}
 
 	// new stabiliser
@@ -111,10 +111,13 @@ func newScreen(gtv *GUI) (*screen, error) {
 	return scr, nil
 }
 
-func (scr *screen) changeTVSpec() error {
+// initialise screen sets up SDL according to the current television
+// specification. it is called on startup but also whenever a change in the TV
+// spec is requested
+func (scr *screen) initialiseScreen() error {
 	var err error
 
-	scr.spec = scr.gtv.GetSpec()
+	scr.spec = scr.pxtv.GetSpec()
 
 	scr.maxWidth = int32(television.ClocksPerScanline)
 	scr.maxHeight = int32(scr.spec.ScanlinesTotal)
@@ -133,7 +136,7 @@ func (scr *screen) changeTVSpec() error {
 	// or unpaused
 	scr.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
 	if err != nil {
-		return err
+		return errors.New(errors.SDL, err)
 	}
 	scr.texture.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
 
@@ -142,7 +145,7 @@ func (scr *screen) changeTVSpec() error {
 	// rendered
 	scr.textureFade, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888), int(sdl.TEXTUREACCESS_STREAMING), int32(scr.maxWidth), int32(scr.maxHeight))
 	if err != nil {
-		return err
+		return errors.New(errors.SDL, err)
 	}
 	scr.textureFade.SetBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
 	scr.textureFade.SetAlphaMod(50)
@@ -153,28 +156,27 @@ func (scr *screen) changeTVSpec() error {
 	scr.altPixels = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 	scr.altPixelsFade = make([]byte, scr.maxWidth*scr.maxHeight*scrDepth)
 
+	// new overlay
+	scr.overlay, err = newMetapixelOverlay(scr)
+	if err != nil {
+		return errors.New(errors.SDL, err)
+	}
+
 	// frame limiter
 	scr.fpsLimiter, err = limiter.NewFPSLimiter(int(scr.spec.FramesPerSecond))
 	if err != nil {
 		return errors.New(errors.SDL, err)
 	}
 
-	// new overlay
-	scr.overlay, err = newSdlOverlay(scr)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 // setPlayArea defines the limits of the "play area"
-func (scr *screen) setPlayArea(scanlines int32, top int32) error {
+func (scr *screen) setPlayArea(scanlines int32, top int32) {
 	scr.playHeight = scanlines
 	scr.playDstMask = &sdl.Rect{X: 0, Y: 0, W: scr.playWidth, H: scr.playHeight}
 	scr.playSrcMask = &sdl.Rect{X: int32(television.ClocksPerHblank), Y: top, W: scr.playWidth, H: scr.playHeight}
-
-	return scr.setMasking(scr.unmasked)
+	scr.setMasking(scr.unmasked)
 }
 
 // adjustPlayArea is used to move the play area up/down by the specified amount
@@ -190,7 +192,7 @@ func (scr *screen) setScaling(scale float32) error {
 	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
 	// the screen
 	scr.pixelScaleY = scale
-	scr.pixelScaleX = scale * scr.gtv.GetSpec().AspectBias
+	scr.pixelScaleX = scale * scr.pxtv.GetSpec().AspectBias
 
 	// make sure everything drawn through the renderer is correctly scaled
 	err := scr.renderer.SetScale(float32(scr.pixelWidth)*scr.pixelScaleX, scr.pixelScaleY)
@@ -206,7 +208,7 @@ func (scr *screen) setScaling(scale float32) error {
 // setMasking alters which scanlines are actually shown. i.e. when unmasked, we
 // can see the vblank and hblank areas of the screen. this can cause the window size
 // to change
-func (scr *screen) setMasking(unmasked bool) error {
+func (scr *screen) setMasking(unmasked bool) {
 	var w, h int32
 
 	scr.unmasked = unmasked
@@ -228,8 +230,6 @@ func (scr *screen) setMasking(unmasked bool) error {
 		// BUG: SetSize causes window to gain focus
 		scr.window.SetSize(w, h)
 	}
-
-	return nil
 }
 
 func (scr *screen) setRegPixel(x, y int32, red, green, blue byte, vblank bool) error {
@@ -244,12 +244,6 @@ func (scr *screen) setPixel(pixels *[]byte, x, y int32, red, green, blue byte, v
 	scr.lastX = x
 	scr.lastY = y
 
-	// do not plot pixel if VBLANK is on. some ROMs use VBLANK to output black,
-	// rather than having to play around with the current color of the sprites
-	//
-	// ROMs affected:
-	//	* Custer's Revenge
-	//	* Ladybug
 	if !vblank {
 		i := (y*scr.maxWidth + x) * scrDepth
 		if i < int32(len(scr.pixels))-scrDepth && i >= 0 {
@@ -263,7 +257,7 @@ func (scr *screen) setPixel(pixels *[]byte, x, y int32, red, green, blue byte, v
 	return nil
 }
 
-func (scr *screen) update(paused bool) error {
+func (scr *screen) update() error {
 	// enforce a maximum frames-per-second
 	scr.fpsLimiter.Wait()
 
@@ -283,8 +277,8 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// if tv is paused then show the previous frame's faded image
-	if paused {
-		if scr.gtv.allowDebugging && scr.useAltPixels {
+	if scr.pxtv.paused {
+		if scr.pxtv.allowDebugging && scr.useAltPixels {
 			err = scr.textureFade.Update(nil, scr.altPixelsFade, int(scr.maxWidth*scrDepth))
 		} else {
 			err = scr.textureFade.Update(nil, scr.pixelsFade, int(scr.maxWidth*scrDepth))
@@ -302,7 +296,7 @@ func (scr *screen) update(paused bool) error {
 	// - decide which set of pixels to use
 	// - if tv is paused this overwrites the faded image (drawn above) up to
 	// the pixel where the current frame has reached
-	if scr.gtv.allowDebugging && scr.useAltPixels {
+	if scr.pxtv.allowDebugging && scr.useAltPixels {
 		err = scr.texture.Update(nil, scr.altPixels, int(scr.maxWidth*scrDepth))
 	} else {
 		err = scr.texture.Update(nil, scr.pixels, int(scr.maxWidth*scrDepth))
@@ -324,8 +318,8 @@ func (scr *screen) update(paused bool) error {
 	}
 
 	// show overlay
-	if scr.gtv.allowDebugging && scr.overlayActive {
-		err = scr.overlay.update(paused)
+	if scr.pxtv.allowDebugging && scr.overlayActive {
+		err = scr.overlay.update(scr.pxtv.paused)
 		if err != nil {
 			return err
 		}
@@ -333,7 +327,7 @@ func (scr *screen) update(paused bool) error {
 
 	// add cursor if tv is paused
 	// - drawing last so that cursor isn't masked
-	if paused {
+	if scr.pxtv.paused {
 		// cursor coordinates
 		x := int(scr.lastX)
 		y := int(scr.lastY)
@@ -377,11 +371,13 @@ func (scr *screen) update(paused bool) error {
 		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y + 1), W: 1, H: 1})
 	}
 
+	scr.renderer.Present()
+
 	return nil
 }
 
 func (scr *screen) newFrame() {
-	if scr.gtv.allowDebugging {
+	if scr.pxtv.allowDebugging {
 		// swap pixel array with pixelsFade array
 		// -- note that we don't do this with the texture instead because
 		// updating the the extra texture if we don't need to (faded pixels

@@ -26,7 +26,7 @@ func Play(tvType string, scaling float32, stable bool, transcript string, newRec
 		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
 	}
 
-	playtv, err := sdl.NewGUI(tvType, scaling, nil)
+	playtv, err := sdl.NewPixelTV(tvType, scaling, nil)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
