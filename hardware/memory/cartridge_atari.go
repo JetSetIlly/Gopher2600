@@ -3,7 +3,6 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
-	"io"
 )
 
 // from bankswitch_sizes.txt:
@@ -165,26 +164,19 @@ type atari4k struct {
 //  o Adventure
 //  o Yars Revenge
 //  o etc.
-func newAtari4k(cf io.ReadSeeker) (cartMapper, error) {
+func newAtari4k(data []byte) (cartMapper, error) {
 	const bankSize = 4096
-	cart := &atari4k{}
 
+	cart := &atari4k{}
 	cart.method = "atari 4k"
 	cart.banks = make([][]uint8, 1)
-	cart.banks[0] = make([]uint8, bankSize)
 
-	if cf != nil {
-		cf.Seek(0, io.SeekStart)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[0])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 	}
+
+	cart.banks[0] = make([]uint8, bankSize)
+	copy(cart.banks[0], data)
 
 	cart.initialise()
 
@@ -220,26 +212,19 @@ type atari2k struct {
 	atari
 }
 
-func newAtari2k(cf io.ReadSeeker) (cartMapper, error) {
+func newAtari2k(data []byte) (cartMapper, error) {
 	const bankSize = 2048
-	cart := &atari2k{}
 
+	cart := &atari2k{}
 	cart.method = "atari 2k"
 	cart.banks = make([][]uint8, 1)
-	cart.banks[0] = make([]uint8, bankSize)
 
-	if cf != nil {
-		cf.Seek(0, io.SeekStart)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[0])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
 	}
+
+	cart.banks[0] = make([]uint8, bankSize)
+	copy(cart.banks[0], data)
 
 	cart.initialise()
 
@@ -273,26 +258,21 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(cf io.ReadSeeker) (cartMapper, error) {
+func newAtari8k(data []uint8) (cartMapper, error) {
 	const bankSize = 4096
-	cart := &atari8k{}
 
+	cart := &atari8k{}
 	cart.method = "atari 8k (F8)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	cart.initialise()
@@ -345,26 +325,21 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(cf io.ReadSeeker) (cartMapper, error) {
+func newAtari16k(data []byte) (cartMapper, error) {
 	const bankSize = 4096
 	cart := &atari16k{}
 
 	cart.method = "atari 16k (F6)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	cart.initialise()
@@ -425,26 +400,21 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(cf io.ReadSeeker) (cartMapper, error) {
+func newAtari32k(data []byte) (cartMapper, error) {
 	const bankSize = 4096
 	cart := &atari32k{}
 
 	cart.method = "atari 32k (F4)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	cart.initialise()

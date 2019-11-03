@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"gopher2600/errors"
-	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -145,16 +145,12 @@ func (cart Cartridge) Poke(addr uint16, data uint8) error {
 
 // fingerprint8k attempts a divination of 8k cartridge data and decide on a
 // suitable cartMapper implementation
-func (cart Cartridge) fingerprint8k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
-	b := make([]byte, 8192)
-	cf.Seek(0, io.SeekStart)
-	cf.Read(b)
-
-	if fingerprintTigervision(b) {
+func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
+	if fingerprintTigervision(data) {
 		return newTigervision
 	}
 
-	if fingerprintParkerBros(b) {
+	if fingerprintParkerBros(data) {
 		return newparkerBros
 	}
 
@@ -163,58 +159,50 @@ func (cart Cartridge) fingerprint8k(cf io.ReadSeeker) func(io.ReadSeeker) (cartM
 
 // fingerprint16k attempts a divination of 16k cartridge data and decide on a
 // suitable cartMapper implementation
-func (cart Cartridge) fingerprint16k(cf io.ReadSeeker) func(io.ReadSeeker) (cartMapper, error) {
-	b := make([]byte, 16384)
-	cf.Seek(0, io.SeekStart)
-	cf.Read(b)
-
-	if fingerprintMnetwork(b) {
+func (cart Cartridge) fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
+	if fingerprintMnetwork(data) {
 		return newMnetwork
 	}
 
 	return newAtari16k
 }
 
-func (cart *Cartridge) fingerprint(cf *os.File) error {
-	// get file info
-	cfi, err := cf.Stat()
-	if err != nil {
-		return err
-	}
+func (cart *Cartridge) fingerprint(data []byte) error {
+	var err error
 
-	switch cfi.Size() {
+	switch len(data) {
 	case 2048:
-		cart.mapper, err = newAtari2k(cf)
+		cart.mapper, err = newAtari2k(data)
 		if err != nil {
 			return err
 		}
 
 	case 4096:
-		cart.mapper, err = newAtari4k(cf)
+		cart.mapper, err = newAtari4k(data)
 		if err != nil {
 			return err
 		}
 
 	case 8192:
-		cart.mapper, err = cart.fingerprint8k(cf)(cf)
+		cart.mapper, err = cart.fingerprint8k(data)(data)
 		if err != nil {
 			return err
 		}
 
 	case 12288:
-		cart.mapper, err = newCBS(cf)
+		cart.mapper, err = newCBS(data)
 		if err != nil {
 			return err
 		}
 
 	case 16384:
-		cart.mapper, err = cart.fingerprint16k(cf)(cf)
+		cart.mapper, err = cart.fingerprint16k(data)(data)
 		if err != nil {
 			return err
 		}
 
 	case 32768:
-		cart.mapper, err = newAtari32k(cf)
+		cart.mapper, err = newAtari32k(data)
 		if err != nil {
 			return err
 		}
@@ -223,7 +211,7 @@ func (cart *Cartridge) fingerprint(cf *os.File) error {
 		return errors.New(errors.CartridgeFileError, "65536 bytes not yet supported")
 
 	default:
-		return errors.New(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", cfi.Size()))
+		return errors.New(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try
@@ -237,13 +225,46 @@ func (cart *Cartridge) fingerprint(cf *os.File) error {
 
 // Attach loads the bytes from a cartridge (represented by 'filename')
 func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
-	cf, err := os.Open(cartload.Filename)
-	if err != nil {
-		return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
+	var err error
+	var data []byte
+
+	if strings.HasPrefix(cartload.Filename, "http://") {
+		var resp *http.Response
+
+		resp, err = http.Get(cartload.Filename)
+		if err != nil {
+			return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
+		}
+		defer resp.Body.Close()
+
+		size := resp.ContentLength
+
+		data = make([]byte, size)
+		_, err = resp.Body.Read(data)
+		if err != nil {
+			return nil
+		}
+	} else {
+		var f *os.File
+		f, err = os.Open(cartload.Filename)
+		if err != nil {
+			return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
+		}
+		defer f.Close()
+
+		// get file info
+		cfi, err := f.Stat()
+		if err != nil {
+			return err
+		}
+		size := cfi.Size()
+
+		data = make([]byte, size)
+		_, err = f.Read(data)
+		if err != nil {
+			return nil
+		}
 	}
-	defer func() {
-		_ = cf.Close()
-	}()
 
 	// note name of cartridge
 	cart.Filename = cartload.Filename
@@ -251,11 +272,7 @@ func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
 	cart.mapper = newEjected()
 
 	// generate hash
-	key := sha1.New()
-	if _, err := io.Copy(key, cf); err != nil {
-		return err
-	}
-	cart.Hash = fmt.Sprintf("%x", key.Sum(nil))
+	cart.Hash = fmt.Sprintf("%x", sha1.Sum(data))
 
 	// check that the hash matches the expected value
 	if cartload.Hash != "" && cartload.Hash != cart.Hash {
@@ -269,49 +286,49 @@ func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
 	cartload.Format = strings.ToUpper(cartload.Format)
 
 	if cartload.Format == "" || cartload.Format == "AUTO" {
-		return cart.fingerprint(cf)
+		return cart.fingerprint(data)
 	}
 
 	addSuperchip := false
 
 	switch cartload.Format {
 	case "2k":
-		cart.mapper, err = newAtari2k(cf)
+		cart.mapper, err = newAtari2k(data)
 	case "4k":
-		cart.mapper, err = newAtari4k(cf)
+		cart.mapper, err = newAtari4k(data)
 	case "F8":
-		cart.mapper, err = newAtari8k(cf)
+		cart.mapper, err = newAtari8k(data)
 	case "F6":
-		cart.mapper, err = newAtari16k(cf)
+		cart.mapper, err = newAtari16k(data)
 	case "F4":
-		cart.mapper, err = newAtari32k(cf)
+		cart.mapper, err = newAtari32k(data)
 
 	case "2k+SC":
-		cart.mapper, err = newAtari2k(cf)
+		cart.mapper, err = newAtari2k(data)
 		addSuperchip = true
 	case "4k+SC":
-		cart.mapper, err = newAtari4k(cf)
+		cart.mapper, err = newAtari4k(data)
 		addSuperchip = true
 	case "F8+SC":
-		cart.mapper, err = newAtari8k(cf)
+		cart.mapper, err = newAtari8k(data)
 		addSuperchip = true
 	case "F6+SC":
-		cart.mapper, err = newAtari16k(cf)
+		cart.mapper, err = newAtari16k(data)
 		addSuperchip = true
 	case "F4+SC":
-		cart.mapper, err = newAtari32k(cf)
+		cart.mapper, err = newAtari32k(data)
 		addSuperchip = true
 
 	case "FA":
-		cart.mapper, err = newCBS(cf)
+		cart.mapper, err = newCBS(data)
 	case "FE":
 		// TODO
 	case "E0":
-		cart.mapper, err = newparkerBros(cf)
+		cart.mapper, err = newparkerBros(data)
 	case "E7":
-		cart.mapper, err = newMnetwork(cf)
+		cart.mapper, err = newMnetwork(data)
 	case "3F":
-		cart.mapper, err = newTigervision(cf)
+		cart.mapper, err = newTigervision(data)
 	case "AR":
 		// TODO
 	}

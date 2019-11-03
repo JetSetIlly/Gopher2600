@@ -3,7 +3,6 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
-	"io"
 )
 
 // from bankswitch_sizes.txt:
@@ -52,25 +51,21 @@ type parkerBros struct {
 	segment [4]int
 }
 
-func newparkerBros(cf io.ReadSeeker) (cartMapper, error) {
-	cart := &parkerBros{method: "parker bros. (E0)"}
+func newparkerBros(data []byte) (cartMapper, error) {
+	const bankSize = 1024
 
+	cart := &parkerBros{}
+	cart.method = "parker bros. (E0)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		const bankSize = 1024
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	cart.initialise()

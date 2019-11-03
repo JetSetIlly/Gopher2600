@@ -3,7 +3,6 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
-	"io"
 	"strings"
 )
 
@@ -68,25 +67,21 @@ type mnetwork struct {
 	ramUpper [4][]uint8
 }
 
-func newMnetwork(cf io.ReadSeeker) (cartMapper, error) {
-	cart := &mnetwork{method: "m-network (E7)"}
+func newMnetwork(data []byte) (cartMapper, error) {
+	const bankSize = 2048
 
+	cart := &mnetwork{}
+	cart.method = "m-network (E7)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		const bankSize = 2048
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	// not all m-network cartridges have any RAM but we'll allocate it for all

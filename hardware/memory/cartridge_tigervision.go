@@ -3,7 +3,6 @@ package memory
 import (
 	"fmt"
 	"gopher2600/errors"
-	"io"
 )
 
 // from bankswitch_sizes.txt:
@@ -50,25 +49,21 @@ type tigervision struct {
 	segment [2]int
 }
 
-func newTigervision(cf io.ReadSeeker) (cartMapper, error) {
-	cart := &tigervision{method: "tigervision (3F)"}
+func newTigervision(data []byte) (cartMapper, error) {
+	const bankSize = 2048
 
+	cart := &tigervision{}
+	cart.method = "tigervision (3F)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	cf.Seek(0, io.SeekStart)
+	if len(data) != bankSize*cart.numBanks() {
+		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		const bankSize = 2048
 		cart.banks[k] = make([]uint8, bankSize)
-
-		// read cartridge
-		n, err := cf.Read(cart.banks[k])
-		if err != nil {
-			return nil, err
-		}
-		if n != bankSize {
-			return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
-		}
+		offset := k * bankSize
+		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
 	cart.initialise()
