@@ -78,7 +78,8 @@ func NewVCSMemory() (*VCSMemory, error) {
 // Generally, all access to the different memory areas should be passed through
 // this function. Any other information about an address can be accessed
 // through mem.Memmap[mappedAddress]
-func (mem VCSMemory) MapAddress(address uint16, cpuRead bool) uint16 {
+// * optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
+func (mem *VCSMemory) MapAddress(address uint16, cpuRead bool) uint16 {
 	// note that the order of these filters is important
 
 	// cartridge addresses
@@ -108,7 +109,8 @@ func (mem VCSMemory) MapAddress(address uint16, cpuRead bool) uint16 {
 }
 
 // Implementation of CPUBus.Read
-func (mem VCSMemory) Read(address uint16) (uint8, error) {
+// * optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
+func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	ma := mem.MapAddress(address, true)
 	area := mem.Memmap[ma]
 	if area == nil {
@@ -137,7 +139,12 @@ func (mem VCSMemory) Read(address uint16) (uint8, error) {
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = false
 	mem.LastAccessValue = data
-	// mem.LastAccessTimeStamp = time.Now()
+
+	// note time of memory access. not required except for certain debugging
+	// functions so it should be inactive for normal operation
+	if mem.LastAccessIDActive {
+		mem.LastAccessID = time.Now()
+	}
 
 	return data, err
 }

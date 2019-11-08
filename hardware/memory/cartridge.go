@@ -103,7 +103,8 @@ func (cart Cartridge) Label() string {
 }
 
 // Origin is an implementation of Area.Origin
-func (cart Cartridge) Origin() uint16 {
+// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
+func (cart *Cartridge) Origin() uint16 {
 	return cart.origin
 }
 
@@ -121,7 +122,8 @@ func (cart *Cartridge) Eject() {
 }
 
 // Implementation of CPUBus.Read
-func (cart Cartridge) Read(addr uint16) (uint8, error) {
+// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
+func (cart *Cartridge) Read(addr uint16) (uint8, error) {
 	addr &= cart.Origin() - 1
 	return cart.mapper.read(addr)
 }
