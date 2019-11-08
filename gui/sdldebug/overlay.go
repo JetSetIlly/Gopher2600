@@ -1,4 +1,4 @@
-package sdl
+package sdldebug
 
 import (
 	"gopher2600/gui"
@@ -7,7 +7,7 @@ import (
 )
 
 type metapixelOverlay struct {
-	scr *screen
+	scr *pixels
 
 	texture     *sdl.Texture
 	textureFade *sdl.Texture
@@ -18,13 +18,13 @@ type metapixelOverlay struct {
 	labels [][]string
 }
 
-func newMetapixelOverlay(scr *screen) (*metapixelOverlay, error) {
+func newMetapixelOverlay(scr *pixels) (*metapixelOverlay, error) {
 	ovl := new(metapixelOverlay)
 	ovl.scr = scr
 
 	// our acutal screen data
-	ovl.pixels = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*scrDepth)
-	ovl.pixelsFade = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*scrDepth)
+	ovl.pixels = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*pixelDepth)
+	ovl.pixelsFade = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*pixelDepth)
 
 	// labels
 	ovl.labels = make([][]string, ovl.scr.maxHeight)
@@ -52,7 +52,7 @@ func newMetapixelOverlay(scr *screen) (*metapixelOverlay, error) {
 }
 
 func (ovl *metapixelOverlay) setPixel(sig gui.MetaPixel) error {
-	i := (ovl.scr.lastY*ovl.scr.maxWidth + ovl.scr.lastX) * scrDepth
+	i := (ovl.scr.lastY*ovl.scr.maxWidth + ovl.scr.lastX) * pixelDepth
 
 	if i >= int32(len(ovl.pixels)) {
 		return nil
@@ -84,7 +84,7 @@ func (ovl *metapixelOverlay) newFrame() {
 
 func (ovl *metapixelOverlay) update(paused bool) error {
 	if paused {
-		err := ovl.textureFade.Update(nil, ovl.pixelsFade, int(ovl.scr.maxWidth*scrDepth))
+		err := ovl.textureFade.Update(nil, ovl.pixelsFade, int(ovl.scr.maxWidth*pixelDepth))
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (ovl *metapixelOverlay) update(paused bool) error {
 		}
 	}
 
-	err := ovl.texture.Update(nil, ovl.pixels, int(ovl.scr.maxWidth*scrDepth))
+	err := ovl.texture.Update(nil, ovl.pixels, int(ovl.scr.maxWidth*pixelDepth))
 	if err != nil {
 		return err
 	}
@@ -109,11 +109,6 @@ func (ovl *metapixelOverlay) update(paused bool) error {
 }
 
 // SetMetaPixel recieves (and processes) additional emulator information from the emulator
-func (pxtv *PixelTV) SetMetaPixel(sig gui.MetaPixel) error {
-	// don't do anything if debugging is not enabled
-	if !pxtv.allowDebugging {
-		return nil
-	}
-
-	return pxtv.scr.overlay.setPixel(sig)
+func (pxtv *SdlDebug) SetMetaPixel(sig gui.MetaPixel) error {
+	return pxtv.pxl.metaPixels.setPixel(sig)
 }

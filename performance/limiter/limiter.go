@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// this is a really rough attempt at frame rate limiting. probably only any
+// good if base performance of the machine is well above the required rate.
+
 // FpsLimiter will trigger every frames per second
 type FpsLimiter struct {
 	framesPerSecond int

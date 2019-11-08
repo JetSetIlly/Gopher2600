@@ -37,9 +37,6 @@ type StellaTelevision struct {
 	frameNum int
 	//	- the current scanline number
 	scanline int
-	//  - the number of scanlines past the specification limit. used to
-	//  trigger a change of tv specification
-	extraScanlines int
 
 	// record of signal attributes from the last call to Signal()
 	prevSignal SignalAttributes
@@ -49,24 +46,37 @@ type StellaTelevision struct {
 	vsyncCount int
 	vsyncPos   int
 
-	// the scanline at which the visible part of the screen begins and ends
-	// - we start off with ideal values and push the screen outwards as
-	// required
-	visibleTop    int
-	visibleBottom int
-
-	// thisVisibleTop/Bottom records visible part of the screen (as described
-	// above) during the current frame. we use these to update the real
-	// variables at the end of a frame
-	thisVisibleTop    int
-	thisVisibleBottom int
-
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
 
 	// list of audio mixers to consult
 	mixers []AudioMixer
+
+	// the following values are used for stability detection. we could possibly
+	// define a separate type for all of these.
+
+	// top and bottom of screen as detected by vblank/color signal
+	top    int
+	bottom int
+
+	// new top and bottom values if stability threshold is met
+	speculativeTop    int
+	speculativeBottom int
+
+	// top and bottom as reckoned by the current frame - reset at the moment
+	// when a new frame is detected
+	thisTop    int
+	thisBottom int
+
+	// a frame has to be stable (speculative top and bottom unchanged) for a
+	// number of frames (stable threshold) before we accept that it is a true
+	// representation of frame dimensions
+	stability int
 }
+
+// the number of frames that (speculative) top and bottom values must be steady
+// before we accept the frame characteristics
+const stabilityThreshold = 5
 
 // NewStellaTelevision creates a new instance of StellaTelevision for a
 // minimalist implementation of a televsion for the VCS emulation
@@ -100,24 +110,21 @@ func NewStellaTelevision(tvType string) (*StellaTelevision, error) {
 func (btv StellaTelevision) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("FR=%d SL=%d", btv.frameNum, btv.scanline))
-	if btv.extraScanlines > 0 {
-		s.WriteString(fmt.Sprintf(" [%d]", btv.extraScanlines))
-	}
 	s.WriteString(fmt.Sprintf(" HP=%d", btv.horizPos))
 	return s.String()
 }
 
-// AddPixelRenderer adds a renderer implementation to the list
+// AddPixelRenderer implements the Television interface
 func (btv *StellaTelevision) AddPixelRenderer(r PixelRenderer) {
 	btv.renderers = append(btv.renderers, r)
 }
 
-// AddAudioMixer adds a renderer implementation to the list
+// AddAudioMixer implements the Television interface
 func (btv *StellaTelevision) AddAudioMixer(m AudioMixer) {
 	btv.mixers = append(btv.mixers, m)
 }
 
-// Reset all the values for the television
+// Reset implements the Television interface
 func (btv *StellaTelevision) Reset() error {
 	btv.horizPos = -ClocksPerHblank
 	btv.frameNum = 0
@@ -125,33 +132,13 @@ func (btv *StellaTelevision) Reset() error {
 	btv.vsyncCount = 0
 	btv.prevSignal = SignalAttributes{Pixel: VideoBlack}
 
-	// default top/bottom to the "ideal" values
-	btv.thisVisibleTop = btv.spec.ScanlinesTotal
-	btv.thisVisibleBottom = 0
+	btv.top = btv.spec.ScanlineTop
+	btv.bottom = btv.spec.ScanlineBottom
 
 	return nil
 }
 
-func (btv *StellaTelevision) autoSpec() (bool, error) {
-	if !btv.auto {
-		return false, nil
-	}
-
-	if btv.spec == SpecPAL {
-		return false, nil
-	}
-
-	btv.spec = SpecPAL
-	for f := range btv.renderers {
-		err := btv.renderers[f].ChangeTVSpec()
-		if err != nil {
-			return false, err
-		}
-	}
-	return true, nil
-}
-
-// Signal is principle method of communication between the VCS and televsion
+// Signal implements the Television interface
 func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	// the following condition detects a new scanline by looking for the
 	// non-textbook HSyncSimple signal
@@ -191,12 +178,8 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 				}
 			}
 		} else {
-			// if we're above the scanline limit for the specification then don't
-			// notify the renderers of a new scanline, instead repeat drawing to
-			// the last scanline and note the number of "extra" scanlines we've
-			// encountered
+			// repeat last scanline over and over
 			btv.scanline = btv.spec.ScanlinesTotal
-			btv.extraScanlines++
 		}
 
 	} else {
@@ -221,57 +204,14 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 		// if vsync has just be turned off then check that it has been held for
 		// the requisite number of scanlines for a new frame to be started
 		if btv.vsyncCount >= btv.spec.ScanlinesPerVSync {
-			btv.frameNum++
-			btv.scanline = 0
-			btv.extraScanlines = 0
-
-			// record visible top/bottom for this frame
-			btv.visibleTop = btv.thisVisibleTop
-			btv.visibleBottom = btv.thisVisibleBottom
-
-			// call new frame for all renderers
-			for f := range btv.renderers {
-				err := btv.renderers[f].NewFrame(btv.frameNum)
-				if err != nil {
-					return err
-				}
+			err := btv.newFrame()
+			if err != nil {
+				return err
 			}
-
-			// default top/bottom to the "ideal" values
-			btv.thisVisibleTop = btv.spec.ScanlinesTotal
-			btv.thisVisibleBottom = 0
 		}
 
+		// reset vsync counter when vsync signal is dropped
 		btv.vsyncCount = 0
-	}
-
-	// push screen limits outwards as required
-	if !sig.VBlank {
-		if btv.scanline > btv.thisVisibleBottom {
-			btv.thisVisibleBottom = btv.scanline
-
-			// keep within limits
-			if btv.thisVisibleBottom > btv.spec.ScanlinesTotal {
-				btv.thisVisibleBottom = btv.spec.ScanlinesTotal
-			}
-		}
-		if btv.scanline < btv.thisVisibleTop {
-			btv.thisVisibleTop = btv.scanline
-		}
-	}
-
-	// after the first frame, if there are "extra" scanlines then try changing
-	// the tv specification.
-	//
-	// we are currently defining "extra" as 10. one extra scanline is too few.
-	// for example, when using a value of one, the Fatal Run ROM experiences a
-	// false change from NTSC to PAL between the resume/new screen and the game
-	// "intro" screen. 10 is maybe too high but it's good for now.
-	if btv.frameNum > 1 && btv.extraScanlines > 10 {
-		_, err := btv.autoSpec()
-		if err != nil {
-			return err
-		}
 	}
 
 	// record the current signal settings so they can be used for reference
@@ -287,6 +227,16 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 		err := btv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
 		if err != nil {
 			return err
+		}
+	}
+
+	// push screen boundaries outward using vblank and color signal to help us
+	if !sig.VBlank && red != 0 && green != 0 && blue != 0 {
+		if btv.scanline < btv.thisTop {
+			btv.thisTop = btv.scanline
+		}
+		if btv.scanline > btv.thisBottom {
+			btv.thisBottom = btv.scanline
 		}
 	}
 
@@ -312,7 +262,70 @@ func (btv *StellaTelevision) Signal(sig SignalAttributes) error {
 	return nil
 }
 
-// GetState returns the value for the named state. eg. the current frame number
+func (btv *StellaTelevision) stabilise() (bool, error) {
+	if btv.frameNum <= 1 || (btv.thisTop == btv.top && btv.thisBottom == btv.bottom) {
+		return false, nil
+	}
+
+	// if top and bottom has changed this frame update speculative values
+	if btv.thisTop != btv.speculativeTop || btv.thisBottom != btv.speculativeBottom {
+		btv.speculativeTop = btv.thisTop
+		btv.speculativeBottom = btv.thisBottom
+		return false, nil
+	}
+
+	// increase stability value until we reach threshold
+	if !btv.IsStable() {
+		btv.stability++
+		return false, nil
+	}
+
+	// accept speculative values
+	btv.top = btv.speculativeTop
+	btv.bottom = btv.speculativeBottom
+
+	if btv.spec == SpecNTSC && btv.bottom-btv.top >= SpecPAL.ScanlinesPerVisible {
+		btv.spec = SpecPAL
+
+		// reset top/bottom to ideals of new spec. they may of course be
+		// pushed outward in subsequent frames
+		btv.top = btv.spec.ScanlineTop
+		btv.bottom = btv.spec.ScanlineBottom
+	}
+
+	for f := range btv.renderers {
+		err := btv.renderers[f].Resize(btv.top, btv.bottom-btv.top+1)
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (btv *StellaTelevision) newFrame() error {
+	_, err := btv.stabilise()
+	if err != nil {
+		return err
+	}
+
+	// new frame
+	btv.frameNum++
+	btv.scanline = 0
+	btv.thisTop = btv.top
+	btv.thisBottom = btv.bottom
+
+	// call new frame for all renderers
+	for f := range btv.renderers {
+		err = btv.renderers[f].NewFrame(btv.frameNum)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetState implements the Television interface
 func (btv *StellaTelevision) GetState(request StateReq) (int, error) {
 	switch request {
 	default:
@@ -323,14 +336,15 @@ func (btv *StellaTelevision) GetState(request StateReq) (int, error) {
 		return btv.scanline, nil
 	case ReqHorizPos:
 		return btv.horizPos, nil
-	case ReqVisibleTop:
-		return btv.visibleTop, nil
-	case ReqVisibleBottom:
-		return btv.visibleBottom, nil
 	}
 }
 
-// GetSpec returns the television specification
+// GetSpec implements the Television interface
 func (btv StellaTelevision) GetSpec() *Specification {
 	return btv.spec
+}
+
+// IsStable implements the Television interface
+func (btv StellaTelevision) IsStable() bool {
+	return btv.stability >= stabilityThreshold
 }

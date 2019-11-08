@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdl"
+	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/recorder"
@@ -26,7 +26,7 @@ func Play(tvType string, scaling float32, stable bool, transcript string, newRec
 		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
 	}
 
-	playtv, err := sdl.NewPixelTV(tvType, scaling, nil)
+	playtv, err := sdlplay.NewSdlPlay(tvType, scaling, nil)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}

@@ -18,8 +18,6 @@ import (
 type ImageTV struct {
 	television.Television
 
-	pixelWidth int
-
 	screenGeom image.Rectangle
 
 	// currFrameData is the image we write to, until newFrame() is called again
@@ -30,6 +28,8 @@ type ImageTV struct {
 	lastFrameData *image.NRGBA
 	lastFrameNum  int
 }
+
+const pixelWidth = 2
 
 // NewImageTV initialises a new instance of ImageTV. For convenience, the
 // television argument can be nil, in which case an instance of
@@ -58,7 +58,7 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	}
 
 	// set attributes that depend on the television specification
-	imtv.ChangeTVSpec()
+	imtv.Resize(imtv.GetSpec().ScanlineTop, imtv.GetSpec().ScanlineBottom)
 
 	// start a new frame
 	imtv.currFrameNum = -1 // we'll be adding 1 to this value immediately in newFrame()
@@ -73,12 +73,11 @@ func NewImageTV(tvType string, tv television.Television) (*ImageTV, error) {
 	return imtv, nil
 }
 
-// ChangeTVSpec implements television.Television interface
-func (imtv *ImageTV) ChangeTVSpec() error {
-	imtv.pixelWidth = 2
+// Resize implements television.Television interface
+func (imtv *ImageTV) Resize(topScanline, numScanlines int) error {
 	imtv.screenGeom = image.Rectangle{
 		Min: image.Point{X: 0, Y: 0},
-		Max: image.Point{X: television.ClocksPerScanline * imtv.pixelWidth, Y: imtv.GetSpec().ScanlinesTotal},
+		Max: image.Point{X: television.ClocksPerScanline * pixelWidth, Y: numScanlines},
 	}
 	return nil
 }
@@ -148,8 +147,8 @@ func (imtv *ImageTV) NewScanline(scanline int) error {
 // SetPixel implements television.Renderer interface
 func (imtv *ImageTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	col := color.NRGBA{R: red, G: green, B: blue, A: 255}
-	imtv.currFrameData.Set(x*imtv.pixelWidth, y, col)
-	imtv.currFrameData.Set(x*imtv.pixelWidth+1, y, col)
+	imtv.currFrameData.Set(x*pixelWidth, y, col)
+	imtv.currFrameData.Set(x*pixelWidth+1, y, col)
 	return nil
 }
 

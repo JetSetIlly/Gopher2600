@@ -3,7 +3,7 @@ package main_test
 import (
 	"fmt"
 	"gopher2600/gui"
-	"gopher2600/gui/sdl"
+	"gopher2600/gui/sdldebug"
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"testing"
@@ -12,7 +12,7 @@ import (
 func BenchmarkSDL(b *testing.B) {
 	var err error
 
-	tv, err := sdl.NewPixelTV("NTSC", 1.0, nil)
+	tv, err := sdldebug.NewSdlDebug("NTSC", 1.0, nil)
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}

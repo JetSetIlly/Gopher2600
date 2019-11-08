@@ -20,15 +20,20 @@ type Television interface {
 	// Returns the value of the requested state. eg. the current scanline.
 	GetState(StateReq) (int, error)
 
-	// Returns the current specification the television is operating under
+	// Returns the television's current specification. Renderers should use
+	// GetSpec() rather than keeping a private pointer to the specification.
 	GetSpec() *Specification
+
+	// IsStable returns true if the television thinks the image being sent by
+	// the VCS is stable
+	IsStable() bool
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visal
 // information from a television
 //
 // examples of renderers that display visual information:
-//	* SDL/PixelTV
+//	* SDLPlay
 //	* ImageTV
 //
 // examples of renderers that do not display visual information but only work
@@ -45,6 +50,22 @@ type Television interface {
 //		...
 // }
 type PixelRenderer interface {
+	// Resize is called when the television implementation detects that extra
+	// scanlines are required in the display.
+	//
+	// It may be called when television specification has changed. Renderers
+	// should use GetSpec() rather than keeping a private pointer to the
+	// specification.
+	//
+	// Renderers should use the values sent by the Resize() function, rather
+	// than the equivalent values in the specification. Unless of course, the
+	// renderer is intended to be strict about specification accuracy.
+	//
+	// Renderers should also make sure that any data structures that depend on
+	// the specification being used are still adequate.
+	Resize(topScanline, visibleScanlines int) error
+
+	// NewFrame and NewScanline are called at the start of the frame/scanline
 	NewFrame(frameNum int) error
 	NewScanline(scanline int) error
 
@@ -74,12 +95,6 @@ type PixelRenderer interface {
 	//
 	SetPixel(x, y int, red, green, blue byte, vblank bool) error
 	SetAltPixel(x, y int, red, green, blue byte, vblank bool) error
-
-	// ChangeTVSpec is called when the television implementation decides to
-	// change which TV specification is being used. Renderer implementations
-	// should make sure that any data structures that depend on the
-	// specification being used are still adequate.
-	ChangeTVSpec() error
 }
 
 // AudioMixer implementations work with sound; most probably playing it.
@@ -132,6 +147,4 @@ const (
 	ReqFramenum StateReq = iota
 	ReqScanline
 	ReqHorizPos
-	ReqVisibleTop
-	ReqVisibleBottom
 )

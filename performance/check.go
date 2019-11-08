@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdl"
+	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/setup"
@@ -21,7 +21,7 @@ func Check(output io.Writer, profile bool, display bool, tvType string, scaling 
 	// create the "correct" type of TV depending on whether the display flag is
 	// set or not
 	if display {
-		ftv, err = sdl.NewPixelTV(tvType, scaling, nil)
+		ftv, err = sdlplay.NewSdlPlay(tvType, scaling, nil)
 		if err != nil {
 			return errors.New(errors.PerformanceError, err)
 		}

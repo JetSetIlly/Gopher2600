@@ -6,12 +6,11 @@ package main
 import (
 	"encoding/base64"
 	"gopher2600/television"
-	"strconv"
 	"syscall/js"
 	"time"
 )
 
-const screenDepth = 4
+const pixelDepth = 4
 const pixelWidth = 2
 const horizScale = 2
 const vertScale = 2
@@ -22,11 +21,9 @@ type CanvasTV struct {
 	worker js.Value
 
 	television.Television
-	spec   *television.Specification
 	width  int
 	height int
-
-	screenTop int
+	top    int
 
 	image []byte
 }
@@ -35,24 +32,45 @@ type CanvasTV struct {
 func NewCanvasTV(worker js.Value) *CanvasTV {
 	var err error
 
-	ctv := CanvasTV{worker: worker}
+	scr := CanvasTV{worker: worker}
 
-	ctv.Television, err = television.NewStellaTelevision("NTSC")
+	scr.Television, err = television.NewStellaTelevision("NTSC")
 	if err != nil {
 		return nil
 	}
-	ctv.Television.AddPixelRenderer(&ctv)
-	ctv.ChangeTVSpec()
+	scr.Television.AddPixelRenderer(&scr)
 
-	return &ctv
+	// change tv spec after window creation (so we can set the window size)
+	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesPerVisible)
+	if err != nil {
+		return nil
+	}
+
+	return &scr
+}
+
+func (scr *CanvasTV) Resize(topScanline, numScanlines int) error {
+	scr.top = topScanline
+	scr.height = numScanlines * vertScale
+
+	// strictly, only the height will ever change on a specification change but
+	// it's convenient to set the width too
+	scr.width = television.ClocksPerVisible * pixelWidth * horizScale
+
+	// recreate image buffer of correct length
+	scr.image = make([]byte, scr.width*scr.height*pixelDepth)
+
+	// resize HTML canvas
+	scr.worker.Call("updateCanvasSize", scr.width, scr.height)
+
+	return nil
 }
 
 // NewFrame implements telvision.PixelRenderer
-func (ctv *CanvasTV) NewFrame(frameNum int) error {
-	ctv.worker.Call("updateDebug", "frameNum", frameNum)
-	encodedImage := base64.StdEncoding.EncodeToString(ctv.image)
-	ctv.worker.Call("updateCanvas", encodedImage)
-	ctv.screenTop = -1
+func (scr *CanvasTV) NewFrame(frameNum int) error {
+	scr.worker.Call("updateDebug", "frameNum", frameNum)
+	encodedImage := base64.StdEncoding.EncodeToString(scr.image)
+	scr.worker.Call("updateCanvas", encodedImage)
 
 	// give way to messageHandler - there must be a more elegant way of doing this
 	time.Sleep(1 * time.Millisecond)
@@ -61,49 +79,41 @@ func (ctv *CanvasTV) NewFrame(frameNum int) error {
 }
 
 // NewScanline implements telvision.PixelRenderer
-func (ctv *CanvasTV) NewScanline(scanline int) error {
-	ctv.worker.Call("updateDebug", "scanline", scanline)
+func (scr *CanvasTV) NewScanline(scanline int) error {
+	scr.worker.Call("updateDebug", "scanline", scanline)
 	return nil
 }
 
 // SetPixel implements telvision.PixelRenderer
-func (ctv *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (scr *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+	if vblank {
+		// we could return immediately but if vblank is on inside the visible
+		// area we need to the set pixel to black, in case the vblank was off
+		// in the previous frame (for efficiency, we're not clearing the pixel
+		// array at the end of the frame)
+		red = 0
+		green = 0
+		blue = 0
+	}
+
 	// adjust pixels so we're only dealing with the visible range
 	x -= television.ClocksPerHblank
-	if x < 0 {
+	y -= scr.top
+
+	if x < 0 || y < 0 {
 		return nil
 	}
 
-	// we need to be careful how we treat VBLANK signals. some ROMs use VBLANK
-	// as a cheap way of showing a black pixel. so, at the start of every new
-	// frame we set the following to -1 and then to the current scanline at the
-	// moment VBLANK is turned of for the first time that frame.
-	if !vblank {
-		if ctv.screenTop == -1 {
-			ctv.screenTop = y
-		}
-	} else {
-		if ctv.screenTop == -1 {
-			return nil
-		} else {
-			red = 0
-			green = 0
-			blue = 0
-		}
-	}
-
-	y -= ctv.screenTop
-
-	baseIdx := screenDepth * (y*vertScale*ctv.width + x*pixelWidth*horizScale)
-	if baseIdx < len(ctv.image)-screenDepth && baseIdx >= 0 {
+	baseIdx := pixelDepth * (y*vertScale*scr.width + x*pixelWidth*horizScale)
+	if baseIdx <= len(scr.image)-pixelDepth && baseIdx >= 0 {
 		for h := 0; h < vertScale; h++ {
-			vertAdj := h * (ctv.width * pixelWidth * horizScale)
+			vertAdj := h * (scr.width * pixelWidth * horizScale)
 			for w := 0; w < pixelWidth*horizScale; w++ {
-				horizAdj := baseIdx + (w * screenDepth) + vertAdj
-				ctv.image[horizAdj] = red
-				ctv.image[horizAdj+1] = green
-				ctv.image[horizAdj+2] = blue
-				ctv.image[horizAdj+3] = 255
+				horizAdj := baseIdx + (w * pixelDepth) + vertAdj
+				scr.image[horizAdj] = red
+				scr.image[horizAdj+1] = green
+				scr.image[horizAdj+2] = blue
+				scr.image[horizAdj+3] = 255
 			}
 		}
 	}
@@ -112,24 +122,6 @@ func (ctv *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 }
 
 // SetAltPixel implements telvision.PixelRenderer
-func (ctv *CanvasTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
-	return nil
-}
-
-// ChangeTVSpec implements telvision.PixelRenderer
-func (ctv *CanvasTV) ChangeTVSpec() error {
-	ctv.spec = ctv.Television.GetSpec()
-	ctv.height = ctv.spec.ScanlinesPerVisible * vertScale
-
-	// strictly, only the height will ever change on a specification change but
-	// it's convenient to set the width too
-	ctv.width = television.ClocksPerVisible * pixelWidth * horizScale
-
-	// recreate image buffer of correct length
-	ctv.image = make([]byte, ctv.width*ctv.height*screenDepth)
-
-	// resize HTML canvas
-	ctv.worker.Call("updateCanvasSize", strconv.Itoa(ctv.width), strconv.Itoa(ctv.height))
-
+func (scr *CanvasTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }

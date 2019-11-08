@@ -8,7 +8,7 @@ import (
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdl"
+	"gopher2600/gui/sdldebug"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/memory"
@@ -139,11 +139,10 @@ func NewDebugger(tvType string) (*Debugger, error) {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
-	dbg.gui, err = sdl.NewPixelTV(tvType, 2.0, btv)
+	dbg.gui, err = sdldebug.NewSdlDebug(tvType, 2.0, btv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
-	dbg.gui.SetFeature(gui.ReqSetAllowDebugging, true)
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(dbg.gui)

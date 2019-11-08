@@ -10,9 +10,12 @@ type Specification struct {
 	ScanlinesPerOverscan int
 	ScanlinesTotal       int
 
+	ScanlineTop    int
+	ScanlineBottom int
+
 	Colors colors
 
-	FramesPerSecond float64
+	FramesPerSecond int
 	SecondsPerFrame float64
 
 	// AspectBias transforms the scaling factor for the X axis.
@@ -42,8 +45,10 @@ func init() {
 	SpecNTSC.ScanlinesPerVisible = 192
 	SpecNTSC.ScanlinesPerOverscan = 30
 	SpecNTSC.ScanlinesTotal = 262
-	SpecNTSC.FramesPerSecond = 60.0
-	SpecNTSC.SecondsPerFrame = 1.0 / SpecNTSC.FramesPerSecond
+	SpecNTSC.ScanlineTop = SpecNTSC.ScanlinesPerVBlank + SpecNTSC.ScanlinesPerVSync
+	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesPerOverscan
+	SpecNTSC.FramesPerSecond = 60
+	SpecNTSC.SecondsPerFrame = 1.0 / float64(SpecNTSC.FramesPerSecond)
 	SpecNTSC.Colors = colorsNTSC
 
 	SpecPAL = new(Specification)
@@ -53,13 +58,14 @@ func init() {
 	SpecPAL.ScanlinesPerVisible = 228
 	SpecPAL.ScanlinesPerOverscan = 36
 	SpecPAL.ScanlinesTotal = 312
-	SpecPAL.FramesPerSecond = 50.0
-	SpecPAL.SecondsPerFrame = 1.0 / SpecPAL.FramesPerSecond
+	SpecPAL.ScanlineTop = SpecPAL.ScanlinesPerVBlank + SpecPAL.ScanlinesPerVSync
+	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesPerOverscan
+	SpecPAL.FramesPerSecond = 50
+	SpecPAL.SecondsPerFrame = 1.0 / float64(SpecPAL.FramesPerSecond)
 	SpecPAL.Colors = colorsPAL
 
 	// AaspectBias transforms the scaling factor for the X axis.
-	// values taken from Stella emualtor. i've no idea from where these values
-	// were originated but they're useful for A/B testing
+	// values taken from Stella emualtor. useful for A/B testing
 	SpecNTSC.AspectBias = 0.91
 	SpecPAL.AspectBias = 1.09
 }

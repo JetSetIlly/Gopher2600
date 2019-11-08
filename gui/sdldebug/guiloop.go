@@ -1,4 +1,4 @@
-package sdl
+package sdldebug
 
 import (
 	"gopher2600/gui"
@@ -8,7 +8,7 @@ import (
 )
 
 // guiLoop listens for SDL events and is run concurrently
-func (pxtv *PixelTV) guiLoop() {
+func (pxtv *SdlDebug) guiLoop() {
 	for {
 		sdlEvent := sdl.WaitEvent()
 		switch sdlEvent := sdlEvent.(type) {
@@ -116,15 +116,15 @@ func (pxtv *PixelTV) guiLoop() {
 	}
 }
 
-func (pxtv *PixelTV) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
+func (pxtv *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	var hp, sl int
 
-	sx, sy := pxtv.scr.renderer.GetScale()
+	sx, sy := pxtv.pxl.renderer.GetScale()
 
 	// convert X pixel value to horizpos equivalent
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
-	if pxtv.scr.unmasked {
+	if pxtv.pxl.unmasked {
 		hp = int(float32(sdlEvent.X)/sx) - television.ClocksPerHblank
 	} else {
 		hp = int(float32(sdlEvent.X) / sx)
@@ -133,10 +133,10 @@ func (pxtv *PixelTV) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, in
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
-	if pxtv.scr.unmasked {
+	if pxtv.pxl.unmasked {
 		sl = int(float32(sdlEvent.Y) / sy)
 	} else {
-		sl = int(float32(sdlEvent.Y)/sy) + pxtv.scr.stb.top
+		sl = int(float32(sdlEvent.Y)/sy) + int(pxtv.pxl.playTop)
 	}
 
 	return hp, sl

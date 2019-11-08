@@ -41,7 +41,6 @@ const (
 	ReqSetVisibility       FeatureReq = iota // bool, optional bool (update on show) default true
 	ReqToggleVisibility                      // optional bool (update on show) default true
 	ReqSetVisibilityStable                   // none
-	ReqSetAllowDebugging                     // bool
 	ReqSetPause                              // bool
 	ReqSetMasking                            // bool
 	ReqToggleMasking                         // none

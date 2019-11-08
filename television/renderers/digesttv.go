@@ -55,16 +55,13 @@ func NewDigestTV(tvType string, tv television.Television) (*DigestTV, error) {
 	dtv.AddPixelRenderer(dtv)
 
 	// set attributes that depend on the television specification
-	dtv.ChangeTVSpec()
+	dtv.Resize(-1, -1)
 
 	return dtv, nil
 }
 
-// ChangeTVSpec implements television.Television interface
-func (dtv *DigestTV) ChangeTVSpec() error {
-	// memory for frameData has to be sufficient for the entirety of the
-	// screen plus the size of a fingerprint. we'll use the additional space to
-	// chain fingerprint hashes
+// Resize implements television.Television interface
+func (dtv *DigestTV) Resize(_, _ int) error {
 	dtv.frameData = make([]byte, len(dtv.digest)+((television.ClocksPerScanline+1)*(dtv.GetSpec().ScanlinesTotal+1)*3))
 	return nil
 }
