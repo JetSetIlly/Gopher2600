@@ -3,10 +3,10 @@ package regression
 import (
 	"bufio"
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
 	"gopher2600/performance/limiter"
 	"gopher2600/screendigest"
 	"gopher2600/setup"
@@ -35,7 +35,7 @@ const (
 // regression tests pass if the screen digest after N frames matches the stored
 // value.
 type FrameRegression struct {
-	CartLoad     memory.CartridgeLoader
+	CartLoad     cartridgeloader.Loader
 	TVtype       string
 	NumFrames    int
 	State        bool

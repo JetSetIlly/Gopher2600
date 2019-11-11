@@ -16,10 +16,12 @@ import (
 // cryptographic task.
 type SHA1 struct {
 	television.Television
-	digest    [sha1.Size]byte
-	frameData []byte
-	frameNum  int
+	digest   [sha1.Size]byte
+	pixels   []byte
+	frameNum int
 }
+
+const pixelDepth = 3
 
 // NewSHA1 initialises a new instance of DigestTV. For convenience, the
 // television argument can be nil, in which case an instance of
@@ -71,7 +73,14 @@ func (dig *SHA1) ResetDigest() {
 
 // Resize implements television.Television interface
 func (dig *SHA1) Resize(_, _ int) error {
-	dig.frameData = make([]byte, len(dig.digest)+((television.ClocksPerScanline+1)*(dig.GetSpec().ScanlinesTotal+1)*3))
+	// length of pixels array contains enough room for the previous frames
+	// digest value
+	l := len(dig.digest)
+
+	// alloscate enough pixels for entire frame
+	l += ((television.ClocksPerScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
+
+	dig.pixels = make([]byte, l)
 	return nil
 }
 
@@ -79,11 +88,11 @@ func (dig *SHA1) Resize(_, _ int) error {
 func (dig *SHA1) NewFrame(frameNum int) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the screen data
-	n := copy(dig.frameData, dig.digest[:])
+	n := copy(dig.pixels, dig.digest[:])
 	if n != len(dig.digest) {
-		return errors.New(errors.ScreenDigest, fmt.Sprintf("unexpected amount of data copied"))
+		return errors.New(errors.ScreenDigest, fmt.Sprintf("digest error during new frame"))
 	}
-	dig.digest = sha1.Sum(dig.frameData)
+	dig.digest = sha1.Sum(dig.pixels)
 	dig.frameNum = frameNum
 	return nil
 }
@@ -96,16 +105,16 @@ func (dig *SHA1) NewScanline(scanline int) error {
 // SetPixel implements television.Renderer interface
 func (dig *SHA1) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
-	offset := television.ClocksPerScanline * y * 3
-	offset += x * 3
+	i := len(dig.digest)
+	i += television.ClocksPerScanline * y * pixelDepth
+	i += x * pixelDepth
 
-	if offset >= len(dig.frameData) {
-		return errors.New(errors.ScreenDigest, fmt.Sprintf("the coordinates (%d, %d) passed to SetPixel will cause an invalid access of the frameData array", x, y))
+	if i <= len(dig.pixels)-pixelDepth {
+		// setting every pixel regardless of vblank value
+		dig.pixels[i] = red
+		dig.pixels[i+1] = green
+		dig.pixels[i+2] = blue
 	}
-
-	dig.frameData[offset] = red
-	dig.frameData[offset+1] = green
-	dig.frameData[offset+2] = blue
 
 	return nil
 }

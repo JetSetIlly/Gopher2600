@@ -4,8 +4,8 @@
 package main
 
 import (
+	"gopher2600/cartridgeloader"
 	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/setup"
 	"syscall/js"
@@ -22,7 +22,7 @@ func main() {
 	}
 
 	// load cartridge
-	cartload := memory.CartridgeLoader{
+	cartload := cartridgeloader.Loader{
 		Filename: "http://localhost:8080/Pitfall.bin",
 	}
 

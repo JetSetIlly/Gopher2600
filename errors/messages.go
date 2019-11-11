@@ -58,6 +58,9 @@ var messages = map[Errno]string{
 	SymbolsFileUnavailable: "symbols error: no symbols file for %s",
 	SymbolUnknown:          "symbols error: unrecognised symbol (%s)",
 
+	// cartridgeloader
+	CartridgeLoader: "cartridge loading error: %s",
+
 	// vcs
 	VCSError: "vcs error: %s",
 
@@ -77,10 +80,8 @@ var messages = map[Errno]string{
 	UnrecognisedAddress: "memory error: address unrecognised (%v)",
 
 	// cartridges
-	CartridgeFileError:       "cartridge error: %s",
-	CartridgeFileUnavailable: "cartridge error: cannot open cartridge file (%s)",
-	CartridgeError:           "cartridge error: %s",
-	CartridgeEjected:         "cartridge error: no cartridge attached",
+	CartridgeError:   "cartridge error: %s",
+	CartridgeEjected: "cartridge error: no cartridge attached",
 
 	// peripherals
 	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%s)",

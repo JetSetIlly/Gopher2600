@@ -71,6 +71,9 @@ const (
 	SymbolsFileError
 	SymbolUnknown
 
+	// cartridgeloader
+	CartridgeLoader
+
 	// vcs
 	VCSError
 
@@ -90,8 +93,6 @@ const (
 	UnrecognisedAddress
 
 	// cartridges
-	CartridgeFileError
-	CartridgeFileUnavailable
 	CartridgeError
 	CartridgeEjected
 

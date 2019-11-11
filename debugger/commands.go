@@ -2,6 +2,7 @@ package debugger
 
 import (
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
 	"gopher2600/debugger/script"
@@ -9,7 +10,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
@@ -274,7 +274,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
-		err := dbg.loadCartridge(memory.CartridgeLoader{Filename: cart})
+		err := dbg.loadCartridge(cartridgeloader.Loader{Filename: cart})
 		if err != nil {
 			return doNothing, err
 		}

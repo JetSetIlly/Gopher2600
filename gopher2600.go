@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/debugger"
 	"gopher2600/debugger/colorterm"
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
-	"gopher2600/hardware/memory"
 	"gopher2600/magicflags"
 	"gopher2600/performance"
 	"gopher2600/playmode"
@@ -94,7 +94,7 @@ func play(mf *magicflags.MagicFlags) bool {
 		}
 		fallthrough
 	case 1:
-		cartload := memory.CartridgeLoader{
+		cartload := cartridgeloader.Loader{
 			Filename: mf.SubModeFlags.Arg(0),
 			Format:   *cartFormat,
 		}
@@ -153,7 +153,7 @@ func debug(mf *magicflags.MagicFlags) bool {
 		fallthrough
 	case 1:
 		runner := func() error {
-			cartload := memory.CartridgeLoader{
+			cartload := cartridgeloader.Loader{
 				Filename: mf.SubModeFlags.Arg(0),
 				Format:   *cartFormat,
 			}
@@ -202,7 +202,7 @@ func disasm(mf *magicflags.MagicFlags) bool {
 		fmt.Println("* 2600 cartridge required")
 		return false
 	case 1:
-		cartload := memory.CartridgeLoader{
+		cartload := cartridgeloader.Loader{
 			Filename: mf.SubModeFlags.Arg(0),
 			Format:   *cartFormat,
 		}
@@ -243,7 +243,7 @@ func perform(mf *magicflags.MagicFlags) bool {
 		fmt.Println("* 2600 cartridge required")
 		return false
 	case 1:
-		cartload := memory.CartridgeLoader{
+		cartload := cartridgeloader.Loader{
 			Filename: mf.SubModeFlags.Arg(0),
 			Format:   *cartFormat,
 		}
@@ -383,7 +383,7 @@ func regressAdd(mf *magicflags.MagicFlags) bool {
 				Notes:  *notes,
 			}
 		} else {
-			cartload := memory.CartridgeLoader{
+			cartload := cartridgeloader.Loader{
 				Filename: mf.SubModeFlags.Arg(0),
 				Format:   *cartFormat,
 			}

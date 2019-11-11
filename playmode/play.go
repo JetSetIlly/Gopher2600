@@ -2,11 +2,11 @@ package playmode
 
 import (
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
 	"gopher2600/recorder"
 	"gopher2600/setup"
 	"os"
@@ -14,14 +14,14 @@ import (
 	"time"
 )
 
-func uniqueFilename(cartload memory.CartridgeLoader) string {
+func uniqueFilename(cartload cartridgeloader.Loader) string {
 	n := time.Now()
 	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
 	return fmt.Sprintf("recording_%s_%s", cartload.ShortName(), timestamp)
 }
 
 // Play sets the emulation running - without any debugging features
-func Play(tvType string, scaling float32, stable bool, transcript string, newRecording bool, cartload memory.CartridgeLoader) error {
+func Play(tvType string, scaling float32, stable bool, transcript string, newRecording bool, cartload cartridgeloader.Loader) error {
 	if recorder.IsPlaybackFile(cartload.Filename) {
 		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
 	}

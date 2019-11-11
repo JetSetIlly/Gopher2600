@@ -1,6 +1,7 @@
 package hardware
 
 import (
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
@@ -69,7 +70,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 // memory. While this function can be called directly it is advised that the
 // equivalent function call in the setup package is used. that function in turn
 // calls this function in this package
-func (vcs *VCS) AttachCartridge(cartload memory.CartridgeLoader) error {
+func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	if cartload.Filename == "" {
 		vcs.Mem.Cart.Eject()
 	} else {

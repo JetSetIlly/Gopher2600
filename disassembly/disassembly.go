@@ -2,6 +2,7 @@ package disassembly
 
 import (
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
@@ -63,7 +64,7 @@ func (dsm *Disassembly) Dump(output io.Writer) {
 // FromCartrige initialises a new partial emulation and returns a
 // disassembly from the supplied cartridge filename. - useful for one-shot
 // disassemblies, like the gopher2600 "disasm" mode
-func FromCartrige(cartload memory.CartridgeLoader) (*Disassembly, error) {
+func FromCartrige(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
 	symtable, _ := symbols.ReadSymbolsFile(cartload.Filename)

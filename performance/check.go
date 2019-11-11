@@ -2,11 +2,11 @@ package performance
 
 import (
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
 	"gopher2600/setup"
 	"gopher2600/television"
 	"io"
@@ -14,7 +14,7 @@ import (
 )
 
 // Check is a very rough and ready calculation of the emulator's performance
-func Check(output io.Writer, profile bool, display bool, tvType string, scaling float32, runTime string, cartload memory.CartridgeLoader) error {
+func Check(output io.Writer, profile bool, display bool, tvType string, scaling float32, runTime string, cartload cartridgeloader.Loader) error {
 	var ftv television.Television
 	var err error
 

@@ -3,33 +3,10 @@ package memory
 import (
 	"crypto/sha1"
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
-	"net/http"
-	"os"
-	"path"
 	"strings"
 )
-
-// CartridgeLoader is used to specify the cartridge to use when Attach()ing to
-// the VCS. it also permits the called to specify the format of the cartridge
-// (if necessary. fingerprinting is pretty good)
-type CartridgeLoader struct {
-	Filename string
-
-	// empty string or "AUTO" indicates automatic fingerprinting
-	Format string
-
-	// expected hash of the loaded cartridge. empty string indicates that the
-	// hash is unknown and need not be validated
-	Hash string
-}
-
-// ShortName returns a shortened version of the CartridgeLoader filename
-func (cl CartridgeLoader) ShortName() string {
-	shortCartName := path.Base(cl.Filename)
-	shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cl.Filename))
-	return shortCartName
-}
 
 // cartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
@@ -210,10 +187,10 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		}
 
 	case 65536:
-		return errors.New(errors.CartridgeFileError, "65536 bytes not yet supported")
+		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
 
 	default:
-		return errors.New(errors.CartridgeFileError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try
@@ -226,46 +203,10 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 }
 
 // Attach loads the bytes from a cartridge (represented by 'filename')
-func (cart *Cartridge) Attach(cartload CartridgeLoader) error {
-	var err error
-	var data []byte
-
-	if strings.HasPrefix(cartload.Filename, "http://") {
-		var resp *http.Response
-
-		resp, err = http.Get(cartload.Filename)
-		if err != nil {
-			return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
-		}
-		defer resp.Body.Close()
-
-		size := resp.ContentLength
-
-		data = make([]byte, size)
-		_, err = resp.Body.Read(data)
-		if err != nil {
-			return nil
-		}
-	} else {
-		var f *os.File
-		f, err = os.Open(cartload.Filename)
-		if err != nil {
-			return errors.New(errors.CartridgeFileUnavailable, cartload.Filename)
-		}
-		defer f.Close()
-
-		// get file info
-		cfi, err := f.Stat()
-		if err != nil {
-			return err
-		}
-		size := cfi.Size()
-
-		data = make([]byte, size)
-		_, err = f.Read(data)
-		if err != nil {
-			return nil
-		}
+func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
+	data, err := cartload.Load()
+	if err != nil {
+		return err
 	}
 
 	// note name of cartridge

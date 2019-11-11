@@ -2,9 +2,9 @@ package recorder
 
 import (
 	"fmt"
+	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/screendigest"
 	"gopher2600/television"
@@ -35,7 +35,7 @@ type playbackSequence struct {
 type Playback struct {
 	transcript string
 
-	CartLoad memory.CartridgeLoader
+	CartLoad cartridgeloader.Loader
 	TVtype   string
 
 	sequences []*playbackSequence

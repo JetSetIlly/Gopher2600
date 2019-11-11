@@ -59,7 +59,7 @@ func newparkerBros(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeFileError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {

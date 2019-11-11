@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"gopher2600/cartridgeloader"
 	"gopher2600/debugger/commandline"
 	"gopher2600/debugger/console"
 	"gopher2600/debugger/reflection"
@@ -11,7 +12,6 @@ import (
 	"gopher2600/gui/sdldebug"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
-	"gopher2600/hardware/memory"
 	"gopher2600/screendigest"
 	"gopher2600/setup"
 	"gopher2600/symbols"
@@ -190,7 +190,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 
 // Start the main debugger sequence. starting the debugger is a distinct
 // operation to creating the debugger.
-func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload memory.CartridgeLoader) error {
+func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload cartridgeloader.Loader) error {
 	// prepare user interface
 	if cons == nil {
 		dbg.console = new(console.PlainTerminal)
@@ -247,7 +247,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 //
 // this is the glue that hold the cartridge and disassembly packages
 // together
-func (dbg *Debugger) loadCartridge(cartload memory.CartridgeLoader) error {
+func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil {
 		return err
