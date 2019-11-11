@@ -12,10 +12,10 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/memory"
+	"gopher2600/screendigest"
 	"gopher2600/setup"
 	"gopher2600/symbols"
 	"gopher2600/television"
-	"gopher2600/television/renderers"
 	"os"
 	"os/signal"
 	"strings"
@@ -31,7 +31,7 @@ type Debugger struct {
 	disasm *disassembly.Disassembly
 
 	// gui/tv
-	digest *renderers.DigestTV
+	digest *screendigest.SHA1
 	gui    gui.GUI
 
 	// whether the debugger is to continue with the debugging loop
@@ -133,7 +133,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
-	dbg.digest, err = renderers.NewDigestTV(tvType, btv)
+	dbg.digest, err = screendigest.NewSHA1(tvType, btv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}

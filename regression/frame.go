@@ -8,9 +8,9 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/performance/limiter"
+	"gopher2600/screendigest"
 	"gopher2600/setup"
 	"gopher2600/television"
-	"gopher2600/television/renderers"
 	"io"
 	"os"
 	"strconv"
@@ -131,7 +131,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
-	dtv, err := renderers.NewDigestTV(reg.TVtype, stv)
+	dtv, err := screendigest.NewSHA1(reg.TVtype, stv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}

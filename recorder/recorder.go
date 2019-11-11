@@ -5,8 +5,8 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals"
+	"gopher2600/screendigest"
 	"gopher2600/television"
-	"gopher2600/television/renderers"
 	"io"
 	"os"
 )
@@ -15,7 +15,7 @@ import (
 type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
-	digest *renderers.DigestTV
+	digest *screendigest.SHA1
 
 	headerWritten bool
 }
@@ -32,7 +32,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	rec := &Recorder{vcs: vcs}
 
 	// create digesttv, piggybacking on the tv already being used by vcs
-	rec.digest, err = renderers.NewDigestTV(vcs.TV.GetSpec().ID, vcs.TV)
+	rec.digest, err = screendigest.NewSHA1(vcs.TV.GetSpec().ID, vcs.TV)
 	if err != nil {
 		return nil, errors.New(errors.RecordingError, err)
 	}

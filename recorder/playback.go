@@ -6,8 +6,8 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/peripherals"
+	"gopher2600/screendigest"
 	"gopher2600/television"
-	"gopher2600/television/renderers"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -40,7 +40,7 @@ type Playback struct {
 
 	sequences []*playbackSequence
 	vcs       *hardware.VCS
-	digest    *renderers.DigestTV
+	digest    *screendigest.SHA1
 
 	// the last frame where an event occurs
 	endFrame int
@@ -183,10 +183,10 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// create digesttv, piggybacking on the tv already being used by vcs;
 	// unless that tv is already a digesttv
 	switch tv := plb.vcs.TV.(type) {
-	case *renderers.DigestTV:
+	case *screendigest.SHA1:
 		plb.digest = tv
 	default:
-		plb.digest, err = renderers.NewDigestTV(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
+		plb.digest, err = screendigest.NewSHA1(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
 		if err != nil {
 			return errors.New(errors.RecordingError, err)
 		}

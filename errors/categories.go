@@ -102,8 +102,9 @@ const (
 	// tv
 	UnknownTVRequest
 	StellaTelevision
-	ImageTV
-	DigestTV
+
+	// screen digest
+	ScreenDigest
 
 	// gui
 	UnknownGUIRequest

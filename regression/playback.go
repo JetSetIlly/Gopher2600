@@ -7,8 +7,8 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
+	"gopher2600/screendigest"
 	"gopher2600/television"
-	"gopher2600/television/renderers"
 	"io"
 	"os"
 	"path"
@@ -92,7 +92,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	tv, err := renderers.NewDigestTV(plb.TVtype, nil)
+	tv, err := screendigest.NewSHA1(plb.TVtype, nil)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
