@@ -60,10 +60,10 @@ func (tr *traps) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
 	for i := range tr.traps {
-		trapValue := tr.traps[i].target.Value()
+		trapValue := tr.traps[i].target.CurrentValue()
 
 		if trapValue != tr.traps[i].origValue {
-			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.ShortLabel(), tr.traps[i].origValue, trapValue))
+			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.Label(), tr.traps[i].origValue, trapValue))
 			tr.traps[i].origValue = trapValue
 		}
 	}
@@ -76,7 +76,7 @@ func (tr traps) list() {
 	} else {
 		tr.dbg.print(console.StyleFeedback, "traps")
 		for i := range tr.traps {
-			tr.dbg.print(console.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.ShortLabel())
+			tr.dbg.print(console.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.Label())
 		}
 	}
 }
@@ -99,7 +99,7 @@ func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 		}
 
 		if addNewTrap {
-			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.Value()})
+			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.CurrentValue()})
 		}
 
 		_, present = tokens.Peek()

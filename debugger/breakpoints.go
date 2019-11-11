@@ -31,10 +31,10 @@ type breaker struct {
 
 func (bk breaker) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s->%s", bk.target.ShortLabel(), bk.target.FormatValue(bk.value)))
+	s.WriteString(fmt.Sprintf("%s->%s", bk.target.Label(), bk.target.FormatValue(bk.value)))
 	n := bk.next
 	for n != nil {
-		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.ShortLabel(), n.target.FormatValue(n.value)))
+		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.Label(), n.target.FormatValue(n.value)))
 		n = n.next
 	}
 	return s.String()
@@ -43,7 +43,7 @@ func (bk breaker) String() string {
 // breaker.check checks the specific break condition with the current value of
 // the break target
 func (bk *breaker) check() bool {
-	currVal := bk.target.Value()
+	currVal := bk.target.CurrentValue()
 	m := currVal == bk.value
 	if !m {
 		bk.ignoreValue = nil
@@ -182,7 +182,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 
 		// try to interpret the token depending on the type of value the target
 		// expects
-		switch tgt.Value().(type) {
+		switch tgt.CurrentValue().(type) {
 		case int:
 			var v int64
 			v, err = strconv.ParseInt(tok, 0, 32)
@@ -199,7 +199,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 				err = errors.New(errors.CommandError, fmt.Sprintf("invalid value (%s) for target (%s)", tok, tgt.Label()))
 			}
 		default:
-			return errors.New(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.Value(), tgt.Label()))
+			return errors.New(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.CurrentValue(), tgt.Label()))
 		}
 
 		if err == nil {
@@ -242,7 +242,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.Value(), tgt.Label()))
+		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.CurrentValue(), tgt.Label()))
 	}
 
 	return bp.checkNewBreakpoints(newBreaks)

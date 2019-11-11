@@ -11,27 +11,28 @@ import (
 // defines which types are valid targets
 type target interface {
 	Label() string
-	ShortLabel() string
-	Value() interface{}
-	FormatValue(interface{}) string
+
+	// the current value of the target
+	CurrentValue() interface{}
+
+	// format an arbitrary value using suitable formatting method of the target
+	FormatValue(val interface{}) string
 }
 
+// genericTarget is a way of encapsulating values that otherwise do not satisfy
+// the target interface. useful when it is inconvient to give a value its own
+// type
 type genericTarget struct {
-	label      string
-	shortLabel string
-	value      interface{}
+	label        string
+	currentValue interface{}
 }
 
 func (trg genericTarget) Label() string {
 	return trg.label
 }
 
-func (trg genericTarget) ShortLabel() string {
-	return trg.shortLabel
-}
-
-func (trg genericTarget) Value() interface{} {
-	switch v := trg.value.(type) {
+func (trg genericTarget) CurrentValue() interface{} {
+	switch v := trg.currentValue.(type) {
 	case func() interface{}:
 		switch v := v().(type) {
 		case error:
@@ -43,21 +44,21 @@ func (trg genericTarget) Value() interface{} {
 	}
 }
 
-func (trg genericTarget) FormatValue(fv interface{}) string {
-	switch v := trg.value.(type) {
+func (trg genericTarget) FormatValue(val interface{}) string {
+	switch t := trg.currentValue.(type) {
 	case string:
-		return fv.(string)
+		return val.(string)
 	case func() interface{}:
-		switch v := v().(type) {
+		switch v := t().(type) {
 		case string:
-			return fv.(string)
+			return val.(string)
 		case error:
 			panic(v)
 		default:
-			return fmt.Sprintf("%#v", fv)
+			return fmt.Sprintf("%#v", val)
 		}
 	default:
-		return fmt.Sprintf("%#v", fv)
+		return fmt.Sprintf("%#v", val)
 	}
 }
 
@@ -84,9 +85,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 		// tv state
 		case "FRAMENUM", "FRAME", "FR":
 			trg = &genericTarget{
-				label:      "Frame",
-				shortLabel: "FR",
-				value: func() interface{} {
+				label: "Frame",
+				currentValue: func() interface{} {
 					fr, err := dbg.vcs.TV.GetState(television.ReqFramenum)
 					if err != nil {
 						return err
@@ -96,9 +96,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 			}
 		case "SCANLINE", "SL":
 			trg = &genericTarget{
-				label:      "Scanline",
-				shortLabel: "SL",
-				value: func() interface{} {
+				label: "Scanline",
+				currentValue: func() interface{} {
 					sl, err := dbg.vcs.TV.GetState(television.ReqScanline)
 					if err != nil {
 						return err
@@ -108,9 +107,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 			}
 		case "HORIZPOS", "HP":
 			trg = &genericTarget{
-				label:      "Horiz Pos",
-				shortLabel: "HP",
-				value: func() interface{} {
+				label: "Horiz Pos",
+				currentValue: func() interface{} {
 					hp, err := dbg.vcs.TV.GetState(television.ReqHorizPos)
 					if err != nil {
 						return err
@@ -129,9 +127,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				switch subkey {
 				case "EFFECT", "EFF":
 					trg = &genericTarget{
-						label:      "INSTRUCTION EFFECT",
-						shortLabel: "INS EFF",
-						value: func() interface{} {
+						label: "Instruction Effect",
+						currentValue: func() interface{} {
 							if !dbg.vcs.CPU.LastResult.Final {
 								return -1
 							}

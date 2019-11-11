@@ -5,8 +5,7 @@ import (
 )
 
 // types that satisfy instrumentation return information about the state of the
-// emulated machine. String() should return verbose info, while StringTerse()
-// the more terse equivalent.
+// emulated machine
 type instrumentation interface {
 	String() string
 }

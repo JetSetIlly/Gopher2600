@@ -13,7 +13,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestSubtract(t *testing.T) {
-	r8 := register.NewRegister(0, 8, "TEST", "TST")
+	r8 := register.NewRegister(0, 8, "TEST")
 	r8.Load(0)
 	r8.Subtract(0, true)
 	assert.Assert(t, r8, 0)
@@ -25,7 +25,7 @@ func r16(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r16 := register.NewRegister(0, 16, "TEST", "TST")
+	r16 := register.NewRegister(0, 16, "TEST")
 	assert.Assert(t, r16.IsZero(), true)
 	assert.Assert(t, r16, 0)
 
@@ -44,7 +44,7 @@ func r16(t *testing.T) {
 	assert.Assert(t, r16.IsZero(), true)
 
 	// register operand
-	r16b := register.NewRegister(10, 16, "TEST B", "TSTB")
+	r16b := register.NewRegister(10, 16, "TEST B")
 	assert.Assert(t, r16b, 10)
 	r16.Add(r16b, true)
 	assert.Assert(t, r16, 11)
@@ -99,7 +99,7 @@ func r8(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r8 := register.NewRegister(0, 8, "TEST", "TST")
+	r8 := register.NewRegister(0, 8, "TEST")
 	assert.Assert(t, r8.IsZero(), true)
 	assert.Assert(t, r8, 0)
 
@@ -118,7 +118,7 @@ func r8(t *testing.T) {
 	assert.Assert(t, r8.IsZero(), true)
 
 	// register operand
-	r8b := register.NewRegister(10, 8, "TEST B", "TSTB")
+	r8b := register.NewRegister(10, 8, "TEST B")
 	assert.Assert(t, r8b, 10)
 	r8.Add(r8b, true)
 	assert.Assert(t, r8, 11)
@@ -166,7 +166,7 @@ func r4(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r4 := register.NewRegister(0, 4, "TEST", "TST")
+	r4 := register.NewRegister(0, 4, "TEST")
 	assert.Assert(t, r4.IsZero(), true)
 	assert.Assert(t, r4, 0)
 

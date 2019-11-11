@@ -19,10 +19,9 @@ type StatusRegister struct {
 
 // NewStatusRegister is the preferred method of initialisation for the status
 // register
-func NewStatusRegister(label string, shortLabel string) StatusRegister {
+func NewStatusRegister(label string) StatusRegister {
 	sr := new(StatusRegister)
 	sr.label = label
-	sr.shortLabel = shortLabel
 	return *sr
 }
 

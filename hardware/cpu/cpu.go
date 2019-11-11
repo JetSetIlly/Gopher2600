@@ -68,12 +68,12 @@ func NewCPU(mem memory.CPUBus) (*CPU, error) {
 	mc := new(CPU)
 	mc.mem = mem
 
-	mc.PC = register.NewRegister(0, 16, "PC", "PC")
-	mc.A = register.NewRegister(0, 8, "A", "A")
-	mc.X = register.NewRegister(0, 8, "X", "X")
-	mc.Y = register.NewRegister(0, 8, "Y", "Y")
-	mc.SP = register.NewRegister(0, 8, "SP", "SP")
-	mc.Status = NewStatusRegister("Status", "SR")
+	mc.PC = register.NewRegister(0, 16, "PC")
+	mc.A = register.NewRegister(0, 8, "A")
+	mc.X = register.NewRegister(0, 8, "X")
+	mc.Y = register.NewRegister(0, 8, "Y")
+	mc.SP = register.NewRegister(0, 8, "SP")
+	mc.Status = NewStatusRegister("SR")
 
 	mc.acc8 = register.NewAnonRegister(0, 8)
 	mc.acc16 = register.NewAnonRegister(0, 16)

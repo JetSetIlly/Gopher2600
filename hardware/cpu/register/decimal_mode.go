@@ -1,5 +1,7 @@
 package register
 
+// !!TODO: handle "invalid" BCD values (ie. nibble values A to F) correctly
+
 func addDecimal(a, b uint8, carry bool) (r uint8, rcarry bool) {
 	r = a + b
 	if carry {
