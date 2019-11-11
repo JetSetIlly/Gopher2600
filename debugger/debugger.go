@@ -47,9 +47,8 @@ type Debugger struct {
 	dbgmem *memoryDebug
 
 	// reflection is used to provideo additional information about the
-	// emulation. it is inherently slow so can be turned on/off with the
-	// reflectProcess switch
-	reflectProcess bool
+	// emulation. it is inherently slow so should be deactivated if not
+	// required
 	relfectMonitor *reflection.Monitor
 
 	// halt conditions
@@ -158,8 +157,8 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
 	// set up reflection monitor
-	dbg.reflectProcess = true
 	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.gui)
+	dbg.relfectMonitor.Activate(true)
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)
@@ -298,11 +297,7 @@ func (dbg *Debugger) videoCycle() error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	if dbg.reflectProcess {
-		return dbg.relfectMonitor.Check()
-	}
-
-	return nil
+	return dbg.relfectMonitor.Check()
 }
 
 // inputLoop has two modes, defined by the videoCycle argument.  when

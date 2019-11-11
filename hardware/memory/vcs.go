@@ -37,6 +37,10 @@ type VCSMemory struct {
 
 	// generating unique access ID is needlessly expensive so it can be turned
 	// on/off. should be off for normal operation
+	//
+	// it would be fun to replace timestamps with polycounter outputs. like the
+	// 2600 in reality, polycounters would provide a cheap(er) way of providing
+	// unique values. we could use the TIA HSYNC counter for this
 	LastAccessIDActive bool
 }
 

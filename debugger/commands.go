@@ -622,17 +622,15 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			if err != nil {
 				dbg.print(console.StyleError, err.Error())
 			}
-			dbg.reflectProcess = false
-			dbg.vcs.Mem.LastAccessIDActive = false
+			dbg.relfectMonitor.Activate(false)
 		case "ON":
 			err := dbg.gui.SetFeature(gui.ReqSetOverlay, true)
 			if err != nil {
 				dbg.print(console.StyleError, err.Error())
 			}
-			dbg.reflectProcess = true
-			dbg.vcs.Mem.LastAccessIDActive = true
+			dbg.relfectMonitor.Activate(true)
 		}
-		if dbg.reflectProcess {
+		if dbg.relfectMonitor.IsActive() {
 			dbg.print(console.StyleEmulatorInfo, "reflection: ON")
 		} else {
 			dbg.print(console.StyleEmulatorInfo, "reflection: OFF")
@@ -1087,7 +1085,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				}
 			}
 		case "OVERLAY":
-			if !dbg.reflectProcess {
+			if !dbg.relfectMonitor.IsActive() {
 				return doNothing, errors.New(errors.ReflectionNotRunning)
 			}
 
