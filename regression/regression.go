@@ -5,16 +5,17 @@ import (
 	"gopher2600/database"
 	"gopher2600/debugger/colorterm/ansi"
 	"gopher2600/errors"
+	"gopher2600/paths"
 	"io"
 	"os"
 	"sort"
 	"strconv"
 )
 
-// the location of the regressoionDB file and the location of any regression
-// scripts
-const regressionDBFile = ".gopher2600/regressionDB"
-const regressionScripts = ".gopher2600/regressionScripts"
+// the location of the regressionDB file and the location of any regression
+// scripts. these should be wrapped by paths.ResourcePath()
+const regressionDBFile = "regressionDB"
+const regressionScripts = "regressionScripts"
 
 // Regressor is the generic entry type in the regressionDB
 //
@@ -45,7 +46,7 @@ func initDBSession(db *database.Session) error {
 	}
 
 	// make sure regression script directory exists
-	if err := os.MkdirAll(regressionScripts, 0755); err != nil {
+	if err := os.MkdirAll(paths.ResourcePath(regressionScripts), 0755); err != nil {
 		msg := fmt.Sprintf("regression script directory: %s", err)
 		return errors.New(errors.RegressionError, msg)
 	}
@@ -56,10 +57,10 @@ func initDBSession(db *database.Session) error {
 // RegressList displays all entries in the database
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressList()", "io.Writer should not be nil (use nopWriter)")
+		return errors.New(errors.PanicError, "RegressList()", "io.Writer should not be nil (use a nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, database.ActivityReading, initDBSession)
+	db, err := database.StartSession(paths.ResourcePath(regressionDBFile), database.ActivityReading, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 		return errors.New(errors.PanicError, "RegressAdd()", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, database.ActivityCreating, initDBSession)
+	db, err := database.StartSession(paths.ResourcePath(regressionDBFile), database.ActivityCreating, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -104,7 +105,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 		return errors.New(errors.RegressionError, msg)
 	}
 
-	db, err := database.StartSession(regressionDBFile, database.ActivityModifying, initDBSession)
+	db, err := database.StartSession(paths.ResourcePath(regressionDBFile), database.ActivityModifying, initDBSession)
 	if err != nil {
 		return err
 	}
@@ -149,7 +150,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		return errors.New(errors.PanicError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")
 	}
 
-	db, err := database.StartSession(regressionDBFile, database.ActivityReading, initDBSession)
+	db, err := database.StartSession(paths.ResourcePath(regressionDBFile), database.ActivityReading, initDBSession)
 	if err != nil {
 		return err
 	}

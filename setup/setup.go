@@ -5,10 +5,11 @@ import (
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
+	"gopher2600/paths"
 )
 
 // the location of the setupDB file
-const setupDBFile = ".gopher2600/setupDB"
+const setupDBFile = "setupDB"
 
 // setupEntry is the generic entry type in the setupDB
 type setupEntry interface {
@@ -37,7 +38,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	db, err := database.StartSession(setupDBFile, database.ActivityReading, initDBSession)
+	db, err := database.StartSession(paths.ResourcePath(setupDBFile), database.ActivityReading, initDBSession)
 	if err != nil {
 		if errors.Is(err, errors.DatabaseFileUnavailable) {
 			// silently ignore absence of setup database

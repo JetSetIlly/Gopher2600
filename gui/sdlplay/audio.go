@@ -2,6 +2,7 @@ package sdlplay
 
 import (
 	"gopher2600/hardware/tia/audio"
+	"gopher2600/paths"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,8 +12,9 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const samplePath = ".gopher2600/samples/little-scale_atari_2600_sample_pack"
-const sampleSubPath = "Atari_2600_Cropped"
+const samplePath = "samples"
+const sampleDistro = "little-scale_atari_2600_sample_pack"
+const samplePak = "Atari_2600_Cropped"
 
 type sound struct {
 	prevAud audio.Audio
@@ -26,13 +28,13 @@ func newSound(scr *SdlPlay) (*sound, error) {
 	// prerequisite: SDL_INIT_AUDIO must be included in the call to sdl.Init()
 	mix.OpenAudio(22050, sdl.AUDIO_S16SYS, 2, 640)
 
-	path := filepath.Join(samplePath, sampleSubPath)
+	path := paths.ResourcePath(samplePath, sampleDistro, samplePak)
 
 	walkFn := func(p string, info os.FileInfo, err error) error {
 		t := p
 		t = strings.TrimPrefix(t, path)
 		t = strings.TrimPrefix(t, string(os.PathSeparator))
-		t = strings.TrimPrefix(t, sampleSubPath)
+		t = strings.TrimPrefix(t, samplePak)
 		t = strings.TrimPrefix(t, "--Wave_")
 
 		s := strings.Split(t, string(os.PathSeparator))
@@ -45,7 +47,7 @@ func newSound(scr *SdlPlay) (*sound, error) {
 			return nil
 		}
 
-		s[1] = strings.TrimPrefix(s[1], sampleSubPath)
+		s[1] = strings.TrimPrefix(s[1], samplePak)
 		s[1] = strings.TrimPrefix(s[1], "_")
 		s[1] = strings.TrimSuffix(s[1], ".wav")
 

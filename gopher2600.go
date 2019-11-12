@@ -9,6 +9,7 @@ import (
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
 	"gopher2600/magicflags"
+	"gopher2600/paths"
 	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
@@ -20,7 +21,7 @@ import (
 	"time"
 )
 
-const defaultInitScript = ".gopher2600/debuggerInit"
+const defaultInitScript = "debuggerInit"
 
 func main() {
 	// we generate random numbers in some places. seed the generator with the
@@ -121,7 +122,7 @@ func debug(mf *magicflags.MagicFlags) bool {
 	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := mf.SubModeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
-	initScript := mf.SubModeFlags.String("initscript", defaultInitScript, "terminal type to use in debug mode: COLOR, PLAIN")
+	initScript := mf.SubModeFlags.String("initscript", paths.ResourcePath(defaultInitScript), "terminal type to use in debug mode: COLOR, PLAIN")
 	profile := mf.SubModeFlags.Bool("profile", false, "run debugger through cpu profiler")
 
 	if mf.SubParse() != magicflags.ParseContinue {

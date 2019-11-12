@@ -7,7 +7,6 @@ import (
 	"gopher2600/cartridgeloader"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals"
-	"gopher2600/setup"
 	"syscall/js"
 )
 
@@ -26,7 +25,7 @@ func main() {
 		Filename: "http://localhost:8080/Pitfall.bin",
 	}
 
-	err = setup.AttachCartridge(vcs, cartload)
+	err = vcs.AttachCartridge(cartload)
 	if err != nil {
 		panic(err)
 	}
