@@ -21,9 +21,20 @@ func uniqueFilename(cartload cartridgeloader.Loader) string {
 }
 
 // Play sets the emulation running - without any debugging features
-func Play(tvType string, scaling float32, stable bool, transcript string, newRecording bool, cartload cartridgeloader.Loader) error {
+func Play(tvType string, scaling float32, stable bool, newRecording bool, cartload cartridgeloader.Loader) error {
+	var transcript string
+
+	// if supplied cartridge name is actually a playback file then set
+	// transcript and dump cartridgeLoader information
 	if recorder.IsPlaybackFile(cartload.Filename) {
-		return errors.New(errors.PlayError, "specified cartridge is a playback file. use -recording flag")
+
+		// do not allow this if a new recording has been requested
+		if newRecording {
+			return errors.New(errors.PlayError, "cannot make a new recording using a playback file")
+		}
+
+		transcript = cartload.Filename
+		cartload = cartridgeloader.Loader{}
 	}
 
 	playtv, err := sdlplay.NewSdlPlay(tvType, scaling, nil)
@@ -36,23 +47,13 @@ func Play(tvType string, scaling float32, stable bool, transcript string, newRec
 		return errors.New(errors.PlayError, err)
 	}
 
-	// create default recording file name if no name has been supplied
-	if newRecording && transcript == "" {
-		n := time.Now()
-		timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-		transcript = fmt.Sprintf("recording_%s_%s", cartload.ShortName(), timestamp)
-	}
-
 	// note that we attach the cartridge in three different branches below,
 	// depending on
 
 	if newRecording {
 		// new recording requested
 
-		// no transcript name given so we must generate a suitable default
-		if transcript == "" {
-			transcript = uniqueFilename(cartload)
-		}
+		transcript = uniqueFilename(cartload)
 
 		rec, err := recorder.NewRecorder(transcript, vcs)
 		if err != nil {

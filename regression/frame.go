@@ -185,7 +185,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 		if reg.State {
 			// create a unique filename
-			reg.stateFile = uniqueFilename(reg.CartLoad)
+			reg.stateFile = uniqueFilename("state", reg.CartLoad)
 
 			// check that the filename is unique
 			nf, _ := os.Open(reg.stateFile)

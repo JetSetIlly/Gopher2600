@@ -81,7 +81,6 @@ func play(mf *magicflags.MagicFlags) bool {
 	scaling := mf.SubModeFlags.Float64("scale", 3.0, "television scaling")
 	stable := mf.SubModeFlags.Bool("stable", true, "wait for stable frame before opening display")
 	record := mf.SubModeFlags.Bool("record", false, "record user input to a file")
-	recording := mf.SubModeFlags.String("recording", "", "the file to use for recording/playback")
 
 	if mf.SubParse() != magicflags.ParseContinue {
 		return false
@@ -89,26 +88,21 @@ func play(mf *magicflags.MagicFlags) bool {
 
 	switch len(mf.SubModeFlags.Args()) {
 	case 0:
-		if *recording == "" {
-			fmt.Println("* 2600 cartridge required")
-			return false
-		}
-		fallthrough
+		fmt.Println("* 2600 cartridge required")
+		return false
 	case 1:
 		cartload := cartridgeloader.Loader{
 			Filename: mf.SubModeFlags.Arg(0),
 			Format:   *cartFormat,
 		}
 
-		err := playmode.Play(*tvType, float32(*scaling), *stable, *recording, *record, cartload)
+		err := playmode.Play(*tvType, float32(*scaling), *stable, *record, cartload)
 		if err != nil {
 			fmt.Printf("* %s\n", err)
 			return false
 		}
 		if *record {
 			fmt.Println("! recording completed")
-		} else if *recording != "" {
-			fmt.Println("! playback completed")
 		}
 	default:
 		fmt.Printf("* too many arguments for %s mode\n", mf.Mode)
