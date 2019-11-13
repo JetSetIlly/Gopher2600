@@ -6,20 +6,26 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdldebug"
 	"gopher2600/hardware"
+	"gopher2600/television"
 	"testing"
 )
 
 func BenchmarkSDL(b *testing.B) {
 	var err error
 
-	tv, err := sdldebug.NewSdlDebug("NTSC", 1.0, nil)
+	tv, err := television.NewTelevision("AUTO")
 	if err != nil {
 		panic(fmt.Errorf("error preparing television: %s", err))
 	}
 
-	err = tv.SetFeature(gui.ReqSetVisibility, true)
+	scr, err := sdldebug.NewSdlDebug(tv, 1.0)
 	if err != nil {
-		panic(fmt.Errorf("error preparing television: %s", err))
+		panic(fmt.Errorf("error preparing screen: %s", err))
+	}
+
+	err = scr.SetFeature(gui.ReqSetVisibility, true)
+	if err != nil {
+		panic(fmt.Errorf("error preparing screen: %s", err))
 	}
 
 	vcs, err := hardware.NewVCS(tv)

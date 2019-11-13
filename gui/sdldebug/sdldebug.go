@@ -4,7 +4,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/television"
-	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -27,33 +26,12 @@ type SdlDebug struct {
 	paused bool
 }
 
-// NewSdlDebug creates a new instance of PixelTV. For convenience, the
-// television argument can be nil, in which case an instance of
-// StellaTelevision will be created.
-func NewSdlDebug(tvType string, scale float32, tv television.Television) (gui.GUI, error) {
+// NewSdlDebug is the preferred method for creating a new instance of SdlDebug
+func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	var err error
 
 	// set up gui
-	scr := new(SdlDebug)
-
-	// create or attach television implementation
-	if tv == nil {
-		scr.Television, err = television.NewStellaTelevision(tvType)
-		if err != nil {
-			return nil, errors.New(errors.SDL, err)
-		}
-	} else {
-		// check that the quoted tvType matches the specification of the
-		// supplied BasicTelevision instance. we don't really need this but
-		// becuase we're implying that tvType is required, even when an
-		// instance of BasicTelevision has been supplied, the caller may be
-		// expecting an error
-		tvType = strings.ToUpper(tvType)
-		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.New(errors.SDL, "trying to piggyback a tv of a different spec")
-		}
-		scr.Television = tv
-	}
+	scr := &SdlDebug{Television: tv}
 
 	// set up sdl
 	err = sdl.Init(sdl.INIT_EVERYTHING)
@@ -74,7 +52,7 @@ func NewSdlDebug(tvType string, scale float32, tv television.Television) (gui.GU
 	}
 
 	// set attributes that depend on the television specification
-	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesPerVisible)
+	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}

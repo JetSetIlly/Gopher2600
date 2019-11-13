@@ -5,7 +5,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
-	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -54,33 +53,12 @@ type SdlPlay struct {
 	showOnNextStable bool
 }
 
-// NewSdlPlay creates a new instance of SdlPlay. For convenience, the
-// television argument can be nil, in which case an instance of
-// StellaTelevision will be created.
-func NewSdlPlay(tvType string, scale float32, tv television.Television) (gui.GUI, error) {
+// NewSdlPlay is the preferred method of initialisation for SdlPlay
+func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	// set up gui
-	scr := &SdlPlay{}
+	scr := &SdlPlay{Television: tv}
 
 	var err error
-
-	// create or attach television implementation
-	if tv == nil {
-		scr.Television, err = television.NewStellaTelevision(tvType)
-		if err != nil {
-			return nil, errors.New(errors.SDL, err)
-		}
-	} else {
-		// check that the quoted tvType matches the specification of the
-		// supplied BasicTelevision instance. we don't really need this but
-		// becuase we're implying that tvType is required, even when an
-		// instance of BasicTelevision has been supplied, the caller may be
-		// expecting an error
-		tvType = strings.ToUpper(tvType)
-		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.New(errors.SDL, "trying to piggyback a tv of a different spec")
-		}
-		scr.Television = tv
-	}
 
 	// set up sdl
 	err = sdl.Init(sdl.INIT_EVERYTHING)
@@ -117,7 +95,7 @@ func NewSdlPlay(tvType string, scale float32, tv television.Television) (gui.GUI
 	scr.AddAudioMixer(scr)
 
 	// change tv spec after window creation (so we can set the window size)
-	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesPerVisible)
+	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
@@ -146,7 +124,7 @@ func NewSdlPlay(tvType string, scale float32, tv television.Television) (gui.GUI
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 	var err error
 
-	scr.horizPixels = television.ClocksPerVisible
+	scr.horizPixels = television.HorizClksVisible
 	scr.scanlines = int32(numScanlines)
 	scr.topScanline = topScanline
 	scr.pixels = make([]byte, scr.horizPixels*scr.scanlines*pixelDepth)
@@ -236,7 +214,7 @@ func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error
 	}
 
 	// adjust pixels so we're only dealing with the visible range
-	x -= television.ClocksPerHblank
+	x -= television.HorizClksHBlank
 	y -= scr.topScanline
 
 	if x < 0 || y < 0 {

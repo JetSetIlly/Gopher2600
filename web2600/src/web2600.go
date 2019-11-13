@@ -12,10 +12,10 @@ import (
 
 func main() {
 	worker := js.Global().Get("self")
-	ctv := NewCanvasTV(worker)
+	scr := NewCanvas(worker)
 
 	// create new vcs
-	vcs, err := hardware.NewVCS(ctv)
+	vcs, err := hardware.NewVCS(scr)
 	if err != nil {
 		panic(err)
 	}

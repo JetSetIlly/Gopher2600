@@ -5,23 +5,17 @@ import (
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
 	"gopher2600/recorder"
 	"gopher2600/setup"
+	"gopher2600/television"
 	"os"
 	"os/signal"
 	"time"
 )
 
-func uniqueFilename(cartload cartridgeloader.Loader) string {
-	n := time.Now()
-	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-	return fmt.Sprintf("recording_%s_%s", cartload.ShortName(), timestamp)
-}
-
 // Play sets the emulation running - without any debugging features
-func Play(tvType string, scaling float32, stable bool, newRecording bool, cartload cartridgeloader.Loader) error {
+func Play(tv television.Television, scr gui.GUI, stable bool, newRecording bool, cartload cartridgeloader.Loader) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -37,12 +31,7 @@ func Play(tvType string, scaling float32, stable bool, newRecording bool, cartlo
 		cartload = cartridgeloader.Loader{}
 	}
 
-	playtv, err := sdlplay.NewSdlPlay(tvType, scaling, nil)
-	if err != nil {
-		return errors.New(errors.PlayError, err)
-	}
-
-	vcs, err := hardware.NewVCS(playtv)
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
@@ -53,24 +42,30 @@ func Play(tvType string, scaling float32, stable bool, newRecording bool, cartlo
 	if newRecording {
 		// new recording requested
 
-		transcript = uniqueFilename(cartload)
+		// create a unique filename
+		n := time.Now()
+		transcript = fmt.Sprintf("recording_%s_%s",
+			cartload.ShortName(), fmt.Sprintf("%04d%02d%02d_%02d%02d%02d",
+				n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second()))
 
+		// prepare new recording
 		rec, err := recorder.NewRecorder(transcript, vcs)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}
 
+		// making sure we end the recording gracefully when we leave the function
 		defer func() {
 			rec.End()
 		}()
 
+		// attach recorder to vcs peripherals, including the panel
 		vcs.Ports.Player0.AttachTranscriber(rec)
 		vcs.Ports.Player1.AttachTranscriber(rec)
 		vcs.Panel.AttachTranscriber(rec)
 
-		// attaching cartridge after recorder and transcribers have been
+		// attach cartridge after recorder and transcribers have been
 		// setup because we want to catch any setup events in the recording
-
 		err = setup.AttachCartridge(vcs, cartload)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
@@ -114,14 +109,14 @@ func Play(tvType string, scaling float32, stable bool, newRecording bool, cartlo
 
 	// connect gui
 	guiChannel := make(chan gui.Event, 2)
-	playtv.SetEventChannel(guiChannel)
+	scr.SetEventChannel(guiChannel)
 
 	// request television visibility
 	request := gui.ReqSetVisibilityStable
 	if !stable {
 		request = gui.ReqSetVisibility
 	}
-	err = playtv.SetFeature(request, true)
+	err = scr.SetFeature(request, true)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
@@ -141,7 +136,7 @@ func Play(tvType string, scaling float32, stable bool, newRecording bool, cartlo
 			case gui.EventWindowClose:
 				return false, nil
 			case gui.EventKeyboard:
-				err = KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), playtv, vcs)
+				err = KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), scr, vcs)
 				return err == nil, err
 			}
 		default:

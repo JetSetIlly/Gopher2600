@@ -132,10 +132,10 @@ func (bs *ballSprite) rsync(adjustment int) {
 	bs.resetPixel -= adjustment
 	bs.hmovedPixel -= adjustment
 	if bs.resetPixel < 0 {
-		bs.resetPixel += television.ClocksPerVisible
+		bs.resetPixel += television.HorizClksVisible
 	}
 	if bs.hmovedPixel < 0 {
-		bs.hmovedPixel += television.ClocksPerVisible
+		bs.hmovedPixel += television.HorizClksVisible
 	}
 }
 
@@ -162,7 +162,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 		// adjust for screen boundary
 		if bs.hmovedPixel < 0 {
-			bs.hmovedPixel += television.ClocksPerVisible
+			bs.hmovedPixel += television.HorizClksVisible
 		}
 	}
 
@@ -199,8 +199,8 @@ func (bs *ballSprite) prepareForHMOVE() {
 		bs.hmovedPixel += 8
 
 		// adjust for screen boundary
-		if bs.hmovedPixel > television.ClocksPerVisible {
-			bs.hmovedPixel -= television.ClocksPerVisible
+		if bs.hmovedPixel > television.HorizClksVisible {
+			bs.hmovedPixel -= television.HorizClksVisible
 		}
 	}
 }
@@ -258,8 +258,8 @@ func (bs *ballSprite) _futureResetPosition() {
 		bs.resetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if bs.resetPixel > television.ClocksPerVisible {
-			bs.resetPixel -= television.ClocksPerVisible
+		if bs.resetPixel > television.HorizClksVisible {
+			bs.resetPixel -= television.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at

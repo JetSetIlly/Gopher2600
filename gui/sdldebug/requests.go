@@ -8,7 +8,7 @@ import (
 )
 
 // SetFeature is used to set a television attribute
-func (pxtv *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -22,72 +22,72 @@ func (pxtv *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (r
 
 	case gui.ReqSetVisibility:
 		if args[0].(bool) {
-			pxtv.window.Show()
+			scr.window.Show()
 
 			// update screen
 			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
-				pxtv.pxl.update()
+				scr.pxl.update()
 			}
 		} else {
-			pxtv.window.Hide()
+			scr.window.Hide()
 		}
 
 	case gui.ReqToggleVisibility:
-		if pxtv.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			pxtv.window.Show()
+		if scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
+			scr.window.Show()
 
 			// update screen
 			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
-				pxtv.pxl.update()
+				scr.pxl.update()
 			}
 		} else {
-			pxtv.window.Hide()
+			scr.window.Hide()
 		}
 
 	case gui.ReqSetPause:
-		pxtv.paused = args[0].(bool)
-		pxtv.pxl.update()
+		scr.paused = args[0].(bool)
+		scr.pxl.update()
 
 	case gui.ReqSetMasking:
-		pxtv.pxl.setMasking(args[0].(bool))
-		pxtv.pxl.update()
+		scr.pxl.setMasking(args[0].(bool))
+		scr.pxl.update()
 
 	case gui.ReqToggleMasking:
-		pxtv.pxl.setMasking(!pxtv.pxl.unmasked)
-		pxtv.pxl.update()
+		scr.pxl.setMasking(!scr.pxl.unmasked)
+		scr.pxl.update()
 
 	case gui.ReqSetAltColors:
-		pxtv.pxl.useAltPixels = args[0].(bool)
-		pxtv.pxl.update()
+		scr.pxl.useAltPixels = args[0].(bool)
+		scr.pxl.update()
 
 	case gui.ReqToggleAltColors:
-		pxtv.pxl.useAltPixels = !pxtv.pxl.useAltPixels
-		pxtv.pxl.update()
+		scr.pxl.useAltPixels = !scr.pxl.useAltPixels
+		scr.pxl.update()
 
 	case gui.ReqSetOverlay:
-		pxtv.pxl.useMetaPixels = args[0].(bool)
-		pxtv.pxl.update()
+		scr.pxl.useMetaPixels = args[0].(bool)
+		scr.pxl.update()
 
 	case gui.ReqToggleOverlay:
-		pxtv.pxl.useMetaPixels = !pxtv.pxl.useMetaPixels
-		pxtv.pxl.update()
+		scr.pxl.useMetaPixels = !scr.pxl.useMetaPixels
+		scr.pxl.update()
 
 	case gui.ReqSetScale:
-		pxtv.pxl.setScaling(args[0].(float32))
-		pxtv.pxl.update()
+		scr.pxl.setScaling(args[0].(float32))
+		scr.pxl.update()
 
 	case gui.ReqIncScale:
-		if pxtv.pxl.pixelScaleY < 4.0 {
-			pxtv.pxl.setScaling(pxtv.pxl.pixelScaleY + 0.1)
-			pxtv.pxl.update()
+		if scr.pxl.pixelScaleY < 4.0 {
+			scr.pxl.setScaling(scr.pxl.pixelScaleY + 0.1)
+			scr.pxl.update()
 		}
 
 	case gui.ReqDecScale:
-		if pxtv.pxl.pixelScaleY > 0.5 {
-			pxtv.pxl.setScaling(pxtv.pxl.pixelScaleY - 0.1)
-			pxtv.pxl.update()
+		if scr.pxl.pixelScaleY > 0.5 {
+			scr.pxl.setScaling(scr.pxl.pixelScaleY - 0.1)
+			scr.pxl.update()
 		}
 
 	default:
@@ -98,6 +98,6 @@ func (pxtv *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (r
 }
 
 // SetEventChannel implements the GUI interface
-func (pxtv *SdlDebug) SetEventChannel(eventChannel chan gui.Event) {
-	pxtv.eventChannel = eventChannel
+func (scr *SdlDebug) SetEventChannel(eventChannel chan gui.Event) {
+	scr.eventChannel = eventChannel
 }

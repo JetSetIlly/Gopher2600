@@ -100,11 +100,11 @@ func (pan *Panel) commit() {
 }
 
 // Handle interprets an event into the correct sequence of memory addressing
-func (pan *Panel) Handle(event Event) error {
+func (pan *Panel) Handle(event Action) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent
-	case NoEvent:
+	case NoAction:
 		return nil
 
 	case PanelSelectPress:

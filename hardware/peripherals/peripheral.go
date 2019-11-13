@@ -15,7 +15,7 @@ const (
 
 type peripheral struct {
 	id     PeriphID
-	handle func(Event) error
+	handle func(Action) error
 
 	controller     Controller
 	prevController Controller

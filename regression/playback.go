@@ -92,7 +92,12 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	tv, err := screendigest.NewSHA1(plb.TVtype, nil)
+	tv, err := television.NewTelevision(plb.TVtype)
+	if err != nil {
+		return false, "", errors.New(errors.RegressionFrameError, err)
+	}
+
+	_, err = screendigest.NewSHA1(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}

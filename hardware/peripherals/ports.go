@@ -95,11 +95,11 @@ func newPlayer1(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *play
 }
 
 // Handle interprets an event into the correct sequence of memory addressing
-func (pl *player) Handle(event Event) error {
+func (pl *player) Handle(event Action) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent
-	case NoEvent:
+	case NoAction:
 		return nil
 
 	case Left:
@@ -144,7 +144,7 @@ func (pl *player) Handle(event Event) error {
 	case PanelResetRelease:
 		return pl.panel.Handle(PanelResetRelease)
 
-	case Unplugged:
+	case Unplug:
 		return errors.New(errors.PeriphUnplugged, pl.id)
 
 	// return now if there is no event to process

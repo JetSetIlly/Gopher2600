@@ -8,12 +8,16 @@ import (
 	"gopher2600/debugger/colorterm"
 	"gopher2600/debugger/console"
 	"gopher2600/disassembly"
+	"gopher2600/gui"
+	"gopher2600/gui/sdldebug"
+	"gopher2600/gui/sdlplay"
 	"gopher2600/magicflags"
 	"gopher2600/paths"
 	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
 	"gopher2600/regression"
+	"gopher2600/television"
 	"io"
 	"math/rand"
 	"os"
@@ -96,7 +100,19 @@ func play(mf *magicflags.MagicFlags) bool {
 			Format:   *cartFormat,
 		}
 
-		err := playmode.Play(*tvType, float32(*scaling), *stable, *record, cartload)
+		tv, err := television.NewTelevision(*tvType)
+		if err != nil {
+			fmt.Printf("* %s\n", err)
+			return false
+		}
+
+		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
+		if err != nil {
+			fmt.Printf("* %s\n", err)
+			return false
+		}
+
+		err = playmode.Play(tv, scr, *stable, *record, cartload)
 		if err != nil {
 			fmt.Printf("* %s\n", err)
 			return false
@@ -123,7 +139,19 @@ func debug(mf *magicflags.MagicFlags) bool {
 		return false
 	}
 
-	dbg, err := debugger.NewDebugger(*tvType)
+	tv, err := television.NewTelevision(*tvType)
+	if err != nil {
+		fmt.Printf("* %s\n", err)
+		return false
+	}
+
+	scr, err := sdldebug.NewSdlDebug(tv, 2.0)
+	if err != nil {
+		fmt.Printf("* %s\n", err)
+		return false
+	}
+
+	dbg, err := debugger.NewDebugger(tv, scr)
 	if err != nil {
 		fmt.Printf("* %s\n", err)
 		return false
@@ -242,7 +270,28 @@ func perform(mf *magicflags.MagicFlags) bool {
 			Filename: mf.SubModeFlags.Arg(0),
 			Format:   *cartFormat,
 		}
-		err := performance.Check(os.Stdout, *profile, *display, *tvType, float32(*scaling), *runTime, cartload)
+
+		tv, err := television.NewTelevision(*tvType)
+		if err != nil {
+			fmt.Printf("* %s\n", err)
+			return false
+		}
+
+		if *display {
+			scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
+			if err != nil {
+				fmt.Printf("* %s\n", err)
+				return false
+			}
+
+			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
+			if err != nil {
+				fmt.Printf("* %s\n", err)
+				return false
+			}
+		}
+
+		err = performance.Check(os.Stdout, *profile, tv, *runTime, cartload)
 		if err != nil {
 			fmt.Printf("* %s\n", err)
 			return false

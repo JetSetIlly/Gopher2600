@@ -109,6 +109,6 @@ func (ovl *metapixelOverlay) update(paused bool) error {
 }
 
 // SetMetaPixel recieves (and processes) additional emulator information from the emulator
-func (pxtv *SdlDebug) SetMetaPixel(sig gui.MetaPixel) error {
-	return pxtv.pxl.metaPixels.setPixel(sig)
+func (scr *SdlDebug) SetMetaPixel(sig gui.MetaPixel) error {
+	return scr.pxl.metaPixels.setPixel(sig)
 }

@@ -1,18 +1,18 @@
 package peripherals
 
-// Event represents the possible actions that can be performed with a
-// controller
-type Event int
+// Action represents the possible actions that can be performed by the user
+// when interacting with the console
+type Action int
 
-// list of defined events
+// list of defined actions
 //
 // *** do not monkey with the ordering of these constants unless you know what
 // you're doing. existing playback scripts will probably break ***
 const (
-	NoEvent Event = iota
+	NoAction Action = iota
 
 	// the controller has been unplugged
-	Unplugged
+	Unplug
 
 	// joystick
 	Fire
@@ -43,5 +43,5 @@ const (
 
 	// !!TODO: paddle and keyboard controllers
 
-	PanelPowerOff Event = 255
+	PanelPowerOff Action = 255
 )

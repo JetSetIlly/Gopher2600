@@ -242,10 +242,10 @@ func (ps *playerSprite) rsync(adjustment int) {
 	ps.resetPixel -= adjustment
 	ps.hmovedPixel -= adjustment
 	if ps.resetPixel < 0 {
-		ps.resetPixel += television.ClocksPerVisible
+		ps.resetPixel += television.HorizClksVisible
 	}
 	if ps.hmovedPixel < 0 {
-		ps.hmovedPixel += television.ClocksPerVisible
+		ps.hmovedPixel += television.HorizClksVisible
 	}
 }
 
@@ -269,7 +269,7 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 		// adjust for screen boundary
 		if ps.hmovedPixel < 0 {
-			ps.hmovedPixel += television.ClocksPerVisible
+			ps.hmovedPixel += television.HorizClksVisible
 		}
 	}
 
@@ -381,8 +381,8 @@ func (ps *playerSprite) prepareForHMOVE() {
 		ps.hmovedPixel += 8
 
 		// adjust for screen boundary
-		if ps.hmovedPixel > television.ClocksPerVisible {
-			ps.hmovedPixel -= television.ClocksPerVisible
+		if ps.hmovedPixel > television.HorizClksVisible {
+			ps.hmovedPixel -= television.HorizClksVisible
 		}
 	}
 }
@@ -459,8 +459,8 @@ func (ps *playerSprite) _futureResetPosition() {
 		}
 
 		// adjust resetPixel for screen boundaries
-		if ps.resetPixel > television.ClocksPerVisible {
-			ps.resetPixel -= television.ClocksPerVisible
+		if ps.resetPixel > television.HorizClksVisible {
+			ps.resetPixel -= television.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at
@@ -641,11 +641,11 @@ func (ps *playerSprite) _futureSetNusiz(v interface{}) {
 	}
 
 	// adjust reset pixel for screen boundaries
-	if ps.resetPixel > television.ClocksPerVisible {
-		ps.resetPixel -= television.ClocksPerVisible
+	if ps.resetPixel > television.HorizClksVisible {
+		ps.resetPixel -= television.HorizClksVisible
 	}
-	if ps.hmovedPixel > television.ClocksPerVisible {
-		ps.hmovedPixel -= television.ClocksPerVisible
+	if ps.hmovedPixel > television.HorizClksVisible {
+		ps.hmovedPixel -= television.HorizClksVisible
 	}
 }
 

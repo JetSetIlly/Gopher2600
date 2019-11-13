@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/television"
-	"strings"
 )
 
 // SHA1 is an implementation of the television.Renderer interface with an
@@ -26,30 +25,9 @@ const pixelDepth = 3
 // NewSHA1 initialises a new instance of DigestTV. For convenience, the
 // television argument can be nil, in which case an instance of
 // StellaTelevision will be created.
-func NewSHA1(tvType string, tv television.Television) (*SHA1, error) {
-	var err error
-
+func NewSHA1(tv television.Television) (*SHA1, error) {
 	// set up digest tv
-	dig := new(SHA1)
-
-	// create or attach television implementation
-	if tv == nil {
-		dig.Television, err = television.NewStellaTelevision(tvType)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// check that the quoted tvType matches the specification of the
-		// supplied BasicTelevision instance. we don't really need this but
-		// becuase we're implying that tvType is required, even when an
-		// instance of BasicTelevision has been supplied, the caller may be
-		// expecting an error
-		tvType = strings.ToUpper(tvType)
-		if tvType != "AUTO" && tvType != tv.GetSpec().ID {
-			return nil, errors.New(errors.ScreenDigest, "trying to piggyback a tv of a different spec")
-		}
-		dig.Television = tv
-	}
+	dig := &SHA1{Television: tv}
 
 	// register ourselves as a television.Renderer
 	dig.AddPixelRenderer(dig)
@@ -78,7 +56,7 @@ func (dig *SHA1) Resize(_, _ int) error {
 	l := len(dig.digest)
 
 	// alloscate enough pixels for entire frame
-	l += ((television.ClocksPerScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
+	l += ((television.HorizClksScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
 
 	dig.pixels = make([]byte, l)
 	return nil
@@ -106,7 +84,7 @@ func (dig *SHA1) NewScanline(scanline int) error {
 func (dig *SHA1) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
-	i += television.ClocksPerScanline * y * pixelDepth
+	i += television.HorizClksScanline * y * pixelDepth
 	i += x * pixelDepth
 
 	if i <= len(dig.pixels)-pixelDepth {

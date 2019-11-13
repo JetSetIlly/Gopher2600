@@ -15,7 +15,7 @@ import (
 )
 
 type event struct {
-	event    peripherals.Event
+	event    peripherals.Action
 	frame    int
 	scanline int
 	horizpos int
@@ -130,7 +130,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		event.event = peripherals.Event(n)
+		event.event = peripherals.Action(n)
 
 		event.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
@@ -180,16 +180,10 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 
 	var err error
 
-	// create digesttv, piggybacking on the tv already being used by vcs;
-	// unless that tv is already a digesttv
-	switch tv := plb.vcs.TV.(type) {
-	case *screendigest.SHA1:
-		plb.digest = tv
-	default:
-		plb.digest, err = screendigest.NewSHA1(plb.vcs.TV.GetSpec().ID, plb.vcs.TV)
-		if err != nil {
-			return errors.New(errors.RecordingError, err)
-		}
+	// create digesttv using TV attached to VCS
+	plb.digest, err = screendigest.NewSHA1(plb.vcs.TV)
+	if err != nil {
+		return errors.New(errors.RecordingError, err)
 	}
 
 	// attach playback to controllers
@@ -201,34 +195,34 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 }
 
 // GetInput implements peripherals.Controller interface
-func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Event, error) {
+func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Action, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 
 	// we've reached the end of the list of events for this id
 	if seq.eventCt >= len(seq.events) {
-		return peripherals.NoEvent, nil
+		return peripherals.NoAction, nil
 	}
 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
+		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
+		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return peripherals.NoEvent, errors.New(errors.PlaybackError, err)
+		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.String() {
-			return peripherals.NoEvent, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
+			return peripherals.NoAction, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 
 		seq.eventCt++
@@ -236,5 +230,5 @@ func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Event, error
 	}
 
 	// next event does not match
-	return peripherals.NoEvent, nil
+	return peripherals.NoAction, nil
 }

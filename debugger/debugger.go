@@ -9,7 +9,6 @@ import (
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/gui/sdldebug"
 	"gopher2600/hardware"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/screendigest"
@@ -31,8 +30,9 @@ type Debugger struct {
 	disasm *disassembly.Disassembly
 
 	// gui/tv
+	tv     television.Television
+	scr    gui.GUI
 	digest *screendigest.SHA1
-	gui    gui.GUI
 
 	// whether the debugger is to continue with the debugging loop
 	// set to false only when debugger is to finish
@@ -122,29 +122,18 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger(tvType string) (*Debugger, error) {
+func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 	var err error
 
-	dbg := new(Debugger)
+	dbg := &Debugger{tv: tv, scr: scr}
 
-	// prepare gui/tv
-	btv, err := television.NewStellaTelevision(tvType)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
-
-	dbg.digest, err = screendigest.NewSHA1(tvType, btv)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
-
-	dbg.gui, err = sdldebug.NewSdlDebug(tvType, 2.0, btv)
+	dbg.digest, err = screendigest.NewSHA1(dbg.tv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(dbg.gui)
+	dbg.vcs, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -157,7 +146,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
 
 	// set up reflection monitor
-	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.gui)
+	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.scr)
 	dbg.relfectMonitor.Activate(true)
 
 	// set up breakpoints/traps
@@ -183,7 +172,7 @@ func NewDebugger(tvType string) (*Debugger, error) {
 	signal.Notify(dbg.intChan, os.Interrupt)
 
 	// connect debugger to gui
-	dbg.gui.SetEventChannel(dbg.guiChan)
+	dbg.scr.SetEventChannel(dbg.guiChan)
 
 	return dbg, nil
 }
@@ -386,7 +375,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		// enter halt state
 		if dbg.inputloopHalt {
 			// pause tv when emulation has halted
-			err = dbg.gui.SetFeature(gui.ReqSetPause, true)
+			err = dbg.scr.SetFeature(gui.ReqSetPause, true)
 			if err != nil {
 				return err
 			}
@@ -477,7 +466,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 
 			// make sure tv is unpaused if emulation is about to resume
 			if dbg.inputloopNext {
-				err = dbg.gui.SetFeature(gui.ReqSetPause, false)
+				err = dbg.scr.SetFeature(gui.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

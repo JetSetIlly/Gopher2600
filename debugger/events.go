@@ -17,7 +17,7 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 		data := event.Data.(gui.EventDataKeyboard)
 
 		// check playmode key presses first
-		err = playmode.KeyboardEventHandler(data, dbg.gui, dbg.vcs)
+		err = playmode.KeyboardEventHandler(data, dbg.scr, dbg.vcs)
 		if err != nil {
 			break // switch event.ID
 		}
@@ -26,11 +26,11 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 			switch data.Key {
 			case "`":
 				// back-tick: toggle masking
-				err = dbg.gui.SetFeature(gui.ReqToggleMasking)
+				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
 
 			case "1":
 				// toggle debugging colours
-				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
+				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
 			case "2":
 				// toggle overlay
 
@@ -39,16 +39,16 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 				// 	return errors.New(errors.ReflectionNotRunning)
 				// }
 
-				err = dbg.gui.SetFeature(gui.ReqToggleOverlay)
+				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 
 			case "=":
 				fallthrough // equal sign is the same as plus, for convenience
 			case "+":
 				// increase scaling
-				err = dbg.gui.SetFeature(gui.ReqIncScale)
+				err = dbg.scr.SetFeature(gui.ReqIncScale)
 			case "-":
 				// decrease window scanling
-				err = dbg.gui.SetFeature(gui.ReqDecScale)
+				err = dbg.scr.SetFeature(gui.ReqDecScale)
 			}
 		}
 

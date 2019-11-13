@@ -157,10 +157,10 @@ func (ms *missileSprite) rsync(adjustment int) {
 	ms.resetPixel -= adjustment
 	ms.hmovedPixel -= adjustment
 	if ms.resetPixel < 0 {
-		ms.resetPixel += television.ClocksPerVisible
+		ms.resetPixel += television.HorizClksVisible
 	}
 	if ms.hmovedPixel < 0 {
-		ms.hmovedPixel += television.ClocksPerVisible
+		ms.hmovedPixel += television.HorizClksVisible
 	}
 }
 
@@ -204,7 +204,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 		// adjust for screen boundary
 		if ms.hmovedPixel < 0 {
-			ms.hmovedPixel += television.ClocksPerVisible
+			ms.hmovedPixel += television.HorizClksVisible
 		}
 	}
 
@@ -274,8 +274,8 @@ func (ms *missileSprite) prepareForHMOVE() {
 		ms.hmovedPixel += 8
 
 		// adjust for screen boundary
-		if ms.hmovedPixel > television.ClocksPerVisible {
-			ms.hmovedPixel -= television.ClocksPerVisible
+		if ms.hmovedPixel > television.HorizClksVisible {
+			ms.hmovedPixel -= television.HorizClksVisible
 		}
 	}
 }
@@ -331,8 +331,8 @@ func (ms *missileSprite) _futureResetPosition() {
 		ms.resetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if ms.resetPixel > television.ClocksPerVisible {
-			ms.resetPixel -= television.ClocksPerVisible
+		if ms.resetPixel > television.HorizClksVisible {
+			ms.resetPixel -= television.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at

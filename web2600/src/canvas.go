@@ -15,8 +15,8 @@ const pixelWidth = 2
 const horizScale = 2
 const vertScale = 2
 
-// CanvasTV implements television.PixelRenderer
-type CanvasTV struct {
+// Canvas implements television.PixelRenderer
+type Canvas struct {
 	// the worker in which our WASM application is running
 	worker js.Value
 
@@ -28,34 +28,34 @@ type CanvasTV struct {
 	image []byte
 }
 
-// NewCanvasTV is the preferred method of initialisation for the CanvasTV type
-func NewCanvasTV(worker js.Value) *CanvasTV {
+// NewCanvas is the preferred method of initialisation for the Canvas type
+func NewCanvas(worker js.Value) *Canvas {
 	var err error
 
-	scr := CanvasTV{worker: worker}
+	scr := &Canvas{worker: worker}
 
-	scr.Television, err = television.NewStellaTelevision("NTSC")
+	scr.Television, err = television.NewTelevision("NTSC")
 	if err != nil {
 		return nil
 	}
-	scr.Television.AddPixelRenderer(&scr)
+	scr.Television.AddPixelRenderer(scr)
 
 	// change tv spec after window creation (so we can set the window size)
-	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesPerVisible)
+	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 	if err != nil {
 		return nil
 	}
 
-	return &scr
+	return scr
 }
 
-func (scr *CanvasTV) Resize(topScanline, numScanlines int) error {
+func (scr *Canvas) Resize(topScanline, numScanlines int) error {
 	scr.top = topScanline
 	scr.height = numScanlines * vertScale
 
 	// strictly, only the height will ever change on a specification change but
 	// it's convenient to set the width too
-	scr.width = television.ClocksPerVisible * pixelWidth * horizScale
+	scr.width = television.HorizClksVisible * pixelWidth * horizScale
 
 	// recreate image buffer of correct length
 	scr.image = make([]byte, scr.width*scr.height*pixelDepth)
@@ -67,7 +67,7 @@ func (scr *CanvasTV) Resize(topScanline, numScanlines int) error {
 }
 
 // NewFrame implements telvision.PixelRenderer
-func (scr *CanvasTV) NewFrame(frameNum int) error {
+func (scr *Canvas) NewFrame(frameNum int) error {
 	scr.worker.Call("updateDebug", "frameNum", frameNum)
 	encodedImage := base64.StdEncoding.EncodeToString(scr.image)
 	scr.worker.Call("updateCanvas", encodedImage)
@@ -79,13 +79,13 @@ func (scr *CanvasTV) NewFrame(frameNum int) error {
 }
 
 // NewScanline implements telvision.PixelRenderer
-func (scr *CanvasTV) NewScanline(scanline int) error {
+func (scr *Canvas) NewScanline(scanline int) error {
 	scr.worker.Call("updateDebug", "scanline", scanline)
 	return nil
 }
 
 // SetPixel implements telvision.PixelRenderer
-func (scr *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (scr *Canvas) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible
 		// area we need to the set pixel to black, in case the vblank was off
@@ -97,7 +97,7 @@ func (scr *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 	}
 
 	// adjust pixels so we're only dealing with the visible range
-	x -= television.ClocksPerHblank
+	x -= television.HorizClksHBlank
 	y -= scr.top
 
 	if x < 0 || y < 0 {
@@ -122,6 +122,6 @@ func (scr *CanvasTV) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 }
 
 // SetAltPixel implements telvision.PixelRenderer
-func (scr *CanvasTV) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (scr *Canvas) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }

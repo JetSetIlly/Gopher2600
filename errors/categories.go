@@ -102,7 +102,7 @@ const (
 
 	// tv
 	UnknownTVRequest
-	StellaTelevision
+	Television
 
 	// screen digest
 	ScreenDigest

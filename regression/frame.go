@@ -126,17 +126,17 @@ func (reg FrameRegression) CleanUp() error {
 func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
-	stv, err := television.NewStellaTelevision(reg.TVtype)
+	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
-	dtv, err := screendigest.NewSHA1(reg.TVtype, stv)
+	dig, err := screendigest.NewSHA1(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
 
-	vcs, err := hardware.NewVCS(dtv)
+	vcs, err := hardware.NewVCS(dig)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
@@ -159,7 +159,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	// add the starting state of the tv
 	if reg.State {
-		state = append(state, stv.String())
+		state = append(state, tv.String())
 	}
 
 	// run emulation
@@ -170,7 +170,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 		// store tv state at every step
 		if reg.State {
-			state = append(state, stv.String())
+			state = append(state, tv.String())
 		}
 
 		return true, nil
@@ -181,7 +181,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 
 	if newRegression {
-		reg.screenDigest = dtv.String()
+		reg.screenDigest = dig.String()
 
 		if reg.State {
 			// create a unique filename
@@ -256,7 +256,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	}
 
-	if dtv.String() != reg.screenDigest {
+	if dig.String() != reg.screenDigest {
 		return false, "screen digest mismatch", nil
 	}
 

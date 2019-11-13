@@ -618,13 +618,13 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			err := dbg.gui.SetFeature(gui.ReqSetOverlay, false)
+			err := dbg.scr.SetFeature(gui.ReqSetOverlay, false)
 			if err != nil {
 				dbg.print(console.StyleError, err.Error())
 			}
 			dbg.relfectMonitor.Activate(false)
 		case "ON":
-			err := dbg.gui.SetFeature(gui.ReqSetOverlay, true)
+			err := dbg.scr.SetFeature(gui.ReqSetOverlay, true)
 			if err != nil {
 				dbg.print(console.StyleError, err.Error())
 			}
@@ -647,14 +647,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if err != nil {
 			return doNothing, err
 		}
-		err = dbg.gui.Reset()
+		err = dbg.tv.Reset()
 		if err != nil {
 			return doNothing, err
 		}
 		dbg.print(console.StyleFeedback, "machine reset")
 
 	case cmdRun:
-		if !dbg.gui.IsVisible() && dbg.commandOnStep == "" {
+		if !dbg.scr.IsVisible() && dbg.commandOnStep == "" {
 			dbg.print(console.StyleEmulatorInfo, "running with no display or terminal output")
 		}
 		dbg.runUntilHalt = true
@@ -918,12 +918,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				dbg.print(console.StyleInstrument, dbg.gui.GetSpec().ID)
+				dbg.print(console.StyleInstrument, dbg.tv.GetSpec().ID)
 			default:
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printInstrument(dbg.gui)
+			dbg.printInstrument(dbg.tv)
 		}
 
 	case cmdPanel:
@@ -1022,12 +1022,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		action = strings.ToUpper(action)
 		switch action {
 		case "ON":
-			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
+			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return doNothing, err
 			}
 		case "OFF":
-			err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
+			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
 			if err != nil {
 				return doNothing, err
 			}
@@ -1036,17 +1036,17 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.gui.SetFeature(gui.ReqSetMasking, false)
+				err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
 				if err != nil {
 					return doNothing, err
 				}
 			case "ON":
-				err = dbg.gui.SetFeature(gui.ReqSetMasking, true)
+				err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
 				if err != nil {
 					return doNothing, err
 				}
 			default:
-				err = dbg.gui.SetFeature(gui.ReqToggleMasking)
+				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
 				if err != nil {
 					return doNothing, err
 				}
@@ -1062,24 +1062,24 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
 			}
 
-			err = dbg.gui.SetFeature(gui.ReqSetScale, float32(scale))
+			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
 			return doNothing, err
 		case "ALT":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.gui.SetFeature(gui.ReqSetAltColors, false)
+				err = dbg.scr.SetFeature(gui.ReqSetAltColors, false)
 				if err != nil {
 					return doNothing, err
 				}
 			case "ON":
-				err = dbg.gui.SetFeature(gui.ReqSetAltColors, true)
+				err = dbg.scr.SetFeature(gui.ReqSetAltColors, true)
 				if err != nil {
 					return doNothing, err
 				}
 			default:
-				err = dbg.gui.SetFeature(gui.ReqToggleAltColors)
+				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
 				if err != nil {
 					return doNothing, err
 				}
@@ -1093,23 +1093,23 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.gui.SetFeature(gui.ReqSetOverlay, false)
+				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
 				if err != nil {
 					return doNothing, err
 				}
 			case "ON":
-				err = dbg.gui.SetFeature(gui.ReqSetOverlay, true)
+				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
 				if err != nil {
 					return doNothing, err
 				}
 			default:
-				err = dbg.gui.SetFeature(gui.ReqToggleOverlay)
+				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 				if err != nil {
 					return doNothing, err
 				}
 			}
 		default:
-			err = dbg.gui.SetFeature(gui.ReqToggleVisibility)
+			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
 			if err != nil {
 				return doNothing, err
 			}
@@ -1121,7 +1121,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		stick, _ := tokens.Get()
 		action, _ := tokens.Get()
 
-		var event peripherals.Event
+		var event peripherals.Action
 		switch strings.ToUpper(action) {
 		case "UP":
 			event = peripherals.Up

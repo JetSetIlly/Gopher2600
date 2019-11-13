@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/gui/sdlplay"
 	"gopher2600/hardware"
 	"gopher2600/setup"
 	"gopher2600/television"
@@ -14,31 +12,11 @@ import (
 )
 
 // Check is a very rough and ready calculation of the emulator's performance
-func Check(output io.Writer, profile bool, display bool, tvType string, scaling float32, runTime string, cartload cartridgeloader.Loader) error {
-	var ftv television.Television
+func Check(output io.Writer, profile bool, tv television.Television, runTime string, cartload cartridgeloader.Loader) error {
 	var err error
 
-	// create the "correct" type of TV depending on whether the display flag is
-	// set or not
-	if display {
-		ftv, err = sdlplay.NewSdlPlay(tvType, scaling, nil)
-		if err != nil {
-			return errors.New(errors.PerformanceError, err)
-		}
-
-		err = ftv.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
-		if err != nil {
-			return errors.New(errors.PerformanceError, err)
-		}
-	} else {
-		ftv, err = television.NewStellaTelevision(tvType)
-		if err != nil {
-			return errors.New(errors.PerformanceError, err)
-		}
-	}
-
 	// create vcs using the tv created above
-	vcs, err := hardware.NewVCS(ftv)
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return errors.New(errors.PerformanceError, err)
 	}
@@ -56,7 +34,7 @@ func Check(output io.Writer, profile bool, display bool, tvType string, scaling 
 	}
 
 	// get starting frame number (should be 0)
-	startFrame, err := ftv.GetState(television.ReqFramenum)
+	startFrame, err := tv.GetState(television.ReqFramenum)
 	if err != nil {
 		return errors.New(errors.PerformanceError, err)
 	}
@@ -70,7 +48,7 @@ func Check(output io.Writer, profile bool, display bool, tvType string, scaling 
 		// then restart timer for the specified duration
 		go func() {
 			time.AfterFunc(2*time.Second, func() {
-				startFrame, _ = ftv.GetState(television.ReqFramenum)
+				startFrame, _ = tv.GetState(television.ReqFramenum)
 				time.AfterFunc(duration, func() {
 					timesUp <- true
 				})
@@ -109,7 +87,7 @@ func Check(output io.Writer, profile bool, display bool, tvType string, scaling 
 	}
 
 	numFrames := endFrame - startFrame
-	fps, accuracy := CalcFPS(ftv, numFrames, duration.Seconds())
+	fps, accuracy := CalcFPS(tv, numFrames, duration.Seconds())
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
 
 	if profile {

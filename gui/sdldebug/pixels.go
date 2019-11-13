@@ -97,12 +97,12 @@ func (pxl *pixels) reset() error {
 func (pxl *pixels) resize(topScanline, numScanlines int) error {
 	var err error
 
-	pxl.maxWidth = int32(television.ClocksPerScanline)
+	pxl.maxWidth = int32(television.HorizClksScanline)
 	pxl.maxHeight = int32(pxl.scr.GetSpec().ScanlinesTotal)
 	pxl.maxMask = &sdl.Rect{X: 0, Y: 0, W: pxl.maxWidth, H: pxl.maxHeight}
 
 	pxl.playTop = int32(topScanline)
-	pxl.playWidth = int32(television.ClocksPerVisible)
+	pxl.playWidth = int32(television.HorizClksVisible)
 	pxl.setPlayArea(int32(numScanlines), int32(topScanline))
 
 	// screen texture is used to draw the pixels onto the sdl window (by the
@@ -143,7 +143,7 @@ func (pxl *pixels) resize(topScanline, numScanlines int) error {
 func (pxl *pixels) setPlayArea(scanlines int32, top int32) {
 	pxl.playHeight = scanlines
 	pxl.playDstMask = &sdl.Rect{X: 0, Y: 0, W: pxl.playWidth, H: pxl.playHeight}
-	pxl.playSrcMask = &sdl.Rect{X: int32(television.ClocksPerHblank), Y: top, W: pxl.playWidth, H: pxl.playHeight}
+	pxl.playSrcMask = &sdl.Rect{X: int32(television.HorizClksHBlank), Y: top, W: pxl.playWidth, H: pxl.playHeight}
 	pxl.setMasking(pxl.unmasked)
 }
 
@@ -273,7 +273,7 @@ func (pxl *pixels) update() error {
 	if pxl.unmasked {
 		pxl.renderer.SetDrawColor(100, 100, 100, 20)
 		pxl.renderer.SetDrawBlendMode(sdl.BlendMode(sdl.BLENDMODE_BLEND))
-		pxl.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(television.ClocksPerHblank), H: int32(pxl.scr.GetSpec().ScanlinesTotal)})
+		pxl.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: int32(television.HorizClksHBlank), H: int32(pxl.scr.GetSpec().ScanlinesTotal)})
 	}
 
 	// show overlay
@@ -293,7 +293,7 @@ func (pxl *pixels) update() error {
 
 		// cursor is one step ahead of pixel -- move to new scanline if
 		// necessary
-		if x >= television.ClocksPerScanline {
+		if x >= television.HorizClksScanline {
 			x = 0
 			y++
 		}

@@ -32,7 +32,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	rec := &Recorder{vcs: vcs}
 
 	// create digesttv, piggybacking on the tv already being used by vcs
-	rec.digest, err = screendigest.NewSHA1(vcs.TV.GetSpec().ID, vcs.TV)
+	rec.digest, err = screendigest.NewSHA1(vcs.TV)
 	if err != nil {
 		return nil, errors.New(errors.RecordingError, err)
 	}
@@ -77,7 +77,7 @@ func (rec *Recorder) End() error {
 }
 
 // Transcribe implements the Transcriber interface
-func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event) error {
+func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Action) error {
 	var err error
 
 	// write header if it's not been written already
@@ -90,7 +90,7 @@ func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Event
 	}
 
 	// don't do anything if event is the NoEvent
-	if event == peripherals.NoEvent {
+	if event == peripherals.NoAction {
 		return nil
 	}
 

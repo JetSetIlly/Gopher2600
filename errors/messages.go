@@ -87,12 +87,12 @@ var messages = map[Errno]string{
 	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%s)",
 	UnknownPeriphEvent:        "peripheral error: %s: unsupported event (%v)",
 
-	// tv
-	UnknownTVRequest: "tv error: unsupported request (%v)",
-	StellaTelevision: "tv error: StellaTV: %s",
+	// television
+	UnknownTVRequest: "television error: unsupported request (%v)",
+	Television:       "television error: %s",
 
 	// screen digest
-	ScreenDigest: "tv error: DigestTV: %s",
+	ScreenDigest: "television error: screendigest: %s",
 
 	// gui
 	UnknownGUIRequest: "gui error: unsupported request (%v)",
