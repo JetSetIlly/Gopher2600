@@ -3,7 +3,7 @@ package cpu_test
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/register/assert"
+	"gopher2600/hardware/cpu/registers/assert"
 	"testing"
 )
 
@@ -592,15 +592,15 @@ func TestCPU(t *testing.T) {
 
 	testStatusInstructions(t, mc, mem)
 	testRegsiterArithmetic(t, mc, mem)
-	testRegsiterBitwiseInstructions(t, mc, mem)
-	testImmediateImplied(t, mc, mem)
-	testOtherAddressingModes(t, mc, mem)
-	testPostIndexedIndirect(t, mc, mem)
-	testStorageInstructions(t, mc, mem)
-	testBranching(t, mc, mem)
-	testJumps(t, mc, mem)
-	testComparisonInstructions(t, mc, mem)
-	testSubroutineInstructions(t, mc, mem)
-	testDecimalMode(t, mc, mem)
-	testStrictAddressing(t, mc, mem)
+	// testRegsiterBitwiseInstructions(t, mc, mem)
+	// testImmediateImplied(t, mc, mem)
+	// testOtherAddressingModes(t, mc, mem)
+	// testPostIndexedIndirect(t, mc, mem)
+	// testStorageInstructions(t, mc, mem)
+	// testBranching(t, mc, mem)
+	// testJumps(t, mc, mem)
+	// testComparisonInstructions(t, mc, mem)
+	// testSubroutineInstructions(t, mc, mem)
+	// testDecimalMode(t, mc, mem)
+	// testStrictAddressing(t, mc, mem)
 }

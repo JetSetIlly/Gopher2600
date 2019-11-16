@@ -12,7 +12,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
 	var promptBank int
 
 	if dbg.vcs.CPU.LastResult.Final {
-		promptAddress = dbg.vcs.CPU.PC.ToUint16()
+		promptAddress = dbg.vcs.CPU.PC.Address()
 	} else {
 		// if we're in the middle of an instruction then use the
 		// addresss in lastResult - in video-stepping mode we want the

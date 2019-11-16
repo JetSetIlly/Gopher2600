@@ -8,7 +8,6 @@ import (
 	"gopher2600/debugger/script"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/hardware/cpu/register"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
@@ -725,7 +724,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			case "BANK":
 				bank, _ := tokens.Get()
 				n, _ := strconv.Atoi(bank)
-				dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.ToUint16(), n)
+				dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
 
 				err := dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
 				if err != nil {
@@ -740,31 +739,31 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		action, present := tokens.Get()
 		if present {
 			switch strings.ToUpper(action) {
-			case "SET":
-				target, _ := tokens.Get()
+			// case "SET":
+			// 	target, _ := tokens.Get()
 
-				var reg *register.Register
-				switch strings.ToUpper(target) {
-				case "PC":
-					reg = dbg.vcs.CPU.PC
-				case "A":
-					reg = dbg.vcs.CPU.A
-				case "X":
-					reg = dbg.vcs.CPU.X
-				case "Y":
-					reg = dbg.vcs.CPU.Y
-				case "SP":
-					reg = dbg.vcs.CPU.SP
-				}
+			// 	var reg *register.Register
+			// 	switch strings.ToUpper(target) {
+			// 	case "PC":
+			// 		reg = dbg.vcs.CPU.PC
+			// 	case "A":
+			// 		reg = dbg.vcs.CPU.A
+			// 	case "X":
+			// 		reg = dbg.vcs.CPU.X
+			// 	case "Y":
+			// 		reg = dbg.vcs.CPU.Y
+			// 	case "SP":
+			// 		reg = dbg.vcs.CPU.SP
+			// 	}
 
-				value, _ := tokens.Get()
+			// 	value, _ := tokens.Get()
 
-				v, err := strconv.ParseUint(value, 0, int(reg.Size()))
-				if err != nil {
-					dbg.print(console.StyleError, "value must be a positive %dbit number", reg.Size())
-				}
+			// 	v, err := strconv.ParseUint(value, 0, int(reg.Size()))
+			// 	if err != nil {
+			// 		dbg.print(console.StyleError, "value must be a positive %dbit number", reg.Size())
+			// 	}
 
-				reg.Load(v)
+			// 	reg.Load(v)
 
 			case "BUG":
 				option, _ := tokens.Get()

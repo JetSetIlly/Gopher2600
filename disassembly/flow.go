@@ -74,7 +74,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 					if mc.LastResult.InstructionData.(uint16) > dsm.Cart.Origin() {
 						// note current location
 						state := dsm.Cart.SaveState()
-						retPC := mc.PC.ToUint16()
+						retPC := mc.PC.Address()
 
 						// adjust program counter
 						mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
@@ -105,7 +105,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 					// note current location
 					state := dsm.Cart.SaveState()
-					retPC := mc.PC.ToUint16()
+					retPC := mc.PC.Address()
 
 					// adjust program counter
 					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
@@ -125,14 +125,14 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 				// note current location
 				state := dsm.Cart.SaveState()
-				retPC := mc.PC.ToUint16()
+				retPC := mc.PC.Address()
 
 				// sign extend address and add to program counter
 				address := uint16(mc.LastResult.InstructionData.(uint8))
 				if address&0x0080 == 0x0080 {
 					address |= 0xff00
 				}
-				mc.PC.Add(address, false)
+				mc.PC.Add(address)
 
 				// recurse
 				err = dsm.flowDisassembly(mc)
@@ -160,7 +160,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			}
 
 			// note current location
-			retPC := mc.PC.ToUint16()
+			retPC := mc.PC.Address()
 
 			// adjust program counter
 			mc.PC.Load(mc.LastResult.InstructionData.(uint16))

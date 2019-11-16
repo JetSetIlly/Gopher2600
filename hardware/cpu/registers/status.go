@@ -1,13 +1,13 @@
-package cpu
+package registers
 
-import "fmt"
+import (
+	"strings"
+)
 
 // !!TODO: Status register N,V,Z flag bug
 
 // StatusRegister is the special purpose register that stores the flags of the CPU
 type StatusRegister struct {
-	label            string
-	shortLabel       string
 	Sign             bool
 	Overflow         bool
 	Break            bool
@@ -19,67 +19,64 @@ type StatusRegister struct {
 
 // NewStatusRegister is the preferred method of initialisation for the status
 // register
-func NewStatusRegister(label string) StatusRegister {
-	sr := new(StatusRegister)
-	sr.label = label
-	return *sr
+func NewStatusRegister() *StatusRegister {
+	return &StatusRegister{}
 }
 
 func (sr StatusRegister) String() string {
-	return fmt.Sprintf("%s=%s", sr.label, sr.ToBits())
-}
-
-// ToBits returns the register as a labelled bit pattern
-func (sr StatusRegister) ToBits() string {
-	var v string
+	s := strings.Builder{}
+	s.WriteString("SR=")
 
 	if sr.Sign {
-		v += "S"
+		s.WriteRune('S')
 	} else {
-		v += "s"
+		s.WriteRune('s')
 	}
 	if sr.Overflow {
-		v += "V"
+		s.WriteRune('V')
 	} else {
-		v += "v"
+		s.WriteRune('v')
 	}
-	v += "-"
+
+	s.WriteRune('-')
+
 	if sr.Break {
-		v += "B"
+		s.WriteRune('B')
 	} else {
-		v += "b"
+		s.WriteRune('b')
 	}
 	if sr.DecimalMode {
-		v += "D"
+		s.WriteRune('D')
 	} else {
-		v += "d"
+		s.WriteRune('d')
 	}
 	if sr.InterruptDisable {
-		v += "I"
+		s.WriteRune('I')
 	} else {
-		v += "i"
+		s.WriteRune('i')
 	}
 	if sr.Zero {
-		v += "Z"
+		s.WriteRune('Z')
 	} else {
-		v += "z"
+		s.WriteRune('z')
 	}
 	if sr.Carry {
-		v += "C"
+		s.WriteRune('C')
 	} else {
-		v += "c"
+		s.WriteRune('c')
 	}
 
-	return v
+	return s.String()
 }
 
-func (sr *StatusRegister) reset() {
-	sr.FromUint8(0)
+// Reset status flags to initial state
+func (sr *StatusRegister) Reset() {
+	sr.FromValue(0)
 }
 
-// ToUint8 converts the StatusRegister struct into a value suitable for pushing
+// Value converts the StatusRegister struct into a value suitable for pushing
 // onto the stack
-func (sr StatusRegister) ToUint8() uint8 {
+func (sr StatusRegister) Value() uint8 {
 	var v uint8
 
 	if sr.Sign {
@@ -111,9 +108,9 @@ func (sr StatusRegister) ToUint8() uint8 {
 	return v
 }
 
-// FromUint8 converts an 8 bit integer (taken from the stack, for example) to
+// FromValue converts an 8 bit integer (taken from the stack, for example) to
 // the StatusRegister struct receiver
-func (sr *StatusRegister) FromUint8(v uint8) {
+func (sr *StatusRegister) FromValue(v uint8) {
 	sr.Sign = v&0x80 == 0x80
 	sr.Overflow = v&0x40 == 0x40
 	sr.Break = v&0x10 == 0x10

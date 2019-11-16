@@ -3,7 +3,7 @@ package result
 import (
 	"fmt"
 	"gopher2600/hardware/cpu/definitions"
-	"gopher2600/hardware/cpu/register"
+	"gopher2600/hardware/cpu/registers"
 	"gopher2600/symbols"
 	"strings"
 )
@@ -125,11 +125,11 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 
 						// 	-- we create a mock register with the instruction's
 						// 	address as the initial value
-						pc := register.NewAnonRegister(result.Address, 16)
+						pc := registers.NewProgramCounter(result.Address)
 
 						// -- add the number of instruction bytes to get the PC as
 						// it would be at the end of the instruction
-						pc.Add(uint8(result.Defn.Bytes), false)
+						pc.Add(uint16(result.Defn.Bytes))
 
 						// -- because we're doing 16 bit arithmetic with an 8bit
 						// value, we need to make sure the sign bit has been
@@ -140,10 +140,10 @@ func (result Instruction) GetString(symtable *symbols.Table, style Style) string
 
 						// -- add the 2s-complement value to the mock program
 						// counter
-						pc.Add(idx, false)
+						pc.Add(idx)
 
 						// -- look up mock program counter value in symbol table
-						if v, ok := symtable.Locations.Symbols[pc.ToUint16()]; ok {
+						if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
 							operand = v
 						}
 
