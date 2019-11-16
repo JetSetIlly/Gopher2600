@@ -8,6 +8,7 @@ import (
 	"gopher2600/debugger/script"
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/hardware/cpu/registers"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/peripherals"
@@ -156,7 +157,6 @@ const (
 	doNothing parseCommandResult = iota
 	emptyInput
 	stepContinue
-	setDefaultStep
 	scriptRecordStarted
 	scriptRecordEnded
 )
@@ -498,44 +498,39 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
-		//
-		var newCommands string
+		var newOnHalt string
 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			newCommands = ""
+			newOnHalt = ""
 		case "ON":
-			newCommands = dbg.commandOnHaltStored
+			newOnHalt = dbg.commandOnHaltStored
 		default:
 			// token isn't one we recognise so push it back onto the token queue
 			tokens.Unget()
 
 			// use remaininder of command line to form the ONHALT command sequence
-			newCommands = tokens.Remainder()
+			newOnHalt = tokens.Remainder()
+			tokens.End()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
-			newCommands = strings.Replace(newCommands, ",", ";", -1)
+			newOnHalt = strings.Replace(newOnHalt, ",", ";", -1)
 		}
 
-		// run the new/restored ONHALT command(s)
-		_, err := dbg.parseInput(newCommands, false, false)
-		if err != nil {
-			return doNothing, err
-		}
-
-		dbg.commandOnHalt = newCommands
+		dbg.commandOnHalt = newOnHalt
 
 		// display the new/restored ONHALT command(s)
-		if newCommands == "" {
+		if newOnHalt == "" {
 			dbg.print(console.StyleFeedback, "auto-command on halt: OFF")
 		} else {
 			dbg.print(console.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
 			// store the new command so we can reuse it after an ONHALT OFF
+			//
 			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnHaltStored = newCommands
+			dbg.commandOnHaltStored = newOnHalt
 		}
 
 		return doNothing, nil
@@ -551,44 +546,38 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
-
-		var newCommands string
+		var newOnStep string
 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			newCommands = ""
+			newOnStep = ""
 		case "ON":
-			newCommands = dbg.commandOnStepStored
+			newOnStep = dbg.commandOnStepStored
 		default:
 			// token isn't one we recognise so push it back onto the token queue
 			tokens.Unget()
 
 			// use remaininder of command line to form the ONSTEP command sequence
-			newCommands = tokens.Remainder()
+			newOnStep = tokens.Remainder()
+			tokens.End()
 
 			// we can't use semi-colons when specifying the sequence so allow use of
 			// commas to act as an alternative
-			newCommands = strings.Replace(newCommands, ",", ";", -1)
+			newOnStep = strings.Replace(newOnStep, ",", ";", -1)
 		}
 
-		// run the new/restored ONSTEP command(s)
-		_, err := dbg.parseInput(newCommands, false, false)
-		if err != nil {
-			return doNothing, err
-		}
-
-		dbg.commandOnStep = newCommands
+		dbg.commandOnStep = newOnStep
 
 		// display the new/restored ONSTEP command(s)
-		if newCommands == "" {
+		if newOnStep == "" {
 			dbg.print(console.StyleFeedback, "auto-command on step: OFF")
 		} else {
 			dbg.print(console.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 
 			// store the new command so we can reuse it after an ONSTEP OFF
 			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnStepStored = newCommands
+			dbg.commandOnStepStored = newOnStep
 		}
 
 		return doNothing, nil
@@ -681,7 +670,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.runUntilHalt = true
 		}
 
-		return setDefaultStep, nil
+		return stepContinue, nil
 
 	case cmdGranularity:
 		mode, present := tokens.Get()
@@ -739,31 +728,40 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		action, present := tokens.Get()
 		if present {
 			switch strings.ToUpper(action) {
-			// case "SET":
-			// 	target, _ := tokens.Get()
+			case "SET":
+				target, _ := tokens.Get()
+				value, _ := tokens.Get()
 
-			// 	var reg *register.Register
-			// 	switch strings.ToUpper(target) {
-			// 	case "PC":
-			// 		reg = dbg.vcs.CPU.PC
-			// 	case "A":
-			// 		reg = dbg.vcs.CPU.A
-			// 	case "X":
-			// 		reg = dbg.vcs.CPU.X
-			// 	case "Y":
-			// 		reg = dbg.vcs.CPU.Y
-			// 	case "SP":
-			// 		reg = dbg.vcs.CPU.SP
-			// 	}
+				target = strings.ToUpper(target)
+				if target == "PC" {
+					// program counter can be a 16 bit number
+					v, err := strconv.ParseUint(value, 0, 16)
+					if err != nil {
+						dbg.print(console.StyleError, "value must be a positive 16 number")
+					}
 
-			// 	value, _ := tokens.Get()
+					dbg.vcs.CPU.PC.Load(uint16(v))
+				} else {
+					// 6507 registers are 8 bit
+					v, err := strconv.ParseUint(value, 0, 8)
+					if err != nil {
+						dbg.print(console.StyleError, "value must be a positive 8 number")
+					}
 
-			// 	v, err := strconv.ParseUint(value, 0, int(reg.Size()))
-			// 	if err != nil {
-			// 		dbg.print(console.StyleError, "value must be a positive %dbit number", reg.Size())
-			// 	}
+					var reg *registers.Register
+					switch strings.ToUpper(target) {
+					case "A":
+						reg = dbg.vcs.CPU.A
+					case "X":
+						reg = dbg.vcs.CPU.X
+					case "Y":
+						reg = dbg.vcs.CPU.Y
+					case "SP":
+						reg = dbg.vcs.CPU.SP
+					}
 
-			// 	reg.Load(v)
+					reg.Load(uint8(v))
+				}
 
 			case "BUG":
 				option, _ := tokens.Get()

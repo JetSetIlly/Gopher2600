@@ -8,7 +8,7 @@ import (
 
 // UserPrint is the top level output function
 func (ct *ColorTerminal) UserPrint(style console.Style, s string, a ...interface{}) {
-	if ct.disabled {
+	if ct.silenced && style != console.StyleError {
 		return
 	}
 

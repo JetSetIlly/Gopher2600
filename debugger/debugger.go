@@ -10,7 +10,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware"
-	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/screendigest"
 	"gopher2600/setup"
 	"gopher2600/symbols"
@@ -18,11 +17,11 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 )
 
 const defaultOnHalt = "CPU; TV"
 const defaultOnStep = "LAST"
+const onEmptyInput = "STEP"
 
 // Debugger is the basic debugging frontend for the emulation
 type Debugger struct {
@@ -33,13 +32,6 @@ type Debugger struct {
 	tv     television.Television
 	scr    gui.GUI
 	digest *screendigest.SHA1
-
-	// whether the debugger is to continue with the debugging loop
-	// set to false only when debugger is to finish
-	running bool
-
-	// continue emulation until a halt condition is encountered
-	runUntilHalt bool
 
 	// interface to the vcs memory with additional debugging functions
 	// -- access to vcs memory from the debugger (eg. peeking and poking) is
@@ -56,24 +48,9 @@ type Debugger struct {
 	traps       *traps
 	watches     *watches
 
-	// note that the UI probably allows the user to manually break or trap at
-	// will, with for example, ctrl-c
-
-	// we accumulate break, trap and watch messsages until we can service them
-	// if the strings are empty then no break/trap/watch event has occurred
-	breakMessages string
-	trapMessages  string
-	watchMessages string
-
-	// any error from previous emulation step
-	lastStepError bool
-
 	// single-fire step traps. these are used for the STEP command, allowing
 	// things like "STEP FRAME".
 	stepTraps *traps
-
-	// step command to use when input is empty
-	defaultStepCommand string
 
 	// commandOnHalt says whether an sequence of commands should run automatically
 	// when emulation halts. commandOnHaltPrev is the stored command sequence
@@ -92,13 +69,6 @@ type Debugger struct {
 	// unwary programmer by surprise
 	reportCPUBugs bool
 
-	// input loop fields. we're storing these here because inputLoop can be
-	// called from within another input loop (via a video step callback) and we
-	// want these properties to persist (when a video step input loop has
-	// completed and we're back into the main input loop)
-	inputloopHalt bool // whether to halt the current execution loop
-	inputloopNext bool // execute a step once user input has returned a result
-
 	// granularity of single stepping - every cpu instruction or every video cycle
 	// -- also affects when emulation will halt on breaks, traps and watches.
 	// if inputeveryvideocycle is true then the halt may occur mid-cpu-cycle
@@ -106,9 +76,6 @@ type Debugger struct {
 
 	// console interface
 	console console.UserInterface
-
-	// buffer for user input
-	input []byte
 
 	// channel for communicating with the debugger from the ctrl-c goroutine
 	intChan chan os.Signal
@@ -118,6 +85,37 @@ type Debugger struct {
 
 	// record user input to a script file
 	scriptScribe script.Scribe
+
+	// \/\/\/ inputLoop \/\/\/
+
+	// buffer for user input
+	input []byte
+
+	// any error from previous emulation step
+	lastStepError bool
+
+	// we accumulate break, trap and watch messsages until we can service them
+	// if the strings are empty then no break/trap/watch event has occurred
+	breakMessages string
+	trapMessages  string
+	watchMessages string
+
+	// halt the emulation (but not the debugger)
+	haltEmulation bool
+
+	// continue the emulation
+	continueEmulation bool
+
+	// \/\/\/ currently these run related booleans are set by various commands
+	// and used by the input loop. however, I think it would be better if they
+	// were return conditions from the parseInput() function
+
+	// whether the debugger is to continue with the debugging loop
+	// set to false only when debugger is to finish
+	running bool
+
+	// continue emulation until a halt condition is encountered
+	runUntilHalt bool
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -154,7 +152,6 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)
-	dbg.defaultStepCommand = "STEP"
 
 	// default ONHALT command sequence
 	dbg.commandOnHaltStored = defaultOnHalt
@@ -163,9 +160,6 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 	dbg.commandOnStep = defaultOnStep
 	dbg.commandOnStepStored = dbg.commandOnStep
 
-	// allocate memory for user input
-	dbg.input = make([]byte, 255)
-
 	// make synchronisation channels
 	dbg.intChan = make(chan os.Signal, 1)
 	dbg.guiChan = make(chan gui.Event, 2)
@@ -173,6 +167,9 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 
 	// connect debugger to gui
 	dbg.scr.SetEventChannel(dbg.guiChan)
+
+	// allocate memory for user input
+	dbg.input = make([]byte, 255)
 
 	return dbg, nil
 }
@@ -204,7 +201,7 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 
 	// run initialisation script
 	if initScript != "" {
-		dbg.console.Disable(true)
+		dbg.console.Silence(true)
 
 		plb, err := script.StartPlayback(initScript)
 		if err != nil {
@@ -213,11 +210,11 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 
 		err = dbg.inputLoop(plb, false)
 		if err != nil {
-			dbg.console.Disable(false)
+			dbg.console.Silence(false)
 			return errors.New(errors.DebuggerError, err)
 		}
 
-		dbg.console.Disable(false)
+		dbg.console.Silence(false)
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
@@ -261,264 +258,6 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	return nil
 }
 
-// videoCycle() to be used with vcs.Step()
-func (dbg *Debugger) videoCycle() error {
-	// because we call this callback mid-instruction, the program counter
-	// maybe in its non-final state - we don't want to break or trap in those
-	// instances when the final effect of the instruction changes the program
-	// counter to some other value (ie. a flow, subroutine or interrupt
-	// instruction)
-	if !dbg.vcs.CPU.LastResult.Final &&
-		dbg.vcs.CPU.LastResult.Defn != nil {
-		if dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Flow ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Subroutine ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Interrupt {
-			return nil
-		}
-
-		// display information about any CPU bugs that may have been triggered
-		if dbg.reportCPUBugs && dbg.vcs.CPU.LastResult.Bug != "" {
-			dbg.print(console.StyleInstrument, dbg.vcs.CPU.LastResult.Bug)
-		}
-	}
-
-	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
-	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
-	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
-
-	return dbg.relfectMonitor.Check()
-}
-
-// inputLoop has two modes, defined by the videoCycle argument.  when
-// videoCycle is true then user will be prompted every video cycle, as opposed
-// to only every cpu instruction.
-//
-// inputter is an instance of type UserInput. this will usually be dbg.ui but
-// it could equally be a script.
-func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) error {
-	var err error
-
-	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
-	// when in video-step mode
-	videoCycleWithInput := func() error {
-		dbg.videoCycle()
-		if dbg.commandOnStep != "" {
-			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
-			if err != nil {
-				dbg.print(console.StyleError, "%s", err)
-			}
-		}
-		return dbg.inputLoop(inputter, true)
-	}
-
-	for {
-		err = dbg.checkInterruptsAndEvents()
-		if err != nil {
-			dbg.print(console.StyleError, "%s", err)
-		}
-
-		if !dbg.running {
-			break // for loop
-		}
-
-		// this extra test is to prevent the video input loop from continuing
-		// if step granularity has been switched to every cpu instruction - the
-		// input loop will unravel and execution will continue in the main
-		// inputLoop
-		if videoCycle && !dbg.inputEveryVideoCycle && dbg.inputloopNext {
-			return nil
-		}
-
-		// check for step-traps
-		stepTrapMessage := dbg.stepTraps.check("")
-		if stepTrapMessage != "" {
-			dbg.stepTraps.clear()
-		}
-
-		// check for breakpoints and traps
-		dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
-		dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
-		dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
-
-		// check for halt conditions
-		dbg.inputloopHalt = stepTrapMessage != "" ||
-			dbg.breakMessages != "" ||
-			dbg.trapMessages != "" ||
-			dbg.watchMessages != "" ||
-			dbg.lastStepError
-
-		// reset last step error
-		dbg.lastStepError = false
-
-		// if commandOnHalt is defined and if run state is correct then run
-		// commandOnHalt command(s)
-		if dbg.commandOnHalt != "" {
-			if (dbg.inputloopNext && !dbg.runUntilHalt) || dbg.inputloopHalt {
-				_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
-				if err != nil {
-					dbg.print(console.StyleError, "%s", err)
-				}
-			}
-		}
-
-		// print and reset accumulated break and trap messages
-		dbg.print(console.StyleFeedback, dbg.breakMessages)
-		dbg.print(console.StyleFeedback, dbg.trapMessages)
-		dbg.print(console.StyleFeedback, dbg.watchMessages)
-		dbg.breakMessages = ""
-		dbg.trapMessages = ""
-		dbg.watchMessages = ""
-
-		// expand inputloopHalt to include step-once/many flag
-		dbg.inputloopHalt = dbg.inputloopHalt || !dbg.runUntilHalt
-
-		// enter halt state
-		if dbg.inputloopHalt {
-			// pause tv when emulation has halted
-			err = dbg.scr.SetFeature(gui.ReqSetPause, true)
-			if err != nil {
-				return err
-			}
-
-			dbg.runUntilHalt = false
-
-			// get user input
-			n, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
-			if err != nil {
-				if !errors.IsAny(err) {
-					return err
-				}
-
-				switch err.(errors.AtariError).Errno {
-				case errors.UserInterrupt:
-					if dbg.scriptScribe.IsActive() {
-						_, err = dbg.parseInput("SCRIPT END", false, false)
-						if err != nil {
-							dbg.print(console.StyleError, "%s", err)
-						}
-						continue // for loop
-					} else {
-
-						// be polite and ask if the user really wants to
-						// quit
-						confirm := make([]byte, 1)
-						_, err := inputter.UserRead(confirm,
-							console.Prompt{
-								Content: "really quit (y/n) ",
-								Style:   console.StylePromptConfirm},
-							nil, nil)
-
-						if err != nil {
-							if errors.Is(err, errors.UserInterrupt) {
-								// treat UserInterrupt as thought 'y' was pressed
-								confirm[0] = 'y'
-							} else {
-								dbg.print(console.StyleError, err.Error())
-							}
-						}
-
-						if confirm[0] == 'y' || confirm[0] == 'Y' {
-							_, err = dbg.parseInput("EXIT", false, false)
-							if err != nil {
-								dbg.print(console.StyleError, "%s", err)
-							}
-						}
-					}
-
-				case errors.UserSuspend:
-					// ctrl-z like process suspension
-					p, err := os.FindProcess(os.Getppid())
-					if err != nil {
-						dbg.print(console.StyleError, "debugger doesn't seem to have a parent process")
-					} else {
-						// send TSTP signal to parent proces
-						p.Signal(syscall.SIGTSTP)
-					}
-
-				case errors.ScriptEnd:
-					// convert ScriptEnd errors to a simple print call.
-					// unless we're in a video cycle input loop, in which
-					// case don't print anything
-
-					if !videoCycle {
-						// !!TODO: prevent printing of ScriptEnd error for
-						// initialisation script
-						dbg.print(console.StyleFeedback, err.Error())
-					}
-					return nil
-
-				case errors.GUIEventError:
-					dbg.print(console.StyleError, err.Error())
-
-				default:
-					return err
-				}
-			}
-
-			// parse user input
-			dbg.inputloopNext, err = dbg.parseInput(string(dbg.input[:n-1]), inputter.IsInteractive(), false)
-			if err != nil {
-				dbg.print(console.StyleError, "%s", err)
-			}
-
-			// prepare for next loop
-			dbg.inputloopHalt = false
-
-			// make sure tv is unpaused if emulation is about to resume
-			if dbg.inputloopNext {
-				err = dbg.scr.SetFeature(gui.ReqSetPause, false)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		// move emulation on one step if user has requested it or if it is implied by the run state
-		if dbg.inputloopNext {
-			if !videoCycle {
-				if dbg.inputEveryVideoCycle {
-					err = dbg.vcs.Step(videoCycleWithInput)
-				} else {
-					err = dbg.vcs.Step(dbg.videoCycle)
-				}
-
-				if err != nil {
-					// exit input loop only if error is not an AtariError...
-					if !errors.IsAny(err) {
-						return err
-					}
-
-					// ...set lastStepError instead and allow emulation to halt
-					dbg.lastStepError = true
-					dbg.print(console.StyleError, "%s", err)
-
-				} else {
-					// check validity of instruction result
-					if dbg.vcs.CPU.LastResult.Final {
-						err := dbg.vcs.CPU.LastResult.IsValid()
-						if err != nil {
-							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
-							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult)
-							return errors.New(errors.DebuggerError, err)
-						}
-					}
-				}
-
-				if dbg.commandOnStep != "" {
-					_, err := dbg.parseInput(dbg.commandOnStep, false, true)
-					if err != nil {
-						dbg.print(console.StyleError, "%s", err)
-					}
-				}
-			} else {
-				return nil
-			}
-		}
-	}
-
-	return nil
-}
-
 // parseInput splits the input into individual commands. each command is then
 // passed to parseCommand for processing
 //
@@ -526,12 +265,12 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 // the user (ie. via an interactive terminal). only interactive input will be
 // added to a new script file.
 //
-// returns step status - whether or not emulation should honour the step is
-// decided in the inputLoop() function
+// returns a boolean stating whether the emulation should continue with the
+// next step
 func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
 	var result parseCommandResult
 	var err error
-	var step bool
+	var continueEmulation bool
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
@@ -564,20 +303,15 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 		case stepContinue:
 			// emulation should continue to next step
-			step = true
+			continueEmulation = true
 
 		case emptyInput:
 			// input was empty. if this was an interactive input then try the
 			// default step command
 			if interactive {
-				return dbg.parseInput(dbg.defaultStepCommand, interactive, auto)
+				return dbg.parseInput(onEmptyInput, interactive, auto)
 			}
 			return false, nil
-
-		case setDefaultStep:
-			// command has reset what the default step command shoudl be
-			dbg.defaultStepCommand = commands[i]
-			step = true
 
 		case scriptRecordStarted:
 			// command has caused input script recording to begin. rollback the
@@ -591,5 +325,5 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 	}
 
-	return step, nil
+	return continueEmulation, nil
 }

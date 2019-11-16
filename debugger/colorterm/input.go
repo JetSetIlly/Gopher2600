@@ -15,7 +15,7 @@ import (
 // UserRead is the top level input function
 func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
-	if ct.disabled {
+	if ct.silenced {
 		return 0, nil
 	}
 

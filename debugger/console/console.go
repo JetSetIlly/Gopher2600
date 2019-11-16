@@ -27,8 +27,15 @@ type UserOutput interface {
 type UserInterface interface {
 	Initialise() error
 	CleanUp()
+
+	// register the tab completion engine to use with the UserInput
+	// implementation
 	RegisterTabCompleter(TabCompleter)
-	Disable(disable bool)
+
+	// Silence all input and output (except error messages)
+	Silence(silenced bool)
+
+	// Userinterfaces, by definition, embed UserInput and UserOutput
 	UserInput
 	UserOutput
 }

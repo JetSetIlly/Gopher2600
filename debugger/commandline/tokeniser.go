@@ -23,12 +23,18 @@ func (tk *Tokens) Reset() {
 	tk.curr = 0
 }
 
+// End the token traversal process. It can be restarted with the Reset()
+// function.
+func (tk *Tokens) End() {
+	tk.curr = len(tk.tokens)
+}
+
 // IsEnd returns true if we're at the end of the token list
 func (tk Tokens) IsEnd() bool {
 	return tk.curr >= len(tk.tokens)
 }
 
-// Remainder returns the remaining tokens as a string
+// Remainder returns the remaining tokens as a string.
 func (tk Tokens) Remainder() string {
 	return strings.Join(tk.tokens[tk.curr:], " ")
 }

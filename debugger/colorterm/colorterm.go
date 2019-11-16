@@ -14,7 +14,7 @@ type ColorTerminal struct {
 	commandHistory []command
 	tabCompleter   console.TabCompleter
 
-	disabled bool
+	silenced bool
 }
 
 type command struct {
@@ -52,7 +52,7 @@ func (ct *ColorTerminal) IsInteractive() bool {
 	return true
 }
 
-// Disable implements console.UserOutput interface
-func (ct *ColorTerminal) Disable(disable bool) {
-	ct.disabled = disable
+// Silence implements console.UserOutput interface
+func (ct *ColorTerminal) Silence(silenced bool) {
+	ct.silenced = silenced
 }

@@ -11,7 +11,7 @@ import (
 type PlainTerminal struct {
 	input    io.Reader
 	output   io.Writer
-	disabled bool
+	silenced bool
 }
 
 // Initialise perfoms any setting up required for the terminal
@@ -30,12 +30,12 @@ func (pt *PlainTerminal) RegisterTabCompleter(TabCompleter) {
 }
 
 // UserPrint is the plain terminal print routine
-func (pt PlainTerminal) UserPrint(pp Style, s string, a ...interface{}) {
-	if pt.disabled {
+func (pt PlainTerminal) UserPrint(style Style, s string, a ...interface{}) {
+	if pt.silenced && style != StyleError {
 		return
 	}
 
-	switch pp {
+	switch style {
 	case StyleError:
 		s = fmt.Sprintf("* %s", s)
 	case StyleHelp:
@@ -45,14 +45,14 @@ func (pt PlainTerminal) UserPrint(pp Style, s string, a ...interface{}) {
 	s = fmt.Sprintf(s, a...)
 	pt.output.Write([]byte(s))
 
-	if pp != StylePrompt {
+	if style != StylePrompt {
 		pt.output.Write([]byte("\n"))
 	}
 }
 
 // UserRead is the plain terminal read routine
 func (pt PlainTerminal) UserRead(input []byte, prompt Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
-	if pt.disabled {
+	if pt.silenced {
 		return 0, nil
 	}
 
@@ -70,7 +70,7 @@ func (pt *PlainTerminal) IsInteractive() bool {
 	return true
 }
 
-// Disable implemented the console.UserOutput interface
-func (pt *PlainTerminal) Disable(disable bool) {
-	pt.disabled = disable
+// Silence implemented the console.UserOutput interface
+func (pt *PlainTerminal) Silence(silenced bool) {
+	pt.silenced = silenced
 }
