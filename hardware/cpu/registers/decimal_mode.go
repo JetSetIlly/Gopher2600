@@ -57,7 +57,7 @@ func (r *Register) SubtractDecimal(val uint8, carry bool) (rcarry bool) {
 	vunits := val & 0x0f
 	vtens := (val & 0xf0) >> 4
 
-	// invert carry flag - the 6502 uses the carry flag opposite to what you
+	// invert carry flag - the 6507 uses the carry flag opposite to what you
 	// might expect when subtracting
 	runits, rcarry = subtractDecimal(runits, vunits, !carry)
 

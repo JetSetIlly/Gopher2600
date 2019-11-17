@@ -2,7 +2,7 @@ package registers
 
 import "fmt"
 
-// ProgramCounter represents the PC register in the 6502/6507 CPU
+// ProgramCounter represents the PC register in the 6507 CPU
 type ProgramCounter struct {
 	value uint16
 }

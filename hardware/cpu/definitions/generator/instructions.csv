@@ -1,32 +1,31 @@
 # instructions are defined with the following fields: 
 #
-# opcode, mnemonic, cycles, addressing mode, page sensitivity, [effect category]
-#
+#	opcode, mnemonic, cycles, addressing mode, page sensitivity, [effect category]
 #
 # effect category can be one of three types (READ is the default if no effect category is given)
 #
-# 1. READ					(instruction only reads from memory - or not at all in the case of IMPLIED instructions
-# 2. WRITE				(instruction changes memory)
-# 3. RMW					(instruction reads, modifies and writes to memory)
-# 4. FLOW					(instruction explicitely affects the program counter)
+# 1. READ			(instruction only reads from memory - or not at all in the case of IMPLIED instructions)
+# 2. WRITE			(instruction changes memory)
+# 3. RMW			(instruction reads, modifies and writes to memory)
+# 4. FLOW			(instruction explicitely affects the program counter)
 # 5. SUB-ROUTINE	(like FLOW but also writes to the stack)
 #
-# in the 6502 all instructions are considered to read from memory, even register only
-# instructions (the IMPLIED addressing mode). in the hardware, this meant that the chip could forego
-# a "read" pin - the electrical connection that switched on access to memory - and thereby save
-# on manufacturing costs.
+# in the 6507 all instructions are considered to read from memory, even
+# register only instructions (the IMPLIED addressing mode). in the hardware,
+# this meant that the chip could forego a "read" pin - the electrical
+# connection that switched on access to memory - and thereby save on
+# manufacturing costs.
 # 
-# only some instructions however, ever *write* to memory. in the 6502 this is accomplished with a
-# "read/write" pin - an electrical connection to memory that causes bits to be written
-# as well as read. in our emulation, we mark the instructions that write to memory by specifying
-# the WRITE effect category
+# only some instructions however, ever *write* to memory. in the 6507 this is
+# accomplished with a "read/write" pin - an electrical connection to memory
+# that causes bits to be written as well as read. in our emulation, we mark the
+# instructions that write to memory by specifying the WRITE effect category
 # 
-# a small class of instructions read AND write to memory (using the same address), these
-# are the RMW class of instructions.
+# a small class of instructions read AND write to memory (using the same
+# address), these are the RMW class of instructions.
 # 
-#
-# note that the addressing mode /implies/ the number of bytes each instruction requires:
-# (including the 1 byte required for the opcode)
+# note that the addressing mode /implies/ the number of bytes each instruction
+# requires: (including the 1 byte required for the opcode)
 #
 #		IMPLIED = 1
 #		IMMEDIATE = 2
@@ -34,6 +33,7 @@
 #		all others = 3
 #
 #	TODO: maybe the number of cycles can be inferred in a similar way
+
 
 # no operation
 # (also see the undocuemted instruction, DOP)

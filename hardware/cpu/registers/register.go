@@ -33,6 +33,15 @@ func (r Register) Value() uint8 {
 	return r.value
 }
 
+// Address returns the current value of the register /as a uint16/. this is
+// useful when you want to use the register value in an address context.
+//
+// for example, the stack pointer stores page zero addresses - which can be
+// stored in just 8bits but which are always interpreted as 16bit value
+func (r Register) Address() uint16 {
+	return uint16(r.value)
+}
+
 // IsNegative checks the sign bit of the register
 func (r Register) IsNegative() bool {
 	return r.value&0x80 == 0x80
@@ -82,6 +91,7 @@ func (r *Register) Add(val uint8, carry bool) (rcarry bool, overflow bool) {
 	// explained mathematically"
 	overflow = ((v ^ r.value) & (val ^ r.value) & 0x80) != 0
 
+	// carry detection
 	if v == r.value {
 		rcarry = carry
 	} else {

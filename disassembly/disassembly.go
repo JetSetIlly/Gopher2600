@@ -15,7 +15,7 @@ const disasmMask = 0x0fff
 
 type bank [disasmMask + 1]Entry
 
-// Disassembly represents the annotated disassembly of a 6502 binary
+// Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
 	Cart *memory.Cartridge
 

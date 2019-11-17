@@ -5,10 +5,10 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"go/format"
 	"gopher2600/hardware/cpu/definitions"
 	"io"
 	"os"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,30 +17,23 @@ import (
 const definitionsCSVFile = "./instructions.csv"
 const generatedGoFile = "../instructions.go"
 
-const leadingBoilerPlate = "// generated code - do not change\n\npackage definitions\n\n// GetInstructionDefinitions returns the opcode table for the MC6502\nfunc GetInstructionDefinitions() ([]*InstructionDefinition, error) {\nreturn []*InstructionDefinition{"
+const leadingBoilerPlate = "// generated code - do not change\n\n" +
+	"package definitions\n\n" +
+	"// GetInstructionDefinitions returns the opcode table for the 6507\n" +
+	"func GetInstructionDefinitions() ([]*InstructionDefinition, error) {\n" +
+	"return []*InstructionDefinition{"
+
 const trailingBoilerPlate = "}, nil\n}"
 
-type opCodes map[uint8]definitions.InstructionDefinition
-
-// parseCSV reads & parses the definitions CSV file and creates & returns a map
-// of InstructionDefinitions
-func parseCSV() (opCodes, error) {
+// parseCSV reads & parses the definitions CSV file and returns a map of
+// InstructionDefinitions
+func parseCSV() (string, error) {
 	// open file
 	df, err := os.Open(definitionsCSVFile)
 	if err != nil {
-		// can't open definitions csv file using full path, so try to open
-		// it from the current directory. this allows us to run "go test" on
-		// the cpu
-		// !!TODO: fix how we deal with paths to external resources
-		_, fn := path.Split(definitionsCSVFile)
-		df, err = os.Open(fn)
-		if err != nil {
-			return nil, fmt.Errorf("error opening instruction definitions (%s)", err)
-		}
+		return "", fmt.Errorf("error opening instruction definitions (%s)", err)
 	}
-	defer func() {
-		_ = df.Close()
-	}()
+	defer df.Close()
 
 	// treat the file as a CSV file
 	csvr := csv.NewReader(df)
@@ -53,7 +46,7 @@ func parseCSV() (opCodes, error) {
 	csvr.FieldsPerRecord = -1
 
 	// create new definitions table
-	deftable := make(opCodes)
+	deftable := make(map[uint8]definitions.InstructionDefinition)
 
 	for {
 		// loop through file until EOF is reached
@@ -62,12 +55,12 @@ func parseCSV() (opCodes, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		// check for valid record length
 		if !(len(rec) == 5 || len(rec) == 6) {
-			return nil, fmt.Errorf("wrong number of fields in instruction definition (%s)", rec)
+			return "", fmt.Errorf("wrong number of fields in instruction definition (%s)", rec)
 		}
 
 		// trim trailing comment from record
@@ -91,7 +84,7 @@ func parseCSV() (opCodes, error) {
 		// -- we'll use this for the hash key too
 		n, err := strconv.ParseInt(objectCode, 16, 16)
 		if err != nil {
-			return nil, fmt.Errorf("invalid object code (0x%s)", objectCode)
+			return "", fmt.Errorf("invalid object code (0x%s)", objectCode)
 		}
 		newDef.ObjectCode = uint8(n)
 
@@ -101,7 +94,7 @@ func parseCSV() (opCodes, error) {
 		// field: cycle count
 		newDef.Cycles, err = strconv.Atoi(rec[2])
 		if err != nil {
-			return nil, fmt.Errorf("invalid cycle count for 0x%s (%s)", objectCode, rec[2])
+			return "", fmt.Errorf("invalid cycle count for 0x%s (%s)", objectCode, rec[2])
 		}
 
 		// field: addressing mode
@@ -111,7 +104,7 @@ func parseCSV() (opCodes, error) {
 		am := strings.ToUpper(rec[3])
 		switch am {
 		default:
-			return nil, fmt.Errorf("invalid addressing mode for 0x%s (%s)", objectCode, rec[3])
+			return "", fmt.Errorf("invalid addressing mode for 0x%s (%s)", objectCode, rec[3])
 		case "IMPLIED":
 			newDef.AddressingMode = definitions.Implied
 			newDef.Bytes = 1
@@ -154,7 +147,7 @@ func parseCSV() (opCodes, error) {
 		ps := strings.ToUpper(rec[4])
 		switch ps {
 		default:
-			return nil, fmt.Errorf("invalid page sensitivity switch for 0x%s (%s)", objectCode, rec[4])
+			return "", fmt.Errorf("invalid page sensitivity switch for 0x%s (%s)", objectCode, rec[4])
 		case "TRUE":
 			newDef.PageSensitive = true
 		case "FALSE":
@@ -169,7 +162,7 @@ func parseCSV() (opCodes, error) {
 		} else {
 			switch rec[5] {
 			default:
-				return nil, fmt.Errorf("unknown category for 0x%s (%s)", objectCode, rec[5])
+				return "", fmt.Errorf("unknown category for 0x%s (%s)", objectCode, rec[5])
 			case "READ":
 				newDef.Effect = definitions.Read
 			case "WRITE":
@@ -189,10 +182,23 @@ func parseCSV() (opCodes, error) {
 		deftable[newDef.ObjectCode] = newDef
 	}
 
-	return deftable, nil
+	printSummary(deftable)
+
+	// output the definitions map as an array
+	output := ""
+	for opcode := 0; opcode < 256; opcode++ {
+		def, found := deftable[uint8(opcode)]
+		if found {
+			output = fmt.Sprintf("%s\n&%#v,", output, def)
+		} else {
+			output = fmt.Sprintf("%s\nnil,", output)
+		}
+	}
+
+	return output, nil
 }
 
-func printSummary(deftable opCodes) {
+func printSummary(deftable map[uint8]definitions.InstructionDefinition) {
 	missing := make([]int, 0, 255)
 
 	// walk deftable and note missing opcodes
@@ -207,7 +213,7 @@ func printSummary(deftable opCodes) {
 		return
 	}
 
-	fmt.Println("6510 implementation / undefined opcodes")
+	fmt.Println("6507 implementation / undefined opcodes")
 	fmt.Println("---------------------------------------")
 
 	// sort missing opcodes
@@ -229,26 +235,15 @@ func printSummary(deftable opCodes) {
 
 	// print summary
 	fmt.Printf("%d missing, %02.0f%% defined\n", len(missing), float32(100*(256-len(missing))/256))
-	fmt.Println("(defined means that the taxonomy of the opcode has been identified, not necessarily implemented)")
+	fmt.Println("(defined means that the taxonomy of the opcode\nhas been identified, not necessarily implemented)")
 }
 
 func main() {
 	// parse definitions files
-	deftable, err := parseCSV()
+	output, err := parseCSV()
 	if err != nil {
-		fmt.Printf("error during opcode generation (%s)", err)
+		fmt.Printf("error during opcode generation: %s", err)
 		os.Exit(10)
-	}
-
-	// output the definitions map as an array
-	output := ""
-	for opcode := 0; opcode < 256; opcode++ {
-		def, found := deftable[uint8(opcode)]
-		if found {
-			output = fmt.Sprintf("%s\n&%#v,", output, def)
-		} else {
-			output = fmt.Sprintf("%s\nnil,", output)
-		}
 	}
 
 	// we'll be putting the contents of deftable into the definition package so
@@ -258,19 +253,25 @@ func main() {
 	// add boiler-plate to output
 	output = fmt.Sprintf("%s%s%s", leadingBoilerPlate, output, trailingBoilerPlate)
 
+	// format code using standard Go formatted
+	formattedOutput, err := format.Source([]byte(output))
+	if err != nil {
+		fmt.Printf("error during opcode generation: %s", err)
+		os.Exit(10)
+	}
+	output = string(formattedOutput)
+
 	// create output file (over-writing) if it already exists
 	f, err := os.Create(generatedGoFile)
 	if err != nil {
-		fmt.Printf("error during opcode generation (%s)", err)
+		fmt.Printf("error during opcode generation: %s", err)
 		os.Exit(10)
 	}
+	defer f.Close()
 
 	_, err = f.WriteString(output)
 	if err != nil {
-		_ = f.Close()
-		fmt.Printf("error during opcode generation (%s)", err)
+		fmt.Printf("error during opcode generation: %s", err)
 		os.Exit(10)
 	}
-
-	printSummary(deftable)
 }
