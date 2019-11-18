@@ -9,12 +9,11 @@ import (
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
 type ChipMemory struct {
-	CPUBus
-	ChipBus
-	PeriphBus
 	DebuggerBus
+	ChipBus
+	CPUBus
+	PeriphBus
 
-	label  string
 	origin uint16
 	memtop uint16
 	memory []uint8
@@ -35,27 +34,7 @@ type ChipMemory struct {
 	lastReadRegister string
 }
 
-func newChipMem() *ChipMemory {
-	area := new(ChipMemory)
-	return area
-}
-
-// Label is an implementation of Area.Label
-func (area ChipMemory) Label() string {
-	return area.label
-}
-
-// Origin is an implementation of Area.Origin
-func (area ChipMemory) Origin() uint16 {
-	return area.origin
-}
-
-// Memtop is an implementation of Area.Memtop
-func (area ChipMemory) Memtop() uint16 {
-	return area.memtop
-}
-
-// Peek is the implementation of Memory.Area.Peek. returns:
+// Peek is an implementation of memory.DebuggerBus
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
@@ -64,15 +43,12 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	return area.memory[address-area.origin], nil
 }
 
-// Poke is the implementation of Memory.Area.Poke
+// Poke is an implementation of memory.DebuggerBus
 func (area ChipMemory) Poke(address uint16, value uint8) error {
 	return errors.New(errors.UnpokeableAddress, address)
 }
 
-// ChipRead is an implementation of ChipBus. returns:
-// - whether a chip was last written to
-// - the CPU name of the address that was written to
-// - the written value
+// ChipRead is an implementation of memory.ChipBus
 func (area *ChipMemory) ChipRead() (bool, ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
@@ -82,21 +58,19 @@ func (area *ChipMemory) ChipRead() (bool, ChipData) {
 	return false, ChipData{}
 }
 
-// ChipWrite is an implementation of ChipBus. it writes the data to the memory
-// area's address
+// ChipWrite is an implementation of memory.ChipBus
 func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
 	area.memory[address] = data
 }
 
-// LastReadRegister is an implementation of ChipBus. it returns the register
-// name of the last memory location *read* by the CPU
+// LastReadRegister is an implementation of memory.ChipBus
 func (area *ChipMemory) LastReadRegister() string {
 	r := area.lastReadRegister
 	area.lastReadRegister = ""
 	return r
 }
 
-// Read is an implementation of CPUBus. returns the value and/or error
+// Read is an implementation of memory.CPUBus
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	// note the name of the register that we are reading
 	area.lastReadRegister = addresses.Read[address]
@@ -109,8 +83,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	return area.memory[area.origin|address^area.origin], nil
 }
 
-// Write is an implementation of CPUBus. it writes the data to the memory
-// area's address
+// Write is an implementation of memory.CPUBus
 func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
@@ -130,8 +103,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	return nil
 }
 
-// PeriphWrite implements PeriphBus. it writes the data to the memory area's
-// address
+// PeriphWrite implements memory.PeriphBus
 func (area *ChipMemory) PeriphWrite(address uint16, data uint8, mask uint8) {
 	d := area.memory[address] & (mask ^ 0xff)
 	area.memory[address] = data | d

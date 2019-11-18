@@ -1,15 +1,20 @@
 package memory
 
-import "gopher2600/hardware/memory/addresses"
+import (
+	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/memorymap"
+)
 
 // newTIA is the preferred method of initialisation for the TIA memory area
 func newTIA() *ChipMemory {
-	area := newChipMem()
-	area.label = "TIA"
-	area.origin = 0x0000
-	area.memtop = 0x003f
+	area := &ChipMemory{
+		origin:      memorymap.OriginTIA,
+		memtop:      memorymap.MemtopTIA,
+		cpuReadMask: memorymap.AddressMaskTIA,
+	}
+
+	// allocation the minimal amount of memory
 	area.memory = make([]uint8, area.memtop-area.origin+1)
-	area.cpuReadMask = 0x000f
 
 	// initial values
 	area.memory[addresses.INPT1] = 0x00

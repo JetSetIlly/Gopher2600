@@ -14,7 +14,6 @@ import (
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/future"
-	"time"
 )
 
 // Monitor watches for writes to specific video related memory locations. when
@@ -73,11 +72,12 @@ func NewMonitor(vcs *hardware.VCS, renderer gui.MetaPixelRenderer) *Monitor {
 	return mon
 }
 
+// Activate the reflection monitor
 func (mon *Monitor) Activate(active bool) {
-	mon.vcs.Mem.LastAccessIDActive = active
 	mon.active = active
 }
 
+// IsActive returns whether reflection monitor is currently active
 func (mon *Monitor) IsActive() bool {
 	return mon.active
 }
@@ -143,9 +143,9 @@ type addressMonitor struct {
 	// when memory has been written to we note the address and timestamp. then,
 	// a few cycles later, we check to see if lastAddress is one the group is
 	// interested in seeing
-	lastAddress          uint16
-	lastAddressTimestamp time.Time
-	lastAddressFound     int
+	lastAddress         uint16
+	lastAddressAccessID int
+	lastAddressFound    int
 
 	// if the memory write resulted in an effect that won't occur until
 	// sometime in the future then the Delay attribute for the part of the
@@ -165,9 +165,9 @@ func (adm *addressMonitor) check(rend gui.MetaPixelRenderer, mem *memory.VCSMemo
 	// we filter on LastAccessTimeStamp rather than LastAccessAddress.
 	// filtering by address will probably work in most instances but it won't
 	// capture repeated writes to the same memory location.
-	if mem.LastAccessWrite && mem.LastAccessID != adm.lastAddressTimestamp {
+	if mem.LastAccessWrite && mem.LastAccessID != adm.lastAddressAccessID {
 		adm.lastAddress = mem.LastAccessAddress
-		adm.lastAddressTimestamp = mem.LastAccessID
+		adm.lastAddressAccessID = mem.LastAccessID
 
 		// 4 cycles seems plenty of time for an address to be serviced
 		adm.lastAddressFound = 4

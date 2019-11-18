@@ -5,6 +5,7 @@ import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory/memorymap"
 )
 
 // flowDisassembly decodes those cartridge addresses that follow the flow from
@@ -71,7 +72,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 		case definitions.Flow:
 			if mc.LastResult.Defn.Mnemonic == "JMP" {
 				if mc.LastResult.Defn.AddressingMode == definitions.Indirect {
-					if mc.LastResult.InstructionData.(uint16) > dsm.Cart.Origin() {
+					if mc.LastResult.InstructionData.(uint16) > memorymap.OriginCart {
 						// note current location
 						state := dsm.Cart.SaveState()
 						retPC := mc.PC.Address()

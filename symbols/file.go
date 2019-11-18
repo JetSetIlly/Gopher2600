@@ -33,10 +33,10 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	// there is an error with the symbols file.
 	defer func() {
 		for k, v := range addresses.Read {
-			table.Read.add(k, v, true)
+			table.Read.add(uint16(k), v, true)
 		}
 		for k, v := range addresses.Write {
-			table.Write.add(k, v, true)
+			table.Write.add(uint16(k), v, true)
 		}
 
 		sort.Sort(table.Locations)

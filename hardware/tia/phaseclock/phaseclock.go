@@ -52,31 +52,25 @@ func (clk PhaseClock) String() string {
 		s.WriteString("_.--.__.--*_")
 	}
 	return s.String()
-}
 
-// MachineInfoTerse returns the PhaseClock information in terse format
-func (clk PhaseClock) MachineInfoTerse() string {
-	return clk.String()
-}
-
-// MachineInfo returns the PhaseClock information in verbose format
-func (clk PhaseClock) MachineInfo() string {
-	s := strings.Builder{}
-	switch clk {
-	case risingPhi1:
-		s.WriteString("_*--._______\n")
-		s.WriteString("_______.--._\n")
-	case fallingPhi1:
-		s.WriteString("_.--*_______\n")
-		s.WriteString("_______.--._\n")
-	case risingPhi2:
-		s.WriteString("_.--._______\n")
-		s.WriteString("_______*--._\n")
-	case fallingPhi2:
-		s.WriteString("_.--._______\n")
-		s.WriteString("_______.--*_\n")
-	}
-	return s.String()
+	/*
+		s := strings.Builder{}
+		switch clk {
+		case risingPhi1:
+			s.WriteString("_*--._______\n")
+			s.WriteString("_______.--._\n")
+		case fallingPhi1:
+			s.WriteString("_.--*_______\n")
+			s.WriteString("_______.--._\n")
+		case risingPhi2:
+			s.WriteString("_.--._______\n")
+			s.WriteString("_______*--._\n")
+		case fallingPhi2:
+			s.WriteString("_.--._______\n")
+			s.WriteString("_______.--*_\n")
+		}
+		return s.String()
+	*/
 }
 
 // Sync two clocks to the same phase

@@ -11,6 +11,7 @@ import (
 	"gopher2600/hardware/cpu/registers"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/memorymap"
 	"gopher2600/hardware/peripherals"
 	"gopher2600/symbols"
 	"os"
@@ -384,8 +385,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					// find all instances of symbol address in memory space
 					// assumption: the address returned by SearchSymbol is the
 					// first address in the complete list
-					for m := address + 1; m < dbg.vcs.Mem.Cart.Origin(); m++ {
-						if dbg.vcs.Mem.MapAddress(m, table == symbols.ReadSymTable) == address {
+					for m := address + 1; m < memorymap.OriginCart; m++ {
+						ma, _ := memorymap.MapAddress(m, table == symbols.ReadSymTable)
+						if ma == address {
 							dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, m)
 						}
 					}
@@ -600,7 +602,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdMemMap:
-		dbg.print(console.StyleInstrument, "%v", dbg.vcs.Mem.MemoryMap())
+		dbg.print(console.StyleInstrument, "%v", memorymap.Summary())
 
 	case cmdReflect:
 		option, _ := tokens.Get()

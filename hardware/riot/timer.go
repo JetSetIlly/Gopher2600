@@ -9,8 +9,7 @@ import (
 type timer struct {
 	mem memory.ChipBus
 
-	// register is the name of the currently selected RIOT timer. used as a
-	// label in MachineInfo()
+	// register is the name of the currently selected RIOT timer
 	register string
 
 	// interval indicates how often (in CPU cycles) the timer value decreases.

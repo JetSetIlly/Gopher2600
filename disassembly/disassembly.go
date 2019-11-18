@@ -103,10 +103,7 @@ func (dsm *Disassembly) FromMemory(cart *memory.Cartridge, symtable *symbols.Tab
 	dsm.Cart.Initialise()
 
 	// create new memory
-	mem, err := newDisasmMemory(dsm.Cart)
-	if err != nil {
-		return errors.New(errors.DisasmError, err)
-	}
+	mem := &disasmMemory{cart: cart}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)

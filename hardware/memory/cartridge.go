@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
+	"gopher2600/hardware/memory/memorymap"
 	"strings"
 )
 
@@ -38,10 +39,9 @@ type optionalSuperchip interface {
 
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
-	CPUBus
 	DebuggerBus
+	CPUBus
 
-	label  string
 	origin uint16
 	memtop uint16
 
@@ -62,11 +62,13 @@ type Cartridge struct {
 
 // NewCartridge is the preferred method of initialisation for the cartridges
 func NewCartridge() *Cartridge {
-	cart := new(Cartridge)
-	cart.label = "Cartridge"
-	cart.origin = 0x1000
-	cart.memtop = 0x1fff
+	cart := &Cartridge{
+		origin: memorymap.OriginCart,
+		memtop: memorymap.MemtopCart,
+	}
+
 	cart.Eject()
+
 	return cart
 }
 
@@ -74,20 +76,28 @@ func (cart Cartridge) String() string {
 	return fmt.Sprintf("%s [%s]", cart.Filename, cart.mapper)
 }
 
-// Label is an implementation of Area.Label
-func (cart Cartridge) Label() string {
-	return cart.label
+// Peek is an implementation of memory.DebuggerBus
+func (cart Cartridge) Peek(addr uint16) (uint8, error) {
+	addr &= cart.origin - 1
+	return cart.mapper.read(addr)
 }
 
-// Origin is an implementation of Area.Origin
+// Poke is an implementation of memory.DebuggerBus
+func (cart Cartridge) Poke(addr uint16, data uint8) error {
+	return errors.New(errors.UnpokeableAddress, addr)
+}
+
+// Read is an implementation of memory.CPUBus
 // * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
-func (cart *Cartridge) Origin() uint16 {
-	return cart.origin
+func (cart *Cartridge) Read(addr uint16) (uint8, error) {
+	addr &= cart.origin - 1
+	return cart.mapper.read(addr)
 }
 
-// Memtop is an implementation of Area.Memtop
-func (cart Cartridge) Memtop() uint16 {
-	return cart.memtop
+// Write is an implementation of memory.CPUBus
+func (cart *Cartridge) Write(addr uint16, data uint8) error {
+	addr &= cart.origin - 1
+	return cart.mapper.write(addr, data)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -96,30 +106,6 @@ func (cart *Cartridge) Eject() {
 	cart.Filename = ejectedName
 	cart.Hash = ejectedHash
 	cart.mapper = newEjected()
-}
-
-// Implementation of CPUBus.Read
-// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
-func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	addr &= cart.Origin() - 1
-	return cart.mapper.read(addr)
-}
-
-// Implementation of CPUBus.Write
-func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	addr &= cart.Origin() - 1
-	return cart.mapper.write(addr, data)
-}
-
-// Peek is the implementation of Memory.Area.Peek
-func (cart Cartridge) Peek(addr uint16) (uint8, error) {
-	addr &= cart.Origin() - 1
-	return cart.mapper.read(addr)
-}
-
-// Poke is the implementation of Memory.Area.Poke
-func (cart Cartridge) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
 }
 
 // fingerprint8k attempts a divination of 8k cartridge data and decide on a
@@ -302,14 +288,14 @@ func (cart Cartridge) NumBanks() int {
 // GetBank calls the current mapper's addressBank function. it returns the
 // current bank number for the specified address
 func (cart Cartridge) GetBank(addr uint16) int {
-	addr &= cart.Origin() - 1
+	addr &= cart.origin - 1
 	return cart.mapper.getBank(addr)
 }
 
 // SetBank sets the bank for the specificed address. it sets the specified
 // address to reference the specified bank
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	addr &= cart.Origin() - 1
+	addr &= cart.origin - 1
 	return cart.mapper.setBank(addr, bank)
 }
 

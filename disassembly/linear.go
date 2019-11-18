@@ -3,6 +3,7 @@ package disassembly
 import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/result"
+	"gopher2600/hardware/memory/memorymap"
 )
 
 // linearDisassembly decodes every possible address in the cartridge. if the
@@ -20,7 +21,7 @@ import (
 
 func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 	for bank := 0; bank < len(dsm.linear); bank++ {
-		for address := dsm.Cart.Origin(); address <= dsm.Cart.Memtop(); address++ {
+		for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 			if err := dsm.Cart.SetBank(address, bank); err != nil {
 				return err
 			}

@@ -4,71 +4,76 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/memorymap"
 	"gopher2600/symbols"
 	"strconv"
 	"strings"
 )
 
-// memoryDebug is a front-end to the real VCS memory. this additional layer
-// allows addressing by symbols.
+// memoryDebug is a front-end to the real VCS memory. it allows addressing by
+// symbol name and uses the addressInfo type for easier presentation
 type memoryDebug struct {
 	mem *memory.VCSMemory
 
-	// symbols.Table instance can change after we've initialised with
-	// newMemoryDebug(), so we need a pointer to a pointer
+	// symbols.Table instance can change after we've created memoryDebug so we
+	// need a pointer to a pointer
 	symtable **symbols.Table
 }
 
 // memoryDebug functions all return an instance of addressInfo. this struct
 // contains everything you could possibly usefully know about an address. most
 // usefully perhaps, the String() function provides a normalised presentation
-// of information.
+// of information
 type addressInfo struct {
 	address       uint16
 	mappedAddress uint16
-	area          memory.DebuggerBus
 	addressLabel  string
+	area          memorymap.Area
 
-	// the value at the address, if it has been seen. the boolean value
-	// indicates whether value is valid or not
-	value     uint8
-	valueSeen bool
+	// the data at the address. if we don't know what the address is then
+	// useData is false and the value of data is not valid
+	data    uint8
+	useData bool
 }
 
-func (inf addressInfo) String() string {
+func (ai addressInfo) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%#04x", inf.address))
-	if inf.addressLabel != "" {
-		s.WriteString(fmt.Sprintf(" (%s)", inf.addressLabel))
+
+	s.WriteString(fmt.Sprintf("%#04x", ai.address))
+
+	if ai.addressLabel != "" {
+		s.WriteString(fmt.Sprintf(" (%s)", ai.addressLabel))
 	}
-	if inf.address != inf.mappedAddress {
-		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", inf.mappedAddress))
+
+	if ai.address != ai.mappedAddress {
+		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.mappedAddress))
 	}
-	if inf.area.Label() != "" {
-		s.WriteString(fmt.Sprintf(" :: %s", inf.area.Label()))
+
+	s.WriteString(fmt.Sprintf(" :: %s", ai.area.String()))
+
+	if ai.useData {
+		s.WriteString(fmt.Sprintf(" -> %#02x", ai.data))
 	}
-	if inf.valueSeen {
-		s.WriteString(fmt.Sprintf(" -> %#02x", inf.value))
-	}
+
 	return s.String()
 }
 
 // mapAddress allows addressing by symbols in addition to numerically
-func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInfo {
+func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInfo {
 	ai := &addressInfo{}
 
 	var symbolTable map[uint16]string
 
 	if cpuRead {
-		symbolTable = (*mem.symtable).Read.Symbols
+		symbolTable = (*dbgmem.symtable).Read.Symbols
 	} else {
-		symbolTable = (*mem.symtable).Write.Symbols
+		symbolTable = (*dbgmem.symtable).Write.Symbols
 	}
 
 	switch address := address.(type) {
 	case uint16:
 		ai.address = address
-		ai.mappedAddress = mem.mem.MapAddress(address, cpuRead)
+		ai.mappedAddress, ai.area = memorymap.MapAddress(address, cpuRead)
 	case string:
 		var found bool
 		var err error
@@ -108,13 +113,7 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInf
 		}
 
 		ai.address = uint16(addr)
-		ai.mappedAddress = uint16(addr)
-		ai.mappedAddress = mem.mem.MapAddress(ai.address, cpuRead)
-	}
-
-	ai.area = mem.mem.Memmap[ai.mappedAddress]
-	if ai.area == nil {
-		return nil
+		ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
 	}
 
 	ai.addressLabel = symbolTable[ai.mappedAddress]
@@ -124,27 +123,47 @@ func (mem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInf
 
 // Peek returns the contents of the memory address, without triggering any side
 // effects. address can be expressed numerically or symbolically.
-func (mem memoryDebug) peek(address interface{}) (*addressInfo, error) {
-	ai := mem.mapAddress(address, true)
+func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
+	ai := dbgmem.mapAddress(address, true)
 	if ai == nil {
-		return nil, errors.New(errors.UnpeekableAddress, address)
+		return nil, errors.New(errors.DebuggerError, errors.New(errors.UnpeekableAddress, address))
 	}
 
-	value, err := ai.area.Peek(ai.mappedAddress)
-	ai.value = value
-	ai.valueSeen = true
+	ar, err := dbgmem.mem.GetArea(ai.area)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	ai.data, err = ar.Peek(ai.mappedAddress)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	ai.useData = true
+
 	return ai, err
 }
 
 // Poke writes a value at the specified address, which may be numeric or
 // symbolic.
-func (mem memoryDebug) poke(address interface{}, value uint8) (*addressInfo, error) {
-	ai := mem.mapAddress(address, true)
+func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, error) {
+	ai := dbgmem.mapAddress(address, true)
 	if ai == nil {
-		return nil, errors.New(errors.UnpokeableAddress, address)
+		return nil, errors.New(errors.DebuggerError, errors.New(errors.UnpokeableAddress, address))
 	}
-	ai.value = value
-	ai.valueSeen = true
-	err := ai.area.Poke(ai.mappedAddress, value)
+
+	ar, err := dbgmem.mem.GetArea(ai.area)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	err = ar.Poke(ai.mappedAddress, data)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	ai.data = data
+	ai.useData = true
+
 	return ai, err
 }

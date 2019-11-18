@@ -13,8 +13,15 @@ const Reset = uint16(0xfffc)
 // IRQ is the address where the interrupt address is stored
 const IRQ = 0xfffe
 
-// Read map contains the canonical names for VCS read addresses
-var Read = map[uint16]string{
+// Read array contains the canonical labels for VCS read addresses. If the
+// address is not named then the empty string is returned.
+//  * reminder that array indexes are integers
+var Read []string
+
+// for convenience, we specify the canonical address labels in a map. however,
+// this is far too slow for emulation code. we create the Read array from the
+// read map in intialisation code below
+var read = map[uint16]string{
 	0x00:  "CXM0P",
 	0x01:  "CXM1P",
 	0x02:  "CXP0FB",
@@ -37,8 +44,14 @@ var Read = map[uint16]string{
 	0x285: "TIMINT",
 }
 
-// Write map contains the canonical names for VCS write addresses
-var Write = map[uint16]string{
+// Write array contains the canonical labels for VCS write addresses. If the
+// address is not named then the empty string is returned.
+var Write []string
+
+// for convenience, we specify the canonical address labels in a map. however,
+// this is far too slow for emulation code. we create the Write array from the
+// write map in intialisation code below
+var write = map[uint16]string{
 	0x00:  "VSYNC",
 	0x01:  "VBLANK",
 	0x02:  "WSYNC",
@@ -92,6 +105,36 @@ var Write = map[uint16]string{
 	0x297: "TIM1024",
 }
 
+// this initialisation function create the Read/Write arrays from the
+// read/write maps
+func init() {
+	// read labels
+	n := uint16(0)
+	for k := range read {
+		if k > n {
+			n = k
+		}
+	}
+
+	Read = make([]string, n+1)
+	for k, v := range read {
+		Read[k] = v
+	}
+
+	// write labels
+	n = uint16(0)
+	for k := range write {
+		if k > n {
+			n = k
+		}
+	}
+
+	Write = make([]string, n+1)
+	for k, v := range write {
+		Write[k] = v
+	}
+}
+
 // TIA write registers - values are enumerated from 0; value is added to the
 // origin address of the TIA in ChipBus.ChipWrite implementation
 const (
@@ -122,12 +165,9 @@ const (
 	TIMINT
 )
 
-// Masks specify which bits are put on the data bus to the CPU as a result of
-// CPUBus.Read(). the zero bits are unchanged
-//
-// only the first 16 memory addresses are affected like this (addresses should
-// be un-mirrored (ie. mapped) before applying the Mask). the first sixteen
-// addresses corresponds exactly the TIA memory space
+// Masks are applied to data read by the CPU from the following addresses. the
+// one bits are are masked away from the data and the corresponding bits of
+// the (non-mapped) address are used instead.
 var Masks = []uint8{
 	0b11000000, // CXM0P
 	0b11000000, // CXM1P
@@ -151,7 +191,10 @@ var Masks = []uint8{
 
 	// the contents of the last two locations are "undefined" according to the
 	// Stella Programmer's Guide but we can see through experiementation that
-	// the mask is as follows
+	// the mask is as follows (details of what we experimented with has been
+	// forgotten)
+	//
+	// !!TODO: check read masks for addresses 0x15 and 0x15
 	0b11000000,
 	0b11000000,
 }
