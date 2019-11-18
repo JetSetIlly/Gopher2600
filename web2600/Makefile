@@ -12,4 +12,4 @@ release:
 	GOOS=js GOARCH=wasm go build -o ./www/web2600.wasm ./src/
 
 webserve:
-	goexec 'http.ListenAndServe(`:8080`, http.FileServer(http.Dir(`www`)))'
+	@go run ./test
