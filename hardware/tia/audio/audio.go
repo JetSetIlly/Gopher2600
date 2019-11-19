@@ -19,7 +19,9 @@ func NewAudio() *Audio {
 
 // UpdateOutput checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
-func (au *Audio) UpdateOutput(data memory.ChipData) {
+//
+// Returns true if memory.ChipData has not been serviced.
+func (au *Audio) UpdateOutput(data memory.ChipData) bool {
 	switch data.Name {
 	case "AUDC0":
 		au.Control0 = data.Value & 0x0f
@@ -33,5 +35,9 @@ func (au *Audio) UpdateOutput(data memory.ChipData) {
 		au.Volume0 = data.Value & 0x0f
 	case "AUDV1":
 		au.Volume1 = data.Value & 0x0f
+	default:
+		return true
 	}
+
+	return false
 }

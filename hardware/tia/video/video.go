@@ -299,7 +299,9 @@ func (vd *Video) Pixel() (uint8, uint8) {
 
 // UpdatePlayfield checks the TIA memory for new playfield data. note that
 // CTRLPF is serviced in UpdateSpriteVariations()
-func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData) {
+//
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData) bool {
 	// homebrew Donkey Kong shows the need for a delay of at least two cycles
 	// to write new playfield data
 	switch data.Name {
@@ -309,12 +311,18 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData
 		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment1, data.Value, "PF1")
 	case "PF2":
 		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment2, data.Value, "PF2")
+	default:
+		return true
 	}
+
+	return false
 }
 
 // UpdateSpriteHMOVE checks the TIA memory for changes to state that
 // require a short pause, using the TIA scheduler
-func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipData) {
+//
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipData) bool {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
@@ -356,12 +364,18 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipDa
 		tiaDelay.Schedule(2, vd.Missile0.clearHmoveValue, "HMCLR")
 		tiaDelay.Schedule(2, vd.Missile1.clearHmoveValue, "HMCLR")
 		tiaDelay.Schedule(2, vd.Ball.clearHmoveValue, "HMCLR")
+	default:
+		return true
 	}
+
+	return false
 }
 
 // UpdateSpritePositioning checks the TIA memory for strobing of reset
 // registers
-func (vd *Video) UpdateSpritePositioning(data memory.ChipData) {
+//
+// Returns true if memory.ChipData has not been serviced.
+func (vd *Video) UpdateSpritePositioning(data memory.ChipData) bool {
 	switch data.Name {
 	// the reset registers *must* be serviced after HSYNC has been ticked.
 	// resets are resolved after a short delay, governed by the sprite itself
@@ -375,11 +389,17 @@ func (vd *Video) UpdateSpritePositioning(data memory.ChipData) {
 		vd.Missile1.resetPosition()
 	case "RESBL":
 		vd.Ball.resetPosition()
+	default:
+		return true
 	}
+
+	return false
 }
 
 // UpdateColor checks the TIA memory for changes to color registers
-func (vd *Video) UpdateColor(data memory.ChipData) {
+//
+// Returns true if memory.ChipData has not been serviced.
+func (vd *Video) UpdateColor(data memory.ChipData) bool {
 	switch data.Name {
 	case "COLUP0":
 		vd.Player0.setColor(data.Value & 0xfe)
@@ -392,12 +412,18 @@ func (vd *Video) UpdateColor(data memory.ChipData) {
 	case "COLUPF":
 		vd.Playfield.setColor(data.Value & 0xfe)
 		vd.Ball.setColor(data.Value & 0xfe)
+	default:
+		return true
 	}
+
+	return false
 }
 
 // UpdateSpritePixels checks the TIA memory for attribute changes that *must*
 // occur after a call to Pixel()
-func (vd *Video) UpdateSpritePixels(data memory.ChipData) {
+//
+// Returns true if memory.ChipData has not been serviced.
+func (vd *Video) UpdateSpritePixels(data memory.ChipData) bool {
 	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
 	// alter its state before a call to Pixel().  if we write do alter state
 	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
@@ -412,13 +438,19 @@ func (vd *Video) UpdateSpritePixels(data memory.ChipData) {
 		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
 	case "ENABL":
 		vd.Ball.setEnable(data.Value&0x02 == 0x02)
+	default:
+		return true
 	}
+
+	return false
 }
 
 // UpdateSpriteVariations checks the TIA memory for writes to registers that
 // affect how sprite pixels are output. note that CTRLPF is serviced here
 // because it affects the ball sprite.
-func (vd *Video) UpdateSpriteVariations(data memory.ChipData) {
+//
+// Returns true if memory.ChipData has not been serviced.
+func (vd *Video) UpdateSpriteVariations(data memory.ChipData) bool {
 	switch data.Name {
 	case "CTRLPF":
 		vd.Ball.setSize((data.Value & 0x30) >> 4)
@@ -445,5 +477,9 @@ func (vd *Video) UpdateSpriteVariations(data memory.ChipData) {
 		vd.Missile1.setNUSIZ(data.Value)
 	case "CXCLR":
 		vd.collisions.clear()
+	default:
+		return true
 	}
+
+	return false
 }
