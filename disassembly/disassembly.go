@@ -76,10 +76,10 @@ func FromCartrige(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	dsm := new(Disassembly)
+	dsm := &Disassembly{}
 	err = dsm.FromMemory(cart, symtable)
 	if err != nil {
-		return dsm, err // no need to wrap error
+		return nil, errors.New(errors.DisasmError, err)
 	}
 
 	return dsm, nil

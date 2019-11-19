@@ -22,8 +22,7 @@ type TabCompletion struct {
 //
 // completion works best if commands has been sorted
 func NewTabCompletion(commands *Commands) *TabCompletion {
-	tc := new(TabCompletion)
-	tc.commands = commands
+	tc := &TabCompletion{commands: commands}
 	tc.Reset()
 	return tc
 }

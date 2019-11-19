@@ -179,7 +179,7 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload cartridgeloader.Loader) error {
 	// prepare user interface
 	if cons == nil {
-		dbg.console = new(console.PlainTerminal)
+		dbg.console = &console.PlainTerminal{}
 	} else {
 		dbg.console = cons
 	}

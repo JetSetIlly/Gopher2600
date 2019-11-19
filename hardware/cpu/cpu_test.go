@@ -12,7 +12,7 @@ type mockMem struct {
 }
 
 func newMockMem() *mockMem {
-	mem := new(mockMem)
+	mem := &mockMem{}
 
 	// leave some room at the top of memory allocation to allow testing of
 	// invalid memory writes

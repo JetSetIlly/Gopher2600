@@ -20,10 +20,10 @@ type AtariError struct {
 
 // New is used to create a new instance of a FormattedError
 func New(errno Errno, values ...interface{}) AtariError {
-	er := new(AtariError)
-	er.Errno = errno
-	er.Values = values
-	return *er
+	return AtariError{
+		Errno:  errno,
+		Values: values,
+	}
 }
 
 func (er AtariError) Error() string {

@@ -46,14 +46,14 @@ type timer struct {
 }
 
 func newTimer(mem memory.ChipBus) *timer {
-	tmr := new(timer)
-	tmr.mem = mem
-
-	tmr.register = "TIM1024"
-	tmr.interval = 1024
-	tmr.cyclesRemaining = 1024
-	tmr.cyclesElapsed = 0
-	tmr.value = 0
+	tmr := &timer{
+		mem:             mem,
+		register:        "TIM1024",
+		interval:        1024,
+		cyclesRemaining: 1024,
+		cyclesElapsed:   0,
+		value:           0,
+	}
 
 	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
 	tmr.mem.ChipWrite(addresses.TIMINT, 0)

@@ -37,13 +37,10 @@ func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	mem memory.ChipBus, tv television.Television,
 	hblank, hmoveLatch *bool) *Video {
 
-	vd := &Video{}
-
-	// collision matrix
-	vd.collisions = newCollision(mem)
-
-	// playfield
-	vd.Playfield = newPlayfield(pclk, hsync)
+	vd := &Video{
+		collisions: newCollisions(mem),
+		Playfield:  newPlayfield(pclk, hsync),
+	}
 
 	// sprite objects
 	vd.Player0 = newPlayerSprite("player0", tv, hblank, hmoveLatch)

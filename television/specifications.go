@@ -47,6 +47,9 @@ type Specification struct {
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
 	// aspect bias
+
+	// AaspectBias transforms the scaling factor for the X axis.
+	// values taken from Stella emualtor. useful for A/B testing
 	AspectBias float32
 }
 
@@ -70,34 +73,35 @@ var SpecNTSC *Specification
 var SpecPAL *Specification
 
 func init() {
-	SpecNTSC = new(Specification)
-	SpecNTSC.ID = "NTSC"
-	SpecNTSC.Colors = colorsNTSC
-	SpecNTSC.scanlinesVSync = 3
-	SpecNTSC.scanlinesVBlank = 37
-	SpecNTSC.ScanlinesVisible = 192
-	SpecNTSC.scanlinesOverscan = 30
-	SpecNTSC.ScanlinesTotal = 262
+	SpecNTSC = &Specification{
+		ID:                "NTSC",
+		Colors:            colorsNTSC,
+		scanlinesVSync:    3,
+		scanlinesVBlank:   37,
+		ScanlinesVisible:  192,
+		scanlinesOverscan: 30,
+		ScanlinesTotal:    262,
+		FramesPerSecond:   60,
+		AspectBias:        0.91,
+	}
+
 	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.scanlinesVSync
 	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.scanlinesOverscan
-	SpecNTSC.FramesPerSecond = 60
 	SpecNTSC.SecondsPerFrame = 1.0 / float64(SpecNTSC.FramesPerSecond)
 
-	SpecPAL = new(Specification)
-	SpecPAL.ID = "PAL"
-	SpecPAL.Colors = colorsPAL
-	SpecPAL.scanlinesVSync = 3
-	SpecPAL.scanlinesVBlank = 45
-	SpecPAL.ScanlinesVisible = 228
-	SpecPAL.scanlinesOverscan = 36
-	SpecPAL.ScanlinesTotal = 312
+	SpecPAL = &Specification{
+		ID:                "PAL",
+		Colors:            colorsPAL,
+		scanlinesVSync:    3,
+		scanlinesVBlank:   45,
+		ScanlinesVisible:  228,
+		scanlinesOverscan: 36,
+		ScanlinesTotal:    312,
+		FramesPerSecond:   50,
+		AspectBias:        1.09,
+	}
+
 	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.scanlinesVSync
 	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.scanlinesOverscan
-	SpecPAL.FramesPerSecond = 50
 	SpecPAL.SecondsPerFrame = 1.0 / float64(SpecPAL.FramesPerSecond)
-
-	// AaspectBias transforms the scaling factor for the X axis.
-	// values taken from Stella emualtor. useful for A/B testing
-	SpecNTSC.AspectBias = 0.91
-	SpecPAL.AspectBias = 1.09
 }

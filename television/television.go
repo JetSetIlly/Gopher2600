@@ -72,7 +72,7 @@ const stabilityThreshold = 5
 // NewTelevision creates a new instance of StellaTelevision for a
 // minimalist implementation of a televsion for the VCS emulation
 func NewTelevision(tvType string) (Television, error) {
-	tv := new(television)
+	tv := &television{}
 
 	switch strings.ToUpper(tvType) {
 	case "NTSC":

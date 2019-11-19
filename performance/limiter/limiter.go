@@ -18,7 +18,7 @@ type FpsLimiter struct {
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
 func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
-	lim := new(FpsLimiter)
+	lim := &FpsLimiter{}
 	lim.SetLimit(framesPerSecond)
 
 	lim.tick = make(chan bool)

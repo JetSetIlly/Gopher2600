@@ -14,10 +14,10 @@ type Ports struct {
 
 // NewPorts is the preferred method of initialisation for the Ports type
 func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports {
-	pt := new(Ports)
-	pt.Player0 = newPlayer0(riot, tia, panel)
-	pt.Player1 = newPlayer1(riot, tia, panel)
-	return pt
+	return &Ports{
+		Player0: newPlayer0(riot, tia, panel),
+		Player1: newPlayer1(riot, tia, panel),
+	}
 }
 
 // A player instance is used by controllers to communicate with the VCS

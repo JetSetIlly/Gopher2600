@@ -84,7 +84,7 @@ func (tk Tokens) Peek() (string, bool) {
 
 // TokeniseInput creates and returns a new Tokens instance
 func TokeniseInput(input string) *Tokens {
-	tk := new(Tokens)
+	tk := &Tokens{}
 
 	// remove leading/trailing space
 	input = strings.TrimSpace(input)

@@ -23,9 +23,10 @@ type table struct {
 }
 
 func newTable() *table {
-	tb := new(table)
-	tb.Symbols = make(map[uint16]string)
-	tb.idx = make([]uint16, 0)
+	tb := &table{
+		Symbols: make(map[uint16]string),
+		idx:     make([]uint16, 0),
+	}
 	return tb
 }
 

@@ -59,9 +59,10 @@ type watches struct {
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
 func newWatches(dbg *Debugger) *watches {
-	wtc := new(watches)
-	wtc.dbg = dbg
-	wtc.vcsmem = dbg.vcs.Mem
+	wtc := &watches{
+		dbg:    dbg,
+		vcsmem: dbg.vcs.Mem,
+	}
 	wtc.clear()
 	return wtc
 }

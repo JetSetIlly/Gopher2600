@@ -76,8 +76,7 @@ func (bk *breaker) add(nbk *breaker) {
 
 // newBreakpoints is the preferred method of initialisation for breakpoins
 func newBreakpoints(dbg *Debugger) *breakpoints {
-	bp := new(breakpoints)
-	bp.dbg = dbg
+	bp := &breakpoints{dbg: dbg}
 	bp.clear()
 	return bp
 }

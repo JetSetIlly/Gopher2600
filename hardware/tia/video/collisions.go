@@ -19,9 +19,9 @@ type collisions struct {
 	cxppmm uint8
 }
 
-func newCollision(mem memory.ChipBus) *collisions {
-	col := new(collisions)
-	col.mem = mem
+func newCollisions(mem memory.ChipBus) *collisions {
+	col := &collisions{mem: mem}
+	col.clear()
 	return col
 }
 

@@ -30,8 +30,7 @@ func (tr trapper) String() string {
 
 // newTraps is the preferred method of initialisation for traps
 func newTraps(dbg *Debugger) *traps {
-	tr := new(traps)
-	tr.dbg = dbg
+	tr := &traps{dbg: dbg}
 	tr.clear()
 	return tr
 }

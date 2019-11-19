@@ -19,8 +19,7 @@ type metapixelOverlay struct {
 }
 
 func newMetapixelOverlay(scr *pixels) (*metapixelOverlay, error) {
-	ovl := new(metapixelOverlay)
-	ovl.scr = scr
+	ovl := &metapixelOverlay{scr: scr}
 
 	// our acutal screen data
 	ovl.pixels = make([]byte, ovl.scr.maxWidth*ovl.scr.maxHeight*pixelDepth)

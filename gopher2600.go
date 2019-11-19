@@ -167,7 +167,7 @@ func debug(mf *magicflags.MagicFlags) bool {
 	case "PLAIN":
 		term = nil
 	case "COLOR":
-		term = new(colorterm.ColorTerminal)
+		term = &colorterm.ColorTerminal{}
 	}
 
 	switch len(mf.SubModeFlags.Args()) {
@@ -374,7 +374,7 @@ func regress(mf *magicflags.MagicFlags) bool {
 			// use stdin for confirmation unless "yes" flag has been sent
 			var confirmation io.Reader
 			if *answerYes {
-				confirmation = new(yesReader)
+				confirmation = &yesReader{}
 			} else {
 				confirmation = os.Stdin
 			}

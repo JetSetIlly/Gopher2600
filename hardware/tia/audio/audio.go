@@ -14,8 +14,7 @@ type Audio struct {
 
 // NewAudio is the preferred method of initialisation for the Video structure
 func NewAudio() *Audio {
-	au := new(Audio)
-	return au
+	return &Audio{}
 }
 
 // UpdateOutput checks the TIA memory for changes to registers that are
