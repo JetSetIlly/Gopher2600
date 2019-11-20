@@ -108,6 +108,6 @@ const (
 	ScreenDigest
 
 	// gui
-	UnknownGUIRequest
+	UnsupportedGUIRequest
 	SDL
 )

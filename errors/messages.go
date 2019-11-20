@@ -95,6 +95,6 @@ var messages = map[Errno]string{
 	ScreenDigest: "television error: screendigest: %s",
 
 	// gui
-	UnknownGUIRequest: "gui error: unsupported request (%v)",
-	SDL:               "gui error: SDL: %s",
+	UnsupportedGUIRequest: "gui error: unsupported request (%v)",
+	SDL:                   "gui error: SDL: %s",
 }

@@ -15,7 +15,7 @@ import (
 )
 
 // Play sets the emulation running - without any debugging features
-func Play(tv television.Television, scr gui.GUI, stable bool, newRecording bool, cartload cartridgeloader.Loader) error {
+func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool, newRecording bool, cartload cartridgeloader.Loader) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -112,11 +112,17 @@ func Play(tv television.Television, scr gui.GUI, stable bool, newRecording bool,
 	scr.SetEventChannel(guiChannel)
 
 	// request television visibility
-	request := gui.ReqSetVisibilityStable
-	if !stable {
-		request = gui.ReqSetVisibility
+	request := gui.ReqSetVisibility
+	if showOnStable {
+		request = gui.ReqSetVisibleOnStable
 	}
 	err = scr.SetFeature(request, true)
+	if err != nil {
+		return errors.New(errors.PlayError, err)
+	}
+
+	// set fpscap
+	err = scr.SetFeature(gui.ReqSetFPSCap, fpscap)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}

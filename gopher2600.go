@@ -84,6 +84,7 @@ func play(mf *magicflags.MagicFlags) bool {
 	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := mf.SubModeFlags.Float64("scale", 3.0, "television scaling")
 	stable := mf.SubModeFlags.Bool("stable", true, "wait for stable frame before opening display")
+	fpscap := mf.SubModeFlags.Bool("fpscap", true, "cap fps to specification")
 	record := mf.SubModeFlags.Bool("record", false, "record user input to a file")
 
 	if mf.SubParse() != magicflags.ParseContinue {
@@ -112,7 +113,7 @@ func play(mf *magicflags.MagicFlags) bool {
 			return false
 		}
 
-		err = playmode.Play(tv, scr, *stable, *record, cartload)
+		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload)
 		if err != nil {
 			fmt.Printf("* %s\n", err)
 			return false
@@ -252,8 +253,9 @@ func disasm(mf *magicflags.MagicFlags) bool {
 func perform(mf *magicflags.MagicFlags) bool {
 	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
 	display := mf.SubModeFlags.Bool("display", false, "display TV output: boolean")
+	fpscap := mf.SubModeFlags.Bool("fpscap", true, "cap FPS to specification (only valid if --display=true)")
+	scaling := mf.SubModeFlags.Float64("scale", 3.0, "display scaling (only valid if --display=true")
 	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
-	scaling := mf.SubModeFlags.Float64("scale", 3.0, "television scaling")
 	runTime := mf.SubModeFlags.String("time", "5s", "run duration (note: there is a 2s overhead)")
 	profile := mf.SubModeFlags.Bool("profile", false, "perform cpu and memory profiling")
 
@@ -285,6 +287,12 @@ func perform(mf *magicflags.MagicFlags) bool {
 			}
 
 			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
+			if err != nil {
+				fmt.Printf("* %s\n", err)
+				return false
+			}
+
+			err = scr.(gui.GUI).SetFeature(gui.ReqSetFPSCap, *fpscap)
 			if err != nil {
 				fmt.Printf("* %s\n", err)
 				return false

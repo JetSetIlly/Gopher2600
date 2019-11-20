@@ -17,15 +17,18 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	}()
 
 	switch request {
-	case gui.ReqSetVisibilityStable:
+	case gui.ReqSetVisibleOnStable:
 		if scr.IsStable() {
-			scr.showWindow(args[0].(bool))
+			scr.showWindow(true)
 		} else {
 			scr.showOnNextStable = true
 		}
 
 	case gui.ReqSetVisibility:
 		scr.showWindow(args[0].(bool))
+
+	case gui.ReqSetFPSCap:
+		scr.fpsCap = args[0].(bool)
 
 	case gui.ReqToggleVisibility:
 		if scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
@@ -48,7 +51,7 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 		}
 
 	default:
-		return errors.New(errors.UnknownGUIRequest, request)
+		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
 	return nil

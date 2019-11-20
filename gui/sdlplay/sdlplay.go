@@ -20,7 +20,8 @@ type SdlPlay struct {
 	eventChannel chan gui.Event
 
 	// limit screen updates to a fixed fps
-	lmtr *limiter.FpsLimiter
+	lmtr   *limiter.FpsLimiter
+	fpsCap bool
 
 	// all audio is handled by the sound type
 	snd *sound
@@ -179,7 +180,9 @@ func (scr *SdlPlay) NewFrame(frameNum int) error {
 		scr.showOnNextStable = false
 	}
 
-	scr.lmtr.Wait()
+	if scr.fpsCap {
+		scr.lmtr.Wait()
+	}
 
 	err := scr.texture.Update(nil, scr.pixels, int(scr.horizPixels*pixelDepth))
 	if err != nil {

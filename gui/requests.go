@@ -8,17 +8,18 @@ type FeatureReq int
 // else the interface{} type conversion will fail and the application will
 // probably crash
 const (
-	ReqSetVisibility       FeatureReq = iota // bool, optional bool (update on show) default true
-	ReqToggleVisibility                      // optional bool (update on show) default true
-	ReqSetVisibilityStable                   // none
-	ReqSetPause                              // bool
-	ReqSetMasking                            // bool
-	ReqToggleMasking                         // none
-	ReqSetAltColors                          // bool
-	ReqToggleAltColors                       // none
-	ReqSetOverlay                            // bool
-	ReqToggleOverlay                         // none
-	ReqSetScale                              // float
-	ReqIncScale                              // none
-	ReqDecScale                              // none
+	ReqSetVisibility      FeatureReq = iota // bool
+	ReqToggleVisibility                     // none
+	ReqSetVisibleOnStable                   // none
+	ReqSetFPSCap                            // bool
+	ReqSetPause                             // bool
+	ReqSetMasking                           // bool
+	ReqToggleMasking                        // none
+	ReqSetAltColors                         // bool
+	ReqToggleAltColors                      // none
+	ReqSetOverlay                           // bool
+	ReqToggleOverlay                        // none
+	ReqSetScale                             // float
+	ReqIncScale                             // none
+	ReqDecScale                             // none
 )

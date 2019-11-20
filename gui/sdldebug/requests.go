@@ -17,18 +17,10 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 	}()
 
 	switch request {
-	case gui.ReqSetVisibilityStable:
-		fallthrough
-
 	case gui.ReqSetVisibility:
 		if args[0].(bool) {
 			scr.window.Show()
-
-			// update screen
-			// -- default args[1] of true if not present
-			if len(args) < 2 || args[1].(bool) {
-				scr.pxl.update()
-			}
+			scr.pxl.update()
 		} else {
 			scr.window.Hide()
 		}
@@ -91,7 +83,7 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 
 	default:
-		return errors.New(errors.UnknownGUIRequest, request)
+		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
 	return nil
