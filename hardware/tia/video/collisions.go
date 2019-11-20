@@ -44,7 +44,7 @@ func (col *collisions) clear() {
 	col.mem.ChipWrite(addresses.CXPPMM, 0)
 }
 
-func (col *collisions) SetMemory(collisionAddress uint16) {
+func (col *collisions) setMemory(collisionAddress uint16) {
 	switch collisionAddress {
 	case addresses.CXM0P:
 		col.mem.ChipWrite(addresses.CXM0P, col.cxm0p)

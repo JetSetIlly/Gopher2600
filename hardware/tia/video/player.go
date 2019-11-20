@@ -6,7 +6,6 @@ import (
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
-	"math/bits"
 	"strings"
 )
 
@@ -80,6 +79,10 @@ type playerSprite struct {
 	gfxDataNew    uint8
 	gfxDataOld    uint8
 
+	// pointer to which gfx data we're using (gfxDataOld or gfxDataNew).
+	// controlled by value of verticalDelay
+	gfxData *uint8
+
 	// scanCounter implements the "graphics scan counter" as described in
 	// TIA_HW_Notes.txt:
 	//
@@ -124,6 +127,10 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	ps.scanCounter.nusiz = &ps.nusiz
 	ps.scanCounter.pclk = &ps.pclk
 	ps.position.Reset()
+
+	// initialise gfxData pointer
+	ps.gfxData = &ps.gfxDataNew
+
 	return &ps
 }
 
@@ -504,20 +511,17 @@ func (ps *playerSprite) _futureResetPosition() {
 // pixel returns the color of the player at the current time.  returns
 // (false, col) if no pixel is to be seen; and (true, col) if there is
 func (ps *playerSprite) pixel() (bool, uint8) {
-	// select which graphics register to use
-	gfxData := ps.gfxDataNew
-	if ps.verticalDelay {
-		gfxData = ps.gfxDataOld
-	}
-
-	// reverse the bits if necessary
-	if ps.reflected {
-		gfxData = bits.Reverse8(gfxData)
-	}
-
 	// pick the pixel from the gfxData register
 	if ps.scanCounter.isActive() {
-		if gfxData>>uint8(ps.scanCounter.pixel)&0x01 == 0x01 {
+		var offset int
+
+		if ps.reflected {
+			offset = 7 - ps.scanCounter.pixel
+		} else {
+			offset = ps.scanCounter.pixel
+		}
+
+		if *ps.gfxData>>offset&0x01 == 0x01 {
 			return true, ps.color
 		}
 	}
@@ -555,6 +559,12 @@ func (ps *playerSprite) setVerticalDelay(vdelay bool) {
 	// the graphics output).  It is safe to modify VDELPn at any time, with
 	// immediate effect."
 	ps.verticalDelay = vdelay
+
+	if ps.verticalDelay {
+		ps.gfxData = &ps.gfxDataOld
+	} else {
+		ps.gfxData = &ps.gfxDataNew
+	}
 }
 
 func (ps *playerSprite) setReflection(value bool) {

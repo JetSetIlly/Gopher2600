@@ -303,20 +303,19 @@ func (bs *ballSprite) _futureResetPosition() {
 }
 
 func (bs *ballSprite) pixel() (bool, uint8) {
-	// the ball sprite pixel is drawn under specific conditions. see pixel()
-	// function in the missile sprite for a detail explanation.
+	if !bs.enabled || (bs.verticalDelay && !bs.enabledDelay) {
+		return false, bs.color
+	}
+
+	// the ball sprite pixel is drawn under specific conditions
 	px := bs.enclockifier.enable ||
 		(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
-
-	// I'm not sure if the above condition applies to both branches below
-	// (verticalDelay true/false) but I don't see why it shouldn't
-	// !!TODO: test px condition for vertical delay on/off in ball sprite
 
 	if bs.verticalDelay {
 		return bs.enabledDelay && px, bs.color
 	}
 
-	return bs.enabled && px, bs.color
+	return px, bs.color
 }
 
 // the delayed enable bit is copied from the first when the gfx register for

@@ -365,6 +365,10 @@ func (ms *missileSprite) setResetToPlayer(on bool) {
 }
 
 func (ms *missileSprite) pixel() (bool, uint8) {
+	if !ms.enabled {
+		return false, ms.color
+	}
+
 	// the missile sprite has a special state where a stuffed HMOVE clock
 	// causes the sprite to this the start signal has happened one cycle early.
 	//
@@ -376,7 +380,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.resetToPlayer && (ms.enclockifier.enable || crispy)
 
-	return ms.enabled && px, ms.color
+	return px, ms.color
 }
 
 func (ms *missileSprite) setEnable(enable bool) {

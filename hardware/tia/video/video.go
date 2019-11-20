@@ -121,74 +121,73 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	m1u, m1c := vd.Missile1.pixel()
 	blu, blc := vd.Ball.pixel()
 
-	// collision detection only occurs on the visible screen
 	if m0u && p1u {
 		vd.collisions.cxm0p |= 0x80
-		vd.collisions.SetMemory(addresses.CXM0P)
+		vd.collisions.setMemory(addresses.CXM0P)
 	}
 	if m0u && p0u {
 		vd.collisions.cxm0p |= 0x40
-		vd.collisions.SetMemory(addresses.CXM0P)
+		vd.collisions.setMemory(addresses.CXM0P)
 	}
 
 	if m1u && p0u {
 		vd.collisions.cxm1p |= 0x80
-		vd.collisions.SetMemory(addresses.CXM1P)
+		vd.collisions.setMemory(addresses.CXM1P)
 	}
 	if m1u && p1u {
 		vd.collisions.cxm1p |= 0x40
-		vd.collisions.SetMemory(addresses.CXM1P)
+		vd.collisions.setMemory(addresses.CXM1P)
 	}
 
 	if p0u && pfu {
 		vd.collisions.cxp0fb |= 0x80
-		vd.collisions.SetMemory(addresses.CXP0FB)
+		vd.collisions.setMemory(addresses.CXP0FB)
 	}
 	if p0u && blu {
 		vd.collisions.cxp0fb |= 0x40
-		vd.collisions.SetMemory(addresses.CXP0FB)
+		vd.collisions.setMemory(addresses.CXP0FB)
 	}
 
 	if p1u && pfu {
 		vd.collisions.cxp1fb |= 0x80
-		vd.collisions.SetMemory(addresses.CXP1FB)
+		vd.collisions.setMemory(addresses.CXP1FB)
 	}
 	if p1u && blu {
 		vd.collisions.cxp1fb |= 0x40
-		vd.collisions.SetMemory(addresses.CXP1FB)
+		vd.collisions.setMemory(addresses.CXP1FB)
 	}
 
 	if m0u && pfu {
 		vd.collisions.cxm0fb |= 0x80
-		vd.collisions.SetMemory(addresses.CXM0FB)
+		vd.collisions.setMemory(addresses.CXM0FB)
 	}
 	if m0u && blu {
 		vd.collisions.cxm0fb |= 0x40
-		vd.collisions.SetMemory(addresses.CXM0FB)
+		vd.collisions.setMemory(addresses.CXM0FB)
 	}
 
 	if m1u && pfu {
 		vd.collisions.cxm1fb |= 0x80
-		vd.collisions.SetMemory(addresses.CXM1FB)
+		vd.collisions.setMemory(addresses.CXM1FB)
 	}
 	if m1u && blu {
 		vd.collisions.cxm1fb |= 0x40
-		vd.collisions.SetMemory(addresses.CXM1FB)
+		vd.collisions.setMemory(addresses.CXM1FB)
 	}
 
 	if blu && pfu {
 		vd.collisions.cxblpf |= 0x80
-		vd.collisions.SetMemory(addresses.CXBLPF)
+		vd.collisions.setMemory(addresses.CXBLPF)
 	}
 	// no bit 6 for CXBLPF
 
 	if p0u && p1u {
 		vd.collisions.cxppmm |= 0x80
-		vd.collisions.SetMemory(addresses.CXPPMM)
+		vd.collisions.setMemory(addresses.CXPPMM)
 	}
 	if m0u && m1u {
 		vd.collisions.cxppmm |= 0x40
-		vd.collisions.SetMemory(addresses.CXPPMM)
+		vd.collisions.setMemory(addresses.CXPPMM)
 	}
 
 	// apply priorities to get pixel color. the interaction of the priority and
