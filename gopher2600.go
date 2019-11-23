@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/debugger"
@@ -11,7 +10,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdldebug"
 	"gopher2600/gui/sdlplay"
-	"gopher2600/magicflags"
+	"gopher2600/modalflag"
 	"gopher2600/paths"
 	"gopher2600/performance"
 	"gopher2600/playmode"
@@ -32,130 +31,121 @@ func main() {
 	// current time
 	rand.Seed(int64(time.Now().Second()))
 
-	mf := magicflags.MagicFlags{
-		ProgModes:   []string{"RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS"},
-		DefaultMode: "RUN",
+	md := modalflag.Modes{Output: os.Stdout}
+	md.NewArgs(os.Args[1:])
+	md.NewMode()
+	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+
+	p, err := md.Parse()
+	switch p {
+	case modalflag.ParseHelp:
+		os.Exit(0)
+	case modalflag.ParseError:
+		fmt.Printf("* %s\n", err)
+		os.Exit(10)
 	}
 
-	switch mf.Parse(os.Args[1:]) {
-	case magicflags.ParseNoArgs:
-		// no arguments at all. suggest that a cartridge is required
-		fmt.Println("* 2600 cartridge required")
-		os.Exit(2)
-	case magicflags.ParseHelp:
-		os.Exit(2)
-	case magicflags.ParseContinue:
-		break
-	}
-
-	ok := true
-
-	switch mf.Mode {
-	default:
-		fmt.Printf("* %s mode unrecognised\n", mf.Mode)
-		os.Exit(2)
-
+	switch md.Mode() {
 	case "RUN":
 		fallthrough
 
 	case "PLAY":
-		ok = play(&mf)
+		err = play(&md)
 
 	case "DEBUG":
-		ok = debug(&mf)
+		err = debug(&md)
 
 	case "DISASM":
-		ok = disasm(&mf)
+		err = disasm(&md)
 
 	case "PERFORMANCE":
-		ok = perform(&mf)
+		err = perform(&md)
 
 	case "REGRESS":
-		ok = regress(&mf)
+		err = regress(&md)
 	}
 
-	if !ok {
-		os.Exit(2)
+	if err != nil {
+		fmt.Printf("* %s\n", err)
+		os.Exit(20)
 	}
 }
 
-func play(mf *magicflags.MagicFlags) bool {
-	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
-	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
-	scaling := mf.SubModeFlags.Float64("scale", 3.0, "television scaling")
-	stable := mf.SubModeFlags.Bool("stable", true, "wait for stable frame before opening display")
-	fpscap := mf.SubModeFlags.Bool("fpscap", true, "cap fps to specification")
-	record := mf.SubModeFlags.Bool("record", false, "record user input to a file")
+func play(md *modalflag.Modes) error {
+	md.NewMode()
 
-	if mf.SubParse() != magicflags.ParseContinue {
-		return false
+	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	scaling := md.AddFloat64("scale", 3.0, "television scaling")
+	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
+	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
+	record := md.AddBool("record", false, "record user input to a file")
+
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
 	}
 
-	switch len(mf.SubModeFlags.Args()) {
+	switch len(md.RemainingArgs()) {
 	case 0:
-		fmt.Println("* 2600 cartridge required")
-		return false
+		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.Loader{
-			Filename: mf.SubModeFlags.Arg(0),
+			Filename: md.GetArg(0),
 			Format:   *cartFormat,
 		}
 
 		tv, err := television.NewTelevision(*tvType)
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 
 		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 
 		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload)
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 		if *record {
 			fmt.Println("! recording completed")
 		}
 	default:
-		fmt.Printf("* too many arguments for %s mode\n", mf.Mode)
-		return false
+		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
-	return true
+	return nil
 }
 
-func debug(mf *magicflags.MagicFlags) bool {
-	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
-	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
-	termType := mf.SubModeFlags.String("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
-	initScript := mf.SubModeFlags.String("initscript", paths.ResourcePath(defaultInitScript), "terminal type to use in debug mode: COLOR, PLAIN")
-	profile := mf.SubModeFlags.Bool("profile", false, "run debugger through cpu profiler")
+func debug(md *modalflag.Modes) error {
+	md.NewMode()
 
-	if mf.SubParse() != magicflags.ParseContinue {
-		return false
+	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	termType := md.AddString("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
+	initScript := md.AddString("initscript", paths.ResourcePath(defaultInitScript), "terminal type to use in debug mode: COLOR, PLAIN")
+	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
+
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
 	}
 
 	tv, err := television.NewTelevision(*tvType)
 	if err != nil {
-		fmt.Printf("* %s\n", err)
-		return false
+		return err
 	}
 
 	scr, err := sdldebug.NewSdlDebug(tv, 2.0)
 	if err != nil {
-		fmt.Printf("* %s\n", err)
-		return false
+		return err
 	}
 
 	dbg, err := debugger.NewDebugger(tv, scr)
 	if err != nil {
-		fmt.Printf("* %s\n", err)
-		return false
+		return err
 	}
 
 	// start debugger with choice of interface and cartridge
@@ -171,14 +161,13 @@ func debug(mf *magicflags.MagicFlags) bool {
 		term = &colorterm.ColorTerminal{}
 	}
 
-	switch len(mf.SubModeFlags.Args()) {
+	switch len(md.RemainingArgs()) {
 	case 0:
-		// it's okay if DEBUG mode is started with no cartridges
-		fallthrough
+		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		runner := func() error {
 			cartload := cartridgeloader.Loader{
-				Filename: mf.SubModeFlags.Arg(0),
+				Filename: md.GetArg(0),
 				Format:   *cartFormat,
 			}
 			err := dbg.Start(term, *initScript, cartload)
@@ -191,125 +180,116 @@ func debug(mf *magicflags.MagicFlags) bool {
 		if *profile {
 			err := performance.ProfileCPU("debug.cpu.profile", runner)
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 			err = performance.ProfileMem("debug.mem.profile")
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 		} else {
 			err := runner()
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 		}
 	default:
-		fmt.Printf("* too many arguments for %s mode\n", mf.Mode)
-		return false
+		return fmt.Errorf("* too many arguments for %s mode", md)
 	}
 
-	return true
+	return nil
 }
 
-func disasm(mf *magicflags.MagicFlags) bool {
-	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
+func disasm(md *modalflag.Modes) error {
+	md.NewMode()
 
-	if mf.SubParse() != magicflags.ParseContinue {
-		return false
+	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
 	}
 
-	switch len(mf.SubModeFlags.Args()) {
+	switch len(md.RemainingArgs()) {
 	case 0:
-		fmt.Println("* 2600 cartridge required")
-		return false
+		return fmt.Errorf("* 2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.Loader{
-			Filename: mf.SubModeFlags.Arg(0),
+			Filename: md.GetArg(0),
 			Format:   *cartFormat,
 		}
 		dsm, err := disassembly.FromCartrige(cartload)
 		if err != nil {
 			// print what disassembly output we do have
 			if dsm != nil {
-				dsm.Dump(os.Stdout)
+				dsm.Dump(md.Output)
 			}
 
-			// exit with error message
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
-		dsm.Dump(os.Stdout)
+		dsm.Dump(md.Output)
 	default:
-		fmt.Printf("* too many arguments for %s mode\n", mf.Mode)
-		return false
+		return fmt.Errorf("* too many arguments for %s mode", md)
 	}
 
-	return true
+	return nil
 }
 
-func perform(mf *magicflags.MagicFlags) bool {
-	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
-	display := mf.SubModeFlags.Bool("display", false, "display TV output: boolean")
-	fpscap := mf.SubModeFlags.Bool("fpscap", true, "cap FPS to specification (only valid if --display=true)")
-	scaling := mf.SubModeFlags.Float64("scale", 3.0, "display scaling (only valid if --display=true")
-	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL")
-	runTime := mf.SubModeFlags.String("time", "5s", "run duration (note: there is a 2s overhead)")
-	profile := mf.SubModeFlags.Bool("profile", false, "perform cpu and memory profiling")
+func perform(md *modalflag.Modes) error {
+	md.NewMode()
 
-	if mf.SubParse() != magicflags.ParseContinue {
-		return false
+	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	display := md.AddBool("display", false, "display TV output: boolean")
+	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if --display=true)")
+	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if --display=true")
+	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	runTime := md.AddString("time", "5s", "run duration (note: there is a 2s overhead)")
+	profile := md.AddBool("profile", false, "perform cpu and memory profiling")
+
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
 	}
 
-	switch len(mf.SubModeFlags.Args()) {
+	switch len(md.RemainingArgs()) {
 	case 0:
-		fmt.Println("* 2600 cartridge required")
-		return false
+		return fmt.Errorf("* 2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.Loader{
-			Filename: mf.SubModeFlags.Arg(0),
+			Filename: md.GetArg(0),
 			Format:   *cartFormat,
 		}
 
 		tv, err := television.NewTelevision(*tvType)
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 
 		if *display {
 			scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 
 			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 
 			err = scr.(gui.GUI).SetFeature(gui.ReqSetFPSCap, *fpscap)
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 		}
 
-		err = performance.Check(os.Stdout, *profile, tv, *runTime, cartload)
+		err = performance.Check(md.Output, *profile, tv, *runTime, cartload)
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 	default:
-		fmt.Printf("* too many arguments for %s mode\n", mf.Mode)
-		return false
+		return fmt.Errorf("* too many arguments for %s mode", md)
 	}
 
-	return true
+	return nil
 }
 
 type yesReader struct{}
@@ -319,64 +299,66 @@ func (*yesReader) Read(p []byte) (n int, err error) {
 	return 1, nil
 }
 
-func regress(mf *magicflags.MagicFlags) bool {
-	mf.SubMode = strings.ToUpper(mf.Next())
-	mf.TryDefault()
-	switch mf.SubMode {
-	default:
-		mf.ValidSubModes = []string{"RUN", "LIST", "DELETE", "ADD"}
-		mf.DefaultSubMode = "RUN"
+func regress(md *modalflag.Modes) error {
+	md.NewMode()
+	md.AddSubModes("RUN", "LIST", "DELETE", "ADD")
 
-		if mf.SubParse() != magicflags.ParseContinue {
-			return false
-		}
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
+	}
 
-		mf.DefaultFound()
-		fallthrough
-
+	switch md.Mode() {
 	case "RUN":
-		// no additional arguments
-		verbose := mf.SubModeFlags.Bool("verbose", false, "output more detail (eg. error messages)")
-		failOnError := mf.SubModeFlags.Bool("fail", false, "fail on error")
+		md.NewMode()
 
-		if mf.SubParse() != magicflags.ParseContinue {
-			return false
+		// no additional arguments
+		verbose := md.AddBool("verbose", false, "output more detail (eg. error messages)")
+		failOnError := md.AddBool("fail", false, "fail on error")
+
+		p, err := md.Parse()
+		if p != modalflag.ParseContinue {
+			return err
 		}
 
-		err := regression.RegressRunTests(os.Stdout, *verbose, *failOnError, mf.SubModeFlags.Args())
+		err = regression.RegressRunTests(md.Output, *verbose, *failOnError, md.RemainingArgs())
 		if err != nil {
-			fmt.Printf("* %s\n", err)
-			return false
+			return err
 		}
 
 	case "LIST":
+		md.NewMode()
+
 		// no additional arguments
-		if mf.SubParse() != magicflags.ParseContinue {
-			return false
+
+		p, err := md.Parse()
+		if p != modalflag.ParseContinue {
+			return err
 		}
-		switch len(mf.SubModeFlags.Args()) {
+
+		switch len(md.RemainingArgs()) {
 		case 0:
-			err := regression.RegressList(os.Stdout)
+			err := regression.RegressList(md.Output)
 			if err != nil {
-				fmt.Printf("*  %s\n", err)
-				return false
+				return err
 			}
 		default:
-			fmt.Printf("* no additional arguments required when using %s %s\n", mf.Mode, mf.SubMode)
-			return false
+			return fmt.Errorf("* no additional arguments required for %s mode", md)
 		}
 
 	case "DELETE":
-		answerYes := mf.SubModeFlags.Bool("yes", false, "answer yes to confirmation")
+		md.NewMode()
 
-		if mf.SubParse() != magicflags.ParseContinue {
-			return false
+		answerYes := md.AddBool("yes", false, "answer yes to confirmation")
+
+		p, err := md.Parse()
+		if p != modalflag.ParseContinue {
+			return err
 		}
 
-		switch len(mf.SubModeFlags.Args()) {
+		switch len(md.RemainingArgs()) {
 		case 0:
-			fmt.Println("* database key required (use REGRESS LIST to view)")
-			return false
+			return fmt.Errorf("* database key required for %s mode", md)
 		case 1:
 
 			// use stdin for confirmation unless "yes" flag has been sent
@@ -387,76 +369,77 @@ func regress(mf *magicflags.MagicFlags) bool {
 				confirmation = os.Stdin
 			}
 
-			err := regression.RegressDelete(os.Stdout, confirmation, mf.SubModeFlags.Arg(0))
+			err := regression.RegressDelete(md.Output, confirmation, md.GetArg(0))
 			if err != nil {
-				fmt.Printf("* %s\n", err)
-				return false
+				return err
 			}
 		default:
-			fmt.Printf("* only one entry can be deleted at at time when using %s %s\n", mf.Mode, mf.SubMode)
-			return false
+			return fmt.Errorf("* only one entry can be deleted at at time when using %s mode", md)
 		}
 
 	case "ADD":
-		return regressAdd(mf)
+		return regressAdd(md)
 	}
 
-	return true
+	return nil
 }
 
-func regressAdd(mf *magicflags.MagicFlags) bool {
-	cartFormat := mf.SubModeFlags.String("cartformat", "AUTO", "force use of cartridge format")
-	tvType := mf.SubModeFlags.String("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
-	numFrames := mf.SubModeFlags.Int("frames", 10, "number of frames to run (cartridge args only)")
-	state := mf.SubModeFlags.Bool("state", false, "record TV state at every CPU step")
-	notes := mf.SubModeFlags.String("notes", "", "annotation for the database")
+func regressAdd(md *modalflag.Modes) error {
+	md.NewMode()
 
-	if mf.SubParse() != magicflags.ParseContinue {
-		return false
+	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
+	numframes := md.AddInt("frames", 10, "number of frames to run (cartridge args only)")
+	state := md.AddBool("state", false, "record TV state at every CPU step")
+	notes := md.AddString("notes", "", "annotation for the database")
+
+	p, err := md.Parse()
+	if p != modalflag.ParseContinue {
+		return err
 	}
 
-	switch len(mf.SubModeFlags.Args()) {
+	switch len(md.RemainingArgs()) {
 	case 0:
-		fmt.Println("* 2600 cartridge or playback file required")
-		return false
+		return fmt.Errorf("* 2600 cartridge or playback file required for %s mode", md)
 	case 1:
 		var rec regression.Regressor
 
-		if recorder.IsPlaybackFile(mf.SubModeFlags.Arg(0)) {
+		if recorder.IsPlaybackFile(md.GetArg(0)) {
 			// check and warn if unneeded arguments have been specified
-			mf.SubModeFlags.Visit(func(flg *flag.Flag) {
-				if flg.Name == "frames" {
-					fmt.Printf("! ignored %s flag when adding playback entry\n", flg.Name)
+			md.Visit(func(flg string) {
+				if flg == "frames" {
+					fmt.Printf("! ignored %s flag when adding playback entry\n", flg)
 				}
 			})
 
 			rec = &regression.PlaybackRegression{
-				Script: mf.SubModeFlags.Arg(0),
+				Script: md.GetArg(0),
 				Notes:  *notes,
 			}
 		} else {
 			cartload := cartridgeloader.Loader{
-				Filename: mf.SubModeFlags.Arg(0),
+				Filename: md.GetArg(0),
 				Format:   *cartFormat,
 			}
 			rec = &regression.FrameRegression{
 				CartLoad:  cartload,
 				TVtype:    strings.ToUpper(*tvType),
-				NumFrames: *numFrames,
+				NumFrames: *numframes,
 				State:     *state,
 				Notes:     *notes,
 			}
 		}
 
-		err := regression.RegressAdd(os.Stdout, rec)
+		err := regression.RegressAdd(md.Output, rec)
 		if err != nil {
-			fmt.Printf("\r* error adding regression test: %s\n", err)
-			return false
+			// using carriage return (without newline) at beginning of error
+			// message because we want to overwrite the last output from
+			// RegressAdd()
+			return fmt.Errorf("\r* error adding regression test: %s", err)
 		}
 	default:
-		fmt.Printf("* regression tests must be added one at a time when using %s %s\n", mf.Mode, mf.SubMode)
-		return false
+		return fmt.Errorf("* regression tests must be added one at a time when using %s mode", md)
 	}
 
-	return true
+	return nil
 }
