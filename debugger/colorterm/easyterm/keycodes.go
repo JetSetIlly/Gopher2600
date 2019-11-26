@@ -7,7 +7,7 @@ const (
 	KeyTab            = 9
 	KeyCarriageReturn = 13
 	KeyEsc            = 27
-	KeyBackspace      = 127
+	KeyBackspace      = 8
 )
 
 // list of ASCII code for characters that can follow KeyEsc
