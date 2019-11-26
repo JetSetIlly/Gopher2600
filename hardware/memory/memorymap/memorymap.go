@@ -39,6 +39,10 @@ const (
 	MemtopCart = uint16(0x1fff)
 )
 
+// Memtop is the top most address of memory in the VCS. It is the same as the
+// cartridge memtop.
+const Memtop = uint16(0x1fff)
+
 // when reading addresses from memory, TIA and RIOT addresses are filtered down
 // even further
 const (

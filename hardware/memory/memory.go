@@ -46,7 +46,7 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := &VCSMemory{}
 
-	mem.Memmap = make([]DebuggerBus, addresses.NumAddresses)
+	mem.Memmap = make([]DebuggerBus, memorymap.Memtop+1)
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
@@ -96,8 +96,7 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) (DebuggerBus, error) {
 
 // Implementation of CPUBus.Read
 //
-// * optimisation: called a lot. pointer to VCSMemory to prevent duffcopy even
-// thought there are no side effects
+// * optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
 func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	area, err := mem.GetArea(ar)
@@ -113,14 +112,15 @@ func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	// if the mapped address has an entry in the Mask array then use the most
 	// significant byte of the non-mapped address and apply it to the data bits
 	// specified in the mask
-	if ma < uint16(len(addresses.Masks)) {
+	//
+	// see commentary for DataMasks array for extensive explanation
+	if ma < uint16(len(addresses.DataMasks)) {
 		if address > 0xff {
-			d := uint8((address>>8)&0xff) & (addresses.Masks[ma] ^ 0b11111111)
-			data |= d
+			data &= addresses.DataMasks[ma]
+			data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
 		} else {
-			data &= addresses.Masks[ma]
-			d := uint8(address&0x00ff) & (addresses.Masks[ma] ^ 0b11111111)
-			data |= d
+			data &= addresses.DataMasks[ma]
+			data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)
 		}
 	}
 
