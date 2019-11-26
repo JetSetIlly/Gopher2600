@@ -7,7 +7,9 @@ import (
 	"os"
 )
 
-// PlainTerminal is the default, most basic terminal interface
+// PlainTerminal is the default, most basic terminal interface. It keeps the
+// terminal in whatever mode it started, probably cooked mode. As such, it
+// offers only rudimentary editing facility and little control over output.
 type PlainTerminal struct {
 	input    io.Reader
 	output   io.Writer

@@ -5,6 +5,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/definitions"
+	"io"
 	"os"
 	"syscall"
 )
@@ -147,11 +148,18 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			// following block interprets the error carefully and proceeds
 			// appropriately
 			if err != nil {
-				// if the error originated from outside of the emulation code
-				// then it is probably serious or unexpected. we give up and
-				// return it to the calling function
 				if !errors.IsAny(err) {
-					return err
+					// if the error originated from outside of the emulation code
+					// then it is probably serious or unexpected
+					switch err {
+					case io.EOF:
+						// treat EOF events the same as UserInterrupt events
+						err = errors.New(errors.UserInterrupt)
+					default:
+						// the error is probably serious. exit input loop with
+						// err
+						return err
+					}
 				}
 
 				// we now know the we have an Atari Error so we can safely
@@ -235,11 +243,15 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				}
 			}
 
-			// parse user input, taking note of whether the emulation should
-			// continue
-			dbg.continueEmulation, err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
-			if err != nil {
-				dbg.print(console.StyleError, "%s", err)
+			// sometimes UserRead can return zero bytes read, we need to filter
+			// this out before we try any
+			if inputLen > 0 {
+				// parse user input, taking note of whether the emulation should
+				// continue
+				dbg.continueEmulation, err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
+				if err != nil {
+					dbg.print(console.StyleError, "%s", err)
+				}
 			}
 
 			// prepare for next loop
