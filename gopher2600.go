@@ -238,11 +238,11 @@ func perform(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	display := md.AddBool("display", false, "display TV output: boolean")
-	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if --display=true)")
-	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if --display=true")
+	display := md.AddBool("display", false, "display TV output")
+	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
+	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
-	runTime := md.AddString("time", "5s", "run duration (note: there is a 2s overhead)")
+	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "perform cpu and memory profiling")
 
 	p, err := md.Parse()
@@ -281,7 +281,7 @@ func perform(md *modalflag.Modes) error {
 			}
 		}
 
-		err = performance.Check(md.Output, *profile, tv, *runTime, cartload)
+		err = performance.Check(md.Output, *profile, tv, *duration, cartload)
 		if err != nil {
 			return err
 		}

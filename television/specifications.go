@@ -42,7 +42,6 @@ type Specification struct {
 
 	// the number of frames per second required by the specification
 	FramesPerSecond int
-	SecondsPerFrame float64
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -87,7 +86,6 @@ func init() {
 
 	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.scanlinesVSync
 	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.scanlinesOverscan
-	SpecNTSC.SecondsPerFrame = 1.0 / float64(SpecNTSC.FramesPerSecond)
 
 	SpecPAL = &Specification{
 		ID:                "PAL",
@@ -103,5 +101,4 @@ func init() {
 
 	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.scanlinesVSync
 	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.scanlinesOverscan
-	SpecPAL.SecondsPerFrame = 1.0 / float64(SpecPAL.FramesPerSecond)
 }

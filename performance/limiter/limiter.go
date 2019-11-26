@@ -28,13 +28,10 @@ func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
 		adjustedSecondPerFrame := lim.secondsPerFrame
 		t := time.Now()
 		for {
+			lim.tick <- true
 			time.Sleep(adjustedSecondPerFrame)
 			nt := time.Now()
-			lim.tick <- true
 			adjustedSecondPerFrame -= nt.Sub(t) - lim.secondsPerFrame
-			if adjustedSecondPerFrame < 0 {
-				adjustedSecondPerFrame = 0
-			}
 			t = nt
 		}
 	}()
@@ -60,6 +57,7 @@ func (lim *FpsLimiter) HasWaited() bool {
 	case <-lim.tick:
 		return true
 	default:
+		// default case means that the channel receiving case doesn't block
 		return false
 	}
 }
