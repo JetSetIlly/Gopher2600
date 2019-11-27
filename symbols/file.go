@@ -33,10 +33,14 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 	// deferred function because we want to do this in all instances, even if
 	// there is an error with the symbols file.
 	defer func() {
-		for k, v := range addresses.Read {
+		// loop through canonical names for addresses. note that because Read
+		// and Write in the addresses package are sparse arrays we need to
+		// filter out the empty entries. (the Read and Write structures used to
+		// be maps and we didn't need to do this)
+		for k, v := range addresses.CanonicalNamesReadAddresses {
 			table.Read.add(uint16(k), v, true)
 		}
-		for k, v := range addresses.Write {
+		for k, v := range addresses.CanonicalNamesWriteAddresses {
 			table.Write.add(uint16(k), v, true)
 		}
 

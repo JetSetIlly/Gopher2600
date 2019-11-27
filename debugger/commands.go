@@ -125,6 +125,8 @@ var debuggerCommands *commandline.Commands
 var scriptUnsafeCommands *commandline.Commands
 var debuggerCommandsIdx *commandline.Index
 
+// this init() function "compiles" the commandTemplate above into a more
+// usuable form. It will cause the program to fail if the template is invalid.
 func init() {
 	var err error
 

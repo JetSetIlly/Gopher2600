@@ -7,10 +7,12 @@ const Reset = uint16(0xfffc)
 // IRQ is the address where the interrupt address is stored
 const IRQ = 0xfffe
 
-// for convenience, we specify the canonical address labels in a map. however,
-// this is too slow for the emulator. we create the Read array from the read
-// map in the init() function below.
-var read = map[uint16]string{
+// CanonicalNamesReadAddresses list all the writable addresses along with
+// the canonical names for those addresses. We don't use this structure in the
+// emulation because the map structure introduces an overhead that we'd like to
+// avoid. We do however use it to create a more suitable structure for
+// emulation.
+var CanonicalNamesReadAddresses = map[uint16]string{
 	// TIA
 	0x00: "CXM0P",
 	0x01: "CXM1P",
@@ -36,10 +38,9 @@ var read = map[uint16]string{
 	0x0285: "TIMINT",
 }
 
-// for convenience, we specify the canonical address labels in a map. however,
-// this is far too slow fo the  emulator. we create the Write array from the
-// write map in the init() function below.
-var write = map[uint16]string{
+// CanonicalNamesWriteAddresses list all the writable addresses along with
+// the canonical names for those addresses. (see above for commentary)
+var CanonicalNamesWriteAddresses = map[uint16]string{
 	// TIA
 	0x00: "VSYNC",
 	0x01: "VBLANK",
@@ -115,12 +116,12 @@ func init() {
 	const chipTop = 0x297
 
 	Read = make([]string, chipTop+1)
-	for k, v := range read {
+	for k, v := range CanonicalNamesReadAddresses {
 		Read[k] = v
 	}
 
 	Write = make([]string, chipTop+1)
-	for k, v := range write {
+	for k, v := range CanonicalNamesWriteAddresses {
 		Write[k] = v
 	}
 }
