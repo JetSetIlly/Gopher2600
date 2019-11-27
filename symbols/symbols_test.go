@@ -2,10 +2,41 @@ package symbols_test
 
 import (
 	"gopher2600/symbols"
+	"gopher2600/test"
 	"testing"
 )
 
-const expectedSymbolsList = `Locations
+func TestDefaultSymbols(t *testing.T) {
+	syms, err := symbols.ReadSymbolsFile("")
+	if err != nil {
+		t.Errorf("unexpected error (%s)", err)
+	}
+
+	tw := &test.Writer{}
+
+	syms.ListSymbols(tw)
+
+	if !tw.Compare(expectedDefaultSymbols) {
+		t.Errorf("default symbols list is wrong")
+	}
+}
+
+func TestFlappySymbols(t *testing.T) {
+	syms, err := symbols.ReadSymbolsFile("testdata/flappy.sym")
+	if err != nil {
+		t.Errorf("unexpected error (%s)", err)
+	}
+
+	tw := &test.Writer{}
+
+	syms.ListSymbols(tw)
+
+	if !tw.Compare(expectedFlappySymbols) {
+		t.Errorf("default symbols list is wrong")
+	}
+}
+
+const expectedDefaultSymbols = `Locations
 ---------
 
 Read Symbols
@@ -86,30 +117,527 @@ Write Symbols
 0x0032 -> TIM1024
 `
 
-type testWriter struct {
-	buffer []byte
-}
+const expectedFlappySymbols = `Locations
+---------
+0x0000 -> .FREE_BYTES
+0x0001 -> .CLOCK_COUNTS_PER_CYCLE
+0x0002 -> .KERNEL_TIMER_SET_IN_CYCLES
+0x0003 -> .KERNEL_WAIT_LOOP
+0x0004 -> .SCANLINES
+0x0005 -> .TIMER_VAL
+0x0006 -> .SCANLINES
+0x0007 -> .TIMER_VAL
+0x0008 -> .CYCLES
+0x0009 -> .CYCLES
+0x000a -> .CYCLES
+0x000b -> .CYCLES
+0x000c -> .CYCLES_PER_SCANLINE
+0x000d -> .YSTATE
+0x000e -> .PF1
+0x000f -> .MISSILE_1_SET
+0x0010 -> .MISSILE_1_NUSIZ
+0x0011 -> .PLAYER_0_SPRITE
+0x0012 -> .PLAYER_1_SPRITE
+0x0013 -> .CLOCK_COUNTS_PER_SCANLINE
+0x0014 -> .vsync
+0x0015 -> .VSLP1
+0x0016 -> .vblank
+0x0017 -> .done
+0x0018 -> .vblank_loop
+0x0019 -> .visible_loop
+0x001a -> .overscan
+0x001b -> .overscan_loop
+0x001c -> .end_title_screen
+0x001d -> .overscan_kernel
+0x001e -> .overscan_loop
+0x001f -> .done
+0x0020 -> .done_hiscore
+0x0021 -> .VSLP1
+0x0022 -> .coarse_div
+0x0023 -> .done_coarse_div
+0x0024 -> .coarse_div
+0x0025 -> .done_coarse_div
+0x0026 -> .VSLP1
+0x0027 -> .far_jmp_collision
+0x0028 -> .far_jmp_drown
+0x0029 -> .far_jmp_approach
+0x002a -> .far_jmp_play
+0x002b -> .done
+0x002c -> .no_store_index
+0x002d -> .ready_state_triage
+0x002e -> .update_foliage
+0x002f -> .rotate_forest
+0x0030 -> .jump_tree
+0x0031 -> .cont_forest
+0x0032 -> .carry_tree
+0x0033 -> .forest_done
+0x0034 -> .prepare_display
+0x0035 -> .display_empty
+0x0036 -> .display_ready_logo
+0x0037 -> .coarse_div
+0x0038 -> .done_coarse_div
+0x0039 -> .coarse_div
+0x003a -> .done_coarse_div
+0x003b -> .update_foliage
+0x003c -> .foliage_updated
+0x003d -> .update_bird
+0x003e -> .use_wings_up
+0x003f -> .use_wings_flat
+0x0040 -> .use_wings_down
+0x0041 -> .wings_updated
+0x0042 -> .update_pattern_idx
+0x0043 -> .store_index
+0x0044 -> .enter_drowning_state
+0x0045 -> .prepare_display
+0x0046 -> .coarse_div
+0x0047 -> .done_coarse_div
+0x0048 -> .coarse_div
+0x0049 -> .done_coarse_div
+0x004a -> .update_foliage
+0x004b -> .foliage_updated
+0x004c -> .update_bird
+0x004d -> .drowning_end
+0x004e -> .prepare_display
+0x004f -> .coarse_div
+0x0050 -> .done_coarse_div
+0x0051 -> .coarse_div
+0x0052 -> .done_coarse_div
+0x0053 -> .coarse_div
+0x0054 -> .done_coarse_div
+0x0055 -> .coarse_div
+0x0056 -> .done_coarse_div
+0x0057 -> .show_obstacle_1
+0x0058 -> .coarse_div
+0x0059 -> .done_coarse_div
+0x005a -> .flipped_obstacles
+0x005b -> .hpos_done
+0x005c -> .done_completion_test
+0x005d -> .far_jmp_sprite
+0x005e -> .rotate_forest
+0x005f -> .jump_tree
+0x0060 -> .cont_forest
+0x0061 -> .carry_tree
+0x0062 -> .forest_done
+0x0063 -> .reset_obstacle_0
+0x0064 -> .reset_obstacle_1
+0x0065 -> .bird_collision
+0x0066 -> .no_store_index
+0x0067 -> .done_vblank_collisions
+0x0068 -> .done
+0x0069 -> .flip_sprite_use_flat
+0x006a -> .flip_sprite_end
+0x006b -> .use_wings_up_sprite
+0x006c -> .use_glide_sprite
+0x006d -> .sprite_set
+0x006e -> .begin_drowning
+0x006f -> .limit_height
+0x0070 -> .update_pattern_idx
+0x0071 -> .store_index
+0x0072 -> .fly_end
+0x0073 -> .coarse_div
+0x0074 -> .done_coarse_div
+0x0075 -> .coarse_div
+0x0076 -> .done_coarse_div
+0x0077 -> .fine_move_done
+0x0078 -> .fine_move_done
+0x0079 -> .coarse_div
+0x007a -> .done_coarse_div
+0x007b -> .coarse_div
+0x007c -> .done_coarse_div
+0x007d -> .scoring_check
+0x007e -> .score_obstacle
+0x007f -> .end_scoring
+0x0080 -> .vblank_loop
+0x0081 -> .next_foliage
+0x0082 -> .set_trunk
+0x0083 -> .new_foliage
+0x0084 -> .cont_foliage
+0x0085 -> .precalc_forest_static
+0x0086 -> .end_forest_precalc
+0x0087 -> .set_missile_sprites
+0x0088 -> .precalc_missile_size
+0x0089 -> .done_precalc_missile_size
+0x008a -> .precalc_missile_sprites
+0x008b -> .set_player_sprites
+0x008c -> .precalc_players_sprites
+0x008d -> .done_precalc_players
+0x008e -> .next_scanline
+0x008f -> .draw_swamp
+0x0090 -> .prep_score
+0x0091 -> .prep_hiscore
+0x0092 -> .tens_digits
+0x0093 -> .scoring_loop
+0x0094 -> .next_scanline
+0x0095 -> .done
+0x0096 -> .swap_heads
+0x0097 -> .done_head_check
+0x0098 -> .set_width_for_ready
+0x0099 -> .done_set_width
+0x009a -> .next_obstacle
+0x009b -> .next_branch
+0x009c -> .done_drowning_compensation
+0x009d -> .sfx_new_event
+0x009e -> .sfx_queue_event
+0x009f -> .sfx_cont
+0x00a0 -> .sfx_done
+0x00a1 -> .is_positive
+0x00a2 -> .positive_reset
+0x00a3 -> .is_negative
+0x00a4 -> .negative_reset
+0x00a5 -> .store
+0x00a6 -> .overscan_loop
 
-func (tw *testWriter) Write(p []byte) (n int, err error) {
-	tw.buffer = append(tw.buffer, p...)
-	return len(p), nil
-}
+Read Symbols
+-----------
+0x0000 -> CXM0P
+0x0001 -> CXM1P
+0x0002 -> CXP0FB
+0x0003 -> CXP1FB
+0x0004 -> CXM0FB
+0x0005 -> CXM1FB
+0x0006 -> CXBLPF
+0x0007 -> CXPPMM
+0x0008 -> INPT0
+0x0009 -> INPT1
+0x000a -> INPT2
+0x000b -> INPT3
+0x000c -> INPT4
+0x000d -> INPT5
+0x000e -> PF1
+0x000f -> PF2
+0x0010 -> RESP0
+0x0011 -> RESP1
+0x0012 -> RESM0
+0x0013 -> RESM1
+0x0014 -> RESBL
+0x0015 -> AUDC0
+0x0016 -> AUDC1
+0x0017 -> AUDF0
+0x0018 -> AUDF1
+0x0019 -> AUDV0
+0x001a -> AUDV1
+0x001b -> GRP0
+0x001c -> GRP1
+0x001d -> ENAM0
+0x001e -> ENAM1
+0x001f -> ENABL
+0x0020 -> OBSTACLE_WIDTH
+0x0021 -> HMP1
+0x0022 -> HMM0
+0x0023 -> HMM1
+0x0024 -> CTRLPF_FOLIAGE
+0x0025 -> VDELP0
+0x0026 -> VDELP1
+0x0027 -> VDELBL
+0x0028 -> RESMP0
+0x0029 -> RESMP1
+0x002a -> HMOVE
+0x002b -> HMCLR
+0x002c -> CXCLR
+0x002d -> OKAY_COLOR
+0x002e -> BRANCH_WIDTH
+0x002f -> VERSION_VCS
+0x0030 -> VERSION_MACRO
+0x0031 -> BIRD_VPOS_INIT
+0x0032 -> __MULTI_COUNT_STATE
+0x0033 -> __STATE_INPT4
+0x0034 -> __STATE_SWCHB
+0x0035 -> __SFX_NEW_EVENT
+0x0036 -> __SFX_QUEUE_EVENT
+0x0037 -> __SFX_SUB_FRAMES
+0x0038 -> _localA
+0x0039 -> _localB
+0x003a -> _localC
+0x003b -> _localD
+0x003c -> _localE
+0x003d -> _localF
+0x003e -> _localG
+0x003f -> PLAY_STATE
+0x0040 -> SELECTED_HEAD
+0x0041 -> FLIGHT_PATTERN
+0x0042 -> ADDRESS_SPRITE_0
+0x0043 -> BIRD_HIGH
+0x0044 -> BIRD_VPOS
+0x0045 -> BIRD_HPOS
+0x0046 -> BIRD_HEAD_OFFSET
+0x0047 -> PATTERN_INDEX
+0x0048 -> FOLIAGE_SEED
+0x0049 -> OBSTACLE_SEED
+0x004a -> BRANCH_SEED
+0x004b -> OB_0
+0x004c -> OB_1
+0x004d -> OB_0_BRANCH
+0x004e -> OB_1_BRANCH
+0x004f -> OB_0_HPOS
+0x0050 -> OB_1_HPOS
+0x0051 -> OB_0_SPEED
+0x0052 -> OB_1_SPEED
+0x0053 -> FOREST_MID_0
+0x0054 -> FOREST_MID_1
+0x0055 -> FOREST_MID_2
+0x0056 -> SPLASH_COLOR
+0x0057 -> SCORE
+0x0058 -> HISCORE
+0x0059 -> SWAMP_COLOR
+0x005a -> SWAMP_BACKGROUND
+0x005b -> DISPLAY_SCANLINES
+0x005c -> FOLIAGE_COLOR
+0x005d -> FOREST_BACKGROUND
+0x005e -> FOREST_COLOR
+0x005f -> _PAGE_CHECK
+0x0060 -> HISCORE_COLOR
+0x0061 -> PLAY_STATE_DROWN
+0x0062 -> PLAY_STATE_COLLISION
+0x0063 -> SWCHA
+0x0064 -> SWACNT
+0x0065 -> SWCHB
+0x0066 -> SWBCNT
+0x0067 -> INTIM
+0x0068 -> TIMINT
+0x0069 -> TIM1T
+0x006a -> TIM8T
+0x006b -> TIM64T
+0x006c -> T1024T
+0x006d -> _MSG_MARKER
+0x006e -> DATA_SEGMENT
+0x006f -> TEXT_OK
+0x0070 -> TEXT_QMARK
+0x0071 -> WINGS
+0x0072 -> WINGS_FLAT
+0x0073 -> WINGS_DOWN
+0x0074 -> HEADS
+0x0075 -> HEAD_BOY_A
+0x0076 -> HEAD_GIRL_B
+0x0077 -> HEAD_BOY_B
+0x0078 -> HEADS_TABLE
+0x0079 -> _SPLASH
+0x007a -> SPLASH
+0x007b -> DIGIT_0
+0x007c -> DIGIT_1
+0x007d -> DIGIT_2
+0x007e -> DIGIT_3
+0x007f -> DIGIT_4
+0x0080 -> DIGIT_5
+0x0081 -> DIGIT_6
+0x0082 -> DIGIT_7
+0x0083 -> DIGIT_8
+0x0084 -> DIGIT_9
+0x0085 -> DIGIT_TABLE
+0x0086 -> FOLIAGE
+0x0087 -> FOREST_MID_0_INIT
+0x0088 -> FOREST_MID_1_INIT
+0x0089 -> FOREST_MID_2_INIT
+0x008a -> FOREST_STATIC_0
+0x008b -> FOREST_STATIC_1
+0x008c -> FOREST_STATIC_2
+0x008d -> SET_OBSTACLE_TABLE
+0x008e -> FINE_POS_TABLE
+0x008f -> OBSTACLES
+0x0090 -> BRANCHES
+0x0091 -> EASY_FLIGHT_PATTERN
+0x0092 -> __FINE_POS_TABLE
+0x0093 -> SFX_TABLE
+0x0094 -> SFX_FLAP
+0x0095 -> SFX_COLLISION
+0x0096 -> SFX_SPLASH
+0x0097 -> setup
+0x0098 -> title_screen
+0x0099 -> game_state_init
+0x009a -> game_restart
+0x009b -> game_vsync
+0x009c -> game_vblank
+0x009d -> game_vblank_ready
+0x009e -> game_vblank_death_collision
+0x009f -> game_vblank_death_drown
+0x00a0 -> game_vblank_approach
+0x00a1 -> game_vblank_main_triage
+0x00a2 -> game_vblank_foliage
+0x00a3 -> game_vblank_collisions
+0x00a4 -> game_vblank_sprite
+0x00a5 -> game_vblank_position_sprites
+0x00a6 -> game_vblank_end
+0x00a7 -> foliage
+0x00a8 -> game_play_area_prepare
+0x00a9 -> game_play_area
+0x00aa -> swamp
+0x00ab -> display_score
+0x00ac -> game_overscan
+0x00ad -> initialisation
 
-func (tw *testWriter) cmp(s string) bool {
-	return s == string(tw.buffer)
-}
-
-func TestDefaultSymbols(t *testing.T) {
-	syms, err := symbols.ReadSymbolsFile("")
-	if err != nil {
-		t.Errorf("unexpected error (%s)", err)
-	}
-
-	tw := &testWriter{}
-
-	syms.ListSymbols(tw)
-
-	if !tw.cmp(expectedSymbolsList) {
-		t.Errorf("default symbols list is wrong")
-	}
-}
+Write Symbols
+------------
+0x0000 -> VSYNC
+0x0001 -> VBLANK
+0x0002 -> WSYNC
+0x0003 -> RSYNC
+0x0004 -> NUSIZ0
+0x0005 -> NUSIZ1
+0x0006 -> COLUP0
+0x0007 -> COLUP1
+0x0008 -> COLUPF
+0x0009 -> COLUBK
+0x000a -> CTRLPF
+0x000b -> REFP0
+0x000c -> REFP1
+0x000d -> PF0
+0x000e -> PF1
+0x000f -> PF2
+0x0010 -> RESP0
+0x0011 -> RESP1
+0x0012 -> RESM0
+0x0013 -> RESM1
+0x0014 -> RESBL
+0x0015 -> AUDC0
+0x0016 -> AUDC1
+0x0017 -> AUDF0
+0x0018 -> AUDF1
+0x0019 -> AUDV0
+0x001a -> AUDV1
+0x001b -> GRP0
+0x001c -> GRP1
+0x001d -> ENAM0
+0x001e -> ENAM1
+0x001f -> ENABL
+0x0020 -> HMP0
+0x0021 -> HMP1
+0x0022 -> HMM0
+0x0023 -> HMM1
+0x0024 -> HMBL
+0x0025 -> VDELP0
+0x0026 -> VDELP1
+0x0027 -> VDELBL
+0x0028 -> RESMP0
+0x0029 -> RESMP1
+0x002a -> HMOVE
+0x002b -> HMCLR
+0x002c -> CXCLR
+0x002d -> OKAY_COLOR
+0x002e -> BRANCH_WIDTH
+0x002f -> VERSION_VCS
+0x0030 -> VERSION_MACRO
+0x0031 -> BIRD_VPOS_INIT
+0x0032 -> __MULTI_COUNT_STATE
+0x0033 -> __STATE_INPT4
+0x0034 -> __STATE_SWCHB
+0x0035 -> __SFX_NEW_EVENT
+0x0036 -> __SFX_QUEUE_EVENT
+0x0037 -> __SFX_SUB_FRAMES
+0x0038 -> _localA
+0x0039 -> _localB
+0x003a -> _localC
+0x003b -> _localD
+0x003c -> _localE
+0x003d -> _localF
+0x003e -> _localG
+0x003f -> PLAY_STATE
+0x0040 -> SELECTED_HEAD
+0x0041 -> FLIGHT_PATTERN
+0x0042 -> ADDRESS_SPRITE_0
+0x0043 -> BIRD_HIGH
+0x0044 -> BIRD_VPOS
+0x0045 -> BIRD_HPOS
+0x0046 -> BIRD_HEAD_OFFSET
+0x0047 -> PATTERN_INDEX
+0x0048 -> FOLIAGE_SEED
+0x0049 -> OBSTACLE_SEED
+0x004a -> BRANCH_SEED
+0x004b -> OB_0
+0x004c -> OB_1
+0x004d -> OB_0_BRANCH
+0x004e -> OB_1_BRANCH
+0x004f -> OB_0_HPOS
+0x0050 -> OB_1_HPOS
+0x0051 -> OB_0_SPEED
+0x0052 -> OB_1_SPEED
+0x0053 -> FOREST_MID_0
+0x0054 -> FOREST_MID_1
+0x0055 -> FOREST_MID_2
+0x0056 -> SPLASH_COLOR
+0x0057 -> SCORE
+0x0058 -> HISCORE
+0x0059 -> SWAMP_COLOR
+0x005a -> SWAMP_BACKGROUND
+0x005b -> DISPLAY_SCANLINES
+0x005c -> FOLIAGE_COLOR
+0x005d -> FOREST_BACKGROUND
+0x005e -> FOREST_COLOR
+0x005f -> _PAGE_CHECK
+0x0060 -> HISCORE_COLOR
+0x0061 -> PLAY_STATE_DROWN
+0x0062 -> PLAY_STATE_COLLISION
+0x0063 -> SWCHA
+0x0064 -> SWACNT
+0x0065 -> SWCHB
+0x0066 -> SWBCNT
+0x0067 -> INTIM
+0x0068 -> TIMINT
+0x0069 -> TIM1T
+0x006a -> TIM8T
+0x006b -> TIM64T
+0x006c -> TIM1024
+0x006d -> _MSG_MARKER
+0x006e -> DATA_SEGMENT
+0x006f -> TEXT_OK
+0x0070 -> TEXT_QMARK
+0x0071 -> WINGS
+0x0072 -> WINGS_FLAT
+0x0073 -> WINGS_DOWN
+0x0074 -> HEADS
+0x0075 -> HEAD_BOY_A
+0x0076 -> HEAD_GIRL_B
+0x0077 -> HEAD_BOY_B
+0x0078 -> HEADS_TABLE
+0x0079 -> _SPLASH
+0x007a -> SPLASH
+0x007b -> DIGIT_0
+0x007c -> DIGIT_1
+0x007d -> DIGIT_2
+0x007e -> DIGIT_3
+0x007f -> DIGIT_4
+0x0080 -> DIGIT_5
+0x0081 -> DIGIT_6
+0x0082 -> DIGIT_7
+0x0083 -> DIGIT_8
+0x0084 -> DIGIT_9
+0x0085 -> DIGIT_TABLE
+0x0086 -> FOLIAGE
+0x0087 -> FOREST_MID_0_INIT
+0x0088 -> FOREST_MID_1_INIT
+0x0089 -> FOREST_MID_2_INIT
+0x008a -> FOREST_STATIC_0
+0x008b -> FOREST_STATIC_1
+0x008c -> FOREST_STATIC_2
+0x008d -> SET_OBSTACLE_TABLE
+0x008e -> FINE_POS_TABLE
+0x008f -> OBSTACLES
+0x0090 -> BRANCHES
+0x0091 -> EASY_FLIGHT_PATTERN
+0x0092 -> __FINE_POS_TABLE
+0x0093 -> SFX_TABLE
+0x0094 -> SFX_FLAP
+0x0095 -> SFX_COLLISION
+0x0096 -> SFX_SPLASH
+0x0097 -> setup
+0x0098 -> title_screen
+0x0099 -> game_state_init
+0x009a -> game_restart
+0x009b -> game_vsync
+0x009c -> game_vblank
+0x009d -> game_vblank_ready
+0x009e -> game_vblank_death_collision
+0x009f -> game_vblank_death_drown
+0x00a0 -> game_vblank_approach
+0x00a1 -> game_vblank_main_triage
+0x00a2 -> game_vblank_foliage
+0x00a3 -> game_vblank_collisions
+0x00a4 -> game_vblank_sprite
+0x00a5 -> game_vblank_position_sprites
+0x00a6 -> game_vblank_end
+0x00a7 -> foliage
+0x00a8 -> game_play_area_prepare
+0x00a9 -> game_play_area
+0x00aa -> swamp
+0x00ab -> display_score
+0x00ac -> game_overscan
+0x00ad -> initialisation
+`

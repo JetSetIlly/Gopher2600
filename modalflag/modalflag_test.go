@@ -2,6 +2,7 @@ package modalflag_test
 
 import (
 	"gopher2600/modalflag"
+	"gopher2600/test"
 	"os"
 	"testing"
 )
@@ -57,21 +58,8 @@ func TestNoModes(t *testing.T) {
 	}
 }
 
-type testWriter struct {
-	buffer []byte
-}
-
-func (tw *testWriter) Write(p []byte) (n int, err error) {
-	tw.buffer = append(tw.buffer, p...)
-	return len(p), nil
-}
-
-func (tw *testWriter) cmp(s string) bool {
-	return s == string(tw.buffer)
-}
-
 func TestNoHelpAvailable(t *testing.T) {
-	tw := &testWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -81,13 +69,13 @@ func TestNoHelpAvailable(t *testing.T) {
 		t.Error("expected ParseHelp return value from Parse()")
 	}
 
-	if !tw.cmp("No help available\n") {
+	if !tw.Compare("No help available\n") {
 		t.Error("unexpected help message (wanted 'No help available')")
 	}
 }
 
 func TestHelpFlags(t *testing.T) {
-	tw := &testWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -102,13 +90,13 @@ func TestHelpFlags(t *testing.T) {
 		"  -test\n" +
 		"    	test flag (default true)\n"
 
-	if !tw.cmp(expectedHelp) {
+	if !tw.Compare(expectedHelp) {
 		t.Error("unexpected help message")
 	}
 }
 
 func TestHelpModes(t *testing.T) {
-	tw := &testWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -123,13 +111,13 @@ func TestHelpModes(t *testing.T) {
 		"  available sub-modes: A, B, C\n" +
 		"    default: A\n"
 
-	if !tw.cmp(expectedHelp) {
+	if !tw.Compare(expectedHelp) {
 		t.Error("unexpected help message")
 	}
 }
 
 func TestHelpFlagsAndModes(t *testing.T) {
-	tw := &testWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -148,7 +136,7 @@ func TestHelpFlagsAndModes(t *testing.T) {
 		"  available sub-modes: A, B, C\n" +
 		"    default: A\n"
 
-	if !tw.cmp(expectedHelp) {
+	if !tw.Compare(expectedHelp) {
 		t.Error("unexpected help message")
 	}
 }
