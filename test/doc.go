@@ -1,6 +1,5 @@
-// Package test contains several helper functions that should make construction
-// of test packages a little bit easier and remove boilerplate in many common
-// test situations.
+// Package test contains helper functions to remove common boilerplate to make
+// testing easier.
 //
 // The ExpectedFailure and ExpectedSuccess functions test for failure and
 // success under generic conditions. The documenation for those functions
@@ -18,4 +17,8 @@
 // The Writer type meanwhile, implements the io.Writer interface and should be
 // used to capture output. The Writer.Compare() function can then be used to
 // test for equality.
+//
+// The Equate() function compares like-typed variables for equality. Some
+// types (eg. uint16) can be compared against int for convenience. See Equate()
+// documentation for discussion why.
 package test
