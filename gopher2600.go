@@ -31,7 +31,7 @@ func main() {
 	// current time
 	rand.Seed(int64(time.Now().Second()))
 
-	md := modalflag.Modes{Output: os.Stdout}
+	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
 	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
@@ -50,19 +50,19 @@ func main() {
 		fallthrough
 
 	case "PLAY":
-		err = play(&md)
+		err = play(md)
 
 	case "DEBUG":
-		err = debug(&md)
+		err = debug(md)
 
 	case "DISASM":
-		err = disasm(&md)
+		err = disasm(md)
 
 	case "PERFORMANCE":
-		err = perform(&md)
+		err = perform(md)
 
 	case "REGRESS":
-		err = regress(&md)
+		err = regress(md)
 	}
 
 	if err != nil {
