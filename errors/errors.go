@@ -11,14 +11,14 @@ type Errno int
 // Values is the type used to specify arguments for FormattedErrors
 type Values []interface{}
 
-// AtariError provides a convenient way of providing arguments to a
-// predefined error
+// AtariError allows code to specify a predefined error and not worry too much about the
+// message behind that error and how the message will be formatted on output.
 type AtariError struct {
 	Errno  Errno
 	Values Values
 }
 
-// New is used to create a new instance of a FormattedError
+// New is used to create a new instance of an AtariError.
 func New(errno Errno, values ...interface{}) AtariError {
 	return AtariError{
 		Errno:  errno,
@@ -26,6 +26,8 @@ func New(errno Errno, values ...interface{}) AtariError {
 	}
 }
 
+// Error returns the normalised error message. Most usefully, it compresses
+// duplicate adjacent AtariError instances.
 func (er AtariError) Error() string {
 	s := fmt.Sprintf(messages[er.Errno], er.Values...)
 
@@ -38,7 +40,7 @@ func (er AtariError) Error() string {
 	return strings.Join(p, ": ")
 }
 
-// Is checks if most recently wrapped error is a AtariError with a specific errno
+// Is checks if most recently wrapped error is an AtariError with a specific errno
 func Is(err error, errno Errno) bool {
 	switch er := err.(type) {
 	case AtariError:
@@ -47,7 +49,7 @@ func Is(err error, errno Errno) bool {
 	return false
 }
 
-// IsAny checks if most recently wrapped error is a AtariError with any errno
+// IsAny checks if most recently wrapped error is an AtariError, with any errno
 func IsAny(err error) bool {
 	switch err.(type) {
 	case AtariError:
@@ -56,7 +58,7 @@ func IsAny(err error) bool {
 	return false
 }
 
-// Has checks to see if the specified AtariError appears somewhere in the
+// Has checks to see if the specified AtariError errno appears somewhere in the
 // sequence of wrapped errors
 func Has(err error, errno Errno) bool {
 	if Is(err, errno) {

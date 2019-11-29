@@ -63,6 +63,11 @@ func (col *collisions) setMemory(collisionAddress uint16) {
 	case addresses.CXPPMM:
 		col.mem.ChipWrite(addresses.CXPPMM, col.cxppmm)
 	default:
+		// it would be nice to get rid of this panic() but it's doing no harm
+		// and returning an error from here would be ugly.
+		//
+		// Best solution is to figure out how to constrain memory addresses by
+		// type...
 		panic(fmt.Sprintf("not a collision address (%04x)", collisionAddress))
 	}
 }

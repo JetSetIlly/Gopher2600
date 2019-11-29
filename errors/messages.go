@@ -2,99 +2,99 @@ package errors
 
 var messages = map[Errno]string{
 	// panics
-	PanicError: "FATALITY: %s: %s",
+	PanicError: "panic: %v: %v",
 
 	// sentinals
 	UserInterrupt:   "user interrupt",
 	UserSuspend:     "user suspend",
-	ScriptEnd:       "end of script (%s)",
+	ScriptEnd:       "end of script (%v)",
 	PowerOff:        "emulated machine has been powered off",
-	PeriphUnplugged: "controller unplugged from '%s'",
-	TVOutOfSpec:     "tv out of spec: %s",
+	PeriphUnplugged: "controller unplugged from %v",
+	TVOutOfSpec:     "tv out of spec: %v",
 
 	// program modes
-	PlayError:        "error emulating vcs: %s",
-	DebuggerError:    "error debugging vcs: %s",
-	PerformanceError: "error during performance profiling: %s",
-	DisasmError:      "error during disassembly: %s",
+	PlayError:        "error emulating vcs: %v",
+	DebuggerError:    "error debugging vcs: %v",
+	PerformanceError: "error during performance profiling: %v",
+	DisasmError:      "error during disassembly: %v",
 
 	// debugger
-	ParserError:          "parser error: %s: %s (char %d)", // first placeholder is the command definition
-	ValidationError:      "%s for %s",
-	InvalidTarget:        "invalid target (%s)",
-	CommandError:         "%s",
-	TerminalError:        "%s",
+	ParserError:          "parser error: %v: %v (char %d)", // first placeholder is the command definition
+	ValidationError:      "%v for %v",
+	InvalidTarget:        "invalid target (%v)",
+	CommandError:         "%v",
+	TerminalError:        "%v",
 	GUIEventError:        "%v",
 	ReflectionNotRunning: "reflection process is not running",
 
 	// script
-	ScriptFileError:       "script error: %s",
-	ScriptFileUnavailable: "script error: cannot open script file (%s)",
-	ScriptRunError:        "script error: use of '%s' is not allowed in scripts [%s::%d]",
-	ScriptScribeError:     "script scribe error: %s",
+	ScriptFileError:       "script error: %v",
+	ScriptFileUnavailable: "script error: cannot open script file (%v)",
+	ScriptRunError:        "script error: use of '%v' is not allowed in scripts [%v::%d]",
+	ScriptScribeError:     "script scribe error: %v",
 
 	// recorder
-	RecordingError:    "controller recording error: %s",
-	PlaybackError:     "controller playback error: %s",
-	PlaybackHashError: "controller playback error: hash error: %s",
+	RecordingError:    "controller recording error: %v",
+	PlaybackError:     "controller playback error: %v",
+	PlaybackHashError: "controller playback error: hash error: %v",
 
 	// database
-	DatabaseError:           "database error: %s",
+	DatabaseError:           "database error: %v",
 	DatabaseSelectEmpty:     "database error: no selected entries",
 	DatabaseKeyError:        "database error: no such key in database [%v]",
-	DatabaseFileUnavailable: "database error: cannot open database (%s)",
+	DatabaseFileUnavailable: "database error: cannot open database (%v)",
 
 	// regression
-	RegressionError:         "regression test error: %s",
-	RegressionFrameError:    "regression test error: frame entry: %s",
-	RegressionPlaybackError: "regression test error: playback entry: %s",
+	RegressionError:         "regression test error: %v",
+	RegressionFrameError:    "regression test error: frame entry: %v",
+	RegressionPlaybackError: "regression test error: playback entry: %v",
 
 	// setup
-	SetupError:      "setup error: %s",
-	SetupPanelError: "setup error: panel entry: %s",
+	SetupError:      "setup error: %v",
+	SetupPanelError: "setup error: panel entry: %v",
 
 	// symbols
-	SymbolsFileError:       "symbols error: error processing symbols file: %s",
-	SymbolsFileUnavailable: "symbols error: no symbols file for %s",
-	SymbolUnknown:          "symbols error: unrecognised symbol (%s)",
+	SymbolsFileError:       "symbols error: error processing symbols file: %v",
+	SymbolsFileUnavailable: "symbols error: no symbols file for %v",
+	SymbolUnknown:          "symbols error: unrecognised symbol (%v)",
 
 	// cartridgeloader
-	CartridgeLoader: "cartridge loading error: %s",
+	CartridgeLoader: "cartridge loading error: %v",
 
 	// vcs
-	VCSError: "vcs error: %s",
+	VCSError: "vcs error: %v",
 
 	// cpu
-	UnimplementedInstruction:       "cpu error: unimplemented instruction (%0#x) at (%#04x)",
+	UnimplementedInstruction:       "cpu error: unimplemented instruction (%#02x) at (%#04x)",
 	InvalidOpcode:                  "cpu error: invalid opcode (%#04x)",
-	InvalidResult:                  "cpu error: %s",
+	InvalidResult:                  "cpu error: %v",
 	ProgramCounterCycled:           "cpu error: program counter cycled back to 0x0000",
-	InvalidOperationMidInstruction: "cpu error: invalid operation mid-instruction (%s)",
+	InvalidOperationMidInstruction: "cpu error: invalid operation mid-instruction (%v)",
 
 	// memory
-	MemoryError:         "memory error: %s",
+	MemoryError:         "memory error: %v",
 	UnreadableAddress:   "memory error: memory location is not readable (%#04x)",
 	UnwritableAddress:   "memory error: memory location is not writable (%#04x)",
-	UnpokeableAddress:   "memory error: cannot poke address (%v)",
-	UnpeekableAddress:   "memory error: cannot peek address (%v)",
-	UnrecognisedAddress: "memory error: address unrecognised (%v)",
+	UnpokeableAddress:   "memory error: cannot poke address (%#04x)",
+	UnpeekableAddress:   "memory error: cannot peek address (%#04x)",
+	UnrecognisedAddress: "memory error: address unrecognised (%#04x)",
 
 	// cartridges
-	CartridgeError:   "cartridge error: %s",
+	CartridgeError:   "cartridge error: %v",
 	CartridgeEjected: "cartridge error: no cartridge attached",
 
 	// peripherals
-	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%s)",
-	UnknownPeriphEvent:        "peripheral error: %s: unsupported event (%v)",
+	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%v)",
+	UnknownPeriphEvent:        "peripheral error: %v: unsupported event (%v)",
 
 	// television
 	UnknownTVRequest: "television error: unsupported request (%v)",
-	Television:       "television error: %s",
+	Television:       "television error: %v",
 
 	// screen digest
-	ScreenDigest: "television error: screendigest: %s",
+	ScreenDigest: "television error: screendigest: %v",
 
 	// gui
 	UnsupportedGUIRequest: "gui error: unsupported request (%v)",
-	SDL:                   "gui error: SDL: %s",
+	SDL:                   "gui error: SDL: %v",
 }

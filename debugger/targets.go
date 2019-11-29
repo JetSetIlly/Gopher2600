@@ -34,10 +34,6 @@ func (trg genericTarget) Label() string {
 func (trg genericTarget) CurrentValue() interface{} {
 	switch v := trg.currentValue.(type) {
 	case func() interface{}:
-		switch v := v().(type) {
-		case error:
-			panic(v)
-		}
 		return v()
 	default:
 		return v
@@ -49,11 +45,9 @@ func (trg genericTarget) FormatValue(val interface{}) string {
 	case string:
 		return val.(string)
 	case func() interface{}:
-		switch v := t().(type) {
+		switch t().(type) {
 		case string:
 			return val.(string)
-		case error:
-			panic(v)
 		default:
 			return fmt.Sprintf("%#v", val)
 		}
