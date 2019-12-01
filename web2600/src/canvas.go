@@ -38,6 +38,8 @@ func NewCanvas(worker js.Value) *Canvas {
 	if err != nil {
 		return nil
 	}
+	defer scr.Television.End()
+
 	scr.Television.AddPixelRenderer(scr)
 
 	// change tv spec after window creation (so we can set the window size)
@@ -49,6 +51,7 @@ func NewCanvas(worker js.Value) *Canvas {
 	return scr
 }
 
+// Resize implements telvision.PixelRenderer
 func (scr *Canvas) Resize(topScanline, numScanlines int) error {
 	scr.top = topScanline
 	scr.height = numScanlines * vertScale
@@ -123,5 +126,10 @@ func (scr *Canvas) SetPixel(x, y int, red, green, blue byte, vblank bool) error 
 
 // SetAltPixel implements telvision.PixelRenderer
 func (scr *Canvas) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
+	return nil
+}
+
+// EndRendering implements telvision.PixelRenderer
+func (scr *Canvas) EndRendering() error {
 	return nil
 }

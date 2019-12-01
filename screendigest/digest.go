@@ -101,3 +101,8 @@ func (dig *SHA1) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 func (dig *SHA1) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
+
+// EndRendering implements television.Renderer interface
+func (dig *SHA1) EndRendering() error {
+	return nil
+}

@@ -237,10 +237,10 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// mix audio on UpdateAudio signal
-	if sig.UpdateAudio {
+	// mix audio
+	if sig.AudioUpdate {
 		for f := range tv.mixers {
-			err := tv.mixers[f].SetAudio(sig.Audio)
+			err := tv.mixers[f].SetAudio(sig.AudioData)
 			if err != nil {
 				return err
 			}
@@ -338,4 +338,21 @@ func (tv television) GetSpec() *Specification {
 // IsStable implements the Television interface
 func (tv television) IsStable() bool {
 	return tv.stability >= stabilityThreshold
+}
+
+// End implements the Television interface
+func (tv television) End() error {
+	var err error
+
+	// call new frame for all renderers
+	for f := range tv.renderers {
+		err = tv.renderers[f].EndRendering()
+	}
+
+	// flush audio for all mixers
+	for f := range tv.mixers {
+		err = tv.mixers[f].EndMixing()
+	}
+
+	return err
 }

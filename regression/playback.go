@@ -96,6 +96,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
+	defer tv.End()
 
 	_, err = screendigest.NewSHA1(tv)
 	if err != nil {

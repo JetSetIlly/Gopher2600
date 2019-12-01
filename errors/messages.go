@@ -72,12 +72,11 @@ var messages = map[Errno]string{
 	InvalidOperationMidInstruction: "cpu error: invalid operation mid-instruction (%v)",
 
 	// memory
-	MemoryError:         "memory error: %v",
-	UnreadableAddress:   "memory error: memory location is not readable (%#04x)",
-	UnwritableAddress:   "memory error: memory location is not writable (%#04x)",
-	UnpokeableAddress:   "memory error: cannot poke address (%#04x)",
-	UnpeekableAddress:   "memory error: cannot peek address (%#04x)",
-	UnrecognisedAddress: "memory error: address unrecognised (%#04x)",
+	MemoryError:       "memory error: %v",
+	UnreadableAddress: "memory error: memory location is not readable (%#04x)",
+	UnwritableAddress: "memory error: memory location is not writable (%#04x)",
+	UnpokeableAddress: "memory error: cannot poke address (%v)",
+	UnpeekableAddress: "memory error: cannot peek address (%v)",
 
 	// cartridges
 	CartridgeError:   "cartridge error: %v",
@@ -94,7 +93,10 @@ var messages = map[Errno]string{
 	// screen digest
 	ScreenDigest: "television error: screendigest: %v",
 
+	// audio2wav
+	WavWriter: "wav writer: %v",
+
 	// gui
 	UnsupportedGUIRequest: "gui error: unsupported request (%v)",
-	SDL:                   "gui error: SDL: %v",
+	SDL:                   "SDL: %v",
 }

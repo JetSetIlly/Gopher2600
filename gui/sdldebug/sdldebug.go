@@ -122,6 +122,11 @@ func (scr *SdlDebug) Reset() error {
 	return scr.pxl.reset()
 }
 
+// EndRendering implements television.Renderer interface
+func (scr *SdlDebug) EndRendering() error {
+	return nil
+}
+
 // IsVisible implements gui.GUI interface
 func (scr SdlDebug) IsVisible() bool {
 	flgs := scr.window.GetFlags()

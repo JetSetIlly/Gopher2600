@@ -22,6 +22,7 @@ import (
 
 // debugger keywords
 const (
+	cmdAudio         = "AUDIO"
 	cmdBall          = "BALL"
 	cmdBreak         = "BREAK"
 	cmdCPU           = "CPU"
@@ -70,6 +71,7 @@ const (
 const cmdHelp = "HELP"
 
 var commandTemplate = []string{
+	cmdAudio,
 	cmdBall,
 	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
@@ -912,6 +914,9 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		} else {
 			dbg.printInstrument(dbg.vcs.TIA)
 		}
+
+	case cmdAudio:
+		dbg.printInstrument(dbg.vcs.TIA.Audio)
 
 	case cmdTV:
 		option, present := tokens.Get()

@@ -1,43 +1,105 @@
 package audio
 
-import "gopher2600/hardware/memory"
+import (
+	"math/rand"
+	"strings"
+)
 
-// Audio contains all the components of the audio sub-system of the VCS TIA chip
+// SampleFreq represents the number of samples generated per second. This is
+// the 30Khz reference frequency desribed in the Stella Programmer's Guide. see
+// the commentary on clock114 for more detail
+const SampleFreq = 31403
+
+// the Atari 2600 has two independent sound generators. these will be mixed
+// into one value by the Mix() function
+const numChannels = 2
+
+// Audio is the implementation of the TIA audio sub-system, using Ron Fries'
+// method. Reference source code here:
+//
+// https://raw.githubusercontent.com/alekmaul/stella/master/emucore/TIASound.c
 type Audio struct {
-	Control0 uint8
-	Control1 uint8
-	Freq0    uint8
-	Freq1    uint8
-	Volume0  uint8
-	Volume1  uint8
+	// clock114 is so called because of the observation that the 30Khz
+	// reference frequency described in the Stella Programmer's Guide is
+	// generated from the 3.58Mhz clock divided by 114, giving a sample
+	// frequency of 31403Hz or 31Khz - close enought to the 30Khz referency
+	// frequency we need.  Ron Fries' talks about this in  his original
+	// documentation for TIASound.c
+	//
+	// see the Mix() function to see how it is used
+	clock114 int
+
+	poly4bit [15]uint8
+	poly5bit [31]uint8
+	poly9bit [511]uint8
+	div31    [31]uint8
+
+	channel0 channel
+	channel1 channel
+}
+
+func (au *Audio) String() string {
+	s := strings.Builder{}
+	s.WriteString("ch0: ")
+	s.WriteString(au.channel0.String())
+	s.WriteString("  ch1: ")
+	s.WriteString(au.channel1.String())
+	return s.String()
 }
 
 // NewAudio is the preferred method of initialisation for the Video structure
 func NewAudio() *Audio {
-	return &Audio{}
-}
+	au := &Audio{}
+	au.channel0.au = au
+	au.channel1.au = au
 
-// UpdateOutput checks the TIA memory for changes to registers that are
-// interesting to the audio sub-system
-//
-// Returns true if memory.ChipData has not been serviced.
-func (au *Audio) UpdateOutput(data memory.ChipData) bool {
-	switch data.Name {
-	case "AUDC0":
-		au.Control0 = data.Value & 0x0f
-	case "AUDC1":
-		au.Control1 = data.Value & 0x0f
-	case "AUDF0":
-		au.Freq0 = data.Value & 0x1f
-	case "AUDF1":
-		au.Freq1 = data.Value & 0x1f
-	case "AUDV0":
-		au.Volume0 = data.Value & 0x0f
-	case "AUDV1":
-		au.Volume1 = data.Value & 0x0f
-	default:
-		return true
+	// from TIASound.c:
+	//
+	// "Initialze the bit patterns for the polynomials.  The 4bit and 5bit patterns
+	// are the identical ones used in the tia chip.  Though the patterns could be
+	// packed with 8 bits per byte, using only a single bit per byte keeps the math
+	// simple, which is important for efficient processing."
+	au.poly4bit = [15]uint8{1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0}
+	au.poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
+
+	// from TIASound.c (referring to 9 bit polynomial table):
+	//
+	// "Rather than have a table with 511 entries, I use a random number
+	// generator."
+	for i := 0; i < len(au.poly9bit); i++ {
+		au.poly9bit[i] = uint8(rand.Int() & 0x01)
 	}
 
-	return false
+	// from TIASound.c:
+	//
+	// "I've treated the 'Div by 31' counter as another polynomial because of the
+	// way it operates.  It does not have a 50% duty cycle, but instead has a 13:18
+	// ratio (of course, 13+18 = 31).  This could also be implemented by using
+	// counters."
+	au.div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	return au
+}
+
+// Mix the two VCS audio channels. From the "Stella Programmer's Guide":
+//
+// "There are two audio circuits for generating sound. They are identical but
+// completely independent and can be operated simultaneously [...]"
+func (au *Audio) Mix() (bool, uint8) {
+	// the reference frequency for all sound produced by the TIA is 30Khz. this
+	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see
+	// declaration). Mix() is called every video cycle and we return
+	// immediately except on the 114th tick, whereupon we process the current
+	// audio registers and mix the two signals
+	au.clock114++
+	if au.clock114 < 114 {
+		return false, 0
+	}
+
+	au.clock114 = 0
+	au.channel0.process()
+	au.channel1.process()
+
+	// mix channels
+	return true, au.channel0.actualVol + au.channel1.actualVol
 }

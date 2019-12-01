@@ -15,7 +15,7 @@ type Polycounter struct {
 
 func (pcnt Polycounter) String() string {
 	// assumes maximum limit of 2 digits
-	return fmt.Sprintf("%s (%02d)", Table[pcnt.Count], pcnt.Count)
+	return fmt.Sprintf("%s (%02d)", Poly6Bit[pcnt.Count], pcnt.Count)
 }
 
 // Reset is a convenience function to reset count value to 0

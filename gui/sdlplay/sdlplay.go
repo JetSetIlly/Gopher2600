@@ -239,7 +239,7 @@ func (scr *SdlPlay) SetAltPixel(x, y int, red, green, blue byte, vblank bool) er
 	return nil
 }
 
-// SetMetaPixel recieves (and processes) additional emulator information from the emulator
+// SetMetaPixel implements gui.MetPixelRenderer interface
 func (scr *SdlPlay) SetMetaPixel(sig gui.MetaPixel) error {
 	return nil
 }
@@ -250,6 +250,11 @@ func (scr *SdlPlay) Reset() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// EndRendering implements television.Renderer interface
+func (scr *SdlPlay) EndRendering() error {
 	return nil
 }
 

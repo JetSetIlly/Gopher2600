@@ -130,6 +130,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
+	defer tv.End()
 
 	dig, err := screendigest.NewSHA1(tv)
 	if err != nil {

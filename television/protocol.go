@@ -1,9 +1,5 @@
 package television
 
-import (
-	"gopher2600/hardware/tia/audio"
-)
-
 // Television defines the operations that can be performed on the conceptual
 // television. Note that the television implementation itself does not present
 // any information, either visually or sonically. Instead, PixelRenderers and
@@ -32,6 +28,14 @@ type Television interface {
 	// IsStable returns true if the television thinks the image being sent by
 	// the VCS is stable
 	IsStable() bool
+
+	// some televisions may need to conclude and/or dispose of resources
+	// gently. implementations of End() should call EndRendering() and
+	// EndMixing() on each PixelRenderer and AudioMixer that has been added.
+	//
+	// for simplicity, the Television should be considered unusable
+	// after EndRendering() has been called
+	End() error
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visal
@@ -100,11 +104,23 @@ type PixelRenderer interface {
 	//
 	SetPixel(x, y int, red, green, blue byte, vblank bool) error
 	SetAltPixel(x, y int, red, green, blue byte, vblank bool) error
+
+	// some renderers may need to conclude and/or dispose of resources gently.
+	// for simplicity, the PixelRenderer should be considered unusable after
+	// EndRendering() has been called
+	EndRendering() error
 }
 
 // AudioMixer implementations work with sound; most probably playing it.
 type AudioMixer interface {
-	SetAudio(audio audio.Audio) error
+	SetAudio(audioData uint8) error
+	FlushAudio() error
+	PauseAudio(pause bool) error
+
+	// some mixers may need to conclude and/or dispose of resources gently.
+	// for simplicity, the AudioMixer should be considered unusable after
+	// EndMixing() has been called
+	EndMixing() error
 }
 
 // SignalAttributes represents the data sent to the television
@@ -137,10 +153,9 @@ type SignalAttributes struct {
 	// uses HSyncSimple instead of HSync
 	HSyncSimple bool
 
-	// audio signal is just the content of the VCS audio registers. for now,
-	// sounds is generated/mixed by the television or gui implementation
-	Audio       audio.Audio
-	UpdateAudio bool
+	// raw sound data
+	AudioData   uint8
+	AudioUpdate bool
 }
 
 // StateReq is used to identify which television attribute is being asked

@@ -90,7 +90,6 @@ const (
 	UnwritableAddress
 	UnpokeableAddress
 	UnpeekableAddress
-	UnrecognisedAddress
 
 	// cartridges
 	CartridgeError
@@ -106,6 +105,9 @@ const (
 
 	// screen digest
 	ScreenDigest
+
+	// wavwriter
+	WavWriter
 
 	// gui
 	UnsupportedGUIRequest

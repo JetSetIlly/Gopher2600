@@ -206,15 +206,11 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 		serviceMemory = tia.Video.UpdateSpritePixels(memoryData)
 	}
 	if serviceMemory {
-		serviceMemory = tia.Audio.UpdateOutput(memoryData)
+		serviceMemory = tia.Audio.UpdateRegisters(memoryData)
 	}
 
-	// copy audio to television signal and update signal at the same time as
-	// color burst. this needs improving. audio signal is actually updated
-	// constantly but the audio engine in the SDL implementation isn't up to it
-	// yet.
-	tia.sig.UpdateAudio = tia.sig.CBurst
-	tia.sig.Audio = *tia.Audio
+	// copy audio to television signal
+	tia.sig.AudioUpdate, tia.sig.AudioData = tia.Audio.Mix()
 
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
