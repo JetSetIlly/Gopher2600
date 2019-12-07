@@ -193,7 +193,7 @@ func debug(md *modalflag.Modes) error {
 			}
 		}
 	default:
-		return fmt.Errorf("* too many arguments for %s mode", md)
+		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
 	return nil
@@ -211,7 +211,7 @@ func disasm(md *modalflag.Modes) error {
 
 	switch len(md.RemainingArgs()) {
 	case 0:
-		return fmt.Errorf("* 2600 cartridge required for %s mode", md)
+		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
@@ -228,7 +228,7 @@ func disasm(md *modalflag.Modes) error {
 		}
 		dsm.Dump(md.Output)
 	default:
-		return fmt.Errorf("* too many arguments for %s mode", md)
+		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
 	return nil
@@ -252,7 +252,7 @@ func perform(md *modalflag.Modes) error {
 
 	switch len(md.RemainingArgs()) {
 	case 0:
-		return fmt.Errorf("* 2600 cartridge required for %s mode", md)
+		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
@@ -286,7 +286,7 @@ func perform(md *modalflag.Modes) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("* too many arguments for %s mode", md)
+		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
 	return nil
@@ -343,7 +343,7 @@ func regress(md *modalflag.Modes) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("* no additional arguments required for %s mode", md)
+			return fmt.Errorf("no additional arguments required for %s mode", md)
 		}
 
 	case "DELETE":
@@ -358,7 +358,7 @@ func regress(md *modalflag.Modes) error {
 
 		switch len(md.RemainingArgs()) {
 		case 0:
-			return fmt.Errorf("* database key required for %s mode", md)
+			return fmt.Errorf("database key required for %s mode", md)
 		case 1:
 
 			// use stdin for confirmation unless "yes" flag has been sent
@@ -374,7 +374,7 @@ func regress(md *modalflag.Modes) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("* only one entry can be deleted at at time when using %s mode", md)
+			return fmt.Errorf("only one entry can be deleted at at time when using %s mode", md)
 		}
 
 	case "ADD":
@@ -400,7 +400,7 @@ func regressAdd(md *modalflag.Modes) error {
 
 	switch len(md.RemainingArgs()) {
 	case 0:
-		return fmt.Errorf("* 2600 cartridge or playback file required for %s mode", md)
+		return fmt.Errorf("2600 cartridge or playback file required for %s mode", md)
 	case 1:
 		var rec regression.Regressor
 
@@ -438,7 +438,7 @@ func regressAdd(md *modalflag.Modes) error {
 			return fmt.Errorf("\r* error adding regression test: %s", err)
 		}
 	default:
-		return fmt.Errorf("* regression tests must be added one at a time when using %s mode", md)
+		return fmt.Errorf("regression tests must be added one at a time when using %s mode", md)
 	}
 
 	return nil
