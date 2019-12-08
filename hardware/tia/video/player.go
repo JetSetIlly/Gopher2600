@@ -32,7 +32,7 @@ type playerSprite struct {
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing the sprite when position
 	// circulates to zero
-	position polycounter.Polycounter
+	position *polycounter.Polycounter
 
 	// "Beside each counter there is a two-phase clock generator..."
 	pclk phaseclock.PhaseClock
@@ -120,6 +120,14 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
+	}
+
+	var err error
+
+	ps.position, err = polycounter.New(6)
+	if err != nil {
+		// TODO: propogate this error upwards
+		return nil
 	}
 
 	ps.Delay = future.NewTicker(label)
@@ -327,7 +335,7 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 			// "... The START decodes are ANDed with flags from the NUSIZ register
 			// before being latched, to determine whether to draw that copy."
-			switch ps.position.Count {
+			switch ps.position.Count() {
 			case 3:
 				if ps.nusiz == 0x01 || ps.nusiz == 0x03 {
 					ps.startDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, 1, "START")

@@ -102,10 +102,10 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
 		// correct screen region.
-		if pf.hsync.Count >= 37 {
+		if pf.hsync.Count() >= 37 {
 			// just past the centre of the visible screen
 			pf.region = regionRight
-		} else if pf.hsync.Count >= 17 {
+		} else if pf.hsync.Count() >= 17 {
 			// start of visible screen (playfield not affected by HMOVE)
 			pf.region = regionLeft
 		} else {
@@ -120,13 +120,13 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// document.  we believe this has the same effect.
 		switch pf.region {
 		case 0:
-			pf.idx = pf.hsync.Count
+			pf.idx = pf.hsync.Count()
 			pf.currentPixelIsOn = false
 		case 1:
-			pf.idx = pf.hsync.Count - 17
+			pf.idx = pf.hsync.Count() - 17
 			newPixel = true
 		case 2:
-			pf.idx = pf.hsync.Count - 37
+			pf.idx = pf.hsync.Count() - 37
 			newPixel = true
 		}
 	}

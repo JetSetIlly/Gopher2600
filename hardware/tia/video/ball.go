@@ -18,7 +18,7 @@ type ballSprite struct {
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position    polycounter.Polycounter
+	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	Delay       *future.Ticker
 	moreHMOVE   bool
@@ -56,7 +56,16 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 		label:      label,
 	}
 
+	var err error
+
+	bs.position, err = polycounter.New(6)
+	if err != nil {
+		// TODO: propogate this error upwards
+		return nil
+	}
+
 	bs.Delay = future.NewTicker(label)
+
 	bs.enclockifier.size = &bs.size
 	bs.enclockifier.pclk = &bs.pclk
 	bs.enclockifier.delay = bs.Delay
@@ -171,7 +180,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	if bs.pclk.Phi2() {
 		bs.position.Tick()
 
-		switch bs.position.Count {
+		switch bs.position.Count() {
 		case 39:
 			const startDelay = 4
 			bs.startDrawingEvent = bs.Delay.Schedule(startDelay, bs._futureStartDrawingEvent, "START")

@@ -76,7 +76,7 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 		// table in TIA_HW_Notes.txt. the "key" at the end of that table
 		// suggests that (most of) the events are delayed by 4 clocks due to
 		// "latching".
-		switch tia.hsync.Count {
+		switch tia.hsync.Count() {
 		case 57:
 			// from TIA_HW_Notes.txt:
 			//

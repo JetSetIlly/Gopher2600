@@ -34,28 +34,33 @@ func (au *Audio) UpdateRegisters(data memory.ChipData) bool {
 
 // changing the value of an AUDx registers causes some side effect
 func (ch *channel) reactAUDCx() {
-	v := uint8(0)
+	freqClk := uint8(0)
 
 	if ch.regControl == 0x00 || ch.regControl == 0x0b {
 		ch.actualVol = ch.regVolume
 	} else {
-		v = ch.regFreq + 1
+		freqClk = ch.regFreq + 1
 
-		// from TIASound.c: "if bits 2 & 3 are set, the multiply div by n count by 3"
+		// from TIASound.c: when bits D2 and D3 are set, the input source is
+		// switched to the 1.19MHz clock, so the '30KHz' source clock is
+		// reduced to approximately 10KHz."
+		//
+		// multiplying the frequency clock by 3 effectively divides clock114 by
+		// a further 3, giving us the 10Khz clock.
 		if ch.regControl&0x0c == 0x0c && ch.regControl != 0x0f {
-			v *= 3
+			freqClk *= 3
 		}
 	}
 
 	// reset channel when things have changed
-	if v != ch.divMax {
-		// reset divide by n counters
-		ch.divMax = v
+	if freqClk != ch.adjFreq {
+		// reset frequency clock
+		ch.adjFreq = freqClk
 
 		// if the channel is now "volume only" or was "volume only" ...
-		if ch.divCt == 0 || v == 0 {
+		if ch.freqClk == 0 || freqClk == 0 {
 			// ... reset the counter
-			ch.divCt = v
+			ch.freqClk = freqClk
 		}
 
 		// ...otherwide let it complete the previous

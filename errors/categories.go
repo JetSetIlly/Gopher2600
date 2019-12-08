@@ -76,6 +76,7 @@ const (
 
 	// vcs
 	VCSError
+	PolycounterError
 
 	// cpu
 	UnimplementedInstruction

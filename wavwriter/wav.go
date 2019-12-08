@@ -2,7 +2,7 @@ package wavwriter
 
 import (
 	"gopher2600/errors"
-	tia "gopher2600/hardware/tia/audio"
+	tiaAudio "gopher2600/hardware/tia/audio"
 	"os"
 
 	"github.com/go-audio/audio"
@@ -27,6 +27,7 @@ func New(filename string) (*WavWriter, error) {
 
 // SetAudio implements the television.AudioMixer interface
 func (aw *WavWriter) SetAudio(audioData uint8) error {
+	// bring audioData into the correct range
 	aw.buffer = append(aw.buffer, int8(int16(audioData)-127))
 	return nil
 }
@@ -56,7 +57,7 @@ func (aw *WavWriter) EndMixing() error {
 
 	// see audio commentary in sdlplay package for thinking around sample rates
 
-	enc := wav.NewEncoder(f, tia.SampleFreq, 8, 1, 1)
+	enc := wav.NewEncoder(f, tiaAudio.SampleFreq, 8, 1, 1)
 	if enc == nil {
 		return errors.New(errors.WavWriter, "bad parameters for wav encoding")
 	}
@@ -65,7 +66,7 @@ func (aw *WavWriter) EndMixing() error {
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{
 			NumChannels: 1,
-			SampleRate:  31403,
+			SampleRate:  tiaAudio.SampleFreq,
 		},
 		I8:             aw.buffer,
 		DataType:       audio.DataTypeI8,

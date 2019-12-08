@@ -58,7 +58,7 @@ type TIA struct {
 	// before wrapping around, a period of 57 counts at 1/4 CLK (57*4=228 CLK).
 	// The counter decodes shown below provide all the horizontal timing for
 	// the control lines used to construct a valid TV signal."
-	hsync polycounter.Polycounter
+	hsync *polycounter.Polycounter
 	pclk  phaseclock.PhaseClock
 
 	// TIA_HW_Notes.txt talks about there being a delay when altering some
@@ -95,12 +95,20 @@ func (tia TIA) String() string {
 func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
 
+	var err error
+
+	tia.hsync, err = polycounter.New(6)
+	if err != nil {
+		// TODO: propogate this error upwards
+		return nil
+	}
+
 	tia.Delay = future.NewTicker("TIA")
 
 	tia.pclk.Reset()
 	tia.hmoveCt = 0xff
 
-	tia.Video = video.NewVideo(&tia.pclk, &tia.hsync, mem, tv, &tia.hblank, &tia.hmoveLatch)
+	tia.Video = video.NewVideo(&tia.pclk, tia.hsync, mem, tv, &tia.hblank, &tia.hmoveLatch)
 	if tia.Video == nil {
 		return nil
 	}

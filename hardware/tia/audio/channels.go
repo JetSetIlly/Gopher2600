@@ -8,19 +8,38 @@ import (
 type channel struct {
 	au *Audio
 
-	regControl uint8
-	regFreq    uint8
-	regVolume  uint8
+	// each channel has three registers that control its output. from the
+	// "Stella Programmer's Guide":
+	//
+	// "Each audio circuit has three registers that control a noise-tone
+	// generator (what kind of sound), a frequency selection (high or low pitch
+	// of the sound), and a volume control."
+	//
+	// not all the bits are used in each register. the comments below indicate
+	// how many of the least-significant bits are used.
+	regControl uint8 // 4 bit
+	regFreq    uint8 // 5 bit
+	regVolume  uint8 // 4 bit
 
-	poly4ct uint8
-	poly5ct uint8
-	poly9ct uint16
+	// which bit of each polynomial counter to use next
+	poly4ct int
+	poly5ct int
+	poly9ct int
 
-	divCt  uint8
-	divMax uint8
+	// the different musical notes available to the 2600 are achived with a
+	// frequency clock. the easiest way to think of this is to think of a
+	// filter to the 30Khz clock signal.
+	freqClk uint8
 
-	div3Ct uint8
+	div3ct uint8
 
+	// the adjusted frequency is the value of the frequency register. when the
+	// 10KHz clock is required, this value is increased by a factor of 3
+	adjFreq uint8
+
+	// the different tones are achieved are by adjusting the volume between
+	// zero (silence) and the value in the volume register. actualVol is a
+	// record of that value.
 	actualVol uint8
 }
 
@@ -30,23 +49,33 @@ func (ch *channel) String() string {
 	return s.String()
 }
 
-func (ch *channel) process() {
-	if ch.divCt > 1 {
-		ch.divCt--
+// tick should be called at a frequency of 30Khz. when the 10Khz clock is
+// required, the frequency clock is increased by a factor of three.
+//
+// the logic in this function is taken almost directly from the TIA_process()
+// function in Ron Fries' TIASound.c
+func (ch *channel) tick() {
+	// tick frequency clock
+	if ch.freqClk > 1 {
+		ch.freqClk--
 		return
 	}
 
-	if ch.divCt != 1 {
+	if ch.freqClk != 1 {
 		return
 	}
 
+	// when frequency clock reaches zero, reset it back to the adjusted
+	// frequency value
+	ch.freqClk = ch.adjFreq
+
+	// the 5-bit polynomial clock toggles volume on change of bit. note the
+	// current bit so we can compare
 	var prevBit5 = ch.au.poly5bit[ch.poly5ct]
 
-	ch.divCt = ch.divMax
-
-	// from TIASound.c: "the P5 counter has multiple uses, so we inc it here"
+	// advance 5-bit polynomial clock
 	ch.poly5ct++
-	if ch.poly5ct >= uint8(len(ch.au.poly5bit)) {
+	if ch.poly5ct >= len(ch.au.poly5bit) {
 		ch.poly5ct = 0
 	}
 
@@ -62,10 +91,9 @@ func (ch *channel) process() {
 			if ch.regControl&0x0f == 0x0f {
 				// use poly5/div3
 				if ch.au.poly5bit[ch.poly5ct] != prevBit5 {
-
-					ch.div3Ct++
-					if ch.div3Ct == 3 {
-						ch.div3Ct = 0
+					ch.div3ct++
+					if ch.div3ct == 3 {
+						ch.div3ct = 0
 
 						// toggle volume
 						if ch.actualVol != 0 {
@@ -90,7 +118,7 @@ func (ch *channel) process() {
 			if ch.regControl == 0x08 {
 				// use poly9
 				ch.poly9ct++
-				if ch.poly9ct >= uint16(len(ch.au.poly9bit)) {
+				if ch.poly9ct >= len(ch.au.poly9bit) {
 					ch.poly9ct = 0
 				}
 
@@ -119,7 +147,7 @@ func (ch *channel) process() {
 		} else {
 			// use poly 4
 			ch.poly4ct++
-			if ch.poly4ct >= uint8(len(ch.au.poly4bit)) {
+			if ch.poly4ct >= len(ch.au.poly4bit) {
 				ch.poly4ct = 0
 			}
 

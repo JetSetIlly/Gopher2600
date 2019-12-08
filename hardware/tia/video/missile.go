@@ -18,7 +18,7 @@ type missileSprite struct {
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position    polycounter.Polycounter
+	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	Delay       *future.Ticker
 	moreHMOVE   bool
@@ -58,6 +58,14 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 		label:      label,
+	}
+
+	var err error
+
+	ms.position, err = polycounter.New(6)
+	if err != nil {
+		// TODO: propogate this error upwards
+		return nil
 	}
 
 	ms.Delay = future.NewTicker(label)
@@ -218,7 +226,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		// started
 		startCondition := ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted()
 
-		switch ms.position.Count {
+		switch ms.position.Count() {
 		case 3:
 			if ms.copies == 0x01 || ms.copies == 0x03 {
 				if startCondition {

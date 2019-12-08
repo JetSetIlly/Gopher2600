@@ -62,7 +62,8 @@ var messages = map[Errno]string{
 	CartridgeLoader: "cartridge loading error: %v",
 
 	// vcs
-	VCSError: "vcs error: %v",
+	VCSError:         "vcs error: %v",
+	PolycounterError: "polycounter error: %v",
 
 	// cpu
 	UnimplementedInstruction:       "cpu error: unimplemented instruction (%#02x) at (%#04x)",

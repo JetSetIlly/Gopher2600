@@ -34,6 +34,10 @@ type Audio struct {
 	poly9bit [511]uint8
 	div31    [31]uint8
 
+	// From the "Stella Programmer's Guide":
+	//
+	// "There are two audio circuits for generating sound. They are identical but
+	// completely independent and can be operated simultaneously [...]"
 	channel0 channel
 	channel1 channel
 }
@@ -60,7 +64,8 @@ func NewAudio() *Audio {
 	// packed with 8 bits per byte, using only a single bit per byte keeps the math
 	// simple, which is important for efficient processing."
 	au.poly4bit = [15]uint8{1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0}
-	au.poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
+	au.poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
+		0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
 
 	// from TIASound.c (referring to 9 bit polynomial table):
 	//
@@ -76,15 +81,14 @@ func NewAudio() *Audio {
 	// way it operates.  It does not have a 50% duty cycle, but instead has a 13:18
 	// ratio (of course, 13+18 = 31).  This could also be implemented by using
 	// counters."
-	au.div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	au.div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 	return au
 }
 
-// Mix the two VCS audio channels. From the "Stella Programmer's Guide":
-//
-// "There are two audio circuits for generating sound. They are identical but
-// completely independent and can be operated simultaneously [...]"
+// Mix the two VCS audio channels, returning a boolean indicating whether the
+// sound has been updated and a single value representing the mixed volume
 func (au *Audio) Mix() (bool, uint8) {
 	// the reference frequency for all sound produced by the TIA is 30Khz. this
 	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see
@@ -96,10 +100,25 @@ func (au *Audio) Mix() (bool, uint8) {
 		return false, 0
 	}
 
+	// reset clock114
 	au.clock114 = 0
-	au.channel0.process()
-	au.channel1.process()
 
-	// mix channels
+	// process each channel before mixing
+	au.channel0.tick()
+	au.channel1.tick()
+
+	// mix channels: deciding the combined output volume for the two channels
+	// is not as straight-forward and is it first seems. what we have here is
+	// the naive implementation, simply adding the two volume values together
+	// (we're not even taking an average).
+	//
+	// because the 2600 sound generator is an analogue circuit however, there
+	// are some subtleties that we have not accounted for. people have worked
+	// on this already. the document, "TIA Sounding off in the Digital Domain"
+	// gives a good description of what's required.
+	//
+	// https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
+	//
+	// !TODO: simulate analogue sound generation
 	return true, au.channel0.actualVol + au.channel1.actualVol
 }
