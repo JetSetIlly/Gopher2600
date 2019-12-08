@@ -974,8 +974,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			plyr = 0
 		case "1":
 			plyr = 1
-		default:
-			tokens.Unget()
 		}
 
 		switch plyr {
@@ -999,8 +997,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			miss = 0
 		case "1":
 			miss = 1
-		default:
-			tokens.Unget()
 		}
 
 		switch miss {
