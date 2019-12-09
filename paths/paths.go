@@ -1,16 +1,7 @@
-//+build darwin dragonfly freebsd linux openbsd netbsd solaris
-
-// Package paths should be used whenever a request to the filesystem is
-// made. The functions herein make sure that the correct path (depending on the
-// operating system being targeted) is used for the resource.
-//
-// Because this package handles project specific details it should be used
-// instead of the Go standard path package
 package paths
 
 import (
 	"os"
-	"os/user"
 	"path"
 )
 
@@ -45,12 +36,9 @@ func getBasePath() string {
 		return baseResourcePath
 	}
 
-	u, err := user.Current()
+	home, err := os.UserConfigDir()
 	if err != nil {
 		return baseResourcePath
 	}
-	p := make([]string, 0, 2)
-	p = append(p, u.HomeDir)
-	p = append(p, baseResourcePath)
-	return path.Join(p...)
+	return path.Join(home, baseResourcePath[1:])
 }
