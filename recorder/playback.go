@@ -3,10 +3,10 @@ package recorder
 import (
 	"fmt"
 	"gopher2600/cartridgeloader"
+	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/hardware/peripherals"
-	"gopher2600/screendigest"
 	"gopher2600/television"
 	"io/ioutil"
 	"os"
@@ -40,7 +40,7 @@ type Playback struct {
 
 	sequences []*playbackSequence
 	vcs       *hardware.VCS
-	digest    *screendigest.SHA1
+	digest    *digest.Screen
 
 	// the last frame where an event occurs
 	endFrame int
@@ -181,7 +181,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	var err error
 
 	// create digesttv using TV attached to VCS
-	plb.digest, err = screendigest.NewSHA1(plb.vcs.TV)
+	plb.digest, err = digest.NewScreen(plb.vcs.TV)
 	if err != nil {
 		return errors.New(errors.RecordingError, err)
 	}

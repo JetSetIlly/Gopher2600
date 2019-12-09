@@ -15,7 +15,7 @@ import (
 //
 // the following value has been discovered through trial and error. the precise
 // value is not critical.
-const bufferLength = 1540
+const bufferLength = 256
 
 type sound struct {
 	id       sdl.AudioDeviceID

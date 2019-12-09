@@ -104,8 +104,9 @@ const (
 	UnknownTVRequest
 	Television
 
-	// screen digest
+	// digests
 	ScreenDigest
+	AudioDigest
 
 	// wavwriter
 	WavWriter

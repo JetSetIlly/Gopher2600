@@ -1,4 +1,4 @@
-package screendigest
+package digest
 
 import (
 	"crypto/sha1"
@@ -7,13 +7,13 @@ import (
 	"gopher2600/television"
 )
 
-// SHA1 is an implementation of the television.Renderer interface with an
+// Screen is an implementation of the television.Renderer interface with an
 // embedded television for convenience. It generates a sha1 value of the
 // image every frame. it does not display the image anywhere.
 //
 // Note that the use of sha1 is fine for this application because this is not a
 // cryptographic task.
-type SHA1 struct {
+type Screen struct {
 	television.Television
 	digest   [sha1.Size]byte
 	pixels   []byte
@@ -22,12 +22,12 @@ type SHA1 struct {
 
 const pixelDepth = 3
 
-// NewSHA1 initialises a new instance of DigestTV. For convenience, the
+// NewScreen initialises a new instance of DigestTV. For convenience, the
 // television argument can be nil, in which case an instance of
 // StellaTelevision will be created.
-func NewSHA1(tv television.Television) (*SHA1, error) {
+func NewScreen(tv television.Television) (*Screen, error) {
 	// set up digest tv
-	dig := &SHA1{Television: tv}
+	dig := &Screen{Television: tv}
 
 	// register ourselves as a television.Renderer
 	dig.AddPixelRenderer(dig)
@@ -38,19 +38,19 @@ func NewSHA1(tv television.Television) (*SHA1, error) {
 	return dig, nil
 }
 
-func (dig SHA1) String() string {
+func (dig Screen) String() string {
 	return fmt.Sprintf("%x", dig.digest)
 }
 
 // ResetDigest resets the current digest value to 0
-func (dig *SHA1) ResetDigest() {
+func (dig *Screen) ResetDigest() {
 	for i := range dig.digest {
 		dig.digest[i] = 0
 	}
 }
 
 // Resize implements television.Television interface
-func (dig *SHA1) Resize(_, _ int) error {
+func (dig *Screen) Resize(_, _ int) error {
 	// length of pixels array contains enough room for the previous frames
 	// digest value
 	l := len(dig.digest)
@@ -63,7 +63,7 @@ func (dig *SHA1) Resize(_, _ int) error {
 }
 
 // NewFrame implements television.Renderer interface
-func (dig *SHA1) NewFrame(frameNum int) error {
+func (dig *Screen) NewFrame(frameNum int) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the screen data
 	n := copy(dig.pixels, dig.digest[:])
@@ -76,12 +76,12 @@ func (dig *SHA1) NewFrame(frameNum int) error {
 }
 
 // NewScanline implements television.Renderer interface
-func (dig *SHA1) NewScanline(scanline int) error {
+func (dig *Screen) NewScanline(scanline int) error {
 	return nil
 }
 
 // SetPixel implements television.Renderer interface
-func (dig *SHA1) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (dig *Screen) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
 	i += television.HorizClksScanline * y * pixelDepth
@@ -98,11 +98,11 @@ func (dig *SHA1) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 }
 
 // SetAltPixel implements television.Renderer interface
-func (dig *SHA1) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (dig *Screen) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 
-// EndRendering implements television.Renderer interface
-func (dig *SHA1) EndRendering() error {
+// SetAltPixel implements television.Renderer interface
+func (dig *Screen) EndRendering() error {
 	return nil
 }

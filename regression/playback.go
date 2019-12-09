@@ -3,11 +3,11 @@ package regression
 import (
 	"fmt"
 	"gopher2600/database"
+	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
-	"gopher2600/screendigest"
 	"gopher2600/television"
 	"io"
 	"os"
@@ -98,7 +98,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	}
 	defer tv.End()
 
-	_, err = screendigest.NewSHA1(tv)
+	_, err = digest.NewScreen(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}

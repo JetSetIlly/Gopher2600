@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/database"
+	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
 	"gopher2600/performance/limiter"
-	"gopher2600/screendigest"
 	"gopher2600/setup"
 	"gopher2600/television"
 	"io"
@@ -31,17 +31,16 @@ const (
 )
 
 // FrameRegression is the simplest regression type. it works by running the
-// emulation for N frames and the screen digest recorded at that point.
-// regression tests pass if the screen digest after N frames matches the stored
-// value.
+// emulation for N frames and the digest recorded at that point.regression
+// tests pass if the digest after N frames matches the stored value.
 type FrameRegression struct {
-	CartLoad     cartridgeloader.Loader
-	TVtype       string
-	NumFrames    int
-	State        bool
-	stateFile    string
-	Notes        string
-	screenDigest string
+	CartLoad  cartridgeloader.Loader
+	TVtype    string
+	NumFrames int
+	State     bool
+	stateFile string
+	Notes     string
+	digest    string
 }
 
 func deserialiseFrameEntry(fields []string) (database.Entry, error) {
@@ -56,7 +55,7 @@ func deserialiseFrameEntry(fields []string) (database.Entry, error) {
 	}
 
 	// string fields need no conversion
-	reg.screenDigest = fields[frameFieldDigest]
+	reg.digest = fields[frameFieldDigest]
 	reg.CartLoad.Filename = fields[frameFieldCartName]
 	reg.CartLoad.Format = fields[frameFieldCartFormat]
 	reg.TVtype = fields[frameFieldTVtype]
@@ -107,7 +106,7 @@ func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.stateFile,
-			reg.screenDigest,
+			reg.digest,
 			reg.Notes,
 		},
 		nil
@@ -132,7 +131,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 	defer tv.End()
 
-	dig, err := screendigest.NewSHA1(tv)
+	dig, err := digest.NewScreen(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionFrameError, err)
 	}
@@ -182,7 +181,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 
 	if newRegression {
-		reg.screenDigest = dig.String()
+		reg.digest = dig.String()
 
 		if reg.State {
 			// create a unique filename
@@ -257,8 +256,8 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 
 	}
 
-	if dig.String() != reg.screenDigest {
-		return false, "screen digest mismatch", nil
+	if dig.String() != reg.digest {
+		return false, "digest mismatch", nil
 	}
 
 	return true, "", nil

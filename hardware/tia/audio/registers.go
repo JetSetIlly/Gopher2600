@@ -52,9 +52,8 @@ func (ch *channel) reactAUDCx() {
 		}
 	}
 
-	// reset channel when things have changed
 	if freqClk != ch.adjFreq {
-		// reset frequency clock
+		// reset frequency if frequency has changed
 		ch.adjFreq = freqClk
 
 		// if the channel is now "volume only" or was "volume only" ...

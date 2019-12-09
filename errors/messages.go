@@ -91,8 +91,9 @@ var messages = map[Errno]string{
 	UnknownTVRequest: "television error: unsupported request (%v)",
 	Television:       "television error: %v",
 
-	// screen digest
-	ScreenDigest: "television error: screendigest: %v",
+	// digests
+	ScreenDigest: "screen digest: %v",
+	AudioDigest:  "audio digest: %v",
 
 	// audio2wav
 	WavWriter: "wav writer: %v",
