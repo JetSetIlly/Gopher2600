@@ -53,13 +53,14 @@ const (
 
 	// database
 	DatabaseError
+	DatabaseReadError
 	DatabaseSelectEmpty
 	DatabaseKeyError
 	DatabaseFileUnavailable
 
 	// regression
 	RegressionError
-	RegressionFrameError
+	RegressionDigestError
 	RegressionPlaybackError
 
 	// setup
@@ -105,7 +106,7 @@ const (
 	Television
 
 	// digests
-	ScreenDigest
+	VideoDigest
 	AudioDigest
 
 	// wavwriter

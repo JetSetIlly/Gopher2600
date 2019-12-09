@@ -37,7 +37,7 @@ type Regressor interface {
 // when starting a database session we need to register what entries we will
 // find in the database
 func initDBSession(db *database.Session) error {
-	if err := db.RegisterEntryType(frameEntryID, deserialiseFrameEntry); err != nil {
+	if err := db.RegisterEntryType(digestEntryID, deserialiseDigestEntry); err != nil {
 		return err
 	}
 
@@ -152,7 +152,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 
 	db, err := database.StartSession(paths.ResourcePath(regressionDBFile), database.ActivityReading, initDBSession)
 	if err != nil {
-		return err
+		return errors.New(errors.RegressionError, err)
 	}
 	defer db.EndSession(false)
 

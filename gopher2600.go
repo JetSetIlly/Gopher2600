@@ -444,7 +444,7 @@ func regressAdd(md *modalflag.Modes) error {
 				Filename: md.GetArg(0),
 				Format:   *cartFormat,
 			}
-			rec = &regression.FrameRegression{
+			rec = &regression.DigestRegression{
 				CartLoad:  cartload,
 				TVtype:    strings.ToUpper(*tvType),
 				NumFrames: *numframes,

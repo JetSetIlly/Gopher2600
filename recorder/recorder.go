@@ -15,7 +15,9 @@ import (
 type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
-	digest *digest.Screen
+
+	// using video digest only to test recording validity
+	digest *digest.Video
 
 	headerWritten bool
 }
@@ -31,8 +33,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 	rec := &Recorder{vcs: vcs}
 
-	// create digesttv, piggybacking on the tv already being used by vcs
-	rec.digest, err = digest.NewScreen(vcs.TV)
+	rec.digest, err = digest.NewVideo(vcs.TV)
 	if err != nil {
 		return nil, errors.New(errors.RecordingError, err)
 	}

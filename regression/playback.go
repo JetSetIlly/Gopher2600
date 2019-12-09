@@ -94,11 +94,11 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	tv, err := television.NewTelevision(plb.TVtype)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 	defer tv.End()
 
-	_, err = digest.NewScreen(tv)
+	_, err = digest.NewVideo(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}

@@ -10,17 +10,16 @@ import (
 	"strings"
 )
 
-// ActivityType is used to specify the general activity of what will be
-// occuring during the database session
-type ActivityType int
+// Activity is used to specify the general activity of what will be occuring
+// during the database session
+type Activity int
 
-// a list of valid ActivityType. the "higher level" activities inherit the
-// activity abilities of the activity levels lower down the scale. in other
-// words:
-//		- Modifying implies Reading
-//		- Creating implies Modifying (which in turn implies Reading)
+// a list of valid Activity. the "higher level" activities inherit the activity
+// abilities of the activity levels lower down the scale. in other words:
+//	. Modifying implies Reading
+//	. Creating implies Modifying (which in turn implies Reading)
 const (
-	ActivityReading ActivityType = iota
+	ActivityReading Activity = iota
 	ActivityModifying
 	ActivityCreating
 )
@@ -28,7 +27,7 @@ const (
 // Session keeps track of a database session
 type Session struct {
 	dbfile   *os.File
-	activity ActivityType
+	activity Activity
 
 	entries map[int]Entry
 
@@ -40,7 +39,7 @@ type Session struct {
 // to call when database has been succesfully opened. this function should be
 // used to add information about the different entries that are to be used in
 // the database (see AddEntryType() function)
-func StartSession(path string, activity ActivityType, init func(*Session) error) (*Session, error) {
+func StartSession(path string, activity Activity, init func(*Session) error) (*Session, error) {
 	var err error
 
 	db := &Session{activity: activity}
@@ -133,6 +132,9 @@ func (db *Session) EndSession(commitChanges bool) error {
 	return nil
 }
 
+// readDBFile reads each line in the database file, checks for validity of key
+// and entry type and tries to deserialise the entry. it fails on the first
+// error it encounters.
 func (db *Session) readDBFile() error {
 	// clobbers the contents of db.entries
 	db.entries = make(map[int]Entry, len(db.entries))
@@ -161,13 +163,13 @@ func (db *Session) readDBFile() error {
 
 		key, err := strconv.Atoi(fields[leaderFieldKey])
 		if err != nil {
-			msg := fmt.Sprintf("invalid key [%s] at line %d", fields[leaderFieldKey], i+1)
-			return errors.New(errors.DatabaseError, msg)
+			msg := fmt.Sprintf("invalid key (%s)", fields[leaderFieldKey])
+			return errors.New(errors.DatabaseReadError, msg, i+1)
 		}
 
 		if _, ok := db.entries[key]; ok {
-			msg := fmt.Sprintf("duplicate key [%v] at line %d", key, i+1)
-			return errors.New(errors.DatabaseError, msg)
+			msg := fmt.Sprintf("duplicate key (%v)", key)
+			return errors.New(errors.DatabaseReadError, msg, i+1)
 		}
 
 		var ent Entry
@@ -175,12 +177,12 @@ func (db *Session) readDBFile() error {
 		deserialise, ok := db.entryTypes[fields[leaderFieldID]]
 		if !ok {
 			msg := fmt.Sprintf("unrecognised entry type [%s]", fields[leaderFieldID])
-			return errors.New(errors.DatabaseError, msg)
+			return errors.New(errors.DatabaseReadError, msg, i+1)
 		}
 
 		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
 		if err != nil {
-			return err
+			return errors.New(errors.DatabaseReadError, err, i+1)
 		}
 
 		db.entries[key] = ent

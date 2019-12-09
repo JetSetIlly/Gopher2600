@@ -6,7 +6,6 @@ import (
 	"gopher2600/debugger/console"
 	"gopher2600/debugger/reflection"
 	"gopher2600/debugger/script"
-	"gopher2600/digest"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -29,9 +28,8 @@ type Debugger struct {
 	disasm *disassembly.Disassembly
 
 	// gui/tv
-	tv     television.Television
-	scr    gui.GUI
-	digest *digest.Screen
+	tv  television.Television
+	scr gui.GUI
 
 	// interface to the vcs memory with additional debugging functions
 	// -- access to vcs memory from the debugger (eg. peeking and poking) is
@@ -124,11 +122,6 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 	var err error
 
 	dbg := &Debugger{tv: tv, scr: scr}
-
-	dbg.digest, err = digest.NewScreen(dbg.tv)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(dbg.tv)

@@ -40,14 +40,15 @@ var messages = map[Errno]string{
 
 	// database
 	DatabaseError:           "database error: %v",
+	DatabaseReadError:       "datbase error: %v [line %d]",
 	DatabaseSelectEmpty:     "database error: no selected entries",
 	DatabaseKeyError:        "database error: no such key in database [%v]",
 	DatabaseFileUnavailable: "database error: cannot open database (%v)",
 
 	// regression
 	RegressionError:         "regression test error: %v",
-	RegressionFrameError:    "regression test error: frame entry: %v",
-	RegressionPlaybackError: "regression test error: playback entry: %v",
+	RegressionDigestError:   "digest entry: %v",
+	RegressionPlaybackError: "playback entry: %v",
 
 	// setup
 	SetupError:      "setup error: %v",
@@ -92,8 +93,8 @@ var messages = map[Errno]string{
 	Television:       "television error: %v",
 
 	// digests
-	ScreenDigest: "screen digest: %v",
-	AudioDigest:  "audio digest: %v",
+	VideoDigest: "video digest: %v",
+	AudioDigest: "audio digest: %v",
 
 	// audio2wav
 	WavWriter: "wav writer: %v",

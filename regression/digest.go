@@ -17,23 +17,33 @@ import (
 	"strings"
 )
 
-const frameEntryID = "frame"
+const digestEntryID = "digest"
+
+type digestMode int
 
 const (
-	frameFieldCartName int = iota
-	frameFieldCartFormat
-	frameFieldTVtype
-	frameFieldNumFrames
-	frameFieldState
-	frameFieldDigest
-	frameFieldNotes
-	numFrameFields
+	digestVideoOnly digestMode = iota
+	digestAudioOnly
+	digestVideoAndAudio
 )
 
-// FrameRegression is the simplest regression type. it works by running the
-// emulation for N frames and the digest recorded at that point.regression
-// tests pass if the digest after N frames matches the stored value.
-type FrameRegression struct {
+const (
+	digestFieldMode int = iota
+	digestFieldCartName
+	digestFieldCartFormat
+	digestFieldTVtype
+	digestFieldNumFrames
+	digestFieldState
+	digestFieldDigest
+	digestFieldNotes
+	numDigestFields
+)
+
+// DigestRegression is the simplest regression type. it works by running the
+// emulation for N frames and the digest recorded at that point. Regression
+// passes if subsequenct runs produce the same digest value
+type DigestRegression struct {
+	mode      digestMode
 	CartLoad  cartridgeloader.Loader
 	TVtype    string
 	NumFrames int
@@ -43,49 +53,71 @@ type FrameRegression struct {
 	digest    string
 }
 
-func deserialiseFrameEntry(fields []string) (database.Entry, error) {
-	reg := &FrameRegression{}
+func deserialiseDigestEntry(fields []string) (database.Entry, error) {
+	reg := &DigestRegression{}
 
 	// basic sanity check
-	if len(fields) > numFrameFields {
-		return nil, errors.New(errors.RegressionFrameError, "too many fields")
+	if len(fields) > numDigestFields {
+		return nil, errors.New(errors.RegressionDigestError, "too many fields")
 	}
-	if len(fields) < numFrameFields {
-		return nil, errors.New(errors.RegressionFrameError, "too few fields")
+	if len(fields) < numDigestFields {
+		return nil, errors.New(errors.RegressionDigestError, "too few fields")
 	}
 
 	// string fields need no conversion
-	reg.digest = fields[frameFieldDigest]
-	reg.CartLoad.Filename = fields[frameFieldCartName]
-	reg.CartLoad.Format = fields[frameFieldCartFormat]
-	reg.TVtype = fields[frameFieldTVtype]
-	reg.Notes = fields[frameFieldNotes]
+	reg.CartLoad.Filename = fields[digestFieldCartName]
+	reg.CartLoad.Format = fields[digestFieldCartFormat]
+	reg.TVtype = fields[digestFieldTVtype]
+	reg.digest = fields[digestFieldDigest]
+	reg.Notes = fields[digestFieldNotes]
 
 	var err error
 
-	// convert number of frames field
-	reg.NumFrames, err = strconv.Atoi(fields[frameFieldNumFrames])
-	if err != nil {
-		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[frameFieldNumFrames])
-		return nil, errors.New(errors.RegressionFrameError, msg)
+	// convert mode field
+	switch fields[digestFieldMode] {
+	case "0":
+		reg.mode = digestVideoOnly
+	case "1":
+		return nil, errors.New(errors.RegressionDigestError, "audio digesting not yet implemented")
+	case "2":
+		return nil, errors.New(errors.RegressionDigestError, "video & audio digesting not yet implemented")
+	default:
+		return nil, errors.New(errors.RegressionDigestError, "unrecognised mode")
 	}
 
-	// convert state field
-	if fields[frameFieldState] != "" {
+	// convert number of frames field
+	reg.NumFrames, err = strconv.Atoi(fields[digestFieldNumFrames])
+	if err != nil {
+		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[digestFieldNumFrames])
+		return nil, errors.New(errors.RegressionDigestError, msg)
+	}
+
+	// handle state field
+	if fields[digestFieldState] != "" {
 		reg.State = true
-		reg.stateFile = fields[frameFieldState]
+		reg.stateFile = fields[digestFieldState]
 	}
 
 	return reg, nil
 }
 
 // ID implements the database.Entry interface
-func (reg FrameRegression) ID() string {
-	return frameEntryID
+func (reg DigestRegression) ID() string {
+	s := strings.Builder{}
+	s.WriteString(digestEntryID)
+	switch reg.mode {
+	case digestVideoOnly:
+		s.WriteString("/video")
+	case digestAudioOnly:
+		s.WriteString("/audio")
+	case digestVideoAndAudio:
+		s.WriteString("/video & audio")
+	}
+	return s.String()
 }
 
 // String implements the database.Entry interface
-func (reg FrameRegression) String() string {
+func (reg DigestRegression) String() string {
 	s := strings.Builder{}
 	stateFile := ""
 	if reg.State {
@@ -99,8 +131,9 @@ func (reg FrameRegression) String() string {
 }
 
 // Serialise implements the database.Entry interface
-func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
+func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
+			strconv.Itoa(int(reg.mode)),
 			reg.CartLoad.Filename,
 			reg.CartLoad.Format,
 			reg.TVtype,
@@ -113,7 +146,7 @@ func (reg *FrameRegression) Serialise() (database.SerialisedEntry, error) {
 }
 
 // CleanUp implements the database.Entry interface
-func (reg FrameRegression) CleanUp() error {
+func (reg DigestRegression) CleanUp() error {
 	err := os.Remove(reg.stateFile)
 	if _, ok := err.(*os.PathError); ok {
 		return nil
@@ -122,28 +155,28 @@ func (reg FrameRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
+func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 	defer tv.End()
 
-	dig, err := digest.NewScreen(tv)
+	dig, err := digest.NewVideo(tv)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 
 	vcs, err := hardware.NewVCS(dig)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 
 	// list of state information. we'll either save this in the event of
@@ -154,7 +187,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	// display progress meter every 1 second
 	limiter, err := limiter.NewFPSLimiter(1)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 
 	// add the starting state of the tv
@@ -177,7 +210,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 	})
 
 	if err != nil {
-		return false, "", errors.New(errors.RegressionFrameError, err)
+		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 
 	if newRegression {
@@ -194,7 +227,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			// need
 			if nf != nil {
 				msg := fmt.Sprintf("state recording file already exists (%s)", reg.stateFile)
-				return false, "", errors.New(errors.RegressionFrameError, msg)
+				return false, "", errors.New(errors.RegressionDigestError, msg)
 			}
 			nf.Close()
 
@@ -202,7 +235,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
 				msg := fmt.Sprintf("error creating state recording file: %s", err)
-				return false, "", errors.New(errors.RegressionFrameError, msg)
+				return false, "", errors.New(errors.RegressionDigestError, msg)
 			}
 			defer nf.Close()
 
@@ -210,7 +243,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
 					msg := fmt.Sprintf("error writing state recording file: %s", err)
-					return false, "", errors.New(errors.RegressionFrameError, msg)
+					return false, "", errors.New(errors.RegressionDigestError, msg)
 				}
 			}
 		}
@@ -226,7 +259,7 @@ func (reg *FrameRegression) regress(newRegression bool, output io.Writer, msg st
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)
-			return false, "", errors.New(errors.RegressionFrameError, msg)
+			return false, "", errors.New(errors.RegressionDigestError, msg)
 		}
 		defer nf.Close()
 

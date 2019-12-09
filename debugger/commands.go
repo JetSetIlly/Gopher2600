@@ -29,7 +29,6 @@ const (
 	cmdCartridge     = "CARTRIDGE"
 	cmdClear         = "CLEAR"
 	cmdDebuggerState = "DEBUGGERSTATE"
-	cmdDigest        = "DIGEST"
 	cmdDisassembly   = "DISASSEMBLY"
 	cmdDisplay       = "DISPLAY"
 	cmdDrop          = "DROP"
@@ -78,7 +77,6 @@ var commandTemplate = []string{
 	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDebuggerState,
-	cmdDigest + " (RESET)",
 	cmdDisassembly,
 	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %N",
@@ -1157,17 +1155,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 		if err != nil {
 			return doNothing, err
-		}
-
-	case cmdDigest:
-		arg, ok := tokens.Get()
-		if ok {
-			switch arg {
-			case "RESET":
-				dbg.digest.ResetDigest()
-			}
-		} else {
-			dbg.print(console.StyleFeedback, dbg.digest.String())
 		}
 	}
 

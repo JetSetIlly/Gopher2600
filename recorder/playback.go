@@ -40,7 +40,7 @@ type Playback struct {
 
 	sequences []*playbackSequence
 	vcs       *hardware.VCS
-	digest    *digest.Screen
+	digest    *digest.Video
 
 	// the last frame where an event occurs
 	endFrame int
@@ -180,8 +180,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 
 	var err error
 
-	// create digesttv using TV attached to VCS
-	plb.digest, err = digest.NewScreen(plb.vcs.TV)
+	plb.digest, err = digest.NewVideo(plb.vcs.TV)
 	if err != nil {
 		return errors.New(errors.RecordingError, err)
 	}
