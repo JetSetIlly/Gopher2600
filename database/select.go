@@ -4,7 +4,10 @@ import "gopher2600/errors"
 
 // SelectAll entries in the database. onSelect can be nil.
 //
-// returns last matched entry in selection or an error with the last entry
+// onSelect() should return true if select process is to continue. Continue
+// flag is ignored if error is not nil.
+//
+// Returns last matched entry in selection or an error with the last entry
 // matched before the error occurred.
 func (db Session) SelectAll(onSelect func(Entry) (bool, error)) (Entry, error) {
 	var entry Entry
@@ -33,7 +36,10 @@ func (db Session) SelectAll(onSelect func(Entry) (bool, error)) (Entry, error) {
 // if list of keys is empty then all keys are matched (SelectAll() maybe more
 // appropriate in that case). onSelect can be nil.
 //
-// returns last matched entry in selection or an error with the last entry
+// onSelect() should return true if select process is to continue. Continue
+// flag is ignored if error is not nil.
+//
+// Returns last matched entry in selection or an error with the last entry
 // matched before the error occurred.
 func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (Entry, error) {
 	var entry Entry

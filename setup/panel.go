@@ -31,7 +31,7 @@ type PanelSetup struct {
 	notes string
 }
 
-func deserialisePanelSetupEntry(fields []string) (database.Entry, error) {
+func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry, error) {
 	set := &PanelSetup{}
 
 	// basic sanity check

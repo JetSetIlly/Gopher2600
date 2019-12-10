@@ -31,11 +31,12 @@ func NewAudio(filename string) (*Audio, error) {
 	return dig, nil
 }
 
-func (dig Audio) String() string {
+// Hash implements digest.Digest interface
+func (dig Audio) Hash() string {
 	return fmt.Sprintf("%x", dig.digest)
 }
 
-// ResetDigest resets the current digest value to 0
+// ResetDigest implements digest.Digest interface
 func (dig *Audio) ResetDigest() {
 	for i := range dig.digest {
 		dig.digest[i] = 0

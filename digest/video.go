@@ -38,11 +38,12 @@ func NewVideo(tv television.Television) (*Video, error) {
 	return dig, nil
 }
 
-func (dig Video) String() string {
+// Hash implements digest.Digest interface
+func (dig Video) Hash() string {
 	return fmt.Sprintf("%x", dig.digest)
 }
 
-// ResetDigest resets the current digest value to 0
+// ResetDigest implements digest.Digest interface
 func (dig *Video) ResetDigest() {
 	for i := range dig.digest {
 		dig.digest[i] = 0

@@ -32,7 +32,7 @@ type PlaybackRegression struct {
 	Notes  string
 }
 
-func deserialisePlaybackEntry(fields []string) (database.Entry, error) {
+func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, error) {
 	reg := &PlaybackRegression{}
 
 	// basic sanity check

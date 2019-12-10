@@ -53,7 +53,7 @@ type DigestRegression struct {
 	digest    string
 }
 
-func deserialiseDigestEntry(fields []string) (database.Entry, error) {
+func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, error) {
 	reg := &DigestRegression{}
 
 	// basic sanity check
@@ -214,7 +214,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	}
 
 	if newRegression {
-		reg.digest = dig.String()
+		reg.digest = dig.Hash()
 
 		if reg.State {
 			// create a unique filename
@@ -289,7 +289,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 
 	}
 
-	if dig.String() != reg.digest {
+	if dig.Hash() != reg.digest {
 		return false, "digest mismatch", nil
 	}
 

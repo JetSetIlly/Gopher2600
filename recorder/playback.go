@@ -220,7 +220,7 @@ func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Action, erro
 	// compare current state with the recording
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
-		if nextEvent.hash != plb.digest.String() {
+		if nextEvent.hash != plb.digest.Hash() {
 			return peripherals.NoAction, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 

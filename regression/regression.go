@@ -18,8 +18,6 @@ const regressionDBFile = "regressionDB"
 const regressionScripts = "regressionScripts"
 
 // Regressor is the generic entry type in the regressionDB
-//
-// * exported because we use it directly from the main package
 type Regressor interface {
 	database.Entry
 
@@ -142,9 +140,9 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	return nil
 }
 
-// RegressRunTests runs all the tests in the regression database
-// o filterKeys list specified which entries to test. an empty keys list means that
-//	every entry should be tested
+// RegressRunTests runs all the tests in the regression database. filterKeys
+// list specified which entries to test. an empty keys list means that every
+// entry should be tested
 func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKeys []string) error {
 	if output == nil {
 		return errors.New(errors.PanicError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")

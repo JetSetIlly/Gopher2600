@@ -14,13 +14,15 @@ import (
 // during the database session
 type Activity int
 
-// a list of valid Activity. the "higher level" activities inherit the activity
-// abilities of the activity levels lower down the scale. in other words:
-//	. Modifying implies Reading
-//	. Creating implies Modifying (which in turn implies Reading)
+// Valid activities: the "higher level" activities inherit the activity
+// abilities of the activity levels lower down the scale.
 const (
 	ActivityReading Activity = iota
+
+	// Modifying implies Reading
 	ActivityModifying
+
+	// Creating implies Modifying (which in turn implies Reading)
 	ActivityCreating
 )
 
@@ -32,7 +34,7 @@ type Session struct {
 	entries map[int]Entry
 
 	// deserialisers for the different entries that may appear in the database
-	entryTypes map[string]deserialiser
+	entryTypes map[string]Deserialiser
 }
 
 // StartSession starts/initialises a new DB session. argument is the function
@@ -43,7 +45,7 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 	var err error
 
 	db := &Session{activity: activity}
-	db.entryTypes = make(map[string]deserialiser)
+	db.entryTypes = make(map[string]Deserialiser)
 
 	var flags int
 	switch activity {

@@ -5,8 +5,8 @@ import (
 	"gopher2600/errors"
 )
 
-// the initialisation function when creating a new entry
-type deserialiser func(fields []string) (Entry, error)
+// Deserialiser extracts/converts fields from a SerialisedEntry
+type Deserialiser func(fields SerialisedEntry) (Entry, error)
 
 // SerialisedEntry is the Entry data represented as an array of strings
 type SerialisedEntry []string
@@ -30,8 +30,8 @@ type Entry interface {
 }
 
 // RegisterEntryType tells the database what entries it may expect in the database
-// and what to do when it encounters one
-func (db *Session) RegisterEntryType(id string, des deserialiser) error {
+// and how to deserialise the entry.
+func (db *Session) RegisterEntryType(id string, des Deserialiser) error {
 	if _, ok := db.entryTypes[id]; ok {
 		msg := fmt.Sprintf("trying to register a duplicate entry ID [%s]", id)
 		return errors.New(errors.DatabaseError, msg)
