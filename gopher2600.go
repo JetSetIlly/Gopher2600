@@ -20,10 +20,8 @@ import (
 	"gopher2600/television"
 	"gopher2600/wavwriter"
 	"io"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 )
 
 const defaultInitScript = "debuggerInit"
@@ -31,7 +29,7 @@ const defaultInitScript = "debuggerInit"
 func main() {
 	// we generate random numbers in some places. seed the generator with the
 	// current time
-	rand.Seed(int64(time.Now().Second()))
+	// rand.Seed(int64(time.Now().Second()))
 
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])

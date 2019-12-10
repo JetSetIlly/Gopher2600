@@ -30,8 +30,8 @@ type playbackSequence struct {
 	eventCt int
 }
 
-// Playback is an implementation of the controller interface. it reads from an
-// existing recording file and responds to GetInput() requests
+// Playback is used to reperform the user input recorded in a previously transcribed
+// file. It implements the peripherals.Controller interface.
 type Playback struct {
 	transcript string
 
@@ -55,7 +55,7 @@ func (plb Playback) String() string {
 }
 
 // EndFrame returns true if emulation has gone past the last frame of the
-// playback
+// playback.
 func (plb Playback) EndFrame() (bool, error) {
 	currFrame, err := plb.digest.GetState(television.ReqFramenum)
 	if err != nil {
@@ -70,7 +70,7 @@ func (plb Playback) EndFrame() (bool, error) {
 
 }
 
-// NewPlayback is the preferred method of implementation for the Playback type
+// NewPlayback is the preferred method of implementation for the Playback type.
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
@@ -165,7 +165,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 }
 
 // AttachToVCS attaches the playback instance (an implementation of the
-// controller interface) to the supplied VCS
+// controller interface) to all the ports of the VCS, including the panel.
 func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
@@ -193,7 +193,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	return nil
 }
 
-// GetInput implements peripherals.Controller interface
+// GetInput implements the peripherals.Controller interface.
 func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Action, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]

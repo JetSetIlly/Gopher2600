@@ -222,7 +222,8 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 // loadCartridge makes sure that the cartridge loaded into vcs memory and the
 // available disassembly/symbols are in sync.
 //
-// NEVER call vcs.AttachCartridge except through this function
+// NEVER call vcs.AttachCartridge() or setup.AttachCartridge() except through
+// this function
 //
 // this is the glue that hold the cartridge and disassembly packages
 // together

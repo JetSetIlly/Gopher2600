@@ -68,8 +68,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 
 // AttachCartridge loads a cartridge (given by filename) into the emulators
 // memory. While this function can be called directly it is advised that the
-// equivalent function call in the setup package is used. that function in turn
-// calls this function in this package
+// setup package is used in most circumstances.
 func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	if cartload.Filename == "" {
 		vcs.Mem.Cart.Eject()

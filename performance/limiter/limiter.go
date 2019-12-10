@@ -1,3 +1,16 @@
+// Package limiter provides a rough and ready way of limiting events to a fixed
+// rate.
+//
+// A new FpsLimiter can be creating with (error handling removed for clarity):
+//
+//	fps, _ := limiter.NewFPSLimiter(60)
+//
+// Operations can then be stalled with the Wait() function. For example:
+//
+//	for {
+//		fps.Wait()
+//		renderImage()
+//	}
 package limiter
 
 import (
@@ -39,7 +52,7 @@ func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
 	return lim, nil
 }
 
-// SetLimit defines how frame limiter rate
+// SetLimit changes the limit at which the FpsLimiter waits
 func (lim *FpsLimiter) SetLimit(framesPerSecond int) {
 	lim.framesPerSecond = framesPerSecond
 	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float64(1.0)/float64(framesPerSecond)))

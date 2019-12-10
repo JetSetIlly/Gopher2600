@@ -1,3 +1,5 @@
+// Package performance contains helper functions realting to
+// performance. This includes CPU and memory profile generation.
 package performance
 
 import (

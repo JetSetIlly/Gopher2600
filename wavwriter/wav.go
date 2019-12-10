@@ -1,3 +1,4 @@
+// Package wavwriter allows writing of audio data to disk as a WAV file.
 package wavwriter
 
 import (

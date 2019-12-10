@@ -80,7 +80,7 @@ func (plb *Playback) readHeader(lines []string) error {
 	return nil
 }
 
-// IsPlaybackFile returns true if file appears to be a playback file.
+// IsPlaybackFile returns true if the specified file appears to be a playback file.
 func IsPlaybackFile(filename string) bool {
 	f, err := os.Open(filename)
 	if err != nil {

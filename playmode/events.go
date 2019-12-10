@@ -6,10 +6,10 @@ import (
 	"gopher2600/hardware/peripherals"
 )
 
-// KeyboardEventHandler handles keypresses for play/run mode
-// returns true if key has been handled, false if not
+// KeyboardEventHandler handles keypresses sent from a GUI. Returns true if
+// key has been handled, false otherwise.
 //
-// (public declaration because we want to use this in the debugger as well)
+// For reasons of consistency, this handler is used by the debugger too.
 func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardware.VCS) error {
 	var err error
 

@@ -11,7 +11,9 @@ import (
 	"os"
 )
 
-// Recorder records controller events to disk, intended for future playback
+// Recorder transcribes user input to a file. The transcribed file is intended
+// for future playback. The Recorder type implements the
+// peripherals.Transcriber interface.
 type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
@@ -22,7 +24,9 @@ type Recorder struct {
 	headerWritten bool
 }
 
-// NewRecorder is the preferred method of implementation for the FileRecorder type
+// NewRecorder is the preferred method of implementation for the FileRecorder
+// type. Note that attaching of the Recorder to all the ports of the VCS
+// (including the panel) is implicit in this function call.
 func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	var err error
 
@@ -33,6 +37,12 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 	rec := &Recorder{vcs: vcs}
 
+	// attach recorder to vcs peripherals, including the panel
+	vcs.Ports.Player0.AttachTranscriber(rec)
+	vcs.Ports.Player1.AttachTranscriber(rec)
+	vcs.Panel.AttachTranscriber(rec)
+
+	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)
 	if err != nil {
 		return nil, errors.New(errors.RecordingError, err)
@@ -61,7 +71,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	return rec, nil
 }
 
-// End closes the output file.
+// End flushes all remaining transcription to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
 	err := rec.Transcribe(peripherals.PanelID, peripherals.PanelPowerOff)
@@ -128,7 +138,7 @@ func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Actio
 		fieldSep,
 		horizpos,
 		fieldSep,
-		rec.digest.String(),
+		rec.digest.Hash(),
 	)
 
 	n, err := io.WriteString(rec.output, line)

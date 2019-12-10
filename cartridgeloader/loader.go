@@ -1,3 +1,5 @@
+// Package cartridgeloader is used to transparently load cartridge data. It
+// currrently supports loading from the local filesystem and http.
 package cartridgeloader
 
 import (

@@ -1,3 +1,6 @@
+// Package playmode is a simple way of running the emulation. It handles setup
+// of the hardware, preparation of playback scripts (for recording or playback)
+// and attaching of a GUI and routing of input events.
 package playmode
 
 import (
@@ -14,7 +17,7 @@ import (
 	"time"
 )
 
-// Play sets the emulation running - without any debugging features
+// Play is a quick of setting up a playable instance of the emulator.
 func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool, newRecording bool, cartload cartridgeloader.Loader) error {
 	var transcript string
 
@@ -58,11 +61,6 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool,
 		defer func() {
 			rec.End()
 		}()
-
-		// attach recorder to vcs peripherals, including the panel
-		vcs.Ports.Player0.AttachTranscriber(rec)
-		vcs.Ports.Player1.AttachTranscriber(rec)
-		vcs.Panel.AttachTranscriber(rec)
 
 		// attach cartridge after recorder and transcribers have been
 		// setup because we want to catch any setup events in the recording

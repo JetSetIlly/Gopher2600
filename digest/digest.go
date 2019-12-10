@@ -1,9 +1,12 @@
-// Package digest contain implementations of television protocol interfaces,
-// namely PixelRenderer and AudioMixer, such that a mathematical hash is
-// produced. The hash can then be used to compare output input from subsequent
-// emulation executions - if a new hash differs from a previously recorded
-// value then something has changed. We use this as the basis for regression
-// tests and playback verification.
+// Package digest is used to create mathematical hashes. The two
+// implementations of the Digest interface also implement the
+// television.PixelRenderer and television.AudioMixer interfaces.
+//
+// The digest.Video type is used to capture video output while digest.Audio is
+// used to capture audio output.
+//
+// The hashes produced by these types are used from regression tests and for
+// verification of playback scripts.
 package digest
 
 // Digest implementations compute a mathematical hash, retreivable with the
