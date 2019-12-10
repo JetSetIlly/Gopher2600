@@ -265,7 +265,7 @@ func perform(md *modalflag.Modes) error {
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
-	profile := md.AddBool("profile", false, "perform cpu and memory profiling")
+	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -411,10 +411,13 @@ func regressAdd(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL (cartridge args only)")
-	numframes := md.AddInt("frames", 10, "number of frames to run (cartridge args only)")
-	state := md.AddBool("state", false, "record TV state at every CPU step")
+	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
+	numframes := md.AddInt("frames", 10, "number of frames to run [cartridge args only]")
+	state := md.AddBool("state", false, "record TV state at every CPU step [cartrdige args only]")
+	mode := md.AddString("mode", "video", "type of digest to create [cartridge args only]")
 	notes := md.AddString("notes", "", "annotation for the database")
+
+	md.AdditionalHelp("The regression test to be added can be the path to a cartrige file or a previously recorded playback file. For playback files, the flags marked [cartridge args only] do not make sense and will be ignored.")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -444,7 +447,15 @@ func regressAdd(md *modalflag.Modes) error {
 				Filename: md.GetArg(0),
 				Format:   *cartFormat,
 			}
+
+			// parse digest mode, failing if string is not recognised
+			m, err := regression.ParseDigestMode(*mode)
+			if err != nil {
+				return fmt.Errorf("%v", err)
+			}
+
 			rec = &regression.DigestRegression{
+				Mode:      m,
 				CartLoad:  cartload,
 				TVtype:    strings.ToUpper(*tvType),
 				NumFrames: *numframes,
@@ -458,10 +469,10 @@ func regressAdd(md *modalflag.Modes) error {
 			// using carriage return (without newline) at beginning of error
 			// message because we want to overwrite the last output from
 			// RegressAdd()
-			return fmt.Errorf("\r* error adding regression test: %s", err)
+			return fmt.Errorf("\rerror adding regression test: %v", err)
 		}
 	default:
-		return fmt.Errorf("regression tests must be added one at a time when using %s mode", md)
+		return fmt.Errorf("regression tests can only be added one at a time")
 	}
 
 	return nil

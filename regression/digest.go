@@ -19,14 +19,6 @@ import (
 
 const digestEntryID = "digest"
 
-type digestMode int
-
-const (
-	digestVideoOnly digestMode = iota
-	digestAudioOnly
-	digestVideoAndAudio
-)
-
 const (
 	digestFieldMode int = iota
 	digestFieldCartName
@@ -43,7 +35,7 @@ const (
 // emulation for N frames and the digest recorded at that point. Regression
 // passes if subsequenct runs produce the same digest value
 type DigestRegression struct {
-	mode      digestMode
+	Mode      DigestMode
 	CartLoad  cartridgeloader.Loader
 	TVtype    string
 	NumFrames int
@@ -73,16 +65,10 @@ func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, er
 
 	var err error
 
-	// convert mode field
-	switch fields[digestFieldMode] {
-	case "0":
-		reg.mode = digestVideoOnly
-	case "1":
-		return nil, errors.New(errors.RegressionDigestError, "audio digesting not yet implemented")
-	case "2":
-		return nil, errors.New(errors.RegressionDigestError, "video & audio digesting not yet implemented")
-	default:
-		return nil, errors.New(errors.RegressionDigestError, "unrecognised mode")
+	// parse mode field
+	reg.Mode, err = ParseDigestMode(fields[digestFieldMode])
+	if err != nil {
+		return nil, errors.New(errors.RegressionDigestError, err)
 	}
 
 	// convert number of frames field
@@ -103,17 +89,7 @@ func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, er
 
 // ID implements the database.Entry interface
 func (reg DigestRegression) ID() string {
-	s := strings.Builder{}
-	s.WriteString(digestEntryID)
-	switch reg.mode {
-	case digestVideoOnly:
-		s.WriteString("/video")
-	case digestAudioOnly:
-		s.WriteString("/audio")
-	case digestVideoAndAudio:
-		s.WriteString("/video & audio")
-	}
-	return s.String()
+	return digestEntryID
 }
 
 // String implements the database.Entry interface
@@ -123,7 +99,8 @@ func (reg DigestRegression) String() string {
 	if reg.State {
 		stateFile = "[with state]"
 	}
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, stateFile))
+
+	s.WriteString(fmt.Sprintf("[%s/%s] %s [%s] frames=%d %s", reg.ID(), reg.Mode, reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, stateFile))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -133,7 +110,7 @@ func (reg DigestRegression) String() string {
 // Serialise implements the database.Entry interface
 func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			strconv.Itoa(int(reg.mode)),
+			reg.Mode.String(),
 			reg.CartLoad.Filename,
 			reg.CartLoad.Format,
 			reg.TVtype,
@@ -158,18 +135,38 @@ func (reg DigestRegression) CleanUp() error {
 func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
+	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionDigestError, err)
 	}
 	defer tv.End()
 
-	dig, err := digest.NewVideo(tv)
-	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
+	// decide on digest mode and create appropriate digester
+	var dig digest.Digest
+
+	switch reg.Mode {
+	case DigestVideoOnly:
+		dig, err = digest.NewVideo(tv)
+		if err != nil {
+			return false, "", errors.New(errors.RegressionDigestError, err)
+		}
+
+	case DigestAudioOnly:
+		dig, err = digest.NewAudio(tv)
+		if err != nil {
+			return false, "", errors.New(errors.RegressionDigestError, err)
+		}
+
+	case DigestBoth:
+		return false, "", errors.New(errors.RegressionDigestError, "video/audio digest not yet implemented")
+
+	case DigestUndefined:
+		return false, "", errors.New(errors.RegressionDigestError, fmt.Sprintf("undefined digest mode"))
 	}
 
-	vcs, err := hardware.NewVCS(dig)
+	// create VCS and attach cartridge
+	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return false, "", errors.New(errors.RegressionDigestError, err)
 	}

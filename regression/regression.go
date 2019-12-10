@@ -7,9 +7,11 @@ import (
 	"gopher2600/errors"
 	"gopher2600/paths"
 	"io"
+	"math/rand"
 	"os"
 	"sort"
 	"strconv"
+	"time"
 )
 
 // the location of the regressionDB file and the location of any regression
@@ -69,6 +71,11 @@ func RegressList(output io.Writer) error {
 
 // RegressAdd adds a new regression handler to the database
 func RegressAdd(output io.Writer, reg Regressor) error {
+	// tests must be determinate so we set math.rand seed to something we know.
+	// reseed with clock on completion
+	rand.Seed(1)
+	defer rand.Seed(int64(time.Now().Second()))
+
 	if output == nil {
 		return errors.New(errors.PanicError, "RegressAdd()", "io.Writer should not be nil (use nopWriter)")
 	}
@@ -144,6 +151,11 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 // list specified which entries to test. an empty keys list means that every
 // entry should be tested
 func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKeys []string) error {
+	// tests must be determinate so we set math.rand seed to something we know.
+	// reseed with clock on completion
+	rand.Seed(1)
+	defer rand.Seed(int64(time.Now().Second()))
+
 	if output == nil {
 		return errors.New(errors.PanicError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")
 	}

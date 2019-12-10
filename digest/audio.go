@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/television"
 )
 
 // the length of the buffer we're using isn't really important. that said, it
@@ -16,18 +17,30 @@ const audioBufferLength = 1024 + sha1.Size
 // digest value
 const audioBufferStart = sha1.Size
 
-// Audio implemented the television.AudioMixer interface
+// Audio is an implementation of the television.AudioMixer interface with an
+// embedded television for convenience. It periodically generates a SHA-1 value
+// of the audio stream.
+//
+// Note that the use of SHA-1 is fine for this application because this is not a
+// cryptographic task.
 type Audio struct {
+	television.Television
 	digest   [sha1.Size]byte
 	buffer   []uint8
 	bufferCt int
 }
 
 // NewAudio is the preferred method of initialisation for the Audio2Wav type
-func NewAudio(filename string) (*Audio, error) {
-	dig := &Audio{}
+func NewAudio(tv television.Television) (*Audio, error) {
+	dig := &Audio{Television: tv}
+
+	// register ourselves as a television.AudioMixer
+	dig.AddAudioMixer(dig)
+
+	// create buffer
 	dig.buffer = make([]uint8, audioBufferLength)
 	dig.bufferCt = audioBufferStart
+
 	return dig, nil
 }
 

@@ -7,12 +7,12 @@ import (
 	"gopher2600/television"
 )
 
-// Video is an implementation of the television.Renderer interface with an
-// embedded television for convenience. It generates a sha1 value of the
-// image every frame. it does not display the image anywhere.
+// Video is an implementation of the television.PixelRenderer interface with an
+// embedded television for convenience. It generates a SHA-1 value of the image
+// every frame. it does not display the image anywhere.
 //
-// Note that the use of sha1 is fine for this application because this is not a
-// cryptographic task.
+// Note that the use of SHA-1 is fine for this application because this is not
+// a cryptographic task.
 type Video struct {
 	television.Television
 	digest   [sha1.Size]byte

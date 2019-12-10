@@ -17,7 +17,7 @@ func (hw *helpWriter) Clear() {
 	hw.buffer = []byte{}
 }
 
-func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string) {
+func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string, additionalHelp string) {
 	s := string(hw.buffer)
 	helpLines := strings.Split(s, "\n")
 
@@ -57,6 +57,12 @@ func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string) {
 
 		output.Write([]byte(fmt.Sprintf("  available sub-modes: %s\n", strings.Join(subModes, ", "))))
 		output.Write([]byte(fmt.Sprintf("    default: %s\n", subModes[0])))
+	}
+
+	if additionalHelp != "" {
+		output.Write([]byte("\n"))
+		output.Write([]byte(additionalHelp))
+		output.Write([]byte("\n"))
 	}
 }
 

@@ -39,6 +39,9 @@ type Modes struct {
 	//
 	// we never reset this variable
 	path []string
+
+	// some modes will benefit from a verbose explanation. use
+	additionalHelp string
 }
 
 func (md *Modes) String() string {
@@ -74,6 +77,12 @@ func (md *Modes) NewMode() {
 	md.subModes = []string{}
 	md.flags = flag.NewFlagSet("", flag.ContinueOnError)
 	md.parsed = false
+}
+
+// AdditionalHelp allows you to add extensive help text to be displayed in
+// addition to the regular help on available flags
+func (md *Modes) AdditionalHelp(help string) {
+	md.additionalHelp = help
 }
 
 // Parsed returns false if Parse() has not yet been called since either a call
@@ -135,7 +144,7 @@ func (md *Modes) Parse() (ParseResult, error) {
 	err := md.flags.Parse(md.args[md.argsIdx:])
 	if err != nil {
 		if err == flag.ErrHelp {
-			hw.Help(md.Output, md.Path(), md.subModes)
+			hw.Help(md.Output, md.Path(), md.subModes, md.additionalHelp)
 			hw.Clear()
 			return ParseHelp, nil
 		}
