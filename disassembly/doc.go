@@ -1,9 +1,9 @@
 // Package disassembly coordinates the disassembly of cartridge memory. For
 // simple presentations of a cartridge the FromCartridge() function can be
 // used. Many debuggers will probably find it more useful to disassemble from
-// the memory of an already instantiated VCS and attached cartridge:
+// the memory of an already instantiated VCS.
 //
-//	disasm, _ := disassembly.FromMemory(cartMem, &symbols.Table{})
+//	disasm, _ := disassembly.FromMemory(cartMem, symbols.NewTable())
 //
 // The FromMemory() function requires a valid instance of a symbols.Table. In
 // the example above, we've simply sent the empty table; which is fine but

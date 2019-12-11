@@ -388,14 +388,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 					// assumption: the address returned by SearchSymbol is the
 					// first address in the complete list
 					for m := address + 1; m < memorymap.OriginCart; m++ {
-						ma, _ := memorymap.MapAddress(m, table == symbols.ReadSymTable)
-						if ma == address {
-							dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, m)
+						ai := dbg.dbgmem.mapAddress(m, table == symbols.ReadSymTable)
+						if ai.mappedAddress == address {
+							dbg.print(console.StyleFeedback, "%s (%s) -> %#04x", symbol, table, m)
 						}
 					}
 				}
 			} else {
-				dbg.print(console.StyleFeedback, "%s -> %#04x", symbol, address)
+				dbg.print(console.StyleFeedback, "%s (%s)-> %#04x", symbol, table, address)
 			}
 		}
 

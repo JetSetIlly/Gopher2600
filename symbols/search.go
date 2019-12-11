@@ -9,7 +9,22 @@ import (
 // when searching
 type TableType int
 
-// list of valid symbol tables
+func (t TableType) String() string {
+	switch t {
+	case UnspecifiedSymTable:
+		return "unspecified"
+	case LocationSymTable:
+		return "location"
+	case ReadSymTable:
+		return "read"
+	case WriteSymTable:
+		return "write"
+	}
+
+	return ""
+}
+
+// List of valid symbol table identifiers
 const (
 	UnspecifiedSymTable TableType = iota
 	LocationSymTable
@@ -17,25 +32,26 @@ const (
 	WriteSymTable
 )
 
-// SearchSymbol return the address of the supplied symbol. search is
-// case-insensitive
-func (tab *Table) SearchSymbol(symbol string, tType TableType) (TableType, string, uint16, error) {
+// SearchSymbol return the address of the supplied symbol. Search is
+// case-insensitive and is conducted on the subtables in order: locations >
+// read > write.
+func (tbl *Table) SearchSymbol(symbol string, target TableType) (TableType, string, uint16, error) {
 	symbolUpper := strings.ToUpper(symbol)
 
-	if tType == UnspecifiedSymTable || tType == LocationSymTable {
-		if addr, ok := tab.Locations.search(symbolUpper); ok {
+	if target == UnspecifiedSymTable || target == LocationSymTable {
+		if addr, ok := tbl.Locations.search(symbolUpper); ok {
 			return LocationSymTable, symbol, addr, nil
 		}
 	}
 
-	if tType == UnspecifiedSymTable || tType == ReadSymTable {
-		if addr, ok := tab.Read.search(symbolUpper); ok {
+	if target == UnspecifiedSymTable || target == ReadSymTable {
+		if addr, ok := tbl.Read.search(symbolUpper); ok {
 			return ReadSymTable, symbol, addr, nil
 		}
 	}
 
-	if tType == UnspecifiedSymTable || tType == WriteSymTable {
-		if addr, ok := tab.Write.search(symbolUpper); ok {
+	if target == UnspecifiedSymTable || target == WriteSymTable {
+		if addr, ok := tbl.Write.search(symbolUpper); ok {
 			return WriteSymTable, symbol, addr, nil
 		}
 	}
