@@ -1,7 +1,7 @@
 package debugger
 
 import (
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
 )
 
 // types that satisfy instrumentation return information about the state of the
@@ -11,5 +11,5 @@ type instrumentation interface {
 }
 
 func (dbg *Debugger) printInstrument(mi instrumentation) {
-	dbg.print(console.StyleInstrument, "%s", mi.String())
+	dbg.print(terminal.StyleInstrument, "%s", mi.String())
 }

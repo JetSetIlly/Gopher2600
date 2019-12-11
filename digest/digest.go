@@ -1,5 +1,5 @@
-// Package digest is used to create mathematical hashes. The two
-// implementations of the Digest interface also implement the
+// Package digest is used to create mathematical hashes of VCS output. The
+// two implementations of the Digest interface also implement the
 // television.PixelRenderer and television.AudioMixer interfaces.
 //
 // The digest.Video type is used to capture video output while digest.Audio is

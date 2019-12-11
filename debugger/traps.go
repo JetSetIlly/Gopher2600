@@ -6,8 +6,8 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/commandline"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/errors"
 	"strings"
 )
@@ -71,11 +71,11 @@ func (tr *traps) check(previousResult string) string {
 
 func (tr traps) list() {
 	if len(tr.traps) == 0 {
-		tr.dbg.print(console.StyleFeedback, "no traps")
+		tr.dbg.print(terminal.StyleFeedback, "no traps")
 	} else {
-		tr.dbg.print(console.StyleFeedback, "traps")
+		tr.dbg.print(terminal.StyleFeedback, "traps")
 		for i := range tr.traps {
-			tr.dbg.print(console.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.Label())
+			tr.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.Label())
 		}
 	}
 }
@@ -92,7 +92,7 @@ func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 		for _, t := range tr.traps {
 			if t.target.Label() == tgt.Label() {
 				addNewTrap = false
-				tr.dbg.print(console.StyleError, fmt.Sprintf("trap already exists (%s)", t))
+				tr.dbg.print(terminal.StyleError, fmt.Sprintf("trap already exists (%s)", t))
 				break // for loop
 			}
 		}

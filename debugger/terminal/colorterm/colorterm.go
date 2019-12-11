@@ -1,8 +1,10 @@
+// Package colorterm imlements the Terminal interface for the gopher2600
+// debugger. It supports color output, history and tab completion.
 package colorterm
 
 import (
-	"gopher2600/debugger/colorterm/easyterm"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/colorterm/easyterm"
 	"os"
 )
 
@@ -12,7 +14,7 @@ type ColorTerminal struct {
 
 	reader         runeReader
 	commandHistory []command
-	tabCompleter   console.TabCompleter
+	tabCompletion  terminal.TabCompletion
 
 	silenced bool
 }
@@ -36,23 +38,23 @@ func (ct *ColorTerminal) Initialise() error {
 
 // CleanUp perfoms any cleaning up required for the terminal
 func (ct *ColorTerminal) CleanUp() {
-	ct.Print("\r")
+	ct.EasyTerm.TermPrint("\r")
 	_ = ct.Flush()
 	ct.EasyTerm.CleanUp()
 }
 
-// RegisterTabCompleter adds an implementation of TabCompleter to the
+// RegisterTabCompletion adds an implementation of TabCompletion to the
 // ColorTerminal
-func (ct *ColorTerminal) RegisterTabCompleter(tc console.TabCompleter) {
-	ct.tabCompleter = tc
+func (ct *ColorTerminal) RegisterTabCompletion(tc terminal.TabCompletion) {
+	ct.tabCompletion = tc
 }
 
-// IsInteractive satisfies the console.UserInput interface
+// IsInteractive satisfies the terminal.UserInput interface
 func (ct *ColorTerminal) IsInteractive() bool {
 	return true
 }
 
-// Silence implements console.UserOutput interface
+// Silence implements terminal.UserOutput interface
 func (ct *ColorTerminal) Silence(silenced bool) {
 	ct.silenced = silenced
 }

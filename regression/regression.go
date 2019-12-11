@@ -3,7 +3,7 @@ package regression
 import (
 	"fmt"
 	"gopher2600/database"
-	"gopher2600/debugger/colorterm/ansi"
+	"gopher2600/debugger/terminal/colorterm/ansi"
 	"gopher2600/errors"
 	"gopher2600/paths"
 	"io"

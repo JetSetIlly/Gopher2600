@@ -1,9 +1,9 @@
 package colorterm
 
 import (
-	"gopher2600/debugger/colorterm/ansi"
-	"gopher2600/debugger/colorterm/easyterm"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/colorterm/ansi"
+	"gopher2600/debugger/terminal/colorterm/easyterm"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"unicode"
@@ -12,8 +12,8 @@ import (
 
 // #cursor #keys #tab #completion
 
-// UserRead is the top level input function
-func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
+// TermRead implements the terminal.Terminal interface
+func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
 
 	if ct.silenced {
 		return 0, nil
@@ -48,23 +48,23 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 	//
 	// for this to work we need to place the cursor in it's initial position
 	// before we begin the loop
-	ct.Print("\r")
-	ct.Print(ansi.CursorMove(len(prompt.Content)))
+	ct.EasyTerm.TermPrint("\r")
+	ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
 
 	for {
-		ct.Print(ansi.CursorStore)
-		ct.UserPrint(prompt.Style, "%s%s", ansi.ClearLine, prompt.Content)
-		ct.UserPrint(console.StyleInput, string(input[:inputLen]))
-		ct.Print(ansi.CursorRestore)
+		ct.EasyTerm.TermPrint(ansi.CursorStore)
+		ct.TermPrint(prompt.Style, "%s%s", ansi.ClearLine, prompt.Content)
+		ct.TermPrint(terminal.StyleInput, string(input[:inputLen]))
+		ct.EasyTerm.TermPrint(ansi.CursorRestore)
 
 		select {
 		case event := <-events:
 			// handle functions that are passsed on over interruptChannel. these can
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
-			ct.Print(ansi.CursorStore)
+			ct.EasyTerm.TermPrint(ansi.CursorStore)
 			err := eventHandler(event)
-			ct.Print(ansi.CursorRestore)
+			ct.EasyTerm.TermPrint(ansi.CursorRestore)
 			if err != nil {
 				return inputLen + 1, err
 			}
@@ -76,8 +76,8 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 
 			switch readRune.r {
 			case easyterm.KeyTab:
-				if ct.tabCompleter != nil {
-					s := ct.tabCompleter.Complete(string(input[:cursorPos]))
+				if ct.tabCompletion != nil {
+					s := ct.tabCompletion.Complete(string(input[:cursorPos]))
 
 					// the difference in the length of the new input and the old
 					// input
@@ -90,7 +90,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 						copy(input, []byte(s))
 
 						// advance character to end of completed word
-						ct.Print(ansi.CursorMove(d))
+						ct.EasyTerm.TermPrint(ansi.CursorMove(d))
 						cursorPos += d
 
 						// note new used-length of input array
@@ -107,11 +107,11 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 					// clear current input
 					inputLen = 0
 					cursorPos = 0
-					ct.Print("\r")
-					ct.Print(ansi.CursorMove(len(prompt.Content)))
+					ct.EasyTerm.TermPrint("\r")
+					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
 				} else {
 					// there is no input so return UserInterrupt error
-					ct.Print("\n")
+					ct.EasyTerm.TermPrint("\n")
 					return inputLen + 1, errors.New(errors.UserInterrupt)
 				}
 
@@ -148,7 +148,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 					ct.commandHistory = append(ct.commandHistory, command{input: nh})
 				}
 
-				ct.Print("\r\n")
+				ct.EasyTerm.TermPrint("\r\n")
 				return inputLen + 1, nil
 
 			case easyterm.KeyEsc:
@@ -185,7 +185,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								if l < len(input) {
 									copy(input, ct.commandHistory[history].input)
 									inputLen = len(ct.commandHistory[history].input)
-									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
 								}
 							}
@@ -199,7 +199,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								if l < len(input) {
 									copy(input, ct.commandHistory[history].input)
 									inputLen = len(ct.commandHistory[history].input)
-									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
 								}
 							} else if history == len(ct.commandHistory)-1 {
@@ -211,7 +211,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 								if liveHistoryLen < len(input) {
 									copy(input, liveHistory)
 									inputLen = liveHistoryLen
-									ct.Print(ansi.CursorMove(inputLen - cursorPos))
+									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
 								}
 							}
@@ -219,13 +219,13 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 					case easyterm.CursorForward:
 						// move forward through current command input
 						if cursorPos < inputLen {
-							ct.Print(ansi.CursorForwardOne)
+							ct.EasyTerm.TermPrint(ansi.CursorForwardOne)
 							cursorPos++
 						}
 					case easyterm.CursorBackward:
 						// move backward through current command input
 						if cursorPos > 0 {
-							ct.Print(ansi.CursorBackwardOne)
+							ct.EasyTerm.TermPrint(ansi.CursorBackwardOne)
 							cursorPos--
 						}
 
@@ -241,11 +241,11 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 						readRune = <-ct.reader
 
 					case easyterm.EscHome:
-						ct.Print(ansi.CursorMove(-cursorPos))
+						ct.EasyTerm.TermPrint(ansi.CursorMove(-cursorPos))
 						cursorPos = 0
 
 					case easyterm.EscEnd:
-						ct.Print(ansi.CursorMove(inputLen - cursorPos))
+						ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 						cursorPos = inputLen
 					}
 				}
@@ -254,7 +254,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 				// BACKSPACE
 				if cursorPos > 0 {
 					copy(input[cursorPos-1:], input[cursorPos:])
-					ct.Print(ansi.CursorBackwardOne)
+					ct.EasyTerm.TermPrint(ansi.CursorBackwardOne)
 					cursorPos--
 					inputLen--
 					history = len(ct.commandHistory)
@@ -267,7 +267,7 @@ func (ct *ColorTerminal) UserRead(input []byte, prompt console.Prompt, events ch
 
 					// make sure we don't overflow the input buffer
 					if cursorPos+l <= len(input) {
-						ct.Print(ansi.CursorForwardOne)
+						ct.EasyTerm.TermPrint(ansi.CursorForwardOne)
 
 						// insert new character into input stream at current cursor
 						// position

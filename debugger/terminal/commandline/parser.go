@@ -1,5 +1,18 @@
 package commandline
 
+// FLAWS: the following pattern parses correctly but doesn't yet mean anything
+// and will never validate.
+//
+//    {[arg]}
+//
+// an idea would be to expand this to:
+//
+//    [arg] {arg}
+//
+// meaning one or more repetition of the arg pattern.
+//
+// !!TODO: fix flaws in commandline package
+
 import (
 	"fmt"
 	"gopher2600/errors"
@@ -23,18 +36,6 @@ import (
 //   %P		irrational number value
 //   %S     string (numbers can be strings too)
 //   %F     file name
-//
-// !!TODO: the following pattern parses correctly but doesn't yet mean anything
-// and will never validate.
-//
-//    {[arg]}
-//
-// an idea would be to expand this to:
-//
-//    [arg] {arg}
-//
-// meaning one or more repetition of the arg pattern.
-//
 func ParseCommandTemplate(template []string) (*Commands, error) {
 	return ParseCommandTemplateWithOutput(template, nil)
 }

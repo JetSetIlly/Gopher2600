@@ -1,7 +1,10 @@
-package console
+// Package plainterm implements the Terminal interface for the gopher2600
+// debugger. It's a simple as simple can be and offers no special features.
+package plainterm
 
 import (
 	"fmt"
+	"gopher2600/debugger/terminal"
 	"gopher2600/gui"
 	"io"
 	"os"
@@ -27,38 +30,38 @@ func (pt *PlainTerminal) Initialise() error {
 func (pt *PlainTerminal) CleanUp() {
 }
 
-// RegisterTabCompleter adds an implementation of TabCompleter to the terminal
-func (pt *PlainTerminal) RegisterTabCompleter(TabCompleter) {
+// RegisterTabCompletion adds an implementation of TabCompletion to the terminal
+func (pt *PlainTerminal) RegisterTabCompletion(terminal.TabCompletion) {
 }
 
-// UserPrint is the plain terminal print routine
-func (pt PlainTerminal) UserPrint(style Style, s string, a ...interface{}) {
-	if pt.silenced && style != StyleError {
+// TermPrint implements the terminal.Terminal interface
+func (pt PlainTerminal) TermPrint(style terminal.Style, s string, a ...interface{}) {
+	if pt.silenced && style != terminal.StyleError {
 		return
 	}
 
 	switch style {
-	case StyleError:
+	case terminal.StyleError:
 		s = fmt.Sprintf("* %s", s)
-	case StyleHelp:
+	case terminal.StyleHelp:
 		s = fmt.Sprintf("  %s", s)
 	}
 
 	s = fmt.Sprintf(s, a...)
 	pt.output.Write([]byte(s))
 
-	if style != StylePrompt {
+	if !style.IsPrompt() {
 		pt.output.Write([]byte("\n"))
 	}
 }
 
-// UserRead is the plain terminal read routine
-func (pt PlainTerminal) UserRead(input []byte, prompt Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
+// TermRead implements the terminal.Terminal interface
+func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
 	if pt.silenced {
 		return 0, nil
 	}
 
-	pt.UserPrint(prompt.Style, prompt.Content)
+	pt.TermPrint(prompt.Style, prompt.Content)
 
 	n, err := pt.input.Read(input)
 	if err != nil {
@@ -67,12 +70,12 @@ func (pt PlainTerminal) UserRead(input []byte, prompt Prompt, _ chan gui.Event, 
 	return n, nil
 }
 
-// IsInteractive implements the console.UserInput interface
+// IsInteractive implements the terminal.Input interface
 func (pt *PlainTerminal) IsInteractive() bool {
 	return true
 }
 
-// Silence implemented the console.UserOutput interface
+// Silence implemented the terminal.Output interface
 func (pt *PlainTerminal) Silence(silenced bool) {
 	pt.silenced = silenced
 }

@@ -6,8 +6,8 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/commandline"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/errors"
 	"strconv"
 	"strings"
@@ -115,11 +115,11 @@ func (bp *breakpoints) check(previousResult string) string {
 
 func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
-		bp.dbg.print(console.StyleFeedback, "no breakpoints")
+		bp.dbg.print(terminal.StyleFeedback, "no breakpoints")
 	} else {
-		bp.dbg.print(console.StyleFeedback, "breakpoints")
+		bp.dbg.print(terminal.StyleFeedback, "breakpoints")
 		for i := range bp.breaks {
-			bp.dbg.print(console.StyleFeedback, "% 2d: %s", i, bp.breaks[i])
+			bp.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, bp.breaks[i])
 		}
 	}
 }

@@ -1,13 +1,25 @@
-package reflection
-
-// the whole reflection system is slow. probably to do with indexing maps every
-// video cycle. but I'm not too worried about it at the moment because it only
-// ever runs in the debugger and the debugger is slow anyway (when compared to
-// the playmode loop)
+// Package reflection monitors the emulated hardware for conditions that would
+// otherwise not be visible. In particular it signals the MetaPixelRenderer
+// when certain memory addresses have been written to. For example, the HMOVE
+// register.
 //
-// it's also a bit of a hack. I didn't want to invade the emulation code too
-// much but if we want to get fancier with this idea then we may have to. but
-// in that case emulation performance should remain the priority.
+// In addition it monitors the state of WSYNC and signals the
+// MetaPixelRenderer when the CPU is idle. This makes for quite a nice visual
+// indication of "lost cycles" or potential extra cycles that could be regained
+// with a bit of reorgnisation.
+//
+// There are lots of other things we could potentially do with the reflection
+// idea but as it currently is, it is a little underdeveloped. In particular,
+// it's rather slow but I'm not too worried about that because this is for
+// debugging not actually playing games and such.
+//
+// I think the next thing this needs is a way of making the various monitors
+// switchable at runtime. As it is, what's compiled is what we get. If we
+// monitored every possible thing, the MetaPixelRenderer would get cluttered
+// very quickly. It would be nice to be able to define groups (say, a player
+// sprites group, a HMOVE group, etc.) and to turn them on and off according to
+// our needs.
+package reflection
 
 import (
 	"gopher2600/gui"
@@ -137,8 +149,6 @@ type overlaySignals map[uint16]gui.MetaPixel
 type addressMonitor struct {
 	// the map of memory addresses to monitor
 	addresses overlaySignals
-
-	// -----------------
 
 	// when memory has been written to we note the address and timestamp. then,
 	// a few cycles later, we check to see if lastAddress is one the group is

@@ -1,7 +1,7 @@
 package debugger
 
 // Help contains the help text for the debugger's top level commands
-var Help = map[string]string{
+var help = map[string]string{
 	cmdBall:          "Display the current state of the ball sprite",
 	cmdBreak:         "Cause emulator to halt when conditions are met",
 	cmdCPU:           "Display the current state of the CPU",

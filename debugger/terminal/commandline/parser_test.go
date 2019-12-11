@@ -1,7 +1,7 @@
 package commandline_test
 
 import (
-	"gopher2600/debugger/commandline"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/test"
 	"strings"
 	"testing"

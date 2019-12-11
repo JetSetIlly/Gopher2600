@@ -24,21 +24,21 @@ type Scribe struct {
 }
 
 // IsActive returns true if a script is currently being capture
-func (rec Scribe) IsActive() bool {
-	return rec.file != nil
+func (scr Scribe) IsActive() bool {
+	return scr.file != nil
 }
 
 // StartSession a new script
-func (rec *Scribe) StartSession(scriptfile string) error {
-	if rec.IsActive() {
+func (scr *Scribe) StartSession(scriptfile string) error {
+	if scr.IsActive() {
 		return errors.New(errors.ScriptScribeError, "already active")
 	}
 
-	rec.scriptfile = scriptfile
+	scr.scriptfile = scriptfile
 
 	_, err := os.Stat(scriptfile)
 	if os.IsNotExist(err) {
-		rec.file, err = os.Create(scriptfile)
+		scr.file, err = os.Create(scriptfile)
 		if err != nil {
 			return errors.New(errors.ScriptScribeError, "cannot create new script file")
 		}
@@ -50,26 +50,26 @@ func (rec *Scribe) StartSession(scriptfile string) error {
 }
 
 // EndSession the current scribe session
-func (rec *Scribe) EndSession() error {
-	if !rec.IsActive() {
+func (scr *Scribe) EndSession() error {
+	if !scr.IsActive() {
 		return nil
 	}
 
 	defer func() {
-		rec.file = nil
-		rec.scriptfile = ""
-		rec.playbackDepth = 0
-		rec.inputLine = ""
-		rec.outputLine = ""
+		scr.file = nil
+		scr.scriptfile = ""
+		scr.playbackDepth = 0
+		scr.inputLine = ""
+		scr.outputLine = ""
 	}()
 
 	// make sure everything has been written to the output file
-	err := rec.Commit()
+	err := scr.Commit()
 
 	// if commit() causes an error, continue with the Close() operation and
 	// return the commit() error if the close succeeds
 
-	errClose := rec.file.Close()
+	errClose := scr.file.Close()
 	if errClose != nil {
 		return errors.New(errors.ScriptScribeError, errClose)
 	}
@@ -78,52 +78,48 @@ func (rec *Scribe) EndSession() error {
 }
 
 // StartPlayback indicates that a replayed script has begun
-func (rec *Scribe) StartPlayback() {
-	if !rec.IsActive() {
+func (scr *Scribe) StartPlayback() {
+	if !scr.IsActive() {
 		return
 	}
-
-	rec.playbackDepth++
+	scr.Commit()
+	scr.playbackDepth++
 }
 
 // EndPlayback indicates that a replayed script has finished
-func (rec *Scribe) EndPlayback() {
-	if !rec.IsActive() {
+func (scr *Scribe) EndPlayback() {
+	if !scr.IsActive() {
 		return
 	}
-
-	rec.playbackDepth--
+	scr.Commit()
+	scr.playbackDepth--
 }
 
 // Rollback undoes calls to WriteInput() and WriteOutput since last Commit()
-func (rec *Scribe) Rollback() {
-	if !rec.IsActive() {
+func (scr *Scribe) Rollback() {
+	if !scr.IsActive() {
 		return
 	}
 
-	rec.inputLine = ""
-	rec.outputLine = ""
+	scr.inputLine = ""
+	scr.outputLine = ""
 }
 
 // WriteInput writes user-input to the open script file
-func (rec *Scribe) WriteInput(command string) {
-	if !rec.IsActive() {
+func (scr *Scribe) WriteInput(command string) {
+	if !scr.IsActive() || scr.playbackDepth > 0 {
 		return
 	}
 
-	rec.Commit()
+	scr.Commit()
 	if command != "" {
-		rec.inputLine = fmt.Sprintf("%s\n", command)
+		scr.inputLine = fmt.Sprintf("%s\n", command)
 	}
 }
 
 // WriteOutput writes emulator-output to the open script file
-func (rec *Scribe) WriteOutput(result string, args ...interface{}) {
-	if !rec.IsActive() {
-		return
-	}
-
-	if result == "" {
+func (scr *Scribe) WriteOutput(result string, args ...interface{}) {
+	if !scr.IsActive() || scr.playbackDepth > 0 || result == "" {
 		return
 	}
 
@@ -131,41 +127,37 @@ func (rec *Scribe) WriteOutput(result string, args ...interface{}) {
 
 	lines := strings.Split(result, "\n")
 	for i := range lines {
-		rec.outputLine = fmt.Sprintf("%s%s%s\n", rec.outputLine, outputDelimiter, lines[i])
+		scr.outputLine = fmt.Sprintf("%s%s%s\n", scr.outputLine, outputDelimiter, lines[i])
 	}
 }
 
-// Commit most recent calls to WriteInput() and WriteOutput()
-func (rec *Scribe) Commit() error {
-	if !rec.IsActive() {
+// Commit most scrent calls to WriteInput() and WriteOutput()
+func (scr *Scribe) Commit() error {
+	if !scr.IsActive() {
 		return nil
 	}
 
 	defer func() {
-		rec.inputLine = ""
-		rec.outputLine = ""
+		scr.inputLine = ""
+		scr.outputLine = ""
 	}()
 
-	if rec.playbackDepth > 0 {
-		return nil
-	}
-
-	if rec.inputLine != "" {
-		n, err := io.WriteString(rec.file, rec.inputLine)
+	if scr.inputLine != "" {
+		n, err := io.WriteString(scr.file, scr.inputLine)
 		if err != nil {
 			return errors.New(errors.ScriptScribeError, err)
 		}
-		if n != len(rec.inputLine) {
+		if n != len(scr.inputLine) {
 			return errors.New(errors.ScriptScribeError, "output truncated")
 		}
 	}
 
-	if rec.outputLine != "" {
-		n, err := io.WriteString(rec.file, rec.outputLine)
+	if scr.outputLine != "" {
+		n, err := io.WriteString(scr.file, scr.outputLine)
 		if err != nil {
 			return errors.New(errors.ScriptScribeError, err)
 		}
-		if n != len(rec.outputLine) {
+		if n != len(scr.outputLine) {
 			return errors.New(errors.ScriptScribeError, "output truncated")
 		}
 	}

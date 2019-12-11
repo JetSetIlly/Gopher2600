@@ -1,7 +1,7 @@
 package debugger
 
 import (
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/definitions"
@@ -30,7 +30,7 @@ func (dbg *Debugger) videoCycle() error {
 
 		// display information about any CPU bugs that may have been triggered
 		if dbg.reportCPUBugs && dbg.vcs.CPU.LastResult.Bug != "" {
-			dbg.print(console.StyleInstrument, dbg.vcs.CPU.LastResult.Bug)
+			dbg.print(terminal.StyleInstrument, dbg.vcs.CPU.LastResult.Bug)
 		}
 	}
 
@@ -44,7 +44,7 @@ func (dbg *Debugger) videoCycle() error {
 // inputLoop has two modes, defined by the videoCycle argument. when videoCycle
 // is true then user will be prompted every video cycle; when false the user
 // is prompted every cpu cycle.
-func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) error {
+func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	var err error
 
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
@@ -60,7 +60,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 			if err != nil {
-				dbg.print(console.StyleError, "%s", err)
+				dbg.print(terminal.StyleError, "%s", err)
 			}
 		}
 		return dbg.inputLoop(inputter, true)
@@ -70,7 +70,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		// check for gui events and keyboard interrupts
 		err = dbg.checkInterruptsAndEvents()
 		if err != nil {
-			dbg.print(console.StyleError, "%s", err)
+			dbg.print(terminal.StyleError, "%s", err)
 		}
 
 		// if debugger is no longer running after checking interrupts and
@@ -109,9 +109,9 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 		}
 
 		// print and reset accumulated break/trap/watch messages
-		dbg.print(console.StyleFeedback, dbg.breakMessages)
-		dbg.print(console.StyleFeedback, dbg.trapMessages)
-		dbg.print(console.StyleFeedback, dbg.watchMessages)
+		dbg.print(terminal.StyleFeedback, dbg.breakMessages)
+		dbg.print(terminal.StyleFeedback, dbg.trapMessages)
+		dbg.print(terminal.StyleFeedback, dbg.watchMessages)
 
 		// clear accumulated break/trap/watch messages
 		dbg.breakMessages = ""
@@ -127,7 +127,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			if dbg.commandOnHalt != "" {
 				_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
 				if err != nil {
-					dbg.print(console.StyleError, "%s", err)
+					dbg.print(terminal.StyleError, "%s", err)
 				}
 			}
 
@@ -142,7 +142,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 			dbg.runUntilHalt = false
 
 			// get user input
-			inputLen, err := inputter.UserRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
+			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
 
 			// errors returned by UserRead() functions are very rich. the
 			// following block interprets the error carefully and proceeds
@@ -188,10 +188,10 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 						// a scriptScribe is not active nor is this a script
 						// input loop. ask the user if they really want to quit
 						confirm := make([]byte, 1)
-						_, err := inputter.UserRead(confirm,
-							console.Prompt{
+						_, err := inputter.TermRead(confirm,
+							terminal.Prompt{
 								Content: "really quit (y/n) ",
-								Style:   console.StylePromptConfirm},
+								Style:   terminal.StylePromptConfirm},
 							nil, nil)
 
 						if err != nil {
@@ -200,7 +200,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 							if errors.Is(err, errors.UserInterrupt) {
 								confirm[0] = 'y'
 							} else {
-								dbg.print(console.StyleError, err.Error())
+								dbg.print(terminal.StyleError, err.Error())
 							}
 						}
 
@@ -217,7 +217,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				case errors.UserSuspend:
 					p, err := os.FindProcess(os.Getppid())
 					if err != nil {
-						dbg.print(console.StyleError, "debugger doesn't seem to have a parent process")
+						dbg.print(terminal.StyleError, "debugger doesn't seem to have a parent process")
 					} else {
 						// send TSTP signal to parent proces
 						p.Signal(syscall.SIGTSTP)
@@ -229,13 +229,13 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				// style)
 				case errors.ScriptEnd:
 					if !videoCycle {
-						dbg.print(console.StyleFeedback, err.Error())
+						dbg.print(terminal.StyleFeedback, err.Error())
 					}
 					return nil
 
 				// a GUI event has triggered an error
 				case errors.GUIEventError:
-					dbg.print(console.StyleError, err.Error())
+					dbg.print(terminal.StyleError, err.Error())
 
 				// all other errors are passed upwards to the calling function
 				default:
@@ -250,7 +250,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				// continue
 				dbg.continueEmulation, err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
 				if err != nil {
-					dbg.print(console.StyleError, "%s", err)
+					dbg.print(terminal.StyleError, "%s", err)
 				}
 			}
 
@@ -284,15 +284,15 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 
 					// ...set lastStepError instead and allow emulation to halt
 					dbg.lastStepError = true
-					dbg.print(console.StyleError, "%s", err)
+					dbg.print(terminal.StyleError, "%s", err)
 
 				} else {
 					// check validity of instruction result
 					if dbg.vcs.CPU.LastResult.Final {
 						err := dbg.vcs.CPU.LastResult.IsValid()
 						if err != nil {
-							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
-							dbg.print(console.StyleError, "%s", dbg.vcs.CPU.LastResult)
+							dbg.print(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
+							dbg.print(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
 							return errors.New(errors.DebuggerError, err)
 						}
 					}
@@ -301,7 +301,7 @@ func (dbg *Debugger) inputLoop(inputter console.UserInput, videoCycle bool) erro
 				if dbg.commandOnStep != "" {
 					_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 					if err != nil {
-						dbg.print(console.StyleError, "%s", err)
+						dbg.print(terminal.StyleError, "%s", err)
 					}
 				}
 			} else {

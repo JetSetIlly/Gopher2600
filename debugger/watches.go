@@ -2,8 +2,8 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/commandline"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory"
 	"strconv"
@@ -125,11 +125,11 @@ func (wtc *watches) check(previousResult string) string {
 
 func (wtc *watches) list() {
 	if len(wtc.watches) == 0 {
-		wtc.dbg.print(console.StyleFeedback, "no watches")
+		wtc.dbg.print(terminal.StyleFeedback, "no watches")
 	} else {
-		wtc.dbg.print(console.StyleFeedback, "watches")
+		wtc.dbg.print(terminal.StyleFeedback, "watches")
 		for i := range wtc.watches {
-			wtc.dbg.print(console.StyleFeedback, "% 2d: %s", i, wtc.watches[i])
+			wtc.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, wtc.watches[i])
 		}
 	}
 }

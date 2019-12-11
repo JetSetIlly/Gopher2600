@@ -1,3 +1,4 @@
+// Package ansi defines ANSI control codes for styles and colours.
 package ansi
 
 import (

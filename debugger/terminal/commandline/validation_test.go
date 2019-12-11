@@ -2,7 +2,7 @@ package commandline_test
 
 import (
 	"fmt"
-	"gopher2600/debugger/commandline"
+	"gopher2600/debugger/terminal/commandline"
 	"testing"
 )
 
@@ -428,6 +428,24 @@ func TestValidation_foo(t *testing.T) {
 		t.Fatalf("%s", err)
 	}
 	err = cmds.Validate("SYMBOL enabl")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+}
+
+func TestValidation_bar(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{
+		"LIST",
+		"PRINT [%s]",
+		"SORT (RISING|FALLING)",
+	})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	err = cmds.Validate("list")
 	if err != nil {
 		t.Errorf("doesn't match but should: %s", err)
 	}

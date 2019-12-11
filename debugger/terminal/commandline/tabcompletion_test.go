@@ -1,7 +1,7 @@
 package commandline_test
 
 import (
-	"gopher2600/debugger/commandline"
+	"gopher2600/debugger/terminal/commandline"
 	"sort"
 	"testing"
 )
@@ -67,7 +67,7 @@ func TestTabCompletion(t *testing.T) {
 		t.Errorf("expecting '%s' got '%s'", expected, completion)
 	}
 
-	// the completer will preserve whitespace
+	// the completion will preserve whitespace
 	tc.Reset()
 	completion = "FOO   bar     wib"
 	expected = "FOO   bar     WIBBLE "

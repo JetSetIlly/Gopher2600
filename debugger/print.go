@@ -1,18 +1,21 @@
 package debugger
 
+// this file holds the functions/structures to be used when outputting to the
+// terminal. The TermPrint functions of the Terminal interface should not be
+// used directly.
+
 import (
 	"fmt"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
 	"strings"
 )
 
-// wrapper function for UserPrint(). useful for normalising the input string
-// before passing to the real UserPrint. it also allows us to easily obey
-// directives such as the silent directive without passing the burden onto UI
-// implementors
-func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
+// all print operations from the debugger should be made with the this print()
+// function. output will be normalised and sent to the attached terminal as
+// required.
+func (dbg *Debugger) print(sty terminal.Style, s string, a ...interface{}) {
 	// resolve string placeholders and return if the resulting string is empty
-	if sty != console.StyleHelp {
+	if sty != terminal.StyleHelp {
 		s = fmt.Sprintf(s, a...)
 		if len(s) == 0 {
 			return
@@ -25,7 +28,7 @@ func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
 		return
 	}
 
-	dbg.console.UserPrint(sty, s)
+	dbg.term.TermPrint(sty, s)
 
 	// output to script file
 	if sty.IncludeInScriptOutput() {
@@ -33,21 +36,21 @@ func (dbg *Debugger) print(sty console.Style, s string, a ...interface{}) {
 	}
 }
 
-// styleWriter is a wrapper for Debugger.print(). the result of
-// printStyle() can be used as an implementation of the io.Writer interface
+// styleWriter implements the io.Writer interface. it is useful for when an
+// io.Writer is required and you want to direct the output to the terminal.
+// allows the application of a single style.
 type styleWriter struct {
 	dbg   *Debugger
-	style console.Style
+	style terminal.Style
 }
 
-func (dbg *Debugger) printStyle(sty console.Style) *styleWriter {
+func (dbg *Debugger) printStyle(sty terminal.Style) *styleWriter {
 	return &styleWriter{
 		dbg:   dbg,
 		style: sty,
 	}
 }
 
-// convenient but inflexible alternative to print()
 func (wrt styleWriter) Write(p []byte) (n int, err error) {
 	wrt.dbg.print(wrt.style, string(p))
 	return len(p), nil

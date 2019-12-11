@@ -1,9 +1,12 @@
-package console
+package terminal
 
-// Style specifies the printing mode
+// Style is used to identify the category of text being sent to the
+// Terminal.TermPrint() function. The terminal implementation can interpret
+// this how it sees fit - the most likely treatment is to print different
+// styles in different colours.
 type Style int
 
-// enumeration of print styles
+// List of print styles
 const (
 	// disassembly output at cpu cycle boundaries
 	StyleCPUStep Style = iota
@@ -17,16 +20,16 @@ const (
 	// information about the emulator, rather than the emulated machine
 	StyleEmulatorInfo
 
-	// the input prompt
-	StylePrompt
-	StylePromptAlt
-	StylePromptConfirm
-
 	// non-error information from a command
 	StyleFeedback
 
 	// help information
 	StyleHelp
+
+	// printing of prompt to terminal
+	StylePromptCPUStep
+	StylePromptVideoStep
+	StylePromptConfirm
 
 	// user input (not used by all user interface types [eg. echoing terminals])
 	StyleInput
@@ -40,9 +43,20 @@ const (
 // output of a script recording
 func (sty Style) IncludeInScriptOutput() bool {
 	switch sty {
-	case StyleError, StyleInput, StylePrompt:
+	case StyleError, StyleInput, StylePromptCPUStep, StylePromptVideoStep, StylePromptConfirm:
 		return false
 	default:
 		return true
+	}
+}
+
+// IsPrompt returns true if the style is considered to be one of the prompt
+// styles, false otherwise.
+func (sty Style) IsPrompt() bool {
+	switch sty {
+	case StylePromptCPUStep, StylePromptVideoStep, StylePromptConfirm:
+		return true
+	default:
+		return false
 	}
 }

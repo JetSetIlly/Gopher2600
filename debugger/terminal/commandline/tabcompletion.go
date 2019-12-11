@@ -1,14 +1,15 @@
 package commandline
 
+// #tab #completion
+
 import (
 	"fmt"
 	"strconv"
 	"strings"
 )
 
-// #tab #completion
-
-// TabCompletion keeps track of the most recent tab completion attempt
+// TabCompletion should be initialised once with the instance of Commands it is
+// to work with.
 type TabCompletion struct {
 	commands *Commands
 
@@ -18,9 +19,8 @@ type TabCompletion struct {
 	lastCompletion string
 }
 
-// NewTabCompletion initialises a new TabCompletion instance
-//
-// completion works best if commands has been sorted
+// NewTabCompletion initialises a new TabCompletion instance. Completion works
+// best if Commands has been sorted
 func NewTabCompletion(commands *Commands) *TabCompletion {
 	tc := &TabCompletion{commands: commands}
 	tc.Reset()
@@ -28,7 +28,9 @@ func NewTabCompletion(commands *Commands) *TabCompletion {
 }
 
 // Complete transforms the input such that the last word in the input is
-// expanded to meet the closest match in the list of allowed strings.
+// expanded to meet the closest match allowed by the template.  Subsequent
+// calls to Complete() without an intervening call to Reset() will cycle
+// through the original available options
 func (tc *TabCompletion) Complete(input string) string {
 	// split input tokens -- it's easier to work with tokens
 	tokens := TokeniseInput(input)
@@ -59,7 +61,7 @@ func (tc *TabCompletion) Complete(input string) string {
 		return endGuess()
 	}
 
-	// new tabcompletion session
+	// new completion session
 	tc.Reset()
 
 	// no need to to anything if input ends with a space
@@ -105,7 +107,7 @@ func (tc *TabCompletion) Complete(input string) string {
 	return endGuess()
 }
 
-// Reset is used to clear an outstanding completion session
+// Reset is used to clear an outstanding completion session.
 func (tc *TabCompletion) Reset() {
 	tc.matches = make([]string, 0)
 	tc.match = -1

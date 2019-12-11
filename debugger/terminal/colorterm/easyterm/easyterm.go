@@ -1,7 +1,6 @@
-// easyterm is a wrapper for "github.com/pkg/term/termios". it provides some
-// features not present in the third-party package, such as terminal geometry,
-// and wraps termios methods in functions with friendlier names
-
+// Package easyterm is a wrapper for "github.com/pkg/term/termios". it provides
+// some features not present in the third-party package, such as terminal
+// geometry, and wraps termios methods in functions with friendlier names
 package easyterm
 
 import (
@@ -157,8 +156,8 @@ func (et *EasyTerm) Flush() error {
 	return nil
 }
 
-// Print writes string to the output file
-func (et *EasyTerm) Print(s string) {
+// TermPrint writes string to the output file
+func (et *EasyTerm) TermPrint(s string) {
 	// no need to take hold of the mutex
 	et.output.WriteString(s)
 }

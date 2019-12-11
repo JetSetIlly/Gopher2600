@@ -2,11 +2,11 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/console"
+	"gopher2600/debugger/terminal"
 	"strings"
 )
 
-func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
+func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	// decide which address value to use
 	var promptAddress uint16
 	var promptBank int
@@ -48,10 +48,10 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) console.Prompt {
 	// video cycle prompt
 	if videoCycle && !dbg.vcs.CPU.LastResult.Final {
 		prompt.WriteString(" > ")
-		return console.Prompt{Content: prompt.String(), Style: console.StylePromptAlt}
+		return terminal.Prompt{Content: prompt.String(), Style: terminal.StylePromptVideoStep}
 	}
 
 	// cpu cycle prompt
 	prompt.WriteString(" >> ")
-	return console.Prompt{Content: prompt.String(), Style: console.StylePrompt}
+	return terminal.Prompt{Content: prompt.String(), Style: terminal.StylePromptCPUStep}
 }

@@ -2,7 +2,7 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/commandline"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/errors"
 	"gopher2600/television"
 	"strings"

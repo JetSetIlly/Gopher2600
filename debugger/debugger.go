@@ -2,10 +2,10 @@ package debugger
 
 import (
 	"gopher2600/cartridgeloader"
-	"gopher2600/debugger/commandline"
-	"gopher2600/debugger/console"
 	"gopher2600/debugger/reflection"
 	"gopher2600/debugger/script"
+	"gopher2600/debugger/terminal"
+	"gopher2600/debugger/terminal/commandline"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -27,9 +27,10 @@ type Debugger struct {
 	vcs    *hardware.VCS
 	disasm *disassembly.Disassembly
 
-	// gui/tv
-	tv  television.Television
-	scr gui.GUI
+	// gui, tv and terminal
+	tv   television.Television
+	scr  gui.GUI
+	term terminal.Terminal
 
 	// interface to the vcs memory with additional debugging functions
 	// - access to vcs memory from the debugger (eg. peeking and poking) is
@@ -71,9 +72,6 @@ type Debugger struct {
 	// -- also affects when emulation will halt on breaks, traps and watches.
 	// if inputeveryvideocycle is true then the halt may occur mid-cpu-cycle
 	inputEveryVideoCycle bool
-
-	// console interface
-	console console.UserInterface
 
 	// channel for communicating with the debugger from the ctrl-c goroutine
 	intChan chan os.Signal
@@ -118,10 +116,14 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
+func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) (*Debugger, error) {
 	var err error
 
-	dbg := &Debugger{tv: tv, scr: scr}
+	dbg := &Debugger{
+		tv:   tv,
+		scr:  scr,
+		term: term,
+	}
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(dbg.tv)
@@ -171,26 +173,20 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
+	// add tab completion to terminal
+	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
+
 	return dbg, nil
 }
 
-// Start the main debugger sequence. starting the debugger is a distinct
-// operation to creating the debugger.
-func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartload cartridgeloader.Loader) error {
+// Start the main debugger sequence.
+func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) error {
 	// prepare user interface
-	if cons == nil {
-		dbg.console = &console.PlainTerminal{}
-	} else {
-		dbg.console = cons
-	}
-
-	err := dbg.console.Initialise()
+	err := dbg.term.Initialise()
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
-	defer dbg.console.CleanUp()
-
-	dbg.console.RegisterTabCompleter(commandline.NewTabCompletion(debuggerCommands))
+	defer dbg.term.CleanUp()
 
 	err = dbg.loadCartridge(cartload)
 	if err != nil {
@@ -201,25 +197,25 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 
 	// run initialisation script
 	if initScript != "" {
-		dbg.console.Silence(true)
+		dbg.term.Silence(true)
 
-		plb, err := script.StartPlayback(initScript)
+		scr, err := script.RescribeScript(initScript)
 		if err != nil {
-			dbg.print(console.StyleError, "error running debugger initialisation script: %s\n", err)
+			dbg.print(terminal.StyleError, "error running debugger initialisation script: %s\n", err)
 		}
 
-		err = dbg.inputLoop(plb, false)
+		err = dbg.inputLoop(scr, false)
 		if err != nil {
-			dbg.console.Silence(false)
+			dbg.term.Silence(false)
 			return errors.New(errors.DebuggerError, err)
 		}
 
-		dbg.console.Silence(false)
+		dbg.term.Silence(false)
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
 	// debugging session is to be terminated
-	err = dbg.inputLoop(dbg.console, false)
+	err = dbg.inputLoop(dbg.term, false)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
@@ -243,7 +239,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
 	if err != nil {
-		dbg.print(console.StyleError, "%s", err)
+		dbg.print(terminal.StyleError, "%s", err)
 		// continuing because symtable is always valid even if err non-nil
 	}
 
@@ -296,6 +292,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 		// parse command. format of command[i] wil be normalised
 		result, err = dbg.parseCommand(&commands[i], interactive)
 		if err != nil {
+			// we don't want to record bad commands in script
 			dbg.scriptScribe.Rollback()
 			return false, err
 		}
