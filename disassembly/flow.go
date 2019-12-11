@@ -8,18 +8,6 @@ import (
 	"gopher2600/hardware/memory/memorymap"
 )
 
-// flowDisassembly decodes those cartridge addresses that follow the flow from
-// the address pointed to by the reset address of the cartridge.
-//
-// every branch and subroutine is considered. however, it is possible for real
-// execution of the ROM to reach places not considered by the flow disassembly.
-// for example:
-//
-//		o addresses stuffed into the stack and RTS being called, without an
-//			explicit JSR
-//		o branching of jumping to non-cartridge memory. (ie. RAM) and executing
-//			code there. self-modifying code.
-
 func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 	for {
 		err := mc.ExecuteInstruction(nil)
@@ -52,7 +40,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			return err
 		}
 
-		bank := dsm.Cart.GetBank(mc.LastResult.Address)
+		bank := dsm.cart.GetBank(mc.LastResult.Address)
 
 		// if we've seen this before then finish the disassembly
 		if dsm.flow[bank][mc.LastResult.Address&disasmMask].IsInstruction() {
@@ -74,7 +62,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				if mc.LastResult.Defn.AddressingMode == definitions.Indirect {
 					if mc.LastResult.InstructionData.(uint16) > memorymap.OriginCart {
 						// note current location
-						state := dsm.Cart.SaveState()
+						state := dsm.cart.SaveState()
 						retPC := mc.PC.Address()
 
 						// adjust program counter
@@ -87,7 +75,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 						}
 
 						// resume from where we left off
-						dsm.Cart.RestoreState(state)
+						dsm.cart.RestoreState(state)
 						mc.PC.Load(retPC)
 					} else {
 						// it's entirely possible for the program to jump
@@ -99,13 +87,13 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 						// actual side-effects)
 						//
 						// for now, we'll just tolerate it
-						dsm.selfModifyingCode = true
+						dsm.nonCartJmps = true
 					}
 				} else {
 					// absolute JMP addressing
 
 					// note current location
-					state := dsm.Cart.SaveState()
+					state := dsm.cart.SaveState()
 					retPC := mc.PC.Address()
 
 					// adjust program counter
@@ -118,14 +106,14 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 					}
 
 					// resume from where we left off
-					dsm.Cart.RestoreState(state)
+					dsm.cart.RestoreState(state)
 					mc.PC.Load(retPC)
 				}
 			} else {
 				// branch instructions
 
 				// note current location
-				state := dsm.Cart.SaveState()
+				state := dsm.cart.SaveState()
 				retPC := mc.PC.Address()
 
 				// sign extend address and add to program counter
@@ -142,7 +130,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				}
 
 				// resume from where we left off
-				dsm.Cart.RestoreState(state)
+				dsm.cart.RestoreState(state)
 				mc.PC.Load(retPC)
 			}
 

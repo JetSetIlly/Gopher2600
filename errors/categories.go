@@ -28,8 +28,8 @@ const (
 	// program modes
 	PlayError
 	DebuggerError
-	DisasmError
 	PerformanceError
+	DisassemblyError
 
 	// debugger
 	ParserError
@@ -39,6 +39,9 @@ const (
 	TerminalError
 	GUIEventError
 	ReflectionNotRunning
+
+	// disassembly
+	DisasmError
 
 	// script
 	ScriptScribeError

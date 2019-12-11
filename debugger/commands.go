@@ -334,7 +334,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdGrep:
 		search, _ := tokens.Get()
 		output := strings.Builder{}
-		dbg.disasm.Grep(search, &output, false, 3)
+		dbg.disasm.Grep(&output, search, false, 3)
 		if output.Len() == 0 {
 			dbg.print(console.StyleError, "%s not found in disassembly", search)
 		} else {
@@ -713,7 +713,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if ok {
 			switch arg {
 			case "ANALYSIS":
-				dbg.print(console.StyleFeedback, dbg.disasm.String())
+				dbg.print(console.StyleFeedback, dbg.disasm.Analysis())
 			case "BANK":
 				bank, _ := tokens.Get()
 				n, _ := strconv.Atoi(bank)

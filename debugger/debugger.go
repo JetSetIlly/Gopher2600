@@ -32,7 +32,7 @@ type Debugger struct {
 	scr gui.GUI
 
 	// interface to the vcs memory with additional debugging functions
-	// -- access to vcs memory from the debugger (eg. peeking and poking) is
+	// - access to vcs memory from the debugger (eg. peeking and poking) is
 	// most fruitfully performed through this structure
 	dbgmem *memoryDebug
 
@@ -131,10 +131,17 @@ func NewDebugger(tv television.Television, scr gui.GUI) (*Debugger, error) {
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.
-	dbg.disasm = &disassembly.Disassembly{}
+	dbg.disasm, err = disassembly.FromMemory(dbg.vcs.Mem.Cart, nil)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
 
-	// set up debugging interface to memory
-	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: &dbg.disasm.Symtable}
+	// set up debugging interface to memory. note that we're reaching deep into
+	// another pointer to get the symtable for the memoryDebug instance. this
+	// is dangerous if we don't care to reset the symtable when disasm changes.
+	// As it is, we only change the disasm poointer in the LoadCartridge()
+	// function.
+	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: dbg.disasm.Symtable}
 
 	// set up reflection monitor
 	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.scr)
@@ -226,7 +233,8 @@ func (dbg *Debugger) Start(cons console.UserInterface, initScript string, cartlo
 // this function
 //
 // this is the glue that hold the cartridge and disassembly packages
-// together
+// together. especially important is the repointing of symtable in the instance
+// of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil {
@@ -239,10 +247,13 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 		// continuing because symtable is always valid even if err non-nil
 	}
 
-	err = dbg.disasm.FromMemory(dbg.vcs.Mem.Cart, symtable)
+	dbg.disasm, err = disassembly.FromMemory(dbg.vcs.Mem.Cart, symtable)
 	if err != nil {
 		return err
 	}
+
+	// repoint debug memory's symbol table
+	dbg.dbgmem.symtable = dbg.disasm.Symtable
 
 	err = dbg.vcs.TV.Reset()
 	if err != nil {

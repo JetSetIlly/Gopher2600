@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Grep searches the disassembly dump for search string. case sensitive
-func (dsm *Disassembly) Grep(search string, output io.Writer, caseSensitive bool, contextLines uint) {
+// Grep searches the disassembly for the specified search string.
+func (dsm *Disassembly) Grep(output io.Writer, search string, caseSensitive bool, contextLines uint) {
 	var s, m string
 
 	ctx := make([]string, contextLines)

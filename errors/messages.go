@@ -16,7 +16,7 @@ var messages = map[Errno]string{
 	PlayError:        "error emulating vcs: %v",
 	DebuggerError:    "error debugging vcs: %v",
 	PerformanceError: "error during performance profiling: %v",
-	DisasmError:      "error during disassembly: %v",
+	DisassemblyError: "error debugging disassembly: %v",
 
 	// debugger
 	ParserError:          "parser error: %v: %v (char %d)", // first placeholder is the command definition
@@ -26,6 +26,9 @@ var messages = map[Errno]string{
 	TerminalError:        "%v",
 	GUIEventError:        "%v",
 	ReflectionNotRunning: "reflection process is not running",
+
+	// dissassembly
+	DisasmError: "disassembly error: %v",
 
 	// script
 	ScriptFileError:       "script error: %v",

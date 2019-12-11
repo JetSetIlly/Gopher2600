@@ -46,8 +46,7 @@ type Instruction struct {
 }
 
 // GetString returns a human readable version of InstructionResult, addresses
-// replaced with symbols if supplied symbols argument is not null. prefer this
-// function to implicit calls to String()
+// replaced with symbols if supplied symbols argument is not null.
 func (result Instruction) GetString(symtable *symbols.Table, style Style) string {
 	if symtable == nil {
 		panic(fmt.Sprintf("Instruction.GetString() requires a non-nil instance of symbols.Table"))

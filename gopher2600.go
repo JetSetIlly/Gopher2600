@@ -237,14 +237,14 @@ func disasm(md *modalflag.Modes) error {
 			Filename: md.GetArg(0),
 			Format:   *cartFormat,
 		}
-		dsm, err := disassembly.FromCartrige(cartload)
+		dsm, err := disassembly.FromCartridge(cartload)
 		if err != nil {
 			// print what disassembly output we do have
 			if dsm != nil {
 				dsm.Dump(md.Output)
 			}
 
-			return err
+			return errors.New(errors.DisassemblyError, err)
 		}
 		dsm.Dump(md.Output)
 	default:

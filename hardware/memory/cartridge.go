@@ -188,6 +188,11 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 	return nil
 }
 
+// IsEjected returns true if no cartridge is attached
+func (cart *Cartridge) IsEjected() bool {
+	return cart.Hash == ejectedHash
+}
+
 // Attach loads the bytes from a cartridge (represented by 'filename')
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	data, err := cartload.Load()
