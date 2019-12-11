@@ -187,7 +187,7 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 	// resolve video pixels. note that we always send the debug color
 	// regardless of hblank
 	pixelColor, debugColor := tia.Video.Pixel()
-	tia.sig.AltPixel = television.ColorSignal(debugColor)
+	tia.sig.AltPixel = debugColor
 	if tia.hblank {
 		// if hblank is on then we don't sent the resolved color but the video
 		// black signal instead

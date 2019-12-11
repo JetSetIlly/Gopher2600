@@ -38,26 +38,17 @@ type Television interface {
 	End() error
 }
 
-// PixelRenderer implementations displays, or otherwise works with, visal
-// information from a television
+// PixelRenderer implementations displays, or otherwise works with, visual
+// information from a television. For example digest.Video.
 //
-// examples of renderers that display visual information:
-//	* SDLPlay
-//	* ImageTV
-//
-// examples of renderers that do not display visual information but only work
-// with it:
-//	* DigestTV
-//
-// PixelRenderer implementations find it convenient to maintain a reference to
+// PixelRenderer implementations often find it convenient to maintain a reference to
 // the parent Television implementation and maybe even embed the Television
 // interface. ie.
 //
-// type ExampleTV struct {
+//	type ExampleTV struct {
 //		television.Television
-//
 //		...
-// }
+//	}
 type PixelRenderer interface {
 	// Resize is called when the television implementation detects that extra
 	// scanlines are required in the display.
@@ -111,7 +102,9 @@ type PixelRenderer interface {
 	EndRendering() error
 }
 
-// AudioMixer implementations work with sound; most probably playing it.
+// AudioMixer implementations work with sound; most probably playing it. An
+// example of an AudioMixer that does not play sound but otherwise works with
+// it is the digest.Audio type.
 type AudioMixer interface {
 	SetAudio(audioData uint8) error
 	FlushAudio() error
@@ -134,7 +127,7 @@ type SignalAttributes struct {
 	// AltPixel allows the emulator to set an alternative color for each pixel
 	// - used to signal the debug color in addition to the regular color
 	// - arguable that this be sent as some sort of meta-signal
-	AltPixel ColorSignal
+	AltPixel DebugColorSignal
 
 	// the HSyncSimple attribute is not part of the real TV spec. The signal
 	// for a real flyback is the HSync signal (held for 8 color clocks).
@@ -162,7 +155,7 @@ type SignalAttributes struct {
 // with the GetState() function
 type StateReq int
 
-// list of valid state requests
+// List of valid state requests
 const (
 	ReqFramenum StateReq = iota
 	ReqScanline

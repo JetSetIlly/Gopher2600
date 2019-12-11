@@ -78,10 +78,15 @@ var colorsAltRaw = []uint32{
 	0x333333, 0x84c8fc, 0x9246c0, 0x901c00, 0xe8e84a, 0xd5824a, 0x328432,
 }
 
-// as used in Stella, the colors above are used as below. note that using a
-// alt pixel ColorSignal not in the following list may result in a panic
+// DebugColorSignal is used by the debugging feature of the television (if
+// available). Each signal sent to the televsoin should specify a
+// DebugColorSignal, indicating from which video element the pixel was
+// generated.
+type DebugColorSignal uint16
+
+// List of valid DebugColorSignals
 const (
-	AltColBackground = iota
+	AltColBackground DebugColorSignal = iota
 	AltColBall
 	AltColPlayfield
 	AltColPlayer0
@@ -120,11 +125,7 @@ func getColor(spec *Specification, sig ColorSignal) (byte, byte, byte) {
 }
 
 // getColor translates a color signal to the individual color components
-func getAltColor(sig ColorSignal) (byte, byte, byte) {
-	if sig == VideoBlack {
-		return videoBlack[red], videoBlack[green], videoBlack[blue]
-	}
-
+func getAltColor(sig DebugColorSignal) (byte, byte, byte) {
 	if int(sig) >= len(colorsAlt) {
 		panic("alt color signal too big")
 	}

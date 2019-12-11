@@ -52,13 +52,16 @@ type Specification struct {
 	AspectBias float32
 }
 
+// From the Stella Programmer's Guide:
+//
 // "Each scan lines starts with 68 clock counts of horizontal blank (not seen on
 // the TV screen) followed by 160 clock counts to fully scan one line of TV
 // picture. When the electron beam reaches the end of a scan line, it returns
 // to the left side of the screen, waits for the 68 horizontal blank clock
 // counts, and proceeds to draw the next line below."
 //
-// Horizontal clock counts are the same for both TV specificationst
+// Horizontal clock counts are the same for both TV specifications. Vertical
+// information should be accessed via SpecNTSC or SpecPAL.
 const (
 	HorizClksHBlank   = 68
 	HorizClksVisible  = 160

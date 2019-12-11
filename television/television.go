@@ -69,8 +69,8 @@ type television struct {
 // before we accept the frame characteristics
 const stabilityThreshold = 5
 
-// NewTelevision creates a new instance of StellaTelevision for a
-// minimalist implementation of a televsion for the VCS emulation
+// NewTelevision creates a new instance of the television type, satisfying the
+// Television interface.
 func NewTelevision(tvType string) (Television, error) {
 	tv := &television{}
 

@@ -112,7 +112,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. it will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() (uint8, uint8) {
+func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	p0u, p0c := vd.Player0.pixel()
@@ -211,7 +211,8 @@ func (vd *Video) Pixel() (uint8, uint8) {
 	//	priorties
 	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft)
 
-	var col, dcol uint8
+	var col uint8
+	var dcol television.DebugColorSignal
 
 	if priority {
 		if pfu { // priority 1
