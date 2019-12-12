@@ -5,14 +5,14 @@ package addresses
 const Reset = uint16(0xfffc)
 
 // IRQ is the address where the interrupt address is stored
-const IRQ = 0xfffe
+const IRQ = uint16(0xfffe)
 
-// CanonicalNamesReadAddresses list all the writable addresses along with
-// the canonical names for those addresses. We don't use this structure in the
+// CanonicalReadSymbols list all the writable addresses along with the
+// canonical names for those addresses. We don't use this structure in the
 // emulation because the map structure introduces an overhead that we'd like to
 // avoid. We do however use it to create a more suitable structure for
 // emulation.
-var CanonicalNamesReadAddresses = map[uint16]string{
+var CanonicalReadSymbols = map[uint16]string{
 	// TIA
 	0x00: "CXM0P",
 	0x01: "CXM1P",
@@ -38,9 +38,9 @@ var CanonicalNamesReadAddresses = map[uint16]string{
 	0x0285: "TIMINT",
 }
 
-// CanonicalNamesWriteAddresses list all the writable addresses along with
-// the canonical names for those addresses. (see above for commentary)
-var CanonicalNamesWriteAddresses = map[uint16]string{
+// CanonicalWriteSymbols list all the writable addresses along with the
+// canonical names for those addresses. (see above for commentary)
+var CanonicalWriteSymbols = map[uint16]string{
 	// TIA
 	0x00: "VSYNC",
 	0x01: "VBLANK",
@@ -116,23 +116,23 @@ func init() {
 	const chipTop = 0x297
 
 	Read = make([]string, chipTop+1)
-	for k, v := range CanonicalNamesReadAddresses {
+	for k, v := range CanonicalReadSymbols {
 		Read[k] = v
 	}
 
 	Write = make([]string, chipTop+1)
-	for k, v := range CanonicalNamesWriteAddresses {
+	for k, v := range CanonicalWriteSymbols {
 		Write[k] = v
 	}
 }
 
-// named TIA registers
+// Named TIA registers
 //
-// these value are used by the emulator to specifiy known addresses. for
+// These value are used by the emulator to specifiy known addresses. For
 // example, when writing collision information we know we need the CXM0P
 // register. these named values make the code more readable
 //
-// for simplicity values are enumerated from 0; value is added to the origin
+// For simplicity values are enumerated from 0; value is added to the origin
 // address of the TIA in ChipBus.ChipWrite implementation
 const (
 	CXM0P uint16 = iota
@@ -151,13 +151,13 @@ const (
 	INPT5
 )
 
-// named RIOT registers
+// Named RIOT registers
 //
-// these value are used by the emulator to specifiy known addresses. for
+// These value are used by the emulator to specifiy known addresses. For
 // example, the timer updates itself every cycle and stores time remaining
 // value in the INTIM register.
 //
-// for simplicity values are enumerated from 0; value is added to the origin
+// For simplicity values are enumerated from 0; value is added to the origin
 // address of the TIA in ChipBus.ChipWrite implementation
 const (
 	SWCHA uint16 = iota

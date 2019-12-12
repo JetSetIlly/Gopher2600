@@ -1,5 +1,15 @@
-// Package cartridgeloader is used to transparently load cartridge data. It
-// currrently supports loading from the local filesystem and http.
+// Package cartridgeloader represents cartridge data when not attached to the
+// VCS. When a reference to a cartridge is required functions expect an
+// instance of cartridgeloader.Loader.
+//
+//	cl := cartridgeloader.Loader{
+//		Filename: "roms/Pitfall.bin",
+//	}
+//
+// When the cartridge is ready to be loaded the emulator calls the Load()
+// function. This function currently handles files (specified with Filename)
+// that are stored locally and also over http. Other protocols could easily be
+// added. A good improvement would be to allow loading from zip or tar files.
 package cartridgeloader
 
 import (
@@ -31,6 +41,11 @@ func (cl Loader) ShortName() string {
 	shortCartName := path.Base(cl.Filename)
 	shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cl.Filename))
 	return shortCartName
+}
+
+// HasLoaded returns true if Load() has been successfully called
+func (cl Loader) HasLoaded() bool {
+	return len(cl.data) > 0
 }
 
 // Load the cartridge

@@ -36,10 +36,10 @@ func (tbl *Table) canoniseTable(prefer bool) {
 	// note that because Read and Write in the addresses package are sparse
 	// arrays we need to filter out the empty entries. (the Read and Write
 	// structures used to be maps and we didn't need to do this)
-	for k, v := range addresses.CanonicalNamesReadAddresses {
+	for k, v := range addresses.CanonicalReadSymbols {
 		tbl.Read.add(uint16(k), v, prefer)
 	}
-	for k, v := range addresses.CanonicalNamesWriteAddresses {
+	for k, v := range addresses.CanonicalWriteSymbols {
 		tbl.Write.add(uint16(k), v, prefer)
 	}
 

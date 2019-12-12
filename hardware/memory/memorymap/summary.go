@@ -5,7 +5,8 @@ import (
 	"strings"
 )
 
-// Summary builds a string detailing all the areas in memory
+// Summary returns a single multiline string detailing all the areas in memory.
+// Useful for reference.
 func Summary() string {
 	var area, current Area
 	var a, sa uint16

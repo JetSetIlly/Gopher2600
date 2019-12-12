@@ -1,6 +1,6 @@
 package memorymap
 
-// Area type
+// Type representing the different areas of memory
 type Area int
 
 func (a Area) String() string {
@@ -18,7 +18,7 @@ func (a Area) String() string {
 	return "undefined"
 }
 
-// list of memory areas
+// The different memory areas in the VCS
 const (
 	Undefined Area = iota
 	TIA
@@ -27,7 +27,7 @@ const (
 	Cartridge
 )
 
-// the origin and memory top for each are of the VCS memory
+// The origin and memory top for each ares of memory
 const (
 	OriginTIA  = uint16(0x0000)
 	MemtopTIA  = uint16(0x003f)
@@ -43,15 +43,15 @@ const (
 // cartridge memtop.
 const Memtop = uint16(0x1fff)
 
-// when reading addresses from memory, TIA and RIOT addresses are filtered down
-// even further
+// Adressess in the RIOT and TIA areas that are being used to read from from
+// memory require an additional transformation
 const (
 	AddressMaskRIOT = uint16(0x02f7)
 	AddressMaskTIA  = uint16(0x000f)
 )
 
-// MapAddress translates the quoted address from mirror space to primary space.
-// Generally, an address should be passed through this function before
+// MapAddress translates the address argument from mirror space to primary
+// space.  Generally, an address should be passed through this function before
 // accessing memory.
 func MapAddress(address uint16, read bool) (uint16, Area) {
 	// note that the order of these filters is important

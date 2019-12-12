@@ -193,7 +193,8 @@ func (cart *Cartridge) IsEjected() bool {
 	return cart.Hash == ejectedHash
 }
 
-// Attach loads the bytes from a cartridge (represented by 'filename')
+// Attach the cartridge loader to the VCS and make available the data to the CPU
+// bus
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	data, err := cartload.Load()
 	if err != nil {
@@ -280,36 +281,37 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	return err
 }
 
-// Initialise calls the current mapper's initialise function
+// Initialise the cartridge
 func (cart *Cartridge) Initialise() {
 	cart.mapper.initialise()
 }
 
-// NumBanks calls the current mapper's numBanks function
+// NumBanks returns the number of banks in the catridge
 func (cart Cartridge) NumBanks() int {
 	return cart.mapper.numBanks()
 }
 
-// GetBank calls the current mapper's addressBank function. it returns the
-// current bank number for the specified address
+// GetBank returns the current bank number for the specified address
 func (cart Cartridge) GetBank(addr uint16) int {
 	addr &= cart.origin - 1
 	return cart.mapper.getBank(addr)
 }
 
-// SetBank sets the bank for the specificed address. it sets the specified
-// address to reference the specified bank
+// SetBank maps the specified address such that it references the specified
+// bank. For many cart mappers this just means switching banks for the entire
+// cartridge
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
 	addr &= cart.origin - 1
 	return cart.mapper.setBank(addr, bank)
 }
 
-// SaveState calls the current mapper's saveState function
+// SaveState notes and returns the current state of the cartridge (RAM
+// contents, selected bank)
 func (cart *Cartridge) SaveState() interface{} {
 	return cart.mapper.saveState()
 }
 
-// RestoreState calls the current mapper's restoreState function
+// RestoreState retuns the state of the cartridge to a previously known state
 func (cart *Cartridge) RestoreState(state interface{}) error {
 	return cart.mapper.restoreState(state)
 }
@@ -324,9 +326,4 @@ func (cart Cartridge) RAM() []uint8 {
 // want to filter out that error.
 func (cart Cartridge) Listen(addr uint16, data uint8) error {
 	return cart.mapper.listen(addr, data)
-}
-
-// CartFormat returns the actual format of the loaded cartridge
-func (cart Cartridge) CartFormat() string {
-	return ""
 }
