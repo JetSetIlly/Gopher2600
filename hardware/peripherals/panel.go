@@ -1,11 +1,9 @@
-// Panel uses the concurrent chip bus interface
-
 package peripherals
 
 import (
 	"gopher2600/errors"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 	"strings"
 )
 
@@ -15,7 +13,7 @@ type Panel struct {
 
 	id PeriphID
 
-	riot          memory.PeriphBus
+	riot          bus.PeriphBus
 	p0pro         bool
 	p1pro         bool
 	color         bool
@@ -24,7 +22,7 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(riot memory.PeriphBus) *Panel {
+func NewPanel(riot bus.PeriphBus) *Panel {
 	pan := &Panel{
 		id:    PanelID,
 		riot:  riot,

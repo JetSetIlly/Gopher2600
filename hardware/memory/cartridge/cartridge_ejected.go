@@ -1,4 +1,4 @@
-package memory
+package cartridge
 
 import (
 	"fmt"
@@ -60,6 +60,5 @@ func (cart ejected) ram() []uint8 {
 	return []uint8{}
 }
 
-func (cart ejected) listen(addr uint16, data uint8) error {
-	return nil
+func (cart ejected) listen(addr uint16, data uint8) {
 }

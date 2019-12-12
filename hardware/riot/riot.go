@@ -1,19 +1,19 @@
 package riot
 
 import (
-	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/bus"
 	"strings"
 )
 
 // RIOT contains all the sub-components of the VCS RIOT sub-system
 type RIOT struct {
-	mem memory.ChipBus
+	mem bus.ChipBus
 
 	Timer *timer
 }
 
 // NewRIOT creates a RIOT, to be used in a VCS emulation
-func NewRIOT(mem memory.ChipBus) *RIOT {
+func NewRIOT(mem bus.ChipBus) *RIOT {
 	riot := &RIOT{mem: mem}
 	riot.Timer = newTimer(mem)
 

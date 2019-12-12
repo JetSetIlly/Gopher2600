@@ -3,22 +3,24 @@ package memory
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
+	"gopher2600/hardware/memory/cartridge"
 	"gopher2600/hardware/memory/memorymap"
 )
 
 // VCSMemory is the monolithic representation of the memory in 2600.
 type VCSMemory struct {
-	CPUBus
+	bus.CPUBus
 
 	// memmap is a hash for every address in the VCS address space, returning
 	// one of the four memory areas
-	Memmap []DebuggerBus
+	Memmap []bus.DebuggerBus
 
 	// the four memory areas
 	RIOT *ChipMemory
 	TIA  *ChipMemory
 	PIA  *PIA
-	Cart *Cartridge
+	Cart *cartridge.Cartridge
 
 	// the following are only used by the debugging interface. it would be
 	// lovely to remove these for non-debugging emulation but there's not much
@@ -46,12 +48,12 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := &VCSMemory{}
 
-	mem.Memmap = make([]DebuggerBus, memorymap.Memtop+1)
+	mem.Memmap = make([]bus.DebuggerBus, memorymap.Memtop+1)
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
 	mem.PIA = newPIA()
-	mem.Cart = NewCartridge()
+	mem.Cart = cartridge.NewCartridge()
 
 	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
 		return nil, errors.New(errors.MemoryError, "cannot create memory areas")
@@ -59,19 +61,19 @@ func NewVCSMemory() (*VCSMemory, error) {
 
 	// create the memory map by associating all addresses in each memory area
 	// with that area
-	for i := mem.TIA.origin; i <= mem.TIA.memtop; i++ {
+	for i := memorymap.OriginTIA; i <= memorymap.MemtopTIA; i++ {
 		mem.Memmap[i] = mem.TIA
 	}
 
-	for i := mem.PIA.origin; i <= mem.PIA.memtop; i++ {
+	for i := memorymap.OriginPIA; i <= memorymap.MemtopPIA; i++ {
 		mem.Memmap[i] = mem.PIA
 	}
 
-	for i := mem.RIOT.origin; i <= mem.RIOT.memtop; i++ {
+	for i := memorymap.OriginRIOT; i <= memorymap.MemtopRIOT; i++ {
 		mem.Memmap[i] = mem.RIOT
 	}
 
-	for i := mem.Cart.origin; i <= mem.Cart.memtop; i++ {
+	for i := memorymap.OriginCart; i <= memorymap.MemtopCart; i++ {
 		mem.Memmap[i] = mem.Cart
 	}
 
@@ -79,7 +81,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 }
 
 // GetArea returns the actual memory of the specified area type
-func (mem *VCSMemory) GetArea(area memorymap.Area) (DebuggerBus, error) {
+func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
 	switch area {
 	case memorymap.TIA:
 		return mem.TIA, nil
@@ -104,7 +106,7 @@ func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 		return 0, err
 	}
 
-	data, err := area.(CPUBus).Read(ma)
+	data, err := area.(bus.CPUBus).Read(ma)
 
 	// some memory areas do not change all the bits on the data bus, leaving
 	// some bits of the address in the result
@@ -147,19 +149,11 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	mem.LastAccessID = mem.accessCount
 	mem.accessCount++
 
-	// as incredible as it may seem some cartridges react to memory writes to
-	// addresses not in the cartridge space. for example, tigervision
-	// cartridges switch banks whenever any (non-mapped) address in the range
-	// 0x00 to 0x3f is written to.
-	err = mem.Cart.Listen(address, data)
+	// as incredible as it may seem tigervision cartridges react to memory
+	// writes to (unmapped) addresses in the range 0x00 to 0x3f. the Listen()
+	// function is a horrible solution to this but I can't see how else to
+	// handle it.
+	mem.Cart.Listen(address, data)
 
-	// the only error we expect from the cartMapper is and UnwritableAddress
-	// error, which most cartridge types will respond with in all circumstances
-	if err != nil {
-		if _, ok := err.(errors.AtariError); !ok {
-			return err
-		}
-	}
-
-	return area.(CPUBus).Write(ma, data)
+	return area.(bus.CPUBus).Write(ma, data)
 }

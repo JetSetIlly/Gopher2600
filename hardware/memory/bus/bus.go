@@ -1,4 +1,6 @@
-package memory
+// Package bus defines the memory bus concept. For an explanation see the
+// memory package documentation.
+package bus
 
 // CPUBus defines the operations for the memory system when accessed from the CPU
 // All memory areas implement this interface because they are all accessible

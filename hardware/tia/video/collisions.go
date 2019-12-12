@@ -2,12 +2,12 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 )
 
 type collisions struct {
-	mem memory.ChipBus
+	mem bus.ChipBus
 
 	cxm0p  uint8
 	cxm1p  uint8
@@ -19,7 +19,7 @@ type collisions struct {
 	cxppmm uint8
 }
 
-func newCollisions(mem memory.ChipBus) *collisions {
+func newCollisions(mem bus.ChipBus) *collisions {
 	col := &collisions{mem: mem}
 	col.clear()
 	return col

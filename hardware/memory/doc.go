@@ -57,32 +57,6 @@
 //
 // The arrow pointing away from the Cartridge area indicates that the CPU can
 // only read from the cartridge, it cannot write to it. Unless that is, the
-// cartridge has internal RAM. The differences in cartridge abilities in this
-// regard is handled by the cartMapper interface.
-//
-// The cartMapper interface allows the transparent implementation of the
-// different cartridge formats that have been used by the VCS. We've already
-// mentioned cartridge RAM but the major difference betwen cartridge types is
-// how they handle so-called bank-switching.
-//
-// The differences between the cartridge types is too much to go into here but
-// a good reference for this can be found here:
-//
-// http://blog.kevtris.org/blogfiles/Atari%202600%20Mappers.txt
-//
-// Currently supported cartridge types are:
-//
-//	- Atari 2k / 4k / 8k / 16k and 32k
-//
-//	- the above with additional Superchip (additional RAM in other words)
-//
-//	- Parker Bros.
-//
-//	- MNetwork
-//
-//	- Tigervision
-//
-//	- CBS
-//
-// Other cartridge types can easily be added using the cartMapper system.
+// cartridge has internal RAM. See the cartridge package documentation for the
+// discussion on this.
 package memory

@@ -1,74 +1,33 @@
-package memory
+package cartridge
 
 import (
 	"crypto/sha1"
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
+	"gopher2600/hardware/memory/bus"
 	"gopher2600/hardware/memory/memorymap"
 	"strings"
 )
 
-// cartMapper implementations hold the actual data from the loaded ROM and
-// keeps track of which banks are mapped to individual addresses. for
-// convenience, functions with an address argument recieve that address
-// normalised to a range of 0x0000 to 0x0fff
-type cartMapper interface {
-	initialise()
-	read(addr uint16) (data uint8, err error)
-	write(addr uint16, data uint8) error
-	numBanks() int
-	getBank(addr uint16) (bank int)
-	setBank(addr uint16, bank int) error
-	saveState() interface{}
-	restoreState(interface{}) error
-	ram() []uint8
-
-	// listen differs from write in that the address is the unmapped address on
-	// the address bus. for convenience, memory functions deal with addresses
-	// that have been mapped and normalised so they count from zero.
-	// cartMapper.listen() is the exception.
-	listen(addr uint16, data uint8) error
-}
-
-// optionalSuperchip are implemented by cartMappers that have an optional
-// superchip
-type optionalSuperchip interface {
-	addSuperchip() bool
-}
-
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
-	DebuggerBus
-	CPUBus
+	bus.DebuggerBus
+	bus.CPUBus
 
-	origin uint16
-	memtop uint16
-
-	// full path to the cartridge as stored on disk
 	Filename string
-
-	// the format requested by the CartridgeLoader
-	RequestedFormat string
-
-	// hash of binary loaded from disk. any subsequent pokes to cartridge
-	// memory will not be reflected in the value
-	Hash string
+	Hash     string
 
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
 	mapper cartMapper
 }
 
-// NewCartridge is the preferred method of initialisation for the cartridges
+// NewCartridge is the preferred method of initialisation for the cartridge
+// type
 func NewCartridge() *Cartridge {
-	cart := &Cartridge{
-		origin: memorymap.OriginCart,
-		memtop: memorymap.MemtopCart,
-	}
-
+	cart := &Cartridge{}
 	cart.Eject()
-
 	return cart
 }
 
@@ -78,7 +37,7 @@ func (cart Cartridge) String() string {
 
 // Peek is an implementation of memory.DebuggerBus
 func (cart Cartridge) Peek(addr uint16) (uint8, error) {
-	addr &= cart.origin - 1
+	addr &= memorymap.OriginCart - 1
 	return cart.mapper.read(addr)
 }
 
@@ -90,13 +49,13 @@ func (cart Cartridge) Poke(addr uint16, data uint8) error {
 // Read is an implementation of memory.CPUBus
 // * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	addr &= cart.origin - 1
+	addr &= memorymap.OriginCart - 1
 	return cart.mapper.read(addr)
 }
 
 // Write is an implementation of memory.CPUBus
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	addr &= cart.origin - 1
+	addr &= memorymap.OriginCart - 1
 	return cart.mapper.write(addr, data)
 }
 
@@ -106,86 +65,6 @@ func (cart *Cartridge) Eject() {
 	cart.Filename = ejectedName
 	cart.Hash = ejectedHash
 	cart.mapper = newEjected()
-}
-
-// fingerprint8k attempts a divination of 8k cartridge data and decide on a
-// suitable cartMapper implementation
-func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
-	if fingerprintTigervision(data) {
-		return newTigervision
-	}
-
-	if fingerprintParkerBros(data) {
-		return newparkerBros
-	}
-
-	return newAtari8k
-}
-
-// fingerprint16k attempts a divination of 16k cartridge data and decide on a
-// suitable cartMapper implementation
-func (cart Cartridge) fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
-	if fingerprintMnetwork(data) {
-		return newMnetwork
-	}
-
-	return newAtari16k
-}
-
-func (cart *Cartridge) fingerprint(data []byte) error {
-	var err error
-
-	switch len(data) {
-	case 2048:
-		cart.mapper, err = newAtari2k(data)
-		if err != nil {
-			return err
-		}
-
-	case 4096:
-		cart.mapper, err = newAtari4k(data)
-		if err != nil {
-			return err
-		}
-
-	case 8192:
-		cart.mapper, err = cart.fingerprint8k(data)(data)
-		if err != nil {
-			return err
-		}
-
-	case 12288:
-		cart.mapper, err = newCBS(data)
-		if err != nil {
-			return err
-		}
-
-	case 16384:
-		cart.mapper, err = cart.fingerprint16k(data)(data)
-		if err != nil {
-			return err
-		}
-
-	case 32768:
-		cart.mapper, err = newAtari32k(data)
-		if err != nil {
-			return err
-		}
-
-	case 65536:
-		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
-
-	default:
-		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
-	}
-
-	// if cartridge mapper implements the optionalSuperChip interface then try
-	// to add the additional RAM
-	if superchip, ok := cart.mapper.(optionalSuperchip); ok {
-		superchip.addSuperchip()
-	}
-
-	return nil
 }
 
 // IsEjected returns true if no cartridge is attached
@@ -203,7 +82,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	// note name of cartridge
 	cart.Filename = cartload.Filename
-	cart.RequestedFormat = cartload.Format
 	cart.mapper = newEjected()
 
 	// generate hash
@@ -293,7 +171,7 @@ func (cart Cartridge) NumBanks() int {
 
 // GetBank returns the current bank number for the specified address
 func (cart Cartridge) GetBank(addr uint16) int {
-	addr &= cart.origin - 1
+	addr &= memorymap.OriginCart - 1
 	return cart.mapper.getBank(addr)
 }
 
@@ -301,7 +179,7 @@ func (cart Cartridge) GetBank(addr uint16) int {
 // bank. For many cart mappers this just means switching banks for the entire
 // cartridge
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	addr &= cart.origin - 1
+	addr &= memorymap.OriginCart - 1
 	return cart.mapper.setBank(addr, bank)
 }
 
@@ -321,9 +199,9 @@ func (cart Cartridge) RAM() []uint8 {
 	return cart.mapper.ram()
 }
 
-// Listen for data at the specified address. return CartridgeListen error if
-// nothing was done with the information. Callers to Listen() will probably
-// want to filter out that error.
-func (cart Cartridge) Listen(addr uint16, data uint8) error {
-	return cart.mapper.listen(addr, data)
+// Listen for data at the specified address. very wierd requirement of the
+// tigervision cartridge format. If there was a better way of implementing the
+// tigervision format, there'd be no need for this function.
+func (cart Cartridge) Listen(addr uint16, data uint8) {
+	cart.mapper.listen(addr, data)
 }

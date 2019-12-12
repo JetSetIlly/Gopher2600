@@ -126,14 +126,14 @@ func init() {
 	}
 }
 
-// Named TIA registers
+// TIA registers
 //
 // These value are used by the emulator to specifiy known addresses. For
 // example, when writing collision information we know we need the CXM0P
 // register. these named values make the code more readable
 //
-// For simplicity values are enumerated from 0; value is added to the origin
-// address of the TIA in ChipBus.ChipWrite implementation
+// Values are enumerated from 0; value is added to the origin address of the
+// TIA in ChipBus.ChipWrite implementation
 const (
 	CXM0P uint16 = iota
 	CXM1P
@@ -151,14 +151,14 @@ const (
 	INPT5
 )
 
-// Named RIOT registers
+// RIOT registers
 //
 // These value are used by the emulator to specifiy known addresses. For
 // example, the timer updates itself every cycle and stores time remaining
 // value in the INTIM register.
 //
-// For simplicity values are enumerated from 0; value is added to the origin
-// address of the TIA in ChipBus.ChipWrite implementation
+// Values are enumerated from 0; value is added to the origin address of the
+// TIA in ChipBus.ChipWrite implementation
 const (
 	SWCHA uint16 = iota
 	SWACNT

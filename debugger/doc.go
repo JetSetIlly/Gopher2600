@@ -37,7 +37,7 @@
 //
 //	dbg.Start(initScript, cartloader)
 //
-// The initscript is a script previously created either by the script.Scribe or
-// by hand. The cartloader argument must be an instance of cartloader. The
-// emulation proper handles the loading of the cartridge data.
+// The initscript is a script previously created either by the script.Scribe
+// package or by hand. The cartloader argument must be an instance of
+// cartloader.
 package debugger

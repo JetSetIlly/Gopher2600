@@ -1,8 +1,8 @@
 package video
 
 import (
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
@@ -34,7 +34,7 @@ type Video struct {
 // pisel locatoin of the sprites in relation to the hsync counter (or
 // screen)
 func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
-	mem memory.ChipBus, tv television.Television,
+	mem bus.ChipBus, tv television.Television,
 	hblank, hmoveLatch *bool) *Video {
 
 	vd := &Video{
@@ -301,7 +301,7 @@ func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 // CTRLPF is serviced in UpdateSpriteVariations()
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData) bool {
+func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) bool {
 	// homebrew Donkey Kong shows the need for a delay of at least two cycles
 	// to write new playfield data
 	switch data.Name {
@@ -322,7 +322,7 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data memory.ChipData
 // require a short pause, using the TIA scheduler
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipData) bool {
+func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData) bool {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
@@ -375,7 +375,7 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data memory.ChipDa
 // registers
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpritePositioning(data memory.ChipData) bool {
+func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 	switch data.Name {
 	// the reset registers *must* be serviced after HSYNC has been ticked.
 	// resets are resolved after a short delay, governed by the sprite itself
@@ -399,7 +399,7 @@ func (vd *Video) UpdateSpritePositioning(data memory.ChipData) bool {
 // UpdateColor checks the TIA memory for changes to color registers
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateColor(data memory.ChipData) bool {
+func (vd *Video) UpdateColor(data bus.ChipData) bool {
 	switch data.Name {
 	case "COLUP0":
 		vd.Player0.setColor(data.Value & 0xfe)
@@ -423,7 +423,7 @@ func (vd *Video) UpdateColor(data memory.ChipData) bool {
 // occur after a call to Pixel()
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpritePixels(data memory.ChipData) bool {
+func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
 	// alter its state before a call to Pixel().  if we write do alter state
 	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
@@ -450,7 +450,7 @@ func (vd *Video) UpdateSpritePixels(data memory.ChipData) bool {
 // because it affects the ball sprite.
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpriteVariations(data memory.ChipData) bool {
+func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 	switch data.Name {
 	case "CTRLPF":
 		vd.Ball.setSize((data.Value & 0x30) >> 4)

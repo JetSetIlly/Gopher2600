@@ -2,14 +2,15 @@ package memory
 
 import (
 	"fmt"
+	"gopher2600/hardware/memory/bus"
 	"gopher2600/hardware/memory/memorymap"
 	"strings"
 )
 
 // PIA defines the information for and operation allowed for PIA PIA
 type PIA struct {
-	DebuggerBus
-	CPUBus
+	bus.DebuggerBus
+	bus.CPUBus
 
 	origin uint16
 	memtop uint16

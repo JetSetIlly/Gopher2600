@@ -1,4 +1,4 @@
-package memory
+package cartridge
 
 import (
 	"fmt"
@@ -188,7 +188,7 @@ func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
 	case 0x0fe7:
 		cart.lowerSegment = 7
 
-		// from bankswitch_size.txt: "You select which 256 byte block appears
+		// from bankswitch_sizes.txt: "You select which 256 byte block appears
 		// here by accessing 1FF8 to 1FFB."
 		//
 		// "here" refers to the read range 0x0900 to 0x09ff and the write range
@@ -272,6 +272,5 @@ func (cart *mnetwork) ram() []uint8 {
 	return mem
 }
 
-func (cart *mnetwork) listen(addr uint16, data uint8) error {
-	return nil
+func (cart *mnetwork) listen(addr uint16, data uint8) {
 }

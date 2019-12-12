@@ -1,4 +1,4 @@
-package memory
+package cartridge
 
 import (
 	"fmt"
@@ -126,6 +126,5 @@ func (cart cbs) ram() []uint8 {
 	return cart.superchip
 }
 
-func (cart cbs) listen(addr uint16, data uint8) error {
-	return nil
+func (cart cbs) listen(addr uint16, data uint8) {
 }

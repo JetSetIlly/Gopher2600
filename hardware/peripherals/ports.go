@@ -2,8 +2,8 @@ package peripherals
 
 import (
 	"gopher2600/errors"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 )
 
 // Ports is the containing structure for the two player ports
@@ -13,7 +13,7 @@ type Ports struct {
 }
 
 // NewPorts is the preferred method of initialisation for the Ports type
-func NewPorts(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *Ports {
+func NewPorts(riot bus.PeriphBus, tia bus.PeriphBus, panel *Panel) *Ports {
 	return &Ports{
 		Player0: newPlayer0(riot, tia, panel),
 		Player1: newPlayer1(riot, tia, panel),
@@ -26,8 +26,8 @@ type player struct {
 
 	id PeriphID
 
-	riot  memory.PeriphBus
-	tia   memory.PeriphBus
+	riot  bus.PeriphBus
+	tia   bus.PeriphBus
 	panel *Panel
 
 	// joystick
@@ -48,7 +48,7 @@ type player struct {
 	buttonMask uint8
 }
 
-func newPlayer0(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+func newPlayer0(riot bus.PeriphBus, tia bus.PeriphBus, panel *Panel) *player {
 	pl := &player{
 		id:    PlayerZeroID,
 		riot:  riot,
@@ -71,7 +71,7 @@ func newPlayer0(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *play
 	return pl
 }
 
-func newPlayer1(riot memory.PeriphBus, tia memory.PeriphBus, panel *Panel) *player {
+func newPlayer1(riot bus.PeriphBus, tia bus.PeriphBus, panel *Panel) *player {
 	pl := &player{
 		id:    PlayerOneID,
 		riot:  riot,

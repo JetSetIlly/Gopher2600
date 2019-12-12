@@ -6,8 +6,8 @@ import (
 	"gopher2600/hardware/cpu/definitions"
 	"gopher2600/hardware/cpu/registers"
 	"gopher2600/hardware/cpu/result"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 	"log"
 )
 
@@ -27,7 +27,7 @@ type CPU struct {
 	acc8  *registers.Register
 	acc16 *registers.ProgramCounter
 
-	mem     memory.CPUBus
+	mem     bus.CPUBus
 	opCodes []*definitions.InstructionDefinition
 
 	// isExecuting is used for sanity checks - to make sure we're not calling CPU
@@ -59,7 +59,7 @@ type CPU struct {
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure
-func NewCPU(mem memory.CPUBus) (*CPU, error) {
+func NewCPU(mem bus.CPUBus) (*CPU, error) {
 	mc := &CPU{mem: mem}
 
 	mc.PC = registers.NewProgramCounter(0)

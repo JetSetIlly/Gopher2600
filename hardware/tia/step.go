@@ -2,7 +2,7 @@ package tia
 
 import (
 	"gopher2600/errors"
-	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/bus"
 	"gopher2600/television"
 )
 
@@ -34,7 +34,7 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 	// update debugging information
 	tia.videoCycles++
 
-	var memoryData memory.ChipData
+	var memoryData bus.ChipData
 
 	// update memory if required
 	if serviceMemory {

@@ -83,7 +83,7 @@ var commandTemplate = []string{
 	cmdGrep + " %S",
 	cmdHexLoad + " %N %N {%N}",
 	cmdInsert + " %F",
-	cmdLast + " (DEFN)",
+	cmdLast + " (DEFN|BYTECODE)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
 	cmdReflect + " (ON|OFF)",
@@ -587,20 +587,35 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		return doNothing, nil
 
 	case cmdLast:
-		option, ok := tokens.Get()
-		if ok {
-			switch strings.ToUpper(option) {
-			case "DEFN":
-				dbg.print(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
-			}
+		if dbg.vcs.CPU.LastResult.Defn == nil {
+			// special condition for when LAST is called before any execution
+			// has taken place
+			dbg.print(terminal.StyleFeedback, "no instruction decoded yet")
 		} else {
-			var printTag terminal.Style
-			if dbg.vcs.CPU.LastResult.Final {
-				printTag = terminal.StyleCPUStep
-			} else {
-				printTag = terminal.StyleVideoStep
+			done := false
+			resultStyle := result.StyleExecution
+
+			option, ok := tokens.Get()
+			if ok {
+				switch strings.ToUpper(option) {
+				case "DEFN":
+					dbg.print(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
+					done = true
+
+				case "BYTECODE":
+					resultStyle = result.StyleDisasm
+				}
 			}
-			dbg.print(printTag, "%s", dbg.vcs.CPU.LastResult.GetString(dbg.disasm.Symtable, result.StyleExecution))
+
+			if !done {
+				var printTag terminal.Style
+				if dbg.vcs.CPU.LastResult.Final {
+					printTag = terminal.StyleCPUStep
+				} else {
+					printTag = terminal.StyleVideoStep
+				}
+				dbg.print(printTag, "%s", dbg.vcs.CPU.LastResult.GetString(dbg.disasm.Symtable, resultStyle))
+			}
 		}
 
 	case cmdMemMap:

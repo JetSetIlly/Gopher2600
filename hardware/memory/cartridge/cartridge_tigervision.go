@@ -1,4 +1,4 @@
-package memory
+package cartridge
 
 import (
 	"fmt"
@@ -136,17 +136,22 @@ func (cart *tigervision) ram() []uint8 {
 	return []uint8{}
 }
 
-func (cart *tigervision) listen(addr uint16, data uint8) error {
-	// tigervision is seemingly unique in that in bank-switches when an address
+func (cart *tigervision) listen(addr uint16, data uint8) {
+	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
 	// listen() function.
 
-	// althought address 3F is used primarily for bank switching in actual
-	// fact writing anywhere in TIA space is okay
+	// although address 3F is used primarily, in actual fact writing anywhere
+	// in TIA space is okay. from  the description from Kevin Horton's document
+	// (quoted above) whenever an address in TIA space is written to, the lower
+	// 3 bits of the value being written is used to set the segment.
+
 	if addr < 0x40 {
 		// only the lowest three bits of the data value are used
 		cart.segment[0] = int(data & 0x03)
-		return nil
 	}
-	return nil
+
+	// this bank switching method causes a problem when the CPU wants to write
+	// to TIA space for real and not cause a bankswitch. for this reason,
+	// tigervision cartridges use mirror addresses to write to the TIA.
 }

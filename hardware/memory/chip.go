@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 )
 
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
 type ChipMemory struct {
-	DebuggerBus
-	ChipBus
-	CPUBus
-	PeriphBus
+	bus.DebuggerBus
+	bus.ChipBus
+	bus.CPUBus
+	bus.PeriphBus
 
+	// because we're servicing two different memory areas with this type, we
+	// need to store the origin and memtop values here, rather than using the
+	// constants from the memorymap package directly
 	origin uint16
 	memtop uint16
+
 	memory []uint8
 
 	// additional mask to further reduce address space when read from the CPU
@@ -49,13 +54,13 @@ func (area ChipMemory) Poke(address uint16, value uint8) error {
 }
 
 // ChipRead is an implementation of memory.ChipBus
-func (area *ChipMemory) ChipRead() (bool, ChipData) {
+func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, ChipData{Name: addresses.Write[area.lastWriteAddress], Value: area.writeData}
+		return true, bus.ChipData{Name: addresses.Write[area.lastWriteAddress], Value: area.writeData}
 	}
 
-	return false, ChipData{}
+	return false, bus.ChipData{}
 }
 
 // ChipWrite is an implementation of memory.ChipBus

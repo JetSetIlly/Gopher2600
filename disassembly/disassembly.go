@@ -5,8 +5,8 @@ import (
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/cartridge"
 	"gopher2600/symbols"
 	"io"
 	"strings"
@@ -18,7 +18,7 @@ type bank [disasmMask + 1]Entry
 
 // Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
-	cart *memory.Cartridge
+	cart *cartridge.Cartridge
 
 	// discovered/inferred cartridge attributes
 	nonCartJmps bool
@@ -76,7 +76,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	// standard symbols table even in the event of an error
 	symtable, _ := symbols.ReadSymbolsFile(cartload.Filename)
 
-	cart := memory.NewCartridge()
+	cart := cartridge.NewCartridge()
 
 	err := cart.Attach(cartload)
 	if err != nil {
@@ -93,7 +93,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control.
-func FromMemory(cart *memory.Cartridge, symtable *symbols.Table) (*Disassembly, error) {
+func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembly, error) {
 	dsm := &Disassembly{}
 
 	dsm.cart = cart

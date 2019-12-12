@@ -2,12 +2,12 @@ package riot
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
+	"gopher2600/hardware/memory/bus"
 )
 
 type timer struct {
-	mem memory.ChipBus
+	mem bus.ChipBus
 
 	// register is the name of the currently selected RIOT timer
 	register string
@@ -45,7 +45,7 @@ type timer struct {
 	cyclesElapsed int
 }
 
-func newTimer(mem memory.ChipBus) *timer {
+func newTimer(mem bus.ChipBus) *timer {
 	tmr := &timer{
 		mem:             mem,
 		register:        "TIM1024",
@@ -71,7 +71,7 @@ func (tmr timer) String() string {
 	)
 }
 
-func (tmr *timer) serviceMemory(data memory.ChipData) bool {
+func (tmr *timer) serviceMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "TIM1T":
 		tmr.register = data.Name

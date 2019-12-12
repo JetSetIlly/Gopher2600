@@ -2,7 +2,7 @@ package tia
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/bus"
 	"gopher2600/hardware/tia/audio"
 	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
@@ -15,7 +15,7 @@ import (
 // TIA contains all the sub-components of the VCS TIA sub-system
 type TIA struct {
 	tv  television.Television
-	mem memory.ChipBus
+	mem bus.ChipBus
 
 	// number of video cycles since the last WSYNC. also cycles back to 0 on
 	// RSYNC and when polycounter reaches count 56
@@ -92,7 +92,7 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
-func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
+func NewTIA(tv television.Television, mem bus.ChipBus) *TIA {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
 
 	var err error
@@ -124,7 +124,7 @@ func NewTIA(tv television.Television, mem memory.ChipBus) *TIA {
 // UpdateTIA checks for side effects in the TIA sub-system.
 //
 // Returns true if ChipData has *not* been serviced.
-func (tia *TIA) UpdateTIA(data memory.ChipData) bool {
+func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	switch data.Name {
 	case "VSYNC":
 		tia.sig.VSync = data.Value&0x02 == 0x02

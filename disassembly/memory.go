@@ -1,14 +1,14 @@
 package disassembly
 
 import (
-	"gopher2600/hardware/memory"
+	"gopher2600/hardware/memory/cartridge"
 	"gopher2600/hardware/memory/memorymap"
 )
 
 // disasmMemory is a simplified memory model that allows the emulated CPU to
 // read cartridge memory.
 type disasmMemory struct {
-	cart *memory.Cartridge
+	cart *cartridge.Cartridge
 }
 
 func (dismem *disasmMemory) Read(address uint16) (uint8, error) {

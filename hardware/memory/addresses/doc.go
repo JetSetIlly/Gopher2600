@@ -10,9 +10,11 @@
 // is noticeably slower than accessing a sparse array. There is probably no
 // need to use this arrays outside of the emulation code.
 //
-// The Named TIA and RIOT registers probably don't need referring to outside
-// the emulation code.
+// "TIA Registers" and "RIOT Registers" are so named because to those areas,
+// those addresses look like registers. They probably don't need referring to
+// outside the emulation code.
 //
-// DataMasks help implement VCS data/address bus artefacts and probably don't
-// need to be referred to outside the emulation code.
+// DataMasks help implement VCS data/address bus artefacts (fully explained
+// beloew) and probably don't need to be referred to outside the emulation
+// code.
 package addresses

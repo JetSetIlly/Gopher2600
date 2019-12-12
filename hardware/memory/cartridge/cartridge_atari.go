@@ -1,4 +1,4 @@
-package memory
+package cartridge
 
 import (
 	"fmt"
@@ -146,8 +146,7 @@ func (cart atari) ram() []uint8 {
 	return cart.superchip
 }
 
-func (cart atari) listen(addr uint16, data uint8) error {
-	return nil
+func (cart atari) listen(addr uint16, data uint8) {
 }
 
 // atari4k is the original and most straightforward format

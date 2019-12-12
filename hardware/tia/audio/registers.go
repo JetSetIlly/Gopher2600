@@ -1,14 +1,12 @@
 package audio
 
-import (
-	"gopher2600/hardware/memory"
-)
+import "gopher2600/hardware/memory/bus"
 
 // UpdateRegisters checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
 //
 // Returns true if memory.ChipData has not been serviced.
-func (au *Audio) UpdateRegisters(data memory.ChipData) bool {
+func (au *Audio) UpdateRegisters(data bus.ChipData) bool {
 	switch data.Name {
 	case "AUDC0":
 		au.channel0.regControl = data.Value & 0x0f
