@@ -132,8 +132,9 @@ func (ev Event) JustStarted() bool {
 }
 
 // AboutToEnd is true if event resolves on next Tick()
-// * optimisation: called a lot. pointer to Event to prevent duffcopy
 func (ev *Event) AboutToEnd() bool {
+	// * optimisation: called a lot. pointer to Event to prevent duffcopy
+
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}

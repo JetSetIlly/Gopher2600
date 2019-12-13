@@ -47,8 +47,9 @@ func (cart Cartridge) Poke(addr uint16, data uint8) error {
 }
 
 // Read is an implementation of memory.CPUBus
-// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
+	// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
+
 	addr &= memorymap.OriginCart - 1
 	return cart.mapper.read(addr)
 }

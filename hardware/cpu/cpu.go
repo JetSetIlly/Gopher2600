@@ -72,6 +72,11 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 	mc.acc8 = registers.NewRegister(0, "accumulator")
 	mc.acc16 = registers.NewProgramCounter(0)
 
+	// set Final flag in LastResult to true because logically we can say it is.
+	// this fixes what might be considered a bug when building the debugger
+	// prompt. this is the best way of fixing it.
+	mc.LastResult.Final = true
+
 	var err error
 
 	mc.opCodes, err = definitions.GetInstructionDefinitions()

@@ -97,9 +97,9 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
 }
 
 // Implementation of CPUBus.Read
-//
-// * optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
 func (mem *VCSMemory) Read(address uint16) (uint8, error) {
+	// optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
+
 	ma, ar := memorymap.MapAddress(address, true)
 	area, err := mem.GetArea(ar)
 	if err != nil {
