@@ -3,6 +3,7 @@ package debugger
 import (
 	"fmt"
 	"gopher2600/debugger/terminal"
+	"gopher2600/hardware/memory/memorymap"
 	"strings"
 )
 
@@ -30,13 +31,18 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		prompt.WriteString("(rec)")
 	}
 
-	if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
+	// build prompt depending on address and whether a disassembly is available
+	if promptAddress < memorymap.OriginCart {
+		// prompt address doesn't seem to be pointing to the cartridge, prepare
+		// "non-cart" prompt
+		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", promptAddress))
+	} else if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
 		prompt.WriteString(fmt.Sprintf(" %#04x %s ]", promptAddress, entry.String()))
 	} else {
-		// incomplete disassembly, prepare witchspace prompt
-		prompt.WriteString(fmt.Sprintf(" %#04x (%d) witchspace ]", promptAddress, promptBank))
+		// incomplete disassembly, prepare "no disasm" prompt
+		prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", promptAddress, promptBank))
 	}
 
 	// display indicator that the CPU is waiting for WSYNC to end. only applies

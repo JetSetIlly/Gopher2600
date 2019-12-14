@@ -29,6 +29,10 @@ func (dismem *disasmMemory) Write(address uint16, data uint8) error {
 		return dismem.cart.Write(address, data)
 	}
 
-	// address outside of cartidge range return nothing
+	// address outside of cartidge range - call Listen() in case cartridge
+	// requires it to function correctly (tigervision cartridges bank switch on
+	// writes to certain addresses)
+	dismem.cart.Listen(address, data)
+
 	return nil
 }

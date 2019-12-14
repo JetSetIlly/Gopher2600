@@ -22,8 +22,10 @@
 // flow from the start adddress as the executable program unfolds.
 //
 // In flow disassembly it is hoped that every branch and subroutine is
-// considered. However, it is possible for real execution of the ROM to reach
-// places not reacable by the flow. For example:
+// considered. This is done by turning "flow control" off for the CPU and
+// handling branches manually in the disassembly package. However, it maybe
+// possible for correct CPU execution of the ROM to reach places not reachable
+// by the flow. For example:
 //
 // - Addresses stuffed into the stack and RTS being called, without an explicit
 // JSR.
@@ -36,10 +38,13 @@
 //
 // Compared to flow disassembly, linear disassembly looks at every memory
 // location. The downside of this is that a lot of what is found will be
-// nonsense.  We can use the IsInstruction() function of the Entry type to help
-// us decide what is what but none-the-less linear disassembly is no good for
-// presenting the entire program. Where linear disassembly *is* useful is a
-// quick reference for an address that you know contains a valid instruction.
+// nonsense (data segments never intended for execution, for instance). This
+// make linear disassembly unsuitable for presentation of the  entire ROM.
+// Where linear disassembly *is* useful is a quick reference for an address
+// that you know contains a valid instruction.
+//
+// Note that linear cannot do anything about the posibility of executing code
+// from area outside of cartridge space (ie. RAM).
 //
 // The flow/linear difference is invisible to the user of the disassembly
 // package. Instead, the functions Get(), Dump() and Grep() are used. These
