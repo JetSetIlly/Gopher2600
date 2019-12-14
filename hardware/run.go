@@ -48,11 +48,10 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		// check validity of result
-		err = vcs.CPU.LastResult.IsValid()
-		if err != nil {
-			return err
-		}
+		// err = vcs.CPU.LastResult.IsValid()
+		// if err != nil {
+		// 	return err
+		// }
 
 		cont, err = continueCheck()
 	}

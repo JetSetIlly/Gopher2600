@@ -1,9 +1,11 @@
 package result
 
-// Style is the type used to specify what to include in a disassembly string
+// Style specifies the elements to include in strings constructed by
+// Instruction.GetString(). Different styles can be ORed together to produce
+// custom styles.
 type Style int
 
-// style flags to hint at what to include when creating disassembly output
+// List of valid Style flags.
 const (
 	// ByteCode flag causes the program data to be printed verbatim before
 	// the disassembly
@@ -27,8 +29,10 @@ const (
 
 	// remove leading/trailing whitespace
 	StyleFlagCompact
+)
 
-	// compound style
+// List of compound styles. For convenience.
+const (
 	StyleExecution = StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagCycles | StyleFlagNotes | StyleFlagColumns
 	StyleDisasm    = StyleFlagByteCode | StyleFlagAddress | StyleFlagSymbols | StyleFlagLocation | StyleFlagColumns
 	StyleBrief     = StyleFlagSymbols | StyleFlagCompact

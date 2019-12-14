@@ -1,12 +1,11 @@
-package definitions
+package instructions
 
 import "fmt"
 
-// AddressingMode describes the method by which an instruction receives data
-// on which to operate
+// AddressingMode describes the method data for the instruction should be received
 type AddressingMode int
 
-// enumeration of supported addressing modes
+// List of supported addressing modes
 const (
 	Implied AddressingMode = iota
 	Immediate
@@ -24,10 +23,10 @@ const (
 	IndexedZeroPageY // only used for LDX
 )
 
-// EffectCategory - categorises an instruction by the effect it has
+// EffectCategory categorises an instruction by the effect it has
 type EffectCategory int
 
-// enumeration of instruction effect categories
+// List of effect categories
 const (
 	Read EffectCategory = iota
 	Write
@@ -40,9 +39,9 @@ const (
 	Interrupt
 )
 
-// InstructionDefinition - defines each instruction in the instruction set; one per instruction
-type InstructionDefinition struct {
-	ObjectCode     uint8
+// Definition defines each instruction in the instruction set; one per instruction
+type Definition struct {
+	OpCode         uint8
 	Mnemonic       string
 	Bytes          int
 	Cycles         int
@@ -51,9 +50,10 @@ type InstructionDefinition struct {
 	Effect         EffectCategory
 }
 
-func (defn InstructionDefinition) String() string {
+// String returns a single instruction definition as a string.
+func (defn Definition) String() string {
 	if defn.Mnemonic == "" {
 		return "undecoded instruction"
 	}
-	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.ObjectCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
+	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }

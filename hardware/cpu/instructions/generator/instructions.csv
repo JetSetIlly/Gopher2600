@@ -1,4 +1,4 @@
-# instructions are defined with the following fields: 
+# instruction table entries are defined by the following fields: 
 #
 #	opcode, mnemonic, cycles, addressing mode, page sensitivity, [effect category]
 #
@@ -10,7 +10,7 @@
 # 4. FLOW			(instruction explicitely affects the program counter)
 # 5. SUB-ROUTINE	(like FLOW but also writes to the stack)
 #
-# in the 6507 all instructions are considered to read from memory, even
+# in the 6507 all instructions are considered to *read* from memory, even
 # register only instructions (the IMPLIED addressing mode). in the hardware,
 # this meant that the chip could forego a "read" pin - the electrical
 # connection that switched on access to memory - and thereby save on
@@ -32,8 +32,7 @@
 #		ZERO PAGE = 2
 #		all others = 3
 #
-#	TODO: maybe the number of cycles can be inferred in a similar way
-
+# !!TODO: maybe the number of cycles can be inferred in a similar way
 
 # no operation
 # (also see the undocuemted instruction, DOP)

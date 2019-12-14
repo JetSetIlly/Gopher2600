@@ -235,7 +235,7 @@ func (bs *ballSprite) resetPosition() {
 
 	// stop any existing reset events. generally, this codepath will not apply
 	// because a resetPositionEvent will conculde before being triggere again.
-	// but it is possible when using a very quick opcode on the reset register,
+	// but it is possible when using a very quick instruction on the reset register,
 	// like a zero page INC, for requests to overlap
 	if bs.resetPositionEvent != nil {
 		bs.resetPositionEvent.Push()

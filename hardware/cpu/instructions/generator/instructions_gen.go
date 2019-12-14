@@ -6,7 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"go/format"
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"io"
 	"os"
 	"sort"
@@ -15,18 +15,16 @@ import (
 )
 
 const definitionsCSVFile = "./instructions.csv"
-const generatedGoFile = "../instructions.go"
+const generatedGoFile = "../table.go"
 
 const leadingBoilerPlate = "// generated code - do not change\n\n" +
-	"package definitions\n\n" +
-	"// GetInstructionDefinitions returns the opcode table for the 6507\n" +
-	"func GetInstructionDefinitions() ([]*InstructionDefinition, error) {\n" +
-	"return []*InstructionDefinition{"
+	"package instructions\n\n" +
+	"// GetDefinitions returns the table of instruction definitions for the 6507\n" +
+	"func GetDefinitions() ([]*Definition, error) {\n" +
+	"return []*Definition{"
 
 const trailingBoilerPlate = "}, nil\n}"
 
-// parseCSV reads & parses the definitions CSV file and returns a map of
-// InstructionDefinitions
 func parseCSV() (string, error) {
 	// open file
 	df, err := os.Open(definitionsCSVFile)
@@ -41,15 +39,17 @@ func parseCSV() (string, error) {
 	csvr.TrimLeadingSpace = true
 	csvr.ReuseRecord = true
 
-	// instructions file can have a variable number of fields per definition.
+	// instruction file can have a variable number of fields per definition.
 	// instruction effect field is optional (defaulting to READ)
 	csvr.FieldsPerRecord = -1
 
 	// create new definitions table
-	deftable := make(map[uint8]definitions.InstructionDefinition)
+	deftable := make(map[uint8]instructions.Definition)
 
+	line := 0
 	for {
 		// loop through file until EOF is reached
+		line++
 		rec, err := csvr.Read()
 		if err == io.EOF {
 			break
@@ -60,7 +60,7 @@ func parseCSV() (string, error) {
 
 		// check for valid record length
 		if !(len(rec) == 5 || len(rec) == 6) {
-			return "", fmt.Errorf("wrong number of fields in instruction definition (%s)", rec)
+			return "", fmt.Errorf("wrong number of fields in instruction definition (%s) [line %d]", rec, line)
 		}
 
 		// trim trailing comment from record
@@ -71,75 +71,75 @@ func parseCSV() (string, error) {
 			rec[i] = strings.TrimSpace(rec[i])
 		}
 
-		newDef := definitions.InstructionDefinition{}
+		newDef := instructions.Definition{}
 
-		// field: parse object code
-		objectCode := rec[0]
-		if objectCode[:2] == "0x" {
-			objectCode = objectCode[2:]
+		// field: parse opcode
+		opcode := rec[0]
+		if opcode[:2] == "0x" {
+			opcode = opcode[2:]
 		}
-		objectCode = strings.ToUpper(objectCode)
+		opcode = strings.ToUpper(opcode)
 
 		// store the decimal number in the new instruction definition
 		// -- we'll use this for the hash key too
-		n, err := strconv.ParseInt(objectCode, 16, 16)
+		n, err := strconv.ParseInt(opcode, 16, 16)
 		if err != nil {
-			return "", fmt.Errorf("invalid object code (0x%s)", objectCode)
+			return "", fmt.Errorf("invalid opcode (%#02x) [line %d]", opcode, line)
 		}
-		newDef.ObjectCode = uint8(n)
+		newDef.OpCode = uint8(n)
 
-		// field: instruction mnemonic
+		// field: opcode mnemonic
 		newDef.Mnemonic = rec[1]
 
 		// field: cycle count
 		newDef.Cycles, err = strconv.Atoi(rec[2])
 		if err != nil {
-			return "", fmt.Errorf("invalid cycle count for 0x%s (%s)", objectCode, rec[2])
+			return "", fmt.Errorf("invalid cycle count for %#02x (%s) [line %d]", newDef.OpCode, rec[2], line)
 		}
 
 		// field: addressing mode
 		//
-		// the addressing mode also defines how many bytes an instruction
+		// the addressing mode also defines how many bytes an opcode
 		// requires
 		am := strings.ToUpper(rec[3])
 		switch am {
 		default:
-			return "", fmt.Errorf("invalid addressing mode for 0x%s (%s)", objectCode, rec[3])
+			return "", fmt.Errorf("invalid addressing mode for %#02x (%s) [line %d]", newDef.OpCode, rec[3], line)
 		case "IMPLIED":
-			newDef.AddressingMode = definitions.Implied
+			newDef.AddressingMode = instructions.Implied
 			newDef.Bytes = 1
 		case "IMMEDIATE":
-			newDef.AddressingMode = definitions.Immediate
+			newDef.AddressingMode = instructions.Immediate
 			newDef.Bytes = 2
 		case "RELATIVE":
-			newDef.AddressingMode = definitions.Relative
+			newDef.AddressingMode = instructions.Relative
 			newDef.Bytes = 2
 		case "ABSOLUTE":
-			newDef.AddressingMode = definitions.Absolute
+			newDef.AddressingMode = instructions.Absolute
 			newDef.Bytes = 3
 		case "ZERO_PAGE":
-			newDef.AddressingMode = definitions.ZeroPage
+			newDef.AddressingMode = instructions.ZeroPage
 			newDef.Bytes = 2
 		case "INDIRECT":
-			newDef.AddressingMode = definitions.Indirect
+			newDef.AddressingMode = instructions.Indirect
 			newDef.Bytes = 3
 		case "PRE_INDEX_INDIRECT":
-			newDef.AddressingMode = definitions.PreIndexedIndirect
+			newDef.AddressingMode = instructions.PreIndexedIndirect
 			newDef.Bytes = 2
 		case "POST_INDEX_INDIRECT":
-			newDef.AddressingMode = definitions.PostIndexedIndirect
+			newDef.AddressingMode = instructions.PostIndexedIndirect
 			newDef.Bytes = 2
 		case "ABSOLUTE_INDEXED_X":
-			newDef.AddressingMode = definitions.AbsoluteIndexedX
+			newDef.AddressingMode = instructions.AbsoluteIndexedX
 			newDef.Bytes = 3
 		case "ABSOLUTE_INDEXED_Y":
-			newDef.AddressingMode = definitions.AbsoluteIndexedY
+			newDef.AddressingMode = instructions.AbsoluteIndexedY
 			newDef.Bytes = 3
 		case "INDEXED_ZERO_PAGE_X":
-			newDef.AddressingMode = definitions.IndexedZeroPageX
+			newDef.AddressingMode = instructions.IndexedZeroPageX
 			newDef.Bytes = 2
 		case "INDEXED_ZERO_PAGE_Y":
-			newDef.AddressingMode = definitions.IndexedZeroPageY
+			newDef.AddressingMode = instructions.IndexedZeroPageY
 			newDef.Bytes = 2
 		}
 
@@ -147,7 +147,7 @@ func parseCSV() (string, error) {
 		ps := strings.ToUpper(rec[4])
 		switch ps {
 		default:
-			return "", fmt.Errorf("invalid page sensitivity switch for 0x%s (%s)", objectCode, rec[4])
+			return "", fmt.Errorf("invalid page sensitivity switch for %#02x (%s) [line %d]", newDef.OpCode, rec[4], line)
 		case "TRUE":
 			newDef.PageSensitive = true
 		case "FALSE":
@@ -158,28 +158,28 @@ func parseCSV() (string, error) {
 		if len(rec) == 5 {
 			// effect field is optional. if it hasn't been included then
 			// default instruction effect defaults to 'Read'
-			newDef.Effect = definitions.Read
+			newDef.Effect = instructions.Read
 		} else {
 			switch rec[5] {
 			default:
-				return "", fmt.Errorf("unknown category for 0x%s (%s)", objectCode, rec[5])
+				return "", fmt.Errorf("unknown category for %#02x (%s) [line %d]", newDef.OpCode, rec[5], line)
 			case "READ":
-				newDef.Effect = definitions.Read
+				newDef.Effect = instructions.Read
 			case "WRITE":
-				newDef.Effect = definitions.Write
+				newDef.Effect = instructions.Write
 			case "RMW":
-				newDef.Effect = definitions.RMW
+				newDef.Effect = instructions.RMW
 			case "FLOW":
-				newDef.Effect = definitions.Flow
+				newDef.Effect = instructions.Flow
 			case "SUB-ROUTINE":
-				newDef.Effect = definitions.Subroutine
+				newDef.Effect = instructions.Subroutine
 			case "INTERRUPT":
-				newDef.Effect = definitions.Interrupt
+				newDef.Effect = instructions.Interrupt
 			}
 		}
 
-		// add new definition to deftable, using object code as the hash key
-		deftable[newDef.ObjectCode] = newDef
+		// add new definition to deftable, using opcode as the hash key
+		deftable[newDef.OpCode] = newDef
 	}
 
 	printSummary(deftable)
@@ -198,28 +198,28 @@ func parseCSV() (string, error) {
 	return output, nil
 }
 
-func printSummary(deftable map[uint8]definitions.InstructionDefinition) {
+func printSummary(deftable map[uint8]instructions.Definition) {
 	missing := make([]int, 0, 255)
 
-	// walk deftable and note missing opcodes
+	// walk deftable and note missing instructions
 	for i := 0; i <= 255; i++ {
 		if _, ok := deftable[uint8(i)]; !ok {
 			missing = append(missing, i)
 		}
 	}
 
-	// if no missing opcodes were found then there is nothing more to do
+	// if no missing instructions were found then there is nothing more to do
 	if len(missing) == 0 {
 		return
 	}
 
-	fmt.Println("6507 implementation / undefined opcodes")
-	fmt.Println("---------------------------------------")
+	fmt.Println("6507 implementation / unused opcodes")
+	fmt.Println("------------------------------------")
 
-	// sort missing opcodes
+	// sort missing instructions
 	missing = sort.IntSlice(missing)
 
-	// print and columnise missing opcodes
+	// print and columnise missing instructions
 	c := 0
 	for i := range missing {
 		fmt.Printf("%#02x\t", missing[i])
@@ -235,20 +235,20 @@ func printSummary(deftable map[uint8]definitions.InstructionDefinition) {
 
 	// print summary
 	fmt.Printf("%d missing, %02.0f%% defined\n", len(missing), float32(100*(256-len(missing))/256))
-	fmt.Println("(defined means that the taxonomy of the opcode\nhas been identified, not necessarily implemented)")
+	fmt.Println("(defined means that the taxonomy of the instruction\nhas been identified, not necessarily implemented)")
 }
 
 func main() {
 	// parse definitions files
 	output, err := parseCSV()
 	if err != nil {
-		fmt.Printf("error during opcode generation: %s", err)
+		fmt.Printf("error during instruction table generation: %s\n", err)
 		os.Exit(10)
 	}
 
 	// we'll be putting the contents of deftable into the definition package so
 	// we need to remove the expicit references to that package
-	output = strings.Replace(output, "definitions.", "", -1)
+	output = strings.Replace(output, "instructions.", "", -1)
 
 	// add boiler-plate to output
 	output = fmt.Sprintf("%s%s%s", leadingBoilerPlate, output, trailingBoilerPlate)
@@ -256,7 +256,7 @@ func main() {
 	// format code using standard Go formatted
 	formattedOutput, err := format.Source([]byte(output))
 	if err != nil {
-		fmt.Printf("error during opcode generation: %s", err)
+		fmt.Printf("error during instruction table generation: %s\n", err)
 		os.Exit(10)
 	}
 	output = string(formattedOutput)
@@ -264,14 +264,14 @@ func main() {
 	// create output file (over-writing) if it already exists
 	f, err := os.Create(generatedGoFile)
 	if err != nil {
-		fmt.Printf("error during opcode generation: %s", err)
+		fmt.Printf("error during instruction table generation: %s\n", err)
 		os.Exit(10)
 	}
 	defer f.Close()
 
 	_, err = f.WriteString(output)
 	if err != nil {
-		fmt.Printf("error during opcode generation: %s", err)
+		fmt.Printf("error during instruction table generation: %s\n", err)
 		os.Exit(10)
 	}
 }

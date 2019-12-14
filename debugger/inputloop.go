@@ -4,7 +4,7 @@ import (
 	"gopher2600/debugger/terminal"
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"io"
 	"os"
 	"syscall"
@@ -22,9 +22,9 @@ func (dbg *Debugger) videoCycle() error {
 	// instruction)
 	if !dbg.vcs.CPU.LastResult.Final &&
 		dbg.vcs.CPU.LastResult.Defn != nil {
-		if dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Flow ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Subroutine ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == definitions.Interrupt {
+		if dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
+			dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
+			dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt {
 			return nil
 		}
 

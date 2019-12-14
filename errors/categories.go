@@ -84,7 +84,6 @@ const (
 
 	// cpu
 	UnimplementedInstruction
-	InvalidOpcode
 	InvalidResult
 	ProgramCounterCycled
 	InvalidOperationMidInstruction

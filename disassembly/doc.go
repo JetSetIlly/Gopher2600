@@ -6,7 +6,7 @@
 //	disasm, _ := disassembly.FromMemory(cartMem, symbols.NewTable())
 //
 // The FromMemory() function requires a valid instance of a symbols.Table. In
-// the example above, we've simply sent the empty table; which is fine but
+// the example above, we've used the result of NewTable(); which is fine but
 // limits the potential of the disassembly package. For best results, the
 // symbols.ReadSymbolsFile() function should be used (see symbols package for
 // details). Note that the FromCartridge() function handles symbols files for

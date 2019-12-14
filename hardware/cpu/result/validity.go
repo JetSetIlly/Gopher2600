@@ -3,7 +3,7 @@ package result
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"reflect"
 )
 
@@ -31,10 +31,10 @@ func (result Instruction) IsValid() error {
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.Bug == "" {
-		if result.Defn.AddressingMode == definitions.Relative {
+		if result.Defn.AddressingMode == instructions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
 				msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
-					result.Defn.ObjectCode,
+					result.Defn.OpCode,
 					result.Defn.Mnemonic,
 					result.ActualCycles,
 					result.Defn.Cycles,
@@ -46,7 +46,7 @@ func (result Instruction) IsValid() error {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
 					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
-						result.Defn.ObjectCode,
+						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,
 						result.Defn.Cycles,
@@ -56,7 +56,7 @@ func (result Instruction) IsValid() error {
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
 					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
-						result.Defn.ObjectCode,
+						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,
 						result.Defn.Cycles)

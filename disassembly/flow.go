@@ -3,7 +3,7 @@ package disassembly
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/memorymap"
 )
@@ -26,8 +26,6 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				// more sense
 				continue // for loop
 			case errors.UnimplementedInstruction:
-				continue // for loop
-			case errors.InvalidOpcode:
 				continue // for loop
 			default:
 				return err
@@ -57,9 +55,9 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 		// the ROM.
 		switch mc.LastResult.Defn.Effect {
 
-		case definitions.Flow:
+		case instructions.Flow:
 			if mc.LastResult.Defn.Mnemonic == "JMP" {
-				if mc.LastResult.Defn.AddressingMode == definitions.Indirect {
+				if mc.LastResult.Defn.AddressingMode == instructions.Indirect {
 					if mc.LastResult.InstructionData.(uint16) > memorymap.OriginCart {
 						// note current location
 						state := dsm.cart.SaveState()
@@ -134,7 +132,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				mc.PC.Load(retPC)
 			}
 
-		case definitions.Subroutine:
+		case instructions.Subroutine:
 			if mc.LastResult.Defn.Mnemonic == "RTS" {
 				// sometimes, a ROM will call RTS despite never having called
 				// JSR. in these instances, the ROM has probably stuffed the
@@ -167,7 +165,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			// -- if we JSR in bank 0 and RTS in bank 1 then that execution
 			// will continue in bank 1. that's expected VCS behaviour.
 
-		case definitions.Interrupt:
+		case instructions.Interrupt:
 			// do nothing with interrupts
 			dsm.interrupts = true
 		}

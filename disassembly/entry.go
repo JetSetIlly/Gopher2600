@@ -1,7 +1,7 @@
 package disassembly
 
 import (
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"gopher2600/hardware/cpu/result"
 )
 
@@ -9,7 +9,7 @@ import (
 type Entry struct {
 	// if the type of entry is, or appears to be a, a valid instruction then
 	// instructionDefinition will be non-null
-	instructionDefinition *definitions.InstructionDefinition
+	instructionDefinition *instructions.Definition
 
 	// to keep things simple, we're only keeping a string representation of the
 	// disassembly. we used to keep a instance of result.verbose but after
@@ -19,7 +19,7 @@ type Entry struct {
 	// around this is to record a string representation, containing only the
 	// information that's required.
 	//
-	// undefined if InstructionDefinition == nil
+	// undefined if instructionDefinition == nil
 	instruction string
 
 	// the styling used to format the instruction member above

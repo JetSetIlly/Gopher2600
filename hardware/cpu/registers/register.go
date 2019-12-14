@@ -10,18 +10,18 @@ type Register struct {
 	value uint8
 }
 
-// NewAnonRegister initialises a new register without a name
-func NewAnonRegister(val uint8) *Register {
-	return NewRegister(val, "")
-}
-
 // NewRegister creates a new register of a givel size and name, and initialises
-// the value
+// the value.
 func NewRegister(val uint8, label string) *Register {
 	return &Register{
 		value: val,
 		label: label,
 	}
+}
+
+// NewAnonRegister initialises a new register without a name.
+func NewAnonRegister(val uint8) *Register {
+	return NewRegister(val, "")
 }
 
 func (r Register) String() string {

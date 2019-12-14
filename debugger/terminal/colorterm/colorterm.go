@@ -1,4 +1,4 @@
-// Package colorterm imlements the Terminal interface for the gopher2600
+// Package colorterm implements the Terminal interface for the gopher2600
 // debugger. It supports color output, history and tab completion.
 package colorterm
 

@@ -3,7 +3,7 @@ package cpu
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware/cpu/definitions"
+	"gopher2600/hardware/cpu/instructions"
 	"gopher2600/hardware/cpu/registers"
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
@@ -11,10 +11,8 @@ import (
 	"log"
 )
 
-// CPU implements the 6507 found as found in the Atari 2600. assumptions and
-// inaccuracies are noted throughout.
-//
-// The register logic is implemented in the registers sub-package
+// CPU implements the 6507 found as found in the Atari 2600. Register logic is
+// implemented by the Register type in the registers sub-package.
 type CPU struct {
 	PC     *registers.ProgramCounter
 	A      *registers.Register
@@ -27,8 +25,8 @@ type CPU struct {
 	acc8  *registers.Register
 	acc16 *registers.ProgramCounter
 
-	mem     bus.CPUBus
-	opCodes []*definitions.InstructionDefinition
+	mem          bus.CPUBus
+	instructions []*instructions.Definition
 
 	// isExecuting is used for sanity checks - to make sure we're not calling CPU
 	// functions when we shouldn't
@@ -48,13 +46,14 @@ type CPU struct {
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
 
-	// NoFlowControl sets whehter the cpu responds accurately to instructions
+	// NoFlowControl sets whether the cpu responds accurately to instructions
 	// that affect the flow of the program (branches, JPS, subroutines and
 	// interrupts).  we use this in the disassembly package to make sure we
 	// reach every part of the program.
 	//
 	// note that the alteration of flow as a result of bank switching is still
-	// possible even if NoFlowControl is true
+	// possible even if NoFlowControl is true. this is because bank switching
+	// is outside of the direct control of the CPU.
 	NoFlowControl bool
 }
 
@@ -79,7 +78,7 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 
 	var err error
 
-	mc.opCodes, err = definitions.GetInstructionDefinitions()
+	mc.instructions, err = instructions.GetDefinitions()
 	if err != nil {
 		return nil, err
 	}
@@ -332,13 +331,13 @@ func (mc *CPU) endCycle() error {
 // ExecuteInstruction steps CPU forward one instruction. The basic process when
 // executing an instruction is this:
 //
-//	1. read opcode and look up definition
-//	2. read operands (if any) according to the addressing mode of the opcode
+//	1. read opcode and look up instruction definition
+//	2. read operands (if any) according to the addressing mode of the instruction
 //	3. using the mnemonic as a guide, perform the instruction on the data
 //
 // All instructions take at least 2 cycle. After each cycle, the
 // cycleCallback() function is run, thereby allowing the rest of the VCS
-// hardware to operate (the TIA is three times faster the 6507 in the machine)
+// hardware to operate.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
@@ -373,21 +372,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// read next instruction (end cycle part of read8BitPC)
 	// +1 cycle
-	operator, err := mc.read8BitPC()
+	opcode, err := mc.read8BitPC()
 	if err != nil {
 		return err
 	}
-	defn := mc.opCodes[operator]
+	defn := mc.instructions[opcode]
 	if defn == nil {
-		// any byte in which the higher nibble has a value which is numerically
-		// odd, is an invalid 6507 opcode. this probably means that execution
-		// has wandered into data memory - most likely to occur during
-		// disassembly.
-		if (operator>>4)%2 == 1 {
-			return errors.New(errors.InvalidOpcode, fmt.Sprintf("%02x", operator))
-		}
-
-		return errors.New(errors.UnimplementedInstruction, operator, mc.PC.Address()-1)
+		return errors.New(errors.UnimplementedInstruction, opcode, mc.PC.Address()-1)
 	}
 	mc.LastResult.Defn = defn
 
@@ -409,7 +400,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// StepResult and whether a page fault has occured. note that we don't do
 	// this in the case of JSR
 	switch defn.AddressingMode {
-	case definitions.Implied:
+	case instructions.Implied:
 		// implied mode does not use any additional bytes. however, the next
 		// instruction is read but the PC is not incremented
 
@@ -430,7 +421,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
-	case definitions.Immediate:
+	case instructions.Immediate:
 		// for immediate mode, the value is the next byte in the program
 		// therefore, we don't set the address and we read the value through the PC
 
@@ -441,8 +432,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 		mc.LastResult.InstructionData = value
 
-	case definitions.Absolute:
-		if defn.Effect != definitions.Subroutine {
+	case instructions.Absolute:
+		if defn.Effect != instructions.Subroutine {
 			// +2 cycles
 			address, err = mc.read16BitPC()
 			if err != nil {
@@ -454,7 +445,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// else... for JSR, addresses are read slightly differently so we defer
 		// this part of the operation to the mnemonic switch below
 
-	case definitions.Relative:
+	case instructions.Relative:
 		// relative addressing is only used for branch instructions, the address
 		// is an offset value from the current PC position
 
@@ -469,7 +460,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.LastResult.InstructionData = value
 		address = uint16(value)
 
-	case definitions.ZeroPage:
+	case instructions.ZeroPage:
 		// +1 cycle
 		value, err := mc.read8BitPC()
 		if err != nil {
@@ -478,7 +469,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		address = uint16(value)
 		mc.LastResult.InstructionData = address
 
-	case definitions.IndexedZeroPageX:
+	case instructions.IndexedZeroPageX:
 		// +1 cycles
 		indirectAddress, err := mc.read8BitPC()
 		if err != nil {
@@ -501,7 +492,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case definitions.IndexedZeroPageY:
+	case instructions.IndexedZeroPageY:
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
@@ -526,7 +517,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case definitions.Indirect:
+	case instructions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
 
 		// +2 cycles
@@ -578,7 +569,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
-	case definitions.PreIndexedIndirect: // x indexing
+	case instructions.PreIndexedIndirect: // x indexing
 		// +1 cycle
 		indirectAddress, err := mc.read8BitPC()
 		if err != nil {
@@ -611,7 +602,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// never a page fault wth pre-index indirect addressing
 
-	case definitions.PostIndexedIndirect: // y indexing
+	case instructions.PostIndexedIndirect: // y indexing
 		// +1 cycle
 		indirectAddress, err := mc.read8BitPC()
 		if err != nil {
@@ -635,7 +626,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.LastResult.PageFault = true
 		}
 
-		if mc.LastResult.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
@@ -648,7 +639,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.acc16.Add(indexedAddress & 0xff00)
 		address = mc.acc16.Address()
 
-	case definitions.AbsoluteIndexedX:
+	case instructions.AbsoluteIndexedX:
 		// +2 cycles
 		indirectAddress, err := mc.read16BitPC()
 		if err != nil {
@@ -663,7 +654,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
@@ -676,7 +667,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.acc16.Add(indirectAddress & 0xff00)
 		address = mc.acc16.Address()
 
-	case definitions.AbsoluteIndexedY:
+	case instructions.AbsoluteIndexedY:
 		// +2 cycles
 		indirectAddress, err := mc.read16BitPC()
 		if err != nil {
@@ -691,7 +682,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == definitions.Write || defn.Effect == definitions.RMW {
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happends for Write and RMW)
 			// +1 cycle
 			_, err := mc.read8Bit(address)
@@ -715,14 +706,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// b) instruction is 'Read' OR 'ReadWrite'
 	//  - for write modes, we only use the address to write a value we already have
 	//  - for flow modes, the use of the address is very specific
-	if !(defn.AddressingMode == definitions.Implied || defn.AddressingMode == definitions.Immediate) {
-		if defn.Effect == definitions.Read {
+	if !(defn.AddressingMode == instructions.Implied || defn.AddressingMode == instructions.Immediate) {
+		if defn.Effect == instructions.Read {
 			// +1 cycle
 			value, err = mc.read8Bit(address)
 			if err != nil {
 				return err
 			}
-		} else if defn.Effect == definitions.RMW {
+		} else if defn.Effect == instructions.RMW {
 			// +1 cycle
 			value, err = mc.read8Bit(address)
 			if err != nil {
@@ -938,7 +929,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "ASL":
 		var r *registers.Register
-		if defn.Effect == definitions.RMW {
+		if defn.Effect == instructions.RMW {
 			r = mc.acc8
 			r.Load(value)
 		} else {
@@ -951,7 +942,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "LSR":
 		var r *registers.Register
-		if defn.Effect == definitions.RMW {
+		if defn.Effect == instructions.RMW {
 			r = mc.acc8
 			r.Load(value)
 		} else {
@@ -984,7 +975,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "ROR":
 		var r *registers.Register
-		if defn.Effect == definitions.RMW {
+		if defn.Effect == instructions.RMW {
 			r = mc.acc8
 			r.Load(value)
 		} else {
@@ -997,7 +988,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "ROL":
 		var r *registers.Register
-		if defn.Effect == definitions.RMW {
+		if defn.Effect == instructions.RMW {
 			r = mc.acc8
 			r.Load(value)
 		} else {
@@ -1352,7 +1343,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	}
 
 	// for RMW instructions: write altered value back to memory
-	if defn.Effect == definitions.RMW {
+	if defn.Effect == instructions.RMW {
 		err = mc.write8Bit(address, value)
 		if err != nil {
 			return err
