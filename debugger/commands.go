@@ -893,7 +893,7 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 			}
 		} else {
-			dbg.printInstrument(dbg.vcs.Mem.PIA)
+			dbg.printInstrument(dbg.vcs.Mem.RAM)
 		}
 
 	case cmdRIOT:

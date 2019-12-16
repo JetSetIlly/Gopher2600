@@ -7,8 +7,8 @@ func (a Area) String() string {
 	switch a {
 	case TIA:
 		return "TIA"
-	case PIA:
-		return "PIA"
+	case RAM:
+		return "RAM"
 	case RIOT:
 		return "RIOT"
 	case Cartridge:
@@ -22,7 +22,7 @@ func (a Area) String() string {
 const (
 	Undefined Area = iota
 	TIA
-	PIA
+	RAM
 	RIOT
 	Cartridge
 )
@@ -31,8 +31,8 @@ const (
 const (
 	OriginTIA  = uint16(0x0000)
 	MemtopTIA  = uint16(0x003f)
-	OriginPIA  = uint16(0x0080)
-	MemtopPIA  = uint16(0x00ff)
+	OriginRAM  = uint16(0x0080)
+	MemtopRAM  = uint16(0x00ff)
 	OriginRIOT = uint16(0x0280)
 	MemtopRIOT = uint16(0x0297)
 	OriginCart = uint16(0x1000)
@@ -69,9 +69,9 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 		return address & MemtopRIOT, RIOT
 	}
 
-	// PIA RAM addresses
-	if address&OriginPIA == OriginPIA {
-		return address & MemtopPIA, PIA
+	// RAM addresses
+	if address&OriginRAM == OriginRAM {
+		return address & MemtopRAM, RAM
 	}
 
 	// everything else is in TIA space

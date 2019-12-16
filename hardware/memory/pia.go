@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-// PIA defines the information for and operation allowed for PIA PIA
-type PIA struct {
+// RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
+// VCS.
+type RAM struct {
 	bus.DebuggerBus
 	bus.CPUBus
 
@@ -17,11 +18,11 @@ type PIA struct {
 	memory []uint8
 }
 
-// newPIA is the preferred method of initialisation for the PIA pia memory area
-func newPIA() *PIA {
-	pia := &PIA{
-		origin: memorymap.OriginPIA,
-		memtop: memorymap.MemtopPIA,
+// newRAM is the preferred method of initialisation for the RAM memory area
+func newRAM() *RAM {
+	pia := &RAM{
+		origin: memorymap.OriginRAM,
+		memtop: memorymap.MemtopRAM,
 	}
 
 	// allocate the mininmal amount of memory
@@ -30,7 +31,7 @@ func newPIA() *PIA {
 	return pia
 }
 
-func (pia PIA) String() string {
+func (pia RAM) String() string {
 	s := strings.Builder{}
 	s.WriteString("      -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
 	s.WriteString("    ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --\n")
@@ -45,25 +46,25 @@ func (pia PIA) String() string {
 }
 
 // Peek is the implementation of memory.DebuggerBus
-func (pia PIA) Peek(address uint16) (uint8, error) {
+func (pia RAM) Peek(address uint16) (uint8, error) {
 	oa := address - pia.origin
 	return pia.memory[oa], nil
 }
 
 // Poke is the implementation of memory.DebuggerBus
-func (pia PIA) Poke(address uint16, value uint8) error {
+func (pia RAM) Poke(address uint16, value uint8) error {
 	oa := address - pia.origin
 	pia.memory[oa] = value
 	return nil
 }
 
 // Read is an implementatio of memory.ChipBus
-func (pia PIA) Read(address uint16) (uint8, error) {
+func (pia RAM) Read(address uint16) (uint8, error) {
 	return pia.memory[pia.origin|address^pia.origin], nil
 }
 
 // Write is an implementatio of memory.ChipBus
-func (pia *PIA) Write(address uint16, data uint8) error {
+func (pia *RAM) Write(address uint16, data uint8) error {
 	pia.memory[pia.origin|address^pia.origin] = data
 	return nil
 }

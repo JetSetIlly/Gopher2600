@@ -19,7 +19,7 @@ type VCSMemory struct {
 	// the four memory areas
 	RIOT *ChipMemory
 	TIA  *ChipMemory
-	PIA  *PIA
+	RAM  *RAM
 	Cart *cartridge.Cartridge
 
 	// the following are only used by the debugging interface. it would be
@@ -52,10 +52,10 @@ func NewVCSMemory() (*VCSMemory, error) {
 
 	mem.RIOT = newRIOT()
 	mem.TIA = newTIA()
-	mem.PIA = newPIA()
+	mem.RAM = newRAM()
 	mem.Cart = cartridge.NewCartridge()
 
-	if mem.RIOT == nil || mem.TIA == nil || mem.PIA == nil || mem.Cart == nil {
+	if mem.RIOT == nil || mem.TIA == nil || mem.RAM == nil || mem.Cart == nil {
 		return nil, errors.New(errors.MemoryError, "cannot create memory areas")
 	}
 
@@ -65,8 +65,8 @@ func NewVCSMemory() (*VCSMemory, error) {
 		mem.Memmap[i] = mem.TIA
 	}
 
-	for i := memorymap.OriginPIA; i <= memorymap.MemtopPIA; i++ {
-		mem.Memmap[i] = mem.PIA
+	for i := memorymap.OriginRAM; i <= memorymap.MemtopRAM; i++ {
+		mem.Memmap[i] = mem.RAM
 	}
 
 	for i := memorymap.OriginRIOT; i <= memorymap.MemtopRIOT; i++ {
@@ -85,8 +85,8 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
 	switch area {
 	case memorymap.TIA:
 		return mem.TIA, nil
-	case memorymap.PIA:
-		return mem.PIA, nil
+	case memorymap.RAM:
+		return mem.RAM, nil
 	case memorymap.RIOT:
 		return mem.RIOT, nil
 	case memorymap.Cartridge:
