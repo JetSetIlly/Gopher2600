@@ -27,7 +27,7 @@ func (tck *Ticker) schedule(delay int, label string) *Event {
 	// update event information
 	v.label = label
 	v.initialCycles = delay
-	v.RemainingCycles = delay
+	v.remainingCycles = delay
 	v.paused = false
 	v.pushed = false
 

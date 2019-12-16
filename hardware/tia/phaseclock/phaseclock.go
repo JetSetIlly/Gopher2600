@@ -1,32 +1,34 @@
+// Package phaseclock defines the two phase clock generator used to drive the
+// various polynomial counters in the TIA.
+//
+// From the TIA_HW_Notes document:
+//
+//	Beside each counter there is a two-phase clock generator. This takes the
+//	incoming 3.58 MHz colour clock (CLK) and divides by 4 using a couple of
+//	flip-flops. Two AND gates are then used to generate two independent clock
+//	signals thusly:
+//	 ___         ___         ___
+//	_| |_________| |_________| |_________  PHASE-1 (H@1)
+//	       ___         ___         ___
+//	_______| |_________| |_________| |___  PHASE-2 (H@2)
+//
+// Even though the two phases are independent these types of clocks never
+// overlap (the skew margin is always positive). This means that the
+// implementation can be simplified to a simple count from 0 to 3.
 package phaseclock
 
 import "strings"
 
-// phaseclock implements the two phase clock generator, as described in
-// TIA_HW_Notes.txt:
-//
-// Beside each counter there is a two-phase clock generator. This
-// takes the incoming 3.58 MHz colour clock (CLK) and divides by
-// 4 using a couple of flip-flops. Two AND gates are then used to
-// generate two independent clock signals thusly:
-//  __          __          __
-// _| |_________| |_________| |_________  PHASE-1 (H@1)
-//        __          __          __
-// _______| |_________| |_________| |___  PHASE-2 (H@2)
+// The four-phase clock can be represent as an integer.
+type PhaseClock int
 
-// PhaseClock is four-phase ticker. even though Phi1 and Phi2 are independent
-// these types of clocks never overlap (the skew margin is always positive).
-// this means that we can simply count from one to four to account for all
-// possible outputs.
+// Valid PhaseClock values/states
 //
-// note that the labels H@1 and H@2 are used in the TIA schematics for the
+// Note that the labels H@1 and H@2 are used in the TIA schematics for the
 // HSYNC circuit. the phase clocks for the other polycounters are labelled
 // differently, eg. P@1 and P@2 for the player sprites. to avoid confusion,
 // we're using the labels Phi1 and Phi2, applicable to all polycounter
 // phaseclocks.
-type PhaseClock int
-
-// valid PhaseClock values/states
 const (
 	risingPhi1 PhaseClock = iota
 	fallingPhi1
@@ -52,25 +54,6 @@ func (clk PhaseClock) String() string {
 		s.WriteString("_.--.__.--*_")
 	}
 	return s.String()
-
-	/*
-		s := strings.Builder{}
-		switch clk {
-		case risingPhi1:
-			s.WriteString("_*--._______\n")
-			s.WriteString("_______.--._\n")
-		case fallingPhi1:
-			s.WriteString("_.--*_______\n")
-			s.WriteString("_______.--._\n")
-		case risingPhi2:
-			s.WriteString("_.--._______\n")
-			s.WriteString("_______*--._\n")
-		case fallingPhi2:
-			s.WriteString("_.--._______\n")
-			s.WriteString("_______.--*_\n")
-		}
-		return s.String()
-	*/
 }
 
 // Sync two clocks to the same phase

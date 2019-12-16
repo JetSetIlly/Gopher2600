@@ -607,9 +607,9 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	if ps.startDrawingEvent != nil {
 		if ps.nusiz == 0x05 || ps.nusiz == 0x07 {
 			delay = 0
-		} else if ps.startDrawingEvent.RemainingCycles == 0 {
+		} else if ps.startDrawingEvent.RemainingCycles() == 0 {
 			delay = 1
-		} else if ps.startDrawingEvent.RemainingCycles >= 2 &&
+		} else if ps.startDrawingEvent.RemainingCycles() >= 2 &&
 			ps.nusiz != value && ps.nusiz != 0x00 &&
 			(value == 0x05 || value == 0x07) {
 

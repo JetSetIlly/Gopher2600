@@ -46,7 +46,7 @@ func (en *enclockifier) String() string {
 			s.WriteString(fmt.Sprintf("+%d", en.cpy))
 		}
 
-		s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles))
+		s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles()))
 		if en.secondHalf {
 			s.WriteString("/2nd")
 		}

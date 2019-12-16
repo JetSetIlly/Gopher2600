@@ -24,7 +24,7 @@ func NewTicker(label string) *Ticker {
 
 	// push empty elements into the pool
 	for i := 0; i < poolSize; i++ {
-		tck.pool.PushBack(&Event{ticker: tck, RemainingCycles: -1})
+		tck.pool.PushBack(&Event{ticker: tck, remainingCycles: -1})
 	}
 
 	// the pool begins with no active elements. the active sentinal is

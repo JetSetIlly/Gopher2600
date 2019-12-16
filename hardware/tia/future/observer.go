@@ -17,7 +17,7 @@ func (tck Ticker) Observe(label string) (*Event, bool) {
 		v := e.Value.(*Event)
 
 		// return match
-		if v.label == label && v.RemainingCycles > -1 {
+		if v.label == label && v.remainingCycles > -1 {
 			return v, true
 		}
 

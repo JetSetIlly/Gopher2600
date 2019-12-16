@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// Event represents a single occurence (contained in payload) that is to be
-// deployed in the future
+// Event represents a single occurance of a payload sometime in the future
 type Event struct {
 	// the future ticker this event belongs to
 	ticker *Ticker
@@ -18,7 +17,7 @@ type Event struct {
 	initialCycles int
 
 	// the number of remaining ticks before the pending action is resolved
-	RemainingCycles int
+	remainingCycles int
 
 	// temporary cessation of ticks
 	paused bool
@@ -38,11 +37,11 @@ func (ev Event) String() string {
 	if label == "" {
 		label = "[unlabelled event]"
 	}
-	return fmt.Sprintf("%s -> %d", label, ev.RemainingCycles)
+	return fmt.Sprintf("%s -> %d", label, ev.remainingCycles)
 }
 
 func (ev *Event) isActive() bool {
-	return ev.RemainingCycles >= 0
+	return ev.remainingCycles >= 0
 }
 
 func (ev *Event) runPayload() {
@@ -63,9 +62,9 @@ func (ev *Event) tick() bool {
 		return false
 	}
 
-	ev.RemainingCycles--
+	ev.remainingCycles--
 
-	if ev.RemainingCycles == -1 {
+	if ev.remainingCycles == -1 {
 		ev.runPayload()
 		return true
 	}
@@ -73,9 +72,15 @@ func (ev *Event) tick() bool {
 	return false
 }
 
+// RemainingCycles reports the number of cycles remaining before payload
+// function is ran
+func (ev Event) RemainingCycles() int {
+	return ev.remainingCycles
+}
+
 // Force can be used to immediately run the event's payload
 //
-// it is very important that the reference to the event is forgotten once
+// It is very important that any references to the event be forgotten once
 // Force() has been called
 func (ev *Event) Force() {
 	if !ev.isActive() {
@@ -84,38 +89,34 @@ func (ev *Event) Force() {
 
 	ev.runPayload()
 	ev.ticker.drop(ev)
-	ev.RemainingCycles = -1
+	ev.remainingCycles = -1
 }
 
-// Drop can be used to remove the event from the ticker queue without running
+// Drop is be used to remove the event from the ticker queue without executing
 // the payload. Because the payload is not run then you should be careful to
 // handle any cleanup that might otherwise occur (in the payload).
 //
-// it is very important that the reference to the event is forgotten once
+// It is very important that any references to the event be forgotten once
 // Drop() has been called
 func (ev *Event) Drop() {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
 	ev.ticker.drop(ev)
-	ev.RemainingCycles = -1
+	ev.remainingCycles = -1
 }
 
-// Push back event completion by effectively restarting the event. generally,
-// an event will never need to be pushed back because it will have completed
-// before an equivalent event is triggered. But sometimes, a second trigger
-// will occur very quickly and it is more convenient to push, instead of
-// droping and starting a new event.
+// Push back event completion by restarting the event
 func (ev *Event) Push() {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
-	ev.RemainingCycles = ev.initialCycles
+	ev.remainingCycles = ev.initialCycles
 	ev.pushed = true
 }
 
-// Pause prevents the event from ticking any further until Resume or Restart is
-// called
+// Pause prevents future calls to Tick() having any effect (until Resume() is
+// called)
 func (ev *Event) Pause() {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
@@ -123,12 +124,13 @@ func (ev *Event) Pause() {
 	ev.paused = true
 }
 
-// JustStarted is true if no Tick()ing has taken place yet
+// JustStarted is true if the Tick() function for the event has not yet been
+// called
 func (ev Event) JustStarted() bool {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
-	return ev.RemainingCycles == ev.initialCycles && !ev.pushed
+	return ev.remainingCycles == ev.initialCycles && !ev.pushed
 }
 
 // AboutToEnd is true if event resolves on next Tick()
@@ -138,5 +140,5 @@ func (ev *Event) AboutToEnd() bool {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
-	return ev.RemainingCycles == 0
+	return ev.remainingCycles == 0
 }
