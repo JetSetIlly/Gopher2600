@@ -1,4 +1,4 @@
-package riot
+package timer
 
 import (
 	"fmt"
@@ -6,7 +6,8 @@ import (
 	"gopher2600/hardware/memory/bus"
 )
 
-type timer struct {
+// Timer implements the timer part of the PIA 6532 (the T in RIOT)
+type Timer struct {
 	mem bus.ChipBus
 
 	// register is the name of the currently selected RIOT timer
@@ -45,8 +46,9 @@ type timer struct {
 	cyclesElapsed int
 }
 
-func newTimer(mem bus.ChipBus) *timer {
-	tmr := &timer{
+// NewTimer is the preferred method of initialisation of the Timer type
+func NewTimer(mem bus.ChipBus) *Timer {
+	tmr := &Timer{
 		mem:             mem,
 		register:        "TIM1024",
 		interval:        1024,
@@ -61,7 +63,7 @@ func newTimer(mem bus.ChipBus) *timer {
 	return tmr
 }
 
-func (tmr timer) String() string {
+func (tmr Timer) String() string {
 	return fmt.Sprintf("INTIM=%#02x elpsd=%02d remn=%#04x intv=%d (%s)",
 		tmr.value,
 		tmr.cyclesElapsed,
@@ -71,7 +73,10 @@ func (tmr timer) String() string {
 	)
 }
 
-func (tmr *timer) serviceMemory(data bus.ChipData) bool {
+// ServiceMemory checks to see if ChipData applies to the Timer type and
+// updates the internal timer state accordingly. Returns true if the ChipData
+// was not serviced.
+func (tmr *Timer) ServiceMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "TIM1T":
 		tmr.register = data.Name
@@ -95,7 +100,7 @@ func (tmr *timer) serviceMemory(data bus.ChipData) bool {
 		tmr.value = data.Value
 
 	default:
-		return false
+		return true
 	}
 
 	tmr.cyclesElapsed = 0
@@ -106,10 +111,11 @@ func (tmr *timer) serviceMemory(data bus.ChipData) bool {
 	// clear bit 7 of TIMINT register
 	tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
 
-	return true
+	return false
 }
 
-func (tmr *timer) step() {
+// Step timer forward one cycle
+func (tmr *Timer) Step() {
 	// some documentation (Atari 2600 Specifications.htm) claims that if INTIM is
 	// *read* then the decrement reverts to once per timer interval. this won't
 	// have any discernable effect unless the timer interval has been flipped to

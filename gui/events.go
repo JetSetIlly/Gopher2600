@@ -2,8 +2,6 @@ package gui
 
 // Events are the things that happen in the gui, as a result of user interaction,
 // and sent over a registered event channel.
-//
-// Do not confuse this with the peripheral Action type.
 
 // EventID idintifies the type of event taking place
 type EventID int
@@ -31,6 +29,8 @@ const (
 type EventData interface{}
 
 // Event is the structure that is passed over the event channel
+//
+// Do not confuse this with the peripheral Event type.
 type Event struct {
 	ID   EventID
 	Data EventData

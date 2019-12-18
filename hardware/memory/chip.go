@@ -13,7 +13,7 @@ type ChipMemory struct {
 	bus.DebuggerBus
 	bus.ChipBus
 	bus.CPUBus
-	bus.PeriphBus
+	bus.InputDeviceBus
 
 	// because we're servicing two different memory areas with this type, we
 	// need to store the origin and memtop values here, rather than using the
@@ -108,8 +108,8 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	return nil
 }
 
-// PeriphWrite implements memory.PeriphBus
-func (area *ChipMemory) PeriphWrite(address uint16, data uint8, mask uint8) {
+// InputDeviceWrite implements memory.InputDeviceBus
+func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, mask uint8) {
 	d := area.memory[address] & (mask ^ 0xff)
 	area.memory[address] = data | d
 }

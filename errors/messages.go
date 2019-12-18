@@ -5,12 +5,12 @@ var messages = map[Errno]string{
 	PanicError: "panic: %v: %v",
 
 	// sentinals
-	UserInterrupt:   "user interrupt",
-	UserSuspend:     "user suspend",
-	ScriptEnd:       "end of script (%v)",
-	PowerOff:        "emulated machine has been powered off",
-	PeriphUnplugged: "controller unplugged from %v",
-	TVOutOfSpec:     "tv out of spec: %v",
+	UserInterrupt:        "user interrupt",
+	UserSuspend:          "user suspend",
+	ScriptEnd:            "end of script (%v)",
+	PowerOff:             "emulated machine has been powered off",
+	InputDeviceUnplugged: "controller unplugged from %v",
+	TVOutOfSpec:          "tv out of spec: %v",
 
 	// program modes
 	PlayError:        "error emulating vcs: %v",
@@ -86,9 +86,9 @@ var messages = map[Errno]string{
 	CartridgeError:   "cartridge error: %v",
 	CartridgeEjected: "cartridge error: no cartridge attached",
 
-	// peripherals
-	PeriphHardwareUnavailable: "peripheral error: controller hardware unavailable (%v)",
-	UnknownPeriphEvent:        "peripheral error: %v: unsupported event (%v)",
+	// input
+	InputDeviceUnavailable: "input error: controller hardware unavailable (%v)",
+	UnknownInputEvent:      "input error: %v: unsupported event (%v)",
 
 	// television
 	UnknownTVRequest: "television error: unsupported request (%v)",

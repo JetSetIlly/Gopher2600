@@ -5,7 +5,7 @@ import (
 	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/television"
 	"io"
 	"os"
@@ -38,9 +38,9 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	rec := &Recorder{vcs: vcs}
 
 	// attach recorder to vcs peripherals, including the panel
-	vcs.Ports.Player0.AttachTranscriber(rec)
-	vcs.Ports.Player1.AttachTranscriber(rec)
-	vcs.Panel.AttachTranscriber(rec)
+	vcs.Player0.AttachEventRecorder(rec)
+	vcs.Player1.AttachEventRecorder(rec)
+	vcs.Panel.AttachEventRecorder(rec)
 
 	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)
@@ -74,7 +74,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End flushes all remaining transcription to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	err := rec.Transcribe(peripherals.PanelID, peripherals.PanelPowerOff)
+	err := rec.RecordEvent(input.PanelID, input.PanelPowerOff)
 	if err != nil {
 		return errors.New(errors.RecordingError, err)
 	}
@@ -87,8 +87,8 @@ func (rec *Recorder) End() error {
 	return nil
 }
 
-// Transcribe implements the Transcriber interface
-func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Action) error {
+// RecordEvent implements the input.EventRecorder interface
+func (rec *Recorder) RecordEvent(id input.ID, event input.Event) error {
 	var err error
 
 	// write header if it's not been written already
@@ -101,7 +101,7 @@ func (rec *Recorder) Transcribe(id peripherals.PeriphID, event peripherals.Actio
 	}
 
 	// don't do anything if event is the NoEvent
-	if event == peripherals.NoAction {
+	if event == input.NoEvent {
 		return nil
 	}
 

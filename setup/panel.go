@@ -5,7 +5,7 @@ import (
 	"gopher2600/database"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 	"strconv"
 )
 
@@ -99,31 +99,31 @@ func (set PanelSetup) matchCartHash(hash string) bool {
 // apply implements setupEntry interface
 func (set PanelSetup) apply(vcs *hardware.VCS) error {
 	if set.p0 {
-		if err := vcs.Panel.Handle(peripherals.PanelSetPlayer0Pro); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer0Pro); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(peripherals.PanelSetPlayer0Am); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer0Am); err != nil {
 			return err
 		}
 	}
 
 	if set.p1 {
-		if err := vcs.Panel.Handle(peripherals.PanelSetPlayer1Pro); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer1Pro); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(peripherals.PanelSetPlayer1Am); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer1Am); err != nil {
 			return err
 		}
 	}
 
 	if set.col {
-		if err := vcs.Panel.Handle(peripherals.PanelSetColor); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetColor); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(peripherals.PanelSetBlackAndWhite); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetBlackAndWhite); err != nil {
 			return err
 		}
 	}

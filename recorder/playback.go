@@ -6,7 +6,7 @@ import (
 	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/television"
 	"io/ioutil"
 	"os"
@@ -15,7 +15,7 @@ import (
 )
 
 type event struct {
-	event    peripherals.Action
+	event    input.Event
 	frame    int
 	scanline int
 	horizpos int
@@ -31,7 +31,7 @@ type playbackSequence struct {
 }
 
 // Playback is used to reperform the user input recorded in a previously transcribed
-// file. It implements the peripherals.Controller interface.
+// file. It implements the input.Controller interface.
 type Playback struct {
 	transcript string
 
@@ -75,7 +75,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
 	plb := &Playback{transcript: transcript}
-	plb.sequences = make([]*playbackSequence, peripherals.NumPeriphIDs)
+	plb.sequences = make([]*playbackSequence, input.NumIDs)
 	for i := range plb.sequences {
 		plb.sequences[i] = &playbackSequence{}
 	}
@@ -119,7 +119,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		id := peripherals.PeriphID(n)
+		id := input.ID(n)
 
 		// create a new event and convert tokens accordingly
 		// any errors in the transcript causes failure
@@ -130,7 +130,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		event.event = peripherals.Action(n)
+		event.event = input.Event(n)
 
 		event.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
@@ -186,42 +186,42 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	}
 
 	// attach playback to controllers
-	vcs.Ports.Player0.Attach(plb)
-	vcs.Ports.Player1.Attach(plb)
+	vcs.Player0.Attach(plb)
+	vcs.Player1.Attach(plb)
 	vcs.Panel.Attach(plb)
 
 	return nil
 }
 
-// GetInput implements the peripherals.Controller interface.
-func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Action, error) {
+// CheckInput implements the input.Controller interface.
+func (plb *Playback) CheckInput(id input.ID) (input.Event, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 
 	// we've reached the end of the list of events for this id
 	if seq.eventCt >= len(seq.events) {
-		return peripherals.NoAction, nil
+		return input.NoEvent, nil
 	}
 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return peripherals.NoAction, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
 	nextEvent := seq.events[seq.eventCt]
 	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
 		if nextEvent.hash != plb.digest.Hash() {
-			return peripherals.NoAction, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
+			return input.NoEvent, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
 		}
 
 		seq.eventCt++
@@ -229,5 +229,5 @@ func (plb *Playback) GetInput(id peripherals.PeriphID) (peripherals.Action, erro
 	}
 
 	// next event does not match
-	return peripherals.NoAction, nil
+	return input.NoEvent, nil
 }

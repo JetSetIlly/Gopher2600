@@ -3,7 +3,7 @@ package playmode
 import (
 	"gopher2600/gui"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 )
 
 // KeyboardEventHandler handles keypresses sent from a GUI. Returns true if
@@ -16,42 +16,42 @@ func KeyboardEventHandler(keyEvent gui.EventDataKeyboard, tv gui.GUI, vcs *hardw
 	if keyEvent.Down && keyEvent.Mod == gui.KeyModNone {
 		switch keyEvent.Key {
 		case "F1":
-			err = vcs.Panel.Handle(peripherals.PanelSelectPress)
+			err = vcs.Panel.Handle(input.PanelSelectPress)
 		case "F2":
-			err = vcs.Panel.Handle(peripherals.PanelResetPress)
+			err = vcs.Panel.Handle(input.PanelResetPress)
 		case "F3":
-			err = vcs.Panel.Handle(peripherals.PanelToggleColor)
+			err = vcs.Panel.Handle(input.PanelToggleColor)
 		case "F4":
-			err = vcs.Panel.Handle(peripherals.PanelTogglePlayer0Pro)
+			err = vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
 		case "F5":
-			err = vcs.Panel.Handle(peripherals.PanelTogglePlayer1Pro)
+			err = vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
 		case "Left":
-			err = vcs.Ports.Player0.Handle(peripherals.Left)
+			err = vcs.Player0.Handle(input.Left)
 		case "Right":
-			err = vcs.Ports.Player0.Handle(peripherals.Right)
+			err = vcs.Player0.Handle(input.Right)
 		case "Up":
-			err = vcs.Ports.Player0.Handle(peripherals.Up)
+			err = vcs.Player0.Handle(input.Up)
 		case "Down":
-			err = vcs.Ports.Player0.Handle(peripherals.Down)
+			err = vcs.Player0.Handle(input.Down)
 		case "Space":
-			err = vcs.Ports.Player0.Handle(peripherals.Fire)
+			err = vcs.Player0.Handle(input.Fire)
 		}
 	} else {
 		switch keyEvent.Key {
 		case "F1":
-			err = vcs.Panel.Handle(peripherals.PanelSelectRelease)
+			err = vcs.Panel.Handle(input.PanelSelectRelease)
 		case "F2":
-			err = vcs.Panel.Handle(peripherals.PanelResetRelease)
+			err = vcs.Panel.Handle(input.PanelResetRelease)
 		case "Left":
-			err = vcs.Ports.Player0.Handle(peripherals.NoLeft)
+			err = vcs.Player0.Handle(input.NoLeft)
 		case "Right":
-			err = vcs.Ports.Player0.Handle(peripherals.NoRight)
+			err = vcs.Player0.Handle(input.NoRight)
 		case "Up":
-			err = vcs.Ports.Player0.Handle(peripherals.NoUp)
+			err = vcs.Player0.Handle(input.NoUp)
 		case "Down":
-			err = vcs.Ports.Player0.Handle(peripherals.NoDown)
+			err = vcs.Player0.Handle(input.NoDown)
 		case "Space":
-			err = vcs.Ports.Player0.Handle(peripherals.NoFire)
+			err = vcs.Player0.Handle(input.NoFire)
 		}
 	}
 

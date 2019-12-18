@@ -22,7 +22,7 @@ const (
 	UserSuspend
 	ScriptEnd
 	PowerOff
-	PeriphUnplugged
+	InputDeviceUnplugged
 	TVOutOfSpec
 
 	// program modes
@@ -99,9 +99,9 @@ const (
 	CartridgeError
 	CartridgeEjected
 
-	// peripherals
-	PeriphHardwareUnavailable
-	UnknownPeriphEvent
+	// input
+	InputDeviceUnavailable
+	UnknownInputEvent
 
 	// tv
 	UnknownTVRequest

@@ -6,7 +6,7 @@ package main
 import (
 	"gopher2600/cartridgeloader"
 	"gopher2600/hardware"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 	"syscall/js"
 )
 
@@ -40,29 +40,29 @@ func main() {
 			key := data.Get("key").Int()
 			switch key {
 			case 37: // left
-				err = vcs.Ports.Player0.Handle(peripherals.Left)
+				err = vcs.Player0.Handle(input.Left)
 			case 39: // right
-				err = vcs.Ports.Player0.Handle(peripherals.Right)
+				err = vcs.Player0.Handle(input.Right)
 			case 38: // up
-				err = vcs.Ports.Player0.Handle(peripherals.Up)
+				err = vcs.Player0.Handle(input.Up)
 			case 40: // down
-				err = vcs.Ports.Player0.Handle(peripherals.Down)
+				err = vcs.Player0.Handle(input.Down)
 			case 32: // space
-				err = vcs.Ports.Player0.Handle(peripherals.Fire)
+				err = vcs.Player0.Handle(input.Fire)
 			}
 		case "keyUp":
 			key := data.Get("key").Int()
 			switch key {
 			case 37: // left
-				err = vcs.Ports.Player0.Handle(peripherals.NoLeft)
+				err = vcs.Player0.Handle(input.NoLeft)
 			case 39: // right
-				err = vcs.Ports.Player0.Handle(peripherals.NoRight)
+				err = vcs.Player0.Handle(input.NoRight)
 			case 38: // up
-				err = vcs.Ports.Player0.Handle(peripherals.NoUp)
+				err = vcs.Player0.Handle(input.NoUp)
 			case 40: // down
-				err = vcs.Ports.Player0.Handle(peripherals.NoDown)
+				err = vcs.Player0.Handle(input.NoDown)
 			case 32: // space
-				err = vcs.Ports.Player0.Handle(peripherals.NoFire)
+				err = vcs.Player0.Handle(input.NoFire)
 			}
 		default:
 			js.Global().Get("self").Call("log", args[0].String())

@@ -12,7 +12,7 @@ import (
 	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
-	"gopher2600/hardware/peripherals"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/symbols"
 	"os"
 	"sort"
@@ -952,27 +952,27 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				dbg.vcs.Panel.Handle(peripherals.PanelTogglePlayer0Pro)
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
 			case "P1":
-				dbg.vcs.Panel.Handle(peripherals.PanelTogglePlayer1Pro)
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
 			case "COL":
-				dbg.vcs.Panel.Handle(peripherals.PanelToggleColor)
+				dbg.vcs.Panel.Handle(input.PanelToggleColor)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer0Pro)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro)
 			case "P1PRO":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer1Pro)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro)
 			case "P0AM":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer0Am)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Am)
 			case "P1AM":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetPlayer1Am)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Am)
 			case "COL":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetColor)
+				dbg.vcs.Panel.Handle(input.PanelSetColor)
 			case "BW":
-				dbg.vcs.Panel.Handle(peripherals.PanelSetBlackAndWhite)
+				dbg.vcs.Panel.Handle(input.PanelSetBlackAndWhite)
 			}
 		}
 		dbg.printInstrument(dbg.vcs.Panel)
@@ -1136,36 +1136,36 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		stick, _ := tokens.Get()
 		action, _ := tokens.Get()
 
-		var event peripherals.Action
+		var event input.Event
 		switch strings.ToUpper(action) {
 		case "UP":
-			event = peripherals.Up
+			event = input.Up
 		case "DOWN":
-			event = peripherals.Down
+			event = input.Down
 		case "LEFT":
-			event = peripherals.Left
+			event = input.Left
 		case "RIGHT":
-			event = peripherals.Right
+			event = input.Right
 		case "NOUP":
-			event = peripherals.NoUp
+			event = input.NoUp
 		case "NODOWN":
-			event = peripherals.NoDown
+			event = input.NoDown
 		case "NOLEFT":
-			event = peripherals.NoLeft
+			event = input.NoLeft
 		case "NORIGHT":
-			event = peripherals.NoRight
+			event = input.NoRight
 		case "FIRE":
-			event = peripherals.Fire
+			event = input.Fire
 		case "NOFIRE":
-			event = peripherals.NoFire
+			event = input.NoFire
 		}
 
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.vcs.Ports.Player0.Handle(event)
+			err = dbg.vcs.Player0.Handle(event)
 		case 1:
-			err = dbg.vcs.Ports.Player1.Handle(event)
+			err = dbg.vcs.Player1.Handle(event)
 		}
 
 		if err != nil {

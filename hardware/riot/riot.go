@@ -2,6 +2,7 @@ package riot
 
 import (
 	"gopher2600/hardware/memory/bus"
+	"gopher2600/hardware/riot/timer"
 	"strings"
 )
 
@@ -9,13 +10,13 @@ import (
 type RIOT struct {
 	mem bus.ChipBus
 
-	Timer *timer
+	Timer *timer.Timer
 }
 
 // NewRIOT creates a RIOT, to be used in a VCS emulation
 func NewRIOT(mem bus.ChipBus) *RIOT {
 	riot := &RIOT{mem: mem}
-	riot.Timer = newTimer(mem)
+	riot.Timer = timer.NewTimer(mem)
 
 	return riot
 }
@@ -28,11 +29,15 @@ func (riot RIOT) String() string {
 
 // ReadMemory checks for side effects to the RIOT sub-system
 func (riot *RIOT) ReadMemory() {
-	ok, data := riot.mem.ChipRead()
-	if !ok {
+	serviceMemory, data := riot.mem.ChipRead()
+	if !serviceMemory {
 		return
 	}
-	riot.Timer.serviceMemory(data)
+
+	serviceMemory = riot.Timer.ServiceMemory(data)
+	if !serviceMemory {
+		return
+	}
 
 	// !!TODO: service other RIOT registers
 }
@@ -40,5 +45,5 @@ func (riot *RIOT) ReadMemory() {
 // Step moves the state of the riot forward one video cycle
 func (riot *RIOT) Step() {
 	riot.ReadMemory()
-	riot.Timer.step()
+	riot.Timer.Step()
 }

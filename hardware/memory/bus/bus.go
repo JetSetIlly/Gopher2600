@@ -36,11 +36,11 @@ type ChipBus interface {
 	LastReadRegister() string
 }
 
-// PeriphBus defines the operations for the memory system when accessed from
+// InputDeviceBus defines the operations for the memory system when accessed from
 // parts of the emulation are peripheral to the operation of the machine. In
 // practice, this includes the front panel in addition to joysticks, etc.
-type PeriphBus interface {
-	PeriphWrite(address uint16, data uint8, mask uint8)
+type InputDeviceBus interface {
+	InputDeviceWrite(address uint16, data uint8, mask uint8)
 }
 
 // DebuggerBus defines the meta-operations for all memory areas. Think of these

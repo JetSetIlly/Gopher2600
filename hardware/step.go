@@ -46,7 +46,7 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	// or not) rely on the details of the CPU-TIA relationship.
 	videoCycle := func() error {
 		// ensure controllers have updated their input
-		if err := vcs.strobeUserInput(); err != nil {
+		if err := vcs.checkDeviceInput(); err != nil {
 			return err
 		}
 

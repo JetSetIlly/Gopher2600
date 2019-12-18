@@ -1,4 +1,4 @@
-package peripherals
+package input
 
 import (
 	"gopher2600/errors"
@@ -9,11 +9,9 @@ import (
 
 // Panel represents the console's front control panel
 type Panel struct {
-	peripheral
+	device
 
-	id PeriphID
-
-	riot          bus.PeriphBus
+	riot          bus.InputDeviceBus
 	p0pro         bool
 	p1pro         bool
 	color         bool
@@ -22,17 +20,16 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(riot bus.PeriphBus) *Panel {
+func NewPanel(riot bus.InputDeviceBus) *Panel {
 	pan := &Panel{
-		id:    PanelID,
 		riot:  riot,
 		color: true}
 
-	pan.peripheral = peripheral{
-		id:     pan.id,
+	pan.device = device{
+		id:     PanelID,
 		handle: pan.Handle}
 
-	pan.commit()
+	pan.write()
 
 	return pan
 }
@@ -65,46 +62,41 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
-func (pan *Panel) commit() {
+func (pan *Panel) write() {
 	// commit changes to RIOT memory
-	strobe := uint8(0)
+	v := uint8(0)
 
 	// pins 2, 4 and 5 are not used and always value value of 1
-	strobe |= 0x20
-	strobe |= 0x10
-	strobe |= 0x04
+	v |= 0x20
+	v |= 0x10
+	v |= 0x04
 
 	if pan.p0pro {
-		strobe |= 0x80
+		v |= 0x80
 	}
 
 	if pan.p1pro {
-		strobe |= 0x40
+		v |= 0x40
 	}
 
 	if pan.color {
-		strobe |= 0x08
+		v |= 0x08
 	}
 
 	if !pan.selectPressed {
-		strobe |= 0x02
+		v |= 0x02
 	}
 
 	if !pan.resetPressed {
-		strobe |= 0x01
+		v |= 0x01
 	}
 
-	pan.riot.PeriphWrite(addresses.SWCHB, strobe, 0xff)
+	pan.riot.InputDeviceWrite(addresses.SWCHB, v, 0xff)
 }
 
 // Handle interprets an event into the correct sequence of memory addressing
-func (pan *Panel) Handle(event Action) error {
+func (pan *Panel) Handle(event Event) error {
 	switch event {
-
-	// do nothing at all if event is a NoEvent
-	case NoAction:
-		return nil
-
 	case PanelSelectPress:
 		pan.selectPressed = true
 	case PanelSelectRelease:
@@ -133,15 +125,17 @@ func (pan *Panel) Handle(event Action) error {
 		pan.p1pro = true
 	case PanelPowerOff:
 		return errors.New(errors.PowerOff)
+	case NoEvent:
+		return nil
 	default:
-		return errors.New(errors.UnknownPeriphEvent, pan.id, event)
+		return errors.New(errors.UnknownInputEvent, pan.id, event)
 	}
 
-	pan.commit()
+	pan.write()
 
-	// record event with the transcriber
-	if pan.scribe != nil {
-		return pan.scribe.Transcribe(pan.id, event)
+	// record event with the EventRecorder
+	if pan.recorder != nil {
+		return pan.recorder.RecordEvent(pan.id, event)
 	}
 
 	return nil

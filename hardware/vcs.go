@@ -6,8 +6,8 @@ import (
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/peripherals"
 	"gopher2600/hardware/riot"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/hardware/tia"
 	"gopher2600/television"
 )
@@ -22,8 +22,9 @@ type VCS struct {
 	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
-	Panel *peripherals.Panel
-	Ports *peripherals.Ports
+	Panel   *input.Panel
+	Player0 *input.Player
+	Player1 *input.Player
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -53,14 +54,19 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, errors.New(errors.VCSError, "can't create RIOT")
 	}
 
-	vcs.Panel = peripherals.NewPanel(vcs.Mem.RIOT)
+	vcs.Panel = input.NewPanel(vcs.Mem.RIOT)
 	if vcs.Panel == nil {
 		return nil, errors.New(errors.VCSError, "can't create control panel")
 	}
 
-	vcs.Ports = peripherals.NewPorts(vcs.Mem.RIOT, vcs.Mem.TIA, vcs.Panel)
-	if vcs.Ports == nil {
-		return nil, errors.New(errors.VCSError, "can't create player ports")
+	vcs.Player0 = input.NewPlayer0(vcs.Mem.RIOT, vcs.Mem.TIA)
+	if vcs.Player0 == nil {
+		return nil, errors.New(errors.VCSError, "can't create player 0 port")
+	}
+
+	vcs.Player1 = input.NewPlayer1(vcs.Mem.RIOT, vcs.Mem.TIA)
+	if vcs.Player1 == nil {
+		return nil, errors.New(errors.VCSError, "can't create player 1 port")
 	}
 
 	return vcs, nil
@@ -119,20 +125,17 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-func (vcs *VCS) strobeUserInput() error {
-	var err error
-	if vcs.Ports.Player0 != nil {
-		err = vcs.Ports.Player0.Strobe()
-		if err != nil {
-			return err
-		}
-	}
-	if vcs.Ports.Player1 != nil {
-		err = vcs.Ports.Player1.Strobe()
-		if err != nil {
-			return err
-		}
+// check all devices for pending input
+func (vcs *VCS) checkDeviceInput() error {
+	err := vcs.Player0.CheckInput()
+	if err != nil {
+		return err
 	}
 
-	return vcs.Panel.Strobe()
+	err = vcs.Player1.CheckInput()
+	if err != nil {
+		return err
+	}
+
+	return vcs.Panel.CheckInput()
 }

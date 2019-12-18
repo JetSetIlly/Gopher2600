@@ -17,7 +17,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	// see the equivalient videoCycle() in the VCS.Step() function for an
 	// explanation for what's going on here:
 	videoCycle := func() error {
-		if err := vcs.strobeUserInput(); err != nil {
+		if err := vcs.checkDeviceInput(); err != nil {
 			return err
 		}
 
@@ -47,11 +47,6 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		if err != nil {
 			return err
 		}
-
-		// err = vcs.CPU.LastResult.IsValid()
-		// if err != nil {
-		// 	return err
-		// }
 
 		cont, err = continueCheck()
 	}
