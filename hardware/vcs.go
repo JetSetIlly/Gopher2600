@@ -94,26 +94,11 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 }
 
 // Reset emulates the reset switch on the console panel
-//  - reset the CPU
-//  - destroy and create the TIA and RIOT
-//  - load reset address into the PC
 func (vcs *VCS) Reset() error {
-	if err := vcs.CPU.Reset(); err != nil {
-		return err
-	}
-
-	// !!TODO: consider implementing tia.Reset and riot.Reset instead of
-	// recreating the two components
-
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
-	if vcs.TIA == nil {
-		return errors.New(errors.VCSError, "can't create TIA")
-	}
-
-	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
-	if vcs.RIOT == nil {
-		return errors.New(errors.VCSError, "can't create RIOT")
-	}
+	// note that there is no reset of the CPU, the TIA or the RIOT. this is
+	// because I don't believe it's required. memory is an unknown state and
+	// the RIOT/TIA registers are in an unknown state - effectively randomised.
+	// we could maybe had a "hard reset" option in the future if we need it
 
 	vcs.Mem.Cart.Initialise()
 
