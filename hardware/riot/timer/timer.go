@@ -75,7 +75,7 @@ func (tmr Timer) String() string {
 
 // ServiceMemory checks to see if ChipData applies to the Timer type and
 // updates the internal timer state accordingly. Returns true if the ChipData
-// was not serviced.
+// was *not* serviced.
 func (tmr *Timer) ServiceMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "TIM1T":

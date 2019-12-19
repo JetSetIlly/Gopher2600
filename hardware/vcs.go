@@ -1,6 +1,7 @@
 package hardware
 
 import (
+	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
@@ -19,7 +20,6 @@ type VCS struct {
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
 
-	// tv is not part of the VCS but is attached to it
 	TV television.Television
 
 	Panel   *input.Panel
@@ -49,25 +49,16 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, errors.New(errors.VCSError, "can't create TIA")
 	}
 
-	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT)
-	if vcs.RIOT == nil {
-		return nil, errors.New(errors.VCSError, "can't create RIOT")
+	vcs.RIOT, err = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
+	if err != nil {
+		return nil, errors.New(errors.VCSError, fmt.Sprintf("can't create RIOT: %v", err))
 	}
 
-	vcs.Panel = input.NewPanel(vcs.Mem.RIOT)
-	if vcs.Panel == nil {
-		return nil, errors.New(errors.VCSError, "can't create control panel")
-	}
-
-	vcs.Player0 = input.NewPlayer0(vcs.Mem.RIOT, vcs.Mem.TIA)
-	if vcs.Player0 == nil {
-		return nil, errors.New(errors.VCSError, "can't create player 0 port")
-	}
-
-	vcs.Player1 = input.NewPlayer1(vcs.Mem.RIOT, vcs.Mem.TIA)
-	if vcs.Player1 == nil {
-		return nil, errors.New(errors.VCSError, "can't create player 1 port")
-	}
+	// for convenience, these should point to the equivalent instances in the
+	// RIOT.Input type
+	vcs.Panel = vcs.RIOT.Input.Panel
+	vcs.Player0 = vcs.RIOT.Input.Player0
+	vcs.Player1 = vcs.RIOT.Input.Player1
 
 	return vcs, nil
 }

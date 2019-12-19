@@ -3,7 +3,6 @@ package input
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
 	"strings"
 )
 
@@ -11,23 +10,29 @@ import (
 type Panel struct {
 	device
 
-	riot          bus.InputDeviceBus
+	input *Input
+
 	p0pro         bool
 	p1pro         bool
 	color         bool
 	selectPressed bool
 	resetPressed  bool
+
+	// data direction register
+	ddr uint8
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(riot bus.InputDeviceBus) *Panel {
+func NewPanel(inp *Input) *Panel {
 	pan := &Panel{
-		riot:  riot,
-		color: true}
+		input: inp,
+		color: true,
+	}
 
 	pan.device = device{
 		id:     PanelID,
-		handle: pan.Handle}
+		handle: pan.Handle,
+	}
 
 	pan.write()
 
@@ -91,10 +96,10 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.riot.InputDeviceWrite(addresses.SWCHB, v, 0xff)
+	pan.input.mem.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
 }
 
-// Handle interprets an event into the correct sequence of memory addressing
+// Handle translates the Event argument into the required memory-write
 func (pan *Panel) Handle(event Event) error {
 	switch event {
 	case PanelSelectPress:

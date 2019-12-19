@@ -24,7 +24,10 @@ type device struct {
 	recorder       EventRecorder
 }
 
-// Attach registers a controller implementation with the panel
+// Attach a Controller implementation to the device. A Controller value of nil
+// will reattach the previously attached controller. Futher calls with a value
+// of nil will effectively remove all attached controllers. Events can still be
+// pushed to the device by using the device's Handle() function directly.
 func (dev *device) Attach(controller Controller) {
 	if controller == nil {
 		dev.controller = dev.prevController
@@ -35,13 +38,13 @@ func (dev *device) Attach(controller Controller) {
 	}
 }
 
-// AttachEventRecorder registers the presence of a transcriber implementation.
-// use an argument of nil to disconnect an existing scribe
+// AttachEventRecorder to the device. An EventRecorder value of nil will
+// remove the recorder from the device.
 func (dev *device) AttachEventRecorder(scribe EventRecorder) {
 	dev.recorder = scribe
 }
 
-// CheckInput makes sure attached controllers have submitted their latest input
+// CheckInput polls attached controllers for the most recent Event
 func (dev *device) CheckInput() error {
 	if dev.controller != nil {
 		ev, err := dev.controller.CheckInput(dev.id)

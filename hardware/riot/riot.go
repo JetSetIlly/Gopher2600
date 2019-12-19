@@ -2,23 +2,31 @@ package riot
 
 import (
 	"gopher2600/hardware/memory/bus"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/hardware/riot/timer"
 	"strings"
 )
 
-// RIOT contains all the sub-components of the VCS RIOT sub-system
+// RIOT represents the PIA 6532 found in the VCS
 type RIOT struct {
 	mem bus.ChipBus
 
 	Timer *timer.Timer
+	Input *input.Input
 }
 
-// NewRIOT creates a RIOT, to be used in a VCS emulation
-func NewRIOT(mem bus.ChipBus) *RIOT {
+// NewRIOT is the preferred method of initialisation for the RIOT type
+func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) (*RIOT, error) {
+	var err error
+
 	riot := &RIOT{mem: mem}
 	riot.Timer = timer.NewTimer(mem)
+	riot.Input, err = input.NewInput(mem, tiaMem)
+	if err != nil {
+		return nil, err
+	}
 
-	return riot
+	return riot, nil
 }
 
 func (riot RIOT) String() string {
@@ -27,7 +35,8 @@ func (riot RIOT) String() string {
 	return s.String()
 }
 
-// ReadMemory checks for side effects to the RIOT sub-system
+// ReadMemory checks for the most recent write by the CPU to the RIOT memory
+// registers
 func (riot *RIOT) ReadMemory() {
 	serviceMemory, data := riot.mem.ChipRead()
 	if !serviceMemory {
@@ -39,10 +48,10 @@ func (riot *RIOT) ReadMemory() {
 		return
 	}
 
-	// !!TODO: service other RIOT registers
+	_ = riot.Input.ServiceMemory(data)
 }
 
-// Step moves the state of the riot forward one video cycle
+// Step moves the state of the RIOT forward one video cycle
 func (riot *RIOT) Step() {
 	riot.ReadMemory()
 	riot.Timer.Step()

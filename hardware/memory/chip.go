@@ -110,6 +110,6 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 // InputDeviceWrite implements memory.InputDeviceBus
 func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, mask uint8) {
-	d := area.memory[address] & (mask ^ 0xff)
+	d := area.memory[address] & mask
 	area.memory[address] = data | d
 }

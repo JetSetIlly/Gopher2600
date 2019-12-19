@@ -3,16 +3,15 @@ package input
 import (
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
 )
 
-// Player type is the underlying implementation for each emulated player port
-// on the VCS
+// Player represents the "joystick" port on the VCS. Different devices can be
+// added to it through selective seding of events to the Handler() function.
 type Player struct {
 	device
 
-	riot bus.InputDeviceBus
-	tia  bus.InputDeviceBus
+	// reference to input instance associated with Player
+	input *Input
 
 	// address in RIOT memory for joystick direction input
 	stickAddr uint16
@@ -24,21 +23,22 @@ type Player struct {
 	// stickAddr. stickFunc allows us to transform that value with the help of
 	// stickMask
 	stickFunc func(uint8) uint8
-	stickMask uint8
+
+	// data direction register
+	ddr uint8
 
 	// the address in TIA memory for joystick fire button
 	buttonAddr uint16
 }
 
-// NewPlayer0 creates a new instance of the player type for the player 1 port
-func NewPlayer0(riot bus.InputDeviceBus, tia bus.InputDeviceBus) *Player {
+// NewPlayer0 is the preferred method of creating a new instance of Player for
+// representing player zero
+func NewPlayer0(inp *Input) *Player {
 	pl := &Player{
-		riot: riot,
-		tia:  tia,
-
+		input:      inp,
 		stickAddr:  addresses.SWCHA,
-		stickMask:  0xf0,
 		stickValue: 0xf0,
+		ddr:        0x00,
 		stickFunc:  func(n uint8) uint8 { return n },
 
 		buttonAddr: addresses.INPT4,
@@ -51,15 +51,14 @@ func NewPlayer0(riot bus.InputDeviceBus, tia bus.InputDeviceBus) *Player {
 	return pl
 }
 
-// NewPlayer1 creates a new instance of the player type for the player 1 port
-func NewPlayer1(riot bus.InputDeviceBus, tia bus.InputDeviceBus) *Player {
+// NewPlayer1 is the preferred method of creating a new instance of Player for
+// representing player one
+func NewPlayer1(inp *Input) *Player {
 	pl := &Player{
-		riot: riot,
-		tia:  tia,
-
+		input:      inp,
 		stickAddr:  addresses.SWCHA,
-		stickMask:  0x0f,
 		stickValue: 0xf0,
+		ddr:        0x00,
 		stickFunc:  func(n uint8) uint8 { return n << 4 },
 
 		buttonAddr: addresses.INPT5,
@@ -72,7 +71,7 @@ func NewPlayer1(riot bus.InputDeviceBus, tia bus.InputDeviceBus) *Player {
 	return pl
 }
 
-// Handle interprets an event into the correct sequence of memory addressing
+// Handle translates the Event argument into the required memory-write
 func (pl *Player) Handle(event Event) error {
 	switch event {
 
@@ -82,32 +81,32 @@ func (pl *Player) Handle(event Event) error {
 
 	case Left:
 		pl.stickValue ^= 0x4f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case Right:
 		pl.stickValue ^= 0x8f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case Up:
 		pl.stickValue ^= 0x1f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case Down:
 		pl.stickValue ^= 0x2f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case NoLeft:
 		pl.stickValue |= 0x4f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case NoRight:
 		pl.stickValue |= 0x8f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case NoUp:
 		pl.stickValue |= 0x1f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case NoDown:
 		pl.stickValue |= 0x2f
-		pl.riot.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.stickMask)
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
 	case Fire:
-		pl.tia.InputDeviceWrite(pl.buttonAddr, 0x00, 0xff)
+		pl.input.tiaMem.InputDeviceWrite(pl.buttonAddr, 0x00, 0x00)
 	case NoFire:
-		pl.tia.InputDeviceWrite(pl.buttonAddr, 0x80, 0xff)
+		pl.input.tiaMem.InputDeviceWrite(pl.buttonAddr, 0x80, 0x00)
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, pl.id)

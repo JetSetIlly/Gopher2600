@@ -25,7 +25,7 @@ const (
 	Right
 	NoRight
 
-	// for convenience, a controller implementation can interact with the panel
+	// panel
 	PanelSelectPress
 	PanelSelectRelease
 	PanelResetPress
