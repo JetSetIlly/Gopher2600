@@ -45,7 +45,7 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	if sym == "" {
 		return 0, errors.New(errors.UnreadableAddress, address)
 	}
-	return area.memory[address-area.origin], nil
+	return area.memory[address^area.origin], nil
 }
 
 // Poke is an implementation of memory.DebuggerBus
@@ -75,6 +75,12 @@ func (area *ChipMemory) LastReadRegister() string {
 	return r
 }
 
+// InputDeviceWrite implements memory.InputDeviceBus
+func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, mask uint8) {
+	d := area.memory[address] & mask
+	area.memory[address] = data | d
+}
+
 // Read is an implementation of memory.CPUBus
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	// note the name of the register that we are reading
@@ -85,7 +91,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 		return 0, errors.New(errors.UnreadableAddress, address)
 	}
 
-	return area.memory[area.origin|address^area.origin], nil
+	return area.memory[address^area.origin], nil
 }
 
 // Write is an implementation of memory.CPUBus
@@ -95,7 +101,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 		return errors.New(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.lastWriteAddress]))
 	}
 
-	sym := addresses.Write[address]
+	sym := addresses.Write[address^area.origin]
 	if sym == "" {
 		return errors.New(errors.UnwritableAddress, address)
 	}
@@ -106,10 +112,4 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	area.writeData = data
 
 	return nil
-}
-
-// InputDeviceWrite implements memory.InputDeviceBus
-func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, mask uint8) {
-	d := area.memory[address] & mask
-	area.memory[address] = data | d
 }

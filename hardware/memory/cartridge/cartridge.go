@@ -37,8 +37,7 @@ func (cart Cartridge) String() string {
 
 // Peek is an implementation of memory.DebuggerBus
 func (cart Cartridge) Peek(addr uint16) (uint8, error) {
-	addr &= memorymap.OriginCart - 1
-	return cart.mapper.read(addr)
+	return cart.Read(addr)
 }
 
 // Poke is an implementation of memory.DebuggerBus
@@ -49,15 +48,12 @@ func (cart Cartridge) Poke(addr uint16, data uint8) error {
 // Read is an implementation of memory.CPUBus
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
 	// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
-
-	addr &= memorymap.OriginCart - 1
-	return cart.mapper.read(addr)
+	return cart.mapper.read(addr ^ memorymap.OriginCart)
 }
 
 // Write is an implementation of memory.CPUBus
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	addr &= memorymap.OriginCart - 1
-	return cart.mapper.write(addr, data)
+	return cart.mapper.write(addr^memorymap.OriginCart, data)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -172,16 +168,14 @@ func (cart Cartridge) NumBanks() int {
 
 // GetBank returns the current bank number for the specified address
 func (cart Cartridge) GetBank(addr uint16) int {
-	addr &= memorymap.OriginCart - 1
-	return cart.mapper.getBank(addr)
+	return cart.mapper.getBank(addr ^ memorymap.OriginCart)
 }
 
 // SetBank maps the specified address such that it references the specified
 // bank. For many cart mappers this just means switching banks for the entire
 // cartridge
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	addr &= memorymap.OriginCart - 1
-	return cart.mapper.setBank(addr, bank)
+	return cart.mapper.setBank(addr^memorymap.OriginCart, bank)
 }
 
 // SaveState notes and returns the current state of the cartridge (RAM

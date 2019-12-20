@@ -94,23 +94,22 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *address
 		for a, sym := range symbolTable {
 			if sym == address {
 				ai.address = a
-				ai.mappedAddress = a
+				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
 				found = true
 				break // for loop
 			}
 		}
-		if found {
-			break // case switch
-		}
 
-		// finally, this may be a string representation of a numerical address
-		addr, err = strconv.ParseUint(address, 0, 16)
-		if err != nil {
-			return nil
-		}
+		if !found {
+			// finally, this may be a string representation of a numerical address
+			addr, err = strconv.ParseUint(address, 0, 16)
+			if err != nil {
+				return nil
+			}
 
-		ai.address = uint16(addr)
-		ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
+			ai.address = uint16(addr)
+			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
+		}
 	}
 
 	ai.addressLabel = symbolTable[ai.mappedAddress]

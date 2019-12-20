@@ -27,7 +27,13 @@ const (
 	Cartridge
 )
 
-// The origin and memory top for each ares of memory
+// The origin and memory top for each area of memory. Checking which area an
+// address falls within and forcing the address into the normalised range is
+// all handled by the MapAddress() function.
+//
+// Implementations of the different memory areas may need to drag the address
+// down into the the range of an array. This can be done by with elegantly with
+// (address^origin) rather than subtraction.
 const (
 	OriginTIA  = uint16(0x0000)
 	MemtopTIA  = uint16(0x003f)

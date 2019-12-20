@@ -12,33 +12,27 @@ import (
 type RAM struct {
 	bus.DebuggerBus
 	bus.CPUBus
-
-	origin uint16
-	memtop uint16
 	memory []uint8
 }
 
 // newRAM is the preferred method of initialisation for the RAM memory area
 func newRAM() *RAM {
-	pia := &RAM{
-		origin: memorymap.OriginRAM,
-		memtop: memorymap.MemtopRAM,
-	}
+	ram := &RAM{}
 
 	// allocate the mininmal amount of memory
-	pia.memory = make([]uint8, pia.memtop-pia.origin+1)
+	ram.memory = make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1)
 
-	return pia
+	return ram
 }
 
-func (pia RAM) String() string {
+func (ram RAM) String() string {
 	s := strings.Builder{}
 	s.WriteString("      -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
 	s.WriteString("    ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --\n")
 	for y := 0; y < 8; y++ {
 		s.WriteString(fmt.Sprintf("%X- | ", y+8))
 		for x := 0; x < 16; x++ {
-			s.WriteString(fmt.Sprintf(" %02x", pia.memory[uint16((y*16)+x)]))
+			s.WriteString(fmt.Sprintf(" %02x", ram.memory[uint16((y*16)+x)]))
 		}
 		s.WriteString("\n")
 	}
@@ -46,25 +40,22 @@ func (pia RAM) String() string {
 }
 
 // Peek is the implementation of memory.DebuggerBus
-func (pia RAM) Peek(address uint16) (uint8, error) {
-	oa := address - pia.origin
-	return pia.memory[oa], nil
+func (ram RAM) Peek(address uint16) (uint8, error) {
+	return ram.Read(address)
 }
 
 // Poke is the implementation of memory.DebuggerBus
-func (pia RAM) Poke(address uint16, value uint8) error {
-	oa := address - pia.origin
-	pia.memory[oa] = value
-	return nil
+func (ram RAM) Poke(address uint16, value uint8) error {
+	return ram.Write(address, value)
 }
 
 // Read is an implementatio of memory.ChipBus
-func (pia RAM) Read(address uint16) (uint8, error) {
-	return pia.memory[pia.origin|address^pia.origin], nil
+func (ram RAM) Read(address uint16) (uint8, error) {
+	return ram.memory[address^memorymap.OriginRAM], nil
 }
 
 // Write is an implementatio of memory.ChipBus
-func (pia *RAM) Write(address uint16, data uint8) error {
-	pia.memory[pia.origin|address^pia.origin] = data
+func (ram *RAM) Write(address uint16, data uint8) error {
+	ram.memory[address^memorymap.OriginRAM] = data
 	return nil
 }
