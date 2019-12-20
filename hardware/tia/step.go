@@ -7,29 +7,7 @@ import (
 )
 
 // Step moves the state of the tia forward one video cycle returns the state of
-// the CPU (conceptually, we're attaching the result of this function to pin 3
-// of the 6507)
-//
-// the meat of the Step() function can be divided into 8 sub-steps and 3 phases
-// when the TIA state is altered in response to changes to TIA memory
-//
-// the ordering of these sub-steps is important. the currently defined steps
-// and the ordering are as follows:
-//
-// A. service TIA memory / update playfield data
-// 1. tick phase clock
-// 2. tick delayed events
-// 3. if phase clock is on the rising edge of Phi2
-//		3.1. tick hsync counter
-//		3.2. schedule hsync events as required
-// B. service TIA video memory
-// 4. tick video objects/events
-// 5. adjust HMOVE value
-// C. service TIA audio memory / late TIA video attributes
-// 6. send signal to television
-//
-// step 5 contains a lot more work important to the correct operation of the
-// TIA but from this perspective the step is monolithic
+// the CPU's RDY flag.
 func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 	// update debugging information
 	tia.videoCycles++

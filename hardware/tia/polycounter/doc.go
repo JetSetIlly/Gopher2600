@@ -1,8 +1,8 @@
-// Package polycounter implements the polynomial counters found in the Atari
-// 2600. Described by Andrew Towers in the "Atari 2600 TIA Hardware Notes"
+// Package polycounter implements the polynomial counters found in the TIA.
+// Described by Andrew Towers in the "Atari 2600 TIA Hardware Notes"
 // (TIA_HW_Notes.txt), polynomial counters are a predictably performative way
-// of counting in simple electronics - performance of ripple counters can change
-// due to carrying etc.
+// of counting in simple electronics - performance of ripple counters can
+// change due to carrying etc.
 //
 // In our emulation we are of course using ripple counters internally. But for
 // the purposes of debugging the TIA loop (HSYNC counter) we'd still like to
@@ -13,6 +13,11 @@
 //
 // We advance the counter with the Tick() function. The binary representation
 // of the polycounter value can be retreived with the ToBinary() function.
+//
+// Polycounter's will loop around on their own when the bit sequence elapses
+// but this never happens in the VCS. Instead a Reset() signal is generated
+// when the polycounter reaches a certain count. For example, for the HSYNC
+// counter this happens on count 57.
 //
 // In the 2600, polycounter logic is also used to generate the bit sequences
 // required for TIA audio emulation. A real TIA variously uses 4-bit, 5-bit and

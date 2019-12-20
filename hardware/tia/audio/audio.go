@@ -6,8 +6,7 @@ import (
 )
 
 // SampleFreq represents the number of samples generated per second. This is
-// the 30Khz reference frequency desribed in the Stella Programmer's Guide. see
-// the commentary on clock114 for more detail
+// the 30Khz reference frequency desribed in the Stella Programmer's Guide.
 const SampleFreq = 31403
 
 // the Atari 2600 has two independent sound generators. these will be mixed

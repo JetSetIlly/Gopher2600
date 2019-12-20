@@ -2,7 +2,7 @@ package hardware
 
 import "gopher2600/television"
 
-// Run sets the emulation running as quickly as possible.  eventHandler()
+// Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
 func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
@@ -54,9 +54,9 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	return err
 }
 
-// RunForFrameCount sets emulator running for the specified number of frames
-// - not used by the debugger because traps and steptraps are more flexible
-// - useful for fps and regression tests
+// RunForFrameCount sets emulator running for the specified number of frames.
+// Useful for FPS and regression tests. Not used by the debugger because traps
+// and steptraps are more flexible.
 func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (bool, error)) error {
 	if continueCheck == nil {
 		continueCheck = func(frame int) (bool, error) { return true, nil }

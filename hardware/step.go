@@ -4,9 +4,8 @@ func nullVideoCycleCallback() error {
 	return nil
 }
 
-// Step the emulator state one CPU instruction. we can put this function in a
-// loop for an effective debugging loop ths videoCycleCallback function for an
-// additional callback point in the debugger.
+// Step the emulator state one CPU instruction. With a bit of work the optional
+// videoCycleCallback argument can be used for video-cycle stepping.
 func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	if videoCycleCallback == nil {
 		videoCycleCallback = nullVideoCycleCallback

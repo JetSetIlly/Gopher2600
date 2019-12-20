@@ -25,17 +25,22 @@ type Video struct {
 	Ball     *ballSprite
 }
 
-// NewVideo is the preferred method of initialisation for the Video structure
+// NewVideo is the preferred method of initialisation for the Video structure.
 //
-// the playfield and sprite objects have access to both pclk and hsync.
-// in the case of the playfield, they are used to decide which part of the
-// playfield is to be drawn. in the case of the the sprite objects, they
-// are used only for information purposes - namely the reset and current
-// pisel locatoin of the sprites in relation to the hsync counter (or
-// screen)
-func NewVideo(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
-	mem bus.ChipBus, tv television.Television,
-	hblank, hmoveLatch *bool) *Video {
+// The playfield type requires access access to the TIA's phaseclock and
+// polyucounter and is used to decide which part of the playfield is to be
+// drawn.
+//
+// The sprites meanwhile require access to the television. This is for
+// generating information about the sprites reset position - a debugging only
+// requirement but of minimal performance related consequeunce.
+//
+// The references to the TIA's HBLANK state and whether HMOVE is latched, are
+// required to tune the delays experienced by the various sprite events (eg.
+// reset position).
+func NewVideo(mem bus.ChipBus,
+	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
+	tv television.Television, hblank, hmoveLatch *bool) *Video {
 
 	vd := &Video{
 		collisions: newCollisions(mem),
@@ -89,9 +94,8 @@ func (vd *Video) RSYNC(adjustment int) {
 	vd.Ball.rsync(adjustment)
 }
 
-// Tick moves all video elements forward one video cycle. this is the
-// conceptual equivalent of the MOTCK line. ticks when HBLANK is off and hmove
-// stuffing ticks are all resolved with the Tick function
+// Tick moves all video elements forward one video cycle. This is the
+// conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 	vd.Player0.tick(visible, hmove, hmoveCt)
 	vd.Player1.tick(visible, hmove, hmoveCt)
@@ -110,7 +114,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 }
 
 // Pixel returns the color of the pixel at the current clock and also sets the
-// collision registers. it will default to returning the background color if no
+// collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
 func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 	bgc := vd.Playfield.backgroundColor
@@ -297,8 +301,8 @@ func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 	return col, dcol
 }
 
-// UpdatePlayfield checks the TIA memory for new playfield data. note that
-// CTRLPF is serviced in UpdateSpriteVariations()
+// UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF
+// is serviced in UpdateSpriteVariations().
 //
 // Returns true if ChipData has *not* been serviced.
 func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) bool {
@@ -318,8 +322,7 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) b
 	return false
 }
 
-// UpdateSpriteHMOVE checks the TIA memory for changes to state that
-// require a short pause, using the TIA scheduler
+// UpdateSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
 //
 // Returns true if ChipData has *not* been serviced.
 func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData) bool {
@@ -371,8 +374,7 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData)
 	return false
 }
 
-// UpdateSpritePositioning checks the TIA memory for strobing of reset
-// registers
+// UpdateSpritePositioning checks TIA memory for strobing of reset registers.
 //
 // Returns true if memory.ChipData has not been serviced.
 func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
@@ -396,7 +398,7 @@ func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateColor checks the TIA memory for changes to color registers
+// UpdateColor checks TIA memory for changes to color registers.
 //
 // Returns true if memory.ChipData has not been serviced.
 func (vd *Video) UpdateColor(data bus.ChipData) bool {
@@ -419,8 +421,8 @@ func (vd *Video) UpdateColor(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateSpritePixels checks the TIA memory for attribute changes that *must*
-// occur after a call to Pixel()
+// UpdateSpritePixels checks TIA memory for attribute changes that *must* occur
+// after a call to Pixel().
 //
 // Returns true if memory.ChipData has not been serviced.
 func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
@@ -445,9 +447,9 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateSpriteVariations checks the TIA memory for writes to registers that
-// affect how sprite pixels are output. note that CTRLPF is serviced here
-// because it affects the ball sprite.
+// UpdateSpriteVariations checks TIA memory for writes to registers that affect
+// how sprite pixels are output. Note that CTRLPF is serviced here rather than
+// in UpdatePlayfield(), because it affects the ball sprite.
 //
 // Returns true if memory.ChipData has not been serviced.
 func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
