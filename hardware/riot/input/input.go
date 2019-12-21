@@ -2,6 +2,7 @@ package input
 
 import (
 	"fmt"
+	"gopher2600/errors"
 	"gopher2600/hardware/memory/bus"
 )
 
@@ -21,13 +22,22 @@ type Input struct {
 // function therefore requires two arguments one to the RIOT chip bus and one
 // to the TIA chip bus.
 func NewInput(mem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
+
+	// convert ChipBus to InputDeviceBus
+	memInpBus, ok := mem.(bus.InputDeviceBus)
+	if !ok {
+		return nil, errors.New(errors.PanicError, "input.NewInput()", "mem argument doe not satisfy InputDeviceBus")
+	}
+	tiaMemInpBus, ok := tiaMem.(bus.InputDeviceBus)
+	if !ok {
+		return nil, errors.New(errors.PanicError, "input.NewInput()", "tiaMem argument doe not satisfy InputDeviceBus")
+	}
+
 	inp := &Input{
 		// we require the InputDeviceBus to memory. the following silently
 		// converts to the correct bus
-		// !!TODO: protect this conversion and produce a PanicError if
-		// something is wrong
-		mem:    mem.(bus.InputDeviceBus),
-		tiaMem: tiaMem.(bus.InputDeviceBus),
+		mem:    memInpBus,
+		tiaMem: tiaMemInpBus,
 	}
 
 	inp.Panel = NewPanel(inp)

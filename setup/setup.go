@@ -25,9 +25,14 @@ type setupEntry interface {
 // when starting a database session we must add the details of the entry types
 // that will be found in the database
 func initDBSession(db *database.Session) error {
+
+	// add panel setup entry type
 	if err := db.RegisterEntryType(panelSetupID, deserialisePanelSetupEntry); err != nil {
 		return err
 	}
+
+	// add other entry types
+
 	return nil
 }
 
@@ -51,7 +56,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 	defer db.EndSession(false)
 
 	onSelect := func(ent database.Entry) (bool, error) {
-		// datbase entry should also satisfy Regressor interface
+		// database entry should also satisfy setupEntry interface
 		set, ok := ent.(setupEntry)
 		if !ok {
 			return false, errors.New(errors.PanicError, "setup.AttachCartridge()", "database entry does not satisfy setupEntry interface")
@@ -62,10 +67,6 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 			if err != nil {
 				return false, err
 			}
-
-			// even though we've matched the cart hash we should return true to
-			// indicate that we should continue the select and look for other
-			// matching entries
 		}
 
 		return true, nil

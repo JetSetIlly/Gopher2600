@@ -10,4 +10,7 @@
 // Eventually we would probably require a menu driven selection of setups. In
 // other words, a cartridge is loaded and there but there are several setup
 // options to choose from (eg. bug-fixed or original ROM)
+//
+// The setup pacakge currently doesn't facilitate editing of the setup
+// database, only reading.
 package setup
