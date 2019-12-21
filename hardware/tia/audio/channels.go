@@ -51,9 +51,6 @@ func (ch *channel) String() string {
 
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
-//
-// the logic in this function is taken almost directly from the TIA_process()
-// function in Ron Fries' TIASound.c
 func (ch *channel) tick() {
 	// tick frequency clock
 	if ch.freqClk > 1 {
@@ -83,7 +80,7 @@ func (ch *channel) tick() {
 	if (ch.regControl&0x02 == 0x0) ||
 		((ch.regControl&0x01 == 0x0) && ch.au.div31[ch.poly5ct] != 0) ||
 		((ch.regControl&0x01 == 0x1) && ch.au.poly5bit[ch.poly5ct] != 0) ||
-		((ch.regControl&0x0f == 0xf) && ch.au.poly5bit[ch.poly5ct] == prevBit5) {
+		((ch.regControl&0x0f == 0xf) && ch.au.poly5bit[ch.poly5ct] != prevBit5) {
 
 		if ch.regControl&0x04 == 0x04 {
 			// use pure clock

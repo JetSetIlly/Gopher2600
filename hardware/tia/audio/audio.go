@@ -30,7 +30,7 @@ type Audio struct {
 
 	poly4bit [15]uint8
 	poly5bit [31]uint8
-	poly9bit [511]uint8
+	poly9bit [511]uint16
 	div31    [31]uint8
 
 	// From the "Stella Programmer's Guide":
@@ -71,7 +71,7 @@ func NewAudio() *Audio {
 	// "Rather than have a table with 511 entries, I use a random number
 	// generator."
 	for i := 0; i < len(au.poly9bit); i++ {
-		au.poly9bit[i] = uint8(rand.Int() & 0x01)
+		au.poly9bit[i] = uint16(rand.Int() & 0x01)
 	}
 
 	// from TIASound.c:
