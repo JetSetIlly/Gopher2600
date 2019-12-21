@@ -164,7 +164,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 				// we now know the we have an Atari Error so we can safely
 				// switch on the internal Errno
-				switch err.(errors.AtariError).Errno {
+				switch err.(errors.AtariError).Head {
 
 				// user interrupts are triggered by the user (in a terminal
 				// environment, usually by pressing ctrl-c)

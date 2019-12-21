@@ -576,7 +576,7 @@ func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	if err == nil {
 		t.Fatalf("not recieved an UnreadableAddress error when we should")
 	}
-	if err.(errors.AtariError).Errno == errors.UnreadableAddress {
+	if err.(errors.AtariError).Head == errors.UnreadableAddress {
 		// this is okay
 	} else {
 		t.Fatalf("error during CPU step (%v)\n", err)

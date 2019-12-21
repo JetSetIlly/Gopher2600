@@ -5,23 +5,20 @@ import (
 	"strings"
 )
 
-// Errno is used specified the specific error
-type Errno int
-
 // Values is the type used to specify arguments for FormattedErrors
 type Values []interface{}
 
 // AtariError allows code to specify a predefined error and not worry too much about the
 // message behind that error and how the message will be formatted on output.
 type AtariError struct {
-	Errno  Errno
+	Head   string
 	Values Values
 }
 
 // New is used to create a new instance of an AtariError.
-func New(errno Errno, values ...interface{}) AtariError {
+func New(head string, values ...interface{}) AtariError {
 	return AtariError{
-		Errno:  errno,
+		Head:   head,
 		Values: values,
 	}
 }
@@ -29,7 +26,7 @@ func New(errno Errno, values ...interface{}) AtariError {
 // Error returns the normalised error message. Most usefully, it compresses
 // duplicate adjacent AtariError instances.
 func (er AtariError) Error() string {
-	s := fmt.Sprintf(messages[er.Errno], er.Values...)
+	s := fmt.Sprintf(er.Head, er.Values...)
 
 	// de-duplicate error message parts
 	p := strings.SplitN(s, ": ", 3)
@@ -40,16 +37,17 @@ func (er AtariError) Error() string {
 	return strings.Join(p, ": ")
 }
 
-// Is checks if most recently wrapped error is an AtariError with a specific errno
-func Is(err error, errno Errno) bool {
+// Is checks if most recently wrapped error is an AtariError with a specific
+// head
+func Is(err error, head string) bool {
 	switch er := err.(type) {
 	case AtariError:
-		return er.Errno == errno
+		return er.Head == head
 	}
 	return false
 }
 
-// IsAny checks if most recently wrapped error is an AtariError, with any errno
+// IsAny checks if most recently wrapped error is an AtariError, with any head
 func IsAny(err error) bool {
 	switch err.(type) {
 	case AtariError:
@@ -58,16 +56,16 @@ func IsAny(err error) bool {
 	return false
 }
 
-// Has checks to see if the specified AtariError errno appears somewhere in the
+// Has checks to see if the specified AtariError head appears somewhere in the
 // sequence of wrapped errors
-func Has(err error, errno Errno) bool {
-	if Is(err, errno) {
+func Has(err error, head string) bool {
+	if Is(err, head) {
 		return true
 	}
 
 	for i := range err.(AtariError).Values {
 		if e, ok := err.(AtariError).Values[i].(error); ok {
-			if Has(e, errno) {
+			if Has(e, head) {
 				return true
 			}
 		}
