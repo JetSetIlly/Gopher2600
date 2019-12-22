@@ -60,5 +60,13 @@ func (cart ejected) ram() []uint8 {
 	return []uint8{}
 }
 
-func (cart ejected) listen(addr uint16, data uint8) {
+func (cart *ejected) listen(addr uint16, data uint8) {
+}
+
+func (cart *ejected) poke(addr uint16, data uint8) error {
+	return errors.New(errors.UnpokeableAddress, addr)
+}
+
+func (cart *ejected) patch(addr uint16, data uint8) error {
+	return errors.New(errors.UnpatchableCartType, cart.method)
 }

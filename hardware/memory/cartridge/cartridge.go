@@ -40,9 +40,15 @@ func (cart Cartridge) Peek(addr uint16) (uint8, error) {
 	return cart.Read(addr)
 }
 
-// Poke is an implementation of memory.DebuggerBus
-func (cart Cartridge) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
+// Poke is an implementation of memory.DebuggerBus. This poke pokes the current
+// cartridge bank. See Patch for a different method.
+func (cart *Cartridge) Poke(addr uint16, data uint8) error {
+	return cart.mapper.poke(addr^memorymap.OriginCart, data)
+}
+
+// Patch rewrites cartridge location as though that value was at file offset
+func (cart *Cartridge) Patch(offset uint16, data uint8) error {
+	return cart.mapper.patch(offset, data)
 }
 
 // Read is an implementation of memory.CPUBus

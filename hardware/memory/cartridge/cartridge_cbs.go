@@ -126,5 +126,13 @@ func (cart cbs) ram() []uint8 {
 	return cart.superchip
 }
 
-func (cart cbs) listen(addr uint16, data uint8) {
+func (cart *cbs) listen(addr uint16, data uint8) {
+}
+
+func (cart *cbs) poke(addr uint16, data uint8) error {
+	return errors.New(errors.UnpokeableAddress, addr)
+}
+
+func (cart *cbs) patch(addr uint16, data uint8) error {
+	return errors.New(errors.UnpatchableCartType, cart.method)
 }

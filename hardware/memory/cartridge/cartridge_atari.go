@@ -48,6 +48,8 @@ import (
 type atari struct {
 	method string
 
+	bankSize int
+
 	// atari formats apart from 2k and 4k are divided into banks. 2k and 4k
 	// ROMs conceptually have one bank
 	banks [][]uint8
@@ -146,7 +148,19 @@ func (cart atari) ram() []uint8 {
 	return cart.superchip
 }
 
-func (cart atari) listen(addr uint16, data uint8) {
+func (cart *atari) listen(addr uint16, data uint8) {
+}
+
+func (cart *atari) poke(addr uint16, data uint8) error {
+	cart.banks[cart.bank][addr] = data
+	return nil
+}
+
+func (cart *atari) patch(addr uint16, data uint8) error {
+	bank := int(addr) / cart.bankSize
+	addr = addr % uint16(cart.bankSize)
+	cart.banks[bank][addr] = data
+	return nil
 }
 
 // atari4k is the original and most straightforward format
@@ -164,17 +178,16 @@ type atari4k struct {
 //  o Yars Revenge
 //  o etc.
 func newAtari4k(data []byte) (cartMapper, error) {
-	const bankSize = 4096
-
 	cart := &atari4k{}
+	cart.bankSize = 4096
 	cart.method = "atari 4k"
 	cart.banks = make([][]uint8, 1)
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != cart.bankSize*cart.numBanks() {
 		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
-	cart.banks[0] = make([]uint8, bankSize)
+	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
 
 	cart.initialise()
@@ -212,17 +225,16 @@ type atari2k struct {
 }
 
 func newAtari2k(data []byte) (cartMapper, error) {
-	const bankSize = 2048
-
 	cart := &atari2k{}
+	cart.bankSize = 2048
 	cart.method = "atari 2k"
 	cart.banks = make([][]uint8, 1)
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != cart.bankSize*cart.numBanks() {
 		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
-	cart.banks[0] = make([]uint8, bankSize)
+	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
 
 	cart.initialise()
@@ -258,20 +270,19 @@ type atari8k struct {
 }
 
 func newAtari8k(data []uint8) (cartMapper, error) {
-	const bankSize = 4096
-
 	cart := &atari8k{}
+	cart.bankSize = 4096
 	cart.method = "atari 8k (F8)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != cart.bankSize*cart.numBanks() {
 		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	cart.initialise()
@@ -325,20 +336,19 @@ type atari16k struct {
 }
 
 func newAtari16k(data []byte) (cartMapper, error) {
-	const bankSize = 4096
 	cart := &atari16k{}
-
+	cart.bankSize = 4096
 	cart.method = "atari 16k (F6)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != cart.bankSize*cart.numBanks() {
 		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	cart.initialise()
@@ -400,20 +410,19 @@ type atari32k struct {
 }
 
 func newAtari32k(data []byte) (cartMapper, error) {
-	const bankSize = 4096
 	cart := &atari32k{}
-
+	cart.bankSize = 4096
 	cart.method = "atari 32k (F4)"
 	cart.banks = make([][]uint8, cart.numBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != cart.bankSize*cart.numBanks() {
 		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	cart.initialise()

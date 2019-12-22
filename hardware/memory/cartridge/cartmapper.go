@@ -19,6 +19,14 @@ type cartMapper interface {
 	// require a way of notifying the cartridge of writes to addresses outside
 	// of cartridge space
 	listen(addr uint16, data uint8)
+
+	// poke new value anywhere into currently selected bank of cartridge memory
+	// (including ROM).
+	poke(addr uint16, data uint8) error
+
+	// patch differs from poke in that it alters the data as though it was
+	// being read from disk
+	patch(offset uint16, data uint8) error
 }
 
 // optionalSuperchip are implemented by cartMappers that have an optional

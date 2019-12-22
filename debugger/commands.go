@@ -13,6 +13,7 @@ import (
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
 	"gopher2600/hardware/riot/input"
+	"gopher2600/patch"
 	"gopher2600/symbols"
 	"os"
 	"sort"
@@ -47,6 +48,7 @@ const (
 	cmdPlayer        = "PLAYER"
 	cmdPlayfield     = "PLAYFIELD"
 	cmdPoke          = "POKE"
+	cmdPatch         = "PATCH"
 	cmdQuit          = "QUIT"
 	cmdExit          = "EXIT"
 	cmdRAM           = "RAM"
@@ -95,6 +97,7 @@ var commandTemplate = []string{
 	cmdPlayer + " (0|1)",
 	cmdPlayfield,
 	cmdPoke + " [%S] %N",
+	cmdPatch + " %S",
 	cmdQuit,
 	cmdExit,
 	cmdRAM + " (CART)",
@@ -841,6 +844,20 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.print(terminal.StyleError, "%s", err)
 		} else {
 			dbg.print(terminal.StyleInstrument, ai.String())
+		}
+
+	case cmdPatch:
+		f, _ := tokens.Get()
+		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
+		if err != nil {
+			dbg.print(terminal.StyleError, "%v", err)
+			if patched {
+				dbg.print(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
+			}
+			return doNothing, nil
+		}
+		if patched {
+			dbg.print(terminal.StyleEmulatorInfo, "cartridge patched")
 		}
 
 	case cmdHexLoad:

@@ -44,7 +44,7 @@ const (
 
 	// database
 	DatabaseError           = "database error: %v"
-	DatabaseReadError       = "datbase error: %v [line %d]"
+	DatabaseReadError       = "database error: %v [line %d]"
 	DatabaseSelectEmpty     = "database error: no selected entries"
 	DatabaseKeyError        = "database error: no such key in database [%v]"
 	DatabaseFileUnavailable = "database error: cannot open database (%v)"
@@ -57,6 +57,11 @@ const (
 	// setup
 	SetupError      = "setup error: %v"
 	SetupPanelError = "setup error: panel entry: %v"
+	SetupPatchError = "setup error: patch entry: %v"
+
+	// patch
+	PatchError     = "patch error: %v"
+	PatchFileError = "patch error: patch file not found (%v)"
 
 	// symbols
 	SymbolsFileError       = "symbols error: error processing symbols file: %v"
@@ -84,8 +89,9 @@ const (
 	UnpeekableAddress = "memory error: cannot peek address (%v)"
 
 	// cartridges
-	CartridgeError   = "cartridge error: %v"
-	CartridgeEjected = "cartridge error: no cartridge attached"
+	CartridgeError      = "cartridge error: %v"
+	CartridgeEjected    = "cartridge error: no cartridge attached"
+	UnpatchableCartType = "cartridge error: cannot patch this cartridge type (%v)"
 
 	// input
 	InputDeviceUnavailable = "input error: controller hardware unavailable (%v)"

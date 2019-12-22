@@ -9,6 +9,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware"
+	"gopher2600/patch"
 	"gopher2600/recorder"
 	"gopher2600/setup"
 	"gopher2600/television"
@@ -18,7 +19,7 @@ import (
 )
 
 // Play is a quick of setting up a playable instance of the emulator.
-func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool, newRecording bool, cartload cartridgeloader.Loader) error {
+func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -97,11 +98,20 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool,
 
 	} else {
 		// no new recording requested and no transcript given. this is a 'normal'
-		// launch of the emalator for regular pla
+		// launch of the emalator for regular play
 
 		err = setup.AttachCartridge(vcs, cartload)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
+		}
+
+		// apply patch if requested. note that this will be in addition to any
+		// patches applied during setup.AttachCartridge
+		if patchFile != "" {
+			_, err := patch.CartridgeMemory(vcs.Mem.Cart, patchFile)
+			if err != nil {
+				return errors.New(errors.PlayError, err)
+			}
 		}
 	}
 

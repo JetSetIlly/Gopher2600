@@ -1,8 +1,8 @@
-// Package paths should be used whenever a request to the filesystem is made.
+// Package paths contains functions to prepare paths to gopher2600 resources.
 //
 // The ResourcePath() function modifies the supplied resource string such that
-// it is prepended with the appropriate gopher2600 config directory. For
-// example, the following will return the path to the ET patch.
+// it is prepended with the appropriate config directory. For example, the
+// following will return the path to a cartridge patch.
 //
 //	d := paths.ResourcePath("patches", "ET")
 //
@@ -14,5 +14,5 @@
 //
 // In the example above, on a modern Linux system, the path returned will be:
 //
-//	/home/steve/.config/gopher2600/patches/ET
+//	/home/user/.config/gopher2600/patches/ET
 package paths

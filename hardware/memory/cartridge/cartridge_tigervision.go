@@ -155,3 +155,11 @@ func (cart *tigervision) listen(addr uint16, data uint8) {
 	// to TIA space for real and not cause a bankswitch. for this reason,
 	// tigervision cartridges use mirror addresses to write to the TIA.
 }
+
+func (cart *tigervision) poke(addr uint16, data uint8) error {
+	return errors.New(errors.UnpokeableAddress, addr)
+}
+
+func (cart *tigervision) patch(addr uint16, data uint8) error {
+	return errors.New(errors.UnpatchableCartType, cart.method)
+}

@@ -1,16 +1,25 @@
 // Package setup is used to preset the emulation depending on the attached
-// cartridge.
+// cartridge. It is currently quite limited but is useful none-the-less.
+// Currently support entry types:
 //
-// This package is not yet complete. It currently only supports panel setup.
-// ie. the setting of the switches on the frontpanel.
+//	Toggling of panel switches
+//	Apply patches to cartridge
 //
-// Other setup option idea: POKEs. For example, bug fixing the ET cartridge on
-// startup.
+// Menu driven selection of patches would be a nice feature to have in the
+// future. But at the moment, the package doesn't even facilitate editing of
+// entries. Adding new entries to the setup database therefore requires editing
+// the DB file by hand. For reference the following describes the format of
+// each entry type:
 //
-// Eventually we would probably require a menu driven selection of setups. In
-// other words, a cartridge is loaded and there but there are several setup
-// options to choose from (eg. bug-fixed or original ROM)
+//	Panel Toggles
 //
-// The setup pacakge currently doesn't facilitate editing of the setup
-// database, only reading.
+//	<DB Key>, panel, <SHA-1 Hash>, <player 0 (bool)>, .<player 1 (bool)>, <color (bool)>, <notes>
+//
+// When editing the DB file, make sure the DB Key is unique
+//
+//	Patch Cartridge
+//
+//	<DB Key>, patch, <SHA-1 Hash>, <patch file>, <notes>
+//
+// Patch files are located in the patches sub-directory of the resources path.
 package setup

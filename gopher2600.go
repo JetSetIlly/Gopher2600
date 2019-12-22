@@ -82,6 +82,7 @@ func play(md *modalflag.Modes) error {
 	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
+	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -117,7 +118,7 @@ func play(md *modalflag.Modes) error {
 			return errors.New(errors.PlayError, err)
 		}
 
-		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload)
+		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
 		if err != nil {
 			return err
 		}

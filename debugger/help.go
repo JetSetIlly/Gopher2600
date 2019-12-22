@@ -27,6 +27,7 @@ var help = map[string]string{
 	cmdPlayer:        "Display the current state of the player 0/1 sprite",
 	cmdPlayfield:     "Display the current playfield data",
 	cmdPoke:          "Modify an individual memory address",
+	cmdPatch:         "Apply a patch file to the loaded cartridge",
 	cmdExit:          "Exits the emulator",
 	cmdQuit:          "Exits the emulator",
 	cmdRAM:           "Display the current contents of PIA RAM",
