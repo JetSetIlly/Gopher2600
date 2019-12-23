@@ -3,9 +3,9 @@ package cpu
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/hardware/cpu/execution"
 	"gopher2600/hardware/cpu/instructions"
 	"gopher2600/hardware/cpu/registers"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/bus"
 	"log"
@@ -41,7 +41,7 @@ type CPU struct {
 	RdyFlg bool
 
 	// last result
-	LastResult result.Instruction
+	LastResult execution.Result
 
 	// silently ignore addressing errors unless StrictAddressing is true
 	StrictAddressing bool
@@ -72,8 +72,6 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 	mc.acc16 = registers.NewProgramCounter(0)
 
 	// set Final flag in LastResult to true because logically we can say it is.
-	// this fixes what might be considered a bug when building the debugger
-	// prompt. this is the best way of fixing it.
 	mc.LastResult.Final = true
 
 	var err error
@@ -355,12 +353,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	}
 
 	// prepare new round of results
-	mc.LastResult.Address = mc.PC.Address()
 	mc.LastResult.Defn = nil
-	mc.LastResult.Final = false
+	mc.LastResult.Address = mc.PC.Address()
+	mc.LastResult.InstructionData = nil
 	mc.LastResult.ActualCycles = 0
 	mc.LastResult.PageFault = false
 	mc.LastResult.Bug = ""
+	mc.LastResult.Final = false
 
 	// register end cycle callback
 	defer func() {

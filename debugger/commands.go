@@ -1,15 +1,16 @@
 package debugger
 
 import (
+	"bytes"
 	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/debugger/script"
 	"gopher2600/debugger/terminal"
 	"gopher2600/debugger/terminal/commandline"
+	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/registers"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
 	"gopher2600/hardware/riot/input"
@@ -79,10 +80,10 @@ var commandTemplate = []string{
 	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDebuggerState,
-	cmdDisassembly,
+	cmdDisassembly + " (BYTECODE)",
 	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 	cmdDrop + " [BREAK|TRAP|WATCH] %N",
-	cmdGrep + " %S",
+	cmdGrep + " (MNEMONIC|OPERAND) %S",
 	cmdHexLoad + " %N %N {%N}",
 	cmdInsert + " %F",
 	cmdLast + " (DEFN|BYTECODE)",
@@ -319,10 +320,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				defer func() {
 					dbg.scriptScribe.EndPlayback()
 				}()
-
-				// !!TODO: provide a recording option to allow insertion of
-				// the actual script commands rather than the call to the
-				// script itself
 			}
 
 			err = dbg.inputLoop(scr, false)
@@ -332,12 +329,29 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		}
 
 	case cmdDisassembly:
-		dbg.disasm.Dump(dbg.printStyle(terminal.StyleFeedback))
+		option, _ := tokens.Get()
+		bytecode := option == "BYTECODE"
+
+		s := &bytes.Buffer{}
+		dbg.disasm.Write(s, bytecode)
+		dbg.print(terminal.StyleFeedback, s.String())
 
 	case cmdGrep:
+		scope := disassembly.GrepAll
+
+		s, _ := tokens.Get()
+		switch strings.ToUpper(s) {
+		case "MNEMONIC":
+			scope = disassembly.GrepMnemonic
+		case "OPERAND":
+			scope = disassembly.GrepOperand
+		default:
+			tokens.Unget()
+		}
+
 		search, _ := tokens.Get()
 		output := strings.Builder{}
-		dbg.disasm.Grep(&output, search, false, 3)
+		dbg.disasm.Grep(&output, scope, search, false)
 		if output.Len() == 0 {
 			dbg.print(terminal.StyleError, "%s not found in disassembly", search)
 		} else {
@@ -590,35 +604,39 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		return doNothing, nil
 
 	case cmdLast:
-		if dbg.vcs.CPU.LastResult.Defn == nil {
-			// special condition for when LAST is called before any execution
-			// has taken place
-			dbg.print(terminal.StyleFeedback, "no instruction decoded yet")
+		s := strings.Builder{}
+
+		d, err := dbg.disasm.FormatResult(dbg.vcs.CPU.LastResult)
+		if err != nil {
+			return doNothing, err
+		}
+
+		option, ok := tokens.Get()
+		if ok {
+			switch strings.ToUpper(option) {
+			case "DEFN":
+				dbg.print(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
+				break
+
+			case "BYTECODE":
+				s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Bytecode, d.Bytecode))
+			}
+		}
+
+		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Address, d.Address))
+		s.WriteString(" ")
+		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Mnemonic, d.Mnemonic))
+		s.WriteString(" ")
+		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Operand, d.Operand))
+		s.WriteString(" ")
+		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Cycles, d.Cycles))
+		s.WriteString(" ")
+		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Notes, d.Notes))
+
+		if dbg.vcs.CPU.LastResult.Final {
+			dbg.print(terminal.StyleCPUStep, s.String())
 		} else {
-			done := false
-			resultStyle := result.StyleExecution
-
-			option, ok := tokens.Get()
-			if ok {
-				switch strings.ToUpper(option) {
-				case "DEFN":
-					dbg.print(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
-					done = true
-
-				case "BYTECODE":
-					resultStyle = result.StyleDisasm
-				}
-			}
-
-			if !done {
-				var printTag terminal.Style
-				if dbg.vcs.CPU.LastResult.Final {
-					printTag = terminal.StyleCPUStep
-				} else {
-					printTag = terminal.StyleVideoStep
-				}
-				dbg.print(printTag, "%s", dbg.vcs.CPU.LastResult.GetString(dbg.disasm.Symtable, resultStyle))
-			}
+			dbg.print(terminal.StyleVideoStep, s.String())
 		}
 
 	case cmdMemMap:

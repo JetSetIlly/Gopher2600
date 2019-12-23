@@ -36,10 +36,14 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		// prompt address doesn't seem to be pointing to the cartridge, prepare
 		// "non-cart" prompt
 		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", promptAddress))
-	} else if entry, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
+	} else if d, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
-		prompt.WriteString(fmt.Sprintf(" %#04x %s ]", promptAddress, entry.String()))
+		prompt.WriteString(fmt.Sprintf(" %#04x %s", promptAddress, d.Mnemonic))
+		if d.Operand != "" {
+			prompt.WriteString(fmt.Sprintf(" %s", d.Operand))
+		}
+		prompt.WriteString(" ]")
 	} else {
 		// incomplete disassembly, prepare "no disasm" prompt
 		prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", promptAddress, promptBank))

@@ -33,7 +33,8 @@
 // that we know have passed the validation. For example, using the above
 // template, we can implement a switch very consisely:
 //
-//	switch toks.Get() {
+//	option, _ := toks.Get()
+//	switch strings.ToUpper(option) {
 //		case "LIST:
 //			list()
 //		case "PRINT:

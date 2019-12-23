@@ -14,15 +14,9 @@ import (
 // function. output will be normalised and sent to the attached terminal as
 // required.
 func (dbg *Debugger) print(sty terminal.Style, s string, a ...interface{}) {
-	// resolve string placeholders and return if the resulting string is empty
-	if sty != terminal.StyleHelp {
-		s = fmt.Sprintf(s, a...)
-		if len(s) == 0 {
-			return
-		}
-	}
-
-	// trim *all* trailing newlines - UserPrint() will add newlines if required
+	// resolve string placeholders, remove all trailing newlines, and return if
+	// the resulting string is empty
+	s = fmt.Sprintf(s, a...)
 	s = strings.TrimRight(s, "\n")
 	if len(s) == 0 {
 		return

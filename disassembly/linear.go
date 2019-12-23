@@ -2,7 +2,6 @@ package disassembly
 
 import (
 	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/memorymap"
 )
 
@@ -18,14 +17,20 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 			// deliberately ignoring errors
 			_ = mc.ExecuteInstruction(nil)
 
-			// check validity of instruction result and add if it "executed"
-			// correctly
-			if mc.LastResult.IsValid() == nil {
-				dsm.linear[bank][address&disasmMask] = Entry{
-					style:                 result.StyleBrief,
-					instruction:           mc.LastResult.GetString(dsm.Symtable, result.StyleBrief),
-					instructionDefinition: mc.LastResult.Defn}
+			// continue for loop on invalid results. we don't want to be as
+			// discerning as in flowDisassembly(). the nature of
+			// linearDisassembly() means that we're likely to try executing
+			// invalid instructions. best just to ignore such errors.
+			if mc.LastResult.IsValid() != nil {
+				continue // for loop
 			}
+
+			ent, err := dsm.FormatResult(mc.LastResult)
+			if err != nil {
+				return err
+			}
+
+			dsm.linear[bank][address&disasmMask] = ent
 		}
 	}
 

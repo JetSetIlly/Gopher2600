@@ -217,6 +217,7 @@ func disasm(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -235,12 +236,12 @@ func disasm(md *modalflag.Modes) error {
 		if err != nil {
 			// print what disassembly output we do have
 			if dsm != nil {
-				dsm.Dump(md.Output)
+				dsm.Write(md.Output, *bytecode)
 			}
 
 			return errors.New(errors.DisassemblyError, err)
 		}
-		dsm.Dump(md.Output)
+		dsm.Write(md.Output, *bytecode)
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}

@@ -1,4 +1,4 @@
-package result
+package execution
 
 import (
 	"fmt"
@@ -7,11 +7,9 @@ import (
 	"reflect"
 )
 
-// IsValid checks whether the instance of StepResult contains consistent data.
-//
-// Intended to be used during development of the CPU pacakge, to make sure
-// implementation hasn't gone off the rails.
-func (result Instruction) IsValid() error {
+// IsValid checks whether the instance of Result contains information
+// consistent with the instruction definition.
+func (result Result) IsValid() error {
 	if !result.Final {
 		return errors.New(errors.InvalidResult, "not checking an unfinalised InstructionResult")
 	}

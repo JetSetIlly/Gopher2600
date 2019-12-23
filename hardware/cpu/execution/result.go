@@ -1,0 +1,48 @@
+package execution
+
+import (
+	"gopher2600/hardware/cpu/instructions"
+)
+
+// Result records the state/result of each instruction executed on the CPU.
+// Including the address it was read from, a reference to the instruction
+// definition, and other execution details.
+//
+// The Result type is updated every cycle during the execution of the emulated
+// CPU. As the execution continues, more information is acquired and detail
+// added to the Result.
+//
+// The Final field indicates whether the last cycle of the instruction has been
+// executed. An instance of Result with a Final value of false can still be
+// used but with the caveat that the information is incomplete. Note that a
+// Defn of nil means the opcode hasn't even been decoded.
+type Result struct {
+	// a reference to the instruction definition
+	Defn *instructions.Definition
+
+	Address uint16
+
+	// it would be lovely to have a note of which cartridge bank the address is
+	// in, but we want to keep the 6507 emulation as non-specific as possible.
+	// if you need to know the cartridge bank then you need to get it somehow
+	// else.
+
+	// instruction data is the actual instruction data. so, for example, in the
+	// case of branch instruction, instruction data is the offset value.
+	InstructionData interface{}
+
+	// the actual number of cycles taken by the instruction - usually the same
+	// as Defn.Cycles but in the case of PageFaults and branches, this value
+	// may be different
+	ActualCycles int
+
+	// whether an extra cycle was required because of 8 bit adder overflow
+	PageFault bool
+
+	// whether a known buggy code path (in the emulated CPU) was triggered
+	Bug string
+
+	// whether this data has been finalised - some fields in this struct will
+	// be undefined if Final is false
+	Final bool
+}

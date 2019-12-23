@@ -4,7 +4,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/instructions"
-	"gopher2600/hardware/cpu/result"
 	"gopher2600/hardware/memory/memorymap"
 )
 
@@ -32,23 +31,25 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			}
 		}
 
-		// check validity of instruction result
-		err = mc.LastResult.IsValid()
-		if err != nil {
+		// fail on invalid results
+		if err := mc.LastResult.IsValid(); err != nil {
 			return err
 		}
 
 		bank := dsm.cart.GetBank(mc.LastResult.Address)
 
 		// if we've seen this before then finish the disassembly
-		if dsm.flow[bank][mc.LastResult.Address&disasmMask].IsInstruction() {
+		if dsm.flow[bank][mc.LastResult.Address&disasmMask] != nil {
 			return nil
 		}
 
-		dsm.flow[bank][mc.LastResult.Address&disasmMask] = Entry{
-			style:                 result.StyleDisasm,
-			instruction:           mc.LastResult.GetString(dsm.Symtable, result.StyleDisasm),
-			instructionDefinition: mc.LastResult.Defn}
+		d, err := dsm.FormatResult(mc.LastResult)
+		if err != nil {
+			return err
+		}
+		dsm.Columns.Update(d)
+
+		dsm.flow[bank][mc.LastResult.Address&disasmMask] = d
 
 		// we've disabled flow-control in the cpu but we still need to pay
 		// attention to what's going on or we won't get to see all the areas of

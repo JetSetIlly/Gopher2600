@@ -3,18 +3,19 @@ package disassembly
 import (
 	"fmt"
 	"gopher2600/cartridgeloader"
+	"gopher2600/disassembly/display"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
+	"gopher2600/hardware/cpu/execution"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/cartridge"
 	"gopher2600/symbols"
-	"io"
 	"strings"
 )
 
 const disasmMask = 0x0fff
 
-type bank [disasmMask + 1]Entry
+type bank [disasmMask + 1]*display.Instruction
 
 // Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
@@ -25,7 +26,7 @@ type Disassembly struct {
 	interrupts  bool
 	forcedRTS   bool
 
-	// symbols used to build disassembly output
+	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
 	// linear is the decoding of every possible address in the cartridge
@@ -34,6 +35,11 @@ type Disassembly struct {
 	// flow is the decoding of cartridge addresses that follow the flow from
 	// the start address
 	flow []bank
+
+	// formatting information for all entries in the flow disassembly.
+	// excluding the linear disassembly because false positives entries might
+	// upset the formatting.
+	Columns display.Columns
 }
 
 // Analysis returns a summary of anything interesting found during disassembly.
@@ -45,27 +51,20 @@ func (dsm Disassembly) Analysis() string {
 	return s.String()
 }
 
-// Get returns the disassembled entry at the specified bank/address. This
+// Get returns the disassembly at the specified bank/address
+//
 // function works best when the address definitely points to a valid
 // instruction. This probably means during the execution of a the cartridge
 // with proper flow control.
-func (dsm Disassembly) Get(bank int, address uint16) (Entry, bool) {
-	entry := dsm.linear[bank][address&disasmMask]
-	return entry, entry.IsInstruction()
+func (dsm Disassembly) Get(bank int, address uint16) (*display.Instruction, bool) {
+	col := dsm.linear[bank][address&disasmMask]
+	return col, col != nil
 }
 
-// Dump writes the entire disassembly to the write interface
-func (dsm *Disassembly) Dump(output io.Writer) {
-	for bank := 0; bank < len(dsm.flow); bank++ {
-		output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
-
-		for i := range dsm.flow[bank] {
-			if entry := dsm.flow[bank][i]; entry.instructionDefinition != nil {
-				output.Write([]byte(entry.instruction))
-				output.Write([]byte("\n"))
-			}
-		}
-	}
+// FormatResult is a wrapper for the display.Format() function using the
+// current symbol table
+func (dsm Disassembly) FormatResult(result execution.Result) (*display.Instruction, error) {
+	return display.Format(result, dsm.Symtable)
 }
 
 // FromCartridge initialises a new partial emulation and returns a

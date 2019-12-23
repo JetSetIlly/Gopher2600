@@ -30,7 +30,6 @@ func (ct *ColorTerminal) TermPrint(style terminal.Style, s string, a ...interfac
 		ct.EasyTerm.TermPrint("* ")
 	case terminal.StyleHelp:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
-		ct.EasyTerm.TermPrint("  ")
 	case terminal.StyleFeedback:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StylePromptCPUStep:

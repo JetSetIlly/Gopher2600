@@ -43,8 +43,6 @@ func (pt PlainTerminal) TermPrint(style terminal.Style, s string, a ...interface
 	switch style {
 	case terminal.StyleError:
 		s = fmt.Sprintf("* %s", s)
-	case terminal.StyleHelp:
-		s = fmt.Sprintf("  %s", s)
 	}
 
 	s = fmt.Sprintf(s, a...)

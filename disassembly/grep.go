@@ -1,16 +1,25 @@
 package disassembly
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
 )
 
-// Grep searches the disassembly for the specified search string.
-func (dsm *Disassembly) Grep(output io.Writer, search string, caseSensitive bool, contextLines uint) {
-	var s, m string
+// GrepScope limits the scope of the search
+type GrepScope int
 
-	ctx := make([]string, contextLines)
+// List of available scopes
+const (
+	GrepMnemonic GrepScope = iota
+	GrepOperand
+	GrepAll
+)
+
+// Grep searches the disassembly for the specified search string.
+func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, caseSensitive bool) {
+	var s, m string
 
 	if !caseSensitive {
 		search = strings.ToUpper(search)
@@ -19,10 +28,25 @@ func (dsm *Disassembly) Grep(output io.Writer, search string, caseSensitive bool
 	for bank := 0; bank < len(dsm.flow); bank++ {
 		bankHeader := false
 		for a := 0; a < len(dsm.flow[bank]); a++ {
-			entry := dsm.flow[bank][a]
+			d := dsm.flow[bank][a]
 
-			if entry.instructionDefinition != nil {
-				s = entry.instruction
+			if d != nil {
+
+				// line representation of Instruction. we'll print this
+				// in case of a match
+				line := &bytes.Buffer{}
+				dsm.WriteLine(line, false, d)
+
+				// limit scope of grep to the correct Instruction field
+				switch scope {
+				case GrepMnemonic:
+					s = d.Mnemonic
+				case GrepOperand:
+					s = d.Operand
+				case GrepAll:
+					s = line.String()
+				}
+
 				if !caseSensitive {
 					m = strings.ToUpper(s)
 				} else {
@@ -30,6 +54,9 @@ func (dsm *Disassembly) Grep(output io.Writer, search string, caseSensitive bool
 				}
 
 				if strings.Contains(m, search) {
+
+					// if we've not yet printed head for the current bank then
+					// print it now
 					if !bankHeader {
 						if bank > 0 {
 							output.Write([]byte("\n"))
@@ -37,28 +64,10 @@ func (dsm *Disassembly) Grep(output io.Writer, search string, caseSensitive bool
 
 						output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 						bankHeader = true
-					} else if contextLines > 0 {
-						output.Write([]byte("\n"))
 					}
 
-					// print context
-					for c := 0; c < len(ctx); c++ {
-						// only write actual content. note that there is more often
-						// than not, valid context. the main reason as far I can
-						// see, for empty context are mistakes in disassembly
-						if ctx[c] != "" {
-							output.Write([]byte(ctx[c]))
-							output.Write([]byte("\n"))
-						}
-					}
-
-					// print match
-					output.Write([]byte(s))
-					output.Write([]byte("\n"))
-
-					ctx = make([]string, contextLines)
-				} else if contextLines > 0 {
-					ctx = append(ctx[1:], s)
+					// we've matched so print entire line
+					output.Write(line.Bytes())
 				}
 			}
 		}

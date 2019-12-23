@@ -138,10 +138,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	var event watchEvent
 
 	// read mode
-	mode, present := tokens.Get()
-	if !present {
-		return errors.New(errors.CommandError, "watch address required")
-	}
+	mode, _ := tokens.Get()
 	mode = strings.ToUpper(mode)
 	switch mode {
 	case "READ":
