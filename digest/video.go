@@ -103,7 +103,7 @@ func (dig *Video) SetAltPixel(x, y int, red, green, blue byte, vblank bool) erro
 	return nil
 }
 
-// SetAltPixel implements television.Renderer interface
+// EndRendering implements television.Renderer interface
 func (dig *Video) EndRendering() error {
 	return nil
 }

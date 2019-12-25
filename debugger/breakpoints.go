@@ -15,7 +15,9 @@ import (
 
 // breakpoints keeps track of all the currently defined breakers
 type breakpoints struct {
-	dbg    *Debugger
+	dbg *Debugger
+
+	// array of breakers are ORed together
 	breaks []breaker
 }
 
@@ -25,7 +27,7 @@ type breaker struct {
 	value       interface{}
 	ignoreValue interface{}
 
-	// basic linked list to implement AND-conditions
+	// single linked list ANDs breakers together
 	next *breaker
 }
 
@@ -40,7 +42,47 @@ func (bk breaker) String() string {
 	return s.String()
 }
 
-// breaker.check checks the specific break condition with the current value of
+// id creates a sum of the breaker sequence such that the order of the sequence
+// does not matter. this commutative property makes it useful to detect
+// duplicate sequences of ANDed breakers.
+func (bk breaker) id() int {
+	// summation of data in each node
+	sum := 0
+
+	// number of nodes encountered
+	c := 1
+
+	// visit every node in the sequence
+	n := &bk
+	for n != nil {
+
+		// add the ASCII value of each character in the target label to the sum
+		s := n.target.Label()
+		for i := 0; i < len(s); i++ {
+			sum += int(s[i])
+		}
+
+		// add the breakpoint value to the sum
+		switch v := n.value.(type) {
+		case int:
+			sum += v
+		case bool:
+			// if value type is boolean add one if value is true
+			if v {
+				sum++
+			}
+		default:
+		}
+
+		n = n.next
+		c++
+	}
+
+	// stuff number of nodes into the LSB
+	return (sum << 8) | (c % 256)
+}
+
+// check checks the specific break condition with the current value of
 // the break target
 func (bk *breaker) check() bool {
 	currVal := bk.target.CurrentValue()
@@ -65,26 +107,28 @@ func (bk *breaker) check() bool {
 	return true
 }
 
-// breaker.add links a new breaker object to an existing breaker object
+// add a new breaker by linking it to the end of an existing breaker
 func (bk *breaker) add(nbk *breaker) {
-	n := &bk.next
-	for *n != nil {
-		*n = (*n).next
+	n := bk
+	for n.next != nil {
+		n = n.next
 	}
-	*n = nbk
+	n.next = nbk
 }
 
-// newBreakpoints is the preferred method of initialisation for breakpoins
+// newBreakpoints is the preferred method of initialisation for breakpoints
 func newBreakpoints(dbg *Debugger) *breakpoints {
 	bp := &breakpoints{dbg: dbg}
 	bp.clear()
 	return bp
 }
 
+// clear all breakpoints
 func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
+// drop a specific breakpoint by position in list
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
 		return errors.New(errors.CommandError, fmt.Sprintf("breakpoint #%d is not defined", num))
@@ -99,8 +143,8 @@ func (bp *breakpoints) drop(num int) error {
 	return nil
 }
 
-// breakpoints.check compares the current state of the emulation with every
-// break condition. it returns a string listing every condition that applies
+// check compares the current state of the emulation with every break
+// condition. it returns a string listing every condition that applies
 func (bp *breakpoints) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
@@ -203,11 +247,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 
 		if err == nil {
 			if andBreaks {
-				if len(newBreaks) == 0 {
-					newBreaks = append(newBreaks, breaker{target: tgt, value: val})
-				} else {
-					newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: val})
-				}
+				newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: val})
 				resolvedTarget = true
 			} else {
 				newBreaks = append(newBreaks, breaker{target: tgt, value: val})
@@ -244,34 +284,15 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.CurrentValue(), tgt.Label()))
 	}
 
-	return bp.checkNewBreakpoints(newBreaks)
+	return bp.checkNewBreakers(newBreaks)
 }
 
-func (bp *breakpoints) checkNewBreakpoints(newBreaks []breaker) error {
+// checkNewBreakers compares list of new breakers with existing list
+func (bp *breakpoints) checkNewBreakers(newBreaks []breaker) error {
 	// don't add breakpoints that already exist
 	for _, nb := range newBreaks {
 		for _, ob := range bp.breaks {
-			and := &nb
-			oand := &ob
-
-			// start with assuming this is a duplicate
-			duplicate := true
-
-			// continue comparison until we reach the end of one of the lists
-			// or if a non-duplicate condition has been found
-			for duplicate && and != nil && oand != nil {
-				// note that this method of duplication detection only works if
-				// targets are ANDed in the same order.
-				//
-				// !!TODO: sort conditions before comparison
-				duplicate = duplicate && (oand.target.Label() == and.target.Label() && oand.value == and.value)
-
-				and = and.next
-				oand = oand.next
-			}
-
-			// fail if this is a duplicate and if both lists were of the same length
-			if duplicate && and == nil && oand == nil {
+			if nb.id() == ob.id() {
 				return errors.New(errors.CommandError, fmt.Sprintf("breakpoint already exists (%s)", ob))
 			}
 		}

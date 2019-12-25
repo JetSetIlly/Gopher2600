@@ -19,9 +19,8 @@ type target interface {
 	FormatValue(val interface{}) string
 }
 
-// genericTarget is a way of encapsulating values that otherwise do not satisfy
-// the target interface. useful when it is inconvient to give a value its own
-// type
+// genericTarget is a way of targetting values that otherwise do not satisfy
+// the target interface.
 type genericTarget struct {
 	label        string
 	currentValue interface{}
