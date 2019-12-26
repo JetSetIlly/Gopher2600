@@ -192,7 +192,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.SP, 254)
 	step(t, mc) // LDA #0
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status.Zero, true)
+	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
 	step(t, mc) // PLA
 	rtest.EquateRegisters(t, mc.A, 5)
 
@@ -272,8 +272,6 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0x0b)
 	step(t, mc) // INX (x equals 2)
 	step(t, mc) // LDA (0x0b,X)
-	rtest.EquateRegisters(t, mc.LastResult.Bug, "")
-	rtest.EquateRegisters(t, mc.A, 47)
 
 	// post-indexed indirect (see below)
 
@@ -283,7 +281,6 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0xe8, 0xa1, 0xff)
 	step(t, mc) // INX (x equals 2)
 	step(t, mc) // LDA (0xff,X)
-	rtest.EquateRegisters(t, mc.LastResult.Bug, "indirect addressing bug")
 	rtest.EquateRegisters(t, mc.A, 47)
 
 	// post-indexed indirect (with page-fault)
@@ -295,7 +292,9 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	step(t, mc) // INY (y = 2)
 	step(t, mc) // LDA (0x0b),Y
 	rtest.EquateRegisters(t, mc.A, 123)
-	rtest.EquateRegisters(t, mc.LastResult.PageFault, true)
+	if mc.LastResult.PageFault != true {
+		t.Errorf("expected page-fault")
+	}
 }
 
 func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
@@ -592,15 +591,15 @@ func TestCPU(t *testing.T) {
 
 	testStatusInstructions(t, mc, mem)
 	testRegsiterArithmetic(t, mc, mem)
-	// testRegsiterBitwiseInstructions(t, mc, mem)
-	// testImmediateImplied(t, mc, mem)
-	// testOtherAddressingModes(t, mc, mem)
-	// testPostIndexedIndirect(t, mc, mem)
-	// testStorageInstructions(t, mc, mem)
-	// testBranching(t, mc, mem)
-	// testJumps(t, mc, mem)
-	// testComparisonInstructions(t, mc, mem)
-	// testSubroutineInstructions(t, mc, mem)
-	// testDecimalMode(t, mc, mem)
-	// testStrictAddressing(t, mc, mem)
+	testRegsiterBitwiseInstructions(t, mc, mem)
+	testImmediateImplied(t, mc, mem)
+	testOtherAddressingModes(t, mc, mem)
+	testPostIndexedIndirect(t, mc, mem)
+	testStorageInstructions(t, mc, mem)
+	testBranching(t, mc, mem)
+	testJumps(t, mc, mem)
+	testComparisonInstructions(t, mc, mem)
+	testSubroutineInstructions(t, mc, mem)
+	testDecimalMode(t, mc, mem)
+	testStrictAddressing(t, mc, mem)
 }
