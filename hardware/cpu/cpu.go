@@ -954,23 +954,27 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "ADC":
 		if mc.Status.DecimalMode {
-			mc.Status.Carry = mc.A.AddDecimal(value, mc.Status.Carry)
-			// decimal mode doesn't affect overflow flag (yet?)
+			mc.Status.Carry,
+				mc.Status.Zero,
+				mc.Status.Overflow,
+				mc.Status.Sign = mc.A.AddDecimal(value, mc.Status.Carry)
 		} else {
 			mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
+			mc.Status.Zero = mc.A.IsZero()
+			mc.Status.Sign = mc.A.IsNegative()
 		}
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
 
 	case "SBC":
 		if mc.Status.DecimalMode {
-			mc.Status.Carry = mc.A.SubtractDecimal(value, mc.Status.Carry)
-			// decimal mode doesn't affect overflow flag (yet?)
+			mc.Status.Carry,
+				mc.Status.Zero,
+				mc.Status.Overflow,
+				mc.Status.Sign = mc.A.SubtractDecimal(value, mc.Status.Carry)
 		} else {
 			mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
+			mc.Status.Zero = mc.A.IsZero()
+			mc.Status.Sign = mc.A.IsNegative()
 		}
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
 
 	case "ROR":
 		var r *registers.Register
