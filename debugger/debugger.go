@@ -141,7 +141,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	// set up debugging interface to memory. note that we're reaching deep into
 	// another pointer to get the symtable for the memoryDebug instance. this
 	// is dangerous if we don't care to reset the symtable when disasm changes.
-	// As it is, we only change the disasm poointer in the LoadCartridge()
+	// As it is, we only change the disasm poointer in the loadCartridge()
 	// function.
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: dbg.disasm.Symtable}
 
@@ -233,7 +233,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	err := setup.AttachCartridge(dbg.vcs, cartload)
-	if err != nil {
+	if err != nil && !errors.Has(err, errors.CartridgeEjected) {
 		return err
 	}
 
