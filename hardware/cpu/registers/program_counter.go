@@ -21,6 +21,11 @@ func (pc ProgramCounter) String() string {
 	return fmt.Sprintf("%#04x", pc.value)
 }
 
+// Value returns the current value of the register
+func (pc ProgramCounter) Value() uint16 {
+	return pc.value
+}
+
 // FormatValue formats an arbitary value to look like a PC value
 func (pc ProgramCounter) FormatValue(val interface{}) string {
 	return fmt.Sprintf("%#04x", val)

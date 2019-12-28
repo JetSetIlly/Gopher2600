@@ -349,9 +349,6 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 }
 
 func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
-	// !!TODO: test page faults
-	// !!TODO: test backwards branching
-
 	var origin uint16
 	mem.Clear()
 	_ = mc.Reset()
@@ -414,6 +411,57 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	_ = mem.putInstructions(origin, 0x70, 0x10)
 	step(t, mc) // BVS $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
+}
+
+func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var origin uint16
+	mem.Clear()
+	_ = mc.Reset()
+
+	mem.Clear()
+	_ = mc.Reset()
+
+	origin = 0x20
+	mc.LoadPC(0x20)
+
+	// BPL backwards
+	_ = mem.putInstructions(origin, 0x10, 0xfd)
+	step(t, mc) // BPL $FF
+	rtest.EquateRegisters(t, mc.PC, 0x1f)
+
+	// BVS backwards
+	origin = 0x20
+	mc.LoadPC(0x20)
+	mc.Status.Overflow = true
+	_ = mem.putInstructions(origin, 0x70, 0xfd)
+	step(t, mc) // BVS $FF
+	rtest.EquateRegisters(t, mc.PC, 0x1f)
+}
+
+func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var origin uint16
+	mem.Clear()
+	_ = mc.Reset()
+
+	// BNE backwards - with PC wrap (causing a page fault)
+	origin = 0x20
+	mc.LoadPC(0x20)
+	mc.Status.Zero = false
+	_ = mem.putInstructions(origin, 0xd0, 0x80)
+	step(t, mc) // BNE $F0
+	rtest.EquateRegisters(t, mc.PC, 0xffa2)
+
+	// pagefault flag should be set
+	if !mc.LastResult.PageFault {
+		t.Errorf("expected pagefault on branch")
+	}
+
+	// number of cycles should be 4 instead of 2
+	//  +1 for failed branch test (causing PC to jump)
+	//  +1 for page fault
+	if mc.LastResult.ActualCycles != 4 {
+		t.Errorf("expected pagefault on branch")
+	}
 }
 
 func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
@@ -597,6 +645,8 @@ func TestCPU(t *testing.T) {
 	testPostIndexedIndirect(t, mc, mem)
 	testStorageInstructions(t, mc, mem)
 	testBranching(t, mc, mem)
+	testBranchingBackwards(t, mc, mem)
+	testBranchingPageFaults(t, mc, mem)
 	testJumps(t, mc, mem)
 	testComparisonInstructions(t, mc, mem)
 	testSubroutineInstructions(t, mc, mem)

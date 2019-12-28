@@ -22,7 +22,7 @@ func EquateRegisters(t *testing.T, value, expectedValue interface{}) {
 
 		case int:
 			if int(value.Value()) != expectedValue {
-				t.Errorf("unexpected Register value (%d wanted %d)", value.Value(), expectedValue)
+				t.Errorf("unexpected Register value (%#02x wanted %#02x)", value.Value(), expectedValue)
 			}
 		}
 
@@ -33,7 +33,7 @@ func EquateRegisters(t *testing.T, value, expectedValue interface{}) {
 
 		case int:
 			if int(value.Address()) != expectedValue {
-				t.Errorf("unexpected ProgramCounter value (%d wanted %d)", value, expectedValue)
+				t.Errorf("unexpected ProgramCounter value (%#04x wanted %#04x)", value.Value(), expectedValue)
 			}
 		}
 
@@ -44,7 +44,7 @@ func EquateRegisters(t *testing.T, value, expectedValue interface{}) {
 
 		case int:
 			if int(value.Value()) != expectedValue {
-				t.Errorf("unexpected StatusRegister value (%d wanted %d)", value.Value(), expectedValue)
+				t.Errorf("unexpected StatusRegister value (%#02x wanted %#02x)", value.Value(), expectedValue)
 			}
 
 		case string:

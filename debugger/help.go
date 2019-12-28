@@ -18,7 +18,6 @@ var help = map[string]string{
 	cmdLast:          "Prints the result of the last cpu/video cycle",
 	cmdList:          "List current entries for BREAKS and TRAPS",
 	cmdMemMap:        "Display high-level VCS memory map",
-	cmdReflect:       "Turn reflection on/off. this will slow down the debugger.",
 	cmdMissile:       "Display the current state of the missile 0/1 sprite",
 	cmdOnHalt:        "Commands to run whenever emulation is halted (separate commands with comma)",
 	cmdOnStep:        "Commands to run whenever emulation steps forward an cpu/video cycle (separate commands with comma)",

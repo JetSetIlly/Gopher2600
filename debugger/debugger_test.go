@@ -120,7 +120,7 @@ func (trm *mockTerm) rcvOutput() {
 
 		// the amount of output sent by the debugger is unpredictable so a
 		// timeout is necessary. a matter of milliseconds should be sufficient
-		case <-time.After(1 * time.Millisecond):
+		case <-time.After(10 * time.Millisecond):
 			empty = true
 		}
 	}

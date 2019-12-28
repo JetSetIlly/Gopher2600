@@ -12,10 +12,11 @@ import (
 type target interface {
 	Label() string
 
-	// the current value of the target
+	// the current value of the target. should return a value of type int or
+	// bool.
 	CurrentValue() interface{}
 
-	// format an arbitrary value using suitable formatting method of the target
+	// format an arbitrary value using suitable formatting method for the target
 	FormatValue(val interface{}) string
 }
 

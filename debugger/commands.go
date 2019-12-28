@@ -40,7 +40,6 @@ const (
 	cmdLast          = "LAST"
 	cmdList          = "LIST"
 	cmdMemMap        = "MEMMAP"
-	cmdReflect       = "REFLECT"
 	cmdMissile       = "MISSILE"
 	cmdOnHalt        = "ONHALT"
 	cmdOnStep        = "ONSTEP"
@@ -89,7 +88,6 @@ var commandTemplate = []string{
 	cmdLast + " (DEFN|BYTECODE)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
-	cmdReflect + " (ON|OFF)",
 	cmdMissile + " (0|1)",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
 	cmdOnStep + " (OFF|ON|%S {%S})",
@@ -642,28 +640,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 	case cmdMemMap:
 		dbg.print(terminal.StyleInstrument, "%v", memorymap.Summary())
 
-	case cmdReflect:
-		option, _ := tokens.Get()
-		switch strings.ToUpper(option) {
-		case "OFF":
-			err := dbg.scr.SetFeature(gui.ReqSetOverlay, false)
-			if err != nil {
-				dbg.print(terminal.StyleError, err.Error())
-			}
-			dbg.relfectMonitor.Activate(false)
-		case "ON":
-			err := dbg.scr.SetFeature(gui.ReqSetOverlay, true)
-			if err != nil {
-				dbg.print(terminal.StyleError, err.Error())
-			}
-			dbg.relfectMonitor.Activate(true)
-		}
-		if dbg.relfectMonitor.IsActive() {
-			dbg.print(terminal.StyleEmulatorInfo, "reflection: ON")
-		} else {
-			dbg.print(terminal.StyleEmulatorInfo, "reflection: OFF")
-		}
-
 	case cmdExit:
 		fallthrough
 
@@ -1135,10 +1111,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				}
 			}
 		case "OVERLAY":
-			if !dbg.relfectMonitor.IsActive() {
-				return doNothing, errors.New(errors.ReflectionNotRunning)
-			}
-
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {

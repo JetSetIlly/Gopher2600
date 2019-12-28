@@ -43,8 +43,6 @@ type Monitor struct {
 	groupMissile0 addressMonitor
 	groupMissile1 addressMonitor
 	groupBall     addressMonitor
-
-	active bool
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type
@@ -84,24 +82,9 @@ func NewMonitor(vcs *hardware.VCS, renderer gui.MetaPixelRenderer) *Monitor {
 	return mon
 }
 
-// Activate the reflection monitor
-func (mon *Monitor) Activate(active bool) {
-	mon.active = active
-}
-
-// IsActive returns whether reflection monitor is currently active
-func (mon *Monitor) IsActive() bool {
-	return mon.active
-}
-
 // Check should be called every video cycle to record the current state of the
 // emulation/system
 func (mon *Monitor) Check() error {
-	// silently return if monitor is not active
-	if !mon.IsActive() {
-		return nil
-	}
-
 	if err := mon.checkWSYNC(); err != nil {
 		return err
 	}

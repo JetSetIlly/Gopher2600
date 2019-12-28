@@ -33,12 +33,6 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
 			case "2":
 				// toggle overlay
-
-				// !!TODO: handle error if reflection is not being processed
-				// if !dbg.reflectProcess {
-				// 	return errors.New(errors.ReflectionNotRunning)
-				// }
-
 				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 
 			case "=":

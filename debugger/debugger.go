@@ -147,7 +147,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 
 	// set up reflection monitor
 	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.scr)
-	dbg.relfectMonitor.Activate(true)
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)

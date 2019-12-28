@@ -20,13 +20,12 @@ const (
 	DisassemblyError = "error debugging disassembly: %v"
 
 	// debugger
-	ParserError          = "parser error: %v: %v (char %d)" // first placeholder is the command definition
-	ValidationError      = "%v for %v"
-	InvalidTarget        = "invalid target (%v)"
-	CommandError         = "%v"
-	TerminalError        = "%v"
-	GUIEventError        = "%v"
-	ReflectionNotRunning = "reflection process is not running"
+	ParserError     = "parser error: %v: %v (char %d)" // first placeholder is the command definition
+	ValidationError = "%v for %v"
+	InvalidTarget   = "invalid target (%v)"
+	CommandError    = "%v"
+	TerminalError   = "%v"
+	GUIEventError   = "%v"
 
 	// dissassembly
 	DisasmError = "disassembly error: %v"
