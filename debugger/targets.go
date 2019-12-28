@@ -56,7 +56,8 @@ func (trg genericTarget) FormatValue(val interface{}) string {
 	}
 }
 
-// parseTarget uses a keyword to decide which part of the vcs to target
+// parseTarget interprets the next token and returns a target if it is
+// recognised. returns error if it is not.
 func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 	var trg target
 

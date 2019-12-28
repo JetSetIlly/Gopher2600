@@ -114,7 +114,7 @@ type playerSprite struct {
 	resetPositionEvent *future.Event
 }
 
-func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *playerSprite {
+func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*playerSprite, error) {
 	ps := playerSprite{
 		label:      label,
 		tv:         tv,
@@ -126,8 +126,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 
 	ps.position, err = polycounter.New(6)
 	if err != nil {
-		// TODO: propogate this error upwards
-		return nil
+		return nil, err
 	}
 
 	ps.Delay = future.NewTicker(label)
@@ -139,7 +138,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	// initialise gfxData pointer
 	ps.gfxData = &ps.gfxDataNew
 
-	return &ps
+	return &ps, nil
 }
 
 func (ps playerSprite) String() string {

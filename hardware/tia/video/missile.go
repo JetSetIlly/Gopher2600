@@ -52,7 +52,7 @@ type missileSprite struct {
 	lastTickFromHmove bool
 }
 
-func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *missileSprite {
+func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*missileSprite, error) {
 	ms := missileSprite{
 		tv:         tv,
 		hblank:     hblank,
@@ -64,8 +64,7 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 
 	ms.position, err = polycounter.New(6)
 	if err != nil {
-		// TODO: propogate this error upwards
-		return nil
+		return nil, err
 	}
 
 	ms.Delay = future.NewTicker(label)
@@ -74,7 +73,7 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 	ms.enclockifier.pclk = &ms.pclk
 	ms.enclockifier.delay = ms.Delay
 	ms.position.Reset()
-	return &ms
+	return &ms, nil
 
 }
 

@@ -71,7 +71,6 @@ const (
 	CartridgeLoader = "cartridge loading error: %v"
 
 	// vcs
-	VCSError         = "vcs error: %v"
 	PolycounterError = "polycounter error: %v"
 
 	// cpu

@@ -1,9 +1,7 @@
 package hardware
 
 import (
-	"fmt"
 	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/memory/addresses"
@@ -44,14 +42,14 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
-	if vcs.TIA == nil {
-		return nil, errors.New(errors.VCSError, "can't create TIA")
+	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA)
+	if err != nil {
+		return nil, err
 	}
 
 	vcs.RIOT, err = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
 	if err != nil {
-		return nil, errors.New(errors.VCSError, fmt.Sprintf("can't create RIOT: %v", err))
+		return nil, err
 	}
 
 	// for convenience, these should point to the equivalent instances in the

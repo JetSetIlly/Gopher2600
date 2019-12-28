@@ -40,33 +40,35 @@ type Video struct {
 // reset position).
 func NewVideo(mem bus.ChipBus,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
-	tv television.Television, hblank, hmoveLatch *bool) *Video {
+	tv television.Television, hblank, hmoveLatch *bool) (*Video, error) {
 
 	vd := &Video{
 		collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
 	}
 
+	var err error
+
 	// sprite objects
-	vd.Player0 = newPlayerSprite("player0", tv, hblank, hmoveLatch)
-	if vd.Player0 == nil {
-		return nil
+	vd.Player0, err = newPlayerSprite("player0", tv, hblank, hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
-	vd.Player1 = newPlayerSprite("player1", tv, hblank, hmoveLatch)
-	if vd.Player1 == nil {
-		return nil
+	vd.Player1, err = newPlayerSprite("player1", tv, hblank, hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
-	vd.Missile0 = newMissileSprite("missile0", tv, hblank, hmoveLatch)
-	if vd.Missile0 == nil {
-		return nil
+	vd.Missile0, err = newMissileSprite("missile0", tv, hblank, hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
-	vd.Missile1 = newMissileSprite("missile1", tv, hblank, hmoveLatch)
-	if vd.Missile1 == nil {
-		return nil
+	vd.Missile1, err = newMissileSprite("missile1", tv, hblank, hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
-	vd.Ball = newBallSprite("ball", tv, hblank, hmoveLatch)
-	if vd.Ball == nil {
-		return nil
+	vd.Ball, err = newBallSprite("ball", tv, hblank, hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
 
 	// connect player 0 and player 1 to each other
@@ -81,7 +83,7 @@ func NewVideo(mem bus.ChipBus,
 	vd.Missile0.parentPlayer = vd.Player0
 	vd.Missile1.parentPlayer = vd.Player1
 
-	return vd
+	return vd, nil
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is

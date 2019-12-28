@@ -45,6 +45,11 @@ func (bk breaker) String() string {
 // id creates a sum of the breaker sequence such that the order of the sequence
 // does not matter. this commutative property makes it useful to detect
 // duplicate sequences of ANDed breakers.
+//
+// note that id collisions using this method is likely if we were applying it
+// to arbitrary strings. but given the restrictions on what is a breakpoint
+// string and the packing of string length into the LSB, the chances are
+// reduced. still, it's something we should be mindful of.
 func (bk breaker) id() int {
 	// summation of data in each node
 	sum := 0

@@ -48,7 +48,7 @@ type ballSprite struct {
 	lastTickFromHmove bool
 }
 
-func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) *ballSprite {
+func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*ballSprite, error) {
 	bs := ballSprite{
 		tv:         tv,
 		hblank:     hblank,
@@ -60,8 +60,7 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 
 	bs.position, err = polycounter.New(6)
 	if err != nil {
-		// TODO: propogate this error upwards
-		return nil
+		return nil, err
 	}
 
 	bs.Delay = future.NewTicker(label)
@@ -71,7 +70,7 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 	bs.enclockifier.delay = bs.Delay
 	bs.position.Reset()
 
-	return &bs
+	return &bs, nil
 }
 
 func (bs ballSprite) String() string {

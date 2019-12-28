@@ -92,15 +92,14 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
-func NewTIA(tv television.Television, mem bus.ChipBus) *TIA {
+func NewTIA(tv television.Television, mem bus.ChipBus) (*TIA, error) {
 	tia := TIA{tv: tv, mem: mem, hblank: true}
 
 	var err error
 
 	tia.hsync, err = polycounter.New(6)
 	if err != nil {
-		// TODO: propogate this error upwards
-		return nil
+		return nil, err
 	}
 
 	tia.Delay = future.NewTicker("TIA")
@@ -108,17 +107,17 @@ func NewTIA(tv television.Television, mem bus.ChipBus) *TIA {
 	tia.pclk.Reset()
 	tia.hmoveCt = 0xff
 
-	tia.Video = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.hblank, &tia.hmoveLatch)
-	if tia.Video == nil {
-		return nil
+	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.hblank, &tia.hmoveLatch)
+	if err != nil {
+		return nil, err
 	}
 
 	tia.Audio = audio.NewAudio()
-	if tia.Audio == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
-	return &tia
+	return &tia, nil
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.
