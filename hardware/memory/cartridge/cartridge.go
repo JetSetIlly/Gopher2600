@@ -138,7 +138,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "FA":
 		cart.mapper, err = newCBS(data)
 	case "FE":
-		// TODO
+		// !!TODO: FE cartridge format
 	case "E0":
 		cart.mapper, err = newparkerBros(data)
 	case "E7":
@@ -146,7 +146,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "3F":
 		cart.mapper, err = newTigervision(data)
 	case "AR":
-		// TODO
+		// !!TODO: AR cartridge format
 	}
 
 	if addSuperchip {

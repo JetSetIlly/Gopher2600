@@ -31,8 +31,8 @@ func (pc ProgramCounter) FormatValue(val interface{}) string {
 	return fmt.Sprintf("%#04x", val)
 }
 
-// CurrentValue returns the current value of the PC as an integer (wrapped as a generic value)
-func (pc ProgramCounter) CurrentValue() interface{} {
+// TargetValue returns the current value of the PC as an integer (wrapped as a generic value)
+func (pc ProgramCounter) TargetValue() interface{} {
 	return int(pc.value)
 }
 

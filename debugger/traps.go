@@ -39,6 +39,7 @@ func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
+// drop the numbered trap from the list
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
 		return errors.New(errors.CommandError, fmt.Sprintf("trap #%d is not defined", num))
@@ -59,7 +60,7 @@ func (tr *traps) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
 	for i := range tr.traps {
-		trapValue := tr.traps[i].target.CurrentValue()
+		trapValue := tr.traps[i].target.TargetValue()
 
 		if trapValue != tr.traps[i].origValue {
 			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.Label(), tr.traps[i].origValue, trapValue))
@@ -98,7 +99,7 @@ func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 		}
 
 		if addNewTrap {
-			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.CurrentValue()})
+			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.TargetValue()})
 		}
 
 		_, present = tokens.Peek()

@@ -85,7 +85,7 @@ func (bk breaker) id() int {
 // check checks the specific break condition with the current value of
 // the break target
 func (bk *breaker) check() bool {
-	currVal := bk.target.CurrentValue()
+	currVal := bk.target.TargetValue()
 	m := currVal == bk.value
 	if !m {
 		bk.ignoreValue = nil
@@ -225,7 +225,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 
 		// try to interpret the token depending on the type of value the target
 		// expects
-		switch tgt.CurrentValue().(type) {
+		switch tgt.TargetValue().(type) {
 		case int:
 			var v int64
 			v, err = strconv.ParseInt(tok, 0, 32)
@@ -242,7 +242,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 				err = errors.New(errors.CommandError, fmt.Sprintf("invalid value (%s) for target (%s)", tok, tgt.Label()))
 			}
 		default:
-			return errors.New(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.CurrentValue(), tgt.Label()))
+			return errors.New(errors.CommandError, fmt.Sprintf("unsupported value type (%T) for target (%s)", tgt.TargetValue(), tgt.Label()))
 		}
 
 		if err == nil {
@@ -281,7 +281,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.CurrentValue(), tgt.Label()))
+		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label()))
 	}
 
 	return bp.checkNewBreakers(newBreaks)

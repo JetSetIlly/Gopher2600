@@ -62,8 +62,8 @@ func (r Register) Label() string {
 	return r.label
 }
 
-// CurrentValue implements the target interface
-func (r Register) CurrentValue() interface{} {
+// TargetValue implements the target interface
+func (r Register) TargetValue() interface{} {
 	return int(r.value)
 }
 

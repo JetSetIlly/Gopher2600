@@ -14,7 +14,7 @@ type target interface {
 
 	// the current value of the target. should return a value of type int or
 	// bool.
-	CurrentValue() interface{}
+	TargetValue() interface{}
 
 	// format an arbitrary value using suitable formatting method for the target
 	FormatValue(val interface{}) string
@@ -31,7 +31,7 @@ func (trg genericTarget) Label() string {
 	return trg.label
 }
 
-func (trg genericTarget) CurrentValue() interface{} {
+func (trg genericTarget) TargetValue() interface{} {
 	switch v := trg.currentValue.(type) {
 	case func() interface{}:
 		return v()
