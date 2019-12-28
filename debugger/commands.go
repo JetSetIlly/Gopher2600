@@ -24,69 +24,73 @@ import (
 
 // debugger keywords
 const (
-	cmdAudio         = "AUDIO"
-	cmdBall          = "BALL"
-	cmdBreak         = "BREAK"
-	cmdCPU           = "CPU"
-	cmdCartridge     = "CARTRIDGE"
-	cmdClear         = "CLEAR"
-	cmdDebuggerState = "DEBUGGERSTATE"
-	cmdDisassembly   = "DISASSEMBLY"
-	cmdDisplay       = "DISPLAY"
-	cmdDrop          = "DROP"
-	cmdGrep          = "GREP"
-	cmdHexLoad       = "HEXLOAD"
-	cmdInsert        = "INSERT"
-	cmdLast          = "LAST"
-	cmdList          = "LIST"
-	cmdMemMap        = "MEMMAP"
-	cmdMissile       = "MISSILE"
-	cmdOnHalt        = "ONHALT"
-	cmdOnStep        = "ONSTEP"
-	cmdPeek          = "PEEK"
-	cmdPanel         = "PANEL"
-	cmdPlayer        = "PLAYER"
-	cmdPlayfield     = "PLAYFIELD"
-	cmdPoke          = "POKE"
-	cmdPatch         = "PATCH"
-	cmdQuit          = "QUIT"
-	cmdExit          = "EXIT"
-	cmdRAM           = "RAM"
-	cmdRIOT          = "RIOT"
-	cmdReset         = "RESET"
-	cmdRun           = "RUN"
-	cmdScript        = "SCRIPT"
-	cmdStep          = "STEP"
-	cmdGranularity   = "GRANULARITY"
-	cmdStick         = "STICK"
-	cmdSymbol        = "SYMBOL"
-	cmdTIA           = "TIA"
-	cmdTV            = "TV"
-	cmdTerse         = "TERSE"
-	cmdTrap          = "TRAP"
-	cmdVerbose       = "VERBOSE"
-	cmdVerbosity     = "VERBOSITY"
-	cmdWatch         = "WATCH"
+	cmdReset = "RESET"
+	cmdQuit  = "QUIT"
+	cmdExit  = "EXIT"
+
+	cmdRun         = "RUN"
+	cmdStep        = "STEP"
+	cmdGranularity = "GRANULARITY"
+	cmdScript      = "SCRIPT"
+
+	cmdInsert      = "INSERT"
+	cmdAudio       = "AUDIO"
+	cmdBall        = "BALL"
+	cmdCPU         = "CPU"
+	cmdCartridge   = "CARTRIDGE"
+	cmdClear       = "CLEAR"
+	cmdDisassembly = "DISASSEMBLY"
+	cmdDisplay     = "DISPLAY"
+	cmdGrep        = "GREP"
+	cmdHexLoad     = "HEXLOAD"
+	cmdLast        = "LAST"
+	cmdMemMap      = "MEMMAP"
+	cmdMissile     = "MISSILE"
+	cmdOnHalt      = "ONHALT"
+	cmdOnStep      = "ONSTEP"
+	cmdPeek        = "PEEK"
+	cmdPanel       = "PANEL"
+	cmdPlayer      = "PLAYER"
+	cmdPlayfield   = "PLAYFIELD"
+	cmdPoke        = "POKE"
+	cmdPatch       = "PATCH"
+	cmdRAM         = "RAM"
+	cmdRIOT        = "RIOT"
+	cmdStick       = "STICK"
+	cmdSymbol      = "SYMBOL"
+	cmdTIA         = "TIA"
+	cmdTV          = "TV"
+
+	cmdBreak = "BREAK"
+	cmdTrap  = "TRAP"
+	cmdWatch = "WATCH"
+	cmdList  = "LIST"
+	cmdDrop  = "DROP"
 )
 
 const cmdHelp = "HELP"
 
 var commandTemplate = []string{
+	cmdReset,
+	cmdQuit,
+	cmdExit,
+
+	cmdRun,
+	cmdStep + " (CPU|VIDEO|%S)",
+	cmdGranularity + " (CPU|VIDEO)",
+	cmdScript + " [RECORD %S|END|%F]",
+
+	cmdInsert + " %F",
 	cmdAudio,
 	cmdBall,
-	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
 	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
-	cmdDebuggerState,
 	cmdDisassembly + " (BYTECODE)",
 	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
-	cmdDrop + " [BREAK|TRAP|WATCH] %N",
 	cmdGrep + " (MNEMONIC|OPERAND) %S",
 	cmdHexLoad + " %N %N {%N}",
-	cmdInsert + " %F",
 	cmdLast + " (DEFN|BYTECODE)",
-	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdMemMap,
 	cmdMissile + " (0|1)",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
@@ -97,24 +101,18 @@ var commandTemplate = []string{
 	cmdPlayfield,
 	cmdPoke + " [%S] %N",
 	cmdPatch + " %S",
-	cmdQuit,
-	cmdExit,
 	cmdRAM + " (CART)",
 	cmdRIOT + " (TIMER)",
-	cmdReset,
-	cmdRun,
-	cmdScript + " [RECORD %S|END|%F]",
-	cmdStep + " (CPU|VIDEO|%S)",
-	cmdGranularity + " (CPU|VIDEO)",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdTIA + " (DELAYS)",
 	cmdTV + " (SPEC)",
-	cmdTerse,
+
+	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdTrap + " [%S] {%S}",
-	cmdVerbose,
-	cmdVerbosity,
 	cmdWatch + " (READ|WRITE) [%S] (%S)",
+	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
+	cmdDrop + " [BREAK|TRAP|WATCH] %N",
 }
 
 // list of commands that should not be executed when recording/playing scripts
@@ -707,18 +705,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			mode = "CPU"
 		}
 		dbg.print(terminal.StyleFeedback, "granularity: %s", mode)
-
-	case cmdTerse:
-
-	case cmdVerbose:
-
-	case cmdVerbosity:
-
-	case cmdDebuggerState:
-		_, err := dbg.parseInput("VERBOSITY; STEPMODE; ONHALT; ONSTEP", false, false)
-		if err != nil {
-			return doNothing, err
-		}
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()

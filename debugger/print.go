@@ -14,9 +14,14 @@ import (
 // function. output will be normalised and sent to the attached terminal as
 // required.
 func (dbg *Debugger) print(sty terminal.Style, s string, a ...interface{}) {
-	// resolve string placeholders, remove all trailing newlines, and return if
-	// the resulting string is empty
-	s = fmt.Sprintf(s, a...)
+	// resolve string placeholders for styles other than the help style. not
+	// filtering the help style causes HELP output to fail; because the
+	// commandline template uses fmt style placeholders.
+	if sty != terminal.StyleHelp {
+		s = fmt.Sprintf(s, a...)
+	}
+
+	// remove all trailing newlines, and return if the resulting string is empty
 	s = strings.TrimRight(s, "\n")
 	if len(s) == 0 {
 		return

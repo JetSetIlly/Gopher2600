@@ -148,8 +148,9 @@ func (bp *breakpoints) drop(num int) error {
 	return nil
 }
 
-// check compares the current state of the emulation with every break
-// condition. it returns a string listing every condition that applies
+// check compares the current state of the emulation with every breakpoint
+// condition. returns a string listing every condition that matches (separated
+// by \n)
 func (bp *breakpoints) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
@@ -162,6 +163,7 @@ func (bp *breakpoints) check(previousResult string) string {
 	return checkString.String()
 }
 
+// list currently defined breakpoints
 func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
 		bp.dbg.print(terminal.StyleFeedback, "no breakpoints")
@@ -173,8 +175,7 @@ func (bp breakpoints) list() {
 	}
 }
 
-// parseBreakpoints consumes tokens and adds new conditions to the list of
-// breakpoints. For example:
+// parse token and add new trap. for example:
 //
 //	PC 0xf000
 //  adds a new breakpoint to the PC
@@ -201,7 +202,7 @@ func (bp breakpoints) list() {
 //
 //  & SL 100 HP 0 | X 10
 //
-// !!TODO: more sophisticated breakpoints parser
+// !!TODO: more sophisticated breakpoints parser. or a simpler one.
 func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	andBreaks := false
 

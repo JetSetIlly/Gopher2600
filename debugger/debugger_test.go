@@ -107,7 +107,7 @@ func (trm *mockTerm) TermPrint(sty terminal.Style, s string, a ...interface{}) {
 }
 
 func (trm *mockTerm) sndInput(s string) {
-	trm.output = make([]string, 0)
+	trm.output = make([]string, 0, 10)
 	trm.inp <- s
 }
 
@@ -128,23 +128,40 @@ func (trm *mockTerm) rcvOutput() {
 
 func (trm *mockTerm) prtOutput() {
 	trm.rcvOutput()
-	fmt.Println(trm.output)
+	for i := range trm.output {
+		fmt.Println(trm.output[i])
+	}
 }
 
+// cmpOutput compares the string argument with the *last line* of the most
+// recent output. it can easily be adapted to compare the whole output if
+// necessary.
 func (trm *mockTerm) cmpOutput(s string) bool {
 	trm.rcvOutput()
 
-	if len(trm.output) == 0 || trm.output[len(trm.output)-1] == s {
+	if len(trm.output) == 0 {
+		if len(s) != 0 {
+			trm.t.Errorf(fmt.Sprintf("unexpected debugger output (nothinga) should be (%s)", s))
+			return false
+		}
 		return true
 	}
 
-	trm.t.Errorf(fmt.Sprintf("unexpected debugger output (%s)", trm.output))
+	l := len(trm.output) - 1
+
+	if trm.output[l] == s {
+		return true
+	}
+
+	trm.t.Errorf(fmt.Sprintf("unexpected debugger output (%s) should be (%s)", trm.output[l], s))
 	return false
 }
 
 func (trm *mockTerm) testSequence() {
 	defer func() { trm.sndInput("QUIT") }()
 	trm.testBreakpoints()
+	trm.testTraps()
+	trm.testWatches()
 }
 
 func TestDebugger(t *testing.T) {

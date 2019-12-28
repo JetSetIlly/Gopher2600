@@ -12,13 +12,11 @@ import (
 	"strings"
 )
 
-// traps keeps track of all the currently defined trappers
 type traps struct {
 	dbg   *Debugger
 	traps []trapper
 }
 
-// trapper defines a specific trap
 type trapper struct {
 	target    target
 	origValue interface{}
@@ -28,13 +26,14 @@ func (tr trapper) String() string {
 	return tr.target.Label()
 }
 
-// newTraps is the preferred method of initialisation for traps
+// newTraps is the preferred method of initialisation for the traps type
 func newTraps(dbg *Debugger) *traps {
 	tr := &traps{dbg: dbg}
 	tr.clear()
 	return tr
 }
 
+// clear all traps
 func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
@@ -55,7 +54,7 @@ func (tr *traps) drop(num int) error {
 }
 
 // check compares the current state of the emulation with every trap condition.
-// it returns a string listing every condition that applies
+// returns a string listing every condition that matches (separated by \n)
 func (tr *traps) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
@@ -70,6 +69,7 @@ func (tr *traps) check(previousResult string) string {
 	return checkString.String()
 }
 
+// list currently defined traps
 func (tr traps) list() {
 	if len(tr.traps) == 0 {
 		tr.dbg.print(terminal.StyleFeedback, "no traps")
@@ -81,6 +81,7 @@ func (tr traps) list() {
 	}
 }
 
+// parse tokens and add new trap
 func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
 	_, present := tokens.Peek()
 	for present {

@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+// the watch system can watch for read, write events specifically or for either
+// event
 type watchEvent int
 
 const (
@@ -33,12 +35,12 @@ func (ev watchEvent) String() string {
 
 type watcher struct {
 	address uint16
+	event   watchEvent
 
-	// whether to watch for a specific value
+	// whether to watch for a specific value. a matchValue of false means the
+	// watcher will match regardless of the value
 	matchValue bool
 	value      uint8
-
-	event watchEvent
 }
 
 func (wtr watcher) String() string {
@@ -49,6 +51,7 @@ func (wtr watcher) String() string {
 	return fmt.Sprintf("%#04x %s%s", wtr.address, wtr.event, val)
 }
 
+// the list of currently defined watches in the system
 type watches struct {
 	dbg    *Debugger
 	vcsmem *memory.VCSMemory
@@ -57,7 +60,7 @@ type watches struct {
 	lastAddressAccessed uint16
 }
 
-// newBreakpoints is the preferred method of initialisation for breakpoins
+// newWatches is the preferred method of initialisation for the watches type
 func newWatches(dbg *Debugger) *watches {
 	wtc := &watches{
 		dbg:    dbg,
@@ -67,10 +70,12 @@ func newWatches(dbg *Debugger) *watches {
 	return wtc
 }
 
+// clear all watches
 func (wtc *watches) clear() {
 	wtc.watches = make([]watcher, 0, 10)
 }
 
+// drop a specific watcher by a position in the list
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
 		return errors.New(errors.CommandError, fmt.Sprintf("watch #%d is not defined", num))
@@ -85,33 +90,39 @@ func (wtc *watches) drop(num int) error {
 	return nil
 }
 
-// breakpoints.check compares the current state of the emulation with every
-// break condition. it returns a string listing every condition that applies
+// check compares the current state of the emulation with every watch
+// condition. returns a string listing every condition that matches (separated
+// by \n)
 func (wtc *watches) check(previousResult string) string {
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
 
 	for i := range wtc.watches {
-		// match addresses if memory has been accessed recently (LastAddressFlag)
-		if wtc.watches[i].address == wtc.vcsmem.LastAccessAddress {
-			if wtc.lastAddressAccessed != wtc.vcsmem.LastAccessAddress {
-				// match watch event to the type of memory access
-				if wtc.watches[i].event == watchEventAny ||
-					(wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAccessWrite) ||
-					(wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAccessWrite) {
+		// continue loop if we're not matching last address accessed
+		if wtc.watches[i].address != wtc.vcsmem.LastAccessAddress {
+			continue
+		}
 
-					// match watched-for value to the value that was read/written to the
-					// watched address
-					if !wtc.watches[i].matchValue ||
-						(wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAccessValue)) {
+		// continue if this is a repeat of the last address accessed
+		if wtc.lastAddressAccessed == wtc.vcsmem.LastAccessAddress {
+			continue
+		}
 
-						// prepare string according to event
-						if wtc.vcsmem.LastAccessWrite {
-							checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
-						} else {
-							checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
-						}
-					}
+		// match watch event to the type of memory access
+		if wtc.watches[i].event == watchEventAny ||
+			(wtc.watches[i].event == watchEventWrite && wtc.vcsmem.LastAccessWrite) ||
+			(wtc.watches[i].event == watchEventRead && !wtc.vcsmem.LastAccessWrite) {
+
+			// match watched-for value to the value that was read/written to the
+			// watched address
+			if !wtc.watches[i].matchValue ||
+				(wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAccessValue)) {
+
+				// prepare string according to event
+				if wtc.vcsmem.LastAccessWrite {
+					checkString.WriteString(fmt.Sprintf("watch at %s -> %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
+				} else {
+					checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
 				}
 			}
 		}
@@ -123,6 +134,7 @@ func (wtc *watches) check(previousResult string) string {
 	return checkString.String()
 }
 
+// list currently defined watches
 func (wtc *watches) list() {
 	if len(wtc.watches) == 0 {
 		wtc.dbg.print(terminal.StyleFeedback, "no watches")
@@ -134,6 +146,8 @@ func (wtc *watches) list() {
 	}
 }
 
+// parse tokens and add new watch. unlike breakpoints and traps, only one watch
+// at a time can be specified on the command line.
 func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) error {
 	var event watchEvent
 
@@ -151,10 +165,7 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	}
 
 	// get address. required.
-	a, present := tokens.Get()
-	if !present {
-		return errors.New(errors.CommandError, "watch address required")
-	}
+	a, _ := tokens.Get()
 
 	// convert address
 	var ai *addressInfo
@@ -197,15 +208,9 @@ func (wtc *watches) parseWatch(tokens *commandline.Tokens, dbgmem *memoryDebug) 
 	// check to see if watch already exists
 	for i, w := range wtc.watches {
 		if w.address == nw.address && w.matchValue == nw.matchValue && w.value == nw.value {
-
 			// we've found a matching watcher (address and value if
 			// appropriate). the following switch handles how the watcher event
 			// matches:
-			//  o if the existing entry is looking for read/write events then
-			//		this is duplicate watcher
-			//  o if the existing entry is looking for read events and new
-			//		watcher is not then update exising entry
-			//  o ditto for write events
 			switch w.event {
 			case watchEventRead:
 				if nw.event == watchEventRead {
