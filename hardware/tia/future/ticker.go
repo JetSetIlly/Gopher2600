@@ -37,10 +37,11 @@ func NewTicker(label string) *Ticker {
 func (tck Ticker) String() string {
 	s := strings.Builder{}
 	for e := tck.pool.Front(); e != nil; e = e.Next() {
-		if tck.Label != "" {
-			s.WriteString(tck.Label)
-			s.WriteString(": ")
+		if e == tck.activeSentinal {
+			break
 		}
+		s.WriteString(tck.Label)
+		s.WriteString(": ")
 		s.WriteString(e.Value.(*Event).String())
 		s.WriteString("\n")
 	}

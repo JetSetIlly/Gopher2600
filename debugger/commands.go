@@ -34,38 +34,38 @@ const (
 	cmdScript      = "SCRIPT"
 
 	cmdInsert      = "INSERT"
-	cmdAudio       = "AUDIO"
-	cmdBall        = "BALL"
-	cmdCPU         = "CPU"
-	cmdCartridge   = "CARTRIDGE"
-	cmdClear       = "CLEAR"
 	cmdDisassembly = "DISASSEMBLY"
-	cmdDisplay     = "DISPLAY"
 	cmdGrep        = "GREP"
-	cmdHexLoad     = "HEXLOAD"
-	cmdLast        = "LAST"
-	cmdMemMap      = "MEMMAP"
-	cmdMissile     = "MISSILE"
+	cmdSymbol      = "SYMBOL"
 	cmdOnHalt      = "ONHALT"
 	cmdOnStep      = "ONSTEP"
+	cmdLast        = "LAST"
+	cmdMemMap      = "MEMMAP"
+	cmdCartridge   = "CARTRIDGE"
+	cmdCPU         = "CPU"
 	cmdPeek        = "PEEK"
-	cmdPanel       = "PANEL"
-	cmdPlayer      = "PLAYER"
-	cmdPlayfield   = "PLAYFIELD"
 	cmdPoke        = "POKE"
 	cmdPatch       = "PATCH"
+	cmdHexLoad     = "HEXLOAD"
 	cmdRAM         = "RAM"
 	cmdRIOT        = "RIOT"
-	cmdStick       = "STICK"
-	cmdSymbol      = "SYMBOL"
 	cmdTIA         = "TIA"
 	cmdTV          = "TV"
+	cmdPanel       = "PANEL"
+	cmdPlayer      = "PLAYER"
+	cmdMissile     = "MISSILE"
+	cmdBall        = "BALL"
+	cmdPlayfield   = "PLAYFIELD"
+	cmdDisplay     = "DISPLAY"
+	cmdStick       = "STICK"
 
+	// halt conditions
 	cmdBreak = "BREAK"
 	cmdTrap  = "TRAP"
 	cmdWatch = "WATCH"
 	cmdList  = "LIST"
 	cmdDrop  = "DROP"
+	cmdClear = "CLEAR"
 )
 
 const cmdHelp = "HELP"
@@ -81,38 +81,38 @@ var commandTemplate = []string{
 	cmdScript + " [RECORD %S|END|%F]",
 
 	cmdInsert + " %F",
-	cmdAudio,
-	cmdBall,
-	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
-	cmdCartridge + " (ANALYSIS|BANK %N)",
-	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDisassembly + " (BYTECODE)",
-	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 	cmdGrep + " (MNEMONIC|OPERAND) %S",
-	cmdHexLoad + " %N %N {%N}",
-	cmdLast + " (DEFN|BYTECODE)",
-	cmdMemMap,
-	cmdMissile + " (0|1)",
+	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
 	cmdOnStep + " (OFF|ON|%S {%S})",
+	cmdLast + " (DEFN|BYTECODE)",
+	cmdMemMap,
+	cmdCartridge + " (ANALYSIS|BANK %N)",
+	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
 	cmdPeek + " [%S] {%S}",
-	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
-	cmdPlayer + " (0|1)",
-	cmdPlayfield,
 	cmdPoke + " [%S] %N",
 	cmdPatch + " %S",
+	cmdHexLoad + " %N %N {%N}",
 	cmdRAM + " (CART)",
 	cmdRIOT + " (TIMER)",
-	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
-	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
-	cmdTIA + " (DELAYS)",
+	cmdTIA + " (DELAYS|AUDIO)",
 	cmdTV + " (SPEC)",
+	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
+	cmdPlayer + " (0|1)",
+	cmdMissile + " (0|1)",
+	cmdBall,
+	cmdPlayfield,
+	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 
+	// halt conditions
 	cmdBreak + " [%S %N|%N] {& %S %N|& %N}",
 	cmdTrap + " [%S] {%S}",
 	cmdWatch + " (READ|WRITE) [%S] (%S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH] %N",
+	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 }
 
 // list of commands that should not be executed when recording/playing scripts
@@ -241,10 +241,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		}
 	}
 
-	return dbg.enactCommand(tokens, interactive)
-}
-
-func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) (parseCommandResult, error) {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately
 	tokens.Reset()
@@ -274,13 +270,73 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			dbg.print(terminal.StyleHelp, debuggerCommands.String())
 		}
 
-	case cmdInsert:
-		cart, _ := tokens.Get()
-		err := dbg.loadCartridge(cartridgeloader.Loader{Filename: cart})
+	case cmdQuit:
+		fallthrough
+
+	case cmdExit:
+		dbg.running = false
+
+	case cmdReset:
+		err := dbg.vcs.Reset()
 		if err != nil {
 			return doNothing, err
 		}
-		dbg.print(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
+		err = dbg.tv.Reset()
+		if err != nil {
+			return doNothing, err
+		}
+		dbg.print(terminal.StyleFeedback, "machine reset")
+
+	case cmdRun:
+		if !dbg.scr.IsVisible() && dbg.commandOnStep == "" {
+			dbg.print(terminal.StyleEmulatorInfo, "running with no display or terminal output")
+		}
+		dbg.runUntilHalt = true
+		return stepContinue, nil
+
+	case cmdStep:
+		mode, _ := tokens.Get()
+		mode = strings.ToUpper(mode)
+		switch mode {
+		case "":
+			// calling step with no argument is the normal case
+		case "CPU":
+			// changes granularity
+			dbg.inputEveryVideoCycle = false
+		case "VIDEO":
+			// changes granularity
+			dbg.inputEveryVideoCycle = true
+		default:
+			dbg.inputEveryVideoCycle = false
+			tokens.Unget()
+			err := dbg.stepTraps.parseTrap(tokens)
+			if err != nil {
+				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
+			}
+			dbg.runUntilHalt = true
+		}
+
+		return stepContinue, nil
+
+	case cmdGranularity:
+		mode, present := tokens.Get()
+		if present {
+			mode = strings.ToUpper(mode)
+			switch mode {
+			case "CPU":
+				dbg.inputEveryVideoCycle = false
+			case "VIDEO":
+				dbg.inputEveryVideoCycle = true
+			default:
+				// already caught by command line ValidateTokens()
+			}
+		}
+		if dbg.inputEveryVideoCycle {
+			mode = "VIDEO"
+		} else {
+			mode = "CPU"
+		}
+		dbg.print(terminal.StyleFeedback, "granularity: %s", mode)
 
 	case cmdScript:
 		option, _ := tokens.Get()
@@ -323,6 +379,14 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				return doNothing, err
 			}
 		}
+
+	case cmdInsert:
+		cart, _ := tokens.Get()
+		err := dbg.loadCartridge(cartridgeloader.Loader{Filename: cart})
+		if err != nil {
+			return doNothing, err
+		}
+		dbg.print(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
 
 	case cmdDisassembly:
 		option, _ := tokens.Get()
@@ -410,97 +474,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 			} else {
 				dbg.print(terminal.StyleFeedback, "%s (%s)-> %#04x", symbol, table, address)
 			}
-		}
-
-	case cmdBreak:
-		err := dbg.breakpoints.parseBreakpoint(tokens)
-		if err != nil {
-			return doNothing, errors.New(errors.CommandError, err)
-		}
-
-	case cmdTrap:
-		err := dbg.traps.parseTrap(tokens)
-		if err != nil {
-			return doNothing, errors.New(errors.CommandError, err)
-		}
-
-	case cmdWatch:
-		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
-		if err != nil {
-			return doNothing, errors.New(errors.CommandError, err)
-		}
-
-	case cmdList:
-		list, _ := tokens.Get()
-		list = strings.ToUpper(list)
-		switch list {
-		case "BREAKS":
-			dbg.breakpoints.list()
-		case "TRAPS":
-			dbg.traps.list()
-		case "WATCHES":
-			dbg.watches.list()
-		case "ALL":
-			dbg.breakpoints.list()
-			dbg.traps.list()
-			dbg.watches.list()
-		default:
-			// already caught by command line ValidateTokens()
-		}
-
-	case cmdClear:
-		clear, _ := tokens.Get()
-		clear = strings.ToUpper(clear)
-		switch clear {
-		case "BREAKS":
-			dbg.breakpoints.clear()
-			dbg.print(terminal.StyleFeedback, "breakpoints cleared")
-		case "TRAPS":
-			dbg.traps.clear()
-			dbg.print(terminal.StyleFeedback, "traps cleared")
-		case "WATCHES":
-			dbg.watches.clear()
-			dbg.print(terminal.StyleFeedback, "watches cleared")
-		case "ALL":
-			dbg.breakpoints.clear()
-			dbg.traps.clear()
-			dbg.watches.clear()
-			dbg.print(terminal.StyleFeedback, "breakpoints, traps and watches cleared")
-		default:
-			// already caught by command line ValidateTokens()
-		}
-
-	case cmdDrop:
-		drop, _ := tokens.Get()
-
-		s, _ := tokens.Get()
-		num, err := strconv.Atoi(s)
-		if err != nil {
-			return doNothing, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
-		}
-
-		drop = strings.ToUpper(drop)
-		switch drop {
-		case "BREAK":
-			err := dbg.breakpoints.drop(num)
-			if err != nil {
-				return doNothing, err
-			}
-			dbg.print(terminal.StyleFeedback, "breakpoint #%d dropped", num)
-		case "TRAP":
-			err := dbg.traps.drop(num)
-			if err != nil {
-				return doNothing, err
-			}
-			dbg.print(terminal.StyleFeedback, "trap #%d dropped", num)
-		case "WATCH":
-			err := dbg.watches.drop(num)
-			if err != nil {
-				return doNothing, err
-			}
-			dbg.print(terminal.StyleFeedback, "watch #%d dropped", num)
-		default:
-			// already caught by command line ValidateTokens()
 		}
 
 	case cmdOnHalt:
@@ -636,74 +609,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 
 	case cmdMemMap:
 		dbg.print(terminal.StyleInstrument, "%v", memorymap.Summary())
-
-	case cmdExit:
-		fallthrough
-
-	case cmdQuit:
-		dbg.running = false
-
-	case cmdReset:
-		err := dbg.vcs.Reset()
-		if err != nil {
-			return doNothing, err
-		}
-		err = dbg.tv.Reset()
-		if err != nil {
-			return doNothing, err
-		}
-		dbg.print(terminal.StyleFeedback, "machine reset")
-
-	case cmdRun:
-		if !dbg.scr.IsVisible() && dbg.commandOnStep == "" {
-			dbg.print(terminal.StyleEmulatorInfo, "running with no display or terminal output")
-		}
-		dbg.runUntilHalt = true
-		return stepContinue, nil
-
-	case cmdStep:
-		mode, _ := tokens.Get()
-		mode = strings.ToUpper(mode)
-		switch mode {
-		case "":
-			// calling step with no argument is the normal case
-		case "CPU":
-			// changes granularity
-			dbg.inputEveryVideoCycle = false
-		case "VIDEO":
-			// changes granularity
-			dbg.inputEveryVideoCycle = true
-		default:
-			dbg.inputEveryVideoCycle = false
-			tokens.Unget()
-			err := dbg.stepTraps.parseTrap(tokens)
-			if err != nil {
-				return doNothing, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
-			}
-			dbg.runUntilHalt = true
-		}
-
-		return stepContinue, nil
-
-	case cmdGranularity:
-		mode, present := tokens.Get()
-		if present {
-			mode = strings.ToUpper(mode)
-			switch mode {
-			case "CPU":
-				dbg.inputEveryVideoCycle = false
-			case "VIDEO":
-				dbg.inputEveryVideoCycle = true
-			default:
-				// already caught by command line ValidateTokens()
-			}
-		}
-		if dbg.inputEveryVideoCycle {
-			mode = "VIDEO"
-		} else {
-			mode = "CPU"
-		}
-		dbg.print(terminal.StyleFeedback, "granularity: %s", mode)
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()
@@ -919,13 +824,12 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 				dbg.printInstrument(dbg.vcs.TIA.Video.Missile0.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Missile1.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Ball.Delay)
+			case "AUDIO":
+				dbg.printInstrument(dbg.vcs.TIA.Audio)
 			}
 		} else {
 			dbg.printInstrument(dbg.vcs.TIA)
 		}
-
-	case cmdAudio:
-		dbg.printInstrument(dbg.vcs.TIA.Audio)
 
 	case cmdTV:
 		option, present := tokens.Get()
@@ -1163,6 +1067,99 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		if err != nil {
 			return doNothing, err
 		}
+
+	// halt conditions
+	case cmdBreak:
+		err := dbg.breakpoints.parseBreakpoint(tokens)
+		if err != nil {
+			return doNothing, errors.New(errors.CommandError, err)
+		}
+
+	case cmdTrap:
+		err := dbg.traps.parseTrap(tokens)
+		if err != nil {
+			return doNothing, errors.New(errors.CommandError, err)
+		}
+
+	case cmdWatch:
+		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
+		if err != nil {
+			return doNothing, errors.New(errors.CommandError, err)
+		}
+
+	case cmdList:
+		list, _ := tokens.Get()
+		list = strings.ToUpper(list)
+		switch list {
+		case "BREAKS":
+			dbg.breakpoints.list()
+		case "TRAPS":
+			dbg.traps.list()
+		case "WATCHES":
+			dbg.watches.list()
+		case "ALL":
+			dbg.breakpoints.list()
+			dbg.traps.list()
+			dbg.watches.list()
+		default:
+			// already caught by command line ValidateTokens()
+		}
+
+	case cmdDrop:
+		drop, _ := tokens.Get()
+
+		s, _ := tokens.Get()
+		num, err := strconv.Atoi(s)
+		if err != nil {
+			return doNothing, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
+		}
+
+		drop = strings.ToUpper(drop)
+		switch drop {
+		case "BREAK":
+			err := dbg.breakpoints.drop(num)
+			if err != nil {
+				return doNothing, err
+			}
+			dbg.print(terminal.StyleFeedback, "breakpoint #%d dropped", num)
+		case "TRAP":
+			err := dbg.traps.drop(num)
+			if err != nil {
+				return doNothing, err
+			}
+			dbg.print(terminal.StyleFeedback, "trap #%d dropped", num)
+		case "WATCH":
+			err := dbg.watches.drop(num)
+			if err != nil {
+				return doNothing, err
+			}
+			dbg.print(terminal.StyleFeedback, "watch #%d dropped", num)
+		default:
+			// already caught by command line ValidateTokens()
+		}
+
+	case cmdClear:
+		clear, _ := tokens.Get()
+		clear = strings.ToUpper(clear)
+		switch clear {
+		case "BREAKS":
+			dbg.breakpoints.clear()
+			dbg.print(terminal.StyleFeedback, "breakpoints cleared")
+		case "TRAPS":
+			dbg.traps.clear()
+			dbg.print(terminal.StyleFeedback, "traps cleared")
+		case "WATCHES":
+			dbg.watches.clear()
+			dbg.print(terminal.StyleFeedback, "watches cleared")
+		case "ALL":
+			dbg.breakpoints.clear()
+			dbg.traps.clear()
+			dbg.watches.clear()
+			dbg.print(terminal.StyleFeedback, "breakpoints, traps and watches cleared")
+		default:
+			// already caught by command line ValidateTokens()
+		}
+
 	}
 
 	return doNothing, nil

@@ -118,7 +118,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
+func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	p0u, p0c := vd.Player0.pixel()
@@ -213,12 +213,11 @@ func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 	//	also the comment by "supercat" in the discussion "Playfield Score Mode
 	//	- effect on ball" on AtariAge proved useful here.
 	//
-	//	!!TODO: I'm still not 100% sure this is correct. check playfield
-	//	priorties
+	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
 	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft)
 
 	var col uint8
-	var dcol television.DebugColorSignal
+	var altCol television.AltColorSignal
 
 	if priority {
 		if pfu { // priority 1
@@ -235,39 +234,39 @@ func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 					col = p1c
 				}
 			}
-			dcol = television.AltColPlayfield
+			altCol = television.AltColPlayfield
 		} else if blu {
 			col = blc
-			dcol = television.AltColBall
+			altCol = television.AltColBall
 		} else if p0u { // priority 2
 			col = p0c
-			dcol = television.AltColPlayer0
+			altCol = television.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			dcol = television.AltColMissile0
+			altCol = television.AltColMissile0
 		} else if p1u { // priority 3
 			col = p1c
-			dcol = television.AltColPlayer1
+			altCol = television.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			dcol = television.AltColMissile1
+			altCol = television.AltColMissile1
 		} else {
 			col = bgc
-			dcol = television.AltColBackground
+			altCol = television.AltColBackground
 		}
 	} else {
 		if p0u { // priority 1
 			col = p0c
-			dcol = television.AltColPlayer0
+			altCol = television.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			dcol = television.AltColMissile0
+			altCol = television.AltColMissile0
 		} else if p1u { // priority 2
 			col = p1c
-			dcol = television.AltColPlayer1
+			altCol = television.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			dcol = television.AltColMissile1
+			altCol = television.AltColMissile1
 		} else if vd.Playfield.scoremode && (blu || pfu) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
@@ -278,29 +277,29 @@ func (vd *Video) Pixel() (uint8, television.DebugColorSignal) {
 				case regionRight:
 					col = p1c
 				}
-				dcol = television.AltColPlayfield
+				altCol = television.AltColPlayfield
 			} else if blu { // priority 3
 				col = blc
-				dcol = television.AltColBall
+				altCol = television.AltColBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
 			if blu { // priority 3
 				col = blc
-				dcol = television.AltColBall
+				altCol = television.AltColBall
 			} else if pfu {
 				col = pfc
-				dcol = television.AltColPlayfield
+				altCol = television.AltColPlayfield
 			} else {
 				col = bgc
-				dcol = television.AltColBackground
+				altCol = television.AltColBackground
 			}
 		}
 
 	}
 
 	// priority 4
-	return col, dcol
+	return col, altCol
 }
 
 // UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF

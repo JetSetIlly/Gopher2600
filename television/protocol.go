@@ -116,18 +116,24 @@ type AudioMixer interface {
 	EndMixing() error
 }
 
+// ColorSignal represents the signal that is sent from the VCS to the
+type ColorSignal int
+
+// AltColorSignal is the alternative color for each pixel.
+type AltColorSignal int
+
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
-	VSync  bool
-	VBlank bool
-	CBurst bool
-	HSync  bool
-	Pixel  ColorSignal
+	VSync     bool
+	VBlank    bool
+	CBurst    bool
+	HSync     bool
+	Pixel     ColorSignal
+	AudioData uint8
 
-	// AltPixel allows the emulator to set an alternative color for each pixel
-	// - used to signal the debug color in addition to the regular color
-	// - arguable that this be sent as some sort of meta-signal
-	AltPixel DebugColorSignal
+	// the fields above are real signal attributes in the sense that the
+	// information they represent is really sent to the TV in the real hardware
+	// setup. the fields below are not but help us along in the emulation.
 
 	// the HSyncSimple attribute is not part of the real TV spec. The signal
 	// for a real flyback is the HSync signal (held for 8 color clocks).
@@ -140,14 +146,17 @@ type SignalAttributes struct {
 	// we can count from -68 to 159 - the same as Stella. this is helpful when
 	// A/B testing.
 	//
-	// the TIA emulation sends both HSync and HSyncSimple signals.  television
+	// the TIA emulation sends both HSync and HSyncSimple signals. television
 	// implementations can use either, it doesn't really make any difference
 	// except to debugging information. the "basic" television implementation
 	// uses HSyncSimple instead of HSync
 	HSyncSimple bool
 
-	// raw sound data
-	AudioData   uint8
+	// an alternative color signal for the next pixel
+	AltPixel AltColorSignal
+
+	// whether the AudioData is valid. should be true only every 114th clock,
+	// which equates to 30Khz
 	AudioUpdate bool
 }
 

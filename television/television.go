@@ -121,7 +121,7 @@ func (tv *television) Reset() error {
 	tv.frameNum = 0
 	tv.scanline = 0
 	tv.vsyncCount = 0
-	tv.prevSignal = SignalAttributes{Pixel: VideoBlack}
+	tv.prevSignal = SignalAttributes{}
 
 	tv.top = tv.spec.ScanlineTop
 	tv.bottom = tv.spec.ScanlineBottom
@@ -180,6 +180,8 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
+	// not doing anything with the "real" hsync or colour burst signals
+
 	// simple vsync implementation. when compared to the HSync detection above,
 	// the following is correct (front porch at the end of the display and back
 	// porch at the beginning). it is also in keeping with how Stella counts
@@ -210,25 +212,25 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	y := tv.scanline
 
 	// decode color using the alternative color signal
-	red, green, blue := getAltColor(sig.AltPixel)
+	col := getAltColor(sig.AltPixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetAltPixel(x, y, red, green, blue, sig.VBlank)
+		err := tv.renderers[f].SetAltPixel(x, y, col.red, col.green, col.blue, sig.VBlank)
 		if err != nil {
 			return err
 		}
 	}
 
 	// decode color using the regular color signal
-	red, green, blue = getColor(tv.spec, sig.Pixel)
+	col = getColor(tv.spec, sig.Pixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetPixel(x, y, red, green, blue, sig.VBlank)
+		err := tv.renderers[f].SetPixel(x, y, col.red, col.green, col.blue, sig.VBlank)
 		if err != nil {
 			return err
 		}
 	}
 
 	// push screen boundaries outward using vblank and color signal to help us
-	if !sig.VBlank && red != 0 && green != 0 && blue != 0 {
+	if !sig.VBlank && col.red != 0 && col.green != 0 && col.blue != 0 {
 		if tv.scanline < tv.thisTop {
 			tv.thisTop = tv.scanline
 		}
