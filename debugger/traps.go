@@ -74,7 +74,7 @@ func (tr traps) list() {
 	if len(tr.traps) == 0 {
 		tr.dbg.print(terminal.StyleFeedback, "no traps")
 	} else {
-		tr.dbg.print(terminal.StyleFeedback, "traps")
+		tr.dbg.print(terminal.StyleFeedback, "traps:")
 		for i := range tr.traps {
 			tr.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.Label())
 		}

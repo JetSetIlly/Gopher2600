@@ -52,6 +52,11 @@ func (ch *channel) String() string {
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
 func (ch *channel) tick() {
+	// reset actual volume value if control register is zero
+	if ch.regControl == 0x0 {
+		ch.actualVol = 0
+	}
+
 	// tick frequency clock
 	if ch.freqClk > 1 {
 		ch.freqClk--

@@ -139,7 +139,7 @@ func (wtc *watches) list() {
 	if len(wtc.watches) == 0 {
 		wtc.dbg.print(terminal.StyleFeedback, "no watches")
 	} else {
-		wtc.dbg.print(terminal.StyleFeedback, "watches")
+		wtc.dbg.print(terminal.StyleFeedback, "watches:")
 		for i := range wtc.watches {
 			wtc.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, wtc.watches[i])
 		}

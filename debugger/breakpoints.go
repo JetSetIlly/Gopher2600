@@ -168,7 +168,7 @@ func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
 		bp.dbg.print(terminal.StyleFeedback, "no breakpoints")
 	} else {
-		bp.dbg.print(terminal.StyleFeedback, "breakpoints")
+		bp.dbg.print(terminal.StyleFeedback, "breakpoints:")
 		for i := range bp.breaks {
 			bp.dbg.print(terminal.StyleFeedback, "% 2d: %s", i, bp.breaks[i])
 		}

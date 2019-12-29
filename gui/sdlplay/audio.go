@@ -9,7 +9,7 @@ import (
 // the buffer length is important to get right. unfortunately, there's no
 // special way (that I know of) that can tells us what the ideal value is. we
 // don't want it to be long because we can introduce unnecessary lag between
-// the audio and video signal; by the same token we don't want git too short because
+// the audio and video signal; by the same token we don't want it too short because
 // we will end up calling FlushAudio() too often - FlushAudio() is a
 // computationally expensive function.
 //
@@ -33,7 +33,6 @@ func newSound(scr *SdlPlay) (*sound, error) {
 		Freq:     audio.SampleFreq,
 		Format:   sdl.AUDIO_U8,
 		Channels: 1,
-		Silence:  127,
 		Samples:  uint16(bufferLength),
 	}
 
@@ -55,12 +54,12 @@ func newSound(scr *SdlPlay) (*sound, error) {
 
 // SetAudio implements the television.AudioMixer interface
 func (scr *SdlPlay) SetAudio(audioData uint8) error {
-	scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
-
-	scr.snd.bufferCt++
 	if scr.snd.bufferCt >= len(scr.snd.buffer) {
 		return scr.FlushAudio()
 	}
+
+	scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
+	scr.snd.bufferCt++
 
 	return nil
 }

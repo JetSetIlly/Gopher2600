@@ -441,7 +441,6 @@ func (dbg *Debugger) enactCommand(tokens *commandline.Tokens, interactive bool) 
 		case "WATCHES":
 			dbg.watches.list()
 		case "ALL":
-			// !!TODO: refine output. requires headings
 			dbg.breakpoints.list()
 			dbg.traps.list()
 			dbg.watches.list()
