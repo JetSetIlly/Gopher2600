@@ -27,10 +27,13 @@ type addressInfo struct {
 	addressLabel  string
 	area          memorymap.Area
 
-	// the data at the address. if we don't know what the address is then
-	// useData is false and the value of data is not valid
-	data    uint8
-	useData bool
+	// addresses and symbols are mapped differently depending on whether
+	// address is to be used for reading or writing
+	read bool
+
+	// the data at the address. if peeked is false then data mays not be valid
+	peeked bool
+	data   uint8
 }
 
 func (ai addressInfo) String() string {
@@ -46,9 +49,9 @@ func (ai addressInfo) String() string {
 		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.mappedAddress))
 	}
 
-	s.WriteString(fmt.Sprintf(" :: %s", ai.area.String()))
+	s.WriteString(fmt.Sprintf(" (%s)", ai.area.String()))
 
-	if ai.useData {
+	if ai.peeked {
 		s.WriteString(fmt.Sprintf(" -> %#02x", ai.data))
 	}
 
@@ -56,12 +59,12 @@ func (ai addressInfo) String() string {
 }
 
 // mapAddress allows addressing by symbols in addition to numerically
-func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *addressInfo {
-	ai := &addressInfo{}
+func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInfo {
+	ai := &addressInfo{read: read}
 
 	var symbolTable map[uint16]string
 
-	if cpuRead {
+	if read {
 		symbolTable = (dbgmem.symtable).Read.Symbols
 	} else {
 		symbolTable = (dbgmem.symtable).Write.Symbols
@@ -70,7 +73,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *address
 	switch address := address.(type) {
 	case uint16:
 		ai.address = address
-		ai.mappedAddress, ai.area = memorymap.MapAddress(address, cpuRead)
+		ai.mappedAddress, ai.area = memorymap.MapAddress(address, read)
 	case string:
 		var found bool
 		var err error
@@ -80,7 +83,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *address
 		for a, sym := range symbolTable {
 			if sym == address {
 				ai.address = a
-				ai.mappedAddress = a
+				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 				found = true
 				break // for loop
 			}
@@ -94,7 +97,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *address
 		for a, sym := range symbolTable {
 			if sym == address {
 				ai.address = a
-				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
+				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 				found = true
 				break // for loop
 			}
@@ -108,7 +111,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, cpuRead bool) *address
 			}
 
 			ai.address = uint16(addr)
-			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, cpuRead)
+			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 		}
 	}
 
@@ -135,7 +138,7 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
-	ai.useData = true
+	ai.peeked = true
 
 	return ai, err
 }
@@ -143,7 +146,7 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 // Poke writes a value at the specified address, which may be numeric or
 // symbolic.
 func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, error) {
-	ai := dbgmem.mapAddress(address, true)
+	ai := dbgmem.mapAddress(address, false)
 	if ai == nil {
 		return nil, errors.New(errors.DebuggerError, errors.New(errors.UnpokeableAddress, address))
 	}
@@ -159,7 +162,7 @@ func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, e
 	}
 
 	ai.data = data
-	ai.useData = true
+	ai.peeked = true
 
 	return ai, err
 }

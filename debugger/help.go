@@ -41,7 +41,45 @@ var help = map[string]string{
 	// halt conditions
 	cmdBreak: "Cause emulator to halt when conditions are met",
 	cmdTrap:  "Cause emulator to halt when specified machine component is touched",
-	cmdWatch: "Watch a memory address for activity",
+
+	cmdWatch: `Watch a memory address for activity. Emulation will halt when the watch
+is triggered. An individual watch can wait for either read access or write
+access of specific address address. Addresses can be specified numerically or
+by symbol.
+
+By default, watching a numeric address will specifically watch for write
+events. This can be changed by specifiying READ as the first argument. For
+example:
+ 
+	WATCH 0x80
+
+	WATCH READ 0x81
+
+The first example watches address 0x80 for write access, while the second will
+watch for read access of address 0x81. To watch a single address for both read and
+write access, two watches are requireed.
+
+Symbolic address refer to either read or write addresses (possibly both) and
+this affects how symbolic addresses are watched. Consider the following two
+examples:
+
+	WATCH VSYNC
+
+	WATCH CXM0P
+
+The symbols in both examples refer to memory address 0x00 but specifcally,
+VSYNC is used in the context of the CPU writing to memory and CXM0P in the
+context of reading from memory.  Accordingly, the watches will react to write
+or read events.
+
+A watch can also watch for a specific value to be written or read from the specified
+address.
+
+	WATCH 0x80 10
+
+The above example will watch for the value 10 (decimal) to be written to memory
+address 0x80.`,
+
 	cmdList:  "List current entries for breaks, traps and watches",
 	cmdDrop:  "Drop a specific break, trap or watch condition, using the number of the condition reported by LIST",
 	cmdClear: "Clear all breaks, traps and watches",

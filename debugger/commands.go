@@ -190,18 +190,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		return doNothing, err
 	}
 
-	// make sure all tokens have been handled. this should only happen if
-	// input has been allowed by ValidateTokens() but has not been
-	// explicitely consumed by entactCommand(). a false positive might occur if
-	// the token queue has been Peek()ed rather than Get()ed
-	if interactive {
-		defer func() {
-			if !tokens.IsEnd() {
-				dbg.print(terminal.StyleError, fmt.Sprintf("unhandled arguments in user input (%s)", tokens.Remainder()))
-			}
-		}()
-	}
-
 	// the absolute best thing about the ValidateTokens() function is that we
 	// don't need to worrying too much about the success of tokens.Get() in the
 	// enactCommand() function below:
@@ -1082,7 +1070,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		}
 
 	case cmdWatch:
-		err := dbg.watches.parseWatch(tokens, dbg.dbgmem)
+		err := dbg.watches.parseWatch(tokens)
 		if err != nil {
 			return doNothing, errors.New(errors.CommandError, err)
 		}
