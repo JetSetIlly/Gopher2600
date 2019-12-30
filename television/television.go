@@ -277,7 +277,7 @@ func (tv *television) stabilise() (bool, error) {
 	tv.top = tv.speculativeTop
 	tv.bottom = tv.speculativeBottom
 
-	if tv.spec == SpecNTSC && tv.bottom-tv.top >= SpecPAL.ScanlinesVisible {
+	if tv.spec == SpecNTSC && tv.auto && tv.bottom-tv.top >= SpecPAL.ScanlinesVisible {
 		tv.spec = SpecPAL
 
 		// reset top/bottom to ideals of new spec. they may of course be
