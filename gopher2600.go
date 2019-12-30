@@ -76,7 +76,7 @@ func play(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
 	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
@@ -98,7 +98,7 @@ func play(md *modalflag.Modes) error {
 			Format:   *cartFormat,
 		}
 
-		tv, err := television.NewTelevision(*tvType)
+		tv, err := television.NewTelevision(*spec)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}
@@ -136,7 +136,7 @@ func debug(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := md.AddString("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	initScript := md.AddString("initscript", paths.ResourcePath(defaultInitScript), "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
@@ -146,7 +146,7 @@ func debug(md *modalflag.Modes) error {
 		return err
 	}
 
-	tv, err := television.NewTelevision(*tvType)
+	tv, err := television.NewTelevision(*spec)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
@@ -256,7 +256,7 @@ func perform(md *modalflag.Modes) error {
 	display := md.AddBool("display", false, "display TV output")
 	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
-	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
 
@@ -274,7 +274,7 @@ func perform(md *modalflag.Modes) error {
 			Format:   *cartFormat,
 		}
 
-		tv, err := television.NewTelevision(*tvType)
+		tv, err := television.NewTelevision(*spec)
 		if err != nil {
 			return err
 		}
@@ -404,7 +404,7 @@ func regressAdd(md *modalflag.Modes) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	tvType := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
 	numframes := md.AddInt("frames", 10, "number of frames to run [cartridge args only]")
 	state := md.AddBool("state", false, "record TV state at every CPU step [cartrdige args only]")
 	mode := md.AddString("mode", "video", "type of digest to create [cartridge args only]")
@@ -450,7 +450,7 @@ func regressAdd(md *modalflag.Modes) error {
 			rec = &regression.DigestRegression{
 				Mode:      m,
 				CartLoad:  cartload,
-				TVtype:    strings.ToUpper(*tvType),
+				TVtype:    strings.ToUpper(*spec),
 				NumFrames: *numframes,
 				State:     *state,
 				Notes:     *notes,

@@ -21,6 +21,9 @@ type Television interface {
 	// Returns the value of the requested state. eg. the current scanline.
 	GetState(StateReq) (int, error)
 
+	// Set the television's specification
+	SetSpec(spec string) error
+
 	// Returns the television's current specification. Renderers should use
 	// GetSpec() rather than keeping a private pointer to the specification.
 	GetSpec() *Specification

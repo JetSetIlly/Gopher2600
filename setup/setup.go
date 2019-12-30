@@ -35,6 +35,10 @@ func initDBSession(db *database.Session) error {
 		return err
 	}
 
+	if err := db.RegisterEntryType(televisionID, deserialiseTelevisionEntry); err != nil {
+		return err
+	}
+
 	return nil
 }
 

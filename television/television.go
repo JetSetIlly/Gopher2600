@@ -71,20 +71,10 @@ const stabilityThreshold = 5
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
-func NewTelevision(tvType string) (Television, error) {
+func NewTelevision(spec string) (Television, error) {
 	tv := &television{}
 
-	switch strings.ToUpper(tvType) {
-	case "NTSC":
-		tv.spec = SpecNTSC
-	case "PAL":
-		tv.spec = SpecPAL
-	case "AUTO":
-		tv.spec = SpecNTSC
-		tv.auto = true
-	default:
-		return nil, errors.New(errors.Television, fmt.Sprintf("unsupported tv type (%s)", tvType))
-	}
+	tv.SetSpec(spec)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
@@ -330,6 +320,24 @@ func (tv *television) GetState(request StateReq) (int, error) {
 	case ReqHorizPos:
 		return tv.horizPos, nil
 	}
+}
+
+// SetSpec implements the Television interface
+func (tv *television) SetSpec(spec string) error {
+	switch strings.ToUpper(spec) {
+	case "NTSC":
+		tv.spec = SpecNTSC
+		tv.auto = false
+	case "PAL":
+		tv.spec = SpecPAL
+		tv.auto = false
+	case "AUTO":
+		tv.spec = SpecNTSC
+		tv.auto = true
+	default:
+		return errors.New(errors.Television, fmt.Sprintf("unsupported tv specifcation (%s)", spec))
+	}
+	return nil
 }
 
 // GetSpec implements the Television interface

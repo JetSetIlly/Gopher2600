@@ -36,6 +36,10 @@ func (t *mockTV) GetState(_ television.StateReq) (int, error) {
 	return 0, nil
 }
 
+func (t *mockTV) SetSpec(_ string) error {
+	return nil
+}
+
 func (t *mockTV) GetSpec() *television.Specification {
 	return television.SpecNTSC
 }

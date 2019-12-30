@@ -54,9 +54,10 @@ const (
 	RegressionPlaybackError = "playback entry: %v"
 
 	// setup
-	SetupError      = "setup error: %v"
-	SetupPanelError = "setup error: panel entry: %v"
-	SetupPatchError = "setup error: patch entry: %v"
+	SetupError           = "setup error: %v"
+	SetupPanelError      = "panel setup: %v"
+	SetupPatchError      = "patch setup: %v"
+	SetupTelevisionError = "tv setup: %v"
 
 	// patch
 	PatchError     = "patch error: %v"
