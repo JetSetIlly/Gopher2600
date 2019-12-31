@@ -68,10 +68,8 @@ type Debugger struct {
 	// unwary programmer by surprise
 	reportCPUBugs bool
 
-	// granularity of single stepping - every cpu instruction or every video cycle
-	// -- also affects when emulation will halt on breaks, traps and watches.
-	// if inputeveryvideocycle is true then the halt may occur mid-cpu-cycle
-	inputEveryVideoCycle bool
+	// quantum to use when stepping/running
+	quantum quantumMode
 
 	// channel for communicating with the debugger from the ctrl-c goroutine
 	intChan chan os.Signal

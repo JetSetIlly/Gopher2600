@@ -78,7 +78,7 @@ func newTable() *subtable {
 func (sym subtable) String() string {
 	s := strings.Builder{}
 	for i := range sym.idx {
-		s.WriteString(fmt.Sprintf("%#04x -> %s\n", i, sym.Symbols[sym.idx[i]]))
+		s.WriteString(fmt.Sprintf("%#04x -> %s\n", sym.idx[i], sym.Symbols[sym.idx[i]]))
 	}
 	return s.String()
 }

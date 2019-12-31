@@ -26,14 +26,15 @@ import (
 const (
 	cmdReset = "RESET"
 	cmdQuit  = "QUIT"
-	cmdExit  = "EXIT"
 
-	cmdRun         = "RUN"
-	cmdStep        = "STEP"
-	cmdGranularity = "GRANULARITY"
-	cmdScript      = "SCRIPT"
+	cmdRun     = "RUN"
+	cmdStep    = "STEP"
+	cmdQuantum = "QUANTUM"
+	cmdScript  = "SCRIPT"
 
 	cmdInsert      = "INSERT"
+	cmdCartridge   = "CARTRIDGE"
+	cmdPatch       = "PATCH"
 	cmdDisassembly = "DISASSEMBLY"
 	cmdGrep        = "GREP"
 	cmdSymbol      = "SYMBOL"
@@ -41,23 +42,23 @@ const (
 	cmdOnStep      = "ONSTEP"
 	cmdLast        = "LAST"
 	cmdMemMap      = "MEMMAP"
-	cmdCartridge   = "CARTRIDGE"
 	cmdCPU         = "CPU"
 	cmdPeek        = "PEEK"
 	cmdPoke        = "POKE"
-	cmdPatch       = "PATCH"
-	cmdHexLoad     = "HEXLOAD"
 	cmdRAM         = "RAM"
-	cmdRIOT        = "RIOT"
+	cmdTimer       = "TIMER"
 	cmdTIA         = "TIA"
+	cmdAudio       = "AUDIO"
 	cmdTV          = "TV"
-	cmdPanel       = "PANEL"
 	cmdPlayer      = "PLAYER"
 	cmdMissile     = "MISSILE"
 	cmdBall        = "BALL"
 	cmdPlayfield   = "PLAYFIELD"
 	cmdDisplay     = "DISPLAY"
-	cmdStick       = "STICK"
+
+	// user input
+	cmdPanel = "PANEL"
+	cmdStick = "STICK"
 
 	// halt conditions
 	cmdBreak = "BREAK"
@@ -73,14 +74,15 @@ const cmdHelp = "HELP"
 var commandTemplate = []string{
 	cmdReset,
 	cmdQuit,
-	cmdExit,
 
 	cmdRun,
 	cmdStep + " (CPU|VIDEO|%S)",
-	cmdGranularity + " (CPU|VIDEO)",
+	cmdQuantum + " (CPU|VIDEO)",
 	cmdScript + " [RECORD %S|END|%F]",
 
 	cmdInsert + " %F",
+	cmdCartridge + " (ANALYSIS|BANK %N)",
+	cmdPatch + " %S",
 	cmdDisassembly + " (BYTECODE)",
 	cmdGrep + " (MNEMONIC|OPERAND) %S",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
@@ -88,22 +90,22 @@ var commandTemplate = []string{
 	cmdOnStep + " (OFF|ON|%S {%S})",
 	cmdLast + " (DEFN|BYTECODE)",
 	cmdMemMap,
-	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%N]|BUG (ON|OFF))",
 	cmdPeek + " [%S] {%S}",
-	cmdPoke + " [%S] %N",
-	cmdPatch + " %S",
-	cmdHexLoad + " %N %N {%N}",
+	cmdPoke + " %S [%N] {%N}",
 	cmdRAM + " (CART)",
-	cmdRIOT + " (TIMER)",
-	cmdTIA + " (DELAYS|AUDIO)",
+	cmdTimer,
+	cmdTIA + " (DELAYS)",
+	cmdAudio,
 	cmdTV + " (SPEC)",
-	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,
 	cmdPlayfield,
-	cmdDisplay + " (ON|OFF|DEBUG (ON|OFF)|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+	cmdDisplay + " (ON|OFF|MASK|UNMASK|SCALE [%P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+
+	// user input
+	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 
 	// halt conditions
@@ -259,10 +261,14 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		}
 
 	case cmdQuit:
-		fallthrough
-
-	case cmdExit:
-		dbg.running = false
+		if dbg.scriptScribe.IsActive() {
+			// we don't want the QUIT command to appear in the script so
+			// rollback last entry before we commit it in EndSession()
+			dbg.scriptScribe.Rollback()
+			dbg.scriptScribe.EndSession()
+		} else {
+			dbg.running = false
+		}
 
 	case cmdReset:
 		err := dbg.vcs.Reset()
@@ -289,13 +295,13 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		case "":
 			// calling step with no argument is the normal case
 		case "CPU":
-			// changes granularity
-			dbg.inputEveryVideoCycle = false
+			// changes quantum
+			dbg.quantum = quantumCPU
 		case "VIDEO":
-			// changes granularity
-			dbg.inputEveryVideoCycle = true
+			// changes quantum
+			dbg.quantum = quantumVideo
 		default:
-			dbg.inputEveryVideoCycle = false
+			dbg.quantum = quantumCPU
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
@@ -306,25 +312,20 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		return stepContinue, nil
 
-	case cmdGranularity:
+	case cmdQuantum:
 		mode, present := tokens.Get()
 		if present {
 			mode = strings.ToUpper(mode)
 			switch mode {
 			case "CPU":
-				dbg.inputEveryVideoCycle = false
+				dbg.quantum = quantumCPU
 			case "VIDEO":
-				dbg.inputEveryVideoCycle = true
+				dbg.quantum = quantumVideo
 			default:
 				// already caught by command line ValidateTokens()
 			}
 		}
-		if dbg.inputEveryVideoCycle {
-			mode = "VIDEO"
-		} else {
-			mode = "CPU"
-		}
-		dbg.printLine(terminal.StyleFeedback, "granularity: %s", mode)
+		dbg.printLine(terminal.StyleFeedback, "quantum: %s", mode)
 
 	case cmdScript:
 		option, _ := tokens.Get()
@@ -375,6 +376,43 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			return doNothing, err
 		}
 		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
+
+	case cmdCartridge:
+		arg, ok := tokens.Get()
+		if ok {
+			switch arg {
+			case "ANALYSIS":
+				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis())
+			case "BANK":
+				bank, _ := tokens.Get()
+				n, _ := strconv.Atoi(bank)
+				err := dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
+				if err != nil {
+					return doNothing, err
+				}
+
+				err = dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
+				if err != nil {
+					return doNothing, err
+				}
+			}
+		} else {
+			dbg.printInstrument(dbg.vcs.Mem.Cart)
+		}
+
+	case cmdPatch:
+		f, _ := tokens.Get()
+		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
+		if err != nil {
+			dbg.printLine(terminal.StyleError, "%v", err)
+			if patched {
+				dbg.printLine(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
+			}
+			return doNothing, nil
+		}
+		if patched {
+			dbg.printLine(terminal.StyleEmulatorInfo, "cartridge patched")
+		}
 
 	case cmdDisassembly:
 		option, _ := tokens.Get()
@@ -460,7 +498,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					}
 				}
 			} else {
-				dbg.printLine(terminal.StyleFeedback, "%s (%s)-> %#04x", symbol, table, address)
+				dbg.printLine(terminal.StyleFeedback, "%s (%s) -> %#04x", symbol, table, address)
 			}
 		}
 
@@ -571,8 +609,12 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		if ok {
 			switch strings.ToUpper(option) {
 			case "DEFN":
-				dbg.printLine(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
-				break
+				if dbg.vcs.CPU.LastResult.Defn == nil {
+					dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
+				}
+				return doNothing, nil
 
 			case "BYTECODE":
 				s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Bytecode, d.Bytecode))
@@ -597,26 +639,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 	case cmdMemMap:
 		dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
-
-	case cmdCartridge:
-		arg, ok := tokens.Get()
-		if ok {
-			switch arg {
-			case "ANALYSIS":
-				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis())
-			case "BANK":
-				bank, _ := tokens.Get()
-				n, _ := strconv.Atoi(bank)
-				dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
-
-				err := dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
-				if err != nil {
-					return doNothing, err
-				}
-			}
-		} else {
-			dbg.printInstrument(dbg.vcs.Mem.Cart)
-		}
 
 	case cmdCPU:
 		action, present := tokens.Get()
@@ -701,46 +723,14 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		// get address token
 		a, _ := tokens.Get()
 
-		// get value token
-		v, _ := tokens.Get()
-
-		val, err := strconv.ParseUint(v, 0, 8)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "poke value must be 8bit number (%s)", v)
+		// convert address
+		ai := dbg.dbgmem.mapAddress(a, false)
+		if ai == nil {
+			// using poke error because hexload is basically the same as poking
+			dbg.printLine(terminal.StyleError, errors.New(errors.UnpokeableAddress, a).Error())
 			return doNothing, nil
 		}
-
-		// perform single poke
-		ai, err := dbg.dbgmem.poke(a, uint8(val))
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "%s", err)
-		} else {
-			dbg.printLine(terminal.StyleInstrument, ai.String())
-		}
-
-	case cmdPatch:
-		f, _ := tokens.Get()
-		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "%v", err)
-			if patched {
-				dbg.printLine(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
-			}
-			return doNothing, nil
-		}
-		if patched {
-			dbg.printLine(terminal.StyleEmulatorInfo, "cartridge patched")
-		}
-
-	case cmdHexLoad:
-		// get address token
-		a, _ := tokens.Get()
-
-		addr, err := strconv.ParseUint(a, 0, 16)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "hexload address must be 16bit number (%s)", a)
-			return doNothing, nil
-		}
+		addr := ai.mappedAddress
 
 		// get (first) value token
 		v, present := tokens.Get()
@@ -748,13 +738,13 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		for present {
 			val, err := strconv.ParseUint(v, 0, 8)
 			if err != nil {
-				dbg.printLine(terminal.StyleError, "hexload value must be 8bit number (%s)", addr)
+				dbg.printLine(terminal.StyleError, "hexload value must be an 8 bit number (%s)", v)
 				v, present = tokens.Get()
 				continue // for loop (without advancing address)
 			}
 
 			// perform individual poke
-			ai, err := dbg.dbgmem.poke(uint16(addr), uint8(val))
+			ai, err := dbg.dbgmem.poke(addr, uint8(val))
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
@@ -785,19 +775,8 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			dbg.printInstrument(dbg.vcs.Mem.RAM)
 		}
 
-	case cmdRIOT:
-		option, present := tokens.Get()
-		if present {
-			option = strings.ToUpper(option)
-			switch option {
-			case "TIMER":
-				dbg.printInstrument(dbg.vcs.RIOT.Timer)
-			default:
-				// already caught by command line ValidateTokens()
-			}
-		} else {
-			dbg.printInstrument(dbg.vcs.RIOT)
-		}
+	case cmdTimer:
+		dbg.printInstrument(dbg.vcs.RIOT.Timer)
 
 	case cmdTIA:
 		option, present := tokens.Get()
@@ -812,12 +791,13 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 				dbg.printInstrument(dbg.vcs.TIA.Video.Missile0.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Missile1.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Ball.Delay)
-			case "AUDIO":
-				dbg.printInstrument(dbg.vcs.TIA.Audio)
 			}
 		} else {
 			dbg.printInstrument(dbg.vcs.TIA)
 		}
+
+	case cmdAudio:
+		dbg.printInstrument(dbg.vcs.TIA.Audio)
 
 	case cmdTV:
 		option, present := tokens.Get()
@@ -832,38 +812,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		} else {
 			dbg.printInstrument(dbg.tv)
 		}
-
-	case cmdPanel:
-		mode, _ := tokens.Get()
-		switch strings.ToUpper(mode) {
-		case "TOGGLE":
-			arg, _ := tokens.Get()
-			switch strings.ToUpper(arg) {
-			case "P0":
-				dbg.vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
-			case "P1":
-				dbg.vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
-			case "COL":
-				dbg.vcs.Panel.Handle(input.PanelToggleColor)
-			}
-		case "SET":
-			arg, _ := tokens.Get()
-			switch strings.ToUpper(arg) {
-			case "P0PRO":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro)
-			case "P1PRO":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro)
-			case "P0AM":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Am)
-			case "P1AM":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Am)
-			case "COL":
-				dbg.vcs.Panel.Handle(input.PanelSetColor)
-			case "BW":
-				dbg.vcs.Panel.Handle(input.PanelSetBlackAndWhite)
-			}
-		}
-		dbg.printInstrument(dbg.vcs.Panel)
 
 	// information about the machine (sprites, playfield)
 	case cmdPlayer:
@@ -934,26 +882,19 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			if err != nil {
 				return doNothing, err
 			}
-		case "DEBUG":
-			action, _ := tokens.Get()
-			action = strings.ToUpper(action)
-			switch action {
-			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
-				if err != nil {
-					return doNothing, err
-				}
-			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
-				if err != nil {
-					return doNothing, err
-				}
-			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
-				if err != nil {
-					return doNothing, err
-				}
+
+		case "MASK":
+			err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
+			if err != nil {
+				return doNothing, err
 			}
+
+		case "UNMASK":
+			err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
+			if err != nil {
+				return doNothing, err
+			}
+
 		case "SCALE":
 			scl, present := tokens.Get()
 			if !present {
@@ -1014,6 +955,38 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			}
 		}
 
+	case cmdPanel:
+		mode, _ := tokens.Get()
+		switch strings.ToUpper(mode) {
+		case "TOGGLE":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "P0":
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
+			case "P1":
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
+			case "COL":
+				dbg.vcs.Panel.Handle(input.PanelToggleColor)
+			}
+		case "SET":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "P0PRO":
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro)
+			case "P1PRO":
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro)
+			case "P0AM":
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Am)
+			case "P1AM":
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Am)
+			case "COL":
+				dbg.vcs.Panel.Handle(input.PanelSetColor)
+			case "BW":
+				dbg.vcs.Panel.Handle(input.PanelSetBlackAndWhite)
+			}
+		}
+		dbg.printInstrument(dbg.vcs.Panel)
+
 	case cmdStick:
 		var err error
 
@@ -1056,7 +1029,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			return doNothing, err
 		}
 
-	// halt conditions
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {

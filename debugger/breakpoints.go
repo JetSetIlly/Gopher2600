@@ -175,34 +175,24 @@ func (bp breakpoints) list() {
 	}
 }
 
-// parse token and add new trap. for example:
+// parse token and add new breakpoint. for example:
 //
 //	PC 0xf000
 //  adds a new breakpoint to the PC
 //
-//  0xf000
-//  is the same, because we assume a target of PC if none is given
+// in addition to the description in the HELP file, the breakpoint parser has
+// some additional features which should probably be removed. if only because
+// the commandline template will balk before this function is ever called.
 //
-//  X 10 11
-//  adds two new breakpoints to X - we've changed targets so the second value
-//  is assumed to be for the previously selected target
+// for reference though, and very briefly: the | symbol can be used to add more
+// than one condition, instead of calling BREAK more than once.
 //
-//  X 10 11 Y 12
-//  add three breakpoints; 2 to X and 1 to Y
+// Also, the & symbol can be placed before the target/value combinations.
+// A sort of Polish prefix notation.
 //
-//  SL 100 & HP 0
-//  add one AND-condition
+//	& SL 100 HP 0 X 10
 //
-//  SL 100 & HP 0 | X 10
-//  add two conditions; one AND-condition and one condition on X
-//
-// note that this is a very simple parser and we can do unusual things: the &
-// and | symbols simply switch "modes", with unusual consequences. for example,
-// the last example above could be written:
-//
-//  & SL 100 HP 0 | X 10
-//
-// !!TODO: more sophisticated breakpoints parser. or a simpler one.
+// !!TODO: simplify breakpoints parser to match help description
 func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	andBreaks := false
 

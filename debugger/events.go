@@ -8,6 +8,8 @@ import (
 	"gopher2600/playmode"
 )
 
+// #ctrl-c #ctrlc
+
 func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 	var err error
 
@@ -91,6 +93,9 @@ func (dbg *Debugger) checkInterruptsAndEvents() error {
 			// mode and so must handle ctrl-c events differently.
 
 			if dbg.scriptScribe.IsActive() {
+				// unlike in the equivalent code in the QUIT command, there's
+				// no need to call Rollback() here because the ctrl-c event
+				// will not be recorded to the script
 				dbg.scriptScribe.EndSession()
 			} else {
 				dbg.running = false

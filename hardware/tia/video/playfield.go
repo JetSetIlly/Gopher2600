@@ -1,6 +1,7 @@
 package video
 
 import (
+	"fmt"
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"strings"
@@ -60,33 +61,29 @@ func (pf playfield) String() string {
 	s := strings.Builder{}
 	s.WriteString("playfield: ")
 
-	// playfield bits - first half
-	for i := 0; i < len(pf.data); i++ {
-		if pf.data[i] {
-			s.WriteString("1")
-		} else {
-			s.WriteString("0")
-		}
-	}
+	s.WriteString(fmt.Sprintf("%04b", pf.pf0>>4))
+	s.WriteString(fmt.Sprintf(" %08b", pf.pf1))
+	s.WriteString(fmt.Sprintf(" %08b", pf.pf2))
 
-	// playfield bits - second half
-	for i := len(pf.data) - 1; i >= 0; i-- {
-		if pf.data[i] {
-			s.WriteString("1")
-		} else {
-			s.WriteString("0")
-		}
-	}
+	notes := false
 
 	// sundry playfield information
 	if pf.reflected {
-		s.WriteString(" reflected")
+		s.WriteString(" refl")
+		notes = true
 	}
 	if pf.scoremode {
-		s.WriteString(" scoremode")
+		if notes {
+			s.WriteString(",")
+		}
+		s.WriteString(" score")
+		notes = true
 	}
 	if pf.priority {
-		s.WriteString(" priority")
+		if notes {
+			s.WriteString(",")
+		}
+		s.WriteString(" pri")
 	}
 
 	return s.String()

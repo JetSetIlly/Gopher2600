@@ -79,7 +79,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 		var err error
 		var addr uint64
 
-		// search for symbolic address in standard vcs read symbols
+		// case sensitive
 		for a, sym := range symbolTable {
 			if sym == address {
 				ai.address = a
@@ -92,10 +92,10 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			break // case switch
 		}
 
-		// try again with an uppercase label
+		// case insensitive
 		address = strings.ToUpper(address)
 		for a, sym := range symbolTable {
-			if sym == address {
+			if strings.ToUpper(sym) == address {
 				ai.address = a
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 				found = true

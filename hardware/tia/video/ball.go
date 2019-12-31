@@ -92,7 +92,7 @@ func (bs ballSprite) String() string {
 		s.WriteString("]")
 	}
 
-	extra := false
+	notes := false
 
 	switch bs.size {
 	case 0x0:
@@ -107,28 +107,28 @@ func (bs ballSprite) String() string {
 	if bs.moreHMOVE {
 		s.WriteString(" hmoving")
 		s.WriteString(fmt.Sprintf(" [%04b]", bs.hmove))
-		extra = true
+		notes = true
 	}
 
 	if bs.enclockifier.enable {
 		// add a comma if we've already noted something else
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(fmt.Sprintf(" drw %s", bs.enclockifier.String()))
-		extra = true
+		notes = true
 	}
 
 	if !bs.enabled {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" disb")
-		extra = true
+		notes = true
 	}
 
 	if bs.verticalDelay {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" vdel")

@@ -112,46 +112,46 @@ func (ms missileSprite) String() string {
 		s.WriteString("|__|__|")
 	}
 
-	extra := false
+	notes := false
 
 	switch ms.size {
 	case 0x0:
 	case 0x1:
 		s.WriteString(" 2x")
-		extra = true
+		notes = true
 	case 0x2:
 		s.WriteString(" 4x")
-		extra = true
+		notes = true
 	case 0x3:
 		s.WriteString(" 8x")
-		extra = true
+		notes = true
 	}
 
 	if ms.moreHMOVE {
 		s.WriteString(" hmoving")
 		s.WriteString(fmt.Sprintf(" [%04b]", ms.hmove))
-		extra = true
+		notes = true
 	}
 
 	if ms.enclockifier.enable {
 		// add a comma if we've already noted something else
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(fmt.Sprintf(" drw %s", ms.enclockifier.String()))
-		extra = true
+		notes = true
 	}
 
 	if !ms.enabled {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" disb")
-		extra = true
+		notes = true
 	}
 
 	if ms.resetToPlayer {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" >pl<")

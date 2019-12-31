@@ -33,9 +33,6 @@ o better error messages for command line package
 	- for example "unrecognised argument" command for HELP should be something
 	  like "no help available for ..."
 
-o resolve symbols for WATCH command
-	- and probably BREAK, TRAP commands
-
 o a way of specifying where to stop when manually breaking (with ctrl-c)
 	- so, continue to this scanline before stopping
 	- set break with mouse should set this manual breakpoint rather than the
@@ -51,14 +48,10 @@ o LAST to include additional information
 	- defaults to CPU instruction like now but optional arguments to output
 	  different LAST information. for example: LAST MEM
 
-o commandline
-	- custom placeholders. for example:
-	
-		PEEK %address
-
-	 would validate true only if it passes a custom test for %address
-
 o display of colors in the terminal (check for 256 color terminal)
+
+o CPU command to change status register
+
 
 vcs
 ---

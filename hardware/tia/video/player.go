@@ -186,17 +186,17 @@ func (ps playerSprite) String() string {
 	}
 
 	// notes
-	extra := false
+	notes := false
 
 	if ps.moreHMOVE {
 		s.WriteString(" hmoving")
 		s.WriteString(fmt.Sprintf(" [%04b]", ps.hmove))
-		extra = true
+		notes = true
 	}
 
 	if ps.scanCounter.isActive() {
 		// add a comma if we've already noted something else
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(fmt.Sprintf(" drw (px %d", ps.scanCounter.pixel))
@@ -205,7 +205,7 @@ func (ps playerSprite) String() string {
 			s.WriteString(fmt.Sprintf(".%d", ps.scanCounter.count))
 		}
 		s.WriteString(")")
-		extra = true
+		notes = true
 
 		switch ps.scanCounter.cpy {
 		case 1:
@@ -216,23 +216,23 @@ func (ps playerSprite) String() string {
 
 	} else if ps.scanCounter.isLatching() {
 		// add a comma if we've already noted something else
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(fmt.Sprintf(" drw (in %d)", ps.scanCounter.latch))
-		extra = true
+		notes = true
 	}
 
 	if ps.verticalDelay {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" vdel")
-		extra = true
+		notes = true
 	}
 
 	if ps.reflected {
-		if extra {
+		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" ref")

@@ -79,11 +79,17 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			break // for loop
 		}
 
-		// this extra test is to prevent the video input loop from continuing
-		// when step granularity has been switched to every cpu instruction - the
-		// input loop will unravel and execution will continue in the main
-		// inputLoop
-		if videoCycle && !dbg.inputEveryVideoCycle && dbg.continueEmulation {
+		// return immediately if this inputLoop() is a videoCycle, the current
+		// quantum mode has been changed to quantumCPU and the emulation has
+		// been asked to continue with (eg. with STEP)
+		//
+		// this is important in a very specific situation:
+		// a) the emulation has been in video quantum mode
+		// b) it is mid-way between CPU quantums
+		// c) the debugger has been changed to cpu quantum mode
+		//
+		// if we don't do this then debugging output will be wrong and confusing.
+		if videoCycle && dbg.continueEmulation && dbg.quantum == quantumCPU {
 			return nil
 		}
 
@@ -179,9 +185,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 					} else if !inputter.IsInteractive() {
 						// if the input loop is processing a non-interactive
-						// session (a script) then we run the EXIT command
+						// session (a script) then we run the QUIT command
 						// immediately, without asking the user
-						dbg.input = []byte("EXIT")
+						dbg.input = []byte(cmdQuit)
 						inputLen = 5
 
 					} else {
@@ -205,9 +211,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 						}
 
 						// check if confirmation has been confirmed and run
-						// EXIT command
+						// QUIT command
 						if confirm[0] == 'y' || confirm[0] == 'Y' {
-							dbg.input = []byte("EXIT")
+							dbg.input = []byte(cmdQuit)
 							inputLen = 5
 						}
 					}
@@ -270,10 +276,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		if dbg.continueEmulation {
 			// if this non-video-cycle input loop then
 			if !videoCycle {
-				if dbg.inputEveryVideoCycle {
-					err = dbg.vcs.Step(videoCycleWithInput)
-				} else {
+				switch dbg.quantum {
+				case quantumCPU:
 					err = dbg.vcs.Step(dbg.videoCycle)
+				case quantumVideo:
+					err = dbg.vcs.Step(videoCycleWithInput)
+				default:
+					err = errors.New(errors.DebuggerError, "unknown quantum mode")
 				}
 
 				if err != nil {
