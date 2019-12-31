@@ -249,13 +249,13 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 			helpTxt, ok := help[keyword]
 			if !ok {
-				dbg.print(terminal.StyleHelp, "no help for %s", keyword)
+				dbg.printLine(terminal.StyleHelp, "no help for %s", keyword)
 			} else {
 				helpTxt = fmt.Sprintf("%s\n\n  Usage: %s", helpTxt, (*debuggerCommandsIdx)[keyword].String())
-				dbg.print(terminal.StyleHelp, helpTxt)
+				dbg.printLine(terminal.StyleHelp, helpTxt)
 			}
 		} else {
-			dbg.print(terminal.StyleHelp, debuggerCommands.String())
+			dbg.printLine(terminal.StyleHelp, debuggerCommands.String())
 		}
 
 	case cmdQuit:
@@ -273,11 +273,11 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		if err != nil {
 			return doNothing, err
 		}
-		dbg.print(terminal.StyleFeedback, "machine reset")
+		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
 		if !dbg.scr.IsVisible() && dbg.commandOnStep == "" {
-			dbg.print(terminal.StyleEmulatorInfo, "running with no display or terminal output")
+			dbg.printLine(terminal.StyleEmulatorInfo, "running with no display or terminal output")
 		}
 		dbg.runUntilHalt = true
 		return stepContinue, nil
@@ -324,7 +324,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		} else {
 			mode = "CPU"
 		}
-		dbg.print(terminal.StyleFeedback, "granularity: %s", mode)
+		dbg.printLine(terminal.StyleFeedback, "granularity: %s", mode)
 
 	case cmdScript:
 		option, _ := tokens.Get()
@@ -374,7 +374,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		if err != nil {
 			return doNothing, err
 		}
-		dbg.print(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
+		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
 
 	case cmdDisassembly:
 		option, _ := tokens.Get()
@@ -382,7 +382,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		s := &bytes.Buffer{}
 		dbg.disasm.Write(s, bytecode)
-		dbg.print(terminal.StyleFeedback, s.String())
+		dbg.printLine(terminal.StyleFeedback, s.String())
 
 	case cmdGrep:
 		scope := disassembly.GrepAll
@@ -401,9 +401,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		output := strings.Builder{}
 		dbg.disasm.Grep(&output, scope, search, false)
 		if output.Len() == 0 {
-			dbg.print(terminal.StyleError, "%s not found in disassembly", search)
+			dbg.printLine(terminal.StyleError, "%s not found in disassembly", search)
 		} else {
-			dbg.print(terminal.StyleFeedback, output.String())
+			dbg.printLine(terminal.StyleFeedback, output.String())
 		}
 
 	case cmdSymbol:
@@ -434,7 +434,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			table, symbol, address, err := dbg.disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
 			if err != nil {
 				if errors.Is(err, errors.SymbolUnknown) {
-					dbg.print(terminal.StyleFeedback, "%s -> not found", symbol)
+					dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
 					return doNothing, nil
 				}
 				return doNothing, err
@@ -447,7 +447,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					// already caught by command line ValidateTokens()
 
 				case "ALL", "MIRRORS":
-					dbg.print(terminal.StyleFeedback, "%s -> %#04x", symbol, address)
+					dbg.printLine(terminal.StyleFeedback, "%s -> %#04x", symbol, address)
 
 					// find all instances of symbol address in memory space
 					// assumption: the address returned by SearchSymbol is the
@@ -455,21 +455,21 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					for m := address + 1; m < memorymap.OriginCart; m++ {
 						ai := dbg.dbgmem.mapAddress(m, table == symbols.ReadSymTable)
 						if ai.mappedAddress == address {
-							dbg.print(terminal.StyleFeedback, "%s (%s) -> %#04x", symbol, table, m)
+							dbg.printLine(terminal.StyleFeedback, "%s (%s) -> %#04x", symbol, table, m)
 						}
 					}
 				}
 			} else {
-				dbg.print(terminal.StyleFeedback, "%s (%s)-> %#04x", symbol, table, address)
+				dbg.printLine(terminal.StyleFeedback, "%s (%s)-> %#04x", symbol, table, address)
 			}
 		}
 
 	case cmdOnHalt:
 		if tokens.Remaining() == 0 {
 			if dbg.commandOnHalt == "" {
-				dbg.print(terminal.StyleFeedback, "auto-command on halt: OFF")
+				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
 			} else {
-				dbg.print(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 			}
 			return doNothing, nil
 		}
@@ -500,9 +500,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		// display the new/restored ONHALT command(s)
 		if newOnHalt == "" {
-			dbg.print(terminal.StyleFeedback, "auto-command on halt: OFF")
+			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
 		} else {
-			dbg.print(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 
 			// store the new command so we can reuse it after an ONHALT OFF
 			//
@@ -515,9 +515,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
 			if dbg.commandOnStep == "" {
-				dbg.print(terminal.StyleFeedback, "auto-command on step: OFF")
+				dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
 			} else {
-				dbg.print(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+				dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 			}
 			return doNothing, nil
 		}
@@ -548,9 +548,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		// display the new/restored ONSTEP command(s)
 		if newOnStep == "" {
-			dbg.print(terminal.StyleFeedback, "auto-command on step: OFF")
+			dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
 		} else {
-			dbg.print(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+			dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 
 			// store the new command so we can reuse it after an ONSTEP OFF
 			// !!TODO: normalise case of specified command sequence
@@ -571,7 +571,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		if ok {
 			switch strings.ToUpper(option) {
 			case "DEFN":
-				dbg.print(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
+				dbg.printLine(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
 				break
 
 			case "BYTECODE":
@@ -590,20 +590,20 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Notes, d.Notes))
 
 		if dbg.vcs.CPU.LastResult.Final {
-			dbg.print(terminal.StyleCPUStep, s.String())
+			dbg.printLine(terminal.StyleCPUStep, s.String())
 		} else {
-			dbg.print(terminal.StyleVideoStep, s.String())
+			dbg.printLine(terminal.StyleVideoStep, s.String())
 		}
 
 	case cmdMemMap:
-		dbg.print(terminal.StyleInstrument, "%v", memorymap.Summary())
+		dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()
 		if ok {
 			switch arg {
 			case "ANALYSIS":
-				dbg.print(terminal.StyleFeedback, dbg.disasm.Analysis())
+				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis())
 			case "BANK":
 				bank, _ := tokens.Get()
 				n, _ := strconv.Atoi(bank)
@@ -631,7 +631,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					// program counter can be a 16 bit number
 					v, err := strconv.ParseUint(value, 0, 16)
 					if err != nil {
-						dbg.print(terminal.StyleError, "value must be a positive 16 number")
+						dbg.printLine(terminal.StyleError, "value must be a positive 16 number")
 					}
 
 					dbg.vcs.CPU.PC.Load(uint16(v))
@@ -639,7 +639,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					// 6507 registers are 8 bit
 					v, err := strconv.ParseUint(value, 0, 8)
 					if err != nil {
-						dbg.print(terminal.StyleError, "value must be a positive 8 number")
+						dbg.printLine(terminal.StyleError, "value must be a positive 8 number")
 					}
 
 					var reg *registers.Register
@@ -668,9 +668,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 				}
 
 				if dbg.reportCPUBugs {
-					dbg.print(terminal.StyleFeedback, "CPU bug reporting: ON")
+					dbg.printLine(terminal.StyleFeedback, "CPU bug reporting: ON")
 				} else {
-					dbg.print(terminal.StyleFeedback, "CPU bug reporting: OFF")
+					dbg.printLine(terminal.StyleFeedback, "CPU bug reporting: OFF")
 				}
 
 			default:
@@ -688,9 +688,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			// perform peek
 			ai, err := dbg.dbgmem.peek(a)
 			if err != nil {
-				dbg.print(terminal.StyleError, "%s", err)
+				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
-				dbg.print(terminal.StyleInstrument, ai.String())
+				dbg.printLine(terminal.StyleInstrument, ai.String())
 			}
 
 			// loop through all addresses
@@ -706,30 +706,30 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		val, err := strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			dbg.print(terminal.StyleError, "poke value must be 8bit number (%s)", v)
+			dbg.printLine(terminal.StyleError, "poke value must be 8bit number (%s)", v)
 			return doNothing, nil
 		}
 
 		// perform single poke
 		ai, err := dbg.dbgmem.poke(a, uint8(val))
 		if err != nil {
-			dbg.print(terminal.StyleError, "%s", err)
+			dbg.printLine(terminal.StyleError, "%s", err)
 		} else {
-			dbg.print(terminal.StyleInstrument, ai.String())
+			dbg.printLine(terminal.StyleInstrument, ai.String())
 		}
 
 	case cmdPatch:
 		f, _ := tokens.Get()
 		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
 		if err != nil {
-			dbg.print(terminal.StyleError, "%v", err)
+			dbg.printLine(terminal.StyleError, "%v", err)
 			if patched {
-				dbg.print(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
+				dbg.printLine(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
 			}
 			return doNothing, nil
 		}
 		if patched {
-			dbg.print(terminal.StyleEmulatorInfo, "cartridge patched")
+			dbg.printLine(terminal.StyleEmulatorInfo, "cartridge patched")
 		}
 
 	case cmdHexLoad:
@@ -738,7 +738,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 
 		addr, err := strconv.ParseUint(a, 0, 16)
 		if err != nil {
-			dbg.print(terminal.StyleError, "hexload address must be 16bit number (%s)", a)
+			dbg.printLine(terminal.StyleError, "hexload address must be 16bit number (%s)", a)
 			return doNothing, nil
 		}
 
@@ -748,7 +748,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		for present {
 			val, err := strconv.ParseUint(v, 0, 8)
 			if err != nil {
-				dbg.print(terminal.StyleError, "hexload value must be 8bit number (%s)", addr)
+				dbg.printLine(terminal.StyleError, "hexload value must be 8bit number (%s)", addr)
 				v, present = tokens.Get()
 				continue // for loop (without advancing address)
 			}
@@ -756,9 +756,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			// perform individual poke
 			ai, err := dbg.dbgmem.poke(uint16(addr), uint8(val))
 			if err != nil {
-				dbg.print(terminal.StyleError, "%s", err)
+				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
-				dbg.print(terminal.StyleInstrument, ai.String())
+				dbg.printLine(terminal.StyleInstrument, ai.String())
 			}
 
 			// loop through all values
@@ -775,9 +775,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 				cartRAM := dbg.vcs.Mem.Cart.RAM()
 				if len(cartRAM) > 0 {
 					// !!TODO: better presentation of cartridge RAM
-					dbg.print(terminal.StyleInstrument, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
+					dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
 				} else {
-					dbg.print(terminal.StyleFeedback, "cartridge does not contain any additional RAM")
+					dbg.printLine(terminal.StyleFeedback, "cartridge does not contain any additional RAM")
 				}
 
 			}
@@ -825,7 +825,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				dbg.print(terminal.StyleInstrument, dbg.tv.GetSpec().ID)
+				dbg.printLine(terminal.StyleInstrument, dbg.tv.GetSpec().ID)
 			default:
 				// already caught by command line ValidateTokens()
 			}
@@ -1109,19 +1109,19 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(terminal.StyleFeedback, "breakpoint #%d dropped", num)
+			dbg.printLine(terminal.StyleFeedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(terminal.StyleFeedback, "trap #%d dropped", num)
+			dbg.printLine(terminal.StyleFeedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
 				return doNothing, err
 			}
-			dbg.print(terminal.StyleFeedback, "watch #%d dropped", num)
+			dbg.printLine(terminal.StyleFeedback, "watch #%d dropped", num)
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -1132,18 +1132,18 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		switch clear {
 		case "BREAKS":
 			dbg.breakpoints.clear()
-			dbg.print(terminal.StyleFeedback, "breakpoints cleared")
+			dbg.printLine(terminal.StyleFeedback, "breakpoints cleared")
 		case "TRAPS":
 			dbg.traps.clear()
-			dbg.print(terminal.StyleFeedback, "traps cleared")
+			dbg.printLine(terminal.StyleFeedback, "traps cleared")
 		case "WATCHES":
 			dbg.watches.clear()
-			dbg.print(terminal.StyleFeedback, "watches cleared")
+			dbg.printLine(terminal.StyleFeedback, "watches cleared")
 		case "ALL":
 			dbg.breakpoints.clear()
 			dbg.traps.clear()
 			dbg.watches.clear()
-			dbg.print(terminal.StyleFeedback, "breakpoints, traps and watches cleared")
+			dbg.printLine(terminal.StyleFeedback, "breakpoints, traps and watches cleared")
 		default:
 			// already caught by command line ValidateTokens()
 		}

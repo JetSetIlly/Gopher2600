@@ -200,7 +200,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 		scr, err := script.RescribeScript(initScript)
 		if err != nil {
-			dbg.print(terminal.StyleError, "error running debugger initialisation script: %s\n", err)
+			dbg.printLine(terminal.StyleError, "error running debugger initialisation script: %s\n", err)
 		}
 
 		err = dbg.inputLoop(scr, false)
@@ -238,7 +238,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
 	if err != nil {
-		dbg.print(terminal.StyleError, "%s", err)
+		dbg.printLine(terminal.StyleError, "%s", err)
 		// continuing because symtable is always valid even if err non-nil
 	}
 

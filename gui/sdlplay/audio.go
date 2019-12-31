@@ -58,7 +58,14 @@ func (scr *SdlPlay) SetAudio(audioData uint8) error {
 		return scr.FlushAudio()
 	}
 
-	scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
+	// never allow sound buffer to "output" silence - some sound devices take
+	// an appreciable amount of time to move from silence to non-silence
+	if audioData == 0 {
+		scr.snd.buffer[scr.snd.bufferCt] = scr.snd.spec.Silence + 1
+	} else {
+		scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
+	}
+
 	scr.snd.bufferCt++
 
 	return nil

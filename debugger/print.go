@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-// all print operations from the debugger should be made with the this print()
+// all print operations from the debugger should be made with the this printLine()
 // function. output will be normalised and sent to the attached terminal as
 // required.
-func (dbg *Debugger) print(sty terminal.Style, s string, a ...interface{}) {
+func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
 	// resolve string placeholders for styles other than the help style. not
 	// filtering the help style causes HELP output to fail; because the
 	// commandline template uses fmt style placeholders.
@@ -51,6 +51,6 @@ func (dbg *Debugger) printStyle(sty terminal.Style) *styleWriter {
 }
 
 func (wrt styleWriter) Write(p []byte) (n int, err error) {
-	wrt.dbg.print(wrt.style, string(p))
+	wrt.dbg.printLine(wrt.style, string(p))
 	return len(p), nil
 }

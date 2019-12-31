@@ -11,5 +11,5 @@ type instrumentation interface {
 }
 
 func (dbg *Debugger) printInstrument(mi instrumentation) {
-	dbg.print(terminal.StyleInstrument, "%s", mi.String())
+	dbg.printLine(terminal.StyleInstrument, "%s", mi.String())
 }
