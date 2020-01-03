@@ -1273,7 +1273,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// undocumented instructions
 
-	case "dop":
+	case "nop":
 		// does nothing (2 byte nop)
 
 	case "lax":

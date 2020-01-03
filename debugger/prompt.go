@@ -46,7 +46,21 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		prompt.WriteString(" ]")
 	} else {
 		// incomplete disassembly, prepare "no disasm" prompt
-		prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", promptAddress, promptBank))
+		ai := dbg.dbgmem.mapAddress(promptAddress, true)
+		if ai == nil {
+			prompt.WriteString(fmt.Sprintf(" %#04x (%d) unmappable address ]", promptAddress, promptBank))
+		} else {
+			switch ai.area {
+			case memorymap.RAM:
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) in RAM! ]", promptAddress, promptBank))
+			case memorymap.Cartridge:
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", promptAddress, promptBank))
+			default:
+				// if we're not in RAM or Cartridge space then we must be in
+				// the TIA or RIOT - this would be very odd indeed
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) WTF! ]", promptAddress, promptBank))
+			}
+		}
 	}
 
 	// display indicator that the CPU is waiting for WSYNC to end. only applies

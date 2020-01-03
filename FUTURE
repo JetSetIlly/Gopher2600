@@ -64,6 +64,10 @@ o cartridge
 	  bytes in the file. this will allow loading of cartridges through some
 		other mechanism apart from the filesystem (eg. archive, network)
 
+o panel
+	- reflect panel changes in gui. the Panel.Handle() function would be a good
+	  place, probably with a callback argument rather than passing an GUI
+	  interface.
 
 sdl screen
 ----------
