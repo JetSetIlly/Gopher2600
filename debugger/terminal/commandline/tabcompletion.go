@@ -11,7 +11,7 @@ import (
 // TabCompletion should be initialised once with the instance of Commands it is
 // to work with.
 type TabCompletion struct {
-	commands *Commands
+	cmds *Commands
 
 	matches []string
 	match   int
@@ -21,8 +21,8 @@ type TabCompletion struct {
 
 // NewTabCompletion initialises a new TabCompletion instance. Completion works
 // best if Commands has been sorted
-func NewTabCompletion(commands *Commands) *TabCompletion {
-	tc := &TabCompletion{commands: commands}
+func NewTabCompletion(cmds *Commands) *TabCompletion {
+	tc := &TabCompletion{cmds: cmds}
 	tc.Reset()
 	return tc
 }
@@ -77,8 +77,8 @@ func (tc *TabCompletion) Complete(input string) string {
 	tok = strings.ToUpper(tok)
 
 	// look for match
-	for i := range *tc.commands {
-		n := (*tc.commands)[i]
+	for i := range tc.cmds.cmds {
+		n := tc.cmds.cmds[i]
 
 		// if there is an exact match then recurse into the node looking for
 		// where the last token coincides with the node tree

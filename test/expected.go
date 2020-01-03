@@ -50,13 +50,13 @@ func ExpectedSuccess(t *testing.T, v interface{}) bool {
 	switch v := v.(type) {
 	case bool:
 		if !v {
-			t.Errorf("expected failure (bool)")
+			t.Errorf("expected success (bool)")
 			return false
 		}
 
 	case error:
 		if v != nil {
-			t.Errorf("expected failure (error)")
+			t.Errorf("expected success (error: %v)", v)
 			return false
 		}
 

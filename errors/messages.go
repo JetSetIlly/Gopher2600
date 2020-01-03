@@ -20,12 +20,15 @@ const (
 	DisassemblyError = "error during disassembly: %v"
 
 	// debugger
-	ParserError     = "parser error: %v: %v (char %d)" // first placeholder is the command definition
-	ValidationError = "%v for %v"
-	InvalidTarget   = "invalid target (%v)"
-	CommandError    = "%v"
-	TerminalError   = "%v"
-	GUIEventError   = "%v"
+	InvalidTarget = "invalid target (%v)"
+	CommandError  = "%v"
+	TerminalError = "%v"
+	GUIEventError = "%v"
+
+	// commandline
+	ParserError     = "parser error: %v"
+	HelpError       = "help error: %v"
+	ValidationError = "%v"
 
 	// dissassembly
 	DisasmError = "disasm error: %v"

@@ -16,7 +16,6 @@ package commandline
 import (
 	"fmt"
 	"gopher2600/errors"
-	"io"
 	"strings"
 )
 
@@ -36,16 +35,17 @@ import (
 //   %P		irrational number value
 //   %S     string (numbers can be strings too)
 //   %F     file name
-func ParseCommandTemplate(template []string) (*Commands, error) {
-	return ParseCommandTemplateWithOutput(template, nil)
-}
-
-// ParseCommandTemplateWithOutput is the same as ParseCommandTemplate but with
-// the outputting of optimised definitions
 //
-// an output argument of nil is valid
-func ParseCommandTemplateWithOutput(template []string, output io.Writer) (*Commands, error) {
-	cmds := make(Commands, 0, 10)
+// Placeholders can be labelled. For example:
+//
+//   %<first name>S
+//   %<age>N
+func ParseCommandTemplate(template []string) (*Commands, error) {
+	cmds := &Commands{
+		cmds:  make([]*node, 0, 10),
+		Index: make(map[string]*node),
+	}
+
 	for t := range template {
 		defn := template[t]
 
@@ -59,27 +59,24 @@ func ParseCommandTemplateWithOutput(template []string, output io.Writer) (*Comma
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
 		if err != nil {
-			return nil, errors.New(errors.ParserError, defn, err, d)
+			return nil, errors.New(errors.ParserError, fmt.Sprintf("%s [line %d, col %d]", err, t, d))
 		}
 
 		// check that parsing was complete
 		if d < len(defn)-1 {
-			return nil, errors.New(errors.ParserError, defn, "outstanding characters in definition")
+			return nil, errors.New(errors.ParserError, fmt.Sprintf("outstanding characters in definition [line %d, col %d]", t, d))
 		}
 
 		// add to list of commands (order doesn't matter at this stage)
-		cmds = append(cmds, p)
-
-		// output optimisations
-		if output != nil && p.String() != defn {
-			output.Write([]byte(defn))
-			output.Write([]byte(" -> "))
-			output.Write([]byte(p.String()))
-			output.Write([]byte("\n"))
-		}
+		cmds.cmds = append(cmds.cmds, p)
 	}
 
-	return &cmds, nil
+	// build index
+	for ci := range cmds.cmds {
+		cmds.Index[cmds.cmds[ci].tag] = cmds.cmds[ci]
+	}
+
+	return cmds, nil
 }
 
 func parseDefinition(defn string, trigger string) (*node, int, error) {
@@ -99,7 +96,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		case "":
 			return &node{typ: nodeRoot}, nil
 		default:
-			return nil, errors.New(errors.ParserError, defn, "unknown group type")
+			return nil, fmt.Errorf("unknown group type (%s)", trigger)
 		}
 	}
 
@@ -322,18 +319,35 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 				return nil, i, fmt.Errorf("orphaned placeholder directives not allowed")
 			}
 
-			// add placeholder to working node if it is recognised
-			p := string(defn[i+1])
+			i++
+			p := string(defn[i])
+
+			// test to see if the placeholder has a label
+			if p == "<" {
+				var j int
+				for j = i + 1; j < len(defn); j++ {
+					if defn[j] == '>' {
+						// found the close label delimiter,
+						wn.placeholderLabel = strings.ToLower(defn[i+1 : j])
+						break
+					}
+				}
+
+				i = j + 1
+
+				// if the label is the last thing in the definition then by
+				// definition, this is not a valid placeholder
+				if i >= len(defn) {
+					return nil, i, fmt.Errorf("orphaned placeholder labels not labelled")
+				}
+
+				p = string(defn[i])
+			}
 
 			if p != "N" && p != "P" && p != "S" && p != "F" && p != "%" {
 				return nil, i, fmt.Errorf("unknown placeholder directive (%s)", wn.tag)
 			}
-
 			wn.tag = fmt.Sprintf("%%%s", p)
-
-			// we've consumed an additional character when retreiving a value
-			// for p
-			i++
 
 		case ' ':
 			// tokens are separated by spaces as well group markers

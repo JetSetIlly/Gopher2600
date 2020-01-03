@@ -17,7 +17,7 @@ import (
 // represented.
 func expectEquality(t *testing.T, template []string, cmds *commandline.Commands) bool {
 	t.Helper()
-	if strings.ToUpper(strings.Join(template, "\n")) != cmds.String() {
+	if strings.ToUpper(strings.Join(template, "\n")) != strings.ToUpper(cmds.String()) {
 		t.Errorf("parsed commands do not match template")
 		return false
 	}
@@ -264,10 +264,26 @@ func TestParser_addHelp(t *testing.T) {
 		expectEquality(t, template, cmds)
 	}
 
-	err = cmds.AddHelp("HELP")
+	err = cmds.AddHelp("HELP", map[string]string{})
 	test.ExpectedSuccess(t, err)
 
 	// adding a second HELP command is not allowed
-	err = cmds.AddHelp("HELP")
+	err = cmds.AddHelp("HELP", map[string]string{})
 	test.ExpectedFailure(t, err)
+}
+
+func TestParser_placeholderLabels(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{
+		"FOO %<bar>S",
+	}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+	if test.ExpectedSuccess(t, err) {
+		expectEquivalency(t, cmds)
+		expectEquality(t, template, cmds)
+	}
 }

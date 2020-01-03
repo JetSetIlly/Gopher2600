@@ -21,28 +21,29 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 	}
 	cmd = strings.ToUpper(cmd)
 
-	for n := range cmds {
-		if cmd == cmds[n].tag {
+	for n := range cmds.cmds {
+		if cmd == cmds.cmds[n].tag {
 
-			err := cmds[n].validate(tokens, false)
+			err := cmds.cmds[n].validate(tokens, false)
 			if err != nil {
 				// preserve FormattedError type
 				if _, ok := err.(errors.AtariError); ok {
 					return err
 				}
-				return errors.New(errors.ValidationError, err, cmd)
+				return errors.New(errors.ValidationError, fmt.Sprintf("%s: %s", cmd, err))
 			}
 
 			// if we've reached this point and there are still oustanding
 			// tokens in the queue then something has gone wrong.
-			//
-			// the "unrecognised argument" message seems to make sense in all
-			// scenarios where this situation can arise. originally, the error
-			// message was "too many arguments" but this was sometimes
-			// misleading.
 			if tokens.Remaining() > 0 {
 				arg, _ := tokens.Get()
-				return errors.New(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s)", arg), cmd)
+
+				// special handling for help command
+				if cmd == cmds.helpCommand {
+					return errors.New(errors.ValidationError, fmt.Sprintf("no help for %s", strings.ToUpper(arg)))
+				}
+
+				return errors.New(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s) for %s", arg, cmd))
 			}
 
 			return nil
@@ -67,7 +68,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		}
 
 		// speculatively validate the next node. don't do anything with any
-		// error just yet. if there is an error we need to validate against nay
+		// error just yet. if there is an error we need to validate against any
 		// branches. if there is still no match we cam return the error then
 
 		err := n.next[0].validate(tokens, true)
@@ -104,15 +105,8 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	if !ok {
 		// we treat arguments in the root-group as though they are required
 		if n.typ == nodeRequired || n.typ == nodeRoot {
-			s := strings.Builder{}
-			if len(n.branch) > 0 {
-				return fmt.Errorf("missing a required argument (%s)", n.branchesText())
-			}
-			s.WriteString("missing ")
-			s.WriteString(n.tagVerbose())
-			return fmt.Errorf(s.String())
+			return fmt.Errorf("%s required", n.nodeVerbose())
 		}
-
 		return nil
 	}
 

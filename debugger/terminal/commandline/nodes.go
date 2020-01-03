@@ -5,36 +5,6 @@ import (
 	"strings"
 )
 
-// Commands is the root of the command tree. the top-level of the Commands tree
-// is an array of nodes. each of these nodes is the start of a command.
-type Commands []*node
-
-// Len implements Sort package interface
-func (cmds Commands) Len() int {
-	return len(cmds)
-}
-
-// Less implements Sort package interface
-func (cmds Commands) Less(i int, j int) bool {
-	return cmds[i].tag < cmds[j].tag
-}
-
-// Swap implements Sort package interface
-func (cmds Commands) Swap(i int, j int) {
-	swp := cmds[i]
-	cmds[i] = cmds[j]
-	cmds[j] = swp
-}
-
-func (cmds Commands) String() string {
-	s := strings.Builder{}
-	for c := range cmds {
-		s.WriteString(fmt.Sprintf("%v", cmds[c]))
-		s.WriteString("\n")
-	}
-	return strings.TrimRight(s.String(), "\n")
-}
-
 type nodeType int
 
 const (
@@ -48,6 +18,10 @@ type node struct {
 	// tag should be non-empty - except in the case of some nested groups
 	tag string
 
+	// friendly name for the placeholder tags. not used if tag is not a
+	// placeholder. you can use isPlaceholder() to check
+	placeholderLabel string
+
 	typ nodeType
 
 	next   []*node
@@ -57,8 +31,22 @@ type node struct {
 	repeat      *node
 }
 
-// String returns the string representation of the node (and it's children)
+// String returns the verbose representation of the node (and its children).
+// Use this only for testing/validation purposes. HelpString() is more useful
+// to the end user.
 func (n node) String() string {
+	return n.outerString(false)
+}
+
+// HelpString returns the string representation of the node (and it's children)
+// without extraneous placeholder directives (if placeholderLabel is available)
+//
+// So called because it's better to use when displaying help
+func (n node) usageString() string {
+	return n.outerString(true)
+}
+
+func (n node) outerString(preferLabels bool) string {
 	s := strings.Builder{}
 
 	if n.repeatStart {
@@ -76,11 +64,11 @@ func (n node) String() string {
 		}()
 	}
 
-	s.WriteString(n.stringBuilder())
+	s.WriteString(n.innerString(preferLabels))
 	return s.String()
 }
 
-// stringBuilder() outputs the node, and any children, as best as it can. when called
+// innerString() outputs the node, and any children, as best as it can. when called
 // upon the first node in a command it has the effect of recreating the
 // original input to each template entry parsed by ParseCommandTemplate()
 //
@@ -98,13 +86,23 @@ func (n node) String() string {
 //
 //		TEST [1 2 3 4 5]
 //
-// note: stringBuilder should not be called directly except as a recursive call
+// note: innerString should not be called directly except as a recursive call
 // or as an initial call from String()
 //
-func (n node) stringBuilder() string {
+func (n node) innerString(preferLabels bool) string {
 	s := strings.Builder{}
 
-	s.WriteString(n.tag)
+	if n.isPlaceholder() && n.placeholderLabel != "" {
+		// placeholder labels come without angle brackets
+		label := fmt.Sprintf("<%s>", n.placeholderLabel)
+		if preferLabels {
+			s.WriteString(label)
+		} else {
+			s.WriteString(fmt.Sprintf("%%%s%c", label, n.tag[1]))
+		}
+	} else {
+		s.WriteString(n.tag)
+	}
 
 	if n.next != nil {
 		for i := range n.next {
@@ -128,7 +126,7 @@ func (n node) stringBuilder() string {
 				s.WriteString(prefix)
 			}
 
-			s.WriteString(n.next[i].stringBuilder())
+			s.WriteString(n.next[i].innerString(preferLabels))
 
 			if n.next[i].typ == nodeRequired && (n.typ != nodeRequired || n.next[i].branch != nil) {
 				s.WriteString("]")
@@ -144,7 +142,7 @@ func (n node) stringBuilder() string {
 
 	if n.branch != nil {
 		for i := range n.branch {
-			s.WriteString(fmt.Sprintf("|%s", n.branch[i].stringBuilder()))
+			s.WriteString(fmt.Sprintf("|%s", n.branch[i].innerString(preferLabels)))
 		}
 	}
 
@@ -158,8 +156,9 @@ func (n node) stringBuilder() string {
 	return strings.TrimSpace(s.String())
 }
 
-// branchesText creates a readable string, listing all the branchesText of the node
-func (n node) branchesText() string {
+// nodeVerbose returns a readable representation of the node, listing branches
+// if necessary
+func (n node) nodeVerbose() string {
 	s := strings.Builder{}
 	s.WriteString(n.tagVerbose())
 	for bi := range n.branch {
@@ -171,18 +170,32 @@ func (n node) branchesText() string {
 	return s.String()
 }
 
-// tagVerbose returns a decriptive string for placeholder values
+// tagVerbose returns a readable versions of the tag field, using labels if
+// possible
 func (n node) tagVerbose() string {
-	switch n.tag {
-	case "%S":
-		return "string argument"
-	case "%N":
-		return "numeric argument"
-	case "%P":
-		return "floating-point argument"
-	case "%F":
-		return "filename argument"
-	default:
-		return n.tag
+	if n.isPlaceholder() {
+		if n.placeholderLabel != "" {
+			return n.placeholderLabel
+		}
+
+		switch n.tag {
+		case "%S":
+			return "string argument"
+		case "%N":
+			return "numeric argument"
+		case "%P":
+			return "floating-point argument"
+		case "%F":
+			return "filename argument"
+		default:
+			return "placeholder argument"
+		}
 	}
+	return n.tag
+}
+
+// isPlaceholder checks tag to see if it is a placeholder. does not check to
+// see if placeholder is valid
+func (n node) isPlaceholder() bool {
+	return len(n.tag) == 2 && n.tag[0] == '%'
 }

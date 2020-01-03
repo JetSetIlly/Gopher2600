@@ -1,7 +1,6 @@
 package debugger
 
-// Help contains the help text for the debugger's top level commands
-var help = map[string]string{
+var helps = map[string]string{
 	cmdHelp: "Lists commands and provides help for individual commands.",
 
 	cmdReset: `Reset the emulated machine (including television) to its initial state. The
