@@ -5,7 +5,6 @@ import (
 	"gopher2600/errors"
 	"io"
 	"os"
-	"strings"
 )
 
 // Scribe can be used again after a start()/end() cycle. isWriting()
@@ -114,20 +113,6 @@ func (scr *Scribe) WriteInput(command string) {
 	scr.Commit()
 	if command != "" {
 		scr.inputLine = fmt.Sprintf("%s\n", command)
-	}
-}
-
-// WriteOutput writes emulator-output to the open script file
-func (scr *Scribe) WriteOutput(result string, args ...interface{}) {
-	if !scr.IsActive() || scr.playbackDepth > 0 || result == "" {
-		return
-	}
-
-	result = fmt.Sprintf(result, args...)
-
-	lines := strings.Split(result, "\n")
-	for i := range lines {
-		scr.outputLine = fmt.Sprintf("%s%s%s\n", scr.outputLine, outputDelimiter, lines[i])
 	}
 }
 

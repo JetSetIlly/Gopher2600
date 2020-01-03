@@ -320,6 +320,11 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 		case scriptRecordEnded:
 			// nothing special required when script recording has completed
+
+		case helpCalled:
+			// help can be called during script recording but we don't want to
+			// include it
+			dbg.scriptScribe.Rollback()
 		}
 
 	}

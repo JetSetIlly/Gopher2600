@@ -27,12 +27,7 @@ func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
 		return
 	}
 
-	dbg.term.TermPrint(sty, s)
-
-	// output to script file
-	if sty.IncludeInScriptOutput() {
-		dbg.scriptScribe.WriteOutput(s)
-	}
+	dbg.term.TermPrintLine(sty, s)
 }
 
 // styleWriter implements the io.Writer interface. it is useful for when an

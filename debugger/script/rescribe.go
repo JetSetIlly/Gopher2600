@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-const outputDelimiter = ">> "
+const commentLine = "#"
 
-// check if line is prepended with outputDelimiter (ignoring leading spaces)
+// check if line is prepended with commentLine (ignoring leading spaces)
 func isOutputLine(line string) bool {
-	return strings.HasPrefix(strings.TrimSpace(line), outputDelimiter)
+	return strings.HasPrefix(strings.TrimSpace(line), commentLine)
 }
 
 // Rescribe represents an previously scribed script. The type implements the
@@ -46,7 +46,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// convert buffer to an array of lines
 	scr.lines = strings.Split(string(buffer), "\n")
 
-	// pass over any lines starting with the outputDelimiter, leaving the line
+	// pass over any lines starting with the commentLine, leaving the line
 	// counter at the first input line.
 	for isOutputLine(scr.lines[scr.lineCt]) {
 		scr.lineCt++
@@ -76,7 +76,7 @@ func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ chan gui.Event
 	copy(buffer, []byte(scr.lines[scr.lineCt]))
 	scr.lineCt++
 
-	// pass over any lines starting with the outputDelimiter
+	// pass over any lines starting with the commentLine
 	for scr.lineCt < len(scr.lines) && isOutputLine(scr.lines[scr.lineCt]) {
 		scr.lineCt++
 	}

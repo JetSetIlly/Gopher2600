@@ -164,6 +164,7 @@ const (
 	stepContinue
 	scriptRecordStarted
 	scriptRecordEnded
+	helpCalled
 )
 
 // parseCommand/enactCommand scans user input for a valid command and acts upon
@@ -259,6 +260,8 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		} else {
 			dbg.printLine(terminal.StyleHelp, debuggerCommands.String())
 		}
+
+		return helpCalled, nil
 
 	case cmdQuit:
 		if dbg.scriptScribe.IsActive() {

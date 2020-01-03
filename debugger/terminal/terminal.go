@@ -24,7 +24,7 @@ type Input interface {
 
 // Output defines the operations required by an interface that allows output.
 type Output interface {
-	TermPrint(Style, string, ...interface{})
+	TermPrintLine(Style, string, ...interface{})
 }
 
 // Terminal defines the operations required by the debugger's command line interface.

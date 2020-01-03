@@ -34,8 +34,8 @@ func (pt *PlainTerminal) CleanUp() {
 func (pt *PlainTerminal) RegisterTabCompletion(terminal.TabCompletion) {
 }
 
-// TermPrint implements the terminal.Terminal interface
-func (pt PlainTerminal) TermPrint(style terminal.Style, s string, a ...interface{}) {
+// TermPrintLine implements the terminal.Terminal interface
+func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string, a ...interface{}) {
 	if pt.silenced && style != terminal.StyleError {
 		return
 	}
@@ -59,7 +59,7 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, _ chan gu
 		return 0, nil
 	}
 
-	pt.TermPrint(prompt.Style, prompt.Content)
+	pt.TermPrintLine(prompt.Style, prompt.Content)
 
 	n, err := pt.input.Read(input)
 	if err != nil {

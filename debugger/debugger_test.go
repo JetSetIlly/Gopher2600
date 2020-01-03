@@ -106,7 +106,7 @@ func (trm *mockTerm) IsInteractive() bool {
 	return false
 }
 
-func (trm *mockTerm) TermPrint(sty terminal.Style, s string, a ...interface{}) {
+func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string, a ...interface{}) {
 	trm.out <- fmt.Sprintf(s, a...)
 }
 

@@ -39,20 +39,22 @@ at a time. Compared to the CPU quantum mode, the VIDEO quantum is more uniform
 but is inherently slower because of the increased number of BREAK, TRAP
 and WATCH checks performed by the debugger.`,
 
-	cmdScript: `Run commands from specified file or record commands to a file. Scripts recorded
-from the command line will include the output of the command. This is for
-reference only and has no effect when playing back scripts recorded in this
-way.
+	cmdScript: `Run commands from specified file or record commands to a file. The RECORD
+argument indicates that a new script is to be recorded. Recording will not
+start if the script file already exists.
 
-Some commands are disallowed in scripts. You cannot RUN in a script but you can
-STEP. Also you cannot record a new script while a script is being recorded or
-executed. You can however, playback scripts while recording a new script.
+Some commands are disallowed in scripts. In particular, you cannot RUN in a
+script (but you can STEP). Also, you cannot record a new script during another
+script operation but you can playback a script while recording.
 
 The debugger prompt will show that a script recording is taking place.
 Recording is halted with a call to QUIT or an interrupt signal (the Ctrl-C
 keypress). The quit event itself will not be recorded in the script. Manually
 including the QUIT command in a script however, will cause the debugger to
-exit.`,
+exit.
+
+When manually writing a script in text editor it is sometimes useful to write
+comments.  Comments are line oriented and are indicated by the # character.`,
 
 	cmdInsert: `Insert cartridge into emulation. Cartridge names (with paths) beginning with
 http:// will loaded via the http protocol. If no such protocol is present, the

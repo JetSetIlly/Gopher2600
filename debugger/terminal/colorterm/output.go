@@ -6,8 +6,8 @@ import (
 	"gopher2600/debugger/terminal/colorterm/ansi"
 )
 
-// TermPrint implements the terminal.Terminal interface
-func (ct *ColorTerminal) TermPrint(style terminal.Style, s string, a ...interface{}) {
+// TermPrintLine implements the terminal.Terminal interface
+func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string, a ...interface{}) {
 	if ct.silenced && style != terminal.StyleError {
 		return
 	}
