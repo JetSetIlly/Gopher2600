@@ -3,20 +3,38 @@ package disassembly
 import (
 	"fmt"
 	"gopher2600/disassembly/display"
+	"gopher2600/errors"
 	"io"
 )
 
-// Write writes the entire disassembly to io.Writer
-func (dsm *Disassembly) Write(output io.Writer, byteCode bool) {
+// Write the entire disassembly to io.Writer
+func (dsm *Disassembly) Write(output io.Writer, byteCode bool) error {
+	var err error
 	for bank := 0; bank < len(dsm.flow); bank++ {
-		output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
-
-		for i := range dsm.flow[bank] {
-			if d := dsm.flow[bank][i]; d != nil {
-				dsm.WriteLine(output, byteCode, d)
-			}
+		err = dsm.WriteBank(output, byteCode, bank)
+		if err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+// WriteBank writes the disassembly of the selected bank to io.Writer
+func (dsm *Disassembly) WriteBank(output io.Writer, byteCode bool, bank int) error {
+	if bank < 0 || bank > len(dsm.flow)-1 {
+		return errors.New(errors.DisasmError, fmt.Sprintf("no such bank (%d)", bank))
+	}
+
+	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
+
+	for i := range dsm.flow[bank] {
+		if d := dsm.flow[bank][i]; d != nil {
+			dsm.WriteLine(output, byteCode, d)
+		}
+	}
+
+	return nil
 }
 
 // WriteLine writes a single Instruction to io.Writer

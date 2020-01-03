@@ -236,12 +236,15 @@ func disasm(md *modalflag.Modes) error {
 		if err != nil {
 			// print what disassembly output we do have
 			if dsm != nil {
-				dsm.Write(md.Output, *bytecode)
+				// ignore any further errors
+				_ = dsm.Write(md.Output, *bytecode)
 			}
-
 			return errors.New(errors.DisassemblyError, err)
 		}
-		dsm.Write(md.Output, *bytecode)
+		err = dsm.Write(md.Output, *bytecode)
+		if err != nil {
+			return errors.New(errors.DisassemblyError, err)
+		}
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}

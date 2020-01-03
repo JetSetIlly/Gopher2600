@@ -17,7 +17,7 @@ const (
 	PlayError        = "error emulating vcs: %v"
 	DebuggerError    = "error debugging vcs: %v"
 	PerformanceError = "error during performance profiling: %v"
-	DisassemblyError = "error debugging disassembly: %v"
+	DisassemblyError = "error during disassembly: %v"
 
 	// debugger
 	ParserError     = "parser error: %v: %v (char %d)" // first placeholder is the command definition
@@ -28,7 +28,7 @@ const (
 	GUIEventError   = "%v"
 
 	// dissassembly
-	DisasmError = "disassembly error: %v"
+	DisasmError = "disasm error: %v"
 
 	// script
 	ScriptFileError       = "script error: %v"

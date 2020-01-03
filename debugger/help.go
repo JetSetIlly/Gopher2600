@@ -67,7 +67,9 @@ argument meanwhile can be used to switch banks (if possible).`,
 
 	cmdPatch: "Apply a patch file to the loaded cartridge",
 
-	cmdDisassembly: "Print the full cartridge disassembly.",
+	cmdDisassembly: `Display cartridge disassembly. By default, all banks will be displayed. Single
+banks can be displayed by specifying the bank number. Use BYTECODE to display raw bytes alongside
+the disassembly.`,
 
 	cmdGrep: `Simple string search (case insensitive) of the disassembly. Prints all matching lines
 in the disassembly to the termain.
@@ -75,8 +77,8 @@ in the disassembly to the termain.
 The scope of the GREP can be restricted to the MNEMONIC and OPERAND columns. By
 default GREP will consider the entire line.`,
 
-	cmdSymbol: `The SYMBOL command has two modes of operation. The first mode returns the address of the
-specified symbol. For example:
+	cmdSymbol: `The SYMBOL command has two modes of operation. The first mode returns the address of
+the specified symbol. For example:
 
 	SYMBOL CXM1P
 
@@ -116,9 +118,9 @@ By default the ONSTEP command is
 
 	ONSTEP LAST`,
 
-	cmdLast: `Prints the disassembly of the last cpu/video cycle. The BYTECODE argument causes the
-disassembly to include the bytecode for the instruction. The DEFN argument meanwhile will
-display the definition of the opcode that was used during execution.`,
+	cmdLast: `Prints the disassembly of the last cpu/video cycle. Use the BYTECODE argument 
+to display the raw bytes alongside the disassembly. The DEFN argument meanwhile
+will display the definition of the opcode that was used during execution.`,
 
 	cmdMemMap: "Display high-level VCS memory map.",
 

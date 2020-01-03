@@ -83,7 +83,7 @@ var commandTemplate = []string{
 	cmdInsert + " %F",
 	cmdCartridge + " (ANALYSIS|BANK %N)",
 	cmdPatch + " %S",
-	cmdDisassembly + " (BYTECODE)",
+	cmdDisassembly + " (BYTECODE) (%N)",
 	cmdGrep + " (MNEMONIC|OPERAND) %S",
 	cmdSymbol + " [%S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdOnHalt + " (OFF|ON|%S {%S})",
@@ -418,11 +418,33 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		}
 
 	case cmdDisassembly:
-		option, _ := tokens.Get()
-		bytecode := option == "BYTECODE"
+		bytecode := false
+		bank := -1
+
+		arg, ok := tokens.Get()
+		if ok {
+			switch arg {
+			case "BYTECODE":
+				bytecode = true
+			default:
+				bank, _ = strconv.Atoi(arg)
+			}
+		}
+
+		var err error
 
 		s := &bytes.Buffer{}
-		dbg.disasm.Write(s, bytecode)
+
+		if bank == -1 {
+			err = dbg.disasm.Write(s, bytecode)
+		} else {
+			err = dbg.disasm.WriteBank(s, bytecode, bank)
+		}
+
+		if err != nil {
+			return doNothing, err
+		}
+
 		dbg.printLine(terminal.StyleFeedback, s.String())
 
 	case cmdGrep:
