@@ -191,7 +191,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			// changes quantum
 			dbg.quantum = quantumVideo
 		default:
-			dbg.quantum = quantumCPU
+			// does not change quantum
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
@@ -698,6 +698,7 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			case "DELAYS":
 				// for convience asking for TIA delays also prints delays for
 				// the sprites
+				dbg.printInstrument(dbg.vcs.TIA.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Player0.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Player1.Delay)
 				dbg.printInstrument(dbg.vcs.TIA.Video.Missile0.Delay)

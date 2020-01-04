@@ -24,7 +24,7 @@ func NewTicker(label string) *Ticker {
 
 	// push empty elements into the pool
 	for i := 0; i < poolSize; i++ {
-		tck.pool.PushBack(&Event{ticker: tck, remainingCycles: -1})
+		tck.pool.PushBack(&Event{tck: tck, remainingCycles: -1})
 	}
 
 	// the pool begins with no active elements. the active sentinal is
@@ -45,7 +45,7 @@ func (tck Ticker) String() string {
 		s.WriteString(e.Value.(*Event).String())
 		s.WriteString("\n")
 	}
-	return s.String()
+	return strings.TrimRight(s.String(), "\n")
 }
 
 // Tick moves the pending action counter on one step
@@ -64,7 +64,7 @@ func (tck *Ticker) Tick() bool {
 			n := e.Next()
 
 			// move to front of inactive queue (after the active sentinal)
-			tck.pool.MoveAfter(e, tck.activeSentinal)
+			tck.pool.MoveToBack(e)
 
 			// continue for loop with next element noted above. we cannot just
 			// use e.Next() because we've moved it in the list so e.Next() will
@@ -84,7 +84,7 @@ func (tck *Ticker) drop(ev *Event) {
 	for e != nil && e != tck.activeSentinal {
 		if ev == e.Value.(*Event) {
 			// move to front of inactive queue (after the active sentinal)
-			tck.pool.MoveAfter(e, tck.activeSentinal)
+			tck.pool.MoveToBack(e)
 
 			// event has been found so we can return. job done.
 			return

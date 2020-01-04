@@ -66,7 +66,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	// display indicator that the CPU is waiting for WSYNC to end. only applies
 	// when in video step mode.
 	if videoCycle && !dbg.vcs.CPU.RdyFlg {
-		prompt.WriteString(" ! ")
+		prompt.WriteString(" !")
 	}
 
 	// video cycle prompt

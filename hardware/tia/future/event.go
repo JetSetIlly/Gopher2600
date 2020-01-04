@@ -8,7 +8,7 @@ import (
 // Event represents a single occurance of a payload sometime in the future
 type Event struct {
 	// the future ticker this event belongs to
-	ticker *Ticker
+	tck *Ticker
 
 	// label is a short decription describing the future payload
 	label string
@@ -66,6 +66,10 @@ func (ev *Event) tick() bool {
 
 	if ev.remainingCycles == -1 {
 		ev.runPayload()
+
+		// tick() should only be called tick the Ticker.Tick() function. moving
+		// the event to the inactive list happens there, rather than here.
+
 		return true
 	}
 
@@ -88,7 +92,7 @@ func (ev *Event) Force() {
 	}
 
 	ev.runPayload()
-	ev.ticker.drop(ev)
+	ev.tck.drop(ev)
 	ev.remainingCycles = -1
 }
 
@@ -102,7 +106,7 @@ func (ev *Event) Drop() {
 	if !ev.isActive() {
 		panic("cannot do that to a completed event")
 	}
-	ev.ticker.drop(ev)
+	ev.tck.drop(ev)
 	ev.remainingCycles = -1
 }
 

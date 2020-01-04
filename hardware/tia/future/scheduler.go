@@ -21,7 +21,13 @@ func (tck *Ticker) schedule(delay int, label string) *Event {
 		return nil
 	}
 
-	// move to the back of the active list (in front of the active sentinal)
+	// move to the end of the active list (in front of the active sentinal)
+	//
+	// a consequence of moving the event to the end of the active list, rather
+	// than the front of the list, can be seen when scheduling an event during
+	// the payload of another event. because the new event will be ticked
+	// straight away (it will be the last event in the active list tick
+	// sequence) the required delay is one more than you might expect.
 	tck.pool.MoveBefore(e, tck.activeSentinal)
 
 	// update event information

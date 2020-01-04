@@ -34,30 +34,31 @@ type Columns struct {
 func (col *Columns) Update(d *Instruction) {
 	if len(d.Location) > col.Widths.Location {
 		col.Widths.Location = len(d.Location)
-		col.Fmt.Location = fmt.Sprintf("%%%ds", col.Widths.Location)
 	}
 	if len(d.Bytecode) > col.Widths.Bytecode {
 		col.Widths.Bytecode = len(d.Bytecode)
-		col.Fmt.Bytecode = fmt.Sprintf("%%%ds", col.Widths.Bytecode)
 	}
 	if len(d.Address) > col.Widths.Address {
 		col.Widths.Address = len(d.Address)
-		col.Fmt.Address = fmt.Sprintf("%%%ds", col.Widths.Address)
 	}
 	if len(d.Mnemonic) > col.Widths.Mnemonic {
 		col.Widths.Mnemonic = len(d.Mnemonic)
-		col.Fmt.Mnemonic = fmt.Sprintf("%%%ds", col.Widths.Mnemonic)
 	}
 	if len(d.Operand) > col.Widths.Operand {
 		col.Widths.Operand = len(d.Operand)
-		col.Fmt.Operand = fmt.Sprintf("%%%ds", col.Widths.Operand)
 	}
 	if len(d.Cycles) > col.Widths.Cycles {
 		col.Widths.Cycles = len(d.Cycles)
-		col.Fmt.Cycles = fmt.Sprintf("%%%ds", col.Widths.Cycles)
 	}
 	if len(d.Notes) > col.Widths.Notes {
 		col.Widths.Notes = len(d.Notes)
-		col.Fmt.Notes = fmt.Sprintf("%%%ds", col.Widths.Notes)
 	}
+
+	col.Fmt.Location = fmt.Sprintf("%%%ds", col.Widths.Location)
+	col.Fmt.Bytecode = fmt.Sprintf("%%%ds", col.Widths.Bytecode)
+	col.Fmt.Address = fmt.Sprintf("%%%ds", col.Widths.Address)
+	col.Fmt.Mnemonic = fmt.Sprintf("%%%ds", col.Widths.Mnemonic)
+	col.Fmt.Operand = fmt.Sprintf("%%%ds", col.Widths.Operand)
+	col.Fmt.Cycles = fmt.Sprintf("%%%ds", col.Widths.Cycles)
+	col.Fmt.Notes = fmt.Sprintf("%%%ds", col.Widths.Notes)
 }
