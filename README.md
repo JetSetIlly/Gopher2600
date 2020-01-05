@@ -21,7 +21,7 @@ following in the project directory:
 	* CPU and Video stepping
 	* Breakpoints, traps, watches
 	* Script recording and playback
-* ROM Patching
+* ROM patching
 * Regression database
 	* useful for ensuring continuing code accuracy when changing the emulation code
 * Setup preferences for individual ROMs
@@ -72,7 +72,7 @@ Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
 ## ROMs used during development
 
-The following ROMs were used throughout developement and compared with the
+The following ROMs were used throughout development and compared with the
 Stella emulator for accuracy. As far as I can tell the following ROMs work more
 or less as you would expect:
 
@@ -90,6 +90,7 @@ or less as you would expect:
 * Tennis
 * Wabbit
 * Yar's Revenge
+* Midnight Madness
 
 ### Homebrew
 * Thrust (v1.2)
@@ -101,7 +102,7 @@ or less as you would expect:
 
 ## Compilation
 
-The project has most recently been tested with Go v1.13.4. Will not work with
+The project has most recently been tested with Go v1.13.4. It will not work with
 versions earlier than v1.13 because of language features added in that version
 (hex and binary literals).
 
@@ -143,7 +144,7 @@ For further help on the debugger, use the HELP command at the terminal.
 ## Player input
 
 Currently, only joystick controllers are supported and only for player 0.
-Moreover, you have to used the keyboard.
+Moreover, you have to use the keyboard.
 
 ### Joystick Player 0
 
@@ -169,7 +170,8 @@ is active.
 * \+ Increase screen size
 * \- Decrease screen size
 
-All controll/panel functionality is achievable with debugger commands.
+All controller/panel functionality is achievable with debugger commands (useful
+for scripting).
 
 ## Configuration folder
 
@@ -181,7 +183,7 @@ The UNIX method for hiding files has been used - I have no idea how this works
 on Windows etc.
 
 If that directory can be found in the current working directory then that is
-the path that will used. If it can't be found then the user's configuration
+the path that will be used. If it can't be found then the user's configuration
 folder is checked. On modern Linux based systems, this will be:
 
 > .config/gopher2600
