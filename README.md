@@ -203,12 +203,12 @@ very poor.
 ## Missing Features
 
 1. Paddle, keyboard, driving, lightgun controllers
-1. Not all CPU instructions are implemented. Although adding the missng opcodes
+1. Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
 1. Unimplemented cartridge formats
 	* F0 Megaboy
 	* AR Arcadia
-	* X1 chip (as used in Pitfal 2)
+	* X1 chip (as used in Pitfall 2)
 1. Disassembly of some cartridge formats is known to be inaccurate
 1. FUTURE and todo.txt files list other known issues
 
