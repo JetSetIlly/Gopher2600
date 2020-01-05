@@ -25,6 +25,6 @@ import (
 )
 
 func main() {
-	fmt.Println("web26000 test server listening on localhost:8080")
-	http.ListenAndServe(":8080", http.FileServer(http.Dir("www")))
+	fmt.Println("web26000 test server listening on localhost:2600")
+	http.ListenAndServe(":2600", http.FileServer(http.Dir("www")))
 }

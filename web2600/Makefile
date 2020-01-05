@@ -6,7 +6,7 @@ generate:
 
 clean:
 	@echo "removing binary and profiling files"
-	@rm -f web2600.wasm cpu.profile mem.profile
+	@rm -f www/web2600.wasm
 
 release:
 	GOOS=js GOARCH=wasm go build -o ./www/web2600.wasm ./src/

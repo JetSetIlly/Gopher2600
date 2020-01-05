@@ -41,7 +41,7 @@ func main() {
 
 	// load cartridge
 	cartload := cartridgeloader.Loader{
-		Filename: "http://localhost:8080/Pitfall.bin",
+		Filename: "http://localhost:2600/example.bin",
 	}
 
 	err = vcs.AttachCartridge(cartload)
