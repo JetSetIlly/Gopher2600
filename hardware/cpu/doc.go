@@ -32,8 +32,8 @@
 // Its sole argument is a callback function to be called at every cycle boundry
 // of the instruction.
 //
-// Let's assume mem is an instance of the CPUBus interface with some
-// appropriate 6507 instructions
+// Let's assume mem is an instance of the CPUBus interface loaded 6507
+// instructions.
 //
 //	mc, _ := cpu.NewCPU(mem)
 //
@@ -50,9 +50,8 @@
 // The above program does nothing interesting except to show how
 // ExecuteInstruction() can be used to pump information to an callback
 // function. The VCS emulation uses this to run the TIA emulation three times
-// for every CPU cycle - the CPU clock is rather at 1.19MHz while the TIA clock
-// is rated at 3.57Mhz. TIA emulation is discussed more fully in the TIA
-// package.
+// for every CPU cycle - the CPU clock runs at 1.19MHz while the TIA clock runs
+// at 3.57Mhz. TIA emulation is discussed more fully in the TIA package.
 //
 // The CPU type contains some public fields that are worthy of mention. The
 // LastResult field can be probed for information about the last instruction

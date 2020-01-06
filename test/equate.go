@@ -31,7 +31,7 @@ import (
 // cast the expected number value:
 //
 //	var r uint16
-//  r = someFunction()
+//	r = someFunction()
 //	test.Equate(t, r, 10)
 //
 // This is by no means a comprehensive comparison function. With a bit more

@@ -18,9 +18,8 @@
 // notice is not present ***
 
 // Package database is a very simple way of storing structured and arbitrary
-// entry types. (Note that we're using the term entry rather than record). It's
-// as simple as simple can be but is still useful in helping to organise what
-// is essentially a flat file.
+// entry types. It's as simple as simple can be but is still useful in helping
+// to organise what is essentially a flat file.
 //
 // Use of a database requires starting a "session". We do this with the
 // StartSession() function, coupled with an EndSession() once we're done. For
@@ -32,10 +31,9 @@
 // The first agument is the path to the database file on the local disk. The
 // second argument is a description of the type of activity that will be
 // happening during the session. In this instance, we saying that the database
-// will be created if it does not already exist. In this instance, if the
-// database already exists ActivityCreating is treated the same as
-// ActivityModifying. If we don't want to modify the database at all, then we
-// can use ActivityReading.
+// will be created if it does not already exist. If the database already exists
+// ActivityCreating is treated the same as ActivityModifying. If we don't want
+// to modify the database at all, then we can use ActivityReading.
 //
 // The third argument is the datbase initialisation function. An important part
 // of this database package is its ability to handle arbitrary entry types. The

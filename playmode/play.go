@@ -17,9 +17,6 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package playmode is a simple way of running the emulation. It handles setup
-// of the hardware, preparation of playback scripts (for recording or playback)
-// and attaching of a GUI and routing of input events.
 package playmode
 
 import (

@@ -1,7 +1,7 @@
-// This file is part of Gopher2600.
+// this file is part of gopher2600.
 //
-// Gopher2600 is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
+// gopher2600 is free software: you can redistribute it and/or modify
+// it under the terms of the gnu general public license as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
@@ -17,18 +17,6 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package cartridgeloader represents cartridge data when not attached to the
-// VCS. When a reference to a cartridge is required functions expect an
-// instance of cartridgeloader.Loader.
-//
-//	cl := cartridgeloader.Loader{
-//		Filename: "roms/Pitfall.bin",
-//	}
-//
-// When the cartridge is ready to be loaded the emulator calls the Load()
-// function. This function currently handles files (specified with Filename)
-// that are stored locally and also over http. Other protocols could easily be
-// added. A good improvement would be to allow loading from zip or tar files.
 package cartridgeloader
 
 import (

@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package performance contains helper functions realting to
+// Package performance contains helper functions relating to
 // performance. This includes CPU and memory profile generation.
 package performance
 

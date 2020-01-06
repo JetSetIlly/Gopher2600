@@ -28,9 +28,9 @@
 // with a bit of reorgnisation.
 //
 // There are lots of other things we could potentially do with the reflection
-// idea but as it currently is, it is a little underdeveloped. In particular,
-// it's rather slow but I'm not too worried about that because this is for
-// debugging not actually playing games and such.
+// idea but as it is, it is a little underdeveloped. In particular, it's rather
+// slow but I'm not too worried about that because this is for debugging not
+// actually playing games and such.
 //
 // I think the next thing this needs is a way of making the various monitors
 // switchable at runtime. As it is, what's compiled is what we get. If we

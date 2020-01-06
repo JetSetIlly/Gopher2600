@@ -26,9 +26,8 @@
 // cycle, returning a new sample every 114th video clock. The TIA_Process()
 // function in Frie's implementation meanwhile is called to fill a buffer. The
 // samepl buffer in this emulation must sit outside of the TIA emulation and
-// somwhere inside the television implementation.
-//
-// TIASound.c is published under the GNU Library GPL v2.0
+// somwhere inside the television implementation. TIASound.c is published under
+// the GNU Library GPL v2.0
 //
 // Some modifications were made to Fries' alogorithm in accordance to similar
 // modifications made to the TIASnd.cxx file of the Stella emulator v5.1.3.

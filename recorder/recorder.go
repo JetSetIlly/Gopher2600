@@ -32,7 +32,7 @@ import (
 
 // Recorder transcribes user input to a file. The transcribed file is intended
 // for future playback. The Recorder type implements the
-// peripherals.Transcriber interface.
+// riot.input.EventRecorder interface.
 type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File

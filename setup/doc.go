@@ -41,4 +41,10 @@
 //	<DB Key>, patch, <SHA-1 Hash>, <patch file>, <notes>
 //
 // Patch files are located in the patches sub-directory of the resources path.
+//
+//	Television
+//
+//	<DB Key>, television, <SHA-1 Hash>, <tv spec>, notes
+//
+// TV spec should be one of PAL or NTSC (or AUTO)
 package setup

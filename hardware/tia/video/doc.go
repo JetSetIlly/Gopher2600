@@ -38,17 +38,15 @@
 // this reason the video sub-system and the sprites are initialised with
 // references to the HBLANK signal and the HMOVE latch.
 //
-// TIA memory registers of direct interest to the video subsystem are read and
-// divided into six different Update*() functions. The timing of when video
-// information is updated is important and dividing the update functions in
-// this manner helps. The TIA package handles these timings and whether they
-// need to be called at all.
+// Reading of TIA memory is divided into six different Update*() functions. The
+// timing of when TIA memory is read and registers updated is important and
+// dividing the update functions in this manner helps. The TIA package handles
+// these timings.
 //
 // The three sprite categories, player, missile and ball, all have common
 // features but have been implemented to be completely separate from one
 // another. The exception is the enclockifier type used by both missiles and
-// the ball. All implementatio decisions of this type have been made for
-// reasons of clarity.
+// the ball.
 //
 // All sprites keep track of their own phase clocks and position counters.
 // Delayed side effects only occur when the sprite itself is ticked and so each
@@ -62,9 +60,9 @@
 // ticking (include HMOVE stuffing ticks) only when required.
 //
 // Somewhere during the cycle the video sub-system will decide on what the
-// pixel output should be. In this context we strictly mean VCS pixels.  That
-// is, we're deciding what the colour of all TV pixels for the duration of the
-// video cycle should be.
+// pixel output should be (in this context we mean VCS clock-wide pixels).
+// That is, we're deciding what the colour of all TV pixels for the duration of
+// the video cycle should be.
 //
 // The timing of this decision is critical: it must happen before some register
 // updates but after others. Note that the pixel color decision is distinct
@@ -73,6 +71,6 @@
 // video cycle.
 //
 // To effectively make the pixel color decision, the video sub-system at the
-// same time process the pixel priority. For convenience, pixel collisions are
-// also set at this time.
+// same time processes the pixel "priority". For convenience, pixel collisions
+// are also set at this time.
 package video

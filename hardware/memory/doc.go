@@ -73,8 +73,6 @@
 // The asterisk indicates that addresses used by the CPU are mapped to the
 // primary address. The memorymap package contains more detail on this.
 //
-// The bus to the Cartridge area is two-way but writing to the cartridge will
-//
 // Note that the RIOT registers and PIA RAM are all part of the same hardware
 // package, the PIA 6532. However, for our purposes the two memory areas are
 // considered to be entirely separate.

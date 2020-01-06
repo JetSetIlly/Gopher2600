@@ -20,7 +20,7 @@
 // Package limiter provides a rough and ready way of limiting events to a fixed
 // rate.
 //
-// A new FpsLimiter can be creating with (error handling removed for clarity):
+// A new FpsLimiter can be created with (error handling removed for clarity):
 //
 //	fps, _ := limiter.NewFPSLimiter(60)
 //

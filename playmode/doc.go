@@ -17,11 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package recorder handles recording and playback of user input. The Recorder
-// type implements the riot.input.EventRecorder() interface. Once added as a
-// transcriber to the VCS port, it will record all user input to the specified
-// file.
-//
-// Currently, a recorder and playback is attached to all ports of the VCS,
-// including the panel.
-package recorder
+// Package playmode is a simple way of running the emulation. It handles setup
+// of the hardware, preparation of playback scripts (for recording or
+// playback), attaching of a GUI and routing of input events.
+package playmode

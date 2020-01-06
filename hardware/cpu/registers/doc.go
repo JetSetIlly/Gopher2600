@@ -18,8 +18,8 @@
 // notice is not present ***
 
 // Package registers implements the three types of registers found in the 6507.
-// The three types are the: program counter, status register and the 8 bit
-// accumulator type used for A, X, Y.
+// The three types are: the program counter, status register and the 8 bit
+// accumulating registers, A, X, Y.
 //
 // The 8 bit registers implemented as the Register type, define all the basic
 // operations available to the 6507: load, add, subtract, logical operations and

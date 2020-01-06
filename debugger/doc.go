@@ -20,13 +20,13 @@
 // Package debugger implements a reaonably comprehensive debugging tool.
 // Features include:
 //
-// - cartridge disassembly
-// - memory peek and poke
-// - cpu and video cycle stepping
-// - basic scripting
-// - breakpoints
-// - traps
-// - watches
+//	- cartridge disassembly
+//	- memory peek and poke
+//	- cpu and video cycle stepping
+//	- basic scripting
+//	- breakpoints
+//	- traps
+//	- watches
 //
 // Some of these features come courtesy of other packages, described elsewhere,
 // and some are inherent in the gopher2600's emulation strategy, but all are

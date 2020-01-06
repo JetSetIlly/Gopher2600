@@ -18,9 +18,9 @@
 // notice is not present ***
 
 // Package errors is a helper package for the error type. It defines the
-// AtariError type, a implementation of error the error interface, that allows
-// code to wrap errors around other errors and to allow normalised formatted
-// output of error messages.
+// AtariError type, an implementation of the error interface, that allows code
+// to wrap errors around other errors and to allow normalised formatted output
+// of error messages.
 //
 // The most useful feature is deduplication of wrapped errors. This means that
 // code does not need to worry about the immediate context of the function
@@ -54,8 +54,8 @@
 //	}
 //
 // If we follow the code from main() we can see that first error created is a
-// PanicError, wrapped in a DebuggerError, wrapped in a DebuggerError. The
-// message for the returned error to main() will be:
+// PanicError, wrapped in a DebuggerError, wrapped in another DebuggerError.
+// The message for the returned error to main() will be:
 //
 //	error debugging vcs: panic: C(): not yet implemented
 //
