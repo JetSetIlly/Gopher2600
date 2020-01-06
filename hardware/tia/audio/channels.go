@@ -71,10 +71,23 @@ func (ch *channel) String() string {
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
 func (ch *channel) tick() {
+
+	// the following resets the volume if the control register is zero. this
+	// condition was originally added to solve the problem of the silence value
+	// emitted by Pitfall not being zero (which is a problem if the machine
+	// isn't fast enough to keep up with the audio buffer - the flip from
+	// Pitfal-silence to actual silence produces an audible click.)
+	//
+	// however, resetting the volume in this way causes some sound producing
+	// methods to fail, notably the speech samples in the Dr Who variant of
+	// Bezerk.
+	//
+	// the code is commented out rather than removed, for future reference.
+	//
 	// reset actual volume value if control register is zero
-	if ch.regControl == 0x0 {
-		ch.actualVol = 0
-	}
+	// if ch.regControl == 0x0 {
+	// 	ch.actualVol = 0
+	// }
 
 	// tick frequency clock
 	if ch.freqClk > 1 {
