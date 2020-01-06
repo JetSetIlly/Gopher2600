@@ -187,7 +187,7 @@ func (trm *mockTerm) testSequence() {
 	trm.testWatches()
 }
 
-func TestDebugger(t *testing.T) {
+func TestDebugger_withNonExistantInitScript(t *testing.T) {
 	trm := newMockTerm(t)
 
 	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm)
@@ -198,6 +198,22 @@ func TestDebugger(t *testing.T) {
 	go trm.testSequence()
 
 	err = dbg.Start("non_existant_script", cartridgeloader.Loader{})
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDebugger(t *testing.T) {
+	trm := newMockTerm(t)
+
+	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	go trm.testSequence()
+
+	err = dbg.Start("", cartridgeloader.Loader{})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
