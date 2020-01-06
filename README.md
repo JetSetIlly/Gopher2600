@@ -135,7 +135,7 @@ To run a cartridge, you don't need to specify a sub-mode. For example:
 
 > ./gopher2600 roms/Pitfall.bin
 
-Although if want to pass flags to the run mode however you'll need to specify it.
+Although if want to pass flags to the run mode you'll need to specify it.
 
 > ./gopher2600 run -help
 
