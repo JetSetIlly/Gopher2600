@@ -213,20 +213,18 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 	// run initialisation script
 	if initScript != "" {
-		dbg.term.Silence(true)
-
 		scr, err := script.RescribeScript(initScript)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "error running debugger initialisation script: %s\n", err)
-		}
+		if err == nil {
+			dbg.term.Silence(true)
 
-		err = dbg.inputLoop(scr, false)
-		if err != nil {
+			err = dbg.inputLoop(scr, false)
+			if err != nil {
+				dbg.term.Silence(false)
+				return errors.New(errors.DebuggerError, err)
+			}
+
 			dbg.term.Silence(false)
-			return errors.New(errors.DebuggerError, err)
 		}
-
-		dbg.term.Silence(false)
 	}
 
 	// prepare and run main input loop. inputLoop will not return until
