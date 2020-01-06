@@ -69,7 +69,12 @@ func (dig *Video) ResetDigest() {
 	}
 }
 
-// Resize implements television.Television interface
+// ResizeSpec implements television.PixelRenderer interface
+func (dig *Video) ResizeSpec() error {
+	return dig.Resize(0, 0)
+}
+
+// Resize implements television.PixelRenderer interface
 func (dig *Video) Resize(_, _ int) error {
 	// length of pixels array contains enough room for the previous frames
 	// digest value
@@ -82,7 +87,7 @@ func (dig *Video) Resize(_, _ int) error {
 	return nil
 }
 
-// NewFrame implements television.Renderer interface
+// NewFrame implements television.PixelRenderer interface
 func (dig *Video) NewFrame(frameNum int) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the video data
@@ -95,12 +100,12 @@ func (dig *Video) NewFrame(frameNum int) error {
 	return nil
 }
 
-// NewScanline implements television.Renderer interface
+// NewScanline implements television.PixelRenderer interface
 func (dig *Video) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements television.Renderer interface
+// SetPixel implements television.PixelRenderer interface
 func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
@@ -117,12 +122,12 @@ func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 
-// SetAltPixel implements television.Renderer interface
+// SetAltPixel implements television.PixelRenderer interface
 func (dig *Video) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 
-// EndRendering implements television.Renderer interface
+// EndRendering implements television.PixelRenderer interface
 func (dig *Video) EndRendering() error {
 	return nil
 }

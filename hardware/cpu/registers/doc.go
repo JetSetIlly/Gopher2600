@@ -21,14 +21,15 @@
 // The three types are: the program counter, status register and the 8 bit
 // accumulating registers, A, X, Y.
 //
-// The 8 bit registers implemented as the Register type, define all the basic
+// The 8 bit registers, implemented as the Register type, define all the basic
 // operations available to the 6507: load, add, subtract, logical operations and
 // shifts/rotates. In addition it implements the tests required for status
-// updates: is the value zero, is the number negative or is the overflow bit
-// set.
+// updates: is the value zero, is the number negative, is the overflow bit set.
+// Use of decimal mode is possible with the AddDecimal() and SubtractDecimal()
+// functions.
 //
-// The program counter by comparison is 16 bits wide and defines only the load
-// and add operations.
+// The program counter is 16 bits wide and defines only the load and add
+// operations.
 //
 // The status register is implemented as a series of flags. Setting of flags
 // is done directly. For instance, in the CPU, we might have this sequence of

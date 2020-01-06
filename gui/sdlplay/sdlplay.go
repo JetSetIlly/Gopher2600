@@ -61,6 +61,9 @@ type SdlPlay struct {
 	scanlines   int32
 	topScanline int
 
+	// whether to show vblank and overscan areas of tv frame
+	overscan bool
+
 	// pixels is the byte array that we copy to the texture before applying to
 	// the renderer. it is equal to horizPixels * scanlines * pixelDepth.
 	pixels []byte
@@ -114,8 +117,8 @@ func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	// register ourselves as a television.AudioMixer
 	scr.AddAudioMixer(scr)
 
-	// change tv spec after window creation (so we can set the window size)
-	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+	// resize window
+	err = scr.ResizeSpec()
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
@@ -140,13 +143,25 @@ func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	return scr, nil
 }
 
-// Resize implements television.Television interface
+// ResizeSpec implements television.PixelRenderer interface
+func (scr *SdlPlay) ResizeSpec() error {
+	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+}
+
+// Resize implements television.PixelRenderer interface
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 	var err error
 
 	scr.horizPixels = television.HorizClksVisible
-	scr.scanlines = int32(numScanlines)
-	scr.topScanline = topScanline
+
+	if scr.overscan {
+		scr.topScanline = scr.Television.GetSpec().ScanlineTop
+		scr.scanlines = int32(scr.Television.GetSpec().ScanlinesTotal - scr.Television.GetSpec().ScanlineTop)
+	} else {
+		scr.topScanline = topScanline
+		scr.scanlines = int32(numScanlines)
+	}
+
 	scr.pixels = make([]byte, scr.horizPixels*scr.scanlines*pixelDepth)
 
 	// preset alpha channel - we never change the value of this channel
@@ -192,7 +207,7 @@ func (scr *SdlPlay) setScaling(scale float32) error {
 	return nil
 }
 
-// NewFrame implements television.Renderer interface
+// NewFrame implements television.PixelRenderer interface
 func (scr *SdlPlay) NewFrame(frameNum int) error {
 	if scr.showOnNextStable {
 		scr.showWindow(true)
@@ -218,12 +233,12 @@ func (scr *SdlPlay) NewFrame(frameNum int) error {
 	return nil
 }
 
-// NewScanline implements television.Renderer interface
+// NewScanline implements television.PixelRenderer interface
 func (scr *SdlPlay) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements television.Renderer interface
+// SetPixel implements television.PixelRenderer interface
 func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible
@@ -253,7 +268,7 @@ func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error
 	return nil
 }
 
-// SetAltPixel implements television.Renderer interface
+// SetAltPixel implements television.PixelRenderer interface
 func (scr *SdlPlay) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
@@ -263,7 +278,7 @@ func (scr *SdlPlay) SetMetaPixel(sig gui.MetaPixel) error {
 	return nil
 }
 
-// Reset implements television.Renderer interface
+// Reset implements television.Television interface
 func (scr *SdlPlay) Reset() error {
 	err := scr.Television.Reset()
 	if err != nil {
@@ -272,7 +287,7 @@ func (scr *SdlPlay) Reset() error {
 	return nil
 }
 
-// EndRendering implements television.Renderer interface
+// EndRendering implements television.PixelRenderer interface
 func (scr *SdlPlay) EndRendering() error {
 	return nil
 }

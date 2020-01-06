@@ -1333,11 +1333,26 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "sax":
+	case "axs":
 		mc.X.AND(mc.A.Value())
 		mc.X.Subtract(value, true)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
+
+	case "sax":
+		r := mc.acc8
+		r.Load(mc.A.Value())
+		r.AND(mc.X.Value())
+
+		// +1 cycle
+		err = mc.write8Bit(address, r.Value())
+		if err != nil {
+			return err
+		}
+		err = mc.endCycle()
+		if err != nil {
+			return err
+		}
 
 	case "arr":
 		mc.A.AND(value)
@@ -1346,9 +1361,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = mc.A.IsNegative()
 
 	case "slo":
-		// the slo opcode starts off with an ASL operation
-		// all versions of this opcode are RMW so we always work with
-		// the anonymous register
 		r := mc.acc8
 		r.Load(value)
 		mc.Status.Carry = r.ASL()
@@ -1358,6 +1370,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.A.ORA(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
+
+	case "rla":
+		r := mc.acc8
+		r.Load(value)
+		mc.Status.Carry = r.ROL(mc.Status.Carry)
+		value = r.Value()
+		mc.A.AND(r.Value())
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
 
 	default:
 		// this should never, ever happen
@@ -1380,6 +1401,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// finalise result
 	mc.LastResult.Final = true
+
+	// validity check. there's no need to enable unless you've just added a new
+	// opcode and wanting to check the validity of the definition.
+	//
+	// err = mc.LastResult.IsValid()
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

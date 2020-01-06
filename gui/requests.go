@@ -41,4 +41,5 @@ const (
 	ReqSetScale                             // float
 	ReqIncScale                             // none
 	ReqDecScale                             // none
+	ReqSetOverscan                          // bool
 )

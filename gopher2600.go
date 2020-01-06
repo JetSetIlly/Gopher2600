@@ -100,6 +100,7 @@ func play(md *modalflag.Modes) error {
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
 	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
+	overscan := md.AddBool("overscan", false, "show vblank and overscan areas of tv")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
 
@@ -133,6 +134,11 @@ func play(md *modalflag.Modes) error {
 		}
 
 		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
+		if err != nil {
+			return errors.New(errors.PlayError, err)
+		}
+
+		err = scr.SetFeature(gui.ReqSetOverscan, *overscan)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}

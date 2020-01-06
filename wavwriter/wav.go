@@ -29,7 +29,7 @@ import (
 	"github.com/go-audio/wav"
 )
 
-// WavWriter implemented the television.AudioMixer interface
+// WavWriter implements the television.AudioMixer interface
 type WavWriter struct {
 	filename string
 	buffer   []int8
