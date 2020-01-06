@@ -70,6 +70,11 @@ func NewCanvas(worker js.Value) *Canvas {
 	return scr
 }
 
+// ResizeSpec implements telvision.PixelRenderer
+func (scr *Canvas) ResizeSpec() error {
+	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+}
+
 // Resize implements telvision.PixelRenderer
 func (scr *Canvas) Resize(topScanline, numScanlines int) error {
 	scr.top = topScanline

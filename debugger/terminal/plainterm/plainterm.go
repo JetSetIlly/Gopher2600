@@ -92,7 +92,7 @@ func (pt *PlainTerminal) IsInteractive() bool {
 	return true
 }
 
-// Silence implemented the terminal.Output interface
+// Silence implements the terminal.Output interface
 func (pt *PlainTerminal) Silence(silenced bool) {
 	pt.silenced = silenced
 }

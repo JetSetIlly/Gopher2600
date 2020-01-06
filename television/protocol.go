@@ -87,6 +87,9 @@ type PixelRenderer interface {
 	// the specification being used are still adequate.
 	Resize(topScanline, visibleScanlines int) error
 
+	// Like resize but sets size to current specification optimum
+	ResizeSpec() error
+
 	// NewFrame and NewScanline are called at the start of the frame/scanline
 	NewFrame(frameNum int) error
 	NewScanline(scanline int) error

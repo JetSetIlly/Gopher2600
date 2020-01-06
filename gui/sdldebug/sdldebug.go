@@ -71,7 +71,7 @@ func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	}
 
 	// set attributes that depend on the television specification
-	err = scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+	err = scr.ResizeSpec()
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
@@ -100,12 +100,17 @@ func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	return scr, nil
 }
 
-// Resize implements television.Television interface
+// ResizeSpec implements television.PixelRenderer interface
+func (scr *SdlDebug) ResizeSpec() error {
+	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+}
+
+// Resize implements television.PixelRenderer interface
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 	return scr.pxl.resize(topScanline, numScanlines)
 }
 
-// NewFrame implements television.Renderer interface
+// NewFrame implements television.PixelRenderer interface
 func (scr *SdlDebug) NewFrame(frameNum int) error {
 	err := scr.pxl.update()
 	if err != nil {
@@ -117,22 +122,22 @@ func (scr *SdlDebug) NewFrame(frameNum int) error {
 	return nil
 }
 
-// NewScanline implements television.Renderer interface
+// NewScanline implements television.PixelRenderer interface
 func (scr *SdlDebug) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements television.Renderer interface
+// SetPixel implements television.PixelRenderer interface
 func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return scr.pxl.setRegPixel(int32(x), int32(y), red, green, blue, vblank)
 }
 
-// SetAltPixel implements television.Renderer interface
+// SetAltPixel implements television.PixelRenderer interface
 func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return scr.pxl.setAltPixel(int32(x), int32(y), red, green, blue, vblank)
 }
 
-// Reset implements television.Renderer interface
+// Reset implements television.Television interface
 func (scr *SdlDebug) Reset() error {
 	err := scr.Television.Reset()
 	if err != nil {
@@ -141,7 +146,7 @@ func (scr *SdlDebug) Reset() error {
 	return scr.pxl.reset()
 }
 
-// EndRendering implements television.Renderer interface
+// EndRendering implements television.Television interface
 func (scr *SdlDebug) EndRendering() error {
 	return nil
 }
