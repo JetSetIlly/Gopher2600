@@ -15,6 +15,8 @@ following in the project directory:
 
 > GOMOD=$(pwd) godoc -http=localhost:1234 -index >/dev/null &
 
+Alternatively, view them at https://godoc.org/github.com/JetSetIlly/Gopher2600
+
 ## Project Features
 
 * Debugger
@@ -84,7 +86,7 @@ or less as you would expect:
 * He-Man
 * ET
 * Fatal Run
-* Cosmic ark
+* Cosmic Ark
 * Keystone Kapers
 * River Raiders
 * Tennis
