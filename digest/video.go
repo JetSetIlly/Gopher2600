@@ -51,8 +51,13 @@ func NewVideo(tv television.Television) (*Video, error) {
 	// register ourselves as a television.Renderer
 	dig.AddPixelRenderer(dig)
 
-	// set attributes that depend on the television specification
-	dig.Resize(-1, -1)
+	// length of pixels array contains enough room for the previous frames
+	// digest value
+	l := len(dig.digest)
+
+	// alloscate enough pixels for entire frame
+	l += ((television.HorizClksScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
+	dig.pixels = make([]byte, l)
 
 	return dig, nil
 }
@@ -69,21 +74,17 @@ func (dig *Video) ResetDigest() {
 	}
 }
 
-// ResizeSpec implements television.PixelRenderer interface
-func (dig *Video) ResizeSpec() error {
-	return dig.Resize(0, 0)
-}
-
 // Resize implements television.PixelRenderer interface
+//
+// Note that Resize() does nothing in this implementation because we always
+// work on the entire frame.
+//
+// that said, we could record resize events by having a flag bit in the pixel
+// array. this additional bit (or byte) will then be included in the hashing
+// process.
+//
+// !!TODO: consider resize flag bit for digest.Video
 func (dig *Video) Resize(_, _ int) error {
-	// length of pixels array contains enough room for the previous frames
-	// digest value
-	l := len(dig.digest)
-
-	// alloscate enough pixels for entire frame
-	l += ((television.HorizClksScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
-
-	dig.pixels = make([]byte, l)
 	return nil
 }
 
