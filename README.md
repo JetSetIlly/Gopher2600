@@ -113,7 +113,7 @@ automatically.
 
 Compile with GNU Make
 
-> make release
+> make build
 
 During development, programmers may find it more useful to use the go command
 directly
