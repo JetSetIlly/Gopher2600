@@ -20,6 +20,7 @@
 package patch
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/memory/cartridge"
 	"gopher2600/paths"
@@ -42,13 +43,16 @@ const pokeLineSeparator = ":"
 func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	var err error
 
-	p := paths.ResourcePath(patchPath, patchFile)
+	p, err := paths.ResourcePath(patchPath, patchFile)
+	if err != nil {
+		return false, errors.New(errors.PatchError, err)
+	}
 
 	f, err := os.Open(p)
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return false, errors.New(errors.PatchFileError, p)
+			return false, errors.New(errors.PatchError, fmt.Sprintf("patch file not found (%s)", p))
 		}
 		return false, errors.New(errors.PatchError, err)
 	}

@@ -234,7 +234,10 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 
 		if reg.State {
 			// create a unique filename
-			reg.stateFile = uniqueFilename("state", reg.CartLoad)
+			reg.stateFile, err = uniqueFilename("state", reg.CartLoad)
+			if err != nil {
+				return false, "", errors.New(errors.RegressionDigestError, err)
+			}
 
 			// check that the filename is unique
 			nf, _ := os.Open(reg.stateFile)

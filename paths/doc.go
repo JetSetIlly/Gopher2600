@@ -17,21 +17,24 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package paths contains functions to prepare paths to gopher2600 resources.
+// Package paths contains functions to prepare paths for gopher2600 resources.
 //
-// The ResourcePath() function modifies the supplied resource string such that
-// it is prepended with the appropriate config directory. For example, the
-// following will return the path to a cartridge patch.
+// The ResourcePath() function returns the correct path to the resource
+// directory/file specified in the arguments. The result of ResourcePath
+// depends on the build tag used to compile the program.
 //
-//	d := paths.ResourcePath("patches", "ET")
+// For "release" tagged builds, the correct path is one rooted in the user's
+// configuration directory. On modern Linux systems that would be something
+// like:
 //
-// The policy of ResourcePath() is simple: if the base resource path, currently
-// defined to be ".gopher2600", is present in the program's current directory
-// then that is the base path that will used. If it is not preseent not, then
-// the user's config directory is used. The package uses os.UserConfigDir()
-// from go standard library for this.
+//	/home/user/.config/gopher2600/
 //
-// In the example above, on a modern Linux system, the path returned will be:
+// For "non-release" tagged builds, the correct path is rooted in the current
+// working directory:
 //
-//	/home/user/.config/gopher2600/patches/ET
+// ./.gopher2600
+//
+// The reason for this is simple. During development, it is more convenient to
+// have the config directory close to hand. For release binaries meanwhile, the
+// config directory should be somewhere the user expects.
 package paths

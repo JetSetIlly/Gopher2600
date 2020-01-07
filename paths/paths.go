@@ -20,44 +20,27 @@
 package paths
 
 import (
-	"os"
 	"path"
 )
 
-// the base path for all resources. note that we don't use this value directly
-// except in the getBasePath() function. that function should be used instead.
-const baseResourcePath = ".gopher2600"
-
 // ResourcePath returns the resource string (representing the resource to be
-// loaded) prepended with operating system specific details.
-func ResourcePath(resource ...string) string {
-	var p []string
-
-	p = make([]string, 0, len(resource)+1)
-	p = append(p, getBasePath())
-	p = append(p, resource...)
-
-	return path.Join(p...)
-}
-
-// getBasePath() returns baseResourcePath with the user's home directory
-// prepended if it the unadorned baseResourcePath cannot be found in the
-// current directory.
+// loaded) prepended with OS/build specific paths.
 //
-// note that we're not checking for the existance of the resource requested by
-// the caller, or even the existance of 'baseResourcePath' in the home
-// directory.
+// The function takes care of creation of all folders necessary to reach the
+// end of sub-path. It does not otherwise touch or create the file.
 //
-// note: this is a UNIX thing. there's no real reason why any other OS should
-// implement this.
-func getBasePath() string {
-	if _, err := os.Stat(baseResourcePath); err == nil {
-		return baseResourcePath
-	}
+// Either subPth or file can be empty, depending on context.
+func ResourcePath(subPth string, file string) (string, error) {
+	var pth []string
 
-	home, err := os.UserConfigDir()
+	basePath, err := getBasePath(subPth)
 	if err != nil {
-		return baseResourcePath
+		return "", err
 	}
-	return path.Join(home, baseResourcePath[1:])
+
+	pth = make([]string, 0)
+	pth = append(pth, basePath)
+	pth = append(pth, file)
+
+	return path.Join(pth...), nil
 }

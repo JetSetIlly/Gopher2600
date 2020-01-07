@@ -106,7 +106,7 @@ func play(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.PlayError, err)
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -160,15 +160,20 @@ func play(md *modalflag.Modes) error {
 func debug(md *modalflag.Modes) error {
 	md.NewMode()
 
+	defInitScript, err := paths.ResourcePath("", defaultInitScript)
+	if err != nil {
+		return errors.New(errors.DebuggerError, err)
+	}
+
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := md.AddString("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
-	initScript := md.AddString("initscript", paths.ResourcePath(defaultInitScript), "script to run on debugger start")
+	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.DebuggerError, err)
 	}
 
 	tv, err := television.NewTelevision(*spec)
@@ -246,7 +251,7 @@ func disasm(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.DisassemblyError, err)
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -290,7 +295,7 @@ func perform(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.PerformanceError, err)
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -304,24 +309,24 @@ func perform(md *modalflag.Modes) error {
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
-			return err
+			return errors.New(errors.PerformanceError, err)
 		}
 		defer tv.End()
 
 		if *display {
 			scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
 			if err != nil {
-				return err
+				return errors.New(errors.PerformanceError, err)
 			}
 
 			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
-				return err
+				return errors.New(errors.PerformanceError, err)
 			}
 
 			err = scr.(gui.GUI).SetFeature(gui.ReqSetFPSCap, *fpscap)
 			if err != nil {
-				return err
+				return errors.New(errors.PerformanceError, err)
 			}
 		}
 
@@ -349,7 +354,7 @@ func regress(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.RegressionError, err)
 	}
 
 	switch md.Mode() {
@@ -442,7 +447,7 @@ func regressAdd(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return err
+		return errors.New(errors.RegressionError, err)
 	}
 
 	switch len(md.RemainingArgs()) {

@@ -70,7 +70,12 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	db, err := database.StartSession(paths.ResourcePath(setupDBFile), database.ActivityReading, initDBSession)
+	dbPth, err := paths.ResourcePath("", setupDBFile)
+	if err != nil {
+		return errors.New(errors.SetupError, err)
+	}
+
+	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
 		if errors.Is(err, errors.DatabaseFileUnavailable) {
 			// silently ignore absence of setup database

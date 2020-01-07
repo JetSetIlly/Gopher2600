@@ -71,7 +71,7 @@ const (
 	DatabaseFileUnavailable = "database error: cannot open database (%v)"
 
 	// regression
-	RegressionError         = "regression test error: %v"
+	RegressionError         = "regression error: %v"
 	RegressionDigestError   = "digest entry: %v"
 	RegressionPlaybackError = "playback entry: %v"
 
@@ -82,8 +82,7 @@ const (
 	SetupTelevisionError = "tv setup: %v"
 
 	// patch
-	PatchError     = "patch error: %v"
-	PatchFileError = "patch error: patch file not found (%v)"
+	PatchError = "patch error: %v"
 
 	// symbols
 	SymbolsFileError       = "symbols error: error processing symbols file: %v"
