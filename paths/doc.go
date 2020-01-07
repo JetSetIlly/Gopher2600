@@ -24,15 +24,15 @@
 // depends on the build tag used to compile the program.
 //
 // For "release" tagged builds, the correct path is one rooted in the user's
-// configuration directory. On modern Linux systems that would be something
-// like:
+// configuration directory. On modern Linux systems the full path would be
+// something like:
 //
 //	/home/user/.config/gopher2600/
 //
 // For "non-release" tagged builds, the correct path is rooted in the current
 // working directory:
 //
-// ./.gopher2600
+//	.gopher2600
 //
 // The reason for this is simple. During development, it is more convenient to
 // have the config directory close to hand. For release binaries meanwhile, the
