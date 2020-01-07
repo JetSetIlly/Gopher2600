@@ -61,9 +61,6 @@ type SdlPlay struct {
 	scanlines   int32
 	topScanline int
 
-	// whether to show vblank and overscan areas of tv frame
-	overscan bool
-
 	// pixels is the byte array that we copy to the texture before applying to
 	// the renderer. it is equal to horizPixels * scanlines * pixelDepth.
 	pixels []byte
@@ -118,7 +115,7 @@ func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	scr.AddAudioMixer(scr)
 
 	// resize window
-	err = scr.ResizeSpec()
+	err = scr.resizeSpec()
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
@@ -143,9 +140,14 @@ func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	return scr, nil
 }
 
-// ResizeSpec implements television.PixelRenderer interface
-func (scr *SdlPlay) ResizeSpec() error {
+// resizeSpec calls resize with the textbook dimentions for the specification
+func (scr *SdlPlay) resizeSpec() error {
 	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+}
+
+// resizeOverscan calls resize with the overscan dimensions for the specification
+func (scr *SdlPlay) resizeOverscan() error {
+	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesTotal-scr.Television.GetSpec().ScanlineTop)
 }
 
 // Resize implements television.PixelRenderer interface
@@ -153,14 +155,8 @@ func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 	var err error
 
 	scr.horizPixels = television.HorizClksVisible
-
-	if scr.overscan {
-		scr.topScanline = scr.Television.GetSpec().ScanlineTop
-		scr.scanlines = int32(scr.Television.GetSpec().ScanlinesTotal - scr.Television.GetSpec().ScanlineTop)
-	} else {
-		scr.topScanline = topScanline
-		scr.scanlines = int32(numScanlines)
-	}
+	scr.topScanline = topScanline
+	scr.scanlines = int32(numScanlines)
 
 	scr.pixels = make([]byte, scr.horizPixels*scr.scanlines*pixelDepth)
 

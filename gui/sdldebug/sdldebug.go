@@ -71,7 +71,7 @@ func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	}
 
 	// set attributes that depend on the television specification
-	err = scr.ResizeSpec()
+	err = scr.resizeSpec()
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
@@ -100,9 +100,14 @@ func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	return scr, nil
 }
 
-// ResizeSpec implements television.PixelRenderer interface
-func (scr *SdlDebug) ResizeSpec() error {
+// resizeSpec calls resize with the textbook dimentions for the specification
+func (scr *SdlDebug) resizeSpec() error {
 	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+}
+
+// resizeOverscan calls resize with the overscan dimensions for the specification
+func (scr *SdlDebug) resizeOverscan() error {
+	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesTotal-scr.Television.GetSpec().ScanlineTop)
 }
 
 // Resize implements television.PixelRenderer interface

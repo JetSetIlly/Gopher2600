@@ -35,11 +35,13 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 	}()
 
+	var err error
+
 	switch request {
 	case gui.ReqSetVisibility:
 		if args[0].(bool) {
 			scr.window.Show()
-			scr.pxl.update()
+			err = scr.pxl.update()
 		} else {
 			scr.window.Hide()
 		}
@@ -51,7 +53,7 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 			// update screen
 			// -- default args[1] of true if not present
 			if len(args) < 2 || args[1].(bool) {
-				scr.pxl.update()
+				err = scr.pxl.update()
 			}
 		} else {
 			scr.window.Hide()
@@ -59,53 +61,60 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	case gui.ReqSetPause:
 		scr.paused = args[0].(bool)
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqSetMasking:
 		scr.pxl.setMasking(args[0].(bool))
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqToggleMasking:
 		scr.pxl.setMasking(!scr.pxl.unmasked)
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqSetAltColors:
 		scr.pxl.useAltPixels = args[0].(bool)
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqToggleAltColors:
 		scr.pxl.useAltPixels = !scr.pxl.useAltPixels
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqSetOverlay:
 		scr.pxl.useMetaPixels = args[0].(bool)
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqToggleOverlay:
 		scr.pxl.useMetaPixels = !scr.pxl.useMetaPixels
-		scr.pxl.update()
+		err = scr.pxl.update()
 
 	case gui.ReqSetScale:
-		scr.pxl.setScaling(args[0].(float32))
-		scr.pxl.update()
+		err = scr.pxl.setScaling(args[0].(float32))
+		err = scr.pxl.update()
 
 	case gui.ReqIncScale:
 		if scr.pxl.pixelScaleY < 4.0 {
-			scr.pxl.setScaling(scr.pxl.pixelScaleY + 0.1)
-			scr.pxl.update()
+			err = scr.pxl.setScaling(scr.pxl.pixelScaleY + 0.1)
+			err = scr.pxl.update()
 		}
 
 	case gui.ReqDecScale:
 		if scr.pxl.pixelScaleY > 0.5 {
-			scr.pxl.setScaling(scr.pxl.pixelScaleY - 0.1)
-			scr.pxl.update()
+			err = scr.pxl.setScaling(scr.pxl.pixelScaleY - 0.1)
+			err = scr.pxl.update()
+		}
+
+	case gui.ReqSetOverscan:
+		if args[0].(bool) {
+			err = scr.resizeOverscan()
+		} else {
+			err = scr.resizeSpec()
 		}
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
-	return nil
+	return err
 }
 
 // SetEventChannel implements the GUI interface
