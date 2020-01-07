@@ -45,6 +45,11 @@ func Equate(t *testing.T, value, expectedValue interface{}) {
 	default:
 		t.Fatalf("unhandled type for Equate() function (%T))", value)
 
+	case nil:
+		if value != nil {
+			t.Errorf("equation of type %T failed (%d  - wanted nil)", value, value)
+		}
+
 	case int:
 		if reflect.TypeOf(value) != reflect.TypeOf(expectedValue) {
 			t.Fatalf("values for Equate() are not the same type (%T and %T)", value, expectedValue)
