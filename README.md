@@ -179,20 +179,24 @@ is active.
 All controller/panel functionality is achievable with debugger commands (useful
 for scripting).
 
-## Configuration folder
+## Configuration Directory
 
-Gopher2600 will look for certain files in a configuration directory. 
+Gopher2600 will look for certain files in a configuration directory. The location
+of this directory depends on whether the executable is a release executable (built
+with "make release") or a development executable (made with "make build"). For
+development executables the configuration directory is the following and should be
+located in the current working directory.
 
 > .gopher2600
 
-The UNIX method for hiding files has been used - I have no idea how this works
-on Windows etc.
-
-If that directory can be found in the current working directory then that is
-the path that will be used. If it can't be found then the user's configuration
-folder is checked. On modern Linux based systems, this will be:
+For release executables, the directory is placed in the user's configuration directory,
+the location of which is dependent on the host OS. On modern Linux systems, the location
+will be:
 
 > .config/gopher2600
+
+In both instances, the directory, sub-directory and files will be created automatically
+as required.
 
 ## WASM / HTML5 Canvas
 
