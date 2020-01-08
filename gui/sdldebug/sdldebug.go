@@ -105,11 +105,6 @@ func (scr *SdlDebug) resizeSpec() error {
 	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 }
 
-// resizeOverscan calls resize with the overscan dimensions for the specification
-func (scr *SdlDebug) resizeOverscan() error {
-	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesTotal-scr.Television.GetSpec().ScanlineTop)
-}
-
 // Resize implements television.PixelRenderer interface
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 	return scr.pxl.resize(topScanline, numScanlines)

@@ -100,13 +100,12 @@ func play(md *modalflag.Modes) error {
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
 	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
-	overscan := md.AddBool("overscan", false, "show vblank and overscan areas of tv")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.PlayError, err)
+		return err
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -134,11 +133,6 @@ func play(md *modalflag.Modes) error {
 		}
 
 		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
-		if err != nil {
-			return errors.New(errors.PlayError, err)
-		}
-
-		err = scr.SetFeature(gui.ReqSetOverscan, *overscan)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}
@@ -173,7 +167,7 @@ func debug(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.DebuggerError, err)
+		return err
 	}
 
 	tv, err := television.NewTelevision(*spec)
@@ -251,7 +245,7 @@ func disasm(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.DisassemblyError, err)
+		return err
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -295,7 +289,7 @@ func perform(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.PerformanceError, err)
+		return err
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -354,7 +348,7 @@ func regress(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.RegressionError, err)
+		return err
 	}
 
 	switch md.Mode() {

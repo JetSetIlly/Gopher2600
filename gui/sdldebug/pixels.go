@@ -44,9 +44,10 @@ type pixels struct {
 	maxHeight int32
 	maxMask   *sdl.Rect
 
-	// by how much each pixel should be scaled
-	pixelScaleY float32
-	pixelScaleX float32
+	// by how much each pixel should be scaled. note that this value needs to
+	// be factored by both pixelWidth and GetSpec().AspectBias when applied to
+	// the X axis
+	pixelScale float32
 
 	// play variables differ depending on the ROM
 	playWidth   int32
@@ -155,6 +156,8 @@ func (pxl *pixels) resize(topScanline, numScanlines int) error {
 		return errors.New(errors.SDL, err)
 	}
 
+	pxl.setScaling(-1)
+
 	return nil
 }
 
@@ -172,11 +175,13 @@ func (pxl *pixels) setPlayArea(scanlines int32, top int32) {
 func (pxl *pixels) setScaling(scale float32) error {
 	// pixel scale is the number of pixels each VCS "pixel" is to be occupy on
 	// the screen
-	pxl.pixelScaleY = scale
-	pxl.pixelScaleX = scale * pxl.scr.GetSpec().AspectBias
+	if scale >= 0 {
+		pxl.pixelScale = scale
+	}
 
 	// make sure everything drawn through the renderer is correctly scaled
-	err := pxl.renderer.SetScale(pixelWidth*pxl.pixelScaleX, pxl.pixelScaleY)
+	pixelScaleX := pixelWidth * pxl.pixelScale * pxl.scr.GetSpec().AspectBias
+	err := pxl.renderer.SetScale(pixelScaleX, pxl.pixelScale)
 	if err != nil {
 		return err
 	}
@@ -195,13 +200,13 @@ func (pxl *pixels) setMasking(unmasked bool) {
 	pxl.unmasked = unmasked
 
 	if pxl.unmasked {
-		w = int32(float32(pxl.maxWidth) * pxl.pixelScaleX * pixelWidth)
-		h = int32(float32(pxl.maxHeight) * pxl.pixelScaleY)
+		w = int32(float32(pxl.maxWidth) * pxl.pixelScale * pxl.scr.GetSpec().AspectBias * pixelWidth)
+		h = int32(float32(pxl.maxHeight) * pxl.pixelScale)
 		pxl.destRect = pxl.maxMask
 		pxl.srcRect = pxl.maxMask
 	} else {
-		w = int32(float32(pxl.playWidth) * pxl.pixelScaleX * pixelWidth)
-		h = int32(float32(pxl.playHeight) * pxl.pixelScaleY)
+		w = int32(float32(pxl.playWidth) * pxl.pixelScale * pxl.scr.GetSpec().AspectBias * pixelWidth)
+		h = int32(float32(pxl.playHeight) * pxl.pixelScale)
 		pxl.destRect = pxl.playDstMask
 		pxl.srcRect = pxl.playSrcMask
 	}

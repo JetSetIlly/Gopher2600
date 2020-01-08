@@ -65,10 +65,10 @@ type SdlPlay struct {
 	// the renderer. it is equal to horizPixels * scanlines * pixelDepth.
 	pixels []byte
 
-	// the amount of scaling applied to each pixel. X is adjusted by an aspect
-	// bias, defined in the television specs
-	scaleX float32
-	scaleY float32
+	// by how much each pixel should be scaled. note that this value needs to
+	// be factored by both pixelWidth and GetSpec().AspectBias when applied to
+	// the X axis
+	pixelScale float32
 
 	showOnNextStable bool
 }
@@ -145,11 +145,6 @@ func (scr *SdlPlay) resizeSpec() error {
 	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 }
 
-// resizeOverscan calls resize with the overscan dimensions for the specification
-func (scr *SdlPlay) resizeOverscan() error {
-	return scr.Resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesTotal-scr.Television.GetSpec().ScanlineTop)
-}
-
 // Resize implements television.PixelRenderer interface
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 	var err error
@@ -186,12 +181,11 @@ func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 // use scale of -1 to reapply existing scale value
 func (scr *SdlPlay) setScaling(scale float32) error {
 	if scale >= 0 {
-		scr.scaleY = scale
-		scr.scaleX = scale * scr.GetSpec().AspectBias
+		scr.pixelScale = scale
 	}
 
-	w := int32(float32(scr.horizPixels) * scr.scaleX * pixelWidth)
-	h := int32(float32(scr.scanlines) * scr.scaleY)
+	w := int32(float32(scr.horizPixels) * scr.pixelScale * pixelWidth * scr.GetSpec().AspectBias)
+	h := int32(float32(scr.scanlines) * scr.pixelScale)
 	scr.window.SetSize(w, h)
 
 	// make sure everything drawn through the renderer is correctly scaled
@@ -205,7 +199,7 @@ func (scr *SdlPlay) setScaling(scale float32) error {
 
 // NewFrame implements television.PixelRenderer interface
 func (scr *SdlPlay) NewFrame(frameNum int) error {
-	if scr.showOnNextStable {
+	if scr.showOnNextStable && scr.IsStable() {
 		scr.showWindow(true)
 		scr.showOnNextStable = false
 	}

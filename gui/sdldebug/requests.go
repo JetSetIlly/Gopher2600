@@ -92,22 +92,15 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		err = scr.pxl.update()
 
 	case gui.ReqIncScale:
-		if scr.pxl.pixelScaleY < 4.0 {
-			err = scr.pxl.setScaling(scr.pxl.pixelScaleY + 0.1)
+		if scr.pxl.pixelScale < 4.0 {
+			err = scr.pxl.setScaling(scr.pxl.pixelScale + 0.1)
 			err = scr.pxl.update()
 		}
 
 	case gui.ReqDecScale:
-		if scr.pxl.pixelScaleY > 0.5 {
-			err = scr.pxl.setScaling(scr.pxl.pixelScaleY - 0.1)
+		if scr.pxl.pixelScale > 0.5 {
+			err = scr.pxl.setScaling(scr.pxl.pixelScale - 0.1)
 			err = scr.pxl.update()
-		}
-
-	case gui.ReqSetOverscan:
-		if args[0].(bool) {
-			err = scr.resizeOverscan()
-		} else {
-			err = scr.resizeSpec()
 		}
 
 	default:

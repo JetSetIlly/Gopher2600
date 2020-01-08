@@ -62,26 +62,9 @@ type television struct {
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
-	// the following values are used for stability detection. we could possibly
-	// define a separate type for all of these.
-
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
-
-	// new top and bottom values if stability threshold is met
-	speculativeTop    int
-	speculativeBottom int
-
-	// top and bottom as reckoned by the current frame - reset at the moment
-	// when a new frame is detected
-	thisTop    int
-	thisBottom int
-
-	// a frame has to be stable (speculative top and bottom unchanged) for a
-	// number of frames (stable threshold) before we accept that it is a true
-	// representation of frame dimensions
-	stability int
 }
 
 // the number of frames that (speculative) top and bottom values must be steady
@@ -140,6 +123,8 @@ func (tv *television) Reset() error {
 
 // Signal implements the Television interface
 func (tv *television) Signal(sig SignalAttributes) error {
+	resizeScreen := false
+
 	// the following condition detects a new scanline by looking for the
 	// non-textbook HSyncSimple signal
 	//
@@ -177,9 +162,21 @@ func (tv *television) Signal(sig SignalAttributes) error {
 					}
 				}
 			}
-		} else {
-			// repeat last scanline over and over
-			tv.scanline = tv.spec.ScanlinesTotal
+		} else if !tv.IsStable() && tv.frameNum > 1 &&
+			tv.spec != SpecPAL && tv.auto &&
+			tv.scanline >= SpecNTSC.ScanlinesTotal+10 {
+
+			// PAL detection:
+			//   1. frame must be "unstable"
+			//   2. not be the first frame (because ROMs can still be in the
+			//               setup phae at this point)
+			//   3. not be in PAL mode already
+			//   4. have the auto flag set
+			//   5. be more than 10 scanline beyond the NTSC specification
+			tv.spec = SpecPAL
+			tv.top = tv.spec.ScanlineTop
+			tv.bottom = tv.spec.ScanlineBottom
+			resizeScreen = true
 		}
 
 	} else {
@@ -240,11 +237,13 @@ func (tv *television) Signal(sig SignalAttributes) error {
 
 	// push screen boundaries outward using vblank and color signal to help us
 	if !sig.VBlank && col.red != 0 && col.green != 0 && col.blue != 0 {
-		if tv.scanline < tv.thisTop {
-			tv.thisTop = tv.scanline
+		if tv.scanline < tv.top {
+			tv.top = tv.scanline
+			resizeScreen = true
 		}
-		if tv.scanline > tv.thisBottom {
-			tv.thisBottom = tv.scanline
+		if tv.scanline > tv.bottom {
+			tv.bottom = tv.scanline
+			resizeScreen = true
 		}
 	}
 
@@ -261,64 +260,26 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// record the current signal settings so they can be used for reference
 	tv.prevSignal = sig
 
+	if resizeScreen {
+		for f := range tv.renderers {
+			err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top+1)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
-func (tv *television) stabilise() (bool, error) {
-	if tv.frameNum <= 1 || (tv.thisTop == tv.top && tv.thisBottom == tv.bottom) {
-		return false, nil
-	}
-
-	// if top and bottom has changed this frame update speculative values
-	if tv.thisTop != tv.speculativeTop || tv.thisBottom != tv.speculativeBottom {
-		tv.speculativeTop = tv.thisTop
-		tv.speculativeBottom = tv.thisBottom
-		return false, nil
-	}
-
-	// increase stability value until we reach threshold
-	if !tv.IsStable() {
-		tv.stability++
-		return false, nil
-	}
-
-	// accept speculative values
-	tv.top = tv.speculativeTop
-	tv.bottom = tv.speculativeBottom
-
-	if tv.spec == SpecNTSC && tv.auto && tv.bottom-tv.top >= SpecPAL.ScanlinesVisible {
-		tv.spec = SpecPAL
-
-		// reset top/bottom to ideals of new spec. they may of course be
-		// pushed outward in subsequent frames
-		tv.top = tv.spec.ScanlineTop
-		tv.bottom = tv.spec.ScanlineBottom
-	}
-
-	for f := range tv.renderers {
-		err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top+1)
-		if err != nil {
-			return false, err
-		}
-	}
-	return true, nil
-}
-
 func (tv *television) newFrame() error {
-	_, err := tv.stabilise()
-	if err != nil {
-		return err
-	}
-
 	// new frame
 	tv.frameNum++
 	tv.scanline = 0
-	tv.thisTop = tv.top
-	tv.thisBottom = tv.bottom
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
-		err = tv.renderers[f].NewFrame(tv.frameNum)
+		err := tv.renderers[f].NewFrame(tv.frameNum)
 		if err != nil {
 			return err
 		}
@@ -366,7 +327,7 @@ func (tv television) GetSpec() *Specification {
 
 // IsStable implements the Television interface
 func (tv television) IsStable() bool {
-	return tv.stability >= stabilityThreshold
+	return tv.frameNum > stabilityThreshold
 }
 
 // End implements the Television interface

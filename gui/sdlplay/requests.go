@@ -61,23 +61,6 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	case gui.ReqSetScale:
 		err = scr.setScaling(args[0].(float32))
 
-	case gui.ReqIncScale:
-		if scr.scaleY < 4.0 {
-			err = scr.setScaling(scr.scaleY + 0.1)
-		}
-
-	case gui.ReqDecScale:
-		if scr.scaleY > 0.5 {
-			err = scr.setScaling(scr.scaleY - 0.1)
-		}
-
-	case gui.ReqSetOverscan:
-		if args[0].(bool) == true {
-			err = scr.resizeOverscan()
-		} else {
-			err = scr.resizeSpec()
-		}
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
