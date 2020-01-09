@@ -18,3 +18,4 @@ todo.txt
 *.bin
 *.wasm
 README.html
+mactest/mactest
