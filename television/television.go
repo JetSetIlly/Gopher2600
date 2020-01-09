@@ -65,11 +65,11 @@ type television struct {
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
-}
 
-// the number of frames that (speculative) top and bottom values must be steady
-// before we accept the frame characteristics
-const stabilityThreshold = 5
+	resizeCandidacy int
+	candidateTop    int
+	candidateBottom int
+}
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
@@ -162,21 +162,24 @@ func (tv *television) Signal(sig SignalAttributes) error {
 					}
 				}
 			}
-		} else if !tv.IsStable() && tv.frameNum > 1 &&
-			tv.spec != SpecPAL && tv.auto &&
-			tv.scanline >= SpecNTSC.ScanlinesTotal+10 {
-
-			// PAL detection:
+		} else {
+			// PAL detection condition:
 			//   1. frame must be "unstable"
 			//   2. not be the first frame (because ROMs can still be in the
-			//               setup phae at this point)
+			//       setup phae at this point)
 			//   3. not be in PAL mode already
 			//   4. have the auto flag set
-			//   5. be more than 10 scanline beyond the NTSC specification
-			tv.spec = SpecPAL
-			tv.top = tv.spec.ScanlineTop
-			tv.bottom = tv.spec.ScanlineBottom
-			resizeScreen = true
+			//   5. be more than 10 scanlines beyond the NTSC specification
+			//
+			// Specification detection only works from NTSC to PAL. A PAL frame
+			// can never cause a flip to NTSC
+			if !tv.IsStable() && tv.frameNum > 1 &&
+				tv.spec != SpecPAL && tv.auto &&
+				tv.scanline >= SpecNTSC.ScanlinesTotal+10 {
+
+				tv.SetSpec("PAL")
+				resizeScreen = true
+			}
 		}
 
 	} else {
@@ -235,15 +238,52 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// push screen boundaries outward using vblank and color signal to help us
+	//  if vblank is false and colour signal is non-black we check if the screen
+	//  boundaries are still valid.
+	//
+	//  the choice of black as the key color is arbitrary. I wonder if colour
+	//  detection needs to be more sophisticated. Tapper is an example of why
+	//  this might be necessary.
+	//
+	//  what we're actually doing here is checking to see if the VCS is trying
+	//  to draw out of the current screen boundaries.
 	if !sig.VBlank && col.red != 0 && col.green != 0 && col.blue != 0 {
-		if tv.scanline < tv.top {
-			tv.top = tv.scanline
-			resizeScreen = true
+
+		// the difference between current top/bottom boundaries and new top/boundaries
+		// before we begin checking for stability
+		const resizeThreshhold = 4
+
+		// if the scanline is outside of the current top/bottom boundary by the
+		// threshold amount then check to see if that scanline value has been
+		// sustained for at least one second and resize screen if it has.
+		//
+		// screens can never shrink in size, unless SetSpec() is called (and
+		// the screen may well immediately spring back to the expanded size)
+		if tv.scanline <= tv.top-resizeThreshhold {
+			if tv.scanline == tv.candidateTop {
+				tv.resizeCandidacy++
+				if tv.resizeCandidacy >= tv.spec.FramesPerSecond {
+					tv.top = tv.scanline
+					resizeScreen = true
+					tv.resizeCandidacy = 0
+				}
+			} else {
+				tv.candidateTop = tv.scanline
+				tv.resizeCandidacy = 0
+			}
 		}
-		if tv.scanline > tv.bottom {
-			tv.bottom = tv.scanline
-			resizeScreen = true
+
+		if tv.scanline >= tv.bottom+resizeThreshhold {
+			if tv.scanline == tv.candidateBottom {
+				tv.resizeCandidacy++
+				if tv.resizeCandidacy >= tv.spec.FramesPerSecond {
+					tv.bottom = tv.scanline
+					resizeScreen = true
+				}
+			} else {
+				tv.candidateBottom = tv.scanline
+				tv.resizeCandidacy = 0
+			}
 		}
 	}
 
@@ -260,6 +300,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// record the current signal settings so they can be used for reference
 	tv.prevSignal = sig
 
+	// screen resizing has been requested
 	if resizeScreen {
 		for f := range tv.renderers {
 			err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top+1)
@@ -312,11 +353,22 @@ func (tv *television) SetSpec(spec string) error {
 		tv.spec = SpecPAL
 		tv.auto = false
 	case "AUTO":
-		tv.spec = SpecNTSC
 		tv.auto = true
+
+		// a tv.spec of nil means this is the first call of SetSpec() so
+		// as well as setting the auto flag we need to specify a
+		// specification
+		if tv.spec == nil {
+			tv.spec = SpecNTSC
+		}
+
 	default:
 		return errors.New(errors.Television, fmt.Sprintf("unsupported tv specifcation (%s)", spec))
 	}
+
+	tv.top = tv.spec.ScanlineTop
+	tv.bottom = tv.spec.ScanlineBottom
+
 	return nil
 }
 
@@ -325,9 +377,13 @@ func (tv television) GetSpec() *Specification {
 	return tv.spec
 }
 
+// the number of frames that (speculative) top and bottom values must be steady
+// before we accept the frame characteristics
+const stabilityThreshold = 5
+
 // IsStable implements the Television interface
 func (tv television) IsStable() bool {
-	return tv.frameNum > stabilityThreshold
+	return tv.frameNum >= stabilityThreshold
 }
 
 // End implements the Television interface
