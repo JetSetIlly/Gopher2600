@@ -46,7 +46,7 @@ type SdlDebug struct {
 }
 
 // NewSdlDebug is the preferred method for creating a new instance of SdlDebug
-func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
+func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	var err error
 
 	// set up gui
@@ -90,9 +90,6 @@ func NewSdlDebug(tv television.Television, scale float32) (gui.GUI, error) {
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
-
-	// gui events are serviced by a separate go rountine
-	go scr.guiLoop()
 
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request

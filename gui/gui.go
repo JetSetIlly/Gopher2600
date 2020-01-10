@@ -42,3 +42,14 @@ type GUI interface {
 	// purpose.
 	SetEventChannel(chan (Event))
 }
+
+// EventsLoop defines the service events function required by a GUI. It is
+// sometimes necessary to service events in a different goroutine to where the
+// gui was created. In those cases the Events interface is more convenient to
+// move around.
+type EventsLoop interface {
+	// ServiceEvents should not pause or loop longer than necessary (if at
+	// all). An EventsLoop interface will be called as part of a larger loop
+	// and will be called as often as required.
+	ServiceEvents() bool
+}

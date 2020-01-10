@@ -46,7 +46,57 @@ import (
 
 const defaultInitScript = "debuggerInit"
 
+// communication between the main() function and the launch() function
+type mainSync struct {
+	events chan gui.EventsLoop
+	quit   chan bool
+}
+
 func main() {
+	sync := &mainSync{
+		events: make(chan gui.EventsLoop),
+		quit:   make(chan bool),
+	}
+
+	// launch program as a go routine. further communication is  through
+	// the mainSync instance
+	go launch(sync)
+
+	// loop until quit is true. every iteration of the loop we listen for:
+	//
+	//  1. quit signals
+	//  2. new gui.Events interfaces
+	//  3. anything in the most recently sent gui.EventsLoop instance
+	//
+	// currently, only one gui.EventsLoop instance can be in use at once but
+	// there's no reason I suppose, why there can't be several
+	quit := false
+	var events gui.EventsLoop
+	for !quit {
+
+		select {
+		case events = <-sync.events:
+
+		case v := <-sync.quit:
+			quit = v
+
+		default:
+			// if an instance of gui.Events has been sent to us via sync.events
+			// then call ServiceEvents()
+			if events != nil {
+				events.ServiceEvents()
+			}
+		}
+	}
+}
+
+// launch is called from main() as a goroutine. everything except the main
+// event loop is run from here.
+func launch(sync *mainSync) {
+	defer func() {
+		sync.quit <- true
+	}()
+
 	// we generate random numbers in some places. seed the generator with the
 	// current time
 	// rand.Seed(int64(time.Now().Second()))
@@ -70,16 +120,16 @@ func main() {
 		fallthrough
 
 	case "PLAY":
-		err = play(md)
+		err = play(md, sync)
 
 	case "DEBUG":
-		err = debug(md)
+		err = debug(md, sync)
 
 	case "DISASM":
 		err = disasm(md)
 
 	case "PERFORMANCE":
-		err = perform(md)
+		err = perform(md, sync)
 
 	case "REGRESS":
 		err = regress(md)
@@ -91,7 +141,7 @@ func main() {
 	}
 }
 
-func play(md *modalflag.Modes) error {
+func play(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
@@ -137,6 +187,9 @@ func play(md *modalflag.Modes) error {
 			return errors.New(errors.PlayError, err)
 		}
 
+		// notify main thread of additions to event loop
+		sync.events <- scr
+
 		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
 		if err != nil {
 			return err
@@ -144,6 +197,7 @@ func play(md *modalflag.Modes) error {
 		if *record {
 			fmt.Println("! recording completed")
 		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
@@ -151,7 +205,7 @@ func play(md *modalflag.Modes) error {
 	return nil
 }
 
-func debug(md *modalflag.Modes) error {
+func debug(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	defInitScript, err := paths.ResourcePath("", defaultInitScript)
@@ -180,6 +234,9 @@ func debug(md *modalflag.Modes) error {
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
+
+	// notify main thread of additions to event loop
+	sync.events <- scr
 
 	// start debugger with choice of interface and cartridge
 	var cons terminal.Terminal
@@ -276,7 +333,7 @@ func disasm(md *modalflag.Modes) error {
 	return nil
 }
 
-func perform(md *modalflag.Modes) error {
+func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
@@ -313,12 +370,15 @@ func perform(md *modalflag.Modes) error {
 				return errors.New(errors.PerformanceError, err)
 			}
 
-			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
+			// notify main thread of additions to event loop
+			sync.events <- scr
+
+			err = scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return errors.New(errors.PerformanceError, err)
 			}
 
-			err = scr.(gui.GUI).SetFeature(gui.ReqSetFPSCap, *fpscap)
+			err = scr.SetFeature(gui.ReqSetFPSCap, *fpscap)
 			if err != nil {
 				return errors.New(errors.PerformanceError, err)
 			}

@@ -74,7 +74,7 @@ type SdlPlay struct {
 }
 
 // NewSdlPlay is the preferred method of initialisation for SdlPlay
-func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
+func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	// set up gui
 	scr := &SdlPlay{Television: tv}
 
@@ -130,9 +130,6 @@ func NewSdlPlay(tv television.Television, scale float32) (gui.GUI, error) {
 	if err != nil {
 		return nil, errors.New(errors.SDL, err)
 	}
-
-	// gui events are serviced by a separate go rountine
-	go scr.guiLoop()
 
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request
