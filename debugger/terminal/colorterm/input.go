@@ -269,6 +269,9 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 					}
 				}
 
+			case easyterm.KeyCtrlH:
+				fallthrough
+
 			case easyterm.KeyBackspace:
 				// BACKSPACE
 				if cursorPos > 0 {
