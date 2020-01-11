@@ -26,8 +26,11 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// Service listens for SDL events and should only be run from the main loop
-func (scr *SdlDebug) Service() bool {
+// #main #mainthread
+
+// Service implements gui.GUI interface. This SDL implementation should only be
+// run from the main loop.
+func (scr *SdlDebug) Service() {
 	sdlEvent := sdl.WaitEventTimeout(1)
 
 	switch sdlEvent := sdlEvent.(type) {
@@ -131,8 +134,6 @@ func (scr *SdlDebug) Service() bool {
 		// !!TODO: zoom image
 
 	}
-
-	return sdlEvent != nil
 }
 
 func (scr *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {

@@ -25,8 +25,11 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// Service listens for SDL events and should only be run in the main loop
-func (scr *SdlPlay) Service() bool {
+// #main #mainthread
+
+// Service implements gui.GUI interface. This SDL implementation should only be
+// run from the main loop.
+func (scr *SdlPlay) Service() {
 	sdlEvent := sdl.WaitEventTimeout(1)
 
 	switch sdlEvent := sdlEvent.(type) {
@@ -71,6 +74,4 @@ func (scr *SdlPlay) Service() bool {
 			}
 		}
 	}
-
-	return sdlEvent != nil
 }

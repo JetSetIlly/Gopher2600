@@ -73,7 +73,8 @@ type SdlPlay struct {
 	showOnNextStable bool
 }
 
-// NewSdlPlay is the preferred method of initialisation for SdlPlay
+// NewSdlPlay is the preferred method of initialisation for SdlPlay. It should
+// only be called from the main thread.
 func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	// set up gui
 	scr := &SdlPlay{Television: tv}

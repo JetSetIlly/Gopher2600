@@ -26,7 +26,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SetFeature is used to set a television attribute
+// SetFeature implements the GUI interface
 func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {

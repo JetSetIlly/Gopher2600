@@ -46,18 +46,26 @@ import (
 
 const defaultInitScript = "debuggerInit"
 
-// communication between the main() function and the launch() function
+// communication between the main() function and the launch() function. this is
+// required because many gui solutions (notably SDL) require window event
+// handling (including creation) to occur on the main thread
 type mainSync struct {
-	creator  chan func() gui.GUI
-	creation chan gui.GUI
-	quit     chan bool
+	quit    chan bool
+	creator chan func() (gui.GUI, error)
+
+	// the result of creator will be returned on either of these two channels.
+	creation      chan gui.GUI
+	creationError chan error
 }
+
+// #main #mainthread
 
 func main() {
 	sync := &mainSync{
-		creator:  make(chan func() gui.GUI),
-		creation: make(chan gui.GUI),
-		quit:     make(chan bool),
+		quit:          make(chan bool),
+		creator:       make(chan func() (gui.GUI, error)),
+		creation:      make(chan gui.GUI),
+		creationError: make(chan error),
 	}
 
 	// launch program as a go routine. further communication is  through
@@ -73,18 +81,21 @@ func main() {
 	quit := false
 	var gui gui.GUI
 	for !quit {
-
 		select {
 		case creator := <-sync.creator:
-			gui = creator()
-			sync.creation <- gui
+			var err error
+			gui, err = creator()
+			if err != nil {
+				sync.creationError <- err
+			} else {
+				sync.creation <- gui
+			}
 
-		case v := <-sync.quit:
-			quit = v
+		case quit = <-sync.quit:
 
 		default:
 			// if an instance of gui.Events has been sent to us via sync.events
-			// then call ServiceEvents()
+			// then call Service()
 			if gui != nil {
 				gui.Service()
 			}
@@ -92,8 +103,8 @@ func main() {
 	}
 }
 
-// launch is called from main() as a goroutine. everything except the main
-// event loop is run from here.
+// launch is called from main() as a goroutine. uses mainSync instance to
+// indicate gui creation and quit events
 func launch(sync *mainSync) {
 	defer func() {
 		sync.quit <- true
@@ -184,16 +195,17 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		// notify main thread of additions to event loop
-		sync.creator <- func() gui.GUI {
-			scr, _ := sdlplay.NewSdlPlay(tv, float32(*scaling))
-			return scr
+		// notify main thread of new gui creator
+		sync.creator <- func() (gui.GUI, error) {
+			return sdlplay.NewSdlPlay(tv, float32(*scaling))
 		}
 
 		// wait for creator result
-		scr := <-sync.creation
-		if scr == nil {
-			return errors.New(errors.PlayError, "cannot create SdlPlay")
+		var scr gui.GUI
+		select {
+		case scr = <-sync.creation:
+		case err := <-sync.creationError:
+			return errors.New(errors.PlayError, err)
 		}
 
 		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
@@ -236,16 +248,17 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 	defer tv.End()
 
-	// notify main thread of additions to event loop
-	sync.creator <- func() gui.GUI {
-		scr, _ := sdldebug.NewSdlDebug(tv, 2.0)
-		return scr
+	// notify main thread of new gui creator
+	sync.creator <- func() (gui.GUI, error) {
+		return sdldebug.NewSdlDebug(tv, 2.0)
 	}
 
 	// wait for creator result
-	scr := <-sync.creation
-	if scr == nil {
-		return errors.New(errors.DebuggerError, "cannot create SdlDebug")
+	var scr gui.GUI
+	select {
+	case scr = <-sync.creation:
+	case err := <-sync.creationError:
+		return errors.New(errors.PlayError, err)
 	}
 
 	// start debugger with choice of interface and cartridge
@@ -375,16 +388,17 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		defer tv.End()
 
 		if *display {
-			// notify main thread of additions to event loop
-			sync.creator <- func() gui.GUI {
-				scr, _ := sdlplay.NewSdlPlay(tv, float32(*scaling))
-				return scr
+			// notify main thread of new gui creator
+			sync.creator <- func() (gui.GUI, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 
 			// wait for creator result
-			scr := <-sync.creation
-			if scr == nil {
-				return errors.New(errors.PerformanceError, "cannot create SdlPlay")
+			var scr gui.GUI
+			select {
+			case scr = <-sync.creation:
+			case err := <-sync.creationError:
+				return errors.New(errors.PlayError, err)
 			}
 
 			err = scr.SetFeature(gui.ReqSetVisibility, true)

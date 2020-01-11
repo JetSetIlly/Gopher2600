@@ -45,7 +45,8 @@ type SdlDebug struct {
 	paused bool
 }
 
-// NewSdlDebug is the preferred method for creating a new instance of SdlDebug
+// NewSdlDebug is the preferred method for creating a new instance of SdlDebug.
+// It should only be called from the main thread.
 func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	var err error
 
