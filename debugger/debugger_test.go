@@ -86,6 +86,10 @@ func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...interface{}) error 
 func (g *mockGUI) SetEventChannel(_ chan (gui.Event)) {
 }
 
+func (g *mockGUI) Service() bool {
+	return true
+}
+
 type mockTerm struct {
 	t      *testing.T
 	inp    chan string

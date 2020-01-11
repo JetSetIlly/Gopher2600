@@ -26,8 +26,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// ServiceEvents listens for SDL events and should only be run from the main loop
-func (scr *SdlDebug) ServiceEvents() bool {
+// Service listens for SDL events and should only be run from the main loop
+func (scr *SdlDebug) Service() bool {
 	sdlEvent := sdl.WaitEventTimeout(1)
 
 	switch sdlEvent := sdlEvent.(type) {

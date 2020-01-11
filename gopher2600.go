@@ -48,14 +48,16 @@ const defaultInitScript = "debuggerInit"
 
 // communication between the main() function and the launch() function
 type mainSync struct {
-	events chan gui.EventsLoop
-	quit   chan bool
+	creator  chan func() gui.GUI
+	creation chan gui.GUI
+	quit     chan bool
 }
 
 func main() {
 	sync := &mainSync{
-		events: make(chan gui.EventsLoop),
-		quit:   make(chan bool),
+		creator:  make(chan func() gui.GUI),
+		creation: make(chan gui.GUI),
+		quit:     make(chan bool),
 	}
 
 	// launch program as a go routine. further communication is  through
@@ -65,17 +67,17 @@ func main() {
 	// loop until quit is true. every iteration of the loop we listen for:
 	//
 	//  1. quit signals
-	//  2. new gui.Events interfaces
-	//  3. anything in the most recently sent gui.EventsLoop instance
+	//  2. new gui creation functions
+	//  3. anything in the Service() function of the most recently created GUI
 	//
-	// currently, only one gui.EventsLoop instance can be in use at once but
-	// there's no reason I suppose, why there can't be several
 	quit := false
-	var events gui.EventsLoop
+	var gui gui.GUI
 	for !quit {
 
 		select {
-		case events = <-sync.events:
+		case creator := <-sync.creator:
+			gui = creator()
+			sync.creation <- gui
 
 		case v := <-sync.quit:
 			quit = v
@@ -83,8 +85,8 @@ func main() {
 		default:
 			// if an instance of gui.Events has been sent to us via sync.events
 			// then call ServiceEvents()
-			if events != nil {
-				events.ServiceEvents()
+			if gui != nil {
+				gui.Service()
 			}
 		}
 	}
@@ -182,13 +184,17 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
-		if err != nil {
-			return errors.New(errors.PlayError, err)
+		// notify main thread of additions to event loop
+		sync.creator <- func() gui.GUI {
+			scr, _ := sdlplay.NewSdlPlay(tv, float32(*scaling))
+			return scr
 		}
 
-		// notify main thread of additions to event loop
-		sync.events <- scr
+		// wait for creator result
+		scr := <-sync.creation
+		if scr == nil {
+			return errors.New(errors.PlayError, "cannot create SdlPlay")
+		}
 
 		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
 		if err != nil {
@@ -230,13 +236,17 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 	defer tv.End()
 
-	scr, err := sdldebug.NewSdlDebug(tv, 2.0)
-	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+	// notify main thread of additions to event loop
+	sync.creator <- func() gui.GUI {
+		scr, _ := sdldebug.NewSdlDebug(tv, 2.0)
+		return scr
 	}
 
-	// notify main thread of additions to event loop
-	sync.events <- scr
+	// wait for creator result
+	scr := <-sync.creation
+	if scr == nil {
+		return errors.New(errors.DebuggerError, "cannot create SdlDebug")
+	}
 
 	// start debugger with choice of interface and cartridge
 	var cons terminal.Terminal
@@ -365,13 +375,17 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		defer tv.End()
 
 		if *display {
-			scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
-			if err != nil {
-				return errors.New(errors.PerformanceError, err)
+			// notify main thread of additions to event loop
+			sync.creator <- func() gui.GUI {
+				scr, _ := sdlplay.NewSdlPlay(tv, float32(*scaling))
+				return scr
 			}
 
-			// notify main thread of additions to event loop
-			sync.events <- scr
+			// wait for creator result
+			scr := <-sync.creation
+			if scr == nil {
+				return errors.New(errors.PerformanceError, "cannot create SdlPlay")
+			}
 
 			err = scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
