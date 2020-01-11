@@ -27,8 +27,6 @@ import (
 	"gopher2600/playmode"
 )
 
-// #ctrl-c #ctrlc
-
 func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 	var err error
 
@@ -85,6 +83,8 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 	return err
 
 }
+
+// #ctrl-c #ctrlc #interrupt
 
 func (dbg *Debugger) checkInterruptsAndEvents() error {
 	var err error

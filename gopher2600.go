@@ -41,16 +41,29 @@ import (
 	"gopher2600/wavwriter"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 )
 
 const defaultInitScript = "debuggerInit"
 
+type stateReq int
+
+const (
+	// main thread should end as soon as possible
+	reqQuit stateReq = iota
+
+	// reset interrupt signal handling. used when an alternative
+	// handler is more appropriate. for example, the playMode and Debugger
+	// package provide a mode specific handler.
+	reqResetIntSig
+)
+
 // communication between the main() function and the launch() function. this is
 // required because many gui solutions (notably SDL) require window event
 // handling (including creation) to occur on the main thread
 type mainSync struct {
-	quit    chan bool
+	state   chan stateReq
 	creator chan func() (gui.GUI, error)
 
 	// the result of creator will be returned on either of these two channels.
@@ -62,26 +75,36 @@ type mainSync struct {
 
 func main() {
 	sync := &mainSync{
-		quit:          make(chan bool),
+		state:         make(chan stateReq),
 		creator:       make(chan func() (gui.GUI, error)),
 		creation:      make(chan gui.GUI),
 		creationError: make(chan error),
 	}
 
+	// default ctrl-c handler. can be turned off with reqResetIntSig request
+	// #ctrl-c #ctrlc #interrupt
+	intChan := make(chan os.Signal, 1)
+	signal.Notify(intChan, os.Interrupt)
+
 	// launch program as a go routine. further communication is  through
 	// the mainSync instance
 	go launch(sync)
 
-	// loop until quit is true. every iteration of the loop we listen for:
+	// loop until done is true. every iteration of the loop we listen for:
 	//
-	//  1. quit signals
+	//  1. interrupt signals
 	//  2. new gui creation functions
+	//  3. state requests
 	//  3. anything in the Service() function of the most recently created GUI
 	//
-	quit := false
+	done := false
 	var gui gui.GUI
-	for !quit {
+	for !done {
 		select {
+		case <-intChan:
+			fmt.Println("\r")
+			done = true
+
 		case creator := <-sync.creator:
 			var err error
 			gui, err = creator()
@@ -91,7 +114,13 @@ func main() {
 				sync.creation <- gui
 			}
 
-		case quit = <-sync.quit:
+		case state := <-sync.state:
+			switch state {
+			case reqQuit:
+				done = true
+			case reqResetIntSig:
+				signal.Reset(os.Interrupt)
+			}
 
 		default:
 			// if an instance of gui.Events has been sent to us via sync.events
@@ -104,10 +133,10 @@ func main() {
 }
 
 // launch is called from main() as a goroutine. uses mainSync instance to
-// indicate gui creation and quit events
+// indicate gui creation and to quit
 func launch(sync *mainSync) {
 	defer func() {
-		sync.quit <- true
+		sync.state <- reqQuit
 	}()
 
 	// we generate random numbers in some places. seed the generator with the
@@ -208,6 +237,9 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return errors.New(errors.PlayError, err)
 		}
 
+		// turn off fallback ctrl-c handling
+		sync.state <- reqResetIntSig
+
 		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
 		if err != nil {
 			return err
@@ -273,6 +305,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	case "COLOR":
 		cons = &colorterm.ColorTerminal{}
 	}
+
+	// NewDebugger() installs its own ctrl-handler so we can turn off the
+	// default handling in the main thread
+	sync.state <- reqResetIntSig
 
 	dbg, err := debugger.NewDebugger(tv, scr, cons)
 	if err != nil {
