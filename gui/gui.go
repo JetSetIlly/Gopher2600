@@ -44,8 +44,8 @@ type GUI interface {
 	SetEventChannel(chan Event)
 
 	// Service() should not pause or loop longer than necessary (if at all). It
-	// is called as part of a larger loop from the main thread. It should
-	// service all gui events that are not safe to do in sub-threads.
+	// MUST ONLY by called as part of a larger loop from the main thread. It
+	// should service all gui events that are not safe to do in sub-threads.
 	//
 	// If the GUI framework does not require this sort of thread safety then
 	// there is no need for the Service() function to do anything.

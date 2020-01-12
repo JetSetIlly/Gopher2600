@@ -42,15 +42,17 @@ import (
 
 // FpsLimiter will trigger every frames per second
 type FpsLimiter struct {
+	// toggle limited on and off
+	Active bool
+
 	framesPerSecond int
 	secondsPerFrame time.Duration
-
-	tick chan bool
+	tick            chan bool
 }
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
-func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
-	lim := &FpsLimiter{}
+func NewFPSLimiter(framesPerSecond int) *FpsLimiter {
+	lim := &FpsLimiter{Active: true}
 	lim.SetLimit(framesPerSecond)
 
 	lim.tick = make(chan bool)
@@ -68,7 +70,7 @@ func NewFPSLimiter(framesPerSecond int) (*FpsLimiter, error) {
 		}
 	}()
 
-	return lim, nil
+	return lim
 }
 
 // SetLimit changes the limit at which the FpsLimiter waits
@@ -79,7 +81,9 @@ func (lim *FpsLimiter) SetLimit(framesPerSecond int) {
 
 // Wait will block until trigger
 func (lim *FpsLimiter) Wait() {
-	<-lim.tick
+	if lim.Active {
+		<-lim.tick
+	}
 }
 
 // HasWaited will return true if time has already elapsed and false it it is

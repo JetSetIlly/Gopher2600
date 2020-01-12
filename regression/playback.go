@@ -141,10 +141,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	}
 
 	// display progress meter every 1 second
-	limiter, err := limiter.NewFPSLimiter(1)
-	if err != nil {
-		return false, "", errors.New(errors.RegressionPlaybackError, err)
-	}
+	lmtr := limiter.NewFPSLimiter(1)
 
 	// run emulation
 	err = vcs.Run(func() (bool, error) {
@@ -156,7 +153,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			return false, errors.New(errors.RegressionPlaybackError, "playback has not ended as expected")
 		}
 
-		if limiter.HasWaited() {
+		if lmtr.HasWaited() {
 			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
 		}
 		return true, nil

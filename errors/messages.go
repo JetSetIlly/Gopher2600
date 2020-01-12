@@ -130,5 +130,6 @@ const (
 
 	// gui
 	UnsupportedGUIRequest = "gui error: unsupported request (%v)"
-	SDL                   = "SDL: %v"
+	SDLDebug              = "sdldebug: %v"
+	SDLPlay               = "sdlplay: %v"
 )

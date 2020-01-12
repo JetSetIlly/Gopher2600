@@ -25,18 +25,26 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// #main #mainthread
-
-// Service implements gui.GUI interface. This SDL implementation should only be
-// run from the main loop.
+// Service implements gui.GUI interface.
+//
+// MUST only be called from the #mainthread
 func (scr *SdlPlay) Service() {
+	scr.lmtr.Wait()
+
+	// run any outstanding service functions
+	select {
+	case f := <-scr.service:
+		f()
+	default:
+	}
+
+	// check for SDL events. timing out straight away if there's nothing
 	sdlEvent := sdl.WaitEventTimeout(1)
 
 	switch sdlEvent := sdlEvent.(type) {
 
 	// close window
 	case *sdl.QuitEvent:
-		scr.SetFeature(gui.ReqSetVisibility, false)
 		scr.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 	case *sdl.KeyboardEvent:

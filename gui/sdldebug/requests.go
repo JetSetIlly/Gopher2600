@@ -27,6 +27,8 @@ import (
 )
 
 // SetFeature implements the GUI interface
+//
+// SHOULD NOT be called from the #mainthread
 func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
@@ -39,69 +41,65 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	switch request {
 	case gui.ReqSetVisibility:
-		if args[0].(bool) {
-			scr.window.Show()
-			err = scr.pxl.update()
-		} else {
-			scr.window.Hide()
-		}
+		scr.showWindow(args[0].(bool))
+		scr.update()
 
 	case gui.ReqToggleVisibility:
 		if scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			scr.window.Show()
-
-			// update screen
-			// -- default args[1] of true if not present
-			if len(args) < 2 || args[1].(bool) {
-				err = scr.pxl.update()
-			}
+			scr.showWindow(true)
+			scr.update()
 		} else {
-			scr.window.Hide()
+			scr.showWindow(false)
 		}
 
 	case gui.ReqSetPause:
 		scr.paused = args[0].(bool)
-		err = scr.pxl.update()
+		scr.update()
 
 	case gui.ReqSetMasking:
-		scr.pxl.setMasking(args[0].(bool))
-		err = scr.pxl.update()
+		scr.masked = args[0].(bool)
+		scr.setWindowThread(-1)
+		scr.update()
 
 	case gui.ReqToggleMasking:
-		scr.pxl.setMasking(!scr.pxl.unmasked)
-		err = scr.pxl.update()
+		scr.masked = !scr.masked
+		scr.setWindowThread(-1)
+		scr.update()
 
 	case gui.ReqSetAltColors:
-		scr.pxl.useAltPixels = args[0].(bool)
-		err = scr.pxl.update()
+		scr.useAltColors = args[0].(bool)
+		scr.update()
 
 	case gui.ReqToggleAltColors:
-		scr.pxl.useAltPixels = !scr.pxl.useAltPixels
-		err = scr.pxl.update()
+		scr.useAltColors = !scr.useAltColors
+		scr.update()
 
 	case gui.ReqSetOverlay:
-		scr.pxl.useMetaPixels = args[0].(bool)
-		err = scr.pxl.update()
+		scr.useOverlay = args[0].(bool)
+		scr.update()
 
 	case gui.ReqToggleOverlay:
-		scr.pxl.useMetaPixels = !scr.pxl.useMetaPixels
-		err = scr.pxl.update()
+		scr.useOverlay = !scr.useOverlay
+		scr.update()
 
 	case gui.ReqSetScale:
-		err = scr.pxl.setScaling(args[0].(float32))
-		err = scr.pxl.update()
+		err = scr.setWindowThread(args[0].(float32))
+		scr.update()
 
 	case gui.ReqIncScale:
-		if scr.pxl.pixelScale < 4.0 {
-			err = scr.pxl.setScaling(scr.pxl.pixelScale + 0.1)
-			err = scr.pxl.update()
+		if scr.pixelScale < 4.0 {
+			err = scr.setWindowThread(scr.pixelScale + 0.1)
 		}
+		scr.update()
 
 	case gui.ReqDecScale:
-		if scr.pxl.pixelScale > 0.5 {
-			err = scr.pxl.setScaling(scr.pxl.pixelScale - 0.1)
-			err = scr.pxl.update()
+		if scr.pixelScale > 0.5 {
+			err = scr.setWindowThread(scr.pixelScale - 0.1)
 		}
+		scr.update()
+
+	case gui.ReqSetFpsCap:
+		scr.lmtr.Active = args[0].(bool)
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)

@@ -118,9 +118,10 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 				}
 
 			case easyterm.KeyInterrupt:
-				// CTRL-C -- note that there is a ctrl-c signal handler, set up in
-				// debugger.Start(), that controls the main debugging loop. this
-				// ctrl-c handler by contrast, controls the user input loop
+				// #ctrlc - note that there is a ctrl-c signal handler, set up
+				// in debugger.Start(), that controls the main debugging loop.
+				// this ctrl-c handler by contrast, controls the user input
+				// loop
 
 				if inputLen > 0 {
 					// clear current input
@@ -130,8 +131,8 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
 				} else {
 					// there is no input so return UserInterrupt error
-					ct.EasyTerm.TermPrint("\n")
-					return inputLen + 1, errors.New(errors.UserInterrupt)
+					ct.EasyTerm.TermPrint("\r\n")
+					return 0, errors.New(errors.UserInterrupt)
 				}
 
 			case easyterm.KeySuspend:

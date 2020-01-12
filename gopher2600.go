@@ -56,7 +56,7 @@ const (
 	// reset interrupt signal handling. used when an alternative
 	// handler is more appropriate. for example, the playMode and Debugger
 	// package provide a mode specific handler.
-	reqResetIntSig
+	reqNoIntSig
 )
 
 // communication between the main() function and the launch() function. this is
@@ -71,8 +71,7 @@ type mainSync struct {
 	creationError chan error
 }
 
-// #main #mainthread
-
+// #mainthread
 func main() {
 	sync := &mainSync{
 		state:         make(chan stateReq),
@@ -81,8 +80,7 @@ func main() {
 		creationError: make(chan error),
 	}
 
-	// default ctrl-c handler. can be turned off with reqResetIntSig request
-	// #ctrl-c #ctrlc #interrupt
+	// #ctrlc default handler. can be turned off with reqNoIntSig request
 	intChan := make(chan os.Signal, 1)
 	signal.Notify(intChan, os.Interrupt)
 
@@ -118,7 +116,7 @@ func main() {
 			switch state {
 			case reqQuit:
 				done = true
-			case reqResetIntSig:
+			case reqNoIntSig:
 				signal.Reset(os.Interrupt)
 			}
 
@@ -130,6 +128,8 @@ func main() {
 			}
 		}
 	}
+
+	fmt.Print("\r")
 }
 
 // launch is called from main() as a goroutine. uses mainSync instance to
@@ -190,7 +190,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
-	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
+	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
@@ -238,9 +238,15 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// turn off fallback ctrl-c handling
-		sync.state <- reqResetIntSig
+		sync.state <- reqNoIntSig
 
-		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
+		// set fps cap
+		err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
+		if err != nil {
+			return err
+		}
+
+		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)
 		if err != nil {
 			return err
 		}
@@ -308,8 +314,9 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	// NewDebugger() installs its own ctrl-handler so we can turn off the
 	// default handling in the main thread
-	sync.state <- reqResetIntSig
+	sync.state <- reqNoIntSig
 
+	// prepare new debugger instance
 	dbg, err := debugger.NewDebugger(tv, scr, cons)
 	if err != nil {
 		return err
@@ -318,8 +325,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	switch len(md.RemainingArgs()) {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
+
 	case 1:
-		runner := func() error {
+		// set up a running function
+		dgbRun := func() error {
 			cartload := cartridgeloader.Loader{
 				Filename: md.GetArg(0),
 				Format:   *cartFormat,
@@ -331,8 +340,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 			return nil
 		}
 
+		// if profile generation has been requested then pass the dgbRun()
+		// function prepared above, through the ProfileCPU() command
 		if *profile {
-			err := performance.ProfileCPU("debug.cpu.profile", runner)
+			err := performance.ProfileCPU("debug.cpu.profile", dgbRun)
 			if err != nil {
 				return err
 			}
@@ -341,11 +352,13 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 				return err
 			}
 		} else {
-			err := runner()
+			// no profile required so run dgbRun() function as normal
+			err := dgbRun()
 			if err != nil {
 				return err
 			}
 		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
@@ -397,7 +410,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	display := md.AddBool("display", false, "display TV output")
-	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
+	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
@@ -437,12 +450,14 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 				return errors.New(errors.PlayError, err)
 			}
 
-			err = scr.SetFeature(gui.ReqSetVisibility, true)
+			// set fps cap
+			err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
 			if err != nil {
-				return errors.New(errors.PerformanceError, err)
+				return err
 			}
 
-			err = scr.SetFeature(gui.ReqSetFPSCap, *fpscap)
+			// show gui
+			err = scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return errors.New(errors.PerformanceError, err)
 			}

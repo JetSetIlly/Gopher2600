@@ -26,18 +26,26 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// #main #mainthread
-
-// Service implements gui.GUI interface. This SDL implementation should only be
-// run from the main loop.
+// Service implements gui.GUI interface.
+//
+// MUST only be called from the #mainthread
 func (scr *SdlDebug) Service() {
+	scr.lmtr.Wait()
+
+	// run any outstanding service functions
+	select {
+	case f := <-scr.service:
+		f()
+	default:
+	}
+
+	// check for SDL events. timing out straight away if there's nothing
 	sdlEvent := sdl.WaitEventTimeout(1)
 
 	switch sdlEvent := sdlEvent.(type) {
 
 	// close window
 	case *sdl.QuitEvent:
-		scr.SetFeature(gui.ReqSetVisibility, false)
 		scr.eventChannel <- gui.Event{ID: gui.EventWindowClose}
 
 	case *sdl.KeyboardEvent:
@@ -126,37 +134,31 @@ func (scr *SdlDebug) Service() {
 						Scanline: sl}}
 			}
 		}
-
-	case *sdl.MouseMotionEvent:
-		// !!TODO: panning of zoomed image
-
-	case *sdl.MouseWheelEvent:
-		// !!TODO: zoom image
-
 	}
 }
 
 func (scr *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
 	var hp, sl int
 
-	sx, sy := scr.pxl.renderer.GetScale()
+	sx, sy := scr.renderer.GetScale()
 
 	// convert X pixel value to horizpos equivalent
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
-	if scr.pxl.unmasked {
-		hp = int(float32(sdlEvent.X)/sx) - television.HorizClksHBlank
-	} else {
+	if scr.masked {
 		hp = int(float32(sdlEvent.X) / sx)
+
+	} else {
+		hp = int(float32(sdlEvent.X)/sx) - television.HorizClksHBlank
 	}
 
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
-	if scr.pxl.unmasked {
-		sl = int(float32(sdlEvent.Y) / sy)
+	if scr.masked {
+		sl = int(float32(sdlEvent.Y)/sy) + int(scr.topScanline)
 	} else {
-		sl = int(float32(sdlEvent.Y)/sy) + int(scr.pxl.playTop)
+		sl = int(float32(sdlEvent.Y) / sy)
 	}
 
 	return hp, sl
