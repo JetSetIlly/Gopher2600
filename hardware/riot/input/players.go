@@ -44,6 +44,9 @@ type Player struct {
 	stickFunc func(uint8) uint8
 
 	// data direction register
+	mask uint8
+
+	// data direction register
 	ddr uint8
 
 	// the address in TIA memory for joystick fire button
@@ -57,8 +60,9 @@ func NewPlayer0(inp *Input) *Player {
 		input:      inp,
 		stickAddr:  addresses.SWCHA,
 		stickValue: 0xf0,
-		ddr:        0x00,
 		stickFunc:  func(n uint8) uint8 { return n },
+		mask:       0x0f,
+		ddr:        0x00,
 
 		buttonAddr: addresses.INPT4,
 	}
@@ -77,8 +81,9 @@ func NewPlayer1(inp *Input) *Player {
 		input:      inp,
 		stickAddr:  addresses.SWCHA,
 		stickValue: 0xf0,
+		stickFunc:  func(n uint8) uint8 { return n >> 4 },
+		mask:       0xf0,
 		ddr:        0x00,
-		stickFunc:  func(n uint8) uint8 { return n << 4 },
 
 		buttonAddr: addresses.INPT5,
 	}
@@ -99,29 +104,29 @@ func (pl *Player) Handle(event Event) error {
 		return nil
 
 	case Left:
-		pl.stickValue ^= 0x4f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue ^= 0x40
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case Right:
-		pl.stickValue ^= 0x8f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue ^= 0x80
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case Up:
-		pl.stickValue ^= 0x1f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue ^= 0x10
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case Down:
-		pl.stickValue ^= 0x2f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue ^= 0x20
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case NoLeft:
-		pl.stickValue |= 0x4f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue |= 0x40
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case NoRight:
-		pl.stickValue |= 0x8f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue |= 0x80
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case NoUp:
-		pl.stickValue |= 0x1f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue |= 0x10
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case NoDown:
-		pl.stickValue |= 0x2f
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.ddr)
+		pl.stickValue |= 0x20
+		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
 	case Fire:
 		pl.input.tiaMem.InputDeviceWrite(pl.buttonAddr, 0x00, 0x00)
 	case NoFire:
