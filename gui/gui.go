@@ -21,11 +21,12 @@ package gui
 
 // GUI defines the operations that can be performed on visual user interfaces.
 //
-// Currently, GUI implementations expect also to be an instance of
-// television.Television. This way a single object can be used in both GUI and
-// television contexts. In practice, the GUI instance may also implement the
-// Renderer and AudioMixer interfaces from the television packages but this is
-// not mandated by the GUI interface.
+// Note that many contexts where GUI is used also expect the GUI instance to
+// implement the Television interface from the television package. This is
+// probably best achieved by embedding an actual television implementation.
+//
+// In practice, the GUI instance may also implement the Renderer and AudioMixer
+// interfaces, also from the television package.
 type GUI interface {
 	// All GUIs should implement a MetaPixelRenderer even if only a stub
 	MetaPixelRenderer
@@ -38,7 +39,15 @@ type GUI interface {
 
 	// the event channel is used to by the GUI implementation to send
 	// information back to the main program. the GUI may or may not be in its
-	// own go routine but in regardless, the event channel is used for this
+	// own go routine but regardless, the event channel is used for this
 	// purpose.
-	SetEventChannel(chan (Event))
+	SetEventChannel(chan Event)
+
+	// Service() should not pause or loop longer than necessary (if at all). It
+	// MUST ONLY by called as part of a larger loop from the main thread. It
+	// should service all gui events that are not safe to do in sub-threads.
+	//
+	// If the GUI framework does not require this sort of thread safety then
+	// there is no need for the Service() function to do anything.
+	Service()
 }

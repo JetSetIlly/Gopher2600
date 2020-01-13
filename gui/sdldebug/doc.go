@@ -18,5 +18,9 @@
 // notice is not present ***
 
 // Package sdldebug implements the GUI interface. Suitable for applications
-// that require a screen and debugging overlays.
+// that require a screen and debugging overlays. Currently, it can show:
+//
+//	- alternative "debug" colours
+//	- show a "meta-pixel" overlay (see debugger.reflection package)
+//	- show an unmasked screen, showing off-screen sprite pixels when using debug colors
 package sdldebug

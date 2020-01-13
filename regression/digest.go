@@ -201,10 +201,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	state := make([]string, 0, 1024)
 
 	// display progress meter every 1 second
-	limiter, err := limiter.NewFPSLimiter(1)
-	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
-	}
+	lmtr := limiter.NewFPSLimiter(1)
 
 	// add the starting state of the tv
 	if reg.State {
@@ -213,7 +210,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
-		if limiter.HasWaited() {
+		if lmtr.HasWaited() {
 			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		}
 

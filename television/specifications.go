@@ -32,10 +32,10 @@ type Specification struct {
 	// research has shown that this pattern will work on all types of TV sets."
 	//
 	// the above figures are in reference to the NTSC protocol
-	scanlinesVSync    int
+	ScanlinesVSync    int
 	scanlinesVBlank   int
 	ScanlinesVisible  int
-	scanlinesOverscan int
+	ScanlinesOverscan int
 
 	// the total number of scanlines for the entire frame is the sum of the
 	// four individual portions
@@ -97,30 +97,30 @@ func init() {
 	SpecNTSC = &Specification{
 		ID:                "NTSC",
 		Colors:            colorsNTSC,
-		scanlinesVSync:    3,
+		ScanlinesVSync:    3,
 		scanlinesVBlank:   37,
 		ScanlinesVisible:  192,
-		scanlinesOverscan: 30,
+		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
 		FramesPerSecond:   60,
 		AspectBias:        0.91,
 	}
 
-	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.scanlinesVSync
-	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.scanlinesOverscan
+	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
+	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 
 	SpecPAL = &Specification{
 		ID:                "PAL",
 		Colors:            colorsPAL,
-		scanlinesVSync:    3,
+		ScanlinesVSync:    3,
 		scanlinesVBlank:   45,
 		ScanlinesVisible:  228,
-		scanlinesOverscan: 36,
+		ScanlinesOverscan: 36,
 		ScanlinesTotal:    312,
 		FramesPerSecond:   50,
 		AspectBias:        1.09,
 	}
 
-	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.scanlinesVSync
-	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.scanlinesOverscan
+	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
+	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 }

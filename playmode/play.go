@@ -35,7 +35,7 @@ import (
 )
 
 // Play is a quick of setting up a playable instance of the emulator.
-func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string) error {
+func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -141,12 +141,6 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, fpscap bool,
 		request = gui.ReqSetVisibleOnStable
 	}
 	err = scr.SetFeature(request, true)
-	if err != nil {
-		return errors.New(errors.PlayError, err)
-	}
-
-	// set fpscap
-	err = scr.SetFeature(gui.ReqSetFPSCap, fpscap)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}

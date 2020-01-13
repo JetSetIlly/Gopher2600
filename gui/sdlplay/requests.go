@@ -26,7 +26,9 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SetFeature is used to set a television attribute
+// SetFeature implements the GUI interface
+//
+// SHOULD NOT be called from the #mainthread
 func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
@@ -48,18 +50,18 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	case gui.ReqSetVisibility:
 		scr.showWindow(args[0].(bool))
 
-	case gui.ReqSetFPSCap:
-		scr.fpsCap = args[0].(bool)
-
 	case gui.ReqToggleVisibility:
 		if scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			scr.window.Show()
+			scr.showWindow(true)
 		} else {
-			scr.window.Hide()
+			scr.showWindow(false)
 		}
 
 	case gui.ReqSetScale:
-		err = scr.setScaling(args[0].(float32))
+		err = scr.setWindowThread(args[0].(float32))
+
+	case gui.ReqSetFpsCap:
+		scr.lmtr.Active = args[0].(bool)
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)

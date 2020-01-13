@@ -41,12 +41,104 @@ import (
 	"gopher2600/wavwriter"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 )
 
 const defaultInitScript = "debuggerInit"
 
+type stateReq int
+
+const (
+	// main thread should end as soon as possible
+	reqQuit stateReq = iota
+
+	// reset interrupt signal handling. used when an alternative
+	// handler is more appropriate. for example, the playMode and Debugger
+	// package provide a mode specific handler.
+	reqNoIntSig
+)
+
+// communication between the main() function and the launch() function. this is
+// required because many gui solutions (notably SDL) require window event
+// handling (including creation) to occur on the main thread
+type mainSync struct {
+	state   chan stateReq
+	creator chan func() (gui.GUI, error)
+
+	// the result of creator will be returned on either of these two channels.
+	creation      chan gui.GUI
+	creationError chan error
+}
+
+// #mainthread
 func main() {
+	sync := &mainSync{
+		state:         make(chan stateReq),
+		creator:       make(chan func() (gui.GUI, error)),
+		creation:      make(chan gui.GUI),
+		creationError: make(chan error),
+	}
+
+	// #ctrlc default handler. can be turned off with reqNoIntSig request
+	intChan := make(chan os.Signal, 1)
+	signal.Notify(intChan, os.Interrupt)
+
+	// launch program as a go routine. further communication is  through
+	// the mainSync instance
+	go launch(sync)
+
+	// loop until done is true. every iteration of the loop we listen for:
+	//
+	//  1. interrupt signals
+	//  2. new gui creation functions
+	//  3. state requests
+	//  3. anything in the Service() function of the most recently created GUI
+	//
+	done := false
+	var gui gui.GUI
+	for !done {
+		select {
+		case <-intChan:
+			fmt.Println("\r")
+			done = true
+
+		case creator := <-sync.creator:
+			var err error
+			gui, err = creator()
+			if err != nil {
+				sync.creationError <- err
+			} else {
+				sync.creation <- gui
+			}
+
+		case state := <-sync.state:
+			switch state {
+			case reqQuit:
+				done = true
+			case reqNoIntSig:
+				signal.Reset(os.Interrupt)
+			}
+
+		default:
+			// if an instance of gui.Events has been sent to us via sync.events
+			// then call Service()
+			if gui != nil {
+				gui.Service()
+			}
+		}
+	}
+
+	fmt.Print("\r")
+}
+
+// launch is called from main() as a goroutine. uses mainSync instance to
+// indicate gui creation and to quit
+func launch(sync *mainSync) {
+	defer func() {
+		sync.state <- reqQuit
+	}()
+
 	// we generate random numbers in some places. seed the generator with the
 	// current time
 	// rand.Seed(int64(time.Now().Second()))
@@ -70,16 +162,16 @@ func main() {
 		fallthrough
 
 	case "PLAY":
-		err = play(md)
+		err = play(md, sync)
 
 	case "DEBUG":
-		err = debug(md)
+		err = debug(md, sync)
 
 	case "DISASM":
 		err = disasm(md)
 
 	case "PERFORMANCE":
-		err = perform(md)
+		err = perform(md, sync)
 
 	case "REGRESS":
 		err = regress(md)
@@ -91,14 +183,14 @@ func main() {
 	}
 }
 
-func play(md *modalflag.Modes) error {
+func play(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
-	fpscap := md.AddBool("fpscap", true, "cap fps to specification")
+	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
@@ -132,18 +224,36 @@ func play(md *modalflag.Modes) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
-		if err != nil {
+		// notify main thread of new gui creator
+		sync.creator <- func() (gui.GUI, error) {
+			return sdlplay.NewSdlPlay(tv, float32(*scaling))
+		}
+
+		// wait for creator result
+		var scr gui.GUI
+		select {
+		case scr = <-sync.creation:
+		case err := <-sync.creationError:
 			return errors.New(errors.PlayError, err)
 		}
 
-		err = playmode.Play(tv, scr, *stable, *fpscap, *record, cartload, *patchFile)
+		// turn off fallback ctrl-c handling
+		sync.state <- reqNoIntSig
+
+		// set fps cap
+		err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
+		if err != nil {
+			return err
+		}
+
+		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)
 		if err != nil {
 			return err
 		}
 		if *record {
 			fmt.Println("! recording completed")
 		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
@@ -151,7 +261,7 @@ func play(md *modalflag.Modes) error {
 	return nil
 }
 
-func debug(md *modalflag.Modes) error {
+func debug(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	defInitScript, err := paths.ResourcePath("", defaultInitScript)
@@ -176,9 +286,17 @@ func debug(md *modalflag.Modes) error {
 	}
 	defer tv.End()
 
-	scr, err := sdldebug.NewSdlDebug(tv, 2.0)
-	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+	// notify main thread of new gui creator
+	sync.creator <- func() (gui.GUI, error) {
+		return sdldebug.NewSdlDebug(tv, 2.0)
+	}
+
+	// wait for creator result
+	var scr gui.GUI
+	select {
+	case scr = <-sync.creation:
+	case err := <-sync.creationError:
+		return errors.New(errors.PlayError, err)
 	}
 
 	// start debugger with choice of interface and cartridge
@@ -194,6 +312,11 @@ func debug(md *modalflag.Modes) error {
 		cons = &colorterm.ColorTerminal{}
 	}
 
+	// NewDebugger() installs its own ctrl-handler so we can turn off the
+	// default handling in the main thread
+	sync.state <- reqNoIntSig
+
+	// prepare new debugger instance
 	dbg, err := debugger.NewDebugger(tv, scr, cons)
 	if err != nil {
 		return err
@@ -202,8 +325,10 @@ func debug(md *modalflag.Modes) error {
 	switch len(md.RemainingArgs()) {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
+
 	case 1:
-		runner := func() error {
+		// set up a running function
+		dgbRun := func() error {
 			cartload := cartridgeloader.Loader{
 				Filename: md.GetArg(0),
 				Format:   *cartFormat,
@@ -215,8 +340,10 @@ func debug(md *modalflag.Modes) error {
 			return nil
 		}
 
+		// if profile generation has been requested then pass the dgbRun()
+		// function prepared above, through the ProfileCPU() command
 		if *profile {
-			err := performance.ProfileCPU("debug.cpu.profile", runner)
+			err := performance.ProfileCPU("debug.cpu.profile", dgbRun)
 			if err != nil {
 				return err
 			}
@@ -225,11 +352,13 @@ func debug(md *modalflag.Modes) error {
 				return err
 			}
 		} else {
-			err := runner()
+			// no profile required so run dgbRun() function as normal
+			err := dgbRun()
 			if err != nil {
 				return err
 			}
 		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
@@ -276,12 +405,12 @@ func disasm(md *modalflag.Modes) error {
 	return nil
 }
 
-func perform(md *modalflag.Modes) error {
+func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	display := md.AddBool("display", false, "display TV output")
-	fpscap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
+	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
@@ -308,17 +437,27 @@ func perform(md *modalflag.Modes) error {
 		defer tv.End()
 
 		if *display {
-			scr, err := sdlplay.NewSdlPlay(tv, float32(*scaling))
-			if err != nil {
-				return errors.New(errors.PerformanceError, err)
+			// notify main thread of new gui creator
+			sync.creator <- func() (gui.GUI, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 
-			err = scr.(gui.GUI).SetFeature(gui.ReqSetVisibility, true)
-			if err != nil {
-				return errors.New(errors.PerformanceError, err)
+			// wait for creator result
+			var scr gui.GUI
+			select {
+			case scr = <-sync.creation:
+			case err := <-sync.creationError:
+				return errors.New(errors.PlayError, err)
 			}
 
-			err = scr.(gui.GUI).SetFeature(gui.ReqSetFPSCap, *fpscap)
+			// set fps cap
+			err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
+			if err != nil {
+				return err
+			}
+
+			// show gui
+			err = scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
 				return errors.New(errors.PerformanceError, err)
 			}

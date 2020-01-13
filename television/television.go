@@ -205,7 +205,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	} else if tv.prevSignal.VSync {
 		// if vsync has just be turned off then check that it has been held for
 		// the requisite number of scanlines for a new frame to be started
-		if tv.vsyncCount >= tv.spec.scanlinesVSync {
+		if tv.vsyncCount >= tv.spec.ScanlinesVSync {
 			err := tv.newFrame()
 			if err != nil {
 				return err

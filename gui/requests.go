@@ -30,7 +30,6 @@ const (
 	ReqSetVisibility      FeatureReq = iota // bool
 	ReqToggleVisibility                     // none
 	ReqSetVisibleOnStable                   // none
-	ReqSetFPSCap                            // bool
 	ReqSetPause                             // bool
 	ReqSetMasking                           // bool
 	ReqToggleMasking                        // none
@@ -41,4 +40,40 @@ const (
 	ReqSetScale                             // float
 	ReqIncScale                             // none
 	ReqDecScale                             // none
+	ReqSetFpsCap                            // bool
 )
+
+func (r FeatureReq) String() string {
+	switch r {
+	case ReqSetVisibility:
+		return "ReqSetVisibility"
+	case ReqToggleVisibility:
+		return "ReqToggleVisibility"
+	case ReqSetVisibleOnStable:
+		return "ReqSetVisibleOnStable"
+	case ReqSetPause:
+		return "ReqSetPause"
+	case ReqSetMasking:
+		return "ReqSetMasking"
+	case ReqToggleMasking:
+		return "ReqToggleMasking"
+	case ReqSetAltColors:
+		return "ReqSetAltColors"
+	case ReqToggleAltColors:
+		return "ReqToggleAltColors"
+	case ReqSetOverlay:
+		return "ReqSetOverlay"
+	case ReqToggleOverlay:
+		return "ReqToggleOverlay"
+	case ReqSetScale:
+		return "ReqSetScale"
+	case ReqIncScale:
+		return "ReqIncScale"
+	case ReqDecScale:
+		return "ReqDecScale"
+	case ReqSetFpsCap:
+		return "ReqSetFpsCap"
+	}
+
+	return "unknown request"
+}

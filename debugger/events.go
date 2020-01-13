@@ -27,13 +27,16 @@ import (
 	"gopher2600/playmode"
 )
 
-// #ctrl-c #ctrlc
-
 func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 	var err error
 
 	switch event.ID {
 	case gui.EventWindowClose:
+		err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
+		if err != nil {
+			return errors.New(errors.GUIEventError, err)
+		}
+
 	case gui.EventKeyboard:
 		data := event.Data.(gui.EventDataKeyboard)
 
@@ -92,6 +95,7 @@ func (dbg *Debugger) checkInterruptsAndEvents() error {
 	// check interrupt channel and run any functions we find in there
 	select {
 	case <-dbg.intChan:
+		// #ctrlc halt emulation
 		if dbg.runUntilHalt {
 			// stop emulation at the next step
 			dbg.runUntilHalt = false
