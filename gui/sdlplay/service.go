@@ -29,15 +29,6 @@ import (
 //
 // MUST only be called from the #mainthread
 func (scr *SdlPlay) Service() {
-	scr.lmtr.Wait()
-
-	// run any outstanding service functions
-	select {
-	case f := <-scr.service:
-		f()
-	default:
-	}
-
 	// check for SDL events. timing out straight away if there's nothing
 	sdlEvent := sdl.WaitEventTimeout(1)
 
@@ -82,4 +73,14 @@ func (scr *SdlPlay) Service() {
 			}
 		}
 	}
+
+	scr.lmtr.Wait()
+
+	// run any outstanding service functions
+	select {
+	case f := <-scr.service:
+		f()
+	default:
+	}
+
 }
