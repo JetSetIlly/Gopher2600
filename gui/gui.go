@@ -19,6 +19,8 @@
 
 package gui
 
+import "io"
+
 // GUI defines the operations that can be performed on visual user interfaces.
 //
 // Note that many contexts where GUI is used also expect the GUI instance to
@@ -28,6 +30,9 @@ package gui
 // In practice, the GUI instance may also implement the Renderer and AudioMixer
 // interfaces, also from the television package.
 type GUI interface {
+	// cleanup resources used by the gui
+	Destroy(io.Writer)
+
 	// All GUIs should implement a MetaPixelRenderer even if only a stub
 	MetaPixelRenderer
 

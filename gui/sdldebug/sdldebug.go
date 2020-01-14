@@ -24,6 +24,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
+	"io"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -151,6 +152,22 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	scr.renderer.Present()
 
 	return scr, nil
+}
+
+// Destroy implements gui.GUI interface
+func (scr *SdlDebug) Destroy(output io.Writer) {
+	scr.overlay.destroy(output)
+	scr.textures.destroy(output)
+
+	err := scr.renderer.Destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+
+	err = scr.window.Destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
 }
 
 // Reset implements television.Television interface

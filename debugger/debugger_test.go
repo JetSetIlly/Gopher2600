@@ -26,6 +26,7 @@ import (
 	"gopher2600/debugger/terminal"
 	"gopher2600/gui"
 	"gopher2600/television"
+	"io"
 	"testing"
 	"time"
 )
@@ -73,6 +74,9 @@ func (t *mockTV) End() error {
 
 func (g *mockGUI) SetMetaPixel(_ gui.MetaPixel) error {
 	return nil
+}
+
+func (g *mockGUI) Destroy(_ io.Writer) {
 }
 
 func (g *mockGUI) IsVisible() bool {

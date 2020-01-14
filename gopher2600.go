@@ -105,6 +105,12 @@ func main() {
 
 		case creator := <-sync.creator:
 			var err error
+
+			// destroy existing gui
+			if gui != nil {
+				gui.Destroy(os.Stderr)
+			}
+
 			gui, err = creator()
 			if err != nil {
 				sync.creationError <- err
@@ -127,6 +133,11 @@ func main() {
 				gui.Service()
 			}
 		}
+	}
+
+	// destroy gui
+	if gui != nil {
+		gui.Destroy(os.Stderr)
 	}
 
 	fmt.Print("\r")

@@ -1,6 +1,8 @@
 package sdldebug
 
 import (
+	"io"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -56,6 +58,19 @@ func newTextures(renderer *sdl.Renderer, w, h int) (*textures, error) {
 	txt.back = txt.b
 
 	return txt, err
+}
+
+// destroy texture resources
+func (txt *textures) destroy(output io.Writer) {
+	err := txt.a.Destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+
+	err = txt.b.Destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
 }
 
 // swap textures and set/reset alpha modifiers depending on if the texture is

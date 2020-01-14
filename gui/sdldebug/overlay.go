@@ -1,6 +1,8 @@
 package sdldebug
 
 import (
+	"io"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -47,6 +49,13 @@ func newOverlay(renderer *sdl.Renderer, w, h int) (*overlay, error) {
 	}
 
 	return ovl, nil
+}
+
+func (ovl *overlay) destroy(output io.Writer) {
+	err := ovl.texture.Destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
 }
 
 func (ovl *overlay) render(cpyRect *sdl.Rect, pitch int) error {
