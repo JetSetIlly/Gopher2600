@@ -66,9 +66,15 @@ type television struct {
 	top    int
 	bottom int
 
-	resizeCandidacy int
-	candidateTop    int
-	candidateBottom int
+	resizeTopCt     int
+	resizeWindowTop int
+	resizeTop       int
+
+	resizeBotCt     int
+	resizeWindowBot int
+	resizeBot       int
+
+	stabilityCt int
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -238,51 +244,73 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	//  if vblank is false and colour signal is non-black we check if the screen
-	//  boundaries are still valid.
+	// if vblank is false and colour signal is non-black we check if the screen
+	// boundaries are still valid.
 	//
-	//  the choice of black as the key color is arbitrary. I wonder if colour
-	//  detection needs to be more sophisticated. Tapper is an example of why
-	//  this might be necessary.
+	// the choice of black as the key color is arbitrary. I wonder if colour
+	// detection needs to be more sophisticated. Tapper is an example of why
+	// this might be necessary.
 	//
-	//  what we're actually doing here is checking to see if the VCS is trying
-	//  to draw out of the current screen boundaries.
+	// !!TODO: detect key color
+	//
+	// what we're actually doing here is checking to see if the VCS is trying
+	// to draw out of the current screen boundaries.
+	//
 	if !sig.VBlank && col.red != 0 && col.green != 0 && col.blue != 0 {
 
-		// the difference between current top/bottom boundaries and new top/boundaries
-		// before we begin checking for stability
-		const resizeThreshhold = 4
+		// the number of times we must see new top/bottom scanline in the
+		// resize-window before we accept the new value
+		const resizeThreshold = 4
 
-		// if the scanline is outside of the current top/bottom boundary by the
-		// threshold amount then check to see if that scanline value has been
-		// sustained for at least one second and resize screen if it has.
+		// size detection:
 		//
-		// screens can never shrink in size, unless SetSpec() is called (and
-		// the screen may well immediately spring back to the expanded size)
-		if tv.scanline <= tv.top-resizeThreshhold {
-			if tv.scanline == tv.candidateTop {
-				tv.resizeCandidacy++
-				if tv.resizeCandidacy >= tv.spec.FramesPerSecond {
-					tv.top = tv.scanline
-					resizeScreen = true
-					tv.resizeCandidacy = 0
-				}
-			} else {
-				tv.candidateTop = tv.scanline
-				tv.resizeCandidacy = 0
+		// 1. if scanline is below/above current top/bottom or below/above current
+		//          candidate values for top/bottom
+		// 2. start a new count and consider current scanline as possibly the
+		//          top/bottom
+		// 3. once the candidate value for the new top/bottom has been seen
+		//          a certain number of times then accept this as the new limit
+		//          and set resize flag to true
+		//
+		// this is a little more complex that just looking for a stable value
+		// that endures for threshold number of frame. this is because some
+		// ROMs never stabilise on a fixed value but otherwise consistently
+		// draw outside of the currently defined area. for example, Frogger's
+		// top scanline flutters between 35 and 40.
+		if tv.resizeTop != 0 && tv.scanline < tv.resizeTop || tv.resizeTop == 0 && tv.scanline < tv.top {
+			tv.resizeTopCt = 0
+			tv.resizeTop = tv.scanline
+
+			// if stability has not yet been reached, reset stability count
+			if !tv.IsStable() {
+				tv.stabilityCt = 0
+			}
+		} else if tv.scanline == tv.resizeTop {
+			tv.resizeTopCt++
+			if tv.resizeTopCt >= resizeThreshold {
+				tv.top = tv.scanline
+				resizeScreen = true
+				tv.resizeTopCt = 0
+				tv.resizeTop = 0
+
 			}
 		}
 
-		if tv.scanline >= tv.bottom+resizeThreshhold {
-			if tv.scanline == tv.candidateBottom {
-				tv.resizeCandidacy++
-				if tv.resizeCandidacy >= tv.spec.FramesPerSecond {
-					tv.bottom = tv.scanline
-					resizeScreen = true
-				}
-			} else {
-				tv.candidateBottom = tv.scanline
-				tv.resizeCandidacy = 0
+		if tv.resizeBot != 0 && tv.scanline > tv.resizeBot || tv.resizeBot == 0 && tv.scanline > tv.bottom {
+			tv.resizeBotCt = 0
+			tv.resizeBot = tv.scanline
+
+			// if stability has not yet been reached, reset stability count
+			if !tv.IsStable() {
+				tv.stabilityCt = 0
+			}
+		} else if tv.scanline == tv.resizeBot {
+			tv.resizeBotCt++
+			if tv.resizeBotCt >= resizeThreshold {
+				tv.bottom = tv.scanline
+				resizeScreen = true
+				tv.resizeBotCt = 0
+				tv.resizeBot = 0
 			}
 		}
 	}
@@ -317,6 +345,11 @@ func (tv *television) newFrame() error {
 	// new frame
 	tv.frameNum++
 	tv.scanline = 0
+
+	// if frame is not currently stable them increase stability count
+	if !tv.IsStable() {
+		tv.stabilityCt++
+	}
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
@@ -383,7 +416,7 @@ const stabilityThreshold = 5
 
 // IsStable implements the Television interface
 func (tv television) IsStable() bool {
-	return tv.frameNum >= stabilityThreshold
+	return tv.stabilityCt >= stabilityThreshold
 }
 
 // End implements the Television interface
