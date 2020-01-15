@@ -35,8 +35,8 @@ type SdlDebug struct {
 
 	// functions that need to be performed in the main thread should be queued
 	// for service
-	service     chan func()
-	serviceDone chan error
+	service    chan func()
+	serviceErr chan error
 
 	// limit number of frames per second
 	lmtr *limiter.FpsLimiter
@@ -95,12 +95,12 @@ type SdlDebug struct {
 // MUST ONLY be called from the #mainthread
 func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	scr := &SdlDebug{
-		Television:  tv,
-		service:     make(chan func(), 1),
-		serviceDone: make(chan error, 1),
-		pitch:       television.HorizClksScanline * pixelDepth,
-		masked:      true,
-		paused:      true,
+		Television: tv,
+		service:    make(chan func(), 1),
+		serviceErr: make(chan error, 1),
+		pitch:      television.HorizClksScanline * pixelDepth,
+		masked:     true,
+		paused:     true,
 	}
 
 	var err error
@@ -188,6 +188,8 @@ func (scr SdlDebug) IsVisible() bool {
 }
 
 // show or hide window
+//
+// MUST NOT be called from the #mainthread
 func (scr SdlDebug) showWindow(show bool) {
 	scr.service <- func() {
 		if show {
@@ -195,9 +197,9 @@ func (scr SdlDebug) showWindow(show bool) {
 		} else {
 			scr.window.Hide()
 		}
-		scr.serviceDone <- nil
+		scr.serviceErr <- nil
 	}
-	<-scr.serviceDone
+	<-scr.serviceErr
 }
 
 // the desired window width is different depending on whether the frame is
@@ -225,7 +227,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 // use scale of -1 to reapply existing scale value
 //
 // MUST ONLY be called from the #mainthread
-// use setWindowThread() is not called from render thread
+// see setWindowThread() for non-main alternative
 func (scr *SdlDebug) setWindow(scale float32) error {
 	if scale >= 0 {
 		scr.pixelScale = scale
@@ -260,17 +262,18 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 // wrap call to setWindow() in service call
 //
 // MUST NOT be called from the #mainthread
+// see setWindow() for mainthread alternative
 func (scr *SdlDebug) setWindowThread(scale float32) error {
 	scr.service <- func() {
-		scr.serviceDone <- scr.setWindow(scale)
+		scr.serviceErr <- scr.setWindow(scale)
 	}
-	return <-scr.serviceDone
+	return <-scr.serviceErr
 }
 
-// resize is the non-service-wrapped resize function. if you require a wrapped
-// call to resize use Resize()
+// resize is the non-service-wrapped resize function
 //
 // MUST ONLY be called from #mainthread
+// see Resize() for non-main alternative
 func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// new screen limits
 	scr.topScanline = topScanline
@@ -305,11 +308,12 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 // Resize implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
+// see resize() for mainthread alternative
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 	scr.service <- func() {
-		scr.serviceDone <- scr.resize(topScanline, numScanlines)
+		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
-	return <-scr.serviceDone
+	return <-scr.serviceErr
 }
 
 // update is called automatically on every call to NewFrame() and whenever a
@@ -321,7 +325,7 @@ func (scr *SdlDebug) update() error {
 		scr.renderer.SetDrawColor(0, 0, 0, 255)
 		err := scr.renderer.Clear()
 		if err != nil {
-			scr.serviceDone <- err
+			scr.serviceErr <- err
 			return
 		}
 
@@ -334,7 +338,7 @@ func (scr *SdlDebug) update() error {
 		// render main textures
 		err = scr.textures.render(scr.cpyRect, pixels, scr.pitch)
 		if err != nil {
-			scr.serviceDone <- err
+			scr.serviceErr <- err
 			return
 		}
 
@@ -346,7 +350,7 @@ func (scr *SdlDebug) update() error {
 				int32(television.HorizClksHBlank), int32(scr.GetSpec().ScanlinesTotal)}
 			err = scr.renderer.FillRect(r)
 			if err != nil {
-				scr.serviceDone <- err
+				scr.serviceErr <- err
 				return
 			}
 
@@ -354,7 +358,7 @@ func (scr *SdlDebug) update() error {
 				int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlineTop)}
 			err = scr.renderer.FillRect(r)
 			if err != nil {
-				scr.serviceDone <- err
+				scr.serviceErr <- err
 				return
 			}
 
@@ -362,7 +366,7 @@ func (scr *SdlDebug) update() error {
 				int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlinesOverscan)}
 			err = scr.renderer.FillRect(r)
 			if err != nil {
-				scr.serviceDone <- err
+				scr.serviceErr <- err
 				return
 			}
 		}
@@ -371,7 +375,7 @@ func (scr *SdlDebug) update() error {
 		if scr.useOverlay {
 			err = scr.overlay.render(scr.cpyRect, scr.pitch)
 			if err != nil {
-				scr.serviceDone <- err
+				scr.serviceErr <- err
 				return
 			}
 		}
@@ -405,20 +409,27 @@ func (scr *SdlDebug) update() error {
 		}
 
 		scr.renderer.Present()
-		scr.serviceDone <- nil
+		scr.serviceErr <- nil
 	}
 
-	return <-scr.serviceDone
+	return <-scr.serviceErr
 }
 
 // NewFrame implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlDebug) NewFrame(frameNum int) error {
+
+	// the sdlplay version of this function does not wait for the error signal
+	// before continuing. we do so here (in the update() function) because if
+	// we don't the screen image will tear badly. the difference is because in
+	// sdldebug we clear pixels between frames.
+
 	err := scr.update()
 	if err != nil {
 		return err
 	}
+
 	scr.pixels.clear()
 	scr.overlay.clear()
 	scr.textures.flip()
