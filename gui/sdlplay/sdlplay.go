@@ -75,7 +75,7 @@ type SdlPlay struct {
 
 // NewSdlPlay is the preferred method of initialisation for SdlPlay.
 //
-// MUST be called from the #mainthread
+// MUST ONLY be called from the #mainthread
 func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	scr := &SdlPlay{
 		Television:  tv,
@@ -119,6 +119,10 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	// register ourselves as a television.AudioMixer
 	scr.AddAudioMixer(scr)
 
+	// create new frame limiter. we change the rate in the resize function
+	// (rate may change due to specification change)
+	scr.lmtr = limiter.NewFPSLimiter(-1)
+
 	// resize window
 	err = scr.resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
 	if err != nil {
@@ -131,9 +135,6 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 		return nil, errors.New(errors.SDLPlay, err)
 	}
 
-	// start off with fps cap
-	scr.lmtr = limiter.NewFPSLimiter(scr.GetSpec().FramesPerSecond)
-
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request
 
@@ -144,6 +145,8 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 }
 
 // Destroy implements gui.GUI interface
+//
+// MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Destroy(output io.Writer) {
 	err := scr.texture.Destroy()
 	if err != nil {
@@ -177,8 +180,6 @@ func (scr SdlPlay) IsVisible() bool {
 }
 
 // show or hide window
-//
-// HELPER function can be called from #mainthread or not
 func (scr SdlPlay) showWindow(show bool) {
 	scr.service <- func() {
 		if show {
@@ -192,8 +193,8 @@ func (scr SdlPlay) showWindow(show bool) {
 
 // use scale of -1 to reapply existing scale value
 //
-// MUST only be called from the #mainthread
-// use setWindowThread() is not called from render thread
+// MUST ONLY be called from the #mainthread
+// use setWindowThread() fs not called from render thread
 func (scr *SdlPlay) setWindow(scale float32) error {
 	if scale >= 0 {
 		scr.pixelScale = scale
@@ -214,7 +215,7 @@ func (scr *SdlPlay) setWindow(scale float32) error {
 
 // wrap call to setWindow() in service call
 //
-// SHOULD not be called from the #mainthread
+// MUST NOT be called from the #mainthread
 func (scr *SdlPlay) setWindowThread(scale float32) error {
 	scr.service <- func() {
 		scr.serviceDone <- scr.setWindow(scale)
@@ -225,7 +226,7 @@ func (scr *SdlPlay) setWindowThread(scale float32) error {
 // resize is the non-service-wrapped resize function. if you require a wrapped
 // call to resize use Resize()
 //
-// MUST NOT be called from #mainthread
+// MUST ONLY be called from #mainthread
 func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 	// new screen limits
 	scr.topScanline = topScanline
@@ -254,14 +255,14 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 	// ----
 
 	scr.setWindow(-1)
-	scr.lmtr = limiter.NewFPSLimiter(scr.GetSpec().FramesPerSecond)
+	scr.lmtr.SetLimit(scr.GetSpec().FramesPerSecond)
 
 	return nil
 }
 
 // Resize implements television.PixelRenderer interface
 //
-// SHOULD NOT be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 	scr.service <- func() {
 		scr.serviceDone <- scr.resize(topScanline, numScanlines)
@@ -271,7 +272,7 @@ func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 
 // NewFrame implements television.PixelRenderer interface
 //
-// SHOULD NOT be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlPlay) NewFrame(frameNum int) error {
 	scr.service <- func() {
 		if scr.showOnNextStable && scr.IsStable() {
@@ -302,7 +303,7 @@ func (scr *SdlPlay) NewFrame(frameNum int) error {
 
 // SetPixel implements television.PixelRenderer interface
 //
-// MUST not be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible

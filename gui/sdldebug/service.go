@@ -28,7 +28,7 @@ import (
 
 // Service implements gui.GUI interface.
 //
-// MUST only be called from the #mainthread
+// MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Service() {
 	// check for SDL events. timing out straight away if there's nothing
 	sdlEvent := sdl.WaitEventTimeout(1)
@@ -135,7 +135,6 @@ func (scr *SdlDebug) Service() {
 		f()
 	default:
 	}
-
 }
 
 func (scr *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {

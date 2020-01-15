@@ -92,7 +92,7 @@ type SdlDebug struct {
 
 // NewSdlDebug is the preferred method of initialisation for SdlDebug.
 //
-// MUST be called from the #mainthread
+// MUST ONLY be called from the #mainthread
 func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	scr := &SdlDebug{
 		Television:  tv,
@@ -155,6 +155,8 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 }
 
 // Destroy implements gui.GUI interface
+//
+// MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Destroy(output io.Writer) {
 	scr.overlay.destroy(output)
 	scr.textures.destroy(output)
@@ -186,8 +188,6 @@ func (scr SdlDebug) IsVisible() bool {
 }
 
 // show or hide window
-//
-// HELPER function can be called from #mainthread or not
 func (scr SdlDebug) showWindow(show bool) {
 	scr.service <- func() {
 		if show {
@@ -224,7 +224,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 
 // use scale of -1 to reapply existing scale value
 //
-// MUST only be called from the #mainthread
+// MUST ONLY be called from the #mainthread
 // use setWindowThread() is not called from render thread
 func (scr *SdlDebug) setWindow(scale float32) error {
 	if scale >= 0 {
@@ -259,7 +259,7 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 
 // wrap call to setWindow() in service call
 //
-// SHOULD not be called from the #mainthread
+// MUST NOT be called from the #mainthread
 func (scr *SdlDebug) setWindowThread(scale float32) error {
 	scr.service <- func() {
 		scr.serviceDone <- scr.setWindow(scale)
@@ -270,7 +270,7 @@ func (scr *SdlDebug) setWindowThread(scale float32) error {
 // resize is the non-service-wrapped resize function. if you require a wrapped
 // call to resize use Resize()
 //
-// MUST NOT be called from #mainthread
+// MUST ONLY be called from #mainthread
 func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// new screen limits
 	scr.topScanline = topScanline
@@ -304,7 +304,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 
 // Resize implements television.PixelRenderer interface
 //
-// SHOULD NOT be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 	scr.service <- func() {
 		scr.serviceDone <- scr.resize(topScanline, numScanlines)
@@ -315,7 +315,7 @@ func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 // update is called automatically on every call to NewFrame() and whenever a
 // state change in SetFeature() requires it.
 //
-// SHOULD NOT be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) update() error {
 	scr.service <- func() {
 		scr.renderer.SetDrawColor(0, 0, 0, 255)
@@ -413,7 +413,7 @@ func (scr *SdlDebug) update() error {
 
 // NewFrame implements television.PixelRenderer interface
 //
-// SHOULD NOT be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) NewFrame(frameNum int) error {
 	err := scr.update()
 	if err != nil {
@@ -427,7 +427,7 @@ func (scr *SdlDebug) NewFrame(frameNum int) error {
 
 // SetPixel implements television.PixelRenderer interface
 //
-// MUST not be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible
@@ -456,7 +456,7 @@ func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 
 // SetAltPixel implements television.PixelRenderer interface
 //
-// MUST not be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	i := (y*int(television.HorizClksScanline) + x) * pixelDepth
 	if i <= scr.pixels.length()-pixelDepth {
@@ -471,7 +471,7 @@ func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) e
 
 // SetMetaPixel implements gui.MetPixelRenderer interface
 //
-// MUST not be called from #mainthread
+// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetMetaPixel(sig gui.MetaPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
 	if i <= scr.overlay.length()-pixelDepth {

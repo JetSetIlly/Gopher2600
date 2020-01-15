@@ -27,7 +27,7 @@ import (
 
 // Service implements gui.GUI interface.
 //
-// MUST only be called from the #mainthread
+// MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Service() {
 	// check for SDL events. timing out straight away if there's nothing
 	sdlEvent := sdl.WaitEventTimeout(1)
@@ -82,5 +82,4 @@ func (scr *SdlPlay) Service() {
 		f()
 	default:
 	}
-
 }

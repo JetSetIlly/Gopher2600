@@ -28,7 +28,7 @@ import (
 
 // SetFeature implements the GUI interface
 //
-// SHOULD NOT be called from the #mainthread
+// MUST NOT be called from the #mainthread
 func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
