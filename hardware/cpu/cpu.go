@@ -1287,7 +1287,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 			mc.PC.Load(rtiAddress)
-			mc.PC.Add(1)
+			// unlike RTS there is no need to add one to return address
 		}
 
 	// undocumented instructions
