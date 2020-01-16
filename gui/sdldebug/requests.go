@@ -98,9 +98,6 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 		scr.update()
 
-	case gui.ReqSetFpsCap:
-		scr.lmtr.Active = args[0].(bool)
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}

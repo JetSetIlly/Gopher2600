@@ -22,7 +22,6 @@ package sdldebug
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/performance/limiter"
 	"gopher2600/television"
 	"io"
 
@@ -37,9 +36,6 @@ type SdlDebug struct {
 	// for service
 	service    chan func()
 	serviceErr chan error
-
-	// limit number of frames per second
-	lmtr *limiter.FpsLimiter
 
 	// connects SDL guiLoop with the parent process
 	eventChannel chan gui.Event
@@ -141,9 +137,6 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	if err != nil {
 		return nil, errors.New(errors.SDLDebug, err)
 	}
-
-	// start off with fps cap
-	scr.lmtr = limiter.NewFPSLimiter(scr.GetSpec().FramesPerSecond)
 
 	// note that we've elected not to show the window on startup
 	// window is instead opened on a ReqSetVisibility request
@@ -300,7 +293,6 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// ----
 
 	scr.setWindow(-1)
-	scr.lmtr = limiter.NewFPSLimiter(scr.GetSpec().FramesPerSecond)
 
 	return nil
 }
@@ -382,21 +374,31 @@ func (scr *SdlDebug) update() error {
 
 		if scr.paused {
 			// adjust cursor coordinates
-			x := scr.lastX - 1
+			x := scr.lastX
 			y := scr.lastY
+
 			if scr.masked {
 				y -= scr.topScanline
 				x -= television.HorizClksHBlank - 1
 			}
 
+			// cursor is one step ahead of pixel -- move to new scanline if
+			// necessary
+			if x >= television.HorizClksScanline {
+				x = 0
+				y++
+			}
+
+			// set cursor color
 			scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
 			scr.renderer.SetDrawColor(100, 100, 255, 255)
 
+			// check to see if cursor is "off-screen". if so, draw at the zero
+			// line and use a different cursor color
 			if x < 0 {
 				scr.renderer.SetDrawColor(255, 100, 100, 255)
 				x = 0
 			}
-
 			if y < 0 {
 				scr.renderer.SetDrawColor(255, 100, 100, 255)
 				y = 0

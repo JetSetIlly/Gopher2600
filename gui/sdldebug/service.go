@@ -132,8 +132,6 @@ func (scr *SdlDebug) Service() {
 		}
 	}
 
-	scr.lmtr.Wait()
-
 	// run any outstanding service functions
 	select {
 	case f := <-scr.service:
