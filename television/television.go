@@ -127,7 +127,10 @@ type television struct {
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
 func NewTelevision(spec string) (Television, error) {
-	tv := &television{}
+	tv := &television{
+		resizeTop: -1,
+		resizeBot: -1,
+	}
 
 	tv.SetSpec(spec)
 
@@ -306,8 +309,8 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// boundaries, taking into account the VBlank signal and whether the color
 	// signal is inconsistent.
 	//
-	// we also want to ignore the first frame of the session because we may
-	// get a false and unrepresentative signal.
+	// we also want to ignore the first few frames of the session because may
+	// give unreliable information with regards to the size of the frame
 	if !sig.VBlank && !tv.key && tv.frameNum > unreliableFrames {
 		// size detection:
 		//
@@ -325,7 +328,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		// draw outside of the currently defined area. for example, Frogger's
 		// top scanline flutters between 35 and 40. we want it to settle on
 		// scanline 35.
-		if (tv.resizeTop != 0 && tv.scanline < tv.resizeTop) || (tv.resizeTop == 0 && tv.scanline < tv.top) {
+		if (tv.resizeTop != -1 && tv.scanline < tv.resizeTop) || (tv.resizeTop == -1 && tv.scanline < tv.top) {
 			tv.resizeTopCt = 0
 			tv.resizeTop = tv.scanline
 			tv.resizeTopFr = tv.frameNum
@@ -338,14 +341,14 @@ func (tv *television) Signal(sig SignalAttributes) error {
 			tv.resizeTopFr = tv.frameNum
 			tv.resizeTopCt++
 			if tv.resizeTopCt >= resizeThreshold {
-				tv.top = tv.scanline
+				tv.top = tv.resizeTop
 				tv.resize = true
 				tv.resizeTopCt = 0
-				tv.resizeTop = 0
+				tv.resizeTop = -1
 			}
 		}
 
-		if (tv.resizeBot != 0 && tv.scanline > tv.resizeBot) || (tv.resizeBot == 0 && tv.scanline > tv.bottom) {
+		if (tv.resizeBot != -1 && tv.scanline > tv.resizeBot) || (tv.resizeBot == -1 && tv.scanline > tv.bottom) {
 			tv.resizeBotFr = tv.frameNum
 			tv.resizeBotCt = 0
 			tv.resizeBot = tv.scanline
@@ -358,10 +361,10 @@ func (tv *television) Signal(sig SignalAttributes) error {
 			tv.resizeBotFr = tv.frameNum
 			tv.resizeBotCt++
 			if tv.resizeBotCt >= resizeThreshold {
-				tv.bottom = tv.scanline
+				tv.bottom = tv.resizeBot
 				tv.resize = true
 				tv.resizeBotCt = 0
-				tv.resizeBot = 0
+				tv.resizeBot = -1
 			}
 		}
 	}
