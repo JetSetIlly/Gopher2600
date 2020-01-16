@@ -25,6 +25,22 @@ import (
 	"strings"
 )
 
+// the number of times we must see new top/bottom scanline in the
+// resize-window before we accept the new value
+const resizeThreshold = 10
+
+// the number of frames that (speculative) top and bottom values must be steady
+// before we accept the frame characteristics
+const stabilityThreshold = 15
+
+// the number of scanlines past the NTSC limit before the specification flips
+// to PAL (auto flag permitting)
+const overageNTSC = 10
+
+// for the purposes of frame size detection, we should consider the first
+// handful of frames to be unreliable
+const unreliableFrames = 4
+
 // television is a reference implementation of the Television interface. In all
 // honesty, it's most likely the only implementation required.
 type television struct {
@@ -214,7 +230,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 			// can never cause a flip to NTSC
 			if !tv.IsStable() && tv.frameNum > 1 &&
 				tv.spec != SpecPAL && tv.auto &&
-				tv.scanline >= SpecNTSC.ScanlinesTotal+10 {
+				tv.scanline >= SpecNTSC.ScanlinesTotal+overageNTSC {
 
 				tv.SetSpec("PAL")
 				tv.resize = true
@@ -292,12 +308,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	//
 	// we also want to ignore the first frame of the session because we may
 	// get a false and unrepresentative signal.
-	if !sig.VBlank && !tv.key && tv.frameNum > 1 {
-
-		// the number of times we must see new top/bottom scanline in the
-		// resize-window before we accept the new value
-		const resizeThreshold = 10
-
+	if !sig.VBlank && !tv.key && tv.frameNum > unreliableFrames {
 		// size detection:
 		//
 		// 1. if scanline is below/above current top/bottom or below/above current
@@ -450,10 +461,6 @@ func (tv *television) SetSpec(spec string) error {
 func (tv television) GetSpec() *Specification {
 	return tv.spec
 }
-
-// the number of frames that (speculative) top and bottom values must be steady
-// before we accept the frame characteristics
-const stabilityThreshold = 15
 
 // IsStable implements the Television interface
 func (tv television) IsStable() bool {
