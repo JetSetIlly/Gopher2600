@@ -434,8 +434,7 @@ func (scr *SdlDebug) NewFrame(frameNum int) error {
 
 	scr.pixels.clear()
 	scr.overlay.clear()
-	scr.textures.flip()
-	return nil
+	return scr.textures.flip()
 }
 
 // SetPixel implements television.PixelRenderer interface

@@ -75,7 +75,7 @@ func (txt *textures) destroy(output io.Writer) {
 
 // swap textures and set/reset alpha modifiers depending on if the texture is
 // now the "front" or "back" texture
-func (txt *textures) flip() {
+func (txt *textures) flip() error {
 	if txt.front == txt.a {
 		txt.front = txt.b
 		txt.back = txt.a
@@ -84,8 +84,17 @@ func (txt *textures) flip() {
 		txt.back = txt.b
 	}
 
-	txt.front.SetAlphaMod(255)
-	txt.back.SetAlphaMod(150)
+	err := txt.front.SetAlphaMod(255)
+	if err != nil {
+		return err
+	}
+
+	err = txt.back.SetAlphaMod(150)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // update texture with pixels and render
