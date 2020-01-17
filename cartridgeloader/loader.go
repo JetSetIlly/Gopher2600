@@ -1,4 +1,4 @@
-// this file is part of Gopher2600.
+// This file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the gnu general public license as published by
