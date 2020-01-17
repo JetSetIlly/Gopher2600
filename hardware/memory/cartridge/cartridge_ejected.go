@@ -60,7 +60,7 @@ func (cart ejected) numBanks() int {
 }
 
 func (cart *ejected) setBank(addr uint16, bank int) error {
-	return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+	return errors.New(errors.CartridgeError, fmt.Sprintf("ejected cartridge"))
 }
 
 func (cart ejected) getBank(addr uint16) int {

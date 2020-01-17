@@ -102,7 +102,7 @@ func (cart atari) getBank(addr uint16) int {
 
 func (cart *atari) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank >= len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
 	}
 	cart.bank = bank
 	return nil
@@ -203,7 +203,7 @@ func newAtari4k(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -250,7 +250,7 @@ func newAtari2k(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -295,7 +295,7 @@ func newAtari8k(data []uint8) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -361,7 +361,7 @@ func newAtari16k(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -435,7 +435,7 @@ func newAtari32k(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {

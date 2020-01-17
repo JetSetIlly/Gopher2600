@@ -46,7 +46,7 @@ func newCBS(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -119,7 +119,7 @@ func (cart cbs) getBank(addr uint16) int {
 
 func (cart *cbs) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
 	}
 	cart.bank = bank
 	return nil

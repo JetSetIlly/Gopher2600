@@ -68,18 +68,26 @@ type tigervision struct {
 	segment [2]int
 }
 
+// should work with any size cartridge that is a multiple of 2048
+//  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo)
 func newTigervision(data []byte) (cartMapper, error) {
 	const bankSize = 2048
 
-	cart := &tigervision{}
-	cart.method = "tigervision (3F)"
-	cart.banks = make([][]uint8, cart.numBanks())
-
-	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+	if len(data)%bankSize != 0 {
+		return nil, errors.New(errors.CartridgeError, "tigervision (3F): cartridge size must be multiple of 2048")
 	}
 
-	for k := 0; k < cart.numBanks(); k++ {
+	numBanks := len(data) / bankSize
+
+	cart := &tigervision{}
+	cart.method = fmt.Sprintf("tigervision (3F) %dk:", len(data)/1024)
+	cart.banks = make([][]uint8, numBanks)
+
+	if len(data) != bankSize*numBanks {
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.method))
+	}
+
+	for k := 0; k < numBanks; k++ {
 		cart.banks[k] = make([]uint8, bankSize)
 		offset := k * bankSize
 		copy(cart.banks[k], data[offset:offset+bankSize])
@@ -116,7 +124,7 @@ func (cart *tigervision) write(addr uint16, data uint8) error {
 }
 
 func (cart *tigervision) numBanks() int {
-	return 4 // four banks of 2k
+	return len(cart.banks)
 }
 
 func (cart *tigervision) getBank(addr uint16) (bank int) {
@@ -128,7 +136,7 @@ func (cart *tigervision) getBank(addr uint16) (bank int) {
 
 func (cart *tigervision) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -136,7 +144,7 @@ func (cart *tigervision) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
 	}
 
 	return nil
@@ -166,8 +174,7 @@ func (cart *tigervision) listen(addr uint16, data uint8) {
 	// 3 bits of the value being written is used to set the segment.
 
 	if addr < 0x40 {
-		// only the lowest three bits of the data value are used
-		cart.segment[0] = int(data & 0x03)
+		cart.segment[0] = int(data & uint8(cart.numBanks()-1))
 	}
 
 	// this bank switching method causes a problem when the CPU wants to write

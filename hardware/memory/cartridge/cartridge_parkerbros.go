@@ -78,7 +78,7 @@ func newparkerBros(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, "not enough bytes in the cartridge file")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -207,7 +207,7 @@ func (cart parkerBros) getBank(addr uint16) int {
 
 func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid bank (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
 	}
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -219,7 +219,7 @@ func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("invalid address (%d) for cartridge type (%s)", bank, cart.method))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.method, bank))
 	}
 
 	return nil

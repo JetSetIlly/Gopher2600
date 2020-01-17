@@ -37,11 +37,23 @@ func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error
 }
 
 func (cart Cartridge) fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
+	if fingerprintTigervision(data) {
+		return newTigervision
+	}
+
 	if fingerprintMnetwork(data) {
 		return newMnetwork
 	}
 
 	return newAtari16k
+}
+
+func (cart Cartridge) fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
+	if fingerprintTigervision(data) {
+		return newTigervision
+	}
+
+	return newAtari32k
 }
 
 func (cart *Cartridge) fingerprint(data []byte) error {
@@ -79,7 +91,7 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		}
 
 	case 32768:
-		cart.mapper, err = newAtari32k(data)
+		cart.mapper, err = cart.fingerprint32k(data)(data)
 		if err != nil {
 			return err
 		}
