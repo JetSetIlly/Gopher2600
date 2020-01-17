@@ -160,7 +160,7 @@ func (cart *mnetwork) read(addr uint16) (uint8, error) {
 			cart.bankSwitchOnAccess(addr)
 		}
 	} else {
-		return 0, errors.New(errors.UnreadableAddress, addr)
+		return 0, errors.New(errors.BusError, addr)
 	}
 
 	return data, nil
@@ -179,7 +179,7 @@ func (cart *mnetwork) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.New(errors.UnwritableAddress, addr)
+	return errors.New(errors.BusError, addr)
 }
 
 func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {

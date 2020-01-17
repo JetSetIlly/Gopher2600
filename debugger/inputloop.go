@@ -46,11 +46,6 @@ func (dbg *Debugger) videoCycle() error {
 			dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt {
 			return nil
 		}
-
-		// display information about any CPU bugs that may have been triggered
-		if dbg.reportCPUBugs && dbg.vcs.CPU.LastResult.Bug != "" {
-			dbg.printLine(terminal.StyleInstrument, dbg.vcs.CPU.LastResult.Bug)
-		}
 	}
 
 	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)

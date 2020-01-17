@@ -105,7 +105,7 @@ func (cart *cbs) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ffa {
 		cart.bank = 2
 	} else {
-		return errors.New(errors.UnwritableAddress, addr)
+		return errors.New(errors.BusError, addr)
 	}
 
 	return nil

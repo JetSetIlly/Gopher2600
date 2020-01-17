@@ -122,7 +122,7 @@ func (cart *parkerBros) write(addr uint16, data uint8) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
-	return errors.New(errors.UnwritableAddress, addr)
+	return errors.New(errors.BusError, addr)
 }
 
 func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {

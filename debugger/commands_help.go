@@ -143,10 +143,7 @@ will display the definition of the opcode that was used during execution.`,
 	cmdMemMap: "Display high-level VCS memory map.",
 
 	cmdCPU: `Display the current state of the CPU. The SET argument can be used to change the
-contents of the CPU registers.
-
-THe BUG argument can be used to turn BUG reporting on and off. Known 6507 bugs when
-triggered will be reported with the LAST command.`,
+contents of the CPU registers.`,
 
 	cmdPeek: `Inspect memory addresses for content. Addresses can be specified by symbolically
 or numerically.`,

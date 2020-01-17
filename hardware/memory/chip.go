@@ -62,7 +62,7 @@ type ChipMemory struct {
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.New(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.UnpeekableAddress, address)
 	}
 	return area.memory[address^area.origin], nil
 }
@@ -107,7 +107,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.New(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.BusError, address)
 	}
 
 	return area.memory[address^area.origin], nil
@@ -122,7 +122,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 	sym := addresses.Write[address^area.origin]
 	if sym == "" {
-		return errors.New(errors.UnwritableAddress, address)
+		return errors.New(errors.BusError, address)
 	}
 
 	// note address of write

@@ -112,7 +112,7 @@ func (cart *tigervision) read(addr uint16) (uint8, error) {
 }
 
 func (cart *tigervision) write(addr uint16, data uint8) error {
-	return errors.New(errors.UnwritableAddress, addr)
+	return errors.New(errors.BusError, addr)
 }
 
 func (cart *tigervision) numBanks() int {

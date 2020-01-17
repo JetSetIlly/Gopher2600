@@ -100,13 +100,13 @@ const (
 	InvalidResult                  = "cpu error: %v"
 	ProgramCounterCycled           = "cpu error: program counter cycled back to 0x0000"
 	InvalidOperationMidInstruction = "cpu error: invalid operation mid-instruction (%v)"
+	CPUBug                         = "cpu bug: %v"
 
 	// memory
 	MemoryError       = "memory error: %v"
-	UnreadableAddress = "memory error: memory location is not readable (%#04x)"
-	UnwritableAddress = "memory error: memory location is not writable (%#04x)"
 	UnpokeableAddress = "memory error: cannot poke address (%v)"
 	UnpeekableAddress = "memory error: cannot peek address (%v)"
+	BusError          = "bus error: address %#04x"
 
 	// cartridges
 	CartridgeError      = "cartridge error: %v"

@@ -230,7 +230,7 @@ func (cart *atari4k) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.New(errors.UnwritableAddress, addr)
+	return errors.New(errors.BusError, addr)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes
@@ -277,7 +277,7 @@ func (cart *atari2k) write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.New(errors.UnwritableAddress, addr)
+	return errors.New(errors.BusError, addr)
 }
 
 // atari8k (F8)
@@ -339,7 +339,7 @@ func (cart *atari8k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ff9 {
 		cart.bank = 1
 	} else {
-		return errors.New(errors.UnwritableAddress, addr)
+		return errors.New(errors.BusError, addr)
 	}
 
 	return nil
@@ -413,7 +413,7 @@ func (cart *atari16k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ff9 {
 		cart.bank = 3
 	} else {
-		return errors.New(errors.UnwritableAddress, addr)
+		return errors.New(errors.BusError, addr)
 	}
 
 	return nil
@@ -503,7 +503,7 @@ func (cart *atari32k) write(addr uint16, data uint8) error {
 	} else if addr == 0x0ffb {
 		cart.bank = 7
 	} else {
-		return errors.New(errors.UnwritableAddress, addr)
+		return errors.New(errors.BusError, addr)
 	}
 
 	return nil

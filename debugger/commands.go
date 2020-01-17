@@ -610,22 +610,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 					reg.Load(uint8(v))
 				}
 
-			case "BUG":
-				option, _ := tokens.Get()
-
-				switch strings.ToUpper(option) {
-				case "ON":
-					dbg.reportCPUBugs = true
-				case "OFF":
-					dbg.reportCPUBugs = false
-				}
-
-				if dbg.reportCPUBugs {
-					dbg.printLine(terminal.StyleFeedback, "CPU bug reporting: ON")
-				} else {
-					dbg.printLine(terminal.StyleFeedback, "CPU bug reporting: OFF")
-				}
-
 			default:
 				// already caught by command line ValidateTokens()
 			}

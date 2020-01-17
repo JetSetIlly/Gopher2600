@@ -185,8 +185,8 @@ func Format(result execution.Result, symtable *symbols.Table) (*Instruction, err
 	if result.PageFault {
 		d.Notes = fmt.Sprintf("%s page-fault", d.Notes)
 	}
-	if result.Bug != "" {
-		d.Notes = fmt.Sprintf("%s * %s *", d.Notes, result.Bug)
+	if result.CPUBug != "" {
+		d.Notes = fmt.Sprintf("%s * %s *", d.Notes, result.CPUBug)
 	}
 
 	return d, nil

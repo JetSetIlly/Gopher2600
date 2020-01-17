@@ -62,9 +62,6 @@ type CPU struct {
 	// last result
 	LastResult execution.Result
 
-	// silently ignore addressing errors unless StrictAddressing is true
-	StrictAddressing bool
-
 	// NoFlowControl sets whether the cpu responds accurately to instructions
 	// that affect the flow of the program (branches, JPS, subroutines and
 	// interrupts).  we use this in the disassembly package to make sure we
@@ -129,7 +126,7 @@ func (mc *CPU) Reset() error {
 	mc.cycleCallback = nil
 	mc.RdyFlg = true
 
-	// not touching StrictAddressing and NoFlowControl
+	// not touching NoFlowControl
 
 	return nil
 }
@@ -171,11 +168,10 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
-		// don't worry about unreadable addresses (unless strict addressing
-		// is on)
-		if mc.StrictAddressing || !errors.Is(err, errors.UnreadableAddress) {
+		if !errors.Is(err, errors.BusError) {
 			return 0, err
 		}
+		mc.LastResult.BusError = err.Error()
 	}
 
 	err = mc.endCycle()
@@ -197,9 +193,10 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	if err != nil {
 		// don't worry about unwritable addresses (unless strict addressing
 		// is on)
-		if mc.StrictAddressing || !errors.Is(err, errors.UnwritableAddress) {
+		if !errors.Is(err, errors.BusError) {
 			return err
 		}
+		mc.LastResult.BusError = err.Error()
 	}
 
 	return nil
@@ -211,7 +208,10 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		return 0, err
+		if !errors.Is(err, errors.BusError) {
+			return 0, err
+		}
+		mc.LastResult.BusError = err.Error()
 	}
 	err = mc.endCycle()
 	if err != nil {
@@ -220,7 +220,10 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		return 0, err
+		if !errors.Is(err, errors.BusError) {
+			return 0, err
+		}
+		mc.LastResult.BusError = err.Error()
 	}
 	err = mc.endCycle()
 	if err != nil {
@@ -377,7 +380,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	mc.LastResult.InstructionData = nil
 	mc.LastResult.ActualCycles = 0
 	mc.LastResult.PageFault = false
-	mc.LastResult.Bug = ""
+	mc.LastResult.CPUBug = ""
+	mc.LastResult.BusError = ""
 	mc.LastResult.Final = false
 
 	// register end cycle callback
@@ -501,7 +505,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.Bug = fmt.Sprintf("zero page index bug")
+			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
 		}
 
 		// +1 cycle
@@ -526,7 +530,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.Bug = fmt.Sprintf("zero page index bug")
+			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
 		}
 
 		// +1 cycle
@@ -547,16 +551,23 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// handle indirect addressing JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
-			mc.LastResult.Bug = fmt.Sprintf("indirect addressing bug (JMP bug)")
+			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug (JMP bug)")
 
 			lo, err := mc.mem.Read(indirectAddress)
 			if err != nil {
-				return err
+				if !errors.Is(err, errors.BusError) {
+					return err
+				}
+				mc.LastResult.BusError = err.Error()
 			}
 
 			// +1 cycle
 			err = mc.endCycle()
 			if err != nil {
+				if !errors.Is(err, errors.BusError) {
+					return err
+				}
+				mc.LastResult.BusError = err.Error()
 				return err
 			}
 
@@ -609,7 +620,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of indirect addressig bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.Bug = fmt.Sprintf("indirect addressing bug")
+			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug")
 		}
 
 		// +2 cycles
@@ -640,7 +651,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		if defn.PageSensitive && (address&0xff00 == 0x0100) {
-			mc.LastResult.Bug = fmt.Sprintf("indirect addressing bug")
+			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug")
 			mc.LastResult.PageFault = true
 		}
 

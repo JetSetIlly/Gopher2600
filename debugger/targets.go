@@ -31,8 +31,7 @@ import (
 type target interface {
 	Label() string
 
-	// the current value of the target. should return a value of type int or
-	// bool.
+	// the current value of the target. must return a comparable type
 	TargetValue() interface{}
 
 	// format an arbitrary value using suitable formatting method for the target
@@ -42,7 +41,9 @@ type target interface {
 // genericTarget is a way of targetting values that otherwise do not satisfy
 // the target interface.
 type genericTarget struct {
-	label        string
+	label string
+
+	// must be a comparable type
 	currentValue interface{}
 }
 
@@ -134,7 +135,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 		// cpu instruction targetting was originally added as an experiment, to
 		// help investigate a bug in the emulation. I don't think it's much use
 		// but it was an instructive exercise and may come in useful one day.
-		case "INSTRUCTION", "INS":
+		case "RESULT", "RES":
 			subkey, present := tokens.Get()
 			if present {
 				subkey = strings.ToUpper(subkey)
@@ -149,6 +150,39 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 							return int(dbg.vcs.CPU.LastResult.Defn.Effect)
 						},
 					}
+
+				case "PAGE":
+					trg = &genericTarget{
+						label: "PageFault",
+						currentValue: func() interface{} {
+							return dbg.vcs.CPU.LastResult.PageFault
+						},
+					}
+
+				case "BUG":
+					trg = &genericTarget{
+						label: "CPU Bug",
+						currentValue: func() interface{} {
+							s := dbg.vcs.CPU.LastResult.CPUBug
+							if s == "" {
+								return "ok"
+							}
+							return s
+						},
+					}
+
+				case "BUS":
+					trg = &genericTarget{
+						label: "Bus Error",
+						currentValue: func() interface{} {
+							s := dbg.vcs.CPU.LastResult.BusError
+							if s == "" {
+								return "ok"
+							}
+							return s
+						},
+					}
+
 				default:
 					return nil, errors.New(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
 				}

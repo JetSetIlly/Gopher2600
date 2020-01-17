@@ -64,14 +64,14 @@ func (mem *mockMem) Clear() {
 
 func (mem mockMem) Read(address uint16) (uint8, error) {
 	if address&0xff00 == 0xff00 {
-		return 0, errors.New(errors.UnreadableAddress, address)
+		return 0, errors.New(errors.BusError, address)
 	}
 	return mem.internal[address], nil
 }
 
 func (mem *mockMem) Write(address uint16, data uint8) error {
 	if address&0xff00 == 0xff00 {
-		return errors.New(errors.UnwritableAddress, address)
+		return errors.New(errors.BusError, address)
 	}
 	mem.internal[address] = data
 	return nil
@@ -594,61 +594,6 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.A, 0x19)
 }
 
-func testStrictAddressing(t *testing.T, mc *cpu.CPU, mem *mockMem) {
-	var origin uint16
-	mem.Clear()
-	_ = mc.Reset()
-
-	// non-strict addressing (Writing)
-	mem.Clear()
-	_ = mc.Reset()
-	mc.StrictAddressing = false
-	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	err := mc.ExecuteInstruction(nil)
-	if err != nil {
-		if errors.Is(err, errors.UnwritableAddress) {
-			t.Fatalf("recieved an UnwritableAddress error when we shouldn't")
-		}
-		t.Fatalf("error during CPU step (%v)\n", err)
-	}
-
-	// strict addressing (Writing)
-	mc.StrictAddressing = true
-	origin = mem.putInstructions(origin, 0x8d, 0x00, 0xff)
-	err = mc.ExecuteInstruction(nil)
-	if err == nil {
-		t.Fatalf("not recieved an UnwritableAddress error when we should")
-	}
-
-	if !errors.Is(err, errors.UnwritableAddress) {
-		t.Fatalf("error during CPU step (%v)\n", err)
-	}
-
-	// non-strict addressing (Reading)
-	mc.StrictAddressing = false
-	origin = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	err = mc.ExecuteInstruction(nil)
-	if err != nil {
-		if errors.Is(err, errors.UnreadableAddress) {
-			t.Fatalf("recieved an UnreadableAddress we shouldn't")
-		}
-		t.Fatalf("error during CPU step (%v)\n", err)
-	}
-
-	// strict addressing (Reading)
-	mc.StrictAddressing = true
-	_ = mem.putInstructions(origin, 0xad, 0x00, 0xff)
-	err = mc.ExecuteInstruction(nil)
-	if err == nil {
-		t.Fatalf("not recieved an UnreadableAddress error when we should")
-	}
-	if err.(errors.AtariError).Head == errors.UnreadableAddress {
-		// this is okay
-	} else {
-		t.Fatalf("error during CPU step (%v)\n", err)
-	}
-}
-
 func TestCPU(t *testing.T) {
 	mem := newMockMem()
 	mc, err := cpu.NewCPU(mem)
@@ -670,5 +615,4 @@ func TestCPU(t *testing.T) {
 	testComparisonInstructions(t, mc, mem)
 	testSubroutineInstructions(t, mc, mem)
 	testDecimalMode(t, mc, mem)
-	testStrictAddressing(t, mc, mem)
 }

@@ -59,7 +59,10 @@ type Result struct {
 	PageFault bool
 
 	// whether a known buggy code path (in the emulated CPU) was triggered
-	Bug string
+	CPUBug string
+
+	// whether the last memory access resulted in a bus error
+	BusError string
 
 	// whether this data has been finalised - some fields in this struct will
 	// be undefined if Final is false

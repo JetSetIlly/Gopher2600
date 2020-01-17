@@ -47,7 +47,7 @@ func (result Result) IsValid() error {
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
-	if result.Bug == "" {
+	if result.CPUBug == "" {
 		if result.Defn.AddressingMode == instructions.Relative {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
 				msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
