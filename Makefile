@@ -19,9 +19,14 @@ build:
 	go build -gcflags $(compileFlags)
 
 release:
-	@#go build -gcflags $(compileFlags) -tags release
-	@echo "use 'make build' for now. the release target will"
-	@echo "reappear in a future commit."
+	go build -gcflags $(compileFlags) -ldflags="-s -w"
+
+release_upx:
+	@echo "requires upx to run. edit Makefile to activate"
+	# go build -gcflags $(compileFlags) -ldflags="-s -w"
+	# upx -o gopher2600.upx gopher2600
+	# cp gopher2600.upx gopher2600
+	# rm gopher2600.upx
 
 profile:
 	go build -gcflags $(compileFlags)
