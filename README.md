@@ -47,7 +47,7 @@ The screenshot below is of ET with the patches from http://www.neocomputer.org/p
 
 The final two screenshots show some debugging output. Interaction with the debugger is currently though a line terminal (or through a script) but even so, the screen display can be modified to display information useful to the programmer.
 
-The Pitfall screenshot shows a debugging overlay. The additional coloured pixels indicate when various key TIA events have occured. The most interesting part of this image perhaps are the grey bars on the right of the image. These show visually when the WSYNC signal was active. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
+The Pitfall screenshot shows the debugging overlay. The additional coloured pixels indicate when key TIA events have occured. The most interesting part of this image perhaps, are the grey bars on the right of the image. These show when WSYNC signal activity. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
 
 The second picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. Again, this visualisation proved useful to me when developing the emulator.
 
