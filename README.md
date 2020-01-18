@@ -20,6 +20,7 @@ Alternatively, view them at https://godoc.org/github.com/JetSetIlly/Gopher2600
 ## Project Features
 
 * Debugger
+	* Line terminal interface
 	* CPU and Video stepping
 	* Breakpoints, traps, watches
 	* Script recording and playback
@@ -221,5 +222,3 @@ very poor.
 	* X1 chip (as used in Pitfall 2)
 1. Disassembly of some cartridge formats is known to be inaccurate
 1. FUTURE and todo.txt files list other known issues
-
-
