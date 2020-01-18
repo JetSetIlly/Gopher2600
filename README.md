@@ -124,10 +124,11 @@ or less as you would expect:
 
 The project has most recently been tested with Go v1.13.4. It will not work with
 versions earlier than v1.13 because of language features added in that version
-(hex and binary literals).
+(binary literals).
 
 The project uses the Go module system and dependencies will be resolved
-automatically.
+automatically. Do note however, that you will required the SDL development
+libraries for the Go SDL module to compile.
 
 Compile with GNU Make
 
