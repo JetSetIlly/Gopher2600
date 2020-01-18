@@ -37,6 +37,22 @@ Alternatively, view them at https://godoc.org/github.com/JetSetIlly/Gopher2600
 On a 3GHz i3 processor, the emulator (with SDL display) can reach 60fps or
 thereabouts. 
 
+## Screenshots
+
+<img src=".screenshots/barnstormer.png" height="200" alt="barnstormer"/> <img src=".screenshots/pole_position.png" height="200" alt="pole position"/> <img src=".screenshots/ateam.png" height="200" alt="ateam"/> <img src=".screenshots/he_man_title.png" height="200" alt="he man title screen"/>
+
+The screenshot below is of ET with the patches from http://www.neocomputer.org/projects/et/ automatically applied. Auto-patching of ROMs is a feature of the emulator
+
+<img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
+
+The final two screenshots show some debugging output. Interaction with the debugger is currently though a line terminal (or through a script) but even so, the screen display can be modified to display information useful to the programmer.
+
+The Pitfall screenshot shows a debugging overlay. The additional coloured pixels indicate when various key TIA events have occured. The most interesting part of this image perhaps are the grey bars on the right of the image. These show visually when the WSYNC signal was active. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
+
+The second picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. Again, this visualisation proved useful to me when developing the emulator.
+
+<img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> <img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/>
+
 ## Resources used
 
 The Stella project (https://stella-emu.github.io/) was used as a reference for
