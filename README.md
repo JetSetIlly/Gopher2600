@@ -29,7 +29,7 @@ Alternatively, view them at https://godoc.org/github.com/JetSetIlly/Gopher2600
 	* useful for ensuring continuing code accuracy when changing the emulation code
 * Setup preferences for individual ROMs
 	* Setting of panel switches
-	* Auto Application of ROM patches
+	* Automatic application of ROM patches
 * Gameplay session recording and playback
 
 ## Performance
@@ -117,7 +117,8 @@ or less as you would expect:
 * Donkey Kong (v1.0)
 
 ### Demos
-* tricade by trilobit
+* Tricade by Trilobit
+* Chiphead by KK of Altair
 
 ## Compilation
 
@@ -162,12 +163,40 @@ To run the debugger use the DEBUG submode
 
 > ./gopher2600 debug roms/Pitfall.bin
 
-For further help on the debugger, use the HELP command at the terminal.
+The debugger is line oriented, which is not ideal I admit but it works quite well. Help is available with the HELP command. Help on a specific topic is available by specifying a keyword. The list below shows the currently defined keywords. The rest of the section will give a brief run down of debugger features.
+
+	[ 0xf000 SEI ] >> help
+	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
+	           CPU   DISASSEMBLY       DISPLAY          DROP          GREP
+	          HELP        INSERT          LAST          LIST        MEMMAP
+	       MISSILE        ONHALT        ONSTEP         PANEL         PATCH
+	          PEEK        PLAYER     PLAYFIELD          POKE       QUANTUM
+	          QUIT           RAM         RESET           RUN        SCRIPT
+	          STEP         STICK        SYMBOL           TIA         TIMER
+	          TRAP            TV         WATCH
+
+The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
+
+Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be writted `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH NUSIZ0` will halt execution whenever address 0x04 (or any of its mirrors) is written to. 
+
+Watches are one of the three facilities that will halt execution of the emulator. The other two are `TRAP` and `BREAK`. Both of these commands will halt execution when a "target" changes or meets some condition. An example of a target is the Programmer Counter or the Scanline value. See `HELP BREAK` and `HELP TRAP` for more information.
+
+Whenever the emulation does halt, the `ONHALT` command will run. For example, a previous call to `ONHALT CPU` will cause the `CPU` command to run whenever the emulation stops. Similarly, the `ONSTEP` command applies whenever the emulation is stepped forward. By default, the `LAST` command is run on every step.
+
+The debugger can step forward either, one CPU instruction at a time, or by one video cycle at a time. We can change this mode with the `QUANTUM` command. We can also conveniently use the `STEP` command, for example `STEP VIDEO`, performing the quantum change and stepping forward in one go. The `STEP` command can also be used to run until the next time a target changes. For example, `STEP SCANLINE`. Using `STEP` in this way is often more useful than setting up a `TRAP`.
+
+Scripts can be recorded and played back with the `SCRIPT` command. All commands are available when in script recording mode, except `RUN` and further `SCRIPT RECORD` command. Playing back a script while recording a new script is possible.
+
+On startup, the debugger will load a configuration script, which consists of debugger commands available at the debugger's command line. A useful startup script would be:
+
+	DISPLAY SCALE 3.0
+	DISPLAY
+	
+This opens the debugger with the debugging screen open and ready for use. See the section "Configuration Directories" for more information.
 
 ## Player input
 
 Currently, only joystick controllers are supported and only for player 0.
-Moreover, you have to use the keyboard.
 
 ### Joystick Player 0
 
@@ -184,7 +213,7 @@ Moreover, you have to use the keyboard.
 
 ### Debugger
 
-The following keys are only available in the debugger and when the SDL window
+The following keys are only available in the debugger and when the debugging window
 is active.
 
 * \` (backtick) Toggle screen masking
