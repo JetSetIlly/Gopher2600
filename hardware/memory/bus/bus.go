@@ -29,6 +29,12 @@ package bus
 type CPUBus interface {
 	Read(address uint16) (uint8, error)
 	Write(address uint16, data uint8) error
+
+	// implementations of ReadZeroPage may just pass the address onto the
+	// Read() function and return, depending on what the implementation is
+	// supposed to do. for the real vcs emulation however, a zero page read
+	// has consequences
+	ReadZeroPage(address uint8) (uint8, error)
 }
 
 // ChipData is returned by ChipBus.ChipRead()

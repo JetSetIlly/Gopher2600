@@ -69,6 +69,10 @@ func (mem mockMem) Read(address uint16) (uint8, error) {
 	return mem.internal[address], nil
 }
 
+func (mem mockMem) ReadZeroPage(address uint8) (uint8, error) {
+	return mem.Read(uint16(address))
+}
+
 func (mem *mockMem) Write(address uint16, data uint8) error {
 	if address&0xff00 == 0xff00 {
 		return errors.New(errors.BusError, address)

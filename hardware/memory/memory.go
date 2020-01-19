@@ -115,8 +115,7 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
 	return nil, errors.New(errors.MemoryError, "area not mapped correctly")
 }
 
-// Implementation of CPUBus.Read
-func (mem *VCSMemory) Read(address uint16) (uint8, error) {
+func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	// optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
 
 	ma, ar := memorymap.MapAddress(address, true)
@@ -136,7 +135,7 @@ func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	//
 	// see commentary for DataMasks array for extensive explanation
 	if ma < uint16(len(addresses.DataMasks)) {
-		if address > 0xff {
+		if !zeroPage {
 			data &= addresses.DataMasks[ma]
 			data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
 		} else {
@@ -154,7 +153,17 @@ func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	return data, err
 }
 
-// Implementation of CPUBus.Write
+// Read is an implementation of CPUBus
+func (mem *VCSMemory) Read(address uint16) (uint8, error) {
+	return mem.read(address, false)
+}
+
+// ReadZeroPage is an implementation of CPUBus
+func (mem *VCSMemory) ReadZeroPage(address uint8) (uint8, error) {
+	return mem.read(uint16(address), true)
+}
+
+// Write is an implementation of CPUBus
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area, err := mem.GetArea(ar)

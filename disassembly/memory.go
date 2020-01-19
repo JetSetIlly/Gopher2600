@@ -39,6 +39,11 @@ func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 
 	// address outside of cartidge range return nothing
 	return 0, nil
+
+}
+
+func (dismem *disasmMemory) ReadZeroPage(address uint8) (uint8, error) {
+	return dismem.Read(uint16(address))
 }
 
 func (dismem *disasmMemory) Write(address uint16, data uint8) error {
