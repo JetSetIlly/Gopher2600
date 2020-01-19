@@ -362,31 +362,32 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData)
 
 	// there is no information about whether response to HMOVE value changes
 	// are immediate or take effect after a short delay. experimentation
-	// reveals that a delay is required. the reasoning is as below:
+	// reveals that a delay is required. the reasoning for the value is as
+	// below:
 	//
 	// delay of at least zero (1 additiona cycle) is required. we can see this
 	// in the Midnight Magic ROM where the left gutter separator requires it
 	//
 	// a delay too high (3 or higher) causes the barber pole test ROM to fail
 	//
-	// not sure what the actual value should be except that it should be
-	// somewhere between 0 and 3 (inclusive)
+	// (19/01/20) a delay of anything other than 0 or 1, causes Panda Chase to
+	// fail.
 	case "HMP0":
-		tiaDelay.ScheduleWithArg(2, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
+		tiaDelay.ScheduleWithArg(0, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
 	case "HMP1":
-		tiaDelay.ScheduleWithArg(2, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
+		tiaDelay.ScheduleWithArg(0, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
 	case "HMM0":
-		tiaDelay.ScheduleWithArg(2, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
+		tiaDelay.ScheduleWithArg(0, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
 	case "HMM1":
-		tiaDelay.ScheduleWithArg(2, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
+		tiaDelay.ScheduleWithArg(0, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
 	case "HMBL":
-		tiaDelay.ScheduleWithArg(2, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
+		tiaDelay.ScheduleWithArg(0, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
 	case "HMCLR":
-		tiaDelay.Schedule(2, vd.Player0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(2, vd.Player1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(2, vd.Missile0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(2, vd.Missile1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(2, vd.Ball.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(0, vd.Player0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(0, vd.Player1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(0, vd.Missile0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(0, vd.Missile1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(0, vd.Ball.clearHmoveValue, "HMCLR")
 	default:
 		return true
 	}
