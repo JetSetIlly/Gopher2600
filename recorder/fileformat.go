@@ -51,7 +51,7 @@ const (
 	lineMagicString int = iota
 	lineCartName
 	lineCartHash
-	lineTVtype
+	lineTVSpec
 	numHeaderLines
 )
 
@@ -64,7 +64,7 @@ func (rec *Recorder) writeHeader() error {
 	lines[lineMagicString] = magicString
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
-	lines[lineTVtype] = fmt.Sprintf("%v\n", rec.vcs.TV.GetSpec().ID)
+	lines[lineTVSpec] = fmt.Sprintf("%v\n", rec.vcs.TV.SpecIDOnCreation())
 
 	line := strings.Join(lines, "\n")
 
@@ -91,7 +91,7 @@ func (plb *Playback) readHeader(lines []string) error {
 	// read header
 	plb.CartLoad.Filename = lines[lineCartName]
 	plb.CartLoad.Hash = lines[lineCartHash]
-	plb.TVtype = lines[lineTVtype]
+	plb.TVSpec = lines[lineTVSpec]
 
 	return nil
 }

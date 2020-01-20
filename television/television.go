@@ -47,6 +47,12 @@ type television struct {
 	// television specification (NTSC or PAL)
 	spec *Specification
 
+	// spec on creation ID is the string that was to ID the television
+	// type/spec on creation. because the actual spec can change, the ID field
+	// of the Specification type can not be used for things like regression
+	// test recreation etc.
+	specIDOnCreation string
+
 	// auto flag indicates that the tv type/specification should switch if it
 	// appears to be outside of the current spec.
 	//
@@ -128,8 +134,9 @@ type television struct {
 // Television interface.
 func NewTelevision(spec string) (Television, error) {
 	tv := &television{
-		resizeTop: -1,
-		resizeBot: -1,
+		specIDOnCreation: strings.ToUpper(spec),
+		resizeTop:        -1,
+		resizeBot:        -1,
 	}
 
 	tv.SetSpec(spec)
@@ -458,6 +465,11 @@ func (tv *television) SetSpec(spec string) error {
 	tv.bottom = tv.spec.ScanlineBottom
 
 	return nil
+}
+
+// SpecIDOnCreation implements the Television interface
+func (tv *television) SpecIDOnCreation() string {
+	return tv.specIDOnCreation
 }
 
 // GetSpec implements the Television interface

@@ -55,7 +55,7 @@ type Playback struct {
 	transcript string
 
 	CartLoad cartridgeloader.Loader
-	TVtype   string
+	TVSpec   string
 
 	sequences []*playbackSequence
 	vcs       *hardware.VCS
@@ -192,9 +192,13 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	}
 	plb.vcs = vcs
 
-	// validate header
-	if plb.vcs.TV.GetSpec().ID != plb.TVtype {
-		return errors.New(errors.PlaybackError, "current TV type does not match that in the recording")
+	// validate header. keep it simple and disallow any difference in tv
+	// specification. some combinations may work but there's no compelling
+	// reason to figure that out just now.
+	if plb.vcs.TV.SpecIDOnCreation() != plb.TVSpec {
+		return errors.New(errors.PlaybackError,
+			fmt.Sprintf("recording was made with the %s TV spec. trying to playback with a TV spec of %s.",
+				plb.TVSpec, vcs.TV.SpecIDOnCreation()))
 	}
 
 	var err error

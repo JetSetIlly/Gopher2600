@@ -58,6 +58,17 @@ type Television interface {
 	// for simplicity, the Television should be considered unusable
 	// after EndRendering() has been called
 	End() error
+
+	// SpecIDOnCreation() returns the string that was to ID the television
+	// type/spec on creation. because the actual spec can change, the ID field
+	// of the Specification type can not be used for things like regression
+	// test recreation etc.
+	//
+	// we use this to help recreate the television that was used to make a
+	// playback recording. we may need to expand on this (and maybe replace
+	// with a more generalised function) if we ever add another television
+	// implementation.
+	SpecIDOnCreation() string
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

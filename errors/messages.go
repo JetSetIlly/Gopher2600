@@ -59,9 +59,9 @@ const (
 	ScriptScribeError     = "script scribe error: %v"
 
 	// recorder
-	RecordingError    = "controller recording error: %v"
-	PlaybackError     = "controller playback error: %v"
-	PlaybackHashError = "controller playback error: hash error: %v"
+	RecordingError    = "recording error: %v"
+	PlaybackError     = "playback error: %v"
+	PlaybackHashError = "playback error: hash error: %v"
 
 	// database
 	DatabaseError           = "database error: %v"
