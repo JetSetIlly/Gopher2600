@@ -25,51 +25,65 @@ import (
 )
 
 // Player represents the "joystick" port on the VCS. Different devices can be
-// added to it through selective seding of events to the Handler() function.
+// added to it through selective sending of events to the Handler() function.
 type Player struct {
 	device
 
 	// reference to input instance associated with Player
 	input *Input
 
-	// address in RIOT memory for joystick direction input
-	stickAddr uint16
-
-	// value indicating joystick state
-	stickValue uint8
-
-	// player port 0 and 1 write the stickValue to different nibbles of the
-	// stickAddr. stickFunc allows us to transform that value with the help of
-	// stickMask
-	stickFunc func(uint8) uint8
-
-	// data direction register
-	mask uint8
+	// controller types
+	stick  stick
+	paddle paddle
 
 	// data direction register
 	ddr uint8
+}
+
+type stick struct {
+	// address in RIOT memory for joystick direction input
+	addr uint16
 
 	// the address in TIA memory for joystick fire button
 	buttonAddr uint16
+
+	// value indicating joystick state
+	value uint8
+
+	// player port 0 and 1 write the value to different nibbles of the
+	// addr. transform allows us to transform that value with the help of
+	// stickMask
+	transform func(uint8) uint8
+
+	// because the two players share the same stick address, each player needs
+	// to mask off the other player's bits, or put another way, the bits we
+	// need to preserve during the write
+	preserveBits uint8
+}
+
+type paddle struct {
 }
 
 // NewPlayer0 is the preferred method of creating a new instance of Player for
 // representing player zero
 func NewPlayer0(inp *Input) *Player {
 	pl := &Player{
-		input:      inp,
-		stickAddr:  addresses.SWCHA,
-		stickValue: 0xf0,
-		stickFunc:  func(n uint8) uint8 { return n },
-		mask:       0x0f,
-		ddr:        0x00,
-
-		buttonAddr: addresses.INPT4,
+		input: inp,
+		stick: stick{
+			addr:         addresses.SWCHA,
+			buttonAddr:   addresses.INPT4,
+			value:        0xf0,
+			transform:    func(n uint8) uint8 { return n },
+			preserveBits: 0x0f,
+		},
+		paddle: paddle{},
+		ddr:    0x00,
 	}
 
 	pl.device = device{
 		id:     PlayerZeroID,
-		handle: pl.Handle}
+		handle: pl.Handle,
+	}
 
 	return pl
 }
@@ -78,19 +92,22 @@ func NewPlayer0(inp *Input) *Player {
 // representing player one
 func NewPlayer1(inp *Input) *Player {
 	pl := &Player{
-		input:      inp,
-		stickAddr:  addresses.SWCHA,
-		stickValue: 0xf0,
-		stickFunc:  func(n uint8) uint8 { return n >> 4 },
-		mask:       0xf0,
-		ddr:        0x00,
-
-		buttonAddr: addresses.INPT5,
+		input: inp,
+		stick: stick{
+			addr:         addresses.SWCHA,
+			buttonAddr:   addresses.INPT5,
+			value:        0xf0,
+			transform:    func(n uint8) uint8 { return n >> 4 },
+			preserveBits: 0xf0,
+		},
+		paddle: paddle{},
+		ddr:    0x00,
 	}
 
 	pl.device = device{
 		id:     PlayerOneID,
-		handle: pl.Handle}
+		handle: pl.Handle,
+	}
 
 	return pl
 }
@@ -104,33 +121,33 @@ func (pl *Player) Handle(event Event) error {
 		return nil
 
 	case Left:
-		pl.stickValue ^= 0x40
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value ^= 0x40
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Right:
-		pl.stickValue ^= 0x80
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value ^= 0x80
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Up:
-		pl.stickValue ^= 0x10
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value ^= 0x10
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Down:
-		pl.stickValue ^= 0x20
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value ^= 0x20
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoLeft:
-		pl.stickValue |= 0x40
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value |= 0x40
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoRight:
-		pl.stickValue |= 0x80
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value |= 0x80
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoUp:
-		pl.stickValue |= 0x10
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value |= 0x10
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoDown:
-		pl.stickValue |= 0x20
-		pl.input.mem.InputDeviceWrite(pl.stickAddr, pl.stickFunc(pl.stickValue), pl.mask)
+		pl.stick.value |= 0x20
+		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Fire:
-		pl.input.tiaMem.InputDeviceWrite(pl.buttonAddr, 0x00, 0x00)
+		pl.input.tiaMem.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
 	case NoFire:
-		pl.input.tiaMem.InputDeviceWrite(pl.buttonAddr, 0x80, 0x00)
+		pl.input.tiaMem.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, pl.id)

@@ -95,8 +95,8 @@ func (area *ChipMemory) LastReadRegister() string {
 }
 
 // InputDeviceWrite implements memory.InputDeviceBus
-func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, mask uint8) {
-	d := area.memory[address] & mask
+func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, preserveBits uint8) {
+	d := area.memory[address] & preserveBits
 	area.memory[address] = data | d
 }
 

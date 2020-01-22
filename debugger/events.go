@@ -27,10 +27,10 @@ import (
 	"gopher2600/playmode"
 )
 
-func (dbg *Debugger) guiEventHandler(event gui.Event) error {
+func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	var err error
 
-	switch event.ID {
+	switch ev := ev.(type) {
 	case gui.EventWindowClose:
 		err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
 		if err != nil {
@@ -38,44 +38,48 @@ func (dbg *Debugger) guiEventHandler(event gui.Event) error {
 		}
 
 	case gui.EventKeyboard:
-		data := event.Data.(gui.EventDataKeyboard)
+		var handled bool
 
 		// check playmode key presses first
-		err = playmode.KeyboardEventHandler(data, dbg.scr, dbg.vcs)
+		handled, err = playmode.KeyboardEventHandler(ev, dbg.vcs)
 		if err != nil {
-			break // switch event.ID
+			break // switch ev.(type)
 		}
 
-		if data.Down && data.Mod == gui.KeyModNone {
-			switch data.Key {
-			case "`":
-				// back-tick: toggle masking
-				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
+		if !handled {
+			if ev.Down && ev.Mod == gui.KeyModNone {
+				switch ev.Key {
+				case "`":
+					// back-tick: toggle masking
+					err = dbg.scr.SetFeature(gui.ReqToggleMasking)
 
-			case "1":
-				// toggle debugging colours
-				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
-			case "2":
-				// toggle overlay
-				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
+				case "1":
+					// toggle debugging colours
+					err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
+				case "2":
+					// toggle overlay
+					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 
-			case "=":
-				fallthrough // equal sign is the same as plus, for convenience
-			case "+":
-				// increase scaling
-				err = dbg.scr.SetFeature(gui.ReqIncScale)
-			case "-":
-				// decrease window scanling
-				err = dbg.scr.SetFeature(gui.ReqDecScale)
+				case "=":
+					fallthrough // equal sign is the same as plus, for convenience
+				case "+":
+					// increase scaling
+					err = dbg.scr.SetFeature(gui.ReqIncScale)
+				case "-":
+					// decrease window scanling
+					err = dbg.scr.SetFeature(gui.ReqDecScale)
+				}
 			}
 		}
 
-	case gui.EventMouseRight:
-		data := event.Data.(gui.EventDataMouse)
-		if !data.Down {
-			_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, data.Scanline, data.HorizPos), false, false)
-			if err == nil {
-				dbg.printLine(terminal.StyleFeedback, "mouse break on sl->%d and hp->%d", data.Scanline, data.HorizPos)
+	case gui.EventDbgMouseButton:
+		switch ev.Button {
+		case gui.MouseButtonRight:
+			if ev.Down {
+				_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, ev.Scanline, ev.HorizPos), false, false)
+				if err == nil {
+					dbg.printLine(terminal.StyleFeedbackNonInteractive, "mouse break on sl->%d and hp->%d", ev.Scanline, ev.HorizPos)
+				}
 			}
 		}
 	}

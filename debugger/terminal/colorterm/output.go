@@ -51,6 +51,13 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string, a ...inte
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StyleFeedback:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
+	case terminal.StyleFeedbackNonInteractive:
+		// making sure there's a newline before printing the string.
+		// because this is non-interactive feedback, the user will
+		// not have pressed the return key so we need to simulate
+		// this
+		ct.EasyTerm.TermPrint("")
+		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StylePromptCPUStep:
 		ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
 	case terminal.StylePromptVideoStep:

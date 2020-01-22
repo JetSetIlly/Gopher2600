@@ -61,5 +61,10 @@ const (
 
 	// !!TODO: paddle and keyboard controllers
 
+	PaddleFire
+	PaddleNoFire
+	PaddleUp
+	PaddleDown
+
 	PanelPowerOff Event = 255
 )

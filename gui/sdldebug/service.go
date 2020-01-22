@@ -41,7 +41,7 @@ func (scr *SdlDebug) Service() {
 
 		// close window
 		case *sdl.QuitEvent:
-			scr.eventChannel <- gui.Event{ID: gui.EventWindowClose}
+			scr.eventChannel <- gui.EventWindowClose{}
 
 		case *sdl.KeyboardEvent:
 			mod := gui.KeyModNone
@@ -60,75 +60,37 @@ func (scr *SdlDebug) Service() {
 			switch sdlEvent.Type {
 			case sdl.KEYDOWN:
 				if sdlEvent.Repeat == 0 {
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventKeyboard,
-						Data: gui.EventDataKeyboard{
-							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-							Mod:  mod,
-							Down: true}}
+					scr.eventChannel <- gui.EventKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Mod:  mod,
+						Down: true}
 				}
 			case sdl.KEYUP:
 				if sdlEvent.Repeat == 0 {
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventKeyboard,
-						Data: gui.EventDataKeyboard{
-							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-							Mod:  mod,
-							Down: false}}
+					scr.eventChannel <- gui.EventKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Mod:  mod,
+						Down: false}
 				}
 			}
 
 		case *sdl.MouseButtonEvent:
+			var but gui.MouseButton
 			hp, sl := scr.convertMouseCoords(sdlEvent)
-			switch sdlEvent.Type {
-			case sdl.MOUSEBUTTONDOWN:
-				switch sdlEvent.Button {
-
-				case sdl.BUTTON_LEFT:
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventMouseLeft,
-						Data: gui.EventDataMouse{
-							Down:     true,
-							X:        int(sdlEvent.X),
-							Y:        int(sdlEvent.Y),
-							HorizPos: hp,
-							Scanline: sl}}
-
-				case sdl.BUTTON_RIGHT:
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventMouseRight,
-						Data: gui.EventDataMouse{
-							Down:     true,
-							X:        int(sdlEvent.X),
-							Y:        int(sdlEvent.Y),
-							HorizPos: hp,
-							Scanline: sl}}
-				}
-
-			case sdl.MOUSEBUTTONUP:
-				switch sdlEvent.Button {
-
-				case sdl.BUTTON_LEFT:
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventMouseLeft,
-						Data: gui.EventDataMouse{
-							Down:     false,
-							X:        int(sdlEvent.X),
-							Y:        int(sdlEvent.Y),
-							HorizPos: hp,
-							Scanline: sl}}
-
-				case sdl.BUTTON_RIGHT:
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventMouseRight,
-						Data: gui.EventDataMouse{
-							Down:     false,
-							X:        int(sdlEvent.X),
-							Y:        int(sdlEvent.Y),
-							HorizPos: hp,
-							Scanline: sl}}
-				}
+			switch sdlEvent.Button {
+			case sdl.BUTTON_LEFT:
+				but = gui.MouseButtonLeft
+			case sdl.BUTTON_RIGHT:
+				but = gui.MouseButtonRight
 			}
+
+			scr.eventChannel <- gui.EventDbgMouseButton{
+				Button:   but,
+				Down:     sdlEvent.Type == sdl.MOUSEBUTTONDOWN,
+				X:        int(sdlEvent.X),
+				Y:        int(sdlEvent.Y),
+				HorizPos: hp,
+				Scanline: sl}
 		}
 	}
 

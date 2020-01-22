@@ -34,6 +34,12 @@ import (
 	"time"
 )
 
+type playmode struct {
+	vcs     *hardware.VCS
+	intChan chan os.Signal
+	guiChan chan gui.Event
+}
+
 // Play is a quick of setting up a playable instance of the emulator.
 func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string) error {
 	var transcript string
@@ -135,9 +141,14 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 		}
 	}
 
+	pl := &playmode{
+		vcs:     vcs,
+		intChan: make(chan os.Signal, 1),
+		guiChan: make(chan gui.Event, 2),
+	}
+
 	// connect gui
-	guiChannel := make(chan gui.Event, 2)
-	scr.SetEventChannel(guiChannel)
+	scr.SetEventChannel(pl.guiChan)
 
 	// request television visibility
 	request := gui.ReqSetVisibility
@@ -151,26 +162,10 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 
 	// we need to make sure we call the deferred function rec.End() even when
 	// ctrl-c is pressed. redirect interrupt signal to an os.Signal channel
-	intChan := make(chan os.Signal, 1)
-	signal.Notify(intChan, os.Interrupt)
+	signal.Notify(pl.intChan, os.Interrupt)
 
 	// run and handle gui events
-	err = vcs.Run(func() (bool, error) {
-		select {
-		case <-intChan:
-			return false, nil
-		case ev := <-guiChannel:
-			switch ev.ID {
-			case gui.EventWindowClose:
-				return false, nil
-			case gui.EventKeyboard:
-				err = KeyboardEventHandler(ev.Data.(gui.EventDataKeyboard), scr, vcs)
-				return err == nil, err
-			}
-		default:
-		}
-		return true, nil
-	})
+	err = vcs.Run(pl.guiEventHandler)
 
 	if err != nil {
 		if errors.Is(err, errors.PowerOff) {

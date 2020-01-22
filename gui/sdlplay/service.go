@@ -40,7 +40,7 @@ func (scr *SdlPlay) Service() {
 
 		// close window
 		case *sdl.QuitEvent:
-			scr.eventChannel <- gui.Event{ID: gui.EventWindowClose}
+			scr.eventChannel <- gui.EventWindowClose{}
 
 		case *sdl.KeyboardEvent:
 			mod := gui.KeyModNone
@@ -59,23 +59,23 @@ func (scr *SdlPlay) Service() {
 			switch sdlEvent.Type {
 			case sdl.KEYDOWN:
 				if sdlEvent.Repeat == 0 {
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventKeyboard,
-						Data: gui.EventDataKeyboard{
-							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-							Mod:  mod,
-							Down: true}}
+					scr.eventChannel <- gui.EventKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Mod:  mod,
+						Down: true}
 				}
 			case sdl.KEYUP:
 				if sdlEvent.Repeat == 0 {
-					scr.eventChannel <- gui.Event{
-						ID: gui.EventKeyboard,
-						Data: gui.EventDataKeyboard{
-							Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
-							Mod:  mod,
-							Down: false}}
+					scr.eventChannel <- gui.EventKeyboard{
+						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Mod:  mod,
+						Down: false}
 				}
 			}
+		case *sdl.MouseButtonEvent:
+			scr.eventChannel <- gui.EventMouseButton{
+				Button: gui.MouseButtonLeft,
+				Down:   sdlEvent.Type == sdl.MOUSEBUTTONDOWN}
 		}
 	}
 

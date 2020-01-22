@@ -42,6 +42,9 @@ const (
 	// non-error information from a command
 	StyleFeedback
 
+	// non-error information from a command
+	StyleFeedbackNonInteractive
+
 	// help information
 	StyleHelp
 

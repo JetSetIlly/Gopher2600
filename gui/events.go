@@ -19,19 +19,14 @@
 
 package gui
 
+// Event represents all the different type of events that can occur in the gui
+//
 // Events are the things that happen in the gui, as a result of user interaction,
 // and sent over a registered event channel.
+type Event interface{}
 
-// EventID idintifies the type of event taking place
-type EventID int
-
-// list of valid events
-const (
-	EventWindowClose EventID = iota
-	EventKeyboard
-	EventMouseLeft
-	EventMouseRight
-)
+// EventWindowClose is sent when the gui window is closed
+type EventWindowClose struct{}
 
 // KeyMod identifies
 type KeyMod int
@@ -44,26 +39,35 @@ const (
 	KeyModAlt
 )
 
-// EventData represents the data that is associated with an event
-type EventData interface{}
-
-// Event is the structure that is passed over the event channel
-//
-// Do not confuse this with the peripheral Event type.
-type Event struct {
-	ID   EventID
-	Data EventData
-}
-
-// EventDataKeyboard is the data that accompanies EvenKeyboard events
-type EventDataKeyboard struct {
+// EventKeyboard is the data that accompanies EventKeyboard events
+type EventKeyboard struct {
 	Key  string
 	Down bool
 	Mod  KeyMod
 }
 
-// EventDataMouse is the data that accompanies EventMouse events
-type EventDataMouse struct {
+// EventMouseMove is the data that accompanies MouseEventMove events
+type EventMouseMove struct {
+}
+
+// MouseButton identifies the mouse button
+type MouseButton int
+
+// list of valid MouseButtonIDs
+const (
+	MouseButtonLeft MouseButton = iota
+	MouseButtonRight
+)
+
+// EventMouseButton is the data that accompanies MouseEventMove events
+type EventMouseButton struct {
+	Button MouseButton
+	Down   bool
+}
+
+// EventDbgMouseButton is the data that accompanies MouseEventMove events
+type EventDbgMouseButton struct {
+	Button   MouseButton
 	Down     bool
 	X        int
 	Y        int
