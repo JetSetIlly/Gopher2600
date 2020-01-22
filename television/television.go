@@ -139,13 +139,16 @@ func NewTelevision(spec string) (Television, error) {
 		resizeBot:        -1,
 	}
 
-	tv.SetSpec(spec)
+	err := tv.SetSpec(spec)
+	if err != nil {
+		return nil, err
+	}
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
 
 	// initialise TVState
-	err := tv.Reset()
+	err = tv.Reset()
 	if err != nil {
 		return nil, err
 	}
