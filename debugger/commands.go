@@ -936,9 +936,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.vcs.Player0.Handle(event)
+			err = dbg.vcs.HandController0.Handle(event)
 		case 1:
-			err = dbg.vcs.Player1.Handle(event)
+			err = dbg.vcs.HandController1.Handle(event)
 		}
 
 		if err != nil {

@@ -57,8 +57,8 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	rec := &Recorder{vcs: vcs}
 
 	// attach recorder to vcs peripherals, including the panel
-	vcs.Player0.AttachEventRecorder(rec)
-	vcs.Player1.AttachEventRecorder(rec)
+	vcs.HandController0.AttachEventRecorder(rec)
+	vcs.HandController1.AttachEventRecorder(rec)
 	vcs.Panel.AttachEventRecorder(rec)
 
 	// video digester for playback verification

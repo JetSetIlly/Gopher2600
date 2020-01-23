@@ -62,12 +62,12 @@ func (riot *RIOT) ReadMemory() {
 		return
 	}
 
-	serviceMemory = riot.Timer.ServiceMemory(data)
+	serviceMemory = riot.Timer.ReadMemory(data)
 	if !serviceMemory {
 		return
 	}
 
-	_ = riot.Input.ServiceMemory(data)
+	_ = riot.Input.ReadMemory(data)
 }
 
 // Step moves the state of the RIOT forward one video cycle

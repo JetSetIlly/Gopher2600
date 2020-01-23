@@ -21,18 +21,25 @@ package input
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"gopher2600/hardware/memory/bus"
 )
 
+// despite the placement of the input package in the source tree, input is
+// actually handled in part by the TIA chip. as such, the hand controllers
+// require access to TIA memory. the inputMemory type encapsulates both memory
+// areas through the InputDeviceBus
+type inputMemory struct {
+	riot bus.InputDeviceBus
+	tia  bus.InputDeviceBus
+}
+
 // Input implements the input/output part of the RIOT (the IO in RIOT)
 type Input struct {
-	mem    bus.InputDeviceBus
-	tiaMem bus.InputDeviceBus
+	mem inputMemory
 
-	Panel   *Panel
-	Player0 *Player
-	Player1 *Player
+	Panel           *Panel
+	HandController0 *HandController
+	HandController1 *HandController
 }
 
 // NewInput is the preferred method of initialisation of the Input type. Note
@@ -40,52 +47,41 @@ type Input struct {
 // breaking the abstraction somewhat, but it can't be helped. The NewInput()
 // function therefore requires two arguments one to the RIOT chip bus and one
 // to the TIA chip bus.
-func NewInput(mem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
-
-	// convert ChipBus to InputDeviceBus
-	memInpBus, ok := mem.(bus.InputDeviceBus)
-	if !ok {
-		return nil, errors.New(errors.PanicError, "input.NewInput()", "mem argument doe not satisfy InputDeviceBus")
-	}
-	tiaMemInpBus, ok := tiaMem.(bus.InputDeviceBus)
-	if !ok {
-		return nil, errors.New(errors.PanicError, "input.NewInput()", "tiaMem argument doe not satisfy InputDeviceBus")
-	}
-
+func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 	inp := &Input{
-		// we require the InputDeviceBus to memory. the following silently
-		// converts to the correct bus
-		mem:    memInpBus,
-		tiaMem: tiaMemInpBus,
+		mem: inputMemory{
+			riot: riotMem.(bus.InputDeviceBus),
+			tia:  tiaMem.(bus.InputDeviceBus),
+		},
 	}
 
-	inp.Panel = NewPanel(inp)
+	inp.Panel = NewPanel(&inp.mem)
 	if inp.Panel == nil {
 		return nil, fmt.Errorf("can't create control panel")
 	}
 
-	inp.Player0 = NewPlayer0(inp)
-	if inp.Player0 == nil {
+	inp.HandController0 = NewHandController0(&inp.mem)
+	if inp.HandController0 == nil {
 		return nil, fmt.Errorf("can't create player 0 port")
 	}
 
-	inp.Player1 = NewPlayer1(inp)
-	if inp.Player1 == nil {
+	inp.HandController1 = NewHandController1(&inp.mem)
+	if inp.HandController1 == nil {
 		return nil, fmt.Errorf("can't create player 1 port")
 	}
 
 	return inp, nil
 }
 
-// ServiceMemory checks to see if ChipData applies to the Input type and
+// ReadMemory checks to see if ChipData applies to the Input type and
 // updates the internal controller/panel states accordingly. Returns true if
 // the ChipData was *not* serviced.
-func (inp *Input) ServiceMemory(data bus.ChipData) bool {
+func (inp *Input) ReadMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
 	case "SWACNT":
-		inp.Player0.ddr = data.Value & 0xf0
-		inp.Player1.ddr = data.Value & 0x0f
+		inp.HandController0.ddr = data.Value & 0xf0
+		inp.HandController1.ddr = data.Value & 0x0f
 	case "SWCHB":
 	case "SWBCNT":
 		inp.Panel.ddr = data.Value & 0xf0

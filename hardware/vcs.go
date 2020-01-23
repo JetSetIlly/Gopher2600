@@ -39,9 +39,11 @@ type VCS struct {
 
 	TV television.Television
 
-	Panel   *input.Panel
-	Player0 *input.Player
-	Player1 *input.Player
+	// convenient pointers to the panel and hand controller instances in the
+	// RIOT.Input type
+	Panel           input.Port
+	HandController0 input.Port
+	HandController1 input.Port
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -71,11 +73,9 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	// for convenience, these should point to the equivalent instances in the
-	// RIOT.Input type
 	vcs.Panel = vcs.RIOT.Input.Panel
-	vcs.Player0 = vcs.RIOT.Input.Player0
-	vcs.Player1 = vcs.RIOT.Input.Player1
+	vcs.HandController0 = vcs.RIOT.Input.HandController0
+	vcs.HandController1 = vcs.RIOT.Input.HandController1
 
 	return vcs, nil
 }
@@ -120,12 +120,12 @@ func (vcs *VCS) Reset() error {
 
 // check all devices for pending input
 func (vcs *VCS) checkDeviceInput() error {
-	err := vcs.Player0.CheckInput()
+	err := vcs.HandController0.CheckInput()
 	if err != nil {
 		return err
 	}
 
-	err = vcs.Player1.CheckInput()
+	err = vcs.HandController1.CheckInput()
 	if err != nil {
 		return err
 	}

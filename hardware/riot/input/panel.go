@@ -27,9 +27,9 @@ import (
 
 // Panel represents the console's front control panel
 type Panel struct {
-	device
+	port
 
-	input *Input
+	mem *inputMemory
 
 	p0pro         bool
 	p1pro         bool
@@ -42,13 +42,13 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(inp *Input) *Panel {
+func NewPanel(mem *inputMemory) *Panel {
 	pan := &Panel{
-		input: inp,
+		mem:   mem,
 		color: true,
 	}
 
-	pan.device = device{
+	pan.port = port{
 		id:     PanelID,
 		handle: pan.Handle,
 	}
@@ -58,6 +58,7 @@ func NewPanel(inp *Input) *Panel {
 	return pan
 }
 
+// String implements the Port interface
 func (pan *Panel) String() string {
 	s := strings.Builder{}
 
@@ -115,7 +116,7 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.input.mem.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
+	pan.mem.riot.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
 }
 
 // Handle translates the Event argument into the required memory-write

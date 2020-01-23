@@ -24,13 +24,13 @@ import (
 	"gopher2600/hardware/memory/addresses"
 )
 
-// Player represents the "joystick" port on the VCS. Different devices can be
-// added to it through selective sending of events to the Handler() function.
-type Player struct {
-	device
-
-	// reference to input instance associated with Player
-	input *Input
+// HandController represents the "joystick" port on the VCS. The different
+// devices (joysticks, paddles, etc.) send events to the Handle() function.
+//
+// Note that handcontrollers need access to TIA memory as well as RIOT memory.
+type HandController struct {
+	port
+	mem *inputMemory
 
 	// controller types
 	stick  stick
@@ -40,6 +40,7 @@ type Player struct {
 	ddr uint8
 }
 
+// the stick type handles the "joystick" hand controller type
 type stick struct {
 	// address in RIOT memory for joystick direction input
 	addr uint16
@@ -50,25 +51,26 @@ type stick struct {
 	// value indicating joystick state
 	value uint8
 
-	// player port 0 and 1 write the value to different nibbles of the
+	// hand controllers 0 and 1 write the value to different nibbles of the
 	// addr. transform allows us to transform that value with the help of
 	// stickMask
 	transform func(uint8) uint8
 
-	// because the two players share the same stick address, each player needs
-	// to mask off the other player's bits, or put another way, the bits we
-	// need to preserve during the write
+	// because the two hand controllers share the same stick address, each
+	// controller needs to mask off the other hand controller's bits, or put
+	// another way, the bits we need to preserve during the write
 	preserveBits uint8
 }
 
+// the paddle type handles the "paddle" hand controller type
 type paddle struct {
 }
 
-// NewPlayer0 is the preferred method of creating a new instance of Player for
-// representing player zero
-func NewPlayer0(inp *Input) *Player {
-	pl := &Player{
-		input: inp,
+// NewHandController0 is the preferred method of creating a new instance of
+// HandController for representing hand controller zero
+func NewHandController0(mem *inputMemory) *HandController {
+	pl := &HandController{
+		mem: mem,
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT4,
@@ -80,19 +82,19 @@ func NewPlayer0(inp *Input) *Player {
 		ddr:    0x00,
 	}
 
-	pl.device = device{
-		id:     PlayerZeroID,
+	pl.port = port{
+		id:     HandControllerZeroID,
 		handle: pl.Handle,
 	}
 
 	return pl
 }
 
-// NewPlayer1 is the preferred method of creating a new instance of Player for
-// representing player one
-func NewPlayer1(inp *Input) *Player {
-	pl := &Player{
-		input: inp,
+// NewHandController1 is the preferred method of creating a new instance of
+// HandController for representing hand controller one
+func NewHandController1(mem *inputMemory) *HandController {
+	pl := &HandController{
+		mem: mem,
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT5,
@@ -104,16 +106,21 @@ func NewPlayer1(inp *Input) *Player {
 		ddr:    0x00,
 	}
 
-	pl.device = device{
-		id:     PlayerOneID,
+	pl.port = port{
+		id:     HandControllerOneID,
 		handle: pl.Handle,
 	}
 
 	return pl
 }
 
+// String implements the Port interface
+func (pl *HandController) String() string {
+	return ""
+}
+
 // Handle translates the Event argument into the required memory-write
-func (pl *Player) Handle(event Event) error {
+func (pl *HandController) Handle(event Event) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent
@@ -122,32 +129,32 @@ func (pl *Player) Handle(event Event) error {
 
 	case Left:
 		pl.stick.value ^= 0x40
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Right:
 		pl.stick.value ^= 0x80
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Up:
 		pl.stick.value ^= 0x10
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Down:
 		pl.stick.value ^= 0x20
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoLeft:
 		pl.stick.value |= 0x40
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoRight:
 		pl.stick.value |= 0x80
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoUp:
 		pl.stick.value |= 0x10
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case NoDown:
 		pl.stick.value |= 0x20
-		pl.input.mem.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
 	case Fire:
-		pl.input.tiaMem.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
+		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
 	case NoFire:
-		pl.input.tiaMem.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, pl.id)

@@ -27,23 +27,23 @@ import (
 
 // Step moves the state of the tia forward one video cycle returns the state of
 // the CPU's RDY flag.
-func (tia *TIA) Step(serviceMemory bool) (bool, error) {
+func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// update debugging information
 	tia.videoCycles++
 
 	var memoryData bus.ChipData
 
 	// update memory if required
-	if serviceMemory {
-		serviceMemory, memoryData = tia.mem.ChipRead()
+	if readMemory {
+		readMemory, memoryData = tia.mem.ChipRead()
 	}
 
 	// make alterations to video state and playfield
-	if serviceMemory {
-		serviceMemory = tia.UpdateTIA(memoryData)
+	if readMemory {
+		readMemory = tia.UpdateTIA(memoryData)
 	}
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdatePlayfield(tia.Delay, memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdatePlayfield(tia.Delay, memoryData)
 	}
 
 	// tick phase clock
@@ -158,11 +158,11 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 	// HSYNC tick and see how the ball sprite is rendered incorrectly in
 	// Keystone Kapers (this is because the ball is reset on the very last
 	// pixel and before HBLANK etc. are in the state they need to be)
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdateSpritePositioning(memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdateSpritePositioning(memoryData)
 	}
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdateColor(memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdateColor(memoryData)
 	}
 
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
@@ -193,17 +193,17 @@ func (tia *TIA) Step(serviceMemory bool) (bool, error) {
 		tia.sig.Pixel = television.ColorSignal(pixelColor)
 	}
 
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdateSpriteHMOVE(tia.Delay, memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdateSpriteHMOVE(tia.Delay, memoryData)
 	}
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdateSpriteVariations(memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdateSpriteVariations(memoryData)
 	}
-	if serviceMemory {
-		serviceMemory = tia.Video.UpdateSpritePixels(memoryData)
+	if readMemory {
+		readMemory = tia.Video.UpdateSpritePixels(memoryData)
 	}
-	if serviceMemory {
-		serviceMemory = tia.Audio.UpdateRegisters(memoryData)
+	if readMemory {
+		readMemory = tia.Audio.UpdateRegisters(memoryData)
 	}
 
 	// copy audio to television signal

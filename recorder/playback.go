@@ -50,7 +50,7 @@ type playbackSequence struct {
 }
 
 // Playback is used to reperform the user input recorded in a previously transcribed
-// file. It implements the input.Controller interface.
+// file. It implements the input.Playback interface.
 type Playback struct {
 	transcript string
 
@@ -184,7 +184,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 }
 
 // AttachToVCS attaches the playback instance (an implementation of the
-// controller interface) to all the ports of the VCS, including the panel.
+// playback interface) to all the ports of the VCS, including the panel.
 func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
@@ -208,15 +208,15 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 		return errors.New(errors.RecordingError, err)
 	}
 
-	// attach playback to controllers
-	vcs.Player0.Attach(plb)
-	vcs.Player1.Attach(plb)
-	vcs.Panel.Attach(plb)
+	// attach playback to vcs ports
+	vcs.HandController0.AttachPlayback(plb)
+	vcs.HandController1.AttachPlayback(plb)
+	vcs.Panel.AttachPlayback(plb)
 
 	return nil
 }
 
-// CheckInput implements the input.Controller interface.
+// CheckInput implements the input.Playback interface.
 func (plb *Playback) CheckInput(id input.ID) (input.Event, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]

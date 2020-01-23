@@ -57,10 +57,10 @@ func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS) (bool, 
 	switch ev.Button {
 	case gui.MouseButtonLeft:
 		if ev.Down {
-			err = vcs.Player0.Handle(input.PaddleFire)
+			err = vcs.HandController0.Handle(input.PaddleFire)
 			handled = true
 		} else {
-			err = vcs.Player0.Handle(input.PaddleNoFire)
+			err = vcs.HandController0.Handle(input.PaddleNoFire)
 			handled = true
 		}
 	}
@@ -94,19 +94,19 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 			err = vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
 			handled = true
 		case "Left":
-			err = vcs.Player0.Handle(input.Left)
+			err = vcs.HandController0.Handle(input.Left)
 			handled = true
 		case "Right":
-			err = vcs.Player0.Handle(input.Right)
+			err = vcs.HandController0.Handle(input.Right)
 			handled = true
 		case "Up":
-			err = vcs.Player0.Handle(input.Up)
+			err = vcs.HandController0.Handle(input.Up)
 			handled = true
 		case "Down":
-			err = vcs.Player0.Handle(input.Down)
+			err = vcs.HandController0.Handle(input.Down)
 			handled = true
 		case "Space":
-			err = vcs.Player0.Handle(input.Fire)
+			err = vcs.HandController0.Handle(input.Fire)
 			handled = true
 		}
 	} else {
@@ -118,19 +118,19 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 			err = vcs.Panel.Handle(input.PanelResetRelease)
 			handled = true
 		case "Left":
-			err = vcs.Player0.Handle(input.NoLeft)
+			err = vcs.HandController0.Handle(input.NoLeft)
 			handled = true
 		case "Right":
-			err = vcs.Player0.Handle(input.NoRight)
+			err = vcs.HandController0.Handle(input.NoRight)
 			handled = true
 		case "Up":
-			err = vcs.Player0.Handle(input.NoUp)
+			err = vcs.HandController0.Handle(input.NoUp)
 			handled = true
 		case "Down":
-			err = vcs.Player0.Handle(input.NoDown)
+			err = vcs.HandController0.Handle(input.NoDown)
 			handled = true
 		case "Space":
-			err = vcs.Player0.Handle(input.NoFire)
+			err = vcs.HandController0.Handle(input.NoFire)
 			handled = true
 		}
 	}
