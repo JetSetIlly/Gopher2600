@@ -22,6 +22,7 @@ package tia
 import (
 	"fmt"
 	"gopher2600/hardware/memory/bus"
+	"gopher2600/hardware/riot/input"
 	"gopher2600/hardware/tia/audio"
 	"gopher2600/hardware/tia/future"
 	"gopher2600/hardware/tia/phaseclock"
@@ -33,8 +34,9 @@ import (
 
 // TIA contains all the sub-components of the VCS TIA sub-system
 type TIA struct {
-	tv  television.Television
-	mem bus.ChipBus
+	tv        television.Television
+	mem       bus.ChipBus
+	inputBits *input.ControlBits
 
 	// number of video cycles since the last WSYNC. also cycles back to 0 on
 	// RSYNC and when polycounter reaches count 56
@@ -111,8 +113,12 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
-func NewTIA(tv television.Television, mem bus.ChipBus) (*TIA, error) {
-	tia := TIA{tv: tv, mem: mem, hblank: true}
+func NewTIA(tv television.Television, mem bus.ChipBus, inputBits *input.ControlBits) (*TIA, error) {
+	tia := TIA{
+		tv:        tv,
+		mem:       mem,
+		inputBits: inputBits,
+		hblank:    true}
 
 	var err error
 
@@ -147,9 +153,12 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	case "VSYNC":
 		tia.sig.VSync = data.Value&0x02 == 0x02
 
-		// !!TODO: do something with controller settings below
-		_ = data.Value&0x40 == 0x40
-		_ = data.Value&0x80 == 0x80
+		// dump paddle capacitors to ground
+		tia.inputBits.GroundPaddles = data.Value&0x40 == 0x40
+
+		// stick fire button latches
+		tia.inputBits.LatchFireButton = data.Value&0x80 == 0x80
+
 		return false
 
 	case "VBLANK":

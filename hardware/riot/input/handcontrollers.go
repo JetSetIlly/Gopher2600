@@ -30,7 +30,8 @@ import (
 // Note that handcontrollers need access to TIA memory as well as RIOT memory.
 type HandController struct {
 	port
-	mem *inputMemory
+	mem     *inputMemory
+	control *ControlBits
 
 	// controller types
 	stick  stick
@@ -64,13 +65,17 @@ type stick struct {
 
 // the paddle type handles the "paddle" hand controller type
 type paddle struct {
+	addr       uint16
+	buttonAddr uint16
+	buttonMask uint8
 }
 
 // NewHandController0 is the preferred method of creating a new instance of
 // HandController for representing hand controller zero
-func NewHandController0(mem *inputMemory) *HandController {
+func NewHandController0(mem *inputMemory, control *ControlBits) *HandController {
 	pl := &HandController{
-		mem: mem,
+		mem:     mem,
+		control: control,
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT4,
@@ -78,8 +83,12 @@ func NewHandController0(mem *inputMemory) *HandController {
 			transform:    func(n uint8) uint8 { return n },
 			preserveBits: 0x0f,
 		},
-		paddle: paddle{},
-		ddr:    0x00,
+		paddle: paddle{
+			addr:       addresses.INPT0,
+			buttonAddr: addresses.SWCHA,
+			buttonMask: 0x7f,
+		},
+		ddr: 0x00,
 	}
 
 	pl.port = port{
@@ -92,9 +101,10 @@ func NewHandController0(mem *inputMemory) *HandController {
 
 // NewHandController1 is the preferred method of creating a new instance of
 // HandController for representing hand controller one
-func NewHandController1(mem *inputMemory) *HandController {
+func NewHandController1(mem *inputMemory, control *ControlBits) *HandController {
 	pl := &HandController{
-		mem: mem,
+		mem:     mem,
+		control: control,
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT5,
@@ -102,8 +112,12 @@ func NewHandController1(mem *inputMemory) *HandController {
 			transform:    func(n uint8) uint8 { return n >> 4 },
 			preserveBits: 0xf0,
 		},
-		paddle: paddle{},
-		ddr:    0x00,
+		paddle: paddle{
+			addr:       addresses.INPT0,
+			buttonAddr: addresses.SWCHA,
+			buttonMask: 0xbf,
+		},
+		ddr: 0x00,
 	}
 
 	pl.port = port{
@@ -151,14 +165,17 @@ func (pl *HandController) Handle(event Event) error {
 	case NoDown:
 		pl.stick.value |= 0x20
 		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+
 	case Fire:
+		// !!TODO: do something with pl.control.LatchFireButton
 		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
 	case NoFire:
 		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
 
 	case PaddleFire:
-
+		pl.mem.riot.InputDeviceWrite(pl.paddle.buttonAddr, 0x00, pl.paddle.buttonMask)
 	case PaddleNoFire:
+		pl.mem.riot.InputDeviceWrite(pl.paddle.buttonAddr, 0xff, pl.paddle.buttonMask)
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, pl.id)

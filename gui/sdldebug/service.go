@@ -82,22 +82,22 @@ func (scr *SdlDebug) Service() {
 			}
 
 		case *sdl.MouseButtonEvent:
-			var but gui.MouseButton
 			hp, sl := scr.convertMouseCoords(ev)
 			switch ev.Button {
 			case sdl.BUTTON_LEFT:
-				but = gui.MouseButtonLeft
-			case sdl.BUTTON_RIGHT:
-				but = gui.MouseButtonRight
-			}
+				scr.eventChannel <- gui.EventMouseButton{
+					Button: gui.MouseButtonLeft,
+					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 
-			scr.eventChannel <- gui.EventDbgMouseButton{
-				Button:   but,
-				Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
-				X:        int(ev.X),
-				Y:        int(ev.Y),
-				HorizPos: hp,
-				Scanline: sl}
+			case sdl.BUTTON_RIGHT:
+				scr.eventChannel <- gui.EventDbgMouseButton{
+					Button:   gui.MouseButtonRight,
+					Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
+					X:        int(ev.X),
+					Y:        int(ev.Y),
+					HorizPos: hp,
+					Scanline: sl}
+			}
 		}
 
 		// !!TODO: GetMouseState()

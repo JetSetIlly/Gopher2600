@@ -72,6 +72,13 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 			}
 		}
 
+	case gui.EventMouseButton:
+		// check playmode key presses first
+		_, err = playmode.MouseButtonEventHandler(ev, dbg.vcs)
+		if err != nil {
+			break // switch ev.(type)
+		}
+
 	case gui.EventDbgMouseButton:
 		switch ev.Button {
 		case gui.MouseButtonRight:

@@ -33,9 +33,21 @@ type inputMemory struct {
 	tia  bus.InputDeviceBus
 }
 
+// the VBLANK address is handled by the TIA but some bits in that register are
+// needed by the input system (which we have conceptualised as entirely being
+// part of the RIOT - which we can see is not entirely true)
+//
+// VBLANKcontrolBits is instantiated by NewInput() and then a reference given
+// to the TIA (by NewVCS() in the hardware package)
+type ControlBits struct {
+	GroundPaddles   bool
+	LatchFireButton bool
+}
+
 // Input implements the input/output part of the RIOT (the IO in RIOT)
 type Input struct {
-	mem inputMemory
+	mem     inputMemory
+	Control ControlBits
 
 	Panel           *Panel
 	HandController0 *HandController
@@ -60,12 +72,12 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 		return nil, fmt.Errorf("can't create control panel")
 	}
 
-	inp.HandController0 = NewHandController0(&inp.mem)
+	inp.HandController0 = NewHandController0(&inp.mem, &inp.Control)
 	if inp.HandController0 == nil {
 		return nil, fmt.Errorf("can't create player 0 port")
 	}
 
-	inp.HandController1 = NewHandController1(&inp.mem)
+	inp.HandController1 = NewHandController1(&inp.mem, &inp.Control)
 	if inp.HandController1 == nil {
 		return nil, fmt.Errorf("can't create player 1 port")
 	}
