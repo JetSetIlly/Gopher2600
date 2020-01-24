@@ -25,6 +25,10 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+func setupService() {
+	sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
+}
+
 // Service implements gui.GUI interface.
 //
 // MUST ONLY be called from the #mainthread
@@ -34,9 +38,9 @@ func (scr *SdlPlay) Service() {
 	if scr.eventChannel != nil {
 
 		// check for SDL events. timing out straight away if there's nothing
-		sdlEvent := sdl.WaitEventTimeout(1)
+		ev := sdl.WaitEventTimeout(1)
 
-		switch sdlEvent := sdlEvent.(type) {
+		switch ev := ev.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
@@ -56,26 +60,28 @@ func (scr *SdlPlay) Service() {
 				mod = gui.KeyModCtrl
 			}
 
-			switch sdlEvent.Type {
+			switch ev.Type {
 			case sdl.KEYDOWN:
-				if sdlEvent.Repeat == 0 {
+				if ev.Repeat == 0 {
 					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Key:  sdl.GetKeyName(ev.Keysym.Sym),
 						Mod:  mod,
 						Down: true}
 				}
 			case sdl.KEYUP:
-				if sdlEvent.Repeat == 0 {
+				if ev.Repeat == 0 {
 					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Key:  sdl.GetKeyName(ev.Keysym.Sym),
 						Mod:  mod,
 						Down: false}
 				}
 			}
+
 		case *sdl.MouseButtonEvent:
 			scr.eventChannel <- gui.EventMouseButton{
 				Button: gui.MouseButtonLeft,
-				Down:   sdlEvent.Type == sdl.MOUSEBUTTONDOWN}
+				Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+
 		}
 	}
 

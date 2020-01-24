@@ -46,8 +46,10 @@ type EventKeyboard struct {
 	Mod  KeyMod
 }
 
-// EventMouseMove is the data that accompanies MouseEventMove events
-type EventMouseMove struct {
+// EventMouseMotion is the data that accompanies MouseEventMove events
+type EventMouseMotion struct {
+	X int
+	Y int
 }
 
 // MouseButton identifies the mouse button

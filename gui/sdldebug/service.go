@@ -26,6 +26,10 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+func setupService() {
+	sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
+}
+
 // Service implements gui.GUI interface.
 //
 // MUST ONLY be called from the #mainthread
@@ -35,9 +39,9 @@ func (scr *SdlDebug) Service() {
 	if scr.eventChannel != nil {
 
 		// check for SDL events. timing out straight away if there's nothing
-		sdlEvent := sdl.WaitEventTimeout(1)
+		ev := sdl.WaitEventTimeout(1)
 
-		switch sdlEvent := sdlEvent.(type) {
+		switch ev := ev.(type) {
 
 		// close window
 		case *sdl.QuitEvent:
@@ -57,18 +61,18 @@ func (scr *SdlDebug) Service() {
 				mod = gui.KeyModCtrl
 			}
 
-			switch sdlEvent.Type {
+			switch ev.Type {
 			case sdl.KEYDOWN:
-				if sdlEvent.Repeat == 0 {
+				if ev.Repeat == 0 {
 					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Key:  sdl.GetKeyName(ev.Keysym.Sym),
 						Mod:  mod,
 						Down: true}
 				}
 			case sdl.KEYUP:
-				if sdlEvent.Repeat == 0 {
+				if ev.Repeat == 0 {
 					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(sdlEvent.Keysym.Sym),
+						Key:  sdl.GetKeyName(ev.Keysym.Sym),
 						Mod:  mod,
 						Down: false}
 				}
@@ -76,8 +80,8 @@ func (scr *SdlDebug) Service() {
 
 		case *sdl.MouseButtonEvent:
 			var but gui.MouseButton
-			hp, sl := scr.convertMouseCoords(sdlEvent)
-			switch sdlEvent.Button {
+			hp, sl := scr.convertMouseCoords(ev)
+			switch ev.Button {
 			case sdl.BUTTON_LEFT:
 				but = gui.MouseButtonLeft
 			case sdl.BUTTON_RIGHT:
@@ -86,9 +90,9 @@ func (scr *SdlDebug) Service() {
 
 			scr.eventChannel <- gui.EventDbgMouseButton{
 				Button:   but,
-				Down:     sdlEvent.Type == sdl.MOUSEBUTTONDOWN,
-				X:        int(sdlEvent.X),
-				Y:        int(sdlEvent.Y),
+				Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
+				X:        int(ev.X),
+				Y:        int(ev.Y),
 				HorizPos: hp,
 				Scanline: sl}
 		}
@@ -102,7 +106,7 @@ func (scr *SdlDebug) Service() {
 	}
 }
 
-func (scr *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, int) {
+func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
 	var hp, sl int
 
 	sx, sy := scr.renderer.GetScale()
@@ -111,19 +115,19 @@ func (scr *SdlDebug) convertMouseCoords(sdlEvent *sdl.MouseButtonEvent) (int, in
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
 	if scr.masked {
-		hp = int(float32(sdlEvent.X) / sx)
+		hp = int(float32(ev.X) / sx)
 
 	} else {
-		hp = int(float32(sdlEvent.X)/sx) - television.HorizClksHBlank
+		hp = int(float32(ev.X)/sx) - television.HorizClksHBlank
 	}
 
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
 	if scr.masked {
-		sl = int(float32(sdlEvent.Y)/sy) + int(scr.topScanline)
+		sl = int(float32(ev.Y)/sy) + int(scr.topScanline)
 	} else {
-		sl = int(float32(sdlEvent.Y) / sy)
+		sl = int(float32(ev.Y) / sy)
 	}
 
 	return hp, sl

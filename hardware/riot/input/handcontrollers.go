@@ -156,6 +156,10 @@ func (pl *HandController) Handle(event Event) error {
 	case NoFire:
 		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
 
+	case PaddleFire:
+
+	case PaddleNoFire:
+
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, pl.id)
 

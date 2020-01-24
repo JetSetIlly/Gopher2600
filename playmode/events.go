@@ -39,6 +39,9 @@ func (pl *playmode) guiEventHandler() (bool, error) {
 		case gui.EventMouseButton:
 			_, err := MouseButtonEventHandler(ev, pl.vcs)
 			return err == nil, err
+		case gui.EventMouseMotion:
+			_, err := MouseMotionEventHandler(ev, pl.vcs)
+			return err == nil, err
 		}
 	default:
 	}
@@ -48,8 +51,17 @@ func (pl *playmode) guiEventHandler() (bool, error) {
 
 // MouseButtonEventHandler handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
-//
-// For reasons of consistency, this handler is used by the debugger too
+func MouseMotionEventHandler(ev gui.EventMouseMotion, vcs *hardware.VCS) (bool, error) {
+	var handled bool
+	var err error
+
+	// !!TODO: send mouse motion events to handcontrollers as paddle events
+
+	return handled, err
+}
+
+// MouseButtonEventHandler handles mouse events sent from a GUI. Returns true if key
+// has been handled, false otherwise.
 func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS) (bool, error) {
 	var handled bool
 	var err error

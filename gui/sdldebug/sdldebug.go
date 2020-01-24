@@ -107,6 +107,8 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 		return nil, errors.New(errors.SDLDebug, err)
 	}
 
+	setupService()
+
 	// SDL window - window size is set in Resize() function
 	scr.window, err = sdl.CreateWindow("Gopher2600",
 		int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED),
