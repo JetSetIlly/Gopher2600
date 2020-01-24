@@ -27,6 +27,9 @@ import (
 )
 
 func setupService() {
+	// MOUSEMOTION events fill up the event queue pretty quickly. these take
+	// time to service and for no good reason; we only want one value per frame
+	// which we can do with a single call to GetMouseState()
 	sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
 }
 
@@ -96,6 +99,8 @@ func (scr *SdlDebug) Service() {
 				HorizPos: hp,
 				Scanline: sl}
 		}
+
+		// !!TODO: GetMouseState()
 	}
 
 	// run any outstanding service functions
