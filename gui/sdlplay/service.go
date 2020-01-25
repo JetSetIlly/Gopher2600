@@ -40,56 +40,76 @@ func (scr *SdlPlay) Service() {
 	// do not check for events if no event channel has been set
 	if scr.eventChannel != nil {
 
-		// check for SDL events. timing out straight away if there's nothing
-		ev := sdl.WaitEventTimeout(1)
+		// loop until there are no more events to retreive. this loop is
+		// intimately connected with the framelimiter below. what we don't want
+		// to loop for too long servicing events. however:
+		//
+		// 1. servicing just one event per frame is not enough, queued events
+		//    will take one frame on longer to resolve
+		//
+		// 2. limiting the number of events serviced per frame has the same
+		//    problem for very long queues
+		//
+		// 3. truncating events is not wanted because we may miss important
+		//    user input
+		done := false
+		for !done {
 
-		switch ev := ev.(type) {
+			// check for SDL events. timing out straight away if there's nothing
+			ev := sdl.WaitEventTimeout(1)
 
-		// close window
-		case *sdl.QuitEvent:
-			scr.eventChannel <- gui.EventWindowClose{}
+			switch ev := ev.(type) {
+			default:
+				// end "for !done" loop
+				done = true
 
-		case *sdl.KeyboardEvent:
-			mod := gui.KeyModNone
+			// close window
+			case *sdl.QuitEvent:
+				scr.eventChannel <- gui.EventWindowClose{}
 
-			if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-				sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-				mod = gui.KeyModAlt
-			} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-				sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-				mod = gui.KeyModShift
-			} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-				sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-				mod = gui.KeyModCtrl
-			}
+			case *sdl.KeyboardEvent:
+				mod := gui.KeyModNone
 
-			switch ev.Type {
-			case sdl.KEYDOWN:
-				if ev.Repeat == 0 {
-					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(ev.Keysym.Sym),
-						Mod:  mod,
-						Down: true}
+				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+					mod = gui.KeyModAlt
+				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+					mod = gui.KeyModShift
+				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+					mod = gui.KeyModCtrl
 				}
-			case sdl.KEYUP:
-				if ev.Repeat == 0 {
-					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(ev.Keysym.Sym),
-						Mod:  mod,
-						Down: false}
+
+				switch ev.Type {
+				case sdl.KEYDOWN:
+					if ev.Repeat == 0 {
+						scr.eventChannel <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: true}
+					}
+				case sdl.KEYUP:
+					if ev.Repeat == 0 {
+						scr.eventChannel <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: false}
+					}
 				}
+
+			case *sdl.MouseButtonEvent:
+				scr.eventChannel <- gui.EventMouseButton{
+					Button: gui.MouseButtonLeft,
+					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+
 			}
-
-		case *sdl.MouseButtonEvent:
-			scr.eventChannel <- gui.EventMouseButton{
-				Button: gui.MouseButtonLeft,
-				Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
-
 		}
 
 		// !!TODO: GetMouseState()
 	}
 
+	// wait for frame limiter
 	scr.lmtr.Wait()
 
 	// run any outstanding service functions

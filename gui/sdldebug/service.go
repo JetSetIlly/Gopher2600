@@ -41,62 +41,68 @@ func (scr *SdlDebug) Service() {
 	// do not check for events if no event channel has been set
 	if scr.eventChannel != nil {
 
-		// check for SDL events. timing out straight away if there's nothing
-		ev := sdl.WaitEventTimeout(1)
+		// loop until there are no more events to retreive. see commentary in
+		// sdlplay package for more.
+		done := false
+		for !done {
 
-		switch ev := ev.(type) {
+			// check for SDL events. timing out straight away if there's nothing
+			ev := sdl.WaitEventTimeout(1)
 
-		// close window
-		case *sdl.QuitEvent:
-			scr.eventChannel <- gui.EventWindowClose{}
+			switch ev := ev.(type) {
 
-		case *sdl.KeyboardEvent:
-			mod := gui.KeyModNone
+			// close window
+			case *sdl.QuitEvent:
+				scr.eventChannel <- gui.EventWindowClose{}
 
-			if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-				sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-				mod = gui.KeyModAlt
-			} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-				sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-				mod = gui.KeyModShift
-			} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-				sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-				mod = gui.KeyModCtrl
-			}
+			case *sdl.KeyboardEvent:
+				mod := gui.KeyModNone
 
-			switch ev.Type {
-			case sdl.KEYDOWN:
-				if ev.Repeat == 0 {
-					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(ev.Keysym.Sym),
-						Mod:  mod,
-						Down: true}
+				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+					mod = gui.KeyModAlt
+				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+					mod = gui.KeyModShift
+				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+					mod = gui.KeyModCtrl
 				}
-			case sdl.KEYUP:
-				if ev.Repeat == 0 {
-					scr.eventChannel <- gui.EventKeyboard{
-						Key:  sdl.GetKeyName(ev.Keysym.Sym),
-						Mod:  mod,
-						Down: false}
+
+				switch ev.Type {
+				case sdl.KEYDOWN:
+					if ev.Repeat == 0 {
+						scr.eventChannel <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: true}
+					}
+				case sdl.KEYUP:
+					if ev.Repeat == 0 {
+						scr.eventChannel <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: false}
+					}
 				}
-			}
 
-		case *sdl.MouseButtonEvent:
-			hp, sl := scr.convertMouseCoords(ev)
-			switch ev.Button {
-			case sdl.BUTTON_LEFT:
-				scr.eventChannel <- gui.EventMouseButton{
-					Button: gui.MouseButtonLeft,
-					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+			case *sdl.MouseButtonEvent:
+				hp, sl := scr.convertMouseCoords(ev)
+				switch ev.Button {
+				case sdl.BUTTON_LEFT:
+					scr.eventChannel <- gui.EventMouseButton{
+						Button: gui.MouseButtonLeft,
+						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 
-			case sdl.BUTTON_RIGHT:
-				scr.eventChannel <- gui.EventDbgMouseButton{
-					Button:   gui.MouseButtonRight,
-					Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
-					X:        int(ev.X),
-					Y:        int(ev.Y),
-					HorizPos: hp,
-					Scanline: sl}
+				case sdl.BUTTON_RIGHT:
+					scr.eventChannel <- gui.EventDbgMouseButton{
+						Button:   gui.MouseButtonRight,
+						Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
+						X:        int(ev.X),
+						Y:        int(ev.Y),
+						HorizPos: hp,
+						Scanline: sl}
+				}
 			}
 		}
 
