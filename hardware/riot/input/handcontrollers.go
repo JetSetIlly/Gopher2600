@@ -49,10 +49,11 @@ type stick struct {
 	// the address in TIA memory for joystick fire button
 	buttonAddr uint16
 
-	// value indicating joystick state
-	value uint8
+	// values indicating joystick state
+	axis   uint8
+	button bool
 
-	// hand controllers 0 and 1 write the value to different nibbles of the
+	// hand controllers 0 and 1 write the axis value to different nibbles of the
 	// addr. transform allows us to transform that value with the help of
 	// stickMask
 	transform func(uint8) uint8
@@ -79,7 +80,7 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT4,
-			value:        0xf0,
+			axis:         0xf0,
 			transform:    func(n uint8) uint8 { return n },
 			preserveBits: 0x0f,
 		},
@@ -108,7 +109,7 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 		stick: stick{
 			addr:         addresses.SWCHA,
 			buttonAddr:   addresses.INPT5,
-			value:        0xf0,
+			axis:         0xf0,
 			transform:    func(n uint8) uint8 { return n >> 4 },
 			preserveBits: 0xf0,
 		},
@@ -142,35 +143,38 @@ func (pl *HandController) Handle(event Event) error {
 		return nil
 
 	case Left:
-		pl.stick.value ^= 0x40
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis ^= 0x40
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case Right:
-		pl.stick.value ^= 0x80
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis ^= 0x80
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case Up:
-		pl.stick.value ^= 0x10
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis ^= 0x10
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case Down:
-		pl.stick.value ^= 0x20
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis ^= 0x20
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case NoLeft:
-		pl.stick.value |= 0x40
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis |= 0x40
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case NoRight:
-		pl.stick.value |= 0x80
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis |= 0x80
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case NoUp:
-		pl.stick.value |= 0x10
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis |= 0x10
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 	case NoDown:
-		pl.stick.value |= 0x20
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.value), pl.stick.preserveBits)
+		pl.stick.axis |= 0x20
+		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.preserveBits)
 
 	case Fire:
-		// !!TODO: do something with pl.control.LatchFireButton
 		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
+		pl.stick.button = true
 	case NoFire:
-		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+		pl.stick.button = false
+		if !pl.control.latchFireButton {
+			pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+		}
 
 	case PaddleFire:
 		pl.mem.riot.InputDeviceWrite(pl.paddle.buttonAddr, 0x00, pl.paddle.buttonMask)
@@ -191,4 +195,11 @@ func (pl *HandController) Handle(event Event) error {
 	}
 
 	return nil
+}
+
+func (pl *HandController) unlatch() {
+	// only unlatch if button is not pressed
+	if !pl.stick.button {
+		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+	}
 }

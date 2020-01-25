@@ -40,8 +40,25 @@ type inputMemory struct {
 // VBLANKcontrolBits is instantiated by NewInput() and then a reference given
 // to the TIA (by NewVCS() in the hardware package)
 type ControlBits struct {
-	GroundPaddles   bool
-	LatchFireButton bool
+	groundPaddles   bool
+	latchFireButton bool
+
+	// reference to the parent Input type
+	inp *Input
+}
+
+// SetGroundPaddles sets the state of the groundPaddles value
+func (c *ControlBits) SetGroundPaddles(v bool) {
+	c.groundPaddles = v
+}
+
+// SetLatchFireButton sets the state of the latchFireButton value
+func (c *ControlBits) SetLatchFireButton(v bool) {
+	c.latchFireButton = v
+	if !v {
+		c.inp.HandController0.unlatch()
+		c.inp.HandController1.unlatch()
+	}
 }
 
 // Input implements the input/output part of the RIOT (the IO in RIOT)
@@ -66,6 +83,9 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 			tia:  tiaMem.(bus.InputDeviceBus),
 		},
 	}
+
+	// give reference to new Input type to its ControlBits
+	inp.Control.inp = inp
 
 	inp.Panel = NewPanel(&inp.mem)
 	if inp.Panel == nil {

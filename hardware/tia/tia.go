@@ -152,19 +152,13 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	switch data.Name {
 	case "VSYNC":
 		tia.sig.VSync = data.Value&0x02 == 0x02
-
-		// dump paddle capacitors to ground
-		tia.inputBits.GroundPaddles = data.Value&0x40 == 0x40
-
-		// stick fire button latches
-		tia.inputBits.LatchFireButton = data.Value&0x80 == 0x80
-
 		return false
 
 	case "VBLANK":
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
-		tia.Delay.ScheduleWithArg(1, tia._futureVBLANK, data.Value&0x02 == 0x02, "VBLANK")
+		tia.Delay.ScheduleWithArg(1, tia._futureVBLANK, data.Value, "VBLANK")
+
 		return false
 
 	case "WSYNC":
@@ -282,7 +276,14 @@ func (tia *TIA) newScanline() {
 }
 
 func (tia *TIA) _futureVBLANK(v interface{}) {
-	tia.sig.VBlank = v.(bool)
+	// actual vblank signal
+	tia.sig.VBlank = v.(uint8)&0x02 == 0x02
+
+	// dump paddle capacitors to ground
+	tia.inputBits.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
+
+	// joystick fire button latches
+	tia.inputBits.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
 }
 
 func (tia *TIA) _futureRSYNCreset() {
