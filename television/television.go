@@ -35,7 +35,7 @@ const stabilityThreshold = 15
 
 // the number of scanlines past the NTSC limit before the specification flips
 // to PAL (auto flag permitting)
-const overageNTSC = 10
+const overageNTSC = 13
 
 // for the purposes of frame size detection, we should consider the first
 // handful of frames to be unreliable
