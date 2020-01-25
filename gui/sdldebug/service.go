@@ -43,8 +43,8 @@ func (scr *SdlDebug) Service() {
 
 		// loop until there are no more events to retreive. see commentary in
 		// sdlplay package for more.
-		done := false
-		for !done {
+		empty := false
+		for !empty {
 
 			// check for SDL events. timing out straight away if there's nothing
 			ev := sdl.WaitEventTimeout(1)
@@ -103,6 +103,11 @@ func (scr *SdlDebug) Service() {
 						HorizPos: hp,
 						Scanline: sl}
 				}
+
+			case nil:
+				// if we have a nil value then the WaitEvent has timed out
+				// and we can say that the event queue is empty
+				empty = true
 			}
 		}
 

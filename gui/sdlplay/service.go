@@ -52,17 +52,13 @@ func (scr *SdlPlay) Service() {
 		//
 		// 3. truncating events is not wanted because we may miss important
 		//    user input
-		done := false
-		for !done {
+		empty := false
+		for !empty {
 
 			// check for SDL events. timing out straight away if there's nothing
 			ev := sdl.WaitEventTimeout(1)
 
 			switch ev := ev.(type) {
-			default:
-				// end "for !done" loop
-				done = true
-
 			// close window
 			case *sdl.QuitEvent:
 				scr.eventChannel <- gui.EventWindowClose{}
@@ -103,6 +99,10 @@ func (scr *SdlPlay) Service() {
 					Button: gui.MouseButtonLeft,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 
+			case nil:
+				// if we have a nil value then the WaitEvent has timed out
+				// and we can say that the event queue is empty
+				empty = true
 			}
 		}
 
