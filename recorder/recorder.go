@@ -93,7 +93,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End flushes all remaining transcription to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	err := rec.RecordEvent(input.PanelID, input.PanelPowerOff)
+	err := rec.RecordEvent(input.PanelID, input.PanelPowerOff, nil)
 	if err != nil {
 		return errors.New(errors.RecordingError, err)
 	}
@@ -107,7 +107,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the input.EventRecorder interface
-func (rec *Recorder) RecordEvent(id input.ID, event input.Event) error {
+func (rec *Recorder) RecordEvent(id input.ID, event input.Event, value input.EventValue) error {
 	var err error
 
 	// write header if it's not been written already
@@ -147,16 +147,18 @@ func (rec *Recorder) RecordEvent(id input.ID, event input.Event) error {
 		return err
 	}
 
-	line := fmt.Sprintf("%v%s%v%s%v%s%v%s%v%s%v\n", id,
-		fieldSep,
-		event,
-		fieldSep,
-		frame,
-		fieldSep,
-		scanline,
-		fieldSep,
-		horizpos,
-		fieldSep,
+	// convert value of nil type to the empty string
+	if value == nil {
+		value = ""
+	}
+
+	line := fmt.Sprintf("%v%s%v%s%v%s%v%s%v%s%v%s%v\n",
+		id, fieldSep,
+		event, fieldSep,
+		value, fieldSep,
+		frame, fieldSep,
+		scanline, fieldSep,
+		horizpos, fieldSep,
 		rec.digest.Hash(),
 	)
 

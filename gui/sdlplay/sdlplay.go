@@ -71,6 +71,12 @@ type SdlPlay struct {
 
 	// window opening is delayed until television frame is stable
 	showOnNextStable bool
+
+	// mouse coords at last frame
+	mx, my int32
+
+	// whether mouse is captured
+	isCaptured bool
 }
 
 // NewSdlPlay is the preferred method of initialisation for SdlPlay.

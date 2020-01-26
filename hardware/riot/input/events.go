@@ -21,50 +21,43 @@ package input
 
 // Event represents the possible actions that can be performed by the user
 // when interacting with the console
-type Event int
+type Event string
 
-// List of defined events. Do not monkey with the ordering of these
-// constants unless you know what you're doing. Existing playback scripts will
-// probably break.
+// List of defined events
 const (
-	NoEvent Event = iota
+	NoEvent Event = "NoEvent"
 
 	// the controller has been unplugged
-	Unplug
+	Unplug Event = "Unplug"
 
 	// joystick
-	Fire
-	NoFire
-	Up
-	NoUp
-	Down
-	NoDown
-	Left
-	NoLeft
-	Right
-	NoRight
+	Fire  Event = "Fire"  // bool
+	Up    Event = "Up"    // bool
+	Down  Event = "Down"  // bool
+	Left  Event = "Left"  // bool
+	Right Event = "Right" // bool
 
 	// panel
-	PanelSelectPress
-	PanelSelectRelease
-	PanelResetPress
-	PanelResetRelease
-	PanelToggleColor
-	PanelTogglePlayer0Pro
-	PanelTogglePlayer1Pro
-	PanelSetColor
-	PanelSetBlackAndWhite
-	PanelSetPlayer0Am
-	PanelSetPlayer1Am
-	PanelSetPlayer0Pro
-	PanelSetPlayer1Pro
+	PanelSelect Event = "PanelSelect" // bool
+	PanelReset  Event = "PanelReset"  // bool
 
-	// !!TODO: paddle and keyboard controllers
+	PanelSetColor      Event = "PanelSetColor"      // bool
+	PanelSetPlayer0Pro Event = "PanelSetPlayer0Pro" // bool
+	PanelSetPlayer1Pro Event = "PanelSetPlayer1Pro" // bool
 
-	PaddleFire
-	PaddleNoFire
-	PaddleUp
-	PaddleDown
+	PanelToggleColor      Event = "PanelToggleColor"
+	PanelTogglePlayer0Pro Event = "PanelTogglePlayer0Pro"
+	PanelTogglePlayer1Pro Event = "PanelTogglePlayer1Pro"
 
-	PanelPowerOff Event = 255
+	// paddles
+	PaddleFire Event = "PaddleFire" // bool
+	PaddleSet  Event = "PaddleSet"  // float64
+
+	PanelPowerOff Event = "PanelPowerOff"
 )
+
+// EventValue is the value associated with the event. The underlying type
+// should be restricted to bool, float32, or int. string is also acceptable but
+// for simplicity of playback parsers, "true" or "false" should not be used and
+// numbers should be represented by float32 or int.
+type EventValue interface{}

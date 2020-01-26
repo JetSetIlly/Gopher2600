@@ -30,6 +30,7 @@ import (
 const (
 	fieldID int = iota
 	fieldEvent
+	fieldEventValue
 	fieldFrame
 	fieldScanline
 	fieldHorizPos
@@ -42,26 +43,30 @@ const fieldSep = ", "
 // playback file header format
 // ---------------------------
 //
-// # vcs_playback
-// # <cartridge name>
-// # <cartridge hash>
-// # <tv type>
+// <magic string>
+// <version string>
+// <cartridge name>
+// <cartridge hash>
+// <tv type on startup>
 
 const (
 	lineMagicString int = iota
+	lineVersion
 	lineCartName
 	lineCartHash
 	lineTVSpec
 	numHeaderLines
 )
 
-const magicString = "vcs_playback"
+const magicString = "gopher2600playback"
+const versionString = "1.0"
 
 func (rec *Recorder) writeHeader() error {
 	lines := make([]string, numHeaderLines)
 
 	// add header information
 	lines[lineMagicString] = magicString
+	lines[lineVersion] = versionString
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
 	lines[lineTVSpec] = fmt.Sprintf("%v\n", rec.vcs.TV.SpecIDOnCreation())
@@ -96,19 +101,39 @@ func (plb *Playback) readHeader(lines []string) error {
 	return nil
 }
 
-// IsPlaybackFile returns true if the specified file appears to be a playback file.
+// IsPlaybackFile returns true if the specified file appears to be a playback
+// file. It does not care about the nature of any errors that may be generated
+// or if the file appears to be a playback file but is of an unsupported
+// version.
 func IsPlaybackFile(filename string) bool {
+	// !!TODO: more nuanced results from IsPlaybackFile()
+
 	f, err := os.Open(filename)
 	if err != nil {
 		return false
 	}
 	defer func() { f.Close() }()
 
-	b := make([]byte, len(magicString))
+	// magic string verification
+	b := make([]byte, len(magicString)+1)
 	n, err := f.Read(b)
-	if n != len(magicString) || err != nil {
+	if n != len(magicString)+1 || err != nil {
+		return false
+	}
+	if string(b) != magicString+"\n" {
+		return false
+
+	}
+
+	// version number verification
+	b = make([]byte, len(versionString)+1)
+	n, err = f.Read(b)
+	if n != len(versionString)+1 || err != nil {
+		return false
+	}
+	if string(b) != versionString+"\n" {
 		return false
 	}
 
-	return string(b) == magicString
+	return true
 }

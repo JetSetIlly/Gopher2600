@@ -87,21 +87,40 @@ func (scr *SdlDebug) Service() {
 				}
 
 			case *sdl.MouseButtonEvent:
-				hp, sl := scr.convertMouseCoords(ev)
-				switch ev.Button {
-				case sdl.BUTTON_LEFT:
-					scr.eventChannel <- gui.EventMouseButton{
-						Button: gui.MouseButtonLeft,
-						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				// what type of signal we send depends on the state of the
+				// isCaptured flag
+				if scr.isCaptured {
+					// mouse is captured, send regular left/right mouse button
+					// events
+					button := gui.MouseButtonLeft
+					if ev.Button == sdl.BUTTON_RIGHT {
+						button = gui.MouseButtonRight
+					}
 
-				case sdl.BUTTON_RIGHT:
-					scr.eventChannel <- gui.EventDbgMouseButton{
-						Button:   gui.MouseButtonRight,
-						Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
-						X:        int(ev.X),
-						Y:        int(ev.Y),
-						HorizPos: hp,
-						Scanline: sl}
+					scr.eventChannel <- gui.EventMouseButton{
+						Button: button,
+						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				} else {
+					switch ev.Button {
+					case sdl.BUTTON_LEFT:
+						// send regular left button event even if mouse has not
+						// been captured
+						scr.eventChannel <- gui.EventMouseButton{
+							Button: gui.MouseButtonLeft,
+							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+
+					case sdl.BUTTON_RIGHT:
+						// if right button is pressed when mouse is not captured,
+						// send debugging signal
+						hp, sl := scr.convertMouseCoords(ev)
+						scr.eventChannel <- gui.EventDbgMouseButton{
+							Button:   gui.MouseButtonRight,
+							Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
+							X:        int(ev.X),
+							Y:        int(ev.Y),
+							HorizPos: hp,
+							Scanline: sl}
+					}
 				}
 
 			case nil:
@@ -111,7 +130,25 @@ func (scr *SdlDebug) Service() {
 			}
 		}
 
-		// !!TODO: GetMouseState()
+		// mouse motion
+		if scr.isCaptured {
+			mx, my, _ := sdl.GetMouseState()
+			if mx != scr.mx || my != scr.my {
+				w, h := scr.window.GetSize()
+
+				// reduce mouse x and y coordintes to the range 0.0 to 1.0
+				//  no need to worry about negative numbers and numbers greater
+				//  than 1.0 because we (should) have restricted mouse movement
+				//  to the window (with window.SetGrab(). see the ReqCaptureMouse
+				//  case in the SetFeature() function)
+				x := float32(mx) / float32(w)
+				y := float32(my) / float32(h)
+
+				scr.eventChannel <- gui.EventMouseMotion{X: x, Y: y}
+				scr.mx = mx
+				scr.my = my
+			}
+		}
 	}
 
 	// run any outstanding service functions

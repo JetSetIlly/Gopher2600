@@ -48,8 +48,9 @@ type EventKeyboard struct {
 
 // EventMouseMotion is the data that accompanies MouseEventMove events
 type EventMouseMotion struct {
-	X int
-	Y int
+	// as a fraction of the window's dimensions
+	X float32
+	Y float32
 }
 
 // MouseButton identifies the mouse button

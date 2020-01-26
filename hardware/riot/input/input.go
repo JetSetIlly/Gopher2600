@@ -50,6 +50,8 @@ type ControlBits struct {
 // SetGroundPaddles sets the state of the groundPaddles value
 func (c *ControlBits) SetGroundPaddles(v bool) {
 	c.groundPaddles = v
+	c.inp.HandController0.ground()
+	c.inp.HandController1.ground()
 }
 
 // SetLatchFireButton sets the state of the latchFireButton value
@@ -122,4 +124,10 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 	}
 
 	return false
+}
+
+// Step input state forward one cycle
+func (inp *Input) Step() {
+	inp.HandController0.recharge()
+	inp.HandController1.recharge()
 }

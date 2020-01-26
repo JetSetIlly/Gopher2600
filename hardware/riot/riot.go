@@ -74,4 +74,5 @@ func (riot *RIOT) ReadMemory() {
 func (riot *RIOT) Step() {
 	riot.ReadMemory()
 	riot.Timer.Step()
+	riot.Input.Step()
 }

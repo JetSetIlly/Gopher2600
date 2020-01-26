@@ -59,29 +59,29 @@ func main() {
 			key := data.Get("key").Int()
 			switch key {
 			case 37: // left
-				err = vcs.HandController0.Handle(input.Left)
+				err = vcs.HandController0.Handle(input.Left, true)
 			case 39: // right
-				err = vcs.HandController0.Handle(input.Right)
+				err = vcs.HandController0.Handle(input.Right, true)
 			case 38: // up
-				err = vcs.HandController0.Handle(input.Up)
+				err = vcs.HandController0.Handle(input.Up, true)
 			case 40: // down
-				err = vcs.HandController0.Handle(input.Down)
+				err = vcs.HandController0.Handle(input.Down, true)
 			case 32: // space
-				err = vcs.HandController0.Handle(input.Fire)
+				err = vcs.HandController0.Handle(input.Fire, true)
 			}
 		case "keyUp":
 			key := data.Get("key").Int()
 			switch key {
 			case 37: // left
-				err = vcs.HandController0.Handle(input.NoLeft)
+				err = vcs.HandController0.Handle(input.Left, false)
 			case 39: // right
-				err = vcs.HandController0.Handle(input.NoRight)
+				err = vcs.HandController0.Handle(input.Right, false)
 			case 38: // up
-				err = vcs.HandController0.Handle(input.NoUp)
+				err = vcs.HandController0.Handle(input.Up, false)
 			case 40: // down
-				err = vcs.HandController0.Handle(input.NoDown)
+				err = vcs.HandController0.Handle(input.Down, false)
 			case 32: // space
-				err = vcs.HandController0.Handle(input.NoFire)
+				err = vcs.HandController0.Handle(input.Fire, false)
 			}
 		default:
 			js.Global().Get("self").Call("log", args[0].String())

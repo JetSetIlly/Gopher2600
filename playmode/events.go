@@ -37,7 +37,7 @@ func (pl *playmode) guiEventHandler() (bool, error) {
 			_, err := KeyboardEventHandler(ev, pl.vcs)
 			return err == nil, err
 		case gui.EventMouseButton:
-			_, err := MouseButtonEventHandler(ev, pl.vcs)
+			_, err := MouseButtonEventHandler(ev, pl.vcs, pl.scr)
 			return err == nil, err
 		case gui.EventMouseMotion:
 			_, err := MouseMotionEventHandler(ev, pl.vcs)
@@ -49,32 +49,36 @@ func (pl *playmode) guiEventHandler() (bool, error) {
 	return true, nil
 }
 
-// MouseButtonEventHandler handles mouse events sent from a GUI. Returns true if key
+// MouseMotionEventHandler handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
 func MouseMotionEventHandler(ev gui.EventMouseMotion, vcs *hardware.VCS) (bool, error) {
-	var handled bool
-	var err error
-
-	// !!TODO: send mouse motion events to handcontrollers as paddle events
-
-	return handled, err
+	return true, vcs.HandController0.Handle(input.PaddleSet, ev.X)
 }
 
 // MouseButtonEventHandler handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
-func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS) (bool, error) {
+func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS, scr gui.GUI) (bool, error) {
 	var handled bool
 	var err error
 
 	switch ev.Button {
 	case gui.MouseButtonLeft:
-		if ev.Down {
-			err = vcs.HandController0.Handle(input.PaddleFire)
-			handled = true
-		} else {
-			err = vcs.HandController0.Handle(input.PaddleNoFire)
-			handled = true
+		handled = true
+
+		err = scr.SetFeature(gui.ReqCaptureMouse, true)
+		if err != nil {
+			return handled, err
 		}
+
+		if ev.Down {
+			err = vcs.HandController0.Handle(input.PaddleFire, true)
+		} else {
+			err = vcs.HandController0.Handle(input.PaddleFire, false)
+		}
+
+	case gui.MouseButtonRight:
+		err = scr.SetFeature(gui.ReqCaptureMouse, false)
+		handled = true
 	}
 
 	return handled, err
@@ -91,58 +95,58 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 	if ev.Down && ev.Mod == gui.KeyModNone {
 		switch ev.Key {
 		case "F1":
-			err = vcs.Panel.Handle(input.PanelSelectPress)
+			err = vcs.Panel.Handle(input.PanelSelect, true)
 			handled = true
 		case "F2":
-			err = vcs.Panel.Handle(input.PanelResetPress)
+			err = vcs.Panel.Handle(input.PanelReset, true)
 			handled = true
 		case "F3":
-			err = vcs.Panel.Handle(input.PanelToggleColor)
+			err = vcs.Panel.Handle(input.PanelToggleColor, nil)
 			handled = true
 		case "F4":
-			err = vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
+			err = vcs.Panel.Handle(input.PanelTogglePlayer0Pro, nil)
 			handled = true
 		case "F5":
-			err = vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
+			err = vcs.Panel.Handle(input.PanelTogglePlayer1Pro, nil)
 			handled = true
 		case "Left":
-			err = vcs.HandController0.Handle(input.Left)
+			err = vcs.HandController0.Handle(input.Left, true)
 			handled = true
 		case "Right":
-			err = vcs.HandController0.Handle(input.Right)
+			err = vcs.HandController0.Handle(input.Right, true)
 			handled = true
 		case "Up":
-			err = vcs.HandController0.Handle(input.Up)
+			err = vcs.HandController0.Handle(input.Up, true)
 			handled = true
 		case "Down":
-			err = vcs.HandController0.Handle(input.Down)
+			err = vcs.HandController0.Handle(input.Down, true)
 			handled = true
 		case "Space":
-			err = vcs.HandController0.Handle(input.Fire)
+			err = vcs.HandController0.Handle(input.Fire, true)
 			handled = true
 		}
 	} else {
 		switch ev.Key {
 		case "F1":
-			err = vcs.Panel.Handle(input.PanelSelectRelease)
+			err = vcs.Panel.Handle(input.PanelSelect, false)
 			handled = true
 		case "F2":
-			err = vcs.Panel.Handle(input.PanelResetRelease)
+			err = vcs.Panel.Handle(input.PanelReset, false)
 			handled = true
 		case "Left":
-			err = vcs.HandController0.Handle(input.NoLeft)
+			err = vcs.HandController0.Handle(input.Left, false)
 			handled = true
 		case "Right":
-			err = vcs.HandController0.Handle(input.NoRight)
+			err = vcs.HandController0.Handle(input.Right, false)
 			handled = true
 		case "Up":
-			err = vcs.HandController0.Handle(input.NoUp)
+			err = vcs.HandController0.Handle(input.Up, false)
 			handled = true
 		case "Down":
-			err = vcs.HandController0.Handle(input.NoDown)
+			err = vcs.HandController0.Handle(input.Down, false)
 			handled = true
 		case "Space":
-			err = vcs.HandController0.Handle(input.NoFire)
+			err = vcs.HandController0.Handle(input.Fire, false)
 			handled = true
 		}
 	}

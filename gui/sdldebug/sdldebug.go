@@ -84,6 +84,12 @@ type SdlDebug struct {
 	// and plotting meta-pixels
 	lastX int
 	lastY int
+
+	// mouse coords at last frame
+	mx, my int32
+
+	// whether mouse is captured
+	isCaptured bool
 }
 
 // NewSdlDebug is the preferred method of initialisation for SdlDebug.

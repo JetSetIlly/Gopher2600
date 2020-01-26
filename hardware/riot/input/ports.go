@@ -39,7 +39,7 @@ const (
 // See the HandController and Panel types for more information
 type Port interface {
 	String() string
-	Handle(event Event) error
+	Handle(Event, EventValue) error
 	AttachPlayback(Playback)
 	AttachEventRecorder(EventRecorder)
 	CheckInput() error
@@ -50,7 +50,7 @@ type port struct {
 	id       ID
 	playback Playback
 	recorder EventRecorder
-	handle   func(Event) error
+	handle   func(Event, EventValue) error
 }
 
 // Attach a Playback implementation to the port.  Events can still be
@@ -69,12 +69,12 @@ func (p *port) AttachEventRecorder(scribe EventRecorder) {
 // CheckInput polls the attached playback for an Event
 func (p *port) CheckInput() error {
 	if p.playback != nil {
-		ev, err := p.playback.CheckInput(p.id)
+		ev, v, err := p.playback.CheckInput(p.id)
 		if err != nil {
 			return err
 		}
 
-		err = p.handle(ev)
+		err = p.handle(ev, v)
 		if err != nil {
 			if !errors.Is(err, errors.InputDeviceUnplugged) {
 				return err

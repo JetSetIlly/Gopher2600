@@ -63,6 +63,18 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	case gui.ReqSetFpsCap:
 		scr.lmtr.Active = args[0].(bool)
 
+	case gui.ReqCaptureMouse:
+		scr.isCaptured = args[0].(bool)
+		err = sdl.CaptureMouse(scr.isCaptured)
+		if err == nil {
+			scr.window.SetGrab(scr.isCaptured)
+			if scr.isCaptured {
+				sdl.ShowCursor(sdl.DISABLE)
+			} else {
+				sdl.ShowCursor(sdl.ENABLE)
+			}
+		}
+
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}

@@ -36,6 +36,7 @@ import (
 
 type playmode struct {
 	vcs     *hardware.VCS
+	scr     gui.GUI
 	intChan chan os.Signal
 	guiChan chan gui.Event
 }
@@ -143,6 +144,7 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 
 	pl := &playmode{
 		vcs:     vcs,
+		scr:     scr,
 		intChan: make(chan os.Signal, 1),
 		guiChan: make(chan gui.Event, 2),
 	}

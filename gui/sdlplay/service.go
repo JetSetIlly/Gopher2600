@@ -95,8 +95,13 @@ func (scr *SdlPlay) Service() {
 				}
 
 			case *sdl.MouseButtonEvent:
+				button := gui.MouseButtonLeft
+				if ev.Button == sdl.BUTTON_RIGHT {
+					button = gui.MouseButtonRight
+				}
+
 				scr.eventChannel <- gui.EventMouseButton{
-					Button: gui.MouseButtonLeft,
+					Button: button,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 
 			case nil:
@@ -106,7 +111,25 @@ func (scr *SdlPlay) Service() {
 			}
 		}
 
-		// !!TODO: GetMouseState()
+		// mouse motion
+		if scr.isCaptured {
+			mx, my, _ := sdl.GetMouseState()
+			if mx != scr.mx || my != scr.my {
+				w, h := scr.window.GetSize()
+
+				// reduce mouse x and y coordintes to the range 0.0 to 1.0
+				//  no need to worry about negative numbers and numbers greater
+				//  than 1.0 because we (should) have restricted mouse movement
+				//  to the window (with window.SetGrab(). see the ReqCaptureMouse
+				//  case in the SetFeature() function)
+				x := float32(mx) / float32(w)
+				y := float32(my) / float32(h)
+
+				scr.eventChannel <- gui.EventMouseMotion{X: x, Y: y}
+				scr.mx = mx
+				scr.my = my
+			}
+		}
 	}
 
 	// wait for frame limiter

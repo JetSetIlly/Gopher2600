@@ -21,59 +21,25 @@ package gui
 
 // FeatureReq is used to request the setting of a gui attribute
 // eg. toggling the overlay
-type FeatureReq int
+type FeatureReq string
 
 // list of valid feature requests. argument must be of the type specified or
 // else the interface{} type conversion will fail and the application will
 // probably crash
 const (
-	ReqSetVisibility      FeatureReq = iota // bool
-	ReqToggleVisibility                     // none
-	ReqSetVisibleOnStable                   // none
-	ReqSetPause                             // bool
-	ReqSetMasking                           // bool
-	ReqToggleMasking                        // none
-	ReqSetAltColors                         // bool
-	ReqToggleAltColors                      // none
-	ReqSetOverlay                           // bool
-	ReqToggleOverlay                        // none
-	ReqSetScale                             // float
-	ReqIncScale                             // none
-	ReqDecScale                             // none
-	ReqSetFpsCap                            // bool
+	ReqSetVisibility      FeatureReq = "ReqSetVisibility"      // bool
+	ReqToggleVisibility   FeatureReq = "ReqToggleVisibility"   // none
+	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
+	ReqSetPause           FeatureReq = "ReqSetPause"           // bool
+	ReqSetMasking         FeatureReq = "ReqSetMasking"         // bool
+	ReqToggleMasking      FeatureReq = "ReqToggleMasking"      // none
+	ReqSetAltColors       FeatureReq = "ReqSetAltColors"       // bool
+	ReqToggleAltColors    FeatureReq = "ReqToggleAltColors"    // none
+	ReqSetOverlay         FeatureReq = "ReqSetOverlay"         // bool
+	ReqToggleOverlay      FeatureReq = "ReqToggleOverlay"      // none
+	ReqSetScale           FeatureReq = "ReqSetScale"           // float
+	ReqIncScale           FeatureReq = "ReqIncScale"           // none
+	ReqDecScale           FeatureReq = "ReqDecScale"           // none
+	ReqSetFpsCap          FeatureReq = "ReqSetFpsCap"          // bool
+	ReqCaptureMouse       FeatureReq = "ReqCaptureMouse"       // bool
 )
-
-func (r FeatureReq) String() string {
-	switch r {
-	case ReqSetVisibility:
-		return "ReqSetVisibility"
-	case ReqToggleVisibility:
-		return "ReqToggleVisibility"
-	case ReqSetVisibleOnStable:
-		return "ReqSetVisibleOnStable"
-	case ReqSetPause:
-		return "ReqSetPause"
-	case ReqSetMasking:
-		return "ReqSetMasking"
-	case ReqToggleMasking:
-		return "ReqToggleMasking"
-	case ReqSetAltColors:
-		return "ReqSetAltColors"
-	case ReqToggleAltColors:
-		return "ReqToggleAltColors"
-	case ReqSetOverlay:
-		return "ReqSetOverlay"
-	case ReqToggleOverlay:
-		return "ReqToggleOverlay"
-	case ReqSetScale:
-		return "ReqSetScale"
-	case ReqIncScale:
-		return "ReqIncScale"
-	case ReqDecScale:
-		return "ReqDecScale"
-	case ReqSetFpsCap:
-		return "ReqSetFpsCap"
-	}
-
-	return "unknown request"
-}

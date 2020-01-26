@@ -33,8 +33,9 @@ import (
 	"strings"
 )
 
-type event struct {
+type playbackEntry struct {
 	event    input.Event
+	value    input.EventValue
 	frame    int
 	scanline int
 	horizpos int
@@ -45,7 +46,7 @@ type event struct {
 }
 
 type playbackSequence struct {
-	events  []event
+	events  []playbackEntry
 	eventCt int
 }
 
@@ -140,18 +141,17 @@ func NewPlayback(transcript string) (*Playback, error) {
 		}
 		id := input.ID(n)
 
-		// create a new event and convert tokens accordingly
+		// create a new entry and convert tokens accordingly
 		// any errors in the transcript causes failure
-		event := event{line: i + 1}
+		entry := playbackEntry{line: i + 1}
 
-		n, err = strconv.Atoi(toks[fieldEvent])
-		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldEvent+1], fieldSep)))
-			return nil, errors.New(errors.PlaybackError, msg)
-		}
-		event.event = input.Event(n)
+		// no need to convert event field
+		entry.event = input.Event(toks[fieldEvent])
 
-		event.frame, err = strconv.Atoi(toks[fieldFrame])
+		// parse entry value into the correct type
+		entry.value = parseEntryValue(toks[fieldEventValue])
+
+		entry.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
@@ -159,28 +159,61 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 		// assuming that frames are listed in order in the file. update
 		// endFrame with the most recent frame every time
-		plb.endFrame = event.frame
+		plb.endFrame = entry.frame
 
-		event.scanline, err = strconv.Atoi(toks[fieldScanline])
+		entry.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
-		event.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
+		entry.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
 
-		event.hash = toks[fieldHash]
+		entry.hash = toks[fieldHash]
 
-		// add new event to list of events in the correct playback sequence
+		// add new entry to list of events in the correct playback sequence
 		seq := plb.sequences[id]
-		seq.events = append(seq.events, event)
+		seq.events = append(seq.events, entry)
 	}
 
 	return plb, nil
+}
+
+// parse value entry as best we can. the theory here is that there is no
+// intersection between the sets of allowed values. a bool doesn't look like a
+// float which doesn't look like an int. if the value looks like none of those
+// things then we can return the original string unchanged.
+func parseEntryValue(value string) input.EventValue {
+	var err error
+
+	// the order of these conversions is important. ParseBool will interpret
+	// "0" or "1" as false and true. we want to treat these value as ints or
+	// floats (a float of 0.0 will be written as 0) so we MUST try converting
+	// to those types first
+
+	var f float64
+	f, err = strconv.ParseFloat(value, 32)
+	if err == nil {
+		return float32(f)
+	}
+
+	var i int64
+	i, err = strconv.ParseInt(value, 10, 64)
+	if err == nil {
+		return int(i)
+	}
+
+	var b bool
+	b, err = strconv.ParseBool(value)
+	if err == nil {
+		return b
+	}
+
+	return value
 }
 
 // AttachToVCS attaches the playback instance (an implementation of the
@@ -217,40 +250,39 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 }
 
 // CheckInput implements the input.Playback interface.
-func (plb *Playback) CheckInput(id input.ID) (input.Event, error) {
+func (plb *Playback) CheckInput(id input.ID) (input.Event, input.EventValue, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 
 	// we've reached the end of the list of events for this id
 	if seq.eventCt >= len(seq.events) {
-		return input.NoEvent, nil
+		return input.NoEvent, nil, nil
 	}
 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return input.NoEvent, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return input.NoEvent, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return input.NoEvent, errors.New(errors.PlaybackError, err)
+		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
-	nextEvent := seq.events[seq.eventCt]
-	if frame == nextEvent.frame && scanline == nextEvent.scanline && horizpos == nextEvent.horizpos {
-		if nextEvent.hash != plb.digest.Hash() {
-			return input.NoEvent, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", nextEvent.line))
+	entry := seq.events[seq.eventCt]
+	if frame == entry.frame && scanline == entry.scanline && horizpos == entry.horizpos {
+		if entry.hash != plb.digest.Hash() {
+			return input.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
 		}
-
 		seq.eventCt++
-		return nextEvent.event, nil
+		return entry.event, entry.value, nil
 	}
 
 	// next event does not match
-	return input.NoEvent, nil
+	return input.NoEvent, nil, nil
 }

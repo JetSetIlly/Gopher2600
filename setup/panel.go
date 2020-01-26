@@ -118,31 +118,31 @@ func (set PanelSetup) matchCartHash(hash string) bool {
 // apply implements setupEntry interface
 func (set PanelSetup) apply(vcs *hardware.VCS) error {
 	if set.p0 {
-		if err := vcs.Panel.Handle(input.PanelSetPlayer0Pro); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer0Pro, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(input.PanelSetPlayer0Am); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer0Pro, false); err != nil {
 			return err
 		}
 	}
 
 	if set.p1 {
-		if err := vcs.Panel.Handle(input.PanelSetPlayer1Pro); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer1Pro, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(input.PanelSetPlayer1Am); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetPlayer1Pro, false); err != nil {
 			return err
 		}
 	}
 
 	if set.col {
-		if err := vcs.Panel.Handle(input.PanelSetColor); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetColor, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.Panel.Handle(input.PanelSetBlackAndWhite); err != nil {
+		if err := vcs.Panel.Handle(input.PanelSetColor, false); err != nil {
 			return err
 		}
 	}

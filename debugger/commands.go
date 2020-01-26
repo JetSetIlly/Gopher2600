@@ -878,27 +878,27 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				dbg.vcs.Panel.Handle(input.PanelTogglePlayer0Pro)
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer0Pro, nil)
 			case "P1":
-				dbg.vcs.Panel.Handle(input.PanelTogglePlayer1Pro)
+				dbg.vcs.Panel.Handle(input.PanelTogglePlayer1Pro, nil)
 			case "COL":
-				dbg.vcs.Panel.Handle(input.PanelToggleColor)
+				dbg.vcs.Panel.Handle(input.PanelToggleColor, nil)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro, true)
 			case "P1PRO":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro, true)
 			case "P0AM":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Am)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer0Pro, false)
 			case "P1AM":
-				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Am)
+				dbg.vcs.Panel.Handle(input.PanelSetPlayer1Pro, false)
 			case "COL":
-				dbg.vcs.Panel.Handle(input.PanelSetColor)
+				dbg.vcs.Panel.Handle(input.PanelSetColor, true)
 			case "BW":
-				dbg.vcs.Panel.Handle(input.PanelSetBlackAndWhite)
+				dbg.vcs.Panel.Handle(input.PanelSetColor, false)
 			}
 		}
 		dbg.printInstrument(dbg.vcs.Panel)
@@ -910,35 +910,48 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		action, _ := tokens.Get()
 
 		var event input.Event
+		var value input.EventValue
+
 		switch strings.ToUpper(action) {
-		case "UP":
-			event = input.Up
-		case "DOWN":
-			event = input.Down
-		case "LEFT":
-			event = input.Left
-		case "RIGHT":
-			event = input.Right
-		case "NOUP":
-			event = input.NoUp
-		case "NODOWN":
-			event = input.NoDown
-		case "NOLEFT":
-			event = input.NoLeft
-		case "NORIGHT":
-			event = input.NoRight
 		case "FIRE":
 			event = input.Fire
+			value = true
+		case "UP":
+			event = input.Up
+			value = true
+		case "DOWN":
+			event = input.Down
+			value = true
+		case "LEFT":
+			event = input.Left
+			value = true
+		case "RIGHT":
+			event = input.Right
+			value = true
+
 		case "NOFIRE":
-			event = input.NoFire
+			event = input.Fire
+			value = false
+		case "NOUP":
+			event = input.Up
+			value = false
+		case "NODOWN":
+			event = input.Down
+			value = false
+		case "NOLEFT":
+			event = input.Left
+			value = false
+		case "NORIGHT":
+			event = input.Right
+			value = false
 		}
 
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.vcs.HandController0.Handle(event)
+			err = dbg.vcs.HandController0.Handle(event, value)
 		case 1:
-			err = dbg.vcs.HandController1.Handle(event)
+			err = dbg.vcs.HandController1.Handle(event, value)
 		}
 
 		if err != nil {

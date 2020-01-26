@@ -119,39 +119,59 @@ func (pan *Panel) write() {
 	pan.mem.riot.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
 }
 
-// Handle translates the Event argument into the required memory-write
-func (pan *Panel) Handle(event Event) error {
+// Handle implements Port interface
+func (pan *Panel) Handle(event Event, value EventValue) error {
 	switch event {
-	case PanelSelectPress:
-		pan.selectPressed = true
-	case PanelSelectRelease:
-		pan.selectPressed = false
-	case PanelResetPress:
-		pan.resetPressed = true
-	case PanelResetRelease:
-		pan.resetPressed = false
+	case PanelSelect:
+		b, ok := value.(bool)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "bool")
+		}
+		pan.selectPressed = b
+
+	case PanelReset:
+		b, ok := value.(bool)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "bool")
+		}
+		pan.resetPressed = b
+
+	case PanelSetColor:
+		b, ok := value.(bool)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "bool")
+		}
+		pan.color = b
+
+	case PanelSetPlayer0Pro:
+		b, ok := value.(bool)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "bool")
+		}
+		pan.p0pro = b
+
+	case PanelSetPlayer1Pro:
+		b, ok := value.(bool)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "bool")
+		}
+		pan.p1pro = b
+
 	case PanelToggleColor:
 		pan.color = !pan.color
+
 	case PanelTogglePlayer0Pro:
 		pan.p0pro = !pan.p0pro
+
 	case PanelTogglePlayer1Pro:
 		pan.p1pro = !pan.p1pro
-	case PanelSetColor:
-		pan.color = true
-	case PanelSetBlackAndWhite:
-		pan.color = false
-	case PanelSetPlayer0Am:
-		pan.p0pro = false
-	case PanelSetPlayer1Am:
-		pan.p1pro = false
-	case PanelSetPlayer0Pro:
-		pan.p0pro = true
-	case PanelSetPlayer1Pro:
-		pan.p1pro = true
+
 	case PanelPowerOff:
 		return errors.New(errors.PowerOff)
+
 	case NoEvent:
 		return nil
+
 	default:
 		return errors.New(errors.UnknownInputEvent, pan.id, event)
 	}
@@ -160,7 +180,7 @@ func (pan *Panel) Handle(event Event) error {
 
 	// record event with the EventRecorder
 	if pan.recorder != nil {
-		return pan.recorder.RecordEvent(pan.id, event)
+		return pan.recorder.RecordEvent(pan.id, event, nil)
 	}
 
 	return nil

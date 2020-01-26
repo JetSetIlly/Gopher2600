@@ -98,6 +98,18 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 		scr.update()
 
+	case gui.ReqCaptureMouse:
+		scr.isCaptured = args[0].(bool)
+		err = sdl.CaptureMouse(scr.isCaptured)
+		if err == nil {
+			scr.window.SetGrab(scr.isCaptured)
+			if scr.isCaptured {
+				sdl.ShowCursor(sdl.DISABLE)
+			} else {
+				sdl.ShowCursor(sdl.ENABLE)
+			}
+		}
+
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
