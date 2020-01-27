@@ -275,7 +275,7 @@ very poor.
 
 ## Missing Features
 
-1. Paddle, keyboard, driving, lightgun controllers
+1. Keyboard, driving, lightgun controllers
 1. Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
 1. Unimplemented cartridge formats
