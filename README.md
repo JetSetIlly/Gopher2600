@@ -158,6 +158,41 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 > ./gopher2600 run -help
 
+## Hand Controllers
+
+Currently only joysticks and paddles for player 1 (the left player) are supported. The code supports the other player but the UI
+is not up to it just yet.
+
+The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
+
+The paddle is available through the mouse but only after the window has been clicked. The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball I suppose) left and right and using the left button in place of the paddle's fire button. The mouse can be released by pressing the right mouse button.
+
+Note that the joystick can still be controlled even when the mouse has been captured and is in "paddle mode".
+
+The debugger's screen display works in much the same way. Although note that, when not in "paddle mode", using the right mouse button on the debugger's screen display will create a break point at the mouse's location.
+
+### Joystick Player 0
+
+* Cursor keys for stick direction
+* Space bar for fire
+
+### Paddle Player 0
+
+* Left mouse button in window to capture mouse
+* Mouse left/right motion for paddle motion
+* Left mouse button for paddle's fire button
+* Right mouse button to leave "paddle mode"
+
+## Panel
+
+The VCS panel is controlled through the function keys of the keyboard.
+
+* F1 Panel Select
+* F2 Panel Reset
+* F3 Color Toggle
+* F4 Player 0 Pro Toggle
+* F5 Player 0 Pro Toggle
+
 ## Debugger
 
 To run the debugger use the DEBUG submode
@@ -195,24 +230,7 @@ On startup, the debugger will load a configuration script, which consists of deb
 	
 This opens the debugger with the debugging screen open and ready for use. See the section "Configuration Directories" for more information.
 
-## Player input
-
-Currently, only joystick controllers are supported and only for player 0.
-
-### Joystick Player 0
-
-* Cursor keys for stick direction
-* Space bar for fire
-
-### Panel
-
-* F1 Panel Select
-* F2 Panel Reset
-* F3 Color Toggle
-* F4 Player 0 Pro Toggle
-* F5 Player 0 Pro Toggle
-
-### Debugger
+### Debugger's Screen Display
 
 The following keys are only available in the debugger and when the debugging window
 is active.
