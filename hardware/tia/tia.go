@@ -66,11 +66,12 @@ type TIA struct {
 	// it is reset when a new scanline begins
 	hmoveLatch bool
 
-	// - hmoveCt counts from 15 to 255. note that unlike how it is described in
-	// TIA_HW_Notes.txt, we always send the extra tick to the sprites on Phi1.
-	// however, we also send the hmoveCt value, whether or not the extra should
-	// be honoured is up to the sprite. (TIA_HW_Notes.txt says that hmoveCt is
-	// checked *before* sending the extra tick)
+	// - hmoveCt counts backwards from 15 to -1 (represented by 255). note that
+	// unlike how it is described in TIA_HW_Notes.txt, we always send the extra
+	// tick to the sprites on Phi1.  however, we also send the hmoveCt value,
+	// whether or not the extra should be honoured is up to the sprite.
+	// (TIA_HW_Notes.txt says that hmoveCt is checked *before* sending the
+	// extra tick)
 	hmoveCt uint8
 
 	// TIA_HW_Notes.txt describes the hsync counter:
@@ -212,7 +213,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		var delay int
 
 		// not forgetting that we count from zero, the following delay
-		// values range from 3 to 6, like the notes say
+		// values range from 3 to 6, as described in TIA_HW_Notes
 		switch tia.pclk.Count() {
 		case 0:
 			delay = 5
@@ -227,7 +228,6 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		tia.Delay.Schedule(delay, tia._futureHMOVElatch, "HMOVE")
 
 		delay += 3
-
 		tia.hmoveEvent = tia.Delay.Schedule(delay, tia._futureHMOVEprep, "HMOVE (prep)")
 
 		// from TIA_HW_Notes:

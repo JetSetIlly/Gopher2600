@@ -34,8 +34,9 @@ type HandController struct {
 	control *ControlBits
 
 	// controller types
-	stick  stick
-	paddle paddle
+	stick    stick
+	paddle   paddle
+	keyboard keyboard
 
 	// data direction register
 	ddr uint8
@@ -75,10 +76,14 @@ type paddle struct {
 	ticks      float32
 }
 
+type keyboard struct {
+	addr uint16
+}
+
 // NewHandController0 is the preferred method of creating a new instance of
 // HandController for representing hand controller zero
 func NewHandController0(mem *inputMemory, control *ControlBits) *HandController {
-	pl := &HandController{
+	hc := &HandController{
 		mem:     mem,
 		control: control,
 		stick: stick{
@@ -94,21 +99,24 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 			buttonMask: 0x7f,
 			resistance: 0.0,
 		},
+		keyboard: keyboard{
+			addr: addresses.INPT0,
+		},
 		ddr: 0x00,
 	}
 
-	pl.port = port{
+	hc.port = port{
 		id:     HandControllerZeroID,
-		handle: pl.Handle,
+		handle: hc.Handle,
 	}
 
-	return pl
+	return hc
 }
 
 // NewHandController1 is the preferred method of creating a new instance of
 // HandController for representing hand controller one
 func NewHandController1(mem *inputMemory, control *ControlBits) *HandController {
-	pl := &HandController{
+	hc := &HandController{
 		mem:     mem,
 		control: control,
 		stick: stick{
@@ -119,29 +127,32 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 			addrMask:   0xf0,
 		},
 		paddle: paddle{
-			addr:       addresses.INPT0,
+			addr:       addresses.INPT1,
 			buttonAddr: addresses.SWCHA,
 			buttonMask: 0xbf,
 			resistance: 0.0,
 		},
+		keyboard: keyboard{
+			addr: addresses.INPT1,
+		},
 		ddr: 0x00,
 	}
 
-	pl.port = port{
+	hc.port = port{
 		id:     HandControllerOneID,
-		handle: pl.Handle,
+		handle: hc.Handle,
 	}
 
-	return pl
+	return hc
 }
 
 // String implements the Port interface
-func (pl *HandController) String() string {
+func (hc *HandController) String() string {
 	return ""
 }
 
 // Handle implements Port interface
-func (pl *HandController) Handle(event Event, value EventValue) error {
+func (hc *HandController) Handle(event Event, value EventValue) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent
@@ -154,11 +165,11 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 		if b {
-			pl.stick.axis ^= 0x40
+			hc.stick.axis ^= 0x40
 		} else {
-			pl.stick.axis |= 0x40
+			hc.stick.axis |= 0x40
 		}
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Right:
 		b, ok := value.(bool)
@@ -166,11 +177,11 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 		if b {
-			pl.stick.axis ^= 0x80
+			hc.stick.axis ^= 0x80
 		} else {
-			pl.stick.axis |= 0x80
+			hc.stick.axis |= 0x80
 		}
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Up:
 		b, ok := value.(bool)
@@ -178,11 +189,11 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 		if b {
-			pl.stick.axis ^= 0x10
+			hc.stick.axis ^= 0x10
 		} else {
-			pl.stick.axis |= 0x10
+			hc.stick.axis |= 0x10
 		}
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Down:
 		b, ok := value.(bool)
@@ -190,11 +201,11 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 		if b {
-			pl.stick.axis ^= 0x20
+			hc.stick.axis ^= 0x20
 		} else {
-			pl.stick.axis |= 0x20
+			hc.stick.axis |= 0x20
 		}
-		pl.mem.riot.InputDeviceWrite(pl.stick.addr, pl.stick.transform(pl.stick.axis), pl.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Fire:
 		b, ok := value.(bool)
@@ -204,13 +215,13 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 
 		// record state of fire button regardless of latch bit. we need to know
 		// the physical state for when the latch bit is unset
-		pl.stick.button = b
+		hc.stick.button = b
 
-		if pl.stick.button {
-			pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
-		} else if !pl.control.latchFireButton {
+		if hc.stick.button {
+			hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x00, 0x00)
+		} else if !hc.control.latchFireButton {
 			// only release button (in memory) if latch bit is not set
-			pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+			hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x80, 0x00)
 		}
 
 	case PaddleFire:
@@ -226,7 +237,7 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			v = 0xff
 		}
-		pl.mem.riot.InputDeviceWrite(pl.paddle.buttonAddr, v, pl.paddle.buttonMask)
+		hc.mem.riot.InputDeviceWrite(hc.paddle.buttonAddr, v, hc.paddle.buttonMask)
 
 	case PaddleSet:
 		f, ok := value.(float32)
@@ -234,37 +245,62 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "float32")
 		}
 
-		pl.paddle.resistance = 1.0 - f
+		hc.paddle.resistance = 1.0 - f
+
+	case Keyboard:
+		v, ok := value.(rune)
+		if !ok {
+			return errors.New(errors.BadInputEventType, event, "rune")
+		}
+
+		switch v {
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		case '*':
+		case '#':
+		}
 
 	case Unplug:
-		return errors.New(errors.InputDeviceUnplugged, pl.id)
+		return errors.New(errors.InputDeviceUnplugged, hc.id)
 
 	// return now if there is no event to process
 	default:
-		return errors.New(errors.UnknownInputEvent, pl.id, event)
+		return errors.New(errors.UnknownInputEvent, hc.id, event)
 	}
 
 	// record event with the EventRecorder
-	if pl.recorder != nil {
-		return pl.recorder.RecordEvent(pl.id, event, value)
+	if hc.recorder != nil {
+		return hc.recorder.RecordEvent(hc.id, event, value)
 	}
 
 	return nil
 }
 
+func (hc *HandController) step() {
+	// !!TODO read keyboard
+	hc.recharge()
+}
+
 // VBLANK bit 6 has been set. joystick button will latch (will not cause a
 // Fire=false signal when fire button is released)
-func (pl *HandController) unlatch() {
+func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
-	if !pl.stick.button {
-		pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
+	if !hc.stick.button {
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x80, 0x00)
 	}
 }
 
 // VBLANK bit 7 has been set. input capacitor is grounded.
-func (pl *HandController) ground() {
-	pl.paddle.charge = 0
-	pl.mem.riot.InputDeviceWrite(pl.paddle.addr, pl.paddle.charge, 0x00)
+func (hc *HandController) ground() {
+	hc.paddle.charge = 0
+	hc.mem.riot.InputDeviceWrite(hc.paddle.addr, hc.paddle.charge, 0x00)
 }
 
 // the rate at which the controller capacitor fills. if the paddle resistor can
@@ -279,7 +315,7 @@ func (pl *HandController) ground() {
 const paddleSensitivity = 0.01
 
 // recharge is called every video step via Input.Step()
-func (pl *HandController) recharge() {
+func (hc *HandController) recharge() {
 	// from Stella Programmer's Guide:
 	//
 	// "B. Dumped Input Ports (I0 through I3)
@@ -291,12 +327,12 @@ func (pl *HandController) recharge() {
 	// VBLANK. When this control bit is cleared the potentiometers begin to
 	// recharge the capacitors and the microprocessor measures the time required
 	// to detect a logic 1 at each input port."
-	if pl.paddle.charge < 255 {
-		pl.paddle.ticks += paddleSensitivity
-		if pl.paddle.ticks >= pl.paddle.resistance {
-			pl.paddle.ticks = 0
-			pl.paddle.charge++
-			pl.mem.tia.InputDeviceWrite(pl.paddle.addr, pl.paddle.charge, 0x00)
+	if hc.paddle.charge < 255 {
+		hc.paddle.ticks += paddleSensitivity
+		if hc.paddle.ticks >= hc.paddle.resistance {
+			hc.paddle.ticks = 0
+			hc.paddle.charge++
+			hc.mem.tia.InputDeviceWrite(hc.paddle.addr, hc.paddle.charge, 0x00)
 		}
 	}
 }

@@ -53,6 +53,9 @@ const (
 	PaddleFire Event = "PaddleFire" // bool
 	PaddleSet  Event = "PaddleSet"  // float64
 
+	// keyboard (only need down event)
+	Keyboard Event = "Keyboard" // rune
+
 	PanelPowerOff Event = "PanelPowerOff"
 )
 
