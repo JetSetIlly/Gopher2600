@@ -70,8 +70,10 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 			scr.window.SetGrab(scr.isCaptured)
 			if scr.isCaptured {
 				sdl.ShowCursor(sdl.DISABLE)
+				scr.window.SetTitle(windowTitleCaptured)
 			} else {
 				sdl.ShowCursor(sdl.ENABLE)
+				scr.window.SetTitle(windowTitle)
 			}
 		}
 

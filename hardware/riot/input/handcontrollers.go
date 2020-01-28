@@ -201,11 +201,15 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		// record state of fire button regardless of latch bit. we need to know
+		// the physical state for when the latch bit is unset
 		pl.stick.button = b
 
 		if pl.stick.button {
 			pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x00, 0x00)
-		} else {
+		} else if !pl.control.latchFireButton {
+			// only release button (in memory) if latch bit is not set
 			pl.mem.tia.InputDeviceWrite(pl.stick.buttonAddr, 0x80, 0x00)
 		}
 
@@ -248,6 +252,8 @@ func (pl *HandController) Handle(event Event, value EventValue) error {
 	return nil
 }
 
+// VBLANK bit 6 has been set. joystick button will latch (will not cause a
+// Fire=false signal when fire button is released)
 func (pl *HandController) unlatch() {
 	// only unlatch if button is not pressed
 	if !pl.stick.button {
@@ -255,6 +261,7 @@ func (pl *HandController) unlatch() {
 	}
 }
 
+// VBLANK bit 7 has been set. input capacitor is grounded.
 func (pl *HandController) ground() {
 	pl.paddle.charge = 0
 	pl.mem.riot.InputDeviceWrite(pl.paddle.addr, pl.paddle.charge, 0x00)
@@ -271,6 +278,7 @@ func (pl *HandController) ground() {
 // !!TODO: correct paddle timings and sensitivity
 const paddleSensitivity = 0.01
 
+// recharge is called every video step via Input.Step()
 func (pl *HandController) recharge() {
 	// from Stella Programmer's Guide:
 	//

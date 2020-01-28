@@ -79,6 +79,9 @@ type SdlPlay struct {
 	isCaptured bool
 }
 
+const windowTitle = "Gopher2600"
+const windowTitleCaptured = "Gopher2600 [captured]"
+
 // NewSdlPlay is the preferred method of initialisation for SdlPlay.
 //
 // MUST ONLY be called from the #mainthread
@@ -100,7 +103,7 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	setupService()
 
 	// SDL window - window size is set in Resize() function
-	scr.window, err = sdl.CreateWindow("Gopher2600",
+	scr.window, err = sdl.CreateWindow(windowTitle,
 		int32(sdl.WINDOWPOS_UNDEFINED), int32(sdl.WINDOWPOS_UNDEFINED),
 		0, 0,
 		uint32(sdl.WINDOW_HIDDEN))
