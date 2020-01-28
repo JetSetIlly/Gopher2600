@@ -372,22 +372,28 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData)
 	//
 	// (19/01/20) a delay of anything other than 0 or 1, causes Panda Chase to
 	// fail.
+	//
+	// (28/01/20) a delay of anything lower than 1, causes the text in the
+	// BASIC ROM to fail
+	//
+	// the only common value that satisfies all test cases is 1, which equates
+	// to a delay of two cycles
 	case "HMP0":
-		tiaDelay.ScheduleWithArg(0, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
+		tiaDelay.ScheduleWithArg(1, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
 	case "HMP1":
-		tiaDelay.ScheduleWithArg(0, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
+		tiaDelay.ScheduleWithArg(1, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
 	case "HMM0":
-		tiaDelay.ScheduleWithArg(0, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
+		tiaDelay.ScheduleWithArg(1, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
 	case "HMM1":
-		tiaDelay.ScheduleWithArg(0, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
+		tiaDelay.ScheduleWithArg(1, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
 	case "HMBL":
-		tiaDelay.ScheduleWithArg(0, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
+		tiaDelay.ScheduleWithArg(1, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
 	case "HMCLR":
-		tiaDelay.Schedule(0, vd.Player0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(0, vd.Player1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(0, vd.Missile0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(0, vd.Missile1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(0, vd.Ball.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(1, vd.Player0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(1, vd.Player1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(1, vd.Missile0.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(1, vd.Missile1.clearHmoveValue, "HMCLR")
+		tiaDelay.Schedule(1, vd.Ball.clearHmoveValue, "HMCLR")
 	default:
 		return true
 	}

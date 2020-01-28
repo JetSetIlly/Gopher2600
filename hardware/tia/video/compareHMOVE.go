@@ -19,7 +19,7 @@
 
 package video
 
-// CompareHMOVE tests to variables of type uint8 and checks to see if any of
+// CompareHMOVE tests two variables of type uint8 and checks to see if any of
 // the bits in the lower nibble differ. returns false if no bits are the same,
 // true otherwise
 //
