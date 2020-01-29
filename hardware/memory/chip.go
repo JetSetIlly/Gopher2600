@@ -49,13 +49,13 @@ type ChipMemory struct {
 	// way we might expect. instead we note the address that has been written
 	// to, and a boolean true to indicate that a write has been performed by
 	// the CPU
-	lastWriteAddress uint16 // mapped from 16bit to chip address length
-	writeData        uint8
-	writeSignal      bool
+	writeAddress uint16
+	writeData    uint8
+	writeSignal  bool
 
-	// lastReadRegister works slightly different that lastWriteAddress. it stores
-	// the register *name* of the last memory location *read* by the CPU
-	lastReadRegister string
+	// readRegister works slightly different than writeAddress. it stores the
+	// register *name* of the last memory location *read* by the CPU
+	readRegister string
 }
 
 // Peek is an implementation of memory.DebuggerBus
@@ -76,7 +76,7 @@ func (area ChipMemory) Poke(address uint16, value uint8) error {
 func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
-		return true, bus.ChipData{Name: addresses.Write[area.lastWriteAddress], Value: area.writeData}
+		return true, bus.ChipData{Name: addresses.Write[area.writeAddress], Value: area.writeData}
 	}
 
 	return false, bus.ChipData{}
@@ -89,8 +89,8 @@ func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
 
 // LastReadRegister is an implementation of memory.ChipBus
 func (area *ChipMemory) LastReadRegister() string {
-	r := area.lastReadRegister
-	area.lastReadRegister = ""
+	r := area.readRegister
+	area.readRegister = ""
 	return r
 }
 
@@ -103,10 +103,10 @@ func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, preserveBit
 // Read is an implementation of memory.CPUBus
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	// note the name of the register that we are reading
-	area.lastReadRegister = addresses.Read[address]
+	area.readRegister = addresses.Read[address]
 
-	sym := addresses.Read[address]
-	if sym == "" {
+	// do not allow reads from memory that do not have symbol name
+	if _, ok := addresses.CanonicalReadSymbols[address]; !ok {
 		return 0, errors.New(errors.BusError, address)
 	}
 
@@ -117,16 +117,23 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
-		return errors.New(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.lastWriteAddress]))
+		return errors.New(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.writeAddress]))
 	}
 
-	sym := addresses.Write[address^area.origin]
-	if sym == "" {
+	// do not allow writes to memory that do not have symbol name
+	if _, ok := addresses.CanonicalWriteSymbols[address]; !ok {
 		return errors.New(errors.BusError, address)
 	}
 
-	// note address of write
-	area.lastWriteAddress = address
+	// if the read and write symbol for the address then save the address for
+	// future reading. if the symbols are different then the data is not saved
+	// but used only to control the "parent" chip. see below
+	if addresses.CanonicalWriteSymbols[address] == addresses.CanonicalReadSymbols[address] {
+		area.memory[address^area.origin] = data
+	}
+
+	// signal the chips that their chip memory has been written to
+	area.writeAddress = address
 	area.writeSignal = true
 	area.writeData = data
 
