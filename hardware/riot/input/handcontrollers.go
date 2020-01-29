@@ -24,6 +24,26 @@ import (
 	"gopher2600/hardware/memory/addresses"
 )
 
+// ControllerType keeps track of which controller type is being used at any
+// given moment. we need this so that we don't ground/recharge the paddle if it
+// is not being used. if we did then joystick input would be wrong.
+//
+// we default to the joystick type which should be fine. for non-joystick
+// games, the paddle/keyboard will be activated once the user starts using the
+// corresponding controls.
+//
+// if a paddle/keyboard ROM requires paddle/keyboard probing from the instant
+// the machine starts (are there any examples of this?) then we will need to
+// initialise the hand controller accordingly, using the setup system.
+type ControllerType int
+
+// List of allowed ControllerTypes
+const (
+	JoystickType ControllerType = iota
+	PaddleType
+	KeyboardType
+)
+
 // HandController represents the "joystick" port on the VCS. The different
 // devices (joysticks, paddles, etc.) send events to the Handle() function.
 //
@@ -32,6 +52,9 @@ type HandController struct {
 	port
 	mem     *inputMemory
 	control *ControlBits
+
+	// which controller type is currently being used
+	which ControllerType
 
 	// controller types
 	stick    stick
@@ -88,6 +111,7 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 	hc := &HandController{
 		mem:     mem,
 		control: control,
+		which:   JoystickType,
 		stick: stick{
 			addr:       addresses.SWCHA,
 			buttonAddr: addresses.INPT4,
@@ -121,6 +145,7 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 	hc := &HandController{
 		mem:     mem,
 		control: control,
+		which:   JoystickType,
 		stick: stick{
 			addr:       addresses.SWCHA,
 			buttonAddr: addresses.INPT5,
@@ -166,6 +191,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		hc.which = JoystickType
+
 		if b {
 			hc.stick.axis ^= 0x40
 		} else {
@@ -178,6 +206,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		hc.which = JoystickType
+
 		if b {
 			hc.stick.axis ^= 0x80
 		} else {
@@ -190,6 +221,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		hc.which = JoystickType
+
 		if b {
 			hc.stick.axis ^= 0x10
 		} else {
@@ -202,6 +236,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		hc.which = JoystickType
+
 		if b {
 			hc.stick.axis ^= 0x20
 		} else {
@@ -214,6 +251,8 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
+
+		hc.which = JoystickType
 
 		// record state of fire button regardless of latch bit. we need to know
 		// the physical state for when the latch bit is unset
@@ -232,6 +271,8 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
+		hc.which = PaddleType
+
 		var v uint8
 
 		if b {
@@ -247,6 +288,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "float32")
 		}
 
+		hc.which = PaddleType
 		hc.paddle.resistance = 1.0 - f
 
 	case KeyboardDown:
@@ -254,6 +296,8 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "rune")
 		}
+
+		hc.which = KeyboardType
 
 		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '#' {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
@@ -266,6 +310,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "nil")
 		}
 
+		hc.which = KeyboardType
 		hc.keyboard.key = ' '
 
 	case Unplug:
@@ -299,6 +344,10 @@ func (hc *HandController) unlatch() {
 
 // VBLANK bit 7 has been set. input capacitor is grounded.
 func (hc *HandController) ground() {
+	if hc.which != PaddleType {
+		return
+	}
+
 	hc.paddle.charge = 0
 	hc.mem.riot.InputDeviceWrite(hc.paddle.addr, hc.paddle.charge, 0x00)
 }
@@ -316,6 +365,10 @@ const paddleSensitivity = 0.01
 
 // recharge is called every video step via Input.Step()
 func (hc *HandController) recharge() {
+	if hc.which != PaddleType {
+		return
+	}
+
 	// from Stella Programmer's Guide:
 	//
 	// "B. Dumped Input Ports (I0 through I3)
