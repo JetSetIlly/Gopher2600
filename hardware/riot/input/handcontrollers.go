@@ -42,7 +42,7 @@ type HandController struct {
 	ddr uint8
 }
 
-// the stick type handles the "joystick" hand controller type
+// the stick type implements the digital "joystick" controller
 type stick struct {
 	// address in RIOT memory for joystick direction input
 	addr uint16
@@ -65,7 +65,7 @@ type stick struct {
 	addrMask uint8
 }
 
-// the paddle type handles the "paddle" hand controller type
+// the paddle type implements the "paddle" hand controller
 type paddle struct {
 	addr       uint16
 	buttonAddr uint16
@@ -76,8 +76,10 @@ type paddle struct {
 	ticks      float32
 }
 
+// the keyboard type implements the "keyboard" or "keypad" controller
 type keyboard struct {
 	addr uint16
+	key  rune
 }
 
 // NewHandController0 is the preferred method of creating a new instance of
@@ -148,7 +150,7 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 
 // String implements the Port interface
 func (hc *HandController) String() string {
-	return ""
+	return "nothing yet"
 }
 
 // Handle implements Port interface
@@ -247,25 +249,24 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 
 		hc.paddle.resistance = 1.0 - f
 
-	case Keyboard:
+	case KeyboardDown:
 		v, ok := value.(rune)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "rune")
 		}
 
-		switch v {
-		case '1':
-		case '2':
-		case '3':
-		case '4':
-		case '5':
-		case '6':
-		case '7':
-		case '8':
-		case '9':
-		case '*':
-		case '#':
+		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '#' {
+			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
 		}
+
+		hc.keyboard.key = v
+
+	case KeyboardUp:
+		if value != nil {
+			return errors.New(errors.BadInputEventType, event, "nil")
+		}
+
+		hc.keyboard.key = ' '
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, hc.id)
@@ -284,7 +285,6 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 }
 
 func (hc *HandController) step() {
-	// !!TODO read keyboard
 	hc.recharge()
 }
 
@@ -311,7 +311,7 @@ func (hc *HandController) ground() {
 // no idea if this value is correct but it feels good during play so I'm going
 // to go with it for now.
 //
-// !!TODO: correct paddle timings and sensitivity
+// !!TODO: accurate paddle timings and sensitivity
 const paddleSensitivity = 0.01
 
 // recharge is called every video step via Input.Step()
