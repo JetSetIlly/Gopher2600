@@ -61,7 +61,10 @@ type HandController struct {
 	paddle   paddle
 	keyboard keyboard
 
-	// data direction register
+	// data direction register. for simplicity, the bits should be normalised
+	// such that only the upper nibble is used. in reality, player 0
+	// controllers will use the upper nibble, and player 1 controller will use
+	// the lower nibble.
 	ddr uint8
 }
 
@@ -104,9 +107,14 @@ type paddle struct {
 
 // the keyboard type implements the "keyboard" or "keypad" controller
 type keyboard struct {
-	addr uint16
-	key  rune
+	key rune
+
+	transform func(uint8) uint8
+	addrMask  uint8
 }
+
+// the value of keyboard.key when nothing is being pressed
+const noKey = ' '
 
 // NewHandController0 is the preferred method of creating a new instance of
 // HandController for representing hand controller zero
@@ -130,7 +138,9 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 			resistance: 0.0,
 		},
 		keyboard: keyboard{
-			addr: addresses.INPT0,
+			key:       noKey,
+			transform: func(n uint8) uint8 { return n },
+			addrMask:  0x0f,
 		},
 		ddr: 0x00,
 	}
@@ -169,7 +179,9 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 			resistance: 0.0,
 		},
 		keyboard: keyboard{
-			addr: addresses.INPT1,
+			key:       noKey,
+			transform: func(n uint8) uint8 { return n >> 4 },
+			addrMask:  0xf0,
 		},
 		ddr: 0x00,
 	}
@@ -315,7 +327,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 
 		hc.which = KeyboardType
 
-		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '#' {
+		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '0' && v != '#' {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
 		}
 
@@ -327,7 +339,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		}
 
 		hc.which = KeyboardType
-		hc.keyboard.key = ' '
+		hc.keyboard.key = noKey
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, hc.id)
@@ -347,6 +359,109 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 
 func (hc *HandController) step() {
 	hc.recharge()
+}
+
+// set DDR value. values should be normalised to the upper nibble before being
+// passed to the function. this simplifies the implementation.
+func (hc *HandController) setDDR(data uint8) {
+	hc.ddr = data
+
+	// if the ddr value is being such so that SWCHA is input rather than output
+	// the the expected controller is most probably a keyboard. not sure what
+	// we can say if ddr is only partially set to input.
+	if data == 0xf0 {
+		hc.which = KeyboardType
+	}
+}
+
+// readKeyboard() is called whenever SWCHA is tickled by the CPU. the state of
+// the ddr is of importance here.
+func (hc *HandController) readKeyboard(data uint8) {
+	if hc.which != KeyboardType {
+		return
+	}
+
+	if hc.keyboard.key == noKey {
+		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
+		return
+	}
+
+	var column int
+
+	switch hc.keyboard.key {
+	// row 0
+	case '1':
+		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+			column = 1
+		}
+	case '2':
+		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+			column = 2
+		}
+	case '3':
+		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+			column = 3
+		}
+
+		// row 2
+	case '4':
+		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+			column = 1
+		}
+	case '5':
+		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+			column = 2
+		}
+	case '6':
+		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+			column = 3
+		}
+
+		// row 3
+	case '7':
+		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+			column = 1
+		}
+	case '8':
+		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+			column = 2
+		}
+	case '9':
+		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+			column = 3
+		}
+
+		// row 4
+	case '*':
+		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+			column = 1
+		}
+	case '0':
+		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+			column = 2
+		}
+	case '#':
+		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+			column = 3
+		}
+	}
+
+	switch column {
+	case 1:
+		hc.mem.riot.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0x00, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0x00, hc.keyboard.addrMask)
+	case 2:
+		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0x00, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0x00, hc.keyboard.addrMask)
+	case 3:
+		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0x00, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0x00, hc.keyboard.addrMask)
+		hc.mem.riot.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(data), hc.keyboard.addrMask)
+	}
 }
 
 // VBLANK bit 6 has been set. joystick button will latch (will not cause a
@@ -379,7 +494,7 @@ func (hc *HandController) ground() {
 // !!TODO: accurate paddle timings and sensitivity
 const paddleSensitivity = 0.01
 
-// recharge is called every video step via Input.Step()
+// recharge() is called every video step via Input.Step()
 func (hc *HandController) recharge() {
 	if hc.which != PaddleType {
 		return

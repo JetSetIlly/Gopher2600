@@ -113,12 +113,19 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 func (inp *Input) ReadMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
+		// normalise data bits for both controllers. this simplifies the
+		// implementation of readKeyboard()
+		inp.HandController0.readKeyboard(data.Value & 0xf0)
+		inp.HandController1.readKeyboard((data.Value & 0x0f) << 4)
 	case "SWACNT":
-		inp.HandController0.ddr = data.Value & 0xf0
-		inp.HandController1.ddr = data.Value & 0x0f
+		// normalise data bits for both controllers. this simplifies the
+		// implementation of setDDR()
+		inp.HandController0.setDDR(data.Value & 0xf0)
+		inp.HandController1.setDDR((data.Value & 0x0f) << 4)
 	case "SWCHB":
+		panic("Port B; console switches (hardwired as input)")
 	case "SWBCNT":
-		inp.Panel.ddr = data.Value & 0xf0
+		panic("Port B DDR (hardwired as input)")
 	default:
 		return true
 	}
