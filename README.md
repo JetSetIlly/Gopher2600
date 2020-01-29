@@ -165,11 +165,13 @@ is not up to it just yet.
 
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
 
-The paddle is available through the mouse but only after the window has been clicked. The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball I suppose) left and right and using the left button in place of the paddle's fire button. The mouse can be released by pressing the right mouse button.
+The paddle is available through the mouse but only after the window has been clicked and the mouse is "captured". The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball I suppose) left and right and using the left button in place of the paddle's fire button. The mouse can be "released" by pressing the right mouse button.
 
 Note that the joystick can still be controlled even when the mouse has been captured and is in "paddle mode".
 
 The debugger's screen display works in much the same way. Although note that, when not in "paddle mode", using the right mouse button on the debugger's screen display will create a break point at the mouse's location.
+
+An important note about the hand controller implementation: I have tried a novel approach whereby the emulator tries to keep track of which controller type is being used. It is hoped that this will negate the need to tell the emulator (either at the command line or through the setup file) which controller to use for any given ROM. This approach has worked well so far but it is an idea that may need to be revisited.
 
 ### Joystick Player 0
 
@@ -240,7 +242,7 @@ When the debugger's screen display is active, the VCS can be controlled in the m
 * \+ Increase screen size
 * \- Decrease screen size
 
-Note that all user input is accessible throught debugging commands. This is useful for scripting.
+Note that all user input is accessible through debugging commands. This is useful for scripting.
 
 ## Configuration Directory
 
