@@ -234,9 +234,9 @@ This opens the debugger with the debugging screen open and ready for use. See th
 
 When the debugger's screen display is active, the VCS can be controlled in the manner described above in the Hand Controllers and Panel sections. In addition to those controls, the following keys are only available in the debugger (and when the screen display is active)
 
-* \` (backtick) Toggle screen masking
-* 1 Toggle debugging colors
-* 2 Toggle debugging overlay
+* F12 (backtick) Toggle screen masking
+* F11 Toggle debugging colors
+* F10 Toggle debugging overlay
 * \+ Increase screen size
 * \- Decrease screen size
 
