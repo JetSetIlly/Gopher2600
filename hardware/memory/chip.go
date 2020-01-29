@@ -83,8 +83,8 @@ func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 }
 
 // ChipWrite is an implementation of memory.ChipBus
-func (area *ChipMemory) ChipWrite(address uint16, data uint8) {
-	area.memory[address] = data
+func (area *ChipMemory) ChipWrite(reg addresses.ChipRegister, data uint8) {
+	area.memory[reg] = data
 }
 
 // LastReadRegister is an implementation of memory.ChipBus
@@ -95,9 +95,9 @@ func (area *ChipMemory) LastReadRegister() string {
 }
 
 // InputDeviceWrite implements memory.InputDeviceBus
-func (area *ChipMemory) InputDeviceWrite(address uint16, data uint8, preserveBits uint8) {
-	d := area.memory[address] & preserveBits
-	area.memory[address] = data | d
+func (area *ChipMemory) InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8) {
+	d := area.memory[reg] & preserveBits
+	area.memory[reg] = data | d
 }
 
 // Read is an implementation of memory.CPUBus

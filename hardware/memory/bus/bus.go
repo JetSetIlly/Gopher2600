@@ -21,6 +21,8 @@
 // memory package documentation.
 package bus
 
+import "gopher2600/hardware/memory/addresses"
+
 // CPUBus defines the operations for the memory system when accessed from the CPU
 // All memory areas implement this interface because they are all accessible
 // from the CPU (compare to ChipBus). The VCSMemory type also implements this
@@ -54,7 +56,7 @@ type ChipBus interface {
 	ChipRead() (bool, ChipData)
 
 	// ChipWrite writes the data to the chip memory
-	ChipWrite(address uint16, data uint8)
+	ChipWrite(reg addresses.ChipRegister, data uint8)
 
 	// LastReadRegister returns the register name of the last memory location
 	// *read* by the CPU
@@ -65,7 +67,7 @@ type ChipBus interface {
 // parts of the emulation are peripheral to the operation of the machine. In
 // practice, this includes the front panel in addition to joysticks, etc.
 type InputDeviceBus interface {
-	InputDeviceWrite(address uint16, data uint8, preserveBits uint8)
+	InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8)
 }
 
 // DebuggerBus defines the meta-operations for all memory areas. Think of these

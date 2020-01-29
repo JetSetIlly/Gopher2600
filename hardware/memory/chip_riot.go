@@ -20,7 +20,6 @@
 package memory
 
 import (
-	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
 )
 
@@ -35,9 +34,9 @@ func newRIOT() *ChipMemory {
 	// allocation the minimal amount of memory
 	area.memory = make([]uint8, area.memtop-area.origin+1)
 
-	// initial values
-	area.memory[addresses.SWCHA] = 0xff
-	area.memory[addresses.SWCHB] = 0xff
+	// SWCHA set on startup by NewHandController0() and NewHandController1()
+
+	// SWCHB set on startup NewPanel()
 
 	return area
 }

@@ -63,8 +63,8 @@ func (col *collisions) clear() {
 	col.mem.ChipWrite(addresses.CXPPMM, 0)
 }
 
-func (col *collisions) setMemory(collisionAddress uint16) {
-	switch collisionAddress {
+func (col *collisions) setMemory(collisionRegister addresses.ChipRegister) {
+	switch collisionRegister {
 	case addresses.CXM0P:
 		col.mem.ChipWrite(addresses.CXM0P, col.cxm0p)
 	case addresses.CXM1P:
@@ -85,8 +85,9 @@ func (col *collisions) setMemory(collisionAddress uint16) {
 		// it would be nice to get rid of this panic() but it's doing no harm
 		// and returning an error from here would be ugly.
 		//
-		// Best solution is to figure out how to constrain memory addresses by
-		// type...
-		panic(fmt.Sprintf("not a collision address (%04x)", collisionAddress))
+		// Best solution is to constrain collisioin registers by type...
+		//
+		// !!TODO: collisiion register type (subset of ChipRegister type)
+		panic(fmt.Sprintf("not a collision register (%02x)", collisionRegister))
 	}
 }

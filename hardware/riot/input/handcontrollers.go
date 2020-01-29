@@ -68,17 +68,17 @@ type HandController struct {
 // the stick type implements the digital "joystick" controller
 type stick struct {
 	// address in RIOT memory for joystick direction input
-	addr uint16
+	axisReg addresses.ChipRegister
 
 	// the address in TIA memory for joystick fire button
-	buttonAddr uint16
+	buttonReg addresses.ChipRegister
 
 	// values indicating joystick state
 	axis   uint8
 	button bool
 
 	// hand controllers 0 and 1 write the axis value to different nibbles of the
-	// addr. transform allows us to transform that value with the help of
+	// axisReg. transform allows us to transform that value with the help of
 	// stickMask
 	transform func(uint8) uint8
 
@@ -90,8 +90,8 @@ type stick struct {
 
 // the paddle type implements the "paddle" hand controller
 type paddle struct {
-	addr       uint16
-	buttonAddr uint16
+	puckReg    addresses.ChipRegister
+	buttonReg  addresses.ChipRegister
 	buttonMask uint8
 
 	charge     uint8
@@ -113,15 +113,15 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 		control: control,
 		which:   JoystickType,
 		stick: stick{
-			addr:       addresses.SWCHA,
-			buttonAddr: addresses.INPT4,
-			axis:       0xf0,
-			transform:  func(n uint8) uint8 { return n },
-			addrMask:   0x0f,
+			axisReg:   addresses.SWCHA,
+			buttonReg: addresses.INPT4,
+			axis:      0xf0,
+			transform: func(n uint8) uint8 { return n },
+			addrMask:  0x0f,
 		},
 		paddle: paddle{
-			addr:       addresses.INPT0,
-			buttonAddr: addresses.SWCHA,
+			puckReg:    addresses.INPT0,
+			buttonReg:  addresses.SWCHA,
 			buttonMask: 0x7f,
 			resistance: 0.0,
 		},
@@ -147,15 +147,15 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 		control: control,
 		which:   JoystickType,
 		stick: stick{
-			addr:       addresses.SWCHA,
-			buttonAddr: addresses.INPT5,
-			axis:       0xf0,
-			transform:  func(n uint8) uint8 { return n >> 4 },
-			addrMask:   0xf0,
+			axisReg:   addresses.SWCHA,
+			buttonReg: addresses.INPT5,
+			axis:      0xf0,
+			transform: func(n uint8) uint8 { return n >> 4 },
+			addrMask:  0xf0,
 		},
 		paddle: paddle{
-			addr:       addresses.INPT1,
-			buttonAddr: addresses.SWCHA,
+			puckReg:    addresses.INPT1,
+			buttonReg:  addresses.SWCHA,
 			buttonMask: 0xbf,
 			resistance: 0.0,
 		},
@@ -199,7 +199,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x40
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Right:
 		b, ok := value.(bool)
@@ -214,7 +214,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x80
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Up:
 		b, ok := value.(bool)
@@ -229,7 +229,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x10
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Down:
 		b, ok := value.(bool)
@@ -244,7 +244,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x20
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.addr, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
 
 	case Fire:
 		b, ok := value.(bool)
@@ -259,10 +259,10 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		hc.stick.button = b
 
 		if hc.stick.button {
-			hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x00, 0x00)
+			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x00, 0x00)
 		} else if !hc.control.latchFireButton {
 			// only release button (in memory) if latch bit is not set
-			hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x80, 0x00)
+			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
 		}
 
 	case PaddleFire:
@@ -280,7 +280,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			v = 0xff
 		}
-		hc.mem.riot.InputDeviceWrite(hc.paddle.buttonAddr, v, hc.paddle.buttonMask)
+		hc.mem.riot.InputDeviceWrite(hc.paddle.buttonReg, v, hc.paddle.buttonMask)
 
 	case PaddleSet:
 		f, ok := value.(float32)
@@ -338,7 +338,7 @@ func (hc *HandController) step() {
 func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
 	if !hc.stick.button {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonAddr, 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
 	}
 }
 
@@ -349,7 +349,7 @@ func (hc *HandController) ground() {
 	}
 
 	hc.paddle.charge = 0
-	hc.mem.riot.InputDeviceWrite(hc.paddle.addr, hc.paddle.charge, 0x00)
+	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 }
 
 // the rate at which the controller capacitor fills. if the paddle resistor can
@@ -385,7 +385,7 @@ func (hc *HandController) recharge() {
 		if hc.paddle.ticks >= hc.paddle.resistance {
 			hc.paddle.ticks = 0
 			hc.paddle.charge++
-			hc.mem.tia.InputDeviceWrite(hc.paddle.addr, hc.paddle.charge, 0x00)
+			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 		}
 	}
 }
