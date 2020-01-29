@@ -34,9 +34,9 @@ import (
 
 // TIA contains all the sub-components of the VCS TIA sub-system
 type TIA struct {
-	tv        television.Television
-	mem       bus.ChipBus
-	inputBits *input.ControlBits
+	tv      television.Television
+	mem     bus.ChipBus
+	control *input.ControlBits
 
 	// number of video cycles since the last WSYNC. also cycles back to 0 on
 	// RSYNC and when polycounter reaches count 56
@@ -114,12 +114,12 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
-func NewTIA(tv television.Television, mem bus.ChipBus, inputBits *input.ControlBits) (*TIA, error) {
+func NewTIA(tv television.Television, mem bus.ChipBus, control *input.ControlBits) (*TIA, error) {
 	tia := TIA{
-		tv:        tv,
-		mem:       mem,
-		inputBits: inputBits,
-		hblank:    true}
+		tv:      tv,
+		mem:     mem,
+		control: control,
+		hblank:  true}
 
 	var err error
 
@@ -280,10 +280,10 @@ func (tia *TIA) _futureVBLANK(v interface{}) {
 	tia.sig.VBlank = v.(uint8)&0x02 == 0x02
 
 	// dump paddle capacitors to ground
-	tia.inputBits.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
+	tia.control.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
 
 	// joystick fire button latches
-	tia.inputBits.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
+	tia.control.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
 }
 
 func (tia *TIA) _futureRSYNCreset() {

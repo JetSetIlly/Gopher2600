@@ -45,13 +45,17 @@ const (
 	PanelSetPlayer0Pro Event = "PanelSetPlayer0Pro" // bool
 	PanelSetPlayer1Pro Event = "PanelSetPlayer1Pro" // bool
 
-	PanelToggleColor      Event = "PanelToggleColor"
-	PanelTogglePlayer0Pro Event = "PanelTogglePlayer0Pro"
-	PanelTogglePlayer1Pro Event = "PanelTogglePlayer1Pro"
+	PanelToggleColor      Event = "PanelToggleColor"      // nil
+	PanelTogglePlayer0Pro Event = "PanelTogglePlayer0Pro" // nil
+	PanelTogglePlayer1Pro Event = "PanelTogglePlayer1Pro" // nil
 
 	// paddles
 	PaddleFire Event = "PaddleFire" // bool
 	PaddleSet  Event = "PaddleSet"  // float64
+
+	// keyboard (only need down event)
+	KeyboardDown Event = "KeyboardDown" // rune
+	KeyboardUp   Event = "KeyboardUp"   // nil
 
 	PanelPowerOff Event = "PanelPowerOff"
 )

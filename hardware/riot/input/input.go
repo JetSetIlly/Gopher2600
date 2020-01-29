@@ -128,6 +128,6 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 
 // Step input state forward one cycle
 func (inp *Input) Step() {
-	inp.HandController0.recharge()
-	inp.HandController1.recharge()
+	inp.HandController0.step()
+	inp.HandController1.step()
 }

@@ -49,14 +49,14 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 		if !handled {
 			if ev.Down && ev.Mod == gui.KeyModNone {
 				switch ev.Key {
-				case "`":
+				case "F12":
 					// back-tick: toggle masking
 					err = dbg.scr.SetFeature(gui.ReqToggleMasking)
 
-				case "1":
+				case "F11":
 					// toggle debugging colours
 					err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
-				case "2":
+				case "F10":
 					// toggle overlay
 					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 

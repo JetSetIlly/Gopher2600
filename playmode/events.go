@@ -124,6 +124,36 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 		case "Space":
 			err = vcs.HandController0.Handle(input.Fire, true)
 			handled = true
+		case "1", "2", "3":
+			err = vcs.HandController0.Handle(input.KeyboardDown, rune(ev.Key[0]))
+			handled = true
+		case "q":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '4')
+			handled = true
+		case "w":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '5')
+			handled = true
+		case "e":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '6')
+			handled = true
+		case "a":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '7')
+			handled = true
+		case "s":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '8')
+			handled = true
+		case "d":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '9')
+			handled = true
+		case "z":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '*')
+			handled = true
+		case "x":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '0')
+			handled = true
+		case "c":
+			err = vcs.HandController0.Handle(input.KeyboardDown, '#')
+			handled = true
 		}
 	} else {
 		switch ev.Key {
@@ -147,6 +177,9 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 			handled = true
 		case "Space":
 			err = vcs.HandController0.Handle(input.Fire, false)
+			handled = true
+		case "1", "2", "3", "q", "w", "e", "a", "s", "d", "z", "x", "c":
+			err = vcs.HandController0.Handle(input.KeyboardUp, nil)
 			handled = true
 		}
 	}
