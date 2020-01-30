@@ -65,6 +65,9 @@ type HandController struct {
 	ddr uint8
 }
 
+const stickButtonOn = uint8(0x00)
+const stickButtonOff = uint8(0x80)
+
 // the stick type implements the digital "joystick" controller
 type stick struct {
 	// address in RIOT memory for joystick direction input
@@ -75,7 +78,7 @@ type stick struct {
 
 	// values indicating joystick state
 	axis   uint8
-	button bool
+	button uint8
 
 	// hand controllers 0 and 1 write the axis value to different nibbles of the
 	// axisReg. transform allows us to transform that value with the help of
@@ -116,6 +119,7 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 			axisReg:   addresses.SWCHA,
 			buttonReg: addresses.INPT4,
 			axis:      0xf0,
+			button:    stickButtonOff,
 			transform: func(n uint8) uint8 { return n },
 			addrMask:  0x0f,
 		},
@@ -136,6 +140,10 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 		handle: hc.Handle,
 	}
 
+	// write initial joystick values
+	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
+
 	return hc
 }
 
@@ -150,6 +158,7 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 			axisReg:   addresses.SWCHA,
 			buttonReg: addresses.INPT5,
 			axis:      0xf0,
+			button:    stickButtonOff,
 			transform: func(n uint8) uint8 { return n >> 4 },
 			addrMask:  0xf0,
 		},
@@ -169,6 +178,10 @@ func NewHandController1(mem *inputMemory, control *ControlBits) *HandController 
 		id:     HandControllerOneID,
 		handle: hc.Handle,
 	}
+
+	// write initial joystick values
+	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 
 	return hc
 }
@@ -256,13 +269,16 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 
 		// record state of fire button regardless of latch bit. we need to know
 		// the physical state for when the latch bit is unset
-		hc.stick.button = b
+		if b {
+			hc.stick.button = stickButtonOn
+		} else {
+			hc.stick.button = stickButtonOff
+		}
 
-		if hc.stick.button {
-			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x00, 0x00)
-		} else if !hc.control.latchFireButton {
-			// only release button (in memory) if latch bit is not set
-			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
+		// write memory if button is pressed or it is not and the button latch
+		// is false
+		if hc.stick.button == stickButtonOn || !hc.control.latchFireButton {
+			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 		}
 
 	case PaddleFire:
@@ -337,8 +353,8 @@ func (hc *HandController) step() {
 // Fire=false signal when fire button is released)
 func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
-	if !hc.stick.button {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
+	if hc.stick.button == stickButtonOff {
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 	}
 }
 
