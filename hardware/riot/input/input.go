@@ -21,6 +21,7 @@ package input
 
 import (
 	"fmt"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/bus"
 )
 
@@ -33,11 +34,11 @@ type inputMemory struct {
 	tia  bus.InputDeviceBus
 }
 
-// the VBLANK address is handled by the TIA but some bits in that register are
-// needed by the input system (which we have conceptualised as entirely being
-// part of the RIOT - which we can see is not entirely true)
+// ControlBits represents the bits in the VBLANK register that control
+// paddle-grounding and joystick-latching.  The VBLANK address is handled by
+// the TIA but these bits in that register are needed by the input system.
 //
-// VBLANKcontrolBits is instantiated by NewInput() and then a reference given
+// ControlBits is instantiated by NewInput() and then a reference given
 // to the TIA (by NewVCS() in the hardware package)
 type ControlBits struct {
 	groundPaddles   bool
@@ -117,11 +118,19 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 		// implementation of readKeyboard()
 		inp.HandController0.readKeyboard(data.Value & 0xf0)
 		inp.HandController1.readKeyboard((data.Value & 0x0f) << 4)
+
+		// write data back to memory
+		inp.mem.riot.InputDeviceWrite(addresses.SWCHA, data.Value, 0x00)
+
 	case "SWACNT":
 		// normalise data bits for both controllers. this simplifies the
 		// implementation of setDDR()
 		inp.HandController0.setDDR(data.Value & 0xf0)
 		inp.HandController1.setDDR((data.Value & 0x0f) << 4)
+
+		// write data back to memory
+		inp.mem.riot.InputDeviceWrite(addresses.SWACNT, data.Value, 0x00)
+
 	case "SWCHB":
 		panic("Port B; console switches (hardwired as input)")
 	case "SWBCNT":
@@ -135,6 +144,9 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 
 // Step input state forward one cycle
 func (inp *Input) Step() {
-	inp.HandController0.step()
-	inp.HandController1.step()
+	// not much to do here because most input operations happen on demand.
+	// recharging of the paddle capacitors however happens (a little bit) every
+	// step.
+	inp.HandController0.recharge()
+	inp.HandController1.recharge()
 }

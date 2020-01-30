@@ -125,13 +125,6 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 		return errors.New(errors.BusError, address)
 	}
 
-	// if the read and write symbol for the address then save the address for
-	// future reading. if the symbols are different then the data is not saved
-	// but used only to control the "parent" chip. see below
-	if addresses.CanonicalWriteSymbols[address] == addresses.CanonicalReadSymbols[address] {
-		area.memory[address^area.origin] = data
-	}
-
 	// signal the chips that their chip memory has been written to
 	area.writeAddress = address
 	area.writeSignal = true

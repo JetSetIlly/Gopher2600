@@ -331,6 +331,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
 		}
 
+		// note key for use by readKeyboard()
 		hc.keyboard.key = v
 
 	case KeyboardUp:
@@ -355,10 +356,6 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 	}
 
 	return nil
-}
-
-func (hc *HandController) step() {
-	hc.recharge()
 }
 
 // set DDR value. values should be normalised to the upper nibble before being
