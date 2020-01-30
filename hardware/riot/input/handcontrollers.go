@@ -66,6 +66,19 @@ type HandController struct {
 	// controllers will use the upper nibble, and player 1 controller will use
 	// the lower nibble.
 	ddr uint8
+
+	// the two hand controllers, for both joysticks and keyboards, share
+	// registers for certain values. In each instance where this is the case,
+	// HandController0 uses the upper nibble and HandControll1er1 uses the
+	// lower nibble.
+	//
+	// The normalise functions 'transform' the data to the correct nibble
+	normaliseOnRead  func(uint8) uint8
+	normaliseOnWrite func(uint8) uint8
+
+	// when writing data with InputDeviceWrite() a mask is supplied to prevent
+	// the bits in the 'other' nibble from being clobbered
+	writeMask uint8
 }
 
 const stickButtonOn = uint8(0x00)
@@ -82,16 +95,6 @@ type stick struct {
 	// values indicating joystick state
 	axis   uint8
 	button uint8
-
-	// hand controllers 0 and 1 write the axis value to different nibbles of the
-	// axisReg. transform allows us to transform that value with the help of
-	// stickMask
-	transform func(uint8) uint8
-
-	// because the two hand controllers share the same stick address, each
-	// controller needs to mask off the other hand controller's bits, or put
-	// another way, the bits we need to preserve during the write
-	addrMask uint8
 }
 
 // the paddle type implements the "paddle" hand controller
@@ -108,9 +111,6 @@ type paddle struct {
 // the keyboard type implements the "keyboard" or "keypad" controller
 type keyboard struct {
 	key rune
-
-	transform func(uint8) uint8
-	addrMask  uint8
 }
 
 // the value of keyboard.key when nothing is being pressed
@@ -128,8 +128,6 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 			buttonReg: addresses.INPT4,
 			axis:      0xf0,
 			button:    stickButtonOff,
-			transform: func(n uint8) uint8 { return n },
-			addrMask:  0x0f,
 		},
 		paddle: paddle{
 			puckReg:    addresses.INPT0,
@@ -138,11 +136,12 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 			resistance: 0.0,
 		},
 		keyboard: keyboard{
-			key:       noKey,
-			transform: func(n uint8) uint8 { return n },
-			addrMask:  0x0f,
+			key: noKey,
 		},
-		ddr: 0x00,
+		normaliseOnRead:  func(n uint8) uint8 { return n & 0xf0 },
+		normaliseOnWrite: func(n uint8) uint8 { return n },
+		writeMask:        0x0f,
+		ddr:              0x00,
 	}
 
 	hc.port = port{
@@ -151,7 +150,7 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 	}
 
 	// write initial joystick values
-	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
 
 	return hc
@@ -169,8 +168,6 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 			buttonReg: addresses.INPT5,
 			axis:      0xf0,
 			button:    stickButtonOff,
-			transform: func(n uint8) uint8 { return n >> 4 },
-			addrMask:  0xf0,
 		},
 		paddle: paddle{
 			puckReg:    addresses.INPT1,
@@ -179,11 +176,12 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 			resistance: 0.0,
 		},
 		keyboard: keyboard{
-			key:       noKey,
-			transform: func(n uint8) uint8 { return n >> 4 },
-			addrMask:  0xf0,
+			key: noKey,
 		},
-		ddr: 0x00,
+		normaliseOnRead:  func(n uint8) uint8 { return (n & 0x0f) << 4 },
+		normaliseOnWrite: func(n uint8) uint8 { return n >> 4 },
+		writeMask:        0xf0,
+		ddr:              0x00,
 	}
 
 	hc.port = port{
@@ -192,7 +190,7 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 	}
 
 	// write initial joystick values
-	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 
 	return hc
@@ -224,7 +222,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x40
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 
 	case Right:
 		b, ok := value.(bool)
@@ -239,7 +237,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x80
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 
 	case Up:
 		b, ok := value.(bool)
@@ -254,7 +252,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x10
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 
 	case Down:
 		b, ok := value.(bool)
@@ -269,7 +267,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x20
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.stick.transform(hc.stick.axis), hc.stick.addrMask)
+		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
 
 	case Fire:
 		b, ok := value.(bool)
@@ -361,12 +359,12 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 // set DDR value. values should be normalised to the upper nibble before being
 // passed to the function. this simplifies the implementation.
 func (hc *HandController) setDDR(data uint8) {
-	hc.ddr = data
+	hc.ddr = hc.normaliseOnRead(data)
 
 	// if the ddr value is being such so that SWCHA is input rather than output
 	// the the expected controller is most probably a keyboard. not sure what
 	// we can say if ddr is only partially set to input.
-	if data == 0xf0 {
+	if hc.ddr == 0xf0 {
 		hc.which = KeyboardType
 	}
 }
@@ -378,86 +376,85 @@ func (hc *HandController) readKeyboard(data uint8) {
 		return
 	}
 
-	if hc.keyboard.key == noKey {
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
-		return
-	}
+	data = hc.normaliseOnRead(data)
 
 	var column int
 
 	switch hc.keyboard.key {
 	// row 0
 	case '1':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 1
 		}
 	case '2':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 2
 		}
 	case '3':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 3
 		}
 
 		// row 2
 	case '4':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 1
 		}
 	case '5':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 2
 		}
 	case '6':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 3
 		}
 
 		// row 3
 	case '7':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 1
 		}
 	case '8':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 2
 		}
 	case '9':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 3
 		}
 
 		// row 4
 	case '*':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 1
 		}
 	case '0':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 2
 		}
 	case '#':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 3
 		}
 	}
 
 	switch column {
 	case 1:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(data), hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
 	case 2:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(data), hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
 	case 3:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
+	default:
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
 	}
 }
 
@@ -466,7 +463,7 @@ func (hc *HandController) readKeyboard(data uint8) {
 func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
 	if hc.stick.button == stickButtonOff {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, hc.ddr)
 	}
 }
 
@@ -477,7 +474,7 @@ func (hc *HandController) ground() {
 	}
 
 	hc.paddle.charge = 0
-	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
+	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, hc.ddr)
 }
 
 // the rate at which the controller capacitor fills. if the paddle resistor can
@@ -488,7 +485,7 @@ func (hc *HandController) ground() {
 // no idea if this value is correct but it feels good during play so I'm going
 // to go with it for now.
 //
-// !!TODO: accurate paddle timings and sensitivity
+// !!TODO: accurate paddle timings and sensitivity or at least a justification
 const paddleSensitivity = 0.01
 
 // recharge() is called every video step via Input.Step()
@@ -513,7 +510,7 @@ func (hc *HandController) recharge() {
 		if hc.paddle.ticks >= hc.paddle.resistance {
 			hc.paddle.ticks = 0
 			hc.paddle.charge++
-			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
+			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, hc.ddr)
 		}
 	}
 }
