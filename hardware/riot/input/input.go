@@ -34,13 +34,13 @@ type inputMemory struct {
 	tia  bus.InputDeviceBus
 }
 
-// ControlBits represents the bits in the VBLANK register that control
+// VBlankBits represents the bits in the VBLANK register that control
 // paddle-grounding and joystick-latching.  The VBLANK address is handled by
 // the TIA but these bits in that register are needed by the input system.
 //
-// ControlBits is instantiated by NewInput() and then a reference given
+// VBlankBits is instantiated by NewInput() and then a reference given
 // to the TIA (by NewVCS() in the hardware package)
-type ControlBits struct {
+type VBlankBits struct {
 	groundPaddles   bool
 	latchFireButton bool
 
@@ -49,14 +49,14 @@ type ControlBits struct {
 }
 
 // SetGroundPaddles sets the state of the groundPaddles value
-func (c *ControlBits) SetGroundPaddles(v bool) {
+func (c *VBlankBits) SetGroundPaddles(v bool) {
 	c.groundPaddles = v
 	c.inp.HandController0.ground()
 	c.inp.HandController1.ground()
 }
 
 // SetLatchFireButton sets the state of the latchFireButton value
-func (c *ControlBits) SetLatchFireButton(v bool) {
+func (c *VBlankBits) SetLatchFireButton(v bool) {
 	c.latchFireButton = v
 	if !v {
 		c.inp.HandController0.unlatch()
@@ -66,8 +66,8 @@ func (c *ControlBits) SetLatchFireButton(v bool) {
 
 // Input implements the input/output part of the RIOT (the IO in RIOT)
 type Input struct {
-	mem     inputMemory
-	Control ControlBits
+	mem        inputMemory
+	VBlankBits VBlankBits
 
 	Panel           *Panel
 	HandController0 *HandController
@@ -87,20 +87,20 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 		},
 	}
 
-	// give reference to new Input type to its ControlBits
-	inp.Control.inp = inp
+	// give reference to new Input type to its VBlankBits
+	inp.VBlankBits.inp = inp
 
 	inp.Panel = NewPanel(&inp.mem)
 	if inp.Panel == nil {
 		return nil, fmt.Errorf("can't create control panel")
 	}
 
-	inp.HandController0 = NewHandController0(&inp.mem, &inp.Control)
+	inp.HandController0 = NewHandController0(&inp.mem, &inp.VBlankBits)
 	if inp.HandController0 == nil {
 		return nil, fmt.Errorf("can't create player 0 port")
 	}
 
-	inp.HandController1 = NewHandController1(&inp.mem, &inp.Control)
+	inp.HandController1 = NewHandController1(&inp.mem, &inp.VBlankBits)
 	if inp.HandController1 == nil {
 		return nil, fmt.Errorf("can't create player 1 port")
 	}
@@ -130,6 +130,9 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 
 		// write data back to memory
 		inp.mem.riot.InputDeviceWrite(addresses.SWACNT, data.Value, 0x00)
+
+		// update SWCHA too. !!TODO: not sure if this is correct just yet.
+		inp.mem.riot.InputDeviceWrite(addresses.SWCHA, 0xff^data.Value, 0x00)
 
 	case "SWCHB":
 		panic("Port B; console switches (hardwired as input)")

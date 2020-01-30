@@ -51,7 +51,7 @@ const (
 type HandController struct {
 	port
 	mem     *inputMemory
-	control *ControlBits
+	control *VBlankBits
 
 	// which controller type is currently being used
 	which ControllerType
@@ -118,7 +118,7 @@ const noKey = ' '
 
 // NewHandController0 is the preferred method of creating a new instance of
 // HandController for representing hand controller zero
-func NewHandController0(mem *inputMemory, control *ControlBits) *HandController {
+func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 	hc := &HandController{
 		mem:     mem,
 		control: control,
@@ -159,7 +159,7 @@ func NewHandController0(mem *inputMemory, control *ControlBits) *HandController 
 
 // NewHandController1 is the preferred method of creating a new instance of
 // HandController for representing hand controller one
-func NewHandController1(mem *inputMemory, control *ControlBits) *HandController {
+func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 	hc := &HandController{
 		mem:     mem,
 		control: control,
@@ -379,9 +379,9 @@ func (hc *HandController) readKeyboard(data uint8) {
 	}
 
 	if hc.keyboard.key == noKey {
-		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(0xf0), hc.keyboard.addrMask)
 		return
 	}
 
@@ -390,74 +390,74 @@ func (hc *HandController) readKeyboard(data uint8) {
 	switch hc.keyboard.key {
 	// row 0
 	case '1':
-		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 1
 		}
 	case '2':
-		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 2
 		}
 	case '3':
-		if data&0x70 == 0x70 { //&& hc.ddr&0x70 == 0x70 {
+		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
 			column = 3
 		}
 
 		// row 2
 	case '4':
-		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 1
 		}
 	case '5':
-		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 2
 		}
 	case '6':
-		if data&0xb0 == 0xb0 { //&& hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
 			column = 3
 		}
 
 		// row 3
 	case '7':
-		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 1
 		}
 	case '8':
-		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 2
 		}
 	case '9':
-		if data&0xd0 == 0xd0 { //&& hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
 			column = 3
 		}
 
 		// row 4
 	case '*':
-		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 1
 		}
 	case '0':
-		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 2
 		}
 	case '#':
-		if data&0xe0 == 0xe0 { //&& hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
 			column = 3
 		}
 	}
 
 	switch column {
 	case 1:
-		hc.mem.riot.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(data), hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0x00, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0x00, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
 	case 2:
-		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0x00, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(data), hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT4, 0x00, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, 0xf0, hc.keyboard.addrMask)
 	case 3:
-		hc.mem.riot.InputDeviceWrite(addresses.INPT0, 0x00, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT1, 0x00, hc.keyboard.addrMask)
-		hc.mem.riot.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(data), hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, 0xf0, hc.keyboard.addrMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.keyboard.transform(data), hc.keyboard.addrMask)
 	}
 }
 

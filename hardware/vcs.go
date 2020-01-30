@@ -68,7 +68,7 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, &vcs.RIOT.Input.Control)
+	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, &vcs.RIOT.Input.VBlankBits)
 	if err != nil {
 		return nil, err
 	}
