@@ -128,7 +128,7 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 			err = vcs.HandController0.Handle(input.Fire, true)
 			handled = true
 
-		// keypad
+		// keypad (left player)
 		case "1", "2", "3":
 			err = vcs.HandController0.Handle(input.KeypadDown, rune(ev.Key[0]))
 			handled = true
@@ -159,6 +159,44 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 		case "C":
 			err = vcs.HandController0.Handle(input.KeypadDown, '#')
 			handled = true
+
+		// keypad (right player)
+		case "4":
+			err = vcs.HandController1.Handle(input.KeypadDown, '1')
+			handled = true
+		case "5":
+			err = vcs.HandController1.Handle(input.KeypadDown, '2')
+			handled = true
+		case "6":
+			err = vcs.HandController1.Handle(input.KeypadDown, '3')
+			handled = true
+		case "R":
+			err = vcs.HandController1.Handle(input.KeypadDown, '4')
+			handled = true
+		case "T":
+			err = vcs.HandController1.Handle(input.KeypadDown, '5')
+			handled = true
+		case "Y":
+			err = vcs.HandController1.Handle(input.KeypadDown, '6')
+			handled = true
+		case "F":
+			err = vcs.HandController1.Handle(input.KeypadDown, '7')
+			handled = true
+		case "G":
+			err = vcs.HandController1.Handle(input.KeypadDown, '8')
+			handled = true
+		case "H":
+			err = vcs.HandController1.Handle(input.KeypadDown, '9')
+			handled = true
+		case "V":
+			err = vcs.HandController1.Handle(input.KeypadDown, '*')
+			handled = true
+		case "B":
+			err = vcs.HandController1.Handle(input.KeypadDown, '0')
+			handled = true
+		case "N":
+			err = vcs.HandController1.Handle(input.KeypadDown, '#')
+			handled = true
 		}
 	} else {
 		switch ev.Key {
@@ -187,9 +225,14 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 			err = vcs.HandController0.Handle(input.Fire, false)
 			handled = true
 
-		// keypad
+		// keypad (left player)
 		case "1", "2", "3", "Q", "W", "E", "A", "S", "D", "Z", "X", "C":
 			err = vcs.HandController0.Handle(input.KeypadUp, nil)
+			handled = true
+
+		// keypad (right player)
+		case "4", "5", "6", "R", "T", "Y", "F", "G", "H", "V", "B", "N":
+			err = vcs.HandController1.Handle(input.KeypadUp, nil)
 			handled = true
 		}
 	}

@@ -129,7 +129,8 @@ const bestGuessSensitivity = 0.01
 
 // the keypad type implements the keypad or "keyboard" controller
 type keypad struct {
-	key rune
+	column [3]addresses.ChipRegister
+	key    rune
 }
 
 // the value of keypad.key when nothing is being pressed
@@ -154,7 +155,8 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 			sensitivity: bestGuessSensitivity,
 		},
 		keypad: keypad{
-			key: noKey,
+			column: [3]addresses.ChipRegister{addresses.INPT0, addresses.INPT1, addresses.INPT4},
+			key:    noKey,
 		},
 		normaliseOnRead:  func(n uint8) uint8 { return n & 0xf0 },
 		normaliseOnWrite: func(n uint8) uint8 { return n },
@@ -193,7 +195,8 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 			sensitivity: bestGuessSensitivity,
 		},
 		keypad: keypad{
-			key: noKey,
+			column: [3]addresses.ChipRegister{addresses.INPT2, addresses.INPT3, addresses.INPT5},
+			key:    noKey,
 		},
 		normaliseOnRead:  func(n uint8) uint8 { return (n & 0x0f) << 4 },
 		normaliseOnWrite: func(n uint8) uint8 { return n >> 4 },
@@ -466,21 +469,21 @@ func (hc *HandController) readKeypad(data uint8) {
 
 	switch column {
 	case 1:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0x00), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x00, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	case 2:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0x00), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x00, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	case 3:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0x00), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x00, 0x00)
 	default:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	}
 }
 
@@ -489,7 +492,7 @@ func (hc *HandController) readKeypad(data uint8) {
 func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
 	if hc.stick.button == stickButtonOff {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
+		hc.writeSWCHA(stickButtonOff, hc.paddle.buttonMask)
 	}
 }
 
