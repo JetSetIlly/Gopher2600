@@ -160,30 +160,50 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Currently only joysticks and paddles for player 1 (the left player) are supported. The code supports the other player but the UI
-is not up to it just yet.
+Joystick, paddle and keypad inputs are supported. Currently, only joysticks and paddles for the left player are available however. 
 
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
 
-The paddle is available through the mouse but only after the window has been clicked and the mouse is "captured". The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball I suppose) left and right and using the left button in place of the paddle's fire button. The mouse can be "released" by pressing the right mouse button.
+The paddle is available through the mouse but only after the window has been clicked and the mouse "captured". The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball) left and right and using the left button in place of the paddle's fire button. The mouse can be "released" by pressing the right mouse button. Note that if the game does not support or expect paddle input then the joystick will still work even if the mouse is "captured"
 
-Note that the joystick can still be controlled even when the mouse has been captured and is in "paddle mode".
+Keypad input is available only when the emulation thinks it is required. When keypad input is expected, neither joystick or paddle controls will work.
 
-The debugger's screen display works in much the same way. Although note that, when not in "paddle mode", using the right mouse button on the debugger's screen display will create a break point at the mouse's location.
-
-An important note about the hand controller implementation: I have tried a novel approach whereby the emulator tries to keep track of which controller type is being used. It is hoped that this will negate the need to tell the emulator (either at the command line or through the setup file) which controller to use for any given ROM. This approach has worked well so far but it is an idea that may need to be revisited.
-
-### Joystick Player 0
+### Joystick (left player)
 
 * Cursor keys for stick direction
 * Space bar for fire
 
-### Paddle Player 0
+### Paddle (right player)
 
 * Left mouse button in window to capture mouse
 * Mouse left/right motion for paddle motion
 * Left mouse button for paddle's fire button
 * Right mouse button to leave "paddle mode"
+
+### Keypad
+
+|   |VCS|   |
+|:-:|:-:|:-:|
+| 1 | 2 | 3 |		
+| 4 | 5 | 6 |		
+| 7 | 8 | 9 |		
+| * | 0 | # |	 	
+
+Using the guide above, we can see the corresponding keys on the PC keyboard for the left and right players.
+
+|   |left|   |
+|:-:|:-:|:-:|
+| 1 | 2 | 3 |		
+| q | w | e |		
+| a | s | d |		
+| z | x | c |	 	
+
+|   |right|   |
+|:-:|:-:|:-:|
+| 4 | 5 | 6 |		
+| r | t | y |		
+| f | g | h |		
+| v | b | n |	 	
 
 ## Panel
 
@@ -277,7 +297,6 @@ very poor.
 
 ## Missing Features
 
-1. Keyboard, driving, lightgun controllers
 1. Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
 1. Unimplemented cartridge formats
