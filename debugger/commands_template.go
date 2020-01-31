@@ -54,8 +54,9 @@ const (
 	cmdDisplay     = "DISPLAY"
 
 	// user input
-	cmdPanel = "PANEL"
-	cmdStick = "STICK"
+	cmdPanel  = "PANEL"
+	cmdStick  = "STICK"
+	cmdKeypad = "KEYPAD"
 
 	// halt conditions
 	cmdBreak = "BREAK"
@@ -104,6 +105,7 @@ var commandTemplate = []string{
 	// user input
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
 	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
+	cmdKeypad + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
 	cmdBreak + " [%<target>S %<value>N|%<pc value>N] {& %<target>S %<value>N|& %<value>N}",

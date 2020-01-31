@@ -366,6 +366,11 @@ Specify the player with the 0 or 1 arguments.
 Note that it is possible to set the stick combinations that would normally not
 be possible with a joystick. For example, LEFT and RIGHT set at the same time.`,
 
+	cmdKeypad: `Set keyboard input for Player 0 or Player 1 for the next and subsequent
+video cycles.
+
+Specify the player with the 0 or 1 arguments.`,
+
 	// halt conditions
 	cmdBreak: `Halt execution of the emulation when a specific value is "loaded" into a named
 target. A target is a part of the emulation hardware that can be interegated

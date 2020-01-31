@@ -958,6 +958,32 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 			return doNothing, err
 		}
 
+	case cmdKeypad:
+		var err error
+
+		pad, _ := tokens.Get()
+		key, _ := tokens.Get()
+
+		n, _ := strconv.Atoi(pad)
+		switch n {
+		case 0:
+			if strings.ToUpper(key) == "NONE" {
+				err = dbg.vcs.HandController0.Handle(input.KeypadUp, nil)
+			} else {
+				err = dbg.vcs.HandController0.Handle(input.KeypadDown, rune(key[0]))
+			}
+		case 1:
+			if strings.ToUpper(key) == "NONE" {
+				err = dbg.vcs.HandController1.Handle(input.KeypadUp, nil)
+			} else {
+				err = dbg.vcs.HandController1.Handle(input.KeypadDown, rune(key[0]))
+			}
+		}
+
+		if err != nil {
+			return doNothing, err
+		}
+
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
