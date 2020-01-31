@@ -221,13 +221,31 @@ func (hc *HandController) String() string {
 	return "nothing yet"
 }
 
-// writing to SWCHA requires some filtering according to the data direction
-// register (DDR). joysticks always write their axis data to SWCHA and paddles
-// always write fire button data to SWCHA, according to a mask for which hand
-// controller is issuing the call
-func (hc *HandController) writeSWCHA(data uint8, mask uint8) {
-	data = hc.normaliseOnWrite(data & (hc.ddr ^ 0xff))
-	hc.mem.riot.InputDeviceWrite(addresses.SWCHA, data, mask)
+// SwitchType causes the HandController to swich controller type. If the type
+// is switched or if the type is already of the requested type then true is
+// returned.
+func (hc *HandController) SwitchType(prospective ControllerType) bool {
+	if hc.which == prospective {
+		return true
+	}
+
+	switch prospective {
+	case JoystickType:
+		if hc.which != KeypadType {
+			hc.which = JoystickType
+			return true
+		}
+	case PaddleType:
+		if hc.which != KeypadType {
+			hc.which = PaddleType
+			return true
+		}
+	case KeypadType:
+		hc.which = KeypadType
+		return true
+	}
+
+	return false
 }
 
 // Handle implements Port interface
@@ -244,7 +262,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = JoystickType
+		if !hc.SwitchType(JoystickType) {
+			return nil
+		}
 
 		if b {
 			hc.stick.axis ^= 0x40
@@ -259,7 +279,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = JoystickType
+		if !hc.SwitchType(JoystickType) {
+			return nil
+		}
 
 		if b {
 			hc.stick.axis ^= 0x80
@@ -274,7 +296,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = JoystickType
+		if !hc.SwitchType(JoystickType) {
+			return nil
+		}
 
 		if b {
 			hc.stick.axis ^= 0x10
@@ -289,7 +313,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = JoystickType
+		if !hc.SwitchType(JoystickType) {
+			return nil
+		}
 
 		if b {
 			hc.stick.axis ^= 0x20
@@ -304,7 +330,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = JoystickType
+		if !hc.SwitchType(JoystickType) {
+			return nil
+		}
 
 		// record state of fire button regardless of latch bit. we need to know
 		// the physical state for when the latch bit is unset
@@ -326,7 +354,9 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		hc.which = PaddleType
+		if !hc.SwitchType(PaddleType) {
+			return nil
+		}
 
 		var v uint8
 
@@ -343,7 +373,10 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "float32")
 		}
 
-		hc.which = PaddleType
+		if !hc.SwitchType(PaddleType) {
+			return nil
+		}
+
 		hc.paddle.resistance = 1.0 - f
 
 	case KeypadDown:
@@ -352,7 +385,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "rune")
 		}
 
-		hc.which = KeypadType
+		// keypad switched to only when DDR is switched
 
 		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '0' && v != '#' {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
@@ -366,7 +399,8 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 			return errors.New(errors.BadInputEventType, event, "nil")
 		}
 
-		hc.which = KeypadType
+		// keypad switched to only when DDR is switched
+
 		hc.keypad.key = noKey
 
 	case Unplug:
@@ -394,7 +428,10 @@ func (hc *HandController) setDDR(data uint8) {
 	// the the expected controller is most probably a keypad. not sure what
 	// we can say if ddr is only partially set to input.
 	if hc.ddr == 0xf0 {
-		hc.which = KeypadType
+		hc.SwitchType(KeypadType)
+	} else {
+		// switch to Joystick if DDR is anything other than 0xf0
+		hc.SwitchType(JoystickType)
 	}
 }
 
@@ -490,14 +527,25 @@ func (hc *HandController) readKeypad(data uint8) {
 // VBLANK bit 6 has been set. joystick button will latch, meaning that
 // releasing the fire button has no immediate effect
 func (hc *HandController) unlatch() {
+	if hc.which != JoystickType {
+		return
+	}
+
 	// only unlatch if button is not pressed
 	if hc.stick.button == stickButtonOff {
-		hc.writeSWCHA(stickButtonOff, hc.paddle.buttonMask)
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, stickButtonOff, 0x00)
 	}
 }
 
 // VBLANK bit 7 has been set. input capacitor is grounded.
 func (hc *HandController) ground() {
+	// don't allow grounding unless controller type is paddle type. if we don't
+	// then it will play havoc with keyboard controllers.
+	//
+	// I'm not sure if this is correct. the keypad only seems to meddle with
+	// the the high bit of INPT1 and I'm now wondering if the charge value ever
+	// reaches the last bit (?) if it doesn't we can change the recharge
+	// function and not worry about clobbering the high bit
 	if hc.which != PaddleType {
 		return
 	}
@@ -508,6 +556,8 @@ func (hc *HandController) ground() {
 
 // recharge() is called every video step via Input.Step()
 func (hc *HandController) recharge() {
+	// as in the case of ground() I'm not sure if restricting recharge() events
+	// to the paddle type is strictly necessary.
 	if hc.which != PaddleType {
 		return
 	}
@@ -531,4 +581,13 @@ func (hc *HandController) recharge() {
 			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 		}
 	}
+}
+
+// writing to SWCHA requires some filtering according to the data direction
+// register (DDR). joysticks always write their axis data to SWCHA and paddles
+// always write fire button data to SWCHA, according to a mask for which hand
+// controller is issuing the call
+func (hc *HandController) writeSWCHA(data uint8, mask uint8) {
+	data = hc.normaliseOnWrite(data & (hc.ddr ^ 0xff))
+	hc.mem.riot.InputDeviceWrite(addresses.SWCHA, data, mask)
 }

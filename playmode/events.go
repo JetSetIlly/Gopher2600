@@ -63,11 +63,9 @@ func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS, scr gui
 
 	switch ev.Button {
 	case gui.MouseButtonLeft:
-		handled = true
-
 		err = scr.SetFeature(gui.ReqCaptureMouse, true)
 		if err != nil {
-			return handled, err
+			return true, err
 		}
 
 		if ev.Down {
@@ -75,6 +73,8 @@ func MouseButtonEventHandler(ev gui.EventMouseButton, vcs *hardware.VCS, scr gui
 		} else {
 			err = vcs.HandController0.Handle(input.PaddleFire, false)
 		}
+
+		handled = true
 
 	case gui.MouseButtonRight:
 		err = scr.SetFeature(gui.ReqCaptureMouse, false)
