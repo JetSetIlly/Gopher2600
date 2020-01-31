@@ -114,8 +114,8 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 func (inp *Input) ReadMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
-		inp.HandController0.readKeyboard(data.Value)
-		inp.HandController1.readKeyboard(data.Value)
+		inp.HandController0.readKeypad(data.Value)
+		inp.HandController1.readKeypad(data.Value)
 
 		// write data back to memory
 		inp.mem.riot.InputDeviceWrite(addresses.SWCHA, data.Value, 0x00)

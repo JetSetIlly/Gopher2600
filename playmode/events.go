@@ -94,6 +94,7 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 
 	if ev.Down && ev.Mod == gui.KeyModNone {
 		switch ev.Key {
+		// panel
 		case "F1":
 			err = vcs.Panel.Handle(input.PanelSelect, true)
 			handled = true
@@ -109,6 +110,8 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 		case "F5":
 			err = vcs.Panel.Handle(input.PanelTogglePlayer1Pro, nil)
 			handled = true
+
+		// joystick
 		case "Left":
 			err = vcs.HandController0.Handle(input.Left, true)
 			handled = true
@@ -124,45 +127,50 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 		case "Space":
 			err = vcs.HandController0.Handle(input.Fire, true)
 			handled = true
+
+		// keypad
 		case "1", "2", "3":
-			err = vcs.HandController0.Handle(input.KeyboardDown, rune(ev.Key[0]))
+			err = vcs.HandController0.Handle(input.KeypadDown, rune(ev.Key[0]))
 			handled = true
 		case "Q":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '4')
+			err = vcs.HandController0.Handle(input.KeypadDown, '4')
 			handled = true
 		case "W":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '5')
+			err = vcs.HandController0.Handle(input.KeypadDown, '5')
 			handled = true
 		case "E":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '6')
+			err = vcs.HandController0.Handle(input.KeypadDown, '6')
 			handled = true
 		case "A":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '7')
+			err = vcs.HandController0.Handle(input.KeypadDown, '7')
 			handled = true
 		case "S":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '8')
+			err = vcs.HandController0.Handle(input.KeypadDown, '8')
 			handled = true
 		case "D":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '9')
+			err = vcs.HandController0.Handle(input.KeypadDown, '9')
 			handled = true
 		case "Z":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '*')
+			err = vcs.HandController0.Handle(input.KeypadDown, '*')
 			handled = true
 		case "X":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '0')
+			err = vcs.HandController0.Handle(input.KeypadDown, '0')
 			handled = true
 		case "C":
-			err = vcs.HandController0.Handle(input.KeyboardDown, '#')
+			err = vcs.HandController0.Handle(input.KeypadDown, '#')
 			handled = true
 		}
 	} else {
 		switch ev.Key {
+		// panel
 		case "F1":
 			err = vcs.Panel.Handle(input.PanelSelect, false)
 			handled = true
 		case "F2":
 			err = vcs.Panel.Handle(input.PanelReset, false)
 			handled = true
+
+		// josytick
 		case "Left":
 			err = vcs.HandController0.Handle(input.Left, false)
 			handled = true
@@ -178,8 +186,10 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 		case "Space":
 			err = vcs.HandController0.Handle(input.Fire, false)
 			handled = true
+
+		// keypad
 		case "1", "2", "3", "Q", "W", "E", "A", "S", "D", "Z", "X", "C":
-			err = vcs.HandController0.Handle(input.KeyboardUp, nil)
+			err = vcs.HandController0.Handle(input.KeypadUp, nil)
 			handled = true
 		}
 	}

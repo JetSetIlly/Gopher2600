@@ -29,10 +29,10 @@ import (
 // is not being used. if we did then joystick input would be wrong.
 //
 // we default to the joystick type which should be fine. for non-joystick
-// games, the paddle/keyboard will be activated once the user starts using the
+// games, the paddle/keypad will be activated once the user starts using the
 // corresponding controls.
 //
-// if a paddle/keyboard ROM requires paddle/keyboard probing from the instant
+// if a paddle/keypad ROM requires paddle/keypad probing from the instant
 // the machine starts (are there any examples of this?) then we will need to
 // initialise the hand controller accordingly, using the setup system.
 type ControllerType int
@@ -41,7 +41,7 @@ type ControllerType int
 const (
 	JoystickType ControllerType = iota
 	PaddleType
-	KeyboardType
+	KeypadType
 )
 
 // HandController represents the "joystick" port on the VCS. The different
@@ -57,9 +57,9 @@ type HandController struct {
 	which ControllerType
 
 	// controller types
-	stick    stick
-	paddle   paddle
-	keyboard keyboard
+	stick  stick
+	paddle paddle
+	keypad keypad
 
 	// data direction register. for simplicity, the bits should be normalised
 	// such that only the upper nibble is used. in reality, player 0
@@ -67,7 +67,7 @@ type HandController struct {
 	// the lower nibble.
 	ddr uint8
 
-	// the two hand controllers, for both joysticks and keyboards, share
+	// the two hand controllers, for both joysticks and keypads, share
 	// registers for certain values. In each instance where this is the case,
 	// HandController0 uses the upper nibble and HandControll1er1 uses the
 	// lower nibble.
@@ -86,11 +86,11 @@ const stickButtonOff = uint8(0x80)
 
 // the stick type implements the digital "joystick" controller
 type stick struct {
-	// address in RIOT memory for joystick direction input
-	axisReg addresses.ChipRegister
-
 	// the address in TIA memory for joystick fire button
 	buttonReg addresses.ChipRegister
+
+	// joysticks always write axis data to SWCHA and adjusted according to
+	// normaliseOnWrite() in the HandController
 
 	// values indicating joystick state
 	axis   uint8
@@ -99,21 +99,40 @@ type stick struct {
 
 // the paddle type implements the "paddle" hand controller
 type paddle struct {
-	puckReg    addresses.ChipRegister
-	buttonReg  addresses.ChipRegister
+	puckReg addresses.ChipRegister
+
+	//
 	buttonMask uint8
 
+	// values indicating paddle state
 	charge     uint8
 	resistance float32
-	ticks      float32
+
+	// sensitivity governs the rate at which the controller capacitor fills.
+	// the tick value is increased by the sensitivity value every cycle; once
+	// it reaches or exceeds the resistance value, the charge value is
+	// increased.
+	sensitivity float32
+	ticks       float32
 }
 
-// the keyboard type implements the "keyboard" or "keypad" controller
-type keyboard struct {
+// !!TODO: accurate paddle timings and sensitivity
+//
+// for now our, best guess is 0.01. no idea if this value is correct but it
+// feels good during play so I'm going to go with it.
+//
+// justification: if the paddle resistor can take a value between 0.0 and 1.0
+// then the maximum number of ticks required to increase the capacitor charge
+// by 1 is 100. The maximum charge is 255 so it takes a maximum of 25500 ticks
+// to fill the capacitor.
+const bestGuessSensitivity = 0.01
+
+// the keypad type implements the keypad or "keyboard" controller
+type keypad struct {
 	key rune
 }
 
-// the value of keyboard.key when nothing is being pressed
+// the value of keypad.key when nothing is being pressed
 const noKey = ' '
 
 // NewHandController0 is the preferred method of creating a new instance of
@@ -124,18 +143,17 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 		control: control,
 		which:   JoystickType,
 		stick: stick{
-			axisReg:   addresses.SWCHA,
 			buttonReg: addresses.INPT4,
 			axis:      0xf0,
 			button:    stickButtonOff,
 		},
 		paddle: paddle{
-			puckReg:    addresses.INPT0,
-			buttonReg:  addresses.SWCHA,
-			buttonMask: 0x7f,
-			resistance: 0.0,
+			puckReg:     addresses.INPT0,
+			buttonMask:  0x7f,
+			resistance:  0.0,
+			sensitivity: bestGuessSensitivity,
 		},
-		keyboard: keyboard{
+		keypad: keypad{
 			key: noKey,
 		},
 		normaliseOnRead:  func(n uint8) uint8 { return n & 0xf0 },
@@ -150,7 +168,7 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 	}
 
 	// write initial joystick values
-	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+	hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
 
 	return hc
@@ -164,18 +182,17 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 		control: control,
 		which:   JoystickType,
 		stick: stick{
-			axisReg:   addresses.SWCHA,
 			buttonReg: addresses.INPT5,
 			axis:      0xf0,
 			button:    stickButtonOff,
 		},
 		paddle: paddle{
-			puckReg:    addresses.INPT1,
-			buttonReg:  addresses.SWCHA,
-			buttonMask: 0xbf,
-			resistance: 0.0,
+			puckReg:     addresses.INPT1,
+			buttonMask:  0xbf,
+			resistance:  0.0,
+			sensitivity: bestGuessSensitivity,
 		},
-		keyboard: keyboard{
+		keypad: keypad{
 			key: noKey,
 		},
 		normaliseOnRead:  func(n uint8) uint8 { return (n & 0x0f) << 4 },
@@ -190,7 +207,7 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 	}
 
 	// write initial joystick values
-	hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+	hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 
 	return hc
@@ -199,6 +216,15 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 // String implements the Port interface
 func (hc *HandController) String() string {
 	return "nothing yet"
+}
+
+// writing to SWCHA requires some filtering according to the data direction
+// register (DDR). joysticks always write their axis data to SWCHA and paddles
+// always write fire button data to SWCHA, according to a mask for which hand
+// controller is issuing the call
+func (hc *HandController) writeSWCHA(data uint8, mask uint8) {
+	data = hc.normaliseOnWrite(data & (hc.ddr ^ 0xff))
+	hc.mem.riot.InputDeviceWrite(addresses.SWCHA, data, mask)
 }
 
 // Handle implements Port interface
@@ -222,7 +248,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x40
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
 	case Right:
 		b, ok := value.(bool)
@@ -237,7 +263,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x80
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
 	case Up:
 		b, ok := value.(bool)
@@ -252,7 +278,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x10
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
 	case Down:
 		b, ok := value.(bool)
@@ -267,7 +293,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			hc.stick.axis |= 0x20
 		}
-		hc.mem.riot.InputDeviceWrite(hc.stick.axisReg, hc.normaliseOnWrite(hc.stick.axis), hc.writeMask)
+		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
 	case Fire:
 		b, ok := value.(bool)
@@ -306,7 +332,7 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		} else {
 			v = 0xff
 		}
-		hc.mem.riot.InputDeviceWrite(hc.paddle.buttonReg, v, hc.paddle.buttonMask)
+		hc.writeSWCHA(v, hc.paddle.buttonMask)
 
 	case PaddleSet:
 		f, ok := value.(float32)
@@ -317,28 +343,28 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 		hc.which = PaddleType
 		hc.paddle.resistance = 1.0 - f
 
-	case KeyboardDown:
+	case KeypadDown:
 		v, ok := value.(rune)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "rune")
 		}
 
-		hc.which = KeyboardType
+		hc.which = KeypadType
 
 		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '0' && v != '#' {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
 		}
 
-		// note key for use by readKeyboard()
-		hc.keyboard.key = v
+		// note key for use by readKeypad()
+		hc.keypad.key = v
 
-	case KeyboardUp:
+	case KeypadUp:
 		if value != nil {
 			return errors.New(errors.BadInputEventType, event, "nil")
 		}
 
-		hc.which = KeyboardType
-		hc.keyboard.key = noKey
+		hc.which = KeypadType
+		hc.keypad.key = noKey
 
 	case Unplug:
 		return errors.New(errors.InputDeviceUnplugged, hc.id)
@@ -362,17 +388,17 @@ func (hc *HandController) setDDR(data uint8) {
 	hc.ddr = hc.normaliseOnRead(data)
 
 	// if the ddr value is being such so that SWCHA is input rather than output
-	// the the expected controller is most probably a keyboard. not sure what
+	// the the expected controller is most probably a keypad. not sure what
 	// we can say if ddr is only partially set to input.
 	if hc.ddr == 0xf0 {
-		hc.which = KeyboardType
+		hc.which = KeypadType
 	}
 }
 
-// readKeyboard() is called whenever SWCHA is tickled by the CPU. the state of
+// readKeypad() is called whenever SWCHA is tickled by the CPU. the state of
 // the ddr is of importance here.
-func (hc *HandController) readKeyboard(data uint8) {
-	if hc.which != KeyboardType {
+func (hc *HandController) readKeypad(data uint8) {
+	if hc.which != KeypadType {
 		return
 	}
 
@@ -380,7 +406,7 @@ func (hc *HandController) readKeyboard(data uint8) {
 
 	var column int
 
-	switch hc.keyboard.key {
+	switch hc.keypad.key {
 	// row 0
 	case '1':
 		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
@@ -440,30 +466,30 @@ func (hc *HandController) readKeyboard(data uint8) {
 
 	switch column {
 	case 1:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0x00), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
 	case 2:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0x00), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
 	case 3:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0x00), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0x00), hc.writeMask)
 	default:
-		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
-		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask&hc.ddr)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT0, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT1, hc.normaliseOnWrite(0xf0), hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(addresses.INPT4, hc.normaliseOnWrite(0xf0), hc.writeMask)
 	}
 }
 
-// VBLANK bit 6 has been set. joystick button will latch (will not cause a
-// Fire=false signal when fire button is released)
+// VBLANK bit 6 has been set. joystick button will latch, meaning that
+// releasing the fire button has no immediate effect
 func (hc *HandController) unlatch() {
 	// only unlatch if button is not pressed
 	if hc.stick.button == stickButtonOff {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, hc.ddr)
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 	}
 }
 
@@ -474,19 +500,8 @@ func (hc *HandController) ground() {
 	}
 
 	hc.paddle.charge = 0
-	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, hc.ddr)
+	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 }
-
-// the rate at which the controller capacitor fills. if the paddle resistor can
-// take a value between 0.0 and 1.0 then the maximum number of ticks required
-// to increase the capacitor charge by 1 is 100. The maximum charge is 255 so
-// it takes a maximum of 25500 ticks to fill the capacitor.
-//
-// no idea if this value is correct but it feels good during play so I'm going
-// to go with it for now.
-//
-// !!TODO: accurate paddle timings and sensitivity or at least a justification
-const paddleSensitivity = 0.01
 
 // recharge() is called every video step via Input.Step()
 func (hc *HandController) recharge() {
@@ -506,11 +521,11 @@ func (hc *HandController) recharge() {
 	// recharge the capacitors and the microprocessor measures the time required
 	// to detect a logic 1 at each input port."
 	if hc.paddle.charge < 255 {
-		hc.paddle.ticks += paddleSensitivity
+		hc.paddle.ticks += hc.paddle.sensitivity
 		if hc.paddle.ticks >= hc.paddle.resistance {
 			hc.paddle.ticks = 0
 			hc.paddle.charge++
-			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, hc.ddr)
+			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 		}
 	}
 }
