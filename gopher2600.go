@@ -591,7 +591,7 @@ func regressAdd(md *modalflag.Modes) error {
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
-		return errors.New(errors.RegressionError, err)
+		return err
 	}
 
 	switch len(md.RemainingArgs()) {
