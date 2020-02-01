@@ -4,33 +4,41 @@ Gopher 2600 is a more-or-less complete emulation of the Atari VCS. It is
 written in Go and was begun as a project for learning that language. It has
 minimal dependencies.
 
-The files presented herewith are for the emulator only, you will have to
-provide your own Atari VCS ROMs. In the future I plan to bundle and
-distribute all the test ROMs that I have used during development, along with
-regression databases.
-
-The following document is an outline of the project only. Further documentation
-can be viewed with the Go documentation system.  With godoc installed run the
-following in the project directory:
-
-> GOMOD=$(pwd) godoc -http=localhost:1234 -index >/dev/null &
-
-Alternatively, view them at https://godoc.org/github.com/JetSetIlly/Gopher2600
-
 ## Project Features
 
+* Support for joystick, paddle and keyboard hand controllers
+	* Auto-handling of input type *
 * Debugger
 	* Line terminal interface
 	* CPU and Video stepping
 	* Breakpoints, traps, watches
 	* Script recording and playback
-* ROM patching
+* Gameplay session recording and playback
 * Regression database
 	* useful for ensuring continuing code accuracy when changing the emulation code
+* ROM patching
+* Auto-detection of television specification *
 * Setup preferences for individual ROMs
+	* Television specification
 	* Setting of panel switches
 	* Automatic application of ROM patches
-* Gameplay session recording and playback
+
+The asterisks in the list indicate that these features are by now means infallible. They have
+performed well during development but there will undoubtedly be cases when the systems fail.
+To mitigate this, Gopher2600's setup system is available (although, as yet the specifying of
+input type is not supported).
+
+There is a lot to add to the project but the principle ommissions as it currently stands are:
+
+* Not all CPU instructions are implemented. Although adding the missing opcodes
+	when encountered should be straightforward.
+* Unimplemented cartridge formats
+	* F0 Megaboy
+	* AR Arcadia
+	* X1 chip (as used in Pitfall 2)
+* Disassembly of some cartridge formats is known to be inaccurate
+
+The `FUTURE` and `todo.txt` files contain notes about other known issues.
 
 ## Performance
 
@@ -132,31 +140,31 @@ libraries for the Go SDL module to compile.
 
 Compile with GNU Make
 
-> make build
+	> make build
 
 During development, programmers may find it more useful to use the go command
 directly
 
-> go run gopher2600.go
+	> go run gopher2600.go
 
 ## Basic usage
 
 Once compiled run the executable with the help flag:
 
-> ./gopher2600 -help
+	> gopher2600 -help
 
 This will list the available sub-modes. USe the -help flag to get information
 about a sub-mode. For example:
 
-> ./gopher2600 debug -help
+	> gopher2600 debug -help
 
 To run a cartridge, you don't need to specify a sub-mode. For example:
 
-> ./gopher2600 roms/Pitfall.bin
+	> gopher2600 roms/Pitfall.bin
 
 Although if want to pass flags to the run mode you'll need to specify it.
 
-> ./gopher2600 run -help
+	> gopher2600 run -help
 
 ## Hand Controllers
 
@@ -168,19 +176,19 @@ The paddle is available through the mouse but only after the window has been cli
 
 Keypad input is available only when the emulation thinks it is required. When keypad input is expected, neither joystick or paddle controls will work.
 
-### Joystick (left player)
+#### Joystick (left player)
 
 * Cursor keys for stick direction
 * Space bar for fire
 
-### Paddle (right player)
+#### Paddle (right player)
 
 * Left mouse button in window to capture mouse
 * Mouse left/right motion for paddle motion
 * Left mouse button for paddle's fire button
 * Right mouse button to leave "paddle mode"
 
-### Keypad
+#### Keypad
 
 |   |VCS|   |
 |:-:|:-:|:-:|
@@ -205,7 +213,7 @@ Using the guide above, we can see the corresponding keys on the PC keyboard for 
 | f | g | h |		
 | v | b | n |	 	
 
-## Panel
+#### Panel
 
 The VCS panel is controlled through the function keys of the keyboard.
 
@@ -219,7 +227,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 To run the debugger use the DEBUG submode
 
-> ./gopher2600 debug roms/Pitfall.bin
+	> gopher2600 debug roms/Pitfall.bin
 
 The debugger is line oriented, which is not ideal I admit but it works quite well. Help is available with the HELP command. Help on a specific topic is available by specifying a keyword. The list below shows the currently defined keywords. The rest of the section will give a brief run down of debugger features.
 
@@ -269,25 +277,105 @@ Note that all user input is accessible through debugging commands. This is usefu
 Gopher2600 will look for certain files in a configuration directory. The location
 of this directory depends on whether the executable is a release executable (built
 with "make release") or a development executable (made with "make build"). For
-development executables the configuration directory is the following and should be
+development executables the configuration directory is named `.gopher2600` and is 
 located in the current working directory.
-
-> .gopher2600
 
 For release executables, the directory is placed in the user's configuration directory,
 the location of which is dependent on the host OS. On modern Linux systems, the location
-will be:
-
-> .config/gopher2600
+is `.config/gopher2600`.
 
 In both instances, the directory, sub-directory and files will be created automatically
 as required.
+
+## Recording Gameplay
+
+Gopher2600 can record all user input and playback for future viewing. This is a very efficient way
+of recording gameplay and results in far smaller files than a video recording. It also has other uses,
+not least for the recording of complex tests for the regression database.
+
+To record a gameplay session, use the `record` flag. Note that we have to specify the `run` mode for the
+flag to be recognised:
+
+	> gopher2600 run -record roms/Pitfall.bin
+	
+This will result in a recording file in your current working directory, with a name something like:
+
+	> recording_Pitfall_20200201_093658
+	
+To playback a recording, simply specify the recording file instead of a ROM file:
+
+	> gopher2600 recording_Pitfall_20200201_093658
+
+
+## Regression Database
+
+#### Adding
+
+To help with the development process a regression testing system was added. This will prove
+useful during further development. To quickly add a ROM to the database:
+
+	> gopher2600 regress add roms/Pitfall.bin
+
+By default, this adds a "screen digest" of the first 10 frames of the named ROM. We can alter the
+number of frames, and also other parameters with `regress add` mode flags. For example, to run for
+100 frames instead of 10:
+
+	> gopher2600 regress add -frames 100 roms/Pitfall.bin
+
+The database also supports the adding of playback files. When the test is run, the playback file
+is run as normal and success measured. To add a playback to the test data, simply specify the playback
+file instead of a rom:
+
+	> gopher2600 regress add recording_Pitfall_20200201_093658
+
+#### Listing
+
+To listing all previously add tests use the "list" sub-mode:
+
+	> gopher2600 regress list
+	> 000 [digest/video] player_switching [AUTO] frames=10  [NUSIZ]
+	> 001 [digest/video] NUSIZTest [AUTO] frames=10  [NUSIZ]
+	> 002 [digest/video] testSize2Copies_A [AUTO] frames=10  [NUSIZ]
+	> 003 [digest/video] testSize2Copies_B [AUTO] frames=10  [NUSIZ]
+	> 004 [digest/video] player8 [AUTO] frames=10  [NUSIZ]
+	> 005 [digest/video] player16 [AUTO] frames=10  [NUSIZ]
+	> 006 [digest/video] player32 [AUTO] frames=10  [NUSIZ]
+	> 007 [digest/video] barber [AUTO] frames=10  [NUSIZ]
+	> 008 [digest/video] test1.bas [AUTO] frames=10  [TIMER]
+	> 009 [digest/video] test2.bas [AUTO] frames=10  [TIMER]
+	> 010 [playback] playback_player_20200127_172838 [HMOVE/BAD THINGS]
+	> Total: 11
+
+#### Running
+
+To run all tests, use the `run` sub-mode:
+
+	> gopher2600 regress run
+
+To run specific tests, list the test numbers (as seen in the list command result)
+on the command line. For example:
+
+	> gopher2600 regress run 1 3 5
+
+#### Deleting
+
+Delete tests with the `delete` sub-mode. For example:
+
+	> gopher2600 regress delete 3
+
+## ROM Setup
+
+The setup system is currently available only to those willing to edit the "database" system by hand.
+The database is called `setupDB` and is located in the project's configuration directory. The format
+of the database is described in the setup package. Here is the direct link to the source
+level documentation: https://godoc.org/github.com/JetSetIlly/Gopher2600/setup
+
 
 ## WASM / HTML5 Canvas
 
 To compile and serve a WASM version of the emulator (no debugger) use:
 
-> make web
+	> make web
 
 The server will be listening on port 2600. Note that you need a file in the
 web2600/www folder named "example.bin" for anything to work.
@@ -295,13 +383,20 @@ web2600/www folder named "example.bin" for anything to work.
 Warning that this is a proof of concept only. The performance is currently
 very poor.
 
-## Missing Features
+## Futher Help
 
-1. Not all CPU instructions are implemented. Although adding the missing opcodes
-	when encountered should be straightforward.
-1. Unimplemented cartridge formats
-	* F0 Megaboy
-	* AR Arcadia
-	* X1 chip (as used in Pitfall 2)
-1. Disassembly of some cartridge formats is known to be inaccurate
-1. FUTURE and todo.txt files list other known issues
+In addition to this readme, more information can be found with the command line `-help` system.
+Many modes and sub-modes will accept operational flags. Specifying the `-help` flag will print
+a brief summary of available options.
+
+Help on debugger commands is available with the `HELP` command at the debugger command line.
+
+Finally, more information is available in the Go source files and can be viewed with the
+Go documenation system. With `godoc` installed:
+
+	> GOMOD=$(pwd) godoc -http=localhost:1234 -index >/dev/null &
+
+Alternatively, the most current version of the docs available on github can be view 
+at https://godoc.org/github.com/JetSetIlly/Gopher2600
+
+
