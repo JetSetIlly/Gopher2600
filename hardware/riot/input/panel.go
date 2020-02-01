@@ -180,7 +180,7 @@ func (pan *Panel) Handle(event Event, value EventValue) error {
 
 	// record event with the EventRecorder
 	if pan.recorder != nil {
-		return pan.recorder.RecordEvent(pan.id, event, nil)
+		return pan.recorder.RecordEvent(pan.id, event, value)
 	}
 
 	return nil

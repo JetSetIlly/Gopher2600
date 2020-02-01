@@ -151,6 +151,27 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// parse entry value into the correct type
 		entry.value = parseEntryValue(toks[fieldEventValue])
 
+		// special condition for KeypadDown and KeypadUp events.
+		//
+		// we don't like special conditions but it's difficult to get around
+		// this elegantly. is we store strings for KeypadDown events then,
+		// because the keypad is mostly numbers, converting them back from the
+		// file will require a prefix of some sort to force it to look like a
+		// string, rather than a float. that's probably a more ugly solution.
+		//
+		// any other solution requires altering the handcontroller
+		// implementation which I don't want to do - the problem is caused here
+		// and so should be mitigated here.
+		//
+		// likewise for KeypadUp events. the handcontroller Handle() function
+		// expects a nil argument for these events but we store the empty
+		// string, instead of nil.
+		if entry.event == input.KeypadDown {
+			entry.value = rune(entry.value.(float32))
+		} else if entry.event == input.KeypadUp {
+			entry.value = nil
+		}
+
 		entry.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
@@ -199,12 +220,6 @@ func parseEntryValue(value string) input.EventValue {
 	f, err = strconv.ParseFloat(value, 32)
 	if err == nil {
 		return float32(f)
-	}
-
-	var i int64
-	i, err = strconv.ParseInt(value, 10, 64)
-	if err == nil {
-		return int(i)
 	}
 
 	var b bool
