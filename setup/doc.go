@@ -23,6 +23,7 @@
 //
 //	Toggling of panel switches
 //	Apply patches to cartridge
+//	Television specification
 //
 // Menu driven selection of patches would be a nice feature to have in the
 // future. But at the moment, the package doesn't even facilitate editing of
