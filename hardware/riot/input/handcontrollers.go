@@ -421,6 +421,14 @@ func (hc *HandController) Handle(event Event, value EventValue) error {
 
 // set DDR value. values should be normalised to the upper nibble before being
 // passed to the function. this simplifies the implementation.
+//
+// The Stella Programmer's Guide says that: "a delay of 400 microseconds is
+// necessary between writing to this port and reading the TIA input ports.".
+// We're not emulating this here because as far as I can tell there is no need
+// to. More over, I'm not sure what's supposed to happen if the 400ms is not
+// adhered to.
+//
+// !!TODO: Consider adding 400ms delay for DDR settings to take effect.
 func (hc *HandController) setDDR(data uint8) {
 	hc.ddr = hc.normaliseOnRead(data)
 
