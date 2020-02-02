@@ -33,7 +33,7 @@ func setupService() {
 	sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
 }
 
-// Service implements gui.GUI interface.
+// Service implements GuiCreator interface.
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Service() {

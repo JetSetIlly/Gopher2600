@@ -19,8 +19,6 @@
 
 package gui
 
-import "io"
-
 // GUI defines the operations that can be performed on visual user interfaces.
 //
 // Note that many contexts where GUI is used also expect the GUI instance to
@@ -30,9 +28,6 @@ import "io"
 // In practice, the GUI instance may also implement the Renderer and AudioMixer
 // interfaces, also from the television package.
 type GUI interface {
-	// cleanup resources used by the gui
-	Destroy(io.Writer)
-
 	// All GUIs should implement a MetaPixelRenderer even if only a stub
 	MetaPixelRenderer
 
@@ -47,12 +42,4 @@ type GUI interface {
 	// own go routine but regardless, the event channel is used for this
 	// purpose.
 	SetEventChannel(chan Event)
-
-	// Service() should not pause or loop longer than necessary (if at all). It
-	// MUST ONLY by called as part of a larger loop from the main thread. It
-	// should service all gui events that are not safe to do in sub-threads.
-	//
-	// If the GUI framework does not require this sort of thread safety then
-	// there is no need for the Service() function to do anything.
-	Service()
 }

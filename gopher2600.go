@@ -60,15 +60,34 @@ const (
 	reqNoIntSig
 )
 
+// GuiCreator facilitates the creation, servicing and desctruction of GUIs
+// that need to be run in the main thread.
+//
+// Note that there is no Create() function because we need the freedom to
+// create the GUI how we want. Instead the creator is a channel which accepts
+// a function that returns an instance of GuiCreator.
+type GuiCreator interface {
+	// cleanup resources used by the gui
+	Destroy(io.Writer)
+
+	// Service() should not pause or loop longer than necessary (if at all). It
+	// MUST ONLY by called as part of a larger loop from the main thread. It
+	// should service all gui events that are not safe to do in sub-threads.
+	//
+	// If the GUI framework does not require this sort of thread safety then
+	// there is no need for the Service() function to do anything.
+	Service()
+}
+
 // communication between the main() function and the launch() function. this is
 // required because many gui solutions (notably SDL) require window event
 // handling (including creation) to occur on the main thread
 type mainSync struct {
 	state   chan stateReq
-	creator chan func() (gui.GUI, error)
+	creator chan func() (GuiCreator, error)
 
 	// the result of creator will be returned on either of these two channels.
-	creation      chan gui.GUI
+	creation      chan GuiCreator
 	creationError chan error
 }
 
@@ -76,8 +95,8 @@ type mainSync struct {
 func main() {
 	sync := &mainSync{
 		state:         make(chan stateReq),
-		creator:       make(chan func() (gui.GUI, error)),
-		creation:      make(chan gui.GUI),
+		creator:       make(chan func() (GuiCreator, error)),
+		creation:      make(chan GuiCreator),
 		creationError: make(chan error),
 	}
 
@@ -97,7 +116,7 @@ func main() {
 	//  3. anything in the Service() function of the most recently created GUI
 	//
 	done := false
-	var gui gui.GUI
+	var gui GuiCreator
 	for !done {
 		select {
 		case <-intChan:
@@ -240,14 +259,15 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// notify main thread of new gui creator
-		sync.creator <- func() (gui.GUI, error) {
+		sync.creator <- func() (GuiCreator, error) {
 			return sdlplay.NewSdlPlay(tv, float32(*scaling))
 		}
 
 		// wait for creator result
 		var scr gui.GUI
 		select {
-		case scr = <-sync.creation:
+		case g := <-sync.creation:
+			scr = g.(gui.GUI)
 		case err := <-sync.creationError:
 			return errors.New(errors.PlayError, err)
 		}
@@ -278,7 +298,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 func newDebug(md *modalflag.Modes, sync *mainSync) error {
 	// notify main thread of new gui creator
-	sync.creator <- func() (gui.GUI, error) {
+	sync.creator <- func() (GuiCreator, error) {
 		return sdlwindows.NewSdlWindows()
 	}
 
@@ -287,7 +307,8 @@ func newDebug(md *modalflag.Modes, sync *mainSync) error {
 	var scr gui.GUI
 
 	select {
-	case scr = <-sync.creation:
+	case g := <-sync.creation:
+		scr = g.(gui.GUI)
 	case err := <-sync.creationError:
 		return errors.New(errors.PlayError, err)
 	}
@@ -333,14 +354,15 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	defer tv.End()
 
 	// notify main thread of new gui creator
-	sync.creator <- func() (gui.GUI, error) {
+	sync.creator <- func() (GuiCreator, error) {
 		return sdldebug.NewSdlDebug(tv, 2.0)
 	}
 
 	// wait for creator result
 	var scr gui.GUI
 	select {
-	case scr = <-sync.creation:
+	case g := <-sync.creation:
+		scr = g.(gui.GUI)
 	case err := <-sync.creationError:
 		return errors.New(errors.PlayError, err)
 	}
@@ -484,14 +506,15 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 		if *display {
 			// notify main thread of new gui creator
-			sync.creator <- func() (gui.GUI, error) {
+			sync.creator <- func() (GuiCreator, error) {
 				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 
 			// wait for creator result
 			var scr gui.GUI
 			select {
-			case scr = <-sync.creation:
+			case g := <-sync.creation:
+				scr = g.(gui.GUI)
 			case err := <-sync.creationError:
 				return errors.New(errors.PlayError, err)
 			}

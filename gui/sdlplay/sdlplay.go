@@ -155,7 +155,7 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	return scr, nil
 }
 
-// Destroy implements gui.GUI interface
+// Destroy implements GuiCreator interface
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Destroy(output io.Writer) {

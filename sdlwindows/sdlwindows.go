@@ -69,7 +69,7 @@ func NewSdlWindows() (*SdlWindows, error) {
 	return wnd, nil
 }
 
-// Destroy implements gui.GUI interface
+// Destroy implements GuiCreator interface
 //
 // MUST ONLY be called from the #mainthread
 func (wnd *SdlWindows) Destroy(output io.Writer) {
@@ -98,7 +98,7 @@ func (wnd *SdlWindows) SetEventChannel(events chan gui.Event) {
 	wnd.events = events
 }
 
-// Service implements gui.GUI interface
+// Service implements GuiCreator interface
 func (wnd *SdlWindows) Service() {
 	wnd.platform.processEvents()
 	if wnd.platform.shouldStop {
