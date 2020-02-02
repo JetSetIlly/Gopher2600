@@ -184,12 +184,6 @@ func (scr *SdlPlay) Reset() error {
 	return nil
 }
 
-// IsVisible implements gui.GUI interface
-func (scr SdlPlay) IsVisible() bool {
-	flgs := scr.window.GetFlags()
-	return flgs&sdl.WINDOW_SHOWN == sdl.WINDOW_SHOWN
-}
-
 // show or hide window
 //
 // MUST NOT be called from the #mainthread

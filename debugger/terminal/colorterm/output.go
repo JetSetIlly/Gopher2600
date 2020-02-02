@@ -21,8 +21,8 @@ package colorterm
 
 import (
 	"fmt"
+	"gopher2600/ansi"
 	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/colorterm/ansi"
 )
 
 // TermPrintLine implements the terminal.Terminal interface

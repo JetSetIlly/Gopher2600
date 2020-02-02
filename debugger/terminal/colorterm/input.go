@@ -20,8 +20,8 @@
 package colorterm
 
 import (
+	"gopher2600/ansi"
 	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/colorterm/ansi"
 	"gopher2600/debugger/terminal/colorterm/easyterm"
 	"gopher2600/errors"
 	"gopher2600/gui"

@@ -42,6 +42,4 @@ const (
 	ReqDecScale           FeatureReq = "ReqDecScale"           // none
 	ReqSetFpsCap          FeatureReq = "ReqSetFpsCap"          // bool
 	ReqCaptureMouse       FeatureReq = "ReqCaptureMouse"       // bool
-
-	ReqIsVisible FeatureReq = "IsVisible" // bool
 )

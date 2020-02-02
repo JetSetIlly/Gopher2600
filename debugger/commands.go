@@ -191,9 +191,6 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
-		if !dbg.scr.IsVisible() && dbg.commandOnStep == "" {
-			dbg.printLine(terminal.StyleEmulatorInfo, "running with no display or terminal output")
-		}
 		dbg.runUntilHalt = true
 		return stepContinue, nil
 

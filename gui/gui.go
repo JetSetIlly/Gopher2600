@@ -20,17 +20,7 @@
 package gui
 
 // GUI defines the operations that can be performed on visual user interfaces.
-//
-// Note that many contexts where GUI is used also expect the GUI instance to
-// implement the Television interface from the television package. This is
-// probably best achieved by embedding an actual television implementation.
-//
-// In practice, the GUI instance may also implement the Renderer and AudioMixer
-// interfaces, also from the television package.
 type GUI interface {
-	// returns true if GUI is currently visible. false if not
-	IsVisible() bool
-
 	// send a request to set a gui feature
 	SetFeature(request FeatureReq, args ...interface{}) error
 
