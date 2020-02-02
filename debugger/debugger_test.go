@@ -76,10 +76,6 @@ func (t *mockTV) SpecIDOnCreation() string {
 	return ""
 }
 
-func (g *mockGUI) SetMetaPixel(_ gui.MetaPixel) error {
-	return nil
-}
-
 func (g *mockGUI) Destroy(_ io.Writer) {
 }
 

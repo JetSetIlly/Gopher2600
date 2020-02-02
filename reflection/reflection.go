@@ -17,17 +17,11 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package gui
+package reflection
 
-// MetaPixelRenderer implementations accepts MetaPixel values and associates it
-// in some way with the moste recent television signal
-type MetaPixelRenderer interface {
-	SetMetaPixel(MetaPixel) error
-}
-
-// MetaPixel contains additional debugging information from the last video cycle.
+// ReflectPixel contains additional debugging information from the last video cycle.
 // it is up to the Renderer to match this up with the last television signal
-type MetaPixel struct {
+type ReflectPixel struct {
 	Label string
 
 	// Renderer implementations are free to use the color information
@@ -37,4 +31,18 @@ type MetaPixel struct {
 	// whether the attribute is one that is "instant" or resolves after a
 	// short scheduled delay
 	Scheduled bool
+}
+
+// Renderer implementations accepts ReflectPixel values and associates it in
+// some way with the moste recent television signal
+type Renderer interface {
+	SetReflectPixel(ReflectPixel) error
+}
+
+// StubRenderer is a minimal implementation of reflection.StubRenderer
+type StubRenderer struct{}
+
+// SetReflectPixel implements the relfection.Renderer interface
+func (mpx *StubRenderer) SetReflectPixel(_ ReflectPixel) error {
+	return nil
 }

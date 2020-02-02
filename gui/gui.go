@@ -28,9 +28,6 @@ package gui
 // In practice, the GUI instance may also implement the Renderer and AudioMixer
 // interfaces, also from the television package.
 type GUI interface {
-	// All GUIs should implement a MetaPixelRenderer even if only a stub
-	MetaPixelRenderer
-
 	// returns true if GUI is currently visible. false if not
 	IsVisible() bool
 

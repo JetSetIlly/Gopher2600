@@ -21,7 +21,6 @@ package debugger
 
 import (
 	"gopher2600/cartridgeloader"
-	"gopher2600/debugger/reflection"
 	"gopher2600/debugger/script"
 	"gopher2600/debugger/terminal"
 	"gopher2600/debugger/terminal/commandline"
@@ -29,6 +28,7 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware"
+	"gopher2600/reflection"
 	"gopher2600/setup"
 	"gopher2600/symbols"
 	"gopher2600/television"
@@ -59,7 +59,7 @@ type Debugger struct {
 	// reflection is used to provideo additional information about the
 	// emulation. it is inherently slow so should be deactivated if not
 	// required
-	relfectMonitor *reflection.Monitor
+	reflect *reflection.Monitor
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -158,7 +158,12 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: dbg.disasm.Symtable}
 
 	// set up reflection monitor
-	dbg.relfectMonitor = reflection.NewMonitor(dbg.vcs, dbg.scr)
+	if mpx, ok := dbg.scr.(reflection.Renderer); ok {
+		dbg.reflect = reflection.NewMonitor(dbg.vcs, mpx)
+	} else {
+		mpx := &reflection.StubRenderer{}
+		dbg.reflect = reflection.NewMonitor(dbg.vcs, mpx)
+	}
 
 	// set up breakpoints/traps
 	dbg.breakpoints = newBreakpoints(dbg)

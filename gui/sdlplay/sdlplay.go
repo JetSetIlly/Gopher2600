@@ -373,10 +373,3 @@ func (scr *SdlPlay) SetAltPixel(x, y int, red, green, blue byte, vblank bool) er
 func (scr *SdlPlay) EndRendering() error {
 	return nil
 }
-
-// SetMetaPixel implements gui.MetPixelRenderer interface
-//
-// UNUSED
-func (scr *SdlPlay) SetMetaPixel(sig gui.MetaPixel) error {
-	return nil
-}

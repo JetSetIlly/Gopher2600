@@ -17,44 +17,22 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package reflection monitors the emulated hardware for conditions that would
-// otherwise not be visible. In particular it signals the MetaPixelRenderer
-// when certain memory addresses have been written to. For example, the HMOVE
-// register.
-//
-// In addition it monitors the state of WSYNC and signals the
-// MetaPixelRenderer when the CPU is idle. This makes for quite a nice visual
-// indication of "lost cycles" or potential extra cycles that could be regained
-// with a bit of reorgnisation.
-//
-// There are lots of other things we could potentially do with the reflection
-// idea but as it is, it is a little underdeveloped. In particular, it's rather
-// slow but I'm not too worried about that because this is for debugging not
-// actually playing games and such.
-//
-// I think the next thing this needs is a way of making the various monitors
-// switchable at runtime. As it is, what's compiled is what we get. If we
-// monitored every possible thing, the MetaPixelRenderer would get cluttered
-// very quickly. It would be nice to be able to define groups (say, a player
-// sprites group, a HMOVE group, etc.) and to turn them on and off according to
-// our needs.
 package reflection
 
 import (
-	"gopher2600/gui"
 	"gopher2600/hardware"
 	"gopher2600/hardware/memory"
 	"gopher2600/hardware/tia/future"
 )
 
 // Monitor watches for writes to specific video related memory locations. when
-// these locations are written to, a signal is sent to the metapixels.Renderer
+// these locations are written to, a signal is sent to the Renderer
 // implementation. moreover, if the monitor detects that the effect of the
 // memory write is delayed or sustained, then the signal is repeated as
 // appropriate.
 type Monitor struct {
 	vcs      *hardware.VCS
-	renderer gui.MetaPixelRenderer
+	renderer Renderer
 
 	groupTIA      addressMonitor
 	groupPlayer0  addressMonitor
@@ -65,37 +43,37 @@ type Monitor struct {
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type
-func NewMonitor(vcs *hardware.VCS, renderer gui.MetaPixelRenderer) *Monitor {
+func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 	mon := &Monitor{vcs: vcs, renderer: renderer}
 
 	mon.groupTIA.addresses = overlaySignals{
-		0x03: gui.MetaPixel{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255, Scheduled: true},
-		0x2a: gui.MetaPixel{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255, Scheduled: true},
-		0x2b: gui.MetaPixel{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255, Scheduled: false},
+		0x03: ReflectPixel{Label: "RSYNC", Red: 255, Green: 10, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2a: ReflectPixel{Label: "HMOVE", Red: 255, Green: 20, Blue: 0, Alpha: 255, Scheduled: true},
+		0x2b: ReflectPixel{Label: "HMCLR", Red: 255, Green: 30, Blue: 0, Alpha: 255, Scheduled: false},
 	}
 
 	mon.groupPlayer0.addresses = overlaySignals{
-		0x04: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255, Scheduled: true},
-		0x10: gui.MetaPixel{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255, Scheduled: true},
+		0x04: ReflectPixel{Label: "NUSIZx", Red: 0, Green: 10, Blue: 255, Alpha: 255, Scheduled: true},
+		0x10: ReflectPixel{Label: "RESPx", Red: 0, Green: 30, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupPlayer1.addresses = overlaySignals{
-		0x05: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: true},
-		0x11: gui.MetaPixel{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255, Scheduled: true},
+		0x05: ReflectPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: true},
+		0x11: ReflectPixel{Label: "RESPx", Red: 0, Green: 70, Blue: 255, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile0.addresses = overlaySignals{
-		0x04: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: false},
-		0x11: gui.MetaPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
+		0x04: ReflectPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 255, Alpha: 255, Scheduled: false},
+		0x11: ReflectPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupMissile1.addresses = overlaySignals{
-		0x05: gui.MetaPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255, Scheduled: false},
-		0x12: gui.MetaPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
+		0x05: ReflectPixel{Label: "NUSIZx", Red: 0, Green: 50, Blue: 0, Alpha: 255, Scheduled: false},
+		0x12: ReflectPixel{Label: "RESMx", Red: 0, Green: 70, Blue: 0, Alpha: 255, Scheduled: true},
 	}
 
 	mon.groupBall.addresses = overlaySignals{
-		0x14: gui.MetaPixel{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255, Scheduled: true},
+		0x14: ReflectPixel{Label: "RESBL", Red: 0, Green: 255, Blue: 10, Alpha: 255, Scheduled: true},
 	}
 
 	return mon
@@ -142,11 +120,11 @@ func (mon *Monitor) checkWSYNC() error {
 
 	// special handling of WSYNC signal - we want every pixel to be coloured
 	// while the RdyFlag is false, not just when WSYNC is first triggered.
-	sig := gui.MetaPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 0, Alpha: 200}
-	return mon.renderer.SetMetaPixel(sig)
+	sig := ReflectPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 0, Alpha: 200}
+	return mon.renderer.SetReflectPixel(sig)
 }
 
-type overlaySignals map[uint16]gui.MetaPixel
+type overlaySignals map[uint16]ReflectPixel
 
 type addressMonitor struct {
 	// the map of memory addresses to monitor
@@ -167,10 +145,10 @@ type addressMonitor struct {
 	// a copy of the last signal sent to the overlay renderer. we use
 	// this to repeat a signal when lastEvent is not nil and has not yet
 	// completed
-	signal gui.MetaPixel
+	signal ReflectPixel
 }
 
-func (adm *addressMonitor) check(rend gui.MetaPixelRenderer, mem *memory.VCSMemory, delay future.Observer) error {
+func (adm *addressMonitor) check(rend Renderer, mem *memory.VCSMemory, delay future.Observer) error {
 	// if a new memory location (any memory location) has been written, then
 	// note the new address and begin the delayed signalling process
 	//
@@ -186,7 +164,7 @@ func (adm *addressMonitor) check(rend gui.MetaPixelRenderer, mem *memory.VCSMemo
 	}
 
 	var signalStart bool
-	var sig gui.MetaPixel
+	var sig ReflectPixel
 
 	if adm.lastAddressFound > 0 {
 		if sig, signalStart = adm.addresses[adm.lastAddress]; signalStart {
@@ -211,7 +189,7 @@ func (adm *addressMonitor) check(rend gui.MetaPixelRenderer, mem *memory.VCSMemo
 	// not have an associated future.Event
 	if adm.lastEvent != nil || signalStart {
 		adm.lastEvent = nil
-		err := rend.SetMetaPixel(adm.signal)
+		err := rend.SetReflectPixel(adm.signal)
 		if err != nil {
 			return err
 		}

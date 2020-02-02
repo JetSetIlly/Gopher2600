@@ -78,11 +78,6 @@ func (wnd *SdlWindows) Destroy(output io.Writer) {
 	wnd.context.Destroy()
 }
 
-// SetMetaPixel implements gui.GUI interface
-func (wnd *SdlWindows) SetMetaPixel(_ gui.MetaPixel) error {
-	return nil
-}
-
 // IsVisible implements gui.GUI interface
 func (wnd *SdlWindows) IsVisible() bool {
 	return true

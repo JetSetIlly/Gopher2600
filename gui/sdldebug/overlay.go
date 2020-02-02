@@ -25,7 +25,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// the overlay type stored and renders the meta-pixels for the current tv frame
+// overlay type stored and renders addtional information for the current tv
+// frame. For example, ReflectPixels set by SetReflectPixel()
 type overlay struct {
 	renderer *sdl.Renderer
 	pixels   []byte

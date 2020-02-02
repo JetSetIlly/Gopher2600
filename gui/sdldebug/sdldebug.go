@@ -22,6 +22,7 @@ package sdldebug
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/reflection"
 	"gopher2600/television"
 	"io"
 
@@ -492,16 +493,16 @@ func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) e
 	return nil
 }
 
-// SetMetaPixel implements gui.MetPixelRenderer interface
+// SetReflectPixel implements reflection.Renderer interface
 //
 // MUST NOT be called from #mainthread
-func (scr *SdlDebug) SetMetaPixel(sig gui.MetaPixel) error {
+func (scr *SdlDebug) SetReflectPixel(mpx reflection.ReflectPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
 	if i <= scr.overlay.length()-pixelDepth {
-		scr.overlay.pixels[i] = sig.Red
-		scr.overlay.pixels[i+1] = sig.Green
-		scr.overlay.pixels[i+2] = sig.Blue
-		scr.overlay.pixels[i+3] = sig.Alpha
+		scr.overlay.pixels[i] = mpx.Red
+		scr.overlay.pixels[i+1] = mpx.Green
+		scr.overlay.pixels[i+2] = mpx.Blue
+		scr.overlay.pixels[i+3] = mpx.Alpha
 	}
 
 	return nil

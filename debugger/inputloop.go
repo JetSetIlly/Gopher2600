@@ -52,7 +52,7 @@ func (dbg *Debugger) videoCycle() error {
 	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
 
-	return dbg.relfectMonitor.Check()
+	return dbg.reflect.Check()
 }
 
 // inputLoop has two modes, defined by the videoCycle argument. when videoCycle
