@@ -28,7 +28,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SdlDebug is a simple SDL implementation of the television.Renderer interfac
+// SdlDebug is a simple SDL implementation of the television.PixelRenderer interfac
 type SdlDebug struct {
 	television.Television
 

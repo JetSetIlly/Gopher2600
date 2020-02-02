@@ -37,6 +37,7 @@ import (
 	"gopher2600/playmode"
 	"gopher2600/recorder"
 	"gopher2600/regression"
+	"gopher2600/sdlwindows"
 	"gopher2600/television"
 	"gopher2600/wavwriter"
 	"io"
@@ -157,7 +158,7 @@ func launch(sync *mainSync) {
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+	md.AddSubModes("RUN", "PLAY", "NEWDEBUG", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
 
 	p, err := md.Parse()
 	switch p {
@@ -177,6 +178,9 @@ func launch(sync *mainSync) {
 
 	case "DEBUG":
 		err = debug(md, sync)
+
+	case "NEWDEBUG":
+		err = newDebug(md, sync)
 
 	case "DISASM":
 		err = disasm(md)
@@ -267,6 +271,37 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
+	}
+
+	return nil
+}
+
+func newDebug(md *modalflag.Modes, sync *mainSync) error {
+	// notify main thread of new gui creator
+	sync.creator <- func() (gui.GUI, error) {
+		return sdlwindows.NewSdlWindows()
+	}
+
+	// wait for creator result
+
+	var scr gui.GUI
+
+	select {
+	case scr = <-sync.creation:
+	case err := <-sync.creationError:
+		return errors.New(errors.PlayError, err)
+	}
+
+	event := make(chan gui.Event)
+	scr.SetEventChannel(event)
+
+	running := true
+	for running {
+		switch (<-event).(type) {
+		case gui.EventWindowClose:
+			running = false
+		default:
+		}
 	}
 
 	return nil

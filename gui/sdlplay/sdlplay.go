@@ -32,7 +32,7 @@ import (
 const pixelDepth = 4
 const pixelWidth = 2.0
 
-// SdlPlay is a simple SDL implementation of the television.Renderer interface
+// SdlPlay is a simple SDL implementation of the television.PixelRenderer interface
 type SdlPlay struct {
 	television.Television
 
