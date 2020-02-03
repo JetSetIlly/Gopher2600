@@ -105,6 +105,13 @@ func (en *enclockifier) aboutToEnd() bool {
 	return en.endEvent.AboutToEnd()
 }
 
+func (en *enclockifier) justStarted() bool {
+	if en.endEvent == nil {
+		return false
+	}
+	return en.endEvent.JustStarted()
+}
+
 func (en *enclockifier) start() {
 	en.enable = true
 

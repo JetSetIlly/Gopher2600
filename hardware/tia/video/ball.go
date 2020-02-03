@@ -50,6 +50,9 @@ type ballSprite struct {
 	resetPixel  int
 	hmovedPixel int
 
+	// note whether the last tick was as a result of a HMOVE stuffing tick
+	lastTickFromHmove bool
+
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
@@ -61,10 +64,6 @@ type ballSprite struct {
 	enclockifier       enclockifier
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
-
-	// note whether the last tick was as a result of a HMOVE tick. see the
-	// pixel() function in the missile sprite for a detailed explanation
-	lastTickFromHmove bool
 }
 
 func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*ballSprite, error) {
@@ -334,9 +333,28 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 		return false, bs.color
 	}
 
-	// the ball sprite pixel is drawn under specific conditions
-	px := bs.enclockifier.enable ||
-		(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+	// earlyStart condition the same as for missile sprites. see missile
+	// pixel() function for details
+	earlyStart := bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd()
+
+	// the LatePhi1() condition has been added to accomodate a artefact in
+	// (on?) "Spike's Peak". On the first screen, there is a break in the path
+	// at the base of the mountain (which is correct) but without the
+	// LatePhi1() condition there is also a second break later on the path
+	// (which I don't believe should be there)
+	earlyEnd := !bs.pclk.LatePhi1() && bs.lastTickFromHmove && bs.enclockifier.aboutToEnd()
+
+	// Well blow me down! moving the cosmic ark star problem solution from the
+	// missile implementation and I can now see that I've already solved the
+	// first half of the problem for the ball sprite, almost by accident.
+	//
+	// Commenting and Keeping the original code for amusement.
+	//
+	// // the ball sprite pixel is drawn under specific conditions
+	// px := bs.enclockifier.enable ||
+	// 	(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+
+	px := !earlyEnd && (bs.enclockifier.enable || earlyStart)
 
 	if bs.verticalDelay {
 		return bs.enabledDelay && px, bs.color

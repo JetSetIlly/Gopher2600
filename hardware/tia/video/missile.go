@@ -50,6 +50,9 @@ type missileSprite struct {
 	resetPixel  int
 	hmovedPixel int
 
+	// note whether the last tick was as a result of a HMOVE stuffing tick
+	lastTickFromHmove bool
+
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
@@ -65,10 +68,6 @@ type missileSprite struct {
 	resetToPlayer      bool
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
-
-	// note whether the last tick was as a result of a HMOVE tick. see the
-	// pixel() function below for a fuller explanation.
-	lastTickFromHmove bool
 }
 
 func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*missileSprite, error) {
@@ -220,7 +219,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		return
 	}
 
-	// note whether this text is additional hmove tick. see pixel() function
+	// note whether this is an additional hmove tick. see pixel() function
 	// below for explanation
 	ms.lastTickFromHmove = isHmove && ms.moreHMOVE
 
@@ -397,14 +396,20 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 
 	// the missile sprite has a special state where a stuffed HMOVE clock
 	// causes the sprite to this the start signal has happened one cycle early.
+	earlyStart := ms.lastTickFromHmove && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
+
+	// similarly in the event of a stuffed HMOVE clock, and when the
+	// enclockifier is about to produce its last pixel
 	//
-	// the condition is fully explained in the AtariAge post "Cosmic Ark Star
-	// Field Revisited" by crispy. as suggested by the post title this is the
-	// key to implementing the starfield in the Cosmic Ark ROM
-	crispy := ms.lastTickFromHmove && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
+	// see ball sprite for explanation for the LatePhi1() condition
+	earlyEnd := !ms.pclk.LatePhi1() && ms.lastTickFromHmove && ms.enclockifier.aboutToEnd()
+
+	// both conditions are fully explained in the AtariAge post "Cosmic Ark
+	// Star Field Revisited" by crispy. as suggested by the post title this is
+	// the key to implementing the starfield in the Cosmic Ark ROM
 
 	// whether a pixel is output also depends on whether resetToPlayer is off
-	px := !ms.resetToPlayer && (ms.enclockifier.enable || crispy)
+	px := !ms.resetToPlayer && !earlyEnd && (ms.enclockifier.enable || earlyStart)
 
 	return px, ms.color
 }
