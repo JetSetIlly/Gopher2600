@@ -87,7 +87,7 @@ func (cart atari) String() string {
 }
 
 func (cart *atari) initialise() {
-	cart.bank = len(cart.banks) - 1
+	cart.bank = 0
 	for i := range cart.superchip {
 		cart.superchip[i] = 0x00
 	}
