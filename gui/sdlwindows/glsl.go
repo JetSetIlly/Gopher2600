@@ -2,70 +2,69 @@ package sdlwindows
 
 import (
 	"fmt"
+	"strings"
 	"unsafe"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-type renderer struct {
+const glslVersion = "#version 150"
+
+type glsl struct {
 	imguiIO imgui.IO
 
-	glslVersion            string
-	fontTexture            uint32
-	shaderHandle           uint32
-	vertHandle             uint32
-	fragHandle             uint32
-	attribLocationTex      int32
-	attribLocationProjMtx  int32
+	// handle for the compiled and linked shader program. we don't need to keep
+	// references to the component parts of the program, they're created and
+	// destroyed all within the setup() function
+	shaderHandle uint32
+
+	vboHandle      uint32
+	elementsHandle uint32
+
+	// "attrtib" variables are the "communication" points between the shader
+	// program and the host language. "uniform" variables remain constant for
+	// the duration of each shader program executrion. non-uniform variables
+	// meanwhile change from one iteration to the next.
+	attribLocationTex      int32 // uniform
+	attribLocationProjMtx  int32 // uniform
+	attribImageType        int32 // uniform
 	attribLocationPosition int32
 	attribLocationUV       int32
 	attribLocationColor    int32
-	vboHandle              uint32
-	elementsHandle         uint32
+
+	// font texture given to imgui. we take charge of its destruction
+	fontTexture uint32
+
+	// tv screen texture is created and managed by the tvScreen type
+	tvScreenTexture uint32
 }
 
-func newRenderer(io imgui.IO) (*renderer, error) {
+func newGlsl(io imgui.IO) (*glsl, error) {
 	err := gl.Init()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %v", err)
 	}
 
-	rnd := &renderer{
-		imguiIO:     io,
-		glslVersion: "#version 150",
+	rnd := &glsl{
+		imguiIO: io,
 	}
 
-	rnd.createDeviceObjects()
+	rnd.setup()
 
 	return rnd, nil
 }
 
-func (rnd *renderer) destroy() {
+func (rnd *glsl) destroy() {
 	if rnd.vboHandle != 0 {
 		gl.DeleteBuffers(1, &rnd.vboHandle)
 	}
 	rnd.vboHandle = 0
+
 	if rnd.elementsHandle != 0 {
 		gl.DeleteBuffers(1, &rnd.elementsHandle)
 	}
 	rnd.elementsHandle = 0
-
-	if (rnd.shaderHandle != 0) && (rnd.vertHandle != 0) {
-		gl.DetachShader(rnd.shaderHandle, rnd.vertHandle)
-	}
-	if rnd.vertHandle != 0 {
-		gl.DeleteShader(rnd.vertHandle)
-	}
-	rnd.vertHandle = 0
-
-	if (rnd.shaderHandle != 0) && (rnd.fragHandle != 0) {
-		gl.DetachShader(rnd.shaderHandle, rnd.fragHandle)
-	}
-	if rnd.fragHandle != 0 {
-		gl.DeleteShader(rnd.fragHandle)
-	}
-	rnd.fragHandle = 0
 
 	if rnd.shaderHandle != 0 {
 		gl.DeleteProgram(rnd.shaderHandle)
@@ -80,13 +79,13 @@ func (rnd *renderer) destroy() {
 }
 
 // preRender clears the framebuffer.
-func (rnd *renderer) preRender(clearColor [4]float32) {
+func (rnd *glsl) preRender(clearColor [4]float32) {
 	gl.ClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
-func (rnd *renderer) render(displaySize [2]float32, framebufferSize [2]float32, drawData imgui.DrawData) {
+func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, drawData imgui.DrawData) {
 	// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
 	displayWidth, displayHeight := displaySize[0], displaySize[1]
 	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
@@ -197,7 +196,15 @@ func (rnd *renderer) render(displaySize [2]float32, framebufferSize [2]float32, 
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
-				gl.BindTexture(gl.TEXTURE_2D, uint32(cmd.TextureID()))
+				textureID := uint32(cmd.TextureID())
+				switch textureID {
+				case rnd.tvScreenTexture:
+					gl.Uniform1i(rnd.attribImageType, 1)
+				default:
+					gl.Uniform1i(rnd.attribImageType, 0)
+				}
+
+				gl.BindTexture(gl.TEXTURE_2D, uint32(textureID))
 				clipRect := cmd.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
@@ -242,16 +249,22 @@ func (rnd *renderer) render(displaySize [2]float32, framebufferSize [2]float32, 
 	gl.Scissor(lastScissorBox[0], lastScissorBox[1], lastScissorBox[2], lastScissorBox[3])
 }
 
-func (rnd *renderer) createDeviceObjects() {
-	// Backup GL state
+func (rnd *glsl) setup() {
+	// we'll be modifying the GL state during this function so we need to save
+	// and restore the existing state.
 	var lastTexture int32
 	var lastArrayBuffer int32
 	var lastVertexArray int32
 	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
 	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &lastArrayBuffer)
 	gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &lastVertexArray)
+	defer gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
+	defer gl.BindBuffer(gl.ARRAY_BUFFER, uint32(lastArrayBuffer))
+	defer gl.BindVertexArray(uint32(lastVertexArray))
 
-	vertexShader := rnd.glslVersion + `
+	// define shaders
+	vertexShader := glslVersion + `
+uniform int ImageType;
 uniform mat4 ProjMtx;
 in vec2 Position;
 in vec2 UV;
@@ -260,24 +273,39 @@ out vec2 Frag_UV;
 out vec4 Frag_Color;
 void main()
 {
-	Frag_UV = UV;
-	Frag_Color = Color;
-	gl_Position = ProjMtx * vec4(Position.xy,0,1);
+	if (ImageType == 1) {
+		Frag_UV = UV;
+		Frag_Color = Color;
+		gl_Position = ProjMtx * vec4(Position.xy,0,1);
+	} else {
+		Frag_UV = UV;
+		Frag_Color = Color;
+		gl_Position = ProjMtx * vec4(Position.xy,0,1);
+	}
 }
 `
-	fragmentShader := rnd.glslVersion + `
+	fragmentShader := glslVersion + `
 uniform sampler2D Texture;
+uniform int ImageType;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
 void main()
 {
-	Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture( Texture, Frag_UV.st).r);
+	if (ImageType == 1) {
+		// tv screen texture
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+	} else {
+		// imgui textures
+		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
+	}
 }
 `
+
+	// compile and link shader programs
 	rnd.shaderHandle = gl.CreateProgram()
-	rnd.vertHandle = gl.CreateShader(gl.VERTEX_SHADER)
-	rnd.fragHandle = gl.CreateShader(gl.FRAGMENT_SHADER)
+	vertHandle := gl.CreateShader(gl.VERTEX_SHADER)
+	fragHandle := gl.CreateShader(gl.FRAGMENT_SHADER)
 
 	glShaderSource := func(handle uint32, source string) {
 		csource, free := gl.Strs(source + "\x00")
@@ -286,16 +314,32 @@ void main()
 		gl.ShaderSource(handle, 1, csource, nil)
 	}
 
-	glShaderSource(rnd.vertHandle, vertexShader)
-	glShaderSource(rnd.fragHandle, fragmentShader)
-	gl.CompileShader(rnd.vertHandle)
-	gl.CompileShader(rnd.fragHandle)
-	gl.AttachShader(rnd.shaderHandle, rnd.vertHandle)
-	gl.AttachShader(rnd.shaderHandle, rnd.fragHandle)
+	glShaderSource(vertHandle, vertexShader)
+	glShaderSource(fragHandle, fragmentShader)
+
+	gl.CompileShader(vertHandle)
+	if log := getShaderCompileError(vertHandle); log != "" {
+		fmt.Println(log)
+	}
+
+	gl.CompileShader(fragHandle)
+	if log := getShaderCompileError(vertHandle); log != "" {
+		fmt.Println(log)
+	}
+
+	gl.AttachShader(rnd.shaderHandle, vertHandle)
+	gl.AttachShader(rnd.shaderHandle, fragHandle)
 	gl.LinkProgram(rnd.shaderHandle)
 
+	// now that the shader promer has linked we no longer need the individual
+	// shader programs
+	gl.DeleteShader(fragHandle)
+	gl.DeleteShader(vertHandle)
+
+	// get references to shader attributes and uniforms variables
 	rnd.attribLocationTex = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
 	rnd.attribLocationProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
+	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
 	rnd.attribLocationPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
 	rnd.attribLocationUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
 	rnd.attribLocationColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
@@ -303,21 +347,12 @@ void main()
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
 
-	rnd.createFontsTexture()
+	// \/\/\/ font preparation \/\/\/
 
-	// Restore modified GL state
-	gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
-	gl.BindBuffer(gl.ARRAY_BUFFER, uint32(lastArrayBuffer))
-	gl.BindVertexArray(uint32(lastVertexArray))
-}
-
-func (rnd *renderer) createFontsTexture() {
 	// Build texture atlas
-	io := imgui.CurrentIO()
-	image := io.Fonts().TextureDataAlpha8()
+	image := rnd.imguiIO.Fonts().TextureDataAlpha8()
 
 	// Upload texture to graphics system
-	var lastTexture int32
 	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
 	gl.GenTextures(1, &rnd.fontTexture)
 	gl.BindTexture(gl.TEXTURE_2D, rnd.fontTexture)
@@ -328,8 +363,26 @@ func (rnd *renderer) createFontsTexture() {
 		0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
 
 	// Store our identifier
-	io.Fonts().SetTextureID(imgui.TextureID(rnd.fontTexture))
+	rnd.imguiIO.Fonts().SetTextureID(imgui.TextureID(rnd.fontTexture))
 
 	// Restore state
 	gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
+}
+
+// getShaderCompileError returns the most recent error generated
+// by the shader compiler
+func getShaderCompileError(shader uint32) string {
+	var isCompiled int32
+	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &isCompiled)
+	if isCompiled == 0 {
+		var logLength int32
+		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+		if logLength > 0 {
+			// The maxLength includes the NULL character
+			log := strings.Repeat("\x00", int(logLength+1))
+			gl.GetShaderInfoLog(shader, logLength, &logLength, gl.Str(log))
+			return log
+		}
+	}
+	return ""
 }

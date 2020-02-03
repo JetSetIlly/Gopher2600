@@ -8,8 +8,11 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+const windowTitle = "Gopher2600"
+const windowTitleCaptured = "Gopher2600 [captured]"
+
 type platform struct {
-	imguiIO imgui.IO
+	wnd *SdlWindows
 
 	window     *sdl.Window
 	shouldStop bool
@@ -19,7 +22,7 @@ type platform struct {
 }
 
 // newPlatform is the preferred method of initialisation for the platform type
-func newPlatform(io imgui.IO) (*platform, error) {
+func newPlatform(wnd *SdlWindows) (*platform, error) {
 	runtime.LockOSThread()
 
 	err := sdl.Init(sdl.INIT_VIDEO)
@@ -27,17 +30,19 @@ func newPlatform(io imgui.IO) (*platform, error) {
 		return nil, fmt.Errorf("failed to initialize SDL2: %v", err)
 	}
 
-	window, err := sdl.CreateWindow("Gopher2600", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 1280, 720, sdl.WINDOW_OPENGL)
+	plt := &platform{
+		wnd: wnd,
+	}
+
+	plt.window, err = sdl.CreateWindow(windowTitle,
+		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
+		1280, 720,
+		sdl.WINDOW_OPENGL|sdl.WINDOW_HIDDEN)
+
 	if err != nil {
 		sdl.Quit()
 		return nil, fmt.Errorf("failed to create window: %v", err)
 	}
-
-	plt := &platform{
-		imguiIO: io,
-		window:  window,
-	}
-	plt.setKeyMapping()
 
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
@@ -49,12 +54,12 @@ func newPlatform(io imgui.IO) (*platform, error) {
 	_ = sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
 	_ = sdl.GLSetAttribute(sdl.GL_STENCIL_SIZE, 8)
 
-	glContext, err := window.GLCreateContext()
+	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
 		plt.destroy()
 		return nil, fmt.Errorf("failed to create OpenGL context: %v", err)
 	}
-	err = window.GLMakeCurrent(glContext)
+	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
 		plt.destroy()
 		return nil, fmt.Errorf("failed to set current OpenGL context: %v", err)
@@ -74,11 +79,9 @@ func (plt *platform) destroy() {
 	sdl.Quit()
 }
 
-// processEvents handles all pending window events.
-func (plt *platform) processEvents() {
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		plt.processEvent(event)
-	}
+// setDisplaySize resizes the window
+func (plt *platform) setDisplaySize(w, h int) {
+	plt.window.SetSize(int32(w), int32(h))
 }
 
 // displaySize returns the dimension of the display.
@@ -97,23 +100,23 @@ func (plt *platform) framebufferSize() [2]float32 {
 func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
 	displaySize := plt.displaySize()
-	plt.imguiIO.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
+	plt.wnd.io.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
 
 	// Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
 	frequency := sdl.GetPerformanceFrequency()
 	currentTime := sdl.GetPerformanceCounter()
 	if plt.time > 0 {
-		plt.imguiIO.SetDeltaTime(float32(currentTime-plt.time) / float32(frequency))
+		plt.wnd.io.SetDeltaTime(float32(currentTime-plt.time) / float32(frequency))
 	} else {
-		plt.imguiIO.SetDeltaTime(1.0 / 60.0)
+		plt.wnd.io.SetDeltaTime(1.0 / 60.0)
 	}
 	plt.time = currentTime
 
 	// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
 	x, y, state := sdl.GetMouseState()
-	plt.imguiIO.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
+	plt.wnd.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 	for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
-		plt.imguiIO.SetMouseButtonDown(i, plt.buttonsDown[i] || (state&sdl.Button(button)) != 0)
+		plt.wnd.io.SetMouseButtonDown(i, plt.buttonsDown[i] || (state&sdl.Button(button)) != 0)
 		plt.buttonsDown[i] = false
 	}
 }
@@ -123,91 +126,15 @@ func (plt *platform) postRender() {
 	plt.window.GLSwap()
 }
 
-func (plt *platform) setKeyMapping() {
-	keys := map[int]int{
-		imgui.KeyTab:        sdl.SCANCODE_TAB,
-		imgui.KeyLeftArrow:  sdl.SCANCODE_LEFT,
-		imgui.KeyRightArrow: sdl.SCANCODE_RIGHT,
-		imgui.KeyUpArrow:    sdl.SCANCODE_UP,
-		imgui.KeyDownArrow:  sdl.SCANCODE_DOWN,
-		imgui.KeyPageUp:     sdl.SCANCODE_PAGEUP,
-		imgui.KeyPageDown:   sdl.SCANCODE_PAGEDOWN,
-		imgui.KeyHome:       sdl.SCANCODE_HOME,
-		imgui.KeyEnd:        sdl.SCANCODE_END,
-		imgui.KeyInsert:     sdl.SCANCODE_INSERT,
-		imgui.KeyDelete:     sdl.SCANCODE_DELETE,
-		imgui.KeyBackspace:  sdl.SCANCODE_BACKSPACE,
-		imgui.KeySpace:      sdl.SCANCODE_BACKSPACE,
-		imgui.KeyEnter:      sdl.SCANCODE_RETURN,
-		imgui.KeyEscape:     sdl.SCANCODE_ESCAPE,
-		imgui.KeyA:          sdl.SCANCODE_A,
-		imgui.KeyC:          sdl.SCANCODE_C,
-		imgui.KeyV:          sdl.SCANCODE_V,
-		imgui.KeyX:          sdl.SCANCODE_X,
-		imgui.KeyY:          sdl.SCANCODE_Y,
-		imgui.KeyZ:          sdl.SCANCODE_Z,
+// show the main window (or not)
+//
+// MUST NOT be called from the #mainthread
+func (plt *platform) showWindow(show bool) {
+	plt.wnd.service <- func() {
+		if show {
+			plt.window.Show()
+		} else {
+			plt.window.Hide()
+		}
 	}
-
-	// Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
-	for imguiKey, nativeKey := range keys {
-		plt.imguiIO.KeyMap(imguiKey, nativeKey)
-	}
-}
-
-func (plt *platform) processEvent(event sdl.Event) {
-	switch event.GetType() {
-	case sdl.QUIT:
-		plt.shouldStop = true
-	case sdl.MOUSEWHEEL:
-		wheelEvent := event.(*sdl.MouseWheelEvent)
-		var deltaX, deltaY float32
-		if wheelEvent.X > 0 {
-			deltaX++
-		} else if wheelEvent.X < 0 {
-			deltaX--
-		}
-		if wheelEvent.Y > 0 {
-			deltaY++
-		} else if wheelEvent.Y < 0 {
-			deltaY--
-		}
-		plt.imguiIO.AddMouseWheelDelta(deltaX, deltaY)
-	case sdl.MOUSEBUTTONDOWN:
-		buttonEvent := event.(*sdl.MouseButtonEvent)
-		switch buttonEvent.Button {
-		case sdl.BUTTON_LEFT:
-			plt.buttonsDown[0] = true
-		case sdl.BUTTON_RIGHT:
-			plt.buttonsDown[1] = true
-		case sdl.BUTTON_MIDDLE:
-			plt.buttonsDown[2] = true
-		}
-	case sdl.TEXTINPUT:
-		inputEvent := event.(*sdl.TextInputEvent)
-		plt.imguiIO.AddInputCharacters(string(inputEvent.Text[:]))
-	case sdl.KEYDOWN:
-		keyEvent := event.(*sdl.KeyboardEvent)
-		plt.imguiIO.KeyPress(int(keyEvent.Keysym.Scancode))
-		plt.updateKeyModifier()
-	case sdl.KEYUP:
-		keyEvent := event.(*sdl.KeyboardEvent)
-		plt.imguiIO.KeyRelease(int(keyEvent.Keysym.Scancode))
-		plt.updateKeyModifier()
-	}
-}
-
-func (plt *platform) updateKeyModifier() {
-	modState := sdl.GetModState()
-	mapModifier := func(lMask sdl.Keymod, lKey int, rMask sdl.Keymod, rKey int) (lResult int, rResult int) {
-		if (modState & lMask) != 0 {
-			lResult = lKey
-		}
-		if (modState & rMask) != 0 {
-			rResult = rKey
-		}
-		return
-	}
-	plt.imguiIO.KeyShift(mapModifier(sdl.KMOD_LSHIFT, sdl.SCANCODE_LSHIFT, sdl.KMOD_RSHIFT, sdl.SCANCODE_RSHIFT))
-	plt.imguiIO.KeyCtrl(mapModifier(sdl.KMOD_LCTRL, sdl.SCANCODE_LCTRL, sdl.KMOD_RCTRL, sdl.SCANCODE_RCTRL))
-	plt.imguiIO.KeyAlt(mapModifier(sdl.KMOD_LALT, sdl.SCANCODE_LALT, sdl.KMOD_RALT, sdl.SCANCODE_RALT))
 }

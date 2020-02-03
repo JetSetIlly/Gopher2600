@@ -17,29 +17,19 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdldebug
+package sdlwindows
 
 import (
 	"gopher2600/gui"
-	"gopher2600/television"
 
+	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-func setupService() {
-	// MOUSEMOTION events fill up the event queue pretty quickly. these take
-	// time to service and for no good reason; we only want one value per frame
-	// which we can do with a single call to GetMouseState()
-	sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
-}
-
-// Service implements GuiCreator interface.
-//
-// MUST ONLY be called from the #mainthread
-func (scr *SdlDebug) Service() {
-
+// Service implements GuiCreator interface
+func (wnd *SdlWindows) Service() {
 	// do not check for events if no event channel has been set
-	if scr.eventChannel != nil {
+	if wnd.events != nil {
 
 		// loop until there are no more events to retreive. this loop is
 		// intimately connected with the framelimiter below. what we don't want
@@ -58,10 +48,9 @@ func (scr *SdlDebug) Service() {
 		for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
 
 			switch ev := ev.(type) {
-
 			// close window
 			case *sdl.QuitEvent:
-				scr.eventChannel <- gui.EventWindowClose{}
+				wnd.events <- gui.EventWindowClose{}
 
 			case *sdl.KeyboardEvent:
 				mod := gui.KeyModNone
@@ -80,14 +69,14 @@ func (scr *SdlDebug) Service() {
 				switch ev.Type {
 				case sdl.KEYDOWN:
 					if ev.Repeat == 0 {
-						scr.eventChannel <- gui.EventKeyboard{
+						wnd.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: true}
 					}
 				case sdl.KEYUP:
 					if ev.Repeat == 0 {
-						scr.eventChannel <- gui.EventKeyboard{
+						wnd.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: false}
@@ -95,49 +84,22 @@ func (scr *SdlDebug) Service() {
 				}
 
 			case *sdl.MouseButtonEvent:
-				// what type of signal we send depends on the state of the
-				// isCaptured flag
-				if scr.isCaptured {
-					// mouse is captured, send regular left/right mouse button
-					// events
-					button := gui.MouseButtonLeft
-					if ev.Button == sdl.BUTTON_RIGHT {
-						button = gui.MouseButtonRight
-					}
-
-					scr.eventChannel <- gui.EventMouseButton{
-						Button: button,
-						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
-				} else {
-					switch ev.Button {
-					case sdl.BUTTON_LEFT:
-						// send regular left button event even if mouse has not
-						// been captured
-						scr.eventChannel <- gui.EventMouseButton{
-							Button: gui.MouseButtonLeft,
-							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
-
-					case sdl.BUTTON_RIGHT:
-						// if right button is pressed when mouse is not captured,
-						// send debugging signal
-						hp, sl := scr.convertMouseCoords(ev)
-						scr.eventChannel <- gui.EventDbgMouseButton{
-							Button:   gui.MouseButtonRight,
-							Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
-							X:        int(ev.X),
-							Y:        int(ev.Y),
-							HorizPos: hp,
-							Scanline: sl}
-					}
+				button := gui.MouseButtonLeft
+				if ev.Button == sdl.BUTTON_RIGHT {
+					button = gui.MouseButtonRight
 				}
+
+				wnd.events <- gui.EventMouseButton{
+					Button: button,
+					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 			}
 		}
 
 		// mouse motion
-		if scr.isCaptured {
+		if wnd.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
-			if mx != scr.mx || my != scr.my {
-				w, h := scr.window.GetSize()
+			if mx != wnd.mx || my != wnd.my {
+				w, h := wnd.platform.window.GetSize()
 
 				// reduce mouse x and y coordintes to the range 0.0 to 1.0
 				//  no need to worry about negative numbers and numbers greater
@@ -147,44 +109,36 @@ func (scr *SdlDebug) Service() {
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 
-				scr.eventChannel <- gui.EventMouseMotion{X: x, Y: y}
-				scr.mx = mx
-				scr.my = my
+				wnd.events <- gui.EventMouseMotion{X: x, Y: y}
+				wnd.mx = mx
+				wnd.my = my
 			}
 		}
 	}
 
+	// Signal start of a new frame
+	wnd.platform.newFrame()
+	imgui.NewFrame()
+
+	// imgui commands
+	wnd.screen.draw()
+
+	// Rendering
+	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
+
+	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
+	wnd.glsl.preRender(clearColor)
+	wnd.screen.render()
+	wnd.glsl.render(wnd.platform.displaySize(), wnd.platform.framebufferSize(), imgui.RenderedDrawData())
+	wnd.platform.postRender()
+
+	// wait for frame limiter
+	// wnd.lmtr.Wait()
+
 	// run any outstanding service functions
 	select {
-	case f := <-scr.service:
+	case f := <-wnd.service:
 		f()
 	default:
 	}
-}
-
-func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
-	var hp, sl int
-
-	sx, sy := scr.renderer.GetScale()
-
-	// convert X pixel value to horizpos equivalent
-	// the opposite of pixelX() and also the scalining applied
-	// by the SDL renderer
-	if scr.masked {
-		hp = int(float32(ev.X) / sx)
-
-	} else {
-		hp = int(float32(ev.X)/sx) - television.HorizClksHBlank
-	}
-
-	// convert Y pixel value to scanline equivalent
-	// the opposite of pixelY() and also the scalining applied
-	// by the SDL renderer
-	if scr.masked {
-		sl = int(float32(ev.Y)/sy) + int(scr.topScanline)
-	} else {
-		sl = int(float32(ev.Y) / sy)
-	}
-
-	return hp, sl
 }

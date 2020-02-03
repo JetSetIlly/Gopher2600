@@ -31,13 +31,13 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdldebug"
 	"gopher2600/gui/sdlplay"
+	"gopher2600/gui/sdlwindows"
 	"gopher2600/modalflag"
 	"gopher2600/paths"
 	"gopher2600/performance"
 	"gopher2600/playmode"
 	"gopher2600/recorder"
 	"gopher2600/regression"
-	"gopher2600/sdlwindows"
 	"gopher2600/television"
 	"gopher2600/wavwriter"
 	"io"
@@ -177,7 +177,7 @@ func launch(sync *mainSync) {
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "NEWDEBUG", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+	md.AddSubModes("RUN", "PLAY", "NEWPLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
 
 	p, err := md.Parse()
 	switch p {
@@ -197,9 +197,6 @@ func launch(sync *mainSync) {
 
 	case "DEBUG":
 		err = debug(md, sync)
-
-	case "NEWDEBUG":
-		err = newDebug(md, sync)
 
 	case "DISASM":
 		err = disasm(md)
@@ -228,6 +225,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
+	newDisplay := md.AddBool("newdisplay", false, "use new display code")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -258,9 +256,17 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		// notify main thread of new gui creator
-		sync.creator <- func() (GuiCreator, error) {
-			return sdlplay.NewSdlPlay(tv, float32(*scaling))
+		// choose which display type to use
+		if *newDisplay == false {
+			// notify main thread of new gui creator
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
+			}
+		} else {
+			// notify main thread of new gui creator
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlwindows.NewSdlWindows(tv)
+			}
 		}
 
 		// wait for creator result
@@ -281,6 +287,12 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
+		// set scaling value
+		err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
+		if err != nil {
+			return err
+		}
+
 		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)
 		if err != nil {
 			return err
@@ -291,38 +303,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
-	}
-
-	return nil
-}
-
-func newDebug(md *modalflag.Modes, sync *mainSync) error {
-	// notify main thread of new gui creator
-	sync.creator <- func() (GuiCreator, error) {
-		return sdlwindows.NewSdlWindows()
-	}
-
-	// wait for creator result
-
-	var scr gui.GUI
-
-	select {
-	case g := <-sync.creation:
-		scr = g.(gui.GUI)
-	case err := <-sync.creationError:
-		return errors.New(errors.PlayError, err)
-	}
-
-	event := make(chan gui.Event)
-	scr.SetEventChannel(event)
-
-	running := true
-	for running {
-		switch (<-event).(type) {
-		case gui.EventWindowClose:
-			running = false
-		default:
-		}
 	}
 
 	return nil
@@ -368,16 +348,16 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	// start debugger with choice of interface and cartridge
-	var cons terminal.Terminal
+	var term terminal.Terminal
 
 	switch strings.ToUpper(*termType) {
 	default:
 		fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
 		fallthrough
 	case "PLAIN":
-		cons = &plainterm.PlainTerminal{}
+		term = &plainterm.PlainTerminal{}
 	case "COLOR":
-		cons = &colorterm.ColorTerminal{}
+		term = &colorterm.ColorTerminal{}
 	}
 
 	// NewDebugger() installs its own ctrl-handler so we can turn off the
@@ -385,7 +365,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	sync.state <- reqNoIntSig
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(tv, scr, cons)
+	dbg, err := debugger.NewDebugger(tv, scr, term)
 	if err != nil {
 		return err
 	}
@@ -396,7 +376,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	case 1:
 		// set up a running function
-		dgbRun := func() error {
+		dbgRun := func() error {
 			cartload := cartridgeloader.Loader{
 				Filename: md.GetArg(0),
 				Format:   *cartFormat,
@@ -408,10 +388,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 			return nil
 		}
 
-		// if profile generation has been requested then pass the dgbRun()
+		// if profile generation has been requested then pass the dbgRun()
 		// function prepared above, through the ProfileCPU() command
 		if *profile {
-			err := performance.ProfileCPU("debug.cpu.profile", dgbRun)
+			err := performance.ProfileCPU("debug.cpu.profile", dbgRun)
 			if err != nil {
 				return err
 			}
@@ -420,8 +400,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 				return err
 			}
 		} else {
-			// no profile required so run dgbRun() function as normal
-			err := dgbRun()
+			// no profile required so run dbgRun() function as normal
+			err := dbgRun()
 			if err != nil {
 				return err
 			}
@@ -478,6 +458,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	display := md.AddBool("display", false, "display TV output")
+	newDisplay := md.AddBool("newdisplay", false, "display TV output with new display code")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
@@ -504,10 +485,18 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
-		if *display {
-			// notify main thread of new gui creator
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
+		if *display || *newDisplay {
+			// choose which display type to use
+			if *newDisplay == false {
+				// notify main thread of new gui creator
+				sync.creator <- func() (GuiCreator, error) {
+					return sdlplay.NewSdlPlay(tv, float32(*scaling))
+				}
+			} else {
+				// notify main thread of new gui creator
+				sync.creator <- func() (GuiCreator, error) {
+					return sdlwindows.NewSdlWindows(tv)
+				}
 			}
 
 			// wait for creator result
@@ -521,6 +510,12 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 			// set fps cap
 			err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
+			if err != nil {
+				return err
+			}
+
+			// set scaling value
+			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
 			if err != nil {
 				return err
 			}

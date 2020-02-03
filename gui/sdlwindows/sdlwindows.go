@@ -1,4 +1,3 @@
-// This file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,40 +21,68 @@ package sdlwindows
 import (
 	"gopher2600/gui"
 	"gopher2600/paths"
+	"gopher2600/performance/limiter"
+	"gopher2600/television"
 	"io"
-	"time"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
 // SdlWindows is a fully featured windowed debugger
-//
-// MUST ONLY be called from the #mainthread
 type SdlWindows struct {
 	io       imgui.IO
 	context  *imgui.Context
 	platform *platform
-	renderer *renderer
+	glsl     *glsl
+
+	tv     television.Television
+	screen *tvScreen
+
+	// functions that need to be performed in the main thread should be queued
+	// for service.
+	service    chan func()
+	serviceErr chan error
+
+	// limit number of frames per second
+	lmtr *limiter.FpsLimiter
 
 	// events channel is not created but assigned with SetEventChannel()
 	events chan gui.Event
+
+	// window opening is delayed until television frame is stable
+	showOnNextStable bool
+
+	// mouse coords at last frame
+	mx, my int32
+
+	// whether mouse is captured
+	isCaptured bool
 }
 
 // NewSdlWindows is the preferred method of initialisation for type SdlWindows
-func NewSdlWindows() (*SdlWindows, error) {
+//
+// MUST ONLY be called from the #mainthread
+func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
 	wnd := &SdlWindows{
-		context: imgui.CreateContext(nil),
-		io:      imgui.CurrentIO(),
+		context:    imgui.CreateContext(nil),
+		io:         imgui.CurrentIO(),
+		tv:         tv,
+		service:    make(chan func(), 1),
+		serviceErr: make(chan error, 1),
 	}
+
+	// create new frame limiter. we change the rate in the resize function
+	// (rate may change due to specification change)
+	wnd.lmtr = limiter.NewFPSLimiter(-1)
 
 	var err error
 
-	wnd.platform, err = newPlatform(wnd.io)
+	wnd.platform, err = newPlatform(wnd)
 	if err != nil {
 		return nil, err
 	}
 
-	wnd.renderer, err = newRenderer(wnd.io)
+	wnd.glsl, err = newGlsl(wnd.io)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +93,14 @@ func NewSdlWindows() (*SdlWindows, error) {
 	}
 	wnd.io.SetIniFilename(iniPath)
 
+	wnd.screen, err = newTvScreen(wnd)
+	if err != nil {
+		return nil, err
+	}
+	wnd.glsl.tvScreenTexture = wnd.screen.texture
+
+	tv.AddPixelRenderer(wnd.screen)
+
 	return wnd, nil
 }
 
@@ -73,60 +108,13 @@ func NewSdlWindows() (*SdlWindows, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (wnd *SdlWindows) Destroy(output io.Writer) {
-	wnd.renderer.destroy()
+	wnd.screen.destroy()
+	wnd.glsl.destroy()
 	wnd.platform.destroy()
 	wnd.context.Destroy()
-}
-
-// IsVisible implements gui.GUI interface
-func (wnd *SdlWindows) IsVisible() bool {
-	return true
-}
-
-// SetFeature implements gui.GUI interface
-func (wnd *SdlWindows) SetFeature(request gui.FeatureReq, args ...interface{}) error {
-	return nil
 }
 
 // SetEventChannel implements gui.GUI interface
 func (wnd *SdlWindows) SetEventChannel(events chan gui.Event) {
 	wnd.events = events
-}
-
-// Service implements GuiCreator interface
-func (wnd *SdlWindows) Service() {
-	wnd.platform.processEvents()
-	if wnd.platform.shouldStop {
-		wnd.events <- gui.EventWindowClose{}
-	}
-
-	// Signal start of a new frame
-	wnd.platform.newFrame()
-	imgui.NewFrame()
-
-	// imgui commands
-	imgui.Begin("gopher2600")
-	wnd.drawWindows()
-	imgui.End()
-
-	// Rendering
-	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
-
-	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
-	wnd.renderer.preRender(clearColor)
-	// A this point, the application could perform its own rendering...
-	// app.RenderScene()
-
-	wnd.renderer.render(wnd.platform.displaySize(), wnd.platform.framebufferSize(), imgui.RenderedDrawData())
-	wnd.platform.postRender()
-
-	// sleep to avoid 100% CPU usage for this demo
-	<-time.After(time.Millisecond * 25)
-}
-
-func (wnd *SdlWindows) drawWindows() {
-	imgui.Text("Hello from another window!")
-	if imgui.Button("Close Me") {
-		wnd.events <- gui.EventWindowClose{}
-	}
 }
