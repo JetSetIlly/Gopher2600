@@ -61,20 +61,6 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 	case gui.ReqSetFpsCap:
 		img.lmtr.Active = args[0].(bool)
 
-	case gui.ReqCaptureMouse:
-		img.isCaptured = args[0].(bool)
-		err = sdl.CaptureMouse(img.isCaptured)
-		if err == nil {
-			img.plt.window.SetGrab(img.isCaptured)
-			if img.isCaptured {
-				sdl.ShowCursor(sdl.DISABLE)
-				img.plt.window.SetTitle(windowTitleCaptured)
-			} else {
-				sdl.ShowCursor(sdl.ENABLE)
-				img.plt.window.SetTitle(windowTitle)
-			}
-		}
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}

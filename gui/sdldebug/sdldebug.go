@@ -40,7 +40,7 @@ type SdlDebug struct {
 	serviceErr chan error
 
 	// connects SDL guiLoop with the parent process
-	eventChannel chan gui.Event
+	events chan gui.Event
 
 	// sdl stuff
 	window   *sdl.Window

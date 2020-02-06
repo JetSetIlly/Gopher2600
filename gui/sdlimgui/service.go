@@ -84,14 +84,51 @@ func (img *SdlImgui) Service() {
 				}
 
 			case *sdl.MouseButtonEvent:
-				button := gui.MouseButtonLeft
-				if ev.Button == sdl.BUTTON_RIGHT {
+				// the button event to send
+				var button gui.MouseButton
+
+				// mouse events are swallowed by the service loop
+				// if they've been handled
+				var swallow bool
+
+				switch ev.Button {
+				case sdl.BUTTON_LEFT:
+					button = gui.MouseButtonLeft
+
+					// left mouse button should capture mouse if
+					// not already done so.
+					if !img.isCaptured {
+						swallow = true
+						img.isCaptured = true
+						err := sdl.CaptureMouse(true)
+						if err == nil {
+							img.plt.window.SetGrab(true)
+							sdl.ShowCursor(sdl.DISABLE)
+							img.plt.window.SetTitle(windowTitleCaptured)
+						}
+					}
+
+				case sdl.BUTTON_RIGHT:
 					button = gui.MouseButtonRight
+
+					// right mouse button releases a captured mouse
+					if img.isCaptured {
+						swallow = true
+						img.isCaptured = false
+						err := sdl.CaptureMouse(false)
+						if err == nil {
+							img.plt.window.SetGrab(false)
+							sdl.ShowCursor(sdl.ENABLE)
+							img.plt.window.SetTitle(windowTitle)
+						}
+					}
 				}
 
-				img.events <- gui.EventMouseButton{
-					Button: button,
-					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				if !swallow {
+					img.events <- gui.EventMouseButton{
+						Button: button,
+						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				}
 			}
 		}
 

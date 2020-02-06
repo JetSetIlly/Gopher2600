@@ -101,20 +101,6 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 		scr.update()
 
-	case gui.ReqCaptureMouse:
-		scr.isCaptured = args[0].(bool)
-		err = sdl.CaptureMouse(scr.isCaptured)
-		if err == nil {
-			scr.window.SetGrab(scr.isCaptured)
-			if scr.isCaptured {
-				sdl.ShowCursor(sdl.DISABLE)
-				scr.window.SetTitle(windowTitleCaptured)
-			} else {
-				sdl.ShowCursor(sdl.ENABLE)
-				scr.window.SetTitle(windowTitle)
-			}
-		}
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
@@ -123,6 +109,6 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 }
 
 // SetEventChannel implements the GUI interface
-func (scr *SdlDebug) SetEventChannel(eventChannel chan gui.Event) {
-	scr.eventChannel = eventChannel
+func (scr *SdlDebug) SetEventChannel(events chan gui.Event) {
+	scr.events = events
 }

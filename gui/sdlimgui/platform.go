@@ -37,8 +37,7 @@ type platform struct {
 	window     *sdl.Window
 	shouldStop bool
 
-	time        uint64
-	buttonsDown [3]bool
+	time uint64
 }
 
 // newPlatform is the preferred method of initialisation for the platform type
@@ -136,8 +135,7 @@ func (plt *platform) newFrame() {
 	x, y, state := sdl.GetMouseState()
 	plt.img.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 	for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
-		plt.img.io.SetMouseButtonDown(i, plt.buttonsDown[i] || (state&sdl.Button(button)) != 0)
-		plt.buttonsDown[i] = false
+		plt.img.io.SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)
 	}
 }
 

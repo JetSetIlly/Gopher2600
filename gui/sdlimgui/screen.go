@@ -32,19 +32,30 @@ import (
 const pixelDepth = 3
 
 const pixelWidth = 2
-const pixelScale = 2.0
+
+const defScaling = 2.0
+
+const tvscreenTitle = "TV Screen"
+const tvscreenTitleCaptured = "TV Screen [captured]"
 
 type tvScreen struct {
 	img *SdlImgui
 
-	createTexture bool
-	texture       uint32
-	pixels        *image.RGBA
+	// playmode controls how the screen is displayed. currently, when
+	// playmode is true:
+	//   o tv screen imgui window will be created without decorations
+	//   o host sdl window will be set to the same size as the tv screen
+	playmode bool
 
-	// current values for *playable* area of the screen
-	topScanline int
-	scanlines   int
-	horizPixels int
+	// the tv screen has captured mouse input
+	captured bool
+
+	// create texture on the next call of render
+	createTexture bool
+
+	// the tv screen texture and backing pixels
+	texture uint32
+	pixels  *image.RGBA
 
 	// the basic amount by which the image should be scaled. image width
 	// is also scaled by pixelWidth and aspectBias value
@@ -52,12 +63,17 @@ type tvScreen struct {
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
+
+	// current values for *playable* area of the screen
+	topScanline int
+	scanlines   int
+	horizPixels int
 }
 
 func newTvScreen(img *SdlImgui) (*tvScreen, error) {
 	scr := &tvScreen{
 		img:     img,
-		scaling: pixelScale,
+		scaling: defScaling,
 
 		// horizPixels is always the same regardless of tv spec
 		horizPixels: television.HorizClksVisible,
@@ -77,24 +93,6 @@ func newTvScreen(img *SdlImgui) (*tvScreen, error) {
 }
 
 func (scr *tvScreen) destroy() {
-}
-
-func (scr *tvScreen) render() {
-	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
-
-	if scr.createTexture {
-		scr.createTexture = false
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
-	}
 }
 
 // Resize implements the television.PixelRenderer interface
@@ -140,11 +138,6 @@ func (scr *tvScreen) setWindow(scale float32) error {
 	if scale != reapplyScale {
 		scr.scaling = scale
 	}
-
-	// we need to add some padding because I can't get a true borderless imgui
-	// window. not sure what the reasoning is for the value but it works
-	padding := float32(4.0)
-	scr.img.plt.setDisplaySize(int(scr.scaledWidth()+padding), int(scr.scaledHeight()+padding))
 
 	return nil
 }
@@ -204,25 +197,40 @@ func (scr *tvScreen) scaledHeight() float32 {
 	return float32(scr.pixels.Bounds().Size().Y) * scr.scaling
 }
 
+// render is called by service loop
+func (scr *tvScreen) render() {
+	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
+
+	if scr.createTexture {
+		scr.createTexture = false
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(scr.pixels.Pix))
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(scr.pixels.Pix))
+	}
+}
+
 // draw is called by service loop
 func (scr *tvScreen) draw() {
-	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
-	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{0, 0})
-	imgui.PushStyleVarFloat(imgui.StyleVarWindowBorderSize, 0.0)
-
 	open := false
-	imgui.BeginV("TV Screen", &open,
-		imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration|
-			imgui.WindowFlagsNoCollapse|imgui.WindowFlagsNoMove|
-			imgui.WindowFlagsNoTitleBar,
-	)
+
+	title := tvscreenTitle
+	if scr.captured {
+		title = tvscreenTitleCaptured
+	}
+
+	imgui.BeginV(title, &open, imgui.WindowFlagsAlwaysAutoResize)
+
 	imgui.Image(imgui.TextureID(scr.texture),
 		imgui.Vec2{
 			scr.scaledWidth(),
 			scr.scaledHeight(),
 		})
 	imgui.End()
-
-	imgui.PopStyleVar()
-	imgui.PopStyleVar()
 }

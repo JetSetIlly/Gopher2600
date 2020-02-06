@@ -23,9 +23,14 @@ package gui
 // eg. toggling the overlay
 type FeatureReq string
 
-// list of valid feature requests. argument must be of the type specified or
+// List of valid feature requests. argument must be of the type specified or
 // else the interface{} type conversion will fail and the application will
-// probably crash
+// probably crash.
+//
+// Note that, like the name suggests, these are requests, they may or may not
+// be satisifed depending other conditions in the GUI. For example, in the
+// imgui gui implementation, a capture mouse request will only be honoured if
+// the "TV screen" window is active.
 const (
 	ReqSetVisibility      FeatureReq = "ReqSetVisibility"      // bool
 	ReqToggleVisibility   FeatureReq = "ReqToggleVisibility"   // none
@@ -41,5 +46,4 @@ const (
 	ReqIncScale           FeatureReq = "ReqIncScale"           // none
 	ReqDecScale           FeatureReq = "ReqDecScale"           // none
 	ReqSetFpsCap          FeatureReq = "ReqSetFpsCap"          // bool
-	ReqCaptureMouse       FeatureReq = "ReqCaptureMouse"       // bool
 )

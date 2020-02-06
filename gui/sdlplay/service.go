@@ -40,7 +40,7 @@ func (scr *SdlPlay) Service() {
 	test.AssertMainThread()
 
 	// do not check for events if no event channel has been set
-	if scr.eventChannel != nil {
+	if scr.events != nil {
 
 		// loop until there are no more events to retreive. this loop is
 		// intimately connected with the framelimiter below. what we don't want
@@ -61,7 +61,7 @@ func (scr *SdlPlay) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				scr.eventChannel <- gui.EventWindowClose{}
+				scr.events <- gui.EventWindowClose{}
 
 			case *sdl.KeyboardEvent:
 				mod := gui.KeyModNone
@@ -80,14 +80,14 @@ func (scr *SdlPlay) Service() {
 				switch ev.Type {
 				case sdl.KEYDOWN:
 					if ev.Repeat == 0 {
-						scr.eventChannel <- gui.EventKeyboard{
+						scr.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: true}
 					}
 				case sdl.KEYUP:
 					if ev.Repeat == 0 {
-						scr.eventChannel <- gui.EventKeyboard{
+						scr.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: false}
@@ -95,14 +95,51 @@ func (scr *SdlPlay) Service() {
 				}
 
 			case *sdl.MouseButtonEvent:
-				button := gui.MouseButtonLeft
-				if ev.Button == sdl.BUTTON_RIGHT {
+				// the button event to send
+				var button gui.MouseButton
+
+				// mouse events are swallowed by the service loop
+				// if they've been handled
+				var swallow bool
+
+				switch ev.Button {
+				case sdl.BUTTON_LEFT:
+					button = gui.MouseButtonLeft
+
+					// left mouse button should capture mouse if
+					// not already done so.
+					if !scr.isCaptured {
+						swallow = true
+						scr.isCaptured = true
+						err := sdl.CaptureMouse(true)
+						if err == nil {
+							scr.window.SetGrab(true)
+							sdl.ShowCursor(sdl.DISABLE)
+							scr.window.SetTitle(windowTitleCaptured)
+						}
+					}
+
+				case sdl.BUTTON_RIGHT:
 					button = gui.MouseButtonRight
+
+					// right mouse button releases a captured mouse
+					if scr.isCaptured {
+						swallow = true
+						scr.isCaptured = false
+						err := sdl.CaptureMouse(false)
+						if err == nil {
+							scr.window.SetGrab(false)
+							sdl.ShowCursor(sdl.ENABLE)
+							scr.window.SetTitle(windowTitle)
+						}
+					}
 				}
 
-				scr.eventChannel <- gui.EventMouseButton{
-					Button: button,
-					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				if !swallow {
+					scr.events <- gui.EventMouseButton{
+						Button: button,
+						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+				}
 			}
 		}
 
@@ -120,7 +157,7 @@ func (scr *SdlPlay) Service() {
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 
-				scr.eventChannel <- gui.EventMouseMotion{X: x, Y: y}
+				scr.events <- gui.EventMouseMotion{X: x, Y: y}
 				scr.mx = mx
 				scr.my = my
 			}

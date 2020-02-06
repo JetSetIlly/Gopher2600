@@ -58,8 +58,10 @@ type MouseButton int
 
 // list of valid MouseButtonIDs
 const (
-	MouseButtonLeft MouseButton = iota
+	MouseButtonNone MouseButton = iota
+	MouseButtonLeft
 	MouseButtonRight
+	MouseButtonMiddle
 )
 
 // EventMouseButton is the data that accompanies MouseEventMove events

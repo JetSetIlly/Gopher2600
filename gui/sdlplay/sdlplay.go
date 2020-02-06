@@ -47,7 +47,7 @@ type SdlPlay struct {
 	lmtr *limiter.FpsLimiter
 
 	// connects SDL guiLoop with the parent process
-	eventChannel chan gui.Event
+	events chan gui.Event
 
 	// all audio is handled by the sound type
 	aud *sdlaudio.Audio

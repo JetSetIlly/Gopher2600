@@ -66,20 +66,6 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	case gui.ReqSetFpsCap:
 		scr.lmtr.Active = args[0].(bool)
 
-	case gui.ReqCaptureMouse:
-		scr.isCaptured = args[0].(bool)
-		err = sdl.CaptureMouse(scr.isCaptured)
-		if err == nil {
-			scr.window.SetGrab(scr.isCaptured)
-			if scr.isCaptured {
-				sdl.ShowCursor(sdl.DISABLE)
-				scr.window.SetTitle(windowTitleCaptured)
-			} else {
-				sdl.ShowCursor(sdl.ENABLE)
-				scr.window.SetTitle(windowTitle)
-			}
-		}
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}
@@ -88,6 +74,6 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 }
 
 // SetEventChannel implements the GUI interface
-func (scr *SdlPlay) SetEventChannel(eventChannel chan gui.Event) {
-	scr.eventChannel = eventChannel
+func (scr *SdlPlay) SetEventChannel(events chan gui.Event) {
+	scr.events = events
 }

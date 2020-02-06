@@ -225,7 +225,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
-	newDisplay := md.AddBool("newdisplay", false, "use new display code")
+	imgui := md.AddBool("imgui", false, "use new ingui interface (*alpha*)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -257,12 +257,14 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// choose which display type to use
-		if *newDisplay == false {
+		if *imgui == false {
 			// notify main thread of new gui creator
 			sync.creator <- func() (GuiCreator, error) {
 				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 		} else {
+			fmt.Println("using experimetal 'dear imgui' based interface")
+
 			// notify main thread of new gui creator
 			sync.creator <- func() (GuiCreator, error) {
 				return sdlimgui.NewSdlImgui(tv)
@@ -287,10 +289,12 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		// set scaling value
-		err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
-		if err != nil {
-			return err
+		if *imgui == false {
+			// set scaling value
+			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
+			if err != nil {
+				return err
+			}
 		}
 
 		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)
@@ -458,7 +462,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	display := md.AddBool("display", false, "display TV output")
-	newDisplay := md.AddBool("newdisplay", false, "display TV output with new display code")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
@@ -485,18 +488,10 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
-		if *display || *newDisplay {
-			// choose which display type to use
-			if *newDisplay == false {
-				// notify main thread of new gui creator
-				sync.creator <- func() (GuiCreator, error) {
-					return sdlplay.NewSdlPlay(tv, float32(*scaling))
-				}
-			} else {
-				// notify main thread of new gui creator
-				sync.creator <- func() (GuiCreator, error) {
-					return sdlimgui.NewSdlImgui(tv)
-				}
+		if *display {
+			// notify main thread of new gui creator
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 
 			// wait for creator result
