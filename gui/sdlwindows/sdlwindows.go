@@ -23,6 +23,7 @@ import (
 	"gopher2600/paths"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
+	"gopher2600/test"
 	"io"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -63,6 +64,8 @@ type SdlWindows struct {
 //
 // MUST ONLY be called from the #mainthread
 func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
+	test.AssertMainThread()
+
 	wnd := &SdlWindows{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),
@@ -108,6 +111,8 @@ func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (wnd *SdlWindows) Destroy(output io.Writer) {
+	test.AssertMainThread()
+
 	wnd.screen.destroy()
 	wnd.glsl.destroy()
 	wnd.platform.destroy()
@@ -115,6 +120,9 @@ func (wnd *SdlWindows) Destroy(output io.Writer) {
 }
 
 // SetEventChannel implements gui.GUI interface
+//
+// MUST ONLY be called from the #mainthread
 func (wnd *SdlWindows) SetEventChannel(events chan gui.Event) {
+	test.AssertMainThread()
 	wnd.events = events
 }

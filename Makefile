@@ -15,6 +15,9 @@ clean:
 	@echo "removing binary and profiling files"
 	@rm -f gopher2600 cpu.profile mem.profile debug.cpu.profile debug.mem.profile
 
+build_assertions:
+	go build -gcflags $(compileFlags) -tags=assertions
+
 build:
 	go build -gcflags $(compileFlags)
 

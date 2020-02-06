@@ -22,6 +22,7 @@ package sdldebug
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -30,6 +31,8 @@ import (
 //
 // MUST NOT be called from the #mainthread
 func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+	test.AssertNonMainThread()
+
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -58,12 +61,12 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	case gui.ReqSetMasking:
 		scr.masked = args[0].(bool)
-		scr.setWindowThread(-1)
+		scr.setWindowFromThread(-1)
 		scr.update()
 
 	case gui.ReqToggleMasking:
 		scr.masked = !scr.masked
-		scr.setWindowThread(-1)
+		scr.setWindowFromThread(-1)
 		scr.update()
 
 	case gui.ReqSetAltColors:
@@ -83,18 +86,18 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		scr.update()
 
 	case gui.ReqSetScale:
-		err = scr.setWindowThread(args[0].(float32))
+		err = scr.setWindowFromThread(args[0].(float32))
 		scr.update()
 
 	case gui.ReqIncScale:
 		if scr.pixelScale < 4.0 {
-			err = scr.setWindowThread(scr.pixelScale + 0.1)
+			err = scr.setWindowFromThread(scr.pixelScale + 0.1)
 		}
 		scr.update()
 
 	case gui.ReqDecScale:
 		if scr.pixelScale > 0.5 {
-			err = scr.setWindowThread(scr.pixelScale - 0.1)
+			err = scr.setWindowFromThread(scr.pixelScale - 0.1)
 		}
 		scr.update()
 

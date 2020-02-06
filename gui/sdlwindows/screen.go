@@ -21,6 +21,7 @@ package sdlwindows
 
 import (
 	"gopher2600/television"
+	"gopher2600/test"
 	"image"
 	"image/color"
 
@@ -45,7 +46,11 @@ type tvScreen struct {
 	scanlines   int
 	horizPixels int
 
-	scaling    float32
+	// the basic amount by which the image should be scaled. image width
+	// is also scaled by pixelWidth and aspectBias value
+	scaling float32
+
+	// aspect bias is taken from the television specification
 	aspectBias float32
 }
 
@@ -58,13 +63,15 @@ func newTvScreen(wnd *SdlWindows) (*tvScreen, error) {
 		horizPixels: television.HorizClksVisible,
 	}
 
+	// generate texture, creation of texture will be done on first call to
+	// render()
 	gl.GenTextures(1, &scr.texture)
 	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 	// start off by showing entirity of NTSC screen
-	scr.Resize(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
+	scr.resizeFromMain(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
 
 	return scr, nil
 }
@@ -91,7 +98,23 @@ func (scr *tvScreen) render() {
 }
 
 // Resize implements the television.PixelRenderer interface
+//
+// MUST NOT be called from the #mainthread
 func (scr *tvScreen) Resize(topScanline int, visibleScanlines int) error {
+	test.AssertNonMainThread()
+	return scr.resize(topScanline, visibleScanlines, scr.setWindowFromThread)
+}
+
+// resizeFromMain is a thread version of Resize()
+//
+// MUST ONLY be called from the #mainthread
+func (scr *tvScreen) resizeFromMain(topScanline int, visibleScanlines int) error {
+	test.AssertMainThread()
+	return scr.resize(topScanline, visibleScanlines, scr.setWindow)
+}
+
+// resize() is called by Resize() or resizeThread() depending on thread context
+func (scr *tvScreen) resize(topScanline int, visibleScanlines int, setWindow func(float32) error) error {
 	scr.topScanline = topScanline
 	scr.scanlines = visibleScanlines
 	scr.img = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
@@ -99,32 +122,51 @@ func (scr *tvScreen) Resize(topScanline int, visibleScanlines int) error {
 	scr.wnd.lmtr.SetLimit(scr.wnd.tv.GetSpec().FramesPerSecond)
 	scr.aspectBias = scr.wnd.tv.GetSpec().AspectBias
 
-	scr.setScale(reapplyScale)
+	setWindow(reapplyScale)
 
 	// defer recreation of texture to render(). we have to do it in the
-	// #mainthread so we may as well defer it to there
+	// #mainthread so we may as wait until that function is called
 	scr.createTexture = true
 
 	return nil
 }
 
-const reapplyScale = -0.0
+const reapplyScale = -1.0
 
-func (scr *tvScreen) setScale(scale float32) error {
-	if scale > 0.0 {
+// MUST ONLY be called from the #mainthread
+func (scr *tvScreen) setWindow(scale float32) error {
+	test.AssertMainThread()
+
+	if scale != reapplyScale {
 		scr.scaling = scale
 	}
 
 	// we need to add some padding because I can't get a true borderless imgui
 	// window. not sure what the reasoning is for the value but it works
 	padding := float32(4.0)
+	scr.wnd.platform.setDisplaySize(int(scr.scaledWidth()+padding), int(scr.scaledHeight()+padding))
 
-	scr.wnd.platform.setDisplaySize(int(scr.width()+padding), int(scr.height()+padding))
 	return nil
 }
 
+// MUST NOT be called from the #mainthread
+// see setWindow() for non-main alternative
+func (scr *tvScreen) setWindowFromThread(scale float32) error {
+	test.AssertNonMainThread()
+
+	scr.wnd.service <- func() {
+		scr.setWindow(scale)
+		scr.wnd.serviceErr <- nil
+	}
+	return <-scr.wnd.serviceErr
+}
+
 // NewFrame implements the television.PixelRenderer interface
+//
+// MUST NOT be called from the #mainthread
 func (scr *tvScreen) NewFrame(frameNum int) error {
+	test.AssertNonMainThread()
+
 	if scr.wnd.showOnNextStable && scr.wnd.tv.IsStable() {
 		scr.wnd.platform.window.Show()
 		scr.wnd.showOnNextStable = false
@@ -154,14 +196,15 @@ func (scr *tvScreen) EndRendering() error {
 	return nil
 }
 
-func (scr *tvScreen) width() float32 {
+func (scr *tvScreen) scaledWidth() float32 {
 	return float32(scr.img.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
 }
 
-func (scr *tvScreen) height() float32 {
+func (scr *tvScreen) scaledHeight() float32 {
 	return float32(scr.img.Bounds().Size().Y) * scr.scaling
 }
 
+// draw is called by service loop
 func (scr *tvScreen) draw() {
 	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{0, 0})
@@ -175,8 +218,8 @@ func (scr *tvScreen) draw() {
 	)
 	imgui.Image(imgui.TextureID(scr.texture),
 		imgui.Vec2{
-			scr.width(),
-			scr.height(),
+			scr.scaledWidth(),
+			scr.scaledHeight(),
 		})
 	imgui.End()
 

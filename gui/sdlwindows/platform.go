@@ -2,6 +2,7 @@ package sdlwindows
 
 import (
 	"fmt"
+	"gopher2600/test"
 	"runtime"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -130,6 +131,8 @@ func (plt *platform) postRender() {
 //
 // MUST NOT be called from the #mainthread
 func (plt *platform) showWindow(show bool) {
+	test.AssertNonMainThread()
+
 	plt.wnd.service <- func() {
 		if show {
 			plt.window.Show()

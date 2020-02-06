@@ -24,6 +24,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/reflection"
 	"gopher2600/television"
+	"gopher2600/test"
 	"io"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -100,6 +101,8 @@ const windowTitleCaptured = "Gopher2600 [captured]"
 //
 // MUST ONLY be called from the #mainthread
 func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
+	test.AssertMainThread()
+
 	scr := &SdlDebug{
 		Television: tv,
 		service:    make(chan func(), 1),
@@ -163,6 +166,8 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Destroy(output io.Writer) {
+	test.AssertMainThread()
+
 	scr.overlay.destroy(output)
 	scr.textures.destroy(output)
 
@@ -190,6 +195,8 @@ func (scr *SdlDebug) Reset() error {
 //
 // MUST NOT be called from the #mainthread
 func (scr SdlDebug) showWindow(show bool) {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		if show {
 			scr.window.Show()
@@ -226,8 +233,10 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 // use scale of -1 to reapply existing scale value
 //
 // MUST ONLY be called from the #mainthread
-// see setWindowThread() for non-main alternative
+// see setWindowFromThread() for non-main alternative
 func (scr *SdlDebug) setWindow(scale float32) error {
+	test.AssertMainThread()
+
 	if scale >= 0 {
 		scr.pixelScale = scale
 	}
@@ -262,7 +271,9 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 //
 // MUST NOT be called from the #mainthread
 // see setWindow() for mainthread alternative
-func (scr *SdlDebug) setWindowThread(scale float32) error {
+func (scr *SdlDebug) setWindowFromThread(scale float32) error {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		scr.serviceErr <- scr.setWindow(scale)
 	}
@@ -274,6 +285,8 @@ func (scr *SdlDebug) setWindowThread(scale float32) error {
 // MUST ONLY be called from #mainthread
 // see Resize() for non-main alternative
 func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
+	test.AssertMainThread()
+
 	// new screen limits
 	scr.topScanline = topScanline
 	scr.scanlines = int32(numScanlines)
@@ -308,6 +321,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 // MUST NOT be called from #mainthread
 // see resize() for mainthread alternative
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
+	test.AssertNonMainThread()
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -319,6 +333,7 @@ func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlDebug) update() error {
+	test.AssertNonMainThread()
 	scr.service <- func() {
 		scr.renderer.SetDrawColor(0, 0, 0, 255)
 		err := scr.renderer.Clear()

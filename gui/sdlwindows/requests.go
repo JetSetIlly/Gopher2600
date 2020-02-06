@@ -56,7 +56,7 @@ func (wnd *SdlWindows) SetFeature(request gui.FeatureReq, args ...interface{}) (
 		}
 
 	case gui.ReqSetScale:
-		err = wnd.screen.setScale(args[0].(float32))
+		err = wnd.screen.setWindowFromThread(args[0].(float32))
 
 	case gui.ReqSetFpsCap:
 		wnd.lmtr.Active = args[0].(bool)

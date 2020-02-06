@@ -24,6 +24,7 @@ import (
 	"gopher2600/gui"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
+	"gopher2600/test"
 	"io"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -86,6 +87,8 @@ const windowTitleCaptured = "Gopher2600 [captured]"
 //
 // MUST ONLY be called from the #mainthread
 func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
+	test.AssertMainThread()
+
 	scr := &SdlPlay{
 		Television: tv,
 		service:    make(chan func(), 1),
@@ -159,6 +162,8 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Destroy(output io.Writer) {
+	test.AssertMainThread()
+
 	err := scr.texture.Destroy()
 	if err != nil {
 		output.Write([]byte(err.Error()))
@@ -188,6 +193,8 @@ func (scr *SdlPlay) Reset() error {
 //
 // MUST NOT be called from the #mainthread
 func (scr SdlPlay) showWindow(show bool) {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		if show {
 			scr.window.Show()
@@ -202,6 +209,8 @@ func (scr SdlPlay) showWindow(show bool) {
 // MUST ONLY be called from the #mainthread
 // see setWindowThread() for non-main alternative
 func (scr *SdlPlay) setWindow(scale float32) error {
+	test.AssertMainThread()
+
 	if scale >= 0 {
 		scr.pixelScale = scale
 	}
@@ -223,7 +232,9 @@ func (scr *SdlPlay) setWindow(scale float32) error {
 //
 // MUST NOT be called from the #mainthread
 // see setWindow() for mainthread alternative
-func (scr *SdlPlay) setWindowThread(scale float32) error {
+func (scr *SdlPlay) setWindowFromThread(scale float32) error {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		scr.serviceErr <- scr.setWindow(scale)
 	}
@@ -235,6 +246,8 @@ func (scr *SdlPlay) setWindowThread(scale float32) error {
 // MUST ONLY be called from #mainthread
 // see Resize() for non-main alternative
 func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
+	test.AssertMainThread()
+
 	// new screen limits
 	scr.topScanline = topScanline
 	scr.scanlines = int32(numScanlines)
@@ -272,6 +285,8 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 // MUST NOT be called from #mainthread
 // see resize() for mainthread alternative
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -282,6 +297,8 @@ func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlPlay) NewFrame(frameNum int) error {
+	test.AssertNonMainThread()
+
 	scr.service <- func() {
 		if scr.showOnNextStable && scr.IsStable() {
 			scr.window.Show()
@@ -317,6 +334,8 @@ func (scr *SdlPlay) NewFrame(frameNum int) error {
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+	test.AssertNonMainThread()
+
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible
 		// area we need to the set pixel to black, in case the vblank was off

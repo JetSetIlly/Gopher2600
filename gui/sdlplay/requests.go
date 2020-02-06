@@ -22,6 +22,7 @@ package sdlplay
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -30,6 +31,8 @@ import (
 //
 // MUST NOT be called from the #mainthread
 func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+	test.AssertNonMainThread()
+
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -58,7 +61,7 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 		}
 
 	case gui.ReqSetScale:
-		err = scr.setWindowThread(args[0].(float32))
+		err = scr.setWindowFromThread(args[0].(float32))
 
 	case gui.ReqSetFpsCap:
 		scr.lmtr.Active = args[0].(bool)
