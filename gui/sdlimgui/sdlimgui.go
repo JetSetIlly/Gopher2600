@@ -1,3 +1,4 @@
+// This file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,10 +17,11 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlwindows
+package sdlimgui
 
 import (
 	"gopher2600/gui"
+	"gopher2600/gui/sdlaudio"
 	"gopher2600/paths"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
@@ -29,12 +31,13 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-// SdlWindows is a fully featured windowed debugger
-type SdlWindows struct {
-	io       imgui.IO
-	context  *imgui.Context
-	platform *platform
-	glsl     *glsl
+// SdlImgui is an sdl based visualiser using imgui
+type SdlImgui struct {
+	io      imgui.IO
+	context *imgui.Context
+	plt     *platform
+	audio   *sdlaudio.Audio
+	glsl    *glsl
 
 	tv     television.Television
 	screen *tvScreen
@@ -60,13 +63,13 @@ type SdlWindows struct {
 	isCaptured bool
 }
 
-// NewSdlWindows is the preferred method of initialisation for type SdlWindows
+// NewSdlImgui is the preferred method of initialisation for type SdlWindows
 //
 // MUST ONLY be called from the #mainthread
-func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
+func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	test.AssertMainThread()
 
-	wnd := &SdlWindows{
+	img := &SdlImgui{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),
 		tv:         tv,
@@ -76,16 +79,16 @@ func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
 
 	// create new frame limiter. we change the rate in the resize function
 	// (rate may change due to specification change)
-	wnd.lmtr = limiter.NewFPSLimiter(-1)
+	img.lmtr = limiter.NewFPSLimiter(-1)
 
 	var err error
 
-	wnd.platform, err = newPlatform(wnd)
+	img.plt, err = newPlatform(img)
 	if err != nil {
 		return nil, err
 	}
 
-	wnd.glsl, err = newGlsl(wnd.io)
+	img.glsl, err = newGlsl(img.io)
 	if err != nil {
 		return nil, err
 	}
@@ -94,35 +97,42 @@ func NewSdlWindows(tv television.Television) (*SdlWindows, error) {
 	if err != nil {
 		return nil, err
 	}
-	wnd.io.SetIniFilename(iniPath)
+	img.io.SetIniFilename(iniPath)
 
-	wnd.screen, err = newTvScreen(wnd)
+	img.screen, err = newTvScreen(img)
 	if err != nil {
 		return nil, err
 	}
-	wnd.glsl.tvScreenTexture = wnd.screen.texture
+	img.glsl.tvScreenTexture = img.screen.texture
 
-	tv.AddPixelRenderer(wnd.screen)
+	tv.AddPixelRenderer(img.screen)
 
-	return wnd, nil
+	img.audio, err = sdlaudio.NewAudio()
+	if err != nil {
+		return nil, err
+	}
+	tv.AddAudioMixer(img.audio)
+
+	return img, nil
 }
 
 // Destroy implements GuiCreator interface
 //
 // MUST ONLY be called from the #mainthread
-func (wnd *SdlWindows) Destroy(output io.Writer) {
+func (img *SdlImgui) Destroy(output io.Writer) {
 	test.AssertMainThread()
 
-	wnd.screen.destroy()
-	wnd.glsl.destroy()
-	wnd.platform.destroy()
-	wnd.context.Destroy()
+	img.audio.EndMixing()
+	img.screen.destroy()
+	img.glsl.destroy()
+	img.plt.destroy()
+	img.context.Destroy()
 }
 
 // SetEventChannel implements gui.GUI interface
 //
 // MUST ONLY be called from the #mainthread
-func (wnd *SdlWindows) SetEventChannel(events chan gui.Event) {
+func (img *SdlImgui) SetEventChannel(events chan gui.Event) {
 	test.AssertMainThread()
-	wnd.events = events
+	img.events = events
 }

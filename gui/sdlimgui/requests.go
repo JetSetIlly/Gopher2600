@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlwindows
+package sdlimgui
 
 import (
 	"gopher2600/errors"
@@ -27,7 +27,7 @@ import (
 )
 
 // SetFeature implements gui.GUI interface
-func (wnd *SdlWindows) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -39,39 +39,39 @@ func (wnd *SdlWindows) SetFeature(request gui.FeatureReq, args ...interface{}) (
 
 	switch request {
 	case gui.ReqSetVisibleOnStable:
-		if wnd.tv.IsStable() {
-			wnd.platform.showWindow(true)
+		if img.tv.IsStable() {
+			img.plt.showWindow(true)
 		} else {
-			wnd.showOnNextStable = true
+			img.showOnNextStable = true
 		}
 
 	case gui.ReqSetVisibility:
-		wnd.platform.showWindow(args[0].(bool))
+		img.plt.showWindow(args[0].(bool))
 
 	case gui.ReqToggleVisibility:
-		if wnd.platform.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			wnd.platform.showWindow(true)
+		if img.plt.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
+			img.plt.showWindow(true)
 		} else {
-			wnd.platform.showWindow(false)
+			img.plt.showWindow(false)
 		}
 
 	case gui.ReqSetScale:
-		err = wnd.screen.setWindowFromThread(args[0].(float32))
+		err = img.screen.setWindowFromThread(args[0].(float32))
 
 	case gui.ReqSetFpsCap:
-		wnd.lmtr.Active = args[0].(bool)
+		img.lmtr.Active = args[0].(bool)
 
 	case gui.ReqCaptureMouse:
-		wnd.isCaptured = args[0].(bool)
-		err = sdl.CaptureMouse(wnd.isCaptured)
+		img.isCaptured = args[0].(bool)
+		err = sdl.CaptureMouse(img.isCaptured)
 		if err == nil {
-			wnd.platform.window.SetGrab(wnd.isCaptured)
-			if wnd.isCaptured {
+			img.plt.window.SetGrab(img.isCaptured)
+			if img.isCaptured {
 				sdl.ShowCursor(sdl.DISABLE)
-				wnd.platform.window.SetTitle(windowTitleCaptured)
+				img.plt.window.SetTitle(windowTitleCaptured)
 			} else {
 				sdl.ShowCursor(sdl.ENABLE)
-				wnd.platform.window.SetTitle(windowTitle)
+				img.plt.window.SetTitle(windowTitle)
 			}
 		}
 

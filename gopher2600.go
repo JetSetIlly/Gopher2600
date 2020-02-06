@@ -30,8 +30,8 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/gui/sdldebug"
+	"gopher2600/gui/sdlimgui"
 	"gopher2600/gui/sdlplay"
-	"gopher2600/gui/sdlwindows"
 	"gopher2600/modalflag"
 	"gopher2600/paths"
 	"gopher2600/performance"
@@ -265,7 +265,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		} else {
 			// notify main thread of new gui creator
 			sync.creator <- func() (GuiCreator, error) {
-				return sdlwindows.NewSdlWindows(tv)
+				return sdlimgui.NewSdlImgui(tv)
 			}
 		}
 
@@ -495,7 +495,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			} else {
 				// notify main thread of new gui creator
 				sync.creator <- func() (GuiCreator, error) {
-					return sdlwindows.NewSdlWindows(tv)
+					return sdlimgui.NewSdlImgui(tv)
 				}
 			}
 

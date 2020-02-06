@@ -22,6 +22,7 @@ package sdlplay
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/gui/sdlaudio"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
 	"gopher2600/test"
@@ -49,7 +50,7 @@ type SdlPlay struct {
 	eventChannel chan gui.Event
 
 	// all audio is handled by the sound type
-	snd *sound
+	aud *sdlaudio.Audio
 
 	// sdl stuff
 	window   *sdl.Window
@@ -122,7 +123,7 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	}
 
 	// initialise the sound system
-	scr.snd, err = newSound(scr)
+	scr.aud, err = sdlaudio.NewAudio()
 	if err != nil {
 		return nil, errors.New(errors.SDLPlay, err)
 	}
@@ -131,7 +132,7 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 	scr.AddPixelRenderer(scr)
 
 	// register ourselves as a television.AudioMixer
-	scr.AddAudioMixer(scr)
+	scr.AddAudioMixer(scr.aud)
 
 	// create new frame limiter. we change the rate in the resize function
 	// (rate may change due to specification change)

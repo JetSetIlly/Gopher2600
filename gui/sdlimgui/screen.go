@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlwindows
+package sdlimgui
 
 import (
 	"gopher2600/television"
@@ -35,11 +35,11 @@ const pixelWidth = 2
 const pixelScale = 2.0
 
 type tvScreen struct {
-	wnd *SdlWindows
+	img *SdlImgui
 
 	createTexture bool
 	texture       uint32
-	img           *image.RGBA
+	pixels        *image.RGBA
 
 	// current values for *playable* area of the screen
 	topScanline int
@@ -54,9 +54,9 @@ type tvScreen struct {
 	aspectBias float32
 }
 
-func newTvScreen(wnd *SdlWindows) (*tvScreen, error) {
+func newTvScreen(img *SdlImgui) (*tvScreen, error) {
 	scr := &tvScreen{
-		wnd:     wnd,
+		img:     img,
 		scaling: pixelScale,
 
 		// horizPixels is always the same regardless of tv spec
@@ -85,15 +85,15 @@ func (scr *tvScreen) render() {
 	if scr.createTexture {
 		scr.createTexture = false
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(scr.img.Bounds().Size().X), int32(scr.img.Bounds().Size().Y), 0,
+			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.img.Pix))
+			gl.Ptr(scr.pixels.Pix))
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(scr.img.Bounds().Size().X), int32(scr.img.Bounds().Size().Y),
+			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.img.Pix))
+			gl.Ptr(scr.pixels.Pix))
 	}
 }
 
@@ -117,10 +117,10 @@ func (scr *tvScreen) resizeFromMain(topScanline int, visibleScanlines int) error
 func (scr *tvScreen) resize(topScanline int, visibleScanlines int, setWindow func(float32) error) error {
 	scr.topScanline = topScanline
 	scr.scanlines = visibleScanlines
-	scr.img = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
+	scr.pixels = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
 
-	scr.wnd.lmtr.SetLimit(scr.wnd.tv.GetSpec().FramesPerSecond)
-	scr.aspectBias = scr.wnd.tv.GetSpec().AspectBias
+	scr.img.lmtr.SetLimit(scr.img.tv.GetSpec().FramesPerSecond)
+	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
 
 	setWindow(reapplyScale)
 
@@ -144,7 +144,7 @@ func (scr *tvScreen) setWindow(scale float32) error {
 	// we need to add some padding because I can't get a true borderless imgui
 	// window. not sure what the reasoning is for the value but it works
 	padding := float32(4.0)
-	scr.wnd.platform.setDisplaySize(int(scr.scaledWidth()+padding), int(scr.scaledHeight()+padding))
+	scr.img.plt.setDisplaySize(int(scr.scaledWidth()+padding), int(scr.scaledHeight()+padding))
 
 	return nil
 }
@@ -154,11 +154,11 @@ func (scr *tvScreen) setWindow(scale float32) error {
 func (scr *tvScreen) setWindowFromThread(scale float32) error {
 	test.AssertNonMainThread()
 
-	scr.wnd.service <- func() {
+	scr.img.service <- func() {
 		scr.setWindow(scale)
-		scr.wnd.serviceErr <- nil
+		scr.img.serviceErr <- nil
 	}
-	return <-scr.wnd.serviceErr
+	return <-scr.img.serviceErr
 }
 
 // NewFrame implements the television.PixelRenderer interface
@@ -167,9 +167,9 @@ func (scr *tvScreen) setWindowFromThread(scale float32) error {
 func (scr *tvScreen) NewFrame(frameNum int) error {
 	test.AssertNonMainThread()
 
-	if scr.wnd.showOnNextStable && scr.wnd.tv.IsStable() {
-		scr.wnd.platform.window.Show()
-		scr.wnd.showOnNextStable = false
+	if scr.img.showOnNextStable && scr.img.tv.IsStable() {
+		scr.img.plt.window.Show()
+		scr.img.showOnNextStable = false
 	}
 	return nil
 }
@@ -181,7 +181,7 @@ func (scr *tvScreen) NewScanline(scanline int) error {
 
 // SetPixel implements the television.PixelRenderer interface
 func (scr *tvScreen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.img.Set(x-television.HorizClksHBlank, y-scr.topScanline,
+	scr.pixels.Set(x-television.HorizClksHBlank, y-scr.topScanline,
 		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
 	return nil
 }
@@ -197,11 +197,11 @@ func (scr *tvScreen) EndRendering() error {
 }
 
 func (scr *tvScreen) scaledWidth() float32 {
-	return float32(scr.img.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
+	return float32(scr.pixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
 }
 
 func (scr *tvScreen) scaledHeight() float32 {
-	return float32(scr.img.Bounds().Size().Y) * scr.scaling
+	return float32(scr.pixels.Bounds().Size().Y) * scr.scaling
 }
 
 // draw is called by service loop

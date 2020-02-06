@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlplay
+package sdlaudio
 
 import (
 	"gopher2600/hardware/tia/audio"
@@ -36,17 +36,19 @@ import (
 // value is not critical.
 const bufferLength = 256
 
-type sound struct {
+// Audio outputs sound using SDL
+type Audio struct {
 	id       sdl.AudioDeviceID
 	spec     sdl.AudioSpec
 	buffer   []uint8
 	bufferCt int
 }
 
-func newSound(scr *SdlPlay) (*sound, error) {
-	snd := &sound{}
+// NewAudio is the preferred method of initialisatoin for the Audio Type
+func NewAudio() (*Audio, error) {
+	aud := &Audio{}
 
-	snd.buffer = make([]uint8, bufferLength)
+	aud.buffer = make([]uint8, bufferLength)
 
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,
@@ -58,60 +60,59 @@ func newSound(scr *SdlPlay) (*sound, error) {
 	var err error
 	var actualSpec sdl.AudioSpec
 
-	snd.id, err = sdl.OpenAudioDevice("", false, spec, &actualSpec, 0)
+	aud.id, err = sdl.OpenAudioDevice("", false, spec, &actualSpec, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	snd.spec = actualSpec
+	aud.spec = actualSpec
 
 	// make sure audio device is unpaused on startup
-	sdl.PauseAudioDevice(snd.id, false)
+	sdl.PauseAudioDevice(aud.id, false)
 
-	return snd, nil
+	return aud, nil
 }
 
 // SetAudio implements the television.AudioMixer interface
-func (scr *SdlPlay) SetAudio(audioData uint8) error {
-	if scr.snd.bufferCt >= len(scr.snd.buffer) {
-		return scr.FlushAudio()
+func (aud *Audio) SetAudio(audioData uint8) error {
+	if aud.bufferCt >= len(aud.buffer) {
+		return aud.FlushAudio()
 	}
 
 	// never allow sound buffer to "output" silence - some sound devices take
 	// an appreciable amount of time to move from silence to non-silence
 	//
 	// if audioData == 0 {
-	// 	scr.snd.buffer[scr.snd.bufferCt] = scr.snd.spec.Silence + 1
+	// 	aud.buffer[aud.bufferCt] = aud.spec.Silence + 1
 	// } else {
-	// 	scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
+	// 	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
 	// }
 
-	scr.snd.buffer[scr.snd.bufferCt] = audioData + scr.snd.spec.Silence
-
-	scr.snd.bufferCt++
+	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
+	aud.bufferCt++
 
 	return nil
 }
 
 // FlushAudio implements the television.AudioMixer interface
-func (scr *SdlPlay) FlushAudio() error {
-	err := sdl.QueueAudio(scr.snd.id, scr.snd.buffer)
+func (aud *Audio) FlushAudio() error {
+	err := sdl.QueueAudio(aud.id, aud.buffer)
 	if err != nil {
 		return err
 	}
-	scr.snd.bufferCt = 0
+	aud.bufferCt = 0
 
 	return nil
 }
 
 // PauseAudio implements the television.AudioMixer interface
-func (scr *SdlPlay) PauseAudio(pause bool) error {
-	sdl.PauseAudioDevice(scr.snd.id, pause)
+func (aud *Audio) PauseAudio(pause bool) error {
+	sdl.PauseAudioDevice(aud.id, pause)
 	return nil
 }
 
 // EndMixing implements the television.AudioMixer interface
-func (scr *SdlPlay) EndMixing() error {
-	defer sdl.CloseAudioDevice(scr.snd.id)
-	return scr.FlushAudio()
+func (aud *Audio) EndMixing() error {
+	defer sdl.CloseAudioDevice(aud.id)
+	return aud.FlushAudio()
 }

@@ -1,4 +1,23 @@
-package sdlwindows
+// This file is part of Gopher2600.
+//
+// Gopher2600 is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Gopher2600 is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
+//
+// *** NOTE: all historical versions of this file, as found in any
+// git repository, are also covered by the licence, even when this
+// notice is not present ***
+
+package sdlimgui
 
 import (
 	"fmt"
@@ -13,7 +32,7 @@ const windowTitle = "Gopher2600"
 const windowTitleCaptured = "Gopher2600 [captured]"
 
 type platform struct {
-	wnd *SdlWindows
+	img *SdlImgui
 
 	window     *sdl.Window
 	shouldStop bool
@@ -23,16 +42,16 @@ type platform struct {
 }
 
 // newPlatform is the preferred method of initialisation for the platform type
-func newPlatform(wnd *SdlWindows) (*platform, error) {
+func newPlatform(img *SdlImgui) (*platform, error) {
 	runtime.LockOSThread()
 
-	err := sdl.Init(sdl.INIT_VIDEO)
+	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize SDL2: %v", err)
 	}
 
 	plt := &platform{
-		wnd: wnd,
+		img: img,
 	}
 
 	plt.window, err = sdl.CreateWindow(windowTitle,
@@ -101,23 +120,23 @@ func (plt *platform) framebufferSize() [2]float32 {
 func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
 	displaySize := plt.displaySize()
-	plt.wnd.io.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
+	plt.img.io.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
 
 	// Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
 	frequency := sdl.GetPerformanceFrequency()
 	currentTime := sdl.GetPerformanceCounter()
 	if plt.time > 0 {
-		plt.wnd.io.SetDeltaTime(float32(currentTime-plt.time) / float32(frequency))
+		plt.img.io.SetDeltaTime(float32(currentTime-plt.time) / float32(frequency))
 	} else {
-		plt.wnd.io.SetDeltaTime(1.0 / 60.0)
+		plt.img.io.SetDeltaTime(1.0 / 60.0)
 	}
 	plt.time = currentTime
 
 	// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
 	x, y, state := sdl.GetMouseState()
-	plt.wnd.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
+	plt.img.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 	for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
-		plt.wnd.io.SetMouseButtonDown(i, plt.buttonsDown[i] || (state&sdl.Button(button)) != 0)
+		plt.img.io.SetMouseButtonDown(i, plt.buttonsDown[i] || (state&sdl.Button(button)) != 0)
 		plt.buttonsDown[i] = false
 	}
 }
@@ -133,7 +152,7 @@ func (plt *platform) postRender() {
 func (plt *platform) showWindow(show bool) {
 	test.AssertNonMainThread()
 
-	plt.wnd.service <- func() {
+	plt.img.service <- func() {
 		if show {
 			plt.window.Show()
 		} else {

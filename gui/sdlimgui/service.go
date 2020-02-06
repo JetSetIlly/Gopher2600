@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlwindows
+package sdlimgui
 
 import (
 	"gopher2600/gui"
@@ -27,9 +27,9 @@ import (
 )
 
 // Service implements GuiCreator interface
-func (wnd *SdlWindows) Service() {
+func (img *SdlImgui) Service() {
 	// do not check for events if no event channel has been set
-	if wnd.events != nil {
+	if img.events != nil {
 
 		// loop until there are no more events to retreive. this loop is
 		// intimately connected with the framelimiter below. what we don't want
@@ -50,7 +50,7 @@ func (wnd *SdlWindows) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				wnd.events <- gui.EventWindowClose{}
+				img.events <- gui.EventWindowClose{}
 
 			case *sdl.KeyboardEvent:
 				mod := gui.KeyModNone
@@ -69,14 +69,14 @@ func (wnd *SdlWindows) Service() {
 				switch ev.Type {
 				case sdl.KEYDOWN:
 					if ev.Repeat == 0 {
-						wnd.events <- gui.EventKeyboard{
+						img.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: true}
 					}
 				case sdl.KEYUP:
 					if ev.Repeat == 0 {
-						wnd.events <- gui.EventKeyboard{
+						img.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: false}
@@ -89,17 +89,17 @@ func (wnd *SdlWindows) Service() {
 					button = gui.MouseButtonRight
 				}
 
-				wnd.events <- gui.EventMouseButton{
+				img.events <- gui.EventMouseButton{
 					Button: button,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 			}
 		}
 
 		// mouse motion
-		if wnd.isCaptured {
+		if img.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
-			if mx != wnd.mx || my != wnd.my {
-				w, h := wnd.platform.window.GetSize()
+			if mx != img.mx || my != img.my {
+				w, h := img.plt.window.GetSize()
 
 				// reduce mouse x and y coordintes to the range 0.0 to 1.0
 				//  no need to worry about negative numbers and numbers greater
@@ -109,35 +109,35 @@ func (wnd *SdlWindows) Service() {
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 
-				wnd.events <- gui.EventMouseMotion{X: x, Y: y}
-				wnd.mx = mx
-				wnd.my = my
+				img.events <- gui.EventMouseMotion{X: x, Y: y}
+				img.mx = mx
+				img.my = my
 			}
 		}
 	}
 
 	// Signal start of a new frame
-	wnd.platform.newFrame()
+	img.plt.newFrame()
 	imgui.NewFrame()
 
 	// imgui commands
-	wnd.screen.draw()
+	img.screen.draw()
 
 	// Rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
 
 	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
-	wnd.glsl.preRender(clearColor)
-	wnd.screen.render()
-	wnd.glsl.render(wnd.platform.displaySize(), wnd.platform.framebufferSize(), imgui.RenderedDrawData())
-	wnd.platform.postRender()
+	img.glsl.preRender(clearColor)
+	img.screen.render()
+	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
+	img.plt.postRender()
 
 	// wait for frame limiter
-	// wnd.lmtr.Wait()
+	img.lmtr.Wait()
 
 	// run any outstanding service functions
 	select {
-	case f := <-wnd.service:
+	case f := <-img.service:
 		f()
 	default:
 	}
