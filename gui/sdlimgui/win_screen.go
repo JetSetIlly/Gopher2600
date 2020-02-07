@@ -36,7 +36,6 @@ const pixelWidth = 2
 const defScaling = 2.0
 
 const tvscreenTitle = "TV Screen"
-const tvscreenTitleCaptured = "TV Screen [captured]"
 
 type tvScreen struct {
 	img *SdlImgui
@@ -47,8 +46,11 @@ type tvScreen struct {
 	//   o host sdl window will be set to the same size as the tv screen
 	playmode bool
 
+	// is tvscreen currently pointed at
+	isHovered bool
+
 	// the tv screen has captured mouse input
-	captured bool
+	isCaptured bool
 
 	// create texture on the next call of render
 	createTexture bool
@@ -218,19 +220,15 @@ func (scr *tvScreen) render() {
 
 // draw is called by service loop
 func (scr *tvScreen) draw() {
-	open := false
-
-	title := tvscreenTitle
-	if scr.captured {
-		title = tvscreenTitleCaptured
-	}
-
-	imgui.BeginV(title, &open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(tvscreenTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.Image(imgui.TextureID(scr.texture),
 		imgui.Vec2{
 			scr.scaledWidth(),
 			scr.scaledHeight(),
 		})
+
+	scr.isHovered = imgui.IsItemHovered()
+
 	imgui.End()
 }

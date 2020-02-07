@@ -133,6 +133,18 @@ func (plt *platform) newFrame() {
 
 	// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
 	x, y, state := sdl.GetMouseState()
+
+	// if mouse is captured and the mouse is not over the tv screen then ignore
+	// the mouse button state. the check against isHovered because we want
+	// imgui to recognise the initial click to activate the window. the check
+	// against isCaptured is because we don't want the tv screen to be
+	// deactivated when the "invisible" mouse is outside the tv screen bounds.
+	//
+	// TODO: roll mouse updates into service loop
+	if plt.img.win.screen.isCaptured && !plt.img.win.screen.isHovered {
+		state = 0
+	}
+
 	plt.img.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 	for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
 		plt.img.io.SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)

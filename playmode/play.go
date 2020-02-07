@@ -63,6 +63,14 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 		return errors.New(errors.PlayError, err)
 	}
 
+	// try to attach vcs directly to gui
+	err = scr.SetFeature(gui.ReqAddVCS, vcs)
+	if err != nil {
+		if !errors.Is(err, errors.UnsupportedGUIRequest) {
+			return errors.New(errors.PlayError, err)
+		}
+	}
+
 	// note that we attach the cartridge in three different branches below,
 	// depending on
 

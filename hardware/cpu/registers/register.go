@@ -44,7 +44,7 @@ func NewAnonRegister(val uint8) *Register {
 }
 
 func (r Register) String() string {
-	return fmt.Sprintf("%s=%#02x", r.label, r.value)
+	return fmt.Sprintf("%#02x", r.value)
 }
 
 // Value returns the current value of the register

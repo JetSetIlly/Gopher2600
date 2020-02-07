@@ -46,4 +46,5 @@ const (
 	ReqIncScale           FeatureReq = "ReqIncScale"           // none
 	ReqDecScale           FeatureReq = "ReqDecScale"           // none
 	ReqSetFpsCap          FeatureReq = "ReqSetFpsCap"          // bool
+	ReqAddVCS             FeatureReq = "ReqAddVCS"             // *hardware.VCS
 )

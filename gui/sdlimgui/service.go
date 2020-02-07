@@ -53,33 +53,35 @@ func (img *SdlImgui) Service() {
 				img.events <- gui.EventWindowClose{}
 
 			case *sdl.KeyboardEvent:
-				mod := gui.KeyModNone
+				if img.win.screen.isCaptured {
+					mod := gui.KeyModNone
 
-				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-					mod = gui.KeyModAlt
-				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-					mod = gui.KeyModShift
-				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-					mod = gui.KeyModCtrl
-				}
-
-				switch ev.Type {
-				case sdl.KEYDOWN:
-					if ev.Repeat == 0 {
-						img.events <- gui.EventKeyboard{
-							Key:  sdl.GetKeyName(ev.Keysym.Sym),
-							Mod:  mod,
-							Down: true}
+					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+						sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+						mod = gui.KeyModAlt
+					} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+						sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+						mod = gui.KeyModShift
+					} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+						sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+						mod = gui.KeyModCtrl
 					}
-				case sdl.KEYUP:
-					if ev.Repeat == 0 {
-						img.events <- gui.EventKeyboard{
-							Key:  sdl.GetKeyName(ev.Keysym.Sym),
-							Mod:  mod,
-							Down: false}
+
+					switch ev.Type {
+					case sdl.KEYDOWN:
+						if ev.Repeat == 0 {
+							img.events <- gui.EventKeyboard{
+								Key:  sdl.GetKeyName(ev.Keysym.Sym),
+								Mod:  mod,
+								Down: true}
+						}
+					case sdl.KEYUP:
+						if ev.Repeat == 0 {
+							img.events <- gui.EventKeyboard{
+								Key:  sdl.GetKeyName(ev.Keysym.Sym),
+								Mod:  mod,
+								Down: false}
+						}
 					}
 				}
 
@@ -93,13 +95,14 @@ func (img *SdlImgui) Service() {
 
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
-					button = gui.MouseButtonLeft
+					if img.win.screen.isCaptured {
+						button = gui.MouseButtonLeft
+					} else if img.win.screen.isHovered {
 
-					// left mouse button should capture mouse if
-					// not already done so.
-					if !img.isCaptured {
+						// left mouse button should capture mouse if
+						// not already done so.
 						swallow = true
-						img.isCaptured = true
+						img.win.screen.isCaptured = true
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
@@ -112,9 +115,9 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.isCaptured {
+					if img.win.screen.isCaptured {
 						swallow = true
-						img.isCaptured = false
+						img.win.screen.isCaptured = false
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
@@ -133,7 +136,7 @@ func (img *SdlImgui) Service() {
 		}
 
 		// mouse motion
-		if img.isCaptured {
+		if img.win.screen.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
 			if mx != img.mx || my != img.my {
 				w, h := img.plt.window.GetSize()
@@ -158,14 +161,14 @@ func (img *SdlImgui) Service() {
 	imgui.NewFrame()
 
 	// imgui commands
-	img.screen.draw()
+	img.win.draw()
 
 	// Rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
 
 	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
 	img.glsl.preRender(clearColor)
-	img.screen.render()
+	img.win.screen.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()
 

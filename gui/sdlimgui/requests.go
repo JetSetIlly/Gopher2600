@@ -22,6 +22,7 @@ package sdlimgui
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
+	"gopher2600/hardware"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -56,10 +57,13 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 
 	case gui.ReqSetScale:
-		err = img.screen.setWindowFromThread(args[0].(float32))
+		err = img.win.screen.setWindowFromThread(args[0].(float32))
 
 	case gui.ReqSetFpsCap:
 		img.lmtr.Active = args[0].(bool)
+
+	case gui.ReqAddVCS:
+		img.vcs = args[0].(*hardware.VCS)
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)

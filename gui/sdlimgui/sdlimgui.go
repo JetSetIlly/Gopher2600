@@ -22,6 +22,7 @@ package sdlimgui
 import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
+	"gopher2600/hardware"
 	"gopher2600/paths"
 	"gopher2600/performance/limiter"
 	"gopher2600/television"
@@ -39,8 +40,11 @@ type SdlImgui struct {
 	audio   *sdlaudio.Audio
 	glsl    *glsl
 
-	tv     television.Television
-	screen *tvScreen
+	// collection of imgui windows
+	win *windows
+
+	vcs *hardware.VCS
+	tv  television.Television
 
 	// functions that need to be performed in the main thread should be queued
 	// for service.
@@ -58,9 +62,6 @@ type SdlImgui struct {
 
 	// mouse coords at last frame
 	mx, my int32
-
-	// whether mouse is captured
-	isCaptured bool
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlWindows
@@ -99,13 +100,14 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
-	img.screen, err = newTvScreen(img)
+	img.win, err = newWindows(img)
 	if err != nil {
 		return nil, err
 	}
-	img.glsl.tvScreenTexture = img.screen.texture
 
-	tv.AddPixelRenderer(img.screen)
+	// connect some screen properties to other parts of the system
+	img.glsl.tvScreenTexture = img.win.screen.texture
+	tv.AddPixelRenderer(img.win.screen)
 
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
@@ -123,7 +125,7 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	test.AssertMainThread()
 
 	img.audio.EndMixing()
-	img.screen.destroy()
+	img.win.destroy()
 	img.glsl.destroy()
 	img.plt.destroy()
 	img.context.Destroy()

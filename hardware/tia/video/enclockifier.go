@@ -65,11 +65,13 @@ func (en *enclockifier) String() string {
 			s.WriteString(fmt.Sprintf("+%d", en.cpy))
 		}
 
-		s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles()))
-		if en.secondHalf {
-			s.WriteString("/2nd")
+		if en.endEvent != nil {
+			s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles()))
+			if en.secondHalf {
+				s.WriteString("/2nd")
+			}
+			s.WriteString(")")
 		}
-		s.WriteString(")")
 	}
 	return s.String()
 }

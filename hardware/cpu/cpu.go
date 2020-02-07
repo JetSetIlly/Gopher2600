@@ -101,7 +101,10 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 }
 
 func (mc *CPU) String() string {
-	return fmt.Sprintf("%s %s %s %s %s %s", mc.PC, mc.A, mc.X, mc.Y, mc.SP, mc.Status)
+	return fmt.Sprintf("%s=%s %s=%s %s=%s %s=%s %s=%s %s=%s",
+		mc.PC.Label(), mc.PC, mc.A.Label(), mc.A,
+		mc.X.Label(), mc.X, mc.Y.Label(), mc.Y,
+		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status)
 }
 
 // Reset reinitialises all registers

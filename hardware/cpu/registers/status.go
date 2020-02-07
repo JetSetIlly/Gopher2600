@@ -40,9 +40,12 @@ func NewStatusRegister() *StatusRegister {
 	return &StatusRegister{}
 }
 
+func (sr StatusRegister) Label() string {
+	return "SR"
+}
+
 func (sr StatusRegister) String() string {
 	s := strings.Builder{}
-	s.WriteString("SR=")
 
 	if sr.Sign {
 		s.WriteRune('S')
