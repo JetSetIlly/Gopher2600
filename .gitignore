@@ -13,7 +13,6 @@ recording_*
 *mem.profile
 out
 out2
-todo.txt
 *.bin
 *.wasm
 README.html
