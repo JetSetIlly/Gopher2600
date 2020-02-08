@@ -69,23 +69,23 @@ func NewVideo(mem bus.ChipBus,
 	var err error
 
 	// sprite objects
-	vd.Player0, err = newPlayerSprite("player0", tv, hblank, hmoveLatch)
+	vd.Player0, err = newPlayerSprite("Player 0", tv, hblank, hmoveLatch)
 	if err != nil {
 		return nil, err
 	}
-	vd.Player1, err = newPlayerSprite("player1", tv, hblank, hmoveLatch)
+	vd.Player1, err = newPlayerSprite("Player 1", tv, hblank, hmoveLatch)
 	if err != nil {
 		return nil, err
 	}
-	vd.Missile0, err = newMissileSprite("missile0", tv, hblank, hmoveLatch)
+	vd.Missile0, err = newMissileSprite("Missile 0", tv, hblank, hmoveLatch)
 	if err != nil {
 		return nil, err
 	}
-	vd.Missile1, err = newMissileSprite("missile1", tv, hblank, hmoveLatch)
+	vd.Missile1, err = newMissileSprite("Missile 1", tv, hblank, hmoveLatch)
 	if err != nil {
 		return nil, err
 	}
-	vd.Ball, err = newBallSprite("ball", tv, hblank, hmoveLatch)
+	vd.Ball, err = newBallSprite("Ball", tv, hblank, hmoveLatch)
 	if err != nil {
 		return nil, err
 	}

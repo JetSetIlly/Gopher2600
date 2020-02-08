@@ -95,6 +95,11 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 
 }
 
+// Label returns the label for the sprite
+func (ms missileSprite) Label() string {
+	return ms.label
+}
+
 func (ms missileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -104,7 +109,6 @@ func (ms missileSprite) String() string {
 	}
 
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s: ", ms.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))

@@ -99,9 +99,14 @@ type TIA struct {
 	hmoveEvent *future.Event
 }
 
+// Label returns an identifying label for the TIA
+func (tia TIA) Label() string {
+	return "TIA"
+}
+
 func (tia TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %s %d %04.01f",
+	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f",
 		tia.hsync, tia.pclk,
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))

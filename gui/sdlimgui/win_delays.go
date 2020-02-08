@@ -43,16 +43,36 @@ func (delays *delays) draw() {
 	if delays.img.vcs != nil {
 		if !delays.setup {
 			imgui.SetNextWindowPos(imgui.Vec2{1027, 27})
-			imgui.SetNextWindowSize(imgui.Vec2{201, 313})
+			imgui.SetNextWindowSize(imgui.Vec2{226, 319})
 			delays.setup = true
 		}
 		imgui.BeginV(delaysTitle, nil, 0)
-		imgui.Text(delays.img.vcs.TIA.Delay.String())
-		imgui.Text(delays.img.vcs.TIA.Video.Player0.Delay.String())
-		imgui.Text(delays.img.vcs.TIA.Video.Player1.Delay.String())
-		imgui.Text(delays.img.vcs.TIA.Video.Missile0.Delay.String())
-		imgui.Text(delays.img.vcs.TIA.Video.Missile1.Delay.String())
-		imgui.Text(delays.img.vcs.TIA.Video.Ball.Delay.String())
+
+		s := delays.img.vcs.TIA.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+		s = delays.img.vcs.TIA.Video.Player0.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+		s = delays.img.vcs.TIA.Video.Player1.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+		s = delays.img.vcs.TIA.Video.Missile0.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+		s = delays.img.vcs.TIA.Video.Missile1.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+		s = delays.img.vcs.TIA.Video.Ball.Delay.String()
+		if len(s) > 0 {
+			imgui.Text(s)
+		}
+
 		imgui.End()
 	}
 }

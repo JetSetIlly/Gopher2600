@@ -83,7 +83,7 @@ func NewTimer(mem bus.ChipBus) *Timer {
 }
 
 func (tmr Timer) String() string {
-	return fmt.Sprintf("INTIM=%#02x elpsd=%02d remn=%#04x intv=%d (%s)",
+	return fmt.Sprintf("INTIM=%#02x elpsd=%05d remn=%#02x intv=%02d (%s)",
 		tmr.value,
 		tmr.cyclesElapsed,
 		tmr.cyclesRemaining,

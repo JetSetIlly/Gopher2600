@@ -160,6 +160,11 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	return &ps, nil
 }
 
+// Label returns the label for the sprite
+func (ps playerSprite) Label() string {
+	return ps.label
+}
+
 func (ps playerSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -169,7 +174,6 @@ func (ps playerSprite) String() string {
 	}
 
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s: ", ps.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.hmovedPixel))

@@ -56,6 +56,9 @@ func (ev Event) String() string {
 	if label == "" {
 		label = "[unlabelled event]"
 	}
+	if ev.remainingCycles == -1 {
+		return fmt.Sprintf("%s -> imminent", label)
+	}
 	return fmt.Sprintf("%s -> %d", label, ev.remainingCycles)
 }
 

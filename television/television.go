@@ -158,8 +158,7 @@ func NewTelevision(spec string) (Television, error) {
 
 func (tv television) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%d SL=%d", tv.frameNum, tv.scanline))
-	s.WriteString(fmt.Sprintf(" HP=%d", tv.horizPos))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.frameNum, tv.scanline, tv.horizPos))
 	return s.String()
 }
 

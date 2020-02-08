@@ -76,10 +76,12 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 	return &pf
 }
 
+func (pf playfield) Label() string {
+	return "Playfield"
+}
+
 func (pf playfield) String() string {
 	s := strings.Builder{}
-	s.WriteString("playfield: ")
-
 	s.WriteString(fmt.Sprintf("%04b", pf.pf0>>4))
 	s.WriteString(fmt.Sprintf(" %08b", pf.pf1))
 	s.WriteString(fmt.Sprintf(" %08b", pf.pf2))

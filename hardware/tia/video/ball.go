@@ -91,6 +91,11 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 	return &bs, nil
 }
 
+// Label returns the label for the sprite
+func (bs ballSprite) Label() string {
+	return bs.label
+}
+
 func (bs ballSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
@@ -100,7 +105,6 @@ func (bs ballSprite) String() string {
 	}
 
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s: ", bs.label))
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))

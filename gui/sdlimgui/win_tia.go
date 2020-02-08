@@ -47,12 +47,31 @@ func (tia *tia) draw() {
 			tia.setup = true
 		}
 		imgui.BeginV(tiaTitle, nil, 0)
+
+		imgui.Text(tia.img.vcs.TIA.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.String())
+
+		imgui.Text(tia.img.vcs.TIA.Video.Player0.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Player0.String())
+
+		imgui.Text(tia.img.vcs.TIA.Video.Player1.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Player1.String())
+
+		imgui.Text(tia.img.vcs.TIA.Video.Missile0.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Missile0.String())
+
+		imgui.Text(tia.img.vcs.TIA.Video.Missile1.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Missile1.String())
+
+		imgui.Text(tia.img.vcs.TIA.Video.Ball.Label())
+		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Ball.String())
+
 		imgui.End()
 	}
 }
