@@ -219,9 +219,10 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	numSucceed := 0
 	numFail := 0
 	numError := 0
-	numSkipped := 0
 
 	defer func() {
+		numSkipped := db.NumEntries() - numSucceed - numFail - numError
+
 		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail, %d skipped", numSucceed, numFail, numSkipped)))
 
 		if numError > 0 {
