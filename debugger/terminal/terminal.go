@@ -21,6 +21,7 @@ package terminal
 
 import (
 	"gopher2600/gui"
+	"os"
 )
 
 // Prompt specifies the prompt text and the prompt style.
@@ -31,9 +32,17 @@ type Prompt struct {
 
 // Input defines the operations required by an interface that allows input.
 type Input interface {
-	// the TermRead loop should listen (if possible) for events on eventChannel
-	// and call eventHandler with the received event as the argument.
-	TermRead(buffer []byte, prompt Prompt, eventChannel chan gui.Event, eventHandler func(gui.Event) error) (int, error)
+	// the TermRead loop should listenfor events on eventChannel and call
+	// eventHandler with the received event as the argument.
+	//
+	// for example, where someChannel is private to the Input implementation
+	//
+	//	select {
+	//	case <- someChannel
+	//	case ev := <-eventChannel:
+	//		return 0, eventHandler(ev)
+	//	}
+	TermRead(buffer []byte, prompt Prompt, events *ReadEvents) (int, error)
 
 	// IsInteractive() should return true for implementations that require user
 	// interaction. implementations that don't require a user to interact with
@@ -43,7 +52,7 @@ type Input interface {
 
 // Output defines the operations required by an interface that allows output.
 type Output interface {
-	TermPrintLine(Style, string, ...interface{})
+	TermPrintLine(Style, string)
 }
 
 // Terminal defines the operations required by the debugger's command line interface.
@@ -68,4 +77,17 @@ type Terminal interface {
 type TabCompletion interface {
 	Complete(input string) string
 	Reset()
+}
+
+// Broker implementations can identify a terminal
+type Broker interface {
+	GetTerminal() Terminal
+}
+
+// ReadEvents encapsulates the event channels that need to be monitored during
+// a TermRead
+type ReadEvents struct {
+	GuiEvents       chan gui.Event
+	GuiEventHandler func(gui.Event) error
+	IntEvents       chan os.Signal
 }

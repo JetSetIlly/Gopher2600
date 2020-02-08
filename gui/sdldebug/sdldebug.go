@@ -208,6 +208,19 @@ func (scr SdlDebug) showWindow(show bool) {
 	<-scr.serviceErr
 }
 
+// show or hide window
+//
+// MUST NOT be called from the #mainthread
+func (scr SdlDebug) showWindowFromMain(show bool) {
+	test.AssertMainThread()
+
+	if show {
+		scr.window.Show()
+	} else {
+		scr.window.Hide()
+	}
+}
+
 // the desired window width is different depending on whether the frame is
 // masked or unmasked
 func (scr SdlDebug) windowWidth() (int32, float32) {

@@ -50,7 +50,10 @@ func (img *SdlImgui) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				img.events <- gui.EventWindowClose{}
+				img.events <- gui.EventQuit{}
+
+			case *sdl.TextInputEvent:
+				img.io.AddInputCharacters(string(ev.Text[:]))
 
 			case *sdl.KeyboardEvent:
 				if img.win.screen.isCaptured {
@@ -82,6 +85,15 @@ func (img *SdlImgui) Service() {
 								Mod:  mod,
 								Down: false}
 						}
+					}
+				} else {
+					switch ev.Type {
+					case sdl.KEYDOWN:
+						img.io.KeyPress(int(ev.Keysym.Scancode))
+						img.updateKeyModifier()
+					case sdl.KEYUP:
+						img.io.KeyRelease(int(ev.Keysym.Scancode))
+						img.updateKeyModifier()
 					}
 				}
 

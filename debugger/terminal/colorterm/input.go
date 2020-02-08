@@ -20,11 +20,11 @@
 package colorterm
 
 import (
+	"fmt"
 	"gopher2600/ansi"
 	"gopher2600/debugger/terminal"
 	"gopher2600/debugger/terminal/colorterm/easyterm"
 	"gopher2600/errors"
-	"gopher2600/gui"
 	"unicode"
 	"unicode/utf8"
 )
@@ -32,15 +32,18 @@ import (
 // #cursor #keys #tab #completion
 
 // TermRead implements the terminal.Terminal interface
-func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
-
+func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	if ct.silenced {
 		return 0, nil
 	}
 
-	// ctrl-c handling: currently, we put the terminal into rawmode and listen
-	// for ctrl-c event using the readRune reader.
+	if events == nil {
+		events = &terminal.ReadEvents{}
+	}
 
+	// we need to put terminal into raw mode so that we can monkey with it.
+	// not that this means that we need to handle control codes manually,
+	// easyterm.KeyInterrupt and easyterm.KeySuspend in particular.
 	ct.RawMode()
 	defer ct.CanonicalMode()
 
@@ -72,17 +75,27 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 
 	for {
 		ct.EasyTerm.TermPrint(ansi.CursorStore)
-		ct.TermPrintLine(prompt.Style, "%s%s", ansi.ClearLine, prompt.Content)
+		ct.TermPrintLine(prompt.Style, fmt.Sprintf("%s%s", ansi.ClearLine, prompt.Content))
 		ct.TermPrintLine(terminal.StyleInput, string(input[:inputLen]))
 		ct.EasyTerm.TermPrint(ansi.CursorRestore)
 
 		select {
-		case event := <-events:
+		case _ = <-events.IntEvents:
+			// terminal is in raw mode so we won't recieve these from the
+			// terminal itself but I suppose it's possible to receive them
+			// from somewhere else
+			//
+			// just return the UserInterrupt error and not worry about clearing
+			// the input line. see easyterm.KeyInterrupt for what happens
+			// normally.
+			return 0, errors.New(errors.UserInterrupt)
+
+		case ev := <-events.GuiEvents:
 			// handle functions that are passsed on over interruptChannel. these can
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
-			err := eventHandler(event)
+			err := events.GuiEventHandler(ev)
 			ct.EasyTerm.TermPrint(ansi.CursorRestore)
 			if err != nil {
 				return inputLen + 1, err
@@ -94,6 +107,28 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 			}
 
 			switch readRune.r {
+			case easyterm.KeyInterrupt:
+				// #ctrlc - note that there is a ctrl-c signal handler, set up
+				// in debugger.Start(), that controls the main debugging loop.
+				// this ctrl-c handler by contrast, controls the user input
+				// loop
+				if inputLen > 0 {
+					// clear current input
+					inputLen = 0
+					cursorPos = 0
+					ct.EasyTerm.TermPrint("\r")
+					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
+				} else {
+					// there is no input so return UserInterrupt error
+					ct.EasyTerm.TermPrint("\r\n")
+					return 0, errors.New(errors.UserInterrupt)
+				}
+
+			case easyterm.KeySuspend:
+				ct.CanonicalMode()
+				easyterm.SuspendProcess()
+				ct.RawMode()
+
 			case easyterm.KeyTab:
 				if ct.tabCompletion != nil {
 					s := ct.tabCompletion.Complete(string(input[:cursorPos]))
@@ -116,28 +151,6 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events c
 						inputLen += d
 					}
 				}
-
-			case easyterm.KeyInterrupt:
-				// #ctrlc - note that there is a ctrl-c signal handler, set up
-				// in debugger.Start(), that controls the main debugging loop.
-				// this ctrl-c handler by contrast, controls the user input
-				// loop
-
-				if inputLen > 0 {
-					// clear current input
-					inputLen = 0
-					cursorPos = 0
-					ct.EasyTerm.TermPrint("\r")
-					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
-				} else {
-					// there is no input so return UserInterrupt error
-					ct.EasyTerm.TermPrint("\r\n")
-					return 0, errors.New(errors.UserInterrupt)
-				}
-
-			case easyterm.KeySuspend:
-				// CTRL-Z
-				return inputLen + 1, errors.New(errors.UserSuspend)
 
 			case easyterm.KeyCarriageReturn:
 				// CARRIAGE RETURN

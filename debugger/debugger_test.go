@@ -122,7 +122,7 @@ func (trm *mockTerm) RegisterTabCompletion(_ terminal.TabCompletion) {
 func (trm *mockTerm) Silence(silenced bool) {
 }
 
-func (trm *mockTerm) TermRead(buffer []byte, prompt terminal.Prompt, eventChannel chan gui.Event, eventHandler func(gui.Event) error) (int, error) {
+func (trm *mockTerm) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	s := <-trm.inp
 	copy(buffer, []byte(s))
 	return len(s) + 1, nil
@@ -132,8 +132,8 @@ func (trm *mockTerm) IsInteractive() bool {
 	return false
 }
 
-func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string, a ...interface{}) {
-	trm.out <- fmt.Sprintf(s, a...)
+func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
+	trm.out <- s
 }
 
 func (trm *mockTerm) sndInput(s string) {

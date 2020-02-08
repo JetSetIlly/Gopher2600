@@ -164,7 +164,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			return false, "", errors.New(errors.RegressionPlaybackError, err)
 		}
 
-		switch err.(errors.AtariError).Head {
+		switch err.(errors.AtariError).Message {
 		// the PowerOff error is expected. if we receive it then that means
 		// the regression test has succeeded
 		case errors.PowerOff:

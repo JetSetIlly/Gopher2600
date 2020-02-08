@@ -20,13 +20,12 @@
 package colorterm
 
 import (
-	"fmt"
 	"gopher2600/ansi"
 	"gopher2600/debugger/terminal"
 )
 
 // TermPrintLine implements the terminal.Terminal interface
-func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string, a ...interface{}) {
+func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	if ct.silenced && style != terminal.StyleError {
 		return
 	}
@@ -66,11 +65,7 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string, a ...inte
 		ct.EasyTerm.TermPrint(ansi.PenColor["blue"])
 	}
 
-	if len(a) > 0 {
-		ct.EasyTerm.TermPrint(fmt.Sprintf(s, a...))
-	} else {
-		ct.EasyTerm.TermPrint(s)
-	}
+	ct.EasyTerm.TermPrint(s)
 	ct.EasyTerm.TermPrint(ansi.NormalPen)
 
 	// add a newline if print style is anything other than prompt or input line

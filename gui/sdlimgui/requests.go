@@ -23,8 +23,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware"
-
-	"github.com/veandco/go-sdl2/sdl"
 )
 
 // SetFeature implements gui.GUI interface
@@ -47,14 +45,8 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 
 	case gui.ReqSetVisibility:
-		img.plt.showWindow(args[0].(bool))
 
 	case gui.ReqToggleVisibility:
-		if img.plt.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
-			img.plt.showWindow(true)
-		} else {
-			img.plt.showWindow(false)
-		}
 
 	case gui.ReqSetScale:
 		err = img.win.screen.setWindowFromThread(args[0].(float32))
@@ -62,7 +54,9 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 	case gui.ReqSetFpsCap:
 		img.lmtr.Active = args[0].(bool)
 
-	case gui.ReqAddVCS:
+	case gui.ReqSetPause:
+
+	case gui.ReqDebugVCS:
 		img.vcs = args[0].(*hardware.VCS)
 
 	default:

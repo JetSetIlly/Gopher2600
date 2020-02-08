@@ -25,8 +25,8 @@ package gui
 // and sent over a registered event channel.
 type Event interface{}
 
-// EventWindowClose is sent when the gui window is closed
-type EventWindowClose struct{}
+// EventQuit is sent when the gui window is closed
+type EventQuit struct{}
 
 // KeyMod identifies
 type KeyMod int

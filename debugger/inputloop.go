@@ -25,8 +25,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/hardware/cpu/instructions"
 	"io"
-	"os"
-	"syscall"
 )
 
 // videoCycle() to be used with vcs.Step()
@@ -81,8 +79,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	}
 
 	for dbg.running {
-		// check for gui events and keyboard interrupts
-		err = dbg.checkInterruptsAndEvents()
+		// check for events
+		err = dbg.checkEvents()
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%s", err)
 		}
@@ -162,15 +160,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			dbg.runUntilHalt = false
 
 			// get user input
-			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.guiChan, dbg.guiEventHandler)
+			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.events)
 
 			// errors returned by UserRead() functions are very rich. the
 			// following block interprets the error carefully and proceeds
 			// appropriately
 			if err != nil {
 				if !errors.IsAny(err) {
-					// if the error originated from outside of the emulation code
-					// then it is probably serious or unexpected
+					// if the error originated from outside of gopher2600 then
+					// it is probably serious or unexpected
 					switch err {
 					case io.EOF:
 						// treat EOF events the same as UserInterrupt events
@@ -184,64 +182,16 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 				// we now know the we have an Atari Error so we can safely
 				// switch on the internal Errno
-				switch err.(errors.AtariError).Head {
+				switch err.(errors.AtariError).Message {
 
 				// user interrupts are triggered by the user (in a terminal
 				// environment, usually by pressing ctrl-c)
 				case errors.UserInterrupt:
+					dbg.handleInterrupt(inputter, inputLen)
 
-					// if script input is being capture by a scriptScribe then
-					// we the user interrupt event as a SCRIPT END
-					// command.
-					if dbg.scriptScribe.IsActive() {
-						dbg.input = []byte("SCRIPT END")
-						inputLen = 11
-
-					} else if !inputter.IsInteractive() {
-						// if the input loop is processing a non-interactive
-						// session (a script) then we run the QUIT command
-						// immediately, without asking the user
-						dbg.input = []byte(cmdQuit)
-						inputLen = 5
-
-					} else {
-						// a scriptScribe is not active nor is this a script
-						// input loop. ask the user if they really want to quit
-						confirm := make([]byte, 1)
-						_, err := inputter.TermRead(confirm,
-							terminal.Prompt{
-								Content: "really quit (y/n) ",
-								Style:   terminal.StylePromptConfirm},
-							nil, nil)
-
-						if err != nil {
-							// another UserInterrupt has occurred. we treat
-							// UserInterrupt as thought 'y' was pressed
-							if errors.Is(err, errors.UserInterrupt) {
-								confirm[0] = 'y'
-							} else {
-								dbg.printLine(terminal.StyleError, err.Error())
-							}
-						}
-
-						// check if confirmation has been confirmed and run
-						// QUIT command
-						if confirm[0] == 'y' || confirm[0] == 'Y' {
-							dbg.input = []byte(cmdQuit)
-							inputLen = 5
-						}
-					}
-
-				// user has asked to suspend the debuggin process (in a UNIX
-				// terminal environment this is usually done with ctrl-z)
-				case errors.UserSuspend:
-					p, err := os.FindProcess(os.Getppid())
-					if err != nil {
-						dbg.printLine(terminal.StyleError, "debugger doesn't seem to have a parent process")
-					} else {
-						// send TSTP signal to parent proces
-						p.Signal(syscall.SIGTSTP)
-					}
+				// like UserInterrupt but with no confirmation stage
+				case errors.UserQuit:
+					dbg.running = false
 
 				// a script that is being run will usually end with a ScriptEnd
 				// error. in these instances we can say simply say so (using
@@ -334,4 +284,49 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	}
 
 	return nil
+}
+
+// interrupt errors that are sent back to the debugger need some special care
+// depending on the current state.
+//
+// - if script recording is active then recording is ended
+// - for non-interactive input set running flag to false immediately
+// - otherwise, prompt use for confirmation that the debugger should quit
+func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
+	// if script input is being capture by a scriptScribe then
+	// we the user interrupt event as a SCRIPT END
+	// command.
+	if dbg.scriptScribe.IsActive() {
+		dbg.input = []byte("SCRIPT END")
+		inputLen = 11
+
+	} else if !inputter.IsInteractive() {
+		dbg.running = false
+
+	} else {
+		// a scriptScribe is not active nor is this a script
+		// input loop. ask the user if they really want to quit
+		confirm := make([]byte, 1)
+		_, err := inputter.TermRead(confirm,
+			terminal.Prompt{
+				Content: "really quit (y/n) ",
+				Style:   terminal.StylePromptConfirm},
+			dbg.events)
+
+		if err != nil {
+			// another UserInterrupt has occurred. we treat
+			// UserInterrupt as thought 'y' was pressed
+			if errors.Is(err, errors.UserInterrupt) {
+				confirm[0] = 'y'
+			} else {
+				dbg.printLine(terminal.StyleError, err.Error())
+			}
+		}
+
+		// check if confirmation has been confirmed and run
+		// QUIT command
+		if confirm[0] == 'y' || confirm[0] == 'Y' {
+			dbg.running = false
+		}
+	}
 }

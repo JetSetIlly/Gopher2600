@@ -22,7 +22,6 @@ package script
 import (
 	"gopher2600/debugger/terminal"
 	"gopher2600/errors"
-	"gopher2600/gui"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -86,7 +85,7 @@ func (scr *Rescribe) IsInteractive() bool {
 }
 
 // TermRead implements the terminal.UserRead interface
-func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
+func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
 		return -1, errors.New(errors.ScriptEnd, scr.scriptFile)
 	}

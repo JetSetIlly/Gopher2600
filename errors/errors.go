@@ -30,22 +30,22 @@ type Values []interface{}
 // AtariError allows code to specify a predefined error and not worry too much about the
 // message behind that error and how the message will be formatted on output.
 type AtariError struct {
-	Head   string
-	Values Values
+	Message string
+	Values  Values
 }
 
 // New is used to create a new instance of an AtariError.
-func New(head string, values ...interface{}) AtariError {
+func New(message string, values ...interface{}) AtariError {
 	return AtariError{
-		Head:   head,
-		Values: values,
+		Message: message,
+		Values:  values,
 	}
 }
 
 // Error returns the normalised error message. Most usefully, it compresses
 // duplicate adjacent AtariError instances.
 func (er AtariError) Error() string {
-	s := fmt.Sprintf(er.Head, er.Values...)
+	s := fmt.Sprintf(er.Message, er.Values...)
 
 	// de-duplicate error message parts
 	p := strings.SplitN(s, ": ", 3)
@@ -61,7 +61,7 @@ func (er AtariError) Error() string {
 func Is(err error, head string) bool {
 	switch er := err.(type) {
 	case AtariError:
-		return er.Head == head
+		return er.Message == head
 	}
 	return false
 }

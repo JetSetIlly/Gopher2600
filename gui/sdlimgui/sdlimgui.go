@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"gopher2600/debugger/terminal"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
 	"gopher2600/hardware"
@@ -132,9 +133,11 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 }
 
 // SetEventChannel implements gui.GUI interface
-//
-// MUST ONLY be called from the #mainthread
 func (img *SdlImgui) SetEventChannel(events chan gui.Event) {
-	test.AssertMainThread()
 	img.events = events
+}
+
+// GetTerminal implements terminal.Broker interface
+func (img *SdlImgui) GetTerminal() terminal.Terminal {
+	return img.win.term
 }

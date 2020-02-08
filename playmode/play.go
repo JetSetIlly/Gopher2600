@@ -63,14 +63,6 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 		return errors.New(errors.PlayError, err)
 	}
 
-	// try to attach vcs directly to gui
-	err = scr.SetFeature(gui.ReqAddVCS, vcs)
-	if err != nil {
-		if !errors.Is(err, errors.UnsupportedGUIRequest) {
-			return errors.New(errors.PlayError, err)
-		}
-	}
-
 	// note that we attach the cartridge in three different branches below,
 	// depending on
 
@@ -174,8 +166,8 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 	// ctrl-c is pressed. redirect interrupt signal to an os.Signal channel
 	signal.Notify(pl.intChan, os.Interrupt)
 
-	// run and handle gui events
-	err = vcs.Run(pl.guiEventHandler)
+	// run and handle events
+	err = vcs.Run(pl.eventHandler)
 
 	if err != nil {
 		if errors.Is(err, errors.PowerOff) {

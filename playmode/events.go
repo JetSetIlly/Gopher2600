@@ -25,30 +25,6 @@ import (
 	"gopher2600/hardware/riot/input"
 )
 
-func (pl *playmode) guiEventHandler() (bool, error) {
-	select {
-	case <-pl.intChan:
-		return false, nil
-	case ev := <-pl.guiChan:
-		switch ev := ev.(type) {
-		case gui.EventWindowClose:
-			return false, nil
-		case gui.EventKeyboard:
-			_, err := KeyboardEventHandler(ev, pl.vcs)
-			return err == nil, err
-		case gui.EventMouseButton:
-			_, err := MouseButtonEventHandler(ev, pl.vcs, pl.scr)
-			return err == nil, err
-		case gui.EventMouseMotion:
-			_, err := MouseMotionEventHandler(ev, pl.vcs)
-			return err == nil, err
-		}
-	default:
-	}
-
-	return true, nil
-}
-
 // MouseMotionEventHandler handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
 func MouseMotionEventHandler(ev gui.EventMouseMotion, vcs *hardware.VCS) (bool, error) {
@@ -229,4 +205,34 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 	}
 
 	return handled, err
+}
+
+func (pl *playmode) guiEventHandler(ev gui.Event) (bool, error) {
+	switch ev := ev.(type) {
+	case gui.EventQuit:
+		return false, nil
+	case gui.EventKeyboard:
+		_, err := KeyboardEventHandler(ev, pl.vcs)
+		return err == nil, err
+	case gui.EventMouseButton:
+		_, err := MouseButtonEventHandler(ev, pl.vcs, pl.scr)
+		return err == nil, err
+	case gui.EventMouseMotion:
+		_, err := MouseMotionEventHandler(ev, pl.vcs)
+		return err == nil, err
+	}
+
+	return true, nil
+}
+
+func (pl *playmode) eventHandler() (bool, error) {
+	select {
+	case <-pl.intChan:
+		return false, nil
+	case ev := <-pl.guiChan:
+		return pl.guiEventHandler(ev)
+	default:
+	}
+
+	return true, nil
 }

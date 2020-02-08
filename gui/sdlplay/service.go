@@ -61,7 +61,7 @@ func (scr *SdlPlay) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				scr.events <- gui.EventWindowClose{}
+				scr.events <- gui.EventQuit{}
 
 			case *sdl.KeyboardEvent:
 				mod := gui.KeyModNone

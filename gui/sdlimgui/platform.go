@@ -53,10 +53,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		img: img,
 	}
 
+	// map sdl key codes to imgui codes
+	plt.setKeyMapping()
+
 	plt.window, err = sdl.CreateWindow(windowTitle,
 		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
-		1280, 720,
-		sdl.WINDOW_OPENGL|sdl.WINDOW_HIDDEN)
+		1280, 720, sdl.WINDOW_OPENGL)
 
 	if err != nil {
 		sdl.Quit()

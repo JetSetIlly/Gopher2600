@@ -31,11 +31,9 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	var err error
 
 	switch ev := ev.(type) {
-	case gui.EventWindowClose:
-		err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
-		if err != nil {
-			return errors.New(errors.GUIEventError, err)
-		}
+	case gui.EventQuit:
+		dbg.running = false
+		return errors.New(errors.UserInterrupt)
 
 	case gui.EventKeyboard:
 		var handled bool
@@ -101,12 +99,12 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 
 }
 
-func (dbg *Debugger) checkInterruptsAndEvents() error {
+func (dbg *Debugger) checkEvents() error {
 	var err error
 
 	// check interrupt channel and run any functions we find in there
 	select {
-	case <-dbg.intChan:
+	case <-dbg.events.IntEvents:
 		// #ctrlc halt emulation
 		if dbg.runUntilHalt {
 			// stop emulation at the next step
@@ -136,7 +134,7 @@ func (dbg *Debugger) checkInterruptsAndEvents() error {
 				dbg.running = false
 			}
 		}
-	case ev := <-dbg.guiChan:
+	case ev := <-dbg.events.GuiEvents:
 		err = dbg.guiEventHandler(ev)
 	default:
 		// pro-tip: default case required otherwise the select will block

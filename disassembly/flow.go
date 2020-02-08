@@ -36,7 +36,7 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				return err
 			}
 
-			switch err.(errors.AtariError).Head {
+			switch err.(errors.AtariError).Message {
 			case errors.ProgramCounterCycled:
 				// originally, a cycled program counter caused the
 				// disassembly to end but thinking about it a bit more,

@@ -24,7 +24,7 @@ package plainterm
 import (
 	"fmt"
 	"gopher2600/debugger/terminal"
-	"gopher2600/gui"
+	"gopher2600/errors"
 	"io"
 	"os"
 )
@@ -53,8 +53,13 @@ func (pt *PlainTerminal) CleanUp() {
 func (pt *PlainTerminal) RegisterTabCompletion(terminal.TabCompletion) {
 }
 
-// TermPrintLine implements the terminal.Terminal interface
-func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string, a ...interface{}) {
+// Silence implements the terminal.Terminal interface
+func (pt *PlainTerminal) Silence(silenced bool) {
+	pt.silenced = silenced
+}
+
+// TermPrintLine implements the terminal.Output interface
+func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 	if pt.silenced && style != terminal.StyleError {
 		return
 	}
@@ -64,7 +69,6 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string, a ...inter
 		s = fmt.Sprintf("* %s", s)
 	}
 
-	s = fmt.Sprintf(s, a...)
 	pt.output.Write([]byte(s))
 
 	if !style.IsPrompt() {
@@ -73,7 +77,7 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string, a ...inter
 }
 
 // TermRead implements the terminal.Terminal interface
-func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, _ chan gui.Event, _ func(gui.Event) error) (int, error) {
+func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	if pt.silenced {
 		return 0, nil
 	}
@@ -84,15 +88,20 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, _ chan gu
 	if err != nil {
 		return n, err
 	}
+
+	// while we were waiting for the call to Read() to return we may have
+	// received an interrupt event. if we have then return a UserInterrupt
+	// error to the debugging loop
+	select {
+	case <-events.IntEvents:
+		return 0, errors.New(errors.UserInterrupt)
+	default:
+	}
+
 	return n, nil
 }
 
 // IsInteractive implements the terminal.Input interface
 func (pt *PlainTerminal) IsInteractive() bool {
 	return true
-}
-
-// Silence implements the terminal.Output interface
-func (pt *PlainTerminal) Silence(silenced bool) {
-	pt.silenced = silenced
 }

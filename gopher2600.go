@@ -256,18 +256,16 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		// choose which display type to use
-		if *imgui == false {
-			// notify main thread of new gui creator
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
-			}
-		} else {
+		// choose which display type to use and  notify main thread of new gui
+		// creator
+		if *imgui {
 			fmt.Println("using experimetal 'dear imgui' based interface")
-
-			// notify main thread of new gui creator
 			sync.creator <- func() (GuiCreator, error) {
 				return sdlimgui.NewSdlImgui(tv)
+			}
+		} else {
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 		}
 
@@ -280,7 +278,8 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return errors.New(errors.PlayError, err)
 		}
 
-		// turn off fallback ctrl-c handling
+		// turn off fallback ctrl-c handling. this so that the playmode can
+		// end playback recordings gracefully
 		sync.state <- reqNoIntSig
 
 		// set fps cap
@@ -325,6 +324,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	termType := md.AddString("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
+	imgui := md.AddBool("imgui", false, "use new imgui interface (WIP)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -337,9 +337,20 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 	defer tv.End()
 
-	// notify main thread of new gui creator
-	sync.creator <- func() (GuiCreator, error) {
-		return sdldebug.NewSdlDebug(tv, 2.0)
+	var term terminal.Terminal
+
+	// decide which gui to use
+	if *imgui {
+		fmt.Println("using experimetal 'dear imgui' based interface")
+		sync.creator <- func() (GuiCreator, error) {
+			return sdlimgui.NewSdlImgui(tv)
+		}
+	} else {
+
+		// notify main thread of new gui creator
+		sync.creator <- func() (GuiCreator, error) {
+			return sdldebug.NewSdlDebug(tv, 2.0)
+		}
 	}
 
 	// wait for creator result
@@ -351,21 +362,29 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return errors.New(errors.PlayError, err)
 	}
 
-	// start debugger with choice of interface and cartridge
-	var term terminal.Terminal
-
-	switch strings.ToUpper(*termType) {
-	default:
-		fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
-		fallthrough
-	case "PLAIN":
-		term = &plainterm.PlainTerminal{}
-	case "COLOR":
-		term = &colorterm.ColorTerminal{}
+	// if gui implements the GUIandTerminal interface use that terminal
+	// as a preference
+	if b, ok := scr.(terminal.Broker); ok {
+		term = b.GetTerminal()
 	}
 
-	// NewDebugger() installs its own ctrl-handler so we can turn off the
-	// default handling in the main thread
+	// if we've not picked a terminal yet
+	if term == nil {
+		switch strings.ToUpper(*termType) {
+		default:
+			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
+			fallthrough
+		case "PLAIN":
+			term = &plainterm.PlainTerminal{}
+		case "COLOR":
+			term = &colorterm.ColorTerminal{}
+		}
+	}
+
+	// turn off fallback ctrl-c handling. this so that the debugger can handle
+	// quit events with a confirmation request. it also allows the debugger to
+	// use ctrl-c events to interrupt execution of the emulation without
+	// quitting the debugger itself
 	sync.state <- reqNoIntSig
 
 	// prepare new debugger instance

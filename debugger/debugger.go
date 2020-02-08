@@ -85,11 +85,9 @@ type Debugger struct {
 	// quantum to use when stepping/running
 	quantum quantumMode
 
-	// channel for communicating with the debugger from the ctrl-c goroutine
-	intChan chan os.Signal
-
-	// channel for communicating with the debugger from the gui goroutine
-	guiChan chan gui.Event
+	// when reading input from the terminal there are other events
+	// that need to be monitored
+	events *terminal.ReadEvents
 
 	// record user input to a script file
 	scriptScribe script.Scribe
@@ -179,18 +177,26 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.commandOnStepStored = dbg.commandOnStep
 
 	// make synchronisation channels
-	dbg.intChan = make(chan os.Signal, 1)
-	dbg.guiChan = make(chan gui.Event, 2)
-	signal.Notify(dbg.intChan, os.Interrupt)
+	dbg.events = &terminal.ReadEvents{
+		GuiEvents:       make(chan gui.Event, 2),
+		GuiEventHandler: dbg.guiEventHandler,
+		IntEvents:       make(chan os.Signal, 1),
+	}
+
+	// connect Interrupt signal to dbg.events.intChan
+	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect debugger to gui
-	dbg.scr.SetEventChannel(dbg.guiChan)
+	dbg.scr.SetEventChannel(dbg.events.GuiEvents)
 
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
 
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
+
+	// try to add vcs to gui context
+	dbg.scr.SetFeature(gui.ReqDebugVCS, dbg.vcs)
 
 	return dbg, nil
 }
@@ -227,12 +233,20 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 	}
 
+	// end script recording gracefully
+	defer func() {
+		if dbg.scriptScribe.IsActive() {
+			_ = dbg.scriptScribe.EndSession()
+		}
+	}()
+
 	// prepare and run main input loop. inputLoop will not return until
 	// debugging session is to be terminated
 	err = dbg.inputLoop(dbg.term, false)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)
 	}
+
 	return nil
 }
 
