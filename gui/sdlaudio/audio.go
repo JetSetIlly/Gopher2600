@@ -42,7 +42,22 @@ type Audio struct {
 	spec     sdl.AudioSpec
 	buffer   []uint8
 	bufferCt int
+
+	// some ROMs do not output 0 as the silence value. silence is technically
+	// caused by constant unchanging value so this shouldn't be a problem. the
+	// problem is caused when there is an audio buffer underflow and the sound
+	// device flips to the real silence value - this causes a audible click.
+	//
+	// to mitigate this we try to detect what the silence value is by counting
+	// the number of unchanging values
+	detectedSilenceValue uint8
+	lastAudioData        uint8
+	countAudioData       int
 }
+
+// the number of consecutive cycles for an audio signal to be considered the
+// new silence value
+const audioDataSilenceThreshold = 10000
 
 // NewAudio is the preferred method of initialisatoin for the Audio Type
 func NewAudio() (*Audio, error) {
@@ -66,6 +81,7 @@ func NewAudio() (*Audio, error) {
 	}
 
 	aud.spec = actualSpec
+	aud.detectedSilenceValue = aud.spec.Silence
 
 	// make sure audio device is unpaused on startup
 	sdl.PauseAudioDevice(aud.id, false)
@@ -79,16 +95,25 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 		return aud.FlushAudio()
 	}
 
+	// silence detector
+	if audioData == aud.lastAudioData && aud.countAudioData <= audioDataSilenceThreshold {
+		aud.countAudioData++
+		if aud.countAudioData > audioDataSilenceThreshold {
+			aud.detectedSilenceValue = audioData
+		}
+	} else {
+		aud.lastAudioData = audioData
+		aud.countAudioData = 0
+	}
+
 	// never allow sound buffer to "output" silence - some sound devices take
 	// an appreciable amount of time to move from silence to non-silence
 	//
-	// if audioData == 0 {
-	// 	aud.buffer[aud.bufferCt] = aud.spec.Silence + 1
-	// } else {
-	// 	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
-	// }
-
-	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
+	if audioData == aud.detectedSilenceValue {
+		aud.buffer[aud.bufferCt] = aud.spec.Silence
+	} else {
+		aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
+	}
 	aud.bufferCt++
 
 	return nil
