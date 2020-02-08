@@ -127,8 +127,12 @@ func (inp *Input) ReadMemory(data bus.ChipData) bool {
 		// write data back to memory
 		inp.mem.riot.InputDeviceWrite(addresses.SWACNT, data.Value, 0x00)
 
-		// update SWCHA too !!TODO: not sure if this is correct just yet
-		inp.mem.riot.InputDeviceWrite(addresses.SWCHA, 0xff, data.Value)
+		// update SWCHA too
+		//
+		// 08/02/20: I wasn't sure if this is correct but I'm pretty sure it
+		// isn't because it plays havoc with joystick input in Dr Who Bezerk
+		//
+		// inp.mem.riot.InputDeviceWrite(addresses.SWCHA, 0xff, data.Value)
 
 	case "SWCHB":
 		panic("Port B; console switches (hardwired as input)")
