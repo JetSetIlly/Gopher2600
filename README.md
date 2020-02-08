@@ -1,8 +1,7 @@
 # Gopher2600
 
 Gopher 2600 is a more-or-less complete emulation of the Atari VCS. It is
-written in Go and was begun as a project for learning that language. It has
-minimal dependencies.
+written in Go and was begun as a project for learning that language.
 
 ## Project Features
 
@@ -23,12 +22,12 @@ minimal dependencies.
 	* Setting of panel switches
 	* Automatic application of ROM patches
 
-The asterisks in the list indicate that these features are by now means infallible. They have
-performed well during development but there will undoubtedly be cases when the systems fail.
-To mitigate this, Gopher2600's setup system is available (although, as yet the specifying of
-input type is not supported).
+The asterisks in the list indicate that these features are experimental. They have performed
+well during development but there will undoubtedly be cases when the systems fail. To mitigate
+this, Gopher2600's setup system is available (although, as yet the specifying of input type
+is not supported).
 
-There is a lot to add to the project but the principle ommissions as it currently stands are:
+There is a lot to add to the project but the key ommissions as it currently stands are:
 
 * Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
@@ -37,8 +36,7 @@ There is a lot to add to the project but the principle ommissions as it currentl
 	* AR Arcadia
 	* X1 chip (as used in Pitfall 2)
 * Disassembly of some cartridge formats is known to be inaccurate
-
-The `FUTURE` and `todo.txt` files contain notes about other known issues.
+* Television display does not handle out-of-spec TV signals as it should
 
 ## Performance
 
@@ -60,6 +58,17 @@ The Pitfall screenshot shows the debugging overlay. The additional coloured pixe
 The second picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. Again, this visualisation proved useful to me when developing the emulator.
 
 <img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> <img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/>
+
+#### experimental interface
+
+There is currently an effort to introduce a windowed debugger, using Dear Imgui. You can see the current state of the
+project, which is by no means complete, with the '-imgui' flag
+
+	> gopher2600 -imgui <rom>
+
+The sreenshot below show Keystone Kapers with the debugging windows.
+
+<img src=".screenshots/keystone_imgui.png" height="400" alt="keystone kapers with imgui interface"/>
 
 ## Resources used
 
@@ -391,12 +400,13 @@ a brief summary of available options.
 
 Help on debugger commands is available with the `HELP` command at the debugger command line.
 
-Finally, more information is available in the Go source files and can be viewed with the
+More information is available in the Go source files and can be viewed with the
 Go documenation system. With `godoc` installed:
 
 	> GOMOD=$(pwd) godoc -http=localhost:1234 -index >/dev/null &
 
-Alternatively, the most current version of the docs available on github can be view 
+Alternatively, the most current version of the docs available on github can be viewed 
 at https://godoc.org/github.com/JetSetIlly/Gopher2600
 
-
+Finally, development and maintenance documentation is beginning to be stored in its
+own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
