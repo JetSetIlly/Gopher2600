@@ -241,41 +241,33 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		// start drawing if there is no reset or it has just started AND
 		// there wasn't a reset event ongoing when the current event
 		// started
-		startCondition := ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted()
-
-		switch ms.position.Count() {
-		case 3:
-			if ms.copies == 0x01 || ms.copies == 0x03 {
-				if startCondition {
+		if ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted() {
+			switch ms.position.Count() {
+			case 3:
+				if ms.copies == 0x01 || ms.copies == 0x03 {
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 1, "START")
 				}
-			}
-		case 7:
-			if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
-				if startCondition {
+			case 7:
+				if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
 					cpy := 1
 					if ms.copies == 0x03 {
 						cpy = 2
 					}
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
 				}
-			}
-		case 15:
-			if ms.copies == 0x04 || ms.copies == 0x06 {
-				if startCondition {
+			case 15:
+				if ms.copies == 0x04 || ms.copies == 0x06 {
 					cpy := 1
 					if ms.copies == 0x06 {
 						cpy = 2
 					}
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
 				}
-			}
-		case 39:
-			if startCondition {
+			case 39:
 				ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 0, "START")
+			case 40:
+				ms.position.Reset()
 			}
-		case 40:
-			ms.position.Reset()
 		}
 	}
 
