@@ -52,7 +52,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 	inputLen := 0
 	cursorPos := 0
-	history := len(ct.commandHistory)
+	historyIdx := len(ct.commandHistory)
 
 	// liveBuffInput is used to store the latest input when we scroll through
 	// history - we don't want to lose what we've typed in case the user wants
@@ -204,20 +204,20 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 						if len(ct.commandHistory) > 0 {
 							// if we're at the end of the command history then store
 							// the current input in liveBuffInput for possible later editing
-							if history == len(ct.commandHistory) {
+							if historyIdx == len(ct.commandHistory) {
 								copy(liveHistory, input[:inputLen])
 								liveHistoryLen = inputLen
 							}
 
-							if history > 0 {
-								history--
-								l := len(ct.commandHistory[history].input)
+							if historyIdx > 0 {
+								historyIdx--
+								l := len(ct.commandHistory[historyIdx].input)
 
 								// length check in case input buffer is
 								// shorted from when history entry was added
 								if l < len(input) {
-									copy(input, ct.commandHistory[history].input)
-									inputLen = len(ct.commandHistory[history].input)
+									copy(input, ct.commandHistory[historyIdx].input)
+									inputLen = len(ct.commandHistory[historyIdx].input)
 									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
 								}
@@ -226,17 +226,17 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 					case easyterm.CursorDown:
 						// move down through command history
 						if len(ct.commandHistory) > 0 {
-							if history < len(ct.commandHistory)-1 {
-								history++
-								l := len(ct.commandHistory[history].input)
+							if historyIdx < len(ct.commandHistory)-1 {
+								historyIdx++
+								l := len(ct.commandHistory[historyIdx].input)
 								if l < len(input) {
-									copy(input, ct.commandHistory[history].input)
-									inputLen = len(ct.commandHistory[history].input)
+									copy(input, ct.commandHistory[historyIdx].input)
+									inputLen = len(ct.commandHistory[historyIdx].input)
 									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
 								}
-							} else if history == len(ct.commandHistory)-1 {
-								history++
+							} else if historyIdx == len(ct.commandHistory)-1 {
+								historyIdx++
 
 								// length check not really required because
 								// liveHistroy should not ever be greater
@@ -267,7 +267,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 						if cursorPos < inputLen {
 							copy(input[cursorPos:], input[cursorPos+1:])
 							inputLen--
-							history = len(ct.commandHistory)
+							historyIdx = len(ct.commandHistory)
 						}
 
 						// eat the third character in the sequence
@@ -293,7 +293,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 					ct.EasyTerm.TermPrint(ansi.CursorBackwardOne)
 					cursorPos--
 					inputLen--
-					history = len(ct.commandHistory)
+					historyIdx = len(ct.commandHistory)
 				}
 
 			default:
@@ -315,7 +315,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 						// make sure history pointer is at the end of the command
 						// history array
-						history = len(ct.commandHistory)
+						historyIdx = len(ct.commandHistory)
 					}
 				}
 			}

@@ -33,9 +33,18 @@ type term struct {
 	img   *SdlImgui
 	setup bool
 
+	tabCompletion terminal.TabCompletion
+	history       []string
+	historyIdx    int
+
 	prompt string
 	input  string
 	output strings.Builder
+
+	// activateInput is true if the return key was pressed in the terminal input
+	// box during the last iteration. the return key makes the input box lose
+	// focus so we need to know to activate it again.
+	activateInput bool
 
 	silenced bool
 
@@ -46,6 +55,7 @@ func newTerm(img *SdlImgui) (*term, error) {
 	term := &term{
 		img:        img,
 		inputEvent: make(chan bool),
+		historyIdx: -1,
 	}
 
 	return term, nil
@@ -68,14 +78,56 @@ func (term *term) draw() {
 		imgui.Separator()
 
 		// prompt
+		if term.activateInput {
+			imgui.SetKeyboardFocusHere(-1)
+			term.activateInput = false
+		}
 		imgui.Text(term.prompt)
 		imgui.SameLine()
-		if imgui.InputTextV("", &term.input, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+		if imgui.InputTextV("", &term.input,
+			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
+			term.tabComplete) {
 			term.inputEvent <- true
+			term.activateInput = true
 		}
 
 		imgui.End()
 	}
+}
+
+func (term *term) tabComplete(d imgui.InputTextCallbackData) int32 {
+	switch d.EventKey() {
+	case imgui.KeyTab:
+		b := string(d.Buffer())
+		s := term.tabCompletion.Complete(b)
+		d.DeleteBytes(0, len(b))
+		d.InsertBytes(0, []byte(s))
+		d.MarkBufferModified()
+	case imgui.KeyUpArrow:
+		if term.historyIdx > -1 {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+			d.InsertBytes(0, []byte(term.history[term.historyIdx]))
+			if term.historyIdx > 0 {
+				term.historyIdx--
+			}
+			d.MarkBufferModified()
+		}
+	case imgui.KeyDownArrow:
+		if term.historyIdx < len(term.history)-1 {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+			d.InsertBytes(0, []byte(term.history[term.historyIdx]))
+			if term.historyIdx < len(term.history)-1 {
+				term.historyIdx++
+			}
+		} else {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+		}
+		d.MarkBufferModified()
+	}
+	return 0
 }
 
 // Initialise implements the terminal.Terminal interface
@@ -88,7 +140,8 @@ func (term *term) CleanUp() {
 }
 
 // RegisterTabCompletion implements the terminal.Terminal interface
-func (term *term) RegisterTabCompletion(terminal.TabCompletion) {
+func (term *term) RegisterTabCompletion(tc terminal.TabCompletion) {
+	term.tabCompletion = tc
 }
 
 // Silence implements the terminal.Terminal interface
@@ -111,6 +164,9 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 	for {
 		select {
 		case <-term.inputEvent:
+			term.history = append(term.history, term.input)
+			term.historyIdx = len(term.history) - 1
+
 			n := len(term.input)
 			copy(buffer, term.input+"\n")
 			term.input = ""
