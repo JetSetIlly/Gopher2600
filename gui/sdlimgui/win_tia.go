@@ -26,8 +26,7 @@ import (
 const tiaTitle = "TIA"
 
 type tia struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 }
 
 func newTIA(img *SdlImgui) (*tia, error) {
@@ -41,11 +40,8 @@ func newTIA(img *SdlImgui) (*tia, error) {
 // draw is called by service loop
 func (tia *tia) draw() {
 	if tia.img.vcs != nil {
-		if !tia.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{26, 525})
-			imgui.SetNextWindowSize(imgui.Vec2{718, 156})
-			tia.setup = true
-		}
+		imgui.SetNextWindowPosV(imgui.Vec2{26, 525}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{718, 156}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(tiaTitle, nil, 0)
 
 		imgui.Text(tia.img.vcs.TIA.Label())

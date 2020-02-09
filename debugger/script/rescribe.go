@@ -79,12 +79,12 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	return scr, nil
 }
 
-// IsInteractive implements the terminal.UserRead interface
+// IsInteractive implements the terminal.Input interface
 func (scr *Rescribe) IsInteractive() bool {
 	return false
 }
 
-// TermRead implements the terminal.UserRead interface
+// TermRead implements the terminal.Input interface
 func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
 		return -1, errors.New(errors.ScriptEnd, scr.scriptFile)
@@ -100,4 +100,9 @@ func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.Read
 	}
 
 	return command, nil
+}
+
+// TermReadCheck implements the terminal.Input interface
+func (scr *Rescribe) TermReadCheck() bool {
+	return false
 }

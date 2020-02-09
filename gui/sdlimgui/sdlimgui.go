@@ -95,7 +95,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		return nil, err
 	}
 
-	iniPath, err := paths.ResourcePath("", "imgui.ini")
+	iniPath, err := paths.ResourcePath("", "debugger_imgui.ini")
 	if err != nil {
 		return nil, err
 	}

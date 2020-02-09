@@ -26,8 +26,7 @@ import (
 const cpuTitle = "CPU"
 
 type cpu struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 }
 
 func newCPU(img *SdlImgui) (*cpu, error) {
@@ -41,29 +40,29 @@ func newCPU(img *SdlImgui) (*cpu, error) {
 // draw is called by service loop
 func (cpu *cpu) draw() {
 	if cpu.img.vcs != nil {
-		if !cpu.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{753, 92})
-			cpu.setup = true
-		}
-		imgui.BeginV(cpuTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
+		imgui.SetNextWindowPosV(imgui.Vec2{753, 92}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{169, 142}, imgui.ConditionFirstUseEver)
+		imgui.BeginV(cpuTitle, nil, imgui.WindowFlagsNoResize)
+
+		imgui.ColumnsV(2, "", false)
+
 		imgui.Text("PC")
-		imgui.SameLine()
-		imgui.Text(cpu.img.vcs.CPU.PC.String())
 		imgui.Text("A")
-		imgui.SameLine()
-		imgui.Text(cpu.img.vcs.CPU.A.String())
 		imgui.Text("X")
-		imgui.SameLine()
-		imgui.Text(cpu.img.vcs.CPU.X.String())
 		imgui.Text("Y")
-		imgui.SameLine()
-		imgui.Text(cpu.img.vcs.CPU.Y.String())
 		imgui.Text("SP")
-		imgui.SameLine()
-		imgui.Text(cpu.img.vcs.CPU.SP.String())
 		imgui.Text("Status")
-		imgui.SameLine()
+
+		imgui.NextColumn()
+		imgui.SetColumnWidth(-1, 100)
+
+		imgui.Text(cpu.img.vcs.CPU.PC.String())
+		imgui.Text(cpu.img.vcs.CPU.A.String())
+		imgui.Text(cpu.img.vcs.CPU.X.String())
+		imgui.Text(cpu.img.vcs.CPU.Y.String())
+		imgui.Text(cpu.img.vcs.CPU.SP.String())
 		imgui.Text(cpu.img.vcs.CPU.Status.String())
+
 		imgui.End()
 	}
 }

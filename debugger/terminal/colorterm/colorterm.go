@@ -68,12 +68,12 @@ func (ct *ColorTerminal) RegisterTabCompletion(tc terminal.TabCompletion) {
 	ct.tabCompletion = tc
 }
 
-// IsInteractive satisfies the terminal.UserInput interface
+// IsInteractive satisfies the terminal.Input interface
 func (ct *ColorTerminal) IsInteractive() bool {
 	return true
 }
 
-// Silence implements terminal.UserOutput interface
+// Silence implements terminal.Terminal interface
 func (ct *ColorTerminal) Silence(silenced bool) {
 	ct.silenced = silenced
 }

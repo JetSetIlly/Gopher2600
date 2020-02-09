@@ -128,6 +128,10 @@ func (trm *mockTerm) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.Read
 	return len(s) + 1, nil
 }
 
+func (trm *mockTerm) TermReadCheck() bool {
+	return false
+}
+
 func (trm *mockTerm) IsInteractive() bool {
 	return false
 }

@@ -26,8 +26,7 @@ import (
 const tvTitle = "TV Status"
 
 type tv struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 }
 
 func newTV(img *SdlImgui) (*tv, error) {
@@ -41,11 +40,8 @@ func newTV(img *SdlImgui) (*tv, error) {
 // draw is called by service loop
 func (tv *tv) draw() {
 	if tv.img.vcs != nil {
-		if !tv.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{685, 267})
-			imgui.SetNextWindowSize(imgui.Vec2{211, 59})
-			tv.setup = true
-		}
+		imgui.SetNextWindowPosV(imgui.Vec2{685, 267}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{211, 59}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(tvTitle, nil, 0)
 		imgui.Text(tv.img.vcs.TV.String())
 		imgui.End()

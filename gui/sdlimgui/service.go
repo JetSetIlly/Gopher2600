@@ -53,7 +53,9 @@ func (img *SdlImgui) Service() {
 				img.events <- gui.EventQuit{}
 
 			case *sdl.TextInputEvent:
-				img.io.AddInputCharacters(string(ev.Text[:]))
+				if !img.win.screen.isCaptured {
+					img.io.AddInputCharacters(string(ev.Text[:]))
+				}
 
 			case *sdl.KeyboardEvent:
 				if img.win.screen.isCaptured {

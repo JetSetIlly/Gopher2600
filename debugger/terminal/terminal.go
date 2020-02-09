@@ -44,10 +44,23 @@ type Input interface {
 	//	}
 	TermRead(buffer []byte, prompt Prompt, events *ReadEvents) (int, error)
 
+	// TermReadCheck() returns true if there is input to be read. not all
+	// terminals will be able to implement this meaningfully. returning false
+	// is fine.
+	TermReadCheck() bool
+
 	// IsInteractive() should return true for implementations that require user
 	// interaction. implementations that don't require a user to interact with
 	// the debugger should return false.
 	IsInteractive() bool
+}
+
+// ReadEvents encapsulates the event channels that need to be monitored during
+// a TermRead
+type ReadEvents struct {
+	GuiEvents       chan gui.Event
+	GuiEventHandler func(gui.Event) error
+	IntEvents       chan os.Signal
 }
 
 // Output defines the operations required by an interface that allows output.
@@ -57,7 +70,17 @@ type Output interface {
 
 // Terminal defines the operations required by the debugger's command line interface.
 type Terminal interface {
+	// Userinterfaces, by definition, embed the Input and Output interfaces
+	Input
+	Output
+
+	// initialise the terminal. not all terminal implementations will need to
+	// do anything.
 	Initialise() error
+
+	// restore the terminal to it's original state, if possible. for example,
+	// we could use this to make sure the terminal is returned to canonical
+	// mode. not all terminal implementations will need to do anything.
 	CleanUp()
 
 	// register the tab completion engine to use with the UserInput
@@ -66,10 +89,6 @@ type Terminal interface {
 
 	// Silence all input and output (except error messages)
 	Silence(silenced bool)
-
-	// Userinterfaces, by definition, embed the Input and Output interfaces
-	Input
-	Output
 }
 
 // TabCompletion defines the operations required for tab completion. A good
@@ -82,12 +101,4 @@ type TabCompletion interface {
 // Broker implementations can identify a terminal
 type Broker interface {
 	GetTerminal() Terminal
-}
-
-// ReadEvents encapsulates the event channels that need to be monitored during
-// a TermRead
-type ReadEvents struct {
-	GuiEvents       chan gui.Event
-	GuiEventHandler func(gui.Event) error
-	IntEvents       chan os.Signal
 }

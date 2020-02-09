@@ -26,8 +26,7 @@ import (
 const delaysTitle = "TIA Delays"
 
 type delays struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 }
 
 func newDelays(img *SdlImgui) (*delays, error) {
@@ -41,11 +40,8 @@ func newDelays(img *SdlImgui) (*delays, error) {
 // draw is called by service loop
 func (delays *delays) draw() {
 	if delays.img.vcs != nil {
-		if !delays.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{1027, 27})
-			imgui.SetNextWindowSize(imgui.Vec2{226, 319})
-			delays.setup = true
-		}
+		imgui.SetNextWindowPosV(imgui.Vec2{1027, 27}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{226, 329}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(delaysTitle, nil, 0)
 
 		s := delays.img.vcs.TIA.Delay.String()

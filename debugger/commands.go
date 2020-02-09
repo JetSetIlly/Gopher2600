@@ -194,6 +194,9 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		dbg.runUntilHalt = true
 		return stepContinue, nil
 
+	case cmdHalt:
+		dbg.haltImmediately = true
+
 	case cmdStep:
 		mode, _ := tokens.Get()
 		mode = strings.ToUpper(mode)

@@ -31,6 +31,8 @@ recording of the script and not cause the debugger to exit.`,
 	cmdRun: `Run emulator until next halt state. A halt state is one triggered by either
 a BREAK, TRAP or WATCH condition.`,
 
+	cmdHalt: `Halt emulation. Does nothing if emulation is already halted.`,
+
 	cmdStep: `Step forward one emulation quantum. An optional argument to the STEP command
 changes the current quantum and steps forward by one. Permitted quantum values
 are CPU and VIDEO. See the help for the QUANTUM command for an explanation.

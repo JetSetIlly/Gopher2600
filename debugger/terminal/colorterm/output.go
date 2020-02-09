@@ -24,7 +24,7 @@ import (
 	"gopher2600/debugger/terminal"
 )
 
-// TermPrintLine implements the terminal.Terminal interface
+// TermPrintLine implements the terminal.Output interface
 func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	if ct.silenced && style != terminal.StyleError {
 		return

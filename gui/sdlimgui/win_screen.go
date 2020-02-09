@@ -220,6 +220,7 @@ func (scr *tvScreen) render() {
 
 // draw is called by service loop
 func (scr *tvScreen) draw() {
+	imgui.SetNextWindowPosV(imgui.Vec2{35, 19}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(tvscreenTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.Image(imgui.TextureID(scr.texture),

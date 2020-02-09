@@ -31,7 +31,7 @@ import (
 
 // #cursor #keys #tab #completion
 
-// TermRead implements the terminal.Terminal interface
+// TermRead implements the terminal.Input interface
 func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	if ct.silenced {
 		return 0, nil
@@ -321,4 +321,9 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 			}
 		}
 	}
+}
+
+// TermReadCheck implements the terminal.Input interface
+func (ct *ColorTerminal) TermReadCheck() bool {
+	return false
 }

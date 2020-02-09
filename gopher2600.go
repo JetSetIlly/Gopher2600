@@ -225,7 +225,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
-	imgui := md.AddBool("imgui", false, "use new ingui interface (*alpha*)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -256,17 +255,9 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			tv.AddAudioMixer(aw)
 		}
 
-		// choose which display type to use and  notify main thread of new gui
-		// creator
-		if *imgui {
-			fmt.Println("using experimetal 'dear imgui' based interface")
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlimgui.NewSdlImgui(tv)
-			}
-		} else {
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
-			}
+		// create gui
+		sync.creator <- func() (GuiCreator, error) {
+			return sdlplay.NewSdlPlay(tv, float32(*scaling))
 		}
 
 		// wait for creator result
@@ -288,12 +279,10 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		if *imgui == false {
-			// set scaling value
-			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
-			if err != nil {
-				return err
-			}
+		// set scaling value
+		err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
+		if err != nil {
+			return err
 		}
 
 		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)

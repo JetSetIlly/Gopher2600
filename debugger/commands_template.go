@@ -26,6 +26,7 @@ const (
 
 	cmdRun     = "RUN"
 	cmdStep    = "STEP"
+	cmdHalt    = "HALT"
 	cmdQuantum = "QUANTUM"
 	cmdScript  = "SCRIPT"
 
@@ -75,6 +76,7 @@ var commandTemplate = []string{
 
 	cmdRun,
 	cmdStep + " (CPU|VIDEO|%<target>S)",
+	cmdHalt,
 	cmdQuantum + " (CPU|VIDEO)",
 	cmdScript + " [RECORD %<new file>S|END|%<file>S]",
 

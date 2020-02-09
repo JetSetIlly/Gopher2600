@@ -30,23 +30,19 @@ import (
 const termTitle = "Terminal"
 
 type term struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 
 	tabCompletion terminal.TabCompletion
 	history       []string
 	historyIdx    int
 
-	prompt string
-	input  string
-	output strings.Builder
-
-	// activateInput is true if the return key was pressed in the terminal input
-	// box during the last iteration. the return key makes the input box lose
-	// focus so we need to know to activate it again.
-	activateInput bool
-
 	silenced bool
+	prompt   string
+	input    string
+	output   strings.Builder
+
+	// moreOutput is after TermPrintLine() is executed
+	moreOutput bool
 
 	inputEvent chan bool
 }
@@ -54,9 +50,13 @@ type term struct {
 func newTerm(img *SdlImgui) (*term, error) {
 	term := &term{
 		img:        img,
-		inputEvent: make(chan bool),
 		historyIdx: -1,
+
+		// inputEvent queue must not block
+		inputEvent: make(chan bool, 1),
 	}
+
+	term.draw()
 
 	return term, nil
 }
@@ -64,46 +64,61 @@ func newTerm(img *SdlImgui) (*term, error) {
 // draw is called by service loop
 func (term *term) draw() {
 	if term.img.vcs != nil {
-		if !term.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{651, 264})
-			size := imgui.Vec2{534, 313}
-			imgui.SetNextWindowSize(size)
-			term.setup = true
-		}
+		imgui.SetNextWindowPosV(imgui.Vec2{651, 264}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
+
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.8})
+		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
 		imgui.BeginV(termTitle, nil, 0)
+		imgui.PopStyleVar()
+		imgui.PopStyleColor()
 
 		// output
 		imgui.Text(term.output.String())
-
 		imgui.Separator()
 
 		// prompt
-		if term.activateInput {
-			imgui.SetKeyboardFocusHere(-1)
-			term.activateInput = false
-		}
 		imgui.Text(term.prompt)
 		imgui.SameLine()
+
+		// this construct says focus the next InputText() box if
+		//  - the terminal window is focused
+		//  - AND if nothing else has been activated since last frame
+		if imgui.IsWindowFocused() && !imgui.IsAnyItemActive() {
+			imgui.SetKeyboardFocusHere()
+		}
+
 		if imgui.InputTextV("", &term.input,
 			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-			term.tabComplete) {
+			term.tabCompleteAndHistory) {
 			term.inputEvent <- true
-			term.activateInput = true
+		}
+
+		// add some spacing so that when we scroll to the bottom of the windw
+		// it doesn't look goofy
+		imgui.Spacing()
+
+		// if output has been added to, scroll to bottom of window
+		if term.moreOutput {
+			term.moreOutput = false
+			imgui.SetScrollHereY(1.0)
 		}
 
 		imgui.End()
 	}
 }
 
-func (term *term) tabComplete(d imgui.InputTextCallbackData) int32 {
+func (term *term) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 	switch d.EventKey() {
 	case imgui.KeyTab:
+		// tab completion
 		b := string(d.Buffer())
 		s := term.tabCompletion.Complete(b)
 		d.DeleteBytes(0, len(b))
 		d.InsertBytes(0, []byte(s))
 		d.MarkBufferModified()
 	case imgui.KeyUpArrow:
+		// previous history item
 		if term.historyIdx > -1 {
 			b := string(d.Buffer())
 			d.DeleteBytes(0, len(b))
@@ -114,6 +129,7 @@ func (term *term) tabComplete(d imgui.InputTextCallbackData) int32 {
 			d.MarkBufferModified()
 		}
 	case imgui.KeyDownArrow:
+		// next history item
 		if term.historyIdx < len(term.history)-1 {
 			b := string(d.Buffer())
 			d.DeleteBytes(0, len(b))
@@ -149,13 +165,43 @@ func (term *term) Silence(silenced bool) {
 	term.silenced = silenced
 }
 
-// TermPrintLine implements the terminal.Terminal interface
+// TermPrintLine implements the terminal.Output interface
 func (term *term) TermPrintLine(style terminal.Style, s string) {
+	if term.silenced && style != terminal.StyleError {
+		return
+	}
+
+	switch style {
+	case terminal.StyleCPUStep:
+		// yellow
+	case terminal.StyleVideoStep:
+		// yellow
+	case terminal.StyleInstrument:
+		// cyan
+	case terminal.StyleEmulatorInfo:
+		// blue
+	case terminal.StyleError:
+		// red *
+	case terminal.StyleHelp:
+		// white
+	case terminal.StyleFeedback:
+		// white
+	case terminal.StyleFeedbackNonInteractive:
+		// white
+	case terminal.StylePromptCPUStep:
+		// bold
+	case terminal.StylePromptVideoStep:
+		// nothing special
+	case terminal.StylePromptConfirm:
+		// blue
+	}
+
 	term.output.WriteString(s)
 	term.output.WriteString("\n")
+	term.moreOutput = true
 }
 
-// TermRead implements the terminal.Terminal interface
+// TermRead implements the terminal.Input interface
 func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	term.prompt = prompt.Content
 
@@ -180,12 +226,16 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 
 		case _ = <-events.IntEvents:
 			return 0, errors.New(errors.UserQuit)
-
 		}
 	}
 }
 
-// IsInteractive implements the terminal.Terminal interface
+// TermRead implements the terminal.Input interface
+func (term *term) TermReadCheck() bool {
+	return len(term.inputEvent) > 0
+}
+
+// IsInteractive implements the terminal.Input interface
 func (term *term) IsInteractive() bool {
 	return true
 }

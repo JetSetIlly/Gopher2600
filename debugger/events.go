@@ -99,8 +99,13 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 
 }
 
-func (dbg *Debugger) checkEvents() error {
+// returns true if the terminal needs reading
+func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 	var err error
+
+	if inputter.TermReadCheck() {
+		return true, nil
+	}
 
 	// check interrupt channel and run any functions we find in there
 	select {
@@ -141,5 +146,5 @@ func (dbg *Debugger) checkEvents() error {
 		// indefinately.
 	}
 
-	return err
+	return false, err
 }

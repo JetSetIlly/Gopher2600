@@ -23,11 +23,10 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const ramTitle = "Onboard RAM"
+const ramTitle = "RAM"
 
 type ram struct {
-	img   *SdlImgui
-	setup bool
+	img *SdlImgui
 }
 
 func newRAM(img *SdlImgui) (*ram, error) {
@@ -41,10 +40,7 @@ func newRAM(img *SdlImgui) (*ram, error) {
 // draw is called by service loop
 func (ram *ram) draw() {
 	if ram.img.vcs != nil {
-		if !ram.setup {
-			imgui.SetNextWindowPos(imgui.Vec2{823, 373})
-			ram.setup = true
-		}
+		imgui.SetNextWindowPosV(imgui.Vec2{823, 373}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.BeginV(ramTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
 		imgui.Text(ram.img.vcs.Mem.RAM.String())
 		imgui.End()

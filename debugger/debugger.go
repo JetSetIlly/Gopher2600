@@ -106,22 +106,20 @@ type Debugger struct {
 	trapMessages  string
 	watchMessages string
 
-	// halt the emulation (but not the debugger)
-	haltEmulation bool
-
-	// continue the emulation
-	continueEmulation bool
-
-	// \/\/\/ currently these run related booleans are set by various commands
-	// and used by the input loop. however, I think it would be better if they
-	// were return conditions from the parseInput() function
-
 	// whether the debugger is to continue with the debugging loop
 	// set to false only when debugger is to finish
 	running bool
 
 	// continue emulation until a halt condition is encountered
 	runUntilHalt bool
+
+	// continue the emulation. this is seemingly only used in the inputLoop but
+	// because we nest calls to inputLoop on occassion it is better to keep
+	// here in the debugger type
+	continueEmulation bool
+
+	// halt the emulation immediately. used by HALT command.
+	haltImmediately bool
 }
 
 // NewDebugger creates and initialises everything required for a new debugging

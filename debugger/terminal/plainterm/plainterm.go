@@ -76,7 +76,7 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 	}
 }
 
-// TermRead implements the terminal.Terminal interface
+// TermRead implements the terminal.Input interface
 func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	if pt.silenced {
 		return 0, nil
@@ -99,6 +99,11 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	}
 
 	return n, nil
+}
+
+// TermReadCheck implements the terminal.Input interface
+func (pt *PlainTerminal) TermReadCheck() bool {
+	return false
 }
 
 // IsInteractive implements the terminal.Input interface

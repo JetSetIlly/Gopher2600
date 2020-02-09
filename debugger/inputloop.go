@@ -57,8 +57,6 @@ func (dbg *Debugger) videoCycle() error {
 // is true then user will be prompted every video cycle; when false the user
 // is prompted every cpu cycle.
 func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
-	var err error
-
 	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
 	// when in video-step mode
 	//
@@ -80,7 +78,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 	for dbg.running {
 		// check for events
-		err = dbg.checkEvents()
+		checkTerm, err := dbg.checkEvents(inputter)
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%s", err)
 		}
@@ -112,14 +110,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		stepTrapMessage := dbg.stepTraps.check("")
 
 		// check for halt conditions
-		dbg.haltEmulation = stepTrapMessage != "" ||
+		haltEmulation := stepTrapMessage != "" ||
 			dbg.breakMessages != "" ||
 			dbg.trapMessages != "" ||
 			dbg.watchMessages != "" ||
-			dbg.lastStepError
+			dbg.lastStepError || dbg.haltImmediately
 
 		// expand halt to include step-once/many flag
-		dbg.haltEmulation = dbg.haltEmulation || !dbg.runUntilHalt
+		haltEmulation = haltEmulation || !dbg.runUntilHalt
 
 		// step traps are cleared once they have been encountered
 		if stepTrapMessage != "" {
@@ -130,8 +128,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
 		dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
 		dbg.printLine(terminal.StyleFeedback, dbg.watchMessages)
-
-		// clear accumulated break/trap/watch messages
 		dbg.breakMessages = ""
 		dbg.trapMessages = ""
 		dbg.watchMessages = ""
@@ -140,24 +136,31 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		dbg.lastStepError = false
 
 		// something has happened to cause the emulation to halt
-		if dbg.haltEmulation {
-			// input has halted. print on halt command if it is defined
-			if dbg.commandOnHalt != "" {
-				_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
+		if haltEmulation || checkTerm {
+			// some things we don't want to if this is only a momentary halt
+			if haltEmulation {
+				// input has halted. print on halt command if it is defined
+				if dbg.commandOnHalt != "" {
+					_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
+					if err != nil {
+						dbg.printLine(terminal.StyleError, "%s", err)
+					}
+				}
+
+				// pause tv when emulation has halted
+				err = dbg.scr.SetFeature(gui.ReqSetPause, true)
 				if err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
+					return err
 				}
 			}
 
-			// pause tv when emulation has halted
-			err = dbg.scr.SetFeature(gui.ReqSetPause, true)
-			if err != nil {
-				return err
-			}
-
-			// reset run until halt flag - it will be set again if the parsed command requires it
-			// (eg. the RUN command)
+			// reset run until halt flag - it will be set again if the parsed
+			// command requires it (eg. the RUN command)
 			dbg.runUntilHalt = false
+
+			// reset haltImmediately flag - it will be set again with the next
+			// HALT command
+			dbg.haltImmediately = false
 
 			// get user input
 			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.events)
@@ -224,16 +227,18 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 			}
 
-			// prepare for next loop
-			dbg.haltEmulation = false
+			// if we stopped only to check the terminal then set continue and
+			// runUntilHalt conditions
+			if checkTerm {
+				dbg.continueEmulation = true
+				dbg.runUntilHalt = true
+			}
 
-			// if continueEmulation is set at the end of the haltEmulation
-			// block, then unpause GUI
-			if dbg.continueEmulation {
-				err = dbg.scr.SetFeature(gui.ReqSetPause, false)
-				if err != nil {
-					return err
-				}
+			// unpause gui. if we never paused it to begin with then this call
+			// will do nothing
+			err = dbg.scr.SetFeature(gui.ReqSetPause, false)
+			if err != nil {
+				return err
 			}
 		}
 
