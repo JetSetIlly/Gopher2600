@@ -35,7 +35,6 @@ import (
 	"gopher2600/hardware/riot/input"
 	"gopher2600/patch"
 	"gopher2600/symbols"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,86 +51,49 @@ func init() {
 	// parse command template
 	debuggerCommands, err = commandline.ParseCommandTemplate(commandTemplate)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(100)
+		panic(err)
 	}
 
 	err = debuggerCommands.AddHelp(cmdHelp, helps)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(100)
+		panic(err)
 	}
 	sort.Stable(debuggerCommands)
 
 	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(100)
+		panic(err)
 	}
 	sort.Stable(scriptUnsafeCommands)
 }
 
-type parseCommandResult int
-
-const (
-	cmdResNothing parseCommandResult = iota
-	cmdResEmptyInput
-	cmdResContinue
-	cmdResScriptRecStart
-	cmdResScriptRecEnd
-	cmdResHelp
-)
-
 // parseCommand/enactCommand scans user input for a valid command and acts upon
-// it
-func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseCommandResult, error) {
+// it. see parseInput for explanation of args.
+func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, error) {
 	// tokenise input
-	tokens := commandline.TokeniseInput(s)
+	tokens := commandline.TokeniseInput(cmd)
 
-	// if there are no tokens in the input then return cmdResEmptyInput directive
+	// if there are no tokens in the input then continue with onEmptyInput
 	if tokens.Remaining() == 0 {
-		return cmdResEmptyInput, nil
-	}
-
-	// print normalised input if this is command from an interactive source
-	if interactive {
-		dbg.printLine(terminal.StyleNormalisedInput, tokens.String())
+		return dbg.parseCommand(onEmptyInput, true, false)
 	}
 
 	// check validity of tokenised input
-	//
-	// the absolute best thing about the ValidateTokens() function is that we
-	// don't need to worrying too much about the success of tokens.Get() in the
-	// enactCommand() function below:
-	//
-	//   arg, _ := tokens.Get()
-	//
-	// is an acceptable pattern even when an argument is required. the
-	// ValidateTokens() function has already caught invalid attempts.
-	//
-	// default values can be handled thus:
-	//
-	//  arg, ok := tokens.Get()
-	//  if ok {
-	//    switch arg {
-	//		...
-	//	  }
-	//  } else {
-	//	  // default action
-	//    ...
-	//  }
-	//
-	// unfortunately, there is no way currently to handle the case where the
-	// command templates don't match expectation in the code below. the code
-	// won't break but some error messages may be misleading but hopefully, it
-	// will be obvious something went wrong.
 	err := debuggerCommands.ValidateTokens(tokens)
 	if err != nil {
-		return cmdResNothing, err
+		// print normalised input and return error
+		dbg.printLine(terminal.StyleNormalisedInput, tokens.String())
+		return false, err
+	}
+
+	// print normalised input if this is command from an interactive source
+	// and not an auto-command
+	if echo {
+		dbg.printLine(terminal.StyleNormalisedInput, tokens.String())
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.scriptScribe.IsActive() || !interactive {
+	if dbg.scriptScribe.IsActive() && scribe {
 		tokens.Reset()
 
 		err := scriptUnsafeCommands.ValidateTokens(tokens)
@@ -139,14 +101,12 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
 		if err == nil {
-			return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
+			return false, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
 		}
-	}
 
-	// record command if it auto is false (is not a result of an "auto" command
-	// eg. ONHALT). if there's an error then the script will be rolled back and
-	// the write removed.
-	if !auto {
+		// record command if it auto is false (is not a result of an "auto" command
+		// eg. ONHALT). if there's an error then the script will be rolled back and
+		// the write removed.
 		dbg.scriptScribe.WriteInput(tokens.String())
 	}
 
@@ -155,26 +115,28 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 	tokens.Reset()
 	command, _ := tokens.Get()
 
-	// take uppercase value of the first token. it's useful to take the
-	// uppercase value but we have to be careful when we do it because
-	command = strings.ToUpper(command)
-
 	switch command {
 	default:
-		return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
+		return false, errors.New(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
 
 	case cmdHelp:
-		keyword, present := tokens.Get()
-		if present {
+		keyword, ok := tokens.Get()
+		if ok {
 			dbg.printLine(terminal.StyleHelp, debuggerCommands.Help(keyword))
 		} else {
 			dbg.printLine(terminal.StyleHelp, debuggerCommands.HelpOverview())
 		}
 
-		return cmdResHelp, nil
+		// help can be called during script recording but we don't want to
+		// include it
+		dbg.scriptScribe.Rollback()
+
+		return false, nil
 
 	case cmdQuit:
 		if dbg.scriptScribe.IsActive() {
+			dbg.printLine(terminal.StyleFeedback, "ending script recording")
+
 			// QUIT when script is being recorded is the same as SCRIPT END
 			//
 			// we don't want the QUIT command to appear in the script so
@@ -188,17 +150,17 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 	case cmdReset:
 		err := dbg.vcs.Reset()
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 		err = dbg.tv.Reset()
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
 		dbg.runUntilHalt = true
-		return cmdResContinue, nil
+		return true, nil
 
 	case cmdHalt:
 		dbg.haltImmediately = true
@@ -220,16 +182,16 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			tokens.Unget()
 			err := dbg.stepTraps.parseTrap(tokens)
 			if err != nil {
-				return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
+				return false, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
 			dbg.runUntilHalt = true
 		}
 
-		return cmdResContinue, nil
+		return true, nil
 
 	case cmdQuantum:
-		mode, present := tokens.Get()
-		if present {
+		mode, ok := tokens.Get()
+		if ok {
 			mode = strings.ToUpper(mode)
 			switch mode {
 			case "CPU":
@@ -240,7 +202,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 				// already caught by command line ValidateTokens()
 			}
 		}
-		dbg.printLine(terminal.StyleFeedback, "quantum: %s", dbg.quantum)
+		dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.quantum)
 
 	case cmdScript:
 		option, _ := tokens.Get()
@@ -250,20 +212,25 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			saveFile, _ := tokens.Get()
 			err = dbg.scriptScribe.StartSession(saveFile)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
-			return cmdResScriptRecStart, nil
+
+			// we don't want SCRIPT RECORD command to appear in the
+			// script
+			dbg.scriptScribe.Rollback()
+
+			return false, nil
 
 		case "END":
 			dbg.scriptScribe.Rollback()
 			err := dbg.scriptScribe.EndSession()
-			return cmdResScriptRecEnd, err
+			return false, err
 
 		default:
 			// run a script
 			scr, err := script.RescribeScript(option)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 
 			if dbg.scriptScribe.IsActive() {
@@ -280,7 +247,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 		}
 
@@ -288,7 +255,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		cart, _ := tokens.Get()
 		err := dbg.loadCartridge(cartridgeloader.Loader{Filename: cart})
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
 
@@ -303,12 +270,12 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 				n, _ := strconv.Atoi(bank)
 				err := dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 
 				err = dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			}
 		} else {
@@ -323,7 +290,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			if patched {
 				dbg.printLine(terminal.StyleError, "error during patching. cartridge might be unusable.")
 			}
-			return cmdResNothing, nil
+			return false, nil
 		}
 		if patched {
 			dbg.printLine(terminal.StyleFeedback, "cartridge patched")
@@ -354,7 +321,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		}
 
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 
 		dbg.printLine(terminal.StyleFeedback, s.String())
@@ -385,8 +352,8 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		tok, _ := tokens.Get()
 		switch strings.ToUpper(tok) {
 		case "LIST":
-			option, present := tokens.Get()
-			if present {
+			option, ok := tokens.Get()
+			if ok {
 				switch strings.ToUpper(option) {
 				default:
 					// already caught by command line ValidateTokens()
@@ -410,13 +377,13 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			if err != nil {
 				if errors.Is(err, errors.SymbolUnknown) {
 					dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
-					return cmdResNothing, nil
+					return false, nil
 				}
-				return cmdResNothing, err
+				return false, err
 			}
 
-			option, present := tokens.Get()
-			if present {
+			option, ok := tokens.Get()
+			if ok {
 				switch strings.ToUpper(option) {
 				default:
 					// already caught by command line ValidateTokens()
@@ -446,7 +413,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			} else {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
 			}
-			return cmdResNothing, nil
+			return false, nil
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
@@ -485,7 +452,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			dbg.commandOnHaltStored = newOnHalt
 		}
 
-		return cmdResNothing, nil
+		return false, nil
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
@@ -494,7 +461,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			} else {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
 			}
-			return cmdResNothing, nil
+			return false, nil
 		}
 
 		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
@@ -532,14 +499,14 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			dbg.commandOnStepStored = newOnStep
 		}
 
-		return cmdResNothing, nil
+		return false, nil
 
 	case cmdLast:
 		s := strings.Builder{}
 
 		d, err := dbg.disasm.FormatResult(dbg.vcs.CPU.LastResult)
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 
 		option, ok := tokens.Get()
@@ -551,7 +518,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
 				}
-				return cmdResNothing, nil
+				return false, nil
 
 			case "BYTECODE":
 				s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Bytecode, d.Bytecode))
@@ -578,8 +545,8 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
 
 	case cmdCPU:
-		action, present := tokens.Get()
-		if present {
+		action, ok := tokens.Get()
+		if ok {
 			switch strings.ToUpper(action) {
 			case "SET":
 				target, _ := tokens.Get()
@@ -625,9 +592,9 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 
 	case cmdPeek:
 		// get first address token
-		a, present := tokens.Get()
+		a, ok := tokens.Get()
 
-		for present {
+		for ok {
 			// perform peek
 			ai, err := dbg.dbgmem.peek(a)
 			if err != nil {
@@ -637,7 +604,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			}
 
 			// loop through all addresses
-			a, present = tokens.Get()
+			a, ok = tokens.Get()
 		}
 
 	case cmdPoke:
@@ -649,18 +616,18 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		if ai == nil {
 			// using poke error because hexload is basically the same as poking
 			dbg.printLine(terminal.StyleError, errors.New(errors.UnpokeableAddress, a).Error())
-			return cmdResNothing, nil
+			return false, nil
 		}
 		addr := ai.mappedAddress
 
 		// get (first) value token
-		v, present := tokens.Get()
+		v, ok := tokens.Get()
 
-		for present {
+		for ok {
 			val, err := strconv.ParseUint(v, 0, 8)
 			if err != nil {
-				dbg.printLine(terminal.StyleError, "hexload value must be an 8 bit number (%s)", v)
-				v, present = tokens.Get()
+				dbg.printLine(terminal.StyleError, "value must be an 8 bit number (%s)", v)
+				v, ok = tokens.Get()
 				continue // for loop (without advancing address)
 			}
 
@@ -673,19 +640,19 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			}
 
 			// loop through all values
-			v, present = tokens.Get()
+			v, ok = tokens.Get()
 			addr++
 		}
 
 	case cmdRAM:
-		option, present := tokens.Get()
-		if present {
+		option, ok := tokens.Get()
+		if ok {
 			option = strings.ToUpper(option)
 			switch option {
 			case "CART":
 				cartRAM := dbg.vcs.Mem.Cart.RAM()
 				if len(cartRAM) > 0 {
-					// !!TODO: better presentation of cartridge RAM
+					// !!TODO: better okation of cartridge RAM
 					dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge does not contain any additional RAM")
@@ -700,8 +667,8 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		dbg.printInstrument(dbg.vcs.RIOT.Timer)
 
 	case cmdTIA:
-		option, present := tokens.Get()
-		if present {
+		option, ok := tokens.Get()
+		if ok {
 			option = strings.ToUpper(option)
 			switch option {
 			case "DELAYS":
@@ -722,8 +689,8 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		dbg.printInstrument(dbg.vcs.TIA.Audio)
 
 	case cmdTV:
-		option, present := tokens.Get()
-		if present {
+		option, ok := tokens.Get()
+		if ok {
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
@@ -797,39 +764,39 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		case "ON":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 		case "OFF":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 
 		case "MASK":
 			err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 
 		case "UNMASK":
 			err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 
 		case "SCALE":
-			scl, present := tokens.Get()
-			if !present {
-				return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", command, action))
+			scl, ok := tokens.Get()
+			if !ok {
+				return false, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", cmdDisplay, action))
 			}
 
 			scale, err := strconv.ParseFloat(scl, 32)
 			if err != nil {
-				return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", command, action, scl))
+				return false, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", cmdDisplay, action, scl))
 			}
 
 			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
-			return cmdResNothing, err
+			return false, err
 		case "ALT":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
@@ -837,17 +804,17 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			case "OFF":
 				err = dbg.scr.SetFeature(gui.ReqSetAltColors, false)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			case "ON":
 				err = dbg.scr.SetFeature(gui.ReqSetAltColors, true)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			default:
 				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			}
 		case "OVERLAY":
@@ -857,23 +824,23 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 			case "OFF":
 				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			case "ON":
 				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			default:
 				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 				if err != nil {
-					return cmdResNothing, err
+					return false, err
 				}
 			}
 		default:
 			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 		}
 
@@ -961,7 +928,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		}
 
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 
 	case cmdKeypad:
@@ -987,25 +954,25 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		}
 
 		if err != nil {
-			return cmdResNothing, err
+			return false, err
 		}
 
 	case cmdBreak:
 		err := dbg.breakpoints.parseBreakpoint(tokens)
 		if err != nil {
-			return cmdResNothing, errors.New(errors.CommandError, err)
+			return false, errors.New(errors.CommandError, err)
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseTrap(tokens)
 		if err != nil {
-			return cmdResNothing, errors.New(errors.CommandError, err)
+			return false, errors.New(errors.CommandError, err)
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseWatch(tokens)
 		if err != nil {
-			return cmdResNothing, errors.New(errors.CommandError, err)
+			return false, errors.New(errors.CommandError, err)
 		}
 
 	case cmdList:
@@ -1032,7 +999,7 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return cmdResNothing, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
+			return false, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
 		}
 
 		drop = strings.ToUpper(drop)
@@ -1040,19 +1007,19 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 		case "BREAK":
 			err := dbg.breakpoints.drop(num)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 			dbg.printLine(terminal.StyleFeedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 			dbg.printLine(terminal.StyleFeedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
-				return cmdResNothing, err
+				return false, err
 			}
 			dbg.printLine(terminal.StyleFeedback, "watch #%d dropped", num)
 		default:
@@ -1083,5 +1050,5 @@ func (dbg *Debugger) parseCommand(s string, interactive bool, auto bool) (parseC
 
 	}
 
-	return cmdResNothing, nil
+	return false, nil
 }

@@ -63,7 +63,6 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StyleError:
 		ct.EasyTerm.TermPrint(ansi.PenColor["red"])
-		ct.EasyTerm.TermPrint("* ")
 	}
 
 	ct.EasyTerm.TermPrint(s)

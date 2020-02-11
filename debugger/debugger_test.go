@@ -137,6 +137,10 @@ func (trm *mockTerm) IsInteractive() bool {
 }
 
 func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
+	if sty == terminal.StyleNormalisedInput {
+		return
+	}
+
 	trm.out <- s
 }
 

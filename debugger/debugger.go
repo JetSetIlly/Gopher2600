@@ -292,10 +292,12 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 // the user (ie. via an interactive terminal). only interactive input will be
 // added to a new script file.
 //
+// auto argument should be true if command is being run as part of ONHALT or
+// ONSTEP
+//
 // returns a boolean stating whether the emulation should continue with the
 // next step
 func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
-	var result parseCommandResult
 	var err error
 	var continueEmulation bool
 
@@ -309,46 +311,16 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 	// loop through commands
 	for i := 0; i < len(commands); i++ {
-
 		// parse command
-		result, err = dbg.parseCommand(commands[i], interactive, auto)
+		continueEmulation, err = dbg.parseCommand(commands[i], interactive, !auto)
 		if err != nil {
 			// we don't want to record bad commands in script
 			dbg.scriptScribe.Rollback()
 			return false, err
 		}
 
-		// the result from parseCommand() tells us what to do next
-		switch result {
-		case cmdResNothing:
-			// most commands don't require us to do anything
-
-		case cmdResContinue:
-			// emulation should continue to next step
-			continueEmulation = true
-
-		case cmdResEmptyInput:
-			// input was empty. if this was an interactive input then try the
-			// default step command
-			if interactive {
-				return dbg.parseInput(onEmptyInput, interactive, auto)
-			}
-
-		case cmdResScriptRecStart:
-			// command has caused input script recording to begin. rollback the
-			// call to recordCommand() above because we don't want to record
-			// the fact that we've starting recording in the script itsel
-			dbg.scriptScribe.Rollback()
-
-		case cmdResScriptRecEnd:
-			// nothing special required when script recording has completed
-
-		case cmdResHelp:
-			// help can be called during script recording but we don't want to
-			// include it
-			dbg.scriptScribe.Rollback()
-		}
-
+		// !!TODO: if continueEmulation is true but there are more commands to
+		// parse, what should we do?
 	}
 
 	return continueEmulation, nil
