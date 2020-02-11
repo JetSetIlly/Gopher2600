@@ -236,7 +236,7 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0xe4, Mnemonic: "CPX", Bytes: 2, Cycles: 3, AddressingMode: 4, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xe5, Mnemonic: "SBC", Bytes: 2, Cycles: 3, AddressingMode: 4, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xe6, Mnemonic: "INC", Bytes: 2, Cycles: 5, AddressingMode: 4, PageSensitive: false, Effect: 2},
-		nil,
+		&Definition{OpCode: 0xe7, Mnemonic: "isc", Bytes: 2, Cycles: 5, AddressingMode: 4, PageSensitive: false, Effect: 2},
 		&Definition{OpCode: 0xe8, Mnemonic: "INX", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xe9, Mnemonic: "SBC", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xea, Mnemonic: "NOP", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0},

@@ -1434,6 +1434,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
+	case "isc":
+		r := mc.acc8
+		r.Load(value)
+		r.Add(1, false)
+		value = r.Value()
+		mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
+
 	default:
 		// this should never, ever happen
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
@@ -1458,11 +1467,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// validity check. there's no need to enable unless you've just added a new
 	// opcode and wanting to check the validity of the definition.
-	//
-	// err = mc.LastResult.IsValid()
-	// if err != nil {
-	// 	return err
-	// }
+	err = mc.LastResult.IsValid()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
