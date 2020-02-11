@@ -29,6 +29,8 @@ import (
 
 const termTitle = "Terminal"
 
+const outputMaxSize = 256
+
 type term struct {
 	img *SdlImgui
 
@@ -39,7 +41,7 @@ type term struct {
 	silenced bool
 	prompt   string
 	input    string
-	output   strings.Builder
+	output   []line
 
 	// moreOutput is after TermPrintLine() is executed
 	moreOutput bool
@@ -52,6 +54,10 @@ func newTerm(img *SdlImgui) (*term, error) {
 		img:        img,
 		historyIdx: -1,
 
+		// output is made up of an array of line types. the line type stores
+		// the text of the line and the style
+		output: make([]line, 0, outputMaxSize),
+
 		// inputEvent queue must not block
 		inputEvent: make(chan bool, 1),
 	}
@@ -59,6 +65,58 @@ func newTerm(img *SdlImgui) (*term, error) {
 	term.draw()
 
 	return term, nil
+}
+
+type line struct {
+	style terminal.Style
+	text  string
+}
+
+func (l line) draw() {
+	switch l.style {
+	case terminal.StyleCPUStep:
+		// yellow
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.9, 0.5, 1.0})
+
+	case terminal.StyleVideoStep:
+		// dimmer yellow
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.7, 0.7, 0.3, 1.0})
+
+	case terminal.StyleInstrument:
+		// cyan
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.95, 0.9, 1.0})
+
+	case terminal.StyleError:
+		// red
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.3, 0.3, 1.0})
+
+	case terminal.StyleHelp:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StyleFeedback:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StyleFeedbackNonInteractive:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StylePromptCPUStep:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StylePromptVideoStep:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0})
+
+	case terminal.StylePromptConfirm:
+		// blue
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.4, 0.9, 1.0})
+	}
+
+	imgui.Text(l.text)
+	imgui.PopStyleColor()
 }
 
 // draw is called by service loop
@@ -74,7 +132,9 @@ func (term *term) draw() {
 		imgui.PopStyleColor()
 
 		// output
-		imgui.Text(term.output.String())
+		for i := range term.output {
+			term.output[i].draw()
+		}
 		imgui.Separator()
 
 		// prompt
@@ -171,33 +231,12 @@ func (term *term) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
-	switch style {
-	case terminal.StyleCPUStep:
-		// yellow
-	case terminal.StyleVideoStep:
-		// yellow
-	case terminal.StyleInstrument:
-		// cyan
-	case terminal.StyleEmulatorInfo:
-		// blue
-	case terminal.StyleError:
-		// red *
-	case terminal.StyleHelp:
-		// white
-	case terminal.StyleFeedback:
-		// white
-	case terminal.StyleFeedbackNonInteractive:
-		// white
-	case terminal.StylePromptCPUStep:
-		// bold
-	case terminal.StylePromptVideoStep:
-		// nothing special
-	case terminal.StylePromptConfirm:
-		// blue
+	if len(term.output) >= outputMaxSize {
+		term.output = append(term.output[1:], line{style: style, text: s})
+	} else {
+		term.output = append(term.output, line{style: style, text: s})
 	}
 
-	term.output.WriteString(s)
-	term.output.WriteString("\n")
 	term.moreOutput = true
 }
 
@@ -210,8 +249,15 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 	for {
 		select {
 		case <-term.inputEvent:
-			term.history = append(term.history, term.input)
-			term.historyIdx = len(term.history) - 1
+			term.input = strings.TrimSpace(term.input)
+			if term.input != "" {
+				term.history = append(term.history, term.input)
+				term.historyIdx = len(term.history) - 1
+			}
+
+			// even if term.input is the empty string we still copy it to the
+			// input buffer (sending it back to the caller) because the empty
+			// string might mean something
 
 			n := len(term.input)
 			copy(buffer, term.input+"\n")

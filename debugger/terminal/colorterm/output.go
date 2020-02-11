@@ -41,8 +41,6 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 		ct.EasyTerm.TermPrint(ansi.DimPens["yellow"])
 	case terminal.StyleInstrument:
 		ct.EasyTerm.TermPrint(ansi.PenColor["cyan"])
-	case terminal.StyleEmulatorInfo:
-		ct.EasyTerm.TermPrint(ansi.PenColor["blue"])
 	case terminal.StyleError:
 		ct.EasyTerm.TermPrint(ansi.PenColor["red"])
 		ct.EasyTerm.TermPrint("* ")

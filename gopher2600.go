@@ -357,7 +357,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		term = b.GetTerminal()
 	}
 
-	// if we've not picked a terminal yet
+	// if the GUI does not supply a terminal then use a color or plain terminal
+	// as a fallback
 	if term == nil {
 		switch strings.ToUpper(*termType) {
 		default:

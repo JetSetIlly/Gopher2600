@@ -36,9 +36,6 @@ const (
 	// information about the machine
 	StyleInstrument
 
-	// information about the emulator, rather than the emulated machine
-	StyleEmulatorInfo
-
 	// non-error information from a command
 	StyleFeedback
 
@@ -48,7 +45,7 @@ const (
 	// help information
 	StyleHelp
 
-	// printing of prompt to terminal
+	// terminal prompt
 	StylePromptCPUStep
 	StylePromptVideoStep
 	StylePromptConfirm

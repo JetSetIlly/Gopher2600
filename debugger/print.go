@@ -68,3 +68,7 @@ func (wrt styleWriter) Write(p []byte) (n int, err error) {
 	wrt.dbg.printLine(wrt.style, string(p))
 	return len(p), nil
 }
+
+func (dbg *Debugger) printInstrument(mi fmt.Stringer) {
+	dbg.printLine(terminal.StyleInstrument, "%s", mi.String())
+}

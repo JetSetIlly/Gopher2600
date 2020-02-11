@@ -315,12 +315,12 @@ func (dbg *Debugger) parseCommand(userInput *string, interactive bool) (parseCom
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%v", err)
 			if patched {
-				dbg.printLine(terminal.StyleEmulatorInfo, "error during patching. cartridge might be unusable.")
+				dbg.printLine(terminal.StyleError, "error during patching. cartridge might be unusable.")
 			}
 			return doNothing, nil
 		}
 		if patched {
-			dbg.printLine(terminal.StyleEmulatorInfo, "cartridge patched")
+			dbg.printLine(terminal.StyleFeedback, "cartridge patched")
 		}
 
 	case cmdDisassembly:
