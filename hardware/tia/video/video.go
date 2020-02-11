@@ -215,8 +215,12 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 		vd.collisions.setMemory(addresses.CXPPMM)
 	}
 
-	// apply priorities to get pixel color. the interaction of the priority and
-	// scoremode bits are a little more complex than at first glance:
+	// apply priorities to get pixel color
+	var col uint8
+	var altCol television.AltColorSignal
+
+	// the interaction of the priority and scoremode bits are a little more
+	// complex than at first glance:
 	//
 	//  o if the priority bit is set then priority ordering applies
 	//  o if it is not set but scoremode is set and we're in the left half of
@@ -226,25 +230,15 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 	//		that playfield has priority over the ball
 	//	o phew
 	//
-	//	that scoremode reorders priory regardless of the priority bit is not at
-	//	all obvious but observation proves it to be true. see test.bin ROM
+	//	that scoremode reorders priority regardless of the priority bit is not
+	//	at all obvious but observation proves it to be true. see test.bin ROM
 	//
-	//	also the comment by "supercat" in the discussion "Playfield Score Mode
-	//	- effect on ball" on AtariAge proved useful here.
+	//	the comment by "supercat" in the discussion "Playfield Score Mode -
+	//	effect on ball" on AtariAge proved useful here.
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
-	priority := vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft)
-
-	var col uint8
-	var altCol television.AltColorSignal
-
-	if priority {
+	if vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft) {
 		if pfu { // priority 1
-			col = pfc
-
-			// we don't want score mode coloring if priority is on. we can see
-			// the effect of this on the top line of "Donkey Kong" on the intro
-			// screen of Dietrich's Donkey Kong.
 			if vd.Playfield.scoremode && !vd.Playfield.priority {
 				switch vd.Playfield.region {
 				case regionLeft:
@@ -252,7 +246,10 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 				case regionRight:
 					col = p1c
 				}
+			} else {
+				col = pfc
 			}
+
 			altCol = television.AltColPlayfield
 		} else if blu {
 			col = blc
