@@ -136,7 +136,7 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0x80, Mnemonic: "nop", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0x81, Mnemonic: "STA", Bytes: 2, Cycles: 6, AddressingMode: 6, PageSensitive: false, Effect: 1},
 		&Definition{OpCode: 0x82, Mnemonic: "nop", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
-		nil,
+		&Definition{OpCode: 0x83, Mnemonic: "sax", Bytes: 2, Cycles: 6, AddressingMode: 6, PageSensitive: false, Effect: 1},
 		&Definition{OpCode: 0x84, Mnemonic: "STY", Bytes: 2, Cycles: 3, AddressingMode: 4, PageSensitive: false, Effect: 1},
 		&Definition{OpCode: 0x85, Mnemonic: "STA", Bytes: 2, Cycles: 3, AddressingMode: 4, PageSensitive: false, Effect: 1},
 		&Definition{OpCode: 0x86, Mnemonic: "STX", Bytes: 2, Cycles: 3, AddressingMode: 4, PageSensitive: false, Effect: 1},

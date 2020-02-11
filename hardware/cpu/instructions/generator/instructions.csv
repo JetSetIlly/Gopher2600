@@ -278,6 +278,7 @@
 0xc7, dcp, 5, ZERO_PAGE, False, RMW		# dcm
 0x4b, asr, 2, IMMEDIATE, False			# alr
 
+0x83, sax, 6, PRE_INDEX_INDIRECT, False, WRITE
 0x87, sax, 3, ZERO_PAGE, False, WRITE
 0x8f, sax, 4, ABSOLUTE, False, WRITE
 0xcb, axs, 2, IMMEDIATE, False
