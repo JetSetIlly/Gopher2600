@@ -78,7 +78,7 @@ var commandTemplate = []string{
 	cmdStep + " (CPU|VIDEO|%<target>S)",
 	cmdHalt,
 	cmdQuantum + " (CPU|VIDEO)",
-	cmdScript + " [RECORD %<new file>S|END|%<file>S]",
+	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (ANALYSIS|BANK %<number>N)",

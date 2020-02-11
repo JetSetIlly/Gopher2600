@@ -20,7 +20,6 @@
 package commandline
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -32,9 +31,9 @@ type Tokens struct {
 	curr   int
 }
 
+// String representation of tokens
 func (tk *Tokens) String() string {
-	// !!TODO: normalise tokens to uppercase except those that match %F and %S
-	return tk.input
+	return strings.Join(tk.tokens, " ")
 }
 
 // Reset begins the token traversal process from the beginning
@@ -91,6 +90,15 @@ func (tk *Tokens) Unget() {
 	}
 }
 
+// Update last token with a new value. Useful for normalising token entries.
+func (tk *Tokens) Update(s string) {
+	i := tk.curr
+	if i > 0 {
+		i--
+	}
+	tk.tokens[i] = s
+}
+
 // Peek returns the next token in the list (without advancing the list), and a
 // success boolean - if the end of the token list has been reached, the
 // function returns false instead of true.
@@ -113,14 +121,6 @@ func TokeniseInput(input string) *Tokens {
 
 	// take a note of the raw input
 	tk.input = input
-
-	// normalise variations in syntax
-	for i := 0; i < len(tk.tokens); i++ {
-		// normalise hex notation
-		if tk.tokens[i][0] == '$' {
-			tk.tokens[i] = fmt.Sprintf("0x%s", tk.tokens[i][1:])
-		}
-	}
 
 	return tk
 }

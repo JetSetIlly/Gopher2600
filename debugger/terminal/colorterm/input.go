@@ -74,9 +74,10 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
 
 	for {
+		// print prompt and what we have of the user input
 		ct.EasyTerm.TermPrint(ansi.CursorStore)
 		ct.TermPrintLine(prompt.Style, fmt.Sprintf("%s%s", ansi.ClearLine, prompt.Content))
-		ct.TermPrintLine(terminal.StyleInput, string(input[:inputLen]))
+		ct.EasyTerm.TermPrint(string(input[:inputLen]))
 		ct.EasyTerm.TermPrint(ansi.CursorRestore)
 
 		select {

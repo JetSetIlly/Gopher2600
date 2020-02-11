@@ -74,31 +74,11 @@ type line struct {
 
 func (l line) draw() {
 	switch l.style {
-	case terminal.StyleCPUStep:
-		// yellow
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.9, 0.5, 1.0})
-
-	case terminal.StyleVideoStep:
-		// dimmer yellow
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.7, 0.7, 0.3, 1.0})
-
-	case terminal.StyleInstrument:
-		// cyan
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.95, 0.9, 1.0})
-
-	case terminal.StyleError:
-		// red
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.3, 0.3, 1.0})
+	case terminal.StyleNormalisedInput:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0})
 
 	case terminal.StyleHelp:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
-
-	case terminal.StyleFeedback:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
-
-	case terminal.StyleFeedbackNonInteractive:
 		// white
 		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
 
@@ -113,6 +93,30 @@ func (l line) draw() {
 	case terminal.StylePromptConfirm:
 		// blue
 		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.4, 0.9, 1.0})
+
+	case terminal.StyleFeedback:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StyleCPUStep:
+		// yellow
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.9, 0.5, 1.0})
+
+	case terminal.StyleVideoStep:
+		// dimmer yellow
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.7, 0.7, 0.3, 1.0})
+
+	case terminal.StyleInstrument:
+		// cyan
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.95, 0.9, 1.0})
+
+	case terminal.StyleFeedbackNonInteractive:
+		// white
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+
+	case terminal.StyleError:
+		// red
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.3, 0.3, 1.0})
 	}
 
 	imgui.Text(l.text)

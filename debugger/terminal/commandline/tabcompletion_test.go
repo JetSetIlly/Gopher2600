@@ -89,7 +89,7 @@ func TestTabCompletion(t *testing.T) {
 	// the completion will preserve whitespace
 	tc.Reset()
 	completion = "FOO   bar     wib"
-	expected = "FOO   bar     WIBBLE "
+	expected = "FOO bar WIBBLE "
 	completion = tc.Complete(completion)
 	if completion != expected {
 		t.Errorf("expecting '%s' got '%s'", expected, completion)

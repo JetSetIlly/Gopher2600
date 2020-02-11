@@ -64,6 +64,11 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
+	// we don't need to output normalised input for this type of terminal
+	if style == terminal.StyleNormalisedInput {
+		return
+	}
+
 	switch style {
 	case terminal.StyleError:
 		s = fmt.Sprintf("* %s", s)

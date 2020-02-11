@@ -30,24 +30,30 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
-	if style != terminal.StyleInput {
-		ct.EasyTerm.TermPrint("\r")
+	// we don't need to output normalised input for this type of terminal
+	if style == terminal.StyleNormalisedInput {
+		return
 	}
 
+	ct.EasyTerm.TermPrint("\r")
+
 	switch style {
+	case terminal.StyleHelp:
+		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
+	case terminal.StylePromptCPUStep:
+		ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
+	case terminal.StylePromptVideoStep:
+		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
+	case terminal.StylePromptConfirm:
+		ct.EasyTerm.TermPrint(ansi.PenColor["blue"])
+	case terminal.StyleFeedback:
+		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StyleCPUStep:
 		ct.EasyTerm.TermPrint(ansi.PenColor["yellow"])
 	case terminal.StyleVideoStep:
 		ct.EasyTerm.TermPrint(ansi.DimPens["yellow"])
 	case terminal.StyleInstrument:
 		ct.EasyTerm.TermPrint(ansi.PenColor["cyan"])
-	case terminal.StyleError:
-		ct.EasyTerm.TermPrint(ansi.PenColor["red"])
-		ct.EasyTerm.TermPrint("* ")
-	case terminal.StyleHelp:
-		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
-	case terminal.StyleFeedback:
-		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 	case terminal.StyleFeedbackNonInteractive:
 		// making sure there's a newline before printing the string.
 		// because this is non-interactive feedback, the user will
@@ -55,19 +61,16 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 		// this
 		ct.EasyTerm.TermPrint("")
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
-	case terminal.StylePromptCPUStep:
-		ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
-	case terminal.StylePromptVideoStep:
-		// nothing special
-	case terminal.StylePromptConfirm:
-		ct.EasyTerm.TermPrint(ansi.PenColor["blue"])
+	case terminal.StyleError:
+		ct.EasyTerm.TermPrint(ansi.PenColor["red"])
+		ct.EasyTerm.TermPrint("* ")
 	}
 
 	ct.EasyTerm.TermPrint(s)
 	ct.EasyTerm.TermPrint(ansi.NormalPen)
 
 	// add a newline if print style is anything other than prompt or input line
-	if !style.IsPrompt() && style != terminal.StyleInput {
+	if !style.IsPrompt() {
 		ct.EasyTerm.TermPrint("\n")
 	}
 }

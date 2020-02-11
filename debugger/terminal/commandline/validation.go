@@ -49,7 +49,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 				if _, ok := err.(errors.AtariError); ok {
 					return err
 				}
-				return errors.New(errors.ValidationError, fmt.Sprintf("%s: %s", cmd, err))
+				return errors.New(errors.ValidationError, err)
 			}
 
 			// if we've reached this point and there are still oustanding
@@ -146,6 +146,12 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 
 	switch n.tag {
 	case "%N":
+		// normalise hex notation and update token
+		if tok[0] == '$' {
+			tok = fmt.Sprintf("0x%s", tok[1:])
+		}
+		tokens.Update(tok)
+
 		_, e := strconv.ParseInt(tok, 0, 32)
 		match = e == nil
 
@@ -183,9 +189,15 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		match = n.branch == nil
 
 	default:
-		// case insensitive matching. node tags should already have been
-		// converted to upper case
-		match = strings.ToUpper(tok) == n.tag
+		// case insensitive matching. n.tag should have been normalised
+		// already.
+		tok = strings.ToUpper(tok)
+		match = tok == n.tag
+
+		// update token with normalised string
+		if match {
+			tokens.Update(tok)
+		}
 	}
 
 	// if input doesn't match this node we need to check branches. we may well

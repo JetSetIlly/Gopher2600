@@ -306,17 +306,12 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 	// divide input if necessary
 	commands := strings.Split(input, ";")
+
+	// loop through commands
 	for i := 0; i < len(commands); i++ {
 
-		// try to record command now if it is not a result of an "autocommand"
-		// (ONSTEP, ONHALT). if there's an error as a result of parsing, it
-		// will be rolled back before committing
-		if !auto {
-			dbg.scriptScribe.WriteInput(commands[i])
-		}
-
-		// parse command. format of command[i] wil be normalised
-		result, err = dbg.parseCommand(&commands[i], interactive)
+		// parse command
+		result, err = dbg.parseCommand(commands[i], interactive, auto)
 		if err != nil {
 			// we don't want to record bad commands in script
 			dbg.scriptScribe.Rollback()
@@ -325,32 +320,30 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 
 		// the result from parseCommand() tells us what to do next
 		switch result {
-		case doNothing:
+		case cmdResNothing:
 			// most commands don't require us to do anything
-			break
 
-		case stepContinue:
+		case cmdResContinue:
 			// emulation should continue to next step
 			continueEmulation = true
 
-		case emptyInput:
+		case cmdResEmptyInput:
 			// input was empty. if this was an interactive input then try the
 			// default step command
 			if interactive {
 				return dbg.parseInput(onEmptyInput, interactive, auto)
 			}
-			return false, nil
 
-		case scriptRecordStarted:
+		case cmdResScriptRecStart:
 			// command has caused input script recording to begin. rollback the
 			// call to recordCommand() above because we don't want to record
 			// the fact that we've starting recording in the script itsel
 			dbg.scriptScribe.Rollback()
 
-		case scriptRecordEnded:
+		case cmdResScriptRecEnd:
 			// nothing special required when script recording has completed
 
-		case helpCalled:
+		case cmdResHelp:
 			// help can be called during script recording but we don't want to
 			// include it
 			dbg.scriptScribe.Rollback()
