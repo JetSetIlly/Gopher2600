@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package display
+package disassembly
 
 import (
 	"fmt"
@@ -28,28 +28,47 @@ import (
 	"strings"
 )
 
-// Instruction is the fully annotated, columnular representation of
-// a instance of execution.Instruction
-type Instruction struct {
+// Entry is a disassambled instruction. The constituent parts of the
+// disassembly. It is a represenation of execution.Instruction
+type Entry struct {
 	Location string
 	Bytecode string
 	Address  string
 	Mnemonic string
 	Operand  string
-	Cycles   string
-	Notes    string
+
+	Cycles string
+	Notes  string
+
+	// actual cycles and notes are the cycles and notes actually seen in
+	// the computation
+	ActualCycles string
+	ActualNotes  string
+
+	// whether the instruction was decoded from the flow pass. these
+	// instructions are deemed to be more accurate because they have been
+	// reached according to the flow of the instructions from the start address
+	// through the CPU
+	Flow bool
+
+	// addresses from which the instruction can be reached
+	Prev []uint16
+
+	// address to which the instruction flows to next
+	// subroutines
+	Next []uint16
 }
 
-// Format execution.Result and create a new instance of Instruction
-func Format(result execution.Result, symtable *symbols.Table) (*Instruction, error) {
+// format execution.Result and create a new instance of Entry
+func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) {
 	if symtable == nil {
 		symtable = &symbols.Table{}
 	}
 
-	d := &Instruction{}
+	d := &Entry{}
 
-	// if the operator hasn't been decoded yet then use placeholder strings in
-	// key columns
+	// if the operator hasn't been decoded yet then use placeholder strings for
+	// important fields
 	if result.Defn == nil {
 		d.Mnemonic = "???"
 		d.Operand = "?"
@@ -106,7 +125,7 @@ func Format(result execution.Result, symtable *symbols.Table) (*Instruction, err
 
 			switch result.Defn.Effect {
 			case instructions.Flow:
-				if result.Defn.AddressingMode == instructions.Relative {
+				if result.Defn.IsBranch() {
 					// relative labels. to get the correct label we have to
 					// simulate what a successful branch instruction would do:
 
@@ -179,14 +198,26 @@ func Format(result execution.Result, symtable *symbols.Table) (*Instruction, err
 	}
 
 	// cycles
-	d.Cycles = fmt.Sprintf("%d", result.ActualCycles)
+	if result.Defn.IsBranch() {
+		d.Cycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
+	} else {
+		d.Cycles = fmt.Sprintf("%d", result.Defn.Cycles)
+	}
 
 	// notes
+	if result.Defn.PageSensitive {
+		d.Notes = fmt.Sprintf("%s [+1]", d.Notes)
+	}
+
+	// actual cycles
+	d.ActualCycles = fmt.Sprintf("%d", result.ActualCycles)
+
+	// actual notes
 	if result.PageFault {
-		d.Notes = fmt.Sprintf("%s page-fault", d.Notes)
+		d.ActualNotes = fmt.Sprintf("%s [+1]", d.ActualNotes)
 	}
 	if result.CPUBug != "" {
-		d.Notes = fmt.Sprintf("%s * %s *", d.Notes, result.CPUBug)
+		d.ActualNotes = fmt.Sprintf("%s * %s *", d.ActualNotes, result.CPUBug)
 	}
 
 	return d, nil

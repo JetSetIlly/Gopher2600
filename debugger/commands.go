@@ -521,19 +521,19 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 				return false, nil
 
 			case "BYTECODE":
-				s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Bytecode, d.Bytecode))
+				s.WriteString(dbg.disasm.GetField(disassembly.Bytecode, d))
 			}
 		}
 
-		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Address, d.Address))
+		s.WriteString(dbg.disasm.GetField(disassembly.Address, d))
 		s.WriteString(" ")
-		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Mnemonic, d.Mnemonic))
+		s.WriteString(dbg.disasm.GetField(disassembly.Mnemonic, d))
 		s.WriteString(" ")
-		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Operand, d.Operand))
+		s.WriteString(dbg.disasm.GetField(disassembly.Operand, d))
 		s.WriteString(" ")
-		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Cycles, d.Cycles))
+		s.WriteString(dbg.disasm.GetField(disassembly.ActualCycles, d))
 		s.WriteString(" ")
-		s.WriteString(fmt.Sprintf(dbg.disasm.Columns.Fmt.Notes, d.Notes))
+		s.WriteString(dbg.disasm.GetField(disassembly.ActualNotes, d))
 
 		if dbg.vcs.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())

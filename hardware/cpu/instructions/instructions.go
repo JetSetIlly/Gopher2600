@@ -53,7 +53,11 @@ const (
 
 	// the following three effects have a variable effect on the program
 	// counter, depending on the instruction's precise operand
+
+	// flow consists of the Branch and JMP instructions. Branch instructions
+	// specifically can be distinguished by the AddressingMode
 	Flow
+
 	Subroutine
 	Interrupt
 )
@@ -75,4 +79,9 @@ func (defn Definition) String() string {
 		return "undecoded instruction"
 	}
 	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
+}
+
+// IsBranch returns true if instruction is a branch instruction
+func (defn Definition) IsBranch() bool {
+	return defn.AddressingMode == Relative && defn.Effect == Flow
 }

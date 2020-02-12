@@ -254,9 +254,8 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // NEVER call vcs.AttachCartridge() or setup.AttachCartridge() except through
 // this function
 //
-// this is the glue that hold the cartridge and disassembly packages
-// together. especially important is the repointing of symtable in the instance
-// of dbgmem
+// this is the glue that hold the cartridge and disassembly packages together.
+// especially important is the repointing of symtable in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil && !errors.Has(err, errors.CartridgeEjected) {

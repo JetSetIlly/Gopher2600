@@ -24,8 +24,8 @@ import (
 	"gopher2600/hardware/memory/memorymap"
 )
 
-func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
-	for bank := 0; bank < len(dsm.linear); bank++ {
+func (dsm *Disassembly) linearPass(mc *cpu.CPU) error {
+	for bank := 0; bank < len(dsm.Disasm); bank++ {
 		for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 			if err := dsm.cart.SetBank(address, bank); err != nil {
 				return err
@@ -37,9 +37,9 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 			_ = mc.ExecuteInstruction(nil)
 
 			// continue for loop on invalid results. we don't want to be as
-			// discerning as in flowDisassembly(). the nature of
-			// linearDisassembly() means that we're likely to try executing
-			// invalid instructions. best just to ignore such errors.
+			// discerning as in flowDisassembly(). the nature of the
+			// linearPass() means that we're likely to try executing invalid
+			// instructions. best just to ignore such errors.
 			if mc.LastResult.IsValid() != nil {
 				continue // for loop
 			}
@@ -49,7 +49,7 @@ func (dsm *Disassembly) linearDisassembly(mc *cpu.CPU) error {
 				return err
 			}
 
-			dsm.linear[bank][address&disasmMask] = ent
+			dsm.Disasm[bank][address&disasmMask] = ent
 		}
 	}
 

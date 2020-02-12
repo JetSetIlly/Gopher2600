@@ -26,7 +26,7 @@ import (
 	"gopher2600/hardware/memory/memorymap"
 )
 
-func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
+func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 	for {
 		err := mc.ExecuteInstruction(nil)
 
@@ -38,10 +38,9 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 			switch err.(errors.AtariError).Message {
 			case errors.ProgramCounterCycled:
-				// originally, a cycled program counter caused the
-				// disassembly to end but thinking about it a bit more,
-				// we can see that simply continuing with the loop makes
-				// more sense
+				// originally, a cycled program counter caused the disassembly
+				// to end but thinking about it a bit more, we can see that
+				// simply continuing with the loop makes more sense
 				continue // for loop
 			case errors.UnimplementedInstruction:
 				continue // for loop
@@ -57,18 +56,40 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 		bank := dsm.cart.GetBank(mc.LastResult.Address)
 
-		// if we've seen this before then finish the disassembly
-		if dsm.flow[bank][mc.LastResult.Address&disasmMask] != nil {
+		// if we've seen this before but it was not from then flow pass then
+		// finish the disassembly and prev is zero
+		d := dsm.Disasm[bank][mc.LastResult.Address&disasmMask]
+		if d != nil && d.Flow && prev == 0 {
 			return nil
 		}
 
-		d, err := dsm.FormatResult(mc.LastResult)
+		// create new disassembly entry
+		d, err = dsm.FormatResult(mc.LastResult)
 		if err != nil {
 			return err
 		}
-		dsm.Columns.Update(d)
 
-		dsm.flow[bank][mc.LastResult.Address&disasmMask] = d
+		// indicate that it was generated from the flow pass
+		d.Flow = true
+
+		// indicate the instruction address from which the new instruction was
+		// Jumped/Branched.
+		if prev != 0 {
+			d.Prev = append(d.Prev, prev)
+			prev = 0
+		}
+
+		// update field information
+		dsm.fields.update(d)
+
+		// updated. we need to do it before any jumping/branching because the
+		// information needs to be there for the iterated function (loop
+		// detection)
+		//
+		// in the event that a jump/branch has been encountered we update the
+		// entry again after appending the next address
+		dsm.Disasm[bank][mc.LastResult.Address&disasmMask] = d
+		e := &d
 
 		// we've disabled flow-control in the cpu but we still need to pay
 		// attention to what's going on or we won't get to see all the areas of
@@ -86,8 +107,11 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 						// adjust program counter
 						mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
 
+						// record next address
+						(*e).Next = append((*e).Next, mc.PC.Address())
+
 						// recurse
-						err = dsm.flowDisassembly(mc)
+						err = dsm.flowPass(mc, mc.LastResult.Address)
 						if err != nil {
 							return err
 						}
@@ -116,9 +140,13 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 
 					// adjust program counter
 					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
+					dsm.Disasm[bank][mc.LastResult.Address&disasmMask] = d
+
+					// record next address
+					(*e).Next = append((*e).Next, mc.PC.Address())
 
 					// recurse
-					err = dsm.flowDisassembly(mc)
+					err = dsm.flowPass(mc, mc.LastResult.Address)
 					if err != nil {
 						return err
 					}
@@ -141,8 +169,11 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 				}
 				mc.PC.Add(address)
 
+				// record next address
+				(*e).Next = append((*e).Next, mc.PC.Address())
+
 				// recurse
-				err = dsm.flowDisassembly(mc)
+				err = dsm.flowPass(mc, mc.LastResult.Address)
 				if err != nil {
 					return err
 				}
@@ -172,8 +203,11 @@ func (dsm *Disassembly) flowDisassembly(mc *cpu.CPU) error {
 			// adjust program counter
 			mc.PC.Load(mc.LastResult.InstructionData.(uint16))
 
+			// record next address
+			(*e).Next = append((*e).Next, mc.PC.Address())
+
 			// recurse
-			err = dsm.flowDisassembly(mc)
+			err = dsm.flowPass(mc, mc.LastResult.Address)
 			if err != nil {
 				return err
 			}

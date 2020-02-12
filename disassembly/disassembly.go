@@ -22,7 +22,6 @@ package disassembly
 import (
 	"fmt"
 	"gopher2600/cartridgeloader"
-	"gopher2600/disassembly/display"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/execution"
@@ -34,7 +33,7 @@ import (
 
 const disasmMask = 0x0fff
 
-type bank [disasmMask + 1]*display.Instruction
+type bank [disasmMask + 1]*Entry
 
 // Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
@@ -48,17 +47,16 @@ type Disassembly struct {
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
-	// linear is the decoding of every possible address in the cartridge
-	linear []bank
+	// disasm is created from two passes. the linear pass which simply decodes
+	// every address as though it is an instruction and a flow pass, which only
+	// considers addresses that the program counter can hit when the CPU is ran
+	// from the reset vector
+	Disasm []bank
 
-	// flow is the decoding of cartridge addresses that follow the flow from
-	// the start address
-	flow []bank
-
-	// formatting information for all entries in the flow disassembly.
-	// excluding the linear disassembly because false positives entries might
-	// upset the formatting.
-	Columns display.Columns
+	// formatting information for all entries found during the flow pass.
+	// excluding entries only found during the linear pass because
+	// false-positive entries might upset the formatting.
+	fields fields
 }
 
 // Analysis returns a summary of anything interesting found during disassembly.
@@ -75,15 +73,15 @@ func (dsm Disassembly) Analysis() string {
 // function works best when the address definitely points to a valid
 // instruction. This probably means during the execution of a the cartridge
 // with proper flow control.
-func (dsm Disassembly) Get(bank int, address uint16) (*display.Instruction, bool) {
-	col := dsm.linear[bank][address&disasmMask]
+func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
+	col := dsm.Disasm[bank][address&disasmMask]
 	return col, col != nil
 }
 
 // FormatResult is a wrapper for the display.Format() function using the
 // current symbol table
-func (dsm Disassembly) FormatResult(result execution.Result) (*display.Instruction, error) {
-	return display.Format(result, dsm.Symtable)
+func (dsm Disassembly) FormatResult(result execution.Result) (*Entry, error) {
+	return newEntry(result, dsm.Symtable)
 }
 
 // FromCartridge initialises a new partial emulation and returns a
@@ -116,8 +114,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.flow = make([]bank, dsm.cart.NumBanks())
-	dsm.linear = make([]bank, dsm.cart.NumBanks())
+	dsm.Disasm = make([]bank, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
@@ -143,19 +140,18 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 	}
 	mc.NoFlowControl = true
 
-	// disassemble linearly
-
+	// linear pass
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
-	err = dsm.linearDisassembly(mc)
+
+	err = dsm.linearPass(mc)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	// disassemble as best we can with manual flow control
-
+	// flow pass
 	mc.Reset()
 	dsm.cart.Initialise()
 
@@ -164,7 +160,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	err = dsm.flowDisassembly(mc)
+	err = dsm.flowPass(mc, addresses.Reset)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
