@@ -30,7 +30,7 @@ import (
 const commentLine = "#"
 
 // check if line is prepended with commentLine (ignoring leading spaces)
-func isOutputLine(line string) bool {
+func isComment(line string) bool {
 	return strings.HasPrefix(strings.TrimSpace(line), commentLine)
 }
 
@@ -62,19 +62,21 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	scr := &Rescribe{scriptFile: scriptfile}
 
 	// convert buffer to an array of lines
-	scr.lines = strings.Split(string(buffer), "\n")
+	l := strings.Split(string(buffer), "\n")
 
-	// pass over any lines starting with the commentLine, leaving the line
-	// counter at the first input line.
-	for isOutputLine(scr.lines[scr.lineCt]) {
-		scr.lineCt++
-		if scr.lineCt > len(scr.lines)-1 {
-			// we've reached the end of the file but that's okay. subsequent
-			// calls to UserRead() will result in an error, as would be
-			// expected.
-			return scr, nil
+	// allocate enough memory for real line array
+	scr.lines = make([]string, 0, len(l))
+
+	// keep lines that are not empty and not a comment
+	for i := range l {
+		l[i] = strings.TrimSpace(l[i])
+		if len(l[i]) > 0 && isComment(l[i]) {
+			scr.lines = append(scr.lines, l[i])
 		}
 	}
+
+	// reset line counter
+	scr.lineCt = 0
 
 	return scr, nil
 }
@@ -90,16 +92,11 @@ func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.Read
 		return -1, errors.New(errors.ScriptEnd, scr.scriptFile)
 	}
 
-	command := len(scr.lines[scr.lineCt]) + 1
+	n := len(scr.lines[scr.lineCt]) + 1
 	copy(buffer, []byte(scr.lines[scr.lineCt]))
 	scr.lineCt++
 
-	// pass over any lines starting with the commentLine
-	for scr.lineCt < len(scr.lines) && isOutputLine(scr.lines[scr.lineCt]) {
-		scr.lineCt++
-	}
-
-	return command, nil
+	return n, nil
 }
 
 // TermReadCheck implements the terminal.Input interface
