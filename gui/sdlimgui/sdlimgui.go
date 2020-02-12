@@ -21,6 +21,7 @@ package sdlimgui
 
 import (
 	"gopher2600/debugger/terminal"
+	"gopher2600/disassembly"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
 	"gopher2600/hardware"
@@ -44,8 +45,9 @@ type SdlImgui struct {
 	// collection of imgui windows
 	win *windows
 
-	vcs *hardware.VCS
-	tv  television.Television
+	tv     television.Television
+	vcs    *hardware.VCS
+	disasm *disassembly.Disassembly
 
 	// functions that need to be performed in the main thread should be queued
 	// for service.

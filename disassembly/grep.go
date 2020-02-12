@@ -44,10 +44,10 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	for bank := 0; bank < len(dsm.Disasm); bank++ {
+	for bank := 0; bank < len(dsm.Entries); bank++ {
 		bankHeader := false
-		for a := 0; a < len(dsm.Disasm[bank]); a++ {
-			d := dsm.Disasm[bank][a]
+		for a := 0; a < len(dsm.Entries[bank]); a++ {
+			d := dsm.Entries[bank][a]
 
 			// only grep instructions from a flow disassembly
 			if d != nil && d.Flow {

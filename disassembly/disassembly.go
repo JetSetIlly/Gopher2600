@@ -47,11 +47,11 @@ type Disassembly struct {
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
-	// disasm is created from two passes. the linear pass which simply decodes
+	// Entries is created from two passes. the linear pass which simply decodes
 	// every address as though it is an instruction and a flow pass, which only
 	// considers addresses that the program counter can hit when the CPU is ran
 	// from the reset vector
-	Disasm []bank
+	Entries []bank
 
 	// formatting information for all entries found during the flow pass.
 	// excluding entries only found during the linear pass because
@@ -74,7 +74,7 @@ func (dsm Disassembly) Analysis() string {
 // instruction. This probably means during the execution of a the cartridge
 // with proper flow control.
 func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
-	col := dsm.Disasm[bank][address&disasmMask]
+	col := dsm.Entries[bank][address&disasmMask]
 	return col, col != nil
 }
 
@@ -114,7 +114,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.Disasm = make([]bank, dsm.cart.NumBanks())
+	dsm.Entries = make([]bank, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {

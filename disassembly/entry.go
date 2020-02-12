@@ -31,6 +31,8 @@ import (
 // Entry is a disassambled instruction. The constituent parts of the
 // disassembly. It is a represenation of execution.Instruction
 type Entry struct {
+	ReferenceResult execution.Result
+
 	Location string
 	Bytecode string
 	Address  string
@@ -65,7 +67,9 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 		symtable = &symbols.Table{}
 	}
 
-	d := &Entry{}
+	d := &Entry{
+		ReferenceResult: result,
+	}
 
 	// if the operator hasn't been decoded yet then use placeholder strings for
 	// important fields

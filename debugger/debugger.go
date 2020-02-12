@@ -193,8 +193,8 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
-	// try to add vcs to gui context
-	dbg.scr.SetFeature(gui.ReqDebugVCS, dbg.vcs)
+	// try to add to gui context
+	dbg.scr.SetFeature(gui.ReqAddVCS, dbg.vcs)
 
 	return dbg, nil
 }
@@ -272,6 +272,8 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	if err != nil {
 		return err
 	}
+
+	dbg.scr.SetFeature(gui.ReqAddDisasm, dbg.disasm)
 
 	// repoint debug memory's symbol table
 	dbg.dbgmem.symtable = dbg.disasm.Symtable

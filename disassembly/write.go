@@ -28,7 +28,7 @@ import (
 // Write the entire disassembly to io.Writer
 func (dsm *Disassembly) Write(output io.Writer, byteCode bool) error {
 	var err error
-	for bank := 0; bank < len(dsm.Disasm); bank++ {
+	for bank := 0; bank < len(dsm.Entries); bank++ {
 		err = dsm.WriteBank(output, byteCode, bank)
 		if err != nil {
 			return err
@@ -40,14 +40,14 @@ func (dsm *Disassembly) Write(output io.Writer, byteCode bool) error {
 
 // WriteBank writes the disassembly of the selected bank to io.Writer
 func (dsm *Disassembly) WriteBank(output io.Writer, byteCode bool, bank int) error {
-	if bank < 0 || bank > len(dsm.Disasm)-1 {
+	if bank < 0 || bank > len(dsm.Entries)-1 {
 		return errors.New(errors.DisasmError, fmt.Sprintf("no such bank (%d)", bank))
 	}
 
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
-	for i := range dsm.Disasm[bank] {
-		if d := dsm.Disasm[bank][i]; d != nil {
+	for i := range dsm.Entries[bank] {
+		if d := dsm.Entries[bank][i]; d != nil {
 			if d.Flow {
 				dsm.WriteLine(output, byteCode, d)
 			}

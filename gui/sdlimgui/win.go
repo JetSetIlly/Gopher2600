@@ -26,6 +26,7 @@ type windows struct {
 	tia    *tia
 	delays *delays
 	riot   *riot
+	disasm *disasm
 	tv     *tv
 	term   *term
 }
@@ -59,11 +60,14 @@ func newWindows(img *SdlImgui) (*windows, error) {
 	if err != nil {
 		return nil, err
 	}
+	win.disasm, err = newDisasm(img)
+	if err != nil {
+		return nil, err
+	}
 	win.tv, err = newTV(img)
 	if err != nil {
 		return nil, err
 	}
-
 	win.term, err = newTerm(img)
 	if err != nil {
 		return nil, err
@@ -83,6 +87,7 @@ func (win *windows) draw() {
 	win.delays.draw()
 	win.riot.draw()
 	win.tv.draw()
+	win.disasm.draw()
 	win.screen.draw()
 	win.term.draw()
 }

@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/hardware"
@@ -56,8 +57,11 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	case gui.ReqSetPause:
 
-	case gui.ReqDebugVCS:
+	case gui.ReqAddVCS:
 		img.vcs = args[0].(*hardware.VCS)
+
+	case gui.ReqAddDisasm:
+		img.disasm = args[0].(*disassembly.Disassembly)
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)

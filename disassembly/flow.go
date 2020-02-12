@@ -58,7 +58,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 
 		// if we've seen this before but it was not from then flow pass then
 		// finish the disassembly and prev is zero
-		d := dsm.Disasm[bank][mc.LastResult.Address&disasmMask]
+		d := dsm.Entries[bank][mc.LastResult.Address&disasmMask]
 		if d != nil && d.Flow && prev == 0 {
 			return nil
 		}
@@ -88,7 +88,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 		//
 		// in the event that a jump/branch has been encountered we update the
 		// entry again after appending the next address
-		dsm.Disasm[bank][mc.LastResult.Address&disasmMask] = d
+		dsm.Entries[bank][mc.LastResult.Address&disasmMask] = d
 		e := &d
 
 		// we've disabled flow-control in the cpu but we still need to pay
@@ -140,7 +140,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 
 					// adjust program counter
 					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
-					dsm.Disasm[bank][mc.LastResult.Address&disasmMask] = d
+					dsm.Entries[bank][mc.LastResult.Address&disasmMask] = d
 
 					// record next address
 					(*e).Next = append((*e).Next, mc.PC.Address())
