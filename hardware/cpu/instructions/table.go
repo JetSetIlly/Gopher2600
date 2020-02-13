@@ -260,5 +260,5 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0xfc, Mnemonic: "skw", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},
 		&Definition{OpCode: 0xfd, Mnemonic: "SBC", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},
 		&Definition{OpCode: 0xfe, Mnemonic: "INC", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2},
-		nil}, nil
+		&Definition{OpCode: 0xff, Mnemonic: "isc", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2}}, nil
 }

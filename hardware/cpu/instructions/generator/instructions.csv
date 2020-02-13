@@ -290,3 +290,4 @@
 0x37, rla, 6, INDEXED_ZERO_PAGE_X, False, RMW
 
 0xe7, isc, 5, ZERO_PAGE, False, RMW
+0xff, isc, 7, ABSOLUTE_INDEXED_X, False, RMW
