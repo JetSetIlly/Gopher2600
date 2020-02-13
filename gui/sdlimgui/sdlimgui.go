@@ -45,9 +45,9 @@ type SdlImgui struct {
 	// collection of imgui windows
 	win *windows
 
-	tv     television.Television
-	vcs    *hardware.VCS
-	disasm *disassembly.Disassembly
+	tv  television.Television
+	vcs *hardware.VCS
+	dsm *disassembly.Disassembly
 
 	// functions that need to be performed in the main thread should be queued
 	// for service.
@@ -60,8 +60,8 @@ type SdlImgui struct {
 	// events channel is not created but assigned with SetEventChannel()
 	events chan gui.Event
 
-	// window opening is delayed until television frame is stable
-	showOnNextStable bool
+	// is emulation running
+	paused bool
 
 	// mouse coords at last frame
 	mx, my int32

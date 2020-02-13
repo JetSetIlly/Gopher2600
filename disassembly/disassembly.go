@@ -47,11 +47,18 @@ type Disassembly struct {
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
-	// Entries is created from two passes. the linear pass which simply decodes
+	// entries is created from two passes. the linear pass which simply decodes
 	// every address as though it is an instruction and a flow pass, which only
 	// considers addresses that the program counter can hit when the CPU is ran
 	// from the reset vector
-	Entries []bank
+	//
+	// indexed by address. address should be masked with disasmMask before
+	// indexing.
+	entries []bank
+
+	// Entries is index by bank and line number. To index by address use the
+	// Get() function.
+	Entries [][]*Entry
 
 	// formatting information for all entries found during the flow pass.
 	// excluding entries only found during the linear pass because
@@ -74,7 +81,7 @@ func (dsm Disassembly) Analysis() string {
 // instruction. This probably means during the execution of a the cartridge
 // with proper flow control.
 func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
-	col := dsm.Entries[bank][address&disasmMask]
+	col := dsm.entries[bank][address&disasmMask]
 	return col, col != nil
 }
 
@@ -114,7 +121,15 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.Entries = make([]bank, dsm.cart.NumBanks())
+	dsm.entries = make([]bank, dsm.cart.NumBanks())
+
+	// allocate memory for entries. note we also allocated the array for each
+	// bank. we don't need to do this for "entries" because bank is a fixed
+	// length array
+	dsm.Entries = make([][]*Entry, dsm.cart.NumBanks())
+	for b := 0; b < len(dsm.entries); b++ {
+		dsm.Entries[b] = make([]*Entry, 0, len(dsm.entries[b]))
+	}
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
@@ -163,6 +178,17 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 	err = dsm.flowPass(mc, addresses.Reset)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
+	}
+
+	// final pass where we assemble a linear representation of all the
+	// disassembled entries
+	for b := 0; b < len(dsm.entries); b++ {
+		for i := 0; i < len(dsm.entries[b]); i++ {
+			e := dsm.entries[b][i]
+			if e != nil && e.Flow {
+				dsm.Entries[b] = append(dsm.Entries[b], e)
+			}
+		}
 	}
 
 	return dsm, nil

@@ -160,12 +160,6 @@ func (scr *tvScreen) setWindowFromThread(scale float32) error {
 //
 // MUST NOT be called from the #mainthread
 func (scr *tvScreen) NewFrame(frameNum int) error {
-	test.AssertNonMainThread()
-
-	if scr.img.showOnNextStable && scr.img.tv.IsStable() {
-		scr.img.plt.window.Show()
-		scr.img.showOnNextStable = false
-	}
 	return nil
 }
 

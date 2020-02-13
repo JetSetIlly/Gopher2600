@@ -25,7 +25,7 @@ import (
 )
 
 func (dsm *Disassembly) linearPass(mc *cpu.CPU) error {
-	for bank := 0; bank < len(dsm.Entries); bank++ {
+	for bank := 0; bank < len(dsm.entries); bank++ {
 		for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 			if err := dsm.cart.SetBank(address, bank); err != nil {
 				return err
@@ -49,7 +49,7 @@ func (dsm *Disassembly) linearPass(mc *cpu.CPU) error {
 				return err
 			}
 
-			dsm.Entries[bank][address&disasmMask] = ent
+			dsm.entries[bank][address&disasmMask] = ent
 		}
 	}
 

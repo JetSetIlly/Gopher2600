@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"gopher2600/disassembly"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -28,12 +29,14 @@ import (
 const disasmTitle = "Disassembly"
 
 type disasm struct {
-	img *SdlImgui
+	img      *SdlImgui
+	followPC bool
 }
 
 func newDisasm(img *SdlImgui) (*disasm, error) {
 	disasm := &disasm{
-		img: img,
+		img:      img,
+		followPC: true,
 	}
 
 	return disasm, nil
@@ -46,45 +49,85 @@ func (disasm *disasm) draw() {
 		imgui.SetNextWindowSizeV(imgui.Vec2{354, 387}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(disasmTitle, nil, 0)
 
-		activeLine := false
-		if disasm.img.disasm != nil {
-			for b := range disasm.img.disasm.Entries {
-				for a := range disasm.img.disasm.Entries[b] {
-					e := disasm.img.disasm.Entries[b][a]
-					if e != nil && e.Flow {
-						s := disasm.img.disasm.GetField(disassembly.Address, e)
+		imgui.Text(disasm.img.vcs.Mem.Cart.String())
+		imgui.Spacing()
+		imgui.Spacing()
 
-						if e.ReferenceResult.Address == disasm.img.vcs.CPU.PC.Value() {
-							imgui.SetScrollHereY(0.5)
+		if disasm.img.dsm != nil {
+			// we reference the PC value often
+			pcAddr := disasm.img.vcs.CPU.PC.Value()
+			currBank := disasm.img.vcs.Mem.Cart.GetBank(pcAddr)
+
+			// ee, _ := disasm.img.disasm.Get(currBank, pcAddr)
+			// if ee != nil && !ee.Flow {
+			// 	fmt.Printf("%d %#04x\n", currBank, pcAddr)
+			// }
+
+			imgui.BeginTabBar("banks")
+			for b := range disasm.img.dsm.Entries {
+
+				// set tab flags. select the tab thar represents the
+				// bank currently being referenced by the VCS
+				flgs := imgui.TabItemFlagsNone
+				if disasm.followPC && b == currBank {
+					flgs = imgui.TabItemFlagsSetSelected
+				}
+
+				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
+					imgui.BeginChild(fmt.Sprintf("bank %d", b))
+
+					for a := range disasm.img.dsm.Entries[b] {
+						e := disasm.img.dsm.Entries[b][a]
+
+						if e.ReferenceResult.Address == pcAddr {
 							imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.7, 0.3, 1.0})
-							activeLine = true
-						}
 
-						imgui.Text(s)
-						imgui.SameLine()
-						s = disasm.img.disasm.GetField(disassembly.Mnemonic, e)
-						imgui.Text(s)
-						imgui.SameLine()
-						s = disasm.img.disasm.GetField(disassembly.Operand, e)
-						imgui.Text(s)
-						imgui.SameLine()
-						s = disasm.img.disasm.GetField(disassembly.Cycles, e)
-						imgui.Text(s)
-						imgui.SameLine()
-						s = disasm.img.disasm.GetField(disassembly.Notes, e)
-						imgui.Text(s)
+							imgui.Text(">")
+							imgui.SameLine()
+							disasm.drawEntry(e)
 
-						// if this is the active line then we have pushed a
-						// color style
-						if activeLine {
 							imgui.PopStyleColor()
-							activeLine = false
+
+							// if emulation is running then centre on the current
+							// program counter
+							if !disasm.img.paused || disasm.followPC {
+								imgui.SetScrollHereY(0.5)
+							}
+						} else {
+							imgui.Text(" ")
+							imgui.SameLine()
+							disasm.drawEntry(e)
 						}
+
 					}
+
+					imgui.EndChild()
+					imgui.EndTabItem()
 				}
 			}
+
+			imgui.EndTabBar()
 		}
 
 		imgui.End()
 	}
+
+	disasm.followPC = !disasm.img.paused
+}
+
+func (disasm *disasm) drawEntry(e *disassembly.Entry) {
+	s := disasm.img.dsm.GetField(disassembly.Address, e)
+	imgui.Text(s)
+	imgui.SameLine()
+	s = disasm.img.dsm.GetField(disassembly.Mnemonic, e)
+	imgui.Text(s)
+	imgui.SameLine()
+	s = disasm.img.dsm.GetField(disassembly.Operand, e)
+	imgui.Text(s)
+	imgui.SameLine()
+	s = disasm.img.dsm.GetField(disassembly.Cycles, e)
+	imgui.Text(s)
+	imgui.SameLine()
+	s = disasm.img.dsm.GetField(disassembly.Notes, e)
+	imgui.Text(s)
 }

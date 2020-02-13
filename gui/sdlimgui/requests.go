@@ -39,11 +39,6 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	switch request {
 	case gui.ReqSetVisibleOnStable:
-		if img.tv.IsStable() {
-			img.plt.showWindow(true)
-		} else {
-			img.showOnNextStable = true
-		}
 
 	case gui.ReqSetVisibility:
 
@@ -56,12 +51,13 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		img.lmtr.Active = args[0].(bool)
 
 	case gui.ReqSetPause:
+		img.paused = args[0].(bool)
 
 	case gui.ReqAddVCS:
 		img.vcs = args[0].(*hardware.VCS)
 
 	case gui.ReqAddDisasm:
-		img.disasm = args[0].(*disassembly.Disassembly)
+		img.dsm = args[0].(*disassembly.Disassembly)
 
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)

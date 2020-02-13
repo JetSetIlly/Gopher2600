@@ -47,11 +47,7 @@ func (dsm *Disassembly) WriteBank(output io.Writer, byteCode bool, bank int) err
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
 	for i := range dsm.Entries[bank] {
-		if d := dsm.Entries[bank][i]; d != nil {
-			if d.Flow {
-				dsm.WriteLine(output, byteCode, d)
-			}
-		}
+		dsm.WriteLine(output, byteCode, dsm.Entries[bank][i])
 	}
 
 	return nil
