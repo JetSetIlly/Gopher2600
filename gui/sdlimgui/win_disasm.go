@@ -46,8 +46,8 @@ func newDisasm(img *SdlImgui) (*disasm, error) {
 // draw is called by service loop
 func (disasm *disasm) draw() {
 	if disasm.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{174, 204}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{354, 387}, imgui.ConditionFirstUseEver)
+		imgui.SetNextWindowPosV(imgui.Vec2{915, 214}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{355, 495}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(disasmTitle, nil, 0)
 
 		imgui.Text(disasm.img.vcs.Mem.Cart.String())

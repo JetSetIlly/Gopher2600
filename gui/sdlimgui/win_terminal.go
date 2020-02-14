@@ -131,7 +131,7 @@ func (l line) draw() {
 // draw is called by service loop
 func (term *term) draw() {
 	if term.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{651, 264}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{369, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
 
 		imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.8})

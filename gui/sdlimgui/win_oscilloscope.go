@@ -44,7 +44,7 @@ func newOscilloscope(img *SdlImgui) (*oscilloscope, error) {
 // draw is called by service loop
 func (osc *oscilloscope) draw() {
 	if osc.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{20, 681}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{17, 677}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.BeginV(oscilloscopeTitle, nil,
 			imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
 

@@ -40,7 +40,7 @@ func newRIOT(img *SdlImgui) (*riot, error) {
 // draw is called by service loop
 func (riot *riot) draw() {
 	if riot.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{790, 610}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{359, 664}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.SetNextWindowSizeV(imgui.Vec2{464, 48}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(riotTitle, nil, 0)
 		imgui.Text(riot.img.vcs.RIOT.String())

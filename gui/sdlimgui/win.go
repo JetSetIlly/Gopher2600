@@ -24,11 +24,10 @@ type windows struct {
 	screen       *tvScreen
 	cpu          *cpu
 	ram          *ram
-	tia          *tia
 	delays       *delays
+	tia          *tia
 	riot         *riot
 	disasm       *disasm
-	tv           *tv
 	oscilloscope *oscilloscope
 	term         *term
 }
@@ -54,11 +53,11 @@ func newWindows(img *SdlImgui) (*windows, error) {
 	if err != nil {
 		return nil, err
 	}
-	win.tia, err = newTIA(img)
+	win.delays, err = newDelays(img)
 	if err != nil {
 		return nil, err
 	}
-	win.delays, err = newDelays(img)
+	win.tia, err = newTIA(img)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +66,6 @@ func newWindows(img *SdlImgui) (*windows, error) {
 		return nil, err
 	}
 	win.disasm, err = newDisasm(img)
-	if err != nil {
-		return nil, err
-	}
-	win.tv, err = newTV(img)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +90,10 @@ func (win *windows) draw() {
 	win.screen.draw()
 	win.cpu.draw()
 	win.ram.draw()
-	win.tia.draw()
 	win.delays.draw()
+	win.tia.draw()
 	win.riot.draw()
 	win.disasm.draw()
-	win.tv.draw()
 	win.oscilloscope.draw()
 	win.term.draw()
 }

@@ -40,7 +40,7 @@ func newCPU(img *SdlImgui) (*cpu, error) {
 // draw is called by service loop
 func (cpu *cpu) draw() {
 	if cpu.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{753, 92}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{632, 46}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.SetNextWindowSizeV(imgui.Vec2{169, 142}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(cpuTitle, nil, imgui.WindowFlagsNoResize)
 

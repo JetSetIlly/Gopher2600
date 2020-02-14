@@ -40,8 +40,8 @@ func newDelays(img *SdlImgui) (*delays, error) {
 // draw is called by service loop
 func (delays *delays) draw() {
 	if delays.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{1027, 27}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{226, 329}, imgui.ConditionFirstUseEver)
+		imgui.SetNextWindowPosV(imgui.Vec2{72, 476}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowSizeV(imgui.Vec2{240, 189}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(delaysTitle, nil, 0)
 
 		s := delays.img.vcs.TIA.Delay.String()

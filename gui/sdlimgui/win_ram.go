@@ -40,7 +40,7 @@ func newRAM(img *SdlImgui) (*ram, error) {
 // draw is called by service loop
 func (ram *ram) draw() {
 	if ram.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{823, 373}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.BeginV(ramTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
 		imgui.Text(ram.img.vcs.Mem.RAM.String())
 		imgui.End()

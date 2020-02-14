@@ -40,33 +40,30 @@ func newTIA(img *SdlImgui) (*tia, error) {
 // draw is called by service loop
 func (tia *tia) draw() {
 	if tia.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{26, 525}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{12, 500}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.SetNextWindowSizeV(imgui.Vec2{718, 156}, imgui.ConditionFirstUseEver)
 		imgui.BeginV(tiaTitle, nil, 0)
 
+		imgui.BeginGroup()
 		imgui.Text(tia.img.vcs.TIA.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.String())
-
 		imgui.Text(tia.img.vcs.TIA.Video.Player0.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Player0.String())
-
 		imgui.Text(tia.img.vcs.TIA.Video.Player1.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Player1.String())
-
 		imgui.Text(tia.img.vcs.TIA.Video.Missile0.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Missile0.String())
-
 		imgui.Text(tia.img.vcs.TIA.Video.Missile1.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Missile1.String())
-
 		imgui.Text(tia.img.vcs.TIA.Video.Ball.Label())
 		imgui.SameLine()
 		imgui.Text(tia.img.vcs.TIA.Video.Ball.String())
+		imgui.EndGroup()
 
 		imgui.End()
 	}
