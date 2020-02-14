@@ -68,7 +68,7 @@ project, which is by no means complete, with the '-imgui' flag
 
 The sreenshot below show Keystone Kapers with the debugging windows.
 
-<img src=".screenshots/keystone_imgui.png" height="400" alt="keystone kapers with imgui interface"/>
+<img src=".screenshots/keystone_imgui2.png" height="400" alt="keystone kapers with imgui interface"/>
 
 ## Resources used
 
