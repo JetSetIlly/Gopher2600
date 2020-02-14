@@ -47,6 +47,7 @@ type term struct {
 	moreOutput bool
 
 	inputEvent chan bool
+	sideEvent  chan string
 }
 
 func newTerm(img *SdlImgui) (*term, error) {
@@ -60,6 +61,10 @@ func newTerm(img *SdlImgui) (*term, error) {
 
 		// inputEvent queue must not block
 		inputEvent: make(chan bool, 1),
+
+		// stuff events can be used for side channel input from other areas
+		// of the GUI
+		sideEvent: make(chan string, 1),
 	}
 
 	term.draw()
@@ -268,6 +273,12 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 			term.input = ""
 			return n + 1, nil
 
+		case s := <-term.sideEvent:
+			s = strings.TrimSpace(s)
+			n := len(s)
+			copy(buffer, s+"\n")
+			return n + 1, nil
+
 		case ev := <-events.GuiEvents:
 			err := events.GuiEventHandler(ev)
 			if err != nil {
@@ -278,6 +289,11 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 			return 0, errors.New(errors.UserQuit)
 		}
 	}
+}
+
+// stuff input into the side-channel
+func (term *term) stuff(input string) {
+	term.sideEvent <- input
 }
 
 // TermRead implements the terminal.Input interface
