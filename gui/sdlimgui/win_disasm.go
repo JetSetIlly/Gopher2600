@@ -90,13 +90,7 @@ func (disasm *disasm) draw() {
 						// if address value of current disasm entry and
 						// current PC value match then highlight the entry
 						if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
-							imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.7, 0.3, 1.0})
-
-							imgui.Text(">")
-							imgui.SameLine()
-							disasm.drawEntry(e)
-
-							imgui.PopStyleColor()
+							disasm.drawEntry(e, true)
 
 							// if emulation is running then centre on the current
 							// program counter
@@ -104,9 +98,7 @@ func (disasm *disasm) draw() {
 								imgui.SetScrollHereY(0.5)
 							}
 						} else {
-							imgui.Text(" ")
-							imgui.SameLine()
-							disasm.drawEntry(e)
+							disasm.drawEntry(e, false)
 						}
 					}
 
@@ -124,19 +116,34 @@ func (disasm *disasm) draw() {
 	disasm.followPC = !disasm.img.paused
 }
 
-func (disasm *disasm) drawEntry(e *disassembly.Entry) {
+func (disasm *disasm) drawEntry(e *disassembly.Entry, selected bool) {
+	base := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
+	if selected {
+		base = imgui.Vec4{0.3, 0.3, 0.3, 0.0}
+	}
+
 	s := disasm.img.dsm.GetField(disassembly.FldAddress, e)
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.4, 0.4, 1.0}.Plus(base))
 	imgui.Text(s)
+
 	imgui.SameLine()
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.4, 0.4, 0.8, 1.0}.Plus(base))
 	s = disasm.img.dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
+
 	imgui.SameLine()
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.3, 1.0}.Plus(base))
 	s = disasm.img.dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
+
 	imgui.SameLine()
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0}.Plus(base))
 	s = disasm.img.dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
+
 	imgui.SameLine()
 	s = disasm.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
+
+	imgui.PopStyleColorV(4)
 }

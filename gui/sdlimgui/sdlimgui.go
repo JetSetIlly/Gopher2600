@@ -118,6 +118,9 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	tv.AddAudioMixer(img.audio)
 
+	// application wide theming
+	setColors()
+
 	return img, nil
 }
 

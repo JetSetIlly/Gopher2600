@@ -134,7 +134,7 @@ func (term *term) draw() {
 		imgui.SetNextWindowPosV(imgui.Vec2{369, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
 
-		imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.8})
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
 		imgui.BeginV(termTitle, nil, 0)
 		imgui.PopStyleVar()
