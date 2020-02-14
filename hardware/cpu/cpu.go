@@ -59,7 +59,7 @@ type CPU struct {
 	// 3 of the 6507)
 	RdyFlg bool
 
-	// last result
+	// last result. the address field is guaranteed to be always valid.
 	LastResult execution.Result
 
 	// NoFlowControl sets whether the cpu responds accurately to instructions

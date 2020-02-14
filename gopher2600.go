@@ -442,6 +442,8 @@ func disasm(md *modalflag.Modes) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
+		attr := disassembly.WriteAttr{ByteCode: *bytecode}
+
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
 			Format:   *cartFormat,
@@ -451,11 +453,11 @@ func disasm(md *modalflag.Modes) error {
 			// print what disassembly output we do have
 			if dsm != nil {
 				// ignore any further errors
-				_ = dsm.Write(md.Output, *bytecode)
+				_ = dsm.Write(md.Output, attr)
 			}
 			return errors.New(errors.DisassemblyError, err)
 		}
-		err = dsm.Write(md.Output, *bytecode)
+		err = dsm.Write(md.Output, attr)
 		if err != nil {
 			return errors.New(errors.DisassemblyError, err)
 		}

@@ -50,7 +50,9 @@ const (
 	ValidationError = "%v"
 
 	// dissassembly
-	DisasmError = "disasm error: %v"
+	DisasmError    = "disasm error: %v"
+	AnalysisError  = "disasm analysis error: %v"
+	IterationError = "disasm iteration error: %v"
 
 	// script
 	ScriptFileError       = "script error: %v"

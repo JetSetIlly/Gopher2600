@@ -236,7 +236,7 @@ func (cart *mnetwork) getBank(addr uint16) (bank int) {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return cart.lowerSegment
 	}
-	return cart.numBanks() - 1
+	return cart.upperSegment
 }
 
 func (cart *mnetwork) setBank(addr uint16, bank int) error {
@@ -249,7 +249,7 @@ func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%#04x bank %d]", cart.method, addr, bank))
 	}
 
 	return nil

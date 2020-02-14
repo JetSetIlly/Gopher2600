@@ -20,13 +20,38 @@
 package disassembly
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/instructions"
+	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
+	"strings"
 )
 
-func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
+// Analysis (best effort) of the cartridge
+type Analysis struct {
+	// discovered/inferred cartridge attributes
+	NonCartJmps bool
+	Interrupts  bool
+	ForcedRTS   bool
+}
+
+// Analysis returns a summary of anything interesting found during disassembly.
+func (ana Analysis) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("non-cart JMPs: %v\n", ana.NonCartJmps))
+	s.WriteString(fmt.Sprintf("interrupts: %v\n", ana.Interrupts))
+	s.WriteString(fmt.Sprintf("forced RTS: %v\n", ana.ForcedRTS))
+	return s.String()
+}
+
+func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
+	err := mc.LoadPCIndirect(addresses.Reset)
+	if err != nil {
+		return err
+	}
+
 	for {
 		err := mc.ExecuteInstruction(nil)
 
@@ -57,9 +82,9 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 		bank := dsm.cart.GetBank(mc.LastResult.Address)
 
 		// if we've seen this before but it was not from then flow pass then
-		// finish the disassembly and prev is zero
-		d := dsm.entries[bank][mc.LastResult.Address&disasmMask]
-		if d != nil && d.Flow && prev == 0 {
+		// finish the disassembly and flowedFrom is zero
+		d := dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart]
+		if d != nil && d.Type == EntryTypeAnalysis && flowedFrom == 0 {
 			return nil
 		}
 
@@ -70,17 +95,14 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 		}
 
 		// indicate that it was generated from the flow pass
-		d.Flow = true
+		d.Type = EntryTypeAnalysis
 
 		// indicate the instruction address from which the new instruction was
 		// Jumped/Branched.
-		if prev != 0 {
-			d.Prev = append(d.Prev, prev)
-			prev = 0
+		if flowedFrom != 0 {
+			d.Prev = append(d.Prev, flowedFrom)
+			flowedFrom = 0
 		}
-
-		// update field information
-		dsm.fields.update(d)
 
 		// updated. we need to do it before any jumping/branching because the
 		// information needs to be there for the iterated function (loop
@@ -88,7 +110,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 		//
 		// in the event that a jump/branch has been encountered we update the
 		// entry again after appending the next address
-		dsm.entries[bank][mc.LastResult.Address&disasmMask] = d
+		dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart] = d
 		e := &d
 
 		// we've disabled flow-control in the cpu but we still need to pay
@@ -111,7 +133,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 						(*e).Next = append((*e).Next, mc.PC.Address())
 
 						// recurse
-						err = dsm.flowPass(mc, mc.LastResult.Address)
+						err = dsm.flowAnalysis(mc, mc.LastResult.Address)
 						if err != nil {
 							return err
 						}
@@ -129,7 +151,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 						// actual side-effects)
 						//
 						// for now, we'll just tolerate it
-						dsm.nonCartJmps = true
+						dsm.Analysis.NonCartJmps = true
 					}
 				} else {
 					// absolute JMP addressing
@@ -140,13 +162,13 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 
 					// adjust program counter
 					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
-					dsm.entries[bank][mc.LastResult.Address&disasmMask] = d
+					dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart] = d
 
 					// record next address
 					(*e).Next = append((*e).Next, mc.PC.Address())
 
 					// recurse
-					err = dsm.flowPass(mc, mc.LastResult.Address)
+					err = dsm.flowAnalysis(mc, mc.LastResult.Address)
 					if err != nil {
 						return err
 					}
@@ -173,7 +195,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 				(*e).Next = append((*e).Next, mc.PC.Address())
 
 				// recurse
-				err = dsm.flowPass(mc, mc.LastResult.Address)
+				err = dsm.flowAnalysis(mc, mc.LastResult.Address)
 				if err != nil {
 					return err
 				}
@@ -193,7 +215,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 				// Krull does this. one of the very first things it does at
 				// address 0xb038 (bank 0) is load the stack with a return
 				// address. the first time the "extra" RTS occurs is at 0xb0ad
-				dsm.forcedRTS = true
+				dsm.Analysis.ForcedRTS = true
 				return nil
 			}
 
@@ -207,7 +229,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 			(*e).Next = append((*e).Next, mc.PC.Address())
 
 			// recurse
-			err = dsm.flowPass(mc, mc.LastResult.Address)
+			err = dsm.flowAnalysis(mc, mc.LastResult.Address)
 			if err != nil {
 				return err
 			}
@@ -221,7 +243,7 @@ func (dsm *Disassembly) flowPass(mc *cpu.CPU, prev uint16) error {
 
 		case instructions.Interrupt:
 			// do nothing with interrupts
-			dsm.interrupts = true
+			dsm.Analysis.Interrupts = true
 		}
 	}
 }

@@ -37,7 +37,7 @@ const (
 )
 
 // Grep searches the disassembly for the specified search string.
-func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, caseSensitive bool) {
+func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, caseSensitive bool) error {
 	var s, m string
 
 	if !caseSensitive {
@@ -46,50 +46,52 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 
 	for bank := 0; bank < len(dsm.Entries); bank++ {
 		bankHeader := false
-		for a := 0; a < len(dsm.Entries[bank]); a++ {
-			d := dsm.Entries[bank][a]
 
-			// only grep instructions from a flow disassembly
-			if d != nil && d.Flow {
+		itr, err := dsm.NewIteration(bank)
+		if err != nil {
+			return err
+		}
 
-				// line representation of Instruction. we'll print this
-				// in case of a match
-				line := &bytes.Buffer{}
-				dsm.WriteLine(line, false, d)
+		for d := itr.Start(); d != nil; d = itr.Next(EntryTypeDecode) {
+			// line representation of Instruction. we'll print this
+			// in case of a match
+			line := &bytes.Buffer{}
+			dsm.WriteLine(line, WriteAttr{}, d)
 
-				// limit scope of grep to the correct Instruction field
-				switch scope {
-				case GrepMnemonic:
-					s = d.Mnemonic
-				case GrepOperand:
-					s = d.Operand
-				case GrepAll:
-					s = line.String()
-				}
+			// limit scope of grep to the correct Instruction field
+			switch scope {
+			case GrepMnemonic:
+				s = d.Mnemonic
+			case GrepOperand:
+				s = d.Operand
+			case GrepAll:
+				s = line.String()
+			}
 
-				if !caseSensitive {
-					m = strings.ToUpper(s)
-				} else {
-					m = s
-				}
+			if !caseSensitive {
+				m = strings.ToUpper(s)
+			} else {
+				m = s
+			}
 
-				if strings.Contains(m, search) {
+			if strings.Contains(m, search) {
 
-					// if we've not yet printed head for the current bank then
-					// print it now
-					if !bankHeader {
-						if bank > 0 {
-							output.Write([]byte("\n"))
-						}
-
-						output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
-						bankHeader = true
+				// if we've not yet printed head for the current bank then
+				// print it now
+				if !bankHeader {
+					if bank > 0 {
+						output.Write([]byte("\n"))
 					}
 
-					// we've matched so print entire line
-					output.Write(line.Bytes())
+					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
+					bankHeader = true
 				}
+
+				// we've matched so print entire line
+				output.Write(line.Bytes())
 			}
 		}
 	}
+
+	return nil
 }

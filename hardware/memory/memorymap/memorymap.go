@@ -19,7 +19,7 @@
 
 package memorymap
 
-// Type representing the different areas of memory
+// Area represents the different areas of memory
 type Area int
 
 func (a Area) String() string {
@@ -73,6 +73,12 @@ const Memtop = uint16(0x1fff)
 const (
 	AddressMaskRIOT = uint16(0x02f7)
 	AddressMaskTIA  = uint16(0x000f)
+)
+
+// the top nibble of a cartridge address can be anything. AddressMaskCart can
+// be to take away the uninteresting bits
+const (
+	AddressMaskCart = MemtopCart ^ OriginCart
 )
 
 // MapAddress translates the address argument from mirror space to primary

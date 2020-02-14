@@ -28,10 +28,39 @@ import (
 	"strings"
 )
 
+// EntryType describes the level of reliability of the Entry.
+type EntryType int
+
+// List of valid EntryTypes in increasing reliability.
+//
+// Naive entries have been decoded as though every byte point is a valid
+// instruction. Decode entries meanwhile take into consideration the preceeding
+// instruction and the number of bytes it would have consumed.
+//
+// Naive entries are useful in the event of the CPU landing on an address that
+// didn't look like an instruction at disassembly time. Unlikely but possible.
+//
+// Flow instructions are deemed to be more accurate because they have been
+// reached according to the flow of the instructions from the start address
+// through the CPU.
+//
+// Live instructions are the most reliable because they contain information
+// from the last actual execution of the entire system (not just a mock CPU, as
+// in the case of the Flow type)
+const (
+	EntryTypeNaive EntryType = iota
+	EntryTypeDecode
+	EntryTypeAnalysis
+	EntryTypeLive
+)
+
 // Entry is a disassambled instruction. The constituent parts of the
 // disassembly. It is a represenation of execution.Instruction
 type Entry struct {
-	ReferenceResult execution.Result
+	// the level of reliability of the information in the Entry
+	Type EntryType
+
+	Result execution.Result
 
 	Location string
 	Bytecode string
@@ -39,19 +68,13 @@ type Entry struct {
 	Mnemonic string
 	Operand  string
 
-	Cycles string
-	Notes  string
+	DefnCycles string
+	DefnNotes  string
 
 	// actual cycles and notes are the cycles and notes actually seen in
 	// the computation
 	ActualCycles string
 	ActualNotes  string
-
-	// whether the instruction was decoded from the flow pass. these
-	// instructions are deemed to be more accurate because they have been
-	// reached according to the flow of the instructions from the start address
-	// through the CPU
-	Flow bool
 
 	// addresses from which the instruction can be reached
 	Prev []uint16
@@ -68,7 +91,7 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	}
 
 	d := &Entry{
-		ReferenceResult: result,
+		Result: result,
 	}
 
 	// if the operator hasn't been decoded yet then use placeholder strings for
@@ -201,16 +224,16 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	default:
 	}
 
-	// cycles
+	// definintion cycles
 	if result.Defn.IsBranch() {
-		d.Cycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
+		d.DefnCycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
 	} else {
-		d.Cycles = fmt.Sprintf("%d", result.Defn.Cycles)
+		d.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
 	}
 
-	// notes
+	// definition notes
 	if result.Defn.PageSensitive {
-		d.Notes = fmt.Sprintf("%s [+1]", d.Notes)
+		d.DefnNotes = fmt.Sprintf("%s [+1]", d.DefnNotes)
 	}
 
 	// actual cycles

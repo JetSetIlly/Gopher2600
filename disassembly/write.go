@@ -25,11 +25,17 @@ import (
 	"io"
 )
 
+// WriteAttr controls what is printed by the Write*() functions
+type WriteAttr struct {
+	ByteCode bool
+	FlowInfo bool
+}
+
 // Write the entire disassembly to io.Writer
-func (dsm *Disassembly) Write(output io.Writer, byteCode bool) error {
+func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	var err error
 	for bank := 0; bank < len(dsm.Entries); bank++ {
-		err = dsm.WriteBank(output, byteCode, bank)
+		err = dsm.WriteBank(output, attr, bank)
 		if err != nil {
 			return err
 		}
@@ -39,7 +45,7 @@ func (dsm *Disassembly) Write(output io.Writer, byteCode bool) error {
 }
 
 // WriteBank writes the disassembly of the selected bank to io.Writer
-func (dsm *Disassembly) WriteBank(output io.Writer, byteCode bool, bank int) error {
+func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) error {
 	if bank < 0 || bank > len(dsm.Entries)-1 {
 		return errors.New(errors.DisasmError, fmt.Sprintf("no such bank (%d)", bank))
 	}
@@ -47,45 +53,51 @@ func (dsm *Disassembly) WriteBank(output io.Writer, byteCode bool, bank int) err
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
 	for i := range dsm.Entries[bank] {
-		dsm.WriteLine(output, byteCode, dsm.Entries[bank][i])
+		dsm.WriteLine(output, attr, dsm.Entries[bank][i])
 	}
 
 	return nil
 }
 
 // WriteLine writes a single Instruction to io.Writer
-func (dsm *Disassembly) WriteLine(output io.Writer, byteCode bool, d *Entry) {
-	if d.Location != "" {
-		output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.location, d.Location)))
+func (dsm *Disassembly) WriteLine(output io.Writer, attr WriteAttr, e *Entry) {
+	if e == nil || e.Type < EntryTypeDecode {
+		return
+	}
+
+	if e.Location != "" {
+		output.Write([]byte(dsm.GetField(FldLocation, e)))
 		output.Write([]byte("\n"))
 	}
 
-	if byteCode {
-		output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.bytecode, d.Bytecode)))
+	if attr.ByteCode {
+		output.Write([]byte(dsm.GetField(FldBytecode, e)))
 		output.Write([]byte(" "))
 	}
 
-	output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.address, d.Address)))
+	output.Write([]byte(dsm.GetField(FldAddress, e)))
 	output.Write([]byte(" "))
-	output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.mnemonic, d.Mnemonic)))
+	output.Write([]byte(dsm.GetField(FldMnemonic, e)))
 	output.Write([]byte(" "))
-	output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.operand, d.Operand)))
+	output.Write([]byte(dsm.GetField(FldOperand, e)))
 	output.Write([]byte(" "))
-	output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.cycles, d.Cycles)))
+	output.Write([]byte(dsm.GetField(FldDefnCycles, e)))
 	output.Write([]byte(" "))
-	output.Write([]byte(fmt.Sprintf(dsm.fields.fmt.notes, d.Notes)))
+	output.Write([]byte(dsm.GetField(FldDefnNotes, e)))
 
-	if len(d.Next) > 0 {
-		output.Write([]byte(" -> "))
-		for i := range d.Next {
-			output.Write([]byte(fmt.Sprintf("%#04x ", d.Next[i])))
+	if attr.FlowInfo {
+		if len(e.Next) > 0 {
+			output.Write([]byte(" -> "))
+			for i := range e.Next {
+				output.Write([]byte(fmt.Sprintf("%#04x ", e.Next[i])))
+			}
 		}
-	}
 
-	if len(d.Prev) > 0 {
-		output.Write([]byte(" <- "))
-		for i := range d.Prev {
-			output.Write([]byte(fmt.Sprintf("%#04x ", d.Prev[i])))
+		if len(e.Prev) > 0 {
+			output.Write([]byte(" <- "))
+			for i := range e.Prev {
+				output.Write([]byte(fmt.Sprintf("%#04x ", e.Prev[i])))
+			}
 		}
 	}
 

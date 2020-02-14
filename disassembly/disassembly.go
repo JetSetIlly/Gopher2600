@@ -20,73 +20,45 @@
 package disassembly
 
 import (
-	"fmt"
 	"gopher2600/cartridgeloader"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/execution"
 	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/cartridge"
+	"gopher2600/hardware/memory/memorymap"
 	"gopher2600/symbols"
-	"strings"
 )
-
-const disasmMask = 0x0fff
-
-type bank [disasmMask + 1]*Entry
 
 // Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
 	cart *cartridge.Cartridge
 
-	// discovered/inferred cartridge attributes
-	nonCartJmps bool
-	interrupts  bool
-	forcedRTS   bool
-
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
-	// entries is created from two passes. the linear pass which simply decodes
-	// every address as though it is an instruction and a flow pass, which only
-	// considers addresses that the program counter can hit when the CPU is ran
-	// from the reset vector
-	//
-	// indexed by address. address should be masked with disasmMask before
-	// indexing.
-	entries []bank
-
-	// Entries is index by bank and line number. To index by address use the
-	// Get() function.
-	Entries [][]*Entry
+	// indexed by address. address should be masked with
+	// memorymap.AddressMaskCart before access.
+	Entries [][memorymap.AddressMaskCart + 1]*Entry
 
 	// formatting information for all entries found during the flow pass.
 	// excluding entries only found during the linear pass because
 	// false-positive entries might upset the formatting.
 	fields fields
+
+	// static analysis (best effort) of cartridge
+	Analysis Analysis
 }
 
-// Analysis returns a summary of anything interesting found during disassembly.
-func (dsm Disassembly) Analysis() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("non-cart JMPs: %v\n", dsm.nonCartJmps))
-	s.WriteString(fmt.Sprintf("interrupts: %v\n", dsm.interrupts))
-	s.WriteString(fmt.Sprintf("forced RTS: %v\n", dsm.forcedRTS))
-	return s.String()
-}
-
-// Get returns the disassembly at the specified bank/address
-//
-// function works best when the address definitely points to a valid
-// instruction. This probably means during the execution of a the cartridge
-// with proper flow control.
+// Get returns the disassembly at the specified bank/address.
 func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
-	col := dsm.entries[bank][address&disasmMask]
+	col := dsm.Entries[bank][address&memorymap.AddressMaskCart]
 	return col, col != nil
 }
 
-// FormatResult is a wrapper for the display.Format() function using the
-// current symbol table
+// FormatResult returns the formatted representation of an execution result.
+// Build string representations with GetField(). Also see Write*() functions for
+// less flexible but convenient alternative.
 func (dsm Disassembly) FormatResult(result execution.Result) (*Entry, error) {
 	return newEntry(result, dsm.Symtable)
 }
@@ -121,15 +93,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.entries = make([]bank, dsm.cart.NumBanks())
-
-	// allocate memory for entries. note we also allocated the array for each
-	// bank. we don't need to do this for "entries" because bank is a fixed
-	// length array
-	dsm.Entries = make([][]*Entry, dsm.cart.NumBanks())
-	for b := 0; b < len(dsm.entries); b++ {
-		dsm.Entries[b] = make([]*Entry, 0, len(dsm.entries[b]))
-	}
+	dsm.Entries = make([][memorymap.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
@@ -155,13 +119,8 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 	}
 	mc.NoFlowControl = true
 
-	// linear pass
-	err = mc.LoadPCIndirect(addresses.Reset)
-	if err != nil {
-		return nil, errors.New(errors.DisasmError, err)
-	}
-
-	err = dsm.linearPass(mc)
+	// decode pass
+	err = dsm.decode(mc)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
@@ -170,25 +129,9 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 	mc.Reset()
 	dsm.cart.Initialise()
 
-	err = mc.LoadPCIndirect(addresses.Reset)
+	err = dsm.flowAnalysis(mc, addresses.Reset)
 	if err != nil {
-		return nil, errors.New(errors.DisasmError, err)
-	}
-
-	err = dsm.flowPass(mc, addresses.Reset)
-	if err != nil {
-		return nil, errors.New(errors.DisasmError, err)
-	}
-
-	// final pass where we assemble a linear representation of all the
-	// disassembled entries
-	for b := 0; b < len(dsm.entries); b++ {
-		for i := 0; i < len(dsm.entries[b]); i++ {
-			e := dsm.entries[b][i]
-			if e != nil && e.Flow {
-				dsm.Entries[b] = append(dsm.Entries[b], e)
-			}
-		}
+		return nil, errors.New(errors.AnalysisError, err)
 	}
 
 	return dsm, nil

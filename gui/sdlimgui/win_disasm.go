@@ -22,6 +22,7 @@ package sdlimgui
 import (
 	"fmt"
 	"gopher2600/disassembly"
+	"gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -54,19 +55,25 @@ func (disasm *disasm) draw() {
 		imgui.Spacing()
 
 		if disasm.img.dsm != nil {
-			// we reference the PC value often
-			pcAddr := disasm.img.vcs.CPU.PC.Value()
-			currBank := disasm.img.vcs.Mem.Cart.GetBank(pcAddr)
+			var pcAddr uint16
 
-			// ee, _ := disasm.img.disasm.Get(currBank, pcAddr)
-			// if ee != nil && !ee.Flow {
-			// 	fmt.Printf("%d %#04x\n", currBank, pcAddr)
-			// }
+			// the value of pcAddr depends on the state of the CPU. if the
+			// Final state of the CPU's last execution result is true then we
+			// can be sure the PC value is valid and points to a real
+			// instruction. we need this because we can never be sure when we
+			// are going to draw this window
+			if disasm.img.vcs.CPU.LastResult.Final {
+				pcAddr = disasm.img.vcs.CPU.PC.Value()
+			} else {
+				pcAddr = disasm.img.vcs.CPU.LastResult.Address
+			}
+
+			currBank := disasm.img.vcs.Mem.Cart.GetBank(pcAddr)
 
 			imgui.BeginTabBar("banks")
 			for b := range disasm.img.dsm.Entries {
 
-				// set tab flags. select the tab thar represents the
+				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS
 				flgs := imgui.TabItemFlagsNone
 				if disasm.followPC && b == currBank {
@@ -76,10 +83,13 @@ func (disasm *disasm) draw() {
 				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
 					imgui.BeginChild(fmt.Sprintf("bank %d", b))
 
-					for a := range disasm.img.dsm.Entries[b] {
-						e := disasm.img.dsm.Entries[b][a]
+					itr, _ := disasm.img.dsm.NewIteration(b)
 
-						if e.ReferenceResult.Address == pcAddr {
+					for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
+
+						// if address value of current disasm entry and
+						// current PC value match then highlight the entry
+						if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
 							imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.7, 0.3, 1.0})
 
 							imgui.Text(">")
@@ -98,7 +108,6 @@ func (disasm *disasm) draw() {
 							imgui.SameLine()
 							disasm.drawEntry(e)
 						}
-
 					}
 
 					imgui.EndChild()
@@ -116,18 +125,18 @@ func (disasm *disasm) draw() {
 }
 
 func (disasm *disasm) drawEntry(e *disassembly.Entry) {
-	s := disasm.img.dsm.GetField(disassembly.Address, e)
+	s := disasm.img.dsm.GetField(disassembly.FldAddress, e)
 	imgui.Text(s)
 	imgui.SameLine()
-	s = disasm.img.dsm.GetField(disassembly.Mnemonic, e)
+	s = disasm.img.dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 	imgui.SameLine()
-	s = disasm.img.dsm.GetField(disassembly.Operand, e)
+	s = disasm.img.dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 	imgui.SameLine()
-	s = disasm.img.dsm.GetField(disassembly.Cycles, e)
+	s = disasm.img.dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 	imgui.SameLine()
-	s = disasm.img.dsm.GetField(disassembly.Notes, e)
+	s = disasm.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 }

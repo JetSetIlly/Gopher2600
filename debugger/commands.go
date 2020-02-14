@@ -264,7 +264,7 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 		if ok {
 			switch arg {
 			case "ANALYSIS":
-				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis())
+				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis.String())
 			case "BANK":
 				bank, _ := tokens.Get()
 				n, _ := strconv.Atoi(bank)
@@ -312,12 +312,13 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 
 		var err error
 
+		attr := disassembly.WriteAttr{ByteCode: bytecode}
 		s := &bytes.Buffer{}
 
 		if bank == -1 {
-			err = dbg.disasm.Write(s, bytecode)
+			err = dbg.disasm.Write(s, attr)
 		} else {
-			err = dbg.disasm.WriteBank(s, bytecode, bank)
+			err = dbg.disasm.WriteBank(s, attr, bank)
 		}
 
 		if err != nil {
@@ -341,7 +342,10 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 
 		search, _ := tokens.Get()
 		output := strings.Builder{}
-		dbg.disasm.Grep(&output, scope, search, false)
+		err := dbg.disasm.Grep(&output, scope, search, false)
+		if err != nil {
+			return false, nil
+		}
 		if output.Len() == 0 {
 			dbg.printLine(terminal.StyleError, "%s not found in disassembly", search)
 		} else {
@@ -521,19 +525,19 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 				return false, nil
 
 			case "BYTECODE":
-				s.WriteString(dbg.disasm.GetField(disassembly.Bytecode, d))
+				s.WriteString(dbg.disasm.GetField(disassembly.FldBytecode, d))
 			}
 		}
 
-		s.WriteString(dbg.disasm.GetField(disassembly.Address, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldAddress, d))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.Mnemonic, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldMnemonic, d))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.Operand, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldOperand, d))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.ActualCycles, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldActualCycles, d))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.ActualNotes, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldActualNotes, d))
 
 		if dbg.vcs.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())

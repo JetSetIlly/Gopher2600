@@ -27,8 +27,8 @@ type widths struct {
 	address      int
 	mnemonic     int
 	operand      int
-	cycles       int
-	notes        int
+	defnCycles   int
+	defnNotes    int
 	actualCycles int
 	actualNotes  int
 }
@@ -39,8 +39,8 @@ type format struct {
 	address      string
 	mnemonic     string
 	operand      string
-	cycles       string
-	notes        string
+	defnCycles   string
+	defnNotes    string
 	actualCycles string
 	actualNotes  string
 }
@@ -51,7 +51,7 @@ type fields struct {
 }
 
 // Update width and formatting information for entry fields
-func (fld *fields) update(d *Entry) {
+func (fld *fields) updateWidths(d *Entry) {
 	if len(d.Location) > fld.widths.location {
 		fld.widths.location = len(d.Location)
 	}
@@ -67,11 +67,11 @@ func (fld *fields) update(d *Entry) {
 	if len(d.Operand) > fld.widths.operand {
 		fld.widths.operand = len(d.Operand)
 	}
-	if len(d.Cycles) > fld.widths.cycles {
-		fld.widths.cycles = len(d.Cycles)
+	if len(d.DefnCycles) > fld.widths.defnCycles {
+		fld.widths.defnCycles = len(d.DefnCycles)
 	}
-	if len(d.Notes) > fld.widths.notes {
-		fld.widths.notes = len(d.Notes)
+	if len(d.DefnNotes) > fld.widths.defnNotes {
+		fld.widths.defnNotes = len(d.DefnNotes)
 	}
 	if len(d.ActualCycles) > fld.widths.actualCycles {
 		fld.widths.actualCycles = len(d.ActualCycles)
@@ -85,8 +85,8 @@ func (fld *fields) update(d *Entry) {
 	fld.fmt.address = fmt.Sprintf("%%%ds", fld.widths.address)
 	fld.fmt.mnemonic = fmt.Sprintf("%%%ds", fld.widths.mnemonic)
 	fld.fmt.operand = fmt.Sprintf("%%%ds", fld.widths.operand)
-	fld.fmt.cycles = fmt.Sprintf("%%%ds", fld.widths.cycles)
-	fld.fmt.notes = fmt.Sprintf("%%%ds", fld.widths.notes)
+	fld.fmt.defnCycles = fmt.Sprintf("%%%ds", fld.widths.defnCycles)
+	fld.fmt.defnNotes = fmt.Sprintf("%%%ds", fld.widths.defnNotes)
 	fld.fmt.actualCycles = fmt.Sprintf("%%%ds", fld.widths.actualCycles)
 	fld.fmt.actualNotes = fmt.Sprintf("%%%ds", fld.widths.actualNotes)
 }
@@ -96,37 +96,37 @@ type Field int
 
 // List of valid fields
 const (
-	Location Field = iota
-	Bytecode
-	Address
-	Mnemonic
-	Operand
-	Cycles
-	Notes
-	ActualCycles
-	ActualNotes
+	FldLocation Field = iota
+	FldBytecode
+	FldAddress
+	FldMnemonic
+	FldOperand
+	FldDefnCycles
+	FldDefnNotes
+	FldActualCycles
+	FldActualNotes
 )
 
 // GetField returns the formatted field from the speficied Entry
 func (dsm *Disassembly) GetField(field Field, d *Entry) string {
 	switch field {
-	case Location:
+	case FldLocation:
 		return fmt.Sprintf(dsm.fields.fmt.location, d.Location)
-	case Bytecode:
+	case FldBytecode:
 		return fmt.Sprintf(dsm.fields.fmt.bytecode, d.Bytecode)
-	case Address:
+	case FldAddress:
 		return fmt.Sprintf(dsm.fields.fmt.address, d.Address)
-	case Mnemonic:
+	case FldMnemonic:
 		return fmt.Sprintf(dsm.fields.fmt.mnemonic, d.Mnemonic)
-	case Operand:
+	case FldOperand:
 		return fmt.Sprintf(dsm.fields.fmt.operand, d.Operand)
-	case Cycles:
-		return fmt.Sprintf(dsm.fields.fmt.cycles, d.Cycles)
-	case Notes:
-		return fmt.Sprintf(dsm.fields.fmt.notes, d.Notes)
-	case ActualCycles:
+	case FldDefnCycles:
+		return fmt.Sprintf(dsm.fields.fmt.defnCycles, d.DefnCycles)
+	case FldDefnNotes:
+		return fmt.Sprintf(dsm.fields.fmt.defnNotes, d.DefnNotes)
+	case FldActualCycles:
 		return fmt.Sprintf(dsm.fields.fmt.actualCycles, d.ActualCycles)
-	case ActualNotes:
+	case FldActualNotes:
 		return fmt.Sprintf(dsm.fields.fmt.actualNotes, d.ActualNotes)
 	}
 	return ""

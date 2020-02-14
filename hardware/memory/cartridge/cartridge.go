@@ -51,7 +51,7 @@ func NewCartridge() *Cartridge {
 }
 
 func (cart Cartridge) String() string {
-	return fmt.Sprintf("%s [%s]", cart.Filename, cart.mapper)
+	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
 }
 
 // Peek is an implementation of memory.DebuggerBus
@@ -193,14 +193,14 @@ func (cart Cartridge) NumBanks() int {
 
 // GetBank returns the current bank number for the specified address
 func (cart Cartridge) GetBank(addr uint16) int {
-	return cart.mapper.getBank(addr ^ memorymap.OriginCart)
+	return cart.mapper.getBank(addr & memorymap.AddressMaskCart)
 }
 
 // SetBank maps the specified address such that it references the specified
 // bank. For many cart mappers this just means switching banks for the entire
 // cartridge
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	return cart.mapper.setBank(addr^memorymap.OriginCart, bank)
+	return cart.mapper.setBank(addr&memorymap.AddressMaskCart, bank)
 }
 
 // SaveState notes and returns the current state of the cartridge (RAM
