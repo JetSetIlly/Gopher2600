@@ -64,7 +64,7 @@ The second picture shows Barnstormer with the "debug colours" turned on. These d
 There is currently an effort to introduce a windowed debugger, using Dear Imgui. You can see the current state of the
 project, which is by no means complete, with the '-imgui' flag
 
-	> gopher2600 -imgui <rom>
+	> gopher2600 debug -imgui <rom>
 
 The sreenshot below show Keystone Kapers with the debugging windows.
 
