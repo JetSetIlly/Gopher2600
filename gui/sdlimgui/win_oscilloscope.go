@@ -26,11 +26,12 @@ import (
 const oscilloscopeTitle = "Oscilloscope"
 
 type oscilloscope struct {
+	windowManagement
 	img         *SdlImgui
 	audioStream []float32
 }
 
-func newOscilloscope(img *SdlImgui) (*oscilloscope, error) {
+func newOscilloscope(img *SdlImgui) (managedWindow, error) {
 	osc := &oscilloscope{
 		img:         img,
 		audioStream: make([]float32, 1, 2048),
@@ -41,20 +42,28 @@ func newOscilloscope(img *SdlImgui) (*oscilloscope, error) {
 	return osc, nil
 }
 
-// draw is called by service loop
-func (osc *oscilloscope) draw() {
-	if osc.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{17, 677}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.BeginV(oscilloscopeTitle, nil,
-			imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
+func (osc *oscilloscope) destroy() {
+}
 
-		imgui.PushStyleColor(imgui.StyleColorFrameBg, imgui.Vec4{0.21, 0.29, 0.23, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorPlotLines, imgui.Vec4{0.10, 0.97, 0.29, 1.0})
-		imgui.PlotLines("", osc.audioStream)
-		imgui.PopStyleColor()
-		imgui.PopStyleColor()
-		imgui.End()
+func (osc *oscilloscope) id() string {
+	return oscilloscopeTitle
+}
+
+func (osc *oscilloscope) draw() {
+	if !osc.open {
+		return
 	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{17, 677}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.BeginV(oscilloscopeTitle, &osc.open,
+		imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
+
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, imgui.Vec4{0.21, 0.29, 0.23, 1.0})
+	imgui.PushStyleColor(imgui.StyleColorPlotLines, imgui.Vec4{0.10, 0.97, 0.29, 1.0})
+	imgui.PlotLines("", osc.audioStream)
+	imgui.PopStyleColor()
+	imgui.PopStyleColor()
+	imgui.End()
 
 	osc.audioStream = osc.audioStream[:1]
 }

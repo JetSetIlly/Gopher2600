@@ -26,10 +26,11 @@ import (
 const cpuTitle = "CPU"
 
 type cpu struct {
+	windowManagement
 	img *SdlImgui
 }
 
-func newCPU(img *SdlImgui) (*cpu, error) {
+func newCPU(img *SdlImgui) (managedWindow, error) {
 	cpu := &cpu{
 		img: img,
 	}
@@ -37,32 +38,40 @@ func newCPU(img *SdlImgui) (*cpu, error) {
 	return cpu, nil
 }
 
-// draw is called by service loop
+func (cpu *cpu) destroy() {
+}
+
+func (cpu *cpu) id() string {
+	return cpuTitle
+}
+
 func (cpu *cpu) draw() {
-	if cpu.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{632, 46}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{169, 142}, imgui.ConditionFirstUseEver)
-		imgui.BeginV(cpuTitle, nil, imgui.WindowFlagsNoResize)
-
-		imgui.ColumnsV(2, "", false)
-
-		imgui.Text("PC")
-		imgui.Text("A")
-		imgui.Text("X")
-		imgui.Text("Y")
-		imgui.Text("SP")
-		imgui.Text("Status")
-
-		imgui.NextColumn()
-		imgui.SetColumnWidth(-1, 100)
-
-		imgui.Text(cpu.img.vcs.CPU.PC.String())
-		imgui.Text(cpu.img.vcs.CPU.A.String())
-		imgui.Text(cpu.img.vcs.CPU.X.String())
-		imgui.Text(cpu.img.vcs.CPU.Y.String())
-		imgui.Text(cpu.img.vcs.CPU.SP.String())
-		imgui.Text(cpu.img.vcs.CPU.Status.String())
-
-		imgui.End()
+	if !cpu.open {
+		return
 	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{632, 46}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{169, 142}, imgui.ConditionFirstUseEver)
+	imgui.BeginV(cpuTitle, &cpu.open, imgui.WindowFlagsNoResize)
+
+	imgui.ColumnsV(2, "", false)
+
+	imgui.Text("PC")
+	imgui.Text("A")
+	imgui.Text("X")
+	imgui.Text("Y")
+	imgui.Text("SP")
+	imgui.Text("Status")
+
+	imgui.NextColumn()
+	imgui.SetColumnWidth(-1, 100)
+
+	imgui.Text(cpu.img.vcs.CPU.PC.String())
+	imgui.Text(cpu.img.vcs.CPU.A.String())
+	imgui.Text(cpu.img.vcs.CPU.X.String())
+	imgui.Text(cpu.img.vcs.CPU.Y.String())
+	imgui.Text(cpu.img.vcs.CPU.SP.String())
+	imgui.Text(cpu.img.vcs.CPU.Status.String())
+
+	imgui.End()
 }

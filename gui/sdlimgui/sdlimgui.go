@@ -36,15 +36,17 @@ import (
 
 // SdlImgui is an sdl based visualiser using imgui
 type SdlImgui struct {
+	// the mechanical requirements for the gui
 	io      imgui.IO
 	context *imgui.Context
 	plt     *platform
 	audio   *sdlaudio.Audio
 	glsl    *glsl
 
-	// collection of imgui windows
-	win *windows
+	// window management
+	wm *windowManager
 
+	// references to the emulation
 	tv  television.Television
 	vcs *hardware.VCS
 	dsm *disassembly.Disassembly
@@ -103,14 +105,14 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
-	img.win, err = newWindows(img)
+	img.wm, err = newWindowManager(img)
 	if err != nil {
 		return nil, err
 	}
 
 	// connect some screen properties to other parts of the system
-	img.glsl.tvScreenTexture = img.win.screen.texture
-	tv.AddPixelRenderer(img.win.screen)
+	img.glsl.tvScreenTexture = img.wm.scr.texture
+	tv.AddPixelRenderer(img.wm.scr)
 
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
@@ -130,8 +132,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 func (img *SdlImgui) Destroy(output io.Writer) {
 	test.AssertMainThread()
 
+	img.wm.destroy()
 	img.audio.EndMixing()
-	img.win.destroy()
 	img.glsl.destroy()
 	img.plt.destroy()
 	img.context.Destroy()
@@ -144,5 +146,10 @@ func (img *SdlImgui) SetEventChannel(events chan gui.Event) {
 
 // GetTerminal implements terminal.Broker interface
 func (img *SdlImgui) GetTerminal() terminal.Terminal {
-	return img.win.term
+	return img.wm.term
+}
+
+// put input into the side-channel
+func (img *SdlImgui) issueTermCommand(input string) {
+	img.wm.term.sideChan <- input
 }

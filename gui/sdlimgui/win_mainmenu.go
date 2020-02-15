@@ -21,27 +21,43 @@ package sdlimgui
 
 import "github.com/inkyblackness/imgui-go/v2"
 
-type menu struct {
+type mainMenu struct {
+	// not embedding windowManagement type
 	img *SdlImgui
 }
 
-func newMenu(img *SdlImgui) (*menu, error) {
-	menu := &menu{
+func newMainMenu(img *SdlImgui) (managedWindow, error) {
+	menu := &mainMenu{
 		img: img,
 	}
 
 	return menu, nil
 }
 
-// draw is called by service loop
-func (menu *menu) draw() {
+func (menu *mainMenu) destroy() {
+}
+
+func (menu *mainMenu) id() string {
+	return "main menu"
+}
+
+// the main menu is always open
+func (menu *mainMenu) isOpen() bool {
+	return true
+}
+
+// the main manu can not be closed
+func (menu *mainMenu) setOpen(_ bool) {
+}
+
+func (menu *mainMenu) draw() {
 	if imgui.BeginMainMenuBar() == false {
 		return
 	}
 
 	if imgui.BeginMenu("Project") {
 		if imgui.Selectable("Quit") {
-			menu.img.win.term.inputSideChannel("QUIT")
+			menu.img.issueTermCommand("QUIT")
 		}
 		imgui.EndMenu()
 	}

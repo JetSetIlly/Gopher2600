@@ -26,49 +26,58 @@ import (
 const delaysTitle = "TIA Delays"
 
 type delays struct {
+	windowManagement
 	img *SdlImgui
 }
 
-func newDelays(img *SdlImgui) (*delays, error) {
-	delays := &delays{
+func newDelays(img *SdlImgui) (managedWindow, error) {
+	del := &delays{
 		img: img,
 	}
 
-	return delays, nil
+	return del, nil
 }
 
-// draw is called by service loop
-func (delays *delays) draw() {
-	if delays.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{72, 476}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{240, 189}, imgui.ConditionFirstUseEver)
-		imgui.BeginV(delaysTitle, nil, 0)
+func (del *delays) destroy() {
+}
 
-		s := delays.img.vcs.TIA.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
-		s = delays.img.vcs.TIA.Video.Player0.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
-		s = delays.img.vcs.TIA.Video.Player1.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
-		s = delays.img.vcs.TIA.Video.Missile0.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
-		s = delays.img.vcs.TIA.Video.Missile1.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
-		s = delays.img.vcs.TIA.Video.Ball.Delay.String()
-		if len(s) > 0 {
-			imgui.Text(s)
-		}
+func (del *delays) id() string {
+	return delaysTitle
+}
 
-		imgui.End()
+func (del *delays) draw() {
+	if !del.open {
+		return
 	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{72, 476}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{240, 189}, imgui.ConditionFirstUseEver)
+	imgui.BeginV(delaysTitle, &del.open, 0)
+
+	s := del.img.vcs.TIA.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+	s = del.img.vcs.TIA.Video.Player0.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+	s = del.img.vcs.TIA.Video.Player1.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+	s = del.img.vcs.TIA.Video.Missile0.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+	s = del.img.vcs.TIA.Video.Missile1.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+	s = del.img.vcs.TIA.Video.Ball.Delay.String()
+	if len(s) > 0 {
+		imgui.Text(s)
+	}
+
+	imgui.End()
 }

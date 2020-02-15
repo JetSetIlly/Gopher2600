@@ -53,12 +53,12 @@ func (img *SdlImgui) Service() {
 				img.events <- gui.EventQuit{}
 
 			case *sdl.TextInputEvent:
-				if !img.win.screen.isCaptured {
+				if !img.wm.scr.isCaptured {
 					img.io.AddInputCharacters(string(ev.Text[:]))
 				}
 
 			case *sdl.KeyboardEvent:
-				if img.win.screen.isCaptured {
+				if img.wm.scr.isCaptured {
 					mod := gui.KeyModNone
 
 					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
@@ -109,14 +109,14 @@ func (img *SdlImgui) Service() {
 
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
-					if img.win.screen.isCaptured {
+					if img.wm.scr.isCaptured {
 						button = gui.MouseButtonLeft
-					} else if img.win.screen.isHovered {
+					} else if img.wm.scr.isHovered {
 
 						// left mouse button should capture mouse if
 						// not already done so.
 						swallow = true
-						img.win.screen.isCaptured = true
+						img.wm.scr.isCaptured = true
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
@@ -129,9 +129,9 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.win.screen.isCaptured {
+					if img.wm.scr.isCaptured {
 						swallow = true
-						img.win.screen.isCaptured = false
+						img.wm.scr.isCaptured = false
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
@@ -150,7 +150,7 @@ func (img *SdlImgui) Service() {
 		}
 
 		// mouse motion
-		if img.win.screen.isCaptured {
+		if img.wm.scr.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
 			if mx != img.mx || my != img.my {
 				w, h := img.plt.window.GetSize()
@@ -175,14 +175,14 @@ func (img *SdlImgui) Service() {
 	imgui.NewFrame()
 
 	// imgui commands
-	img.win.draw()
+	img.wm.drawWindows()
 
 	// Rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
 
 	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
 	img.glsl.preRender(clearColor)
-	img.win.screen.render()
+	img.wm.scr.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()
 

@@ -29,15 +29,16 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const pixelDepth = 3
+const screenTitle = "TV Screen"
 
-const pixelWidth = 2
+const (
+	pixelDepth = 3
+	pixelWidth = 2
+	defScaling = 2.0
+)
 
-const defScaling = 2.0
-
-const tvscreenTitle = "TV Screen"
-
-type tvScreen struct {
+type screen struct {
+	windowManagement
 	img *SdlImgui
 
 	// playmode controls how the screen is displayed. currently, when
@@ -46,7 +47,7 @@ type tvScreen struct {
 	//   o host sdl window will be set to the same size as the tv screen
 	playmode bool
 
-	// is tvscreen currently pointed at
+	// is screen currently pointed at
 	isHovered bool
 
 	// the tv screen has captured mouse input
@@ -72,8 +73,8 @@ type tvScreen struct {
 	horizPixels int
 }
 
-func newTvScreen(img *SdlImgui) (*tvScreen, error) {
-	scr := &tvScreen{
+func newTvScreen(img *SdlImgui) (managedWindow, error) {
+	scr := &screen{
 		img:     img,
 		scaling: defScaling,
 
@@ -94,13 +95,60 @@ func newTvScreen(img *SdlImgui) (*tvScreen, error) {
 	return scr, nil
 }
 
-func (scr *tvScreen) destroy() {
+func (scr *screen) destroy() {
+}
+
+func (scr *screen) id() string {
+	return screenTitle
+}
+
+// draw is called by service loop
+func (scr *screen) draw() {
+	if !scr.open {
+		return
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.BeginV(screenTitle, &scr.open, imgui.WindowFlagsAlwaysAutoResize)
+
+	imgui.Image(imgui.TextureID(scr.texture),
+		imgui.Vec2{
+			scr.scaledWidth(),
+			scr.scaledHeight(),
+		})
+
+	scr.isHovered = imgui.IsItemHovered()
+
+	if scr.img.vcs != nil {
+		imgui.Text(scr.img.vcs.TV.String())
+	}
+
+	imgui.End()
+}
+
+// render is called by service loop
+func (scr *screen) render() {
+	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
+
+	if scr.createTexture {
+		scr.createTexture = false
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(scr.pixels.Pix))
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(scr.pixels.Pix))
+	}
 }
 
 // Resize implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread
-func (scr *tvScreen) Resize(topScanline int, visibleScanlines int) error {
+func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
 	test.AssertNonMainThread()
 	return scr.resize(topScanline, visibleScanlines, scr.setWindowFromThread)
 }
@@ -108,13 +156,13 @@ func (scr *tvScreen) Resize(topScanline int, visibleScanlines int) error {
 // resizeFromMain is a thread version of Resize()
 //
 // MUST ONLY be called from the #mainthread
-func (scr *tvScreen) resizeFromMain(topScanline int, visibleScanlines int) error {
+func (scr *screen) resizeFromMain(topScanline int, visibleScanlines int) error {
 	test.AssertMainThread()
 	return scr.resize(topScanline, visibleScanlines, scr.setWindow)
 }
 
 // resize() is called by Resize() or resizeThread() depending on thread context
-func (scr *tvScreen) resize(topScanline int, visibleScanlines int, setWindow func(float32) error) error {
+func (scr *screen) resize(topScanline int, visibleScanlines int, setWindow func(float32) error) error {
 	scr.topScanline = topScanline
 	scr.scanlines = visibleScanlines
 	scr.pixels = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
@@ -134,7 +182,7 @@ func (scr *tvScreen) resize(topScanline int, visibleScanlines int, setWindow fun
 const reapplyScale = -1.0
 
 // MUST ONLY be called from the #mainthread
-func (scr *tvScreen) setWindow(scale float32) error {
+func (scr *screen) setWindow(scale float32) error {
 	test.AssertMainThread()
 
 	if scale != reapplyScale {
@@ -146,7 +194,7 @@ func (scr *tvScreen) setWindow(scale float32) error {
 
 // MUST NOT be called from the #mainthread
 // see setWindow() for non-main alternative
-func (scr *tvScreen) setWindowFromThread(scale float32) error {
+func (scr *screen) setWindowFromThread(scale float32) error {
 	test.AssertNonMainThread()
 
 	scr.img.service <- func() {
@@ -159,75 +207,36 @@ func (scr *tvScreen) setWindowFromThread(scale float32) error {
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread
-func (scr *tvScreen) NewFrame(frameNum int) error {
+func (scr *screen) NewFrame(frameNum int) error {
 	return nil
 }
 
 // NewScanline implements the television.PixelRenderer interface
-func (scr *tvScreen) NewScanline(scanline int) error {
+func (scr *screen) NewScanline(scanline int) error {
 	return nil
 }
 
 // SetPixel implements the television.PixelRenderer interface
-func (scr *tvScreen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
 	scr.pixels.Set(x-television.HorizClksHBlank, y-scr.topScanline,
 		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
 	return nil
 }
 
 // SetAltPixel implements the television.PixelRenderer interface
-func (scr *tvScreen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
 	return nil
 }
 
 // EndRendering implements the television.PixelRenderer interface
-func (scr *tvScreen) EndRendering() error {
+func (scr *screen) EndRendering() error {
 	return nil
 }
 
-func (scr *tvScreen) scaledWidth() float32 {
+func (scr *screen) scaledWidth() float32 {
 	return float32(scr.pixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
 }
 
-func (scr *tvScreen) scaledHeight() float32 {
+func (scr *screen) scaledHeight() float32 {
 	return float32(scr.pixels.Bounds().Size().Y) * scr.scaling
-}
-
-// render is called by service loop
-func (scr *tvScreen) render() {
-	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
-
-	if scr.createTexture {
-		scr.createTexture = false
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
-	}
-}
-
-// draw is called by service loop
-func (scr *tvScreen) draw() {
-	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(tvscreenTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
-
-	imgui.Image(imgui.TextureID(scr.texture),
-		imgui.Vec2{
-			scr.scaledWidth(),
-			scr.scaledHeight(),
-		})
-
-	scr.isHovered = imgui.IsItemHovered()
-
-	if scr.img.vcs != nil {
-		imgui.Text(scr.img.vcs.TV.String())
-	}
-
-	imgui.End()
 }

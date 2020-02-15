@@ -26,10 +26,11 @@ import (
 const ramTitle = "RAM"
 
 type ram struct {
+	windowManagement
 	img *SdlImgui
 }
 
-func newRAM(img *SdlImgui) (*ram, error) {
+func newRAM(img *SdlImgui) (managedWindow, error) {
 	ram := &ram{
 		img: img,
 	}
@@ -37,12 +38,21 @@ func newRAM(img *SdlImgui) (*ram, error) {
 	return ram, nil
 }
 
+func (ram *ram) destroy() {
+}
+
+func (ram *ram) id() string {
+	return ramTitle
+}
+
 // draw is called by service loop
 func (ram *ram) draw() {
-	if ram.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.BeginV(ramTitle, nil, imgui.WindowFlagsAlwaysAutoResize)
-		imgui.Text(ram.img.vcs.Mem.RAM.String())
-		imgui.End()
+	if !ram.open {
+		return
 	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.BeginV(ramTitle, &ram.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.Text(ram.img.vcs.Mem.RAM.String())
+	imgui.End()
 }

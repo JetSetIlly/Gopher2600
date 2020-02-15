@@ -26,39 +26,49 @@ import (
 const controlTitle = "Control"
 
 type control struct {
+	windowManagement
 	img *SdlImgui
 }
 
-func newControl(img *SdlImgui) (*control, error) {
+func newControl(img *SdlImgui) (managedWindow, error) {
 	con := &control{
 		img: img,
 	}
-
 	return con, nil
 }
 
-// draw is called by service loop
+func (con *control) destroy() {
+}
+
+func (con *control) id() string {
+	return controlTitle
+}
+
 func (con *control) draw() {
+	if !con.open {
+		return
+	}
+
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(controlTitle, nil, 0)
+	imgui.BeginV(controlTitle, &con.open, 0)
 
 	if imgui.Button("Run") {
-		con.img.win.term.inputSideChannel("RUN")
+		con.img.issueTermCommand("RUN")
 	}
 
 	imgui.SameLine()
 	if imgui.Button("Halt") {
-		con.img.win.term.inputSideChannel("HALT")
+		con.img.issueTermCommand("HALT")
 	}
 
 	imgui.Text("Step:")
 	imgui.SameLine()
 	if imgui.Button("Frame") {
-		con.img.win.term.inputSideChannel("STEP FRAME")
+		con.img.issueTermCommand("STEP FRAME")
 	}
 	imgui.SameLine()
 	if imgui.Button("Scanline") {
-		con.img.win.term.inputSideChannel("STEP SCANLINE")
+		con.img.issueTermCommand("STEP SCANLINE")
 	}
 
 	imgui.End()

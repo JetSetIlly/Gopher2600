@@ -45,7 +45,7 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 	case gui.ReqToggleVisibility:
 
 	case gui.ReqSetScale:
-		err = img.win.screen.setWindowFromThread(args[0].(float32))
+		err = img.wm.scr.setWindowFromThread(args[0].(float32))
 
 	case gui.ReqSetFpsCap:
 		img.lmtr.Active = args[0].(bool)

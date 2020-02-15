@@ -29,9 +29,12 @@ import (
 
 const termTitle = "Terminal"
 
-const outputMaxSize = 256
+const (
+	outputMaxSize = 256
+)
 
 type term struct {
+	windowManagement
 	img *SdlImgui
 
 	tabCompletion terminal.TabCompletion
@@ -41,7 +44,7 @@ type term struct {
 	silenced bool
 	prompt   string
 	input    string
-	output   []line
+	output   []terminalOutput
 
 	// moreOutput is after TermPrintLine() is executed
 	moreOutput bool
@@ -50,14 +53,14 @@ type term struct {
 	sideChan  chan string
 }
 
-func newTerm(img *SdlImgui) (*term, error) {
-	term := &term{
+func newTerm(img *SdlImgui) (managedWindow, error) {
+	trm := &term{
 		img:        img,
 		historyIdx: -1,
 
 		// output is made up of an array of line types. the line type stores
 		// the text of the line and the style
-		output: make([]line, 0, outputMaxSize),
+		output: make([]terminalOutput, 0, outputMaxSize),
 
 		// inputChan queue must not block
 		inputChan: make(chan bool, 1),
@@ -68,17 +71,200 @@ func newTerm(img *SdlImgui) (*term, error) {
 		sideChan: make(chan string, 1),
 	}
 
-	term.draw()
-
-	return term, nil
+	return trm, nil
 }
 
-type line struct {
+func (trm *term) destroy() {
+}
+
+func (trm *term) id() string {
+	return termTitle
+}
+
+// draw is called by service loop
+func (trm *term) draw() {
+	if !trm.open {
+		return
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{369, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
+
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
+	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
+	imgui.BeginV(termTitle, &trm.open, 0)
+	imgui.PopStyleVar()
+	imgui.PopStyleColor()
+
+	// output
+	for i := range trm.output {
+		trm.output[i].draw()
+	}
+	imgui.Separator()
+
+	// prompt
+	imgui.Text(trm.prompt)
+	imgui.SameLine()
+
+	// this construct says focus the next InputText() box if
+	//  - the terminal window is focused
+	//  - AND if nothing else has been activated since last frame
+	if imgui.IsWindowFocused() && !imgui.IsAnyItemActive() {
+		imgui.SetKeyboardFocusHere()
+	}
+
+	if imgui.InputTextV("", &trm.input,
+		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
+		trm.tabCompleteAndHistory) {
+		trm.inputChan <- true
+	}
+
+	// add some spacing so that when we scroll to the bottom of the windw
+	// it doesn't look goofy
+	imgui.Spacing()
+
+	// if output has been added to, scroll to bottom of window
+	if trm.moreOutput {
+		trm.moreOutput = false
+		imgui.SetScrollHereY(1.0)
+	}
+
+	imgui.End()
+}
+
+func (trm *term) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
+	switch d.EventKey() {
+	case imgui.KeyTab:
+		// tab completion
+		b := string(d.Buffer())
+		s := trm.tabCompletion.Complete(b)
+		d.DeleteBytes(0, len(b))
+		d.InsertBytes(0, []byte(s))
+		d.MarkBufferModified()
+	case imgui.KeyUpArrow:
+		// previous history item
+		if trm.historyIdx > -1 {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+			d.InsertBytes(0, []byte(trm.history[trm.historyIdx]))
+			if trm.historyIdx > 0 {
+				trm.historyIdx--
+			}
+			d.MarkBufferModified()
+		}
+	case imgui.KeyDownArrow:
+		// next history item
+		if trm.historyIdx < len(trm.history)-1 {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+			d.InsertBytes(0, []byte(trm.history[trm.historyIdx]))
+			if trm.historyIdx < len(trm.history)-1 {
+				trm.historyIdx++
+			}
+		} else {
+			b := string(d.Buffer())
+			d.DeleteBytes(0, len(b))
+		}
+		d.MarkBufferModified()
+	}
+	return 0
+}
+
+// Initialise implements the terminal.Terminal interface
+func (trm *term) Initialise() error {
+	return nil
+}
+
+// CleanUp implements the terminal.Terminal interface
+func (trm *term) CleanUp() {
+}
+
+// RegisterTabCompletion implements the terminal.Terminal interface
+func (trm *term) RegisterTabCompletion(tc terminal.TabCompletion) {
+	trm.tabCompletion = tc
+}
+
+// Silence implements the terminal.Terminal interface
+func (trm *term) Silence(silenced bool) {
+	trm.silenced = silenced
+}
+
+// TermPrintLine implements the terminal.Output interface
+func (trm *term) TermPrintLine(style terminal.Style, s string) {
+	if trm.silenced && style != terminal.StyleError {
+		return
+	}
+
+	if len(trm.output) >= outputMaxSize {
+		trm.output = append(trm.output[1:], terminalOutput{style: style, text: s})
+	} else {
+		trm.output = append(trm.output, terminalOutput{style: style, text: s})
+	}
+
+	trm.moreOutput = true
+}
+
+// TermRead implements the terminal.Input interface
+func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
+	trm.prompt = prompt.Content
+
+	// the debugger is waiting for input from the terminal but we still need to
+	// service gui events in the meantime.
+	for {
+		select {
+		case <-trm.inputChan:
+			trm.input = strings.TrimSpace(trm.input)
+			if trm.input != "" {
+				trm.history = append(trm.history, trm.input)
+				trm.historyIdx = len(trm.history) - 1
+			}
+
+			// even if term.input is the empty string we still copy it to the
+			// input buffer (sending it back to the caller) because the empty
+			// string might mean something
+
+			n := len(trm.input)
+			copy(buffer, trm.input+"\n")
+			trm.input = ""
+			return n + 1, nil
+
+		case s := <-trm.sideChan:
+			s = strings.TrimSpace(s)
+			n := len(s)
+			copy(buffer, s+"\n")
+			return n + 1, nil
+
+		case ev := <-events.GuiEvents:
+			err := events.GuiEventHandler(ev)
+			if err != nil {
+				return 0, nil
+			}
+
+		case _ = <-events.IntEvents:
+			return 0, errors.New(errors.UserQuit)
+		}
+	}
+}
+
+// TermRead implements the terminal.Input interface
+func (trm *term) TermReadCheck() bool {
+	// report on the number of pending items in inputChan and sideChan. if
+	// either of these have events waiting then that counts as true
+	return len(trm.inputChan) > 0 || len(trm.sideChan) > 0
+}
+
+// IsInteractive implements the terminal.Input interface
+func (trm *term) IsInteractive() bool {
+	return true
+}
+
+// terminalOutput represents the lines that are printed to the terminal output
+type terminalOutput struct {
 	style terminal.Style
 	text  string
 }
 
-func (l line) draw() {
+func (l terminalOutput) draw() {
 	switch l.style {
 	case terminal.StyleNormalisedInput:
 		// white
@@ -127,184 +313,4 @@ func (l line) draw() {
 
 	imgui.Text(l.text)
 	imgui.PopStyleColor()
-}
-
-// draw is called by service loop
-func (term *term) draw() {
-	if term.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{369, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
-
-		imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
-		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-		imgui.BeginV(termTitle, nil, 0)
-		imgui.PopStyleVar()
-		imgui.PopStyleColor()
-
-		// output
-		for i := range term.output {
-			term.output[i].draw()
-		}
-		imgui.Separator()
-
-		// prompt
-		imgui.Text(term.prompt)
-		imgui.SameLine()
-
-		// this construct says focus the next InputText() box if
-		//  - the terminal window is focused
-		//  - AND if nothing else has been activated since last frame
-		if imgui.IsWindowFocused() && !imgui.IsAnyItemActive() {
-			imgui.SetKeyboardFocusHere()
-		}
-
-		if imgui.InputTextV("", &term.input,
-			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-			term.tabCompleteAndHistory) {
-			term.inputChan <- true
-		}
-
-		// add some spacing so that when we scroll to the bottom of the windw
-		// it doesn't look goofy
-		imgui.Spacing()
-
-		// if output has been added to, scroll to bottom of window
-		if term.moreOutput {
-			term.moreOutput = false
-			imgui.SetScrollHereY(1.0)
-		}
-
-		imgui.End()
-	}
-}
-
-func (term *term) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
-	switch d.EventKey() {
-	case imgui.KeyTab:
-		// tab completion
-		b := string(d.Buffer())
-		s := term.tabCompletion.Complete(b)
-		d.DeleteBytes(0, len(b))
-		d.InsertBytes(0, []byte(s))
-		d.MarkBufferModified()
-	case imgui.KeyUpArrow:
-		// previous history item
-		if term.historyIdx > -1 {
-			b := string(d.Buffer())
-			d.DeleteBytes(0, len(b))
-			d.InsertBytes(0, []byte(term.history[term.historyIdx]))
-			if term.historyIdx > 0 {
-				term.historyIdx--
-			}
-			d.MarkBufferModified()
-		}
-	case imgui.KeyDownArrow:
-		// next history item
-		if term.historyIdx < len(term.history)-1 {
-			b := string(d.Buffer())
-			d.DeleteBytes(0, len(b))
-			d.InsertBytes(0, []byte(term.history[term.historyIdx]))
-			if term.historyIdx < len(term.history)-1 {
-				term.historyIdx++
-			}
-		} else {
-			b := string(d.Buffer())
-			d.DeleteBytes(0, len(b))
-		}
-		d.MarkBufferModified()
-	}
-	return 0
-}
-
-// Initialise implements the terminal.Terminal interface
-func (term *term) Initialise() error {
-	return nil
-}
-
-// CleanUp implements the terminal.Terminal interface
-func (term *term) CleanUp() {
-}
-
-// RegisterTabCompletion implements the terminal.Terminal interface
-func (term *term) RegisterTabCompletion(tc terminal.TabCompletion) {
-	term.tabCompletion = tc
-}
-
-// Silence implements the terminal.Terminal interface
-func (term *term) Silence(silenced bool) {
-	term.silenced = silenced
-}
-
-// TermPrintLine implements the terminal.Output interface
-func (term *term) TermPrintLine(style terminal.Style, s string) {
-	if term.silenced && style != terminal.StyleError {
-		return
-	}
-
-	if len(term.output) >= outputMaxSize {
-		term.output = append(term.output[1:], line{style: style, text: s})
-	} else {
-		term.output = append(term.output, line{style: style, text: s})
-	}
-
-	term.moreOutput = true
-}
-
-// TermRead implements the terminal.Input interface
-func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	term.prompt = prompt.Content
-
-	// the debugger is waiting for input from the terminal but we still need to
-	// service gui events in the meantime.
-	for {
-		select {
-		case <-term.inputChan:
-			term.input = strings.TrimSpace(term.input)
-			if term.input != "" {
-				term.history = append(term.history, term.input)
-				term.historyIdx = len(term.history) - 1
-			}
-
-			// even if term.input is the empty string we still copy it to the
-			// input buffer (sending it back to the caller) because the empty
-			// string might mean something
-
-			n := len(term.input)
-			copy(buffer, term.input+"\n")
-			term.input = ""
-			return n + 1, nil
-
-		case s := <-term.sideChan:
-			s = strings.TrimSpace(s)
-			n := len(s)
-			copy(buffer, s+"\n")
-			return n + 1, nil
-
-		case ev := <-events.GuiEvents:
-			err := events.GuiEventHandler(ev)
-			if err != nil {
-				return 0, nil
-			}
-
-		case _ = <-events.IntEvents:
-			return 0, errors.New(errors.UserQuit)
-		}
-	}
-}
-
-// put input into the side-channel
-func (term *term) inputSideChannel(input string) {
-	term.sideChan <- input
-}
-
-// TermRead implements the terminal.Input interface
-func (term *term) TermReadCheck() bool {
-	// report on the number of pending items in inputChan and sideChan. if
-	// either of these have events waiting then that counts as true
-	return len(term.inputChan) > 0 || len(term.sideChan) > 0
-}
-
-// IsInteractive implements the terminal.Input interface
-func (term *term) IsInteractive() bool {
-	return true
 }

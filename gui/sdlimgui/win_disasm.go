@@ -30,119 +30,128 @@ import (
 const disasmTitle = "Disassembly"
 
 type disasm struct {
+	windowManagement
 	img      *SdlImgui
 	followPC bool
 }
 
-func newDisasm(img *SdlImgui) (*disasm, error) {
-	disasm := &disasm{
+func newDisasm(img *SdlImgui) (managedWindow, error) {
+	dsm := &disasm{
 		img:      img,
 		followPC: true,
 	}
 
-	return disasm, nil
+	return dsm, nil
 }
 
-// draw is called by service loop
-func (disasm *disasm) draw() {
-	if disasm.img.vcs != nil {
-		imgui.SetNextWindowPosV(imgui.Vec2{915, 214}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.SetNextWindowSizeV(imgui.Vec2{355, 495}, imgui.ConditionFirstUseEver)
-		imgui.BeginV(disasmTitle, nil, 0)
+func (dsm *disasm) destroy() {
+}
 
-		imgui.Text(disasm.img.vcs.Mem.Cart.String())
-		imgui.Spacing()
-		imgui.Spacing()
+func (dsm *disasm) id() string {
+	return disasmTitle
+}
 
-		if disasm.img.dsm != nil {
-			var pcAddr uint16
-
-			// the value of pcAddr depends on the state of the CPU. if the
-			// Final state of the CPU's last execution result is true then we
-			// can be sure the PC value is valid and points to a real
-			// instruction. we need this because we can never be sure when we
-			// are going to draw this window
-			if disasm.img.vcs.CPU.LastResult.Final {
-				pcAddr = disasm.img.vcs.CPU.PC.Value()
-			} else {
-				pcAddr = disasm.img.vcs.CPU.LastResult.Address
-			}
-
-			currBank := disasm.img.vcs.Mem.Cart.GetBank(pcAddr)
-
-			imgui.BeginTabBar("banks")
-			for b := range disasm.img.dsm.Entries {
-
-				// set tab flags. select the tab that represents the
-				// bank currently being referenced by the VCS
-				flgs := imgui.TabItemFlagsNone
-				if disasm.followPC && b == currBank {
-					flgs = imgui.TabItemFlagsSetSelected
-				}
-
-				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-					imgui.BeginChild(fmt.Sprintf("bank %d", b))
-
-					itr, _ := disasm.img.dsm.NewIteration(b)
-
-					for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
-
-						// if address value of current disasm entry and
-						// current PC value match then highlight the entry
-						if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
-							disasm.drawEntry(e, true)
-
-							// if emulation is running then centre on the current
-							// program counter
-							if !disasm.img.paused || disasm.followPC {
-								imgui.SetScrollHereY(0.5)
-							}
-						} else {
-							disasm.drawEntry(e, false)
-						}
-					}
-
-					imgui.EndChild()
-					imgui.EndTabItem()
-				}
-			}
-
-			imgui.EndTabBar()
-		}
-
-		imgui.End()
+func (dsm *disasm) draw() {
+	if !dsm.open {
+		return
 	}
 
-	disasm.followPC = !disasm.img.paused
+	imgui.SetNextWindowPosV(imgui.Vec2{915, 214}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{355, 495}, imgui.ConditionFirstUseEver)
+	imgui.BeginV(disasmTitle, &dsm.open, 0)
+
+	imgui.Text(dsm.img.vcs.Mem.Cart.String())
+	imgui.Spacing()
+	imgui.Spacing()
+
+	if dsm.img.dsm != nil {
+		var pcAddr uint16
+
+		// the value of pcAddr depends on the state of the CPU. if the
+		// Final state of the CPU's last execution result is true then we
+		// can be sure the PC value is valid and points to a real
+		// instruction. we need this because we can never be sure when we
+		// are going to draw this window
+		if dsm.img.vcs.CPU.LastResult.Final {
+			pcAddr = dsm.img.vcs.CPU.PC.Value()
+		} else {
+			pcAddr = dsm.img.vcs.CPU.LastResult.Address
+		}
+
+		currBank := dsm.img.vcs.Mem.Cart.GetBank(pcAddr)
+
+		imgui.BeginTabBar("banks")
+		for b := range dsm.img.dsm.Entries {
+
+			// set tab flags. select the tab that represents the
+			// bank currently being referenced by the VCS
+			flgs := imgui.TabItemFlagsNone
+			if dsm.followPC && b == currBank {
+				flgs = imgui.TabItemFlagsSetSelected
+			}
+
+			if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
+				imgui.BeginChild(fmt.Sprintf("bank %d", b))
+
+				itr, _ := dsm.img.dsm.NewIteration(b)
+
+				for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
+
+					// if address value of current disasm entry and
+					// current PC value match then highlight the entry
+					if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+						dsm.drawEntry(e, true)
+
+						// if emulation is running then centre on the current
+						// program counter
+						if !dsm.img.paused || dsm.followPC {
+							imgui.SetScrollHereY(0.5)
+						}
+					} else {
+						dsm.drawEntry(e, false)
+					}
+				}
+
+				imgui.EndChild()
+				imgui.EndTabItem()
+			}
+		}
+
+		imgui.EndTabBar()
+	}
+
+	imgui.End()
+
+	dsm.followPC = !dsm.img.paused
 }
 
-func (disasm *disasm) drawEntry(e *disassembly.Entry, selected bool) {
+func (dsm *disasm) drawEntry(e *disassembly.Entry, selected bool) {
 	base := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 	if selected {
 		base = imgui.Vec4{0.3, 0.3, 0.3, 0.0}
 	}
 
-	s := disasm.img.dsm.GetField(disassembly.FldAddress, e)
+	s := dsm.img.dsm.GetField(disassembly.FldAddress, e)
 	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.4, 0.4, 1.0}.Plus(base))
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.4, 0.4, 0.8, 1.0}.Plus(base))
-	s = disasm.img.dsm.GetField(disassembly.FldMnemonic, e)
+	s = dsm.img.dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.3, 1.0}.Plus(base))
-	s = disasm.img.dsm.GetField(disassembly.FldOperand, e)
+	s = dsm.img.dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0}.Plus(base))
-	s = disasm.img.dsm.GetField(disassembly.FldDefnCycles, e)
+	s = dsm.img.dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
-	s = disasm.img.dsm.GetField(disassembly.FldDefnNotes, e)
+	s = dsm.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(4)
