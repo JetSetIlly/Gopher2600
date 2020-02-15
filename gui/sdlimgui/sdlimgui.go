@@ -149,7 +149,16 @@ func (img *SdlImgui) GetTerminal() terminal.Terminal {
 	return img.wm.term
 }
 
-// put input into the side-channel
+// where possible the debugger issues commands via the terminal. this has the
+// advntage of (a) simplicity and (b) consistency. A QUIT command, for example,
+// will work in exactly the same way from the main manu or from the terminal.
+//
+// to achieve this functionality, the terminal has a side-channel to which a
+// complete string is pushed (without a newline character please). the
+// issueTermCommand() is a conveniently placed function to do this
 func (img *SdlImgui) issueTermCommand(input string) {
+	// there shouldn't be a problem with channel blocking even though we're
+	// issuing and consuming on the same thread. if there is however, we can
+	// wrap this channel write in a go call
 	img.wm.term.sideChan <- input
 }

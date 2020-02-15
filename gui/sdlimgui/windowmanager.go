@@ -19,6 +19,12 @@
 
 package sdlimgui
 
+import (
+	"sort"
+
+	"github.com/inkyblackness/imgui-go/v2"
+)
+
 // windowManagement can be embedded into a real window struct for
 // basic window management functionality. it partially implements the
 // managedWindow interface
@@ -49,7 +55,8 @@ type managedWindow interface {
 type windowManager struct {
 	img *SdlImgui
 
-	windows map[string]managedWindow
+	windows    map[string]managedWindow
+	windowList []string
 
 	// term and screen need to be accessfrom other areas of the package so we
 	// maintain pointers to them in addition to there windows entries
@@ -59,8 +66,9 @@ type windowManager struct {
 
 func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	wm := &windowManager{
-		img:     img,
-		windows: make(map[string]managedWindow),
+		img:        img,
+		windows:    make(map[string]managedWindow),
+		windowList: make([]string, 0),
 	}
 
 	addWindow := func(create func(img *SdlImgui) (managedWindow, error)) error {
@@ -68,13 +76,14 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		if err != nil {
 			return err
 		}
-		wm.windows[w.id()] = w
-		w.setOpen(true)
-		return nil
-	}
 
-	if err := addWindow(newMainMenu); err != nil {
-		return nil, err
+		wm.windows[w.id()] = w
+		wm.windowList = append(wm.windowList, w.id())
+		sort.Strings(wm.windowList)
+
+		w.setOpen(true)
+
+		return nil
 	}
 
 	if err := addWindow(newControl); err != nil {
@@ -122,8 +131,35 @@ func (wm *windowManager) destroy() {
 
 func (wm *windowManager) drawWindows() {
 	if wm.img.vcs != nil {
+		wm.drawMainMenu()
 		for w := range wm.windows {
 			wm.windows[w].draw()
 		}
 	}
+}
+
+func (wm *windowManager) drawMainMenu() {
+	if imgui.BeginMainMenuBar() == false {
+		return
+	}
+
+	if imgui.BeginMenu("Project") {
+		if imgui.Selectable("Quit") {
+			wm.img.issueTermCommand("QUIT")
+		}
+		imgui.EndMenu()
+	}
+
+	if imgui.BeginMenu("Windows") {
+		for i := range wm.windowList {
+			id := wm.windowList[i]
+			if imgui.Selectable(id) {
+				wm.windows[id].setOpen(true)
+			}
+		}
+
+		imgui.EndMenu()
+	}
+
+	imgui.EndMainMenuBar()
 }
