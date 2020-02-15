@@ -46,8 +46,8 @@ type term struct {
 	// moreOutput is after TermPrintLine() is executed
 	moreOutput bool
 
-	inputEvent chan bool
-	sideEvent  chan string
+	inputChan chan bool
+	sideChan  chan string
 }
 
 func newTerm(img *SdlImgui) (*term, error) {
@@ -59,12 +59,13 @@ func newTerm(img *SdlImgui) (*term, error) {
 		// the text of the line and the style
 		output: make([]line, 0, outputMaxSize),
 
-		// inputEvent queue must not block
-		inputEvent: make(chan bool, 1),
+		// inputChan queue must not block
+		inputChan: make(chan bool, 1),
 
-		// stuff events can be used for side channel input from other areas
-		// of the GUI
-		sideEvent: make(chan string, 1),
+		// side-channel terminal input from other areas of the GUI. for
+		// example, we can have a menu item that writes "QUIT" to the side
+		// channel, with predictable results.
+		sideChan: make(chan string, 1),
 	}
 
 	term.draw()
@@ -160,7 +161,7 @@ func (term *term) draw() {
 		if imgui.InputTextV("", &term.input,
 			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
 			term.tabCompleteAndHistory) {
-			term.inputEvent <- true
+			term.inputChan <- true
 		}
 
 		// add some spacing so that when we scroll to the bottom of the windw
@@ -257,7 +258,7 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 	// service gui events in the meantime.
 	for {
 		select {
-		case <-term.inputEvent:
+		case <-term.inputChan:
 			term.input = strings.TrimSpace(term.input)
 			if term.input != "" {
 				term.history = append(term.history, term.input)
@@ -273,7 +274,7 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 			term.input = ""
 			return n + 1, nil
 
-		case s := <-term.sideEvent:
+		case s := <-term.sideChan:
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")
@@ -291,14 +292,16 @@ func (term *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termin
 	}
 }
 
-// stuff input into the side-channel
-func (term *term) stuff(input string) {
-	term.sideEvent <- input
+// put input into the side-channel
+func (term *term) inputSideChannel(input string) {
+	term.sideChan <- input
 }
 
 // TermRead implements the terminal.Input interface
 func (term *term) TermReadCheck() bool {
-	return len(term.inputEvent) > 0
+	// report on the number of pending items in inputChan and sideChan. if
+	// either of these have events waiting then that counts as true
+	return len(term.inputChan) > 0 || len(term.sideChan) > 0
 }
 
 // IsInteractive implements the terminal.Input interface

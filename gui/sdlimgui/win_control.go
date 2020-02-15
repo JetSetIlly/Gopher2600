@@ -19,36 +19,47 @@
 
 package sdlimgui
 
-import "github.com/inkyblackness/imgui-go/v2"
+import (
+	"github.com/inkyblackness/imgui-go/v2"
+)
 
-type menu struct {
+const controlTitle = "Control"
+
+type control struct {
 	img *SdlImgui
 }
 
-func newMenu(img *SdlImgui) (*menu, error) {
-	menu := &menu{
+func newControl(img *SdlImgui) (*control, error) {
+	con := &control{
 		img: img,
 	}
 
-	return menu, nil
+	return con, nil
 }
 
 // draw is called by service loop
-func (menu *menu) draw() {
-	if imgui.BeginMainMenuBar() == false {
-		return
+func (con *control) draw() {
+	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.BeginV(controlTitle, nil, 0)
+
+	if imgui.Button("Run") {
+		con.img.win.term.inputSideChannel("RUN")
 	}
 
-	if imgui.BeginMenu("Project") {
-		if imgui.Selectable("Quit") {
-			menu.img.win.term.inputSideChannel("QUIT")
-		}
-		imgui.EndMenu()
+	imgui.SameLine()
+	if imgui.Button("Halt") {
+		con.img.win.term.inputSideChannel("HALT")
 	}
 
-	if imgui.BeginMenu("Windows") {
-		imgui.EndMenu()
+	imgui.Text("Step:")
+	imgui.SameLine()
+	if imgui.Button("Frame") {
+		con.img.win.term.inputSideChannel("STEP FRAME")
+	}
+	imgui.SameLine()
+	if imgui.Button("Scanline") {
+		con.img.win.term.inputSideChannel("STEP SCANLINE")
 	}
 
-	imgui.EndMainMenuBar()
+	imgui.End()
 }

@@ -20,7 +20,10 @@
 package sdlimgui
 
 type windows struct {
+	img *SdlImgui
+
 	menu         *menu
+	control      *control
 	screen       *tvScreen
 	cpu          *cpu
 	ram          *ram
@@ -33,11 +36,17 @@ type windows struct {
 }
 
 func newWindows(img *SdlImgui) (*windows, error) {
-	win := &windows{}
+	win := &windows{
+		img: img,
+	}
 
 	var err error
 
 	win.menu, err = newMenu(img)
+	if err != nil {
+		return nil, err
+	}
+	win.control, err = newControl(img)
 	if err != nil {
 		return nil, err
 	}
@@ -86,14 +95,17 @@ func (win *windows) destroy() {
 }
 
 func (win *windows) draw() {
-	win.menu.draw()
-	win.screen.draw()
-	win.cpu.draw()
-	win.ram.draw()
-	win.delays.draw()
-	win.tia.draw()
-	win.riot.draw()
-	win.disasm.draw()
-	win.oscilloscope.draw()
-	win.term.draw()
+	if win.img.vcs != nil {
+		win.menu.draw()
+		win.control.draw()
+		win.screen.draw()
+		win.cpu.draw()
+		win.ram.draw()
+		win.delays.draw()
+		win.tia.draw()
+		win.riot.draw()
+		win.disasm.draw()
+		win.oscilloscope.draw()
+		win.term.draw()
+	}
 }
