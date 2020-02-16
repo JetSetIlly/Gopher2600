@@ -50,17 +50,29 @@ func (con *control) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(controlTitle, &con.open, 0)
+	imgui.BeginV(controlTitle, &con.open, imgui.WindowFlagsNoResize)
 
-	if imgui.Button("Run") {
-		con.img.issueTermCommand("RUN")
+	w := minFrameDimension("Run", "Halt")
+
+	if con.img.paused {
+		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.3, 0.6, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.3, 0.65, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.3, 0.65, 0.3, 1.0})
+		if imgui.ButtonV("Run", w) {
+			con.img.issueTermCommand("RUN")
+		}
+	} else {
+		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.6, 0.3, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.65, 0.3, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.65, 0.3, 0.3, 1.0})
+		if imgui.ButtonV("Halt", w) {
+			con.img.issueTermCommand("HALT")
+		}
 	}
+	imgui.PopStyleColorV(3)
 
 	imgui.SameLine()
-	if imgui.Button("Halt") {
-		con.img.issueTermCommand("HALT")
-	}
-
+	imgui.AlignTextToFramePadding()
 	imgui.Text("Step:")
 	imgui.SameLine()
 	if imgui.Button("Frame") {
