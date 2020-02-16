@@ -78,51 +78,60 @@ func (dsm *disasm) draw() {
 			pcAddr = dsm.img.vcs.CPU.LastResult.Address
 		}
 
-		currBank := dsm.img.vcs.Mem.Cart.GetBank(pcAddr)
+		if dsm.img.vcs.Mem.Cart.NumBanks() == 1 {
+			// for cartridges with just one bank we don't bother with a TabBar
+			dsm.drawBank(pcAddr, 0)
+		} else {
+			// create a new TabBar and iterate throuhg the cartridge banks,
+			// adding a new TabPage for each
+			currBank := dsm.img.vcs.Mem.Cart.GetBank(pcAddr)
+			imgui.BeginTabBar("banks")
+			for b := range dsm.img.dsm.Entries {
 
-		imgui.BeginTabBar("banks")
-		for b := range dsm.img.dsm.Entries {
-
-			// set tab flags. select the tab that represents the
-			// bank currently being referenced by the VCS
-			flgs := imgui.TabItemFlagsNone
-			if dsm.followPC && b == currBank {
-				flgs = imgui.TabItemFlagsSetSelected
-			}
-
-			if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-				imgui.BeginChild(fmt.Sprintf("bank %d", b))
-
-				itr, _ := dsm.img.dsm.NewIteration(b)
-
-				for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
-
-					// if address value of current disasm entry and
-					// current PC value match then highlight the entry
-					if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
-						dsm.drawEntry(e, true)
-
-						// if emulation is running then centre on the current
-						// program counter
-						if !dsm.img.paused || dsm.followPC {
-							imgui.SetScrollHereY(0.5)
-						}
-					} else {
-						dsm.drawEntry(e, false)
-					}
+				// set tab flags. select the tab that represents the
+				// bank currently being referenced by the VCS
+				flgs := imgui.TabItemFlagsNone
+				if dsm.followPC && b == currBank {
+					flgs = imgui.TabItemFlagsSetSelected
 				}
 
-				imgui.EndChild()
-				imgui.EndTabItem()
+				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
+					dsm.drawBank(pcAddr, b)
+					imgui.EndTabItem()
+				}
 			}
+			imgui.EndTabBar()
 		}
-
-		imgui.EndTabBar()
 	}
 
 	imgui.End()
 
 	dsm.followPC = !dsm.img.paused
+}
+
+func (dsm *disasm) drawBank(pcAddr uint16, b int) {
+	imgui.BeginChild(fmt.Sprintf("bank %d", b))
+
+	itr, _ := dsm.img.dsm.NewIteration(b)
+
+	for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
+
+		// if address value of current disasm entry and
+		// current PC value match then highlight the entry
+		if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+			dsm.drawEntry(e, true)
+
+			// if emulation is running then centre on the current
+			// program counter
+			if !dsm.img.paused || dsm.followPC {
+				imgui.SetScrollHereY(0.5)
+			}
+		} else {
+			dsm.drawEntry(e, false)
+		}
+	}
+
+	imgui.EndChild()
 }
 
 func (dsm *disasm) drawEntry(e *disassembly.Entry, selected bool) {
