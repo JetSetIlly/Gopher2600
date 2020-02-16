@@ -40,6 +40,7 @@ func NewStatusRegister() *StatusRegister {
 	return &StatusRegister{}
 }
 
+// Label returns the canonical name for the status register
 func (sr StatusRegister) Label() string {
 	return "SR"
 }

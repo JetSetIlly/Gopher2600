@@ -43,13 +43,23 @@ func NewAnonRegister(val uint8) *Register {
 	return NewRegister(val, "")
 }
 
+// Label implements the target interface
+func (r Register) Label() string {
+	return r.label
+}
+
 func (r Register) String() string {
-	return fmt.Sprintf("%#02x", r.value)
+	return fmt.Sprintf("%02x", r.value)
 }
 
 // Value returns the current value of the register
 func (r Register) Value() uint8 {
 	return r.value
+}
+
+// BitWidth returns the number of bits used to store the register value
+func (r Register) BitWidth() int {
+	return 8
 }
 
 // Address returns the current value of the register /as a uint16/. this is
@@ -76,11 +86,6 @@ func (r Register) IsBitV() bool {
 	return r.value&0x40 == 0x40
 }
 
-// Label implements the target interface
-func (r Register) Label() string {
-	return r.label
-}
-
 // TargetValue implements the target interface
 func (r Register) TargetValue() interface{} {
 	return int(r.value)
@@ -88,7 +93,13 @@ func (r Register) TargetValue() interface{} {
 
 // FormatValue implements the target interface
 func (r Register) FormatValue(val interface{}) string {
-	return fmt.Sprintf("%#02x", val)
+	return fmt.Sprintf("%02x", val)
+}
+
+// LoadFromUint64 loads a value into the register but using an int type as the
+// value. It is the responsibility of the caller to keep the value sensible.
+func (r *Register) LoadFromUint64(val uint64) {
+	r.value = uint8(val)
 }
 
 // Load value into register

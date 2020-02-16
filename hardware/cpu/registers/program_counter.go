@@ -37,7 +37,7 @@ func (pc ProgramCounter) Label() string {
 }
 
 func (pc ProgramCounter) String() string {
-	return fmt.Sprintf("%#04x", pc.value)
+	return fmt.Sprintf("%04x", pc.value)
 }
 
 // Value returns the current value of the register
@@ -45,9 +45,14 @@ func (pc ProgramCounter) Value() uint16 {
 	return pc.value
 }
 
+// BitWidth returns the number of bits used to store the program counter value
+func (pc ProgramCounter) BitWidth() int {
+	return 16
+}
+
 // FormatValue formats an arbitary value to look like a PC value
 func (pc ProgramCounter) FormatValue(val interface{}) string {
-	return fmt.Sprintf("%#04x", val)
+	return fmt.Sprintf("%04x", val)
 }
 
 // TargetValue returns the current value of the PC as an integer (wrapped as a generic value)
@@ -58,6 +63,12 @@ func (pc ProgramCounter) TargetValue() interface{} {
 // Address returns the current value of the PC as a a value of type uint16
 func (pc *ProgramCounter) Address() uint16 {
 	return pc.value
+}
+
+// LoadFromUint64 loads a value into the PC but using an int type as the value.
+// It is the responsibility of the caller to keep the value sensible.
+func (pc *ProgramCounter) LoadFromUint64(val uint64) {
+	pc.value = uint16(val)
 }
 
 // Load a value into the PC

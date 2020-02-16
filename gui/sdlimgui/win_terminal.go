@@ -103,6 +103,7 @@ func (trm *term) draw() {
 	imgui.Separator()
 
 	// prompt
+	imgui.AlignTextToFramePadding()
 	imgui.Text(trm.prompt)
 	imgui.SameLine()
 
