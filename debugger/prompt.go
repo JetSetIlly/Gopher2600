@@ -31,7 +31,10 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	var promptAddress uint16
 	var promptBank int
 
-	if dbg.vcs.CPU.LastResult.Final {
+	//  if last result was final or if address of last result is zero then
+	//  print the PC address. the second part of the condition catches a newly
+	//  reset CPU.
+	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
 		promptAddress = dbg.vcs.CPU.PC.Address()
 	} else {
 		// if we're in the middle of an instruction then use the

@@ -41,12 +41,12 @@ type Colors struct {
 	CPURdyFlagOff       imgui.Vec4
 
 	// control window buttons
-	ControlRunOff        imgui.Vec4
-	ControlRunOffHovered imgui.Vec4
-	ControlRunOffActive  imgui.Vec4
-	ControlRunOn         imgui.Vec4
-	ControlRunOnHovered  imgui.Vec4
-	ControlRunOnActive   imgui.Vec4
+	ControlRun         imgui.Vec4
+	ControlRunHovered  imgui.Vec4
+	ControlRunActive   imgui.Vec4
+	ControlHalt        imgui.Vec4
+	ControlHaltHovered imgui.Vec4
+	ControlHaltActive  imgui.Vec4
 
 	// disassembly entry columns
 	DisasmAddress     imgui.Vec4
@@ -86,12 +86,12 @@ func defaultTheme() *Colors {
 		CPUStatusOffActive:       imgui.Vec4{0.70, 0.45, 0.10, 1.0},
 		CPURdyFlagOn:             imgui.Vec4{0.3, 0.6, 0.3, 1.0},
 		CPURdyFlagOff:            imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		ControlRunOff:            imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		ControlRunOffHovered:     imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlRunOffActive:      imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlRunOn:             imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		ControlRunOnHovered:      imgui.Vec4{0.65, 0.3, 0.3, 1.0},
-		ControlRunOnActive:       imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+		ControlRun:               imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		ControlRunHovered:        imgui.Vec4{0.3, 0.65, 0.3, 1.0},
+		ControlRunActive:         imgui.Vec4{0.3, 0.65, 0.3, 1.0},
+		ControlHalt:              imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		ControlHaltHovered:       imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+		ControlHaltActive:        imgui.Vec4{0.65, 0.3, 0.3, 1.0},
 		DisasmAddress:            imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		DisasmMnemonic:           imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:            imgui.Vec4{0.8, 0.8, 0.3, 1.0},

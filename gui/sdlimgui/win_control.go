@@ -50,21 +50,21 @@ func (win *winControl) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsNoResize)
+	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	w := minFrameDimension("Run", "Halt")
 
 	if win.img.paused {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRunOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunOffHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunOffActive)
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRun)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunActive)
 		if imgui.ButtonV("Run", w) {
 			win.img.issueTermCommand("RUN")
 		}
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRunOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunOffHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunOffActive)
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlHalt)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlHaltHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlHaltActive)
 		if imgui.ButtonV("Halt", w) {
 			win.img.issueTermCommand("HALT")
 		}
@@ -72,6 +72,10 @@ func (win *winControl) draw() {
 	imgui.PopStyleColorV(3)
 
 	imgui.SameLine()
+	imgui.Selectable("Step by CPU")
+
+	imgui.Spacing()
+
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Step:")
 	imgui.SameLine()

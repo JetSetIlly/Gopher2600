@@ -130,7 +130,7 @@ func (wm *windowManager) destroy() {
 }
 
 func (wm *windowManager) drawWindows() {
-	if wm.img.vcs != nil {
+	if wm.img.vcs != nil && wm.img.dsm != nil {
 		wm.drawMainMenu()
 		for w := range wm.windows {
 			wm.windows[w].draw()

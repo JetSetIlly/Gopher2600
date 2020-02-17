@@ -21,7 +21,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/registers"
 	"strconv"
 	"strings"
@@ -34,8 +33,6 @@ const winCPUTitle = "CPU"
 type winCPU struct {
 	windowManagement
 	img *SdlImgui
-
-	cpu *cpu.CPU
 
 	pc       string
 	a        string
@@ -65,23 +62,30 @@ func (win *winCPU) draw() {
 		return
 	}
 
-	win.cpu = win.img.vcs.CPU
 	win.regWidth = minFrameDimension("FFFF").X
 
 	imgui.SetNextWindowPosV(imgui.Vec2{632, 46}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.cpu.PC, &win.pc, win.regWidth)
-	win.drawRegister(win.cpu.A, &win.a, win.regWidth)
-	win.drawRegister(win.cpu.X, &win.x, win.regWidth)
-	win.drawRegister(win.cpu.Y, &win.y, win.regWidth)
-	win.drawRegister(win.cpu.SP, &win.sp, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.PC, &win.pc, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.A, &win.a, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.X, &win.x, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.Y, &win.y, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.SP, &win.sp, win.regWidth)
 	imgui.EndGroup()
 
 	imgui.SameLine()
 	imgui.BeginGroup()
-	// TODO: rdy flag, decoding state, etc.
+
+	win.drawLastResult()
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	win.drawRDYFlag()
+
 	imgui.EndGroup()
 
 	imgui.Spacing()
@@ -94,19 +98,19 @@ func (win *winCPU) draw() {
 }
 
 func (win *winCPU) drawStatusRegister() {
-	win.drawStatusRegisterBit(&win.cpu.Status.Sign, "S")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.Sign, "S")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.Overflow, "O")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.Overflow, "O")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.Break, "B")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.Break, "B")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.DecimalMode, "D")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.DecimalMode, "D")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.InterruptDisable, "I")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.InterruptDisable, "I")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.Zero, "Z")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.Zero, "Z")
 	imgui.SameLine()
-	win.drawStatusRegisterBit(&win.cpu.Status.Carry, "C")
+	win.drawStatusRegisterBit(&win.img.vcs.CPU.Status.Carry, "C")
 }
 
 func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
@@ -134,9 +138,7 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string, regWidth float
 	imgui.Text(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
 
-	if !win.img.paused {
-		*s = reg.String()
-	}
+	*s = reg.String()
 
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		return win.hex8Bit(reg.BitWidth()/4, d)
@@ -151,6 +153,57 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string, regWidth float
 		*s = reg.String()
 	}
 	imgui.PopItemWidth()
+}
+
+func (win *winCPU) drawLastResult() {
+	if !win.img.vcs.CPU.HasReset() {
+		e, _ := win.img.dsm.FormatResult(win.img.vcs.CPU.LastResult)
+		if e.Result.Final {
+			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+			imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+			imgui.Text("")
+		} else {
+			// currently, the order of how the decoding appears is not quite
+			// correct. it's correct as far as the emulation is concerned but
+			// it might be misleading
+			//
+			// !!TODO: fix cpu.go so that video callbacks are delayed until
+			// after setting of LastResult fields
+			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+			if e.Result.Defn != nil {
+				imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+				imgui.Text(fmt.Sprintf("of exp. %s", e.DefnCycles))
+			} else {
+				imgui.Text("")
+				imgui.Text("")
+			}
+		}
+	} else {
+		imgui.Text("")
+		imgui.Text("")
+		imgui.Text("")
+		imgui.Text("")
+	}
+}
+
+func (win *winCPU) drawRDYFlag() {
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Ready (pin6)")
+	imgui.SameLine()
+	if win.img.vcs.CPU.RdyFlg {
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPURdyFlagOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPURdyFlagOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPURdyFlagOn)
+		imgui.Button(" ")
+	} else {
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPURdyFlagOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPURdyFlagOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPURdyFlagOff)
+		imgui.Button(" ")
+	}
+	imgui.PopStyleColorV(3)
 }
 
 func (win *winCPU) hex8Bit(nibbles int, d imgui.InputTextCallbackData) int32 {

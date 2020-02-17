@@ -97,17 +97,20 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	// if the operator hasn't been decoded yet then use placeholder strings for
 	// important fields
 	if result.Defn == nil {
+		d.Bytecode = "??"
 		d.Mnemonic = "???"
-		d.Operand = "?"
 		return d, nil
 	}
 
+	// address of instruction
 	d.Address = fmt.Sprintf("0x%04x", result.Address)
 
+	// look up address in symbol table
 	if v, ok := symtable.Locations.Symbols[result.Address]; ok {
 		d.Location = v
 	}
 
+	// mnemonic is just a string anyway
 	d.Mnemonic = result.Defn.Mnemonic
 
 	// operands
@@ -128,23 +131,54 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 		}
 	}
 
-	// Bytecode
-	if result.Final {
-		switch result.Defn.Bytes {
+	// Bytecode is assembled depending on the number of expected bytes
+	// (result.Defn.Bytes) and the number of bytes read so far
+	// (result.ByteCount).
+	//
+	// the panics cover situations that should never exists. if result
+	// validation has been run then the panic situations will have been caught
+	// then. if validation is not running then the code could theoretically
+	// panic but that's okay, they should have been caught in testing.
+	switch result.Defn.Bytes {
+	case 3:
+		switch result.ByteCount {
 		case 3:
-			d.Bytecode = fmt.Sprintf("%02x", operand&0xff00>>8)
-			fallthrough
+			d.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
 		case 2:
-			d.Bytecode = fmt.Sprintf("%02x %s", operand&0x00ff, d.Bytecode)
-			fallthrough
+			d.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
 		case 1:
-			d.Bytecode = fmt.Sprintf("%02x %s", result.Defn.OpCode, d.Bytecode)
+			d.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
-			d.Bytecode = fmt.Sprintf("(%d bytes) %s", result.Defn.Bytes, d.Bytecode)
+			panic("we should not be able to read more bytes than the expected number")
 		}
-
-		d.Bytecode = strings.TrimSpace(d.Bytecode)
+	case 2:
+		switch result.ByteCount {
+		case 2:
+			d.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
+		case 1:
+			d.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
+		default:
+			panic("we should not be able to read more bytes than the expected number")
+		}
+	case 1:
+		switch result.ByteCount {
+		case 1:
+			d.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
+		default:
+			panic("we shoud not be able to read more bytes than the expected number")
+		}
+	case 0:
+		panic("instructions that have no bytes makes no sense")
+	default:
+		panic("instructions with more than 3 bytes is impossible on the 6502/6507")
 	}
+	d.Bytecode = strings.TrimSpace(d.Bytecode)
 
 	// ... and use assembler symbol for the operand if available/appropriate
 	if result.InstructionData != nil && (d.Operand == "" || d.Operand[0] != '?') {
