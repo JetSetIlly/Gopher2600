@@ -20,6 +20,7 @@
 package cpu_test
 
 import (
+	"fmt"
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	rtest "gopher2600/hardware/cpu/registers/test"
@@ -85,6 +86,7 @@ func step(t *testing.T, mc *cpu.CPU) {
 	t.Helper()
 	err := mc.ExecuteInstruction(nil)
 	if err != nil {
+		fmt.Println(mc.LastResult.Defn)
 		t.Fatal(err)
 	}
 	err = mc.LastResult.IsValid()
@@ -598,6 +600,15 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.A, 0x19)
 }
 
+func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var origin uint16
+	mem.Clear()
+	_ = mc.Reset()
+
+	_ = mem.putInstructions(origin, 0x00, 0x00, 0x00)
+	step(t, mc) // SED
+}
+
 func TestCPU(t *testing.T) {
 	mem := newMockMem()
 	mc, err := cpu.NewCPU(mem)
@@ -619,4 +630,5 @@ func TestCPU(t *testing.T) {
 	testComparisonInstructions(t, mc, mem)
 	testSubroutineInstructions(t, mc, mem)
 	testDecimalMode(t, mc, mem)
+	testBRK(t, mc, mem)
 }

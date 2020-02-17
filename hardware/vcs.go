@@ -102,13 +102,14 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 }
 
 // Reset emulates the reset switch on the console panel
+// !!TODO: hard/soft reset option
+// !!TODO: random data on startup option
 func (vcs *VCS) Reset() error {
-	// note that there is no reset of the CPU, the TIA or the RIOT. this is
-	// because I don't believe it's required. memory is an unknown state and
-	// the RIOT/TIA registers are in an unknown state - effectively randomised.
-	// we could maybe had a "hard reset" option in the future if we need it
-
 	vcs.Mem.Cart.Initialise()
+
+	// !TODO: reset TIA and RIOT (including RAM)
+
+	vcs.CPU.Reset()
 
 	err := vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {

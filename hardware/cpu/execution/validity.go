@@ -45,6 +45,12 @@ func (result Result) IsValid() error {
 		return errors.New(errors.InvalidResult, "unexpected page fault")
 	}
 
+	// byte count
+	if result.ByteCount != result.Defn.Bytes {
+		return errors.New(errors.InvalidResult, fmt.Sprintf("unexpected number of bytes read during decode (%d instead of %d)",
+			result.ByteCount, result.Defn.Bytes))
+	}
+
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.CPUBug == "" {
 		if result.Defn.IsBranch() {

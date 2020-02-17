@@ -59,7 +59,9 @@ type CPU struct {
 	// 3 of the 6507)
 	RdyFlg bool
 
-	// last result. the address field is guaranteed to be always valid.
+	// last result. the address field is guaranteed to be always valid except
+	// when the CPU has just been reset. we use this fact to help us decide
+	// whether the CPU has just been reset (see HasReset() function)
 	LastResult execution.Result
 
 	// NoFlowControl sets whether the cpu responds accurately to instructions
@@ -87,9 +89,6 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 	mc.acc8 = registers.NewRegister(0, "accumulator")
 	mc.acc16 = registers.NewProgramCounter(0)
 
-	// set Final flag in LastResult to true because logically we can say it is.
-	mc.LastResult.Final = true
-
 	var err error
 
 	mc.instructions, err = instructions.GetDefinitions()
@@ -115,6 +114,8 @@ func (mc *CPU) Reset() error {
 		return errors.New(errors.InvalidOperationMidInstruction, "reset")
 	}
 
+	mc.LastResult.Reset()
+
 	mc.PC.Load(0)
 	mc.A.Load(0)
 	mc.X.Load(0)
@@ -132,6 +133,11 @@ func (mc *CPU) Reset() error {
 	// not touching NoFlowControl
 
 	return nil
+}
+
+// HasReset checks whether the CPU has recently been reset
+func (mc CPU) HasReset() bool {
+	return mc.LastResult.Address == 0 && mc.LastResult.Defn == nil
 }
 
 // LoadPCIndirect loads the contents of indirectAddress into the PC
@@ -273,6 +279,10 @@ func (mc *CPU) read8BitPC() (uint8, error) {
 	if carry {
 		return 0, errors.New(errors.ProgramCounterCycled)
 	}
+
+	// bump the number of bytes read during instruction decode
+	mc.LastResult.ByteCount++
+
 	return op, nil
 }
 
@@ -292,6 +302,9 @@ func (mc *CPU) read16BitPC() (uint16, error) {
 	if carry {
 		return 0, errors.New(errors.ProgramCounterCycled)
 	}
+
+	// bump the number of bytes read during instruction decode
+	mc.LastResult.ByteCount += 2
 
 	return val, nil
 }
@@ -313,15 +326,15 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 	}
 
 	if flag {
+		// note current PC for reference
+		oldPC := mc.PC.Address()
+
 		// phantom read
 		// +1 cycle
 		_, err := mc.read8Bit(mc.PC.Address())
 		if err != nil {
 			return err
 		}
-
-		// note current PC for reference
-		oldPC := mc.PC.Address()
 
 		// add LSB to PC
 		// this is a bit wierd but without implementing the PC differently (with
@@ -399,14 +412,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	}
 
 	// prepare new round of results
-	mc.LastResult.Defn = nil
+	mc.LastResult.Reset()
 	mc.LastResult.Address = mc.PC.Address()
-	mc.LastResult.InstructionData = nil
-	mc.LastResult.ActualCycles = 0
-	mc.LastResult.PageFault = false
-	mc.LastResult.CPUBug = ""
-	mc.LastResult.BusError = ""
-	mc.LastResult.Final = false
 
 	// register end cycle callback
 	defer func() {
@@ -461,6 +468,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if err != nil {
 				return err
 			}
+
+			// but we don't LastResult to show this
+			mc.LastResult.ByteCount--
 		} else {
 			// phantom read
 			// +1 cycle
@@ -1467,10 +1477,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// validity check. there's no need to enable unless you've just added a new
 	// opcode and wanting to check the validity of the definition.
-	err = mc.LastResult.IsValid()
-	if err != nil {
-		return err
-	}
+	// err = mc.LastResult.IsValid()
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

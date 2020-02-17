@@ -39,6 +39,11 @@ type Result struct {
 	// a reference to the instruction definition
 	Defn *instructions.Definition
 
+	// the number of bytes read during instruciton decode. if this value is
+	// less than Defn.Bytes then the instruction has not yet been fully decoded
+	ByteCount int
+
+	// the address at which the instruction began
 	Address uint16
 
 	// it would be lovely to have a note of which cartridge bank the address is
@@ -67,4 +72,17 @@ type Result struct {
 	// whether this data has been finalised - some fields in this struct will
 	// be undefined if Final is false
 	Final bool
+}
+
+// Reset nullifies all members of the Result instance
+func (r *Result) Reset() {
+	r.Defn = nil
+	r.ByteCount = 0
+	r.Address = 0
+	r.InstructionData = nil
+	r.ActualCycles = 0
+	r.PageFault = false
+	r.CPUBug = ""
+	r.BusError = ""
+	r.Final = false
 }
