@@ -528,7 +528,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		address = uint16(value)
-		mc.LastResult.InstructionData = address
+
+		// while we must trest the value as an address (ie. as uint16) we
+		// actually only read an 8 bit value so we store the value as uint8
+		mc.LastResult.InstructionData = value
 
 	case instructions.IndexedZeroPageX:
 		zeroPage = true
