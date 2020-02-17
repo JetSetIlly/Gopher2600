@@ -44,7 +44,8 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// window management
-	wm *windowManager
+	wm   *windowManager
+	cols *Colors
 
 	// references to the emulation
 	tv  television.Television
@@ -87,6 +88,9 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	// (rate may change due to specification change)
 	img.lmtr = limiter.NewFPSLimiter(-1)
 
+	// define colors
+	img.cols = defaultTheme()
+
 	var err error
 
 	img.plt, err = newPlatform(img)
@@ -119,9 +123,6 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		return nil, err
 	}
 	tv.AddAudioMixer(img.audio)
-
-	// application wide theming
-	setColors()
 
 	return img, nil
 }

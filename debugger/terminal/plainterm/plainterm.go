@@ -65,7 +65,7 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 	}
 
 	// we don't need to output normalised input for this type of terminal
-	if style == terminal.StyleNormalisedInput {
+	if style == terminal.StyleInput {
 		return
 	}
 

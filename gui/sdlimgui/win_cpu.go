@@ -99,14 +99,14 @@ func (cpu *cpu) drawStatusRegister() {
 
 func (cpu *cpu) drawStatusRegisterBit(bit *bool, label string) {
 	if *bit {
-		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.73, 0.49, 0.14, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.79, 0.54, 0.15, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.79, 0.54, 0.15, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButton, cpu.img.cols.CPUStatusOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cpu.img.cols.CPUStatusOnHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, cpu.img.cols.CPUStatusOnActive)
 		label = strings.ToUpper(label)
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.64, 0.40, 0.09, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.70, 0.45, 0.10, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.70, 0.45, 0.10, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButton, cpu.img.cols.CPUStatusOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cpu.img.cols.CPUStatusOffHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, cpu.img.cols.CPUStatusOffActive)
 		label = strings.ToLower(label)
 	}
 

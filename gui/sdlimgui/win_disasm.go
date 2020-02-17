@@ -135,33 +135,34 @@ func (dsm *disasm) drawBank(pcAddr uint16, b int) {
 }
 
 func (dsm *disasm) drawEntry(e *disassembly.Entry, selected bool) {
-	base := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
+	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 	if selected {
-		base = imgui.Vec4{0.3, 0.3, 0.3, 0.0}
+		adj = dsm.img.cols.DisasmSelectedAdj
 	}
 
 	s := dsm.img.dsm.GetField(disassembly.FldAddress, e)
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.4, 0.4, 1.0}.Plus(base))
+	imgui.PushStyleColor(imgui.StyleColorText, dsm.img.cols.DisasmAddress.Plus(adj))
 	imgui.Text(s)
 
 	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.4, 0.4, 0.8, 1.0}.Plus(base))
+	imgui.PushStyleColor(imgui.StyleColorText, dsm.img.cols.DisasmMnemonic.Plus(adj))
 	s = dsm.img.dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.3, 1.0}.Plus(base))
+	imgui.PushStyleColor(imgui.StyleColorText, dsm.img.cols.DisasmOperand.Plus(adj))
 	s = dsm.img.dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0}.Plus(base))
+	imgui.PushStyleColor(imgui.StyleColorText, dsm.img.cols.DisasmCycles.Plus(adj))
 	s = dsm.img.dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
+	imgui.PushStyleColor(imgui.StyleColorText, dsm.img.cols.DisasmNotes.Plus(adj))
 	s = dsm.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
-	imgui.PopStyleColorV(4)
+	imgui.PopStyleColorV(5)
 }

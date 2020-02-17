@@ -82,14 +82,14 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 	err := debuggerCommands.ValidateTokens(tokens)
 	if err != nil {
 		// print normalised input and return error
-		dbg.printLine(terminal.StyleNormalisedInput, tokens.String())
+		dbg.printLine(terminal.StyleInput, tokens.String())
 		return false, err
 	}
 
 	// print normalised input if this is command from an interactive source
 	// and not an auto-command
 	if echo {
-		dbg.printLine(terminal.StyleNormalisedInput, tokens.String())
+		dbg.printLine(terminal.StyleInput, tokens.String())
 	}
 
 	// test to see if command is allowed when recording/playing a script

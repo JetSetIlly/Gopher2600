@@ -197,9 +197,9 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	}
 
 	if len(trm.output) >= outputMaxSize {
-		trm.output = append(trm.output[1:], terminalOutput{style: style, text: s})
+		trm.output = append(trm.output[1:], terminalOutput{style: style, cols: trm.img.cols, text: s})
 	} else {
-		trm.output = append(trm.output, terminalOutput{style: style, text: s})
+		trm.output = append(trm.output, terminalOutput{style: style, cols: trm.img.cols, text: s})
 	}
 
 	trm.moreOutput = true
@@ -262,54 +262,45 @@ func (trm *term) IsInteractive() bool {
 // terminalOutput represents the lines that are printed to the terminal output
 type terminalOutput struct {
 	style terminal.Style
+	cols  *Colors
 	text  string
 }
 
 func (l terminalOutput) draw() {
 	switch l.style {
-	case terminal.StyleNormalisedInput:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0})
+	case terminal.StyleInput:
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleInput)
 
 	case terminal.StyleHelp:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleHelp)
 
 	case terminal.StylePromptCPUStep:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptCPUStep)
 
 	case terminal.StylePromptVideoStep:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.8, 0.8, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptVideoStep)
 
 	case terminal.StylePromptConfirm:
-		// blue
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.4, 0.9, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptConfirm)
 
 	case terminal.StyleFeedback:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedback)
 
 	case terminal.StyleCPUStep:
-		// yellow
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.9, 0.9, 0.5, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleCPUStep)
 
 	case terminal.StyleVideoStep:
-		// dimmer yellow
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.7, 0.7, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleVideoStep)
 
 	case terminal.StyleInstrument:
-		// cyan
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.1, 0.95, 0.9, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleInstrument)
 
 	case terminal.StyleFeedbackNonInteractive:
-		// white
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{1.0, 1.0, 1.0, 1.0})
+		// just use regular feedback style for this
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedback)
 
 	case terminal.StyleError:
-		// red
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{0.8, 0.3, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleError)
 	}
 
 	imgui.Text(l.text)

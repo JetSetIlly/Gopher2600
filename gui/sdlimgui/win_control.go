@@ -55,16 +55,16 @@ func (con *control) draw() {
 	w := minFrameDimension("Run", "Halt")
 
 	if con.img.paused {
-		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.3, 0.6, 0.3, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.3, 0.65, 0.3, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.3, 0.65, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButton, con.img.cols.ControlRunOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, con.img.cols.ControlRunOffHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, con.img.cols.ControlRunOffActive)
 		if imgui.ButtonV("Run", w) {
 			con.img.issueTermCommand("RUN")
 		}
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, imgui.Vec4{0.6, 0.3, 0.3, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, imgui.Vec4{0.65, 0.3, 0.3, 1.0})
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, imgui.Vec4{0.65, 0.3, 0.3, 1.0})
+		imgui.PushStyleColor(imgui.StyleColorButton, con.img.cols.ControlRunOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, con.img.cols.ControlRunOffHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, con.img.cols.ControlRunOffActive)
 		if imgui.ButtonV("Halt", w) {
 			con.img.issueTermCommand("HALT")
 		}

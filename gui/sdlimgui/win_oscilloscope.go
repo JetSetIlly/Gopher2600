@@ -58,8 +58,8 @@ func (osc *oscilloscope) draw() {
 	imgui.BeginV(oscilloscopeTitle, &osc.open,
 		imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
 
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, imgui.Vec4{0.21, 0.29, 0.23, 1.0})
-	imgui.PushStyleColor(imgui.StyleColorPlotLines, imgui.Vec4{0.10, 0.97, 0.29, 1.0})
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, osc.img.cols.OscBg)
+	imgui.PushStyleColor(imgui.StyleColorPlotLines, osc.img.cols.OscLine)
 	imgui.PlotLines("", osc.audioStream)
 	imgui.PopStyleColor()
 	imgui.PopStyleColor()
