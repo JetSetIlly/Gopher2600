@@ -27,13 +27,13 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const termTitle = "Terminal"
+const winTermTitle = "Terminal"
 
 const (
 	outputMaxSize = 256
 )
 
-type term struct {
+type winTerm struct {
 	windowManagement
 	img *SdlImgui
 
@@ -53,8 +53,8 @@ type term struct {
 	sideChan  chan string
 }
 
-func newTerm(img *SdlImgui) (managedWindow, error) {
-	trm := &term{
+func newWinTerm(img *SdlImgui) (managedWindow, error) {
+	win := &winTerm{
 		img:        img,
 		historyIdx: -1,
 
@@ -71,19 +71,19 @@ func newTerm(img *SdlImgui) (managedWindow, error) {
 		sideChan: make(chan string, 1),
 	}
 
-	return trm, nil
+	return win, nil
 }
 
-func (trm *term) destroy() {
+func (win *winTerm) destroy() {
 }
 
-func (trm *term) id() string {
-	return termTitle
+func (win *winTerm) id() string {
+	return winTermTitle
 }
 
 // draw is called by service loop
-func (trm *term) draw() {
-	if !trm.open {
+func (win *winTerm) draw() {
+	if !win.open {
 		return
 	}
 
@@ -92,19 +92,19 @@ func (trm *term) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(termTitle, &trm.open, 0)
+	imgui.BeginV(winTermTitle, &win.open, 0)
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 
 	// output
-	for i := range trm.output {
-		trm.output[i].draw()
+	for i := range win.output {
+		win.output[i].draw()
 	}
 	imgui.Separator()
 
 	// prompt
 	imgui.AlignTextToFramePadding()
-	imgui.Text(trm.prompt)
+	imgui.Text(win.prompt)
 	imgui.SameLine()
 
 	// this construct says focus the next InputText() box if
@@ -114,10 +114,10 @@ func (trm *term) draw() {
 		imgui.SetKeyboardFocusHere()
 	}
 
-	if imgui.InputTextV("", &trm.input,
+	if imgui.InputTextV("", &win.input,
 		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-		trm.tabCompleteAndHistory) {
-		trm.inputChan <- true
+		win.tabCompleteAndHistory) {
+		win.inputChan <- true
 	}
 
 	// add some spacing so that when we scroll to the bottom of the windw
@@ -125,42 +125,42 @@ func (trm *term) draw() {
 	imgui.Spacing()
 
 	// if output has been added to, scroll to bottom of window
-	if trm.moreOutput {
-		trm.moreOutput = false
+	if win.moreOutput {
+		win.moreOutput = false
 		imgui.SetScrollHereY(1.0)
 	}
 
 	imgui.End()
 }
 
-func (trm *term) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
+func (win *winTerm) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 	switch d.EventKey() {
 	case imgui.KeyTab:
 		// tab completion
 		b := string(d.Buffer())
-		s := trm.tabCompletion.Complete(b)
+		s := win.tabCompletion.Complete(b)
 		d.DeleteBytes(0, len(b))
 		d.InsertBytes(0, []byte(s))
 		d.MarkBufferModified()
 	case imgui.KeyUpArrow:
 		// previous history item
-		if trm.historyIdx > -1 {
+		if win.historyIdx > -1 {
 			b := string(d.Buffer())
 			d.DeleteBytes(0, len(b))
-			d.InsertBytes(0, []byte(trm.history[trm.historyIdx]))
-			if trm.historyIdx > 0 {
-				trm.historyIdx--
+			d.InsertBytes(0, []byte(win.history[win.historyIdx]))
+			if win.historyIdx > 0 {
+				win.historyIdx--
 			}
 			d.MarkBufferModified()
 		}
 	case imgui.KeyDownArrow:
 		// next history item
-		if trm.historyIdx < len(trm.history)-1 {
+		if win.historyIdx < len(win.history)-1 {
 			b := string(d.Buffer())
 			d.DeleteBytes(0, len(b))
-			d.InsertBytes(0, []byte(trm.history[trm.historyIdx]))
-			if trm.historyIdx < len(trm.history)-1 {
-				trm.historyIdx++
+			d.InsertBytes(0, []byte(win.history[win.historyIdx]))
+			if win.historyIdx < len(win.history)-1 {
+				win.historyIdx++
 			}
 		} else {
 			b := string(d.Buffer())
@@ -172,64 +172,64 @@ func (trm *term) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 }
 
 // Initialise implements the terminal.Terminal interface
-func (trm *term) Initialise() error {
+func (win *winTerm) Initialise() error {
 	return nil
 }
 
 // CleanUp implements the terminal.Terminal interface
-func (trm *term) CleanUp() {
+func (win *winTerm) CleanUp() {
 }
 
 // RegisterTabCompletion implements the terminal.Terminal interface
-func (trm *term) RegisterTabCompletion(tc terminal.TabCompletion) {
-	trm.tabCompletion = tc
+func (win *winTerm) RegisterTabCompletion(tc terminal.TabCompletion) {
+	win.tabCompletion = tc
 }
 
 // Silence implements the terminal.Terminal interface
-func (trm *term) Silence(silenced bool) {
-	trm.silenced = silenced
+func (win *winTerm) Silence(silenced bool) {
+	win.silenced = silenced
 }
 
 // TermPrintLine implements the terminal.Output interface
-func (trm *term) TermPrintLine(style terminal.Style, s string) {
-	if trm.silenced && style != terminal.StyleError {
+func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
+	if win.silenced && style != terminal.StyleError {
 		return
 	}
 
-	if len(trm.output) >= outputMaxSize {
-		trm.output = append(trm.output[1:], terminalOutput{style: style, cols: trm.img.cols, text: s})
+	if len(win.output) >= outputMaxSize {
+		win.output = append(win.output[1:], terminalOutput{style: style, cols: win.img.cols, text: s})
 	} else {
-		trm.output = append(trm.output, terminalOutput{style: style, cols: trm.img.cols, text: s})
+		win.output = append(win.output, terminalOutput{style: style, cols: win.img.cols, text: s})
 	}
 
-	trm.moreOutput = true
+	win.moreOutput = true
 }
 
 // TermRead implements the terminal.Input interface
-func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	trm.prompt = prompt.Content
+func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
+	win.prompt = prompt.Content
 
 	// the debugger is waiting for input from the terminal but we still need to
 	// service gui events in the meantime.
 	for {
 		select {
-		case <-trm.inputChan:
-			trm.input = strings.TrimSpace(trm.input)
-			if trm.input != "" {
-				trm.history = append(trm.history, trm.input)
-				trm.historyIdx = len(trm.history) - 1
+		case <-win.inputChan:
+			win.input = strings.TrimSpace(win.input)
+			if win.input != "" {
+				win.history = append(win.history, win.input)
+				win.historyIdx = len(win.history) - 1
 			}
 
 			// even if term.input is the empty string we still copy it to the
 			// input buffer (sending it back to the caller) because the empty
 			// string might mean something
 
-			n := len(trm.input)
-			copy(buffer, trm.input+"\n")
-			trm.input = ""
+			n := len(win.input)
+			copy(buffer, win.input+"\n")
+			win.input = ""
 			return n + 1, nil
 
-		case s := <-trm.sideChan:
+		case s := <-win.sideChan:
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")
@@ -248,14 +248,14 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 }
 
 // TermRead implements the terminal.Input interface
-func (trm *term) TermReadCheck() bool {
+func (win *winTerm) TermReadCheck() bool {
 	// report on the number of pending items in inputChan and sideChan. if
 	// either of these have events waiting then that counts as true
-	return len(trm.inputChan) > 0 || len(trm.sideChan) > 0
+	return len(win.inputChan) > 0 || len(win.sideChan) > 0
 }
 
 // IsInteractive implements the terminal.Input interface
-func (trm *term) IsInteractive() bool {
+func (win *winTerm) IsInteractive() bool {
 	return true
 }
 

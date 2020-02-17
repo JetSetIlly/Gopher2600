@@ -23,37 +23,37 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const riotTitle = "RIOT"
+const winRIOTTitle = "RIOT"
 
-type riot struct {
+type winRIOT struct {
 	windowManagement
 	img *SdlImgui
 }
 
-func newRIOT(img *SdlImgui) (managedWindow, error) {
-	riot := &riot{
+func newWinRIOT(img *SdlImgui) (managedWindow, error) {
+	win := &winRIOT{
 		img: img,
 	}
 
-	return riot, nil
+	return win, nil
 }
 
-func (riot *riot) destroy() {
+func (win *winRIOT) destroy() {
 }
 
-func (riot *riot) id() string {
-	return riotTitle
+func (win *winRIOT) id() string {
+	return winRIOTTitle
 }
 
 // draw is called by service loop
-func (riot *riot) draw() {
-	if !riot.open {
+func (win *winRIOT) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{359, 664}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{464, 48}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(riotTitle, &riot.open, 0)
-	imgui.Text(riot.img.vcs.RIOT.String())
+	imgui.BeginV(winRIOTTitle, &win.open, 0)
+	imgui.Text(win.img.vcs.RIOT.String())
 	imgui.End()
 }

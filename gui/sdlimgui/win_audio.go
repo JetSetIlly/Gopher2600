@@ -23,64 +23,64 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const oscilloscopeTitle = "Oscilloscope"
+const winAudioTitle = "Audio"
 
-type oscilloscope struct {
+type winAudio struct {
 	windowManagement
 	img         *SdlImgui
 	audioStream []float32
 }
 
-func newOscilloscope(img *SdlImgui) (managedWindow, error) {
-	osc := &oscilloscope{
+func newWinAudio(img *SdlImgui) (managedWindow, error) {
+	win := &winAudio{
 		img:         img,
 		audioStream: make([]float32, 1, 2048),
 	}
 
-	img.tv.AddAudioMixer(osc)
+	img.tv.AddAudioMixer(win)
 
-	return osc, nil
+	return win, nil
 }
 
-func (osc *oscilloscope) destroy() {
+func (win *winAudio) destroy() {
 }
 
-func (osc *oscilloscope) id() string {
-	return oscilloscopeTitle
+func (win *winAudio) id() string {
+	return winAudioTitle
 }
 
-func (osc *oscilloscope) draw() {
-	if !osc.open {
+func (win *winAudio) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{17, 677}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(oscilloscopeTitle, &osc.open,
+	imgui.BeginV(winAudioTitle, &win.open,
 		imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
 
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, osc.img.cols.OscBg)
-	imgui.PushStyleColor(imgui.StyleColorPlotLines, osc.img.cols.OscLine)
-	imgui.PlotLines("", osc.audioStream)
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.OscBg)
+	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.OscLine)
+	imgui.PlotLines("", win.audioStream)
 	imgui.PopStyleColor()
 	imgui.PopStyleColor()
 	imgui.End()
 
-	osc.audioStream = osc.audioStream[:1]
+	win.audioStream = win.audioStream[:1]
 }
 
-func (osc *oscilloscope) SetAudio(audioData uint8) error {
-	osc.audioStream = append(osc.audioStream, (float32(audioData))/256)
+func (win *winAudio) SetAudio(audioData uint8) error {
+	win.audioStream = append(win.audioStream, (float32(audioData))/256)
 	return nil
 }
 
-func (osc *oscilloscope) FlushAudio() error {
+func (win *winAudio) FlushAudio() error {
 	return nil
 }
 
-func (osc *oscilloscope) PauseAudio(pause bool) error {
+func (win *winAudio) PauseAudio(pause bool) error {
 	return nil
 }
 
-func (osc *oscilloscope) EndMixing() error {
+func (win *winAudio) EndMixing() error {
 	return nil
 }

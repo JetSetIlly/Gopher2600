@@ -23,57 +23,57 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const tiaTitle = "TIA"
+const winTIATitle = "TIA"
 
-type tia struct {
+type winTIA struct {
 	windowManagement
 	img *SdlImgui
 }
 
-func newTIA(img *SdlImgui) (managedWindow, error) {
-	tia := &tia{
+func newWinTIA(img *SdlImgui) (managedWindow, error) {
+	win := &winTIA{
 		img: img,
 	}
 
-	return tia, nil
+	return win, nil
 }
 
-func (tia *tia) destroy() {
+func (win *winTIA) destroy() {
 }
 
-func (tia *tia) id() string {
-	return tiaTitle
+func (win *winTIA) id() string {
+	return winTIATitle
 }
 
 // draw is called by service loop
-func (tia *tia) draw() {
-	if !tia.open {
+func (win *winTIA) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{12, 500}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{718, 156}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(tiaTitle, &tia.open, 0)
+	imgui.BeginV(winTIATitle, &win.open, 0)
 
 	imgui.BeginGroup()
-	imgui.Text(tia.img.vcs.TIA.Label())
+	imgui.Text(win.img.vcs.TIA.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.String())
-	imgui.Text(tia.img.vcs.TIA.Video.Player0.Label())
+	imgui.Text(win.img.vcs.TIA.String())
+	imgui.Text(win.img.vcs.TIA.Video.Player0.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.Video.Player0.String())
-	imgui.Text(tia.img.vcs.TIA.Video.Player1.Label())
+	imgui.Text(win.img.vcs.TIA.Video.Player0.String())
+	imgui.Text(win.img.vcs.TIA.Video.Player1.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.Video.Player1.String())
-	imgui.Text(tia.img.vcs.TIA.Video.Missile0.Label())
+	imgui.Text(win.img.vcs.TIA.Video.Player1.String())
+	imgui.Text(win.img.vcs.TIA.Video.Missile0.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.Video.Missile0.String())
-	imgui.Text(tia.img.vcs.TIA.Video.Missile1.Label())
+	imgui.Text(win.img.vcs.TIA.Video.Missile0.String())
+	imgui.Text(win.img.vcs.TIA.Video.Missile1.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.Video.Missile1.String())
-	imgui.Text(tia.img.vcs.TIA.Video.Ball.Label())
+	imgui.Text(win.img.vcs.TIA.Video.Missile1.String())
+	imgui.Text(win.img.vcs.TIA.Video.Ball.Label())
 	imgui.SameLine()
-	imgui.Text(tia.img.vcs.TIA.Video.Ball.String())
+	imgui.Text(win.img.vcs.TIA.Video.Ball.String())
 	imgui.EndGroup()
 
 	imgui.End()

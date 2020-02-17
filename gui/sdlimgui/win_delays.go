@@ -23,58 +23,58 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const delaysTitle = "TIA Delays"
+const winDelaysTitle = "TIA Delays"
 
-type delays struct {
+type winDelays struct {
 	windowManagement
 	img *SdlImgui
 }
 
-func newDelays(img *SdlImgui) (managedWindow, error) {
-	del := &delays{
+func newWinDelays(img *SdlImgui) (managedWindow, error) {
+	win := &winDelays{
 		img: img,
 	}
 
-	return del, nil
+	return win, nil
 }
 
-func (del *delays) destroy() {
+func (win *winDelays) destroy() {
 }
 
-func (del *delays) id() string {
-	return delaysTitle
+func (win *winDelays) id() string {
+	return winDelaysTitle
 }
 
-func (del *delays) draw() {
-	if !del.open {
+func (win *winDelays) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{72, 476}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{240, 189}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(delaysTitle, &del.open, 0)
+	imgui.BeginV(winDelaysTitle, &win.open, 0)
 
-	s := del.img.vcs.TIA.Delay.String()
+	s := win.img.vcs.TIA.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}
-	s = del.img.vcs.TIA.Video.Player0.Delay.String()
+	s = win.img.vcs.TIA.Video.Player0.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}
-	s = del.img.vcs.TIA.Video.Player1.Delay.String()
+	s = win.img.vcs.TIA.Video.Player1.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}
-	s = del.img.vcs.TIA.Video.Missile0.Delay.String()
+	s = win.img.vcs.TIA.Video.Missile0.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}
-	s = del.img.vcs.TIA.Video.Missile1.Delay.String()
+	s = win.img.vcs.TIA.Video.Missile1.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}
-	s = del.img.vcs.TIA.Video.Ball.Delay.String()
+	s = win.img.vcs.TIA.Video.Ball.Delay.String()
 	if len(s) > 0 {
 		imgui.Text(s)
 	}

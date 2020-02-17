@@ -37,6 +37,8 @@ type Colors struct {
 	CPUStatusOff        imgui.Vec4
 	CPUStatusOffHovered imgui.Vec4
 	CPUStatusOffActive  imgui.Vec4
+	CPURdyFlagOn        imgui.Vec4
+	CPURdyFlagOff       imgui.Vec4
 
 	// control window buttons
 	ControlRunOff        imgui.Vec4
@@ -82,6 +84,8 @@ func defaultTheme() *Colors {
 		CPUStatusOff:             imgui.Vec4{0.64, 0.40, 0.09, 1.0},
 		CPUStatusOffHovered:      imgui.Vec4{0.70, 0.45, 0.10, 1.0},
 		CPUStatusOffActive:       imgui.Vec4{0.70, 0.45, 0.10, 1.0},
+		CPURdyFlagOn:             imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		CPURdyFlagOff:            imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		ControlRunOff:            imgui.Vec4{0.3, 0.6, 0.3, 1.0},
 		ControlRunOffHovered:     imgui.Vec4{0.3, 0.65, 0.3, 1.0},
 		ControlRunOffActive:      imgui.Vec4{0.3, 0.65, 0.3, 1.0},

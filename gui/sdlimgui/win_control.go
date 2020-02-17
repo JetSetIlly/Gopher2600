@@ -23,50 +23,50 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const controlTitle = "Control"
+const winControlTitle = "Control"
 
-type control struct {
+type winControl struct {
 	windowManagement
 	img *SdlImgui
 }
 
-func newControl(img *SdlImgui) (managedWindow, error) {
-	con := &control{
+func newWinControl(img *SdlImgui) (managedWindow, error) {
+	win := &winControl{
 		img: img,
 	}
-	return con, nil
+	return win, nil
 }
 
-func (con *control) destroy() {
+func (win *winControl) destroy() {
 }
 
-func (con *control) id() string {
-	return controlTitle
+func (win *winControl) id() string {
+	return winControlTitle
 }
 
-func (con *control) draw() {
-	if !con.open {
+func (win *winControl) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(controlTitle, &con.open, imgui.WindowFlagsNoResize)
+	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsNoResize)
 
 	w := minFrameDimension("Run", "Halt")
 
-	if con.img.paused {
-		imgui.PushStyleColor(imgui.StyleColorButton, con.img.cols.ControlRunOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, con.img.cols.ControlRunOffHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, con.img.cols.ControlRunOffActive)
+	if win.img.paused {
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRunOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunOffHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunOffActive)
 		if imgui.ButtonV("Run", w) {
-			con.img.issueTermCommand("RUN")
+			win.img.issueTermCommand("RUN")
 		}
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, con.img.cols.ControlRunOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, con.img.cols.ControlRunOffHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, con.img.cols.ControlRunOffActive)
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRunOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunOffHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunOffActive)
 		if imgui.ButtonV("Halt", w) {
-			con.img.issueTermCommand("HALT")
+			win.img.issueTermCommand("HALT")
 		}
 	}
 	imgui.PopStyleColorV(3)
@@ -76,11 +76,11 @@ func (con *control) draw() {
 	imgui.Text("Step:")
 	imgui.SameLine()
 	if imgui.Button("Frame") {
-		con.img.issueTermCommand("STEP FRAME")
+		win.img.issueTermCommand("STEP FRAME")
 	}
 	imgui.SameLine()
 	if imgui.Button("Scanline") {
-		con.img.issueTermCommand("STEP SCANLINE")
+		win.img.issueTermCommand("STEP SCANLINE")
 	}
 
 	imgui.End()

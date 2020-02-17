@@ -23,36 +23,36 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const ramTitle = "RAM"
+const winRAMTitle = "RAM"
 
-type ram struct {
+type winRAM struct {
 	windowManagement
 	img *SdlImgui
 }
 
-func newRAM(img *SdlImgui) (managedWindow, error) {
-	ram := &ram{
+func newWinRAM(img *SdlImgui) (managedWindow, error) {
+	win := &winRAM{
 		img: img,
 	}
 
-	return ram, nil
+	return win, nil
 }
 
-func (ram *ram) destroy() {
+func (win *winRAM) destroy() {
 }
 
-func (ram *ram) id() string {
-	return ramTitle
+func (win *winRAM) id() string {
+	return winRAMTitle
 }
 
 // draw is called by service loop
-func (ram *ram) draw() {
-	if !ram.open {
+func (win *winRAM) draw() {
+	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(ramTitle, &ram.open, imgui.WindowFlagsAlwaysAutoResize)
-	imgui.Text(ram.img.vcs.Mem.RAM.String())
+	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.Text(win.img.vcs.Mem.RAM.String())
 	imgui.End()
 }

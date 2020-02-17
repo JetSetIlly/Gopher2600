@@ -60,8 +60,8 @@ type windowManager struct {
 
 	// term and screen need to be accessfrom other areas of the package so we
 	// maintain pointers to them in addition to there windows entries
-	term *term
-	scr  *screen
+	term *winTerm
+	scr  *winScreen
 }
 
 func newWindowManager(img *SdlImgui) (*windowManager, error) {
@@ -86,39 +86,39 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		return nil
 	}
 
-	if err := addWindow(newControl); err != nil {
+	if err := addWindow(newWinControl); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newCPU); err != nil {
+	if err := addWindow(newWinCPU); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newRAM); err != nil {
+	if err := addWindow(newWinRAM); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newDelays); err != nil {
+	if err := addWindow(newWinDelays); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newTIA); err != nil {
+	if err := addWindow(newWinTIA); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newRIOT); err != nil {
+	if err := addWindow(newWinRIOT); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newDisasm); err != nil {
+	if err := addWindow(newWinDisasm); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newOscilloscope); err != nil {
+	if err := addWindow(newWinAudio); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newTvScreen); err != nil {
+	if err := addWindow(newWinScreen); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newTerm); err != nil {
+	if err := addWindow(newWinTerm); err != nil {
 		return nil, err
 	}
 
-	wm.scr = wm.windows[screenTitle].(*screen)
-	wm.term = wm.windows[termTitle].(*term)
+	wm.scr = wm.windows[winScreenTitle].(*winScreen)
+	wm.term = wm.windows[winTermTitle].(*winTerm)
 
 	return wm, nil
 }
