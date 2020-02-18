@@ -141,12 +141,36 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string, regWidth float
 	*s = reg.String()
 
 	cb := func(d imgui.InputTextCallbackData) int32 {
-		return win.hex8Bit(reg.BitWidth()/4, d)
+		b := string(d.Buffer())
+		nibbles := reg.BitWidth() / 4
+
+		// restrict length of input to two characters. note that restriction to
+		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
+		// given to InputTextV()
+		if len(b) > nibbles {
+			d.DeleteBytes(0, len(b))
+			b = b[:nibbles]
+			d.InsertBytes(0, []byte(b))
+			d.MarkBufferModified()
+		}
+
+		return 0
+	}
+
+	// flags used with InputTextV()
+	flags := imgui.InputTextFlagsCharsHexadecimal |
+		imgui.InputTextFlagsCallbackAlways |
+		imgui.InputTextFlagsAutoSelectAll
+
+	// if emulator is not paused, the values entered in the TextInput box will
+	// be loaded into the register immediately and not just when the enter
+	// key is pressed.
+	if !win.img.paused {
+		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
 	imgui.PushItemWidth(regWidth)
-	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), s,
-		imgui.InputTextFlagsCharsHexadecimal|imgui.InputTextFlagsCallbackAlways, cb) {
+	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), s, flags, cb) {
 		if v, err := strconv.ParseUint(*s, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)
 		}
@@ -228,20 +252,4 @@ func (win *winCPU) drawRDYFlag() {
 		imgui.Button(" ")
 	}
 	imgui.PopStyleColorV(3)
-}
-
-func (win *winCPU) hex8Bit(nibbles int, d imgui.InputTextCallbackData) int32 {
-	s := string(d.Buffer())
-
-	// restrict length of input to two characters
-	// -- note that restriction to hexadecimal characters is handled by the
-	// imgui.InputTextFlagsCharsHexadecimal given to InputTextV()
-	if len(s) > nibbles {
-		d.DeleteBytes(0, len(s))
-		s = s[:nibbles]
-		d.InsertBytes(0, []byte(s))
-		d.MarkBufferModified()
-	}
-
-	return 0
 }
