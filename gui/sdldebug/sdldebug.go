@@ -475,11 +475,9 @@ func (scr *SdlDebug) NewFrame(frameNum int) error {
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+
+	// handle VBLANK by setting pixels to black
 	if vblank {
-		// we could return immediately but if vblank is on inside the visible
-		// area we need to the set pixel to black, in case the vblank was off
-		// in the previous frame (for efficiency, we're not clearing the pixel
-		// array at the end of the frame)
 		red = 0
 		green = 0
 		blue = 0

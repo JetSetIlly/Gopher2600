@@ -231,8 +231,17 @@ func (win *winScreen) NewScanline(scanline int) error {
 
 // SetPixel implements the television.PixelRenderer interface
 func (win *winScreen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+
+	// handle VBLANK by setting pixels to black
+	if vblank {
+		red = 0
+		green = 0
+		blue = 0
+	}
+
 	win.pixels.Set(x-television.HorizClksHBlank, y-win.topScanline,
 		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
+
 	return nil
 }
 

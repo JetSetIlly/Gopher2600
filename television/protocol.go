@@ -110,7 +110,7 @@ type PixelRenderer interface {
 	// o the x argument is measured from zero so renderers should decide how to
 	//	handle pixels of during the HBLANK (x < ClocksPerHBLANK)
 	//
-	// o the y argument is also measure from zero but because VBLANK can be
+	// o the y argument is also measured from zero but because VBLANK can be
 	//	turned on at any time there's no easy test. the VBLANK flag is sent to
 	//	help renderers decide what to do.
 	//
@@ -125,6 +125,7 @@ type PixelRenderer interface {
 	//
 	//	* Custer's Revenge
 	//	* Ladybug
+	//	* ET (turns VBLANK off late on scanline 40)
 	//
 	SetPixel(x, y int, red, green, blue byte, vblank bool) error
 	SetAltPixel(x, y int, red, green, blue byte, vblank bool) error
