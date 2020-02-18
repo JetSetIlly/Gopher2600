@@ -26,9 +26,15 @@ import (
 // Colors defines all the colors used by the GUI
 type Colors struct {
 	// default colors
-	WindowBg  imgui.Vec4
-	TitleBg   imgui.Vec4
-	MenuBarBg imgui.Vec4
+	MenuBarBg     imgui.Vec4
+	WindowBg      imgui.Vec4
+	TitleBg       imgui.Vec4
+	TitleBgActive imgui.Vec4
+	Border        imgui.Vec4
+
+	// the color to draw the TV Screen window border when mouse is captured
+	CapturedScreenTitle  imgui.Vec4
+	CapturedScreenBorder imgui.Vec4
 
 	// CPU status register buttons
 	CPUStatusOn         imgui.Vec4
@@ -75,9 +81,14 @@ type Colors struct {
 
 func defaultTheme() *Colors {
 	cols := Colors{
-		WindowBg:                 imgui.Vec4{0.075, 0.08, 0.09, 0.75},
-		TitleBg:                  imgui.Vec4{0.075, 0.08, 0.09, 1.0},
-		MenuBarBg:                imgui.Vec4{0.075, 0.08, 0.09, 1.0},
+		MenuBarBg:     imgui.Vec4{0.075, 0.08, 0.09, 1.0},
+		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 0.8},
+		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
+		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
+		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
+
+		// setting CapturedScreen* colors later
+
 		CPUStatusOn:              imgui.Vec4{0.73, 0.49, 0.14, 1.0},
 		CPUStatusOnHovered:       imgui.Vec4{0.79, 0.54, 0.15, 1.0},
 		CPUStatusOnActive:        imgui.Vec4{0.79, 0.54, 0.15, 1.0},
@@ -112,10 +123,17 @@ func defaultTheme() *Colors {
 		TermStyleError:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
 	}
 
+	// set SapturedScreen* color to match default colors
+	cols.CapturedScreenTitle = cols.TitleBgActive
+	cols.CapturedScreenBorder = cols.TitleBgActive
+
+	// set default colors
 	style := imgui.CurrentStyle()
-	style.SetColor(imgui.StyleColorWindowBg, imgui.Vec4{0.075, 0.08, 0.09, 0.75})
-	style.SetColor(imgui.StyleColorTitleBg, imgui.Vec4{0.075, 0.08, 0.09, 1.0})
-	style.SetColor(imgui.StyleColorMenuBarBg, imgui.Vec4{0.075, 0.08, 0.09, 1.0})
+	style.SetColor(imgui.StyleColorMenuBarBg, cols.MenuBarBg)
+	style.SetColor(imgui.StyleColorWindowBg, cols.WindowBg)
+	style.SetColor(imgui.StyleColorTitleBg, cols.TitleBg)
+	style.SetColor(imgui.StyleColorTitleBgActive, cols.TitleBgActive)
+	style.SetColor(imgui.StyleColorBorder, cols.Border)
 
 	return &cols
 }

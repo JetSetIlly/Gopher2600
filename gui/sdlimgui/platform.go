@@ -29,7 +29,6 @@ import (
 )
 
 const windowTitle = "Gopher2600"
-const windowTitleCaptured = "Gopher2600 [captured]"
 
 type platform struct {
 	img *SdlImgui

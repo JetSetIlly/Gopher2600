@@ -121,7 +121,6 @@ func (img *SdlImgui) Service() {
 						if err == nil {
 							img.plt.window.SetGrab(true)
 							sdl.ShowCursor(sdl.DISABLE)
-							img.plt.window.SetTitle(windowTitleCaptured)
 						}
 					}
 
@@ -136,7 +135,6 @@ func (img *SdlImgui) Service() {
 						if err == nil {
 							img.plt.window.SetGrab(false)
 							sdl.ShowCursor(sdl.ENABLE)
-							img.plt.window.SetTitle(windowTitle)
 						}
 					}
 				}

@@ -109,7 +109,20 @@ func (win *winScreen) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+
+	// if isCaptured flag is set then change the title and border colors of the
+	// TV Screen window.
+	if win.isCaptured {
+		imgui.PushStyleColor(imgui.StyleColorTitleBgActive, win.img.cols.CapturedScreenTitle)
+		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.CapturedScreenBorder)
+	}
+
 	imgui.BeginV(winScreenTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+
+	// once the window has been drawn then remove any additional styling
+	if win.isCaptured {
+		imgui.PopStyleColorV(2)
+	}
 
 	imgui.Image(imgui.TextureID(win.texture),
 		imgui.Vec2{
