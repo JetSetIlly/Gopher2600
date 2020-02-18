@@ -80,7 +80,7 @@ func (win *winDisasm) draw() {
 
 		if win.img.vcs.Mem.Cart.NumBanks() == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
-			win.drawBank(pcAddr, 0)
+			win.drawBank(pcAddr, 0, true)
 		} else {
 			// create a new TabBar and iterate throuhg the cartridge banks,
 			// adding a new TabPage for each
@@ -96,7 +96,7 @@ func (win *winDisasm) draw() {
 				}
 
 				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-					win.drawBank(pcAddr, b)
+					win.drawBank(pcAddr, b, b == currBank)
 					imgui.EndTabItem()
 				}
 			}
@@ -109,7 +109,7 @@ func (win *winDisasm) draw() {
 	win.followPC = !win.img.paused
 }
 
-func (win *winDisasm) drawBank(pcAddr uint16, b int) {
+func (win *winDisasm) drawBank(pcAddr uint16, b int, followPC bool) {
 	imgui.BeginChild(fmt.Sprintf("bank %d", b))
 
 	itr, _ := win.img.dsm.NewIteration(b)
@@ -118,12 +118,12 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int) {
 
 		// if address value of current disasm entry and
 		// current PC value match then highlight the entry
-		if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+		if followPC && e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
 			win.drawEntry(e, true)
 
 			// if emulation is running then centre on the current
 			// program counter
-			if !win.img.paused || win.followPC {
+			if followPC {
 				imgui.SetScrollHereY(0.5)
 			}
 		} else {
