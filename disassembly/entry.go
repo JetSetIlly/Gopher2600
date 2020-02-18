@@ -98,7 +98,6 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	// important fields
 	if result.Defn == nil {
 		d.Bytecode = "??"
-		d.Mnemonic = "???"
 		return d, nil
 	}
 
@@ -174,9 +173,9 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 			panic("we shoud not be able to read more bytes than the expected number")
 		}
 	case 0:
-		panic("instructions that have no bytes makes no sense")
+		panic("instructions of zero bytes is not possible")
 	default:
-		panic("instructions with more than 3 bytes is impossible on the 6502/6507")
+		panic("instructions of more than 3 bytes is not possible")
 	}
 	d.Bytecode = strings.TrimSpace(d.Bytecode)
 

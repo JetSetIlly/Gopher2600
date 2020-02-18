@@ -10,7 +10,7 @@
 [TODO] filename completion (debugger/terminal/commandline/tabcompletion.go:186)
 [TODO] consider resize flag bit for digest.Video (digest/video.go:86)
 [TODO] fix cpu.go so that video callbacks are delayed until (gui/sdlimgui/win_cpu.go:171)
-[TODO] tidy up when & how endCycle() is called (hardware/cpu/cpu.go:433)
+[TODO] read16BitPC() should work like read8BitPC() (hardware/cpu/cpu.go:313)
 [TODO] FE cartridge format (hardware/memory/cartridge/cartridge.go:160)
 [TODO] AR cartridge format (hardware/memory/cartridge/cartridge.go:168)
 [TODO] accurate paddle timings and sensitivity (hardware/riot/input/handcontrollers.go:119)

@@ -183,6 +183,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 		mc.LastResult.BusError = err.Error()
 	}
 
+	// +1 cycle
 	err = mc.endCycle()
 	if err != nil {
 		return 0, err
@@ -204,6 +205,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 		mc.LastResult.BusError = err.Error()
 	}
 
+	// +1 cycle
 	err = mc.endCycle()
 	if err != nil {
 		return 0, err
@@ -243,6 +245,8 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 		}
 		mc.LastResult.BusError = err.Error()
 	}
+
+	// +1 cycle
 	err = mc.endCycle()
 	if err != nil {
 		return 0, err
@@ -255,38 +259,63 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 		}
 		mc.LastResult.BusError = err.Error()
 	}
+
+	// +1 cycle
 	err = mc.endCycle()
 	if err != nil {
 		return 0, err
 	}
 
-	val := uint16(hi) << 8
-	val |= uint16(lo)
-
-	return val, nil
+	return (uint16(hi) << 8) | uint16(lo), nil
 }
 
 // read8BitPC reads 8 bits from the address pointer to the program counter
-func (mc *CPU) read8BitPC() (uint8, error) {
-	op, err := mc.read8Bit(mc.PC.Address())
+//
+// in addition to reading from the address pointed to by the program counter,
+// this function differes from read8Bit() by assigning the read value to a
+// prepared variable and delaying endCycle until after the necessary
+// assignments have been made
+func (mc *CPU) read8BitPC(val *uint8, f func() error) error {
+	v, err := mc.mem.Read(mc.PC.Address())
+
 	if err != nil {
-		return 0, err
+		if !errors.Is(err, errors.BusError) {
+			return err
+		}
+		mc.LastResult.BusError = err.Error()
 	}
 
-	// * note that this add operation does not require a call to endCycle. the
-	// addition is implied as part of the call to read8Bit()
 	carry, _ := mc.PC.Add(1)
 	if carry {
-		return 0, errors.New(errors.ProgramCounterCycled)
+		return errors.New(errors.ProgramCounterCycled)
 	}
 
 	// bump the number of bytes read during instruction decode
 	mc.LastResult.ByteCount++
 
-	return op, nil
+	// update and callback before endCycle() is called
+	if val != nil {
+		*val = v
+	}
+	if f != nil {
+		err = f()
+		if err != nil {
+			return err
+		}
+	}
+
+	// +1 cycle
+	err = mc.endCycle()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // read16BitPC reads 16 bits from the address pointer to the program counter
+//
+// !!TODO: read16BitPC() should work like read8BitPC()
 func (mc *CPU) read16BitPC() (uint16, error) {
 	val, err := mc.read16Bit(mc.PC.Address())
 	if err != nil {
@@ -425,15 +454,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// read next instruction (end cycle part of read8BitPC)
 	// +1 cycle
-	opcode, err := mc.read8BitPC()
+	var opcode uint8
+	var defn *instructions.Definition
+	err = mc.read8BitPC(&opcode, func() error {
+		defn = mc.instructions[opcode]
+		if defn == nil {
+			return errors.New(errors.UnimplementedInstruction, opcode, mc.PC.Address()-1)
+		}
+		mc.LastResult.Defn = defn
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	defn := mc.instructions[opcode]
-	if defn == nil {
-		return errors.New(errors.UnimplementedInstruction, opcode, mc.PC.Address()-1)
-	}
-	mc.LastResult.Defn = defn
 
 	// address is the actual address to use to access memory (after any indexing
 	// has taken place)
@@ -464,7 +497,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			// BRK is unusual in that it increases the PC by two bytes despite
 			// being an implied addressing mode.
 			// +1 cycle
-			_, err = mc.read8BitPC()
+			err = mc.read8BitPC(nil, nil)
 			if err != nil {
 				return err
 			}
@@ -485,11 +518,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// therefore, we don't set the address and we read the value through the PC
 
 		// +1 cycle
-		value, err = mc.read8BitPC()
+		err = mc.read8BitPC(&value, func() error {
+			mc.LastResult.InstructionData = value
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		mc.LastResult.InstructionData = value
 
 	case instructions.Absolute:
 		if defn.Effect != instructions.Subroutine {
@@ -512,37 +547,45 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// in the branch() function
 
 		// +1 cycle
-		value, err := mc.read8BitPC()
+		err = mc.read8BitPC(&value, func() error {
+			mc.LastResult.InstructionData = value
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		mc.LastResult.InstructionData = value
+
 		address = uint16(value)
 
 	case instructions.ZeroPage:
 		zeroPage = true
 
 		// +1 cycle
-		value, err := mc.read8BitPC()
+		err = mc.read8BitPC(&value, func() error {
+			// while we must trest the value as an address (ie. as uint16) we
+			// actually only read an 8 bit value so we store the value as uint8
+			mc.LastResult.InstructionData = value
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		address = uint16(value)
 
-		// while we must trest the value as an address (ie. as uint16) we
-		// actually only read an 8 bit value so we store the value as uint8
-		mc.LastResult.InstructionData = value
+		address = uint16(value)
 
 	case instructions.IndexedZeroPageX:
 		zeroPage = true
 
 		// +1 cycles
-		indirectAddress, err := mc.read8BitPC()
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = indirectAddress
+			return nil
+		})
 		if err != nil {
 			return err
 		}
 
-		mc.LastResult.InstructionData = indirectAddress
 		mc.acc8.Load(indirectAddress)
 		mc.acc8.Add(mc.X.Value(), false)
 		address = mc.acc8.Address()
@@ -564,12 +607,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
-		indirectAddress, err := mc.read8BitPC()
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = indirectAddress
+			return nil
+		})
 		if err != nil {
 			return err
 		}
 
-		mc.LastResult.InstructionData = indirectAddress
 		mc.acc8.Load(indirectAddress)
 		mc.acc8.Add(mc.Y.Value(), false)
 		address = mc.acc8.Address()
@@ -646,11 +692,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.PreIndexedIndirect: // x indexing
 		// +1 cycle
-		indirectAddress, err := mc.read8BitPC()
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = indirectAddress
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		mc.LastResult.InstructionData = indirectAddress
 
 		// phantom read before adjusting the index
 		// +1 cycle
@@ -679,11 +728,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.PostIndexedIndirect: // y indexing
 		// +1 cycle
-		indirectAddress, err := mc.read8BitPC()
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = indirectAddress
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		mc.LastResult.InstructionData = indirectAddress
 
 		// +2 cycles
 		indexedAddress, err := mc.read16Bit(uint16(indirectAddress))
@@ -1191,7 +1243,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "JSR":
 		// +1 cycle
-		lsb, err := mc.read8BitPC()
+		var lo uint8
+		err = mc.read8BitPC(&lo, nil)
 		if err != nil {
 			return err
 		}
@@ -1232,12 +1285,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// perform jump
-		msb, err := mc.read8BitPC()
+		var hi uint8
+		err = mc.read8BitPC(&hi, nil)
 		if err != nil {
 			return err
 		}
 
-		address = (uint16(msb) << 8) | uint16(lsb)
+		address = (uint16(hi) << 8) | uint16(lo)
 		if !mc.NoFlowControl {
 			mc.PC.Load(address)
 		}
@@ -1250,8 +1304,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.LastResult.InstructionData = address
 
 	case "RTS":
+		// +1 cycle
 		if !mc.NoFlowControl {
-			// +1 cycle
 			mc.SP.Add(1, false)
 		}
 		err = mc.endCycle()
@@ -1284,6 +1338,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+
+		// +1 cycle
 		mc.SP.Add(255, false)
 		err = mc.endCycle()
 		if err != nil {
@@ -1294,6 +1350,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+
+		// +1 cycle
 		mc.SP.Add(255, false)
 		err = mc.endCycle()
 		if err != nil {
@@ -1305,6 +1363,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+
+		// +1 cycle
 		mc.SP.Add(255, false)
 		err = mc.endCycle()
 		if err != nil {
@@ -1330,6 +1390,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// not sure when this cycle should occur
+		// +1 cycle
 		err = mc.endCycle()
 		if err != nil {
 			return err

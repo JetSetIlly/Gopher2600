@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"gopher2600/debugger"
 	"gopher2600/debugger/terminal"
 	"gopher2600/disassembly"
 	"gopher2600/gui"
@@ -49,6 +50,7 @@ type SdlImgui struct {
 
 	// references to the emulation
 	tv  television.Television
+	dbg *debugger.Debugger
 	vcs *hardware.VCS
 	dsm *disassembly.Disassembly
 
