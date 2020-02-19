@@ -164,5 +164,9 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	s = win.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
+	// if item is visible then check for breakpoint
+	if imgui.IsItemVisible() && win.img.dbg.IsBreak(e) {
+	}
+
 	imgui.PopStyleColorV(5)
 }
