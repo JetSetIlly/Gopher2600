@@ -179,7 +179,7 @@ func (trm *mockTerm) cmpOutput(s string) bool {
 
 	if len(trm.output) == 0 {
 		if len(s) != 0 {
-			trm.t.Errorf(fmt.Sprintf("unexpected debugger output (nothinga) should be (%s)", s))
+			trm.t.Errorf(fmt.Sprintf("unexpected debugger output (nothing) should be (%s)", s))
 			return false
 		}
 		return true

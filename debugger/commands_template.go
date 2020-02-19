@@ -110,7 +110,7 @@ var commandTemplate = []string{
 	cmdKeypad + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
-	cmdBreak + " [%<target>S %<value>N|%<pc value>N] {& %<target>S %<value>N|& %<value>N}",
+	cmdBreak + " [%<target>S %<value>N|%<pc value>S] {& %<target>S %<value>S|& %<value>S}",
 	cmdTrap + " [%<target>S] {%<targets>S}",
 	cmdWatch + " (READ|WRITE) [%<address>S] (%<value>S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",

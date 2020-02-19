@@ -141,21 +141,25 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 		adj = win.img.cols.DisasmSelectedAdj
 	}
 
-	s := win.img.dsm.GetField(disassembly.FldAddress, e)
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	imgui.Text(s)
+	// we need to print something so we can ask IsItemVisible()
+	imgui.Text(" ")
 
 	// if item is visible then check for breakpoint
 	if imgui.IsItemVisible() {
-		switch win.img.dbg.HasPcBreak(e) {
-		case debugger.PcBreakAnyBank:
+		switch win.img.dbg.HasBreak(e) {
+		case debugger.BrkGrpAnyBank:
 			imgui.SameLine()
-			badgeBreakpointAnyBank(win.img.cols)
-		case debugger.PcBreakThisBank:
+			badgePentagonHollow(win.img.cols.DisasmMnemonic)
+		case debugger.BrkGrpThisBank:
 			imgui.SameLine()
-			badgeBreakpointThisBank(win.img.cols)
+			badgePentagon(win.img.cols.DisasmMnemonic)
 		}
 	}
+
+	imgui.SameLine()
+	s := win.img.dsm.GetField(disassembly.FldAddress, e)
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
+	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))

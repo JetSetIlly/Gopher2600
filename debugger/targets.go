@@ -69,6 +69,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "PC",
 				currentValue: func() interface{} {
+					// for breakpoints it is important that the breakpoint
+					// value be normalised through mapAddress() too
 					ai := dbg.dbgmem.mapAddress(dbg.vcs.CPU.PC.Address(), true)
 					return int(ai.mappedAddress)
 				},
@@ -123,6 +125,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					return fr
 				},
 			}
+
 		case "SCANLINE", "SL":
 			trg = &target{
 				label: "Scanline",
@@ -134,6 +137,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					return sl
 				},
 			}
+
 		case "HORIZPOS", "HP":
 			trg = &target{
 				label: "Horiz Pos",
@@ -162,6 +166,17 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			if present {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {
+				case "MNEMONIC", "MNE":
+					trg = &target{
+						label: "Mnemonic",
+						currentValue: func() interface{} {
+							if !dbg.vcs.CPU.LastResult.Final {
+								return ""
+							}
+							return dbg.vcs.CPU.LastResult.Defn.Mnemonic
+						},
+					}
+
 				case "EFFECT", "EFF":
 					trg = &target{
 						label: "Instruction Effect",

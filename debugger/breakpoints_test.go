@@ -54,4 +54,7 @@ func (trm *mockTerm) testBreakpoints() {
 	// expression is not exactly the same.
 	trm.sndInput("BREAK HP 100 & SL 100")
 	trm.cmpOutput("breakpoint error: already exists (Scanline->100 & Horiz Pos->100)")
+
+	trm.sndInput("BREAK HP 100")
+	trm.cmpOutput("")
 }

@@ -23,20 +23,22 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-func badgeBreakpointAnyBank(cols *Colors) {
+func badgePentagonHollow(col imgui.Vec4) {
 	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
-	radius := imgui.FrameHeight() / 6
+	radius := imgui.FrameHeight() / 5
 	p.Y += imgui.TextLineHeight() * 0.75
+	p.X -= 5
 
-	dl.AddCircle(p, radius, colorConvertFloat4ToU32(cols.BreakpointPC))
+	dl.AddCircleV(p, radius, colorConvertFloat4ToU32(col), 5, 3)
 }
 
-func badgeBreakpointThisBank(cols *Colors) {
+func badgePentagon(col imgui.Vec4) {
 	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
-	radius := imgui.FrameHeight() / 6
+	radius := 2 + imgui.FrameHeight()/5
 	p.Y += imgui.TextLineHeight() * 0.75
+	p.X -= 5
 
-	dl.AddCircleFilled(p, radius, colorConvertFloat4ToU32(cols.BreakpointPC))
+	dl.AddCircleFilledV(p, radius, colorConvertFloat4ToU32(col), 5)
 }

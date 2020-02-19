@@ -26,8 +26,8 @@ func (dbg *Debugger) GetQuantum() QuantumMode {
 	return dbg.quantum
 }
 
-// HasPcBreak returns true if there is a breakpoint at the address. the second
+// HasBreak returns true if there is a breakpoint at the address. the second
 // return value indicates if there is a breakpoint at the address AND bank
-func (dbg *Debugger) HasPcBreak(e *disassembly.Entry) PcBreak {
-	return dbg.breakpoints.hasPcBreak(e)
+func (dbg *Debugger) HasBreak(e *disassembly.Entry) BreakGroup {
+	return dbg.breakpoints.hasBreak(e)
 }

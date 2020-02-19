@@ -41,8 +41,9 @@ type breakpoints struct {
 	breaks []breaker
 
 	// prepared targets which we use to check for PC breaks. see hasPcBreak()
-	checkPcBreak   *target
-	checkBankBreak *target
+	checkPcBreak       *target
+	checkBankBreak     *target
+	checkMnemonicBreak *target
 }
 
 // breaker defines a specific break condition
@@ -66,49 +67,50 @@ func (bk breaker) String() string {
 	return s.String()
 }
 
-// id creates a sum of the breaker sequence such that the order of the sequence
-// does not matter. this commutative property makes it useful to detect
-// duplicate sequences of ANDed breakers.
-//
-// note that id collisions using this method is likely if we were applying it
-// to arbitrary strings. but given the restrictions on what is a breakpoint
-// string and the packing of string length into the LSB, the chances are
-// reduced. still, it's something we should be mindful of.
-func (bk breaker) id() int {
-	// summation of data in each node
-	sum := 0
-
-	// number of nodes encountered
-	c := 1
-
-	// visit every node in the sequence
-	n := &bk
-	for n != nil {
-
-		// add the ASCII value of each character in the target label to the sum
-		s := n.target.Label()
-		for i := 0; i < len(s); i++ {
-			sum += int(s[i])
-		}
-
-		// add the breakpoint value to the sum
-		switch v := n.value.(type) {
-		case int:
-			sum += v
-		case bool:
-			// if value type is boolean add one if value is true
-			if v {
-				sum++
-			}
-		default:
-		}
-
-		n = n.next
-		c++
+// compares two breakers for equality. returns true if the two breakers are
+// logically the same.
+func (bk breaker) cmp(ck breaker) bool {
+	// count number of nodes
+	bn := 0
+	b := &bk
+	for b != nil {
+		bn++
+		b = b.next
 	}
 
-	// stuff number of nodes into the LSB
-	return (sum << 8) | (c % 256)
+	cn := 0
+	c := &ck
+	for c != nil {
+		cn++
+		c = c.next
+	}
+
+	// if counts are different then the comparison has failed
+	if cn != bn {
+		return false
+	}
+
+	// compare all nodes with one another
+	b = &bk
+	for b != nil {
+		c = &ck
+		match := false
+		for c != nil {
+			match = (b.target.label == c.target.label && b.value == c.value)
+			if match {
+				break // for loop
+			}
+			c = c.next
+		}
+
+		if !match {
+			return false
+		}
+
+		b = b.next
+	}
+
+	return true
 }
 
 // check checks the specific break condition with the current value of
@@ -158,6 +160,11 @@ func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 	}
 
 	bp.checkBankBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("BANK"))
+	if err != nil {
+		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
+	}
+
+	bp.checkMnemonicBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("RESULT MNEMONIC"))
 	if err != nil {
 		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
 	}
@@ -262,6 +269,11 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		// try to interpret the token depending on the type of value the target
 		// expects
 		switch tgt.TargetValue().(type) {
+		case string:
+			// if token is string type then make it uppercase for now
+			// !!TODO: more sophisticated transforms of breakpoint information
+			// see also "special handling for PC" below
+			val = strings.ToUpper(tok)
 		case int:
 			var v int64
 			v, err = strconv.ParseInt(tok, 0, 32)
@@ -339,7 +351,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 
 func (bp *breakpoints) checkBreaker(nb breaker) error {
 	for _, ob := range bp.breaks {
-		if nb.id() == ob.id() {
+		if nb.cmp(ob) {
 			return errors.New(errors.BreakpointError, fmt.Sprintf("already exists (%s)", ob))
 		}
 	}
@@ -347,19 +359,17 @@ func (bp *breakpoints) checkBreaker(nb breaker) error {
 	return nil
 }
 
-// PcBreak indicates if the emulation will halt on PC or PC and Bank match
-type PcBreak int
+// BreakGroup indicates the broad category of breakpoint an address has
+type BreakGroup int
 
 // List of valid PcBreak values
 const (
-	PcBreakNone PcBreak = iota
-	PcBreakAnyBank
-	PcBreakThisBank
+	BrkGrpNone BreakGroup = iota
+	BrkGrpAnyBank
+	BrkGrpThisBank
 )
 
-// hasPCBreak works by building a new breaker instance and checking to see if
-// it exists in the list of breakpoints
-func (bp *breakpoints) hasPcBreak(e *disassembly.Entry) PcBreak {
+func (bp *breakpoints) hasBreak(e *disassembly.Entry) BreakGroup {
 	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
 
 	// we start with the very specific - address and bank
@@ -380,7 +390,7 @@ func (bp *breakpoints) hasPcBreak(e *disassembly.Entry) PcBreak {
 	// PcBreakThisBank to indicate that this disassembly entry has this
 	// specific breakpoint
 	if err := bp.checkBreaker(check); err != nil {
-		return PcBreakThisBank
+		return BrkGrpThisBank
 	}
 
 	// if checkBreaker doesn't report an existing breakpoint, we remove the
@@ -389,9 +399,9 @@ func (bp *breakpoints) hasPcBreak(e *disassembly.Entry) PcBreak {
 	// that the debugger will break for any bank
 	check.next = nil
 	if err := bp.checkBreaker(check); err != nil {
-		return PcBreakAnyBank
+		return BrkGrpAnyBank
 	}
 
 	// there is no breakpoint at that matches this disassembly entry
-	return PcBreakNone
+	return BrkGrpNone
 }
