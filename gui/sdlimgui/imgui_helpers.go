@@ -34,3 +34,65 @@ func minFrameDimension(s string, t ...string) imgui.Vec2 {
 	w.Y = imgui.FontSize() + (imgui.CurrentStyle().FramePadding().Y * 2.0)
 	return w
 }
+
+// draw toggle button at current cursor position
+func toggleButton(id string, v *bool, col imgui.Vec4) {
+	bg := colorConvertFloat4ToU32(col)
+	p := imgui.CursorScreenPos()
+	dl := imgui.WindowDrawList()
+
+	height := imgui.FrameHeight()
+	width := height * 1.55
+	radius := height * 0.50
+	t := float32(0.0)
+	if *v {
+		t = 1.0
+	}
+
+	// const animSpeed = 0.08
+	// ctx, _ := imgui.CurrentContext()
+	// if ctx.LastActiveId == ctx.CurrentWindow.GetID(id) {
+	// 	tanim := ctx.LastActiveIdTimer / animSpeed
+	// 	if tanim < 0.0 {
+	// 		tanim = 0.0
+	// 	} else if tanim > 1.0 {
+	// 		tanim = 1.0
+	// 	}
+	// 	if *v {
+	// 		t = tanim
+	// 	} else {
+	// 		t = 1.0 - tanim
+	// 	}
+	// }
+
+	imgui.InvisibleButtonV(id, imgui.Vec2{width, height})
+	if imgui.IsItemClicked() {
+		*v = !*v
+	}
+
+	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
+	dl.AddCircleFilled(imgui.Vec2{p.X + radius + t*(width-radius*2.0), p.Y + radius},
+		radius-1.5, colorConvertFloat4ToU32(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
+}
+
+func float32ToUint32(f float32) uint32 {
+	s := f
+	if s < 0.0 {
+		s = 0.0
+	} else if s > 1.0 {
+		s = 1.0
+	}
+
+	return uint32(f*255.0 + 0.5)
+}
+
+// ColorConvertFloat4ToU32 converts a color represented by a four-dimensional
+// vector to an unsigned 32bit integer.
+func colorConvertFloat4ToU32(col imgui.Vec4) uint32 {
+	var r uint32
+	r = float32ToUint32(col.X) << 0
+	r |= float32ToUint32(col.Y) << 8
+	r |= float32ToUint32(col.Z) << 16
+	r |= float32ToUint32(col.W) << 24
+	return r
+}

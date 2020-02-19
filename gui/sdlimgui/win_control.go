@@ -28,6 +28,8 @@ const winControlTitle = "Control"
 type winControl struct {
 	windowManagement
 	img *SdlImgui
+
+	videoStep bool
 }
 
 func newWinControl(img *SdlImgui) (managedWindow, error) {
@@ -71,8 +73,30 @@ func (win *winControl) draw() {
 	}
 	imgui.PopStyleColorV(3)
 
+	// quantum toggle
+	//
+	// it is currently possible for the toggle to get out of sync with the
+	// debugger setting
+	// !!TODO: keep debugger and gui quantum settings in sync
 	imgui.SameLine()
-	imgui.Selectable("Step by CPU")
+	toggle := win.videoStep
+	toggleButton("quantum", &toggle, win.img.cols.TitleBgActive)
+	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
+	if toggle {
+		imgui.Text("video cycle")
+		if win.videoStep != toggle {
+			win.videoStep = toggle
+			win.img.issueTermCommand("QUANTUM VIDEO")
+		}
+	} else {
+		imgui.Text("cpu instruction")
+		if win.videoStep != toggle {
+			win.videoStep = toggle
+			win.img.issueTermCommand("QUANTUM CPU")
+		}
+	}
+	// END quantum toggle
 
 	imgui.Spacing()
 
