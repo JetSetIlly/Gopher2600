@@ -27,31 +27,19 @@ import (
 	"strings"
 )
 
-// defines which types are valid targets
-type target interface {
-	Label() string
-
-	// the current value of the target. must return a comparable type
-	TargetValue() interface{}
-
-	// format an arbitrary value using suitable formatting method for the target
-	FormatValue(val interface{}) string
-}
-
-// genericTarget is a way of targetting values that otherwise do not satisfy
-// the target interface.
-type genericTarget struct {
+type target struct {
 	label string
 
 	// must be a comparable type
 	currentValue interface{}
+	format       string
 }
 
-func (trg genericTarget) Label() string {
+func (trg target) Label() string {
 	return trg.label
 }
 
-func (trg genericTarget) TargetValue() interface{} {
+func (trg target) TargetValue() interface{} {
 	switch v := trg.currentValue.(type) {
 	case func() interface{}:
 		return v()
@@ -60,26 +48,17 @@ func (trg genericTarget) TargetValue() interface{} {
 	}
 }
 
-func (trg genericTarget) FormatValue(val interface{}) string {
-	switch t := trg.currentValue.(type) {
-	case string:
-		return val.(string)
-	case func() interface{}:
-		switch t().(type) {
-		case string:
-			return val.(string)
-		default:
-			return fmt.Sprintf("%#v", val)
-		}
-	default:
-		return fmt.Sprintf("%#v", val)
+func (trg target) FormatValue(val interface{}) string {
+	if trg.format == "" {
+		return fmt.Sprintf("%v", val)
 	}
+	return fmt.Sprintf(trg.format, val)
 }
 
 // parseTarget interprets the next token and returns a target if it is
 // recognised. returns error if it is not.
-func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
-	var trg target
+func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
+	var trg *target
 
 	keyword, present := tokens.Get()
 	if present {
@@ -87,19 +66,54 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 		switch keyword {
 		// cpu registers
 		case "PC":
-			trg = dbg.vcs.CPU.PC
+			trg = &target{
+				label: "PC",
+				currentValue: func() interface{} {
+					ai := dbg.dbgmem.mapAddress(dbg.vcs.CPU.PC.Address(), true)
+					return int(ai.mappedAddress)
+				},
+				format: "%#04x",
+			}
+
 		case "A":
-			trg = dbg.vcs.CPU.A
+			trg = &target{
+				label: "A",
+				currentValue: func() interface{} {
+					return int(dbg.vcs.CPU.A.Value())
+				},
+				format: "%#02x",
+			}
+
 		case "X":
-			trg = dbg.vcs.CPU.X
+			trg = &target{
+				label: "X",
+				currentValue: func() interface{} {
+					return int(dbg.vcs.CPU.X.Value())
+				},
+				format: "%#02x",
+			}
+
 		case "Y":
-			trg = dbg.vcs.CPU.Y
+			trg = &target{
+				label: "Y",
+				currentValue: func() interface{} {
+					return int(dbg.vcs.CPU.Y.Value())
+				},
+				format: "%#02x",
+			}
+
 		case "SP":
-			trg = dbg.vcs.CPU.SP
+			trg = &target{
+				label: "X",
+				currentValue: func() interface{} {
+					return int(dbg.vcs.CPU.Y.Value())
+				},
+				format: "%#02x",
+			}
 
 		// tv state
 		case "FRAMENUM", "FRAME", "FR":
-			trg = &genericTarget{
+			trg = &target{
 				label: "Frame",
 				currentValue: func() interface{} {
 					fr, err := dbg.vcs.TV.GetState(television.ReqFramenum)
@@ -110,7 +124,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				},
 			}
 		case "SCANLINE", "SL":
-			trg = &genericTarget{
+			trg = &target{
 				label: "Scanline",
 				currentValue: func() interface{} {
 					sl, err := dbg.vcs.TV.GetState(television.ReqScanline)
@@ -121,7 +135,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				},
 			}
 		case "HORIZPOS", "HP":
-			trg = &genericTarget{
+			trg = &target{
 				label: "Horiz Pos",
 				currentValue: func() interface{} {
 					hp, err := dbg.vcs.TV.GetState(television.ReqHorizPos)
@@ -133,7 +147,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 			}
 
 		case "BANK":
-			trg = &genericTarget{
+			trg = &target{
 				label: "Bank",
 				currentValue: func() interface{} {
 					return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
@@ -149,7 +163,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {
 				case "EFFECT", "EFF":
-					trg = &genericTarget{
+					trg = &target{
 						label: "Instruction Effect",
 						currentValue: func() interface{} {
 							if !dbg.vcs.CPU.LastResult.Final {
@@ -160,7 +174,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					}
 
 				case "PAGE":
-					trg = &genericTarget{
+					trg = &target{
 						label: "PageFault",
 						currentValue: func() interface{} {
 							return dbg.vcs.CPU.LastResult.PageFault
@@ -168,7 +182,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					}
 
 				case "BUG":
-					trg = &genericTarget{
+					trg = &target{
 						label: "CPU Bug",
 						currentValue: func() interface{} {
 							s := dbg.vcs.CPU.LastResult.CPUBug
@@ -180,7 +194,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 					}
 
 				case "BUS":
-					trg = &genericTarget{
+					trg = &target{
 						label: "Bus Error",
 						currentValue: func() interface{} {
 							s := dbg.vcs.CPU.LastResult.BusError

@@ -39,11 +39,15 @@ type breakpoints struct {
 
 	// array of breakers are ORed together
 	breaks []breaker
+
+	// prepared targets which we use to check for PC breaks. see hasPcBreak()
+	checkPcBreak   *target
+	checkBankBreak *target
 }
 
 // breaker defines a specific break condition
 type breaker struct {
-	target      target
+	target      *target
 	value       interface{}
 	ignoreValue interface{}
 
@@ -142,10 +146,23 @@ func (bk *breaker) add(nbk *breaker) {
 }
 
 // newBreakpoints is the preferred method of initialisation for breakpoints
-func newBreakpoints(dbg *Debugger) *breakpoints {
+func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 	bp := &breakpoints{dbg: dbg}
 	bp.clear()
-	return bp
+
+	var err error
+
+	bp.checkPcBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("PC"))
+	if err != nil {
+		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
+	}
+
+	bp.checkBankBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("BANK"))
+	if err != nil {
+		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
+	}
+
+	return bp, err
 }
 
 // clear all breakpoints
@@ -220,7 +237,10 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	// being set on the PC. breaking on PC is probably the most common type of
 	// breakpoint. the target will change value when the input string sees
 	// something appropriate
-	tgt := target(bp.dbg.vcs.CPU.PC)
+	tgt, err := parseTarget(bp.dbg, commandline.TokeniseInput("PC"))
+	if err != nil {
+		return errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
+	}
 
 	// resolvedTarget keeps track of whether we have specified a target but not
 	// given any values for that target. we set it to true initially because
@@ -262,6 +282,12 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		}
 
 		if err == nil {
+			// special handling for PC
+			if tgt.Label() == "PC" {
+				ai := bp.dbg.dbgmem.mapAddress(uint16(val.(int)), true)
+				val = int(ai.mappedAddress)
+			}
+
 			if andBreaks {
 				newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: val})
 				resolvedTarget = true
@@ -290,6 +316,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 					return errors.New(errors.CommandError, err)
 				}
 				resolvedTarget = false
+
 			}
 		}
 
@@ -320,8 +347,10 @@ func (bp *breakpoints) checkBreaker(nb breaker) error {
 	return nil
 }
 
+// PcBreak indicates if the emulation will halt on PC or PC and Bank match
 type PcBreak int
 
+// List of valid PcBreak values
 const (
 	PcBreakNone PcBreak = iota
 	PcBreakAnyBank
@@ -331,18 +360,19 @@ const (
 // hasPCBreak works by building a new breaker instance and checking to see if
 // it exists in the list of breakpoints
 func (bp *breakpoints) hasPcBreak(e *disassembly.Entry) PcBreak {
+	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
 
 	// we start with the very specific - address and bank
 	check := breaker{
-		target: bp.dbg.vcs.CPU.PC,
+		target: bp.checkPcBreak,
 
 		// casting value to type because that's how the target value is stored
 		// for the program counter (see TargetValue() implementation for the
 		// ProgramCounter type in the registers package)
-		value: int(e.Result.Address),
+		value: int(ai.mappedAddress),
 	}
 	check.next = &breaker{
-		target: &genericTarget{label: "Bank"},
+		target: bp.checkBankBreak,
 		value:  e.Bank,
 	}
 

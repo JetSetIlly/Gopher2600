@@ -162,7 +162,10 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	}
 
 	// set up breakpoints/traps
-	dbg.breakpoints = newBreakpoints(dbg)
+	dbg.breakpoints, err = newBreakpoints(dbg)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)

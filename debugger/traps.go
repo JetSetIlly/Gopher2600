@@ -37,7 +37,7 @@ type traps struct {
 }
 
 type trapper struct {
-	target    target
+	target    *target
 	origValue interface{}
 }
 

@@ -31,7 +31,7 @@ func NewProgramCounter(val uint16) *ProgramCounter {
 	return &ProgramCounter{value: val}
 }
 
-// Label returns an identifying string for the PC
+// Label returns the program counter label (or ID)
 func (pc ProgramCounter) Label() string {
 	return "PC"
 }
@@ -48,16 +48,6 @@ func (pc ProgramCounter) Value() uint16 {
 // BitWidth returns the number of bits used to store the program counter value
 func (pc ProgramCounter) BitWidth() int {
 	return 16
-}
-
-// FormatValue formats an arbitary value to look like a PC value
-func (pc ProgramCounter) FormatValue(val interface{}) string {
-	return fmt.Sprintf("%04x", val)
-}
-
-// TargetValue returns the current value of the PC as an integer (wrapped as a generic value)
-func (pc ProgramCounter) TargetValue() interface{} {
-	return int(pc.value)
 }
 
 // Address returns the current value of the PC as a a value of type uint16

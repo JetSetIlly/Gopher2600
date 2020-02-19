@@ -43,7 +43,7 @@ func NewAnonRegister(val uint8) *Register {
 	return NewRegister(val, "")
 }
 
-// Label implements the target interface
+// Label returns the registers label (or ID)
 func (r Register) Label() string {
 	return r.label
 }
@@ -84,16 +84,6 @@ func (r Register) IsZero() bool {
 // IsBitV returns the state of the second MSB
 func (r Register) IsBitV() bool {
 	return r.value&0x40 == 0x40
-}
-
-// TargetValue implements the target interface
-func (r Register) TargetValue() interface{} {
-	return int(r.value)
-}
-
-// FormatValue implements the target interface
-func (r Register) FormatValue(val interface{}) string {
-	return fmt.Sprintf("%02x", val)
 }
 
 // LoadFromUint64 loads a value into the register but using an int type as the

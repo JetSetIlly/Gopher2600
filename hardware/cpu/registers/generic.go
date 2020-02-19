@@ -26,6 +26,5 @@ type Generic interface {
 	Label() string
 	String() string
 	BitWidth() int
-	FormatValue(v interface{}) string
 	LoadFromUint64(v uint64)
 }
