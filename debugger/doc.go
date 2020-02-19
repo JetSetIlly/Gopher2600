@@ -59,4 +59,13 @@
 // The initscript is a script previously created either by the script.Scribe
 // package or by hand. The cartloader argument must be an instance of
 // cartloader.
+//
+//
+// Machine interaction with the debugger can be achieved through the terminal
+// interface. For example, setting the debugging quantum can be done by
+// returning a "QUANTUM CPU" string from a terminal.TermRead() implementation.
+//
+// Retrieving information from the debugger is more conveniently and more
+// efficiently achieved with the Get*() commands. For example GetQuantum()
+// returns the emulator's current quantum value.
 package debugger

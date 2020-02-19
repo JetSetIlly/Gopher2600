@@ -83,7 +83,7 @@ type Debugger struct {
 	commandOnStepStored string
 
 	// quantum to use when stepping/running
-	quantum quantumMode
+	quantum QuantumMode
 
 	// when reading input from the terminal there are other events
 	// that need to be monitored
@@ -195,6 +195,9 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 
 	// try to add to gui context
 	dbg.scr.SetFeature(gui.ReqAddVCS, dbg.vcs)
+
+	// try to add debugger (self) to gui context
+	dbg.scr.SetFeature(gui.ReqAddDebugger, dbg)
 
 	return dbg, nil
 }

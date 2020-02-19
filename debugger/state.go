@@ -19,22 +19,7 @@
 
 package debugger
 
-// QuantumMode specifies the step granularity of the emulator
-type QuantumMode int
-
-// List of valid QuantumModes
-const (
-	QuantumCPU QuantumMode = iota
-	QuantumVideo
-)
-
-func (mode QuantumMode) String() string {
-	switch mode {
-	case QuantumCPU:
-		return "CPU"
-	case QuantumVideo:
-		return "VIDEO"
-	default:
-		return "unrecognised quantum mode"
-	}
+// GetQuantum returns the current quantum value
+func (dbg *Debugger) GetQuantum() QuantumMode {
+	return dbg.quantum
 }

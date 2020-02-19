@@ -99,7 +99,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// c) the debugger has been changed to cpu quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if videoCycle && dbg.continueEmulation && dbg.quantum == quantumCPU {
+		if videoCycle && dbg.continueEmulation && dbg.quantum == QuantumCPU {
 			return nil
 		}
 
@@ -246,9 +246,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// if this non-video-cycle input loop then
 			if !videoCycle {
 				switch dbg.quantum {
-				case quantumCPU:
+				case QuantumCPU:
 					err = dbg.vcs.Step(dbg.videoCycle)
-				case quantumVideo:
+				case QuantumVideo:
 					err = dbg.vcs.Step(videoCycleWithInput)
 				default:
 					err = errors.New(errors.DebuggerError, "unknown quantum mode")

@@ -173,10 +173,10 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 			// calling step with no argument is the normal case
 		case "CPU":
 			// changes quantum
-			dbg.quantum = quantumCPU
+			dbg.quantum = QuantumCPU
 		case "VIDEO":
 			// changes quantum
-			dbg.quantum = quantumVideo
+			dbg.quantum = QuantumVideo
 		default:
 			// does not change quantum
 			tokens.Unget()
@@ -195,9 +195,9 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 			mode = strings.ToUpper(mode)
 			switch mode {
 			case "CPU":
-				dbg.quantum = quantumCPU
+				dbg.quantum = QuantumCPU
 			case "VIDEO":
-				dbg.quantum = quantumVideo
+				dbg.quantum = QuantumVideo
 			default:
 				// already caught by command line ValidateTokens()
 			}
