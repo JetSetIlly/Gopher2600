@@ -115,13 +115,11 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	// operands
 	var operand uint16
 
-	switch result.InstructionData.(type) {
+	switch v := result.InstructionData.(type) {
 	case uint8:
-		operand = uint16(result.InstructionData.(uint8))
-		d.Operand = fmt.Sprintf("$%02x", operand)
+		d.Operand = fmt.Sprintf("$%02x", v)
 	case uint16:
-		operand = uint16(result.InstructionData.(uint16))
-		d.Operand = fmt.Sprintf("$%04x", operand)
+		d.Operand = fmt.Sprintf("$%04x", v)
 	case nil:
 		if result.Defn.Bytes == 2 {
 			d.Operand = "??"
