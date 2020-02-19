@@ -62,12 +62,19 @@ type Entry struct {
 
 	Result execution.Result
 
+	// execution.Result does not specify which bank the instruction is from
+	// because that information isn't available to the CPU. note that
+	// information here for completeness
+	Bank int
+
+	// formatted strings representations of information in execution.Result
 	Location string
 	Bytecode string
 	Address  string
 	Mnemonic string
 	Operand  string
 
+	// formatted cycles and notes information from instructions.Defintion
 	DefnCycles string
 	DefnNotes  string
 

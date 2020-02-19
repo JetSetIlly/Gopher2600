@@ -272,7 +272,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 // read8BitPC reads 8 bits from the address pointer to the program counter
 //
 // in addition to reading from the address pointed to by the program counter,
-// this function differes from read8Bit() by assigning the read value to a
+// this function differs from read8Bit() by assigning the read value to a
 // prepared variable and delaying endCycle until after the necessary
 // assignments have been made
 func (mc *CPU) read8BitPC(val *uint8, f func() error) error {

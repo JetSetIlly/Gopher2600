@@ -39,10 +39,11 @@ const (
 	DisassemblyError = "error during disassembly: %v"
 
 	// debugger
-	InvalidTarget = "invalid target (%v)"
-	CommandError  = "%v"
-	TerminalError = "%v"
-	GUIEventError = "%v"
+	InvalidTarget   = "invalid target (%v)"
+	CommandError    = "%v"
+	TerminalError   = "%v"
+	GUIEventError   = "%v"
+	BreakpointError = "breakpoint error: %v"
 
 	// commandline
 	ParserError     = "parser error: %v"

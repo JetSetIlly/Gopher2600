@@ -26,19 +26,19 @@ import (
 )
 
 func (dsm *Disassembly) decode(mc *cpu.CPU) error {
-	for bank := 0; bank < len(dsm.Entries); bank++ {
+	for b := 0; b < len(dsm.Entries); b++ {
 
 		address := uint16(0xf000)
 		nextDecodePoint := address
 
-		for dsm.Entries[bank][address&memorymap.AddressMaskCart] == nil {
+		for dsm.Entries[b][address&memorymap.AddressMaskCart] == nil {
 			// bump nextDecodePoint if we've gone past it
 			if address > nextDecodePoint {
 				nextDecodePoint = address
 			}
 
 			// set bank in case the cartridge read has triggered a bank switch
-			if err := dsm.cart.SetBank(address, bank); err != nil {
+			if err := dsm.cart.SetBank(address, b); err != nil {
 				return err
 			}
 
@@ -77,6 +77,9 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 				return err
 			}
 
+			// add bank information
+			ent.Bank = b
+
 			// set entry type depending on whether we're at an expected decode
 			// point
 			if address == nextDecodePoint {
@@ -93,7 +96,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 			}
 
 			// insert into Entries array
-			dsm.Entries[bank][address&memorymap.AddressMaskCart] = ent
+			dsm.Entries[b][address&memorymap.AddressMaskCart] = ent
 
 			// onto the next instruction
 			address++

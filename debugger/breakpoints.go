@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"gopher2600/debugger/terminal"
 	"gopher2600/debugger/terminal/commandline"
+	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"strconv"
 	"strings"
@@ -299,21 +300,68 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		return errors.New(errors.CommandError, fmt.Sprintf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label()))
 	}
 
-	return bp.checkNewBreakers(newBreaks)
-}
-
-// checkNewBreakers compares list of new breakers with existing list
-func (bp *breakpoints) checkNewBreakers(newBreaks []breaker) error {
-	// don't add breakpoints that already exist
 	for _, nb := range newBreaks {
-		for _, ob := range bp.breaks {
-			if nb.id() == ob.id() {
-				return errors.New(errors.CommandError, fmt.Sprintf("breakpoint already exists (%s)", ob))
-			}
+		if err := bp.checkBreaker(nb); err != nil {
+			return errors.New(errors.CommandError, err)
 		}
-
 		bp.breaks = append(bp.breaks, nb)
 	}
 
 	return nil
+}
+
+func (bp *breakpoints) checkBreaker(nb breaker) error {
+	for _, ob := range bp.breaks {
+		if nb.id() == ob.id() {
+			return errors.New(errors.BreakpointError, fmt.Sprintf("already exists (%s)", ob))
+		}
+	}
+
+	return nil
+}
+
+type PcBreak int
+
+const (
+	PcBreakNone PcBreak = iota
+	PcBreakAnyBank
+	PcBreakThisBank
+)
+
+// hasPCBreak works by building a new breaker instance and checking to see if
+// it exists in the list of breakpoints
+func (bp *breakpoints) hasPcBreak(e *disassembly.Entry) PcBreak {
+
+	// we start with the very specific - address and bank
+	check := breaker{
+		target: bp.dbg.vcs.CPU.PC,
+
+		// casting value to type because that's how the target value is stored
+		// for the program counter (see TargetValue() implementation for the
+		// ProgramCounter type in the registers package)
+		value: int(e.Result.Address),
+	}
+	check.next = &breaker{
+		target: &genericTarget{label: "Bank"},
+		value:  e.Bank,
+	}
+
+	// if checkBreaker fails then hasPcBreak has succeeded(!) and we can return
+	// PcBreakThisBank to indicate that this disassembly entry has this
+	// specific breakpoint
+	if err := bp.checkBreaker(check); err != nil {
+		return PcBreakThisBank
+	}
+
+	// if checkBreaker doesn't report an existing breakpoint, we remove the
+	// Bank condition and try again. if checkBreak fails this time, we can say
+	// that the disassembly entry has a breakpoint for the address only and
+	// that the debugger will break for any bank
+	check.next = nil
+	if err := bp.checkBreaker(check); err != nil {
+		return PcBreakAnyBank
+	}
+
+	// there is no breakpoint at that matches this disassembly entry
+	return PcBreakNone
 }

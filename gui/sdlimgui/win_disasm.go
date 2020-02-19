@@ -21,6 +21,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"gopher2600/debugger"
 	"gopher2600/disassembly"
 	"gopher2600/hardware/memory/memorymap"
 
@@ -80,7 +81,7 @@ func (win *winDisasm) draw() {
 
 		if win.img.vcs.Mem.Cart.NumBanks() == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
-			win.drawBank(pcAddr, 0, true)
+			win.drawBank(pcAddr, 0)
 		} else {
 			// create a new TabBar and iterate throuhg the cartridge banks,
 			// adding a new TabPage for each
@@ -96,7 +97,7 @@ func (win *winDisasm) draw() {
 				}
 
 				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-					win.drawBank(pcAddr, b, b == currBank)
+					win.drawBank(pcAddr, b)
 					imgui.EndTabItem()
 				}
 			}
@@ -109,7 +110,7 @@ func (win *winDisasm) draw() {
 	win.followPC = !win.img.paused
 }
 
-func (win *winDisasm) drawBank(pcAddr uint16, b int, followPC bool) {
+func (win *winDisasm) drawBank(pcAddr uint16, b int) {
 	imgui.BeginChild(fmt.Sprintf("bank %d", b))
 
 	itr, _ := win.img.dsm.NewIteration(b)
@@ -118,12 +119,12 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, followPC bool) {
 
 		// if address value of current disasm entry and
 		// current PC value match then highlight the entry
-		if followPC && e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+		if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
 			win.drawEntry(e, true)
 
 			// if emulation is running then centre on the current
 			// program counter
-			if followPC {
+			if win.followPC {
 				imgui.SetScrollHereY(0.5)
 			}
 		} else {
@@ -144,6 +145,18 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
 	imgui.Text(s)
 
+	// if item is visible then check for breakpoint
+	if imgui.IsItemVisible() {
+		switch win.img.dbg.HasPcBreak(e) {
+		case debugger.PcBreakAnyBank:
+			imgui.SameLine()
+			badgeBreakpointAnyBank(win.img.cols)
+		case debugger.PcBreakThisBank:
+			imgui.SameLine()
+			badgeBreakpointThisBank(win.img.cols)
+		}
+	}
+
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
 	s = win.img.dsm.GetField(disassembly.FldMnemonic, e)
@@ -163,10 +176,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
 	s = win.img.dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
-
-	// if item is visible then check for breakpoint
-	if imgui.IsItemVisible() && win.img.dbg.IsBreak(e) {
-	}
 
 	imgui.PopStyleColorV(5)
 }

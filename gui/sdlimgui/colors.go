@@ -77,6 +77,9 @@ type Colors struct {
 	TermStyleVideoStep       imgui.Vec4
 	TermStyleInstrument      imgui.Vec4
 	TermStyleError           imgui.Vec4
+
+	// badges
+	BreakpointPC imgui.Vec4
 }
 
 func defaultTheme() *Colors {
@@ -121,6 +124,7 @@ func defaultTheme() *Colors {
 		TermStyleVideoStep:       imgui.Vec4{0.7, 0.7, 0.3, 1.0},
 		TermStyleInstrument:      imgui.Vec4{0.1, 0.95, 0.9, 1.0},
 		TermStyleError:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		BreakpointPC:             imgui.Vec4{0.5, 1.0, 1.0, 0.5},
 	}
 
 	// set SapturedScreen* color to match default colors

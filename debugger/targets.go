@@ -132,6 +132,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (target, error) {
 				},
 			}
 
+		case "BANK":
+			trg = &genericTarget{
+				label: "Bank",
+				currentValue: func() interface{} {
+					return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+				},
+			}
+
 		// cpu instruction targetting was originally added as an experiment, to
 		// help investigate a bug in the emulation. I don't think it's much use
 		// but it was an instructive exercise and may come in useful one day.

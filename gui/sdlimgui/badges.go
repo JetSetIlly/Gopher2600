@@ -17,17 +17,26 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package debugger
+package sdlimgui
 
-import "gopher2600/disassembly"
+import (
+	"github.com/inkyblackness/imgui-go/v2"
+)
 
-// GetQuantum returns the current quantum value
-func (dbg *Debugger) GetQuantum() QuantumMode {
-	return dbg.quantum
+func badgeBreakpointAnyBank(cols *Colors) {
+	p := imgui.CursorScreenPos()
+	dl := imgui.WindowDrawList()
+	radius := imgui.FrameHeight() / 6
+	p.Y += imgui.TextLineHeight() * 0.75
+
+	dl.AddCircle(p, radius, colorConvertFloat4ToU32(cols.BreakpointPC))
 }
 
-// HasPcBreak returns true if there is a breakpoint at the address. the second
-// return value indicates if there is a breakpoint at the address AND bank
-func (dbg *Debugger) HasPcBreak(e *disassembly.Entry) PcBreak {
-	return dbg.breakpoints.hasPcBreak(e)
+func badgeBreakpointThisBank(cols *Colors) {
+	p := imgui.CursorScreenPos()
+	dl := imgui.WindowDrawList()
+	radius := imgui.FrameHeight() / 6
+	p.Y += imgui.TextLineHeight() * 0.75
+
+	dl.AddCircleFilled(p, radius, colorConvertFloat4ToU32(cols.BreakpointPC))
 }
