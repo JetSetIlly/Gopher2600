@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"gopher2600/debugger"
 	"gopher2600/disassembly"
 	"gopher2600/errors"
 	"gopher2600/gui"
@@ -52,6 +53,9 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 
 	case gui.ReqSetPause:
 		img.paused = args[0].(bool)
+
+	case gui.ReqAddDebugger:
+		img.dbg = args[0].(*debugger.Debugger)
 
 	case gui.ReqAddVCS:
 		img.vcs = args[0].(*hardware.VCS)

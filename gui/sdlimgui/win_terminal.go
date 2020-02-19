@@ -31,6 +31,12 @@ const winTermTitle = "Terminal"
 
 const (
 	outputMaxSize = 256
+
+	// the max number of calls to TermPrintLine() before output resumes
+	// after a side-channel silence. note that this value is immediately set to
+	// zero on the next call to TermRead() so missed information is unlikely
+	// (maybe impossible, but I can't prove that).
+	maxSideChannelSilenceDuration = 3
 )
 
 type winTerm struct {
@@ -51,6 +57,11 @@ type winTerm struct {
 
 	inputChan chan bool
 	sideChan  chan string
+
+	// set to a positive value when TermRead() returns from a sideChan event.
+	// silences output until value decreases to zero. value will decrease
+	// whenever TermPrintLine() is called or when TermRead() is called again.
+	sideChannelSilence int
 }
 
 func newWinTerm(img *SdlImgui) (managedWindow, error) {
@@ -192,6 +203,11 @@ func (win *winTerm) Silence(silenced bool) {
 
 // TermPrintLine implements the terminal.Output interface
 func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
+	if win.sideChannelSilence > 0 {
+		win.sideChannelSilence--
+		return
+	}
+
 	if win.silenced && style != terminal.StyleError {
 		return
 	}
@@ -208,6 +224,9 @@ func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
 // TermRead implements the terminal.Input interface
 func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	win.prompt = prompt.Content
+
+	// reset sideChannelSilence
+	win.sideChannelSilence = 0
 
 	// the debugger is waiting for input from the terminal but we still need to
 	// service gui events in the meantime.
@@ -230,6 +249,7 @@ func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *term
 			return n + 1, nil
 
 		case s := <-win.sideChan:
+			win.sideChannelSilence = maxSideChannelSilenceDuration
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")

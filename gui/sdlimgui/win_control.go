@@ -20,6 +20,8 @@
 package sdlimgui
 
 import (
+	"gopher2600/debugger"
+
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -73,11 +75,32 @@ func (win *winControl) draw() {
 	}
 	imgui.PopStyleColorV(3)
 
-	// quantum toggle
-	//
-	// it is currently possible for the toggle to get out of sync with the
-	// debugger setting
-	// !!TODO: keep debugger and gui quantum settings in sync
+	win.drawQuantumToggle()
+	imgui.Spacing()
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Step:")
+	imgui.SameLine()
+	if imgui.Button("Frame") {
+		win.img.issueTermCommand("STEP FRAME")
+	}
+	imgui.SameLine()
+	if imgui.Button("Scanline") {
+		win.img.issueTermCommand("STEP SCANLINE")
+	}
+
+	imgui.End()
+}
+
+func (win *winControl) drawQuantumToggle() {
+	// make sure we know the current state of the debugger
+	switch win.img.dbg.GetQuantum() {
+	case debugger.QuantumVideo:
+		win.videoStep = true
+	default:
+		win.videoStep = false
+	}
+
 	imgui.SameLine()
 	toggle := win.videoStep
 	toggleButton("quantum", &toggle, win.img.cols.TitleBgActive)
@@ -96,20 +119,4 @@ func (win *winControl) draw() {
 			win.img.issueTermCommand("QUANTUM CPU")
 		}
 	}
-	// END quantum toggle
-
-	imgui.Spacing()
-
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Step:")
-	imgui.SameLine()
-	if imgui.Button("Frame") {
-		win.img.issueTermCommand("STEP FRAME")
-	}
-	imgui.SameLine()
-	if imgui.Button("Scanline") {
-		win.img.issueTermCommand("STEP SCANLINE")
-	}
-
-	imgui.End()
 }
