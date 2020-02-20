@@ -144,6 +144,21 @@ func (img *SdlImgui) Service() {
 						Button: button,
 						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
 				}
+
+			case *sdl.MouseWheelEvent:
+				var deltaX, deltaY float32
+				if ev.X > 0 {
+					deltaX++
+				} else if ev.X < 0 {
+					deltaX--
+				}
+				if ev.Y > 0 {
+					deltaY++
+				} else if ev.Y < 0 {
+					deltaY--
+				}
+				img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
+
 			}
 		}
 
