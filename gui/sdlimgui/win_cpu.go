@@ -207,7 +207,8 @@ func (win *winCPU) drawLastResult() {
 		// negatives will be fleeting and will resolve itself when (a) the CPU
 		// moves on to the next phase; or (b) when the emulation pauses, even
 		// mid CPU-instruction.
-		e, _ := win.img.dsm.FormatResult(win.img.vcs.CPU.LastResult)
+		res := win.img.vcs.CPU.LastResult
+		e, _ := win.img.dsm.FormatResult(res)
 		if e.Result.Final {
 			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))

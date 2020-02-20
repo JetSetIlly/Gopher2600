@@ -121,11 +121,16 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 
 	// operands
 	var operand uint16
+	var operandDecoded bool
 
 	switch v := result.InstructionData.(type) {
 	case uint8:
+		operand = uint16(v)
+		operandDecoded = true
 		d.Operand = fmt.Sprintf("$%02x", v)
 	case uint16:
+		operand = v
+		operandDecoded = true
 		d.Operand = fmt.Sprintf("$%04x", v)
 	case nil:
 		if result.Defn.Bytes == 2 {
@@ -184,54 +189,57 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	}
 	d.Bytecode = strings.TrimSpace(d.Bytecode)
 
-	// ... and use assembler symbol for the operand if available/appropriate
-	if result.InstructionData != nil && (d.Operand == "" || d.Operand[0] != '?') {
-		if result.Defn.AddressingMode != instructions.Immediate {
+	// use symbol for the operand if available/appropriate. we should only do
+	// this if operand has been decoded
+	if operandDecoded {
+		if result.InstructionData != nil && (d.Operand == "" || d.Operand[0] != '?') {
+			if result.Defn.AddressingMode != instructions.Immediate {
 
-			switch result.Defn.Effect {
-			case instructions.Flow:
-				if result.Defn.IsBranch() {
-					// relative labels. to get the correct label we have to
-					// simulate what a successful branch instruction would do:
+				switch result.Defn.Effect {
+				case instructions.Flow:
+					if result.Defn.IsBranch() {
+						// relative labels. to get the correct label we have to
+						// simulate what a successful branch instruction would do:
 
-					// 	-- we create a mock register with the instruction's
-					// 	address as the initial value
-					pc := registers.NewProgramCounter(result.Address)
+						// 	-- we create a mock register with the instruction's
+						// 	address as the initial value
+						pc := registers.NewProgramCounter(result.Address)
 
-					// -- add the number of instruction bytes to get the PC as
-					// it would be at the end of the instruction
-					pc.Add(uint16(result.Defn.Bytes))
+						// -- add the number of instruction bytes to get the PC as
+						// it would be at the end of the instruction
+						pc.Add(uint16(result.Defn.Bytes))
 
-					// -- because we're doing 16 bit arithmetic with an 8bit
-					// value, we need to make sure the sign bit has been
-					// propogated to the more-significant bits
-					if operand&0x0080 == 0x0080 {
-						operand |= 0xff00
+						// -- because we're doing 16 bit arithmetic with an 8bit
+						// value, we need to make sure the sign bit has been
+						// propogated to the more-significant bits
+						if operand&0x0080 == 0x0080 {
+							operand |= 0xff00
+						}
+
+						// -- add the 2s-complement value to the mock program
+						// counter
+						pc.Add(operand)
+
+						// -- look up mock program counter value in symbol table
+						if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
+							d.Operand = v
+						}
+
+					} else {
+						if v, ok := symtable.Locations.Symbols[operand]; ok {
+							d.Operand = v
+						}
 					}
-
-					// -- add the 2s-complement value to the mock program
-					// counter
-					pc.Add(operand)
-
-					// -- look up mock program counter value in symbol table
-					if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
+				case instructions.Read:
+					if v, ok := symtable.Read.Symbols[operand]; ok {
 						d.Operand = v
 					}
-
-				} else {
-					if v, ok := symtable.Locations.Symbols[operand]; ok {
+				case instructions.Write:
+					fallthrough
+				case instructions.RMW:
+					if v, ok := symtable.Write.Symbols[operand]; ok {
 						d.Operand = v
 					}
-				}
-			case instructions.Read:
-				if v, ok := symtable.Read.Symbols[operand]; ok {
-					d.Operand = v
-				}
-			case instructions.Write:
-				fallthrough
-			case instructions.RMW:
-				if v, ok := symtable.Write.Symbols[operand]; ok {
-					d.Operand = v
 				}
 			}
 		}
