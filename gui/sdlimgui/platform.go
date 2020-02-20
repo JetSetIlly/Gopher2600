@@ -57,7 +57,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	plt.window, err = sdl.CreateWindow(windowTitle,
 		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
-		1280, 720, sdl.WINDOW_OPENGL)
+		1280, 720, sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI)
 
 	if err != nil {
 		sdl.Quit()
