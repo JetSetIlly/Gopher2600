@@ -53,14 +53,14 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) er
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
 	for i := range dsm.Entries[bank] {
-		dsm.WriteLine(output, attr, dsm.Entries[bank][i])
+		dsm.WriteEntry(output, attr, dsm.Entries[bank][i])
 	}
 
 	return nil
 }
 
-// WriteLine writes a single Instruction to io.Writer
-func (dsm *Disassembly) WriteLine(output io.Writer, attr WriteAttr, e *Entry) {
+// WriteEntry writes a single Instruction to io.Writer
+func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 	if e == nil || e.Type < EntryTypeDecode {
 		return
 	}

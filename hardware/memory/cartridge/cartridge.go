@@ -192,6 +192,11 @@ func (cart Cartridge) NumBanks() int {
 }
 
 // GetBank returns the current bank number for the specified address
+//
+// WARNING: For some cartridge types this is the same as asking for the current
+// address
+//
+// Address must be a cartridge address, it sill not be mapped
 func (cart Cartridge) GetBank(addr uint16) int {
 	return cart.mapper.getBank(addr & memorymap.AddressMaskCart)
 }
@@ -199,6 +204,8 @@ func (cart Cartridge) GetBank(addr uint16) int {
 // SetBank maps the specified address such that it references the specified
 // bank. For many cart mappers this just means switching banks for the entire
 // cartridge
+//
+// NOTE: For some cartridge types, the specific address is not important
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
 	return cart.mapper.setBank(addr&memorymap.AddressMaskCart, bank)
 }

@@ -24,7 +24,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/hardware/cpu"
 	"gopher2600/hardware/cpu/instructions"
-	"gopher2600/hardware/memory/addresses"
 	"gopher2600/hardware/memory/memorymap"
 	"strings"
 )
@@ -32,27 +31,28 @@ import (
 // Analysis (best effort) of the cartridge
 type Analysis struct {
 	// discovered/inferred cartridge attributes
-	NonCartJmps bool
-	Interrupts  bool
-	ForcedRTS   bool
+	ExecuteFromRAM bool
+	Interrupts     bool
+	ForcedRTS      bool
 }
 
 // Analysis returns a summary of anything interesting found during disassembly.
 func (ana Analysis) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("non-cart JMPs: %v\n", ana.NonCartJmps))
-	s.WriteString(fmt.Sprintf("interrupts: %v\n", ana.Interrupts))
-	s.WriteString(fmt.Sprintf("forced RTS: %v\n", ana.ForcedRTS))
+	s.WriteString(fmt.Sprintf("Execute from RAM: %v\n", ana.ExecuteFromRAM))
+	s.WriteString(fmt.Sprintf("Interrupts: %v\n", ana.Interrupts))
+	s.WriteString(fmt.Sprintf("Forced RTS: %v\n", ana.ForcedRTS))
 	return s.String()
 }
 
-func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
-	err := mc.LoadPCIndirect(addresses.Reset)
-	if err != nil {
-		return err
-	}
-
+func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineDepth int) error {
 	for {
+		// get bank now before executing instruction. the bank may change
+		// as a result of the instruction execution. we cannot stop this withe
+		// the CPU's NoFlow mechanism
+		bank := dsm.cart.GetBank(mc.PC.Address())
+
+		// exeute the instruction
 		err := mc.ExecuteInstruction(nil)
 
 		// filter out the predictable errors
@@ -79,12 +79,24 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 			return err
 		}
 
-		bank := dsm.cart.GetBank(mc.LastResult.Address)
+		// check that the instruction was executed from cartridge space
+		_, area := memorymap.MapAddress(mc.LastResult.Address, true)
+		if area != memorymap.Cartridge {
+			if area == memorymap.RAM {
+				dsm.Analysis.ExecuteFromRAM = true
+			} else {
+				// executing from somewhere other than cartridge or RMA
+				// seems very serious to me. I suppose it's possible so there's
+				// no reason to panic() but maybe it should be noted in
+				// someway.
+			}
+			return nil
+		}
 
 		// if we've seen this before but it was not from then flow pass then
 		// finish the disassembly and flowedFrom is zero
 		d := dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart]
-		if d != nil && d.Type == EntryTypeAnalysis && flowedFrom == 0 {
+		if d != nil && d.Type == EntryTypeAnalysis {
 			return nil
 		}
 
@@ -93,6 +105,9 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 		if err != nil {
 			return err
 		}
+
+		// add bank information
+		d.Bank = bank
 
 		// indicate that it was generated from the flow pass
 		d.Type = EntryTypeAnalysis
@@ -110,6 +125,8 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 		//
 		// in the event that a jump/branch has been encountered we update the
 		// entry again after appending the next address
+		//
+		// !!TODO: what happens if LastResult address is not in cart memory?
 		dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart] = d
 		e := &d
 
@@ -121,38 +138,25 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 		case instructions.Flow:
 			if mc.LastResult.Defn.Mnemonic == "JMP" {
 				if mc.LastResult.Defn.AddressingMode == instructions.Indirect {
-					if mc.LastResult.InstructionData.(uint16) > memorymap.OriginCart {
-						// note current location
-						state := dsm.cart.SaveState()
-						retPC := mc.PC.Address()
+					// note current location
+					state := dsm.cart.SaveState()
+					retPC := mc.PC.Address()
 
-						// adjust program counter
-						mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
+					// adjust program counter
+					mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
 
-						// record next address
-						(*e).Next = append((*e).Next, mc.PC.Address())
+					// record next address
+					(*e).Next = append((*e).Next, mc.PC.Address())
 
-						// recurse
-						err = dsm.flowAnalysis(mc, mc.LastResult.Address)
-						if err != nil {
-							return err
-						}
-
-						// resume from where we left off
-						dsm.cart.RestoreState(state)
-						mc.PC.Load(retPC)
-					} else {
-						// it's entirely possible for the program to jump
-						// outside of cartridge space and run inside RIOT RAM
-						// (for instance, test-ane.bin does this).
-						//
-						// it's difficult to see what we can do in these cases
-						// without actually running the program for real (with
-						// actual side-effects)
-						//
-						// for now, we'll just tolerate it
-						dsm.Analysis.NonCartJmps = true
+					// recurse
+					err = dsm.flowAnalysis(mc, mc.LastResult.Address, subroutineDepth)
+					if err != nil {
+						return err
 					}
+
+					// resume from where we left off
+					dsm.cart.RestoreState(state)
+					mc.PC.Load(retPC)
 				} else {
 					// absolute JMP addressing
 
@@ -168,7 +172,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 					(*e).Next = append((*e).Next, mc.PC.Address())
 
 					// recurse
-					err = dsm.flowAnalysis(mc, mc.LastResult.Address)
+					err = dsm.flowAnalysis(mc, mc.LastResult.Address, subroutineDepth)
 					if err != nil {
 						return err
 					}
@@ -195,7 +199,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 				(*e).Next = append((*e).Next, mc.PC.Address())
 
 				// recurse
-				err = dsm.flowAnalysis(mc, mc.LastResult.Address)
+				err = dsm.flowAnalysis(mc, mc.LastResult.Address, subroutineDepth)
 				if err != nil {
 					return err
 				}
@@ -215,7 +219,9 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 				// Krull does this. one of the very first things it does at
 				// address 0xb038 (bank 0) is load the stack with a return
 				// address. the first time the "extra" RTS occurs is at 0xb0ad
-				dsm.Analysis.ForcedRTS = true
+				if subroutineDepth == 0 {
+					dsm.Analysis.ForcedRTS = true
+				}
 				return nil
 			}
 
@@ -229,7 +235,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16) error {
 			(*e).Next = append((*e).Next, mc.PC.Address())
 
 			// recurse
-			err = dsm.flowAnalysis(mc, mc.LastResult.Address)
+			err = dsm.flowAnalysis(mc, mc.LastResult.Address, subroutineDepth+1)
 			if err != nil {
 				return err
 			}

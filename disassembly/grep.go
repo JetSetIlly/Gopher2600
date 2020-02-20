@@ -56,7 +56,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 			// line representation of Instruction. we'll print this
 			// in case of a match
 			line := &bytes.Buffer{}
-			dsm.WriteLine(line, WriteAttr{}, d)
+			dsm.WriteEntry(line, WriteAttr{}, d)
 
 			// limit scope of grep to the correct Instruction field
 			switch scope {
