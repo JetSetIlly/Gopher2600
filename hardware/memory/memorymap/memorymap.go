@@ -75,8 +75,11 @@ const (
 	AddressMaskTIA  = uint16(0x000f)
 )
 
-// the top nibble of a cartridge address can be anything. AddressMaskCart can
+// The top nibble of a cartridge address can be anything. AddressMaskCart can
 // be to take away the uninteresting bits
+//
+// Cheap way of normalising cartridge addresses *if* you know that the address
+// is for certain a cartridge address
 const (
 	AddressMaskCart = MemtopCart ^ OriginCart
 )

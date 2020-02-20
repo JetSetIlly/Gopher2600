@@ -115,6 +115,7 @@ func (mc *CPU) Reset() error {
 	}
 
 	mc.LastResult.Reset()
+	mc.LastResult.Final = true
 
 	mc.PC.Load(0)
 	mc.A.Load(0)

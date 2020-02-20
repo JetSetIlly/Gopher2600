@@ -32,8 +32,17 @@ const winDisasmTitle = "Disassembly"
 
 type winDisasm struct {
 	windowManagement
-	img      *SdlImgui
+	img *SdlImgui
+
+	// should tab pages be selected and scrolled. generally we want this to be
+	// false when the emulation is paused because we want the user to be able
+	// to scroll around and explore the window
 	followPC bool
+
+	// the selected cartridge bank in the previous frame. this is used to help
+	// decide what the value of followPC should be
+	bankPrevFrame int
+	pcPrevFrame   uint16
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -66,18 +75,19 @@ func (win *winDisasm) draw() {
 	imgui.Spacing()
 
 	if win.img.dsm != nil {
-		var pcAddr uint16
-
 		// the value of pcAddr depends on the state of the CPU. if the
 		// Final state of the CPU's last execution result is true then we
 		// can be sure the PC value is valid and points to a real
 		// instruction. we need this because we can never be sure when we
 		// are going to draw this window
+		var pcAddr uint16
 		if win.img.vcs.CPU.LastResult.Final {
 			pcAddr = win.img.vcs.CPU.PC.Value()
 		} else {
 			pcAddr = win.img.vcs.CPU.LastResult.Address
 		}
+
+		currBank := win.img.vcs.Mem.Cart.GetBank(pcAddr)
 
 		if win.img.vcs.Mem.Cart.NumBanks() == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
@@ -85,10 +95,8 @@ func (win *winDisasm) draw() {
 		} else {
 			// create a new TabBar and iterate throuhg the cartridge banks,
 			// adding a new TabPage for each
-			currBank := win.img.vcs.Mem.Cart.GetBank(pcAddr)
 			imgui.BeginTabBar("banks")
 			for b := range win.img.dsm.Entries {
-
 				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS
 				flgs := imgui.TabItemFlagsNone
@@ -96,6 +104,11 @@ func (win *winDisasm) draw() {
 					flgs = imgui.TabItemFlagsSetSelected
 				}
 
+				// BeginTabItem() will return true when the item is selected.
+				// When the SetSelected flag is specified, it does not take
+				// effect until the end of the frame and so BeginTabItem() will
+				// return true *next* frame. see the setting of win.followPC
+				// below for more.
 				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
 					win.drawBank(pcAddr, b)
 					imgui.EndTabItem()
@@ -103,11 +116,19 @@ func (win *winDisasm) draw() {
 			}
 			imgui.EndTabBar()
 		}
+
+		// if the current bank has only been selected this frame then we need
+		// an extra frame to draw the tab page with drawBank() and for the page
+		// to scroll to the correct position. the second part of the condition
+		// below sustains followPC for the additional frame
+		win.followPC = !win.img.paused || currBank != win.bankPrevFrame || pcAddr != win.pcPrevFrame
+
+		// update bank information to help with followPC next frame
+		win.bankPrevFrame = currBank
+		win.pcPrevFrame = pcAddr
 	}
 
 	imgui.End()
-
-	win.followPC = !win.img.paused
 }
 
 func (win *winDisasm) drawBank(pcAddr uint16, b int) {
