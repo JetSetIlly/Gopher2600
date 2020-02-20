@@ -141,19 +141,15 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 		adj = win.img.cols.DisasmSelectedAdj
 	}
 
-	// we need to print something so we can ask IsItemVisible()
+	// add some space for the gutter. has to be something tangible so that the
+	// IsItemVisible() check below has something to grab onto
 	imgui.Text(" ")
 
-	// if item is visible then check for breakpoint
-	if imgui.IsItemVisible() {
-		switch win.img.dbg.HasBreak(e) {
-		case debugger.BrkGrpAnyBank:
-			imgui.SameLine()
-			badgePentagonHollow(win.img.cols.DisasmMnemonic)
-		case debugger.BrkGrpThisBank:
-			imgui.SameLine()
-			badgePentagon(win.img.cols.DisasmMnemonic)
-		}
+	// draw pointer, breakpoint or nothing at all in gutter
+	if selected {
+		win.drawPointer()
+	} else if imgui.IsItemVisible() {
+		win.drawBreak(e)
 	}
 
 	imgui.SameLine()
@@ -182,4 +178,25 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(5)
+}
+
+func (win *winDisasm) drawPointer() {
+	win.drawGutter(win.img.cols.DisasmCurrentPC)
+}
+
+func (win *winDisasm) drawBreak(e *disassembly.Entry) {
+	switch win.img.dbg.HasBreak(e) {
+	case debugger.BrkGrpAnyBank:
+		fallthrough
+	case debugger.BrkGrpThisBank:
+		win.drawGutter(win.img.cols.DisasmAddress)
+	}
+}
+
+func (win *winDisasm) drawGutter(col imgui.Vec4) {
+	r := imgui.FrameHeight() / 4
+	p := imgui.CursorScreenPos()
+	p.Y -= r * 2
+	dl := imgui.WindowDrawList()
+	dl.AddCircleFilled(p, r, colorConvertFloat4ToU32(col))
 }

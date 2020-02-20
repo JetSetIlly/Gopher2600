@@ -55,6 +55,7 @@ type Colors struct {
 	ControlHaltActive  imgui.Vec4
 
 	// disassembly entry columns
+	DisasmCurrentPC   imgui.Vec4
 	DisasmAddress     imgui.Vec4
 	DisasmMnemonic    imgui.Vec4
 	DisasmOperand     imgui.Vec4
@@ -106,12 +107,13 @@ func defaultTheme() *Colors {
 		ControlHalt:              imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		ControlHaltHovered:       imgui.Vec4{0.65, 0.3, 0.3, 1.0},
 		ControlHaltActive:        imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+		DisasmCurrentPC:          imgui.Vec4{0.9, 0.9, 0.9, 1.0},
 		DisasmAddress:            imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		DisasmMnemonic:           imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:            imgui.Vec4{0.8, 0.8, 0.3, 1.0},
 		DisasmCycles:             imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmNotes:              imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmSelectedAdj:        imgui.Vec4{0.3, 0.3, 0.3, 0.0},
+		DisasmSelectedAdj:        imgui.Vec4{0.1, 0.1, 0.1, 0.0},
 		OscBg:                    imgui.Vec4{0.21, 0.29, 0.23, 1.0},
 		OscLine:                  imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 		TermStyleInput:           imgui.Vec4{0.8, 0.8, 0.8, 1.0},
