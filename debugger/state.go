@@ -19,7 +19,9 @@
 
 package debugger
 
-import "gopher2600/disassembly"
+import (
+	"gopher2600/disassembly"
+)
 
 // GetQuantum returns the current quantum value
 func (dbg *Debugger) GetQuantum() QuantumMode {
@@ -29,5 +31,12 @@ func (dbg *Debugger) GetQuantum() QuantumMode {
 // HasBreak returns true if there is a breakpoint at the address. the second
 // return value indicates if there is a breakpoint at the address AND bank
 func (dbg *Debugger) HasBreak(e *disassembly.Entry) BreakGroup {
-	return dbg.breakpoints.hasBreak(e)
+	g, _ := dbg.breakpoints.hasBreak(e)
+	return g
+}
+
+// TogglePCBreak sets or unsets a PC break at the address rerpresented by th
+// disassembly entry
+func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
+	dbg.breakpoints.togglePCBreak(e)
 }

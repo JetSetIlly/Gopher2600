@@ -34,7 +34,7 @@ func (trm *mockTerm) testBreakpoints() {
 
 	// try to add same break. check error feedback
 	trm.sndInput("BREAK SL 100")
-	trm.cmpOutput("breakpoint error: already exists (Scanline->100)")
+	trm.cmpOutput("already exists (Scanline->100)")
 
 	// add multi-condition break
 	trm.sndInput("BREAK SL 100 & HP 100")
@@ -47,13 +47,13 @@ func (trm *mockTerm) testBreakpoints() {
 
 	// try to add exactly the same breakpoint. expect failure
 	trm.sndInput("BREAK SL 100 & HP 100")
-	trm.cmpOutput("breakpoint error: already exists (Scanline->100 & Horiz Pos->100)")
+	trm.cmpOutput("already exists (Scanline->100 & Horiz Pos->100)")
 
 	// the following break is logically the same as the previous break but
 	// expressed differently. the debugger should not add it even though the
 	// expression is not exactly the same.
 	trm.sndInput("BREAK HP 100 & SL 100")
-	trm.cmpOutput("breakpoint error: already exists (Scanline->100 & Horiz Pos->100)")
+	trm.cmpOutput("already exists (Scanline->100 & Horiz Pos->100)")
 
 	trm.sndInput("BREAK HP 100")
 	trm.cmpOutput("")

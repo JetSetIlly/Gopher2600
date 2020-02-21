@@ -30,7 +30,7 @@ import (
 const winTermTitle = "Terminal"
 
 const (
-	outputMaxSize = 256
+	outputMaxSize = 64
 
 	// the max number of calls to TermPrintLine() before output resumes
 	// after a side-channel silence. note that this value is immediately set to
@@ -106,7 +106,7 @@ func (win *winTerm) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(winTermTitle, &win.open, 0)
+	imgui.BeginV(winTermTitle, &win.open, imgui.WindowFlagsNoTitleBar)
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 

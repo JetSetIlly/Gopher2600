@@ -107,7 +107,7 @@ func defaultTheme() *Colors {
 		ControlHalt:              imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		ControlHaltHovered:       imgui.Vec4{0.65, 0.3, 0.3, 1.0},
 		ControlHaltActive:        imgui.Vec4{0.65, 0.3, 0.3, 1.0},
-		DisasmCurrentPC:          imgui.Vec4{0.9, 0.9, 0.9, 1.0},
+		DisasmCurrentPC:          imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmAddress:            imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		DisasmMnemonic:           imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:            imgui.Vec4{0.8, 0.8, 0.3, 1.0},
@@ -126,7 +126,6 @@ func defaultTheme() *Colors {
 		TermStyleVideoStep:       imgui.Vec4{0.7, 0.7, 0.3, 1.0},
 		TermStyleInstrument:      imgui.Vec4{0.1, 0.95, 0.9, 1.0},
 		TermStyleError:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
-		BreakpointPC:             imgui.Vec4{0.5, 1.0, 1.0, 0.5},
 	}
 
 	// set SapturedScreen* color to match default colors

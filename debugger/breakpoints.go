@@ -362,8 +362,8 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 			}
 		}
 
-		if err := bp.checkBreaker(nb); err != nil {
-			return errors.New(errors.CommandError, err)
+		if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
+			return errors.New(errors.CommandError, fmt.Sprintf("already exists (%s)", bp.breaks[i]))
 		}
 		bp.breaks = append(bp.breaks, nb)
 	}
@@ -371,14 +371,18 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	return nil
 }
 
-func (bp *breakpoints) checkBreaker(nb breaker) error {
-	for _, ob := range bp.breaks {
+const noBreakEqualivalent = -1
+
+// checkBreaker returns the index number of the matching breakpoint. returns
+// noBreakEquivalent if no match is found
+func (bp *breakpoints) checkBreaker(nb breaker) int {
+	for n, ob := range bp.breaks {
 		if nb.cmp(ob) {
-			return errors.New(errors.BreakpointError, fmt.Sprintf("already exists (%s)", ob))
+			return n
 		}
 	}
 
-	return nil
+	return noBreakEqualivalent
 }
 
 // BreakGroup indicates the broad category of breakpoint an address has
@@ -386,13 +390,17 @@ type BreakGroup int
 
 // List of valid BreakGroup values
 const (
-	BrkGrpNone BreakGroup = iota
-	BrkGrpAnyBank
-	BrkGrpThisBank
+	BrkNone BreakGroup = iota
+
+	// a breakpoint
+	BrkPCAddress
+
+	// a breakpoint on something other than the program counter / address
+	BrkOther
 )
 
 // !!TODO: detect other break types?
-func (bp *breakpoints) hasBreak(e *disassembly.Entry) BreakGroup {
+func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
 
 	check := breaker{
@@ -404,41 +412,62 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) BreakGroup {
 		value: int(ai.mappedAddress),
 	}
 
-	// check has slightly different semantics if number of cartridge banks is
-	// greater than one. in this case we want to check if PC break specifies a
-	// bank or not
-	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
-		// we start with the very specific - address and bank
-		check.next = &breaker{
-			target: bp.checkBankBreak,
-			value:  e.Bank,
-		}
+	// we start with the very specific - address and bank
+	check.next = &breaker{
+		target: bp.checkBankBreak,
+		value:  e.Bank,
+	}
 
-		// check for a breaker for the PC value AND bank value. if
-		// checkBreaker() fails then from our point of view, this is a success
-		// and we say that the disassembly.Entry has a breakpoint for *this*
-		// bank
-		if err := bp.checkBreaker(check); err != nil {
-			return BrkGrpThisBank
-		}
+	// check for a breaker for the PC value AND bank value. if
+	// checkBreaker() fails then from our point of view, this is a success
+	// and we say that the disassembly.Entry has a breakpoint for *this*
+	// bank
+	if i := bp.checkBreaker(check); i != noBreakEqualivalent {
+		return BrkPCAddress, i
+	}
 
-		// if checkBreaker doesn't report an existing breakpoint, we remove the
-		// Bank condition and try again. if checkBreaker fails (success from our
-		// point of view) this time, we can say that the disassembly entry has
-		// a breakpoint for the program counter only and will break for *any*
-		// bank
-		check.next = nil
-		if err := bp.checkBreaker(check); err != nil {
-			return BrkGrpAnyBank
-		}
-	} else {
-		// for cartridges with just one bank a PC break for the
-		// disassembly.Entry address is, by definition, a break for *this* bank
-		if err := bp.checkBreaker(check); err != nil {
-			return BrkGrpThisBank
-		}
+	// if checkBreaker doesn't report an existing breakpoint, we remove the
+	// Bank condition and try again. if checkBreaker fails (success from our
+	// point of view) this time, we can say that the disassembly entry has
+	// a breakpoint for the program counter only and will break for *any*
+	// bank
+	check.next = nil
+	if i := bp.checkBreaker(check); i != noBreakEqualivalent {
+		return BrkPCAddress, i
 	}
 
 	// there is no breakpoint at that matches this disassembly entry
-	return BrkGrpNone
+	return BrkNone, noBreakEqualivalent
+}
+
+func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
+	g, i := bp.hasBreak(e)
+
+	if i != noBreakEqualivalent && g == BrkPCAddress {
+		bp.drop(i)
+
+		// try again incase there's a similar breakpoint (without a BANK
+		// condition)
+		if i != noBreakEqualivalent && g == BrkPCAddress {
+			bp.drop(i)
+		}
+
+		return
+	}
+
+	// no equivalent breakpoint existed so add one
+	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
+	nb := breaker{
+		target: bp.checkPcBreak,
+		value:  int(ai.mappedAddress),
+	}
+
+	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
+		nb.next = &breaker{
+			target: bp.checkBankBreak,
+			value:  e.Bank,
+		}
+	}
+
+	bp.breaks = append(bp.breaks, nb)
 }

@@ -47,6 +47,7 @@ type winDisasm struct {
 	// gutter colors
 	colCurrentPC  uint32
 	colBreakpoint uint32
+	colMnemonic   uint32
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -60,6 +61,7 @@ func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 
 func (win *winDisasm) init() {
 	win.colCurrentPC = colorConvertFloat4ToU32(win.img.cols.DisasmCurrentPC)
+	win.colBreakpoint = colorConvertFloat4ToU32(win.img.cols.DisasmAddress)
 	win.colBreakpoint = colorConvertFloat4ToU32(win.img.cols.DisasmAddress)
 }
 
@@ -166,6 +168,7 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 }
 
 func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
+	imgui.BeginGroup()
 	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 	if selected {
 		adj = win.img.cols.DisasmSelectedAdj
@@ -208,6 +211,16 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(5)
+
+	imgui.EndGroup()
+
+	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
+		fmt.Println("TODO: context menu")
+	}
+
+	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDoubleClicked(0) {
+		win.img.dbg.TogglePCBreak(e)
+	}
 }
 
 func (win *winDisasm) drawPointer() {
@@ -216,10 +229,10 @@ func (win *winDisasm) drawPointer() {
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.dbg.HasBreak(e) {
-	case debugger.BrkGrpAnyBank:
-		win.drawGutter(fillNone, win.colBreakpoint)
-	case debugger.BrkGrpThisBank:
+	case debugger.BrkPCAddress:
 		win.drawGutter(fillHalf, win.colBreakpoint)
+	case debugger.BrkOther:
+		win.drawGutter(fillNone, win.colMnemonic)
 	}
 }
 
@@ -245,4 +258,7 @@ func (win *winDisasm) drawGutter(fill fillType, col uint32) {
 	case fillFull:
 		dl.AddCircleFilled(p, r, col)
 	}
+}
+
+func (win *winDisasm) drawPopupMenu(e *disassembly.Entry) {
 }
