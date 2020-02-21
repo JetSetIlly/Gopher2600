@@ -22,7 +22,6 @@ package execution
 import (
 	"fmt"
 	"gopher2600/errors"
-	"reflect"
 )
 
 // IsValid checks whether the instance of Result contains information
@@ -30,14 +29,6 @@ import (
 func (result Result) IsValid() error {
 	if !result.Final {
 		return errors.New(errors.InvalidResult, "not checking an unfinalised InstructionResult")
-	}
-
-	// check that InstructionData is broadly sensible - is either nil, a uint16 or uint8
-	if result.InstructionData != nil {
-		ot := reflect.TypeOf(result.InstructionData).Kind()
-		if ot != reflect.Uint16 && ot != reflect.Uint8 {
-			return errors.New(errors.InvalidResult, fmt.Sprintf("instruction data is bad (%s)", ot))
-		}
 	}
 
 	// is PageFault valid given content of Defn

@@ -185,34 +185,7 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string) {
 
 func (win *winCPU) drawLastResult() {
 	if !win.img.vcs.CPU.HasReset() {
-		// there's a danger of race-condition failure here. when in full flow
-		// it might be possible for LastResult to be in a state which will
-		// trigger a panic in FormatResult.
-		//
-		// this is because the GUI can draw at anytime and not just at the
-		// CPU's endCycle() points. solutions:
-		//
-		// 1) semaphore locks (heavy-handed)
-		// 2) as above but only when a debugger is attached (maybe. requires an
-		//          extra setting on the cpu. additional checks will be ugly).
-		// 3) the debugger formats the result when it's safe and we display
-		//          that here, rather than calling FormatResult ourselves
-		//          (slow. FormatResult() will be called far more frequently than
-		//          necessary)
-		// 4) build FormatResult() so that the race condition is impossible.
-		//          this will requires more careful setting of LastResult
-		//          fields in the CPU too.
-		// 5) flag in FormatResult() that says it's safe to process. almost
-		//          like a semaphore but not as heavy handed. additional code
-		//          in CPU.
-		//
-		// option 4 is the best but the trickiest to get right. the best way to
-		// get it right it is to err on the side of caution. any false
-		// negatives will be fleeting and will resolve itself when (a) the CPU
-		// moves on to the next phase; or (b) when the emulation pauses, even
-		// mid CPU-instruction.
-		res := win.img.vcs.CPU.LastResult
-		e, _ := win.img.dsm.FormatResult(res)
+		e, _ := win.img.dsm.FormatResult(win.img.vcs.CPU.LastResult)
 		if e.Result.Final {
 			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))

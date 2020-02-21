@@ -520,7 +520,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		err = mc.read8BitPC(&value, func() error {
-			mc.LastResult.InstructionData = value
+			mc.LastResult.InstructionData = uint16(value)
 			return nil
 		})
 		if err != nil {
@@ -549,7 +549,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		err = mc.read8BitPC(&value, func() error {
-			mc.LastResult.InstructionData = value
+			mc.LastResult.InstructionData = uint16(value)
 			return nil
 		})
 		if err != nil {
@@ -565,7 +565,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		err = mc.read8BitPC(&value, func() error {
 			// while we must trest the value as an address (ie. as uint16) we
 			// actually only read an 8 bit value so we store the value as uint8
-			mc.LastResult.InstructionData = value
+			mc.LastResult.InstructionData = uint16(value)
 			return nil
 		})
 		if err != nil {
@@ -580,7 +580,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// +1 cycles
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = indirectAddress
+			mc.LastResult.InstructionData = uint16(indirectAddress)
 			return nil
 		})
 		if err != nil {
@@ -610,7 +610,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// +1 cycles
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = indirectAddress
+			mc.LastResult.InstructionData = uint16(indirectAddress)
 			return nil
 		})
 		if err != nil {
@@ -695,7 +695,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// +1 cycle
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = indirectAddress
+			mc.LastResult.InstructionData = uint16(indirectAddress)
 			return nil
 		})
 		if err != nil {
@@ -731,7 +731,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// +1 cycle
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = indirectAddress
+			mc.LastResult.InstructionData = uint16(indirectAddress)
 			return nil
 		})
 		if err != nil {

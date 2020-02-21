@@ -119,44 +119,31 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	// mnemonic is just a string anyway
 	d.Mnemonic = result.Defn.Mnemonic
 
-	// operands
-	var operand uint16
-	var operandDecoded bool
-
-	switch v := result.InstructionData.(type) {
-	case uint8:
-		operand = uint16(v)
-		operandDecoded = true
-		d.Operand = fmt.Sprintf("$%02x", v)
-	case uint16:
-		operand = v
-		operandDecoded = true
-		d.Operand = fmt.Sprintf("$%04x", v)
-	case nil:
-		if result.Defn.Bytes == 2 {
-			d.Operand = "??"
-		} else if result.Defn.Bytes == 3 {
-			d.Operand = "????"
-		}
-	}
-
-	// Bytecode is assembled depending on the number of expected bytes
-	// (result.Defn.Bytes) and the number of bytes read so far
+	// bytecode and operand string is assembled depending on the number of
+	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
 	// (result.ByteCount).
 	//
 	// the panics cover situations that should never exists. if result
-	// validation has been run then the panic situations will have been caught
+	// validation is active then the panic situations will have been caught
 	// then. if validation is not running then the code could theoretically
 	// panic but that's okay, they should have been caught in testing.
+	var operand uint16
+	var operandDecoded bool
 	switch result.Defn.Bytes {
 	case 3:
 		switch result.ByteCount {
 		case 3:
 			d.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
+
+			operandDecoded = true
+			operand = result.InstructionData
+			d.Operand = fmt.Sprintf("$%04x", operand)
 		case 2:
 			d.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
+			d.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
 		case 1:
 			d.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
+			d.Operand = "$????"
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -166,8 +153,13 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 		switch result.ByteCount {
 		case 2:
 			d.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
+
+			operandDecoded = true
+			operand = result.InstructionData
+			d.Operand = fmt.Sprintf("$%02x", operand)
 		case 1:
 			d.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
+			d.Operand = "$??"
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -192,7 +184,7 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	// use symbol for the operand if available/appropriate. we should only do
 	// this if operand has been decoded
 	if operandDecoded {
-		if result.InstructionData != nil && (d.Operand == "" || d.Operand[0] != '?') {
+		if d.Operand == "" || d.Operand[0] != '?' {
 			if result.Defn.AddressingMode != instructions.Immediate {
 
 				switch result.Defn.Effect {

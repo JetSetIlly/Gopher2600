@@ -53,7 +53,7 @@ type Result struct {
 
 	// instruction data is the actual instruction data. so, for example, in the
 	// case of branch instruction, instruction data is the offset value.
-	InstructionData interface{}
+	InstructionData uint16
 
 	// the actual number of cycles taken by the instruction - usually the same
 	// as Defn.Cycles but in the case of PageFaults and branches, this value
@@ -79,7 +79,7 @@ func (r *Result) Reset() {
 	r.Defn = nil
 	r.ByteCount = 0
 	r.Address = 0
-	r.InstructionData = nil
+	r.InstructionData = 0
 	r.ActualCycles = 0
 	r.PageFault = false
 	r.CPUBug = ""

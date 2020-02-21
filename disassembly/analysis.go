@@ -143,7 +143,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineD
 					retPC := mc.PC.Address()
 
 					// adjust program counter
-					mc.LoadPCIndirect(mc.LastResult.InstructionData.(uint16))
+					mc.LoadPCIndirect(mc.LastResult.InstructionData)
 
 					// record next address
 					(*e).Next = append((*e).Next, mc.PC.Address())
@@ -165,7 +165,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineD
 					retPC := mc.PC.Address()
 
 					// adjust program counter
-					mc.PC.Load(mc.LastResult.InstructionData.(uint16))
+					mc.PC.Load(mc.LastResult.InstructionData)
 					dsm.Entries[bank][mc.LastResult.Address&memorymap.AddressMaskCart] = d
 
 					// record next address
@@ -189,7 +189,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineD
 				retPC := mc.PC.Address()
 
 				// sign extend address and add to program counter
-				address := uint16(mc.LastResult.InstructionData.(uint8))
+				address := mc.LastResult.InstructionData
 				if address&0x0080 == 0x0080 {
 					address |= 0xff00
 				}
@@ -229,7 +229,7 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineD
 			retPC := mc.PC.Address()
 
 			// adjust program counter
-			mc.PC.Load(mc.LastResult.InstructionData.(uint16))
+			mc.PC.Load(mc.LastResult.InstructionData)
 
 			// record next address
 			(*e).Next = append((*e).Next, mc.PC.Address())
