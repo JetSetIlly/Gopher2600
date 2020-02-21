@@ -38,6 +38,9 @@ func newWinDelays(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winDelays) init() {
+}
+
 func (win *winDelays) destroy() {
 }
 

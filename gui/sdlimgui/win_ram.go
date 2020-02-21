@@ -38,6 +38,9 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winRAM) init() {
+}
+
 func (win *winRAM) destroy() {
 }
 

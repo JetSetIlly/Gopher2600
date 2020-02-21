@@ -43,6 +43,10 @@ type winDisasm struct {
 	// decide what the value of followPC should be
 	bankPrevFrame int
 	pcPrevFrame   uint16
+
+	// gutter colors
+	colCurrentPC  uint32
+	colBreakpoint uint32
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -52,6 +56,11 @@ func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 	}
 
 	return win, nil
+}
+
+func (win *winDisasm) init() {
+	win.colCurrentPC = colorConvertFloat4ToU32(win.img.cols.DisasmCurrentPC)
+	win.colBreakpoint = colorConvertFloat4ToU32(win.img.cols.DisasmAddress)
 }
 
 func (win *winDisasm) destroy() {
@@ -202,15 +211,15 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 }
 
 func (win *winDisasm) drawPointer() {
-	win.drawGutter(fillFull, win.img.cols.DisasmCurrentPC)
+	win.drawGutter(fillFull, win.colCurrentPC)
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.dbg.HasBreak(e) {
 	case debugger.BrkGrpAnyBank:
-		win.drawGutter(fillNone, win.img.cols.DisasmAddress)
+		win.drawGutter(fillNone, win.colBreakpoint)
 	case debugger.BrkGrpThisBank:
-		win.drawGutter(fillHalf, win.img.cols.DisasmAddress)
+		win.drawGutter(fillHalf, win.colBreakpoint)
 	}
 }
 
@@ -222,18 +231,18 @@ const (
 	fillFull
 )
 
-func (win *winDisasm) drawGutter(fill fillType, col imgui.Vec4) {
+func (win *winDisasm) drawGutter(fill fillType, col uint32) {
 	r := imgui.FrameHeight() / 4
 	p := imgui.CursorScreenPos()
 	p.Y -= r * 2
 	dl := imgui.WindowDrawList()
 	switch fill {
 	case fillNone:
-		dl.AddCircle(p, r, colorConvertFloat4ToU32(col))
+		dl.AddCircle(p, r, col)
 	case fillHalf:
-		dl.AddCircle(p, r, colorConvertFloat4ToU32(col))
-		dl.AddCircle(p, r/2, colorConvertFloat4ToU32(col))
+		dl.AddCircle(p, r, col)
+		dl.AddCircle(p, r/2, col)
 	case fillFull:
-		dl.AddCircleFilled(p, r, colorConvertFloat4ToU32(col))
+		dl.AddCircleFilled(p, r, col)
 	}
 }

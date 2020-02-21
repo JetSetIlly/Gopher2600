@@ -95,6 +95,9 @@ func newWinScreen(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winScreen) init() {
+}
+
 func (win *winScreen) destroy() {
 }
 

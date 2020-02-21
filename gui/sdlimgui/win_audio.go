@@ -42,6 +42,9 @@ func newWinAudio(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winAudio) init() {
+}
+
 func (win *winAudio) destroy() {
 }
 

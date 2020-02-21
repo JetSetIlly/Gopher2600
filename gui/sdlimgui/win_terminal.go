@@ -85,6 +85,9 @@ func newWinTerm(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winTerm) init() {
+}
+
 func (win *winTerm) destroy() {
 }
 

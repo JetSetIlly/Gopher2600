@@ -27,11 +27,19 @@ import (
 
 const winControlTitle = "Control"
 
+const (
+	videoCycleLabel     = "Step Video"
+	cpuInstructionLabel = "Step CPU"
+)
+
 type winControl struct {
 	windowManagement
 	img *SdlImgui
 
 	videoStep bool
+
+	// widget dimensions
+	stepButtonDim imgui.Vec2
 }
 
 func newWinControl(img *SdlImgui) (managedWindow, error) {
@@ -39,6 +47,10 @@ func newWinControl(img *SdlImgui) (managedWindow, error) {
 		img: img,
 	}
 	return win, nil
+}
+
+func (win *winControl) init() {
+	win.stepButtonDim = minFrameDimension(videoCycleLabel, cpuInstructionLabel)
 }
 
 func (win *winControl) destroy() {
@@ -101,22 +113,26 @@ func (win *winControl) drawQuantumToggle() {
 		win.videoStep = false
 	}
 
-	imgui.SameLine()
+	stepLabel := cpuInstructionLabel
+
 	toggle := win.videoStep
-	toggleButton("quantum", &toggle, win.img.cols.TitleBgActive)
 	imgui.SameLine()
-	imgui.AlignTextToFramePadding()
+	toggleButton("quantum", &toggle, win.img.cols.TitleBgActive)
 	if toggle {
-		imgui.Text("video cycle")
+		stepLabel = videoCycleLabel
 		if win.videoStep != toggle {
 			win.videoStep = toggle
 			win.img.issueTermCommand("QUANTUM VIDEO")
 		}
 	} else {
-		imgui.Text("cpu instruction")
 		if win.videoStep != toggle {
 			win.videoStep = toggle
 			win.img.issueTermCommand("QUANTUM CPU")
 		}
+	}
+
+	imgui.SameLine()
+	if imgui.ButtonV(stepLabel, win.stepButtonDim) {
+		win.img.issueTermCommand("STEP")
 	}
 }

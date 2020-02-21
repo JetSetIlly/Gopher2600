@@ -38,6 +38,9 @@ func newWinRIOT(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winRIOT) init() {
+}
+
 func (win *winRIOT) destroy() {
 }
 

@@ -43,6 +43,9 @@ func (wm *windowManagement) setOpen(open bool) {
 // managedWindow conceptualises the functions required by a window such that
 // it can be managed by the windowManager
 type managedWindow interface {
+	// init can be used to set up values that cannot be done during creation
+	init()
+
 	id() string
 	destroy()
 	draw()
@@ -54,6 +57,8 @@ type managedWindow interface {
 // imgui application
 type windowManager struct {
 	img *SdlImgui
+
+	hasInitialised bool
 
 	windows    map[string]managedWindow
 	windowList []string
@@ -123,6 +128,20 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	return wm, nil
 }
 
+// init is called from drawWindows(). not sure if there is an earlier, singular
+// point where we can call it.
+func (wm *windowManager) init() {
+	if wm.hasInitialised {
+		return
+	}
+
+	for w := range wm.windows {
+		wm.windows[w].init()
+	}
+
+	wm.hasInitialised = true
+}
+
 func (wm *windowManager) destroy() {
 	for w := range wm.windows {
 		wm.windows[w].destroy()
@@ -130,6 +149,8 @@ func (wm *windowManager) destroy() {
 }
 
 func (wm *windowManager) drawWindows() {
+	wm.init()
+
 	if wm.img.vcs != nil && wm.img.dsm != nil {
 		wm.drawMainMenu()
 		for w := range wm.windows {

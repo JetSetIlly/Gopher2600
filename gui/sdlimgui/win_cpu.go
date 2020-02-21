@@ -34,11 +34,13 @@ type winCPU struct {
 	windowManagement
 	img *SdlImgui
 
-	pc       string
-	a        string
-	x        string
-	y        string
-	sp       string
+	pc string
+	a  string
+	x  string
+	y  string
+	sp string
+
+	// widget dimensions
 	regWidth float32
 }
 
@@ -48,6 +50,10 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 	}
 
 	return win, nil
+}
+
+func (win *winCPU) init() {
+	win.regWidth = minFrameDimension("FFFF").X
 }
 
 func (win *winCPU) destroy() {
@@ -62,17 +68,15 @@ func (win *winCPU) draw() {
 		return
 	}
 
-	win.regWidth = minFrameDimension("FFFF").X
-
 	imgui.SetNextWindowPosV(imgui.Vec2{632, 46}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.img.vcs.CPU.PC, &win.pc, win.regWidth)
-	win.drawRegister(win.img.vcs.CPU.A, &win.a, win.regWidth)
-	win.drawRegister(win.img.vcs.CPU.X, &win.x, win.regWidth)
-	win.drawRegister(win.img.vcs.CPU.Y, &win.y, win.regWidth)
-	win.drawRegister(win.img.vcs.CPU.SP, &win.sp, win.regWidth)
+	win.drawRegister(win.img.vcs.CPU.PC, &win.pc)
+	win.drawRegister(win.img.vcs.CPU.A, &win.a)
+	win.drawRegister(win.img.vcs.CPU.X, &win.x)
+	win.drawRegister(win.img.vcs.CPU.Y, &win.y)
+	win.drawRegister(win.img.vcs.CPU.SP, &win.sp)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -133,7 +137,7 @@ func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
 	imgui.PopStyleColorV(3)
 }
 
-func (win *winCPU) drawRegister(reg registers.Generic, s *string, regWidth float32) {
+func (win *winCPU) drawRegister(reg registers.Generic, s *string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
@@ -169,7 +173,7 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string, regWidth float
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
-	imgui.PushItemWidth(regWidth)
+	imgui.PushItemWidth(win.regWidth)
 	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), s, flags, cb) {
 		if v, err := strconv.ParseUint(*s, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)

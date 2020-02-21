@@ -38,6 +38,9 @@ func newWinTIA(img *SdlImgui) (managedWindow, error) {
 	return win, nil
 }
 
+func (win *winTIA) init() {
+}
+
 func (win *winTIA) destroy() {
 }
 
