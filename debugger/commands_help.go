@@ -380,6 +380,17 @@ about its state. Current targets are:
 
 	the CPU registers (PC, A, X, Y and SP)
 	the TV state (FRAMENUM, SCANLINE, HORIZPOS)
+	cartidge BANK
+	CPU result (RESULT MNEMONIC, RESULT EFFECT, RESULT PAGEFAULT, RESULT BUG)
+
+Specifying an address without a target will be assumed to be break on the PC
+and the current cartridge bank. So:
+
+	BREAK <address>
+
+Becomes:
+
+	BREAK PC <address> & BANK <current bank>
 
 A break can depend on the condition of more than one target. Specify complex
 conditions with the & operative. For example:

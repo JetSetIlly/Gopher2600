@@ -151,12 +151,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			}
 
 		case "BANK":
-			trg = &target{
-				label: "Bank",
-				currentValue: func() interface{} {
-					return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
-				},
-			}
+			trg = bankTarget(dbg)
 
 		// cpu instruction targetting was originally added as an experiment, to
 		// help investigate a bug in the emulation. I don't think it's much use
@@ -188,7 +183,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 						},
 					}
 
-				case "PAGE":
+				case "PAGEFAULT", "PAGE":
 					trg = &target{
 						label: "PageFault",
 						currentValue: func() interface{} {
@@ -233,4 +228,13 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 	}
 
 	return trg, nil
+}
+
+func bankTarget(dbg *Debugger) *target {
+	return &target{
+		label: "Bank",
+		currentValue: func() interface{} {
+			return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+		},
+	}
 }

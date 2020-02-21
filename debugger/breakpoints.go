@@ -258,6 +258,11 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	// them to newBreaks first and then check that we aren't adding duplicates
 	newBreaks := make([]breaker, 0, 10)
 
+	// a note about whether the PC target has been specified explicitely. we
+	// use this to decide whether to add an automatic BANK condition to PC
+	// targets (see below)
+	explicitPCTarget := false
+
 	// loop over tokens:
 	//	o if token is a valid type value then add the breakpoint for the current target
 	//  o if it is not a valid type value, try to change the target
@@ -271,6 +276,7 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 		switch tgt.TargetValue().(type) {
 		case string:
 			// if token is string type then make it uppercase for now
+			//
 			// !!TODO: more sophisticated transforms of breakpoint information
 			// see also "special handling for PC" below
 			val = strings.ToUpper(tok)
@@ -320,6 +326,9 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 			} else if tok == "|" {
 				andBreaks = false
 			} else {
+				// note whether PC target has been specified explicitly
+				explicitPCTarget = explicitPCTarget || strings.ToUpper(tok) == "PC"
+
 				// token is not a number or a composition symbol so try to
 				// parse a new target
 				tokens.Unget()
@@ -340,6 +349,19 @@ func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
 	}
 
 	for _, nb := range newBreaks {
+		// if the break is a singular, undecorated PC target then add a BANK
+		// condition for the current BANK. this is arguably what the user
+		// intends to happen.
+		if nb.next == nil && nb.target.label == "PC" && !explicitPCTarget {
+			if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
+				nb.next = &breaker{
+					target: bankTarget(bp.dbg),
+					value:  bp.dbg.vcs.Mem.Cart.GetBank(bp.dbg.vcs.CPU.PC.Address()),
+				}
+				nb.next.ignoreValue = nb.next.value
+			}
+		}
+
 		if err := bp.checkBreaker(nb); err != nil {
 			return errors.New(errors.CommandError, err)
 		}
@@ -362,17 +384,17 @@ func (bp *breakpoints) checkBreaker(nb breaker) error {
 // BreakGroup indicates the broad category of breakpoint an address has
 type BreakGroup int
 
-// List of valid PcBreak values
+// List of valid BreakGroup values
 const (
 	BrkGrpNone BreakGroup = iota
 	BrkGrpAnyBank
 	BrkGrpThisBank
 )
 
+// !!TODO: detect other break types?
 func (bp *breakpoints) hasBreak(e *disassembly.Entry) BreakGroup {
 	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
 
-	// we start with the very specific - address and bank
 	check := breaker{
 		target: bp.checkPcBreak,
 
@@ -381,25 +403,40 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) BreakGroup {
 		// ProgramCounter type in the registers package)
 		value: int(ai.mappedAddress),
 	}
-	check.next = &breaker{
-		target: bp.checkBankBreak,
-		value:  e.Bank,
-	}
 
-	// if checkBreaker fails then hasPcBreak has succeeded(!) and we can return
-	// PcBreakThisBank to indicate that this disassembly entry has this
-	// specific breakpoint
-	if err := bp.checkBreaker(check); err != nil {
-		return BrkGrpThisBank
-	}
+	// check has slightly different semantics if number of cartridge banks is
+	// greater than one. in this case we want to check if PC break specifies a
+	// bank or not
+	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
+		// we start with the very specific - address and bank
+		check.next = &breaker{
+			target: bp.checkBankBreak,
+			value:  e.Bank,
+		}
 
-	// if checkBreaker doesn't report an existing breakpoint, we remove the
-	// Bank condition and try again. if checkBreak fails this time, we can say
-	// that the disassembly entry has a breakpoint for the address only and
-	// that the debugger will break for any bank
-	check.next = nil
-	if err := bp.checkBreaker(check); err != nil {
-		return BrkGrpAnyBank
+		// check for a breaker for the PC value AND bank value. if
+		// checkBreaker() fails then from our point of view, this is a success
+		// and we say that the disassembly.Entry has a breakpoint for *this*
+		// bank
+		if err := bp.checkBreaker(check); err != nil {
+			return BrkGrpThisBank
+		}
+
+		// if checkBreaker doesn't report an existing breakpoint, we remove the
+		// Bank condition and try again. if checkBreaker fails (success from our
+		// point of view) this time, we can say that the disassembly entry has
+		// a breakpoint for the program counter only and will break for *any*
+		// bank
+		check.next = nil
+		if err := bp.checkBreaker(check); err != nil {
+			return BrkGrpAnyBank
+		}
+	} else {
+		// for cartridges with just one bank a PC break for the
+		// disassembly.Entry address is, by definition, a break for *this* bank
+		if err := bp.checkBreaker(check); err != nil {
+			return BrkGrpThisBank
+		}
 	}
 
 	// there is no breakpoint at that matches this disassembly entry
