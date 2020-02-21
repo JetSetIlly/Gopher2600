@@ -202,22 +202,38 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 }
 
 func (win *winDisasm) drawPointer() {
-	win.drawGutter(win.img.cols.DisasmCurrentPC)
+	win.drawGutter(fillFull, win.img.cols.DisasmCurrentPC)
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.dbg.HasBreak(e) {
 	case debugger.BrkGrpAnyBank:
-		fallthrough
+		win.drawGutter(fillNone, win.img.cols.DisasmAddress)
 	case debugger.BrkGrpThisBank:
-		win.drawGutter(win.img.cols.DisasmAddress)
+		win.drawGutter(fillHalf, win.img.cols.DisasmAddress)
 	}
 }
 
-func (win *winDisasm) drawGutter(col imgui.Vec4) {
+type fillType int
+
+const (
+	fillNone fillType = iota
+	fillHalf
+	fillFull
+)
+
+func (win *winDisasm) drawGutter(fill fillType, col imgui.Vec4) {
 	r := imgui.FrameHeight() / 4
 	p := imgui.CursorScreenPos()
 	p.Y -= r * 2
 	dl := imgui.WindowDrawList()
-	dl.AddCircleFilled(p, r, colorConvertFloat4ToU32(col))
+	switch fill {
+	case fillNone:
+		dl.AddCircle(p, r, colorConvertFloat4ToU32(col))
+	case fillHalf:
+		dl.AddCircle(p, r, colorConvertFloat4ToU32(col))
+		dl.AddCircle(p, r/2, colorConvertFloat4ToU32(col))
+	case fillFull:
+		dl.AddCircleFilled(p, r, colorConvertFloat4ToU32(col))
+	}
 }
