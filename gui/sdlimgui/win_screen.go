@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"gopher2600/television"
 	"gopher2600/test"
 	"image"
@@ -40,12 +41,6 @@ const (
 type winScreen struct {
 	windowManagement
 	img *SdlImgui
-
-	// playmode controls how the screen is displayed. currently, when
-	// playmode is true:
-	//   o tv screen imgui window will be created without decorations
-	//   o host sdl window will be set to the same size as the tv screen
-	playmode bool
 
 	// is screen currently pointed at
 	isHovered bool
@@ -137,6 +132,12 @@ func (win *winScreen) draw() {
 
 	if win.img.vcs != nil {
 		imgui.Text(win.img.vcs.TV.String())
+		imgui.SameLine()
+		if win.img.paused {
+			imgui.Text("no fps")
+		} else {
+			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.lmtr.FPS))
+		}
 	}
 
 	imgui.End()

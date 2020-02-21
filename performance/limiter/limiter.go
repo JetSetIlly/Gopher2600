@@ -34,6 +34,7 @@ package limiter
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 )
 
@@ -48,6 +49,9 @@ type FpsLimiter struct {
 	framesPerSecond int
 	secondsPerFrame time.Duration
 	tick            chan bool
+
+	trackFrameCt uint32
+	FPS          float64
 }
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
@@ -70,6 +74,18 @@ func NewFPSLimiter(framesPerSecond int) *FpsLimiter {
 		}
 	}()
 
+	// fun fps calculator concurrently
+	go func() {
+		dur, _ := time.ParseDuration("0.5s")
+		for {
+			time.Sleep(dur)
+
+			frames := float64(atomic.LoadUint32(&lim.trackFrameCt))
+			lim.FPS = frames / dur.Seconds()
+			atomic.StoreUint32(&lim.trackFrameCt, 0)
+		}
+	}()
+
 	return lim
 }
 
@@ -84,6 +100,8 @@ func (lim *FpsLimiter) Wait() {
 	if lim.Active {
 		<-lim.tick
 	}
+	ct := atomic.AddUint32(&lim.trackFrameCt, 1)
+	atomic.StoreUint32(&lim.trackFrameCt, ct)
 }
 
 // HasWaited will return true if time has already elapsed and false it it is
