@@ -63,9 +63,6 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 	case gui.ReqSetScale:
 		err = scr.setWindowFromThread(args[0].(float32))
 
-	case gui.ReqSetFpsCap:
-		scr.lmtr.Active = args[0].(bool)
-
 	default:
 		return errors.New(errors.UnsupportedGUIRequest, request)
 	}

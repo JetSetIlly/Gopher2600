@@ -136,7 +136,7 @@ func (win *winScreen) draw() {
 		if win.img.paused {
 			imgui.Text("no fps")
 		} else {
-			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.lmtr.FPS))
+			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.vcs.TV.GetFPS()))
 		}
 	}
 
@@ -184,7 +184,6 @@ func (win *winScreen) resize(topScanline int, visibleScanlines int, setWindow fu
 	win.scanlines = visibleScanlines
 	win.pixels = image.NewRGBA(image.Rect(0, 0, win.horizPixels, win.scanlines))
 
-	win.img.lmtr.SetLimit(win.img.tv.GetSpec().FramesPerSecond)
 	win.aspectBias = win.img.tv.GetSpec().AspectBias
 
 	setWindow(reapplyScale)

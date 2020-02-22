@@ -27,7 +27,6 @@ import (
 	"gopher2600/gui/sdlaudio"
 	"gopher2600/hardware"
 	"gopher2600/paths"
-	"gopher2600/performance/limiter"
 	"gopher2600/television"
 	"gopher2600/test"
 	"io"
@@ -59,9 +58,6 @@ type SdlImgui struct {
 	service    chan func()
 	serviceErr chan error
 
-	// limit number of frames per second
-	lmtr *limiter.FpsLimiter
-
 	// events channel is not created but assigned with SetEventChannel()
 	events chan gui.Event
 
@@ -85,10 +81,6 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		service:    make(chan func(), 1),
 		serviceErr: make(chan error, 1),
 	}
-
-	// create new frame limiter. we change the rate in the resize function
-	// (rate may change due to specification change)
-	img.lmtr = limiter.NewFPSLimiter(-1)
 
 	// define colors
 	img.cols = defaultTheme()

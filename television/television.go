@@ -22,6 +22,7 @@ package television
 import (
 	"fmt"
 	"gopher2600/errors"
+	"gopher2600/performance/limiter"
 	"strings"
 )
 
@@ -128,6 +129,15 @@ type television struct {
 	// the "key color" the screen would be much larger than it needs to be.
 	key    bool
 	keyCol ColorSignal
+
+	// limit number of frames per second
+	lmtr *limiter.FpsLimiter
+
+	// whether to use the FPS value given in the TV specification
+	fpsFromSpec bool
+
+	// whether to wait for fps limited each frame
+	fpsCap bool
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -137,6 +147,8 @@ func NewTelevision(spec string) (Television, error) {
 		specIDOnCreation: strings.ToUpper(spec),
 		resizeTop:        -1,
 		resizeBot:        -1,
+		fpsFromSpec:      true,
+		fpsCap:           true,
 	}
 
 	err := tv.SetSpec(spec)
@@ -152,6 +164,10 @@ func NewTelevision(spec string) (Television, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// create new frame limiter. we change the rate in the resize function
+	// (rate may change due to specification change)
+	tv.lmtr = limiter.NewFPSLimiter(tv.spec.FramesPerSecond)
 
 	return tv, nil
 }
@@ -404,6 +420,16 @@ func (tv *television) newFrame() error {
 			}
 		}
 		tv.resize = false
+
+		// change fps
+		if tv.fpsFromSpec {
+			tv.lmtr.SetLimit(tv.spec.FramesPerSecond)
+		}
+	}
+
+	// wait for frame limiter
+	if tv.fpsCap {
+		tv.lmtr.Wait()
 	}
 
 	// new frame
@@ -499,4 +525,25 @@ func (tv television) End() error {
 	}
 
 	return err
+}
+
+// SetFPSCap implements the Television interface
+func (tv *television) SetFPSCap(set bool) {
+	tv.fpsCap = set
+}
+
+// SetFPS implements the Television interface
+func (tv *television) SetFPS(fps int) {
+	if fps < 0 {
+		tv.lmtr.SetLimit(tv.spec.FramesPerSecond)
+		tv.fpsFromSpec = true
+	} else {
+		tv.lmtr.SetLimit(fps)
+		tv.fpsFromSpec = false
+	}
+}
+
+// GetFPS implements the Television interface
+func (tv *television) GetFPS() float64 {
+	return tv.lmtr.FPS
 }

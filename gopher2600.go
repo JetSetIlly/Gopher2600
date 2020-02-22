@@ -246,6 +246,9 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
+		// set fps cap
+		tv.SetFPSCap(*fpsCap)
+
 		// add wavwriter mixer if wav argument has been specified
 		if *wav != "" {
 			aw, err := wavwriter.New(*wav)
@@ -272,12 +275,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		// turn off fallback ctrl-c handling. this so that the playmode can
 		// end playback recordings gracefully
 		sync.state <- reqNoIntSig
-
-		// set fps cap
-		err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
-		if err != nil {
-			return err
-		}
 
 		// set scaling value
 		err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
@@ -499,6 +496,8 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
+		tv.SetFPSCap(*fpsCap)
+
 		if *display {
 			// notify main thread of new gui creator
 			sync.creator <- func() (GuiCreator, error) {
@@ -512,12 +511,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 				scr = g.(gui.GUI)
 			case err := <-sync.creationError:
 				return errors.New(errors.PlayError, err)
-			}
-
-			// set fps cap
-			err = scr.SetFeature(gui.ReqSetFpsCap, *fpsCap)
-			if err != nil {
-				return err
 			}
 
 			// set scaling value

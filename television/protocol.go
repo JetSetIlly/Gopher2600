@@ -69,6 +69,17 @@ type Television interface {
 	// with a more generalised function) if we ever add another television
 	// implementation.
 	SpecIDOnCreation() string
+
+	// Set whether the emulation should wait for FPS limiter
+	SetFPSCap(set bool)
+
+	// Set the frames per second. This overrides the frame rate of the
+	// specification. A negative FPS value restores the specifcications frame
+	// rate.
+	SetFPS(fps int)
+
+	// The current number of frames per second
+	GetFPS() float64
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

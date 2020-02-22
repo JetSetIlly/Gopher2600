@@ -164,9 +164,6 @@ func (scr *SdlPlay) Service() {
 		}
 	}
 
-	// wait for frame limiter
-	scr.lmtr.Wait()
-
 	// run any outstanding service functions
 	select {
 	case f := <-scr.service:

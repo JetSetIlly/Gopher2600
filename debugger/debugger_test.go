@@ -76,6 +76,16 @@ func (t *mockTV) SpecIDOnCreation() string {
 	return ""
 }
 
+func (t *mockTV) SetFPSCap(set bool) {
+}
+
+func (t *mockTV) SetFPS(fps int) {
+}
+
+func (t *mockTV) GetFPS() float64 {
+	return 0.0
+}
+
 func (g *mockGUI) Destroy(_ io.Writer) {
 }
 

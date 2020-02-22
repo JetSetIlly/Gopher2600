@@ -199,9 +199,6 @@ func (img *SdlImgui) Service() {
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()
 
-	// wait for frame limiter
-	img.lmtr.Wait()
-
 	// run any outstanding service functions
 	select {
 	case f := <-img.service:

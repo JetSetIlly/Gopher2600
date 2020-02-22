@@ -23,7 +23,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
-	"gopher2600/performance/limiter"
 	"gopher2600/television"
 	"gopher2600/test"
 	"io"
@@ -42,9 +41,6 @@ type SdlPlay struct {
 	// for service.
 	service    chan func()
 	serviceErr chan error
-
-	// limit number of frames per second
-	lmtr *limiter.FpsLimiter
 
 	// connects SDL guiLoop with the parent process
 	events chan gui.Event
@@ -133,10 +129,6 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 
 	// register ourselves as a television.AudioMixer
 	scr.AddAudioMixer(scr.aud)
-
-	// create new frame limiter. we change the rate in the resize function
-	// (rate may change due to specification change)
-	scr.lmtr = limiter.NewFPSLimiter(-1)
 
 	// resize window
 	err = scr.resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
@@ -276,7 +268,6 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 	// ----
 
 	scr.setWindow(-1)
-	scr.lmtr.SetLimit(scr.GetSpec().FramesPerSecond)
 
 	return nil
 }
