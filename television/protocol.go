@@ -73,13 +73,20 @@ type Television interface {
 	// Set whether the emulation should wait for FPS limiter
 	SetFPSCap(set bool)
 
-	// Set the frames per second. This overrides the frame rate of the
-	// specification. A negative FPS value restores the specifcications frame
-	// rate.
-	SetFPS(fps int)
+	// Request the number frames per second. This overrides the frame rate of
+	// the specification. A negative FPS value restores the specifcications
+	// frame rate.
+	//
+	// Note that this is only a request, the emulation may not be able to
+	// achieve that rate.
+	ReqFPS(fps float32)
 
 	// The current number of frames per second
-	GetFPS() float64
+	GetActualFPS() float32
+
+	// The requested number of frames per second. Compare with GetActualFPS()
+	// to check for accuracy.
+	GetReqFPS() float32
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

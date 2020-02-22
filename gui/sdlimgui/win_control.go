@@ -37,6 +37,7 @@ type winControl struct {
 	img *SdlImgui
 
 	videoStep bool
+	fps       float32
 
 	// widget dimensions
 	stepButtonDim imgui.Vec2
@@ -51,6 +52,7 @@ func newWinControl(img *SdlImgui) (managedWindow, error) {
 
 func (win *winControl) init() {
 	win.stepButtonDim = minFrameDimension(videoCycleLabel, cpuInstructionLabel)
+	win.fps = win.img.vcs.TV.GetReqFPS()
 }
 
 func (win *winControl) destroy() {
@@ -68,20 +70,20 @@ func (win *winControl) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{645, 253}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	w := minFrameDimension("Run", "Halt")
+	dim := minFrameDimension("Run", "Halt")
 
 	if win.img.paused {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRun)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunActive)
-		if imgui.ButtonV("Run", w) {
+		if imgui.ButtonV("Run", dim) {
 			win.img.issueTermCommand("RUN")
 		}
 	} else {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlHalt)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlHaltHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlHaltActive)
-		if imgui.ButtonV("Halt", w) {
+		if imgui.ButtonV("Halt", dim) {
 			win.img.issueTermCommand("HALT")
 		}
 	}
@@ -99,6 +101,28 @@ func (win *winControl) draw() {
 	imgui.SameLine()
 	if imgui.Button("Scanline") {
 		win.img.issueTermCommand("STEP SCANLINE")
+	}
+
+	imgui.Spacing()
+
+	// figuring the width of fps slider requires some care. we need to take
+	// into account the width of the label and of the padding and inner
+	// spacing.
+	w := imgui.WindowWidth()
+	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
+	w -= imgui.CalcTextSize("FPS", false, 0).X
+	imgui.PushItemWidth(w)
+
+	// fps slider
+	win.fps = win.img.vcs.TV.GetReqFPS()
+	if imgui.SliderFloatV("FPS", &win.fps, 0.1, 100, "%.1f", 1.0) {
+		win.img.vcs.TV.ReqFPS(win.fps)
+	}
+	imgui.PopItemWidth()
+
+	// reset to specifcation rate on right mouse click
+	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
+		win.img.vcs.TV.ReqFPS(-1)
 	}
 
 	imgui.End()

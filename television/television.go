@@ -423,7 +423,7 @@ func (tv *television) newFrame() error {
 
 		// change fps
 		if tv.fpsFromSpec {
-			tv.lmtr.SetLimit(tv.spec.FramesPerSecond)
+			tv.lmtr.SetFPS(tv.spec.FramesPerSecond)
 		}
 	}
 
@@ -533,17 +533,22 @@ func (tv *television) SetFPSCap(set bool) {
 }
 
 // SetFPS implements the Television interface
-func (tv *television) SetFPS(fps int) {
+func (tv *television) ReqFPS(fps float32) {
 	if fps < 0 {
-		tv.lmtr.SetLimit(tv.spec.FramesPerSecond)
+		tv.lmtr.SetFPS(tv.spec.FramesPerSecond)
 		tv.fpsFromSpec = true
 	} else {
-		tv.lmtr.SetLimit(fps)
+		tv.lmtr.SetFPS(fps)
 		tv.fpsFromSpec = false
 	}
 }
 
-// GetFPS implements the Television interface
-func (tv *television) GetFPS() float64 {
-	return tv.lmtr.FPS
+// GetActualFPS implements the Television interface
+func (tv *television) GetActualFPS() float32 {
+	return tv.lmtr.ActualFPS
+}
+
+// GetReqFPS implements the Television interface
+func (tv *television) GetReqFPS() float32 {
+	return tv.lmtr.RequestedFPS
 }

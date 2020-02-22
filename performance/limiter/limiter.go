@@ -46,53 +46,73 @@ type FpsLimiter struct {
 	// toggle limited on and off
 	Active bool
 
-	framesPerSecond int
+	RequestedFPS    float32
 	secondsPerFrame time.Duration
 	tick            chan bool
+	tickNow         chan bool
 
 	trackFrameCt uint32
-	FPS          float64
+	ActualFPS    float32
 }
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
-func NewFPSLimiter(framesPerSecond int) *FpsLimiter {
+func NewFPSLimiter(RequestedFPS float32) *FpsLimiter {
 	lim := &FpsLimiter{Active: true}
-	lim.SetLimit(framesPerSecond)
-
 	lim.tick = make(chan bool)
+	lim.tickNow = make(chan bool)
 
 	// run ticker concurrently
 	go func() {
-		adjustedSecondPerFrame := lim.secondsPerFrame
-		t := time.Now()
+		rateTimer := time.NewTimer(lim.secondsPerFrame)
 		for {
 			lim.tick <- true
-			time.Sleep(adjustedSecondPerFrame)
-			nt := time.Now()
-			adjustedSecondPerFrame -= nt.Sub(t) - lim.secondsPerFrame
-			t = nt
+			select {
+			case <-rateTimer.C:
+			case <-lim.tickNow:
+				rateTimer.Stop()
+			}
+			rateTimer.Reset(lim.secondsPerFrame)
 		}
 	}()
 
 	// fun fps calculator concurrently
 	go func() {
-		dur, _ := time.ParseDuration("0.5s")
-		for {
-			time.Sleep(dur)
+		t := time.Now()
 
-			frames := float64(atomic.LoadUint32(&lim.trackFrameCt))
-			lim.FPS = frames / dur.Seconds()
+		updateRate, _ := time.ParseDuration("0.5s")
+
+		for {
+			// wait for spcified duration
+			time.Sleep(updateRate)
+
+			// acutal end time
+			et := time.Now()
+
+			// calculate actual rate
+			frames := float32(atomic.LoadUint32(&lim.trackFrameCt))
+			lim.ActualFPS = frames / float32(et.Sub(t).Seconds())
 			atomic.StoreUint32(&lim.trackFrameCt, 0)
+
+			// new start time
+			t = et
 		}
 	}()
+
+	lim.RequestedFPS = RequestedFPS
+	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/float32(RequestedFPS)))
 
 	return lim
 }
 
-// SetLimit changes the limit at which the FpsLimiter waits
-func (lim *FpsLimiter) SetLimit(framesPerSecond int) {
-	lim.framesPerSecond = framesPerSecond
-	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float64(1.0)/float64(framesPerSecond)))
+// SetFPS changes the limit at which the FpsLimiter waits
+func (lim *FpsLimiter) SetFPS(RequestedFPS float32) {
+	lim.RequestedFPS = RequestedFPS
+	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/float32(RequestedFPS)))
+
+	select {
+	case lim.tickNow <- true:
+	default:
+	}
 }
 
 // Wait will block until trigger

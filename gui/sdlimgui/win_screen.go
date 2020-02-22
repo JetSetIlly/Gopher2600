@@ -136,7 +136,12 @@ func (win *winScreen) draw() {
 		if win.img.paused {
 			imgui.Text("no fps")
 		} else {
-			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.vcs.TV.GetFPS()))
+			fps := win.img.vcs.TV.GetActualFPS()
+			if fps < 1.0 {
+				imgui.Text("< 1 fps")
+			} else {
+				imgui.Text(fmt.Sprintf("%03.1f fps", win.img.vcs.TV.GetActualFPS()))
+			}
 		}
 	}
 

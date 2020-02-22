@@ -79,10 +79,14 @@ func (t *mockTV) SpecIDOnCreation() string {
 func (t *mockTV) SetFPSCap(set bool) {
 }
 
-func (t *mockTV) SetFPS(fps int) {
+func (t *mockTV) ReqFPS(fps float32) {
 }
 
-func (t *mockTV) GetFPS() float64 {
+func (t *mockTV) GetActualFPS() float32 {
+	return 0.0
+}
+
+func (t *mockTV) GetReqFPS() float32 {
 	return 0.0
 }
 

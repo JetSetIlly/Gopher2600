@@ -45,9 +45,9 @@ type winDisasm struct {
 	pcPrevFrame   uint16
 
 	// gutter colors
-	colCurrentPC  uint32
-	colBreakpoint uint32
-	colMnemonic   uint32
+	colCurrentPC  imgui.PackedColor
+	colBreakpoint imgui.PackedColor
+	colMnemonic   imgui.PackedColor
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -60,9 +60,9 @@ func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winDisasm) init() {
-	win.colCurrentPC = colorConvertFloat4ToU32(win.img.cols.DisasmCurrentPC)
-	win.colBreakpoint = colorConvertFloat4ToU32(win.img.cols.DisasmAddress)
-	win.colBreakpoint = colorConvertFloat4ToU32(win.img.cols.DisasmAddress)
+	win.colCurrentPC = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrentPC)
+	win.colBreakpoint = imgui.PackedColorFromVec4(win.img.cols.DisasmAddress)
+	win.colBreakpoint = imgui.PackedColorFromVec4(win.img.cols.DisasmAddress)
 }
 
 func (win *winDisasm) destroy() {
@@ -244,7 +244,7 @@ const (
 	fillFull
 )
 
-func (win *winDisasm) drawGutter(fill fillType, col uint32) {
+func (win *winDisasm) drawGutter(fill fillType, col imgui.PackedColor) {
 	r := imgui.FrameHeight() / 4
 	p := imgui.CursorScreenPos()
 	p.Y -= r * 2

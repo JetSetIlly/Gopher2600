@@ -60,7 +60,7 @@ type Specification struct {
 	ScanlineBottom int
 
 	// the number of frames per second required by the specification
-	FramesPerSecond int
+	FramesPerSecond float32
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -102,7 +102,7 @@ func init() {
 		ScanlinesVisible:  192,
 		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
-		FramesPerSecond:   60,
+		FramesPerSecond:   60.0,
 		AspectBias:        0.91,
 	}
 
@@ -117,7 +117,7 @@ func init() {
 		ScanlinesVisible:  228,
 		ScanlinesOverscan: 36,
 		ScanlinesTotal:    312,
-		FramesPerSecond:   50,
+		FramesPerSecond:   50.0,
 		AspectBias:        1.09,
 	}
 
