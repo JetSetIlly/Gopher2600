@@ -32,24 +32,6 @@ import (
 // compare the use of this function with videoCycleWithInput() function
 // defined inside the inputLoop() function
 func (dbg *Debugger) videoCycle() error {
-	// because we call this callback mid-instruction, the program counter
-	// maybe in its non-final state - we don't want to break or trap in those
-	// instances when the final effect of the instruction changes the program
-	// counter to some other value (ie. a flow, subroutine or interrupt
-	// instruction)
-	if !dbg.vcs.CPU.LastResult.Final &&
-		dbg.vcs.CPU.LastResult.Defn != nil {
-		if dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
-			dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt {
-			return nil
-		}
-	}
-
-	dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
-	dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
-	dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
-
 	return dbg.reflect.Check()
 }
 
@@ -103,11 +85,24 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			return nil
 		}
 
+		var stepTrapMessage string
+
 		// check for breakpoints and traps
-		dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
-		dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
-		dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
-		stepTrapMessage := dbg.stepTraps.check("")
+		if !videoCycle ||
+			(dbg.vcs.CPU.LastResult.Final &&
+				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
+				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
+				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt) ||
+			(!dbg.vcs.CPU.LastResult.Final &&
+				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Flow &&
+				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Subroutine &&
+				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Interrupt) {
+
+			dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
+			dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
+			dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
+			stepTrapMessage = dbg.stepTraps.check("")
+		}
 
 		// check for halt conditions
 		haltEmulation := stepTrapMessage != "" ||
