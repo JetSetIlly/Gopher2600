@@ -68,6 +68,7 @@ type Colors struct {
 	OscLine imgui.Vec4
 
 	// terminal
+	TermBackground           imgui.Vec4
 	TermStyleInput           imgui.Vec4
 	TermStyleHelp            imgui.Vec4
 	TermStylePromptCPUStep   imgui.Vec4
@@ -116,6 +117,7 @@ func defaultTheme() *Colors {
 		DisasmSelectedAdj:        imgui.Vec4{0.1, 0.1, 0.1, 0.0},
 		OscBg:                    imgui.Vec4{0.21, 0.29, 0.23, 1.0},
 		OscLine:                  imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},
 		TermStyleInput:           imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		TermStyleHelp:            imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 		TermStylePromptCPUStep:   imgui.Vec4{1.0, 1.0, 1.0, 1.0},

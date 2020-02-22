@@ -29,15 +29,7 @@ import (
 
 const winTermTitle = "Terminal"
 
-const (
-	outputMaxSize = 64
-
-	// the max number of calls to TermPrintLine() before output resumes
-	// after a side-channel silence. note that this value is immediately set to
-	// zero on the next call to TermRead() so missed information is unlikely
-	// (maybe impossible, but I can't prove that).
-	maxSideChannelSilenceDuration = 3
-)
+const outputMaxSize = 64
 
 type winTerm struct {
 	windowManagement
@@ -58,10 +50,11 @@ type winTerm struct {
 	inputChan chan bool
 	sideChan  chan string
 
-	// set to a positive value when TermRead() returns from a sideChan event.
-	// silences output until value decreases to zero. value will decrease
-	// whenever TermPrintLine() is called or when TermRead() is called again.
-	sideChannelSilence int
+	// when sideChannelSilence is set to true output will not be recorded until
+	// output of style Input or Error is received. this system is based on the
+	// principal that every command sent by the sideChannel will result in an
+	// echo of the input
+	sideChannelSilence bool
 }
 
 func newWinTerm(img *SdlImgui) (managedWindow, error) {
@@ -104,7 +97,7 @@ func (win *winTerm) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{431, 381}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
 
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, imgui.Vec4{0.1, 0.1, 0.2, 0.9})
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
 	imgui.BeginV(winTermTitle, &win.open, imgui.WindowFlagsNoTitleBar)
 	imgui.PopStyleVar()
@@ -114,7 +107,11 @@ func (win *winTerm) draw() {
 	for i := range win.output {
 		win.output[i].draw()
 	}
-	imgui.Separator()
+	if len(win.output) > 0 {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+	}
 
 	// prompt
 	imgui.AlignTextToFramePadding()
@@ -128,11 +125,16 @@ func (win *winTerm) draw() {
 		imgui.SetKeyboardFocusHere()
 	}
 
+	// draw command input box
+	imgui.PushItemWidth(imgui.WindowWidth() - imgui.CursorPosX())
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.TermBackground)
 	if imgui.InputTextV("", &win.input,
 		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
 		win.tabCompleteAndHistory) {
 		win.inputChan <- true
 	}
+	imgui.PopStyleColor()
+	imgui.PopItemWidth()
 
 	// add some spacing so that when we scroll to the bottom of the windw
 	// it doesn't look goofy
@@ -156,6 +158,7 @@ func (win *winTerm) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 		d.DeleteBytes(0, len(b))
 		d.InsertBytes(0, []byte(s))
 		d.MarkBufferModified()
+
 	case imgui.KeyUpArrow:
 		// previous history item
 		if win.historyIdx > -1 {
@@ -206,8 +209,8 @@ func (win *winTerm) Silence(silenced bool) {
 
 // TermPrintLine implements the terminal.Output interface
 func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
-	if win.sideChannelSilence > 0 {
-		win.sideChannelSilence--
+	if win.sideChannelSilence && (style == terminal.StyleInput || style == terminal.StyleError) {
+		win.sideChannelSilence = false
 		return
 	}
 
@@ -226,10 +229,7 @@ func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
 
 // TermRead implements the terminal.Input interface
 func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	win.prompt = prompt.Content
-
-	// reset sideChannelSilence
-	win.sideChannelSilence = 0
+	win.prompt = strings.TrimSpace(prompt.Content)
 
 	// the debugger is waiting for input from the terminal but we still need to
 	// service gui events in the meantime.
@@ -252,7 +252,7 @@ func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *term
 			return n + 1, nil
 
 		case s := <-win.sideChan:
-			win.sideChannelSilence = maxSideChannelSilenceDuration
+			win.sideChannelSilence = true
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")
