@@ -34,12 +34,6 @@ type winCPU struct {
 	windowManagement
 	img *SdlImgui
 
-	pc string
-	a  string
-	x  string
-	y  string
-	sp string
-
 	// widget dimensions
 	regWidth float32
 }
@@ -72,11 +66,11 @@ func (win *winCPU) draw() {
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.img.vcs.CPU.PC, &win.pc)
-	win.drawRegister(win.img.vcs.CPU.A, &win.a)
-	win.drawRegister(win.img.vcs.CPU.X, &win.x)
-	win.drawRegister(win.img.vcs.CPU.Y, &win.y)
-	win.drawRegister(win.img.vcs.CPU.SP, &win.sp)
+	win.drawRegister(win.img.vcs.CPU.PC)
+	win.drawRegister(win.img.vcs.CPU.A)
+	win.drawRegister(win.img.vcs.CPU.X)
+	win.drawRegister(win.img.vcs.CPU.Y)
+	win.drawRegister(win.img.vcs.CPU.SP)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -137,12 +131,12 @@ func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
 	imgui.PopStyleColorV(3)
 }
 
-func (win *winCPU) drawRegister(reg registers.Generic, s *string) {
+func (win *winCPU) drawRegister(reg registers.Generic) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
 
-	*s = reg.String()
+	s := reg.String()
 
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		b := string(d.Buffer())
@@ -174,11 +168,11 @@ func (win *winCPU) drawRegister(reg registers.Generic, s *string) {
 	}
 
 	imgui.PushItemWidth(win.regWidth)
-	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), s, flags, cb) {
-		if v, err := strconv.ParseUint(*s, 16, reg.BitWidth()); err == nil {
+	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), &s, flags, cb) {
+		if v, err := strconv.ParseUint(s, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)
 		}
-		*s = reg.String()
+		s = reg.String()
 	}
 	imgui.PopItemWidth()
 }
