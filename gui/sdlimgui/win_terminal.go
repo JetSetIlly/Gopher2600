@@ -29,7 +29,7 @@ import (
 
 const winTermTitle = "Terminal"
 
-const outputMaxSize = 64
+const outputMaxSize = 512
 
 type winTerm struct {
 	windowManagement
@@ -103,10 +103,15 @@ func (win *winTerm) draw() {
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 
-	// output
-	for i := range win.output {
-		win.output[i].draw()
+	// only draw elements that will be visible
+	var clipper imgui.ListClipper
+	clipper.Begin(len(win.output))
+	for clipper.Step() {
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			win.output[i].draw()
+		}
 	}
+
 	if len(win.output) > 0 {
 		imgui.Spacing()
 		imgui.Separator()
