@@ -47,12 +47,12 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 	for bank := 0; bank < len(dsm.Entries); bank++ {
 		bankHeader := false
 
-		itr, err := dsm.NewIteration(bank)
+		itr, err := dsm.NewIteration(EntryTypeDecode, bank)
 		if err != nil {
 			return err
 		}
 
-		for d := itr.Start(); d != nil; d = itr.Next(EntryTypeDecode) {
+		for d := itr.Start(); d != nil; d = itr.Next() {
 			// line representation of Instruction. we'll print this
 			// in case of a match
 			line := &bytes.Buffer{}

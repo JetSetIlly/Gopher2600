@@ -104,8 +104,8 @@ func (win *winDisasm) draw() {
 			// for cartridges with just one bank we don't bother with a TabBar
 			win.drawBank(pcAddr, 0, true)
 		} else {
-			// create a new TabBar and iterate throuhg the cartridge banks,
-			// adding a new TabPage for each
+			// create a new TabBar and iterate through the cartridge banks,
+			// adding a page for each one
 			imgui.BeginTabBar("banks")
 			for b := range win.img.dsm.Entries {
 				// set tab flags. select the tab that represents the
@@ -145,9 +145,9 @@ func (win *winDisasm) draw() {
 func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 	imgui.BeginChild(fmt.Sprintf("bank %d", b))
 
-	itr, _ := win.img.dsm.NewIteration(b)
+	itr, _ := win.img.dsm.NewIteration(disassembly.EntryTypeDecode, b)
 
-	for e := itr.Start(); e != nil; e = itr.Next(disassembly.EntryTypeDecode) {
+	for e := itr.Start(); e != nil; e = itr.Next() {
 
 		// if address value of current disasm entry and
 		// current PC value match then highlight the entry
@@ -169,6 +169,7 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 
 func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.BeginGroup()
+
 	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 	if selected {
 		adj = win.img.cols.DisasmSelectedAdj
@@ -214,6 +215,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 
 	imgui.EndGroup()
 
+	// these Is*() conditions apply to the whole group
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
 		fmt.Println("TODO: context menu")
 	}
@@ -224,38 +226,38 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 }
 
 func (win *winDisasm) drawPointer() {
-	win.drawGutter(fillFull, win.colCurrentPC)
+	win.drawGutter(gutterSolid, win.colCurrentPC)
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.dbg.HasBreak(e) {
 	case debugger.BrkPCAddress:
-		win.drawGutter(fillHalf, win.colBreakpoint)
+		win.drawGutter(gutterDotted, win.colBreakpoint)
 	case debugger.BrkOther:
-		win.drawGutter(fillNone, win.colMnemonic)
+		win.drawGutter(gutterOutline, win.colMnemonic)
 	}
 }
 
-type fillType int
+type gutterType int
 
 const (
-	fillNone fillType = iota
-	fillHalf
-	fillFull
+	gutterOutline gutterType = iota
+	gutterDotted
+	gutterSolid
 )
 
-func (win *winDisasm) drawGutter(fill fillType, col imgui.PackedColor) {
+func (win *winDisasm) drawGutter(fill gutterType, col imgui.PackedColor) {
 	r := imgui.FrameHeight() / 4
 	p := imgui.CursorScreenPos()
 	p.Y -= r * 2
 	dl := imgui.WindowDrawList()
 	switch fill {
-	case fillNone:
+	case gutterOutline:
 		dl.AddCircle(p, r, col)
-	case fillHalf:
+	case gutterDotted:
 		dl.AddCircle(p, r, col)
 		dl.AddCircle(p, r/2, col)
-	case fillFull:
+	case gutterSolid:
 		dl.AddCircleFilled(p, r, col)
 	}
 }

@@ -22,46 +22,46 @@ package disassembly
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/hardware/memory/memorymap"
 )
 
 // Iterate faciliates traversal of the disassembly
 type Iterate struct {
-	bank    int
-	entries [memorymap.AddressMaskCart + 1]*Entry
-	idx     int
+	dsm  *Disassembly
+	typ  EntryType
+	bank int
+	idx  int
 }
 
 // NewIteration initialises a new iteration of a dissasembly bank
-func (dsm *Disassembly) NewIteration(bank int) (*Iterate, error) {
+func (dsm *Disassembly) NewIteration(typ EntryType, bank int) (*Iterate, error) {
 	if bank > len(dsm.Entries) {
 		return nil, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disassembly", bank))
 	}
 
 	itr := &Iterate{
-		bank:    bank,
-		entries: dsm.Entries[bank],
-		idx:     0,
+		dsm:  dsm,
+		typ:  typ,
+		bank: bank,
 	}
 
 	return itr, nil
 }
 
-// Start new iteration from first index. Not strictly needed if called
-// immediately after NewIteration()
+// Start new iteration from the first instance of the EntryType specified in
+// NewIteration.
 func (itr *Iterate) Start() *Entry {
-	itr.idx = 1
-	return itr.entries[0]
+	itr.idx = 0
+	return itr.Next()
 }
 
-// Next entry at least of EntryType in the disassembly. Returns nil if end of
-// disassembly has been reached.
-func (itr *Iterate) Next(typ EntryType) *Entry {
+// Next entry in the disassembly of the previously specified type. Returns nil
+// if end of disassembly has been reached.
+func (itr *Iterate) Next() *Entry {
 	var e *Entry
 
-	for itr.idx < len(itr.entries) {
-		e = itr.entries[itr.idx]
-		if e != nil && e.Type >= typ {
+	for itr.idx < len(itr.dsm.Entries[itr.bank]) {
+		e = itr.dsm.Entries[itr.bank][itr.idx]
+		if e != nil && e.Type >= itr.typ {
 			itr.idx++
 			break // for loop
 		}
