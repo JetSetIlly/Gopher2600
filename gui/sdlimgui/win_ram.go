@@ -34,8 +34,8 @@ type winRAM struct {
 	img *SdlImgui
 
 	// widget dimensions
-	editWidth float32
-	spacing   imgui.Vec2
+	editWidth  float32
+	labelWidth float32
 }
 
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
@@ -48,7 +48,7 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 
 func (win *winRAM) init() {
 	win.editWidth = minFrameDimension("FF").X
-	win.spacing = imgui.Vec2{}
+	win.labelWidth = win.editWidth
 }
 
 func (win *winRAM) destroy() {
@@ -67,20 +67,45 @@ func (win *winRAM) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	n := 0
-	imgui.PushItemWidth(win.editWidth)
-	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, win.spacing)
-	for i := memorymap.OriginRAM; i <= memorymap.MemtopRAM; i++ {
-		win.drawEditByte(i)
-		n++
-		if n%16 != 0 {
-			imgui.SameLine()
-		}
-	}
-	imgui.PopStyleVar()
-	imgui.PopItemWidth()
+	// draw grid of internal VCS RAM
+	win.drawGrid(memorymap.OriginRAM, memorymap.MemtopRAM)
 
 	imgui.End()
+}
+
+func (win *winRAM) drawGrid(start, end uint16) {
+	// no spacing between any of the items in the RAM window
+	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+
+	// draw headers for each column
+	headerDim := imgui.Vec2{X: imgui.CursorPosX() + imgui.CurrentStyle().FramePadding().X, Y: imgui.CursorPosY()}
+	imgui.AlignTextToFramePadding()
+	imgui.Text("  ")
+	headerDim.X += win.labelWidth
+	for i := 0; i < 16; i++ {
+		imgui.SetCursorPos(headerDim)
+		headerDim.X += win.labelWidth
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("-%x", i))
+	}
+
+	// draw rows
+	imgui.PushItemWidth(win.editWidth)
+	n := 0
+	for i := start; i <= end; i++ {
+		// draw row header
+		if n%16 == 0 {
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf("%x- ", i/16))
+		}
+		imgui.SameLine()
+		win.drawEditByte(i)
+		n++
+	}
+	imgui.PopItemWidth()
+
+	// finished with spacing setting
+	imgui.PopStyleVar()
 }
 
 func (win *winRAM) drawEditByte(addr uint16) {
