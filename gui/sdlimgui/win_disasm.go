@@ -106,7 +106,7 @@ func (win *winDisasm) draw() {
 		} else {
 			// create a new TabBar and iterate through the cartridge banks,
 			// adding a page for each one
-			imgui.BeginTabBar("banks")
+			imgui.BeginTabBar("")
 			for b := range win.img.dsm.Entries {
 				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS

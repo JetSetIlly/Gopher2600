@@ -115,6 +115,7 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
 	return nil, errors.New(errors.MemoryError, "area not mapped correctly")
 }
 
+// read maps an address to the normalised for all memory areas.
 func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	// optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
 
@@ -153,17 +154,20 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	return data, err
 }
 
-// Read is an implementation of CPUBus
+// Read is an implementation of CPUBus. Address will be normalised and
+// processed by the correct memory area.
 func (mem *VCSMemory) Read(address uint16) (uint8, error) {
 	return mem.read(address, false)
 }
 
-// ReadZeroPage is an implementation of CPUBus
+// ReadZeroPage is an implementation of CPUBus. Address will be normalised and
+// processed by the correct memory areas.
 func (mem *VCSMemory) ReadZeroPage(address uint8) (uint8, error) {
 	return mem.read(uint16(address), true)
 }
 
-// Write is an implementation of CPUBus
+// Write is an implementation of CPUBus Address will be normalised and
+// processed by the correct memory areas.
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area, err := mem.GetArea(ar)

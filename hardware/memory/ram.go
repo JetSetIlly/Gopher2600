@@ -58,22 +58,24 @@ func (ram RAM) String() string {
 	return strings.Trim(s.String(), "\n")
 }
 
-// Peek is the implementation of memory.DebuggerBus
+// Peek is the implementation of memory.DebuggerBus. Address must be
+// normalised.
 func (ram RAM) Peek(address uint16) (uint8, error) {
 	return ram.Read(address)
 }
 
-// Poke is the implementation of memory.DebuggerBus
+// Poke is the implementation of memory.DebuggerBus. Address must be
+// normalised.
 func (ram RAM) Poke(address uint16, value uint8) error {
 	return ram.Write(address, value)
 }
 
-// Read is an implementatio of memory.ChipBus
+// Read is an implementatio of memory.ChipBus. Address must be normalised.
 func (ram RAM) Read(address uint16) (uint8, error) {
 	return ram.memory[address^memorymap.OriginRAM], nil
 }
 
-// Write is an implementatio of memory.ChipBus
+// Write is an implementatio of memory.ChipBus. Address must be normalised.
 func (ram *RAM) Write(address uint16, data uint8) error {
 	ram.memory[address^memorymap.OriginRAM] = data
 	return nil

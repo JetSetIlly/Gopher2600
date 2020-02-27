@@ -27,8 +27,7 @@ import (
 
 func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 	for b := 0; b < len(dsm.Entries); b++ {
-
-		address := uint16(0xf000)
+		address := memorymap.OriginCart
 		nextDecodePoint := address
 
 		for dsm.Entries[b][address&memorymap.AddressMaskCart] == nil {

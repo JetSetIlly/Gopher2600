@@ -125,15 +125,15 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	// flow pass
+	// reset
 	mc.Reset()
-	dsm.cart.Initialise()
-
 	err = mc.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return nil, err
 	}
+	dsm.cart.Initialise()
 
+	// flow pass
 	err = dsm.flowAnalysis(mc, addresses.Reset, 0)
 	if err != nil {
 		return nil, errors.New(errors.AnalysisError, err)

@@ -75,10 +75,6 @@ func (cart *ejected) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart ejected) ram() []uint8 {
-	return []uint8{}
-}
-
 func (cart *ejected) listen(addr uint16, data uint8) {
 }
 
@@ -88,4 +84,8 @@ func (cart *ejected) poke(addr uint16, data uint8) error {
 
 func (cart *ejected) patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.method)
+}
+
+func (cart ejected) getRAMinfo() []RAMinfo {
+	return nil
 }

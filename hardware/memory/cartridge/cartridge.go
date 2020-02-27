@@ -54,29 +54,30 @@ func (cart Cartridge) String() string {
 	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
 }
 
-// Peek is an implementation of memory.DebuggerBus
-func (cart Cartridge) Peek(addr uint16) (uint8, error) {
+// Peek is an implementation of memory.DebuggerBus. Address must be normalised.
+func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
 	return cart.Read(addr)
 }
 
 // Poke is an implementation of memory.DebuggerBus. This poke pokes the current
-// cartridge bank. See Patch for a different method.
+// cartridge bank. See Patch for a different method. Address must be
+// normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
 	return cart.mapper.poke(addr^memorymap.OriginCart, data)
 }
 
-// Patch rewrites cartridge location as though that value was at file offset
+// Patch writes to cartridge memory. Offset is measured from the start of
+// cartridge memory. It differs from Poke in that respect
 func (cart *Cartridge) Patch(offset uint16, data uint8) error {
 	return cart.mapper.patch(offset, data)
 }
 
-// Read is an implementation of memory.CPUBus
+// Read is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	// * optimisation: called a lot. pointer to Cartridge to prevent duffcopy
 	return cart.mapper.read(addr ^ memorymap.OriginCart)
 }
 
-// Write is an implementation of memory.CPUBus
+// Write is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
 	return cart.mapper.write(addr^memorymap.OriginCart, data)
 }
@@ -196,14 +197,14 @@ func (cart Cartridge) NumBanks() int {
 // WARNING: For some cartridge types this is the same as asking for the current
 // address
 //
-// Address must be a cartridge address, it sill not be mapped
+// Address must be a normlised cartridge address.
 func (cart Cartridge) GetBank(addr uint16) int {
 	return cart.mapper.getBank(addr & memorymap.AddressMaskCart)
 }
 
 // SetBank maps the specified address such that it references the specified
 // bank. For many cart mappers this just means switching banks for the entire
-// cartridge
+// cartridge. Address must be normalised.
 //
 // NOTE: For some cartridge types, the specific address is not important
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
@@ -221,14 +222,15 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 	return cart.mapper.restoreState(state)
 }
 
-// RAM returns a read only instance of any cartridge RAM
-func (cart Cartridge) RAM() []uint8 {
-	return cart.mapper.ram()
-}
-
-// Listen for data at the specified address. very wierd requirement of the
+// Listen for data at the specified address. Very wierd requirement of the
 // tigervision cartridge format. If there was a better way of implementing the
-// tigervision format, there'd be no need for this function.
+// tigervision format, there'd be no need for this function. Address must be
+// normalised.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
 	cart.mapper.listen(addr, data)
+}
+
+// GetRAMinfo returns an instance of RAMinfo or nil if catridge contains no RAM
+func (cart Cartridge) GetRAMinfo() []RAMinfo {
+	return cart.mapper.getRAMinfo()
 }

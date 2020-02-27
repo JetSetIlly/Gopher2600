@@ -32,7 +32,6 @@ type cartMapper interface {
 	setBank(addr uint16, bank int) error
 	saveState() interface{}
 	restoreState(interface{}) error
-	ram() []uint8
 
 	// tigervision cartridges have a very wierd bank-switching method that
 	// require a way of notifying the cartridge of writes to addresses outside
@@ -46,10 +45,22 @@ type cartMapper interface {
 	// patch differs from poke in that it alters the data as though it was
 	// being read from disk
 	patch(offset uint16, data uint8) error
+
+	getRAMinfo() []RAMinfo
 }
 
 // optionalSuperchip are implemented by cartMappers that have an optional
 // superchip
 type optionalSuperchip interface {
 	addSuperchip() bool
+}
+
+// RAMinfo details the read/write addresses for any cartridge ram
+type RAMinfo struct {
+	Label       string
+	Active      bool
+	ReadOrigin  uint16
+	ReadMemtop  uint16
+	WriteOrigin uint16
+	WriteMemtop uint16
 }

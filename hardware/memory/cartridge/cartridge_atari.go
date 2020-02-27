@@ -80,10 +80,16 @@ type atari struct {
 	// of each bank is mapped to RAM. this is sometimes referred to as the
 	// superchip
 	superchip []uint8
+
+	// ram details
+	ramInfo []RAMinfo
 }
 
 func (cart atari) String() string {
-	return fmt.Sprintf("%s bank: %d", cart.method, cart.bank)
+	if len(cart.banks) == 1 {
+		return cart.method
+	}
+	return fmt.Sprintf("%s Bank: %d", cart.method, cart.bank)
 }
 
 func (cart *atari) initialise() {
@@ -158,13 +164,19 @@ func (cart *atari) addSuperchip() bool {
 	cart.superchip = make([]uint8, 128)
 
 	// update method string
-	cart.method = fmt.Sprintf("%s (inc. extra RAM)", cart.method)
+	cart.method = fmt.Sprintf("%s (+ superchip RAM)", cart.method)
+
+	cart.ramInfo = make([]RAMinfo, 1)
+	cart.ramInfo[0] = RAMinfo{
+		Label:       "Superchip",
+		Active:      true,
+		ReadOrigin:  0x1080,
+		ReadMemtop:  0x10ff,
+		WriteOrigin: 0x1000,
+		WriteMemtop: 0x107f,
+	}
 
 	return true
-}
-
-func (cart atari) ram() []uint8 {
-	return cart.superchip
 }
 
 func (cart *atari) listen(addr uint16, data uint8) {
@@ -180,6 +192,10 @@ func (cart *atari) patch(addr uint16, data uint8) error {
 	addr = addr % uint16(cart.bankSize)
 	cart.banks[bank][addr] = data
 	return nil
+}
+
+func (cart atari) getRAMinfo() []RAMinfo {
+	return cart.ramInfo
 }
 
 // atari4k is the original and most straightforward format

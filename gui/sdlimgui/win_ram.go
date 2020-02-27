@@ -21,7 +21,7 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/memorymap"
+	"gopher2600/hardware/memory/cartridge"
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -36,11 +36,23 @@ type winRAM struct {
 	// widget dimensions
 	editWidth  float32
 	labelWidth float32
+
+	// for convenience we represent internal VCS RAM using the RAMinfo struct
+	// from the cartridge package. this facilitates the drawGrid() function
+	// below.
+	vcsRAM cartridge.RAMinfo
 }
 
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
 	win := &winRAM{
 		img: img,
+		vcsRAM: cartridge.RAMinfo{
+			Label:       "VCS",
+			ReadOrigin:  0x80,
+			ReadMemtop:  0xff,
+			WriteOrigin: 0x80,
+			WriteMemtop: 0xff,
+		},
 	}
 
 	return win, nil
@@ -67,20 +79,41 @@ func (win *winRAM) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	// draw grid of internal VCS RAM
-	win.drawGrid(memorymap.OriginRAM, memorymap.MemtopRAM)
+	cartRAM := win.img.vcs.Mem.Cart.GetRAMinfo()
+
+	if cartRAM != nil {
+		imgui.BeginTabBar("")
+		if imgui.BeginTabItemV(win.vcsRAM.Label, nil, 0) {
+			win.drawGrid(win.vcsRAM)
+			imgui.EndTabItem()
+		}
+		for i := 0; i < len(cartRAM); i++ {
+			if cartRAM[i].Active {
+				if imgui.BeginTabItemV(cartRAM[i].Label, nil, 0) {
+					win.drawGrid(cartRAM[i])
+					imgui.EndTabItem()
+				}
+			}
+		}
+		imgui.EndTabBar()
+	} else {
+		// there is no cartrdige memory so we don't need a Tab bar, we'll just
+		// draw the RAM grid
+		win.drawGrid(win.vcsRAM)
+	}
 
 	imgui.End()
 }
 
-func (win *winRAM) drawGrid(start, end uint16) {
+func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 	// no spacing between any of the items in the RAM window
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 
 	// draw headers for each column
-	headerDim := imgui.Vec2{X: imgui.CursorPosX() + imgui.CurrentStyle().FramePadding().X, Y: imgui.CursorPosY()}
-	imgui.AlignTextToFramePadding()
-	imgui.Text("  ")
+	//
+	// !!TODO: placement of column headers probably not correct for all font
+	// sizes
+	headerDim := imgui.Vec2{X: imgui.CursorPosX() + imgui.CurrentStyle().FramePadding().X*4, Y: imgui.CursorPosY()}
 	headerDim.X += win.labelWidth
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
@@ -91,16 +124,16 @@ func (win *winRAM) drawGrid(start, end uint16) {
 
 	// draw rows
 	imgui.PushItemWidth(win.editWidth)
-	n := 0
-	for i := start; i <= end; i++ {
+	j := uint16(0)
+	for i := raminfo.ReadOrigin; i <= raminfo.ReadMemtop; i++ {
 		// draw row header
-		if n%16 == 0 {
+		if j%16 == 0 {
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%x- ", i/16))
+			imgui.Text(fmt.Sprintf("%03x- ", i/16))
 		}
 		imgui.SameLine()
-		win.drawEditByte(i)
-		n++
+		win.drawEditByte(i, raminfo.WriteOrigin+j)
+		j++
 	}
 	imgui.PopItemWidth()
 
@@ -108,8 +141,8 @@ func (win *winRAM) drawGrid(start, end uint16) {
 	imgui.PopStyleVar()
 }
 
-func (win *winRAM) drawEditByte(addr uint16) {
-	d, _ := win.img.vcs.Mem.RAM.Peek(addr)
+func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
+	d, _ := win.img.vcs.Mem.Read(readAddr)
 	s := fmt.Sprintf("%02x", d)
 
 	cb := func(d imgui.InputTextCallbackData) int32 {
@@ -139,9 +172,13 @@ func (win *winRAM) drawEditByte(addr uint16) {
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
-	if imgui.InputTextV(fmt.Sprintf("##%d", addr), &s, flags, cb) {
+	if imgui.InputTextV(fmt.Sprintf("##%d", readAddr), &s, flags, cb) {
 		if v, err := strconv.ParseUint(s, 8, 8); err == nil {
-			win.img.vcs.Mem.RAM.Poke(addr, uint8(v))
+			// we don't know if this address is from the internal RAM or from
+			// an area of cartridge RAM. for this reason we're sending the
+			// write through the high-level memory write, which will map the
+			// address for us.
+			win.img.vcs.Mem.Write(writeAddr, uint8(v))
 		}
 	}
 }

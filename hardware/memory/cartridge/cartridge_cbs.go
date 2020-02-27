@@ -36,6 +36,9 @@ type cbs struct {
 	// superchip contains the cartridge RAM. not sure if it was actually called
 	// the superchip in CBS cartridges but
 	superchip []uint8
+
+	// ram details
+	ramInfo []RAMinfo
 }
 
 func newCBS(data []byte) (cartMapper, error) {
@@ -58,13 +61,24 @@ func newCBS(data []byte) (cartMapper, error) {
 	// 256 bytes of cartidge ram in all instances
 	cart.superchip = make([]uint8, 256)
 
+	// prepare ram details
+	cart.ramInfo = make([]RAMinfo, 5)
+	cart.ramInfo[0] = RAMinfo{
+		Label:       "CBS RAM+",
+		Active:      true,
+		ReadOrigin:  0x1080,
+		ReadMemtop:  0x10ff,
+		WriteOrigin: 0x1000,
+		WriteMemtop: 0x107f,
+	}
+
 	cart.initialise()
 
 	return cart, nil
 }
 
 func (cart cbs) String() string {
-	return fmt.Sprintf("%s bank: %d", cart.method, cart.bank)
+	return fmt.Sprintf("%s Bank: %d", cart.method, cart.bank)
 }
 
 func (cart *cbs) initialise() {
@@ -137,12 +151,8 @@ func (cart *cbs) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart cbs) numBanks() int {
+func (cart *cbs) numBanks() int {
 	return 3
-}
-
-func (cart cbs) ram() []uint8 {
-	return cart.superchip
 }
 
 func (cart *cbs) listen(addr uint16, data uint8) {
@@ -154,4 +164,12 @@ func (cart *cbs) poke(addr uint16, data uint8) error {
 
 func (cart *cbs) patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.method)
+}
+
+func (cart cbs) getRAMinfo() []RAMinfo {
+	if cart.superchip == nil {
+		return nil
+	}
+
+	return cart.ramInfo
 }

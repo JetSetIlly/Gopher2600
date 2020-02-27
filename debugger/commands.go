@@ -654,14 +654,30 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 			option = strings.ToUpper(option)
 			switch option {
 			case "CART":
-				cartRAM := dbg.vcs.Mem.Cart.RAM()
-				if len(cartRAM) > 0 {
-					// !!TODO: better okation of cartridge RAM
-					dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%v", dbg.vcs.Mem.Cart.RAM()))
-				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge does not contain any additional RAM")
+				cartRAM := dbg.vcs.Mem.Cart.GetRAMinfo()
+				s := &strings.Builder{}
+
+				for b := 0; b < len(cartRAM); b++ {
+					if !cartRAM[b].Active {
+						continue
+					}
+
+					// header for table. assumes that origin address begins at xxx0
+					s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+					s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+					j := uint16(0)
+					for i := cartRAM[b].ReadOrigin; i <= cartRAM[b].ReadMemtop; i++ {
+						if j%16 == 0 {
+							s.WriteString(fmt.Sprintf("\n%03x- | ", i/16))
+						}
+						d, _ := dbg.vcs.Mem.Read(cartRAM[b].ReadOrigin + j)
+						s.WriteString(fmt.Sprintf("%02x ", d))
+						j++
+					}
 				}
 
+				dbg.printInstrument(s)
 			}
 		} else {
 			dbg.printInstrument(dbg.vcs.Mem.RAM)

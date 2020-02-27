@@ -123,7 +123,7 @@ func (cart *tigervision) write(addr uint16, data uint8) error {
 	return errors.New(errors.BusError, addr)
 }
 
-func (cart *tigervision) numBanks() int {
+func (cart tigervision) numBanks() int {
 	return len(cart.banks)
 }
 
@@ -159,10 +159,6 @@ func (cart *tigervision) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *tigervision) ram() []uint8 {
-	return []uint8{}
-}
-
 func (cart *tigervision) listen(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
@@ -188,4 +184,8 @@ func (cart *tigervision) poke(addr uint16, data uint8) error {
 
 func (cart *tigervision) patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.method)
+}
+
+func (cart tigervision) getRAMinfo() []RAMinfo {
+	return nil
 }

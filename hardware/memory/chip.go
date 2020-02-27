@@ -58,7 +58,7 @@ type ChipMemory struct {
 	readRegister string
 }
 
-// Peek is an implementation of memory.DebuggerBus
+// Peek is an implementation of memory.DebuggerBus. Address must be normalised.
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
@@ -67,7 +67,7 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	return area.memory[address^area.origin], nil
 }
 
-// Poke is an implementation of memory.DebuggerBus
+// Poke is an implementation of memory.DebuggerBus. Address must be normalised.
 func (area ChipMemory) Poke(address uint16, value uint8) error {
 	return errors.New(errors.UnpokeableAddress, address)
 }
@@ -100,7 +100,7 @@ func (area *ChipMemory) InputDeviceWrite(reg addresses.ChipRegister, data uint8,
 	area.memory[reg] = data | d
 }
 
-// Read is an implementation of memory.CPUBus
+// Read is an implementation of memory.CPUBus. Address must be normalised.
 func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	// note the name of the register that we are reading
 	area.readRegister = addresses.Read[address]
@@ -113,7 +113,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	return area.memory[address^area.origin], nil
 }
 
-// Write is an implementation of memory.CPUBus
+// Write is an implementation of memory.CPUBus. Address must be normalised.
 func (area *ChipMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory area has been serviced
 	if area.writeSignal {
