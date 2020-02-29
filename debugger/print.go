@@ -46,7 +46,11 @@ func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
 		return
 	}
 
-	dbg.term.TermPrintLine(sty, s)
+	// split string if necessary
+	t := strings.Split(s, "\n")
+	for _, s := range t {
+		dbg.term.TermPrintLine(sty, s)
+	}
 }
 
 // styleWriter implements the io.Writer interface. it is useful for when an
