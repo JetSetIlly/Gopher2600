@@ -133,7 +133,7 @@ Write Symbols
 0x0294 -> TIM1T
 0x0295 -> TIM8T
 0x0296 -> TIM64T
-0x0297 -> TIM1024
+0x0297 -> T1024T
 `
 
 const expectedFlappySymbols = `Locations
@@ -593,7 +593,7 @@ Write Symbols
 0x0294 -> TIM1T
 0x0295 -> TIM8T
 0x0296 -> TIM64T
-0x0297 -> TIM1024
+0x0297 -> T1024T
 0x2e20 -> _MSG_MARKER
 0xf000 -> DATA_SEGMENT
 0xf008 -> TEXT_OK

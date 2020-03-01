@@ -113,7 +113,7 @@ var CanonicalWriteSymbols = map[uint16]string{
 	0x0294: "TIM1T",
 	0x0295: "TIM8T",
 	0x0296: "TIM64T",
-	0x0297: "TIM1024",
+	0x0297: "T1024T",
 }
 
 // Read is a sparse array containing the canonical labels for VCS read

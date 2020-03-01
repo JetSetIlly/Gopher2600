@@ -25,28 +25,54 @@ import (
 	"gopher2600/hardware/memory/bus"
 )
 
+// Interval indicates how often (in CPU cycles) the timer value decreases.
+// the following rules apply
+//		* set to 1, 8, 64 or 1024 depending on which address has been
+//			written to by the CPU
+//		* is used to reset the cyclesRemaining
+//		* is changed to 1 once value reaches 0
+//		* is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
+//			is read by the CPU
+type Interval int
+
+// List of valid Interval values
+const (
+	TIM1T  Interval = 1
+	TIM8T  Interval = 8
+	TIM64T Interval = 64
+	T1024T Interval = 1024
+)
+
+func (in Interval) String() string {
+	switch in {
+	case TIM1T:
+		return "TIM1T"
+	case TIM8T:
+		return "TIM8T"
+	case TIM64T:
+		return "TIM64T"
+	case T1024T:
+		return "T1024T"
+	}
+	panic("unknown timer interval")
+}
+
 // Timer implements the timer part of the PIA 6532 (the T in RIOT)
 type Timer struct {
 	mem bus.ChipBus
 
-	// register is the name of the currently selected RIOT timer
-	register string
+	// the interval value most recently requested by the CPU
+	Requested Interval
 
-	// interval indicates how often (in CPU cycles) the timer value decreases.
-	// the following rules apply
-	//		* set to 1, 8, 64 or 1024 depending on which address has been
-	//			written to by the CPU
-	//		* is used to reset the cyclesRemaining
-	//		* is changed to 1 once value reaches 0
-	//		* is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
-	//			is read by the CPU
-	interval int
+	// the current interval value (requested value can be superceded when timer
+	// value reaches zero)
+	Current Interval
 
-	// value is the current timer value and is a reflection of the INTIM
-	// RIO memory register
-	value uint8
+	// INTIMvalue is the current timer value and is a reflection of the INTIM
+	// RIOT memory register
+	INTIMvalue uint8
 
-	// cyclesRemaining is the number of CPU cycles remaining before the
+	// CyclesRemaining is the number of CPU cycles remaining before the
 	// value is decreased. the following rules apply:
 	//		* set to 1 when new timer is set
 	//		* causes value to decrease whenever it reaches 0
@@ -58,37 +84,31 @@ type Timer struct {
 	// the initial reset value is 1 because the first decrease of INTIM occurs
 	// immediately after ReadRIOTMemory(); we want the timer cycle to hit 0 at
 	// that time
-	cyclesRemaining int
-
-	// the number of CPU cyles taken place since last write to a TIMxxx
-	// register
-	cyclesElapsed int
+	CyclesRemaining int
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type
 func NewTimer(mem bus.ChipBus) *Timer {
 	tmr := &Timer{
 		mem:             mem,
-		register:        "TIM1024",
-		interval:        1024,
-		cyclesRemaining: 1024,
-		cyclesElapsed:   0,
-		value:           0,
+		Current:         T1024T,
+		Requested:       T1024T,
+		CyclesRemaining: int(T1024T),
+		INTIMvalue:      0,
 	}
 
-	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
+	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.INTIMvalue))
 	tmr.mem.ChipWrite(addresses.TIMINT, 0)
 
 	return tmr
 }
 
 func (tmr Timer) String() string {
-	return fmt.Sprintf("INTIM=%#02x elpsd=%05d remn=%#02x intv=%02d (%s)",
-		tmr.value,
-		tmr.cyclesElapsed,
-		tmr.cyclesRemaining,
-		tmr.interval,
-		tmr.register,
+	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%d (%s)",
+		tmr.INTIMvalue,
+		tmr.CyclesRemaining,
+		tmr.Current,
+		tmr.Requested,
 	)
 }
 
@@ -98,34 +118,23 @@ func (tmr Timer) String() string {
 func (tmr *Timer) ReadMemory(data bus.ChipData) bool {
 	switch data.Name {
 	case "TIM1T":
-		tmr.register = data.Name
-		tmr.interval = 1
-		tmr.cyclesRemaining = 1
-		tmr.value = data.Value
+		tmr.Requested = TIM1T
 	case "TIM8T":
-		tmr.register = data.Name
-		tmr.interval = 8
-		tmr.cyclesRemaining = 1
-		tmr.value = data.Value
+		tmr.Requested = TIM8T
 	case "TIM64T":
-		tmr.register = data.Name
-		tmr.interval = 64
-		tmr.cyclesRemaining = 1
-		tmr.value = data.Value
-	case "TIM1024":
-		tmr.register = data.Name
-		tmr.interval = 1024
-		tmr.cyclesRemaining = 1
-		tmr.value = data.Value
-
+		tmr.Requested = TIM64T
+	case "T1024T":
+		tmr.Requested = T1024T
 	default:
 		return true
 	}
 
-	tmr.cyclesElapsed = 0
+	tmr.Current = tmr.Requested
+	tmr.INTIMvalue = data.Value
+	tmr.CyclesRemaining = 1
 
 	// write value to INTIM straight-away
-	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.value))
+	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.INTIMvalue))
 
 	// clear bit 7 of TIMINT register
 	tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
@@ -140,40 +149,29 @@ func (tmr *Timer) Step() {
 	// have any discernable effect unless the timer interval has been flipped to
 	// 1 when INTIM cycles back to 255
 	if tmr.mem.LastReadRegister() == "INTIM" {
-		switch tmr.register {
-		case "TIM1T":
-			tmr.interval = 1
-		case "TIM8T":
-			tmr.interval = 8
-		case "TIM64T":
-			tmr.interval = 64
-		case "TIM1024":
-			tmr.interval = 1024
-		}
+		tmr.Current = tmr.Requested
 
 		// reading the INTIM register always clears TIMINT
 		tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
 	}
 
-	tmr.cyclesRemaining--
-	if tmr.cyclesRemaining <= 0 {
-		if tmr.value == 0 {
+	tmr.CyclesRemaining--
+	if tmr.CyclesRemaining <= 0 {
+		if tmr.INTIMvalue == 0 {
 			// set bit 7 of TIMINT register
 			tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
 
 			// reset timer value
-			tmr.value = 255
+			tmr.INTIMvalue = 255
 
 			// because timer value has cycled we flip timer interval to 1
-			tmr.interval = 1
+			tmr.Current = 1
 		} else {
-			tmr.value--
+			tmr.INTIMvalue--
 		}
 
 		// copy value to INTIM memory register
-		tmr.mem.ChipWrite(addresses.INTIM, tmr.value)
-		tmr.cyclesRemaining = tmr.interval
+		tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
+		tmr.CyclesRemaining = int(tmr.Current)
 	}
-
-	tmr.cyclesElapsed++
 }
