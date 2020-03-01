@@ -19,6 +19,8 @@
 
 package television
 
+import "gopher2600/television/colors"
+
 // Television defines the operations that can be performed on the conceptual
 // television. Note that the television implementation itself does not present
 // any information, either visually or sonically. Instead, PixelRenderers and
@@ -171,8 +173,8 @@ type AudioMixer interface {
 // ColorSignal represents the signal that is sent from the VCS to the
 type ColorSignal int
 
-// AltColorSignal is the alternative color for each pixel.
-type AltColorSignal int
+// VideoBlack is the PixelSignal value that indicates no VCS pixel is to be shown
+const VideoBlack ColorSignal = -1
 
 // SignalAttributes represents the data sent to the television
 type SignalAttributes struct {
@@ -205,7 +207,7 @@ type SignalAttributes struct {
 	HSyncSimple bool
 
 	// an alternative color signal for the next pixel
-	AltPixel AltColorSignal
+	AltPixel colors.AltColor
 
 	// whether the AudioData is valid. should be true only every 114th clock,
 	// which equates to 30Khz

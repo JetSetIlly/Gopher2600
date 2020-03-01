@@ -19,10 +19,12 @@
 
 package television
 
+import "gopher2600/television/colors"
+
 // Specification is used to define the two television specifications
 type Specification struct {
 	ID     string
-	Colors colors
+	Colors colors.Palette
 
 	// the number of scanlines the 2600 Programmer's guide recommends for the
 	// top/bottom parts of the screen:
@@ -71,6 +73,17 @@ type Specification struct {
 	AspectBias float32
 }
 
+// getColor translates a signals to the color type
+func (spec *Specification) getColor(col ColorSignal) colors.RGB {
+	// we're usng the ColorSignal to index an array so we need to be extra
+	// careful to make sure the value is valid. if it's not a valid index then
+	// assume the intention was video black
+	if col == VideoBlack {
+		return colors.VideoBlack
+	}
+	return spec.Colors[col]
+}
+
 // From the Stella Programmer's Guide:
 //
 // "Each scan lines starts with 68 clock counts of horizontal blank (not seen on
@@ -96,7 +109,7 @@ var SpecPAL *Specification
 func init() {
 	SpecNTSC = &Specification{
 		ID:                "NTSC",
-		Colors:            colorsNTSC,
+		Colors:            colors.PaletteNTSC,
 		ScanlinesVSync:    3,
 		scanlinesVBlank:   37,
 		ScanlinesVisible:  192,
@@ -111,7 +124,7 @@ func init() {
 
 	SpecPAL = &Specification{
 		ID:                "PAL",
-		Colors:            colorsPAL,
+		Colors:            colors.PalettePAL,
 		ScanlinesVSync:    3,
 		scanlinesVBlank:   45,
 		ScanlinesVisible:  228,

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"gopher2600/errors"
 	"gopher2600/performance/limiter"
+	"gopher2600/television/colors"
 	"strings"
 )
 
@@ -304,18 +305,18 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	y := tv.scanline
 
 	// decode color using the alternative color signal
-	col := getAltColor(sig.AltPixel)
+	col := colors.GetAltColor(sig.AltPixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetAltPixel(x, y, col.red, col.green, col.blue, sig.VBlank)
+		err := tv.renderers[f].SetAltPixel(x, y, col.Red, col.Green, col.Blue, sig.VBlank)
 		if err != nil {
 			return err
 		}
 	}
 
 	// decode color using the regular color signal
-	col = getColor(tv.spec, sig.Pixel)
+	col = tv.spec.getColor(sig.Pixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetPixel(x, y, col.red, col.green, col.blue, sig.VBlank)
+		err := tv.renderers[f].SetPixel(x, y, col.Red, col.Green, col.Blue, sig.VBlank)
 		if err != nil {
 			return err
 		}

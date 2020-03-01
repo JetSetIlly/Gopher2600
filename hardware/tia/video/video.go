@@ -26,6 +26,7 @@ import (
 	"gopher2600/hardware/tia/phaseclock"
 	"gopher2600/hardware/tia/polycounter"
 	"gopher2600/television"
+	"gopher2600/television/colors"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
@@ -137,7 +138,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
+func (vd *Video) Pixel() (uint8, colors.AltColor) {
 	bgc := vd.Playfield.backgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	p0u, p0c := vd.Player0.pixel()
@@ -217,7 +218,7 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 
 	// apply priorities to get pixel color
 	var col uint8
-	var altCol television.AltColorSignal
+	var altCol colors.AltColor
 
 	// the interaction of the priority and scoremode bits are a little more
 	// complex than at first glance:
@@ -250,39 +251,39 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 				col = pfc
 			}
 
-			altCol = television.AltColPlayfield
+			altCol = colors.AltColPlayfield
 		} else if blu {
 			col = blc
-			altCol = television.AltColBall
+			altCol = colors.AltColBall
 		} else if p0u { // priority 2
 			col = p0c
-			altCol = television.AltColPlayer0
+			altCol = colors.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			altCol = television.AltColMissile0
+			altCol = colors.AltColMissile0
 		} else if p1u { // priority 3
 			col = p1c
-			altCol = television.AltColPlayer1
+			altCol = colors.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			altCol = television.AltColMissile1
+			altCol = colors.AltColMissile1
 		} else {
 			col = bgc
-			altCol = television.AltColBackground
+			altCol = colors.AltColBackground
 		}
 	} else {
 		if p0u { // priority 1
 			col = p0c
-			altCol = television.AltColPlayer0
+			altCol = colors.AltColPlayer0
 		} else if m0u {
 			col = m0c
-			altCol = television.AltColMissile0
+			altCol = colors.AltColMissile0
 		} else if p1u { // priority 2
 			col = p1c
-			altCol = television.AltColPlayer1
+			altCol = colors.AltColPlayer1
 		} else if m1u {
 			col = m1c
-			altCol = television.AltColMissile1
+			altCol = colors.AltColMissile1
 		} else if vd.Playfield.scoremode && (blu || pfu) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
@@ -293,22 +294,22 @@ func (vd *Video) Pixel() (uint8, television.AltColorSignal) {
 				case regionRight:
 					col = p1c
 				}
-				altCol = television.AltColPlayfield
+				altCol = colors.AltColPlayfield
 			} else if blu { // priority 3
 				col = blc
-				altCol = television.AltColBall
+				altCol = colors.AltColBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
 			if blu { // priority 3
 				col = blc
-				altCol = television.AltColBall
+				altCol = colors.AltColBall
 			} else if pfu {
 				col = pfc
-				altCol = television.AltColPlayfield
+				altCol = colors.AltColPlayfield
 			} else {
 				col = bgc
-				altCol = television.AltColBackground
+				altCol = colors.AltColBackground
 			}
 		}
 
