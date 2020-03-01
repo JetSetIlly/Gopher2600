@@ -128,8 +128,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	return wm, nil
 }
 
-// init is called from drawWindows(). not sure if there is an earlier, singular
-// point where we can call it.
+// init is called from drawWindows()
 func (wm *windowManager) init() {
 	if wm.hasInitialised {
 		return

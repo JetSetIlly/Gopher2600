@@ -35,7 +35,11 @@ type winCPU struct {
 	img *SdlImgui
 
 	// widget dimensions
-	regWidth float32
+	regEditDim imgui.Vec2
+
+	// ready flag colors
+	colFlgReadyOn  imgui.PackedColor
+	colFlgReadyOff imgui.PackedColor
 }
 
 func newWinCPU(img *SdlImgui) (managedWindow, error) {
@@ -47,7 +51,9 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCPU) init() {
-	win.regWidth = minFrameDimension("FFFF").X
+	win.regEditDim = getFrameDim("FFFF")
+	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
+	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
 }
 
 func (win *winCPU) destroy() {
@@ -114,13 +120,13 @@ func (win *winCPU) drawStatusRegister() {
 func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
 	if *bit {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUStatusOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOnHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOnActive)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOn)
 		label = strings.ToUpper(label)
 	} else {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUStatusOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOffHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOffActive)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOff)
 		label = strings.ToLower(label)
 	}
 
@@ -136,47 +142,21 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 	imgui.Text(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
 
-	s := reg.String()
-
-	cb := func(d imgui.InputTextCallbackData) int32 {
-		b := string(d.Buffer())
-		nibbles := reg.BitWidth() / 4
-
-		// restrict length of input to two characters. note that restriction to
-		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
-		// given to InputTextV()
-		if len(b) > nibbles {
-			d.DeleteBytes(0, len(b))
-			b = b[:nibbles]
-			d.InsertBytes(0, []byte(b))
-			d.MarkBufferModified()
-		}
-
-		return 0
-	}
-
-	// flags used with InputTextV()
-	flags := imgui.InputTextFlagsCharsHexadecimal |
-		imgui.InputTextFlagsCallbackAlways |
-		imgui.InputTextFlagsAutoSelectAll
-
-	// if emulator is not paused, the values entered in the TextInput box will
-	// be loaded into the register immediately and not just when the enter
-	// key is pressed.
-	if !win.img.paused {
-		flags |= imgui.InputTextFlagsEnterReturnsTrue
-	}
-
-	imgui.PushItemWidth(win.regWidth)
-	if imgui.InputTextV(fmt.Sprintf("##%s", reg.Label()), &s, flags, cb) {
-		if v, err := strconv.ParseUint(s, 16, reg.BitWidth()); err == nil {
+	label := fmt.Sprintf("##%s", reg.Label())
+	content := reg.String()
+	onEnter := func() {
+		if v, err := strconv.ParseUint(content, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)
 		}
-		s = reg.String()
 	}
+
+	imgui.PushItemWidth(win.regEditDim.X)
+	hexInput(label, !win.img.paused, reg.BitWidth()/4, &content, onEnter)
 	imgui.PopItemWidth()
 }
 
+// draw most recent instruction in the CPU or as much as can be interpreted
+// currently
 func (win *winCPU) drawLastResult() {
 	if !win.img.vcs.CPU.HasReset() {
 		e, _ := win.img.dsm.FormatResult(win.img.vcs.CPU.LastResult)
@@ -209,19 +189,24 @@ func (win *winCPU) drawLastResult() {
 }
 
 func (win *winCPU) drawRDYFlag() {
+	imgui.Spacing()
 	imgui.AlignTextToFramePadding()
-	imgui.Text("Ready (pin6)")
+	imgui.Text("RDY flag")
 	imgui.SameLine()
-	if win.img.vcs.CPU.RdyFlg {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPURdyFlagOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPURdyFlagOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPURdyFlagOn)
-		imgui.Button(" ")
-	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPURdyFlagOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPURdyFlagOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPURdyFlagOff)
-		imgui.Button(" ")
+
+	// decide on color for ready flag indicator
+	col := win.colFlgReadyOn
+	if !win.img.vcs.CPU.RdyFlg {
+		col = win.colFlgReadyOff
 	}
-	imgui.PopStyleColorV(3)
+
+	// position of indicator
+	r := imgui.FontSize() * 0.75
+	p := imgui.CursorScreenPos()
+	p.Y += r
+	p.X += r
+
+	// draw indicator
+	dl := imgui.WindowDrawList()
+	dl.AddCircleFilled(p, r, col)
 }

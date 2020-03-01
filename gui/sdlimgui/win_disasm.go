@@ -45,9 +45,9 @@ type winDisasm struct {
 	pcPrevFrame   uint16
 
 	// gutter colors
-	colCurrentPC  imgui.PackedColor
-	colBreakpoint imgui.PackedColor
-	colMnemonic   imgui.PackedColor
+	colCurrentPC    imgui.PackedColor
+	colBreakAddress imgui.PackedColor
+	colBreakOther   imgui.PackedColor
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -61,8 +61,8 @@ func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 
 func (win *winDisasm) init() {
 	win.colCurrentPC = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrentPC)
-	win.colBreakpoint = imgui.PackedColorFromVec4(win.img.cols.DisasmAddress)
-	win.colBreakpoint = imgui.PackedColorFromVec4(win.img.cols.DisasmAddress)
+	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
+	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
 }
 
 func (win *winDisasm) destroy() {
@@ -232,9 +232,9 @@ func (win *winDisasm) drawPointer() {
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.dbg.HasBreak(e) {
 	case debugger.BrkPCAddress:
-		win.drawGutter(gutterDotted, win.colBreakpoint)
+		win.drawGutter(gutterDotted, win.colBreakAddress)
 	case debugger.BrkOther:
-		win.drawGutter(gutterOutline, win.colMnemonic)
+		win.drawGutter(gutterOutline, win.colBreakOther)
 	}
 }
 

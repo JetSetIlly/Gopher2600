@@ -23,7 +23,7 @@ import "github.com/inkyblackness/imgui-go/v2"
 
 // requires the minimum Vec2{} required to fit any of the string values
 // listed in the arguments
-func minFrameDimension(s string, t ...string) imgui.Vec2 {
+func getFrameDim(s string, t ...string) imgui.Vec2 {
 	w := imgui.CalcTextSize(s, false, 0)
 	for i := range t {
 		y := imgui.CalcTextSize(t[i], false, 0)
@@ -73,4 +73,38 @@ func toggleButton(id string, v *bool, col imgui.Vec4) {
 	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
 	dl.AddCircleFilled(imgui.Vec2{p.X + radius + t*(width-radius*2.0), p.Y + radius},
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
+}
+
+// input text that accepts a maximum number of hex nibbles
+func hexInput(label string, aggressiveUpdate bool, nibbles int, content *string, update func()) {
+	cb := func(d imgui.InputTextCallbackData) int32 {
+		b := string(d.Buffer())
+
+		// restrict length of input to two characters. note that restriction to
+		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
+		// given to InputTextV()
+		if len(b) > nibbles {
+			d.DeleteBytes(0, len(b))
+			b = b[:nibbles]
+			d.InsertBytes(0, []byte(b))
+			d.MarkBufferModified()
+		}
+
+		return 0
+	}
+
+	// flags used with InputTextV()
+	flags := imgui.InputTextFlagsCharsHexadecimal |
+		imgui.InputTextFlagsCallbackAlways |
+		imgui.InputTextFlagsAutoSelectAll
+
+	// with aggressiveUpdate the values entered will be given to the onEnter()
+	// function immediately and not just when the enter key is pressed.
+	if aggressiveUpdate {
+		flags |= imgui.InputTextFlagsEnterReturnsTrue
+	}
+
+	if imgui.InputTextV(label, content, flags, cb) {
+		update()
+	}
 }

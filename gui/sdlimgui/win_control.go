@@ -30,17 +30,19 @@ const winControlTitle = "Control"
 const (
 	videoCycleLabel     = "Step Video"
 	cpuInstructionLabel = "Step CPU"
+	runButtonLabel      = "Run"
+	haltButtonLabel     = "Halt"
+	fpsLabel            = "FPS"
 )
 
 type winControl struct {
 	windowManagement
 	img *SdlImgui
 
-	videoStep bool
-	fps       float32
-
 	// widget dimensions
 	stepButtonDim imgui.Vec2
+	runButtonDim  imgui.Vec2
+	fpsLabelDim   imgui.Vec2
 }
 
 func newWinControl(img *SdlImgui) (managedWindow, error) {
@@ -51,8 +53,9 @@ func newWinControl(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winControl) init() {
-	win.stepButtonDim = minFrameDimension(videoCycleLabel, cpuInstructionLabel)
-	win.fps = win.img.vcs.TV.GetReqFPS()
+	win.stepButtonDim = getFrameDim(videoCycleLabel, cpuInstructionLabel)
+	win.runButtonDim = getFrameDim(runButtonLabel, haltButtonLabel)
+	win.fpsLabelDim = getFrameDim(fpsLabel)
 }
 
 func (win *winControl) destroy() {
@@ -70,20 +73,18 @@ func (win *winControl) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{645, 253}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	dim := minFrameDimension("Run", "Halt")
-
 	if win.img.paused {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRun)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunActive)
-		if imgui.ButtonV("Run", dim) {
+		if imgui.ButtonV(runButtonLabel, win.runButtonDim) {
 			win.img.issueTermCommand("RUN")
 		}
 	} else {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlHalt)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlHaltHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlHaltActive)
-		if imgui.ButtonV("Halt", dim) {
+		if imgui.ButtonV(haltButtonLabel, win.runButtonDim) {
 			win.img.issueTermCommand("HALT")
 		}
 	}
@@ -110,13 +111,13 @@ func (win *winControl) draw() {
 	// spacing.
 	w := imgui.WindowWidth()
 	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
-	w -= imgui.CalcTextSize("FPS", false, 0).X
+	w -= win.fpsLabelDim.X
 	imgui.PushItemWidth(w)
 
 	// fps slider
-	win.fps = win.img.vcs.TV.GetReqFPS()
-	if imgui.SliderFloatV("FPS", &win.fps, 0.1, 100, "%.1f", 1.0) {
-		win.img.vcs.TV.ReqFPS(win.fps)
+	fps := win.img.vcs.TV.GetReqFPS()
+	if imgui.SliderFloatV(fpsLabel, &fps, 0.1, 100, "%.1f", 1.0) {
+		win.img.vcs.TV.ReqFPS(fps)
 	}
 	imgui.PopItemWidth()
 
@@ -129,28 +130,27 @@ func (win *winControl) draw() {
 }
 
 func (win *winControl) drawQuantumToggle() {
+	var videoStep bool
+
 	// make sure we know the current state of the debugger
-	switch win.img.dbg.GetQuantum() {
-	case debugger.QuantumVideo:
-		win.videoStep = true
-	default:
-		win.videoStep = false
+	if win.img.dbg.GetQuantum() == debugger.QuantumVideo {
+		videoStep = true
 	}
 
-	stepLabel := cpuInstructionLabel
+	toggle := videoStep
 
-	toggle := win.videoStep
+	stepLabel := cpuInstructionLabel
 	imgui.SameLine()
-	toggleButton("quantum", &toggle, win.img.cols.TitleBgActive)
+	toggleButton("quantumToggle", &toggle, win.img.cols.TitleBgActive)
 	if toggle {
 		stepLabel = videoCycleLabel
-		if win.videoStep != toggle {
-			win.videoStep = toggle
+		if videoStep != toggle {
+			videoStep = toggle
 			win.img.issueTermCommand("QUANTUM VIDEO")
 		}
 	} else {
-		if win.videoStep != toggle {
-			win.videoStep = toggle
+		if videoStep != toggle {
+			videoStep = toggle
 			win.img.issueTermCommand("QUANTUM CPU")
 		}
 	}

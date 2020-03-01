@@ -33,14 +33,16 @@ type winRAM struct {
 	windowManagement
 	img *SdlImgui
 
-	// widget dimensions
-	editWidth  float32
-	labelWidth float32
-
 	// for convenience we represent internal VCS RAM using the RAMinfo struct
 	// from the cartridge package. this facilitates the drawGrid() function
 	// below.
 	vcsRAM cartridge.RAMinfo
+
+	// widget dimensions
+	editDim imgui.Vec2
+
+	// we know this value after the first pass
+	headerRowStart float32
 }
 
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
@@ -59,8 +61,7 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winRAM) init() {
-	win.editWidth = minFrameDimension("FF").X
-	win.labelWidth = win.editWidth
+	win.editDim = getFrameDim("FF")
 }
 
 func (win *winRAM) destroy() {
@@ -109,29 +110,29 @@ func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 	// no spacing between any of the items in the RAM window
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 
-	// draw headers for each column
-	//
-	// !!TODO: placement of column headers probably not correct for all font
-	// sizes
-	headerDim := imgui.Vec2{X: imgui.CursorPosX() + imgui.CurrentStyle().FramePadding().X*4, Y: imgui.CursorPosY()}
-	headerDim.X += win.labelWidth
+	// draw headers for each column. this relies on headerRowStart, which requires 1
+	// frame to decide before it is accurate.
+	headerDim := imgui.Vec2{X: win.headerRowStart, Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.labelWidth
+		headerDim.X += win.editDim.X
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	// draw rows
-	imgui.PushItemWidth(win.editWidth)
+	imgui.PushItemWidth(win.editDim.X)
 	j := uint16(0)
 	for i := raminfo.ReadOrigin; i <= raminfo.ReadMemtop; i++ {
 		// draw row header
 		if j%16 == 0 {
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%03x- ", i/16))
+			imgui.Text(fmt.Sprintf("%02x- ", i/16))
+			imgui.SameLine()
+			win.headerRowStart = imgui.CursorPosX()
+		} else {
+			imgui.SameLine()
 		}
-		imgui.SameLine()
 		win.drawEditByte(i, raminfo.WriteOrigin+j)
 		j++
 	}
@@ -142,43 +143,21 @@ func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 }
 
 func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
+	label := fmt.Sprintf("##%d", readAddr)
 	d, _ := win.img.vcs.Mem.Read(readAddr)
-	s := fmt.Sprintf("%02x", d)
+	content := fmt.Sprintf("%02x", d)
 
-	cb := func(d imgui.InputTextCallbackData) int32 {
-		b := string(d.Buffer())
-		// restrict length of input to two characters. note that restriction to
-		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
-		// given to InputTextV()
-		if len(b) > 2 {
-			d.DeleteBytes(0, len(b))
-			b = b[:2]
-			d.InsertBytes(0, []byte(b))
-			d.MarkBufferModified()
-		}
-
-		return 0
-	}
-
-	// flags used with InputTextV()
-	flags := imgui.InputTextFlagsCharsHexadecimal |
-		imgui.InputTextFlagsCallbackAlways |
-		imgui.InputTextFlagsAutoSelectAll
-
-	// if emulator is not paused, the values entered in the TextInput box will
-	// be loaded into the register immediately and not just when the enter
-	// key is pressed.
-	if !win.img.paused {
-		flags |= imgui.InputTextFlagsEnterReturnsTrue
-	}
-
-	if imgui.InputTextV(fmt.Sprintf("##%d", readAddr), &s, flags, cb) {
-		if v, err := strconv.ParseUint(s, 8, 8); err == nil {
+	onEnter := func() {
+		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			// we don't know if this address is from the internal RAM or from
 			// an area of cartridge RAM. for this reason we're sending the
 			// write through the high-level memory write, which will map the
 			// address for us.
 			win.img.vcs.Mem.Write(writeAddr, uint8(v))
+		} else {
+			fmt.Println(err)
 		}
 	}
+
+	hexInput(label, !win.img.paused, 2, &content, onEnter)
 }

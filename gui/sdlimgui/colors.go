@@ -37,14 +37,10 @@ type Colors struct {
 	CapturedScreenBorder imgui.Vec4
 
 	// CPU status register buttons
-	CPUStatusOn         imgui.Vec4
-	CPUStatusOnHovered  imgui.Vec4
-	CPUStatusOnActive   imgui.Vec4
-	CPUStatusOff        imgui.Vec4
-	CPUStatusOffHovered imgui.Vec4
-	CPUStatusOffActive  imgui.Vec4
-	CPURdyFlagOn        imgui.Vec4
-	CPURdyFlagOff       imgui.Vec4
+	CPUStatusOn  imgui.Vec4
+	CPUStatusOff imgui.Vec4
+	CPUFlgRdyOn  imgui.Vec4
+	CPUFlgRdyOff imgui.Vec4
 
 	// control window buttons
 	ControlRun         imgui.Vec4
@@ -55,7 +51,6 @@ type Colors struct {
 	ControlHaltActive  imgui.Vec4
 
 	// disassembly entry columns
-	DisasmCurrentPC   imgui.Vec4
 	DisasmAddress     imgui.Vec4
 	DisasmMnemonic    imgui.Vec4
 	DisasmOperand     imgui.Vec4
@@ -63,9 +58,14 @@ type Colors struct {
 	DisasmNotes       imgui.Vec4
 	DisasmSelectedAdj imgui.Vec4
 
-	// oscilloscope
-	OscBg   imgui.Vec4
-	OscLine imgui.Vec4
+	// disassembly gutter
+	DisasmCurrentPC    imgui.Vec4
+	DisasmBreakAddress imgui.Vec4
+	DisasmBreakOther   imgui.Vec4
+
+	// audio oscilloscope
+	AudioOscBg   imgui.Vec4
+	AudioOscLine imgui.Vec4
 
 	// terminal
 	TermBackground           imgui.Vec4
@@ -79,44 +79,50 @@ type Colors struct {
 	TermStyleVideoStep       imgui.Vec4
 	TermStyleInstrument      imgui.Vec4
 	TermStyleError           imgui.Vec4
-
-	// badges
-	BreakpointPC imgui.Vec4
 }
 
 func defaultTheme() *Colors {
 	cols := Colors{
+		// default colors
 		MenuBarBg:     imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 0.8},
 		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
 		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
 
-		// setting CapturedScreen* colors later
+		// deferring CapturedScreenTitle & CapturedScreenBorder
 
-		CPUStatusOn:              imgui.Vec4{0.73, 0.49, 0.14, 1.0},
-		CPUStatusOnHovered:       imgui.Vec4{0.79, 0.54, 0.15, 1.0},
-		CPUStatusOnActive:        imgui.Vec4{0.79, 0.54, 0.15, 1.0},
-		CPUStatusOff:             imgui.Vec4{0.64, 0.40, 0.09, 1.0},
-		CPUStatusOffHovered:      imgui.Vec4{0.70, 0.45, 0.10, 1.0},
-		CPUStatusOffActive:       imgui.Vec4{0.70, 0.45, 0.10, 1.0},
-		CPURdyFlagOn:             imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		CPURdyFlagOff:            imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		ControlRun:               imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		ControlRunHovered:        imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlRunActive:         imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlHalt:              imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		ControlHaltHovered:       imgui.Vec4{0.65, 0.3, 0.3, 1.0},
-		ControlHaltActive:        imgui.Vec4{0.65, 0.3, 0.3, 1.0},
-		DisasmCurrentPC:          imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmAddress:            imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		DisasmMnemonic:           imgui.Vec4{0.4, 0.4, 0.8, 1.0},
-		DisasmOperand:            imgui.Vec4{0.8, 0.8, 0.3, 1.0},
-		DisasmCycles:             imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmNotes:              imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmSelectedAdj:        imgui.Vec4{0.1, 0.1, 0.1, 0.0},
-		OscBg:                    imgui.Vec4{0.21, 0.29, 0.23, 1.0},
-		OscLine:                  imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+		// CPU status register buttons
+		CPUStatusOn:  imgui.Vec4{0.8, 0.6, 0.2, 1.0},
+		CPUStatusOff: imgui.Vec4{0.7, 0.5, 0.1, 1.0},
+		CPUFlgRdyOn:  imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		CPUFlgRdyOff: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+
+		// control window buttons
+		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		ControlRunHovered:  imgui.Vec4{0.3, 0.65, 0.3, 1.0},
+		ControlRunActive:   imgui.Vec4{0.3, 0.65, 0.3, 1.0},
+		ControlHalt:        imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		ControlHaltHovered: imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+		ControlHaltActive:  imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+
+		// disassembly entry columns
+		DisasmAddress:     imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		DisasmMnemonic:    imgui.Vec4{0.4, 0.4, 0.8, 1.0},
+		DisasmOperand:     imgui.Vec4{0.8, 0.8, 0.3, 1.0},
+		DisasmCycles:      imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmNotes:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmSelectedAdj: imgui.Vec4{0.1, 0.1, 0.1, 0.0},
+
+		// disassembly gutter
+		DisasmCurrentPC: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		// deferring DisasmBreakAddress & DisasmBreakOther
+
+		// audio oscilloscope
+		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
+		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+
+		// terminal
 		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},
 		TermStyleInput:           imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		TermStyleHelp:            imgui.Vec4{1.0, 1.0, 1.0, 1.0},
@@ -130,9 +136,11 @@ func defaultTheme() *Colors {
 		TermStyleError:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
 	}
 
-	// set SapturedScreen* color to match default colors
+	// we deferred setting of some colours. set them now.
 	cols.CapturedScreenTitle = cols.TitleBgActive
 	cols.CapturedScreenBorder = cols.TitleBgActive
+	cols.DisasmBreakAddress = cols.DisasmAddress
+	cols.DisasmBreakOther = cols.DisasmMnemonic
 
 	// set default colors
 	style := imgui.CurrentStyle()
