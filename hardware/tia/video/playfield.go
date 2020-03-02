@@ -39,25 +39,25 @@ type playfield struct {
 	hsync *polycounter.Polycounter
 
 	// the color for the when playfield is on/off
-	foregroundColor uint8
-	backgroundColor uint8
+	ForegroundColor uint8
+	BackgroundColor uint8
 
-	// plafield data is 20bits wide, the second half of the playfield is either
-	// a straight repetition of the data or a reflection, depending on the
+	// plafield Data is 20bits wide, the second half of the playfield is either
+	// a straight repetition of the Data or a reflection, depending on the
 	// state of the playfield control bits
-	data [20]bool
+	Data [20]bool
 
-	// the data field is a combination of three segments: pf0, pf1 and pf2.
+	// the data field is a combination of three segments: PF0, pf1 and pf2.
 	// these represent the three registers in VCS memory but we don't actually
 	// use then, except in the String() functions
-	pf0 uint8
-	pf1 uint8
-	pf2 uint8
+	PF0 uint8
+	PF1 uint8
+	PF2 uint8
 
 	// playfield properties
-	reflected bool
-	priority  bool
-	scoremode bool
+	Reflected bool
+	Priority  bool
+	Scoremode bool
 
 	// region keeps track of which part of the screen we're currently in
 	region screenRegion
@@ -82,25 +82,25 @@ func (pf playfield) Label() string {
 
 func (pf playfield) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%04b", pf.pf0>>4))
-	s.WriteString(fmt.Sprintf(" %08b", pf.pf1))
-	s.WriteString(fmt.Sprintf(" %08b", pf.pf2))
+	s.WriteString(fmt.Sprintf("%04b", pf.PF0>>4))
+	s.WriteString(fmt.Sprintf(" %08b", pf.PF1))
+	s.WriteString(fmt.Sprintf(" %08b", pf.PF2))
 
 	notes := false
 
 	// sundry playfield information
-	if pf.reflected {
+	if pf.Reflected {
 		s.WriteString(" refl")
 		notes = true
 	}
-	if pf.scoremode {
+	if pf.Scoremode {
 		if notes {
 			s.WriteString(",")
 		}
 		s.WriteString(" score")
 		notes = true
 	}
-	if pf.priority {
+	if pf.Priority {
 		if notes {
 			s.WriteString(",")
 		}
@@ -152,63 +152,78 @@ func (pf *playfield) pixel() (bool, uint8) {
 	// pixel returns the color of the playfield at the current time.
 	// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
 	if newPixel && pf.region != regionOffScreen {
-		if pf.region == regionLeft || !pf.reflected {
+		if pf.region == regionLeft || !pf.Reflected {
 			// normal, non-reflected playfield
-			pf.currentPixelIsOn = pf.data[pf.idx]
+			pf.currentPixelIsOn = pf.Data[pf.idx]
 		} else {
 			// reflected playfield
-			pf.currentPixelIsOn = pf.data[len(pf.data)-pf.idx-1]
+			pf.currentPixelIsOn = pf.Data[len(pf.Data)-pf.idx-1]
 		}
 	}
 
 	if pf.currentPixelIsOn {
-		return true, pf.foregroundColor
+		return true, pf.ForegroundColor
 	}
-	return false, pf.backgroundColor
+	return false, pf.BackgroundColor
 }
 
-func (pf *playfield) setSegment0(v interface{}) {
-	pf.pf0 = v.(uint8) & 0xf0
-	pf.data[0] = pf.pf0&0x10 == 0x10
-	pf.data[1] = pf.pf0&0x20 == 0x20
-	pf.data[2] = pf.pf0&0x40 == 0x40
-	pf.data[3] = pf.pf0&0x80 == 0x80
+// SetPF0 sets the playfield PF0 bits
+func (pf *playfield) SetPF0(v uint8) {
+	pf.PF0 = v & 0xf0
+	pf.Data[0] = pf.PF0&0x10 == 0x10
+	pf.Data[1] = pf.PF0&0x20 == 0x20
+	pf.Data[2] = pf.PF0&0x40 == 0x40
+	pf.Data[3] = pf.PF0&0x80 == 0x80
 }
 
-func (pf *playfield) setSegment1(v interface{}) {
-	pf.pf1 = v.(uint8)
-	pf.data[4] = pf.pf1&0x80 == 0x80
-	pf.data[5] = pf.pf1&0x40 == 0x40
-	pf.data[6] = pf.pf1&0x20 == 0x20
-	pf.data[7] = pf.pf1&0x10 == 0x10
-	pf.data[8] = pf.pf1&0x08 == 0x08
-	pf.data[9] = pf.pf1&0x04 == 0x04
-	pf.data[10] = pf.pf1&0x02 == 0x02
-	pf.data[11] = pf.pf1&0x01 == 0x01
+// SetPF1 sets the playfield PF1 bits
+func (pf *playfield) SetPF1(v uint8) {
+	pf.PF1 = v
+	pf.Data[4] = pf.PF1&0x80 == 0x80
+	pf.Data[5] = pf.PF1&0x40 == 0x40
+	pf.Data[6] = pf.PF1&0x20 == 0x20
+	pf.Data[7] = pf.PF1&0x10 == 0x10
+	pf.Data[8] = pf.PF1&0x08 == 0x08
+	pf.Data[9] = pf.PF1&0x04 == 0x04
+	pf.Data[10] = pf.PF1&0x02 == 0x02
+	pf.Data[11] = pf.PF1&0x01 == 0x01
 }
 
-func (pf *playfield) setSegment2(v interface{}) {
-	pf.pf2 = v.(uint8)
-	pf.data[12] = pf.pf2&0x01 == 0x01
-	pf.data[13] = pf.pf2&0x02 == 0x02
-	pf.data[14] = pf.pf2&0x04 == 0x04
-	pf.data[15] = pf.pf2&0x08 == 0x08
-	pf.data[16] = pf.pf2&0x10 == 0x10
-	pf.data[17] = pf.pf2&0x20 == 0x20
-	pf.data[18] = pf.pf2&0x40 == 0x40
-	pf.data[19] = pf.pf2&0x80 == 0x80
+// SetPF2 sets the playfield PF2 bits
+func (pf *playfield) SetPF2(v uint8) {
+	pf.PF2 = v
+	pf.Data[12] = pf.PF2&0x01 == 0x01
+	pf.Data[13] = pf.PF2&0x02 == 0x02
+	pf.Data[14] = pf.PF2&0x04 == 0x04
+	pf.Data[15] = pf.PF2&0x08 == 0x08
+	pf.Data[16] = pf.PF2&0x10 == 0x10
+	pf.Data[17] = pf.PF2&0x20 == 0x20
+	pf.Data[18] = pf.PF2&0x40 == 0x40
+	pf.Data[19] = pf.PF2&0x80 == 0x80
+}
+
+func (pf *playfield) setPF0(v interface{}) {
+	pf.SetPF0(v.(uint8))
+}
+
+func (pf *playfield) setPF1(v interface{}) {
+	pf.SetPF1(v.(uint8))
+}
+
+func (pf *playfield) setPF2(v interface{}) {
+	pf.SetPF2(v.(uint8))
 }
 
 func (pf *playfield) setControlBits(ctrlpf uint8) {
-	pf.reflected = ctrlpf&0x01 == 0x01
-	pf.scoremode = ctrlpf&0x02 == 0x02
-	pf.priority = ctrlpf&0x04 == 0x04
+	pf.Reflected = ctrlpf&0x01 == 0x01
+	pf.Scoremode = ctrlpf&0x02 == 0x02
+	pf.Priority = ctrlpf&0x04 == 0x04
 }
 
 func (pf *playfield) setColor(col uint8) {
-	pf.foregroundColor = col
+	pf.ForegroundColor = col
 }
 
 func (pf *playfield) setBackground(col uint8) {
-	pf.backgroundColor = col
+	pf.BackgroundColor = col
 }

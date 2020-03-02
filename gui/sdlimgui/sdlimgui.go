@@ -83,7 +83,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 
 	// define colors
-	img.cols = defaultTheme()
+	img.cols = newColors()
 
 	var err error
 

@@ -14,4 +14,5 @@ require (
 
 //replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200210203827-9487e0b50076 => github.com/JetSetIlly/imgui-go/v2 v2.1.2-0.20200220143851-7c9457a250cb
 
-//replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200210203827-9487e0b50076 => ../imgui-go
+replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721 => ../imgui-go
+

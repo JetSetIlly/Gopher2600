@@ -109,8 +109,74 @@ func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *str
 	}
 }
 
-func imguiLeftlabel(label string) {
+// calls Text but preceeds it with AlignTextToFramePadding() and follows it
+// with SameLine(). a common enought pattern to warrent a function call
+func imguiLabel(label string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(label)
 	imgui.SameLine()
+}
+
+func (img *SdlImgui) imguiColorCirc(col uint8) (clicked bool) {
+	c := img.imguiPackedPalette()[col]
+
+	// position & dimensions of swatch
+	r := imgui.FontSize() * 0.75
+	p := imgui.CursorScreenPos()
+	p.X += r
+	p.Y += r
+
+	// if mouse is clicked in the range of the swatch. very simple detection,
+	// not accounting for the fact that the swatch is visibly circular
+	if imgui.IsMouseClicked(0) {
+		pos := imgui.MousePos()
+		clicked = pos.X >= p.X-r && pos.X <= p.X+r && pos.Y >= p.Y-r && pos.Y <= p.Y+r
+	}
+
+	// draw swatch
+	dl := imgui.WindowDrawList()
+	dl.AddCircleFilled(p, r, c)
+
+	// set up cursor for next widget
+	p.X += 2 * r
+	p.Y -= r
+	imgui.SetCursorScreenPos(p)
+
+	return clicked
+}
+
+func (img *SdlImgui) imguiColorRect(col uint8) (clicked bool) {
+	c := img.imguiPackedPalette()[col]
+
+	// position & dimensions of playfield bit
+	r := imgui.FrameHeight()
+	a := imgui.CursorScreenPos()
+	b := a
+	b.X += r
+	b.Y += r
+
+	// if mouse is clicked in the range of the playfield bit
+	if imgui.IsMouseClicked(0) {
+		pos := imgui.MousePos()
+		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
+	}
+
+	// draw playfield bit
+	dl := imgui.WindowDrawList()
+	dl.AddRectFilled(a, b, c)
+
+	// set up cursor for next widget
+	a.X += r + r*0.1
+	imgui.SetCursorScreenPos(a)
+
+	return clicked
+}
+
+// use appropriate palette for television spec
+func (img *SdlImgui) imguiPackedPalette() packedPalette {
+	switch img.tv.GetSpec().ID {
+	case "PAL":
+		return img.cols.packedPalettePAL
+	}
+	return img.cols.packedPaletteNTSC
 }

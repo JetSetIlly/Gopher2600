@@ -139,7 +139,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
 func (vd *Video) Pixel() (uint8, colors.AltColor) {
-	bgc := vd.Playfield.backgroundColor
+	bgc := vd.Playfield.BackgroundColor
 	pfu, pfc := vd.Playfield.pixel()
 	p0u, p0c := vd.Player0.pixel()
 	p1u, p1c := vd.Player1.pixel()
@@ -238,9 +238,9 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 	//	effect on ball" on AtariAge proved useful here.
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
-	if vd.Playfield.priority || (vd.Playfield.scoremode && vd.Playfield.region == regionLeft) {
+	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.region == regionLeft) {
 		if pfu { // priority 1
-			if vd.Playfield.scoremode && !vd.Playfield.priority {
+			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
 				switch vd.Playfield.region {
 				case regionLeft:
 					col = p0c
@@ -284,7 +284,7 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 		} else if m1u {
 			col = m1c
 			altCol = colors.AltColMissile1
-		} else if vd.Playfield.scoremode && (blu || pfu) {
+		} else if vd.Playfield.Scoremode && (blu || pfu) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
 				col = pfc
@@ -328,11 +328,11 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) b
 	// to write new playfield data
 	switch data.Name {
 	case "PF0":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment0, data.Value, "PF0")
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF0, data.Value, "PF0")
 	case "PF1":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment1, data.Value, "PF1")
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF1, data.Value, "PF1")
 	case "PF2":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setSegment2, data.Value, "PF2")
+		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF2, data.Value, "PF2")
 	default:
 		return true
 	}

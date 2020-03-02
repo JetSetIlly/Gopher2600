@@ -20,6 +20,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -58,26 +60,116 @@ func (win *winTIA) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{718, 156}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winTIATitle, &win.open, 0)
 
-	imgui.BeginGroup()
-	imgui.Text(win.img.vcs.TIA.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.String())
-	imgui.Text(win.img.vcs.TIA.Video.Player0.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.Video.Player0.String())
-	imgui.Text(win.img.vcs.TIA.Video.Player1.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.Video.Player1.String())
-	imgui.Text(win.img.vcs.TIA.Video.Missile0.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.Video.Missile0.String())
-	imgui.Text(win.img.vcs.TIA.Video.Missile1.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.Video.Missile1.String())
-	imgui.Text(win.img.vcs.TIA.Video.Ball.Label())
-	imgui.SameLine()
-	imgui.Text(win.img.vcs.TIA.Video.Ball.String())
-	imgui.EndGroup()
+	imgui.BeginTabBar("")
+	if imgui.BeginTabItem("HSYNC/Playfield") {
+		win.drawPlayfield()
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Player 0") {
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Player 1") {
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Missile 0") {
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Missile 1") {
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Ball") {
+		imgui.EndTabItem()
+	}
+	imgui.EndTabBar()
 
 	imgui.End()
+}
+
+func (win *winTIA) drawPlayfield() {
+	imgui.Spacing()
+
+	imgui.BeginGroup()
+	imguiLabel("Foreground")
+	if win.img.imguiColorCirc(win.img.vcs.TIA.Video.Playfield.ForegroundColor) {
+	}
+
+	imguiLabel("Background")
+	if win.img.imguiColorCirc(win.img.vcs.TIA.Video.Playfield.BackgroundColor) {
+		fmt.Println("bg")
+	}
+	imgui.EndGroup()
+
+	imgui.Spacing()
+	imgui.Spacing()
+
+	imguiLabel("Reflected")
+	imgui.Checkbox("##reflected", &win.img.vcs.TIA.Video.Playfield.Reflected)
+
+	imgui.SameLine()
+	imguiLabel("Priority")
+	imgui.Checkbox("##priority", &win.img.vcs.TIA.Video.Playfield.Priority)
+
+	imgui.SameLine()
+	imguiLabel("Scoremode")
+	imgui.Checkbox("##scoremode", &win.img.vcs.TIA.Video.Playfield.Scoremode)
+
+	imgui.Spacing()
+	imgui.Spacing()
+	imgui.Spacing()
+
+	imguiLabel("PF0")
+	imgui.SameLine()
+	imgui.BeginGroup()
+	for i := 0; i < 4; i++ {
+		var col uint8
+		if (win.img.vcs.TIA.Video.Playfield.PF0<<i)&0x80 == 0x80 {
+			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		} else {
+			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+		}
+		if win.img.imguiColorRect(col) {
+			v := win.img.vcs.TIA.Video.Playfield.PF0
+			v ^= 0x80 >> i
+			win.img.vcs.TIA.Video.Playfield.SetPF0(v)
+		}
+	}
+	imgui.EndGroup()
+
+	imgui.SameLine()
+	imguiLabel("PF1")
+	imgui.SameLine()
+	imgui.BeginGroup()
+	for i := 0; i < 8; i++ {
+		var col uint8
+		if (win.img.vcs.TIA.Video.Playfield.PF1<<i)&0x80 == 0x80 {
+			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		} else {
+			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+		}
+		if win.img.imguiColorRect(col) {
+			v := win.img.vcs.TIA.Video.Playfield.PF1
+			v ^= 0x80 >> i
+			win.img.vcs.TIA.Video.Playfield.SetPF1(v)
+		}
+	}
+	imgui.EndGroup()
+
+	imgui.SameLine()
+	imguiLabel("PF2")
+	imgui.SameLine()
+	imgui.BeginGroup()
+	for i := 0; i < 8; i++ {
+		var col uint8
+		if (win.img.vcs.TIA.Video.Playfield.PF2<<i)&0x80 == 0x80 {
+			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		} else {
+			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+		}
+		if win.img.imguiColorRect(col) {
+			v := win.img.vcs.TIA.Video.Playfield.PF2
+			v ^= 0x80 >> i
+			win.img.vcs.TIA.Video.Playfield.SetPF2(v)
+		}
+	}
+	imgui.EndGroup()
 }

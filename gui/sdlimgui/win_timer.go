@@ -85,7 +85,7 @@ func (win *winTimer) draw() {
 	value := fmt.Sprintf("%02x", win.img.vcs.RIOT.Timer.INTIMvalue)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
-	imguiLeftlabel("Value")
+	imguiLabel("Value")
 	imguiHexInput("##value", !win.img.paused, 2, &value, func() {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
 			win.img.vcs.RIOT.Timer.SetValue(uint8(v))
@@ -96,7 +96,7 @@ func (win *winTimer) draw() {
 	remaining := fmt.Sprintf("%04x", win.img.vcs.RIOT.Timer.TicksRemaining)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
-	imguiLeftlabel("Ticks")
+	imguiLabel("Ticks")
 	imguiHexInput("##remaining", !win.img.paused, 4, &remaining, func() {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
 			win.img.vcs.RIOT.Timer.TicksRemaining = uint16(v)
