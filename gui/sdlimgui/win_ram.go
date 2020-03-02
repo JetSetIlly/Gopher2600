@@ -61,7 +61,7 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winRAM) init() {
-	win.editDim = getFrameDim("FF")
+	win.editDim = imguiGetFrameDim("FF")
 }
 
 func (win *winRAM) destroy() {
@@ -147,7 +147,7 @@ func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
 	d, _ := win.img.vcs.Mem.Read(readAddr)
 	content := fmt.Sprintf("%02x", d)
 
-	onEnter := func() {
+	onUpdate := func() {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			// we don't know if this address is from the internal RAM or from
 			// an area of cartridge RAM. for this reason we're sending the
@@ -159,5 +159,5 @@ func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
 		}
 	}
 
-	hexInput(label, !win.img.paused, 2, &content, onEnter)
+	imguiHexInput(label, !win.img.paused, 2, &content, onUpdate)
 }

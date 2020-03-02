@@ -23,7 +23,7 @@ import "github.com/inkyblackness/imgui-go/v2"
 
 // requires the minimum Vec2{} required to fit any of the string values
 // listed in the arguments
-func getFrameDim(s string, t ...string) imgui.Vec2 {
+func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 	w := imgui.CalcTextSize(s, false, 0)
 	for i := range t {
 		y := imgui.CalcTextSize(t[i], false, 0)
@@ -36,7 +36,7 @@ func getFrameDim(s string, t ...string) imgui.Vec2 {
 }
 
 // draw toggle button at current cursor position
-func toggleButton(id string, v *bool, col imgui.Vec4) {
+func imguiToggleButton(id string, v *bool, col imgui.Vec4) {
 	bg := imgui.PackedColorFromVec4(col)
 	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
@@ -75,17 +75,17 @@ func toggleButton(id string, v *bool, col imgui.Vec4) {
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
 }
 
-// input text that accepts a maximum number of hex nibbles
-func hexInput(label string, aggressiveUpdate bool, nibbles int, content *string, update func()) {
+// input text that accepts a maximum number of hex digits
+func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *string, update func()) {
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		b := string(d.Buffer())
 
 		// restrict length of input to two characters. note that restriction to
 		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
 		// given to InputTextV()
-		if len(b) > nibbles {
+		if len(b) > digits {
 			d.DeleteBytes(0, len(b))
-			b = b[:nibbles]
+			b = b[:digits]
 			d.InsertBytes(0, []byte(b))
 			d.MarkBufferModified()
 		}
@@ -107,4 +107,10 @@ func hexInput(label string, aggressiveUpdate bool, nibbles int, content *string,
 	if imgui.InputTextV(label, content, flags, cb) {
 		update()
 	}
+}
+
+func imguiLeftlabel(label string) {
+	imgui.AlignTextToFramePadding()
+	imgui.Text(label)
+	imgui.SameLine()
 }

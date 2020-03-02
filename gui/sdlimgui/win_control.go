@@ -53,9 +53,9 @@ func newWinControl(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winControl) init() {
-	win.stepButtonDim = getFrameDim(videoCycleLabel, cpuInstructionLabel)
-	win.runButtonDim = getFrameDim(runButtonLabel, haltButtonLabel)
-	win.fpsLabelDim = getFrameDim(fpsLabel)
+	win.stepButtonDim = imguiGetFrameDim(videoCycleLabel, cpuInstructionLabel)
+	win.runButtonDim = imguiGetFrameDim(runButtonLabel, haltButtonLabel)
+	win.fpsLabelDim = imguiGetFrameDim(fpsLabel)
 }
 
 func (win *winControl) destroy() {
@@ -141,7 +141,7 @@ func (win *winControl) drawQuantumToggle() {
 
 	stepLabel := cpuInstructionLabel
 	imgui.SameLine()
-	toggleButton("quantumToggle", &toggle, win.img.cols.TitleBgActive)
+	imguiToggleButton("quantumToggle", &toggle, win.img.cols.TitleBgActive)
 	if toggle {
 		stepLabel = videoCycleLabel
 		if videoStep != toggle {

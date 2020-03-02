@@ -51,7 +51,7 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCPU) init() {
-	win.regEditDim = getFrameDim("FFFF")
+	win.regEditDim = imguiGetFrameDim("FFFF")
 	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
 	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
 }
@@ -144,14 +144,14 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 
 	label := fmt.Sprintf("##%s", reg.Label())
 	content := reg.String()
-	onEnter := func() {
+	onUpdate := func() {
 		if v, err := strconv.ParseUint(content, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)
 		}
 	}
 
 	imgui.PushItemWidth(win.regEditDim.X)
-	hexInput(label, !win.img.paused, reg.BitWidth()/4, &content, onEnter)
+	imguiHexInput(label, !win.img.paused, reg.BitWidth()/4, &content, onUpdate)
 	imgui.PopItemWidth()
 }
 
