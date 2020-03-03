@@ -72,6 +72,9 @@ type Colors struct {
 	AudioOscBg   imgui.Vec4
 	AudioOscLine imgui.Vec4
 
+	// tia window
+	PlayfieldPointer imgui.Vec4
+
 	// terminal
 	TermBackground           imgui.Vec4
 	TermStyleInput           imgui.Vec4
@@ -97,7 +100,7 @@ func newColors() *Colors {
 	cols := Colors{
 		// default colors
 		MenuBarBg:     imgui.Vec4{0.075, 0.08, 0.09, 1.0},
-		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 0.8},
+		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
 		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
@@ -133,6 +136,9 @@ func newColors() *Colors {
 		// audio oscilloscope
 		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+
+		// tia
+		PlayfieldPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// terminal
 		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},

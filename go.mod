@@ -12,7 +12,6 @@ require (
 	golang.org/x/sys v0.0.0-20191206220618-eeba5f6aabab // indirect
 )
 
-//replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200210203827-9487e0b50076 => github.com/JetSetIlly/imgui-go/v2 v2.1.2-0.20200220143851-7c9457a250cb
+replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721 => github.com/JetSetIlly/imgui-go/v2 v2.1.2-0.20200305084621-2adc4a4bed4e
 
-replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721 => ../imgui-go
-
+// replace github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721 => ../imgui-go

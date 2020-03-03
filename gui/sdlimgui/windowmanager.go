@@ -63,6 +63,17 @@ type windowManager struct {
 	windows    map[string]managedWindow
 	windowList []string
 
+	// the position of the screen on the current display. the SDL function
+	// Window.GetPosition() is unsuitable for use in conjunction with imgui
+	// because it considers screen space across all display devices, imgui does
+	// not.
+	//
+	// screenPos is an alternative to the SDL GetPosition() function. we get
+	// the value by asking for the screenPos of the main menu. because the main
+	// menu is always in the very top-left corner of the window it is a good
+	// proxy value
+	screenPos imgui.Vec2
+
 	// term and screen need to be accessfrom other areas of the package so we
 	// maintain pointers to them in addition to there windows entries
 	term *winTerm
@@ -158,6 +169,9 @@ func (wm *windowManager) drawMainMenu() {
 	if imgui.BeginMainMenuBar() == false {
 		return
 	}
+
+	// see commentary for screenPos in windowManager declaration
+	wm.screenPos = imgui.WindowPos()
 
 	if imgui.BeginMenu("Project") {
 		if imgui.Selectable("Quit") {

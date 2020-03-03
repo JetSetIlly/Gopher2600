@@ -19,7 +19,9 @@
 
 package sdlimgui
 
-import "github.com/inkyblackness/imgui-go/v2"
+import (
+	"github.com/inkyblackness/imgui-go/v2"
+)
 
 // requires the minimum Vec2{} required to fit any of the string values
 // listed in the arguments
@@ -117,8 +119,45 @@ func imguiLabel(label string) {
 	imgui.SameLine()
 }
 
-func (img *SdlImgui) imguiColorCirc(col uint8) (clicked bool) {
-	c := img.imguiPackedPalette()[col]
+// returns a Vec2 suitable for use as a position vector when opening a imgui
+// window. The X and Y are set such that 0.0 <= value <= 1.0
+//
+// the vector is weighted to reflect the quadrant in which the supplied
+// argument p (mouse position, say) falls within.
+func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
+	sp := img.wm.screenPos
+	ww, wh := img.plt.window.GetSize()
+
+	q := imgui.Vec2{X: 0.25, Y: 0.25}
+
+	if p.X > (sp.X+float32(ww))/2 {
+		q.X = 0.75
+	}
+
+	if p.Y > (sp.Y+float32(wh))/2 {
+		q.Y = 0.75
+	}
+
+	return q
+}
+
+// use appropriate palette for television spec
+func (img *SdlImgui) imguiPackedPalette() (string, packedPalette) {
+	switch img.tv.GetSpec().ID {
+	case "PAL":
+		return img.tv.GetSpec().ID, img.cols.packedPalettePAL
+	case "NTSC":
+		return img.tv.GetSpec().ID, img.cols.packedPaletteNTSC
+	}
+
+	return "NTSC?", img.cols.packedPaletteNTSC
+}
+
+// draw swatch. returns true if clicked. a good response to a click event is to
+// open up an instance of popupPalette
+func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
+	_, pal := img.imguiPackedPalette()
+	c := pal[col]
 
 	// position & dimensions of swatch
 	r := imgui.FontSize() * 0.75
@@ -145,15 +184,76 @@ func (img *SdlImgui) imguiColorCirc(col uint8) (clicked bool) {
 	return clicked
 }
 
-func (img *SdlImgui) imguiColorRect(col uint8) (clicked bool) {
-	c := img.imguiPackedPalette()[col]
+// drawlistSequence provides a neat way of drawlist elements of a uniform size in
+// sequence
+type drawlistSequence struct {
+	img     *SdlImgui
+	palette packedPalette
+	size    imgui.Vec2
+	spacing imgui.Vec2
+
+	startX float32
+	prevX  float32
+	prevY  float32
+
+	nextItemSameLine bool
+}
+
+// create and start a new sequence. spacing is expressed as fraction of the
+// current FontSize()
+func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32) *drawlistSequence {
+	seq := &drawlistSequence{
+		img:     img,
+		size:    size,
+		spacing: imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
+	}
+	_, seq.palette = img.imguiPackedPalette()
+	seq.start()
+	return seq
+}
+
+// start resets the reference position. convenient to use if size/spacing is not changing
+func (seq *drawlistSequence) start() {
+	seq.prevX = imgui.WindowPos().X + imgui.CursorPosX()
+	seq.prevY = imgui.WindowPos().Y + imgui.CursorPosY() - seq.size.Y - seq.spacing.Y
+	seq.startX = seq.prevX
+	seq.nextItemSameLine = false
+}
+
+// calling sameLine() before a call to element may not have the effect you
+// expect. avoid calling the function until at least one element has been
+// drawn.
+func (seq *drawlistSequence) sameLine() {
+	seq.nextItemSameLine = true
+}
+
+// returns the X value that is in the middle of the n'th element
+func (seq *drawlistSequence) offsetX(n int) float32 {
+	return seq.startX + float32(n)*(seq.size.X+seq.spacing.X) + seq.size.X*0.5
+}
+
+func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
+	var x, y float32
+
+	if seq.nextItemSameLine {
+		x = seq.prevX + seq.size.X + seq.spacing.X
+		y = seq.prevY
+	} else {
+		x = seq.startX
+		y = seq.prevY + seq.size.Y + seq.spacing.Y
+	}
+
+	// reset sameline flag
+	seq.nextItemSameLine = false
+
+	// get color
+	c := seq.palette[col]
 
 	// position & dimensions of playfield bit
-	r := imgui.FrameHeight()
-	a := imgui.CursorScreenPos()
+	a := imgui.Vec2{X: x, Y: y}
 	b := a
-	b.X += r
-	b.Y += r
+	b.X += seq.size.X
+	b.Y += seq.size.Y
 
 	// if mouse is clicked in the range of the playfield bit
 	if imgui.IsMouseClicked(0) {
@@ -161,22 +261,16 @@ func (img *SdlImgui) imguiColorRect(col uint8) (clicked bool) {
 		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
 	}
 
-	// draw playfield bit
+	// draw square
 	dl := imgui.WindowDrawList()
 	dl.AddRectFilled(a, b, c)
 
-	// set up cursor for next widget
-	a.X += r + r*0.1
-	imgui.SetCursorScreenPos(a)
+	// record coordinates for use by next element
+	seq.prevX = a.X
+	seq.prevY = a.Y
+
+	// set cursor position for any non colorSequence widgets
+	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
 
 	return clicked
-}
-
-// use appropriate palette for television spec
-func (img *SdlImgui) imguiPackedPalette() packedPalette {
-	switch img.tv.GetSpec().ID {
-	case "PAL":
-		return img.cols.packedPalettePAL
-	}
-	return img.cols.packedPaletteNTSC
 }

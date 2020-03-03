@@ -238,13 +238,13 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 	//	effect on ball" on AtariAge proved useful here.
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
-	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.region == regionLeft) {
+	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.Region == RegionLeft) {
 		if pfu { // priority 1
 			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
-				switch vd.Playfield.region {
-				case regionLeft:
+				switch vd.Playfield.Region {
+				case RegionLeft:
 					col = p0c
-				case regionRight:
+				case RegionRight:
 					col = p1c
 				}
 			} else {
@@ -288,10 +288,10 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 			// priority 3 (scoremode without priority bit)
 			if pfu {
 				col = pfc
-				switch vd.Playfield.region {
-				case regionLeft:
+				switch vd.Playfield.Region {
+				case RegionLeft:
 					col = p0c
-				case regionRight:
+				case RegionRight:
 					col = p1c
 				}
 				altCol = colors.AltColPlayfield

@@ -26,12 +26,14 @@ import (
 	"strings"
 )
 
-type screenRegion int
+// ScreenRegion notes which part of the screen is currently being drawn
+type ScreenRegion int
 
+// List of valid ScreenRegions
 const (
-	regionOffScreen screenRegion = iota
-	regionLeft
-	regionRight
+	RegionOffScreen ScreenRegion = iota
+	RegionLeft
+	RegionRight
 )
 
 type playfield struct {
@@ -59,12 +61,12 @@ type playfield struct {
 	Priority  bool
 	Scoremode bool
 
-	// region keeps track of which part of the screen we're currently in
-	region screenRegion
+	// Region keeps track of which part of the screen we're currently in
+	Region ScreenRegion
 
-	// idx is the index into the data field - interpreted depending on
+	// Idx is the index into the data field - interpreted depending on
 	// screenRegion and reflection settings
-	idx int
+	Idx int
 
 	// a playfield "pixel" is sustained for the duration 3 video cycles, even
 	// if the playfield register is changed. see pixel() function below
@@ -122,13 +124,13 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// correct screen region.
 		if pf.hsync.Count() >= 37 {
 			// just past the centre of the visible screen
-			pf.region = regionRight
+			pf.Region = RegionRight
 		} else if pf.hsync.Count() >= 17 {
 			// start of visible screen (playfield not affected by HMOVE)
-			pf.region = regionLeft
+			pf.Region = RegionLeft
 		} else {
 			// start of scanline
-			pf.region = regionOffScreen
+			pf.Region = RegionOffScreen
 		}
 
 		// this switch statement is based on the "Horizontal Sync Counter"
@@ -136,28 +138,28 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// colorclock (tia) delay but simply looking for the hsync.Count 4
 		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
 		// document.  we believe this has the same effect.
-		switch pf.region {
+		switch pf.Region {
 		case 0:
-			pf.idx = pf.hsync.Count()
+			pf.Idx = pf.hsync.Count()
 			pf.currentPixelIsOn = false
 		case 1:
-			pf.idx = pf.hsync.Count() - 17
+			pf.Idx = pf.hsync.Count() - 17
 			newPixel = true
 		case 2:
-			pf.idx = pf.hsync.Count() - 37
+			pf.Idx = pf.hsync.Count() - 37
 			newPixel = true
 		}
 	}
 
 	// pixel returns the color of the playfield at the current time.
 	// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
-	if newPixel && pf.region != regionOffScreen {
-		if pf.region == regionLeft || !pf.Reflected {
+	if newPixel && pf.Region != RegionOffScreen {
+		if pf.Region == RegionLeft || !pf.Reflected {
 			// normal, non-reflected playfield
-			pf.currentPixelIsOn = pf.Data[pf.idx]
+			pf.currentPixelIsOn = pf.Data[pf.Idx]
 		} else {
 			// reflected playfield
-			pf.currentPixelIsOn = pf.Data[len(pf.Data)-pf.idx-1]
+			pf.currentPixelIsOn = pf.Data[len(pf.Data)-pf.Idx-1]
 		}
 	}
 

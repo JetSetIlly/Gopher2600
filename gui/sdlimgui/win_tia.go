@@ -20,7 +20,7 @@
 package sdlimgui
 
 import (
-	"fmt"
+	"gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -29,18 +29,22 @@ const winTIATitle = "TIA"
 
 type winTIA struct {
 	windowManagement
-	img *SdlImgui
+	img              *SdlImgui
+	popupPalette     *popupPalette
+	playfieldPointer imgui.PackedColor
 }
 
 func newWinTIA(img *SdlImgui) (managedWindow, error) {
 	win := &winTIA{
-		img: img,
+		img:          img,
+		popupPalette: newPopupPalette(img),
 	}
 
 	return win, nil
 }
 
 func (win *winTIA) init() {
+	win.playfieldPointer = imgui.PackedColorFromVec4(win.img.cols.PlayfieldPointer)
 }
 
 func (win *winTIA) destroy() {
@@ -61,7 +65,7 @@ func (win *winTIA) draw() {
 	imgui.BeginV(winTIATitle, &win.open, 0)
 
 	imgui.BeginTabBar("")
-	if imgui.BeginTabItem("HSYNC/Playfield") {
+	if imgui.BeginTabItem("Playfield") {
 		win.drawPlayfield()
 		imgui.EndTabItem()
 	}
@@ -83,19 +87,24 @@ func (win *winTIA) draw() {
 	imgui.EndTabBar()
 
 	imgui.End()
+
+	win.popupPalette.draw()
 }
 
 func (win *winTIA) drawPlayfield() {
+	pf := win.img.vcs.TIA.Video.Playfield
+
 	imgui.Spacing()
 
 	imgui.BeginGroup()
 	imguiLabel("Foreground")
-	if win.img.imguiColorCirc(win.img.vcs.TIA.Video.Playfield.ForegroundColor) {
+	if win.img.imguiSwatch(pf.ForegroundColor) {
+		win.popupPalette.request(&pf.ForegroundColor)
 	}
 
 	imguiLabel("Background")
-	if win.img.imguiColorCirc(win.img.vcs.TIA.Video.Playfield.BackgroundColor) {
-		fmt.Println("bg")
+	if win.img.imguiSwatch(pf.BackgroundColor) {
+		win.popupPalette.request(&pf.BackgroundColor)
 	}
 	imgui.EndGroup()
 
@@ -103,15 +112,15 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 
 	imguiLabel("Reflected")
-	imgui.Checkbox("##reflected", &win.img.vcs.TIA.Video.Playfield.Reflected)
+	imgui.Checkbox("##reflected", &pf.Reflected)
 
 	imgui.SameLine()
 	imguiLabel("Priority")
-	imgui.Checkbox("##priority", &win.img.vcs.TIA.Video.Playfield.Priority)
+	imgui.Checkbox("##priority", &pf.Priority)
 
 	imgui.SameLine()
 	imguiLabel("Scoremode")
-	imgui.Checkbox("##scoremode", &win.img.vcs.TIA.Video.Playfield.Scoremode)
+	imgui.Checkbox("##scoremode", &pf.Scoremode)
 
 	imgui.Spacing()
 	imgui.Spacing()
@@ -120,18 +129,20 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF0")
 	imgui.SameLine()
 	imgui.BeginGroup()
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
 	for i := 0; i < 4; i++ {
 		var col uint8
-		if (win.img.vcs.TIA.Video.Playfield.PF0<<i)&0x80 == 0x80 {
-			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		if (pf.PF0<<i)&0x80 == 0x80 {
+			col = pf.ForegroundColor
 		} else {
-			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+			col = pf.BackgroundColor
 		}
-		if win.img.imguiColorRect(col) {
-			v := win.img.vcs.TIA.Video.Playfield.PF0
+		if seq.rectFilled(col) {
+			v := pf.PF0
 			v ^= 0x80 >> i
-			win.img.vcs.TIA.Video.Playfield.SetPF0(v)
+			pf.SetPF0(v)
 		}
+		seq.sameLine()
 	}
 	imgui.EndGroup()
 
@@ -139,18 +150,20 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF1")
 	imgui.SameLine()
 	imgui.BeginGroup()
+	seq.start()
 	for i := 0; i < 8; i++ {
 		var col uint8
-		if (win.img.vcs.TIA.Video.Playfield.PF1<<i)&0x80 == 0x80 {
-			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		if (pf.PF1<<i)&0x80 == 0x80 {
+			col = pf.ForegroundColor
 		} else {
-			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+			col = pf.BackgroundColor
 		}
-		if win.img.imguiColorRect(col) {
-			v := win.img.vcs.TIA.Video.Playfield.PF1
+		if seq.rectFilled(col) {
+			v := pf.PF1
 			v ^= 0x80 >> i
-			win.img.vcs.TIA.Video.Playfield.SetPF1(v)
+			pf.SetPF1(v)
 		}
+		seq.sameLine()
 	}
 	imgui.EndGroup()
 
@@ -158,18 +171,73 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF2")
 	imgui.SameLine()
 	imgui.BeginGroup()
+	seq.start()
 	for i := 0; i < 8; i++ {
 		var col uint8
-		if (win.img.vcs.TIA.Video.Playfield.PF2<<i)&0x80 == 0x80 {
-			col = win.img.vcs.TIA.Video.Playfield.ForegroundColor
+		if (pf.PF2<<i)&0x80 == 0x80 {
+			col = pf.ForegroundColor
 		} else {
-			col = win.img.vcs.TIA.Video.Playfield.BackgroundColor
+			col = pf.BackgroundColor
 		}
-		if win.img.imguiColorRect(col) {
-			v := win.img.vcs.TIA.Video.Playfield.PF2
+		if seq.rectFilled(col) {
+			v := pf.PF2
 			v ^= 0x80 >> i
-			win.img.vcs.TIA.Video.Playfield.SetPF2(v)
+			pf.SetPF2(v)
 		}
+		seq.sameLine()
 	}
 	imgui.EndGroup()
+
+	imgui.Spacing()
+	imgui.Spacing()
+
+	imguiLabel("Sequence")
+	imgui.BeginGroup()
+	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1)
+
+	// first half of the playfield
+	for _, v := range pf.Data {
+		var col uint8
+		if v {
+			col = pf.ForegroundColor
+		} else {
+			col = pf.BackgroundColor
+		}
+		seq.rectFilled(col)
+		seq.sameLine()
+	}
+
+	// second half of the playfield
+	for i, v := range pf.Data {
+		// correct for reflected playfield
+		if pf.Reflected {
+			v = pf.Data[len(pf.Data)-1-i]
+		}
+
+		var col uint8
+		if v {
+			col = pf.ForegroundColor
+		} else {
+			col = pf.BackgroundColor
+		}
+		seq.rectFilled(col)
+		seq.sameLine()
+	}
+	imgui.EndGroup()
+
+	// playfield pointer
+	if pf.Region != video.RegionOffScreen {
+		idx := pf.Idx
+		if pf.Region == video.RegionRight {
+			idx += len(pf.Data)
+		}
+
+		p1 := imgui.Vec2{
+			X: seq.offsetX(idx),
+			Y: imgui.WindowPos().Y + imgui.CursorPosY() + 2.0,
+		}
+
+		dl := imgui.WindowDrawList()
+		dl.AddCircleFilled(p1, seq.size.X*0.25, win.playfieldPointer)
+	}
 }
