@@ -20,6 +20,8 @@
 package sdlimgui
 
 import (
+	"strings"
+
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -77,26 +79,38 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) {
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
 }
 
-// input text that accepts a maximum number of hex digits
-func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *string, update func()) {
-	cb := func(d imgui.InputTextCallbackData) int32 {
-		b := string(d.Buffer())
+func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *string) bool {
+	return imguiInput(label, aggressiveUpdate, digits, content, "abcdefABCDEF0123456789")
+}
 
-		// restrict length of input to two characters. note that restriction to
-		// hexadecimal characters is handled by imgui's CharsHexadecimal flag
-		// given to InputTextV()
-		if len(b) > digits {
-			d.DeleteBytes(0, len(b))
-			b = b[:digits]
-			d.InsertBytes(0, []byte(b))
-			d.MarkBufferModified()
+// input text that accepts a maximum number of hex digits
+func imguiInput(label string, aggressiveUpdate bool, digits int, content *string, allowedChars string) bool {
+	cb := func(d imgui.InputTextCallbackData) int32 {
+		switch d.EventFlag() {
+		case imgui.InputTextFlagsCallbackCharFilter:
+			// filter characters that are not in the list of allowedChars
+			if !strings.ContainsAny(string(d.EventChar()), allowedChars) {
+				return -1
+			}
+		default:
+			b := string(d.Buffer())
+
+			// restrict length of input to two characters. note that restriction to
+			// hexadecimal characters is handled by imgui's CharsHexadecimal flag
+			// given to InputTextV()
+			if len(b) > digits {
+				d.DeleteBytes(0, len(b))
+				b = b[:digits]
+				d.InsertBytes(0, []byte(b))
+				d.MarkBufferModified()
+			}
 		}
 
 		return 0
 	}
 
 	// flags used with InputTextV()
-	flags := imgui.InputTextFlagsCharsHexadecimal |
+	flags := imgui.InputTextFlagsCallbackCharFilter |
 		imgui.InputTextFlagsCallbackAlways |
 		imgui.InputTextFlagsAutoSelectAll
 
@@ -106,9 +120,7 @@ func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *str
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
-	if imgui.InputTextV(label, content, flags, cb) {
-		update()
-	}
+	return imgui.InputTextV(label, content, flags, cb)
 }
 
 // calls Text but preceeds it with AlignTextToFramePadding() and follows it
@@ -187,37 +199,52 @@ func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
 // drawlistSequence provides a neat way of drawlist elements of a uniform size in
 // sequence
 type drawlistSequence struct {
-	img     *SdlImgui
-	palette packedPalette
-	size    imgui.Vec2
-	spacing imgui.Vec2
+	img              *SdlImgui
+	palette          packedPalette
+	size             imgui.Vec2
+	spacing          imgui.Vec2
+	depressionAmount float32
 
 	startX float32
 	prevX  float32
 	prevY  float32
 
-	nextItemSameLine bool
+	nextItemSameLine  bool
+	nextItemDepressed bool
 }
 
 // create and start a new sequence. spacing is expressed as fraction of the
 // current FontSize()
 func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32) *drawlistSequence {
 	seq := &drawlistSequence{
-		img:     img,
-		size:    size,
-		spacing: imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
+		img:              img,
+		size:             size,
+		spacing:          imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
+		depressionAmount: 2.0,
 	}
 	_, seq.palette = img.imguiPackedPalette()
 	seq.start()
 	return seq
 }
 
-// start resets the reference position. convenient to use if size/spacing is not changing
-func (seq *drawlistSequence) start() {
-	seq.prevX = imgui.WindowPos().X + imgui.CursorPosX()
-	seq.prevY = imgui.WindowPos().Y + imgui.CursorPosY() - seq.size.Y - seq.spacing.Y
+// start resets the reference position. convenient to use if size/spacing is not changing.
+// returns starting X position for future reference, if required
+//
+// should be coupled with a call to end()
+func (seq *drawlistSequence) start() float32 {
+	seq.prevX = imgui.CursorScreenPos().X
+	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y - seq.spacing.Y
 	seq.startX = seq.prevX
 	seq.nextItemSameLine = false
+	seq.nextItemDepressed = false
+	imgui.BeginGroup()
+	return seq.startX
+}
+
+// every call to start() should be coupled with a call to end()
+func (seq *drawlistSequence) end() {
+	imgui.EndGroup()
+
 }
 
 // calling sameLine() before a call to element may not have the effect you
@@ -263,7 +290,19 @@ func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
 
 	// draw square
 	dl := imgui.WindowDrawList()
-	dl.AddRectFilled(a, b, c)
+
+	if seq.nextItemDepressed {
+		seq.nextItemDepressed = false
+		a.X += seq.depressionAmount
+		a.Y += seq.depressionAmount
+		b.X -= seq.depressionAmount
+		b.Y -= seq.depressionAmount
+		dl.AddRectFilled(a, b, c)
+		a.X -= seq.depressionAmount
+		a.Y -= seq.depressionAmount
+	} else {
+		dl.AddRectFilled(a, b, c)
+	}
 
 	// record coordinates for use by next element
 	seq.prevX = a.X

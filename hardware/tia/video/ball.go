@@ -56,7 +56,12 @@ type ballSprite struct {
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
-	color              uint8
+	//  the ball color should match the color of the playfield foreground.
+	//  however, for debugging purposes it is sometimes useful to use different
+	//  colors, so this is not a pointer to playfield.ForegroundColor, as you
+	//  might expect
+	Color uint8
+
 	size               uint8
 	verticalDelay      bool
 	enabled            bool
@@ -105,6 +110,8 @@ func (bs ballSprite) String() string {
 	}
 
 	s := strings.Builder{}
+	s.WriteString(bs.label)
+	s.WriteString(": ")
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))
@@ -334,7 +341,7 @@ func (bs *ballSprite) _futureResetPosition() {
 
 func (bs *ballSprite) pixel() (bool, uint8) {
 	if !bs.enabled || (bs.verticalDelay && !bs.enabledDelay) {
-		return false, bs.color
+		return false, bs.Color
 	}
 
 	// earlyStart condition the same as for missile sprites. see missile
@@ -361,10 +368,10 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	px := !earlyEnd && (bs.enclockifier.enable || earlyStart)
 
 	if bs.verticalDelay {
-		return bs.enabledDelay && px, bs.color
+		return bs.enabledDelay && px, bs.Color
 	}
 
-	return px, bs.color
+	return px, bs.Color
 }
 
 // the delayed enable bit is copied from the first when the gfx register for
@@ -386,7 +393,7 @@ func (bs *ballSprite) setSize(value uint8) {
 }
 
 func (bs *ballSprite) setColor(value uint8) {
-	bs.color = value
+	bs.Color = value
 }
 
 func (bs *ballSprite) setHmoveValue(v interface{}) {

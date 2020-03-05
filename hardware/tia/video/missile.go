@@ -56,8 +56,12 @@ type missileSprite struct {
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
+	//  missile color should match the color of the corresponding player.
+	//  however, for debugging purposes it is sometimes useful to use different
+	//  colors, so this is not a pointer to player.Color, as you might expect
+	Color uint8
+
 	enabled bool
-	color   uint8
 
 	// for the missile sprite we split the NUSIZx register into size and copies
 	size   uint8
@@ -109,6 +113,8 @@ func (ms missileSprite) String() string {
 	}
 
 	s := strings.Builder{}
+	s.WriteString(ms.label)
+	s.WriteString(": ")
 	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
@@ -213,7 +219,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	//
 	// note: the FSTOB output is the primary flag in the parent player's
 	// scancounter
-	if ms.resetToPlayer && ms.parentPlayer.scanCounter.cpy == 0 && ms.parentPlayer.scanCounter.isMissileMiddle() {
+	if ms.resetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
 	}
@@ -387,7 +393,7 @@ func (ms *missileSprite) setResetToPlayer(on bool) {
 
 func (ms *missileSprite) pixel() (bool, uint8) {
 	if !ms.enabled {
-		return false, ms.color
+		return false, ms.Color
 	}
 
 	// the missile sprite has a special state where a stuffed HMOVE clock
@@ -407,7 +413,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.resetToPlayer && !earlyEnd && (ms.enclockifier.enable || earlyStart)
 
-	return px, ms.color
+	return px, ms.Color
 }
 
 func (ms *missileSprite) setEnable(enable bool) {
@@ -420,7 +426,7 @@ func (ms *missileSprite) setNUSIZ(value uint8) {
 }
 
 func (ms *missileSprite) setColor(value uint8) {
-	ms.color = value
+	ms.Color = value
 }
 
 func (ms *missileSprite) setHmoveValue(v interface{}) {

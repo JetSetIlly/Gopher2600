@@ -86,22 +86,22 @@ func (win *winTimer) draw() {
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiLabel("Value")
-	imguiHexInput("##value", !win.img.paused, 2, &value, func() {
+	if imguiHexInput("##value", !win.img.paused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
 			win.img.vcs.RIOT.Timer.SetValue(uint8(v))
 		}
-	})
+	}
 	imgui.PopItemWidth()
 
 	remaining := fmt.Sprintf("%04x", win.img.vcs.RIOT.Timer.TicksRemaining)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiLabel("Ticks")
-	imguiHexInput("##remaining", !win.img.paused, 4, &remaining, func() {
+	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
 			win.img.vcs.RIOT.Timer.TicksRemaining = uint16(v)
 		}
-	})
+	}
 	imgui.PopItemWidth()
 
 	imgui.End()

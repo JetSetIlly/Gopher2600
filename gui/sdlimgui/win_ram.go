@@ -39,7 +39,7 @@ type winRAM struct {
 	vcsRAM cartridge.RAMinfo
 
 	// widget dimensions
-	editDim imgui.Vec2
+	byteDim imgui.Vec2
 
 	// we know this value after the first pass
 	headerRowStart float32
@@ -61,7 +61,7 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winRAM) init() {
-	win.editDim = imguiGetFrameDim("FF")
+	win.byteDim = imguiGetFrameDim("FF")
 }
 
 func (win *winRAM) destroy() {
@@ -115,13 +115,13 @@ func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 	headerDim := imgui.Vec2{X: win.headerRowStart, Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.editDim.X
+		headerDim.X += win.byteDim.X
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	// draw rows
-	imgui.PushItemWidth(win.editDim.X)
+	imgui.PushItemWidth(win.byteDim.X)
 	j := uint16(0)
 	for i := raminfo.ReadOrigin; i <= raminfo.ReadMemtop; i++ {
 		// draw row header
@@ -147,17 +147,13 @@ func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
 	d, _ := win.img.vcs.Mem.Read(readAddr)
 	content := fmt.Sprintf("%02x", d)
 
-	onUpdate := func() {
+	if imguiHexInput(label, !win.img.paused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			// we don't know if this address is from the internal RAM or from
 			// an area of cartridge RAM. for this reason we're sending the
 			// write through the high-level memory write, which will map the
 			// address for us.
 			win.img.vcs.Mem.Write(writeAddr, uint8(v))
-		} else {
-			fmt.Println(err)
 		}
 	}
-
-	imguiHexInput(label, !win.img.paused, 2, &content, onUpdate)
 }

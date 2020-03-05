@@ -35,7 +35,7 @@ type winCPU struct {
 	img *SdlImgui
 
 	// widget dimensions
-	regEditDim imgui.Vec2
+	regDim imgui.Vec2
 
 	// ready flag colors
 	colFlgReadyOn  imgui.PackedColor
@@ -51,7 +51,7 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCPU) init() {
-	win.regEditDim = imguiGetFrameDim("FFFF")
+	win.regDim = imguiGetFrameDim("FFFF")
 	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
 	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
 }
@@ -138,20 +138,18 @@ func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {
-	imgui.AlignTextToFramePadding()
-	imgui.Text(fmt.Sprintf("% 2s", reg.Label()))
+	imguiLabel(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
 
 	label := fmt.Sprintf("##%s", reg.Label())
 	content := reg.String()
-	onUpdate := func() {
+
+	imgui.PushItemWidth(win.regDim.X)
+	if imguiHexInput(label, !win.img.paused, reg.BitWidth()/4, &content) {
 		if v, err := strconv.ParseUint(content, 16, reg.BitWidth()); err == nil {
 			reg.LoadFromUint64(v)
 		}
 	}
-
-	imgui.PushItemWidth(win.regEditDim.X)
-	imguiHexInput(label, !win.img.paused, reg.BitWidth()/4, &content, onUpdate)
 	imgui.PopItemWidth()
 }
 
@@ -189,9 +187,7 @@ func (win *winCPU) drawLastResult() {
 }
 
 func (win *winCPU) drawRDYFlag() {
-	imgui.Spacing()
-	imgui.AlignTextToFramePadding()
-	imgui.Text("RDY flag")
+	imguiLabel("RDY flag")
 	imgui.SameLine()
 
 	// decide on color for ready flag indicator

@@ -485,9 +485,9 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 	case "VDELBL":
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	case "VDELP0":
-		vd.Player0.setVerticalDelay(data.Value&0x01 == 0x01)
+		vd.Player0.SetVerticalDelay(data.Value&0x01 == 0x01)
 	case "VDELP1":
-		vd.Player1.setVerticalDelay(data.Value&0x01 == 0x01)
+		vd.Player1.SetVerticalDelay(data.Value&0x01 == 0x01)
 	case "REFP0":
 		vd.Player0.setReflection(data.Value&0x08 == 0x08)
 	case "REFP1":

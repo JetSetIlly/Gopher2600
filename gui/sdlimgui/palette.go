@@ -34,9 +34,10 @@ const (
 )
 
 type popupPalette struct {
-	img    *SdlImgui
-	state  popupState
-	target *uint8
+	img      *SdlImgui
+	state    popupState
+	target   *uint8
+	callback func()
 
 	// we set sizing information at time of request. it may be too early to do
 	// this on popupPalette creation
@@ -52,18 +53,20 @@ type popupPalette struct {
 }
 
 func newPopupPalette(img *SdlImgui) *popupPalette {
-	return &popupPalette{
+	pal := &popupPalette{
 		img: img,
 	}
+	return pal
 }
 
-func (pal *popupPalette) request(target *uint8) {
+func (pal *popupPalette) request(target *uint8, callback func()) {
 	pal.state = popupRequested
 	pal.target = target
+	pal.callback = callback
 	pal.swatchSize = imgui.FrameHeight() * 0.75
 	pal.swatchGap = pal.swatchSize * 0.1
-	pal.paletteName, pal.palette = pal.img.imguiPackedPalette()
 	pal.pos = imgui.MousePos()
+	pal.paletteName, pal.palette = pal.img.imguiPackedPalette()
 	pal.cnt = pal.img.imguiWindowQuadrant(pal.pos)
 }
 
@@ -105,6 +108,9 @@ func (pal *popupPalette) draw() {
 	for i := 0; i < len(pal.palette); i++ {
 		if pal.colRect(uint8(i)) {
 			*pal.target = uint8(i)
+			if pal.callback != nil {
+				pal.callback()
+			}
 			pal.state = popupClosed
 		}
 
