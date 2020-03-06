@@ -40,7 +40,7 @@ func (win *winTIA) drawPlayer(player int) {
 
 	// player color indicator. when clicked popup palette is requested. on
 	// selection in palette, missile color is changed too
-	imguiLabel("Colour")
+	imguiText("Colour")
 	if win.img.imguiSwatch(ps.Color) {
 		win.popupPalette.request(&ps.Color, func() {
 			// update missile color too
@@ -52,11 +52,11 @@ func (win *winTIA) drawPlayer(player int) {
 		})
 	}
 
-	imguiLabel("Reflected")
+	imguiText("Reflected")
 	imgui.Checkbox("##reflected", &ps.Reflected)
 
 	imgui.SameLine()
-	imguiLabel("Vert. Delay")
+	imguiText("Vert. Delay")
 	v := ps.VerticalDelay
 	if imgui.Checkbox("##vertdelay", &v) {
 		// vertical delay affects which gfx register to use. set vertical delay
@@ -68,7 +68,7 @@ func (win *winTIA) drawPlayer(player int) {
 	imgui.Spacing()
 
 	// hmove value
-	imguiLabel("HMOVE")
+	imguiText("HMOVE")
 	imgui.SameLine()
 	imgui.PushItemWidth(win.byteDim.X)
 	hmove := fmt.Sprintf("%01x", ps.Hmove)
@@ -92,7 +92,7 @@ func (win *winTIA) drawPlayer(player int) {
 	imgui.Spacing()
 
 	// graphics data - new
-	imguiLabel("New Gfx")
+	imguiText("New Gfx")
 	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
 	d := ps.GfxDataNew
 	for i := 0; i < 8; i++ {
@@ -113,7 +113,7 @@ func (win *winTIA) drawPlayer(player int) {
 
 	// graphics data - old
 	imgui.SameLine()
-	imguiLabel("Old Gfx")
+	imguiText("Old Gfx")
 	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
 	d = ps.GfxDataOld
 	for i := 0; i < 8; i++ {
@@ -158,7 +158,7 @@ func (win *winTIA) drawPlayer(player int) {
 
 	// nusiz
 	imgui.BeginGroup()
-	imguiLabel("NUSIZ")
+	imguiText("NUSIZ")
 	imgui.SameLine()
 	imgui.PushItemWidth(win.byteDim.X)
 	nusiz := fmt.Sprintf("%d", ps.Nusiz)
@@ -172,27 +172,27 @@ func (win *winTIA) drawPlayer(player int) {
 
 	// add a note to indicate that the nusiz value is about to update
 	if ps.ScanCounter.IsActive() && ps.Nusiz != ps.ScanCounter.LatchedNusiz {
-		imguiLabel("*")
+		imguiText("*")
 	}
 
 	// interpret nusiz value
 	switch ps.Nusiz {
 	case 0x0:
-		imguiLabel("one copy")
+		imguiText("one copy")
 	case 0x1:
-		imguiLabel("two copies [close]")
+		imguiText("two copies [close]")
 	case 0x2:
-		imguiLabel("two copies [med]")
+		imguiText("two copies [med]")
 	case 0x3:
-		imguiLabel("three copies [close]")
+		imguiText("three copies [close]")
 	case 0x4:
-		imguiLabel("two copies [wide]")
+		imguiText("two copies [wide]")
 	case 0x5:
-		imguiLabel("double-size")
+		imguiText("double-size")
 	case 0x6:
-		imguiLabel("three copies [med]")
+		imguiText("three copies [med]")
 	case 0x7:
-		imguiLabel("quad-size")
+		imguiText("quad-size")
 	default:
 		panic("illegal value for player nusiz")
 	}
@@ -201,17 +201,17 @@ func (win *winTIA) drawPlayer(player int) {
 		ps.Nusiz != 0x0 && ps.Nusiz != 0x5 && ps.Nusiz != 0x07 {
 
 		if ps.ScanCounter.IsActive() {
-			imguiLabel("drawing")
+			imguiText("drawing")
 		} else {
-			imguiLabel("latching")
+			imguiText("latching")
 		}
 
 		switch ps.ScanCounter.Cpy {
 		case 0:
 		case 1:
-			imguiLabel("2nd copy")
+			imguiText("2nd copy")
 		case 2:
-			imguiLabel("3rd copy")
+			imguiText("3rd copy")
 		default:
 			panic("more than 2 copies of player!?")
 		}

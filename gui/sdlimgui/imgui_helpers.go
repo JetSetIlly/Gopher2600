@@ -20,8 +20,6 @@
 package sdlimgui
 
 import (
-	"strings"
-
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -79,55 +77,11 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) {
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
 }
 
-func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *string) bool {
-	return imguiInput(label, aggressiveUpdate, digits, content, "abcdefABCDEF0123456789")
-}
-
-// input text that accepts a maximum number of hex digits
-func imguiInput(label string, aggressiveUpdate bool, digits int, content *string, allowedChars string) bool {
-	cb := func(d imgui.InputTextCallbackData) int32 {
-		switch d.EventFlag() {
-		case imgui.InputTextFlagsCallbackCharFilter:
-			// filter characters that are not in the list of allowedChars
-			if !strings.ContainsAny(string(d.EventChar()), allowedChars) {
-				return -1
-			}
-		default:
-			b := string(d.Buffer())
-
-			// restrict length of input to two characters. note that restriction to
-			// hexadecimal characters is handled by imgui's CharsHexadecimal flag
-			// given to InputTextV()
-			if len(b) > digits {
-				d.DeleteBytes(0, len(b))
-				b = b[:digits]
-				d.InsertBytes(0, []byte(b))
-				d.MarkBufferModified()
-			}
-		}
-
-		return 0
-	}
-
-	// flags used with InputTextV()
-	flags := imgui.InputTextFlagsCallbackCharFilter |
-		imgui.InputTextFlagsCallbackAlways |
-		imgui.InputTextFlagsAutoSelectAll
-
-	// with aggressiveUpdate the values entered will be given to the onEnter()
-	// function immediately and not just when the enter key is pressed.
-	if aggressiveUpdate {
-		flags |= imgui.InputTextFlagsEnterReturnsTrue
-	}
-
-	return imgui.InputTextV(label, content, flags, cb)
-}
-
 // calls Text but preceeds it with AlignTextToFramePadding() and follows it
 // with SameLine(). a common enought pattern to warrent a function call
-func imguiLabel(label string) {
+func imguiText(text string) {
 	imgui.AlignTextToFramePadding()
-	imgui.Text(label)
+	imgui.Text(text)
 	imgui.SameLine()
 }
 
@@ -154,7 +108,7 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 }
 
 // use appropriate palette for television spec
-func (img *SdlImgui) imguiPackedPalette() (string, packedPalette) {
+func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 	switch img.tv.GetSpec().ID {
 	case "PAL":
 		return img.tv.GetSpec().ID, img.cols.packedPalettePAL
@@ -168,7 +122,7 @@ func (img *SdlImgui) imguiPackedPalette() (string, packedPalette) {
 // draw swatch. returns true if clicked. a good response to a click event is to
 // open up an instance of popupPalette
 func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
-	_, pal := img.imguiPackedPalette()
+	_, pal := img.imguiTVPalette()
 	c := pal[col]
 
 	// position & dimensions of swatch
@@ -179,7 +133,7 @@ func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
 
 	// if mouse is clicked in the range of the swatch. very simple detection,
 	// not accounting for the fact that the swatch is visibly circular
-	if imgui.IsMouseClicked(0) {
+	if imgui.IsWindowHovered() && imgui.IsMouseClicked(0) {
 		pos := imgui.MousePos()
 		clicked = pos.X >= p.X-r && pos.X <= p.X+r && pos.Y >= p.Y-r && pos.Y <= p.Y+r
 	}
@@ -192,124 +146,6 @@ func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
 	p.X += 2 * r
 	p.Y -= r
 	imgui.SetCursorScreenPos(p)
-
-	return clicked
-}
-
-// drawlistSequence provides a neat way of drawlist elements of a uniform size in
-// sequence
-type drawlistSequence struct {
-	img              *SdlImgui
-	palette          packedPalette
-	size             imgui.Vec2
-	spacing          imgui.Vec2
-	depressionAmount float32
-
-	startX float32
-	prevX  float32
-	prevY  float32
-
-	nextItemSameLine  bool
-	nextItemDepressed bool
-}
-
-// create and start a new sequence. spacing is expressed as fraction of the
-// current FontSize()
-func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32) *drawlistSequence {
-	seq := &drawlistSequence{
-		img:              img,
-		size:             size,
-		spacing:          imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
-		depressionAmount: 2.0,
-	}
-	_, seq.palette = img.imguiPackedPalette()
-	seq.start()
-	return seq
-}
-
-// start resets the reference position. convenient to use if size/spacing is not changing.
-// returns starting X position for future reference, if required
-//
-// should be coupled with a call to end()
-func (seq *drawlistSequence) start() float32 {
-	seq.prevX = imgui.CursorScreenPos().X
-	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y - seq.spacing.Y
-	seq.startX = seq.prevX
-	seq.nextItemSameLine = false
-	seq.nextItemDepressed = false
-	imgui.BeginGroup()
-	return seq.startX
-}
-
-// every call to start() should be coupled with a call to end()
-func (seq *drawlistSequence) end() {
-	imgui.EndGroup()
-
-}
-
-// calling sameLine() before a call to element may not have the effect you
-// expect. avoid calling the function until at least one element has been
-// drawn.
-func (seq *drawlistSequence) sameLine() {
-	seq.nextItemSameLine = true
-}
-
-// returns the X value that is in the middle of the n'th element
-func (seq *drawlistSequence) offsetX(n int) float32 {
-	return seq.startX + float32(n)*(seq.size.X+seq.spacing.X) + seq.size.X*0.5
-}
-
-func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
-	var x, y float32
-
-	if seq.nextItemSameLine {
-		x = seq.prevX + seq.size.X + seq.spacing.X
-		y = seq.prevY
-	} else {
-		x = seq.startX
-		y = seq.prevY + seq.size.Y + seq.spacing.Y
-	}
-
-	// reset sameline flag
-	seq.nextItemSameLine = false
-
-	// get color
-	c := seq.palette[col]
-
-	// position & dimensions of playfield bit
-	a := imgui.Vec2{X: x, Y: y}
-	b := a
-	b.X += seq.size.X
-	b.Y += seq.size.Y
-
-	// if mouse is clicked in the range of the playfield bit
-	if imgui.IsMouseClicked(0) {
-		pos := imgui.MousePos()
-		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
-	}
-
-	// draw square
-	dl := imgui.WindowDrawList()
-
-	if seq.nextItemDepressed {
-		seq.nextItemDepressed = false
-		a.X += seq.depressionAmount
-		a.Y += seq.depressionAmount
-		b.X -= seq.depressionAmount
-		b.Y -= seq.depressionAmount
-		dl.AddRectFilled(a, b, c)
-		a.X -= seq.depressionAmount
-		a.Y -= seq.depressionAmount
-	} else {
-		dl.AddRectFilled(a, b, c)
-	}
-
-	// record coordinates for use by next element
-	seq.prevX = a.X
-	seq.prevY = a.Y
-
-	// set cursor position for any non colorSequence widgets
-	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
 
 	return clicked
 }

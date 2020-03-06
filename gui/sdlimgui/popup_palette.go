@@ -66,7 +66,7 @@ func (pal *popupPalette) request(target *uint8, callback func()) {
 	pal.swatchSize = imgui.FrameHeight() * 0.75
 	pal.swatchGap = pal.swatchSize * 0.1
 	pal.pos = imgui.MousePos()
-	pal.paletteName, pal.palette = pal.img.imguiPackedPalette()
+	pal.paletteName, pal.palette = pal.img.imguiTVPalette()
 	pal.cnt = pal.img.imguiWindowQuadrant(pal.pos)
 }
 
@@ -88,10 +88,8 @@ func (pal *popupPalette) draw() {
 	imgui.SetNextWindowPosV(pal.pos, 0, pal.cnt)
 	imgui.BeginV("Palette", nil, imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoMove|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoSavedSettings)
 
-	// close popup on mouse click no matter what. if a color has been clicked
-	// then that will be honoured during the remainder of the current draw()
-	// call
-	if imgui.IsMouseClicked(0) {
+	// close window if mouse clicked outside of window
+	if !imgui.IsWindowHovered() && imgui.IsMouseClicked(0) {
 		pal.state = popupClosed
 	}
 

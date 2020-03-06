@@ -138,7 +138,7 @@ func (win *winCPU) drawStatusRegisterBit(bit *bool, label string) {
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {
-	imguiLabel(fmt.Sprintf("% 2s", reg.Label()))
+	imguiText(fmt.Sprintf("% 2s", reg.Label()))
 	imgui.SameLine()
 
 	label := fmt.Sprintf("##%s", reg.Label())
@@ -187,7 +187,7 @@ func (win *winCPU) drawLastResult() {
 }
 
 func (win *winCPU) drawRDYFlag() {
-	imguiLabel("RDY flag")
+	imguiText("RDY flag")
 	imgui.SameLine()
 
 	// decide on color for ready flag indicator

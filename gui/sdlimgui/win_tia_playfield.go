@@ -33,7 +33,7 @@ func (win *winTIA) drawPlayfield() {
 	// foreground color indicator. when clicked popup palette is requested. on
 	// selection in palette, missile color is changed too
 	imgui.BeginGroup()
-	imguiLabel("Foreground")
+	imguiText("Foreground")
 	if win.img.imguiSwatch(pf.ForegroundColor) {
 		win.popupPalette.request(&pf.ForegroundColor, func() {
 			// update ball color too
@@ -42,7 +42,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 
 	// background color indicator. when clicked popup palette is requested
-	imguiLabel("Background")
+	imguiText("Background")
 	if win.img.imguiSwatch(pf.BackgroundColor) {
 		win.popupPalette.request(&pf.BackgroundColor, nil)
 	}
@@ -52,20 +52,20 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 
 	// playfield control bits
-	imguiLabel("Reflected")
+	imguiText("Reflected")
 	imgui.Checkbox("##reflected", &pf.Reflected)
 	imgui.SameLine()
-	imguiLabel("Priority")
+	imguiText("Priority")
 	imgui.Checkbox("##priority", &pf.Priority)
 	imgui.SameLine()
-	imguiLabel("Scoremode")
+	imguiText("Scoremode")
 	imgui.Checkbox("##scoremode", &pf.Scoremode)
 
 	imgui.Spacing()
 	imgui.Spacing()
 
 	// playfield data
-	imguiLabel("PF0")
+	imguiText("PF0")
 	imgui.SameLine()
 	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
 	d := pf.PF0
@@ -86,7 +86,7 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	imgui.SameLine()
-	imguiLabel("PF1")
+	imguiText("PF1")
 	imgui.SameLine()
 	seq.start()
 	d = pf.PF1
@@ -107,7 +107,7 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	imgui.SameLine()
-	imguiLabel("PF2")
+	imguiText("PF2")
 	imgui.SameLine()
 	seq.start()
 	d = pf.PF2
@@ -131,7 +131,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 
 	// playfield data as a sequence
-	imguiLabel("Sequence")
+	imguiText("Sequence")
 	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1)
 
 	// first half of the playfield
