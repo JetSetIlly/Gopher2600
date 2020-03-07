@@ -21,7 +21,6 @@ package sdlplay
 
 import (
 	"gopher2600/gui"
-	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -37,7 +36,12 @@ func setupService() {
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Service() {
-	test.AssertMainThread()
+	// run any outstanding feature requests
+	select {
+	case r := <-scr.featureReq:
+		scr.serviceFeatureRequests(r)
+	default:
+	}
 
 	// do not check for events if no event channel has been set
 	if scr.events != nil {

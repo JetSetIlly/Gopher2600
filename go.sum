@@ -28,6 +28,8 @@ github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200210203827-9487e0b50076 h1:0x7
 github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200210203827-9487e0b50076/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
 github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721 h1:TJpqOBAVJTKJrn2bI1+jM/ApZIRFOeLW63FfVWS1rIs=
 github.com/inkyblackness/imgui-go/v2 v2.1.2-0.20200222162349-d2960522c721/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
+github.com/inkyblackness/imgui-go/v2 v2.2.0 h1:uvfu6hBbuK56g4F7TOmxXSEQMpTZc3nNgusmK2cz06Y=
+github.com/inkyblackness/imgui-go/v2 v2.2.0/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
 github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 h1:A7GG7zcGjl3jqAqGPmcNjd/D9hzL95SuoOQAaFNdLU0=
 github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
@@ -37,4 +39,6 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/veandco/go-sdl2 v0.3.3 h1:4/TirgB2MQ7oww3pM3Yfgf1YbChMlAQAmiCPe5koK0I=
 github.com/veandco/go-sdl2 v0.3.3/go.mod h1:FB+kTpX9YTE+urhYiClnRzpOXbiWgaU3+5F2AB78DPg=
+github.com/veandco/go-sdl2 v0.4.0 h1:l9q6K+Dvpd/VlZdw2ufApKnWhAQqx9UL8Zrvbjtm3Lw=
+github.com/veandco/go-sdl2 v0.4.0/go.mod h1:FB+kTpX9YTE+urhYiClnRzpOXbiWgaU3+5F2AB78DPg=
 golang.org/x/sys v0.0.0-20191206220618-eeba5f6aabab/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

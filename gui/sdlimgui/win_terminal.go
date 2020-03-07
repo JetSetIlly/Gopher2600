@@ -21,7 +21,6 @@ package sdlimgui
 
 import (
 	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -33,46 +32,23 @@ const outputMaxSize = 512
 
 type winTerm struct {
 	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	term *term
 
-	tabCompletion terminal.TabCompletion
-	history       []string
-	historyIdx    int
-
-	silenced bool
-	prompt   string
-	input    string
-	output   []terminalOutput
-
-	// moreOutput is after TermPrintLine() is executed
+	input      string
+	prompt     string
+	output     []terminalOutput
 	moreOutput bool
 
-	inputChan chan bool
-	sideChan  chan string
-
-	// when sideChannelSilence is set to true output will not be recorded until
-	// output of style Input or Error is received. this system is based on the
-	// principal that every command sent by the sideChannel will result in an
-	// echo of the input
-	sideChannelSilence bool
+	history    []string
+	historyIdx int
 }
 
 func newWinTerm(img *SdlImgui) (managedWindow, error) {
 	win := &winTerm{
 		img:        img,
+		term:       img.term,
 		historyIdx: -1,
-
-		// output is made up of an array of line types. the line type stores
-		// the text of the line and the style
-		output: make([]terminalOutput, 0, outputMaxSize),
-
-		// inputChan queue must not block
-		inputChan: make(chan bool, 1),
-
-		// side-channel terminal input from other areas of the GUI. for
-		// example, we can have a menu item that writes "QUIT" to the side
-		// channel, with predictable results.
-		sideChan: make(chan string, 1),
 	}
 
 	return win, nil
@@ -90,6 +66,28 @@ func (win *winTerm) id() string {
 
 // draw is called by service loop
 func (win *winTerm) draw() {
+	done := false
+	for !done {
+		// check for channel activity before we do anything
+		select {
+		case p := <-win.term.promptChan:
+			win.prompt = p
+
+		case t := <-win.term.outputChan:
+			t.cols = win.img.cols
+			if len(win.output) >= outputMaxSize {
+				win.output = append(win.output[1:], t)
+			} else {
+				win.output = append(win.output, t)
+			}
+
+			win.moreOutput = true
+		default:
+			done = true
+		}
+	}
+
+	// window open check must happen *after* channel polling
 	if !win.open {
 		return
 	}
@@ -136,7 +134,20 @@ func (win *winTerm) draw() {
 	if imgui.InputTextV("", &win.input,
 		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
 		win.tabCompleteAndHistory) {
-		win.inputChan <- true
+
+		win.input = strings.TrimSpace(win.input)
+
+		// send input to inputChan even if it is the empty string because
+		// the empty string might mean something to the received (it does)
+		win.term.inputChan <- win.input
+
+		// only add input to history if it is not empty
+		if win.input != "" {
+			win.history = append(win.history, win.input)
+			win.historyIdx = len(win.history) - 1
+		}
+
+		win.input = ""
 	}
 	imgui.PopStyleColor()
 	imgui.PopItemWidth()
@@ -159,7 +170,7 @@ func (win *winTerm) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 	case imgui.KeyTab:
 		// tab completion
 		b := string(d.Buffer())
-		s := win.tabCompletion.Complete(b)
+		s := win.term.tabCompletion.Complete(b)
 		d.DeleteBytes(0, len(b))
 		d.InsertBytes(0, []byte(s))
 		d.MarkBufferModified()
@@ -191,100 +202,6 @@ func (win *winTerm) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 		d.MarkBufferModified()
 	}
 	return 0
-}
-
-// Initialise implements the terminal.Terminal interface
-func (win *winTerm) Initialise() error {
-	return nil
-}
-
-// CleanUp implements the terminal.Terminal interface
-func (win *winTerm) CleanUp() {
-}
-
-// RegisterTabCompletion implements the terminal.Terminal interface
-func (win *winTerm) RegisterTabCompletion(tc terminal.TabCompletion) {
-	win.tabCompletion = tc
-}
-
-// Silence implements the terminal.Terminal interface
-func (win *winTerm) Silence(silenced bool) {
-	win.silenced = silenced
-}
-
-// TermPrintLine implements the terminal.Output interface
-func (win *winTerm) TermPrintLine(style terminal.Style, s string) {
-	if win.sideChannelSilence && (style == terminal.StyleInput || style == terminal.StyleError) {
-		win.sideChannelSilence = false
-		return
-	}
-
-	if win.silenced && style != terminal.StyleError {
-		return
-	}
-
-	if len(win.output) >= outputMaxSize {
-		win.output = append(win.output[1:], terminalOutput{style: style, cols: win.img.cols, text: s})
-	} else {
-		win.output = append(win.output, terminalOutput{style: style, cols: win.img.cols, text: s})
-	}
-
-	win.moreOutput = true
-}
-
-// TermRead implements the terminal.Input interface
-func (win *winTerm) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	win.prompt = strings.TrimSpace(prompt.Content)
-
-	// the debugger is waiting for input from the terminal but we still need to
-	// service gui events in the meantime.
-	for {
-		select {
-		case <-win.inputChan:
-			win.input = strings.TrimSpace(win.input)
-			if win.input != "" {
-				win.history = append(win.history, win.input)
-				win.historyIdx = len(win.history) - 1
-			}
-
-			// even if term.input is the empty string we still copy it to the
-			// input buffer (sending it back to the caller) because the empty
-			// string might mean something
-
-			n := len(win.input)
-			copy(buffer, win.input+"\n")
-			win.input = ""
-			return n + 1, nil
-
-		case s := <-win.sideChan:
-			win.sideChannelSilence = true
-			s = strings.TrimSpace(s)
-			n := len(s)
-			copy(buffer, s+"\n")
-			return n + 1, nil
-
-		case ev := <-events.GuiEvents:
-			err := events.GuiEventHandler(ev)
-			if err != nil {
-				return 0, nil
-			}
-
-		case _ = <-events.IntEvents:
-			return 0, errors.New(errors.UserQuit)
-		}
-	}
-}
-
-// TermRead implements the terminal.Input interface
-func (win *winTerm) TermReadCheck() bool {
-	// report on the number of pending items in inputChan and sideChan. if
-	// either of these have events waiting then that counts as true
-	return len(win.inputChan) > 0 || len(win.sideChan) > 0
-}
-
-// IsInteractive implements the terminal.Input interface
-func (win *winTerm) IsInteractive() bool {
-	return true
 }
 
 // terminalOutput represents the lines that are printed to the terminal output

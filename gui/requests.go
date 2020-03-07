@@ -48,4 +48,10 @@ const (
 	ReqAddDebugger        FeatureReq = "ReqAddDebugger"        // *debugger.Debugger
 	ReqAddVCS             FeatureReq = "ReqAddVCS"             // *hardware.VCS
 	ReqAddDisasm          FeatureReq = "ReqAddDisasm"          // *disassembly.Disassembly
+
+	// the event channel is used to by the GUI implementation to send
+	// information back to the main program. the GUI may or may not be in its
+	// own go routine but regardless, the event channel is used for this
+	// purpose.
+	ReqSetEventChan FeatureReq = "ReqSetEventChan" // chan gui.Event()
 )

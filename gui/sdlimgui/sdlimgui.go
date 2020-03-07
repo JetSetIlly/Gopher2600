@@ -43,6 +43,9 @@ type SdlImgui struct {
 	audio   *sdlaudio.Audio
 	glsl    *glsl
 
+	screen *screen
+	term   *term
+
 	// window management
 	wm   *windowManager
 	cols *Colors
@@ -57,6 +60,10 @@ type SdlImgui struct {
 	// for service.
 	service    chan func()
 	serviceErr chan error
+
+	// SetFeature() hands off requests to the featureReq channel for servicing
+	featureReq chan featureRequest
+	featureErr chan error
 
 	// events channel is not created but assigned with SetEventChannel()
 	events chan gui.Event
@@ -80,6 +87,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		tv:         tv,
 		service:    make(chan func(), 1),
 		serviceErr: make(chan error, 1),
+		featureReq: make(chan featureRequest, 1),
+		featureErr: make(chan error, 1),
 	}
 
 	// define colors
@@ -103,14 +112,17 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
+	img.screen = newScreen(img)
+	img.term = newTerm()
+
 	img.wm, err = newWindowManager(img)
 	if err != nil {
 		return nil, err
 	}
 
 	// connect some screen properties to other parts of the system
-	img.glsl.tvScreenTexture = img.wm.scr.texture
-	tv.AddPixelRenderer(img.wm.scr)
+	img.glsl.tvScreenTexture = img.screen.texture
+	tv.AddPixelRenderer(img.screen)
 
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
@@ -134,14 +146,9 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	img.context.Destroy()
 }
 
-// SetEventChannel implements gui.GUI interface
-func (img *SdlImgui) SetEventChannel(events chan gui.Event) {
-	img.events = events
-}
-
 // GetTerminal implements terminal.Broker interface
 func (img *SdlImgui) GetTerminal() terminal.Terminal {
-	return img.wm.term
+	return img.term
 }
 
 // where possible the debugger issues commands via the terminal. this has the
@@ -155,5 +162,5 @@ func (img *SdlImgui) issueTermCommand(input string) {
 	// there shouldn't be a problem with channel blocking even though we're
 	// issuing and consuming on the same thread. if there is however, we can
 	// wrap this channel write in a go call
-	img.wm.term.sideChan <- input
+	img.term.sideChan <- input
 }

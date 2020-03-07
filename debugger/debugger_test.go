@@ -101,9 +101,6 @@ func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...interface{}) error 
 	return nil
 }
 
-func (g *mockGUI) SetEventChannel(_ chan (gui.Event)) {
-}
-
 func (g *mockGUI) Service() {
 }
 

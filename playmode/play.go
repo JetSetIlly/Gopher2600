@@ -150,7 +150,10 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 	}
 
 	// connect gui
-	scr.SetEventChannel(pl.guiChan)
+	err = scr.SetFeature(gui.ReqSetEventChan, pl.guiChan)
+	if err != nil {
+		return errors.New(errors.PlayError, err)
+	}
 
 	// request television visibility
 	request := gui.ReqSetVisibility

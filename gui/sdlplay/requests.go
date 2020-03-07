@@ -22,27 +22,37 @@ package sdlplay
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SetFeature implements the GUI interface
-//
-// MUST NOT be called from the #mainthread
-func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
-	test.AssertNonMainThread()
+type featureRequest struct {
+	request gui.FeatureReq
+	args    []interface{}
+}
 
+// SetFeature implements the GUI interface
+func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) error {
+	scr.featureReq <- featureRequest{request: request, args: args}
+	return <-scr.featureErr
+}
+
+// featureRequests have been handed over to the featureReq channel. we service
+// any requests on that channel here.
+func (scr *SdlPlay) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			returnedErr = errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			scr.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
 		}
 	}()
 
 	var err error
 
-	switch request {
+	switch request.request {
+	case gui.ReqSetEventChan:
+		scr.events = request.args[0].(chan gui.Event)
+
 	case gui.ReqSetVisibleOnStable:
 		if scr.IsStable() {
 			scr.showWindow(true)
@@ -51,7 +61,7 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 		}
 
 	case gui.ReqSetVisibility:
-		scr.showWindow(args[0].(bool))
+		scr.showWindow(request.args[0].(bool))
 
 	case gui.ReqToggleVisibility:
 		if scr.window.GetFlags()&sdl.WINDOW_HIDDEN == sdl.WINDOW_HIDDEN {
@@ -61,16 +71,11 @@ func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (ret
 		}
 
 	case gui.ReqSetScale:
-		err = scr.setWindowFromThread(args[0].(float32))
+		err = scr.setWindow(request.args[0].(float32))
 
 	default:
-		return errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request.request)
 	}
 
-	return err
-}
-
-// SetEventChannel implements the GUI interface
-func (scr *SdlPlay) SetEventChannel(events chan gui.Event) {
-	scr.events = events
+	scr.featureErr <- err
 }

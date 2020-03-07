@@ -187,8 +187,11 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	// connect Interrupt signal to dbg.events.intChan
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
-	// connect debugger to gui
-	dbg.scr.SetEventChannel(dbg.events.GuiEvents)
+	// connect gui
+	err = scr.SetFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
 
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)

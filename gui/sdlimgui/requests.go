@@ -27,18 +27,33 @@ import (
 	"gopher2600/hardware"
 )
 
+type featureRequest struct {
+	request gui.FeatureReq
+	args    []interface{}
+}
+
 // SetFeature implements gui.GUI interface
 func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+	img.featureReq <- featureRequest{request: request, args: args}
+	return <-img.featureErr
+}
+
+// featureRequests have been handed over to the featureReq channel. we service
+// any requests on that channel here.
+func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			returnedErr = errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			img.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
 		}
 	}()
 
 	var err error
 
-	switch request {
+	switch request.request {
+	case gui.ReqSetEventChan:
+		img.events = request.args[0].(chan gui.Event)
+
 	case gui.ReqSetVisibleOnStable:
 
 	case gui.ReqSetVisibility:
@@ -46,23 +61,23 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 	case gui.ReqToggleVisibility:
 
 	case gui.ReqSetScale:
-		err = img.wm.scr.setWindowFromThread(args[0].(float32))
+		err = img.screen.setWindowFromThread(request.args[0].(float32))
 
 	case gui.ReqSetPause:
-		img.paused = args[0].(bool)
+		img.paused = request.args[0].(bool)
 
 	case gui.ReqAddDebugger:
-		img.dbg = args[0].(*debugger.Debugger)
+		img.dbg = request.args[0].(*debugger.Debugger)
 
 	case gui.ReqAddVCS:
-		img.vcs = args[0].(*hardware.VCS)
+		img.vcs = request.args[0].(*hardware.VCS)
 
 	case gui.ReqAddDisasm:
-		img.dsm = args[0].(*disassembly.Disassembly)
+		img.dsm = request.args[0].(*disassembly.Disassembly)
 
 	default:
-		return errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
-	return err
+	img.featureErr <- err
 }

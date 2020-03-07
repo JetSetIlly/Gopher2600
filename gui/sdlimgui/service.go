@@ -28,6 +28,13 @@ import (
 
 // Service implements GuiCreator interface
 func (img *SdlImgui) Service() {
+	// run any outstanding feature requests
+	select {
+	case r := <-img.featureReq:
+		img.serviceFeatureRequests(r)
+	default:
+	}
+
 	// do not check for events if no event channel has been set
 	if img.events != nil {
 
@@ -195,7 +202,7 @@ func (img *SdlImgui) Service() {
 
 	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
 	img.glsl.preRender(clearColor)
-	img.wm.scr.render()
+	img.screen.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()
 

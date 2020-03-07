@@ -22,7 +22,6 @@ package sdldebug
 import (
 	"gopher2600/gui"
 	"gopher2600/television"
-	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -35,10 +34,13 @@ func setupService() {
 }
 
 // Service implements GuiCreator interface.
-//
-// MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Service() {
-	test.AssertMainThread()
+	// run any outstanding feature requests
+	select {
+	case r := <-scr.featureReq:
+		scr.serviceFeatureRequests(r)
+	default:
+	}
 
 	// do not check for events if no event channel has been set
 	if scr.events != nil {
@@ -63,8 +65,7 @@ func (scr *SdlDebug) Service() {
 
 			// close window
 			case *sdl.QuitEvent:
-				// scr.events <- gui.EventWindowClose{}
-				scr.showWindowFromMain(false)
+				scr.showWindow(false)
 
 			case *sdl.KeyboardEvent:
 				mod := gui.KeyModNone

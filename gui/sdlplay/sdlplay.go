@@ -24,7 +24,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
 	"gopher2600/television"
-	"gopher2600/test"
 	"io"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -41,6 +40,10 @@ type SdlPlay struct {
 	// for service.
 	service    chan func()
 	serviceErr chan error
+
+	// SetFeature() hands off requests to the featureReq channel for servicing
+	featureReq chan featureRequest
+	featureErr chan error
 
 	// connects SDL guiLoop with the parent process
 	events chan gui.Event
@@ -81,15 +84,13 @@ const windowTitle = "Gopher2600"
 const windowTitleCaptured = "Gopher2600 [captured]"
 
 // NewSdlPlay is the preferred method of initialisation for SdlPlay.
-//
-// MUST ONLY be called from the #mainthread
 func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
-	test.AssertMainThread()
-
 	scr := &SdlPlay{
 		Television: tv,
 		service:    make(chan func(), 1),
 		serviceErr: make(chan error, 1),
+		featureReq: make(chan featureRequest, 1),
+		featureErr: make(chan error, 1),
 	}
 
 	var err error
@@ -111,7 +112,7 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 		return nil, errors.New(errors.SDLPlay, err)
 	}
 
-	// sdl renderer. we set the scaling amount in the setWindow function later
+	// sdl renderer. we set the scaling amount in the setWindow function late
 	// once we know what the tv specification is
 	scr.renderer, err = sdl.CreateRenderer(scr.window, -1, uint32(sdl.RENDERER_ACCELERATED))
 	if err != nil {
@@ -155,8 +156,6 @@ func NewSdlPlay(tv television.Television, scale float32) (*SdlPlay, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (scr *SdlPlay) Destroy(output io.Writer) {
-	test.AssertMainThread()
-
 	err := scr.texture.Destroy()
 	if err != nil {
 		output.Write([]byte(err.Error()))
@@ -183,27 +182,16 @@ func (scr *SdlPlay) Reset() error {
 }
 
 // show or hide window
-//
-// MUST NOT be called from the #mainthread
 func (scr SdlPlay) showWindow(show bool) {
-	test.AssertNonMainThread()
-
-	scr.service <- func() {
-		if show {
-			scr.window.Show()
-		} else {
-			scr.window.Hide()
-		}
+	if show {
+		scr.window.Show()
+	} else {
+		scr.window.Hide()
 	}
 }
 
 // use scale of -1 to reapply existing scale value
-//
-// MUST ONLY be called from the #mainthread
-// see setWindowThread() for non-main alternative
 func (scr *SdlPlay) setWindow(scale float32) error {
-	test.AssertMainThread()
-
 	if scale >= 0 {
 		scr.pixelScale = scale
 	}
@@ -221,33 +209,12 @@ func (scr *SdlPlay) setWindow(scale float32) error {
 	return nil
 }
 
-// wrap call to setWindow() in service call
-//
-// MUST NOT be called from the #mainthread
-// see setWindow() for mainthread alternative
-func (scr *SdlPlay) setWindowFromThread(scale float32) error {
-	test.AssertNonMainThread()
-
-	scr.service <- func() {
-		scr.serviceErr <- scr.setWindow(scale)
-	}
-	return <-scr.serviceErr
-}
-
 // resize is the non-service-wrapped resize function
-//
-// MUST ONLY be called from #mainthread
-// see Resize() for non-main alternative
 func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
-	test.AssertMainThread()
-
 	// new screen limits
 	scr.topScanline = topScanline
 	scr.scanlines = int32(numScanlines)
 
-	var err error
-
-	// ----
 	// pixels arrays and textures are always the maximum size allowed by the
 	// specification. we need to remake them here because the specification may
 	// have changed as part of the resize() event
@@ -259,14 +226,15 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 		scr.pixels[i] = 255
 	}
 
+	var err error
 	scr.texture, err = scr.renderer.CreateTexture(uint32(sdl.PIXELFORMAT_ABGR8888),
 		int(sdl.TEXTUREACCESS_STREAMING),
 		television.HorizClksVisible, scr.scanlines)
 	if err != nil {
 		return errors.New(errors.SDLDebug, err)
 	}
-	// ----
 
+	// set window reapplies scaling to new textures
 	scr.setWindow(-1)
 
 	return nil
@@ -275,10 +243,7 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 // Resize implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
-// see resize() for mainthread alternative
 func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
-	test.AssertNonMainThread()
-
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -289,14 +254,12 @@ func (scr *SdlPlay) Resize(topScanline, numScanlines int) error {
 //
 // MUST NOT be called from #mainthread
 func (scr *SdlPlay) NewFrame(frameNum int) error {
-	test.AssertNonMainThread()
+	if scr.showOnNextStable && scr.IsStable() {
+		scr.window.Show()
+		scr.showOnNextStable = false
+	}
 
 	scr.service <- func() {
-		if scr.showOnNextStable && scr.IsStable() {
-			scr.window.Show()
-			scr.showOnNextStable = false
-		}
-
 		err := scr.texture.Update(nil, scr.pixels, int(television.HorizClksVisible*pixelDepth))
 		if err != nil {
 			return
@@ -325,9 +288,12 @@ func (scr *SdlPlay) NewFrame(frameNum int) error {
 // SetPixel implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
+//
+// interesting that writing to pixel array does not trigger a race condition
+// even though we read pixels, when updating texture, in a different thread.
+//
+// !!TODO: race condition in SetPixel() in sdlplay?
 func (scr *SdlPlay) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
-	test.AssertNonMainThread()
-
 	if vblank {
 		// we could return immediately but if vblank is on inside the visible
 		// area we need to the set pixel to black, in case the vblank was off

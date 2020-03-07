@@ -22,29 +22,40 @@ package sdldebug
 import (
 	"gopher2600/errors"
 	"gopher2600/gui"
-	"gopher2600/test"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SetFeature implements the GUI interface
-//
-// MUST NOT be called from the #mainthread
-func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
-	test.AssertNonMainThread()
+type featureRequest struct {
+	request gui.FeatureReq
+	args    []interface{}
+}
 
+// SetFeature implements the GUI interface
+func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+	scr.featureReq <- featureRequest{request: request, args: args}
+	err := <-scr.featureErr
+	return err
+}
+
+// featureRequests have been handed over to the featureReq channel. we service
+// any requests on that channel here.
+func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			returnedErr = errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			scr.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
 		}
 	}()
 
 	var err error
 
-	switch request {
+	switch request.request {
+	case gui.ReqSetEventChan:
+		scr.events = request.args[0].(chan gui.Event)
+
 	case gui.ReqSetVisibility:
-		scr.showWindow(args[0].(bool))
+		scr.showWindow(request.args[0].(bool))
 		scr.update()
 
 	case gui.ReqToggleVisibility:
@@ -56,21 +67,21 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		}
 
 	case gui.ReqSetPause:
-		scr.paused = args[0].(bool)
+		scr.paused = request.args[0].(bool)
 		scr.update()
 
 	case gui.ReqSetMasking:
-		scr.masked = args[0].(bool)
-		scr.setWindowFromThread(-1)
+		scr.masked = request.args[0].(bool)
+		scr.setWindow(-1)
 		scr.update()
 
 	case gui.ReqToggleMasking:
 		scr.masked = !scr.masked
-		scr.setWindowFromThread(-1)
+		scr.setWindow(-1)
 		scr.update()
 
 	case gui.ReqSetAltColors:
-		scr.useAltColors = args[0].(bool)
+		scr.useAltColors = request.args[0].(bool)
 		scr.update()
 
 	case gui.ReqToggleAltColors:
@@ -78,7 +89,7 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		scr.update()
 
 	case gui.ReqSetOverlay:
-		scr.useOverlay = args[0].(bool)
+		scr.useOverlay = request.args[0].(bool)
 		scr.update()
 
 	case gui.ReqToggleOverlay:
@@ -86,29 +97,24 @@ func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (re
 		scr.update()
 
 	case gui.ReqSetScale:
-		err = scr.setWindowFromThread(args[0].(float32))
+		err = scr.setWindow(request.args[0].(float32))
 		scr.update()
 
 	case gui.ReqIncScale:
 		if scr.pixelScale < 4.0 {
-			err = scr.setWindowFromThread(scr.pixelScale + 0.1)
+			err = scr.setWindow(scr.pixelScale + 0.1)
 		}
 		scr.update()
 
 	case gui.ReqDecScale:
 		if scr.pixelScale > 0.5 {
-			err = scr.setWindowFromThread(scr.pixelScale - 0.1)
+			err = scr.setWindow(scr.pixelScale - 0.1)
 		}
 		scr.update()
 
 	default:
-		return errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
-	return err
-}
-
-// SetEventChannel implements the GUI interface
-func (scr *SdlDebug) SetEventChannel(events chan gui.Event) {
-	scr.events = events
+	scr.featureErr <- err
 }

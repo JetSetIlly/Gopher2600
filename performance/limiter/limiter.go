@@ -61,9 +61,10 @@ func NewFPSLimiter(RequestedFPS float32) *FpsLimiter {
 	lim.tick = make(chan bool)
 	lim.tickNow = make(chan bool)
 
+	rateTimer := time.NewTimer(lim.secondsPerFrame)
+
 	// run ticker concurrently
 	go func() {
-		rateTimer := time.NewTimer(lim.secondsPerFrame)
 		for {
 			lim.tick <- true
 			select {

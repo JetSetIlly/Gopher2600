@@ -24,7 +24,6 @@ import (
 	"gopher2600/gui"
 	"gopher2600/reflection"
 	"gopher2600/television"
-	"gopher2600/test"
 	"io"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -38,6 +37,10 @@ type SdlDebug struct {
 	// for service
 	service    chan func()
 	serviceErr chan error
+
+	// SetFeature() hands off requests to the featureReq channel for servicing
+	featureReq chan featureRequest
+	featureErr chan error
 
 	// connects SDL guiLoop with the parent process
 	events chan gui.Event
@@ -98,15 +101,13 @@ const windowTitle = "Gopher2600"
 const windowTitleCaptured = "Gopher2600 [captured]"
 
 // NewSdlDebug is the preferred method of initialisation for SdlDebug.
-//
-// MUST ONLY be called from the #mainthread
 func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
-	test.AssertMainThread()
-
 	scr := &SdlDebug{
 		Television: tv,
 		service:    make(chan func(), 1),
 		serviceErr: make(chan error, 1),
+		featureReq: make(chan featureRequest, 1),
+		featureErr: make(chan error, 1),
 		pitch:      television.HorizClksScanline * pixelDepth,
 		masked:     true,
 		paused:     true,
@@ -163,11 +164,7 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 }
 
 // Destroy implements GuiCreator interface
-//
-// MUST ONLY be called from the #mainthread
 func (scr *SdlDebug) Destroy(output io.Writer) {
-	test.AssertMainThread()
-
 	scr.overlay.destroy(output)
 	scr.textures.destroy(output)
 
@@ -192,28 +189,7 @@ func (scr *SdlDebug) Reset() error {
 }
 
 // show or hide window
-//
-// MUST NOT be called from the #mainthread
 func (scr SdlDebug) showWindow(show bool) {
-	test.AssertNonMainThread()
-
-	scr.service <- func() {
-		if show {
-			scr.window.Show()
-		} else {
-			scr.window.Hide()
-		}
-		scr.serviceErr <- nil
-	}
-	<-scr.serviceErr
-}
-
-// show or hide window
-//
-// MUST NOT be called from the #mainthread
-func (scr SdlDebug) showWindowFromMain(show bool) {
-	test.AssertMainThread()
-
 	if show {
 		scr.window.Show()
 	} else {
@@ -244,12 +220,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 }
 
 // use scale of -1 to reapply existing scale value
-//
-// MUST ONLY be called from the #mainthread
-// see setWindowFromThread() for non-main alternative
 func (scr *SdlDebug) setWindow(scale float32) error {
-	test.AssertMainThread()
-
 	if scale >= 0 {
 		scr.pixelScale = scale
 	}
@@ -280,26 +251,8 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 	return nil
 }
 
-// wrap call to setWindow() in service call
-//
-// MUST NOT be called from the #mainthread
-// see setWindow() for mainthread alternative
-func (scr *SdlDebug) setWindowFromThread(scale float32) error {
-	test.AssertNonMainThread()
-
-	scr.service <- func() {
-		scr.serviceErr <- scr.setWindow(scale)
-	}
-	return <-scr.serviceErr
-}
-
 // resize is the non-service-wrapped resize function
-//
-// MUST ONLY be called from #mainthread
-// see Resize() for non-main alternative
 func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
-	test.AssertMainThread()
-
 	// new screen limits
 	scr.topScanline = topScanline
 	scr.scanlines = int32(numScanlines)
@@ -332,9 +285,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 // Resize implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
-// see resize() for mainthread alternative
 func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
-	test.AssertNonMainThread()
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -343,126 +294,113 @@ func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 
 // update is called automatically on every call to NewFrame() and whenever a
 // state change in SetFeature() requires it.
-//
-// MUST NOT be called from #mainthread
 func (scr *SdlDebug) update() error {
-	test.AssertNonMainThread()
-	scr.service <- func() {
-		scr.renderer.SetDrawColor(0, 0, 0, 255)
-		err := scr.renderer.Clear()
-		if err != nil {
-			scr.serviceErr <- err
-			return
-		}
-
-		// decide whether to use regular or alt pixels
-		pixels := scr.pixels.regular
-		if scr.useAltColors {
-			pixels = scr.pixels.alt
-		}
-
-		// render main textures
-		err = scr.textures.render(scr.cpyRect, pixels, scr.pitch)
-		if err != nil {
-			scr.serviceErr <- err
-			return
-		}
-
-		// render screen guides
-		if !scr.masked {
-			scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
-			scr.renderer.SetDrawColor(100, 100, 100, 50)
-			r := &sdl.Rect{0, 0,
-				int32(television.HorizClksHBlank), int32(scr.GetSpec().ScanlinesTotal)}
-			err = scr.renderer.FillRect(r)
-			if err != nil {
-				scr.serviceErr <- err
-				return
-			}
-
-			r = &sdl.Rect{0, 0,
-				int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlineTop)}
-			err = scr.renderer.FillRect(r)
-			if err != nil {
-				scr.serviceErr <- err
-				return
-			}
-
-			r = &sdl.Rect{0, int32(scr.GetSpec().ScanlineBottom),
-				int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlinesOverscan)}
-			err = scr.renderer.FillRect(r)
-			if err != nil {
-				scr.serviceErr <- err
-				return
-			}
-		}
-
-		// render overlay
-		if scr.useOverlay {
-			err = scr.overlay.render(scr.cpyRect, scr.pitch)
-			if err != nil {
-				scr.serviceErr <- err
-				return
-			}
-		}
-
-		if scr.paused {
-			// adjust cursor coordinates
-			x := scr.lastX
-			y := scr.lastY
-
-			if scr.masked {
-				y -= scr.topScanline
-				x -= television.HorizClksHBlank - 1
-			}
-
-			// cursor is one step ahead of pixel -- move to new scanline if
-			// necessary
-			if x >= television.HorizClksScanline {
-				x = 0
-				y++
-			}
-
-			// set cursor color
-			scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
-			scr.renderer.SetDrawColor(100, 100, 255, 255)
-
-			// check to see if cursor is "off-screen". if so, draw at the zero
-			// line and use a different cursor color
-			if x < 0 {
-				scr.renderer.SetDrawColor(255, 100, 100, 255)
-				x = 0
-			}
-			if y < 0 {
-				scr.renderer.SetDrawColor(255, 100, 100, 255)
-				y = 0
-			}
-
-			// leave the current pixel visible at the top-left corner of the cursor
-			scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y), W: 1, H: 1})
-			scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y + 1), W: 1, H: 1})
-			scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y + 1), W: 1, H: 1})
-		}
-
-		scr.renderer.Present()
-		scr.serviceErr <- nil
+	scr.renderer.SetDrawColor(0, 0, 0, 255)
+	err := scr.renderer.Clear()
+	if err != nil {
+		return err
 	}
 
-	return <-scr.serviceErr
+	// decide whether to use regular or alt pixels
+	pixels := scr.pixels.regular
+	if scr.useAltColors {
+		pixels = scr.pixels.alt
+	}
+
+	// render main textures
+	err = scr.textures.render(scr.cpyRect, pixels, scr.pitch)
+	if err != nil {
+		return err
+	}
+
+	// render screen guides
+	if !scr.masked {
+		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+		scr.renderer.SetDrawColor(100, 100, 100, 50)
+		r := &sdl.Rect{0, 0,
+			int32(television.HorizClksHBlank), int32(scr.GetSpec().ScanlinesTotal)}
+		err = scr.renderer.FillRect(r)
+		if err != nil {
+			return err
+		}
+
+		r = &sdl.Rect{0, 0,
+			int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlineTop)}
+		err = scr.renderer.FillRect(r)
+		if err != nil {
+			return err
+		}
+
+		r = &sdl.Rect{0, int32(scr.GetSpec().ScanlineBottom),
+			int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlinesOverscan)}
+		err = scr.renderer.FillRect(r)
+		if err != nil {
+			return err
+		}
+	}
+
+	// render overlay
+	if scr.useOverlay {
+		err = scr.overlay.render(scr.cpyRect, scr.pitch)
+		if err != nil {
+			return err
+		}
+	}
+
+	if scr.paused {
+		// adjust cursor coordinates
+		x := scr.lastX
+		y := scr.lastY
+
+		if scr.masked {
+			y -= scr.topScanline
+			x -= television.HorizClksHBlank - 1
+		}
+
+		// cursor is one step ahead of pixel -- move to new scanline if
+		// necessary
+		if x >= television.HorizClksScanline {
+			x = 0
+			y++
+		}
+
+		// set cursor color
+		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE)
+		scr.renderer.SetDrawColor(100, 100, 255, 255)
+
+		// check to see if cursor is "off-screen". if so, draw at the zero
+		// line and use a different cursor color
+		if x < 0 {
+			scr.renderer.SetDrawColor(255, 100, 100, 255)
+			x = 0
+		}
+		if y < 0 {
+			scr.renderer.SetDrawColor(255, 100, 100, 255)
+			y = 0
+		}
+
+		// leave the current pixel visible at the top-left corner of the cursor
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y), W: 1, H: 1})
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x + 1), Y: int32(y + 1), W: 1, H: 1})
+		scr.renderer.DrawRect(&sdl.Rect{X: int32(x), Y: int32(y + 1), W: 1, H: 1})
+	}
+
+	scr.renderer.Present()
+
+	return nil
 }
 
 // NewFrame implements television.PixelRenderer interface
-//
-// MUST NOT be called from #mainthread
 func (scr *SdlDebug) NewFrame(frameNum int) error {
-
 	// the sdlplay version of this function does not wait for the error signal
 	// before continuing. we do so here (in the update() function) because if
 	// we don't the screen image will tear badly. the difference is because in
 	// sdldebug we clear pixels between frames.
 
-	err := scr.update()
-	if err != nil {
+	scr.service <- func() {
+		scr.serviceErr <- scr.update()
+	}
+	if err := <-scr.serviceErr; err != nil {
 		return err
 	}
 
@@ -472,10 +410,7 @@ func (scr *SdlDebug) NewFrame(frameNum int) error {
 }
 
 // SetPixel implements television.PixelRenderer interface
-//
-// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
-
 	// handle VBLANK by setting pixels to black
 	if vblank {
 		red = 0
@@ -499,8 +434,6 @@ func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 }
 
 // SetAltPixel implements television.PixelRenderer interface
-//
-// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
 	i := (y*int(television.HorizClksScanline) + x) * pixelDepth
 	if i <= scr.pixels.length()-pixelDepth {
@@ -514,8 +447,6 @@ func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) e
 }
 
 // SetReflectPixel implements reflection.Renderer interface
-//
-// MUST NOT be called from #mainthread
 func (scr *SdlDebug) SetReflectPixel(mpx reflection.ReflectPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
 	if i <= scr.overlay.length()-pixelDepth {
