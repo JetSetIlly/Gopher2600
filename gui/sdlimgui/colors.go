@@ -28,8 +28,8 @@ import (
 type vec4Palette []imgui.Vec4
 type packedPalette []imgui.PackedColor
 
-// Colors defines all the colors used by the GUI
-type Colors struct {
+// imguiColors defines all the colors used by the GUI
+type imguiColors struct {
 	// default colors
 	MenuBarBg     imgui.Vec4
 	WindowBg      imgui.Vec4
@@ -96,8 +96,8 @@ type Colors struct {
 	packedPaletteAlt  packedPalette
 }
 
-func newColors() *Colors {
-	cols := Colors{
+func newColors() *imguiColors {
+	cols := imguiColors{
 		// default colors
 		MenuBarBg:     imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 1.0},

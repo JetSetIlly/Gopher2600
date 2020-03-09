@@ -20,12 +20,11 @@
 package sdlimgui
 
 import (
-	"gopher2600/debugger"
 	"gopher2600/debugger/terminal"
 	"gopher2600/disassembly"
 	"gopher2600/gui"
 	"gopher2600/gui/sdlaudio"
-	"gopher2600/hardware"
+	"gopher2600/gui/sdlimgui/lazyvalues"
 	"gopher2600/paths"
 	"gopher2600/television"
 	"gopher2600/test"
@@ -40,28 +39,34 @@ type SdlImgui struct {
 	io      imgui.IO
 	context *imgui.Context
 	plt     *platform
-	audio   *sdlaudio.Audio
 	glsl    *glsl
 
-	screen *screen
-	term   *term
-
-	// window management
-	wm   *windowManager
-	cols *Colors
-
 	// references to the emulation
-	tv  television.Television
-	dbg *debugger.Debugger
-	vcs *hardware.VCS
-	dsm *disassembly.Disassembly
+	lazy *lazyvalues.Values
+	tv   television.Television
+	dsm  *disassembly.Disassembly
+
+	// terminal interface to the debugger
+	term *term
+
+	// implementations of screen television protocols
+	screen *screen
+	audio  *sdlaudio.Audio
+
+	// imgui window management
+	wm *windowManager
+
+	// the colors used by the imgui system. includes the TV colors in a
+	// suitable format
+	cols *imguiColors
 
 	// functions that need to be performed in the main thread should be queued
-	// for service.
+	// for service
 	service    chan func()
 	serviceErr chan error
 
-	// SetFeature() hands off requests to the featureReq channel for servicing
+	// SetFeature() hands off requests to the featureReq channel for servicing.
+	// think of this as a special instance of the service chan
 	featureReq chan featureRequest
 	featureErr chan error
 
@@ -112,6 +117,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
+	img.lazy = lazyvalues.NewValues()
 	img.screen = newScreen(img)
 	img.term = newTerm()
 
@@ -124,6 +130,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	img.glsl.tvScreenTexture = img.screen.texture
 	tv.AddPixelRenderer(img.screen)
 
+	// this audio mixer produces the sound. there is another AudioMixer
+	// implementation in winAudio which visualises the sound
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
 		return nil, err
@@ -149,18 +157,4 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 // GetTerminal implements terminal.Broker interface
 func (img *SdlImgui) GetTerminal() terminal.Terminal {
 	return img.term
-}
-
-// where possible the debugger issues commands via the terminal. this has the
-// advntage of (a) simplicity and (b) consistency. A QUIT command, for example,
-// will work in exactly the same way from the main manu or from the terminal.
-//
-// to achieve this functionality, the terminal has a side-channel to which a
-// complete string is pushed (without a newline character please). the
-// issueTermCommand() is a conveniently placed function to do this
-func (img *SdlImgui) issueTermCommand(input string) {
-	// there shouldn't be a problem with channel blocking even though we're
-	// issuing and consuming on the same thread. if there is however, we can
-	// wrap this channel write in a go call
-	img.term.sideChan <- input
 }

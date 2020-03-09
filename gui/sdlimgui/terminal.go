@@ -118,6 +118,9 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 				return 0, nil
 			}
 
+		case ev := <-events.RawEvents:
+			ev()
+
 		case _ = <-events.IntEvents:
 			return 0, errors.New(errors.UserQuit)
 		}
@@ -134,4 +137,18 @@ func (trm *term) TermReadCheck() bool {
 // IsInteractive implements the terminal.Input interface
 func (trm *term) IsInteractive() bool {
 	return true
+}
+
+// where possible the debugger issues commands via the terminal. this has the
+// advntage of (a) simplicity and (b) consistency. A QUIT command, for example,
+// will work in exactly the same way from the main manu or from the terminal.
+//
+// to achieve this functionality, the terminal has a side-channel to which a
+// complete string is pushed (without a newline character please). the
+// pushCommand() is a conveniently placed function to do this
+func (trm *term) pushCommand(input string) {
+	// there shouldn't be a problem with channel blocking even though we're
+	// issuing and consuming on the same thread. if there is however, we can
+	// wrap this channel write in a go call
+	trm.sideChan <- input
 }

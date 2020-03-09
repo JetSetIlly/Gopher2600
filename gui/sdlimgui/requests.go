@@ -67,10 +67,10 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.paused = request.args[0].(bool)
 
 	case gui.ReqAddDebugger:
-		img.dbg = request.args[0].(*debugger.Debugger)
+		img.lazy.Dbg = request.args[0].(*debugger.Debugger)
 
 	case gui.ReqAddVCS:
-		img.vcs = request.args[0].(*hardware.VCS)
+		img.lazy.VCS = request.args[0].(*hardware.VCS)
 
 	case gui.ReqAddDisasm:
 		img.dsm = request.args[0].(*disassembly.Disassembly)

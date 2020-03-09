@@ -207,7 +207,7 @@ func (win *winTerm) tabCompleteAndHistory(d imgui.InputTextCallbackData) int32 {
 // terminalOutput represents the lines that are printed to the terminal output
 type terminalOutput struct {
 	style terminal.Style
-	cols  *Colors
+	cols  *imguiColors
 	text  string
 }
 

@@ -63,6 +63,7 @@ func (win *winDisasm) init() {
 	win.colCurrentPC = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrentPC)
 	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
 	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
+
 }
 
 func (win *winDisasm) destroy() {
@@ -81,7 +82,7 @@ func (win *winDisasm) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{355, 495}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winDisasmTitle, &win.open, 0)
 
-	imgui.Text(win.img.vcs.Mem.Cart.String())
+	imgui.Text(win.img.lazy.Cart.String)
 	imgui.Spacing()
 	imgui.Spacing()
 
@@ -92,15 +93,15 @@ func (win *winDisasm) draw() {
 		// instruction. we need this because we can never be sure when we
 		// are going to draw this window
 		var pcAddr uint16
-		if win.img.vcs.CPU.LastResult.Final {
-			pcAddr = win.img.vcs.CPU.PC.Value()
+		if win.img.lazy.CPU.LastResult.Final {
+			pcAddr = win.img.lazy.CPU.PCaddr
 		} else {
-			pcAddr = win.img.vcs.CPU.LastResult.Address
+			pcAddr = win.img.lazy.CPU.LastResult.Address
 		}
 
-		currBank := win.img.vcs.Mem.Cart.GetBank(pcAddr)
+		currBank := win.img.lazy.Cart.GetBank(pcAddr)
 
-		if win.img.vcs.Mem.Cart.NumBanks() == 1 {
+		if win.img.lazy.Cart.NumBanks == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
 			win.drawBank(pcAddr, 0, true)
 		} else {
@@ -148,7 +149,6 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 	itr, _ := win.img.dsm.NewIteration(disassembly.EntryTypeDecode, b)
 
 	for e := itr.Start(); e != nil; e = itr.Next() {
-
 		// if address value of current disasm entry and
 		// current PC value match then highlight the entry
 		if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
@@ -221,7 +221,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	}
 
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDoubleClicked(0) {
-		win.img.dbg.TogglePCBreak(e)
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.TogglePCBreak(e) })
 	}
 }
 
@@ -230,7 +230,7 @@ func (win *winDisasm) drawPointer() {
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
-	switch win.img.dbg.HasBreak(e) {
+	switch win.img.lazy.HasBreak(e) {
 	case debugger.BrkPCAddress:
 		win.drawGutter(gutterDotted, win.colBreakAddress)
 	case debugger.BrkOther:

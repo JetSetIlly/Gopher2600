@@ -348,7 +348,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return errors.New(errors.PlayError, err)
 	}
 
-	// if gui implements the GUIandTerminal interface use that terminal
+	// if gui implements the terminal.Broker interface use that terminal
 	// as a preference
 	if b, ok := scr.(terminal.Broker); ok {
 		term = b.GetTerminal()

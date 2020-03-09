@@ -78,14 +78,14 @@ func (win *winControl) draw() {
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunActive)
 		if imgui.ButtonV(runButtonLabel, win.runButtonDim) {
-			win.img.issueTermCommand("RUN")
+			win.img.term.pushCommand("RUN")
 		}
 	} else {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlHalt)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlHaltHovered)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlHaltActive)
 		if imgui.ButtonV(haltButtonLabel, win.runButtonDim) {
-			win.img.issueTermCommand("HALT")
+			win.img.term.pushCommand("HALT")
 		}
 	}
 	imgui.PopStyleColorV(3)
@@ -97,11 +97,11 @@ func (win *winControl) draw() {
 	imgui.Text("Step:")
 	imgui.SameLine()
 	if imgui.Button("Frame") {
-		win.img.issueTermCommand("STEP FRAME")
+		win.img.term.pushCommand("STEP FRAME")
 	}
 	imgui.SameLine()
 	if imgui.Button("Scanline") {
-		win.img.issueTermCommand("STEP SCANLINE")
+		win.img.term.pushCommand("STEP SCANLINE")
 	}
 
 	imgui.Spacing()
@@ -114,16 +114,16 @@ func (win *winControl) draw() {
 	w -= win.fpsLabelDim.X
 
 	// fps slider
+	fps := win.img.lazy.TV.ReqFPS
 	imgui.PushItemWidth(w)
-	fps := win.img.vcs.TV.GetReqFPS()
-	if imgui.SliderFloatV(fpsLabel, &fps, 0.1, 100, "%.1f", 1.0) {
-		win.img.vcs.TV.ReqFPS(fps)
+	if imgui.SliderFloatV(fpsLabel, &fps, 1, 100, "%.1f", 1.0) {
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TV.ReqFPS(fps) })
 	}
 	imgui.PopItemWidth()
 
 	// reset to specifcation rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.vcs.TV.ReqFPS(-1)
+		win.img.lazy.VCS.TV.ReqFPS(-1)
 	}
 
 	imgui.End()
@@ -133,7 +133,7 @@ func (win *winControl) drawQuantumToggle() {
 	var videoStep bool
 
 	// make sure we know the current state of the debugger
-	if win.img.dbg.GetQuantum() == debugger.QuantumVideo {
+	if win.img.lazy.Dbg.GetQuantum() == debugger.QuantumVideo {
 		videoStep = true
 	}
 
@@ -146,17 +146,17 @@ func (win *winControl) drawQuantumToggle() {
 		stepLabel = videoCycleLabel
 		if videoStep != toggle {
 			videoStep = toggle
-			win.img.issueTermCommand("QUANTUM VIDEO")
+			win.img.term.pushCommand("QUANTUM VIDEO")
 		}
 	} else {
 		if videoStep != toggle {
 			videoStep = toggle
-			win.img.issueTermCommand("QUANTUM CPU")
+			win.img.term.pushCommand("QUANTUM CPU")
 		}
 	}
 
 	imgui.SameLine()
 	if imgui.ButtonV(stepLabel, win.stepButtonDim) {
-		win.img.issueTermCommand("STEP")
+		win.img.term.pushCommand("STEP")
 	}
 }

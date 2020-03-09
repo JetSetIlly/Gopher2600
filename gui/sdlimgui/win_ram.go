@@ -36,7 +36,7 @@ type winRAM struct {
 	// for convenience we represent internal VCS RAM using the RAMinfo struct
 	// from the cartridge package. this facilitates the drawGrid() function
 	// below.
-	vcsRAM cartridge.RAMinfo
+	vcsRAMinfo cartridge.RAMinfo
 
 	// widget dimensions
 	byteDim imgui.Vec2
@@ -48,7 +48,7 @@ type winRAM struct {
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
 	win := &winRAM{
 		img: img,
-		vcsRAM: cartridge.RAMinfo{
+		vcsRAMinfo: cartridge.RAMinfo{
 			Label:       "VCS",
 			ReadOrigin:  0x80,
 			ReadMemtop:  0xff,
@@ -80,27 +80,23 @@ func (win *winRAM) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	cartRAM := win.img.vcs.Mem.Cart.GetRAMinfo()
-
-	if cartRAM != nil {
+	if len(win.img.lazy.Cart.RAMinfo) > 0 {
 		imgui.BeginTabBar("")
-		if imgui.BeginTabItemV(win.vcsRAM.Label, nil, 0) {
-			win.drawGrid(win.vcsRAM)
+		if imgui.BeginTabItemV(win.vcsRAMinfo.Label, nil, 0) {
+			win.drawGrid(win.vcsRAMinfo)
 			imgui.EndTabItem()
 		}
-		for i := 0; i < len(cartRAM); i++ {
-			if cartRAM[i].Active {
-				if imgui.BeginTabItemV(cartRAM[i].Label, nil, 0) {
-					win.drawGrid(cartRAM[i])
+		for i := 0; i < len(win.img.lazy.Cart.RAMinfo); i++ {
+			if win.img.lazy.Cart.RAMinfo[i].Active {
+				if imgui.BeginTabItemV(win.img.lazy.Cart.RAMinfo[i].Label, nil, 0) {
+					win.drawGrid(win.img.lazy.Cart.RAMinfo[i])
 					imgui.EndTabItem()
 				}
 			}
 		}
 		imgui.EndTabBar()
 	} else {
-		// there is no cartrdige memory so we don't need a Tab bar, we'll just
-		// draw the RAM grid
-		win.drawGrid(win.vcsRAM)
+		win.drawGrid(win.vcsRAMinfo)
 	}
 
 	imgui.End()
@@ -122,19 +118,19 @@ func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 
 	// draw rows
 	imgui.PushItemWidth(win.byteDim.X)
-	j := uint16(0)
-	for i := raminfo.ReadOrigin; i <= raminfo.ReadMemtop; i++ {
+	i := uint16(0)
+	for readAddr := raminfo.ReadOrigin; readAddr <= raminfo.ReadMemtop; readAddr++ {
 		// draw row header
-		if j%16 == 0 {
+		if i%16 == 0 {
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%02x- ", i/16))
+			imgui.Text(fmt.Sprintf("%02x- ", readAddr/16))
 			imgui.SameLine()
 			win.headerRowStart = imgui.CursorPosX()
 		} else {
 			imgui.SameLine()
 		}
-		win.drawEditByte(i, raminfo.WriteOrigin+j)
-		j++
+		win.drawEditByte(raminfo, readAddr, raminfo.WriteOrigin+i)
+		i++
 	}
 	imgui.PopItemWidth()
 
@@ -142,9 +138,10 @@ func (win *winRAM) drawGrid(raminfo cartridge.RAMinfo) {
 	imgui.PopStyleVar()
 }
 
-func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
+func (win *winRAM) drawEditByte(raminfo cartridge.RAMinfo, readAddr uint16, writeAddr uint16) {
+	d := win.img.lazy.ReadRAM(raminfo, readAddr)
+
 	label := fmt.Sprintf("##%d", readAddr)
-	d, _ := win.img.vcs.Mem.Read(readAddr)
 	content := fmt.Sprintf("%02x", d)
 
 	if imguiHexInput(label, !win.img.paused, 2, &content) {
@@ -153,7 +150,9 @@ func (win *winRAM) drawEditByte(readAddr uint16, writeAddr uint16) {
 			// an area of cartridge RAM. for this reason we're sending the
 			// write through the high-level memory write, which will map the
 			// address for us.
-			win.img.vcs.Mem.Write(writeAddr, uint8(v))
+			win.img.lazy.Dbg.PushRawEvent(func() {
+				win.img.lazy.VCS.Mem.Write(writeAddr, uint8(v))
+			})
 		}
 	}
 }

@@ -190,6 +190,9 @@ func (img *SdlImgui) Service() {
 		}
 	}
 
+	// update late values
+	img.lazy.Update()
+
 	// Signal start of a new frame
 	img.plt.newFrame()
 	imgui.NewFrame()

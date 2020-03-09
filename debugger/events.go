@@ -107,44 +107,55 @@ func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 		return true, nil
 	}
 
-	// check interrupt channel and run any functions we find in there
-	select {
-	case <-dbg.events.IntEvents:
-		// #ctrlc halt emulation
-		if dbg.runUntilHalt {
-			// stop emulation at the next step
-			dbg.runUntilHalt = false
+	done := false
+	for !done {
+		// check interrupt channel and run any functions we find in there
+		select {
+		case <-dbg.events.IntEvents:
+			// #ctrlc halt emulation
+			if dbg.runUntilHalt {
+				// stop emulation at the next step
+				dbg.runUntilHalt = false
 
-			// !!TODO: rather than halting immediately set a flag that says to
-			// halt at the next manual-break point. if there is no manual break
-			// point then stop immediately (or end of current frame might be
-			// better)
+				// !!TODO: rather than halting immediately set a flag that says to
+				// halt at the next manual-break point. if there is no manual break
+				// point then stop immediately (or end of current frame might be
+				// better)
 
-		} else {
-			// runUntilHalt is false which means that the emulation is
-			// not running. at this point, an input loop is probably
-			// running.
-			//
-			// note that ctrl-c signals do not always reach
-			// this far into the program.  for instance, the colorterm
-			// implementation of UserRead() puts the terminal into raw
-			// mode and so must handle ctrl-c events differently.
-
-			if dbg.scriptScribe.IsActive() {
-				// unlike in the equivalent code in the QUIT command, there's
-				// no need to call Rollback() here because the ctrl-c event
-				// will not be recorded to the script
-				dbg.scriptScribe.EndSession()
 			} else {
-				dbg.running = false
+				// runUntilHalt is false which means that the emulation is
+				// not running. at this point, an input loop is probably
+				// running.
+				//
+				// note that ctrl-c signals do not always reach
+				// this far into the program.  for instance, the colorterm
+				// implementation of UserRead() puts the terminal into raw
+				// mode and so must handle ctrl-c events differently.
+
+				if dbg.scriptScribe.IsActive() {
+					// unlike in the equivalent code in the QUIT command, there's
+					// no need to call Rollback() here because the ctrl-c event
+					// will not be recorded to the script
+					dbg.scriptScribe.EndSession()
+				} else {
+					dbg.running = false
+				}
 			}
+		case ev := <-dbg.events.GuiEvents:
+			err = dbg.guiEventHandler(ev)
+
+		case ev := <-dbg.events.RawEvents:
+			ev()
+
+		default:
+			done = true
 		}
-	case ev := <-dbg.events.GuiEvents:
-		err = dbg.guiEventHandler(ev)
-	default:
-		// pro-tip: default case required otherwise the select will block
-		// indefinately.
 	}
 
 	return false, err
+}
+
+// PushRawEvent onto the event queue
+func (dbg *Debugger) PushRawEvent(f func()) {
+	dbg.events.RawEvents <- f
 }

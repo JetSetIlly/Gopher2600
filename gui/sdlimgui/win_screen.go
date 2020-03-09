@@ -96,18 +96,15 @@ func (win *winScreen) draw() {
 
 	win.isHovered = imgui.IsItemHovered()
 
-	if win.img.vcs != nil {
-		imgui.Text(win.img.vcs.TV.String())
-		imgui.SameLine()
-		if win.img.paused {
-			imgui.Text("no fps")
+	imgui.Text(win.img.lazy.TV.TVstr)
+	imgui.SameLine()
+	if win.img.paused {
+		imgui.Text("no fps")
+	} else {
+		if win.img.lazy.TV.ReqFPS < 1.0 {
+			imgui.Text("< 1 fps")
 		} else {
-			fps := win.img.vcs.TV.GetActualFPS()
-			if fps < 1.0 {
-				imgui.Text("< 1 fps")
-			} else {
-				imgui.Text(fmt.Sprintf("%03.1f fps", win.img.vcs.TV.GetActualFPS()))
-			}
+			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.lazy.TV.AcutalFPS))
 		}
 	}
 

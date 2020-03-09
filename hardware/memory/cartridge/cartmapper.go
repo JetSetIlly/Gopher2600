@@ -64,3 +64,13 @@ type RAMinfo struct {
 	WriteOrigin uint16
 	WriteMemtop uint16
 }
+
+// ReadLen returns the number of read addresses
+func (ri RAMinfo) ReadLen() int {
+	return int(ri.ReadMemtop - ri.ReadOrigin + 1)
+}
+
+// WriteLen returns the number of write addresses
+func (ri RAMinfo) WriteLen() int {
+	return int(ri.WriteMemtop - ri.WriteOrigin + 1)
+}

@@ -156,7 +156,7 @@ func (wm *windowManager) destroy() {
 }
 
 func (wm *windowManager) drawWindows() {
-	if wm.img.vcs != nil && wm.img.dsm != nil {
+	if wm.img.lazy.VCS != nil && wm.img.dsm != nil {
 		wm.init()
 		wm.drawMainMenu()
 		for w := range wm.windows {
@@ -175,7 +175,7 @@ func (wm *windowManager) drawMainMenu() {
 
 	if imgui.BeginMenu("Project") {
 		if imgui.Selectable("Quit") {
-			wm.img.issueTermCommand("QUIT")
+			wm.img.term.pushCommand("QUIT")
 		}
 		imgui.EndMenu()
 	}

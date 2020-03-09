@@ -26,25 +26,29 @@ import (
 )
 
 func (win *winTIA) drawPlayfield() {
-	pf := win.img.vcs.TIA.Video.Playfield
-
 	imgui.Spacing()
 
 	// foreground color indicator. when clicked popup palette is requested. on
 	// selection in palette, missile color is changed too
 	imgui.BeginGroup()
+
 	imguiText("Foreground")
-	if win.img.imguiSwatch(pf.ForegroundColor) {
-		win.popupPalette.request(&pf.ForegroundColor, func() {
+	fgCol := win.img.lazy.Playfield.ForegroundColor
+	if win.img.imguiSwatch(fgCol) {
+		win.popupPalette.request(&fgCol, func() {
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.ForegroundColor = fgCol })
 			// update ball color too
-			win.img.vcs.TIA.Video.Ball.Color = pf.ForegroundColor
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Ball.Color = fgCol })
 		})
 	}
 
 	// background color indicator. when clicked popup palette is requested
 	imguiText("Background")
-	if win.img.imguiSwatch(pf.BackgroundColor) {
-		win.popupPalette.request(&pf.BackgroundColor, nil)
+	bgCol := win.img.lazy.Playfield.BackgroundColor
+	if win.img.imguiSwatch(bgCol) {
+		win.popupPalette.request(&bgCol, func() {
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.BackgroundColor = bgCol })
+		})
 	}
 	imgui.EndGroup()
 
@@ -53,13 +57,22 @@ func (win *winTIA) drawPlayfield() {
 
 	// playfield control bits
 	imguiText("Reflected")
-	imgui.Checkbox("##reflected", &pf.Reflected)
+	ref := win.img.lazy.Playfield.Reflected
+	if imgui.Checkbox("##reflected", &ref) {
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.Reflected = ref })
+	}
 	imgui.SameLine()
 	imguiText("Priority")
-	imgui.Checkbox("##priority", &pf.Priority)
+	pri := win.img.lazy.Playfield.Priority
+	if imgui.Checkbox("##priority", &pri) {
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.Priority = pri })
+	}
 	imgui.SameLine()
 	imguiText("Scoremode")
-	imgui.Checkbox("##scoremode", &pf.Scoremode)
+	sm := win.img.lazy.Playfield.Scoremode
+	if imgui.Checkbox("##scoremode", &sm) {
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.Scoremode = sm })
+	}
 
 	imgui.Spacing()
 	imgui.Spacing()
@@ -68,18 +81,18 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("PF0")
 	imgui.SameLine()
 	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
-	d := pf.PF0
+	pf0d := win.img.lazy.Playfield.PF0
 	for i := 0; i < 4; i++ {
 		var col uint8
-		if (d<<i)&0x80 == 0x80 {
-			col = pf.ForegroundColor
+		if (pf0d<<i)&0x80 == 0x80 {
+			col = win.img.lazy.Playfield.ForegroundColor
 		} else {
-			col = pf.BackgroundColor
+			col = win.img.lazy.Playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFilled(col) {
-			d ^= 0x80 >> i
-			pf.SetPF0(d)
+			pf0d ^= 0x80 >> i
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.SetPF0(pf0d) })
 		}
 		seq.sameLine()
 	}
@@ -89,18 +102,18 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("PF1")
 	imgui.SameLine()
 	seq.start()
-	d = pf.PF1
+	pf1d := win.img.lazy.Playfield.PF1
 	for i := 0; i < 8; i++ {
 		var col uint8
-		if (d<<i)&0x80 == 0x80 {
-			col = pf.ForegroundColor
+		if (pf1d<<i)&0x80 == 0x80 {
+			col = win.img.lazy.Playfield.ForegroundColor
 		} else {
-			col = pf.BackgroundColor
+			col = win.img.lazy.Playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFilled(col) {
-			d ^= 0x80 >> i
-			pf.SetPF1(d)
+			pf1d ^= 0x80 >> i
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.SetPF1(pf1d) })
 		}
 		seq.sameLine()
 	}
@@ -110,18 +123,18 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("PF2")
 	imgui.SameLine()
 	seq.start()
-	d = pf.PF2
+	pf2d := win.img.lazy.Playfield.PF2
 	for i := 0; i < 8; i++ {
 		var col uint8
-		if (d<<i)&0x80 == 0x80 {
-			col = pf.ForegroundColor
+		if (pf2d<<i)&0x80 == 0x80 {
+			col = win.img.lazy.Playfield.ForegroundColor
 		} else {
-			col = pf.BackgroundColor
+			col = win.img.lazy.Playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFilled(col) {
-			d ^= 0x80 >> i
-			pf.SetPF2(d)
+			pf2d ^= 0x80 >> i
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Playfield.SetPF2(pf2d) })
 		}
 		seq.sameLine()
 	}
@@ -135,29 +148,29 @@ func (win *winTIA) drawPlayfield() {
 	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1)
 
 	// first half of the playfield
-	for _, v := range pf.Data {
+	for _, v := range win.img.lazy.Playfield.Data {
 		var col uint8
 		if v {
-			col = pf.ForegroundColor
+			col = win.img.lazy.Playfield.ForegroundColor
 		} else {
-			col = pf.BackgroundColor
+			col = win.img.lazy.Playfield.BackgroundColor
 		}
 		seq.rectFilled(col)
 		seq.sameLine()
 	}
 
 	// second half of the playfield
-	for i, v := range pf.Data {
+	for i, v := range win.img.lazy.Playfield.Data {
 		// correct for reflected playfield
-		if pf.Reflected {
-			v = pf.Data[len(pf.Data)-1-i]
+		if win.img.lazy.Playfield.Reflected {
+			v = win.img.lazy.Playfield.Data[len(win.img.lazy.Playfield.Data)-1-i]
 		}
 
 		var col uint8
 		if v {
-			col = pf.ForegroundColor
+			col = win.img.lazy.Playfield.ForegroundColor
 		} else {
-			col = pf.BackgroundColor
+			col = win.img.lazy.Playfield.BackgroundColor
 		}
 		seq.rectFilled(col)
 		seq.sameLine()
@@ -165,10 +178,10 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	// playfield index pointer
-	if pf.Region != video.RegionOffScreen {
-		idx := pf.Idx
-		if pf.Region == video.RegionRight {
-			idx += len(pf.Data)
+	if win.img.lazy.Playfield.Region != video.RegionOffScreen {
+		idx := win.img.lazy.Playfield.Idx
+		if win.img.lazy.Playfield.Region == video.RegionRight {
+			idx += len(win.img.lazy.Playfield.Data)
 		}
 
 		p1 := imgui.Vec2{

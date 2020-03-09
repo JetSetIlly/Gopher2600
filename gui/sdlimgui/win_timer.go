@@ -71,10 +71,13 @@ func (win *winTimer) draw() {
 	imgui.BeginV(winTimerTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
-	if imgui.BeginComboV("", win.img.vcs.RIOT.Timer.Requested.String(), imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("", win.img.lazy.Timer.Requested, imgui.ComboFlagNoArrowButton) {
 		for _, s := range timer.IntervalList {
 			if imgui.Selectable(s) {
-				win.img.vcs.RIOT.Timer.SetInterval(s)
+				t := s // being careful about scope
+				win.img.lazy.Dbg.PushRawEvent(func() {
+					win.img.lazy.VCS.RIOT.Timer.SetInterval(t)
+				})
 			}
 		}
 
@@ -82,24 +85,24 @@ func (win *winTimer) draw() {
 	}
 	imgui.PopItemWidth()
 
-	value := fmt.Sprintf("%02x", win.img.vcs.RIOT.Timer.INTIMvalue)
+	value := fmt.Sprintf("%02x", win.img.lazy.Timer.INTIMvalue)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiText("Value")
 	if imguiHexInput("##value", !win.img.paused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
-			win.img.vcs.RIOT.Timer.SetValue(uint8(v))
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.SetValue(uint8(v)) })
 		}
 	}
 	imgui.PopItemWidth()
 
-	remaining := fmt.Sprintf("%04x", win.img.vcs.RIOT.Timer.TicksRemaining)
+	remaining := fmt.Sprintf("%04x", win.img.lazy.Timer.TicksRemaining)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiText("Ticks")
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
-			win.img.vcs.RIOT.Timer.TicksRemaining = uint16(v)
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.TicksRemaining = uint16(v) })
 		}
 	}
 	imgui.PopItemWidth()

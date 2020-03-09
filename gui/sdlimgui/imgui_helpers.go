@@ -109,11 +109,11 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 
 // use appropriate palette for television spec
 func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
-	switch img.tv.GetSpec().ID {
+	switch img.lazy.TV.Spec.ID {
 	case "PAL":
-		return img.tv.GetSpec().ID, img.cols.packedPalettePAL
+		return "PAL", img.cols.packedPalettePAL
 	case "NTSC":
-		return img.tv.GetSpec().ID, img.cols.packedPaletteNTSC
+		return "NTSC", img.cols.packedPaletteNTSC
 	}
 
 	return "NTSC?", img.cols.packedPaletteNTSC

@@ -61,6 +61,7 @@ type ReadEvents struct {
 	GuiEvents       chan gui.Event
 	GuiEventHandler func(gui.Event) error
 	IntEvents       chan os.Signal
+	RawEvents       chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

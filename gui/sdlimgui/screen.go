@@ -37,6 +37,7 @@ const (
 // screen implements television.PixelRenderer
 type screen struct {
 	img *SdlImgui
+	tv  television.Television
 
 	pixels *image.RGBA
 

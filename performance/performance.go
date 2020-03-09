@@ -69,6 +69,7 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 		// then restart timer for the specified duration
 		go func() {
 			time.AfterFunc(2*time.Second, func() {
+				// race condition when GetState() is called
 				startFrame, _ = tv.GetState(television.ReqFramenum)
 				time.AfterFunc(duration, func() {
 					timesUp <- true

@@ -27,14 +27,17 @@ const winAudioTitle = "Audio"
 
 type winAudio struct {
 	windowManagement
-	img         *SdlImgui
-	audioStream []float32
+	img *SdlImgui
+
+	displayBuffer []float32
+	newData       chan float32
 }
 
 func newWinAudio(img *SdlImgui) (managedWindow, error) {
 	win := &winAudio{
-		img:         img,
-		audioStream: make([]float32, 1, 2048),
+		img:           img,
+		displayBuffer: make([]float32, 2048),
+		newData:       make(chan float32, 2048),
 	}
 
 	img.tv.AddAudioMixer(win)
@@ -63,27 +66,42 @@ func (win *winAudio) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)
-	imgui.PlotLines("", win.audioStream)
+	imgui.PlotLines("", win.displayBuffer)
 	imgui.PopStyleColor()
 	imgui.PopStyleColor()
 	imgui.End()
 
-	win.audioStream = win.audioStream[:1]
+	done := false
+	ct := 0
+	for !done {
+		select {
+		case d := <-win.newData:
+			ct++
+			win.displayBuffer = append(win.displayBuffer, float32(d))
+		default:
+			done = true
+			win.displayBuffer = win.displayBuffer[ct:]
+		}
+	}
 }
 
+// SetAudio implements television.AudioMixer
 func (win *winAudio) SetAudio(audioData uint8) error {
-	win.audioStream = append(win.audioStream, (float32(audioData))/256)
+	win.newData <- float32(audioData) / 256
 	return nil
 }
 
+// FlushAudio implements television.AudioMixer
 func (win *winAudio) FlushAudio() error {
 	return nil
 }
 
+// PauseAudio implements television.AudioMixer
 func (win *winAudio) PauseAudio(pause bool) error {
 	return nil
 }
 
+// EndMixing implements television.AudioMixer
 func (win *winAudio) EndMixing() error {
 	return nil
 }

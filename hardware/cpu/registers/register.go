@@ -48,6 +48,7 @@ func (r Register) Label() string {
 	return r.label
 }
 
+// returns value as a string in hexadecimal notation
 func (r Register) String() string {
 	return fmt.Sprintf("%02x", r.value)
 }
