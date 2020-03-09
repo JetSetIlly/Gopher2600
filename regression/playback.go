@@ -25,13 +25,13 @@ import (
 	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/performance/limiter"
 	"gopher2600/recorder"
 	"gopher2600/television"
 	"io"
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 const playbackEntryID = "playback"
@@ -140,8 +140,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", errors.New(errors.RegressionPlaybackError, err)
 	}
 
-	// display progress meter every 1 second
-	lmtr := limiter.NewFPSLimiter(1)
+	// prepare ticker for progress meter
+	dur, _ := time.ParseDuration("1s")
+	tck := time.NewTicker(dur)
 
 	// run emulation
 	err = vcs.Run(func() (bool, error) {
@@ -153,8 +154,11 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			return false, errors.New(errors.RegressionPlaybackError, "playback has not ended as expected")
 		}
 
-		if lmtr.HasWaited() {
+		// display progress meter every 1 second
+		select {
+		case <-tck.C:
 			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
+		default:
 		}
 		return true, nil
 	})

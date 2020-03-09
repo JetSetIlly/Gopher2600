@@ -27,13 +27,13 @@ import (
 	"gopher2600/digest"
 	"gopher2600/errors"
 	"gopher2600/hardware"
-	"gopher2600/performance/limiter"
 	"gopher2600/setup"
 	"gopher2600/television"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const digestEntryID = "digest"
@@ -200,18 +200,22 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	// the specified state file
 	state := make([]string, 0, 1024)
 
-	// display progress meter every 1 second
-	lmtr := limiter.NewFPSLimiter(1)
-
 	// add the starting state of the tv
 	if reg.State {
 		state = append(state, tv.String())
 	}
 
+	// display ticker for progress meter
+	dur, _ := time.ParseDuration("1s")
+	tck := time.NewTicker(dur)
+
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
-		if lmtr.HasWaited() {
+		// display progress meter every 1 second
+		select {
+		case <-tck.C:
 			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+		default:
 		}
 
 		// store tv state at every step

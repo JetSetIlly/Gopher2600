@@ -546,10 +546,10 @@ func (tv *television) ReqFPS(fps float32) {
 
 // GetActualFPS implements the Television interface
 func (tv *television) GetActualFPS() float32 {
-	return tv.lmtr.ActualFPS
+	return tv.lmtr.GetActualFPS()
 }
 
 // GetReqFPS implements the Television interface
 func (tv *television) GetReqFPS() float32 {
-	return tv.lmtr.RequestedFPS
+	return tv.lmtr.GetReqFPS()
 }

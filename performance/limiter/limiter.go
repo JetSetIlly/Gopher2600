@@ -46,33 +46,34 @@ type FpsLimiter struct {
 	// toggle limited on and off
 	Active bool
 
-	RequestedFPS    float32
-	secondsPerFrame time.Duration
+	secondsPerFrame chan time.Duration
 	tick            chan bool
-	tickNow         chan bool
 
-	trackFrameCt uint32
-	ActualFPS    float32
+	// these value are access atomically
+	reqFPS       atomic.Value // float32
+	actualFPS    atomic.Value // float32
+	trackFrameCt uint32       // atomic
 }
 
 // NewFPSLimiter is the preferred method of initialisation for FpsLimiter type
-func NewFPSLimiter(RequestedFPS float32) *FpsLimiter {
+func NewFPSLimiter(reqFPS float32) *FpsLimiter {
 	lim := &FpsLimiter{Active: true}
+	lim.secondsPerFrame = make(chan time.Duration, 1)
 	lim.tick = make(chan bool)
-	lim.tickNow = make(chan bool)
 
-	rateTimer := time.NewTimer(lim.secondsPerFrame)
+	dur, _ := time.ParseDuration(fmt.Sprintf("%fms", 1000*float32(1.0)/float32(reqFPS)))
+	rateTimer := time.NewTimer(dur)
 
 	// run ticker concurrently
 	go func() {
+		var secondsPerFrame time.Duration
 		for {
 			lim.tick <- true
 			select {
+			case secondsPerFrame = <-lim.secondsPerFrame:
 			case <-rateTimer.C:
-			case <-lim.tickNow:
-				rateTimer.Stop()
 			}
-			rateTimer.Reset(lim.secondsPerFrame)
+			rateTimer.Reset(secondsPerFrame)
 		}
 	}()
 
@@ -91,7 +92,7 @@ func NewFPSLimiter(RequestedFPS float32) *FpsLimiter {
 
 			// calculate actual rate
 			frames := float32(atomic.LoadUint32(&lim.trackFrameCt))
-			lim.ActualFPS = frames / float32(et.Sub(t).Seconds())
+			lim.actualFPS.Store(frames / float32(et.Sub(t).Seconds()))
 			atomic.StoreUint32(&lim.trackFrameCt, 0)
 
 			// new start time
@@ -99,19 +100,18 @@ func NewFPSLimiter(RequestedFPS float32) *FpsLimiter {
 		}
 	}()
 
-	lim.RequestedFPS = RequestedFPS
-	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/float32(RequestedFPS)))
+	lim.reqFPS.Store(reqFPS)
 
 	return lim
 }
 
 // SetFPS changes the limit at which the FpsLimiter waits
-func (lim *FpsLimiter) SetFPS(RequestedFPS float32) {
-	lim.RequestedFPS = RequestedFPS
-	lim.secondsPerFrame, _ = time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/float32(RequestedFPS)))
+func (lim *FpsLimiter) SetFPS(reqFPS float32) {
+	lim.reqFPS.Store(reqFPS)
+	dur, _ := time.ParseDuration(fmt.Sprintf("%fms", 1000*float32(1.0)/reqFPS))
 
 	select {
-	case lim.tickNow <- true:
+	case lim.secondsPerFrame <- dur:
 	default:
 	}
 }
@@ -135,4 +135,14 @@ func (lim *FpsLimiter) HasWaited() bool {
 		// default case means that the channel receiving case doesn't block
 		return false
 	}
+}
+
+// GetActualFPS implements the Television interface
+func (lim *FpsLimiter) GetActualFPS() float32 {
+	return lim.actualFPS.Load().(float32)
+}
+
+// GetReqFPS implements the Television interface
+func (lim *FpsLimiter) GetReqFPS() float32 {
+	return lim.reqFPS.Load().(float32)
 }
