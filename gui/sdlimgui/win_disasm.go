@@ -44,10 +44,10 @@ type winDisasm struct {
 	bankPrevFrame int
 	pcPrevFrame   uint16
 
-	// gutter colors
-	colCurrentPC    imgui.PackedColor
-	colBreakAddress imgui.PackedColor
-	colBreakOther   imgui.PackedColor
+	// packed colors for drawlist
+	colCurrentEntryBg imgui.PackedColor
+	colBreakAddress   imgui.PackedColor
+	colBreakOther     imgui.PackedColor
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
@@ -60,7 +60,7 @@ func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winDisasm) init() {
-	win.colCurrentPC = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrentPC)
+	win.colCurrentEntryBg = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrHighlight)
 	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
 	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
 
@@ -170,19 +170,26 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.BeginGroup()
 
+	// highlight current disassembly entry
 	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 	if selected {
-		adj = win.img.cols.DisasmSelectedAdj
+		p1 := imgui.CursorScreenPos()
+		p2 := p1
+		p2.X += imgui.WindowWidth()
+		p2.Y += imgui.FontSize() * 1.1
+		dl := imgui.WindowDrawList()
+		dl.AddRectFilled(p1, p2, win.colCurrentEntryBg)
+
+		// make entry a bit brighter
+		adj = imgui.Vec4{0.1, 0.1, 0.1, 0.0}
 	}
 
 	// add some space for the gutter. has to be something tangible so that the
 	// IsItemVisible() check below has something to grab onto
 	imgui.Text(" ")
 
-	// draw pointer, breakpoint or nothing at all in gutter
-	if selected {
-		win.drawPointer()
-	} else if imgui.IsItemVisible() {
+	// illustrate breakpoint if the item is visible
+	if imgui.IsItemVisible() {
 		win.drawBreak(e)
 	}
 
@@ -225,14 +232,10 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	}
 }
 
-func (win *winDisasm) drawPointer() {
-	win.drawGutter(gutterSolid, win.colCurrentPC)
-}
-
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.lazy.HasBreak(e) {
 	case debugger.BrkPCAddress:
-		win.drawGutter(gutterDotted, win.colBreakAddress)
+		win.drawGutter(gutterSolid, win.colBreakAddress)
 	case debugger.BrkOther:
 		win.drawGutter(gutterOutline, win.colBreakOther)
 	}

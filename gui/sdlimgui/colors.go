@@ -56,24 +56,23 @@ type imguiColors struct {
 	ControlHaltActive  imgui.Vec4
 
 	// disassembly entry columns
-	DisasmAddress     imgui.Vec4
-	DisasmMnemonic    imgui.Vec4
-	DisasmOperand     imgui.Vec4
-	DisasmCycles      imgui.Vec4
-	DisasmNotes       imgui.Vec4
-	DisasmSelectedAdj imgui.Vec4
+	DisasmAddress  imgui.Vec4
+	DisasmMnemonic imgui.Vec4
+	DisasmOperand  imgui.Vec4
+	DisasmCycles   imgui.Vec4
+	DisasmNotes    imgui.Vec4
 
-	// disassembly gutter
-	DisasmCurrentPC    imgui.Vec4
-	DisasmBreakAddress imgui.Vec4
-	DisasmBreakOther   imgui.Vec4
+	// disassembly other
+	DisasmCurrHighlight imgui.Vec4
+	DisasmBreakAddress  imgui.Vec4
+	DisasmBreakOther    imgui.Vec4
 
 	// audio oscilloscope
 	AudioOscBg   imgui.Vec4
 	AudioOscLine imgui.Vec4
 
 	// tia window
-	PlayfieldPointer imgui.Vec4
+	IdxPointer imgui.Vec4
 
 	// terminal
 	TermBackground           imgui.Vec4
@@ -122,15 +121,14 @@ func newColors() *imguiColors {
 		ControlHaltActive:  imgui.Vec4{0.65, 0.3, 0.3, 1.0},
 
 		// disassembly entry columns
-		DisasmAddress:     imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		DisasmMnemonic:    imgui.Vec4{0.4, 0.4, 0.8, 1.0},
-		DisasmOperand:     imgui.Vec4{0.8, 0.8, 0.3, 1.0},
-		DisasmCycles:      imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmNotes:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmSelectedAdj: imgui.Vec4{0.1, 0.1, 0.1, 0.0},
+		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		DisasmMnemonic: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
+		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
+		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
-		// disassembly gutter
-		DisasmCurrentPC: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		// disassembly other
+		DisasmCurrHighlight: imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
 		// audio oscilloscope
@@ -138,7 +136,7 @@ func newColors() *imguiColors {
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 
 		// tia
-		PlayfieldPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		IdxPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// terminal
 		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},

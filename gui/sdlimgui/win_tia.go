@@ -52,7 +52,7 @@ func newWinTIA(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winTIA) init() {
-	win.idxPointer = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrentPC)
+	win.idxPointer = imgui.PackedColorFromVec4(win.img.cols.IdxPointer)
 	win.byteDim = imguiGetFrameDim("FF")
 	win.hmoveSliderWidth = imgui.FontSize() * 16
 }
