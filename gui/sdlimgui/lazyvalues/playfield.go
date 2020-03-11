@@ -29,27 +29,28 @@ type LazyPlayfield struct {
 	val *Values
 
 	atomicForegroundColor atomic.Value // uint8
-	ForegroundColor       uint8
 	atomicBackgroundColor atomic.Value // uint8
-	BackgroundColor       uint8
 	atomicReflected       atomic.Value // bool
-	Reflected             bool
-	atomicPriority        atomic.Value // bool
-	Priority              bool
 	atomicScoremode       atomic.Value // bool
-	Scoremode             bool
+	atomicPriority        atomic.Value // bool
 	atomicRegion          atomic.Value // video.ScreenRegion
-	Region                video.ScreenRegion
 	atomicPF0             atomic.Value // uint8
-	PF0                   uint8
 	atomicPF1             atomic.Value // uint8
-	PF1                   uint8
 	atomicPF2             atomic.Value // uint8
-	PF2                   uint8
 	atomicIdx             atomic.Value // int
-	Idx                   int
 	atomicData            atomic.Value // []uint8
-	Data                  [20]bool
+
+	ForegroundColor uint8
+	BackgroundColor uint8
+	Reflected       bool
+	Scoremode       bool
+	Priority        bool
+	Region          video.ScreenRegion
+	PF0             uint8
+	PF1             uint8
+	PF2             uint8
+	Idx             int
+	Data            [20]bool
 }
 
 func newLazyPlayfield(val *Values) *LazyPlayfield {
@@ -61,8 +62,8 @@ func (lz *LazyPlayfield) update() {
 		lz.atomicForegroundColor.Store(lz.val.VCS.TIA.Video.Playfield.ForegroundColor)
 		lz.atomicBackgroundColor.Store(lz.val.VCS.TIA.Video.Playfield.BackgroundColor)
 		lz.atomicReflected.Store(lz.val.VCS.TIA.Video.Playfield.Reflected)
-		lz.atomicPriority.Store(lz.val.VCS.TIA.Video.Playfield.Priority)
 		lz.atomicScoremode.Store(lz.val.VCS.TIA.Video.Playfield.Scoremode)
+		lz.atomicPriority.Store(lz.val.VCS.TIA.Video.Playfield.Priority)
 		lz.atomicRegion.Store(lz.val.VCS.TIA.Video.Playfield.Region)
 		lz.atomicPF0.Store(lz.val.VCS.TIA.Video.Playfield.PF0)
 		lz.atomicPF1.Store(lz.val.VCS.TIA.Video.Playfield.PF1)
@@ -73,8 +74,8 @@ func (lz *LazyPlayfield) update() {
 	lz.ForegroundColor, _ = lz.atomicForegroundColor.Load().(uint8)
 	lz.BackgroundColor, _ = lz.atomicBackgroundColor.Load().(uint8)
 	lz.Reflected, _ = lz.atomicReflected.Load().(bool)
-	lz.Priority, _ = lz.atomicPriority.Load().(bool)
 	lz.Scoremode, _ = lz.atomicScoremode.Load().(bool)
+	lz.Priority, _ = lz.atomicPriority.Load().(bool)
 	lz.Region, _ = lz.atomicRegion.Load().(video.ScreenRegion)
 	lz.PF0, _ = lz.atomicPF0.Load().(uint8)
 	lz.PF1, _ = lz.atomicPF1.Load().(uint8)

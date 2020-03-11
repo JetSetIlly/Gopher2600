@@ -29,13 +29,14 @@ type LazyTV struct {
 	val *Values
 
 	atomicSpec      atomic.Value // television.Specification
-	Spec            television.Specification
 	atomicTVStr     atomic.Value // string
-	TVstr           string
 	atomicReqFPS    atomic.Value // float32
-	ReqFPS          float32
 	atomicActualFPS atomic.Value // float32
-	AcutalFPS       float32
+
+	Spec      television.Specification
+	TVstr     string
+	ReqFPS    float32
+	AcutalFPS float32
 }
 
 func newLazyTV(val *Values) *LazyTV {

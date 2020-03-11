@@ -26,11 +26,12 @@ type LazyTimer struct {
 	val *Values
 
 	atomicRequested      atomic.Value // string
-	Requested            string
 	atomicINTIMvalue     atomic.Value // uint8
-	INTIMvalue           uint8
 	atomicTicksRemaining atomic.Value // uint16
-	TicksRemaining       uint16
+
+	Requested      string
+	INTIMvalue     uint8
+	TicksRemaining uint16
 }
 
 func newLazyTimer(val *Values) *LazyTimer {

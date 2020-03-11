@@ -28,6 +28,32 @@ import (
 	"strings"
 )
 
+// PlayerSizes maps player size and copies values to descriptions of those
+// values
+var PlayerSizes = []string{
+	"one copy",
+	"two copies [close]",
+	"two copies [med]",
+	"three copies [close]",
+	"two copies [wide]",
+	"double size",
+	"three copies [med]",
+	"quad size",
+}
+
+// playerSizesBrief maps player size and copies values to brief descriptions of
+// those values
+var playerSizesBrief = []string{
+	"",
+	"2 [close]",
+	"2 [med]",
+	"3 [close]",
+	"2 [wide]",
+	"double",
+	"3 [med]",
+	"quad",
+}
+
 type playerSprite struct {
 	// we need a reference to the attached television so that we can note the
 	// reset position of the sprite
@@ -91,8 +117,7 @@ type playerSprite struct {
 	// ^^^ the above are common to all sprite types ^^^
 
 	// player sprite attributes
-	Color         uint8
-	Nusiz         uint8
+	Color         uint8 // equal to missile color
 	Reflected     bool
 	VerticalDelay bool
 	GfxDataNew    uint8
@@ -101,6 +126,11 @@ type playerSprite struct {
 	// pointer to which gfx data we're using (gfxDataOld or gfxDataNew).
 	// controlled by value of verticalDelay
 	gfxData *uint8
+
+	// for convenience we store the raw NUSIZ value and the significant size
+	// and copy bits
+	Nusiz         uint8 // the raw value from the NUSIZ register
+	SizeAndCopies uint8 // just the three left-most bits
 
 	// ScanCounter implements the "graphics scan counter" as described in
 	// TIA_HW_Notes.txt:
@@ -151,7 +181,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 
 	ps.Delay = future.NewTicker(label)
 
-	ps.ScanCounter.nusiz = &ps.Nusiz
+	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
 	ps.position.Reset()
 
@@ -187,31 +217,20 @@ func (ps playerSprite) String() string {
 	}
 
 	// add a note to indicate that the nusiz value is about to update
-	if ps.ScanCounter.IsActive() && ps.Nusiz != ps.ScanCounter.LatchedNusiz {
+	if ps.ScanCounter.IsActive() && ps.SizeAndCopies != ps.ScanCounter.LatchedSizeAndCopies {
 		s.WriteString("*")
 	}
 
-	// interpret nusiz value
-	switch ps.Nusiz {
-	case 0x0:
-		s.WriteString("1x copy")
-	case 0x1:
-		s.WriteString("2x copies [close]")
-	case 0x2:
-		s.WriteString("2x copies [med]")
-	case 0x3:
-		s.WriteString("3x copies [close]")
-	case 0x4:
-		s.WriteString("2x copies [wide]")
-	case 0x5:
-		s.WriteString("double")
-	case 0x6:
-		s.WriteString("3x copies [med]")
-	case 0x7:
-		s.WriteString("quad")
-	default:
-		panic("illegal value for player nusiz")
+	// nusiz info
+	s.WriteString(" ")
+	if int(ps.SizeAndCopies) > len(playerSizesBrief) {
+		panic("illegal size value for player")
 	}
+	sz := playerSizesBrief[ps.SizeAndCopies]
+	if len(sz) > 0 {
+		s.WriteString(" ")
+	}
+	s.Write([]byte(sz))
 
 	// notes
 	notes := false
@@ -227,7 +246,6 @@ func (ps playerSprite) String() string {
 	if ps.ScanCounter.IsActive() {
 		if notes {
 			s.WriteString(",")
-
 		}
 		s.WriteString(fmt.Sprintf(" drw (px %d", ps.ScanCounter.Pixel))
 
@@ -249,7 +267,7 @@ func (ps playerSprite) String() string {
 	// copy information if drawing or latching and nusiz is a multiple copy
 	// value
 	if (ps.ScanCounter.IsActive() || ps.ScanCounter.IsLatching()) &&
-		ps.Nusiz != 0x0 && ps.Nusiz != 0x5 && ps.Nusiz != 0x07 {
+		ps.SizeAndCopies != 0x0 && ps.SizeAndCopies != 0x5 && ps.SizeAndCopies != 0x07 {
 
 		switch ps.ScanCounter.Cpy {
 		case 0:
@@ -365,21 +383,21 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 			// before being latched, to determine whether to draw that copy."
 			switch ps.position.Count() {
 			case 3:
-				if ps.Nusiz == 0x01 || ps.Nusiz == 0x03 {
+				if ps.SizeAndCopies == 0x01 || ps.SizeAndCopies == 0x03 {
 					ps.StartDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, 1, "START")
 				}
 			case 7:
-				if ps.Nusiz == 0x03 || ps.Nusiz == 0x02 || ps.Nusiz == 0x06 {
+				if ps.SizeAndCopies == 0x03 || ps.SizeAndCopies == 0x02 || ps.SizeAndCopies == 0x06 {
 					cpy := 1
-					if ps.Nusiz == 0x03 {
+					if ps.SizeAndCopies == 0x03 {
 						cpy = 2
 					}
 					ps.StartDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, cpy, "START")
 				}
 			case 15:
-				if ps.Nusiz == 0x04 || ps.Nusiz == 0x06 {
+				if ps.SizeAndCopies == 0x04 || ps.SizeAndCopies == 0x06 {
 					cpy := 1
-					if ps.Nusiz == 0x06 {
+					if ps.SizeAndCopies == 0x06 {
 						cpy = 2
 					}
 					ps.StartDrawingEvent = ps.Delay.ScheduleWithArg(4, ps._futureStartDrawingEvent, cpy, "START")
@@ -497,7 +515,7 @@ func (ps *playerSprite) _futureResetPosition() {
 		//
 		// note that we need to monkey with resetPixel whenever NUSIZ changes.
 		// see setNUSIZ() function below
-		if ps.Nusiz == 0x05 || ps.Nusiz == 0x07 {
+		if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
 			ps.ResetPixel++
 		}
 
@@ -585,8 +603,9 @@ func (ps *playerSprite) setGfxData(data uint8) {
 	}
 }
 
-// SetVerticalDelay bit. Debuggers should use this function to set the delay
-// bit rather than setting it directly.
+// SetVerticalDelay bit also alters which gfx registers is being used.
+// Debuggers should use this function to set the delay bit rather than setting
+// it directly.
 func (ps *playerSprite) SetVerticalDelay(vdelay bool) {
 	// from TIA_HW_Notes.txt:
 	//
@@ -618,7 +637,6 @@ func (ps *playerSprite) setReflection(value bool) {
 
 // !!TODO: the setNUSIZ() function needs untangling. I reckon with a bit of
 // reordering we can simplify it quite a bit
-
 func (ps *playerSprite) setNUSIZ(value uint8) {
 	// from TIA_HW_Notes.txt:
 	//
@@ -635,12 +653,12 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	delay := -1
 
 	if ps.StartDrawingEvent != nil {
-		if ps.Nusiz == 0x05 || ps.Nusiz == 0x07 {
+		if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
 			delay = 0
 		} else if ps.StartDrawingEvent.RemainingCycles() == 0 {
 			delay = 1
 		} else if ps.StartDrawingEvent.RemainingCycles() >= 2 &&
-			ps.Nusiz != value && ps.Nusiz != 0x00 &&
+			ps.SizeAndCopies != value && ps.SizeAndCopies != 0x00 &&
 			(value == 0x05 || value == 0x07) {
 
 			// this branch applies when a sprite is changing from a single
@@ -660,7 +678,7 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 			ps.StartDrawingEvent = nil
 		}
 	} else if ps.ScanCounter.IsLatching() || ps.ScanCounter.IsActive() {
-		if (ps.Nusiz == 0x05 || ps.Nusiz == 0x07) && (value == 0x05 || value == 0x07) {
+		if (ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07) && (value == 0x05 || value == 0x07) {
 			// minimal delay current if future/current NUSIZ is double/quadruple width
 			delay = 0
 		} else {
@@ -668,22 +686,34 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		}
 	}
 
-	ps.Delay.ScheduleWithArg(delay, ps._futureSetNusiz, value, "NUSIZx")
+	ps.Delay.ScheduleWithArg(delay, ps._futureSetNUSIZ, value, "NUSIZx")
 }
 
-func (ps *playerSprite) _futureSetNusiz(v interface{}) {
+func (ps *playerSprite) _futureSetNUSIZ(v interface{}) {
+	ps.SetNUSIZ(v.(uint8))
+}
+
+// SetNUSIZ is called when the NUSIZ register changes, after a delay. It should
+// also be used to set the NUSIZ value from a debugger for immediate effect.
+// Setting the value directly will upset reset/hmove pixel information.
+func (ps *playerSprite) SetNUSIZ(value uint8) {
 	// if size is 2x or 4x currently then take off the additional pixel. we'll
 	// add it back on afterwards if needs be
-	if ps.Nusiz == 0x05 || ps.Nusiz == 0x07 {
+	if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
 		ps.ResetPixel--
 		ps.HmovedPixel--
 	}
 
-	ps.Nusiz = v.(uint8) & 0x07
+	// note raw NUSIZ value
+	ps.Nusiz = value
+
+	// for convenience we pick out the size/count values from the raw NUSIZ
+	// value
+	ps.SizeAndCopies = value & 0x07
 
 	// if size is 2x or 4x then we need to record an additional pixel on the
 	// reset point value
-	if ps.Nusiz == 0x05 || ps.Nusiz == 0x07 {
+	if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
 		ps.ResetPixel++
 		ps.HmovedPixel++
 	}
@@ -702,6 +732,7 @@ func (ps *playerSprite) setColor(value uint8) {
 	ps.Color = value
 }
 
+// setHmoveValue normalises the nibbles from the NUSIZ register
 func (ps *playerSprite) setHmoveValue(v interface{}) {
 	ps.Hmove = (v.(uint8) ^ 0x80) >> 4
 }

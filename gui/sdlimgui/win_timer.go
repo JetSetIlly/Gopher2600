@@ -71,7 +71,7 @@ func (win *winTimer) draw() {
 	imgui.BeginV(winTimerTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
-	if imgui.BeginComboV("", win.img.lazy.Timer.Requested, imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##timerinterval", win.img.lazy.Timer.Requested, imgui.ComboFlagNoArrowButton) {
 		for _, s := range timer.IntervalList {
 			if imgui.Selectable(s) {
 				t := s // being careful about scope

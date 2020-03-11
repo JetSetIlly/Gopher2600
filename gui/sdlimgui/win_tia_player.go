@@ -21,21 +21,25 @@ package sdlimgui
 
 import (
 	"fmt"
+	"gopher2600/hardware/tia/video"
 	"strconv"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-func (win *winTIA) drawPlayer(player int) {
+func (win *winTIA) drawPlayer(num int) {
 	// get drawlist for window. we use this to draw index pointer
 	// and horizpos indicator
 	dl := imgui.WindowDrawList()
 
-	lt := win.img.lazy.Player0
+	lz := win.img.lazy.Player0
 	ps := win.img.lazy.VCS.TIA.Video.Player0
-	if player != 0 {
-		lt = win.img.lazy.Player1
+	ms := win.img.lazy.VCS.TIA.Video.Missile0
+	if num != 0 {
+		lz = win.img.lazy.Player1
 		ps = win.img.lazy.VCS.TIA.Video.Player1
+		ms = win.img.lazy.VCS.TIA.Video.Missile1
 	}
 
 	imgui.Spacing()
@@ -43,29 +47,25 @@ func (win *winTIA) drawPlayer(player int) {
 	// player color indicator. when clicked popup palette is requested. on
 	// selection in palette, missile color is changed too
 	imguiText("Colour")
-	col := lt.Color
+	col := lz.Color
 	if win.img.imguiSwatch(col) {
 		win.popupPalette.request(&col, func() {
 			win.img.lazy.Dbg.PushRawEvent(func() { ps.Color = col })
 
 			// update missile color too
-			if player != 0 {
-				win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Missile0.Color = col })
-			} else {
-				win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TIA.Video.Missile1.Color = col })
-			}
+			win.img.lazy.Dbg.PushRawEvent(func() { ms.Color = col })
 		})
 	}
 
 	imguiText("Reflected")
-	ref := lt.Reflected
+	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.lazy.Dbg.PushRawEvent(func() { ps.Reflected = ref })
 	}
 
 	imgui.SameLine()
 	imguiText("Vert. Delay")
-	vd := lt.VerticalDelay
+	vd := lz.VerticalDelay
 	if imgui.Checkbox("##vertdelay", &vd) {
 		// vertical delay affects which gfx register to use. set vertical delay
 		// using the SetVerticalDelay function
@@ -79,7 +79,7 @@ func (win *winTIA) drawPlayer(player int) {
 	imguiText("HMOVE")
 	imgui.SameLine()
 	imgui.PushItemWidth(win.byteDim.X)
-	hmove := fmt.Sprintf("%01x", lt.Hmove)
+	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
 			win.img.lazy.Dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
@@ -90,7 +90,7 @@ func (win *winTIA) drawPlayer(player int) {
 	// hmove slider
 	imgui.SameLine()
 	imgui.PushItemWidth(win.hmoveSliderWidth)
-	hmoveSlider := int32(lt.Hmove) - 8
+	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d") {
 		win.img.lazy.Dbg.PushRawEvent(func() { ps.Hmove = uint8(hmoveSlider + 8) })
 	}
@@ -102,11 +102,11 @@ func (win *winTIA) drawPlayer(player int) {
 	// graphics data - new
 	imguiText("New Gfx")
 	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
-	od := lt.GfxDataNew
+	od := lz.GfxDataNew
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (od<<i)&0x80 == 0x80 {
-			col = lt.Color
+			col = lz.Color
 		} else {
 			col = 0x0
 			ngfxSeq.nextItemDepressed = true
@@ -116,6 +116,9 @@ func (win *winTIA) drawPlayer(player int) {
 			win.img.lazy.Dbg.PushRawEvent(func() { ps.GfxDataNew = od })
 		}
 		ngfxSeq.sameLine()
+
+		// deliberately not using setGfxData() function from Player type. it
+		// woulnd't make sense in this debugging context to do that.
 	}
 	ngfxSeq.end()
 
@@ -123,11 +126,11 @@ func (win *winTIA) drawPlayer(player int) {
 	imgui.SameLine()
 	imguiText("Old Gfx")
 	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
-	nd := lt.GfxDataOld
+	nd := lz.GfxDataOld
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (nd<<i)&0x80 == 0x80 {
-			col = lt.Color
+			col = lz.Color
 		} else {
 			col = 0x0
 			ogfxSeq.nextItemDepressed = true
@@ -137,20 +140,23 @@ func (win *winTIA) drawPlayer(player int) {
 			win.img.lazy.Dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
 		}
 		ogfxSeq.sameLine()
+
+		// deliberately not using setGfxData() function from Player type. it
+		// woulnd't make sense in this debugging context to do that.
 	}
 	ogfxSeq.end()
 
 	// scancounter index pointer
-	if lt.ScanIsActive {
+	if lz.ScanIsActive {
 		var idx int
-		if lt.Reflected {
-			idx = 7 - lt.ScanPixel
+		if lz.Reflected {
+			idx = 7 - lz.ScanPixel
 		} else {
-			idx = lt.ScanPixel
+			idx = lz.ScanPixel
 		}
 
 		seq := ngfxSeq
-		if lt.VerticalDelay {
+		if lz.VerticalDelay {
 			seq = ogfxSeq
 		}
 		pt := imgui.Vec2{
@@ -166,73 +172,72 @@ func (win *winTIA) drawPlayer(player int) {
 
 	// nusiz
 	imgui.BeginGroup()
+	imgui.PushItemWidth(win.playerSizeAndCopiesComboDim.X)
+	if imgui.BeginComboV("##playersizecopies", video.PlayerSizes[lz.SizeAndCopies], imgui.ComboFlagNoArrowButton) {
+		for k := range video.PlayerSizes {
+			if imgui.Selectable(video.PlayerSizes[k]) {
+				v := uint8(k) // being careful about scope
+				win.img.lazy.Dbg.PushRawEvent(func() {
+					ps.SizeAndCopies = v
+					win.img.lazy.VCS.TIA.Video.UpdateNUSIZ(num, false)
+				})
+			}
+		}
+
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
+
+	imgui.SameLine()
 	imguiText("NUSIZ")
 	imgui.SameLine()
 	imgui.PushItemWidth(win.byteDim.X)
-	nusiz := fmt.Sprintf("%d", lt.Nusiz)
-	if imguiInput("##nusiz", !win.img.paused, 1, &nusiz, "01234567") {
+	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
+	if imguiHexInput("##nusiz", !win.img.paused, 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { ps.Nusiz = uint8(v) })
+			win.img.lazy.Dbg.PushRawEvent(func() {
+				ps.SetNUSIZ(uint8(v))
+
+				// update missile NUSIZ too
+				ms.SetNUSIZ(uint8(v))
+			})
 		}
 	}
 	imgui.PopItemWidth()
 	imgui.SameLine()
 
-	// add a note to indicate that the nusiz value is about to update
-	if lt.ScanIsActive && lt.Nusiz != lt.ScanLatchedNusiz {
-		imguiText("*")
-	}
-
-	// interpret nusiz value
-	switch lt.Nusiz {
-	case 0x0:
-		imguiText("one copy")
-	case 0x1:
-		imguiText("two copies [close]")
-	case 0x2:
-		imguiText("two copies [med]")
-	case 0x3:
-		imguiText("three copies [close]")
-	case 0x4:
-		imguiText("two copies [wide]")
-	case 0x5:
-		imguiText("double-size")
-	case 0x6:
-		imguiText("three copies [med]")
-	case 0x7:
-		imguiText("quad-size")
-	default:
-		panic("illegal value for player nusiz")
-	}
-
-	if (lt.ScanIsActive || lt.ScanIsLatching) &&
-		lt.Nusiz != 0x0 && lt.Nusiz != 0x5 && lt.Nusiz != 0x07 {
-
-		if lt.ScanIsActive {
-			imguiText("drawing")
+	s := strings.Builder{}
+	if lz.ScanIsActive || lz.ScanIsLatching {
+		if lz.ScanIsActive {
+			s.WriteString("drawing ")
+			if lz.Nusiz != lz.ScanLatchedSizeAndCopies {
+				// add a note to indicate that the nusiz value is about to update
+				s.WriteString("[prev. nusiz] ")
+			}
 		} else {
-			imguiText("latching")
+			s.WriteString("latching ")
 		}
 
-		switch lt.ScanCpy {
+		switch lz.ScanCpy {
 		case 0:
 		case 1:
-			imguiText("2nd copy")
+			s.WriteString("2nd copy")
 		case 2:
-			imguiText("3rd copy")
+			s.WriteString("3rd copy")
 		default:
-			panic("more than 2 copies of player!?")
+			panic("illegal number of player copies")
 		}
 	}
+	imgui.Text(s.String())
 	imgui.EndGroup()
 
 	imgui.Spacing()
 	imgui.Spacing()
 
 	// horizontal positioning
-	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. Draws at pixel %03d", lt.ResetPixel, lt.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. Draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
 
-	if lt.MoreHmove {
+	if lz.MoreHmove {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")
 	}

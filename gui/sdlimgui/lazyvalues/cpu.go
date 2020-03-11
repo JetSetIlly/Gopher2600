@@ -30,31 +30,31 @@ import (
 type LazyCPU struct {
 	val *Values
 
-	atomicHasReset atomic.Value //bool
-	HasReset       bool
+	atomicHasReset   atomic.Value //bool
+	atomicRdy        atomic.Value // bool
+	atomicPCAddr     atomic.Value // uint16
+	atomicLastResult atomic.Value // execution.Result
+	atomicStatusReg  atomic.Value // registers.StatusRegister
 
-	atomicRdy atomic.Value // bool
-	RdyFlg    bool
+	HasReset bool
+	RdyFlg   bool
 
 	// PCaddr is a numeric value rather than a string representation as
 	// can be found when requesting a value from RegisterString()
-	atomicPCAddr atomic.Value // uint16
-	PCaddr       uint16
+	PCaddr uint16
 
-	atomicLastResult atomic.Value // execution.Result
-	LastResult       execution.Result
-
-	atomicStatusReg atomic.Value // registers.StatusRegister
-	StatusReg       registers.StatusRegister
+	LastResult execution.Result
+	StatusReg  registers.StatusRegister
 
 	// register labels/value require a generic register. note use of mutex for
 	// map access
 	atomicRegLabelsMux   sync.RWMutex
-	atomicRegLabels      map[registers.Generic]atomic.Value // string
 	atomicRegValuesMux   sync.RWMutex
-	atomicRegValues      map[registers.Generic]atomic.Value // string
 	atomicRegBitwidthMux sync.RWMutex
-	atomicRegBitwidth    map[registers.Generic]atomic.Value // int
+
+	atomicRegLabels   map[registers.Generic]atomic.Value // string
+	atomicRegValues   map[registers.Generic]atomic.Value // string
+	atomicRegBitwidth map[registers.Generic]atomic.Value // int
 }
 
 func newLazyCPU(val *Values) *LazyCPU {

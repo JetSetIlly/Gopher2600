@@ -56,7 +56,9 @@ type playfield struct {
 	PF1 uint8
 	PF2 uint8
 
-	// playfield properties
+	// for convenience we store the raw CTRLPF register value and the
+	// normalised control bits specific to the playfield
+	Ctrlpf    uint8
 	Reflected bool
 	Priority  bool
 	Scoremode bool
@@ -216,10 +218,11 @@ func (pf *playfield) setPF2(v interface{}) {
 	pf.SetPF2(v.(uint8))
 }
 
-func (pf *playfield) setControlBits(ctrlpf uint8) {
-	pf.Reflected = ctrlpf&0x01 == 0x01
-	pf.Scoremode = ctrlpf&0x02 == 0x02
-	pf.Priority = ctrlpf&0x04 == 0x04
+func (pf *playfield) SetCTRLPF(value uint8) {
+	pf.Ctrlpf = value
+	pf.Reflected = value&0x01 == 0x01
+	pf.Scoremode = value&0x02 == 0x02
+	pf.Priority = value&0x04 == 0x04
 }
 
 func (pf *playfield) setColor(col uint8) {

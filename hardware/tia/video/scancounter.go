@@ -31,15 +31,15 @@ import (
 // cycle, the scanCounter is started and is ticked forward every cycle (subject
 // to MOTCK, HMOVE and NUSIZ rules)
 type scanCounter struct {
-	nusiz *uint8
-	pclk  *phaseclock.PhaseClock
+	sizeAndCopies *uint8
+	pclk          *phaseclock.PhaseClock
 
-	// LatchedNusiz is used to decide how often to tick the scan counter onto
-	// the next pixel (after the additional latching, see below). in most
-	// situations we could use the live nusiz value (see above) but resetting
-	// the player sprite while the scan counter is active requires some special
-	// handling
-	LatchedNusiz uint8
+	// LatchesSizeAndCopies is used to decide how often to tick the scan
+	// counter onto the next pixel (after the additional latching, see below).
+	// in most situations we could use the live nusiz value (see above) but
+	// resetting the player sprite while the scan counter is active requires
+	// some special handling
+	LatchedSizeAndCopies uint8
 
 	// number of additional ticks required before drawing begins
 	latch int
@@ -59,7 +59,7 @@ type scanCounter struct {
 }
 
 func (sc *scanCounter) start() {
-	if sc.LatchedNusiz == 0x05 || sc.LatchedNusiz == 0x07 {
+	if sc.LatchedSizeAndCopies == 0x05 || sc.LatchedSizeAndCopies == 0x07 {
 		sc.latch = 2
 	} else {
 		sc.latch = 1
@@ -80,7 +80,7 @@ func (sc scanCounter) IsLatching() bool {
 // isMissileMiddle is used by missile sprite as part of the reset-to-player
 // implementation
 func (sc scanCounter) isMissileMiddle() bool {
-	switch *sc.nusiz {
+	switch *sc.sizeAndCopies {
 	case 0x05:
 		return sc.Pixel == 3 && sc.count == 0
 	case 0x07:
@@ -96,7 +96,7 @@ func (sc *scanCounter) tick() {
 		if sc.latch == 0 {
 			sc.count = 0
 			sc.Pixel = 7
-			sc.LatchedNusiz = *sc.nusiz
+			sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 		}
 		return
 	}
@@ -117,34 +117,34 @@ func (sc *scanCounter) tick() {
 
 	if sc.Cpy == 0 {
 		// latch the nusiz value depending on the phase of the player clock
-		if *sc.nusiz == 0x05 {
+		if *sc.sizeAndCopies == 0x05 {
 			if sc.pclk.Phi1() || sc.pclk.Phi2() {
-				sc.LatchedNusiz = *sc.nusiz
+				sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 			}
-		} else if *sc.nusiz == 0x07 {
+		} else if *sc.sizeAndCopies == 0x07 {
 			if sc.pclk.Phi1() {
-				sc.LatchedNusiz = *sc.nusiz
+				sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 			}
 		} else {
-			sc.LatchedNusiz = *sc.nusiz
+			sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 		}
 
-		if sc.LatchedNusiz == 0x05 {
+		if sc.LatchedSizeAndCopies == 0x05 {
 			if sc.count < 1 {
 				tick = false
 			}
-		} else if sc.LatchedNusiz == 0x07 {
+		} else if sc.LatchedSizeAndCopies == 0x07 {
 			if sc.count < 3 {
 				tick = false
 			}
 		}
 	} else {
 		// timing of ticks for non-primary copies is skewed
-		if *sc.nusiz == 0x05 {
+		if *sc.sizeAndCopies == 0x05 {
 			if !(sc.pclk.LatePhi2() || sc.pclk.LatePhi1()) {
 				tick = false
 			}
-		} else if *sc.nusiz == 0x07 {
+		} else if *sc.sizeAndCopies == 0x07 {
 			if !sc.pclk.LatePhi2() {
 				tick = false
 			}
@@ -161,7 +161,7 @@ func (sc *scanCounter) tick() {
 			// correctly in all instances - if we look at the Player.tick()
 			// function we can see why. scanCounter.cpy is set only when the
 			// startDrawingEvent has concluded but we need to update the
-			// latchedNusiz value for the primary copy before then.
+			// latchedSizeAndCopies value for the primary copy before then.
 			if sc.Pixel < 0 {
 				sc.Cpy = 0
 			}

@@ -20,6 +20,8 @@
 package sdlimgui
 
 import (
+	"gopher2600/hardware/tia/video"
+
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -33,8 +35,12 @@ type winTIA struct {
 	strobe int32
 
 	// widget dimensions
-	byteDim          imgui.Vec2
-	hmoveSliderWidth float32
+	byteDim                     imgui.Vec2
+	hmoveSliderWidth            float32
+	ballSizeComboDim            imgui.Vec2
+	playerSizeAndCopiesComboDim imgui.Vec2
+	missileSizeComboDim         imgui.Vec2
+	missileCopiesComboDim       imgui.Vec2
 
 	// idxPointer is used to indicate which playfield/player gfx bit is being
 	// displayed
@@ -52,9 +58,13 @@ func newWinTIA(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winTIA) init() {
-	win.idxPointer = imgui.PackedColorFromVec4(win.img.cols.IdxPointer)
 	win.byteDim = imguiGetFrameDim("FF")
 	win.hmoveSliderWidth = imgui.FontSize() * 16
+	win.ballSizeComboDim = imguiGetFrameDim("", video.BallSizes...)
+	win.playerSizeAndCopiesComboDim = imguiGetFrameDim("", video.PlayerSizes...)
+	win.missileSizeComboDim = imguiGetFrameDim("", video.MissileSizes...)
+	win.missileCopiesComboDim = imguiGetFrameDim("", video.MissileCopies...)
+	win.idxPointer = imgui.PackedColorFromVec4(win.img.cols.IdxPointer)
 }
 
 func (win *winTIA) destroy() {
@@ -88,12 +98,15 @@ func (win *winTIA) draw() {
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Missile 0") {
+		win.drawMissile(0)
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Missile 1") {
+		win.drawMissile(1)
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Ball") {
+		win.drawBall()
 		imgui.EndTabItem()
 	}
 	imgui.EndTabBar()

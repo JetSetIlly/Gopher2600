@@ -48,26 +48,26 @@ type enclockifier struct {
 	pclk  *phaseclock.PhaseClock
 	delay *future.Ticker
 
-	enable     bool
-	secondHalf bool
+	Active     bool
+	SecondHalf bool
 	endEvent   *future.Event
 
 	// which copy of the sprite is being drawn (ball sprite only ever has one
 	// copy). value of zero means the primary copy is being drawn (if enable is
 	// true)
-	cpy int
+	Cpy int
 }
 
 func (en *enclockifier) String() string {
 	s := strings.Builder{}
-	if en.enable {
-		if en.cpy > 0 {
-			s.WriteString(fmt.Sprintf("+%d", en.cpy))
+	if en.Active {
+		if en.Cpy > 0 {
+			s.WriteString(fmt.Sprintf("+%d", en.Cpy))
 		}
 
 		if en.endEvent != nil {
 			s.WriteString(fmt.Sprintf("(remaining %d", en.endEvent.RemainingCycles()))
-			if en.secondHalf {
+			if en.SecondHalf {
 				s.WriteString("/2nd")
 			}
 			s.WriteString(")")
@@ -79,7 +79,7 @@ func (en *enclockifier) String() string {
 // the ball sprite drops enclockifier events during position resets
 func (en *enclockifier) drop() {
 	if en.endEvent != nil {
-		en.enable = false
+		en.Active = false
 		en.endEvent.Drop()
 		en.endEvent = nil
 	}
@@ -115,7 +115,7 @@ func (en *enclockifier) justStarted() bool {
 }
 
 func (en *enclockifier) start() {
-	en.enable = true
+	en.Active = true
 
 	// upon receiving a start signal, we decide for how long the enable flag
 	// should be true. after the requisite number of clocks endEvent() is run,
@@ -145,14 +145,14 @@ func (en *enclockifier) start() {
 
 // called at very end of enclockifier sequence
 func (en *enclockifier) _futureOnEnd() {
-	en.enable = false
+	en.Active = false
 	en.endEvent = nil
-	en.secondHalf = false
+	en.SecondHalf = false
 }
 
 // called at end of enclockifier sequence for quadruple width sprites. calls
 // _futureOnEnd at end of second half
 func (en *enclockifier) _futureOnEndSecond() {
-	en.secondHalf = true
+	en.SecondHalf = true
 	en.endEvent = en.delay.Schedule(4, en._futureOnEnd, "END (2nd half)")
 }

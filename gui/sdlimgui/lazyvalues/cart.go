@@ -29,11 +29,12 @@ type LazyCart struct {
 	val *Values
 
 	atomicString   atomic.Value // string
-	String         string
 	atomicNumBanks atomic.Value // int
-	NumBanks       int
 	atomicRAMinfo  atomic.Value // []cartridge.RAMinfo
-	RAMinfo        []cartridge.RAMinfo
+
+	String   string
+	NumBanks int
+	RAMinfo  []cartridge.RAMinfo
 
 	// ramInfoRef is used to detect if a new allocation is required
 	ramInfoRef *[]cartridge.RAMinfo

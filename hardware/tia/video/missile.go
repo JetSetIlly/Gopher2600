@@ -28,6 +28,46 @@ import (
 	"strings"
 )
 
+// MissileCopies maps missile copies values to descriptions of those values
+var MissileCopies = []string{
+	"one copy",
+	"two copies [close]",
+	"two copies [med]",
+	"three copies [close]",
+	"two copies [wide]",
+	"one copy",
+	"three copies [med]",
+	"one copy",
+}
+
+// MissileSizes maps missile sizes values to descriptions of those values
+var MissileSizes = []string{
+	"single width",
+	"double width",
+	"quadruple width",
+	"doub-quad width",
+}
+
+// missileCopiesBrief maps missile copies values to brief descriptions of those values
+var missileCopiesBrief = []string{
+	"",
+	"2 [close]",
+	"2 [med]",
+	"3 [close]",
+	"2 [wide]",
+	"",
+	"three copies [med]",
+	"",
+}
+
+// missileSizesBrief maps missile sizes values to brief descriptions of those values
+var missileSizesBrief = []string{
+	"",
+	"2x",
+	"4x",
+	"8x",
+}
+
 type missileSprite struct {
 	// see player sprite for detailed commentary on struct attributes
 
@@ -40,15 +80,15 @@ type missileSprite struct {
 	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	Delay       *future.Ticker
-	moreHMOVE   bool
-	hmove       uint8
+	MoreHMOVE   bool
+	Hmove       uint8
 	lastHmoveCt uint8
 
 	// the following attributes are used for information purposes only:
 
 	label       string
-	resetPixel  int
-	hmovedPixel int
+	ResetPixel  int
+	HmovedPixel int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
 	lastTickFromHmove bool
@@ -56,20 +96,17 @@ type missileSprite struct {
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
-	//  missile color should match the color of the corresponding player.
-	//  however, for debugging purposes it is sometimes useful to use different
-	//  colors, so this is not a pointer to player.Color, as you might expect
-	Color uint8
+	Color   uint8 // equal to missile color
+	Enabled bool
 
-	enabled bool
+	// for convenience we split the NUSIZ register into size and copies
+	Nusiz  uint8
+	Size   uint8
+	Copies uint8
 
-	// for the missile sprite we split the NUSIZx register into size and copies
-	size   uint8
-	copies uint8
-
-	enclockifier       enclockifier
+	Enclockifier       enclockifier
 	parentPlayer       *playerSprite
-	resetToPlayer      bool
+	ResetToPlayer      bool
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 }
@@ -91,9 +128,9 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 
 	ms.Delay = future.NewTicker(label)
 
-	ms.enclockifier.size = &ms.size
-	ms.enclockifier.pclk = &ms.pclk
-	ms.enclockifier.delay = ms.Delay
+	ms.Enclockifier.size = &ms.Size
+	ms.Enclockifier.pclk = &ms.pclk
+	ms.Enclockifier.delay = ms.Delay
 	ms.position.Reset()
 	return &ms, nil
 
@@ -107,7 +144,7 @@ func (ms missileSprite) Label() string {
 func (ms missileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
-	normalisedHmove := int(ms.hmove) - 8
+	normalisedHmove := int(ms.Hmove) - 8
 	if normalisedHmove < 0 {
 		normalisedHmove = 16 + normalisedHmove
 	}
@@ -115,62 +152,67 @@ func (ms missileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ms.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.resetPixel))
+	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", ms.hmovedPixel))
-	if ms.moreHMOVE {
+	s.WriteString(fmt.Sprintf(" %03d", ms.HmovedPixel))
+	if ms.MoreHMOVE {
 		s.WriteString("*] ")
 	} else {
 		s.WriteString("] ")
 	}
 
-	// interpret nusiz value
-	switch ms.copies {
+	// interpret size and copies values
+	switch ms.Copies {
 	case 0x0:
-		s.WriteString("|")
+		s.WriteString("one copy")
 	case 0x1:
-		s.WriteString("|_|")
+		s.WriteString("two copies [close]")
 	case 0x2:
-		s.WriteString("|__|")
+		s.WriteString("two copies [med]")
 	case 0x3:
-		s.WriteString("|_|_|")
+		s.WriteString("three copies [close]")
 	case 0x4:
-		s.WriteString("|___|")
+		s.WriteString("two copies [wide]")
+	case 0x5:
+		s.WriteString("one copy")
 	case 0x6:
-		s.WriteString("|__|__|")
+		s.WriteString("three copies [med]")
+	case 0x7:
+		s.WriteString("one copy")
+	default:
+		panic("illegal copies value for missile")
+	}
+
+	switch ms.Size {
+	case 0x0:
+	case 0x1:
+		s.WriteString(" 2x")
+	case 0x2:
+		s.WriteString(" 4x")
+	case 0x3:
+		s.WriteString(" 8x")
+	default:
+		panic("illegal size value for missile")
 	}
 
 	notes := false
 
-	switch ms.size {
-	case 0x0:
-	case 0x1:
-		s.WriteString(" 2x")
-		notes = true
-	case 0x2:
-		s.WriteString(" 4x")
-		notes = true
-	case 0x3:
-		s.WriteString(" 8x")
-		notes = true
-	}
-
-	if ms.moreHMOVE {
+	if ms.MoreHMOVE {
 		s.WriteString(" hmoving")
-		s.WriteString(fmt.Sprintf(" [%04b]", ms.hmove))
+		s.WriteString(fmt.Sprintf(" [%04b]", ms.Hmove))
 		notes = true
 	}
 
-	if ms.enclockifier.enable {
+	if ms.Enclockifier.Active {
 		// add a comma if we've already noted something else
 		if notes {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw %s", ms.enclockifier.String()))
+		s.WriteString(fmt.Sprintf(" drw %s", ms.Enclockifier.String()))
 		notes = true
 	}
 
-	if !ms.enabled {
+	if !ms.Enabled {
 		if notes {
 			s.WriteString(",")
 		}
@@ -178,7 +220,7 @@ func (ms missileSprite) String() string {
 		notes = true
 	}
 
-	if ms.resetToPlayer {
+	if ms.ResetToPlayer {
 		if notes {
 			s.WriteString(",")
 		}
@@ -189,20 +231,20 @@ func (ms missileSprite) String() string {
 }
 
 func (ms *missileSprite) rsync(adjustment int) {
-	ms.resetPixel -= adjustment
-	ms.hmovedPixel -= adjustment
-	if ms.resetPixel < 0 {
-		ms.resetPixel += television.HorizClksVisible
+	ms.ResetPixel -= adjustment
+	ms.HmovedPixel -= adjustment
+	if ms.ResetPixel < 0 {
+		ms.ResetPixel += television.HorizClksVisible
 	}
-	if ms.hmovedPixel < 0 {
-		ms.hmovedPixel += television.HorizClksVisible
+	if ms.HmovedPixel < 0 {
+		ms.HmovedPixel += television.HorizClksVisible
 	}
 }
 
 func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
-		ms.moreHMOVE = ms.moreHMOVE && compareHMOVE(hmoveCt, ms.hmove)
+		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
 	}
 
 	ms.lastHmoveCt = hmoveCt
@@ -219,27 +261,27 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	//
 	// note: the FSTOB output is the primary flag in the parent player's
 	// scancounter
-	if ms.resetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
+	if ms.ResetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
 	}
 
 	// early return if nothing to do
-	if !(isHmove && ms.moreHMOVE) && !visible {
+	if !(isHmove && ms.MoreHMOVE) && !visible {
 		return
 	}
 
 	// note whether this is an additional hmove tick. see pixel() function
 	// below for explanation
-	ms.lastTickFromHmove = isHmove && ms.moreHMOVE
+	ms.lastTickFromHmove = isHmove && ms.MoreHMOVE
 
 	// update hmoved pixel value
 	if !visible {
-		ms.hmovedPixel--
+		ms.HmovedPixel--
 
 		// adjust for screen boundary
-		if ms.hmovedPixel < 0 {
-			ms.hmovedPixel += television.HorizClksVisible
+		if ms.HmovedPixel < 0 {
+			ms.HmovedPixel += television.HorizClksVisible
 		}
 	}
 
@@ -254,21 +296,21 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		if ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted() {
 			switch ms.position.Count() {
 			case 3:
-				if ms.copies == 0x01 || ms.copies == 0x03 {
+				if ms.Copies == 0x01 || ms.Copies == 0x03 {
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 1, "START")
 				}
 			case 7:
-				if ms.copies == 0x03 || ms.copies == 0x02 || ms.copies == 0x06 {
+				if ms.Copies == 0x03 || ms.Copies == 0x02 || ms.Copies == 0x06 {
 					cpy := 1
-					if ms.copies == 0x03 {
+					if ms.Copies == 0x03 {
 						cpy = 2
 					}
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
 				}
 			case 15:
-				if ms.copies == 0x04 || ms.copies == 0x06 {
+				if ms.Copies == 0x04 || ms.Copies == 0x06 {
 					cpy := 1
-					if ms.copies == 0x06 {
+					if ms.Copies == 0x06 {
 						cpy = 2
 					}
 					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
@@ -286,23 +328,23 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 }
 
 func (ms *missileSprite) _futureStartDrawingEvent(v interface{}) {
-	ms.enclockifier.start()
-	ms.enclockifier.cpy = v.(int)
+	ms.Enclockifier.start()
+	ms.Enclockifier.Cpy = v.(int)
 	ms.startDrawingEvent = nil
 }
 
 func (ms *missileSprite) prepareForHMOVE() {
-	ms.moreHMOVE = true
+	ms.MoreHMOVE = true
 
 	if *ms.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
-		ms.hmovedPixel += 8
+		ms.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if ms.hmovedPixel > television.HorizClksVisible {
-			ms.hmovedPixel -= television.HorizClksVisible
+		if ms.HmovedPixel > television.HorizClksVisible {
+			ms.HmovedPixel -= television.HorizClksVisible
 		}
 	}
 }
@@ -325,8 +367,8 @@ func (ms *missileSprite) resetPosition() {
 	// important to note we only pause if the draw/start events are not about
 	// to end. in other words, if they are not about to end they are allowed to
 	// continue naturally while reset event is waiting to conclude
-	if !ms.enclockifier.aboutToEnd() {
-		ms.enclockifier.pause()
+	if !ms.Enclockifier.aboutToEnd() {
+		ms.Enclockifier.pause()
 	}
 	if ms.startDrawingEvent != nil && !ms.startDrawingEvent.AboutToEnd() {
 		ms.startDrawingEvent.Pause()
@@ -350,34 +392,34 @@ func (ms *missileSprite) resetPosition() {
 func (ms *missileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.resetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
+	ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
 
-	if ms.resetPixel >= 0 {
+	if ms.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
 		// position
-		ms.resetPixel++
+		ms.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if ms.resetPixel > television.HorizClksVisible {
-			ms.resetPixel -= television.HorizClksVisible
+		if ms.ResetPixel > television.HorizClksVisible {
+			ms.ResetPixel -= television.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at
 		// the moment of reset
-		ms.hmovedPixel = ms.resetPixel
+		ms.HmovedPixel = ms.ResetPixel
 	} else {
 		// if reset occurs off-screen then force reset pixel to be zero
 		// (see commentary in ball sprite for detailed reasoning of this
 		// branch)
-		ms.resetPixel = 0
-		ms.hmovedPixel = 7
+		ms.ResetPixel = 0
+		ms.HmovedPixel = 7
 	}
 
 	// reset both sprite position and clock
 	ms.position.Reset()
 	ms.pclk.Reset()
 
-	ms.enclockifier.force()
+	ms.Enclockifier.force()
 	if ms.startDrawingEvent != nil {
 		ms.startDrawingEvent.Force()
 		ms.startDrawingEvent = nil
@@ -388,11 +430,11 @@ func (ms *missileSprite) _futureResetPosition() {
 }
 
 func (ms *missileSprite) setResetToPlayer(on bool) {
-	ms.resetToPlayer = on
+	ms.ResetToPlayer = on
 }
 
 func (ms *missileSprite) pixel() (bool, uint8) {
-	if !ms.enabled {
+	if !ms.Enabled {
 		return false, ms.Color
 	}
 
@@ -404,25 +446,32 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// enclockifier is about to produce its last pixel
 	//
 	// see ball sprite for explanation for the LatePhi1() condition
-	earlyEnd := !ms.pclk.LatePhi1() && ms.lastTickFromHmove && ms.enclockifier.aboutToEnd()
+	earlyEnd := !ms.pclk.LatePhi1() && ms.lastTickFromHmove && ms.Enclockifier.aboutToEnd()
 
 	// both conditions are fully explained in the AtariAge post "Cosmic Ark
 	// Star Field Revisited" by crispy. as suggested by the post title this is
 	// the key to implementing the starfield in the Cosmic Ark ROM
 
 	// whether a pixel is output also depends on whether resetToPlayer is off
-	px := !ms.resetToPlayer && !earlyEnd && (ms.enclockifier.enable || earlyStart)
+	px := !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
 	return px, ms.Color
 }
 
 func (ms *missileSprite) setEnable(enable bool) {
-	ms.enabled = enable
+	ms.Enabled = enable
 }
 
-func (ms *missileSprite) setNUSIZ(value uint8) {
-	ms.size = (value & 0x30) >> 4
-	ms.copies = value & 0x07
+// SetNUSIZ is called when the NUSIZ register changes. It should also be used
+// to set the NUSIZ value from a debugger for immediate effect.
+func (ms *missileSprite) SetNUSIZ(value uint8) {
+	// note raw NUSIZ value
+	ms.Nusiz = value
+
+	// for convenience we pick out the size and count values from the NUSIZ
+	// value
+	ms.Size = (value & 0x30) >> 4
+	ms.Copies = value & 0x07
 }
 
 func (ms *missileSprite) setColor(value uint8) {
@@ -430,9 +479,9 @@ func (ms *missileSprite) setColor(value uint8) {
 }
 
 func (ms *missileSprite) setHmoveValue(v interface{}) {
-	ms.hmove = (v.(uint8) ^ 0x80) >> 4
+	ms.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
 func (ms *missileSprite) clearHmoveValue() {
-	ms.hmove = 0x08
+	ms.Hmove = 0x08
 }

@@ -27,36 +27,40 @@ type LazyPlayer struct {
 	id  int
 
 	atomicResetPixel    atomic.Value // int
-	ResetPixel          int
 	atomicHmovedPixel   atomic.Value // int
-	HmovedPixel         int
 	atomicColor         atomic.Value // uint8
-	Color               uint8
 	atomicNusiz         atomic.Value // uint8
-	Nusiz               uint8
+	atomicSizeAndCopies atomic.Value // uint8
 	atomicReflected     atomic.Value // bool
-	Reflected           bool
 	atomicVerticalDelay atomic.Value // bool
-	VerticalDelay       bool
 	atomicHmove         atomic.Value // uint8
-	Hmove               uint8
 	atomicMoreHmove     atomic.Value // bool
-	MoreHmove           bool
 	atomicGfxDataNew    atomic.Value // uint8
-	GfxDataNew          uint8
 	atomicGfxDataOld    atomic.Value // uint8
-	GfxDataOld          uint8
 
-	atomicScanIsActive     atomic.Value // bool
-	ScanIsActive           bool
-	atomicScanIsLatching   atomic.Value // bool
-	ScanIsLatching         bool
-	atomicScanPixel        atomic.Value // int
-	ScanPixel              int
-	atomicScanCpy          atomic.Value // int
-	ScanCpy                int
-	atomicScanLatchedNusiz atomic.Value // uint8
-	ScanLatchedNusiz       uint8
+	ResetPixel    int
+	HmovedPixel   int
+	Color         uint8
+	Nusiz         uint8
+	SizeAndCopies uint8
+	Reflected     bool
+	VerticalDelay bool
+	Hmove         uint8
+	MoreHmove     bool
+	GfxDataNew    uint8
+	GfxDataOld    uint8
+
+	atomicScanIsActive             atomic.Value // bool
+	atomicScanIsLatching           atomic.Value // bool
+	atomicScanPixel                atomic.Value // int
+	atomicScanCpy                  atomic.Value // int
+	atomicScanLatchedSizeAndCopies atomic.Value // uint8
+
+	ScanIsActive             bool
+	ScanIsLatching           bool
+	ScanPixel                int
+	ScanCpy                  int
+	ScanLatchedSizeAndCopies uint8
 }
 
 func newLazyPlayer(val *Values, id int) *LazyPlayer {
@@ -73,6 +77,7 @@ func (lz *LazyPlayer) update() {
 		lz.atomicHmovedPixel.Store(ps.HmovedPixel)
 		lz.atomicColor.Store(ps.Color)
 		lz.atomicNusiz.Store(ps.Nusiz)
+		lz.atomicSizeAndCopies.Store(ps.SizeAndCopies)
 		lz.atomicReflected.Store(ps.Reflected)
 		lz.atomicVerticalDelay.Store(ps.VerticalDelay)
 		lz.atomicHmove.Store(ps.Hmove)
@@ -83,12 +88,13 @@ func (lz *LazyPlayer) update() {
 		lz.atomicScanIsLatching.Store(ps.ScanCounter.IsLatching())
 		lz.atomicScanPixel.Store(ps.ScanCounter.Pixel)
 		lz.atomicScanCpy.Store(ps.ScanCounter.Cpy)
-		lz.atomicScanLatchedNusiz.Store(ps.ScanCounter.LatchedNusiz)
+		lz.atomicScanLatchedSizeAndCopies.Store(ps.ScanCounter.LatchedSizeAndCopies)
 	})
 	lz.ResetPixel, _ = lz.atomicResetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.atomicHmovedPixel.Load().(int)
 	lz.Color, _ = lz.atomicColor.Load().(uint8)
 	lz.Nusiz, _ = lz.atomicNusiz.Load().(uint8)
+	lz.SizeAndCopies, _ = lz.atomicSizeAndCopies.Load().(uint8)
 	lz.Reflected, _ = lz.atomicReflected.Load().(bool)
 	lz.VerticalDelay, _ = lz.atomicVerticalDelay.Load().(bool)
 	lz.Hmove, _ = lz.atomicHmove.Load().(uint8)
@@ -99,5 +105,5 @@ func (lz *LazyPlayer) update() {
 	lz.ScanIsLatching, _ = lz.atomicScanIsLatching.Load().(bool)
 	lz.ScanPixel, _ = lz.atomicScanPixel.Load().(int)
 	lz.ScanCpy, _ = lz.atomicScanCpy.Load().(int)
-	lz.ScanLatchedNusiz, _ = lz.atomicScanLatchedNusiz.Load().(uint8)
+	lz.ScanLatchedSizeAndCopies, _ = lz.atomicScanLatchedSizeAndCopies.Load().(uint8)
 }

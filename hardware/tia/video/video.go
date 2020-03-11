@@ -480,8 +480,8 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 	switch data.Name {
 	case "CTRLPF":
-		vd.Ball.setSize((data.Value & 0x30) >> 4)
-		vd.Playfield.setControlBits(data.Value)
+		vd.Ball.SetCTRLPF(data.Value)
+		vd.Playfield.SetCTRLPF(data.Value)
 	case "VDELBL":
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	case "VDELP0":
@@ -498,10 +498,10 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 		vd.Missile1.setResetToPlayer(data.Value&0x02 == 0x02)
 	case "NUSIZ0":
 		vd.Player0.setNUSIZ(data.Value)
-		vd.Missile0.setNUSIZ(data.Value)
+		vd.Missile0.SetNUSIZ(data.Value)
 	case "NUSIZ1":
 		vd.Player1.setNUSIZ(data.Value)
-		vd.Missile1.setNUSIZ(data.Value)
+		vd.Missile1.SetNUSIZ(data.Value)
 	case "CXCLR":
 		vd.collisions.clear()
 	default:
@@ -509,4 +509,67 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 	}
 
 	return false
+}
+
+// UpdateCTRLPF should be called whenever any of the individual components of
+// the CTRPF are altered. For example, if Playfield.Reflected is altered, then
+// this function should be called so that the CTRLPF value is set to reflect
+// the alteration.
+//
+// This is only of use to debuggers. It's never required in normal operation of
+// the emulator.
+func (vd *Video) UpdateCTRLPF() {
+	vd.Ball.Size &= 0x03
+	ctrlpf := vd.Ball.Size << 4
+
+	if vd.Playfield.Reflected {
+		ctrlpf |= 0x01
+	}
+	if vd.Playfield.Scoremode {
+		ctrlpf |= 0x02
+	}
+	if vd.Playfield.Priority {
+		ctrlpf |= 0x04
+	}
+
+	vd.Playfield.Ctrlpf = ctrlpf
+	vd.Ball.Ctrlpf = ctrlpf
+}
+
+// UpdateNUSIZ should be called whenever the player/missile size/copies
+// information is altered. This function updates the NUSIZ value to reflect the
+// changes whilst maintaining the other NUSIZ bits.
+//
+// This is only of use to debuggers. It's never required in normal operation of
+// the emulator.
+func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
+	var nusiz uint8
+
+	if num == 0 {
+		if fromMissile {
+			vd.Missile0.Copies &= 0x07
+			vd.Missile0.Size &= 0x03
+			vd.Player0.SizeAndCopies = vd.Missile0.Copies
+			nusiz = vd.Missile0.Copies | vd.Missile0.Size<<4
+		} else {
+			vd.Player0.SizeAndCopies &= 0x07
+			vd.Missile0.Copies = vd.Player0.SizeAndCopies
+			nusiz = vd.Player0.SizeAndCopies | vd.Missile0.Size<<4
+		}
+		vd.Player0.Nusiz = nusiz
+		vd.Missile0.Nusiz = nusiz
+	} else {
+		if fromMissile {
+			vd.Missile1.Copies &= 0x07
+			vd.Missile1.Size &= 0x03
+			vd.Player1.SizeAndCopies = vd.Missile1.Copies
+			nusiz = vd.Missile1.Copies | vd.Missile1.Size<<4
+		} else {
+			vd.Player1.SizeAndCopies &= 0x07
+			vd.Missile1.Copies = vd.Player1.SizeAndCopies
+			nusiz = vd.Player1.SizeAndCopies | vd.Missile1.Size<<4
+		}
+		vd.Player1.Nusiz = nusiz
+		vd.Missile1.Nusiz = nusiz
+	}
 }

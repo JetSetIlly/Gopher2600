@@ -43,6 +43,9 @@ type Values struct {
 	Playfield *LazyPlayfield
 	Player0   *LazyPlayer
 	Player1   *LazyPlayer
+	Missile0  *LazyMissile
+	Missile1  *LazyMissile
+	Ball      *LazyBall
 	TV        *LazyTV
 	Cart      *LazyCart
 
@@ -72,6 +75,9 @@ func NewValues() *Values {
 	val.Playfield = newLazyPlayfield(val)
 	val.Player0 = newLazyPlayer(val, 0)
 	val.Player1 = newLazyPlayer(val, 1)
+	val.Missile0 = newLazyMissile(val, 0)
+	val.Missile1 = newLazyMissile(val, 1)
+	val.Ball = newLazyBall(val)
 	val.TV = newLazyTV(val)
 	val.Cart = newLazyCart(val)
 
@@ -97,6 +103,9 @@ func (val *Values) Update() {
 	val.Playfield.update()
 	val.Player0.update()
 	val.Player1.update()
+	val.Missile0.update()
+	val.Missile1.update()
+	val.Ball.update()
 	val.TV.update()
 	val.Cart.update()
 

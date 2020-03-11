@@ -28,6 +28,22 @@ import (
 	"strings"
 )
 
+// BallSizes maps ball size values to descriptions of those sizes
+var BallSizes = []string{
+	"single size",
+	"double size",
+	"quad size",
+	"double-quad size",
+}
+
+// ballSizesBrief maps ball size values to brief descriptions of those sizes
+var ballSizesBrief = []string{
+	"",
+	"2x",
+	"4x",
+	"8x",
+}
+
 type ballSprite struct {
 	// see player sprite for detailed commentary on struct attributes
 
@@ -40,15 +56,15 @@ type ballSprite struct {
 	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	Delay       *future.Ticker
-	moreHMOVE   bool
-	hmove       uint8
+	MoreHMOVE   bool
+	Hmove       uint8
 	lastHmoveCt uint8
 
 	// the following attributes are used for information purposes only:
 
 	label       string
-	resetPixel  int
-	hmovedPixel int
+	ResetPixel  int
+	HmovedPixel int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
 	lastTickFromHmove bool
@@ -62,11 +78,15 @@ type ballSprite struct {
 	//  might expect
 	Color uint8
 
-	size               uint8
-	verticalDelay      bool
-	enabled            bool
-	enabledDelay       bool
-	enclockifier       enclockifier
+	// for convenience we store the raw CTRLPF register value and the
+	// normalised size bits
+	Ctrlpf uint8
+	Size   uint8
+
+	VerticalDelay      bool
+	Enabled            bool
+	EnabledDelay       bool
+	Enclockifier       enclockifier
 	startDrawingEvent  *future.Event
 	resetPositionEvent *future.Event
 }
@@ -88,9 +108,9 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 
 	bs.Delay = future.NewTicker(label)
 
-	bs.enclockifier.size = &bs.size
-	bs.enclockifier.pclk = &bs.pclk
-	bs.enclockifier.delay = bs.Delay
+	bs.Enclockifier.size = &bs.Size
+	bs.Enclockifier.pclk = &bs.pclk
+	bs.Enclockifier.delay = bs.Delay
 	bs.position.Reset()
 
 	return &bs, nil
@@ -104,7 +124,7 @@ func (bs ballSprite) Label() string {
 func (bs ballSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
-	normalisedHmove := int(bs.hmove) - 8
+	normalisedHmove := int(bs.Hmove) - 8
 	if normalisedHmove < 0 {
 		normalisedHmove = 16 + normalisedHmove
 	}
@@ -112,10 +132,10 @@ func (bs ballSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(bs.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.resetPixel))
+	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel))
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", bs.hmovedPixel))
-	if bs.moreHMOVE {
+	s.WriteString(fmt.Sprintf(" %03d", bs.HmovedPixel))
+	if bs.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
 		s.WriteString("]")
@@ -123,32 +143,31 @@ func (bs ballSprite) String() string {
 
 	notes := false
 
-	switch bs.size {
-	case 0x0:
-	case 0x1:
-		s.WriteString(" 2x")
-	case 0x2:
-		s.WriteString(" 4x")
-	case 0x3:
-		s.WriteString(" 8x")
+	if int(bs.Size) > len(ballSizesBrief) {
+		panic("illegal size value for ball")
 	}
+	sz := ballSizesBrief[bs.Size]
+	if len(sz) > 0 {
+		s.WriteString(" ")
+	}
+	s.Write([]byte(sz))
 
-	if bs.moreHMOVE {
+	if bs.MoreHMOVE {
 		s.WriteString(" hmoving")
-		s.WriteString(fmt.Sprintf(" [%04b]", bs.hmove))
+		s.WriteString(fmt.Sprintf(" [%04b]", bs.Hmove))
 		notes = true
 	}
 
-	if bs.enclockifier.enable {
+	if bs.Enclockifier.Active {
 		// add a comma if we've already noted something else
 		if notes {
 			s.WriteString(",")
 		}
-		s.WriteString(fmt.Sprintf(" drw %s", bs.enclockifier.String()))
+		s.WriteString(fmt.Sprintf(" drw %s", bs.Enclockifier.String()))
 		notes = true
 	}
 
-	if !bs.enabled {
+	if !bs.Enabled {
 		if notes {
 			s.WriteString(",")
 		}
@@ -156,7 +175,7 @@ func (bs ballSprite) String() string {
 		notes = true
 	}
 
-	if bs.verticalDelay {
+	if bs.VerticalDelay {
 		if notes {
 			s.WriteString(",")
 		}
@@ -166,40 +185,40 @@ func (bs ballSprite) String() string {
 }
 
 func (bs *ballSprite) rsync(adjustment int) {
-	bs.resetPixel -= adjustment
-	bs.hmovedPixel -= adjustment
-	if bs.resetPixel < 0 {
-		bs.resetPixel += television.HorizClksVisible
+	bs.ResetPixel -= adjustment
+	bs.HmovedPixel -= adjustment
+	if bs.ResetPixel < 0 {
+		bs.ResetPixel += television.HorizClksVisible
 	}
-	if bs.hmovedPixel < 0 {
-		bs.hmovedPixel += television.HorizClksVisible
+	if bs.HmovedPixel < 0 {
+		bs.HmovedPixel += television.HorizClksVisible
 	}
 }
 
 func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
-		bs.moreHMOVE = bs.moreHMOVE && compareHMOVE(hmoveCt, bs.hmove)
+		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(hmoveCt, bs.Hmove)
 	}
 
 	bs.lastHmoveCt = hmoveCt
 
 	// early return if nothing to do
-	if !(isHmove && bs.moreHMOVE) && !visible {
+	if !(isHmove && bs.MoreHMOVE) && !visible {
 		return
 	}
 
 	// note whether this text is additional hmove tick. see pixel() function
 	// in missile sprite for details
-	bs.lastTickFromHmove = isHmove && bs.moreHMOVE
+	bs.lastTickFromHmove = isHmove && bs.MoreHMOVE
 
 	// update hmoved pixel value
 	if !visible {
-		bs.hmovedPixel--
+		bs.HmovedPixel--
 
 		// adjust for screen boundary
-		if bs.hmovedPixel < 0 {
-			bs.hmovedPixel += television.HorizClksVisible
+		if bs.HmovedPixel < 0 {
+			bs.HmovedPixel += television.HorizClksVisible
 		}
 	}
 
@@ -222,22 +241,22 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 }
 
 func (bs *ballSprite) _futureStartDrawingEvent() {
-	bs.enclockifier.start()
+	bs.Enclockifier.start()
 	bs.startDrawingEvent = nil
 }
 
 func (bs *ballSprite) prepareForHMOVE() {
-	bs.moreHMOVE = true
+	bs.MoreHMOVE = true
 
 	if *bs.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
-		bs.hmovedPixel += 8
+		bs.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if bs.hmovedPixel > television.HorizClksVisible {
-			bs.hmovedPixel -= television.HorizClksVisible
+		if bs.HmovedPixel > television.HorizClksVisible {
+			bs.HmovedPixel -= television.HorizClksVisible
 		}
 	}
 }
@@ -255,7 +274,7 @@ func (bs *ballSprite) resetPosition() {
 
 	// drawing of ball sprite must end immediately upon a reset strobe. it will
 	// start drawing again after the reset delay period
-	bs.enclockifier.drop()
+	bs.Enclockifier.drop()
 	if bs.startDrawingEvent != nil {
 		bs.startDrawingEvent.Drop()
 		bs.startDrawingEvent = nil
@@ -279,7 +298,7 @@ func (bs *ballSprite) _futureResetPosition() {
 	// will still be correct (because of how the delayed END signal in the
 	// enclockifier works) but debugging information will be confusing if
 	// we did this.
-	bs.enclockifier.drop()
+	bs.Enclockifier.drop()
 	if bs.startDrawingEvent != nil {
 		bs.startDrawingEvent.Drop()
 		bs.startDrawingEvent = nil
@@ -287,24 +306,24 @@ func (bs *ballSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.resetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
+	bs.ResetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
 
-	if bs.resetPixel >= 0 {
+	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
 		// position
-		bs.resetPixel++
+		bs.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if bs.resetPixel > television.HorizClksVisible {
-			bs.resetPixel -= television.HorizClksVisible
+		if bs.ResetPixel > television.HorizClksVisible {
+			bs.ResetPixel -= television.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at
 		// the moment of reset
-		bs.hmovedPixel = bs.resetPixel
+		bs.HmovedPixel = bs.ResetPixel
 	} else {
 		// if reset occurs off-screen then force reset pixel to be zero
-		bs.resetPixel = 0
+		bs.ResetPixel = 0
 
 		// a reset of this kind happens when the reset register has been
 		// strobed but not completed before the HBLANK period, and a HMOVE
@@ -319,7 +338,7 @@ func (bs *ballSprite) _futureResetPosition() {
 		//
 		// also a very rough test ROM tries a couple of things to the same
 		// effect: test/my_test_roms/ball/late_reset.bin
-		bs.hmovedPixel = 7
+		bs.HmovedPixel = 7
 	}
 
 	// reset both sprite position and clock
@@ -333,14 +352,14 @@ func (bs *ballSprite) _futureResetPosition() {
 	// signal for graphics output! This makes the ball incredibly useful
 	// since you can trigger it as many times as you like across the same
 	// scanline and it will start drawing immediately each time :)
-	bs.enclockifier.start()
+	bs.Enclockifier.start()
 
 	// dump reference to reset event
 	bs.resetPositionEvent = nil
 }
 
 func (bs *ballSprite) pixel() (bool, uint8) {
-	if !bs.enabled || (bs.verticalDelay && !bs.enabledDelay) {
+	if !bs.Enabled || (bs.VerticalDelay && !bs.EnabledDelay) {
 		return false, bs.Color
 	}
 
@@ -353,7 +372,7 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// at the base of the mountain (which is correct) but without the
 	// LatePhi1() condition there is also a second break later on the path
 	// (which I don't believe should be there)
-	earlyEnd := !bs.pclk.LatePhi1() && bs.lastTickFromHmove && bs.enclockifier.aboutToEnd()
+	earlyEnd := !bs.pclk.LatePhi1() && bs.lastTickFromHmove && bs.Enclockifier.aboutToEnd()
 
 	// Well blow me down! moving the cosmic ark star problem solution from the
 	// missile implementation and I can now see that I've already solved the
@@ -362,13 +381,13 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 	// Commenting and Keeping the original code for amusement.
 	//
 	// // the ball sprite pixel is drawn under specific conditions
-	// px := bs.enclockifier.enable ||
+	// px := bs.enclockifier.Active ||
 	// 	(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
-	px := !earlyEnd && (bs.enclockifier.enable || earlyStart)
+	px := !earlyEnd && (bs.Enclockifier.Active || earlyStart)
 
-	if bs.verticalDelay {
-		return bs.enabledDelay && px, bs.Color
+	if bs.VerticalDelay {
+		return bs.EnabledDelay && px, bs.Color
 	}
 
 	return px, bs.Color
@@ -377,19 +396,20 @@ func (bs *ballSprite) pixel() (bool, uint8) {
 // the delayed enable bit is copied from the first when the gfx register for
 // player 1 is updated with playerSprite.setGfxData()
 func (bs *ballSprite) setEnableDelay() {
-	bs.enabledDelay = bs.enabled
+	bs.EnabledDelay = bs.Enabled
 }
 
 func (bs *ballSprite) setEnable(enable bool) {
-	bs.enabled = enable
+	bs.Enabled = enable
 }
 
 func (bs *ballSprite) setVerticalDelay(vdelay bool) {
-	bs.verticalDelay = vdelay
+	bs.VerticalDelay = vdelay
 }
 
-func (bs *ballSprite) setSize(value uint8) {
-	bs.size = value
+func (bs *ballSprite) SetCTRLPF(value uint8) {
+	bs.Ctrlpf = value
+	bs.Size = (value & 0x30) >> 4
 }
 
 func (bs *ballSprite) setColor(value uint8) {
@@ -397,9 +417,9 @@ func (bs *ballSprite) setColor(value uint8) {
 }
 
 func (bs *ballSprite) setHmoveValue(v interface{}) {
-	bs.hmove = (v.(uint8) ^ 0x80) >> 4
+	bs.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
 func (bs *ballSprite) clearHmoveValue() {
-	bs.hmove = 0x08
+	bs.Hmove = 0x08
 }
