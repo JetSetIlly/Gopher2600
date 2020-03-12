@@ -22,9 +22,10 @@ package television
 import (
 	"fmt"
 	"gopher2600/errors"
-	"gopher2600/performance/limiter"
 	"gopher2600/television/colors"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 // the number of times we must see new top/bottom scanline in the
@@ -131,14 +132,18 @@ type television struct {
 	key    bool
 	keyCol ColorSignal
 
-	// limit number of frames per second
-	lmtr *limiter.FpsLimiter
-
 	// whether to use the FPS value given in the TV specification
 	fpsFromSpec bool
 
 	// whether to wait for fps limited each frame
 	fpsCap bool
+
+	// the requested number of frames per second
+	reqFramesPerSecond float32
+	actFramesPerSecond atomic.Value // float32
+	limitReqRate       chan time.Duration
+	limitTick          chan bool
+	limitFrame         chan bool
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -166,9 +171,48 @@ func NewTelevision(spec string) (Television, error) {
 		return nil, err
 	}
 
-	// create new frame limiter. we change the rate in the resize function
-	// (rate may change due to specification change)
-	tv.lmtr = limiter.NewFPSLimiter(tv.spec.FramesPerSecond)
+	// setup limiter
+	tv.actFramesPerSecond.Store(float32(0.0))
+	tv.limitReqRate = make(chan time.Duration)
+	tv.limitTick = make(chan bool)
+	tv.limitFrame = make(chan bool)
+
+	// run limiter concurrently
+	go func() {
+		tck := time.NewTicker(100000)
+		for {
+			select {
+			case d := <-tv.limitReqRate:
+				tck.Stop()
+				tck = time.NewTicker(d)
+			case <-tck.C:
+				select {
+				case tv.limitTick <- true:
+				default:
+				}
+			}
+		}
+	}()
+
+	// fun fps calculator concurrently
+	go func() {
+		t := time.Now()
+		et := t
+
+		ct := 0
+		for {
+			<-tv.limitFrame
+			ct++
+			if ct == 4 {
+				et = time.Now()
+				tv.actFramesPerSecond.Store(float32(ct) / float32(et.Sub(t).Seconds()))
+				ct = 0
+				t = et
+			}
+		}
+	}()
+
+	tv.ReqFPS(-1)
 
 	return tv, nil
 }
@@ -424,13 +468,13 @@ func (tv *television) newFrame() error {
 
 		// change fps
 		if tv.fpsFromSpec {
-			tv.lmtr.SetFPS(tv.spec.FramesPerSecond)
+			tv.ReqFPS(tv.spec.FramesPerSecond)
 		}
 	}
 
-	// wait for frame limiter
+	// wait for FPS tick
 	if tv.fpsCap {
-		tv.lmtr.Wait()
+		<-tv.limitTick
 	}
 
 	// new frame
@@ -449,6 +493,9 @@ func (tv *television) newFrame() error {
 			return err
 		}
 	}
+
+	// signal frame rate calculator
+	tv.limitFrame <- true
 
 	return nil
 }
@@ -533,23 +580,29 @@ func (tv *television) SetFPSCap(set bool) {
 	tv.fpsCap = set
 }
 
-// SetFPS implements the Television interface
+// SetFPS implements the Television interface. A negative value resets the FPS
+// to the specification's ideal value.
 func (tv *television) ReqFPS(fps float32) {
 	if fps < 0 {
-		tv.lmtr.SetFPS(tv.spec.FramesPerSecond)
 		tv.fpsFromSpec = true
+		tv.reqFramesPerSecond = tv.spec.FramesPerSecond
 	} else {
-		tv.lmtr.SetFPS(fps)
 		tv.fpsFromSpec = false
+		tv.reqFramesPerSecond = fps
 	}
+	d, err := time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/tv.reqFramesPerSecond))
+	if err != nil {
+		panic(err)
+	}
+	tv.limitReqRate <- d
 }
 
 // GetActualFPS implements the Television interface
 func (tv *television) GetActualFPS() float32 {
-	return tv.lmtr.GetActualFPS()
+	return tv.actFramesPerSecond.Load().(float32)
 }
 
 // GetReqFPS implements the Television interface
 func (tv *television) GetReqFPS() float32 {
-	return tv.lmtr.GetReqFPS()
+	return tv.reqFramesPerSecond
 }

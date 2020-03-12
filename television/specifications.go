@@ -61,9 +61,6 @@ type Specification struct {
 	ScanlineTop    int
 	ScanlineBottom int
 
-	// the number of frames per second required by the specification
-	FramesPerSecond float32
-
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
 	// aspect bias
@@ -71,6 +68,9 @@ type Specification struct {
 	// AaspectBias transforms the scaling factor for the X axis.
 	// values taken from Stella emualtor. useful for A/B testing
 	AspectBias float32
+
+	// the number of frames per second required by the specification
+	FramesPerSecond float32
 }
 
 // getColor translates a signals to the color type

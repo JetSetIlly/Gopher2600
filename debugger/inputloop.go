@@ -242,7 +242,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if !videoCycle {
 				switch dbg.quantum {
 				case QuantumCPU:
-					err = dbg.vcs.Step(dbg.videoCycle)
+					dbg.vcs.Step(dbg.videoCycle)
 				case QuantumVideo:
 					err = dbg.vcs.Step(videoCycleWithInput)
 				default:
