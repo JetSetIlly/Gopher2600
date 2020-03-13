@@ -70,7 +70,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// keep lines that are not empty and not a comment
 	for i := range l {
 		l[i] = strings.TrimSpace(l[i])
-		if len(l[i]) > 0 && isComment(l[i]) {
+		if len(l[i]) > 0 && !isComment(l[i]) {
 			scr.lines = append(scr.lines, l[i])
 		}
 	}
