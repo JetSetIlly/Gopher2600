@@ -108,7 +108,7 @@ func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
 	b.Y += seq.size.Y
 
 	// if mouse is clicked in the range of the playfield bit
-	if imgui.IsMouseClicked(0) {
+	if imgui.IsWindowHovered() && imgui.IsMouseClicked(0) {
 		pos := imgui.MousePos()
 		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
 	}
