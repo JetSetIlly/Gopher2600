@@ -27,28 +27,20 @@ import (
 	"io"
 )
 
-// videoCycle() to be used with vcs.Step()
-//
-// compare the use of this function with videoCycleWithInput() function
-// defined inside the inputLoop() function
-func (dbg *Debugger) videoCycle() error {
-	return dbg.reflect.Check()
-}
-
 // inputLoop has two modes, defined by the videoCycle argument. when videoCycle
 // is true then user will be prompted every video cycle; when false the user
 // is prompted every cpu cycle.
 func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
-	// videoCycleWithInput() to be used with vcs.Step() instead of videoCycle()
-	// when in video-step mode
-	//
-	// (we're defining the function here because we want the inputter instance
-	// to be enclosed)
-	//
-	// compare the use of this function with Debugger.videoCycle() function
-	// defined elsewhere
-	videoCycleWithInput := func() error {
-		dbg.videoCycle()
+	// vcsStep is to be called every video cycle when the quantum mode
+	// is set to CPU
+	vcsStep := func() error {
+		return dbg.reflect.Check()
+	}
+
+	// vcsStepVideo is to be called every video cycle when the quantum mode
+	// is set to Video
+	vcsStepVideo := func() error {
+		vcsStep()
 		if dbg.commandOnStep != "" {
 			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
 			if err != nil {
@@ -239,46 +231,45 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 		if dbg.continueEmulation {
 			// if this non-video-cycle input loop then
-			if !videoCycle {
-				switch dbg.quantum {
-				case QuantumCPU:
-					dbg.vcs.Step(dbg.videoCycle)
-				case QuantumVideo:
-					err = dbg.vcs.Step(videoCycleWithInput)
-				default:
-					err = errors.New(errors.DebuggerError, "unknown quantum mode")
-				}
-
-				if err != nil {
-					// exit input loop only if error is not an AtariError...
-					if !errors.IsAny(err) {
-						return err
-					}
-
-					// ...set lastStepError instead and allow emulation to halt
-					dbg.lastStepError = true
-					dbg.printLine(terminal.StyleError, "%s", err)
-
-				} else {
-					// check validity of instruction result
-					if dbg.vcs.CPU.LastResult.Final {
-						err := dbg.vcs.CPU.LastResult.IsValid()
-						if err != nil {
-							dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
-							dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
-							return errors.New(errors.DebuggerError, err)
-						}
-					}
-				}
-
-				if dbg.commandOnStep != "" {
-					_, err := dbg.parseInput(dbg.commandOnStep, false, true)
-					if err != nil {
-						dbg.printLine(terminal.StyleError, "%s", err)
-					}
-				}
-			} else {
+			if videoCycle {
 				return nil
+			}
+
+			switch dbg.quantum {
+			case QuantumCPU:
+				err = dbg.vcs.Step(vcsStep)
+			case QuantumVideo:
+				err = dbg.vcs.Step(vcsStepVideo)
+			default:
+				err = errors.New(errors.DebuggerError, "unknown quantum mode")
+			}
+
+			if err != nil {
+				// exit input loop only if error is not an AtariError...
+				if !errors.IsAny(err) {
+					return err
+				}
+
+				// ...set lastStepError instead and allow emulation to halt
+				dbg.lastStepError = true
+				dbg.printLine(terminal.StyleError, "%s", err)
+			} else {
+				// check validity of instruction result
+				if dbg.vcs.CPU.LastResult.Final {
+					err := dbg.vcs.CPU.LastResult.IsValid()
+					if err != nil {
+						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
+						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
+						return errors.New(errors.DebuggerError, err)
+					}
+				}
+			}
+
+			if dbg.commandOnStep != "" {
+				_, err := dbg.parseInput(dbg.commandOnStep, false, true)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				}
 			}
 		}
 	}

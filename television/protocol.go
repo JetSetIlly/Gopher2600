@@ -81,14 +81,14 @@ type Television interface {
 	//
 	// Note that this is only a request, the emulation may not be able to
 	// achieve that rate.
-	ReqFPS(fps float32)
+	SetFPS(fps float32)
+
+	// The requested number of frames per second. Compare with GetActualFPS()
+	// to check for accuracy
+	GetReqFPS() float32
 
 	// The current number of frames per second
 	GetActualFPS() float32
-
-	// The requested number of frames per second. Compare with GetActualFPS()
-	// to check for accuracy.
-	GetReqFPS() float32
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

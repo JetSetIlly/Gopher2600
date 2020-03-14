@@ -24,7 +24,6 @@ import (
 	"gopher2600/errors"
 	"gopher2600/television/colors"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -140,10 +139,17 @@ type television struct {
 
 	// the requested number of frames per second
 	reqFramesPerSecond float32
-	actFramesPerSecond atomic.Value // float32
+	actFramesPerSecond float32
 	limitReqRate       chan time.Duration
 	limitTick          chan bool
-	limitFrame         chan bool
+	fpsCalcTime        time.Time
+
+	// update frame rate only once every N frames
+	fpsCalcFreqCt int
+	fpsCalcFreq   int
+
+	// the acutal number of scanlines in the last frame
+	actualScanlines int
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -171,48 +177,55 @@ func NewTelevision(spec string) (Television, error) {
 		return nil, err
 	}
 
-	// setup limiter
-	tv.actFramesPerSecond.Store(float32(0.0))
+	// make unbuffered channels. limitTick must be unbuffered because a
+	// buffered channel seems to upset the time.Ticker self-regulation
 	tv.limitReqRate = make(chan time.Duration)
 	tv.limitTick = make(chan bool)
-	tv.limitFrame = make(chan bool)
+
+	// set up fps calc
+	tv.fpsCalcTime = time.Now()
+	tv.fpsCalcFreq = 10
 
 	// run limiter concurrently
 	go func() {
-		tck := time.NewTicker(100000)
+		// new ticker with an arbitrary value. it'll get changed soon enough
+		tck := time.NewTicker(1)
+
 		for {
 			select {
-			case d := <-tv.limitReqRate:
-				tck.Stop()
-				tck = time.NewTicker(d)
 			case <-tck.C:
 				select {
 				case tv.limitTick <- true:
-				default:
+
+				// listen for limtReqRate signals too while signalling the
+				// limitTick channel.
+				//
+				// if we don't do this here, it's possible for the limitTick to
+				// deadlock, even with very large buffers on limitReqRate. an
+				// exceedingly large buffer might work but it's too risky
+				//
+				// we could add a small buffer to the limitTick channel but
+				// any kind of buffering seems to upset the accuracy of
+				// time.Ticker's self regulation.
+				case d := <-tv.limitReqRate:
+					tck.Stop()
+					tck = time.NewTicker(d)
 				}
+
+			// listen for limtReqRate signals too while signalling the
+			// limitTick channel. we're doing this here in addition to above
+			// because this is also a source for deadlocking and just generally
+			// slow response times if the Ticker duration is very long.
+			case d := <-tv.limitReqRate:
+				tck.Stop()
+				tck = time.NewTicker(d)
+
 			}
 		}
 	}()
 
-	// fun fps calculator concurrently
-	go func() {
-		t := time.Now()
-		et := t
-
-		ct := 0
-		for {
-			<-tv.limitFrame
-			ct++
-			if ct == 4 {
-				et = time.Now()
-				tv.actFramesPerSecond.Store(float32(ct) / float32(et.Sub(t).Seconds()))
-				ct = 0
-				t = et
-			}
-		}
-	}()
-
-	tv.ReqFPS(-1)
+	// set FPS value to tv specification default
+	tv.SetFPS(-1)
 
 	return tv, nil
 }
@@ -291,6 +304,9 @@ func (tv *television) Signal(sig SignalAttributes) error {
 				}
 			}
 		} else {
+			// cap scanline to maximum possible
+			tv.scanline = tv.spec.ScanlinesTotal
+
 			// PAL detection condition:
 			//   1. frame must be "unstable"
 			//   2. not be the first frame (because ROMs can still be in the
@@ -468,13 +484,8 @@ func (tv *television) newFrame() error {
 
 		// change fps
 		if tv.fpsFromSpec {
-			tv.ReqFPS(tv.spec.FramesPerSecond)
+			tv.SetFPS(tv.spec.FramesPerSecond)
 		}
-	}
-
-	// wait for FPS tick
-	if tv.fpsCap {
-		<-tv.limitTick
 	}
 
 	// new frame
@@ -494,8 +505,13 @@ func (tv *television) newFrame() error {
 		}
 	}
 
-	// signal frame rate calculator
-	tv.limitFrame <- true
+	// wait for FPS tick
+	if tv.fpsCap {
+		<-tv.limitTick
+	}
+
+	// always running frame rate calculator even fpsCap is false
+	tv.fpsCalc()
 
 	return nil
 }
@@ -575,14 +591,18 @@ func (tv television) End() error {
 	return err
 }
 
-// SetFPSCap implements the Television interface
-func (tv *television) SetFPSCap(set bool) {
-	tv.fpsCap = set
+// SetFPSCap implements the Television interface. Reasons for turning the cap
+// off include performance measurement. The debugger also turns the cap off and
+// replaces it with its own. The FPS limiter in this television implementation
+// works at the frame level which is not fine grained enough for effective
+// limiting of rates less than 1fps.
+func (tv *television) SetFPSCap(enable bool) {
+	tv.fpsCap = enable
 }
 
 // SetFPS implements the Television interface. A negative value resets the FPS
 // to the specification's ideal value.
-func (tv *television) ReqFPS(fps float32) {
+func (tv *television) SetFPS(fps float32) {
 	if fps < 0 {
 		tv.fpsFromSpec = true
 		tv.reqFramesPerSecond = tv.spec.FramesPerSecond
@@ -590,19 +610,49 @@ func (tv *television) ReqFPS(fps float32) {
 		tv.fpsFromSpec = false
 		tv.reqFramesPerSecond = fps
 	}
-	d, err := time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/tv.reqFramesPerSecond))
-	if err != nil {
-		panic(err)
-	}
-	tv.limitReqRate <- d
-}
 
-// GetActualFPS implements the Television interface
-func (tv *television) GetActualFPS() float32 {
-	return tv.actFramesPerSecond.Load().(float32)
+	rate := float32(1.0) / tv.reqFramesPerSecond
+
+	dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+	tv.limitReqRate <- dur
+
+	// if we're trying to reducing the frame rate force the value for actual
+	// frames per second. do it the other way would be silly because it might
+	// be possible to return a value that is simply impossible for the host
+	// computer to achieve - this would confuse the user.
+	if fps < tv.actFramesPerSecond {
+		tv.actFramesPerSecond = tv.reqFramesPerSecond
+		tv.fpsCalcFreq = int(tv.reqFramesPerSecond)
+		tv.fpsCalcFreqCt = 0
+	}
 }
 
 // GetReqFPS implements the Television interface
 func (tv *television) GetReqFPS() float32 {
 	return tv.reqFramesPerSecond
+}
+
+// GetActualFPS implements the Television interface. Note that FPS measurement
+// still works even when frame capping is disabled.
+func (tv *television) GetActualFPS() float32 {
+	return tv.actFramesPerSecond
+}
+
+// called every frame to calculate the actual frame rate being achieved
+func (tv *television) fpsCalc() {
+	t := time.Now()
+
+	tv.fpsCalcFreqCt++
+	if tv.fpsCalcFreqCt >= tv.fpsCalcFreq {
+		tv.actFramesPerSecond = float32(tv.fpsCalcFreqCt) / float32(t.Sub(tv.fpsCalcTime).Seconds())
+
+		// not start time for next calculation
+		tv.fpsCalcTime = t
+
+		// change the number of frames required before recalculation. this has
+		// the effect of making the actFramsPerSecond update frequency fairly
+		// consistent at around one second
+		tv.fpsCalcFreq = int(tv.actFramesPerSecond)
+		tv.fpsCalcFreqCt = 0
+	}
 }

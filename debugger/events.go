@@ -103,7 +103,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 	var err error
 
-	if inputter.TermReadCheck() {
+	if inputter != nil && inputter.TermReadCheck() {
 		return true, nil
 	}
 

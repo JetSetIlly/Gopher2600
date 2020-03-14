@@ -35,8 +35,10 @@ type LazyTV struct {
 
 	Spec      television.Specification
 	TVstr     string
-	ReqFPS    float32
 	AcutalFPS float32
+
+	// taken from debugger rather than tv
+	ReqFPS float32
 }
 
 func newLazyTV(val *Values) *LazyTV {
@@ -47,7 +49,7 @@ func (lz *LazyTV) update() {
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicSpec.Store(*lz.val.VCS.TV.GetSpec())
 		lz.atomicTVStr.Store(lz.val.VCS.TV.String())
-		lz.atomicReqFPS.Store(lz.val.VCS.TV.GetReqFPS())
+		lz.atomicReqFPS.Store(lz.val.Dbg.GetReqFPS())
 		lz.atomicActualFPS.Store(lz.val.VCS.TV.GetActualFPS())
 	})
 	lz.Spec, _ = lz.atomicSpec.Load().(television.Specification)

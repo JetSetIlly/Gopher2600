@@ -116,14 +116,14 @@ func (win *winControl) draw() {
 	// fps slider
 	fps := win.img.lazy.TV.ReqFPS
 	imgui.PushItemWidth(w)
-	if imgui.SliderFloatV(fpsLabel, &fps, 1, 100, "%.1f", 1.0) {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.TV.ReqFPS(fps) })
+	if imgui.SliderFloatV(fpsLabel, &fps, 0.1, 100, "%.1f", 1.0) {
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.SetFPS(fps) })
 	}
 	imgui.PopItemWidth()
 
 	// reset to specifcation rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.lazy.VCS.TV.ReqFPS(-1)
+		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.SetFPS(-1) })
 	}
 
 	imgui.End()

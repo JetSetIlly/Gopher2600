@@ -44,6 +44,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 )
 
 const defaultInitScript = "debuggerInit"
@@ -152,6 +153,9 @@ func main() {
 			if gui != nil {
 				gui.Service()
 			}
+
+			// sleep to help avoid 100% CPU usage
+			<-time.After(time.Millisecond * 25)
 		}
 	}
 
@@ -530,6 +534,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		if err != nil {
 			return err
 		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
