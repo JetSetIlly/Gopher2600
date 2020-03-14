@@ -28,6 +28,7 @@ import (
 type LazyPlayfield struct {
 	val *Values
 
+	atomicCtrlpf          atomic.Value // uint8
 	atomicForegroundColor atomic.Value // uint8
 	atomicBackgroundColor atomic.Value // uint8
 	atomicReflected       atomic.Value // bool
@@ -40,6 +41,7 @@ type LazyPlayfield struct {
 	atomicIdx             atomic.Value // int
 	atomicData            atomic.Value // []uint8
 
+	Ctrlpf          uint8
 	ForegroundColor uint8
 	BackgroundColor uint8
 	Reflected       bool
@@ -59,6 +61,7 @@ func newLazyPlayfield(val *Values) *LazyPlayfield {
 
 func (lz *LazyPlayfield) update() {
 	lz.val.Dbg.PushRawEvent(func() {
+		lz.atomicCtrlpf.Store(lz.val.VCS.TIA.Video.Playfield.Ctrlpf)
 		lz.atomicForegroundColor.Store(lz.val.VCS.TIA.Video.Playfield.ForegroundColor)
 		lz.atomicBackgroundColor.Store(lz.val.VCS.TIA.Video.Playfield.BackgroundColor)
 		lz.atomicReflected.Store(lz.val.VCS.TIA.Video.Playfield.Reflected)
@@ -71,6 +74,7 @@ func (lz *LazyPlayfield) update() {
 		lz.atomicIdx.Store(lz.val.VCS.TIA.Video.Playfield.Idx)
 		lz.atomicData.Store(lz.val.VCS.TIA.Video.Playfield.Data)
 	})
+	lz.Ctrlpf, _ = lz.atomicCtrlpf.Load().(uint8)
 	lz.ForegroundColor, _ = lz.atomicForegroundColor.Load().(uint8)
 	lz.BackgroundColor, _ = lz.atomicBackgroundColor.Load().(uint8)
 	lz.Reflected, _ = lz.atomicReflected.Load().(bool)

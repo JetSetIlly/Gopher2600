@@ -94,7 +94,7 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("CTRLPF")
 	imgui.SameLine()
 	imgui.PushItemWidth(win.byteDim.X)
-	ctrlpf := fmt.Sprintf("%02x", pf.Ctrlpf)
+	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", !win.img.paused, 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.lazy.Dbg.PushRawEvent(func() {
