@@ -177,7 +177,7 @@ func launch(sync *mainSync) {
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "NEWPLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
 
 	p, err := md.Parse()
 	switch p {

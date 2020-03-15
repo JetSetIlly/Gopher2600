@@ -62,28 +62,43 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 
 	// run for specified period of time
 	runner := func() error {
-		// setup trigger that expires when duration has elapsed
-		timesUp := make(chan bool)
+		// setup trigger that expires when duration has elapsed. signals true
+		// when duration has expired. signals false to indicate that
+		// performance measurement should start
+		timerChan := make(chan bool)
 
 		// force a two second leadtime to allow framerate to settle down and
 		// then restart timer for the specified duration
 		go func() {
 			time.AfterFunc(2*time.Second, func() {
+				// signal parent function that 2 second leadtime has elapsed
+				timerChan <- false
+
 				// race condition when GetState() is called
-				startFrame, _ = tv.GetState(television.ReqFramenum)
 				time.AfterFunc(duration, func() {
-					timesUp <- true
+					timerChan <- true
 				})
 			})
 		}()
 
 		// run until specified time elapses
 		err = vcs.Run(func() (bool, error) {
-			select {
-			case v := <-timesUp:
-				return !v, nil
-			default:
-				return true, nil
+			for {
+				select {
+				case v := <-timerChan:
+					// timerchan has returned true, which means measurement
+					// period has finished, return false to cause vcs.Run() t
+					// return
+					if v {
+						return false, nil
+					}
+
+					// timerChan has returned false so start measurement of
+					// performance by noting the current television frame
+					startFrame, _ = tv.GetState(television.ReqFramenum)
+				default:
+					return true, nil
+				}
 			}
 		})
 		if err != nil {
@@ -92,12 +107,13 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 		return nil
 	}
 
+	// launch runner through the CPU profiler or just directly, depending on
+	// supplied arguments
 	if profile {
 		err = ProfileCPU("cpu.profile", runner)
 	} else {
 		err = runner()
 	}
-
 	if err != nil {
 		return errors.New(errors.PerformanceError, err)
 	}
@@ -108,10 +124,12 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 		return errors.New(errors.PerformanceError, err)
 	}
 
+	// calculate performance
 	numFrames := endFrame - startFrame
 	fps, accuracy := CalcFPS(tv, numFrames, duration.Seconds())
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
 
+	// create memory profile depending on supplied arguments
 	if profile {
 		err = ProfileMem("mem.profile")
 	}
