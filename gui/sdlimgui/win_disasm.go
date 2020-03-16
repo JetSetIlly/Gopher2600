@@ -99,7 +99,7 @@ func (win *winDisasm) draw() {
 			pcAddr = win.img.lazy.CPU.LastResult.Address
 		}
 
-		currBank := win.img.lazy.Cart.GetBank(pcAddr)
+		currBank := win.img.lazy.Cart.CurrBank
 
 		if win.img.lazy.Cart.NumBanks == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar

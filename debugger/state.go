@@ -40,3 +40,8 @@ func (dbg *Debugger) HasBreak(e *disassembly.Entry) BreakGroup {
 func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
 	dbg.breakpoints.togglePCBreak(e)
 }
+
+// IsRunning returns true if emulation is being run
+func (dbg *Debugger) IsRunning() bool {
+	return dbg.running
+}

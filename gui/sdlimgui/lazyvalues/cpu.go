@@ -86,6 +86,15 @@ func (lz *LazyCPU) RegLabel(reg registers.Generic) string {
 		return ""
 	}
 
+	// label of register will neved change to if value is in atomicRegLabels
+	// map we don't need to read it again
+
+	lz.atomicRegLabelsMux.RLock()
+	defer lz.atomicRegLabelsMux.RUnlock()
+	if v, ok := lz.atomicRegLabels[reg]; ok {
+		return v.Load().(string)
+	}
+
 	lz.val.Dbg.PushRawEvent(func() {
 		var a atomic.Value
 		a.Store(reg.Label())
@@ -94,13 +103,33 @@ func (lz *LazyCPU) RegLabel(reg registers.Generic) string {
 		lz.atomicRegLabelsMux.Unlock()
 	})
 
-	lz.atomicRegLabelsMux.RLock()
-	defer lz.atomicRegLabelsMux.RUnlock()
-	if v, ok := lz.atomicRegLabels[reg]; ok {
-		return v.Load().(string)
+	return ""
+}
+
+// RegBitwidth returns the bitwidth of the queried register
+func (lz *LazyCPU) RegBitwidth(reg registers.Generic) int {
+	if lz.val.Dbg == nil {
+		return 0
 	}
 
-	return ""
+	// label of register will neved change to if value is in atomicRegBitwidth
+	// map we don't need to read it again
+
+	lz.atomicRegBitwidthMux.RLock()
+	defer lz.atomicRegBitwidthMux.RUnlock()
+	if v, ok := lz.atomicRegBitwidth[reg]; ok {
+		return v.Load().(int)
+	}
+
+	lz.val.Dbg.PushRawEvent(func() {
+		var a atomic.Value
+		a.Store(reg.BitWidth())
+		lz.atomicRegBitwidthMux.Lock()
+		lz.atomicRegBitwidth[reg] = a
+		lz.atomicRegBitwidthMux.Unlock()
+	})
+
+	return 0
 }
 
 // RegValue returns the value for the queried register in hexadecimal
@@ -110,6 +139,9 @@ func (lz *LazyCPU) RegValue(reg registers.Generic) string {
 	if lz.val.Dbg == nil {
 		return ""
 	}
+
+	// value of register can change so we push a read event every instance.
+	// this is unlike the RegLabel() and RegBitwidth() functions
 
 	lz.val.Dbg.PushRawEvent(func() {
 		var a atomic.Value
@@ -126,27 +158,4 @@ func (lz *LazyCPU) RegValue(reg registers.Generic) string {
 	}
 
 	return ""
-}
-
-// RegBitwidth returns the bitwidth of the queried register
-func (lz *LazyCPU) RegBitwidth(reg registers.Generic) int {
-	if lz.val.Dbg == nil {
-		return 0
-	}
-
-	lz.val.Dbg.PushRawEvent(func() {
-		var a atomic.Value
-		a.Store(reg.BitWidth())
-		lz.atomicRegBitwidthMux.Lock()
-		lz.atomicRegBitwidth[reg] = a
-		lz.atomicRegBitwidthMux.Unlock()
-	})
-
-	lz.atomicRegBitwidthMux.RLock()
-	defer lz.atomicRegBitwidthMux.RUnlock()
-	if v, ok := lz.atomicRegBitwidth[reg]; ok {
-		return v.Load().(int)
-	}
-
-	return 0
 }

@@ -30,17 +30,16 @@ type LazyCart struct {
 
 	atomicString   atomic.Value // string
 	atomicNumBanks atomic.Value // int
+	atomicCurrBank atomic.Value // int
 	atomicRAMinfo  atomic.Value // []cartridge.RAMinfo
 
 	String   string
 	NumBanks int
+	CurrBank int
 	RAMinfo  []cartridge.RAMinfo
 
 	// ramInfoRef is used to detect if a new allocation is required
 	ramInfoRef *[]cartridge.RAMinfo
-
-	// getBank from cartridge requires an address. used GetBank() function
-	atomicGetBank atomic.Value // int
 }
 
 func newLazyCart(val *Values) *LazyCart {
@@ -48,15 +47,20 @@ func newLazyCart(val *Values) *LazyCart {
 }
 
 func (lz *LazyCart) update() {
+	// make a copy of CPU.PCaddr because we will be reading it in a different
+	// goroutine (in the PushRawEvent() below) to the one in which it is
+	// written (it is written to in the current thread in the LazyCPU.update()
+	// function)
+	PCaddr := lz.val.CPU.PCaddr
+
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicString.Store(lz.val.VCS.Mem.Cart.String())
 		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks)
-	})
-	lz.String, _ = lz.atomicString.Load().(string)
-	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
 
-	// CartRAMinfo() returns a slice so we need to copy each
-	lz.val.Dbg.PushRawEvent(func() {
+		// uses lazy PCaddr value from lazyvalues.CPU
+		lz.atomicCurrBank.Store(lz.val.VCS.Mem.Cart.GetBank(PCaddr))
+
+		// CartRAMinfo() returns a slice so we need to copy each
 		n := lz.val.VCS.Mem.Cart.GetRAMinfo()
 		if lz.ramInfoRef == nil || lz.ramInfoRef != &n {
 			lz.ramInfoRef = &n
@@ -67,16 +71,8 @@ func (lz *LazyCart) update() {
 			lz.atomicRAMinfo.Store(m)
 		}
 	})
+	lz.String, _ = lz.atomicString.Load().(string)
+	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
+	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
 	lz.RAMinfo, _ = lz.atomicRAMinfo.Load().([]cartridge.RAMinfo)
-}
-
-// GetBank returns the cartridge bank associated with the address
-func (lz *LazyCart) GetBank(pcAddr uint16) int {
-	if lz.val.Dbg == nil {
-		return 0
-	}
-
-	lz.val.Dbg.PushRawEvent(func() { lz.atomicGetBank.Store(lz.val.VCS.Mem.Cart.GetBank(pcAddr)) })
-	c, _ := lz.atomicGetBank.Load().(int)
-	return c
 }
