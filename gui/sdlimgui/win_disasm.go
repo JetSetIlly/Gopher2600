@@ -148,20 +148,54 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 
 	itr, _ := win.img.dsm.NewIteration(disassembly.EntryTypeDecode, b)
 
-	for e := itr.Start(); e != nil; e = itr.Next() {
-		// if address value of current disasm entry and
-		// current PC value match then highlight the entry
-		if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
-			win.drawEntry(e, selected)
+	// only draw elements that will be visible
+	var clipper imgui.ListClipper
+	clipper.Begin(win.img.dsm.Counts[b][disassembly.EntryTypeDecode])
+	for clipper.Step() {
+		e := itr.Start()
+		e = itr.SkipNext(clipper.DisplayStart)
 
-			// if emulation is running then centre on the current
-			// program counter
-			if win.followPC {
-				imgui.SetScrollHereY(0.5)
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			// if address value of current disasm entry and current PC value
+			// match then highlight the entry
+			win.drawEntry(e, selected &&
+				e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart)
+
+			e = itr.Next()
+			if e == nil {
+				break // clipper for loop
 			}
-		} else {
-			win.drawEntry(e, false)
 		}
+	}
+
+	// if emulation is running then centre on the current program counter. this
+	// takes a bit of effort because we're using the ListClipper system. if we
+	// weren't we could just use SetScrollY() at the appropriate point.
+	//
+	// we might be able to fold this into the loop above but this is clearer
+	// and has little impact on performance (the performance issue solved by
+	// ListClipper is due to invisible calls to imgui.Text() etc)
+	if win.followPC {
+
+		// walk through disassembly and note the count for the current entry
+		hlEntry := float32(0.0)
+		i := float32(0.0)
+		for e := itr.Start(); e != nil; e = itr.Next() {
+			if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+				hlEntry = i
+				break // for loop
+			}
+			i++
+		}
+
+		// calculate the pixel value of the current entry. the adjustment of 4
+		// is to ensure that some preceeding entries are displayed before the
+		// current entry
+		h := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
+		h = (hlEntry - 4) * h
+
+		// scroll to pixel value
+		imgui.SetScrollY(h)
 	}
 
 	imgui.EndChild()
@@ -188,14 +222,11 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	// IsItemVisible() check below has something to grab onto
 	imgui.Text(" ")
 
-	// illustrate breakpoint if the item is visible
-	if imgui.IsItemVisible() {
-		win.drawBreak(e)
-	}
+	win.drawBreak(e)
 
 	imgui.SameLine()
-	s := win.img.dsm.GetField(disassembly.FldAddress, e)
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
+	s := win.img.dsm.GetField(disassembly.FldAddress, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
@@ -222,11 +253,16 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 
 	imgui.EndGroup()
 
-	// these Is*() conditions apply to the whole group
+	// the following Is*() conditions apply to the whole group
+
+	// on right mouse button, set followPC to true. if emulation is not
+	// running, it will be true for only one frame but that is enough to cause
+	// the scroller to center on the current entry.
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		fmt.Println("TODO: context menu")
+		win.followPC = true
 	}
 
+	// double click toggles a PC breakpoint on the entries address
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDoubleClicked(0) {
 		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.TogglePCBreak(e) })
 	}
@@ -266,4 +302,5 @@ func (win *winDisasm) drawGutter(fill gutterType, col imgui.PackedColor) {
 }
 
 func (win *winDisasm) drawPopupMenu(e *disassembly.Entry) {
+	// !!TODO: popup menu on right mouse click over disasm entry
 }

@@ -51,7 +51,6 @@ const (
 	EntryTypeNaive EntryType = iota
 	EntryTypeDecode
 	EntryTypeAnalysis
-	EntryTypeLive
 )
 
 // Entry is a disassambled instruction. The constituent parts of the

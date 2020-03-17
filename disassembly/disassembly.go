@@ -41,6 +41,9 @@ type Disassembly struct {
 	// memorymap.AddressMaskCart before access.
 	Entries [][memorymap.AddressMaskCart + 1]*Entry
 
+	// the number of each type of entry
+	Counts []map[EntryType]int
+
 	// formatting information for all entries found during the flow pass.
 	// excluding entries only found during the linear pass because
 	// false-positive entries might upset the formatting.
@@ -139,5 +142,32 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 		return nil, errors.New(errors.AnalysisError, err)
 	}
 
+	// count entry types
+	dsm.countTypes()
+
 	return dsm, nil
+}
+
+// count number of each type entry in disassembly
+func (dsm *Disassembly) countTypes() {
+	dsm.Counts = make([]map[EntryType]int, len(dsm.Entries))
+	for b := 0; b < len(dsm.Counts); b++ {
+		dsm.Counts[b] = make(map[EntryType]int)
+		for _, e := range dsm.Entries[b] {
+			if e != nil {
+				switch e.Type {
+				case EntryTypeAnalysis:
+					dsm.Counts[b][EntryTypeAnalysis]++
+					fallthrough
+
+				case EntryTypeDecode:
+					dsm.Counts[b][EntryTypeDecode]++
+					fallthrough
+
+				case EntryTypeNaive:
+					dsm.Counts[b][EntryTypeNaive]++
+				}
+			}
+		}
+	}
 }

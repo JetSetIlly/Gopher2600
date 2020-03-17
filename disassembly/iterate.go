@@ -26,10 +26,11 @@ import (
 
 // Iterate faciliates traversal of the disassembly
 type Iterate struct {
-	dsm  *Disassembly
-	typ  EntryType
-	bank int
-	idx  int
+	dsm       *Disassembly
+	typ       EntryType
+	bank      int
+	idx       int
+	lastEntry *Entry
 }
 
 // NewIteration initialises a new iteration of a dissasembly bank
@@ -66,6 +67,21 @@ func (itr *Iterate) Next() *Entry {
 			break // for loop
 		}
 		itr.idx++
+	}
+
+	itr.lastEntry = e
+
+	return e
+}
+
+// SkipNext n entries and return that Entry. An n value of < 0 returns the most
+// recent value in the iteration
+func (itr *Iterate) SkipNext(n int) *Entry {
+	e := itr.lastEntry
+
+	for n > 0 {
+		e = itr.Next()
+		n--
 	}
 
 	return e
