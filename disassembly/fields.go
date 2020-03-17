@@ -108,26 +108,26 @@ const (
 )
 
 // GetField returns the formatted field from the speficied Entry
-func (dsm *Disassembly) GetField(field Field, d *Entry) string {
+func (dsm *Disassembly) GetField(field Field, e *Entry) string {
 	switch field {
 	case FldLocation:
-		return fmt.Sprintf(dsm.fields.fmt.location, d.Location)
+		return fmt.Sprintf(dsm.fields.fmt.location, e.Location)
 	case FldBytecode:
-		return fmt.Sprintf(dsm.fields.fmt.bytecode, d.Bytecode)
+		return fmt.Sprintf(dsm.fields.fmt.bytecode, e.Bytecode)
 	case FldAddress:
-		return fmt.Sprintf(dsm.fields.fmt.address, d.Address)
+		return fmt.Sprintf(dsm.fields.fmt.address, e.Address)
 	case FldMnemonic:
-		return fmt.Sprintf(dsm.fields.fmt.mnemonic, d.Mnemonic)
+		return fmt.Sprintf(dsm.fields.fmt.mnemonic, e.Mnemonic)
 	case FldOperand:
-		return fmt.Sprintf(dsm.fields.fmt.operand, d.Operand)
+		return fmt.Sprintf(dsm.fields.fmt.operand, e.Operand)
 	case FldDefnCycles:
-		return fmt.Sprintf(dsm.fields.fmt.defnCycles, d.DefnCycles)
+		return fmt.Sprintf(dsm.fields.fmt.defnCycles, e.DefnCycles)
 	case FldDefnNotes:
-		return fmt.Sprintf(dsm.fields.fmt.defnNotes, d.DefnNotes)
+		return fmt.Sprintf(dsm.fields.fmt.defnNotes, e.DefnNotes)
 	case FldActualCycles:
-		return fmt.Sprintf(dsm.fields.fmt.actualCycles, d.ActualCycles)
+		return fmt.Sprintf(dsm.fields.fmt.actualCycles, e.ActualCycles)
 	case FldActualNotes:
-		return fmt.Sprintf(dsm.fields.fmt.actualNotes, d.ActualNotes)
+		return fmt.Sprintf(dsm.fields.fmt.actualNotes, e.ActualNotes)
 	}
 	return ""
 }

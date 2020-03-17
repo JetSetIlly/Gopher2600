@@ -67,23 +67,28 @@ func init() {
 	sort.Stable(scriptUnsafeCommands)
 }
 
-// parseCommand/enactCommand scans user input for a valid command and acts upon
-// it. see parseInput for explanation of args.
+// parseCommand tokenises the input and processes the tokens
 func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, error) {
+	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
+	if err != nil {
+		return false, err
+	}
+	return dbg.processTokens(tokens)
+}
+
+func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
 	// if there are no tokens in the input then continue with onEmptyInput
 	if tokens.Remaining() == 0 {
-		return dbg.parseCommand(onEmptyInput, true, false)
+		return dbg.tokeniseCommand(onEmptyInput, true, false)
 	}
 
 	// check validity of tokenised input
 	err := debuggerCommands.ValidateTokens(tokens)
 	if err != nil {
-		// print normalised input and return error
-		dbg.printLine(terminal.StyleInput, tokens.String())
-		return false, err
+		return nil, err
 	}
 
 	// print normalised input if this is command from an interactive source
@@ -101,7 +106,7 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
 		if err == nil {
-			return false, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
+			return nil, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
 		}
 
 		// record command if it auto is false (is not a result of an "auto" command
@@ -110,6 +115,24 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 		dbg.scriptScribe.WriteInput(tokens.String())
 	}
 
+	return tokens, nil
+}
+
+// processTokenGroup call processTokens for each entry in the array of tokens
+func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) (bool, error) {
+	var err error
+	var ok bool
+
+	for _, t := range tokenGrp {
+		ok, err = dbg.processTokens(t)
+		if err != nil {
+			return false, err
+		}
+	}
+	return ok, nil
+}
+
+func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately
 	tokens.Reset()
@@ -412,95 +435,124 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 
 	case cmdOnHalt:
 		if tokens.Remaining() == 0 {
-			if dbg.commandOnHalt == "" {
+			if len(dbg.commandOnHalt) == 0 {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
 			} else {
-				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+				for _, c := range dbg.commandOnHalt {
+					dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
+				}
 			}
 			return false, nil
 		}
 
-		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
-		var newOnHalt string
+		var input string
 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			newOnHalt = ""
+			dbg.commandOnHalt = dbg.commandOnHalt[:0]
+			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
+			return false, nil
+
 		case "ON":
-			newOnHalt = dbg.commandOnHaltStored
+			dbg.commandOnHalt = dbg.commandOnHaltStored
+			for _, c := range dbg.commandOnHalt {
+				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
+			}
+			return false, nil
+
 		default:
 			// token isn't one we recognise so push it back onto the token queue
 			tokens.Unget()
 
 			// use remaininder of command line to form the ONHALT command sequence
-			newOnHalt = tokens.Remainder()
+			input = strings.TrimSpace(tokens.Remainder())
 			tokens.End()
-
-			// we can't use semi-colons when specifying the sequence so allow use of
-			// commas to act as an alternative
-			newOnHalt = strings.Replace(newOnHalt, ",", ";", -1)
 		}
 
-		dbg.commandOnHalt = newOnHalt
+		// empty list of tokens. taking note of existing command - not the same
+		// as commandOnHaltStored because ONHALT might be OFF
+		existingOnHalt := dbg.commandOnHalt
+		dbg.commandOnHalt = dbg.commandOnHalt[:0]
 
-		// display the new/restored ONHALT command(s)
-		if newOnHalt == "" {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
-		} else {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", dbg.commandOnHalt)
+		// tokenise commands to check for integrity
+		for _, s := range strings.Split(input, ",") {
+			toks, err := dbg.tokeniseCommand(s, false, false)
+			if err != nil {
+				dbg.commandOnHalt = existingOnHalt
+				return false, err
+			}
+			dbg.commandOnHalt = append(dbg.commandOnHalt, toks)
+		}
 
-			// store the new command so we can reuse it after an ONHALT OFF
-			//
-			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnHaltStored = newOnHalt
+		// make a copy of
+		dbg.commandOnHaltStored = dbg.commandOnHalt
+
+		// display the new ONHALT command(s)
+		for _, c := range dbg.commandOnHalt {
+			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
 		}
 
 		return false, nil
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
-			if dbg.commandOnStep == "" {
+			if len(dbg.commandOnStep) == 0 {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
 			} else {
-				dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+				for _, c := range dbg.commandOnStep {
+					dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
+				}
 			}
 			return false, nil
 		}
 
-		// !!TODO: non-interactive check of tokens against scriptUnsafeTemplate
-		var newOnStep string
+		var input string
 
 		option, _ := tokens.Get()
 		switch strings.ToUpper(option) {
 		case "OFF":
-			newOnStep = ""
+			dbg.commandOnStep = dbg.commandOnStep[:0]
+			dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
+			return false, nil
+
 		case "ON":
-			newOnStep = dbg.commandOnStepStored
+			dbg.commandOnStep = dbg.commandOnStepStored
+			for _, c := range dbg.commandOnStep {
+				dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
+			}
+			return false, nil
+
 		default:
 			// token isn't one we recognise so push it back onto the token queue
 			tokens.Unget()
 
 			// use remaininder of command line to form the ONSTEP command sequence
-			newOnStep = tokens.Remainder()
+			input = strings.TrimSpace(tokens.Remainder())
 			tokens.End()
-
-			// we can't use semi-colons when specifying the sequence so allow use of
-			// commas to act as an alternative
-			newOnStep = strings.Replace(newOnStep, ",", ";", -1)
 		}
 
-		dbg.commandOnStep = newOnStep
+		// empty list of tokens. taking note of existing command - not the same
+		// as commandOnStepStored because ONSTEP might be OFF
+		existingOnStep := dbg.commandOnStep
+		dbg.commandOnStep = dbg.commandOnStep[:0]
 
-		// display the new/restored ONSTEP command(s)
-		if newOnStep == "" {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
-		} else {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", dbg.commandOnStep)
+		// tokenise commands to check for integrity
+		for _, s := range strings.Split(input, ",") {
+			toks, err := dbg.tokeniseCommand(s, false, false)
+			if err != nil {
+				dbg.commandOnStep = existingOnStep
+				return false, err
+			}
+			dbg.commandOnStep = append(dbg.commandOnStep, toks)
+		}
 
-			// store the new command so we can reuse it after an ONSTEP OFF
-			// !!TODO: normalise case of specified command sequence
-			dbg.commandOnStepStored = newOnStep
+		// make a copy of
+		dbg.commandOnStepStored = dbg.commandOnStep
+
+		// display the new ONSTEP command(s)
+		for _, c := range dbg.commandOnStep {
+			dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
 		}
 
 		return false, nil
@@ -508,7 +560,7 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 	case cmdLast:
 		s := strings.Builder{}
 
-		d, err := dbg.disasm.FormatResult(dbg.vcs.CPU.LastResult)
+		e, err := dbg.disasm.FormatResult(dbg.vcs.CPU.LastResult)
 		if err != nil {
 			return false, err
 		}
@@ -525,19 +577,19 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, err
 				return false, nil
 
 			case "BYTECODE":
-				s.WriteString(dbg.disasm.GetField(disassembly.FldBytecode, d))
+				s.WriteString(dbg.disasm.GetField(disassembly.FldBytecode, e))
 			}
 		}
 
-		s.WriteString(dbg.disasm.GetField(disassembly.FldAddress, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldAddress, e))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.FldMnemonic, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldMnemonic, e))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.FldOperand, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldOperand, e))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.FldActualCycles, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldActualCycles, e))
 		s.WriteString(" ")
-		s.WriteString(dbg.disasm.GetField(disassembly.FldActualNotes, d))
+		s.WriteString(dbg.disasm.GetField(disassembly.FldActualNotes, e))
 
 		if dbg.vcs.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())

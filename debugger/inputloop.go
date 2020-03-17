@@ -41,8 +41,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	// is set to Video
 	vcsStepVideo := func() error {
 		vcsStep()
-		if dbg.commandOnStep != "" {
-			_, err := dbg.parseInput(dbg.commandOnStep, false, true)
+		if dbg.commandOnStep != nil {
+			_, err := dbg.processTokenGroup(dbg.commandOnStep)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
@@ -127,8 +127,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// some things we don't want to if this is only a momentary halt
 			if haltEmulation {
 				// input has halted. print on halt command if it is defined
-				if dbg.commandOnHalt != "" {
-					_, err = dbg.parseInput(dbg.commandOnHalt, false, true)
+				if dbg.commandOnHalt != nil {
+					_, err := dbg.processTokenGroup(dbg.commandOnHalt)
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "%s", err)
 					}
@@ -265,8 +265,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 			}
 
-			if dbg.commandOnStep != "" {
-				_, err := dbg.parseInput(dbg.commandOnStep, false, true)
+			if dbg.commandOnStep != nil {
+				_, err := dbg.processTokenGroup(dbg.commandOnStep)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}

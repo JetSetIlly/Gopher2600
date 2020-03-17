@@ -73,17 +73,18 @@ type Debugger struct {
 	// things like "STEP FRAME".
 	stepTraps *traps
 
-	// commandOnHalt says whether an sequence of commands should run automatically
-	// when emulation halts. commandOnHaltPrev is the stored command sequence
-	// used when ONHALT is called with no arguments
-	// halt is a breakpoint or user intervention (ie. ctrl-c)
-	commandOnHalt       string
-	commandOnHaltStored string
+	// commandOnHalt is the sequence of commands that runs when emulation
+	// halts. the string is parsed every time it's required, this is
+	// inefficient but it gives us enough flexibility to store multiple
+	// commands
+	commandOnHalt       []*commandline.Tokens
+	commandOnHaltStored []*commandline.Tokens
 
-	// similarly, commandOnStep is the sequence of commands to run afer every
-	// cpu/video cycle
-	commandOnStep       string
-	commandOnStepStored string
+	// commandOnStep is the command to run afer every cpu/video cycle. unlike
+	// commandOnHalt, we store these as Tokens. this gives us a little
+	// performance improvement
+	commandOnStep       []*commandline.Tokens
+	commandOnStepStored []*commandline.Tokens
 
 	// quantum to use when stepping/running
 	quantum QuantumMode
@@ -178,13 +179,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
 	dbg.stepTraps = newTraps(dbg)
-
-	// default ONHALT command sequence
-	dbg.commandOnHaltStored = defaultOnHalt
-
-	// default ONSTEP command sequnce
-	dbg.commandOnStep = defaultOnStep
-	dbg.commandOnStepStored = dbg.commandOnStep
 
 	// make synchronisation channels
 	dbg.events = &terminal.ReadEvents{
