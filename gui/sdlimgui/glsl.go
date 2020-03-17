@@ -290,17 +290,21 @@ in vec2 UV;
 in vec4 Color;
 out vec2 Frag_UV;
 out vec4 Frag_Color;
+
 void main()
 {
-	if (ImageType == 1) {
+	// imgui textures
+	if (ImageType != 1) {
 		Frag_UV = UV;
 		Frag_Color = Color;
 		gl_Position = ProjMtx * vec4(Position.xy,0,1);
-	} else {
-		Frag_UV = UV;
-		Frag_Color = Color;
-		gl_Position = ProjMtx * vec4(Position.xy,0,1);
+		return;
 	}
+
+	// tv screen texture
+	Frag_UV = UV;
+	Frag_Color = Color;
+	gl_Position = ProjMtx * vec4(Position.xy,0,1);
 }
 `
 	fragmentShader := glslVersion + `
@@ -309,15 +313,17 @@ uniform int ImageType;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
+
 void main()
 {
-	if (ImageType == 1) {
-		// tv screen texture
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-	} else {
-		// imgui textures
+	// imgui textures
+	if (ImageType != 1) {
 		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
+		return;
 	}
+
+	// tv screen texture
+	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 }
 `
 
@@ -342,7 +348,7 @@ void main()
 	}
 
 	gl.CompileShader(fragHandle)
-	if log := getShaderCompileError(vertHandle); log != "" {
+	if log := getShaderCompileError(fragHandle); log != "" {
 		fmt.Println(log)
 	}
 
