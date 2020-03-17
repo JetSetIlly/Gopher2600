@@ -54,8 +54,8 @@ func newTerm() *term {
 
 		promptChan: make(chan string, 1),
 
-		// enormously generous buffer for output channel
-		outputChan: make(chan terminalOutput, 1024),
+		// generous buffer for output channel
+		outputChan: make(chan terminalOutput, 4096),
 	}
 }
 
