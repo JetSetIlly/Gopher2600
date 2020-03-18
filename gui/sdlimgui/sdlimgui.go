@@ -27,7 +27,6 @@ import (
 	"gopher2600/gui/sdlimgui/lazyvalues"
 	"gopher2600/paths"
 	"gopher2600/television"
-	"gopher2600/test"
 	"io"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -84,8 +83,6 @@ type SdlImgui struct {
 //
 // MUST ONLY be called from the #mainthread
 func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
-	test.AssertMainThread()
-
 	img := &SdlImgui{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),
@@ -145,8 +142,6 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (img *SdlImgui) Destroy(output io.Writer) {
-	test.AssertMainThread()
-
 	img.wm.destroy()
 	img.audio.EndMixing()
 	img.glsl.destroy()
