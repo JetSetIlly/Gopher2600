@@ -21,6 +21,7 @@ package sdlimgui
 
 import (
 	"gopher2600/gui"
+	"time"
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/veandco/go-sdl2/sdl"
@@ -215,4 +216,9 @@ func (img *SdlImgui) Service() {
 		f()
 	default:
 	}
+
+	// sleep to help avoid 100% CPU usage. apply this delay even if emulation
+	// is running (compare to sdldebug which ddoes not apply the delay when
+	// emulation is running)
+	<-time.After(time.Millisecond * 25)
 }

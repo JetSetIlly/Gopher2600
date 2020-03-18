@@ -22,6 +22,7 @@ package sdldebug
 import (
 	"gopher2600/gui"
 	"gopher2600/television"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -193,6 +194,11 @@ func (scr *SdlDebug) Service() {
 	case f := <-scr.service:
 		f()
 	default:
+	}
+
+	// sleep to help avoid 100% CPU usage when emulation is not running
+	if scr.paused {
+		<-time.After(time.Millisecond * 25)
 	}
 }
 

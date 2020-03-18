@@ -44,7 +44,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 )
 
 const defaultInitScript = "debuggerInit"
@@ -153,9 +152,6 @@ func main() {
 			if gui != nil {
 				gui.Service()
 			}
-
-			// sleep to help avoid 100% CPU usage
-			<-time.After(time.Millisecond * 25)
 		}
 	}
 
