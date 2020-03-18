@@ -304,8 +304,11 @@ func (tv *television) Signal(sig SignalAttributes) error {
 				}
 			}
 		} else {
-			// cap scanline to maximum possible
-			tv.scanline = tv.spec.ScanlinesTotal
+			// allow scanline to increase indefinitely. debuggers are
+			// encouraged to monitor the scanline value and note when it is
+			// running "out-of-spec". previous versions of this file capped the
+			// scanline value at the specification maximum but means a loss of
+			// potentially useful information.
 
 			// PAL detection condition:
 			//   1. frame must be "unstable"
