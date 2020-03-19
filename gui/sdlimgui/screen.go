@@ -38,7 +38,10 @@ type screen struct {
 	img *SdlImgui
 	tv  television.Television
 
-	pixels *image.RGBA
+	// pixels and altPixels should be constructed exactly the same. the only
+	// difference is the colors
+	pixels    *image.RGBA
+	altPixels *image.RGBA
 
 	// the basic amount by which the image should be scaled. image width
 	// is also scaled by pixelWidth and aspectBias value
@@ -57,6 +60,14 @@ type screen struct {
 
 	// the tv screen texture and backing pixels
 	texture uint32
+
+	// the coordinates of the last SetPixel(). used to help set the alpha
+	// channel when emulation is paused
+	lastX int
+	lastY int
+
+	// whether to use the alternative pixel layer
+	useAltPixels bool
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -89,6 +100,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.topScanline = topScanline
 	scr.scanlines = visibleScanlines
 	scr.pixels = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
+	scr.altPixels = image.NewRGBA(image.Rect(0, 0, scr.horizPixels, scr.scanlines))
 
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
 
@@ -137,7 +149,6 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixel implements the television.PixelRenderer interface
 func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-
 	// handle VBLANK by setting pixels to black
 	if vblank {
 		red = 0
@@ -145,7 +156,10 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 		blue = 0
 	}
 
-	scr.pixels.Set(x-television.HorizClksHBlank, y-scr.topScanline,
+	scr.lastX = x - television.HorizClksHBlank
+	scr.lastY = y - scr.topScanline
+
+	scr.pixels.Set(scr.lastX, scr.lastY,
 		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
 
 	return nil
@@ -153,6 +167,9 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 
 // SetAltPixel implements the television.PixelRenderer interface
 func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	scr.altPixels.Set(x-television.HorizClksHBlank, y-scr.topScanline,
+		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
+
 	return nil
 }
 
@@ -171,19 +188,53 @@ func (scr *screen) scaledHeight() float32 {
 
 // render is called by service loop
 func (scr *screen) render() {
+	var pixels *image.RGBA
+	if scr.useAltPixels {
+		pixels = scr.altPixels
+	} else {
+		pixels = scr.pixels
+	}
+
 	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
 
 	if scr.createTexture {
 		scr.createTexture = false
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y), 0,
+			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
+			gl.Ptr(pixels.Pix))
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, scr.texture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(scr.pixels.Bounds().Size().X), int32(scr.pixels.Bounds().Size().Y),
+			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(scr.pixels.Pix))
+			gl.Ptr(pixels.Pix))
+	}
+}
+
+func (scr *screen) pause(set bool) {
+	// when emulation is paused, process the current pixel data to
+	// differentiate "old" pixels (from previous frame) and "new" pixels (drawn
+	// this frame)
+	if set {
+		// pixel offset for last x/y coordinates. we're going to assume that
+		// the scr.pixels and scr.altPixels array are constructed exactyle the
+		// same (reasonable assumption)
+		o := scr.pixels.PixOffset(scr.lastX, scr.lastY)
+		if o < 0 || o >= len(scr.pixels.Pix) {
+			return
+		}
+
+		// make sure all pixels from current frame have full alpha value
+		for i := 0; i <= o; i += 4 {
+			scr.pixels.Pix[i+3] = 255
+			scr.altPixels.Pix[i+3] = 255
+		}
+
+		// make sure old pixels are faded
+		for i := o + 4; i < len(scr.pixels.Pix); i += 4 {
+			scr.pixels.Pix[i+3] = 100
+			scr.altPixels.Pix[i+3] = 100
+		}
 	}
 }

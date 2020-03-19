@@ -96,8 +96,15 @@ func (win *winScreen) draw() {
 
 	win.isHovered = imgui.IsItemHovered()
 
+	// display toggles
+	imguiToggleButton("debugColors", &win.scr.useAltPixels, win.img.cols.TitleBgActive)
+
+	// tv status + fps indicator
+	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
 	imgui.Text(win.img.lazy.TV.TVstr)
 	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
 	if win.img.paused {
 		imgui.Text("no fps")
 	} else {

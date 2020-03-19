@@ -153,3 +153,8 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 func (img *SdlImgui) GetTerminal() terminal.Terminal {
 	return img.term
 }
+
+func (img *SdlImgui) pause(set bool) {
+	img.paused = set
+	img.screen.pause(set)
+}
