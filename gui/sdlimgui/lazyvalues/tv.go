@@ -30,11 +30,17 @@ type LazyTV struct {
 
 	atomicSpec      atomic.Value // television.Specification
 	atomicTVStr     atomic.Value // string
+	atomicFrame     atomic.Value // int
+	atomicScanline  atomic.Value // int
+	atomicHP        atomic.Value // int
 	atomicReqFPS    atomic.Value // float32
 	atomicActualFPS atomic.Value // float32
 
 	Spec      television.Specification
 	TVstr     string
+	Frame     int
+	Scanline  int
+	HP        int
 	AcutalFPS float32
 
 	// taken from debugger rather than tv
@@ -49,11 +55,22 @@ func (lz *LazyTV) update() {
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicSpec.Store(*lz.val.VCS.TV.GetSpec())
 		lz.atomicTVStr.Store(lz.val.VCS.TV.String())
+
+		frame, _ := lz.val.VCS.TV.GetState(television.ReqFramenum)
+		lz.atomicFrame.Store(frame)
+		scanline, _ := lz.val.VCS.TV.GetState(television.ReqScanline)
+		lz.atomicScanline.Store(scanline)
+		hp, _ := lz.val.VCS.TV.GetState(television.ReqHorizPos)
+		lz.atomicHP.Store(hp)
+
 		lz.atomicReqFPS.Store(lz.val.Dbg.GetReqFPS())
 		lz.atomicActualFPS.Store(lz.val.VCS.TV.GetActualFPS())
 	})
 	lz.Spec, _ = lz.atomicSpec.Load().(television.Specification)
 	lz.TVstr, _ = lz.atomicTVStr.Load().(string)
+	lz.Frame, _ = lz.atomicFrame.Load().(int)
+	lz.Scanline, _ = lz.atomicScanline.Load().(int)
+	lz.HP, _ = lz.atomicHP.Load().(int)
 	lz.ReqFPS, _ = lz.atomicReqFPS.Load().(float32)
 	lz.AcutalFPS, _ = lz.atomicActualFPS.Load().(float32)
 }

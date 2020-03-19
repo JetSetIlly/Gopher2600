@@ -835,26 +835,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		switch action {
 		case "ON":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
-			if err != nil {
-				return false, err
-			}
+
 		case "OFF":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
-			if err != nil {
-				return false, err
-			}
-
-		case "MASK":
-			err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
-			if err != nil {
-				return false, err
-			}
-
-		case "UNMASK":
-			err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
-			if err != nil {
-				return false, err
-			}
 
 		case "SCALE":
 			scl, ok := tokens.Get()
@@ -868,26 +851,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 
 			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
-			return false, err
+
+		case "MASKING":
+			action, _ := tokens.Get()
+			action = strings.ToUpper(action)
+			switch action {
+			case "OFF":
+				err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
+			case "ON":
+				err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
+			default:
+				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
+			}
+
 		case "ALT":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
 				err = dbg.scr.SetFeature(gui.ReqSetAltColors, false)
-				if err != nil {
-					return false, err
-				}
 			case "ON":
 				err = dbg.scr.SetFeature(gui.ReqSetAltColors, true)
-				if err != nil {
-					return false, err
-				}
 			default:
 				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
-				if err != nil {
-					return false, err
-				}
 			}
 		case "OVERLAY":
 			action, _ := tokens.Get()
@@ -895,25 +881,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			switch action {
 			case "OFF":
 				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
-				if err != nil {
-					return false, err
-				}
 			case "ON":
 				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
-				if err != nil {
-					return false, err
-				}
 			default:
 				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
-				if err != nil {
-					return false, err
-				}
 			}
 		default:
 			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
 			if err != nil {
 				return false, err
 			}
+		}
+
+		if err != nil {
+			if errors.Is(err, errors.UnsupportedGUIRequest) {
+				return false, errors.New(errors.CommandError, fmt.Sprintf("display does not support feature %s", action))
+			}
+			return false, err
 		}
 
 	case cmdPanel:

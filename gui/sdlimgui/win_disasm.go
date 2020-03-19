@@ -78,8 +78,8 @@ func (win *winDisasm) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{915, 214}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{355, 495}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{905, 242}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winDisasmTitle, &win.open, 0)
 
 	imgui.Text(win.img.lazy.Cart.String)

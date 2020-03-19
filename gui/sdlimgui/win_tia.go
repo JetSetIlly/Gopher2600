@@ -80,8 +80,8 @@ func (win *winTIA) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{X: 12, Y: 500}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{X: 718, Y: 156}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 9, Y: 510}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 558, Y: 201}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winTIATitle, &win.open, 0)
 
 	imgui.BeginTabBar("")

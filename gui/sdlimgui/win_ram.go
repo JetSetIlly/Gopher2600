@@ -77,7 +77,7 @@ func (win *winRAM) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{883, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{890, 29}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	if len(win.img.lazy.Cart.RAMinfo) > 0 {

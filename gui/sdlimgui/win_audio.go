@@ -60,9 +60,8 @@ func (win *winAudio) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{17, 677}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winAudioTitle, &win.open,
-		imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoTitleBar)
+	imgui.SetNextWindowPosV(imgui.Vec2{641, 565}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.BeginV(winAudioTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)

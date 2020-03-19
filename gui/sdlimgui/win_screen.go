@@ -22,7 +22,6 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -38,6 +37,9 @@ type winScreen struct {
 
 	// the tv screen has captured mouse input
 	isCaptured bool
+
+	threeDigitDim imgui.Vec2
+	fiveDigitDim  imgui.Vec2
 }
 
 func newWinScreen(img *SdlImgui) (managedWindow, error) {
@@ -46,17 +48,12 @@ func newWinScreen(img *SdlImgui) (managedWindow, error) {
 		scr: img.screen,
 	}
 
-	// generate texture, creation of texture will be done on first call to
-	// render()
-	gl.GenTextures(1, &win.scr.texture)
-	gl.BindTexture(gl.TEXTURE_2D, win.scr.texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
 	return win, nil
 }
 
 func (win *winScreen) init() {
+	win.threeDigitDim = imguiGetFrameDim("000")
+	win.fiveDigitDim = imguiGetFrameDim("00000")
 }
 
 func (win *winScreen) destroy() {
@@ -88,6 +85,9 @@ func (win *winScreen) draw() {
 		imgui.PopStyleColorV(2)
 	}
 
+	imgui.Spacing()
+
+	// actual display
 	imgui.Image(imgui.TextureID(win.scr.texture),
 		imgui.Vec2{
 			win.scr.scaledWidth(),
@@ -96,23 +96,36 @@ func (win *winScreen) draw() {
 
 	win.isHovered = imgui.IsItemHovered()
 
-	// display toggles
-	imguiToggleButton("debugColors", &win.scr.useAltPixels, win.img.cols.TitleBgActive)
+	// tv status line
+	imguiText("Frame:")
+	imguiText(fmt.Sprintf("%-4d", win.img.lazy.TV.Frame))
+	imgui.SameLineV(0, 15)
+	imguiText("Scanline:")
+	scanline := win.img.lazy.TV.Scanline
+	imguiText(fmt.Sprintf("%-4d", scanline))
+	imgui.SameLineV(0, 15)
+	imguiText("Horiz Pos:")
+	imguiText(fmt.Sprintf("%-4d", win.img.lazy.TV.HP))
 
-	// tv status + fps indicator
-	imgui.SameLine()
-	imgui.AlignTextToFramePadding()
-	imgui.Text(win.img.lazy.TV.TVstr)
-	imgui.SameLine()
+	// fps indicator
+	imgui.SameLineV(0, 20)
 	imgui.AlignTextToFramePadding()
 	if win.img.paused {
-		imgui.Text("no fps")
+		imguiText("no fps")
 	} else {
 		if win.img.lazy.TV.ReqFPS < 1.0 {
-			imgui.Text("< 1 fps")
+			imguiText("< 1 fps")
 		} else {
-			imgui.Text(fmt.Sprintf("%03.1f fps", win.img.lazy.TV.AcutalFPS))
+			imguiText(fmt.Sprintf("%03.1f fps", win.img.lazy.TV.AcutalFPS))
 		}
+	}
+
+	// display toggles
+	imgui.Spacing()
+	imgui.Checkbox("Debug Colours", &win.scr.useAltPixels)
+	imgui.SameLine()
+	if imgui.Checkbox("Masking", &win.scr.masked) {
+		win.scr.setMasking(win.scr.masked)
 	}
 
 	imgui.End()

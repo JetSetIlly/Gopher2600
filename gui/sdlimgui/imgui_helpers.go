@@ -37,8 +37,9 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 	return w
 }
 
-// draw toggle button at current cursor position
-func imguiToggleButton(id string, v *bool, col imgui.Vec4) {
+// draw toggle button at current cursor position. returns true if toggle has
+// been clicked. *bool argument provided for convenience.
+func imguiToggleButton(id string, v *bool, col imgui.Vec4) (clicked bool) {
 	bg := imgui.PackedColorFromVec4(col)
 	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
@@ -70,11 +71,14 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) {
 	imgui.InvisibleButtonV(id, imgui.Vec2{width, height})
 	if imgui.IsItemClicked() {
 		*v = !*v
+		clicked = true
 	}
 
 	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
 	dl.AddCircleFilled(imgui.Vec2{p.X + radius + t*(width-radius*2.0), p.Y + radius},
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
+
+	return clicked
 }
 
 // calls Text but preceeds it with AlignTextToFramePadding() and follows it

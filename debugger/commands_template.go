@@ -102,7 +102,7 @@ var commandTemplate = []string{
 	cmdMissile + " (0|1)",
 	cmdBall,
 	cmdPlayfield,
-	cmdDisplay + " (ON|OFF|MASK|UNMASK|SCALE [%<scale value>P]|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 
 	// user input
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
