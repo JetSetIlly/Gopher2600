@@ -21,7 +21,8 @@ package disassembly
 
 import (
 	"fmt"
-	"gopher2600/errors"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Iterate faciliates traversal of the disassembly

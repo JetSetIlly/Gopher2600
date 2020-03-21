@@ -20,7 +20,7 @@
 package sdlimgui
 
 import (
-	"gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/debugger"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

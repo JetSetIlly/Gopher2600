@@ -21,9 +21,10 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/debugger"
-	"gopher2600/disassembly"
-	"gopher2600/hardware/memory/memorymap"
+
+	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

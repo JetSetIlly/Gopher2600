@@ -34,8 +34,9 @@ package commandline
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // ParseCommandTemplate turns a string representation of a command template

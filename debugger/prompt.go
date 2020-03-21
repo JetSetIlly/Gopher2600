@@ -21,9 +21,10 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/hardware/memory/memorymap"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {

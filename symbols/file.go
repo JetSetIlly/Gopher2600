@@ -21,13 +21,14 @@ package symbols
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // ReadSymbolsFile initialises a symbols table from the symbols file for the

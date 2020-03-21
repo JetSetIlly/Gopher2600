@@ -21,13 +21,14 @@ package recorder
 
 import (
 	"fmt"
-	"gopher2600/digest"
-	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/hardware/riot/input"
-	"gopher2600/television"
 	"io"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/digest"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Recorder transcribes user input to a file. The transcribed file is intended

@@ -21,12 +21,13 @@ package database
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Activity is used to specify the general activity of what will be occuring

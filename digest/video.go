@@ -22,8 +22,9 @@ package digest
 import (
 	"crypto/sha1"
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/television"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Video is an implementation of the television.PixelRenderer interface with an

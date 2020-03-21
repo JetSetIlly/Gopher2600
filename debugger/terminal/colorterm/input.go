@@ -21,12 +21,13 @@ package colorterm
 
 import (
 	"fmt"
-	"gopher2600/ansi"
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/colorterm/easyterm"
-	"gopher2600/errors"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/jetsetilly/gopher2600/ansi"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // #cursor #keys #tab #completion

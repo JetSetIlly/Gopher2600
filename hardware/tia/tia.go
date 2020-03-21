@@ -21,15 +21,16 @@ package tia
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/riot/input"
-	"gopher2600/hardware/tia/audio"
-	"gopher2600/hardware/tia/future"
-	"gopher2600/hardware/tia/phaseclock"
-	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/hardware/tia/video"
-	"gopher2600/television"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // TIA contains all the sub-components of the VCS TIA sub-system

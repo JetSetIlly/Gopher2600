@@ -21,13 +21,14 @@ package cpu
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/cpu/execution"
-	"gopher2600/hardware/cpu/instructions"
-	"gopher2600/hardware/cpu/registers"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
 	"log"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is

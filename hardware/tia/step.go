@@ -20,9 +20,9 @@
 package tia
 
 import (
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/television"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Step moves the state of the tia forward one video cycle returns the state of

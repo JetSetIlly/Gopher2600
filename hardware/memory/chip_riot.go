@@ -20,7 +20,7 @@
 package memory
 
 import (
-	"gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // newRIOT is the preferred method of initialisation for the RIOT memory area

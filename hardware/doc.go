@@ -26,4 +26,3 @@
 // it can be stepped cycle by cycle. Both CPU and video cycle stepping are
 // supported.
 package hardware
-

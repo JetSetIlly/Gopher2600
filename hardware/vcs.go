@@ -20,14 +20,14 @@
 package hardware
 
 import (
-	"gopher2600/cartridgeloader"
-	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/riot"
-	"gopher2600/hardware/riot/input"
-	"gopher2600/hardware/tia"
-	"gopher2600/television"
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // VCS struct is the main container for the emulated components of the VCS

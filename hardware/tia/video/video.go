@@ -20,13 +20,13 @@
 package video
 
 import (
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/tia/future"
-	"gopher2600/hardware/tia/phaseclock"
-	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/television"
-	"gopher2600/television/colors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/television/colors"
 )
 
 // Video contains all the components of the video sub-system of the VCS TIA chip

@@ -20,9 +20,10 @@
 package input
 
 import (
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/addresses"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
 // Panel represents the console's front control panel

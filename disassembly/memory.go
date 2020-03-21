@@ -20,8 +20,8 @@
 package disassembly
 
 import (
-	"gopher2600/hardware/memory/cartridge"
-	"gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // disasmMemory is a simplified memory model that allows the emulated CPU to

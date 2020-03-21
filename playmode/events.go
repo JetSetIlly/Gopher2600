@@ -20,9 +20,9 @@
 package playmode
 
 import (
-	"gopher2600/gui"
-	"gopher2600/hardware"
-	"gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 )
 
 // MouseMotionEventHandler handles mouse events sent from a GUI. Returns true if key

@@ -20,7 +20,7 @@
 package sdlaudio
 
 import (
-	"gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 
 	"github.com/veandco/go-sdl2/sdl"
 )

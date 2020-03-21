@@ -23,10 +23,11 @@
 package main
 
 import (
-	"gopher2600/cartridgeloader"
-	"gopher2600/hardware"
-	"gopher2600/hardware/riot/input"
 	"syscall/js"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 )
 
 func main() {

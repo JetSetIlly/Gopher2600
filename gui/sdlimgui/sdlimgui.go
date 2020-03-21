@@ -20,14 +20,15 @@
 package sdlimgui
 
 import (
-	"gopher2600/debugger/terminal"
-	"gopher2600/disassembly"
-	"gopher2600/gui"
-	"gopher2600/gui/sdlaudio"
-	"gopher2600/gui/sdlimgui/lazyvalues"
-	"gopher2600/paths"
-	"gopher2600/television"
 	"io"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
+	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

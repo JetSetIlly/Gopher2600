@@ -21,11 +21,12 @@ package disassembly
 
 import (
 	"fmt"
-	"gopher2600/hardware/cpu/execution"
-	"gopher2600/hardware/cpu/instructions"
-	"gopher2600/hardware/cpu/registers"
-	"gopher2600/symbols"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // EntryType describes the level of reliability of the Entry.

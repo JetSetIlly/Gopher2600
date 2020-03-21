@@ -22,9 +22,10 @@
 package colorterm
 
 import (
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/colorterm/easyterm"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
 )
 
 // ColorTerminal implements debugger UI interface with a basic ANSI terminal

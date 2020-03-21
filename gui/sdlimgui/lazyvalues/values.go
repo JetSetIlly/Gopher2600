@@ -20,12 +20,13 @@
 package lazyvalues
 
 import (
-	"gopher2600/debugger"
-	"gopher2600/disassembly"
-	"gopher2600/hardware"
-	"gopher2600/hardware/memory/cartridge"
-	"gopher2600/hardware/memory/memorymap"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // Values contains all values required by a debugger running in a different

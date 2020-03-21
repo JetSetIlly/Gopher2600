@@ -21,11 +21,12 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/future"
-	"gopher2600/hardware/tia/phaseclock"
-	"gopher2600/hardware/tia/polycounter"
-	"gopher2600/television"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // MissileCopies maps missile copies values to descriptions of those values

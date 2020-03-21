@@ -21,7 +21,8 @@ package cartridge
 
 import (
 	"fmt"
-	"gopher2600/errors"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 type cbs struct {

@@ -24,9 +24,10 @@ package main
 
 import (
 	"encoding/base64"
-	"gopher2600/television"
 	"syscall/js"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 const pixelDepth = 4

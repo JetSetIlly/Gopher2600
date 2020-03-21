@@ -21,9 +21,10 @@ package script
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Scribe can be used again after a start()/end() cycle. isWriting()

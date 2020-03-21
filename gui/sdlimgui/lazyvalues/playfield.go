@@ -20,8 +20,9 @@
 package lazyvalues
 
 import (
-	"gopher2600/hardware/tia/video"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
 // LazyPlayfield lazily accesses playfield information from the emulator.

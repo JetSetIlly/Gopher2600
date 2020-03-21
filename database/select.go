@@ -19,7 +19,7 @@
 
 package database
 
-import "gopher2600/errors"
+import "github.com/jetsetilly/gopher2600/errors"
 
 // SelectAll entries in the database. onSelect can be nil.
 //

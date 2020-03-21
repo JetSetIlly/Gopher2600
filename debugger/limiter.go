@@ -21,8 +21,9 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/television"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // a specialised frame-rate limiter for use by the debugger. this

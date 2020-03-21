@@ -21,7 +21,8 @@ package database
 
 import (
 	"fmt"
-	"gopher2600/errors"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Deserialiser extracts/converts fields from a SerialisedEntry

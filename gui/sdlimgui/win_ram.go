@@ -21,8 +21,9 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/cartridge"
 	"strconv"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

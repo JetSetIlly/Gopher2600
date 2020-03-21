@@ -21,8 +21,9 @@ package commandline
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Commands is the root of the node tree

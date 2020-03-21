@@ -23,10 +23,11 @@ package plainterm
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
 	"io"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // PlainTerminal is the default, most basic terminal interface. It keeps the

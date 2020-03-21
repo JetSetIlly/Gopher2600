@@ -21,10 +21,11 @@ package setup
 
 import (
 	"fmt"
-	"gopher2600/database"
-	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/patch"
+
+	"github.com/jetsetilly/gopher2600/database"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/patch"
 )
 
 const patchID = "patch"

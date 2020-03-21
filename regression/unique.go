@@ -21,10 +21,11 @@ package regression
 
 import (
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
-	"gopher2600/paths"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/paths"
 )
 
 // create a unique filename from a CatridgeLoader instance. used when saving

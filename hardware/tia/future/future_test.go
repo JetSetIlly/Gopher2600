@@ -20,9 +20,10 @@
 package future_test
 
 import (
-	"gopher2600/hardware/tia/future"
-	"gopher2600/test"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestFuture_schedulingDelays(t *testing.T) {

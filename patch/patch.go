@@ -21,15 +21,16 @@ package patch
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/cartridge"
-	"gopher2600/paths"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/paths"
 )
 
 const patchPath = "patches"

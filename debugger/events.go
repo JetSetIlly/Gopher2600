@@ -21,10 +21,11 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/playmode"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/playmode"
 )
 
 func (dbg *Debugger) guiEventHandler(ev gui.Event) error {

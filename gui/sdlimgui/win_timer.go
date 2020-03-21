@@ -21,8 +21,9 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/riot/timer"
 	"strconv"
+
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

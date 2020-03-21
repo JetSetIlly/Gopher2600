@@ -20,9 +20,10 @@
 package sdlimgui
 
 import (
-	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 type term struct {

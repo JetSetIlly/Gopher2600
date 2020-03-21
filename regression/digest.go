@@ -22,18 +22,19 @@ package regression
 import (
 	"bufio"
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/database"
-	"gopher2600/digest"
-	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/setup"
-	"gopher2600/television"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/database"
+	"github.com/jetsetilly/gopher2600/digest"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 const digestEntryID = "digest"

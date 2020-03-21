@@ -20,9 +20,10 @@
 package symbols_test
 
 import (
-	"gopher2600/symbols"
-	"gopher2600/test"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/symbols"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestDefaultSymbols(t *testing.T) {

@@ -25,10 +25,11 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 type traps struct {

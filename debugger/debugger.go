@@ -20,21 +20,22 @@
 package debugger
 
 import (
-	"gopher2600/cartridgeloader"
-	"gopher2600/debugger/script"
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/disassembly"
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/hardware"
-	"gopher2600/reflection"
-	"gopher2600/setup"
-	"gopher2600/symbols"
-	"gopher2600/television"
 	"os"
 	"os/signal"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/debugger/script"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/symbols"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 const defaultOnHalt = "CPU; TV"

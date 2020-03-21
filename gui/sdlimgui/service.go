@@ -20,8 +20,9 @@
 package sdlimgui
 
 import (
-	"gopher2600/gui"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/gui"
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/veandco/go-sdl2/sdl"

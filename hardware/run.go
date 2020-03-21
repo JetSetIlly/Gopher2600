@@ -19,7 +19,7 @@
 
 package hardware
 
-import "gopher2600/television"
+import "github.com/jetsetilly/gopher2600/television"
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that

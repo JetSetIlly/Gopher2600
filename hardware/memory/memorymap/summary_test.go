@@ -20,8 +20,9 @@
 package memorymap_test
 
 import (
-	"gopher2600/hardware/memory/memorymap"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 const validMemMap = `0000 -> 007f	TIA

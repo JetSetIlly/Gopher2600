@@ -20,9 +20,9 @@
 package reflection
 
 import (
-	"gopher2600/hardware"
-	"gopher2600/hardware/memory"
-	"gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory"
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
 )
 
 // Monitor watches for writes to specific video related memory locations. when

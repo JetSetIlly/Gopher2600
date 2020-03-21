@@ -20,10 +20,11 @@
 package registers_test
 
 import (
-	"gopher2600/hardware/cpu/registers"
-	rtest "gopher2600/hardware/cpu/registers/test"
-	"gopher2600/test"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestRegister(t *testing.T) {

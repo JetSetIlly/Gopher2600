@@ -21,7 +21,8 @@ package execution
 
 import (
 	"fmt"
-	"gopher2600/errors"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // IsValid checks whether the instance of Result contains information

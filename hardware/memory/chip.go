@@ -21,9 +21,10 @@ package memory
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // ChipMemory defines the information for and operations allowed for those

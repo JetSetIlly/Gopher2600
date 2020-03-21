@@ -21,8 +21,9 @@ package cartridge
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // from bankswitch_sizes.txt:

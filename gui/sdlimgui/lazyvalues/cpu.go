@@ -20,10 +20,11 @@
 package lazyvalues
 
 import (
-	"gopher2600/hardware/cpu/execution"
-	"gopher2600/hardware/cpu/registers"
 	"sync"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 )
 
 // LazyCPU lazily accesses CPU information from the emulator.

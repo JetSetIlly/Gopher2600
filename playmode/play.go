@@ -21,17 +21,18 @@ package playmode
 
 import (
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/hardware"
-	"gopher2600/patch"
-	"gopher2600/recorder"
-	"gopher2600/setup"
-	"gopher2600/television"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/patch"
+	"github.com/jetsetilly/gopher2600/recorder"
+	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 type playmode struct {

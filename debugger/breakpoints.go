@@ -25,12 +25,13 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/disassembly"
-	"gopher2600/errors"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // breakpoints keeps track of all the currently defined breakers

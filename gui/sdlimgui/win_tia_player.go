@@ -21,9 +21,10 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/video"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

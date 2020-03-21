@@ -19,7 +19,7 @@
 
 package television
 
-import "gopher2600/television/colors"
+import "github.com/jetsetilly/gopher2600/television/colors"
 
 // Television defines the operations that can be performed on the conceptual
 // television. Note that the television implementation itself does not present

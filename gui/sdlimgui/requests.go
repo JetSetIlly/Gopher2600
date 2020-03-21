@@ -20,11 +20,11 @@
 package sdlimgui
 
 import (
-	"gopher2600/debugger"
-	"gopher2600/disassembly"
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 type featureRequest struct {

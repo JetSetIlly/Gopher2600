@@ -20,9 +20,9 @@
 package disassembly
 
 import (
-	"gopher2600/errors"
-	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 func (dsm *Disassembly) decode(mc *cpu.CPU) error {

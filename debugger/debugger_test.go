@@ -21,14 +21,15 @@ package debugger_test
 
 import (
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/debugger"
-	"gopher2600/debugger/terminal"
-	"gopher2600/gui"
-	"gopher2600/television"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 type mockTV struct{}

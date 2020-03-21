@@ -21,17 +21,18 @@ package regression
 
 import (
 	"fmt"
-	"gopher2600/database"
-	"gopher2600/digest"
-	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/recorder"
-	"gopher2600/television"
 	"io"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/database"
+	"github.com/jetsetilly/gopher2600/digest"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/recorder"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 const playbackEntryID = "playback"

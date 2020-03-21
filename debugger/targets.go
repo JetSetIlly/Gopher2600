@@ -21,10 +21,11 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/errors"
-	"gopher2600/television"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 type target struct {
