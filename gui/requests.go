@@ -36,8 +36,8 @@ const (
 	ReqToggleVisibility   FeatureReq = "ReqToggleVisibility"   // none
 	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
 	ReqSetPause           FeatureReq = "ReqSetPause"           // bool
-	ReqSetMasking         FeatureReq = "ReqSetMasking"         // bool
-	ReqToggleMasking      FeatureReq = "ReqToggleMasking"      // none
+	ReqSetCropping        FeatureReq = "ReqSetCropping"        // bool
+	ReqToggleCropping     FeatureReq = "ReqToggleCropping"     // none
 	ReqSetAltColors       FeatureReq = "ReqSetAltColors"       // bool
 	ReqToggleAltColors    FeatureReq = "ReqToggleAltColors"    // none
 	ReqSetOverlay         FeatureReq = "ReqSetOverlay"         // bool

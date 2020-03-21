@@ -66,11 +66,11 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleAltColors:
 		img.screen.useAltPixels = !img.screen.useAltPixels
 
-	case gui.ReqSetMasking:
-		img.screen.setMasking(request.args[0].(bool))
+	case gui.ReqSetCropping:
+		img.screen.setCropping(request.args[0].(bool))
 
-	case gui.ReqToggleMasking:
-		img.screen.setMasking(!img.screen.masked)
+	case gui.ReqToggleCropping:
+		img.screen.setCropping(!img.screen.cropped)
 
 	case gui.ReqSetScale:
 		err = img.screen.setWindow(request.args[0].(float32))

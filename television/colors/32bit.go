@@ -22,7 +22,7 @@ package colors
 // colors used when alternative colors are selected. these colors mirror the
 // so called debug colors used by the Stella emulator
 var alt32bit = []uint32{
-	0x333333, 0x84c8fc, 0x9246c0, 0x901c00, 0xe8e84a, 0xd5824a, 0x328432,
+	0x111111, 0x84c8fc, 0x9246c0, 0x901c00, 0xe8e84a, 0xd5824a, 0x328432,
 }
 
 // the raw color values are the component values expressed as a single 32 bit

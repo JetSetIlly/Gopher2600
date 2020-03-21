@@ -88,12 +88,11 @@ func (win *winScreen) draw() {
 	imgui.Spacing()
 
 	// actual display
-	imgui.Image(imgui.TextureID(win.scr.texture),
+	imgui.Image(imgui.TextureID(win.scr.screenTexture),
 		imgui.Vec2{
 			win.scr.scaledWidth(),
 			win.scr.scaledHeight(),
 		})
-
 	win.isHovered = imgui.IsItemHovered()
 
 	// tv status line
@@ -124,8 +123,8 @@ func (win *winScreen) draw() {
 	imgui.Spacing()
 	imgui.Checkbox("Debug Colours", &win.scr.useAltPixels)
 	imgui.SameLine()
-	if imgui.Checkbox("Masking", &win.scr.masked) {
-		win.scr.setMasking(win.scr.masked)
+	if imgui.Checkbox("Cropping", &win.scr.cropped) {
+		win.scr.setCropping(win.scr.cropped)
 	}
 
 	imgui.End()

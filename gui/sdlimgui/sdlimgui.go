@@ -124,7 +124,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 
 	// connect some screen properties to other parts of the system
-	img.glsl.tvScreenTexture = img.screen.texture
+	img.glsl.screenTexture = img.screen.screenTexture
 	tv.AddPixelRenderer(img.screen)
 
 	// this audio mixer produces the sound. there is another AudioMixer

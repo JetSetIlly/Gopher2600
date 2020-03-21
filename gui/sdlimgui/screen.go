@@ -61,11 +61,11 @@ type screen struct {
 	// would it be better to have two textures one which is "full" size and one
 	// which "zooms" on the pixels in the non-masked area of the screen? maybe,
 	// but it seems messy to me by comparison.
-	maskedPixels    *image.RGBA
-	maskedAltPixels *image.RGBA
+	croppedPixels    *image.RGBA
+	croppedAltPixels *image.RGBA
 
-	// which set of pixels to use: masked or unmasked
-	masked bool
+	// which set of pixels to use: cropped or unmasked
+	cropped bool
 
 	// the basic amount by which the image should be scaled. image width
 	// is also scaled by pixelWidth and aspectBias value
@@ -79,10 +79,10 @@ type screen struct {
 	scanlines   int
 
 	// create texture on the next call of render
-	createTexture bool
+	createTextures bool
 
-	// the tv screen texture and backing pixels
-	texture uint32
+	// the tv screen texture
+	screenTexture uint32
 
 	// the coordinates of the last SetPixel(). used to help set the alpha
 	// channel when emulation is paused
@@ -97,13 +97,13 @@ func newScreen(img *SdlImgui) *screen {
 	scr := &screen{
 		img:     img,
 		scaling: defScaling,
-		masked:  true,
+		cropped: true,
 	}
 
-	// generate texture, creation of texture will be done on first call to
-	// render()
-	gl.GenTextures(1, &scr.texture)
-	gl.BindTexture(gl.TEXTURE_2D, scr.texture)
+	// set texture, creation of textures will be done after every call to resize()
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.GenTextures(1, &scr.screenTexture)
+	gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -131,8 +131,10 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
-	scr.maskedPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
-	scr.maskedAltPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
+	scr.croppedPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
+	scr.croppedAltPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
+
+	scr.clearPixels()
 
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
 
@@ -140,7 +142,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 
 	// defer re-creation of texture to render(). we have to do it in the
 	// #mainthread so we may as wait until that function is called
-	scr.createTexture = true
+	scr.createTextures = true
 
 	return nil
 }
@@ -179,6 +181,17 @@ func (scr *screen) NewScanline(scanline int) error {
 	return nil
 }
 
+// clear pixels by call SetPixel() and SetAltPixel for every point on the
+// screen
+func (scr *screen) clearPixels() {
+	for y := 0; y < scr.pixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.pixels.Bounds().Size().X; x++ {
+			scr.SetPixel(x, y, 0, 0, 0, false)
+			scr.SetAltPixel(x, y, 0, 0, 0, false)
+		}
+	}
+}
+
 // SetPixel implements the television.PixelRenderer interface
 func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
 	// handle VBLANK by setting pixels to black
@@ -191,20 +204,30 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 	scr.lastX = x
 	scr.lastY = y
 
-	scr.pixels.SetRGBA(scr.lastX, scr.lastY,
-		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
-	scr.maskedPixels.SetRGBA(scr.lastX-television.HorizClksHBlank, scr.lastY-scr.topScanline,
-		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+	scr.croppedPixels.SetRGBA(scr.lastX-television.HorizClksHBlank, scr.lastY-scr.topScanline, rgb)
+
+	if x == television.HorizClksHBlank-1 ||
+		y == scr.topScanline-1 ||
+		y == scr.topScanline+scr.scanlines+1 {
+		rgb.B = 50
+		rgb.A = 255
+	} else if y == scr.img.tv.GetSpec().ScanlineTop-1 ||
+		y == scr.img.tv.GetSpec().ScanlineBottom+1 {
+		rgb.R = 50
+		rgb.A = 255
+	}
+
+	scr.pixels.SetRGBA(scr.lastX, scr.lastY, rgb)
 
 	return nil
 }
 
 // SetAltPixel implements the television.PixelRenderer interface
 func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.altPixels.SetRGBA(x, y,
-		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
-	scr.maskedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.topScanline,
-		color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)})
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+	scr.croppedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.topScanline, rgb)
+	scr.altPixels.SetRGBA(x, y, rgb)
 
 	return nil
 }
@@ -215,25 +238,25 @@ func (scr *screen) EndRendering() error {
 }
 
 func (scr *screen) scaledWidth() float32 {
-	return float32(scr.maskedPixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
+	return float32(scr.croppedPixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
 }
 
 func (scr *screen) scaledHeight() float32 {
-	return float32(scr.maskedPixels.Bounds().Size().Y) * scr.scaling
+	return float32(scr.croppedPixels.Bounds().Size().Y) * scr.scaling
 }
 
 // render is called by service loop
 func (scr *screen) render() {
 	var pixels *image.RGBA
 	if scr.useAltPixels {
-		if scr.masked {
-			pixels = scr.maskedAltPixels
+		if scr.cropped {
+			pixels = scr.croppedAltPixels
 		} else {
 			pixels = scr.altPixels
 		}
 	} else {
-		if scr.masked {
-			pixels = scr.maskedPixels
+		if scr.cropped {
+			pixels = scr.croppedPixels
 		} else {
 			pixels = scr.pixels
 		}
@@ -241,20 +264,23 @@ func (scr *screen) render() {
 
 	// if frame rate is below a given threshold then fake a pause image. we
 	// don't want to do this with too high of a threshold though because it
-	// would just look like wierd
+	// would just look like weird
 	var pixelsCp []uint8
 	if scr.img.lazy.TV.ReqFPS < 3.0 {
 		copy(pixelsCp, pixels.Pix)
 		scr.pause(true)
 	}
 
-	if scr.createTexture {
-		scr.createTexture = false
+	if scr.createTextures {
+		scr.createTextures = false
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
 	} else {
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -317,22 +343,22 @@ func (scr *screen) pause(set bool) {
 			x = 0
 		}
 
-		o = scr.maskedPixels.PixOffset(x, y)
-		if o >= 0 && o < len(scr.maskedPixels.Pix) {
+		o = scr.croppedPixels.PixOffset(x, y)
+		if o >= 0 && o < len(scr.croppedPixels.Pix) {
 			for i := 0; i <= o; i += 4 {
-				scr.maskedPixels.Pix[i+3] = 255
-				scr.maskedAltPixels.Pix[i+3] = 255
+				scr.croppedPixels.Pix[i+3] = 255
+				scr.croppedAltPixels.Pix[i+3] = 255
 			}
 
-			for i := o + 4; i < len(scr.maskedPixels.Pix); i += 4 {
-				scr.maskedPixels.Pix[i+3] = 100
-				scr.maskedAltPixels.Pix[i+3] = 100
+			for i := o + 4; i < len(scr.croppedPixels.Pix); i += 4 {
+				scr.croppedPixels.Pix[i+3] = 100
+				scr.croppedAltPixels.Pix[i+3] = 100
 			}
 		}
 	}
 }
 
-func (scr *screen) setMasking(set bool) {
-	scr.masked = set
-	scr.createTexture = true
+func (scr *screen) setCropping(set bool) {
+	scr.cropped = set
+	scr.createTextures = true
 }

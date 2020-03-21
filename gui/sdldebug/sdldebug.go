@@ -83,7 +83,7 @@ type SdlDebug struct {
 	useOverlay bool
 
 	// show the overscan/hblank areas
-	masked bool
+	cropped bool
 
 	// the position of the previous call to Pixel(). used for drawing cursor
 	// and plotting meta-pixels
@@ -109,7 +109,7 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 		featureReq: make(chan featureRequest, 1),
 		featureErr: make(chan error, 1),
 		pitch:      television.HorizClksScanline * pixelDepth,
-		masked:     true,
+		cropped:    true,
 		paused:     true,
 	}
 
@@ -198,11 +198,11 @@ func (scr SdlDebug) showWindow(show bool) {
 }
 
 // the desired window width is different depending on whether the frame is
-// masked or unmasked
+// cropped or uncropped
 func (scr SdlDebug) windowWidth() (int32, float32) {
 	scale := scr.pixelScale * pixelWidth * scr.GetSpec().AspectBias
 
-	if scr.masked {
+	if scr.cropped {
 		return int32(float32(television.HorizClksVisible) * scale), scale
 	}
 
@@ -210,9 +210,9 @@ func (scr SdlDebug) windowWidth() (int32, float32) {
 }
 
 // the desired window height is different depending on whether the frame is
-// masked or unmasked
+// cropped or uncropped
 func (scr SdlDebug) windowHeight() (int32, float32) {
-	if scr.masked {
+	if scr.cropped {
 		return int32(float32(scr.scanlines) * scr.pixelScale), scr.pixelScale
 	}
 
@@ -236,7 +236,7 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 	}
 
 	// make copy rectangled
-	if scr.masked {
+	if scr.cropped {
 		scr.cpyRect = &sdl.Rect{
 			television.HorizClksHBlank, int32(scr.topScanline),
 			television.HorizClksVisible, scr.scanlines,
@@ -314,7 +314,7 @@ func (scr *SdlDebug) update() error {
 	}
 
 	// render screen guides
-	if !scr.masked {
+	if !scr.cropped {
 		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		scr.renderer.SetDrawColor(100, 100, 100, 50)
 		r := &sdl.Rect{0, 0,
@@ -352,7 +352,7 @@ func (scr *SdlDebug) update() error {
 		x := scr.lastX
 		y := scr.lastY
 
-		if scr.masked {
+		if scr.cropped {
 			y -= scr.topScanline
 			x -= television.HorizClksHBlank - 1
 		}

@@ -70,13 +70,13 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 		scr.paused = request.args[0].(bool)
 		scr.update()
 
-	case gui.ReqSetMasking:
-		scr.masked = request.args[0].(bool)
+	case gui.ReqSetCropping:
+		scr.cropped = request.args[0].(bool)
 		scr.setWindow(-1)
 		scr.update()
 
-	case gui.ReqToggleMasking:
-		scr.masked = !scr.masked
+	case gui.ReqToggleCropping:
+		scr.cropped = !scr.cropped
 		scr.setWindow(-1)
 		scr.update()
 

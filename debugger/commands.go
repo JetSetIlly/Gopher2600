@@ -857,11 +857,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetMasking, false)
+				err = dbg.scr.SetFeature(gui.ReqSetCropping, false)
 			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetMasking, true)
+				err = dbg.scr.SetFeature(gui.ReqSetCropping, true)
 			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleMasking)
+				err = dbg.scr.SetFeature(gui.ReqToggleCropping)
 			}
 
 		case "ALT":

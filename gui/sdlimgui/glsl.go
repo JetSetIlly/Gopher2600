@@ -55,8 +55,8 @@ type glsl struct {
 	// font texture given to imgui. we take charge of its destruction
 	fontTexture uint32
 
-	// tv screen texture is created and managed by the tvScreen type
-	tvScreenTexture uint32
+	// texture created and managed by the screen type
+	screenTexture uint32
 }
 
 func newGlsl(io imgui.IO) (*glsl, error) {
@@ -217,7 +217,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 			} else {
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
-				case rnd.tvScreenTexture:
+				case rnd.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, 1)
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)

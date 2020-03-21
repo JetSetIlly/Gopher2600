@@ -210,7 +210,7 @@ func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
 	// convert X pixel value to horizpos equivalent
 	// the opposite of pixelX() and also the scalining applied
 	// by the SDL renderer
-	if scr.masked {
+	if scr.cropped {
 		hp = int(float32(ev.X) / sx)
 
 	} else {
@@ -220,7 +220,7 @@ func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
 	// convert Y pixel value to scanline equivalent
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
-	if scr.masked {
+	if scr.cropped {
 		sl = int(float32(ev.Y)/sy) + int(scr.topScanline)
 	} else {
 		sl = int(float32(ev.Y) / sy)
