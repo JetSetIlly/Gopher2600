@@ -307,10 +307,9 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
-	termType := md.AddString("term", "COLOR", "terminal type to use in debug mode: COLOR, PLAIN")
+	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
-	imgui := md.AddBool("imgui", false, "use new imgui interface (WIP)")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -326,8 +325,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	var term terminal.Terminal
 
 	// decide which gui to use
-	if *imgui {
-		fmt.Println("using experimetal 'dear imgui' based interface")
+	if *termType == "IMGUI" {
 		sync.creator <- func() (GuiCreator, error) {
 			return sdlimgui.NewSdlImgui(tv)
 		}
