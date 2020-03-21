@@ -23,13 +23,14 @@ package performance
 
 import (
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
-	"gopher2600/hardware"
-	"gopher2600/setup"
-	"gopher2600/television"
 	"io"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Check is a very rough and ready calculation of the emulator's performance

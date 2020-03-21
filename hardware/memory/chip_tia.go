@@ -20,8 +20,8 @@
 package memory
 
 import (
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // newTIA is the preferred method of initialisation for the TIA memory area

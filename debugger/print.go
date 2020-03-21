@@ -25,8 +25,9 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
 // all print operations from the debugger should be made with the this printLine()

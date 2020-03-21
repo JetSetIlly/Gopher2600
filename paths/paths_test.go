@@ -20,9 +20,10 @@
 package paths_test
 
 import (
-	"gopher2600/paths"
-	"gopher2600/test"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestPaths(t *testing.T) {

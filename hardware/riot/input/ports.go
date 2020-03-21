@@ -19,7 +19,7 @@
 
 package input
 
-import "gopher2600/errors"
+import "github.com/jetsetilly/gopher2600/errors"
 
 // ID differentiates the different ports attached to the console
 type ID int

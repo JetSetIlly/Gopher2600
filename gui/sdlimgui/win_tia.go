@@ -20,7 +20,7 @@
 package sdlimgui
 
 import (
-	"gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

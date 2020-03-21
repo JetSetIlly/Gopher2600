@@ -21,9 +21,10 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/future"
-	"gopher2600/hardware/tia/phaseclock"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 )
 
 // enclockifier is the mechanism controlling how many pixels to output for both

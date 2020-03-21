@@ -21,9 +21,10 @@ package memory
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/memory/memorymap"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari

@@ -20,11 +20,12 @@
 package debugger
 
 import (
-	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/hardware/cpu/instructions"
 	"io"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
 
 // inputLoop has two modes, defined by the videoCycle argument. when videoCycle

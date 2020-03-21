@@ -20,11 +20,12 @@
 package cartridgeloader
 
 import (
-	"gopher2600/errors"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Loader is used to specify the cartridge to use when Attach()ing to

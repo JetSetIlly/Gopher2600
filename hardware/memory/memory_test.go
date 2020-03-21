@@ -20,8 +20,9 @@
 package memory_test
 
 import (
-	"gopher2600/hardware/memory"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
 func readData(t *testing.T, mem *memory.VCSMemory, address uint16, expectedData uint8) {

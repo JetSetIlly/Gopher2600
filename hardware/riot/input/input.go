@@ -21,8 +21,9 @@ package input
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // despite the placement of the input package in the source tree, input is

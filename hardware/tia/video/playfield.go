@@ -21,9 +21,10 @@ package video
 
 import (
 	"fmt"
-	"gopher2600/hardware/tia/phaseclock"
-	"gopher2600/hardware/tia/polycounter"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
 
 // ScreenRegion notes which part of the screen is currently being drawn

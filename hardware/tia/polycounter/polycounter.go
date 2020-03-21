@@ -21,7 +21,8 @@ package polycounter
 
 import (
 	"fmt"
-	"gopher2600/errors"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Polycounter counts from 0 to Limit. can be used to index a polycounter

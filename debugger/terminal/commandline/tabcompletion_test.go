@@ -20,9 +20,10 @@
 package commandline_test
 
 import (
-	"gopher2600/debugger/terminal/commandline"
 	"sort"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 func TestTabCompletion(t *testing.T) {

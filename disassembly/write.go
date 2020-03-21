@@ -21,8 +21,9 @@ package disassembly
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // WriteAttr controls what is printed by the Write*() functions

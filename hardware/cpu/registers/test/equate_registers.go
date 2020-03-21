@@ -20,8 +20,9 @@
 package test
 
 import (
-	"gopher2600/hardware/cpu/registers"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 )
 
 // EquateRegisters is used to test equality between two instances of a register

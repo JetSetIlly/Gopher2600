@@ -20,10 +20,11 @@
 package performance
 
 import (
-	"gopher2600/errors"
 	"os"
 	"runtime"
 	"runtime/pprof"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // ProfileCPU runs supplied function "through" the pprof CPU profiler

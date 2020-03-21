@@ -21,10 +21,11 @@ package television
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/television/colors"
 	"strings"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/television/colors"
 )
 
 // the number of times we must see new top/bottom scanline in the

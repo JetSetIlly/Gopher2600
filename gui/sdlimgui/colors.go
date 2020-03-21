@@ -20,7 +20,7 @@
 package sdlimgui
 
 import (
-	"gopher2600/television/colors"
+	"github.com/jetsetilly/gopher2600/television/colors"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

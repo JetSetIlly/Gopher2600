@@ -21,8 +21,9 @@ package commandline_test
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal/commandline"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 func TestValidation_required(t *testing.T) {

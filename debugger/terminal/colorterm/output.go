@@ -20,8 +20,8 @@
 package colorterm
 
 import (
-	"gopher2600/ansi"
-	"gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/ansi"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
 // TermPrintLine implements the terminal.Output interface

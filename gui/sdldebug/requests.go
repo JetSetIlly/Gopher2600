@@ -20,8 +20,8 @@
 package sdldebug
 
 import (
-	"gopher2600/errors"
-	"gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
 
 	"github.com/veandco/go-sdl2/sdl"
 )

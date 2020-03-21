@@ -20,14 +20,14 @@
 package disassembly
 
 import (
-	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
-	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/execution"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/cartridge"
-	"gopher2600/hardware/memory/memorymap"
-	"gopher2600/symbols"
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // Disassembly represents the annotated disassembly of a 6507 binary

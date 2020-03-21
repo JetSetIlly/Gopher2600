@@ -20,8 +20,9 @@
 package television_test
 
 import (
-	"gopher2600/television"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 func TestNewTelevision(t *testing.T) {

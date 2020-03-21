@@ -20,10 +20,11 @@
 package modalflag_test
 
 import (
-	"gopher2600/modalflag"
-	"gopher2600/test"
 	"os"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/modalflag"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestNoModesNoFlags(t *testing.T) {

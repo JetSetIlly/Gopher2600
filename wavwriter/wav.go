@@ -21,9 +21,10 @@
 package wavwriter
 
 import (
-	"gopher2600/errors"
-	tiaAudio "gopher2600/hardware/tia/audio"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	tiaAudio "github.com/jetsetilly/gopher2600/hardware/tia/audio"
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"

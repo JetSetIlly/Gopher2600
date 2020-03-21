@@ -21,7 +21,7 @@
 // memory package documentation.
 package bus
 
-import "gopher2600/hardware/memory/addresses"
+import "github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 
 // CPUBus defines the operations for the memory system when accessed from the CPU
 // All memory areas implement this interface because they are all accessible

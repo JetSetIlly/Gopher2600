@@ -21,9 +21,10 @@ package database
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io"
 	"sort"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // arbitrary maximum number of entries

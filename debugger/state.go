@@ -20,7 +20,7 @@
 package debugger
 
 import (
-	"gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
 // GetQuantum returns the current quantum value

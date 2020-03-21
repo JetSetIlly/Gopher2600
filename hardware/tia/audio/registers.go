@@ -19,7 +19,7 @@
 
 package audio
 
-import "gopher2600/hardware/memory/bus"
+import "github.com/jetsetilly/gopher2600/hardware/memory/bus"
 
 // UpdateRegisters checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system

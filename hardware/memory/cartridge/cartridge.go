@@ -22,11 +22,12 @@ package cartridge
 import (
 	"crypto/sha1"
 	"fmt"
-	"gopher2600/cartridgeloader"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/memory/memorymap"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // Cartridge defines the information and operations for a VCS cartridge

@@ -21,12 +21,13 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/debugger/terminal"
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
 type watcher struct {

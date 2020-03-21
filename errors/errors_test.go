@@ -21,8 +21,9 @@ package errors_test
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 func TestError(t *testing.T) {

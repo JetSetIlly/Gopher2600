@@ -20,8 +20,9 @@
 package terminal
 
 import (
-	"gopher2600/gui"
 	"os"
+
+	"github.com/jetsetilly/gopher2600/gui"
 )
 
 // Prompt specifies the prompt text and the prompt style.

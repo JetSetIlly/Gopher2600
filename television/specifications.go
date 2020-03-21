@@ -19,7 +19,7 @@
 
 package television
 
-import "gopher2600/television/colors"
+import "github.com/jetsetilly/gopher2600/television/colors"
 
 // Specification is used to define the two television specifications
 type Specification struct {

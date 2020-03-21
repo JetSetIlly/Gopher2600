@@ -21,9 +21,10 @@ package symbols
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/addresses"
 	"sort"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
 // Table is the master symbols table for the loaded programme

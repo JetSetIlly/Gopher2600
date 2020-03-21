@@ -21,10 +21,11 @@ package cpu_test
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/cpu"
-	rtest "gopher2600/hardware/cpu/registers/test"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
 )
 
 type mockMem struct {

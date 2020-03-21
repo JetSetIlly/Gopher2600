@@ -20,10 +20,11 @@
 package commandline_test
 
 import (
-	"gopher2600/debugger/terminal/commandline"
-	"gopher2600/test"
 	"strings"
 	"testing"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 // expectEquality compares a template, as passed to ParseCommandTemplate(),

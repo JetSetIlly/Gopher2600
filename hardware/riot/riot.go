@@ -20,10 +20,11 @@
 package riot
 
 import (
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/riot/input"
-	"gopher2600/hardware/riot/timer"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
 // RIOT represents the PIA 6532 found in the VCS

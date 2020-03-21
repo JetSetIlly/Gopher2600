@@ -20,8 +20,9 @@
 package lazyvalues
 
 import (
-	"gopher2600/hardware/memory/cartridge"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
 // LazyCart lazily accesses cartridge information from the emulator.

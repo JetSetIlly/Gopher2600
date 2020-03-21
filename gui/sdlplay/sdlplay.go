@@ -20,11 +20,12 @@
 package sdlplay
 
 import (
-	"gopher2600/errors"
-	"gopher2600/gui"
-	"gopher2600/gui/sdlaudio"
-	"gopher2600/television"
 	"io"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
+	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
 )

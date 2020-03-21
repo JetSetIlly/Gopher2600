@@ -20,8 +20,9 @@
 package lazyvalues
 
 import (
-	"gopher2600/television"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 // LazyTV lazily accesses tv information from the emulator.

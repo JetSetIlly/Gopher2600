@@ -20,7 +20,7 @@
 package video
 
 import (
-	"gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 )
 
 // scancounter is the mechanism for outputting player sprite pixels. it is the

@@ -20,11 +20,12 @@
 package script
 
 import (
-	"gopher2600/debugger/terminal"
-	"gopher2600/errors"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 const commentLine = "#"

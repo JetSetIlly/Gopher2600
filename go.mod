@@ -1,4 +1,4 @@
-module gopher2600
+module github.com/jetsetilly/gopher2600
 
 go 1.13
 

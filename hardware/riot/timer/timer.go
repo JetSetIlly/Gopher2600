@@ -21,8 +21,9 @@ package timer
 
 import (
 	"fmt"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // Interval indicates how often (in CPU cycles) the timer value decreases.

@@ -20,8 +20,9 @@
 package symbols
 
 import (
-	"gopher2600/errors"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // TableType is used to select and identify a symbol table

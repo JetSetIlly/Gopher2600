@@ -21,9 +21,10 @@ package sdlimgui
 
 import (
 	"fmt"
-	"gopher2600/hardware/cpu/registers"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )

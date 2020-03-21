@@ -20,11 +20,11 @@
 package memory
 
 import (
-	"gopher2600/errors"
-	"gopher2600/hardware/memory/addresses"
-	"gopher2600/hardware/memory/bus"
-	"gopher2600/hardware/memory/cartridge"
-	"gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // VCSMemory is the monolithic representation of the memory in 2600.

@@ -25,12 +25,13 @@ import (
 	"encoding/csv"
 	"fmt"
 	"go/format"
-	"gopher2600/hardware/cpu/instructions"
 	"io"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
 
 const definitionsCSVFile = "./instructions.csv"

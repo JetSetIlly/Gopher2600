@@ -20,7 +20,7 @@
 package execution
 
 import (
-	"gopher2600/hardware/cpu/instructions"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
 
 // Result records the state/result of each instruction executed on the CPU.

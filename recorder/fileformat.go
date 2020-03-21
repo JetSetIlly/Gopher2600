@@ -21,10 +21,11 @@ package recorder
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 const (

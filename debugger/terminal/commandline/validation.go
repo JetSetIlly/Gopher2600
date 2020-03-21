@@ -21,9 +21,10 @@ package commandline
 
 import (
 	"fmt"
-	"gopher2600/errors"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // Validate input string against command defintions

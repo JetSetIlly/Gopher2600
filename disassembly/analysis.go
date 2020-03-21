@@ -21,11 +21,12 @@ package disassembly
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/cpu"
-	"gopher2600/hardware/cpu/instructions"
-	"gopher2600/hardware/memory/memorymap"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // Analysis (best effort) of the cartridge

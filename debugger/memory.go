@@ -21,12 +21,13 @@ package debugger
 
 import (
 	"fmt"
-	"gopher2600/errors"
-	"gopher2600/hardware/memory"
-	"gopher2600/hardware/memory/memorymap"
-	"gopher2600/symbols"
 	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // memoryDebug is a front-end to the real VCS memory. it allows addressing by

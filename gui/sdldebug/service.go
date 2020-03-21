@@ -20,9 +20,10 @@
 package sdldebug
 
 import (
-	"gopher2600/gui"
-	"gopher2600/television"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
 )

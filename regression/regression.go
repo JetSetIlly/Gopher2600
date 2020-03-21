@@ -21,15 +21,16 @@ package regression
 
 import (
 	"fmt"
-	"gopher2600/ansi"
-	"gopher2600/database"
-	"gopher2600/errors"
-	"gopher2600/paths"
 	"io"
 	"math/rand"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/ansi"
+	"github.com/jetsetilly/gopher2600/database"
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/paths"
 )
 
 // the location of the regressionDB file and the location of any regression
