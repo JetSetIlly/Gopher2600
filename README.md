@@ -8,6 +8,7 @@ written in Go and was begun as a project for learning that language.
 * Support for joystick, paddle and keyboard hand controllers
 	* Auto-handling of input type *
 * Debugger
+	* Dear Imgui interface
 	* Line terminal interface
 	* CPU and Video stepping
 	* Breakpoints, traps, watches
@@ -51,24 +52,19 @@ The screenshot below is of ET with the patches from http://www.neocomputer.org/p
 
 <img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
 
-The final two screenshots show some debugging output. Interaction with the debugger is currently though a line terminal (or through a script) but even so, the screen display can be modified to display information useful to the programmer.
+The screenshot below show Keystone Kapers as seen through the debugger.
 
-The Pitfall screenshot shows the debugging overlay. The additional coloured pixels indicate when key TIA events have occured. The most interesting part of this image perhaps, are the grey bars on the right of the image. These show WSYNC signal activity. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
+<img src=".screenshots/keystone_imgui4.png" height="400" alt="keystone kapers with imgui interface"/>
 
 The second picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. Again, this visualisation proved useful to me when developing the emulator.
 
-<img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> <img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/>
+<img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/>
 
-#### experimental interface
+The final screenshot shows the debugging overlay on the Pitfall ROM. The additional coloured pixels indicate when key TIA events have occured. The most interesting part of this image perhaps, are the grey bars on the right of the image. These show WSYNC signal activity. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
 
-There is currently an effort to introduce a windowed debugger, using Dear Imgui. You can see the current state of the
-project, which is by no means complete, with the '-imgui' flag
+<img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> 
 
-	> gopher2600 debug -imgui <rom>
-
-The sreenshot below show Keystone Kapers with the debugging windows.
-
-<img src=".screenshots/keystone_imgui2.png" height="400" alt="keystone kapers with imgui interface"/>
+Note that this last feature is not currently available in the graphical debugger and only through the `PLAIN` and `COLOR` term types.
 
 ## Resources used
 
@@ -238,7 +234,31 @@ To run the debugger use the DEBUG submode
 
 	> gopher2600 debug roms/Pitfall.bin
 
-The debugger is line oriented, which is not ideal I admit but it works quite well. Help is available with the HELP command. Help on a specific topic is available by specifying a keyword. The list below shows the currently defined keywords. The rest of the section will give a brief run down of debugger features.
+The default debugging mode display a windowed interface. A thorough explanation of the interface is not yet available but it is believed to be self explanatory. Note that the ROM can be interacted with by clicking on the screen image in  the `TV Screen` window. This will "capture" the mouse and allow the emulated VCS to be interacted with in the normal way. Click the right mouse button to release the captured mouse.
+
+In addition to the controller and panel input described above, the following keys are also available during mouse capture:
+
+* F12 (backtick) Toggle screen masking
+* F11 Toggle debugging colors
+* \+ Increase screen size
+* \- Decrease screen size
+
+Not available in the graphical debugger but available in the display for the
+`PLAIN` and `COLOR` terminal types is this:
+
+* F10 Toggle debugging overlay
+
+The debugging overlay will be added to the graphical debugger in a future
+version.
+
+#### Debugger Terminal
+
+As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window which opens by default on debugger launch. The rest of this section describes
+the operation of the terminal in detail.
+
+Help is available with the HELP command. Help on a specific topic is available
+by specifying a keyword. The list below shows the currently defined keywords.
+The rest of the section will give a brief run down of debugger features.
 
 	[ 0xf000 SEI ] >> help
 	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
@@ -268,18 +288,6 @@ On startup, the debugger will load a configuration script, which consists of deb
 	DISPLAY
 	
 This opens the debugger with the debugging screen open and ready for use. See the section "Configuration Directories" for more information.
-
-### Debugger's Screen Display
-
-When the debugger's screen display is active, the VCS can be controlled in the manner described above in the Hand Controllers and Panel sections. In addition to those controls, the following keys are only available in the debugger (and when the screen display is active)
-
-* F12 (backtick) Toggle screen masking
-* F11 Toggle debugging colors
-* F10 Toggle debugging overlay
-* \+ Increase screen size
-* \- Decrease screen size
-
-Note that all user input is accessible through debugging commands. This is useful for scripting.
 
 ## Configuration Directory
 
@@ -410,3 +418,15 @@ at https://godoc.org/github.com/JetSetIlly/Gopher2600
 
 Finally, development and maintenance documentation is beginning to be stored in its
 own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
+
+## Other Software / Libraries
+
+The following projects are used in the gopher2600 project.
+
+* https://github.com/ocornut/imgui
+* https://github.com/inkyblackness/imgui-go (occasionally using a fork in the JetSetIlly repository)
+* https://github.com/veandco/go-sdl2
+* https://github.com/go-gl/gl
+* https://github.com/go-audio/audio
+* https://github.com/go-audio/wav
+* https://github.com/pkg/term

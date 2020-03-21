@@ -72,6 +72,20 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleCropping:
 		img.screen.setCropping(!img.screen.cropped)
 
+	case gui.ReqSetOverlay:
+
+	case gui.ReqToggleOverlay:
+
+	case gui.ReqIncScale:
+		if img.screen.scaling < 4.0 {
+			err = img.screen.setWindow(img.screen.scaling + 0.1)
+		}
+
+	case gui.ReqDecScale:
+		if img.screen.scaling > 0.5 {
+			err = img.screen.setWindow(img.screen.scaling - 0.1)
+		}
+
 	case gui.ReqSetScale:
 		err = img.screen.setWindow(request.args[0].(float32))
 
