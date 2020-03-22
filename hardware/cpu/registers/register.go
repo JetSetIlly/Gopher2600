@@ -123,7 +123,7 @@ func (r *Register) Add(val uint8, carry bool) (rcarry bool, overflow bool) {
 }
 
 // Subtract value from register. Returns carry and overflow states
-func (r *Register) Subtract(val uint8, carry bool) (bool, bool) {
+func (r *Register) Subtract(val uint8, carry bool) (rcarry bool, overflow bool) {
 	return r.Add(^val, carry)
 }
 

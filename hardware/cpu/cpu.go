@@ -1465,7 +1465,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "axs":
 		mc.X.AND(mc.A.Value())
-		mc.X.Subtract(value, true)
+
+		// axs subtract behaves like CMP as far as carry and overflow flags are
+		// concerned
+		mc.Status.Carry, _ = mc.X.Subtract(value, true)
+
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
