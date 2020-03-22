@@ -1523,6 +1523,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
+	case "anc":
+		// immediate AND. puts bit 7 into the carry flag (in microcode terms
+		// this is as though ASL had been enacted)
+		mc.A.AND(value)
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
+		mc.Status.Carry = value&0x80 == 0x80
+
 	default:
 		// this should never, ever happen
 		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
