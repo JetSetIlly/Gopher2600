@@ -49,7 +49,7 @@ func (ana Analysis) String() string {
 func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineDepth int) error {
 	for {
 		// get bank now before executing instruction. the bank may change
-		// as a result of the instruction execution. we cannot stop this withe
+		// as a result of the instruction execution. we cannot stop this with
 		// the CPU's NoFlow mechanism
 		bank := dsm.cart.GetBank(mc.PC.Address())
 

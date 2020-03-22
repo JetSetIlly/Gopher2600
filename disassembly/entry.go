@@ -133,17 +133,16 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	case 3:
 		switch result.ByteCount {
 		case 3:
-			d.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
-
 			operandDecoded = true
 			operand = result.InstructionData
 			d.Operand = fmt.Sprintf("$%04x", operand)
+			d.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
 		case 2:
-			d.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
 			d.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
+			d.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
 		case 1:
-			d.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
 			d.Operand = "$????"
+			d.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -152,14 +151,13 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	case 2:
 		switch result.ByteCount {
 		case 2:
-			d.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
-
 			operandDecoded = true
 			operand = result.InstructionData
 			d.Operand = fmt.Sprintf("$%02x", operand)
+			d.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			d.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
 			d.Operand = "$??"
+			d.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:

@@ -180,7 +180,7 @@ func (win *winCPU) drawLastResult() {
 			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 			imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
-			imgui.Text("")
+			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
 			// if there's a problem with the accuracy of what is being
 			// displayed, the problem probably isn't here and it probably isn't

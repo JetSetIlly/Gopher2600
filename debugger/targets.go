@@ -166,7 +166,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "Mnemonic",
 						currentValue: func() interface{} {
-							if !dbg.vcs.CPU.LastResult.Final {
+							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
 							return dbg.vcs.CPU.LastResult.Defn.Mnemonic
