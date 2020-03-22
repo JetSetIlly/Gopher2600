@@ -563,9 +563,7 @@ func (ps *playerSprite) _futureResetPosition() {
 	ps.ResetPositionEvent = nil
 }
 
-// pixel returns the color of the player at the current time.  returns
-// (false, col) if no pixel is to be seen; and (true, col) if there is
-func (ps *playerSprite) pixel() (bool, uint8) {
+func (ps *playerSprite) pixel() (active bool, color uint8, collision bool) {
 	// pick the pixel from the gfxData register
 	if ps.ScanCounter.IsActive() {
 		var offset int
@@ -577,13 +575,13 @@ func (ps *playerSprite) pixel() (bool, uint8) {
 		}
 
 		if *ps.gfxData>>offset&0x01 == 0x01 {
-			return true, ps.Color
+			return true, ps.Color, true
 		}
 	}
 
 	// always return player color because when in "scoremode" the playfield
 	// wants to know the color of the player
-	return false, ps.Color
+	return false, ps.Color, *ps.hblank && ps.ScanCounter.IsLatching()
 }
 
 func (ps *playerSprite) setGfxData(data uint8) {

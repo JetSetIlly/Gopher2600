@@ -140,78 +140,88 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // sprite or playfield pixel is present.
 func (vd *Video) Pixel() (uint8, colors.AltColor) {
 	bgc := vd.Playfield.BackgroundColor
-	pfu, pfc := vd.Playfield.pixel()
-	p0u, p0c := vd.Player0.pixel()
-	p1u, p1c := vd.Player1.pixel()
-	m0u, m0c := vd.Missile0.pixel()
-	m1u, m1c := vd.Missile1.pixel()
-	blu, blc := vd.Ball.pixel()
+	pfa, pfc := vd.Playfield.pixel()
+	p0a, p0c, p0k := vd.Player0.pixel()
+	p1a, p1c, p1k := vd.Player1.pixel()
+	m0a, m0c, m0k := vd.Missile0.pixel()
+	m1a, m1c, m1k := vd.Missile1.pixel()
+	bla, blc, blk := vd.Ball.pixel()
 
-	if m0u && p1u {
+	// the sprites return a third value which we'll call the collision
+	// condition. this condition only applies when detecting collisions with
+	// other sprites. it is not used when detecting collisions with the
+	// playfield. for playfield collisions we just use the active condition
+	// (the first returned value)
+
+	if m0k && p1k {
 		vd.collisions.cxm0p |= 0x80
 		vd.collisions.setMemory(addresses.CXM0P)
 	}
-	if m0u && p0u {
+	if m0k && p0k {
 		vd.collisions.cxm0p |= 0x40
 		vd.collisions.setMemory(addresses.CXM0P)
 	}
 
-	if m1u && p0u {
+	if m1k && p0k {
 		vd.collisions.cxm1p |= 0x80
 		vd.collisions.setMemory(addresses.CXM1P)
 	}
-	if m1u && p1u {
+	if m1k && p1k {
 		vd.collisions.cxm1p |= 0x40
 		vd.collisions.setMemory(addresses.CXM1P)
 	}
 
-	if p0u && pfu {
+	// use active bit when comparing with playfield
+	if p0a && pfa {
 		vd.collisions.cxp0fb |= 0x80
 		vd.collisions.setMemory(addresses.CXP0FB)
 	}
-	if p0u && blu {
+	if p0k && blk {
 		vd.collisions.cxp0fb |= 0x40
 		vd.collisions.setMemory(addresses.CXP0FB)
 	}
 
-	if p1u && pfu {
+	// use active bit when comparing with playfield
+	if p1a && pfa {
 		vd.collisions.cxp1fb |= 0x80
 		vd.collisions.setMemory(addresses.CXP1FB)
 	}
-	if p1u && blu {
+	if p1k && blk {
 		vd.collisions.cxp1fb |= 0x40
 		vd.collisions.setMemory(addresses.CXP1FB)
 	}
 
-	if m0u && pfu {
+	// use active bit when comparing with playfield
+	if m0a && pfa {
 		vd.collisions.cxm0fb |= 0x80
 		vd.collisions.setMemory(addresses.CXM0FB)
 	}
-	if m0u && blu {
+	if m0k && blk {
 		vd.collisions.cxm0fb |= 0x40
 		vd.collisions.setMemory(addresses.CXM0FB)
 	}
 
-	if m1u && pfu {
+	// use active bit when comparing with playfield
+	if m1a && pfa {
 		vd.collisions.cxm1fb |= 0x80
 		vd.collisions.setMemory(addresses.CXM1FB)
 	}
-	if m1u && blu {
+	if m1k && blk {
 		vd.collisions.cxm1fb |= 0x40
 		vd.collisions.setMemory(addresses.CXM1FB)
 	}
 
-	if blu && pfu {
+	if blk && pfa {
 		vd.collisions.cxblpf |= 0x80
 		vd.collisions.setMemory(addresses.CXBLPF)
 	}
 	// no bit 6 for CXBLPF
 
-	if p0u && p1u {
+	if p0k && p1k {
 		vd.collisions.cxppmm |= 0x80
 		vd.collisions.setMemory(addresses.CXPPMM)
 	}
-	if m0u && m1u {
+	if m0k && m1k {
 		vd.collisions.cxppmm |= 0x40
 		vd.collisions.setMemory(addresses.CXPPMM)
 	}
@@ -239,7 +249,7 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
 	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.Region == RegionLeft) {
-		if pfu { // priority 1
+		if pfa { // priority 1
 			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
 				switch vd.Playfield.Region {
 				case RegionLeft:
@@ -252,19 +262,19 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 			}
 
 			altCol = colors.AltColPlayfield
-		} else if blu {
+		} else if bla {
 			col = blc
 			altCol = colors.AltColBall
-		} else if p0u { // priority 2
+		} else if p0a { // priority 2
 			col = p0c
 			altCol = colors.AltColPlayer0
-		} else if m0u {
+		} else if m0a {
 			col = m0c
 			altCol = colors.AltColMissile0
-		} else if p1u { // priority 3
+		} else if p1a { // priority 3
 			col = p1c
 			altCol = colors.AltColPlayer1
-		} else if m1u {
+		} else if m1a {
 			col = m1c
 			altCol = colors.AltColMissile1
 		} else {
@@ -272,21 +282,21 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 			altCol = colors.AltColBackground
 		}
 	} else {
-		if p0u { // priority 1
+		if p0a { // priority 1
 			col = p0c
 			altCol = colors.AltColPlayer0
-		} else if m0u {
+		} else if m0a {
 			col = m0c
 			altCol = colors.AltColMissile0
-		} else if p1u { // priority 2
+		} else if p1a { // priority 2
 			col = p1c
 			altCol = colors.AltColPlayer1
-		} else if m1u {
+		} else if m1a {
 			col = m1c
 			altCol = colors.AltColMissile1
-		} else if vd.Playfield.Scoremode && (blu || pfu) {
+		} else if vd.Playfield.Scoremode && (bla || pfa) {
 			// priority 3 (scoremode without priority bit)
-			if pfu {
+			if pfa {
 				col = pfc
 				switch vd.Playfield.Region {
 				case RegionLeft:
@@ -295,16 +305,16 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 					col = p1c
 				}
 				altCol = colors.AltColPlayfield
-			} else if blu { // priority 3
+			} else if bla { // priority 3
 				col = blc
 				altCol = colors.AltColBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
-			if blu { // priority 3
+			if bla { // priority 3
 				col = blc
 				altCol = colors.AltColBall
-			} else if pfu {
+			} else if pfa {
 				col = pfc
 				altCol = colors.AltColPlayfield
 			} else {

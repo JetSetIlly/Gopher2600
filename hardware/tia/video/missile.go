@@ -434,9 +434,9 @@ func (ms *missileSprite) setResetToPlayer(on bool) {
 	ms.ResetToPlayer = on
 }
 
-func (ms *missileSprite) pixel() (bool, uint8) {
+func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
 	if !ms.Enabled {
-		return false, ms.Color
+		return false, ms.Color, *ms.hblank && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
 	}
 
 	// the missile sprite has a special state where a stuffed HMOVE clock
@@ -456,7 +456,7 @@ func (ms *missileSprite) pixel() (bool, uint8) {
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
-	return px, ms.Color
+	return px, ms.Color, px || (*ms.hblank && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd())
 }
 
 func (ms *missileSprite) setEnable(enable bool) {
