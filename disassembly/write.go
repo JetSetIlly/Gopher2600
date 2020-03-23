@@ -35,8 +35,8 @@ type WriteAttr struct {
 // Write the entire disassembly to io.Writer
 func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	var err error
-	for bank := 0; bank < len(dsm.Entries); bank++ {
-		err = dsm.WriteBank(output, attr, bank)
+	for b := 0; b < len(dsm.Entries); b++ {
+		err = dsm.WriteBank(output, attr, b)
 		if err != nil {
 			return err
 		}

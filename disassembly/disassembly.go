@@ -62,6 +62,9 @@ func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
 // FormatResult returns the formatted representation of an execution result.
 // Build string representations with GetField(). Also see Write*() functions for
 // less flexible but convenient alternative.
+//
+// WARNING: bank field of Entry type will be invalid. You need to set it
+// yourself if you need it.
 func (dsm Disassembly) FormatResult(result execution.Result) (*Entry, error) {
 	return newEntry(result, dsm.Symtable)
 }

@@ -428,6 +428,7 @@ func disasm(md *modalflag.Modes) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
+	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
 
 	p, err := md.Parse()
 	if p != modalflag.ParseContinue {
@@ -453,7 +454,14 @@ func disasm(md *modalflag.Modes) error {
 			}
 			return errors.New(errors.DisassemblyError, err)
 		}
-		err = dsm.Write(md.Output, attr)
+
+		// output entire disassembly or just a specific bank
+		if *bank < 0 {
+			err = dsm.Write(md.Output, attr)
+		} else {
+			err = dsm.WriteBank(md.Output, attr, *bank)
+		}
+
 		if err != nil {
 			return errors.New(errors.DisassemblyError, err)
 		}
