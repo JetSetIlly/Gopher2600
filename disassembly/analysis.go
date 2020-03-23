@@ -102,13 +102,13 @@ func (dsm *Disassembly) flowAnalysis(mc *cpu.CPU, flowedFrom uint16, subroutineD
 		}
 
 		// create new disassembly entry
-		d, err = dsm.FormatResult(mc.LastResult)
+		d, err = dsm.formatResult(mc.LastResult)
 		if err != nil {
 			return err
 		}
 
 		// add bank information
-		d.Bank = bank
+		d.Bank = Bank(bank)
 
 		// indicate that it was generated from the flow pass
 		d.Type = EntryTypeAnalysis

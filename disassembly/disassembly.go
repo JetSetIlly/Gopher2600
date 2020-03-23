@@ -63,9 +63,44 @@ func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
 // Build string representations with GetField(). Also see Write*() functions for
 // less flexible but convenient alternative.
 //
-// WARNING: bank field of Entry type will be invalid. You need to set it
-// yourself if you need it.
+// The Bank field of the Entry type will be a best-guess. When the function
+// cannot guess, the value will be equal to BankUnknown. If the result looks
+// like it could come from more than one bank the Bank field will equal
+// BankMultiple.
 func (dsm Disassembly) FormatResult(result execution.Result) (*Entry, error) {
+	e, err := newEntry(result, dsm.Symtable)
+	if err != nil {
+		return nil, err
+	}
+
+	found := false
+
+	// figure out what the bank is by comparing to existing entries in the
+	// disassembly.
+	addr := result.Address & memorymap.AddressMaskCart
+	for b := 0; b < len(dsm.Entries); b++ {
+		oe := dsm.Entries[b][addr]
+
+		if oe != nil && oe.Result.Defn != nil && result.Defn != nil &&
+			oe.Result.Defn.OpCode == result.Defn.OpCode &&
+			oe.Result.InstructionData == result.InstructionData {
+
+			if !found {
+				e.Bank = Bank(b)
+				found = true
+			} else {
+				e.Bank = BankMultiple
+				break // for loop
+			}
+		}
+	}
+
+	return e, err
+}
+
+// like FormatResult but without the best-guess bank value. callers to this
+// function must set the bank value explicitely
+func (dsm Disassembly) formatResult(result execution.Result) (*Entry, error) {
 	return newEntry(result, dsm.Symtable)
 }
 

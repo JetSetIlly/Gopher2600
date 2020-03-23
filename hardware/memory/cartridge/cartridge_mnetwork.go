@@ -153,13 +153,11 @@ func newMnetwork(data []byte) (cartMapper, error) {
 func (cart mnetwork) String() string {
 	s := strings.Builder{}
 	s.WriteString(cart.method)
-	s.WriteString(" Banks: 8")
+	s.WriteString(fmt.Sprintf(" Bank: %d ", cart.bank))
+	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
 	if cart.bank == 7 {
-		s.WriteString("+1k RAM, ")
-	} else {
-		s.WriteString(fmt.Sprintf(", %d +", cart.bank))
+		s.WriteString(" [+1k RAM]")
 	}
-	s.WriteString(fmt.Sprintf("256byte RAM segment %d", cart.ram256byteIdx))
 	return s.String()
 }
 

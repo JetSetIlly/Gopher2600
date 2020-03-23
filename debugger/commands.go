@@ -586,6 +586,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 		}
 
+		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
+			s.WriteString(fmt.Sprintf("[%s] ", e.Bank))
+		}
 		s.WriteString(dbg.disasm.GetField(disassembly.FldAddress, e))
 		s.WriteString(" ")
 		s.WriteString(dbg.disasm.GetField(disassembly.FldMnemonic, e))

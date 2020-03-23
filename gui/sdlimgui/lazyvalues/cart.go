@@ -56,7 +56,7 @@ func (lz *LazyCart) update() {
 
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicString.Store(lz.val.VCS.Mem.Cart.String())
-		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks)
+		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks())
 
 		// uses lazy PCaddr value from lazyvalues.CPU
 		lz.atomicCurrBank.Store(lz.val.VCS.Mem.Cart.GetBank(PCaddr))

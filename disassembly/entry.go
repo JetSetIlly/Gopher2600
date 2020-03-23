@@ -29,6 +29,28 @@ import (
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
+// Bank refers to the cartridge bank. It is used in the Entry type to answer
+// the question, which bank was this execution.Result from?
+type Bank int
+
+// List of allowed Bank values
+const (
+	BankUnknown  Bank = -1
+	BankMultiple Bank = -2
+)
+
+func (b Bank) String() string {
+	if b == BankUnknown {
+		return "?"
+	}
+
+	if b == BankMultiple {
+		return "*"
+	}
+
+	return fmt.Sprintf("%d", b)
+}
+
 // EntryType describes the level of reliability of the Entry.
 type EntryType int
 
@@ -63,9 +85,9 @@ type Entry struct {
 	Result execution.Result
 
 	// execution.Result does not specify which bank the instruction is from
-	// because that information isn't available to the CPU. note that
-	// information here for completeness
-	Bank int
+	// because that information isn't available to the CPU. we note it here if
+	// possible.
+	Bank Bank
 
 	// formatted strings representations of information in execution.Result
 	Location string
@@ -99,6 +121,7 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 
 	d := &Entry{
 		Result: result,
+		Bank:   BankUnknown,
 	}
 
 	// if the operator hasn't been decoded yet then use placeholder strings for

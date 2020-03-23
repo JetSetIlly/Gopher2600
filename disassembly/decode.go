@@ -71,13 +71,13 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 			}
 
 			// create a new disassembly entry using last result
-			ent, err := dsm.FormatResult(mc.LastResult)
+			ent, err := dsm.formatResult(mc.LastResult)
 			if err != nil {
 				return err
 			}
 
 			// add bank information
-			ent.Bank = b
+			ent.Bank = Bank(b)
 
 			// set entry type depending on whether we're at an expected decode
 			// point
