@@ -34,7 +34,6 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -291,15 +290,20 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis.String())
 			case "BANK":
 				bank, _ := tokens.Get()
-				n, _ := strconv.Atoi(bank)
-				err := dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
-				if err != nil {
-					return false, err
-				}
-
-				err = dbg.vcs.CPU.LoadPCIndirect(addresses.Reset)
-				if err != nil {
-					return false, err
+				if bank == "" {
+					dbg.printLine(
+						terminal.StyleInstrument,
+						fmt.Sprintf("%d", dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())),
+					)
+				} else {
+					n, err := strconv.Atoi(bank)
+					if err != nil {
+						return false, errors.New(errors.CommandError, "bank must be numeric")
+					}
+					err = dbg.vcs.Mem.Cart.SetBank(dbg.vcs.CPU.PC.Address(), n)
+					if err != nil {
+						return false, err
+					}
 				}
 			}
 		} else {
