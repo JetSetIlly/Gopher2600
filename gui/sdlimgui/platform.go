@@ -185,6 +185,14 @@ func (plt *platform) showWindow(show bool) {
 	}
 }
 
+// in addition to the imgui ini file we need to keep another ini file just for
+// the SDL window. we're calling it an ini file only because that is the system
+// imgui uses.
+//
+// we'll try to use the same precise ini syntax as the imgui file but for now
+// we're just storing window size so I'm not too worried about it; just using
+// simple Fprintf() and Fscanf()
+
 type iniFile struct {
 	width  int32
 	height int32
