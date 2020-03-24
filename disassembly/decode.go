@@ -22,67 +22,71 @@ package disassembly
 import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 func (dsm *Disassembly) decode(mc *cpu.CPU) error {
-	for b := 0; b < len(dsm.Entries); b++ {
-		address := memorymap.OriginCart
-		nextDecodePoint := address
+	for b := 0; b < len(dsm.reference); b++ {
+		mc.Reset()
+		err := mc.LoadPCIndirect(addresses.Reset)
+		if err != nil {
+			return err
+		}
 
-		for dsm.Entries[b][address&memorymap.AddressMaskCart] == nil {
-			// bump nextDecodePoint if we've gone past it
-			if address > nextDecodePoint {
-				nextDecodePoint = address
-			}
+		err = dsm.decodeBank(mc, b)
+		if err != nil {
+			return err
+		}
+	}
 
-			// set bank in case the cartridge read has triggered a bank switch
-			if err := dsm.cart.SetBank(address, b); err != nil {
+	return nil
+}
+
+func (dsm *Disassembly) decodeBank(mc *cpu.CPU, b int) error {
+	// address := mc.PC.Address()
+	address := memorymap.OriginCart
+	nextDecodePoint := address
+
+	for dsm.reference[b][address&memorymap.AddressMaskCart] == nil {
+		// set bank every iteration in case the cartridge read has triggered a
+		// bank switch.
+		// * at the front of the for loop
+		if err := dsm.cart.SetBank(address, b); err != nil {
+			return err
+		}
+
+		// execute instruction at address
+		mc.PC.Load(address)
+		err := mc.ExecuteInstruction(nil)
+
+		unimplementedInstruction := errors.Is(err, errors.UnimplementedInstruction)
+
+		// filter out the predictable errors
+		if err != nil && !unimplementedInstruction {
+			return err
+		}
+
+		// create a new disassembly entry using last result
+		ent, err := dsm.FormatResult(b, mc.LastResult, EntryLevelDead)
+		if err != nil {
+			return err
+		}
+
+		// add bank information
+		ent.Bank = b
+		ent.BankDecorated = Bank(b)
+
+		if !unimplementedInstruction {
+			err = mc.LastResult.IsValid()
+			if err != nil {
 				return err
 			}
-
-			// execute instruction at address
-			mc.PC.Load(address)
-			err := mc.ExecuteInstruction(nil)
-
-			// filter out the predictable errors
-			if err != nil {
-				if !errors.IsAny(err) {
-					return err
-				}
-
-				switch err.(errors.AtariError).Message {
-				case errors.ProgramCounterCycled:
-					break // for loop
-				case errors.UnimplementedInstruction:
-					// try next byte
-					address++
-					continue // for loop
-				default:
-					return err
-				}
-			}
-
-			// continue for loop on invalid results
-			if mc.LastResult.IsValid() != nil {
-				// try next byte
-				address++
-				continue // for loop
-			}
-
-			// create a new disassembly entry using last result
-			ent, err := dsm.formatResult(mc.LastResult)
-			if err != nil {
-				return err
-			}
-
-			// add bank information
-			ent.Bank = Bank(b)
 
 			// set entry type depending on whether we're at an expected decode
 			// point
 			if address == nextDecodePoint {
-				ent.Type = EntryTypeDecode
+				ent.Level = EntryLevelBlessed
 
 				// as far as we can tell this is a "real" instruction so
 				// note the next expected decode point
@@ -91,14 +95,19 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 				// update field formatting information
 				dsm.fields.updateWidths(ent)
 			} else {
-				ent.Type = EntryTypeNaive
+				ent.Level = EntryLevelDecoded
 			}
+		}
 
-			// insert into Entries array
-			dsm.Entries[b][address&memorymap.AddressMaskCart] = ent
+		// insert into Entries array
+		dsm.reference[b][address&memorymap.AddressMaskCart] = ent
 
-			// onto the next instruction
-			address++
+		// onto the next instruction
+		address++
+
+		// bump nextDecodePoint if we've gone past it
+		if address > nextDecodePoint {
+			nextDecodePoint = address
 		}
 	}
 

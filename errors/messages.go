@@ -52,7 +52,6 @@ const (
 
 	// dissassembly
 	DisasmError    = "disasm error: %v"
-	AnalysisError  = "disasm analysis error: %v"
 	IterationError = "disasm iteration error: %v"
 
 	// script

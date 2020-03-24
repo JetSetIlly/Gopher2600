@@ -41,10 +41,10 @@ type breakpoints struct {
 	// array of breakers are ORed together
 	breaks []breaker
 
-	// prepared targets which we use to check for PC breaks. see hasPcBreak()
-	checkPcBreak       *target
-	checkBankBreak     *target
-	checkMnemonicBreak *target
+	// prepared targets which we use in hasBreak(). we don't want to setup
+	// these targets every time hasBreak() is called.
+	checkPcBreak   *target
+	checkBankBreak *target
 }
 
 // breaker defines a specific break condition
@@ -170,11 +170,6 @@ func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 	}
 
 	bp.checkBankBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("BANK"))
-	if err != nil {
-		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
-	}
-
-	bp.checkMnemonicBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("RESULT MNEMONIC"))
 	if err != nil {
 		return nil, errors.New(errors.BreakpointError, "fatality while setting up breakpoint parser")
 	}
@@ -428,7 +423,7 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 
 		// critical that we cast to int because we'll be comparing against the
 		// result of cartridge.GetBank()
-		value: int(e.Bank),
+		value: e.Bank,
 	}
 
 	// check for a breaker for the PC value AND bank value. if
@@ -482,7 +477,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 			target: bp.checkBankBreak,
 
 			// see above for casting commentary
-			value: int(e.Bank),
+			value: e.Bank,
 		}
 	}
 

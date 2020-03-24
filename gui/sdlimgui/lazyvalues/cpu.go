@@ -37,13 +37,9 @@ type LazyCPU struct {
 	atomicLastResult atomic.Value // execution.Result
 	atomicStatusReg  atomic.Value // registers.StatusRegister
 
-	HasReset bool
-	RdyFlg   bool
-
-	// PCaddr is a numeric value rather than a string representation as
-	// can be found when requesting a value from RegisterString()
-	PCaddr uint16
-
+	HasReset   bool
+	RdyFlg     bool
+	PCaddr     uint16
 	LastResult execution.Result
 	StatusReg  registers.StatusRegister
 

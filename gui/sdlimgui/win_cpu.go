@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -174,35 +175,37 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 // draw most recent instruction in the CPU or as much as can be interpreted
 // currently
 func (win *winCPU) drawLastResult() {
-	if !win.img.lazy.CPU.HasReset {
-		e, _ := win.img.dsm.FormatResult(win.img.lazy.CPU.LastResult)
-		if e.Result.Final {
-			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
-			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-			imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
-			if win.img.lazy.Cart.NumBanks == 1 {
-				imgui.Text(fmt.Sprintf("(%s)", e.Address))
-			} else {
-				imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.Bank))
-			}
+	if win.img.lazy.CPU.HasReset {
+		imgui.Text("")
+		imgui.Text("")
+		imgui.Text("")
+		imgui.Text("")
+		return
+	}
+
+	if win.img.lazy.CPU.LastResult.Final {
+		e := win.img.lazy.Disasm.LastDisasmEntry
+		imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+		imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+		imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+		if win.img.lazy.Cart.NumBanks == 1 {
+			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
-			// if there's a problem with the accuracy of what is being
-			// displayed, the problem probably isn't here and it probably isn't
-			// a problem with the actual CPU emulation. the problem is probably
-			// with how and when the CPU is populating the LastResult value.
-			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
-			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-			if e.Result.Defn != nil {
-				imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
-				imgui.Text(fmt.Sprintf("of exp. %s", e.DefnCycles))
-			} else {
-				imgui.Text("")
-				imgui.Text("")
-			}
+			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
 		}
+		return
+	}
+
+	// this is not a completed CPU instruction, we're in the middle of one, so
+	// we need to format the result for the partially completed instruction
+
+	e, _ := win.img.lazy.Dsm.FormatResult(win.img.lazy.Cart.CurrBank, win.img.lazy.CPU.LastResult, disassembly.EntryLevelBlessed)
+	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+	if e.Result.Defn != nil {
+		imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+		imgui.Text(fmt.Sprintf("of exp. %s [%s]", e.DefnCycles, e.BankDecorated))
 	} else {
-		imgui.Text("")
-		imgui.Text("")
 		imgui.Text("")
 		imgui.Text("")
 	}

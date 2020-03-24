@@ -35,33 +35,38 @@ type winDisasm struct {
 	windowManagement
 	img *SdlImgui
 
-	// should tab pages be selected and scrolled. generally we want this to be
-	// false when the emulation is paused because we want the user to be able
-	// to scroll around and explore the window
-	followPC bool
+	// show all entries in the cartridge, even those we're not confident about
+	// being instructions.
+	showAllEntries bool
+	showByteCode   bool
 
-	// the selected cartridge bank in the previous frame. this is used to help
-	// decide what the value of followPC should be
-	bankPrevFrame int
-	pcPrevFrame   uint16
+	// height of options line at bottom of window. valid after first frame
+	optionsHeight float32
+
+	// can tab pages be selected and scrolled? generally we want this to be
+	// true when the emulation is paused because and false when the running.
+	interactive bool
+
+	// the program counter value in the previous (imgui) frame
+	pcaddrPrevFrame uint16
 
 	// packed colors for drawlist
-	colCurrentEntryBg imgui.PackedColor
+	colCurrentEntryBG imgui.PackedColor
 	colBreakAddress   imgui.PackedColor
 	colBreakOther     imgui.PackedColor
 }
 
 func newWinDisasm(img *SdlImgui) (managedWindow, error) {
 	win := &winDisasm{
-		img:      img,
-		followPC: true,
+		img:         img,
+		interactive: false,
 	}
 
 	return win, nil
 }
 
 func (win *winDisasm) init() {
-	win.colCurrentEntryBg = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrHighlight)
+	win.colCurrentEntryBG = imgui.PackedColorFromVec4(win.img.cols.DisasmCurrEntryBG)
 	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
 	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
 
@@ -87,71 +92,96 @@ func (win *winDisasm) draw() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	if win.img.dsm != nil {
-		// the value of pcAddr depends on the state of the CPU. if the
+	if win.img.lazy.Dsm != nil {
+		// the value of pcaddr depends on the state of the CPU. if the
 		// Final state of the CPU's last execution result is true then we
 		// can be sure the PC value is valid and points to a real
 		// instruction. we need this because we can never be sure when we
 		// are going to draw this window
-		var pcAddr uint16
-		if win.img.lazy.CPU.LastResult.Final {
-			pcAddr = win.img.lazy.CPU.PCaddr
+		var pcaddr uint16
+		if win.img.lazy.Disasm.LastDisasmEntry == nil || win.img.lazy.Disasm.LastDisasmEntry.Result.Final {
+			pcaddr = win.img.lazy.CPU.PCaddr
 		} else {
-			pcAddr = win.img.lazy.CPU.LastResult.Address
+			pcaddr = win.img.lazy.Disasm.LastDisasmEntry.Result.Address
 		}
 
+		// the bank that is currently selected
 		currBank := win.img.lazy.Cart.CurrBank
+
+		// sometimes a cartridge will try to run instructions from VCS RAM.
+		// for presentation purposes this means that we show a "VCS RAM" tab
+		nonCart := !memorymap.IsArea(pcaddr, memorymap.Cartridge)
 
 		if win.img.lazy.Cart.NumBanks == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
-			win.drawBank(pcAddr, 0, true)
+			win.drawBank(pcaddr, 0, true && !nonCart)
 		} else {
 			// create a new TabBar and iterate through the cartridge banks,
 			// adding a page for each one
 			imgui.BeginTabBar("")
-			for b := range win.img.dsm.Entries {
+			for b := 0; b < win.img.lazy.Cart.NumBanks; b++ {
 				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS
 				flgs := imgui.TabItemFlagsNone
-				if win.followPC && b == currBank {
+				if !nonCart && !win.interactive && b == currBank {
 					flgs = imgui.TabItemFlagsSetSelected
 				}
 
 				// BeginTabItem() will return true when the item is selected.
-				// When the SetSelected flag is specified, it does not take
-				// effect until the end of the frame and so BeginTabItem() will
-				// return true *next* frame. see the setting of win.followPC
-				// below for more.
 				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-					win.drawBank(pcAddr, b, b == currBank)
+					win.drawBank(pcaddr, b, b == currBank && !nonCart)
 					imgui.EndTabItem()
 				}
 			}
+
 			imgui.EndTabBar()
 		}
 
-		// if the current bank has only been selected this frame then we need
-		// an extra frame to draw the tab page with drawBank() and for the page
-		// to scroll to the correct position. the second part of the condition
-		// below sustains followPC for the additional frame
-		win.followPC = !win.img.paused || currBank != win.bankPrevFrame || pcAddr != win.pcPrevFrame
+		// set interactive flag when emulation is paused and when PC address
+		// has not changed since last (imgui) frame
+		win.interactive = win.img.paused && pcaddr == win.pcaddrPrevFrame
 
-		// update bank information to help with followPC next frame
-		win.bankPrevFrame = currBank
-		win.pcPrevFrame = pcAddr
+		// note pc address to help set win.interactive value next (imgui) frame
+		win.pcaddrPrevFrame = pcaddr
+
+		// draw options and status line
+		h := imgui.CursorPosY()
+
+		if nonCart {
+			imgui.Text("executing from VCS RAM")
+		} else {
+			imgui.Text("")
+		}
+
+		imgui.Checkbox("Show all", &win.showAllEntries)
+		imgui.SameLine()
+		imgui.Checkbox("Show Bytecode", &win.showByteCode)
+
+		win.optionsHeight = imgui.CursorPosY() - h
 	}
 
 	imgui.End()
 }
 
-func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
-	imgui.BeginChild(fmt.Sprintf("bank %d", b))
+func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool) {
+	height := imgui.WindowHeight() - imgui.CursorPosY() - win.optionsHeight - 8
+	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
 
-	itr, _ := win.img.dsm.NewIteration(disassembly.EntryTypeDecode, b)
+	// Bless entry to make sure we can see it in the disassembly window. see
+	// commenatry in debuuger/inputloop.go about why we're doing this here.
+	win.img.lazy.Dsm.BlessEntry(b, pcaddr)
+
+	var itr *disassembly.Iterate
+	var count int
+	if win.showAllEntries {
+		itr, count, _ = win.img.lazy.Dsm.NewIteration(disassembly.EntryLevelDecoded, b)
+	} else {
+		itr, count, _ = win.img.lazy.Dsm.NewIteration(disassembly.EntryLevelBlessed, b)
+	}
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
-	clipper.Begin(win.img.dsm.Counts[b][disassembly.EntryTypeDecode])
+	clipper.Begin(count)
 	for clipper.Step() {
 		e := itr.Start()
 		e = itr.SkipNext(clipper.DisplayStart)
@@ -159,8 +189,7 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
 			// if address value of current disasm entry and current PC value
 			// match then highlight the entry
-			win.drawEntry(e, selected &&
-				e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart)
+			win.drawEntry(e, selected && e.Result.Address&memorymap.AddressMaskCart == pcaddr&memorymap.AddressMaskCart)
 
 			e = itr.Next()
 			if e == nil {
@@ -176,13 +205,13 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 	// we might be able to fold this into the loop above but this is clearer
 	// and has little impact on performance (the performance issue solved by
 	// ListClipper is due to invisible calls to imgui.Text() etc)
-	if win.followPC {
+	if !win.interactive {
 
 		// walk through disassembly and note the count for the current entry
 		hlEntry := float32(0.0)
 		i := float32(0.0)
 		for e := itr.Start(); e != nil; e = itr.Next() {
-			if e.Result.Address&memorymap.AddressMaskCart == pcAddr&memorymap.AddressMaskCart {
+			if e.Result.Address&memorymap.AddressMaskCart == pcaddr&memorymap.AddressMaskCart {
 				hlEntry = i
 				break // for loop
 			}
@@ -204,16 +233,20 @@ func (win *winDisasm) drawBank(pcAddr uint16, b int, selected bool) {
 
 func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 	imgui.BeginGroup()
+	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
 
 	// highlight current disassembly entry
-	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
+	if win.showAllEntries && e.Level < disassembly.EntryLevelBlessed {
+		adj = imgui.Vec4{0.0, 0.0, 0.0, -0.4}
+	}
+
 	if selected {
 		p1 := imgui.CursorScreenPos()
 		p2 := p1
 		p2.X += imgui.WindowWidth()
 		p2.Y += imgui.FontSize() * 1.1
 		dl := imgui.WindowDrawList()
-		dl.AddRectFilled(p1, p2, win.colCurrentEntryBg)
+		dl.AddRectFilled(p1, p2, win.colCurrentEntryBG)
 
 		// make entry a bit brighter
 		adj = imgui.Vec4{0.1, 0.1, 0.1, 0.0}
@@ -227,27 +260,35 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	s := win.img.dsm.GetField(disassembly.FldAddress, e)
+	s := win.img.lazy.Dsm.GetField(disassembly.FldAddress, e)
 	imgui.Text(s)
+
+	if win.showByteCode {
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode.Plus(adj))
+		s := win.img.lazy.Dsm.GetField(disassembly.FldBytecode, e)
+		imgui.Text(s)
+		imgui.PopStyleColorV(1)
+	}
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
-	s = win.img.dsm.GetField(disassembly.FldMnemonic, e)
+	s = win.img.lazy.Dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand.Plus(adj))
-	s = win.img.dsm.GetField(disassembly.FldOperand, e)
+	s = win.img.lazy.Dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles.Plus(adj))
-	s = win.img.dsm.GetField(disassembly.FldDefnCycles, e)
+	s = win.img.lazy.Dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-	s = win.img.dsm.GetField(disassembly.FldDefnNotes, e)
+	s = win.img.lazy.Dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(5)
@@ -256,11 +297,11 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, selected bool) {
 
 	// the following Is*() conditions apply to the whole group
 
-	// on right mouse button, set followPC to true. if emulation is not
-	// running, it will be true for only one frame but that is enough to cause
-	// the scroller to center on the current entry.
+	// on right mouse button, set interactive to false. if emulation is not
+	// running, it will be true for only one (imgui) frame but that is enough
+	// to cause the scroller to center on the current entry.
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.followPC = true
+		win.interactive = false
 	}
 
 	// double click toggles a PC breakpoint on the entries address

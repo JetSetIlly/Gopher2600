@@ -28,28 +28,56 @@ import (
 // Iterate faciliates traversal of the disassembly
 type Iterate struct {
 	dsm       *Disassembly
-	typ       EntryType
+	minLevel  EntryLevel
 	bank      int
 	idx       int
 	lastEntry *Entry
 }
 
-// NewIteration initialises a new iteration of a dissasembly bank
-func (dsm *Disassembly) NewIteration(typ EntryType, bank int) (*Iterate, error) {
-	if bank > len(dsm.Entries) {
-		return nil, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disassembly", bank))
+// NewIteration initialises a new iteration of a dissasembly bank. The minLevel
+// argument specifies the minumum entry level which should returned in the
+// iteration. So, using the following as a guide:
+//
+//	dead < decoded < blessed
+//
+// Specifying a minLevel of EntryLevelDecode will iterate *only* entries of
+// EntryLevelDecode. A minLevel of EntryLevelNaive on the other hand, will
+// iterate through entries of EntryLevelNaive *and* EntryLevelDecode. A
+// minLevel of EntryLevelDead will iterate through *all* Entries.
+//
+// The function returns an instance of Iterate, a count of the number of
+// entries the correspond to the minLevel (see above), and any error.
+func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, int, error) {
+	if bank > len(dsm.reference) {
+		return nil, 0, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disassembly", bank))
 	}
 
 	itr := &Iterate{
-		dsm:  dsm,
-		typ:  typ,
-		bank: bank,
+		dsm:      dsm,
+		minLevel: minLevel,
+		bank:     bank,
 	}
 
-	return itr, nil
+	count := 0
+
+	switch minLevel {
+	case EntryLevelDead:
+		count = dsm.counts[bank][EntryLevelDead]
+		count += dsm.counts[bank][EntryLevelDecoded]
+		count += dsm.counts[bank][EntryLevelBlessed]
+
+	case EntryLevelDecoded:
+		count = dsm.counts[bank][EntryLevelDecoded]
+		count += dsm.counts[bank][EntryLevelBlessed]
+
+	case EntryLevelBlessed:
+		count = dsm.counts[bank][EntryLevelBlessed]
+	}
+
+	return itr, count, nil
 }
 
-// Start new iteration from the first instance of the EntryType specified in
+// Start new iteration from the first instance of the EntryLevel specified in
 // NewIteration.
 func (itr *Iterate) Start() *Entry {
 	itr.idx = 0
@@ -61,12 +89,14 @@ func (itr *Iterate) Start() *Entry {
 func (itr *Iterate) Next() *Entry {
 	var e *Entry
 
-	for itr.idx < len(itr.dsm.Entries[itr.bank]) {
-		e = itr.dsm.Entries[itr.bank][itr.idx]
-		if e != nil && e.Type >= itr.typ {
-			itr.idx++
-			break // for loop
-		}
+	if itr.idx > len(itr.dsm.reference[itr.bank])-1 {
+		return nil
+	}
+
+	e = itr.dsm.reference[itr.bank][itr.idx]
+	itr.idx++
+	for itr.idx < len(itr.dsm.reference[itr.bank]) && e.Level < itr.minLevel {
+		e = itr.dsm.reference[itr.bank][itr.idx]
 		itr.idx++
 	}
 

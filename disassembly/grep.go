@@ -44,10 +44,10 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	for bank := 0; bank < len(dsm.Entries); bank++ {
+	for bank := 0; bank < len(dsm.reference); bank++ {
 		bankHeader := false
 
-		itr, err := dsm.NewIteration(EntryTypeDecode, bank)
+		itr, _, err := dsm.NewIteration(EntryLevelBlessed, bank)
 		if err != nil {
 			return err
 		}

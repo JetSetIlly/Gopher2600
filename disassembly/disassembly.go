@@ -23,10 +23,8 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
-	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	ref "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -39,69 +37,39 @@ type Disassembly struct {
 
 	// indexed by address. address should be masked with
 	// memorymap.AddressMaskCart before access.
-	Entries [][memorymap.AddressMaskCart + 1]*Entry
+	reference [][ref.AddressMaskCart + 1]*Entry
 
-	// the number of each type of entry
-	Counts []map[EntryType]int
+	// the number of each type of entry. we use this to help prepare
+	// disassembly iterations
+	counts []map[EntryLevel]int
 
 	// formatting information for all entries found during the flow pass.
 	// excluding entries only found during the linear pass because
 	// false-positive entries might upset the formatting.
 	fields fields
-
-	// static analysis (best effort) of cartridge
-	Analysis Analysis
 }
 
-// Get returns the disassembly at the specified bank/address.
-func (dsm Disassembly) Get(bank int, address uint16) (*Entry, bool) {
-	col := dsm.Entries[bank][address&memorymap.AddressMaskCart]
+// GetEntryByAddress returns the disassembly entry at the specified bank/address.
+func (dsm Disassembly) GetEntryByAddress(bank int, address uint16) (*Entry, bool) {
+	col := dsm.reference[bank][address&ref.AddressMaskCart]
 	return col, col != nil
 }
 
-// FormatResult returns the formatted representation of an execution result.
-// Build string representations with GetField(). Also see Write*() functions for
-// less flexible but convenient alternative.
-//
-// The Bank field of the Entry type will be a best-guess. When the function
-// cannot guess, the value will be equal to BankUnknown. If the result looks
-// like it could come from more than one bank the Bank field will equal
-// BankMultiple.
-func (dsm Disassembly) FormatResult(result execution.Result) (*Entry, error) {
-	e, err := newEntry(result, dsm.Symtable)
-	if err != nil {
-		return nil, err
+// BlessEntry promotes an entry to the stated EntryLevel
+func (dsm *Disassembly) BlessEntry(bank int, address uint16) {
+	if bank >= len(dsm.reference) {
+		return
 	}
 
-	found := false
+	// get entry at address
+	e := dsm.reference[bank][address&ref.AddressMaskCart]
 
-	// figure out what the bank is by comparing to existing entries in the
-	// disassembly.
-	addr := result.Address & memorymap.AddressMaskCart
-	for b := 0; b < len(dsm.Entries); b++ {
-		oe := dsm.Entries[b][addr]
-
-		if oe != nil && oe.Result.Defn != nil && result.Defn != nil &&
-			oe.Result.Defn.OpCode == result.Defn.OpCode &&
-			oe.Result.InstructionData == result.InstructionData {
-
-			if !found {
-				e.Bank = Bank(b)
-				found = true
-			} else {
-				e.Bank = BankMultiple
-				break // for loop
-			}
-		}
+	// loop while there are entries to bless, stop on a dead entry
+	for e != nil && e.Level != EntryLevelDead && e.Level < EntryLevelBlessed {
+		e.Level = EntryLevelBlessed
+		address += uint16(e.Result.ByteCount)
+		e = dsm.reference[bank][address&ref.AddressMaskCart]
 	}
-
-	return e, err
-}
-
-// like FormatResult but without the best-guess bank value. callers to this
-// function must set the bank value explicitely
-func (dsm Disassembly) formatResult(result execution.Result) (*Entry, error) {
-	return newEntry(result, dsm.Symtable)
 }
 
 // FromCartridge initialises a new partial emulation and returns a
@@ -134,7 +102,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.Entries = make([][memorymap.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
+	dsm.reference = make([][ref.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
@@ -166,46 +134,25 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	// reset
-	mc.Reset()
-	err = mc.LoadPCIndirect(addresses.Reset)
-	if err != nil {
-		return nil, err
-	}
-	dsm.cart.Initialise()
-
-	// flow pass
-	err = dsm.flowAnalysis(mc, addresses.Reset, 0)
-	if err != nil {
-		return nil, errors.New(errors.AnalysisError, err)
-	}
-
 	// count entry types
-	dsm.countTypes()
-
-	return dsm, nil
-}
-
-// count number of each type entry in disassembly
-func (dsm *Disassembly) countTypes() {
-	dsm.Counts = make([]map[EntryType]int, len(dsm.Entries))
-	for b := 0; b < len(dsm.Counts); b++ {
-		dsm.Counts[b] = make(map[EntryType]int)
-		for _, e := range dsm.Entries[b] {
+	dsm.counts = make([]map[EntryLevel]int, len(dsm.reference))
+	for b := 0; b < len(dsm.counts); b++ {
+		dsm.counts[b] = make(map[EntryLevel]int)
+		for _, e := range dsm.reference[b] {
 			if e != nil {
-				switch e.Type {
-				case EntryTypeAnalysis:
-					dsm.Counts[b][EntryTypeAnalysis]++
-					fallthrough
+				switch e.Level {
+				case EntryLevelDead:
+					dsm.counts[b][EntryLevelDead]++
 
-				case EntryTypeDecode:
-					dsm.Counts[b][EntryTypeDecode]++
-					fallthrough
+				case EntryLevelDecoded:
+					dsm.counts[b][EntryLevelDecoded]++
 
-				case EntryTypeNaive:
-					dsm.Counts[b][EntryTypeNaive]++
+				case EntryLevelBlessed:
+					dsm.counts[b][EntryLevelBlessed]++
 				}
 			}
 		}
 	}
+
+	return dsm, nil
 }

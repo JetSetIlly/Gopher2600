@@ -29,7 +29,7 @@ import (
 // consistent with the instruction definition.
 func (result Result) IsValid() error {
 	if !result.Final {
-		return errors.New(errors.InvalidResult, "not checking an unfinalised InstructionResult")
+		return errors.New(errors.InvalidResult, "execution not finalised (bad opcode?)")
 	}
 
 	// is PageFault valid given content of Defn

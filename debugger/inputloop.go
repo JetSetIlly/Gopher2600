@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
@@ -239,6 +240,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				return nil
 			}
 
+			// get bank information before we execute the next instruction. we
+			// use this value to prepare the LastDisasmEntry after the
+			// instruction has been executed. by that time the bank may have
+			// changed so we need to note it here.
+			bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
 			switch dbg.quantum {
 			case QuantumCPU:
 				err = dbg.vcs.Step(vcsStep)
@@ -266,6 +273,24 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
 						return errors.New(errors.DebuggerError, err)
 					}
+
+					// get disassembly entry for last CPU result
+					dbg.LastDisasmEntry, err = dbg.disasm.FormatResult(bank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelBlessed)
+					if err != nil {
+						return errors.New(errors.DebuggerError, err)
+					}
+
+					// ideally we would make sure next entry in the disassembly
+					// was blessed. however, doing so here means meddling with
+					// the disassembly and in practical terms other goroutines
+					// may be doing so too. rather than identifying the
+					// critical sections, for now we'll simply abrogate
+					// responsibility for this and if the presentation layer
+					// wants to bless entries then the can do so safely.
+					//
+					// !!TODO: dissassembly/BlessEntry in the main debugger input loop
+					//
+					// dbg.disasm.BlessEntry(bank, dbg.vcs.CPU.PC.Address())
 				}
 			}
 

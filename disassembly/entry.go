@@ -26,66 +26,58 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/symbols"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Bank refers to the cartridge bank. It is used in the Entry type to answer
-// the question, which bank was this execution.Result from?
+// Bank refers to the cartridge bank or one of a group of special conditions.
 type Bank int
 
-// List of allowed Bank values
+// List of allowed Bank special conditions.
 const (
-	BankUnknown  Bank = -1
-	BankMultiple Bank = -2
+	BankUnknown Bank = -1
+	BankRAM     Bank = -2
 )
 
 func (b Bank) String() string {
-	if b == BankUnknown {
+	switch b {
+	case BankUnknown:
 		return "?"
+	case BankRAM:
+		return "R"
 	}
-
-	if b == BankMultiple {
-		return "*"
-	}
-
 	return fmt.Sprintf("%d", b)
 }
 
-// EntryType describes the level of reliability of the Entry.
-type EntryType int
+// EntryLevel describes the level of the Entry
+type EntryLevel int
 
-// List of valid EntryTypes in increasing reliability.
+// List of valid EntryL in increasing reliability.
 //
-// Naive entries have been decoded as though every byte point is a valid
-// instruction. Decode entries meanwhile take into consideration the preceeding
+// Decoded entries have been decoded as though every byte point is a valid
+// instruction. Blessed entries meanwhile take into consideration the preceeding
 // instruction and the number of bytes it would have consumed.
 //
-// Naive entries are useful in the event of the CPU landing on an address that
-// didn't look like an instruction at disassembly time. Unlikely but possible.
+// Decoded entries are useful in the event of the CPU landing on an address that
+// didn't look like an instruction at disassembly time.
 //
-// Flow instructions are deemed to be more accurate because they have been
-// reached according to the flow of the instructions from the start address
-// through the CPU.
-//
-// Live instructions are the most reliable because they contain information
-// from the last actual execution of the entire system (not just a mock CPU, as
-// in the case of the Flow type)
+// Blessed instructions are deemed to be more accurate because they have been
+// reached according to the flow of the instructions from the start address.
 const (
-	EntryTypeNaive EntryType = iota
-	EntryTypeDecode
-	EntryTypeAnalysis
+	EntryLevelDead EntryLevel = iota
+	EntryLevelDecoded
+	EntryLevelBlessed
 )
 
-func (t EntryType) String() string {
+func (t EntryLevel) String() string {
 	// adding space to short strings so that they line up (we're only using
 	// this in a single place for a specific purpose so this is okay)
 	switch t {
-	case EntryTypeNaive:
-		return "naive   "
-	case EntryTypeDecode:
-		return "decode  "
-	case EntryTypeAnalysis:
-		return "analysis"
+	case EntryLevelDead:
+		return "dead    "
+	case EntryLevelDecoded:
+		return "decoded  "
+	case EntryLevelBlessed:
+		return "blessed "
 	}
 
 	return ""
@@ -95,14 +87,26 @@ func (t EntryType) String() string {
 // disassembly. It is a represenation of execution.Instruction
 type Entry struct {
 	// the level of reliability of the information in the Entry
-	Type EntryType
-
-	Result execution.Result
+	Level EntryLevel
 
 	// execution.Result does not specify which bank the instruction is from
 	// because that information isn't available to the CPU. we note it here if
 	// possible.
-	Bank Bank
+	Bank int
+
+	// BankDecorated is a "decorated" instance of the Bank integer. Positive
+	// values can be cast to int and treated just like Bank. However,
+	// BankDecorated can also take other values that indicate special
+	// conditions. The allowed values are defined above.
+	BankDecorated Bank
+
+	// /\/\ the fields above are not set by newEntry() they should be set
+	// manually when newEntry() returns
+
+	// copy of the CPU execution
+	Result execution.Result
+
+	// the remaining fields are not valid for dead entries
 
 	// formatted strings representations of information in execution.Result
 	Location string
@@ -119,24 +123,21 @@ type Entry struct {
 	// the computation
 	ActualCycles string
 	ActualNotes  string
-
-	// addresses from which the instruction can be reached
-	Prev []uint16
-
-	// address to which the instruction flows to next
-	// subroutines
-	Next []uint16
 }
 
-// format execution.Result and create a new instance of Entry
-func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) {
-	if symtable == nil {
-		symtable = &symbols.Table{}
+// FormatResult It is the preferred method of initialising for the Entry type.
+// It creates a disassembly.Entry based on the bank and result information.
+func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level EntryLevel) (*Entry, error) {
+	d := &Entry{
+		Result:        result,
+		Level:         level,
+		Bank:          bank,
+		BankDecorated: Bank(bank),
 	}
 
-	d := &Entry{
-		Result: result,
-		Bank:   BankUnknown,
+	// set BankDecorated correctly
+	if memorymap.IsArea(result.Address, memorymap.RAM) {
+		d.BankDecorated = BankRAM
 	}
 
 	// if the operator hasn't been decoded yet then use placeholder strings for
@@ -150,7 +151,7 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 	d.Address = fmt.Sprintf("0x%04x", result.Address)
 
 	// look up address in symbol table
-	if v, ok := symtable.Locations.Symbols[result.Address]; ok {
+	if v, ok := dsm.Symtable.Locations.Symbols[result.Address]; ok {
 		d.Location = v
 	}
 
@@ -249,23 +250,23 @@ func newEntry(result execution.Result, symtable *symbols.Table) (*Entry, error) 
 						pc.Add(operand)
 
 						// -- look up mock program counter value in symbol table
-						if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
+						if v, ok := dsm.Symtable.Locations.Symbols[pc.Address()]; ok {
 							d.Operand = v
 						}
 
 					} else {
-						if v, ok := symtable.Locations.Symbols[operand]; ok {
+						if v, ok := dsm.Symtable.Locations.Symbols[operand]; ok {
 							d.Operand = v
 						}
 					}
 				case instructions.Read:
-					if v, ok := symtable.Read.Symbols[operand]; ok {
+					if v, ok := dsm.Symtable.Read.Symbols[operand]; ok {
 						d.Operand = v
 					}
 				case instructions.Write:
 					fallthrough
 				case instructions.RMW:
-					if v, ok := symtable.Write.Symbols[operand]; ok {
+					if v, ok := dsm.Symtable.Write.Symbols[operand]; ok {
 						d.Operand = v
 					}
 				}

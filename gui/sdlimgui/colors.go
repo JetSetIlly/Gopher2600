@@ -57,15 +57,16 @@ type imguiColors struct {
 
 	// disassembly entry columns
 	DisasmAddress  imgui.Vec4
+	DisasmByteCode imgui.Vec4
 	DisasmMnemonic imgui.Vec4
 	DisasmOperand  imgui.Vec4
 	DisasmCycles   imgui.Vec4
 	DisasmNotes    imgui.Vec4
 
 	// disassembly other
-	DisasmCurrHighlight imgui.Vec4
-	DisasmBreakAddress  imgui.Vec4
-	DisasmBreakOther    imgui.Vec4
+	DisasmCurrEntryBG  imgui.Vec4
+	DisasmBreakAddress imgui.Vec4
+	DisasmBreakOther   imgui.Vec4
 
 	// audio oscilloscope
 	AudioOscBg   imgui.Vec4
@@ -122,13 +123,14 @@ func newColors() *imguiColors {
 
 		// disassembly entry columns
 		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		DisasmByteCode: imgui.Vec4{0.6, 0.3, 0.4, 1.0},
 		DisasmMnemonic: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
 		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// disassembly other
-		DisasmCurrHighlight: imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		DisasmCurrEntryBG: imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
 		// audio oscilloscope

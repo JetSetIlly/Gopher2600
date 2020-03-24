@@ -115,3 +115,8 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 
 	return address & MemtopTIA, TIA
 }
+
+func IsArea(address uint16, area Area) bool {
+	_, a := MapAddress(address, true)
+	return area == a
+}

@@ -81,8 +81,7 @@ http:// will loaded via the http protocol. If no such protocol is present, the
 cartridge will be loaded from disk.`,
 
 	cmdCartridge: `Display information about the current cartridge. Without arguments the command
-will show where the game was loaded from, the cartridge type and bank number. The ANALYSIS
-argument shows a brief summary of what was discovered during disassembly. The BANK
+will show where the game was loaded from, the cartridge type and bank number. The BANK
 argument meanwhile can be used to switch banks (if possible).`,
 
 	cmdPatch: "Apply a patch file to the loaded cartridge",

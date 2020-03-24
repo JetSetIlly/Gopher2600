@@ -47,6 +47,11 @@ type Debugger struct {
 	vcs    *hardware.VCS
 	disasm *disassembly.Disassembly
 
+	// the disassembly entry for the last CPU execution result. this should be
+	// used rather than the CPU.LastResult directly because amongst other
+	// things, it has cartridge bank information
+	LastDisasmEntry *disassembly.Entry
+
 	// gui, tv and terminal
 	tv   television.Television
 	scr  gui.GUI

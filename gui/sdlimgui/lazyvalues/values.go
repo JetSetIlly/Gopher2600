@@ -33,12 +33,14 @@ import (
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
 type Values struct {
+	// these fields are racy, they should not be accessed except through the
+	// lazy evaluation system
 	VCS *hardware.VCS
 	Dbg *debugger.Debugger
+	Dsm *disassembly.Disassembly
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
-	// !!TODO: why do non-pointer instances cause race conditions
 	CPU       *LazyCPU
 	Timer     *LazyTimer
 	Playfield *LazyPlayfield
@@ -49,6 +51,7 @@ type Values struct {
 	Ball      *LazyBall
 	TV        *LazyTV
 	Cart      *LazyCart
+	Disasm    *LazyDisasm
 
 	// \/\/\/ the following are read on demand rather than thorugh the update
 	// function, because they require more context
@@ -81,6 +84,7 @@ func NewValues() *Values {
 	val.Ball = newLazyBall(val)
 	val.TV = newLazyTV(val)
 	val.Cart = newLazyCart(val)
+	val.Disasm = newLazyDisasm(val)
 
 	// allocating enough ram for an entire cart bank because, theoretically, a
 	// cartridge format could have a RAM area as large as that
@@ -109,7 +113,7 @@ func (val *Values) Update() {
 	val.Ball.update()
 	val.TV.update()
 	val.Cart.update()
-
+	val.Disasm.update()
 }
 
 // ReadRAM returns the data at read address

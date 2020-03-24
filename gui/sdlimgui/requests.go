@@ -99,7 +99,7 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.lazy.VCS = request.args[0].(*hardware.VCS)
 
 	case gui.ReqAddDisasm:
-		img.dsm = request.args[0].(*disassembly.Disassembly)
+		img.lazy.Dsm = request.args[0].(*disassembly.Disassembly)
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request)

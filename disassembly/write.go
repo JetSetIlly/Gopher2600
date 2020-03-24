@@ -29,14 +29,13 @@ import (
 // WriteAttr controls what is printed by the Write*() functions
 type WriteAttr struct {
 	ByteCode bool
-	FlowInfo bool
 	Raw      bool
 }
 
 // Write the entire disassembly to io.Writer
 func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	var err error
-	for b := 0; b < len(dsm.Entries); b++ {
+	for b := 0; b < len(dsm.reference); b++ {
 		err = dsm.WriteBank(output, attr, b)
 		if err != nil {
 			return err
@@ -48,14 +47,14 @@ func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 
 // WriteBank writes the disassembly of the selected bank to io.Writer
 func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) error {
-	if bank < 0 || bank > len(dsm.Entries)-1 {
+	if bank < 0 || bank > len(dsm.reference)-1 {
 		return errors.New(errors.DisasmError, fmt.Sprintf("no such bank (%d)", bank))
 	}
 
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
-	for i := range dsm.Entries[bank] {
-		dsm.WriteEntry(output, attr, dsm.Entries[bank][i])
+	for i := range dsm.reference[bank] {
+		dsm.WriteEntry(output, attr, dsm.reference[bank][i])
 	}
 
 	return nil
@@ -67,7 +66,7 @@ func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 		return
 	}
 
-	if !attr.Raw && e.Type < EntryTypeDecode {
+	if !attr.Raw && e.Level < EntryLevelBlessed {
 		return
 	}
 
@@ -77,7 +76,7 @@ func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 	}
 
 	if attr.Raw {
-		output.Write([]byte(fmt.Sprintf("%s  ", e.Type)))
+		output.Write([]byte(fmt.Sprintf("%s  ", e.Level)))
 	}
 
 	if attr.ByteCode {
@@ -94,22 +93,6 @@ func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 	output.Write([]byte(dsm.GetField(FldDefnCycles, e)))
 	output.Write([]byte(" "))
 	output.Write([]byte(dsm.GetField(FldDefnNotes, e)))
-
-	if attr.FlowInfo {
-		if len(e.Next) > 0 {
-			output.Write([]byte(" -> "))
-			for i := range e.Next {
-				output.Write([]byte(fmt.Sprintf("%#04x ", e.Next[i])))
-			}
-		}
-
-		if len(e.Prev) > 0 {
-			output.Write([]byte(" <- "))
-			for i := range e.Prev {
-				output.Write([]byte(fmt.Sprintf("%#04x ", e.Prev[i])))
-			}
-		}
-	}
 
 	output.Write([]byte("\n"))
 }

@@ -81,7 +81,7 @@ var commandTemplate = []string{
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (ANALYSIS|BANK %<number>N)",
+	cmdCartridge + " (BANK %<number>N)",
 	cmdPatch + " %<patch file>S",
 	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
 	cmdGrep + " (MNEMONIC|OPERAND) %<search>S",

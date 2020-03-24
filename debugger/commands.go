@@ -286,8 +286,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		arg, ok := tokens.Get()
 		if ok {
 			switch arg {
-			case "ANALYSIS":
-				dbg.printLine(terminal.StyleFeedback, dbg.disasm.Analysis.String())
 			case "BANK":
 				bank, _ := tokens.Get()
 				if bank == "" {
@@ -565,9 +563,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdLast:
 		s := strings.Builder{}
 
-		e, err := dbg.disasm.FormatResult(dbg.vcs.CPU.LastResult)
-		if err != nil {
-			return false, err
+		e := dbg.LastDisasmEntry
+		if e == nil {
+			return false, nil
 		}
 
 		option, ok := tokens.Get()
@@ -587,7 +585,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
-			s.WriteString(fmt.Sprintf("[%s] ", e.Bank))
+			s.WriteString(fmt.Sprintf("[%s] ", e.BankDecorated))
 		}
 		s.WriteString(dbg.disasm.GetField(disassembly.FldAddress, e))
 		s.WriteString(" ")

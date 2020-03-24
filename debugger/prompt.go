@@ -29,23 +29,23 @@ import (
 
 func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	// decide which address value to use
-	var promptAddress uint16
-	var promptBank int
+	var addr uint16
+	var bank int
 
 	//  if last result was final or if address of last result is zero then
 	//  print the PC address. the second part of the condition catches a newly
 	//  reset CPU.
 	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
-		promptAddress = dbg.vcs.CPU.PC.Address()
+		addr = dbg.vcs.CPU.PC.Address()
 	} else {
 		// if we're in the middle of an instruction then use the
 		// addresss in lastResult - in video-stepping mode we want the
 		// prompt to report the instruction that we're working on, not
 		// the next one to be stepped into.
-		promptAddress = dbg.vcs.CPU.LastResult.Address
+		addr = dbg.vcs.CPU.LastResult.Address
 	}
 
-	promptBank = dbg.vcs.Mem.Cart.GetBank(promptAddress)
+	bank = dbg.vcs.Mem.Cart.GetBank(addr)
 
 	prompt := strings.Builder{}
 	prompt.WriteString("[")
@@ -55,33 +55,33 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	}
 
 	// build prompt depending on address and whether a disassembly is available
-	if promptAddress < memorymap.OriginCart {
+	if !memorymap.IsArea(addr, memorymap.Cartridge) {
 		// prompt address doesn't seem to be pointing to the cartridge, prepare
 		// "non-cart" prompt
-		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", promptAddress))
-	} else if d, ok := dbg.disasm.Get(promptBank, promptAddress); ok {
+		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", addr))
+	} else if d, ok := dbg.disasm.GetEntryByAddress(bank, addr); ok {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
-		prompt.WriteString(fmt.Sprintf(" %#04x %s", promptAddress, d.Mnemonic))
+		prompt.WriteString(fmt.Sprintf(" %#04x %s", addr, d.Mnemonic))
 		if d.Operand != "" {
 			prompt.WriteString(fmt.Sprintf(" %s", d.Operand))
 		}
 		prompt.WriteString(" ]")
 	} else {
 		// incomplete disassembly, prepare "no disasm" prompt
-		ai := dbg.dbgmem.mapAddress(promptAddress, true)
+		ai := dbg.dbgmem.mapAddress(addr, true)
 		if ai == nil {
-			prompt.WriteString(fmt.Sprintf(" %#04x (%d) unmappable address ]", promptAddress, promptBank))
+			prompt.WriteString(fmt.Sprintf(" %#04x (%d) unmappable address ]", addr, bank))
 		} else {
 			switch ai.area {
 			case memorymap.RAM:
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) in RAM! ]", promptAddress, promptBank))
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) in RAM! ]", addr, bank))
 			case memorymap.Cartridge:
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", promptAddress, promptBank))
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", addr, bank))
 			default:
 				// if we're not in RAM or Cartridge space then we must be in
 				// the TIA or RIOT - this would be very odd indeed
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) WTF! ]", promptAddress, promptBank))
+				prompt.WriteString(fmt.Sprintf(" %#04x (%d) WTF! ]", addr, bank))
 			}
 		}
 	}
