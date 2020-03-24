@@ -76,6 +76,21 @@ const (
 	EntryTypeAnalysis
 )
 
+func (t EntryType) String() string {
+	// adding space to short strings so that they line up (we're only using
+	// this in a single place for a specific purpose so this is okay)
+	switch t {
+	case EntryTypeNaive:
+		return "naive   "
+	case EntryTypeDecode:
+		return "decode  "
+	case EntryTypeAnalysis:
+		return "analysis"
+	}
+
+	return ""
+}
+
 // Entry is a disassambled instruction. The constituent parts of the
 // disassembly. It is a represenation of execution.Instruction
 type Entry struct {

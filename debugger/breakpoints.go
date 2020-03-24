@@ -49,7 +49,9 @@ type breakpoints struct {
 
 // breaker defines a specific break condition
 type breaker struct {
-	target      *target
+	target *target
+
+	// must be comparable types and the same type as each other
 	value       interface{}
 	ignoreValue interface{}
 
@@ -114,29 +116,36 @@ func (bk breaker) cmp(ck breaker) bool {
 	return true
 }
 
+type checkResult int
+
+const (
+	checkMatch checkResult = iota
+	checkNoMatch
+	checkIgnoredValue
+)
+
 // check checks the specific break condition with the current value of
 // the break target
-func (bk *breaker) check() bool {
+func (bk *breaker) check() checkResult {
 	currVal := bk.target.TargetValue()
 	m := currVal == bk.value
 	if !m {
-		bk.ignoreValue = nil
-		return false
+		return checkNoMatch
 	}
 
 	if currVal == bk.ignoreValue {
-		return false
+		return checkIgnoredValue
 	}
 
 	if bk.next != nil {
-		if !bk.next.check() {
-			return false
+		if bk.next.check() == checkNoMatch {
+			return checkNoMatch
 		}
 	}
 
 	bk.ignoreValue = currVal
 
-	return true
+	return checkMatch
 }
 
 // add a new breaker by linking it to the end of an existing breaker
@@ -201,7 +210,7 @@ func (bp *breakpoints) check(previousResult string) string {
 	checkString.WriteString(previousResult)
 	for i := range bp.breaks {
 		// check current value of target with the requested value
-		if bp.breaks[i].check() {
+		if bp.breaks[i].check() == checkMatch {
 			checkString.WriteString(fmt.Sprintf("break on %s\n", bp.breaks[i]))
 		}
 	}
@@ -416,7 +425,10 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 	// we start with the very specific - address and bank
 	check.next = &breaker{
 		target: bp.checkBankBreak,
-		value:  e.Bank,
+
+		// critical that we cast to int because we'll be comparing against the
+		// result of cartridge.GetBank()
+		value: int(e.Bank),
 	}
 
 	// check for a breaker for the PC value AND bank value. if
@@ -460,13 +472,17 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
 	nb := breaker{
 		target: bp.checkPcBreak,
-		value:  int(ai.mappedAddress),
+
+		// see above for casting commentary
+		value: int(ai.mappedAddress),
 	}
 
 	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
 		nb.next = &breaker{
 			target: bp.checkBankBreak,
-			value:  e.Bank,
+
+			// see above for casting commentary
+			value: int(e.Bank),
 		}
 	}
 

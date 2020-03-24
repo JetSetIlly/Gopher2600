@@ -235,7 +235,7 @@ func bankTarget(dbg *Debugger) *target {
 	return &target{
 		label: "Bank",
 		currentValue: func() interface{} {
-			return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+			return int(dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()))
 		},
 	}
 }

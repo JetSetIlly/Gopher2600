@@ -30,6 +30,7 @@ import (
 type WriteAttr struct {
 	ByteCode bool
 	FlowInfo bool
+	Raw      bool
 }
 
 // Write the entire disassembly to io.Writer
@@ -62,13 +63,21 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) er
 
 // WriteEntry writes a single Instruction to io.Writer
 func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
-	if e == nil || e.Type < EntryTypeDecode {
+	if e == nil {
+		return
+	}
+
+	if !attr.Raw && e.Type < EntryTypeDecode {
 		return
 	}
 
 	if e.Location != "" {
 		output.Write([]byte(dsm.GetField(FldLocation, e)))
 		output.Write([]byte("\n"))
+	}
+
+	if attr.Raw {
+		output.Write([]byte(fmt.Sprintf("%s  ", e.Type)))
 	}
 
 	if attr.ByteCode {

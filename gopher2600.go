@@ -287,6 +287,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		if err != nil {
 			return err
 		}
+
 		if *record {
 			fmt.Println("! recording completed")
 		}
@@ -428,6 +429,7 @@ func disasm(md *modalflag.Modes) error {
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
 	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
+	raw := md.AddBool("raw", false, "raw disassembly. show every byte with the disasm decision.")
 	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
 
 	p, err := md.Parse()
@@ -439,7 +441,10 @@ func disasm(md *modalflag.Modes) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		attr := disassembly.WriteAttr{ByteCode: *bytecode}
+		attr := disassembly.WriteAttr{
+			ByteCode: *bytecode,
+			Raw:      *raw,
+		}
 
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
