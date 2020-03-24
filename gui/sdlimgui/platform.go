@@ -21,13 +21,16 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
 const windowTitle = "Gopher2600"
+const winIniFile = "debugger_win.ini"
 
 type platform struct {
 	img *SdlImgui
@@ -44,11 +47,16 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SDL2: %v", err)
+		return nil, fmt.Errorf("SDL2: %v", err)
 	}
 
 	plt := &platform{
 		img: img,
+	}
+
+	ini, err := plt.readIniFile()
+	if err != nil {
+		return nil, fmt.Errorf("SDL2: %v", err)
 	}
 
 	// map sdl key codes to imgui codes
@@ -56,11 +64,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	plt.window, err = sdl.CreateWindow(windowTitle,
 		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
-		1280, 720, sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI)
+		ini.width, ini.height,
+		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE)
 
 	if err != nil {
 		sdl.Quit()
-		return nil, fmt.Errorf("failed to create window: %v", err)
+		return nil, fmt.Errorf("SDL: window creation: %v", err)
 	}
 
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
@@ -76,12 +85,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
 		plt.destroy()
-		return nil, fmt.Errorf("failed to create OpenGL context: %v", err)
+		return nil, fmt.Errorf("SDL: OpenGL: %v", err)
 	}
 	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
 		plt.destroy()
-		return nil, fmt.Errorf("failed to set current OpenGL context: %v", err)
+		return nil, fmt.Errorf("SDL: OpenGL: %v", err)
 	}
 
 	_ = sdl.GLSetSwapInterval(1)
@@ -90,12 +99,19 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 }
 
 // destroy cleans up the resources.
-func (plt *platform) destroy() {
+func (plt *platform) destroy() error {
+	err := plt.writeIniFile()
+	if err != nil {
+		return err
+	}
+
 	if plt.window != nil {
 		_ = plt.window.Destroy()
 		plt.window = nil
 	}
 	sdl.Quit()
+
+	return nil
 }
 
 // setDisplaySize resizes the window
@@ -167,4 +183,58 @@ func (plt *platform) showWindow(show bool) {
 			plt.window.Hide()
 		}
 	}
+}
+
+type iniFile struct {
+	width  int32
+	height int32
+}
+
+func (plt *platform) readIniFile() (*iniFile, error) {
+	iniPath, err := paths.ResourcePath("", winIniFile)
+	if err != nil {
+		return nil, fmt.Errorf("debugger_win.ini file error: %v", err)
+	}
+
+	ini := &iniFile{
+		width:  1280,
+		height: 720,
+	}
+
+	f, err := os.Open(iniPath)
+	if err != nil {
+		switch err.(type) {
+		case *os.PathError:
+			// path errors are okay. we'll just use the defaults and a new ini
+			// file will be created when the window is destroyed
+			return ini, nil
+		}
+		return nil, fmt.Errorf("debugger_win.ini file error: %v", err)
+	}
+	defer f.Close()
+
+	_, err = fmt.Fscanf(f, "%d, %d\n", &ini.width, &ini.height)
+	if err != nil {
+		return nil, fmt.Errorf("debugger_win.ini error: %v", err)
+	}
+
+	return ini, nil
+}
+
+func (plt *platform) writeIniFile() error {
+	iniPath, err := paths.ResourcePath("", winIniFile)
+	if err != nil {
+		return fmt.Errorf("writing window ini file: %v", err)
+	}
+
+	f, err := os.Create(iniPath)
+	if err != nil {
+		return fmt.Errorf("writing window ini file: %v", err)
+	}
+	defer f.Close()
+
+	w, h := plt.window.GetSize()
+	fmt.Fprintf(f, "%d, %d\n", w, h)
+
+	return nil
 }

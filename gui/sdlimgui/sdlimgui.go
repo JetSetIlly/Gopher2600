@@ -33,6 +33,8 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
+const imguiIniFile = "debugger_imgui.ini"
+
 // SdlImgui is an sdl based visualiser using imgui
 type SdlImgui struct {
 	// the mechanical requirements for the gui
@@ -109,7 +111,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		return nil, err
 	}
 
-	iniPath, err := paths.ResourcePath("", "debugger_imgui.ini")
+	iniPath, err := paths.ResourcePath("", imguiIniFile)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +148,12 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	img.wm.destroy()
 	img.audio.EndMixing()
 	img.glsl.destroy()
-	img.plt.destroy()
+
+	err := img.plt.destroy()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+
 	img.context.Destroy()
 }
 
