@@ -213,19 +213,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		return true, nil
 
 	case cmdQuantum:
-		mode, ok := tokens.Get()
-		if ok {
-			mode = strings.ToUpper(mode)
-			switch mode {
-			case "CPU":
-				dbg.quantum = QuantumCPU
-			case "VIDEO":
-				dbg.quantum = QuantumVideo
-			default:
-				// already caught by command line ValidateTokens()
-			}
+		mode, _ := tokens.Get()
+		mode = strings.ToUpper(mode)
+		switch mode {
+		case "CPU":
+			dbg.quantum = QuantumCPU
+		case "VIDEO":
+			dbg.quantum = QuantumVideo
+		default:
+			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.quantum)
 		}
-		dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.quantum)
 
 	case cmdScript:
 		option, _ := tokens.Get()

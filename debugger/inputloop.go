@@ -36,19 +36,38 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	// vcsStep is to be called every video cycle when the quantum mode
 	// is set to CPU
 	vcsStep := func() error {
+		var err error
+
+		// get bank information before we execute the next instruction. we
+		// use this value to prepare the LastDisasmEntry.
+		bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
+		// get disassembly entry for last CPU result.
+		dbg.LastDisasmEntry, err = dbg.disasm.FormatResult(bank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelBlessed)
+		if err != nil {
+			return errors.New(errors.DebuggerError, err)
+		}
+
 		return dbg.reflect.Check()
 	}
 
 	// vcsStepVideo is to be called every video cycle when the quantum mode
 	// is set to Video
 	vcsStepVideo := func() error {
+
+		// update debugger the same way for video quantum as for cpu quantum
 		vcsStep()
+
+		// for video quantums we need to run any OnStep commands before
+		// starting a new inputLoop
 		if dbg.commandOnStep != nil {
 			_, err := dbg.processTokenGroup(dbg.commandOnStep)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
 		}
+
+		// start another inputLoop() with the videoCycle boolean set to true
 		return dbg.inputLoop(inputter, true)
 	}
 
@@ -240,12 +259,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				return nil
 			}
 
-			// get bank information before we execute the next instruction. we
-			// use this value to prepare the LastDisasmEntry after the
-			// instruction has been executed. by that time the bank may have
-			// changed so we need to note it here.
-			bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
-
 			switch dbg.quantum {
 			case QuantumCPU:
 				err = dbg.vcs.Step(vcsStep)
@@ -265,6 +278,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				dbg.lastStepError = true
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
+				bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
+				// make sure the address we've landed on has been blessed
+				// !!TODO: this seems like it might be a race-condition. the
+				// race detector hasn't detected anything but it might just be
+				// a very rare occurrence
+				dbg.disasm.BlessEntry(bank, dbg.vcs.CPU.PC.Address())
+
 				// check validity of instruction result
 				if dbg.vcs.CPU.LastResult.Final {
 					err := dbg.vcs.CPU.LastResult.IsValid()
@@ -273,24 +294,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
 						return errors.New(errors.DebuggerError, err)
 					}
-
-					// get disassembly entry for last CPU result
-					dbg.LastDisasmEntry, err = dbg.disasm.FormatResult(bank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelBlessed)
-					if err != nil {
-						return errors.New(errors.DebuggerError, err)
-					}
-
-					// ideally we would make sure next entry in the disassembly
-					// was blessed. however, doing so here means meddling with
-					// the disassembly and in practical terms other goroutines
-					// may be doing so too. rather than identifying the
-					// critical sections, for now we'll simply abrogate
-					// responsibility for this and if the presentation layer
-					// wants to bless entries then the can do so safely.
-					//
-					// !!TODO: dissassembly/BlessEntry in the main debugger input loop
-					//
-					// dbg.disasm.BlessEntry(bank, dbg.vcs.CPU.PC.Address())
 				}
 			}
 

@@ -75,7 +75,7 @@ func (t EntryLevel) String() string {
 	case EntryLevelDead:
 		return "dead    "
 	case EntryLevelDecoded:
-		return "decoded  "
+		return "decoded "
 	case EntryLevelBlessed:
 		return "blessed "
 	}
