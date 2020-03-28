@@ -133,7 +133,7 @@ func (win *winControl) drawQuantumToggle() {
 	var videoStep bool
 
 	// make sure we know the current state of the debugger
-	if win.img.lazy.Dbg.GetQuantum() == debugger.QuantumVideo {
+	if win.img.lazy.Debugger.Quantum == debugger.QuantumVideo {
 		videoStep = true
 	}
 

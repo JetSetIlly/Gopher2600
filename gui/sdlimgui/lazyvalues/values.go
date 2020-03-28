@@ -41,6 +41,7 @@ type Values struct {
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
+	Debugger  *LazyDebugger
 	CPU       *LazyCPU
 	Timer     *LazyTimer
 	Playfield *LazyPlayfield
@@ -74,6 +75,7 @@ type Values struct {
 func NewValues() *Values {
 	val := &Values{}
 
+	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
 	val.Timer = newLazyTimer(val)
 	val.Playfield = newLazyPlayfield(val)
@@ -103,6 +105,7 @@ func (val *Values) Update() {
 		return
 	}
 
+	val.Debugger.update()
 	val.CPU.update()
 	val.Timer.update()
 	val.Playfield.update()
