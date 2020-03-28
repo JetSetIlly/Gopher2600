@@ -61,11 +61,8 @@ type EasyTerm struct {
 	terminateHandlerSig chan bool
 	terminateHandlerAck chan bool
 
-	// public functions that are  called from the signal handler are prefaced
-	// with (to prevent race conditions, or worse):
-	// 		pt.mu.Lock()
-	// 		defer pt.mu.Unlock()
-	mu sync.Mutex
+	// critical sectioning
+	crit sync.Mutex
 }
 
 // Initialise the fields in the Terminal struct
@@ -114,8 +111,8 @@ func (et *EasyTerm) Initialise(inputFile, outputFile *os.File) error {
 
 // CleanUp closes resources created in the Initialise() function
 func (et *EasyTerm) CleanUp() {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	et.terminateHandlerSig <- true
 	<-et.terminateHandlerAck
@@ -124,8 +121,8 @@ func (et *EasyTerm) CleanUp() {
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
 // output terminal
 func (et *EasyTerm) UpdateGeometry() error {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, et.output.Fd(),
 		uintptr(syscall.TIOCGWINSZ),
@@ -139,32 +136,32 @@ func (et *EasyTerm) UpdateGeometry() error {
 
 // CanonicalMode puts terminal into normal, everyday canonical mode
 func (et *EasyTerm) CanonicalMode() {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.canAttr)
 }
 
 // RawMode puts terminal into raw mode
 func (et *EasyTerm) RawMode() {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.rawAttr)
 }
 
 // CBreakMode puts terminal into cbreak mode
 func (et *EasyTerm) CBreakMode() {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.cbreakAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty
 func (et *EasyTerm) Flush() error {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.crit.Lock()
+	defer et.crit.Unlock()
 
 	if err := termios.Tcflush(et.input.Fd(), termios.TCIFLUSH); err != nil {
 		return err

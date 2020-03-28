@@ -45,9 +45,9 @@ type LazyCPU struct {
 
 	// register labels/value require a generic register. note use of mutex for
 	// map access
-	atomicRegLabelsMux   sync.RWMutex
-	atomicRegValuesMux   sync.RWMutex
-	atomicRegBitwidthMux sync.RWMutex
+	atomicRegLabelsCrit   sync.RWMutex
+	atomicRegValuesCrit   sync.RWMutex
+	atomicRegBitwidthCrit sync.RWMutex
 
 	atomicRegLabels   map[registers.Generic]atomic.Value // string
 	atomicRegValues   map[registers.Generic]atomic.Value // string
@@ -86,8 +86,8 @@ func (lz *LazyCPU) RegLabel(reg registers.Generic) string {
 	// label of register will neved change to if value is in atomicRegLabels
 	// map we don't need to read it again
 
-	lz.atomicRegLabelsMux.RLock()
-	defer lz.atomicRegLabelsMux.RUnlock()
+	lz.atomicRegLabelsCrit.RLock()
+	defer lz.atomicRegLabelsCrit.RUnlock()
 	if v, ok := lz.atomicRegLabels[reg]; ok {
 		return v.Load().(string)
 	}
@@ -95,9 +95,9 @@ func (lz *LazyCPU) RegLabel(reg registers.Generic) string {
 	lz.val.Dbg.PushRawEvent(func() {
 		var a atomic.Value
 		a.Store(reg.Label())
-		lz.atomicRegLabelsMux.Lock()
+		lz.atomicRegLabelsCrit.Lock()
 		lz.atomicRegLabels[reg] = a
-		lz.atomicRegLabelsMux.Unlock()
+		lz.atomicRegLabelsCrit.Unlock()
 	})
 
 	return ""
@@ -112,8 +112,8 @@ func (lz *LazyCPU) RegBitwidth(reg registers.Generic) int {
 	// label of register will neved change to if value is in atomicRegBitwidth
 	// map we don't need to read it again
 
-	lz.atomicRegBitwidthMux.RLock()
-	defer lz.atomicRegBitwidthMux.RUnlock()
+	lz.atomicRegBitwidthCrit.RLock()
+	defer lz.atomicRegBitwidthCrit.RUnlock()
 	if v, ok := lz.atomicRegBitwidth[reg]; ok {
 		return v.Load().(int)
 	}
@@ -121,9 +121,9 @@ func (lz *LazyCPU) RegBitwidth(reg registers.Generic) int {
 	lz.val.Dbg.PushRawEvent(func() {
 		var a atomic.Value
 		a.Store(reg.BitWidth())
-		lz.atomicRegBitwidthMux.Lock()
+		lz.atomicRegBitwidthCrit.Lock()
 		lz.atomicRegBitwidth[reg] = a
-		lz.atomicRegBitwidthMux.Unlock()
+		lz.atomicRegBitwidthCrit.Unlock()
 	})
 
 	return 0
@@ -143,13 +143,13 @@ func (lz *LazyCPU) RegValue(reg registers.Generic) string {
 	lz.val.Dbg.PushRawEvent(func() {
 		var a atomic.Value
 		a.Store(reg.String())
-		lz.atomicRegValuesMux.Lock()
+		lz.atomicRegValuesCrit.Lock()
 		lz.atomicRegValues[reg] = a
-		lz.atomicRegValuesMux.Unlock()
+		lz.atomicRegValuesCrit.Unlock()
 	})
 
-	lz.atomicRegValuesMux.RLock()
-	defer lz.atomicRegValuesMux.RUnlock()
+	lz.atomicRegValuesCrit.RLock()
+	defer lz.atomicRegValuesCrit.RUnlock()
 	if v, ok := lz.atomicRegValues[reg]; ok {
 		return v.Load().(string)
 	}

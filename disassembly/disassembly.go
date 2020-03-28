@@ -20,6 +20,8 @@
 package disassembly
 
 import (
+	"sync"
+
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -47,6 +49,9 @@ type Disassembly struct {
 	// excluding entries only found during the linear pass because
 	// false-positive entries might upset the formatting.
 	fields fields
+
+	// critical sectioning
+	crit sync.RWMutex
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified bank/address.
@@ -66,7 +71,9 @@ func (dsm *Disassembly) BlessEntry(bank int, address uint16) {
 
 	// loop while there are entries to bless, stop on a dead entry
 	for e != nil && e.Level != EntryLevelDead && e.Level < EntryLevelBlessed {
+		dsm.crit.Lock()
 		e.Level = EntryLevelBlessed
+		dsm.crit.Unlock()
 		address += uint16(e.Result.ByteCount)
 		e = dsm.reference[bank][address&ref.AddressMaskCart]
 	}

@@ -22,6 +22,7 @@ package sdlimgui
 import (
 	"image"
 	"image/color"
+	"sync"
 
 	"github.com/jetsetilly/gopher2600/television"
 
@@ -89,6 +90,9 @@ type screen struct {
 	// channel when emulation is paused
 	lastX int
 	lastY int
+
+	// critical sectioning
+	crit sync.RWMutex
 
 	// whether to use the alternative pixel layer
 	useAltPixels bool
@@ -195,6 +199,9 @@ func (scr *screen) clearPixels() {
 
 // SetPixel implements the television.PixelRenderer interface
 func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	scr.crit.Lock()
+	defer scr.crit.Unlock()
+
 	// handle VBLANK by setting pixels to black
 	if vblank {
 		red = 0
@@ -226,6 +233,9 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 
 // SetAltPixel implements the television.PixelRenderer interface
 func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	scr.crit.Lock()
+	defer scr.crit.Unlock()
+
 	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
 	scr.croppedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.topScanline, rgb)
 	scr.altPixels.SetRGBA(x, y, rgb)
@@ -248,6 +258,9 @@ func (scr *screen) scaledHeight() float32 {
 
 // render is called by service loop
 func (scr *screen) render() {
+	scr.crit.RLock()
+	defer scr.crit.RUnlock()
+
 	var pixels *image.RGBA
 	if scr.useAltPixels {
 		if scr.cropped {
@@ -295,7 +308,6 @@ func (scr *screen) render() {
 }
 
 func (scr *screen) pause(set bool) {
-
 	// when emulation is paused, process the current pixel data to
 	// differentiate "old" pixels (from previous frame) and "new" pixels (drawn
 	// this frame)

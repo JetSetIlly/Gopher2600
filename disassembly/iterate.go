@@ -95,6 +95,10 @@ func (itr *Iterate) Next() *Entry {
 
 	e = itr.dsm.reference[itr.bank][itr.idx]
 	itr.idx++
+
+	itr.dsm.crit.RLock()
+	defer itr.dsm.crit.RUnlock()
+
 	for itr.idx < len(itr.dsm.reference[itr.bank]) && e.Level < itr.minLevel {
 		e = itr.dsm.reference[itr.bank][itr.idx]
 		itr.idx++
