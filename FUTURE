@@ -27,12 +27,6 @@ debugger
 
 o RESET command to work when mid-instruction (during video step)
 
-o better presentation of cartridge ram (RAM CART)
-
-o better error messages for command line package
-	- for example "unrecognised argument" command for HELP should be something
-	  like "no help available for ..."
-
 o a way of specifying where to stop when manually breaking (with ctrl-c)
 	- so, continue to this scanline before stopping
 	- set break with mouse should set this manual breakpoint rather than the
@@ -48,10 +42,7 @@ o LAST to include additional information
 	- defaults to CPU instruction like now but optional arguments to output
 	  different LAST information. for example: LAST MEM
 
-o display of colors in the terminal (check for 256 color terminal)
-
 o CPU command to change status register
-
 
 vcs
 ---
@@ -59,34 +50,22 @@ vcs
 o randomised initialisation
 	- optional to prevent regression tests from failing
 
-o cartridge
-	- CartridgeLoader should replace filename with name and a copy of the
-	  bytes in the file. this will allow loading of cartridges through some
-		other mechanism apart from the filesystem (eg. archive, network)
-
 o panel
 	- reflect panel changes in gui. the Panel.Handle() function would be a good
 	  place, probably with a callback argument rather than passing an GUI
 	  interface.
 
-sdl screen
-----------
-
-o info under mouse. floating tooltip
-
 
 regression db
 -------------
 
-o running tests that match NOTES field (with regex?)
+o selecting tests to run by regexing NOTES field
 
 o multiple arguments for DELETE
 
 o a way of adding notes to an entry after it has been added
 
 o SORT BY argument for LIST
-
-o better separation of database and regression packages
 
 o lock file
 
