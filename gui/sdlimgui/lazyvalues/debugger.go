@@ -29,10 +29,10 @@ import (
 type LazyDebugger struct {
 	val *Values
 
-	atomicQuantum atomic.Value // debugger.QuantumMode
-	Quantum       debugger.QuantumMode
-
-	sync chan bool
+	atomicQuantum  atomic.Value // debugger.QuantumMode
+	atomicLastBank atomic.Value // int
+	Quantum        debugger.QuantumMode
+	LastBank       int
 }
 
 func newLazyDebugger(val *Values) *LazyDebugger {
@@ -42,7 +42,12 @@ func newLazyDebugger(val *Values) *LazyDebugger {
 
 func (lz *LazyDebugger) update() {
 	lz.val.Dbg.PushRawEvent(func() {
+		lz.atomicLastBank.Store(lz.val.Dbg.GetLastBank())
 		lz.atomicQuantum.Store(lz.val.Dbg.GetQuantum())
 	})
 	lz.Quantum, _ = lz.atomicQuantum.Load().(debugger.QuantumMode)
+
+	if lz.atomicLastBank.Load() != nil {
+		lz.LastBank = lz.atomicLastBank.Load().(int)
+	}
 }

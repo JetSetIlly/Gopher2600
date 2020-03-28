@@ -183,15 +183,22 @@ func (win *winCPU) drawLastResult() {
 		return
 	}
 
+	formattedLastResult, _ := win.img.lazy.Dsm.FormatResult(
+		win.img.lazy.Debugger.LastBank,
+		win.img.lazy.CPU.LastResult,
+		disassembly.EntryLevelDecoded)
+
 	if win.img.lazy.CPU.LastResult.Final {
-		e := win.img.lazy.Disasm.LastDisasmEntry
-		imgui.Text(fmt.Sprintf("%s", e.Bytecode))
-		imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-		imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
-		if win.img.lazy.Cart.NumBanks == 1 {
-			imgui.Text(fmt.Sprintf("(%s)", e.Address))
-		} else {
-			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
+		e := formattedLastResult
+		if e != nil {
+			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+			imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+			if win.img.lazy.Cart.NumBanks == 1 {
+				imgui.Text(fmt.Sprintf("(%s)", e.Address))
+			} else {
+				imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
+			}
 		}
 		return
 	}

@@ -28,6 +28,12 @@ func (dbg *Debugger) GetQuantum() QuantumMode {
 	return dbg.quantum
 }
 
+// GetLastBank returns the selected cartridge bank from before the last
+// instruction was executed
+func (dbg *Debugger) GetLastBank() int {
+	return dbg.lastBank
+}
+
 // HasBreak returns true if there is a breakpoint at the address. the second
 // return value indicates if there is a breakpoint at the address AND bank
 func (dbg *Debugger) HasBreak(e *disassembly.Entry) BreakGroup {

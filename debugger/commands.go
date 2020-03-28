@@ -560,7 +560,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdLast:
 		s := strings.Builder{}
 
-		e := dbg.LastDisasmEntry
+		e, err := dbg.disasm.FormatResult(dbg.lastBank,
+			dbg.vcs.CPU.LastResult,
+			disassembly.EntryLevelDecoded)
+		if err != nil {
+			return false, err
+		}
 		if e == nil {
 			return false, nil
 		}

@@ -23,7 +23,6 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
@@ -36,18 +35,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	// vcsStep is to be called every video cycle when the quantum mode
 	// is set to CPU
 	vcsStep := func() error {
-		var err error
-
-		// get bank information before we execute the next instruction. we
-		// use this value to prepare the LastDisasmEntry.
-		bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
-
-		// get disassembly entry for last CPU result.
-		dbg.LastDisasmEntry, err = dbg.disasm.FormatResult(bank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelBlessed)
-		if err != nil {
-			return errors.New(errors.DebuggerError, err)
-		}
-
 		return dbg.reflect.Check()
 	}
 
@@ -259,6 +246,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				return nil
 			}
 
+			// get bank information before we execute the next instruction. we
+			// use this value to prepare the LastDisasmEntry.
+			dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
 			switch dbg.quantum {
 			case QuantumCPU:
 				err = dbg.vcs.Step(vcsStep)
@@ -278,13 +269,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				dbg.lastStepError = true
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
-				bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
-
 				// make sure the address we've landed on has been blessed
 				// !!TODO: this seems like it might be a race-condition. the
 				// race detector hasn't detected anything but it might just be
 				// a very rare occurrence
-				dbg.disasm.BlessEntry(bank, dbg.vcs.CPU.PC.Address())
+				dbg.disasm.BlessEntry(
+					dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()),
+					dbg.vcs.CPU.PC.Address())
 
 				// check validity of instruction result
 				if dbg.vcs.CPU.LastResult.Final {
