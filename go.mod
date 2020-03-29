@@ -1,6 +1,6 @@
 module github.com/jetsetilly/gopher2600
 
-go 1.13
+go 1.14
 
 replace github.com/inkyblackness/imgui-go/v2 v2.2.0 => github.com/JetSetIlly/imgui-go/v2 v2.2.1-0.20200317095507-51a6e45b93a9
 
