@@ -43,22 +43,7 @@
 //
 // The two "assert thread" functions, AssertMainThread() and
 // AssertNonMainThread() will panic if they are not called from, respectively,
-// the main thread or from a non-main thread. The package such that these
-// assertions are not active unless the "assertions" build tag is specified at
-// compile time.
-//
-// By convention throughout the reset of the project's code, functions should
-// be commented with the #mainthread "hashtag" to indicate critical sections
-// and calling requirements of the the function. something like
-//
-//		// MUST ONLY be called from the #mainthread
-//
-//	or
-//
-//		// MUST NOT be called from the #mainthread
-//
-// This makes it easier for the maintainer to spot and search for criticial
-// sectoin but such functions should also be supported by calls to
-// AssertMainThread() etc.
+// the main thread or from a non-main thread. These functions do nothing unless
+// the "assertions" build tag is specified at compile time.
 
 package test

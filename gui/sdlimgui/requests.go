@@ -78,16 +78,16 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 
 	case gui.ReqIncScale:
 		if img.screen.scaling < 4.0 {
-			err = img.screen.setWindow(img.screen.scaling + 0.1)
+			img.screen.scaling += 0.1
 		}
 
 	case gui.ReqDecScale:
 		if img.screen.scaling > 0.5 {
-			err = img.screen.setWindow(img.screen.scaling - 0.1)
+			img.screen.scaling -= 0.1
 		}
 
 	case gui.ReqSetScale:
-		err = img.screen.setWindow(request.args[0].(float32))
+		img.screen.scaling = request.args[0].(float32)
 
 	case gui.ReqSetPause:
 		img.pause(request.args[0].(bool))

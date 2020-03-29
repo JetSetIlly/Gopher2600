@@ -25,6 +25,7 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/test"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 )
@@ -37,6 +38,38 @@ const (
 // screen implements television.PixelRenderer
 type screen struct {
 	img *SdlImgui
+
+	crit screenCrit
+
+	// which set of pixels to use: cropped or unmasked
+	cropped bool
+
+	// the basic amount by which the image should be scaled. image width
+	// is also scaled by pixelWidth and aspectBias value
+	scaling float32
+
+	// aspect bias is taken from the television specification
+	aspectBias float32
+
+	// create texture on the next call of render
+	createTextures bool
+
+	// the tv screen texture
+	screenTexture uint32
+
+	// whether to use the alternative pixel layer
+	useAltPixels bool
+}
+
+// for clarity, variables accessed in the critical section are encapsulated in
+// their own subtype
+type screenCrit struct {
+	// critical sectioning
+	section sync.RWMutex
+
+	// current values for *playable* area of the screen
+	topScanline int
+	scanlines   int
 
 	// pixels and altPixels should be constructed exactly the same. the only
 	// difference is the colors
@@ -66,36 +99,10 @@ type screen struct {
 	croppedPixels    *image.RGBA
 	croppedAltPixels *image.RGBA
 
-	// which set of pixels to use: cropped or unmasked
-	cropped bool
-
-	// the basic amount by which the image should be scaled. image width
-	// is also scaled by pixelWidth and aspectBias value
-	scaling float32
-
-	// aspect bias is taken from the television specification
-	aspectBias float32
-
-	// current values for *playable* area of the screen
-	topScanline int
-	scanlines   int
-
-	// create texture on the next call of render
-	createTextures bool
-
-	// the tv screen texture
-	screenTexture uint32
-
 	// the coordinates of the last SetPixel(). used to help set the alpha
 	// channel when emulation is paused
 	lastX int
 	lastY int
-
-	// critical sectioning
-	crit sync.RWMutex
-
-	// whether to use the alternative pixel layer
-	useAltPixels bool
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -118,32 +125,31 @@ func newScreen(img *SdlImgui) *screen {
 	return scr
 }
 
-// Resize implements the television.PixelRenderer interface
-//
-// MUST NOT be called from the #mainthread
-func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
-	scr.img.service <- func() {
-		scr.img.serviceErr <- scr.resize(topScanline, visibleScanlines)
-	}
-	return <-scr.img.serviceErr
-}
-
 // resize() is called by Resize() or resizeThread() depending on thread context
 func (scr *screen) resize(topScanline int, visibleScanlines int) error {
-	scr.topScanline = topScanline
-	scr.scanlines = visibleScanlines
+	scr.crit.section.RLock()
 
-	scr.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
-	scr.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.topScanline = topScanline
+	scr.crit.scanlines = visibleScanlines
 
-	scr.croppedPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
-	scr.croppedAltPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.scanlines))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
-	scr.clearPixels()
+	scr.crit.croppedPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.crit.scanlines))
+	scr.crit.croppedAltPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.crit.scanlines))
+
+	// releasing lock before calling SetPixels() and SetAltPixels() below
+	scr.crit.section.RUnlock()
+
+	// clear pixels
+	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+			scr.SetPixel(x, y, 0, 0, 0, false)
+			scr.SetAltPixel(x, y, 0, 0, 0, false)
+		}
+	}
 
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
-
-	scr.setWindow(reapplyScale)
 
 	// defer re-creation of texture to render(). we have to do it in the
 	// #mainthread so we may as wait until that function is called
@@ -152,127 +158,31 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	return nil
 }
 
-// the value to use
-const reapplyScale = -1.0
-
-// MUST ONLY be called from the #mainthread
-func (scr *screen) setWindow(scale float32) error {
-	if scale != reapplyScale {
-		scr.scaling = scale
-	}
-
-	return nil
-}
-
-// MUST NOT be called from the #mainthread
-// see setWindow() for non-main alternative
-func (scr *screen) setWindowFromThread(scale float32) error {
-	scr.img.service <- func() {
-		scr.setWindow(scale)
-		scr.img.serviceErr <- nil
-	}
-	return <-scr.img.serviceErr
-}
-
-// NewFrame implements the television.PixelRenderer interface
-//
-// MUST NOT be called from the #mainthread
-func (scr *screen) NewFrame(frameNum int) error {
-	return nil
-}
-
-// NewScanline implements the television.PixelRenderer interface
-func (scr *screen) NewScanline(scanline int) error {
-	return nil
-}
-
-// clear pixels by call SetPixel() and SetAltPixel for every point on the
-// screen
-func (scr *screen) clearPixels() {
-	for y := 0; y < scr.pixels.Bounds().Size().Y; y++ {
-		for x := 0; x < scr.pixels.Bounds().Size().X; x++ {
-			scr.SetPixel(x, y, 0, 0, 0, false)
-			scr.SetAltPixel(x, y, 0, 0, 0, false)
-		}
-	}
-}
-
-// SetPixel implements the television.PixelRenderer interface
-func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.crit.Lock()
-	defer scr.crit.Unlock()
-
-	// handle VBLANK by setting pixels to black
-	if vblank {
-		red = 0
-		green = 0
-		blue = 0
-	}
-
-	scr.lastX = x
-	scr.lastY = y
-
-	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	scr.croppedPixels.SetRGBA(scr.lastX-television.HorizClksHBlank, scr.lastY-scr.topScanline, rgb)
-
-	if x == television.HorizClksHBlank-1 ||
-		y == scr.topScanline-1 ||
-		y == scr.topScanline+scr.scanlines+1 {
-		rgb.B = 50
-		rgb.A = 255
-	} else if y == scr.img.tv.GetSpec().ScanlineTop-1 ||
-		y == scr.img.tv.GetSpec().ScanlineBottom+1 {
-		rgb.R = 50
-		rgb.A = 255
-	}
-
-	scr.pixels.SetRGBA(scr.lastX, scr.lastY, rgb)
-
-	return nil
-}
-
-// SetAltPixel implements the television.PixelRenderer interface
-func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.crit.Lock()
-	defer scr.crit.Unlock()
-
-	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	scr.croppedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.topScanline, rgb)
-	scr.altPixels.SetRGBA(x, y, rgb)
-
-	return nil
-}
-
-// EndRendering implements the television.PixelRenderer interface
-func (scr *screen) EndRendering() error {
-	return nil
-}
-
 func (scr *screen) scaledWidth() float32 {
-	return float32(scr.croppedPixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
+	return float32(scr.crit.croppedPixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
 }
 
 func (scr *screen) scaledHeight() float32 {
-	return float32(scr.croppedPixels.Bounds().Size().Y) * scr.scaling
+	return float32(scr.crit.croppedPixels.Bounds().Size().Y) * scr.scaling
 }
 
 // render is called by service loop
 func (scr *screen) render() {
-	scr.crit.RLock()
-	defer scr.crit.RUnlock()
+	scr.crit.section.RLock()
+	defer scr.crit.section.RUnlock()
 
 	var pixels *image.RGBA
 	if scr.useAltPixels {
 		if scr.cropped {
-			pixels = scr.croppedAltPixels
+			pixels = scr.crit.croppedAltPixels
 		} else {
-			pixels = scr.altPixels
+			pixels = scr.crit.altPixels
 		}
 	} else {
 		if scr.cropped {
-			pixels = scr.croppedPixels
+			pixels = scr.crit.croppedPixels
 		} else {
-			pixels = scr.pixels
+			pixels = scr.crit.pixels
 		}
 	}
 
@@ -317,38 +227,38 @@ func (scr *screen) pause(set bool) {
 		// frame. this is to prevent the display being faded after a STEP
 		// FRAME. the user wouldn't expect the image to be faded after asking
 		// to step forward one frame
-		if scr.lastY == 0 {
+		if scr.crit.lastY == 0 {
 			return
 		}
 
 		// pixel offset for last x/y coordinates. we're going to assume that
 		// the scr.pixels and scr.altPixels array are constructed exactyle the
 		// same (reasonable assumption)
-		o := scr.pixels.PixOffset(scr.lastX, scr.lastY)
-		if o >= 0 && o < len(scr.pixels.Pix) {
+		o := scr.crit.pixels.PixOffset(scr.crit.lastX, scr.crit.lastY)
+		if o >= 0 && o < len(scr.crit.pixels.Pix) {
 
 			// make sure all pixels from current frame have full alpha value
 			for i := 0; i <= o; i += 4 {
-				scr.pixels.Pix[i+3] = 255
-				scr.altPixels.Pix[i+3] = 255
+				scr.crit.pixels.Pix[i+3] = 255
+				scr.crit.altPixels.Pix[i+3] = 255
 			}
 
 			// make sure old pixels are faded
-			for i := o + 4; i < len(scr.pixels.Pix); i += 4 {
-				scr.pixels.Pix[i+3] = 100
-				scr.altPixels.Pix[i+3] = 100
+			for i := o + 4; i < len(scr.crit.pixels.Pix); i += 4 {
+				scr.crit.pixels.Pix[i+3] = 100
+				scr.crit.altPixels.Pix[i+3] = 100
 			}
 		}
 
 		// similar process for masked pixels. some care is required when
 		// finding the starting offset for array traversal
 
-		x := scr.lastX - television.HorizClksHBlank
+		x := scr.crit.lastX - television.HorizClksHBlank
 		if x < 0 {
 			x = 0
 		}
 
-		y := scr.lastY - scr.topScanline
+		y := scr.crit.lastY - scr.crit.topScanline
 		if y < 0 {
 			// the y pixel is outside (and above) the masked display so
 			// logically the x pixel must be as well
@@ -356,16 +266,16 @@ func (scr *screen) pause(set bool) {
 			x = 0
 		}
 
-		o = scr.croppedPixels.PixOffset(x, y)
-		if o >= 0 && o < len(scr.croppedPixels.Pix) {
+		o = scr.crit.croppedPixels.PixOffset(x, y)
+		if o >= 0 && o < len(scr.crit.croppedPixels.Pix) {
 			for i := 0; i <= o; i += 4 {
-				scr.croppedPixels.Pix[i+3] = 255
-				scr.croppedAltPixels.Pix[i+3] = 255
+				scr.crit.croppedPixels.Pix[i+3] = 255
+				scr.crit.croppedAltPixels.Pix[i+3] = 255
 			}
 
-			for i := o + 4; i < len(scr.croppedPixels.Pix); i += 4 {
-				scr.croppedPixels.Pix[i+3] = 100
-				scr.croppedAltPixels.Pix[i+3] = 100
+			for i := o + 4; i < len(scr.crit.croppedPixels.Pix); i += 4 {
+				scr.crit.croppedPixels.Pix[i+3] = 100
+				scr.crit.croppedAltPixels.Pix[i+3] = 100
 			}
 		}
 	}
@@ -374,4 +284,79 @@ func (scr *screen) pause(set bool) {
 func (scr *screen) setCropping(set bool) {
 	scr.cropped = set
 	scr.createTextures = true
+}
+
+// Resize implements the television.PixelRenderer interface
+//
+// MUST NOT be called from the #mainthread
+func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
+	scr.img.service <- func() {
+		scr.img.serviceErr <- scr.resize(topScanline, visibleScanlines)
+	}
+	return <-scr.img.serviceErr
+}
+
+// NewFrame implements the television.PixelRenderer interface
+//
+// MUST NOT be called from the #mainthread
+func (scr *screen) NewFrame(frameNum int) error {
+	return nil
+}
+
+// NewScanline implements the television.PixelRenderer interface
+func (scr *screen) NewScanline(scanline int) error {
+	return nil
+}
+
+// SetPixel implements the television.PixelRenderer interface
+func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	test.AssertNonMainThread()
+
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	// handle VBLANK by setting pixels to black
+	if vblank {
+		red = 0
+		green = 0
+		blue = 0
+	}
+
+	scr.crit.lastX = x
+	scr.crit.lastY = y
+
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+	scr.crit.croppedPixels.SetRGBA(scr.crit.lastX-television.HorizClksHBlank, scr.crit.lastY-scr.crit.topScanline, rgb)
+
+	if x == television.HorizClksHBlank-1 ||
+		y == scr.crit.topScanline-1 ||
+		y == scr.crit.topScanline+scr.crit.scanlines+1 {
+		rgb.B = 50
+		rgb.A = 255
+	} else if y == scr.img.tv.GetSpec().ScanlineTop-1 ||
+		y == scr.img.tv.GetSpec().ScanlineBottom+1 {
+		rgb.R = 50
+		rgb.A = 255
+	}
+
+	scr.crit.pixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+
+	return nil
+}
+
+// SetAltPixel implements the television.PixelRenderer interface
+func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+	scr.crit.croppedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.crit.topScanline, rgb)
+	scr.crit.altPixels.SetRGBA(x, y, rgb)
+
+	return nil
+}
+
+// EndRendering implements the television.PixelRenderer interface
+func (scr *screen) EndRendering() error {
+	return nil
 }
