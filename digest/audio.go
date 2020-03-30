@@ -83,25 +83,19 @@ func (dig *Audio) SetAudio(audioData uint8) error {
 	dig.bufferCt++
 
 	if dig.bufferCt >= audioBufferLength {
-		return dig.FlushAudio()
+		return dig.flushAudio()
 	}
 
 	return nil
 }
 
-// FlushAudio implements the television.AudioMixer interface
-func (dig *Audio) FlushAudio() error {
+func (dig *Audio) flushAudio() error {
 	dig.digest = sha1.Sum(dig.buffer)
 	n := copy(dig.buffer, dig.digest[:])
 	if n != len(dig.digest) {
 		return errors.New(errors.AudioDigest, fmt.Sprintf("digest error while flushing audio stream"))
 	}
 	dig.bufferCt = audioBufferStart
-	return nil
-}
-
-// PauseAudio implements the television.AudioMixer interface
-func (dig *Audio) PauseAudio(pause bool) error {
 	return nil
 }
 

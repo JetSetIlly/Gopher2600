@@ -53,23 +53,8 @@ func (aw *WavWriter) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// FlushAudio implements the television.AudioMixer interface
-func (aw *WavWriter) FlushAudio() error {
-	return nil
-}
-
-// PauseAudio implements the television.AudioMixer interface
-func (aw *WavWriter) PauseAudio(pause bool) error {
-	return nil
-}
-
 // EndMixing implements the television.AudioMixer interface
 func (aw *WavWriter) EndMixing() error {
-	err := aw.FlushAudio()
-	if err != nil {
-		return errors.New(errors.WavWriter, err)
-	}
-
 	f, err := os.Create(aw.filename)
 	if err != nil {
 		return errors.New(errors.WavWriter, err)

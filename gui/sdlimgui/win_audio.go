@@ -90,16 +90,6 @@ func (win *winAudio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// FlushAudio implements television.AudioMixer
-func (win *winAudio) FlushAudio() error {
-	return nil
-}
-
-// PauseAudio implements television.AudioMixer
-func (win *winAudio) PauseAudio(pause bool) error {
-	return nil
-}
-
 // EndMixing implements television.AudioMixer
 func (win *winAudio) EndMixing() error {
 	return nil

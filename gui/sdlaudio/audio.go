@@ -83,7 +83,6 @@ func NewAudio() (*Audio, error) {
 	aud.spec = actualSpec
 	aud.detectedSilenceValue = aud.spec.Silence
 
-	// make sure audio device is unpaused on startup
 	sdl.PauseAudioDevice(aud.id, false)
 
 	return aud, nil
@@ -92,7 +91,7 @@ func NewAudio() (*Audio, error) {
 // SetAudio implements the television.AudioMixer interface
 func (aud *Audio) SetAudio(audioData uint8) error {
 	if aud.bufferCt >= len(aud.buffer) {
-		return aud.FlushAudio()
+		return aud.flushAudio()
 	}
 
 	// silence detector
@@ -119,8 +118,7 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// FlushAudio implements the television.AudioMixer interface
-func (aud *Audio) FlushAudio() error {
+func (aud *Audio) flushAudio() error {
 	err := sdl.QueueAudio(aud.id, aud.buffer)
 	if err != nil {
 		return err
@@ -130,14 +128,8 @@ func (aud *Audio) FlushAudio() error {
 	return nil
 }
 
-// PauseAudio implements the television.AudioMixer interface
-func (aud *Audio) PauseAudio(pause bool) error {
-	sdl.PauseAudioDevice(aud.id, pause)
-	return nil
-}
-
 // EndMixing implements the television.AudioMixer interface
 func (aud *Audio) EndMixing() error {
 	defer sdl.CloseAudioDevice(aud.id)
-	return aud.FlushAudio()
+	return aud.flushAudio()
 }

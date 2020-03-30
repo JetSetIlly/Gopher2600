@@ -161,8 +161,6 @@ type PixelRenderer interface {
 // it is the digest.Audio type.
 type AudioMixer interface {
 	SetAudio(audioData uint8) error
-	FlushAudio() error
-	PauseAudio(pause bool) error
 
 	// some mixers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the AudioMixer should be considered unusable after
