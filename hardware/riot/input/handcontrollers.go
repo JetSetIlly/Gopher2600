@@ -249,7 +249,7 @@ func (hc *HandController) SwitchType(prospective ControllerType) bool {
 }
 
 // Handle implements Port interface
-func (hc *HandController) Handle(event Event, value EventValue) error {
+func (hc *HandController) Handle(event Event, value EventData) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent

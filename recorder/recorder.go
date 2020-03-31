@@ -108,7 +108,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the input.EventRecorder interface
-func (rec *Recorder) RecordEvent(id input.ID, event input.Event, value input.EventValue) error {
+func (rec *Recorder) RecordEvent(id input.ID, event input.Event, value input.EventData) error {
 	var err error
 
 	// write header if it's not been written already

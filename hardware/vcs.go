@@ -39,8 +39,6 @@ type VCS struct {
 
 	TV television.Television
 
-	// convenient pointers to the panel and hand controller instances in the
-	// RIOT.Input type
 	Panel           input.Port
 	HandController0 input.Port
 	HandController1 input.Port
@@ -119,17 +117,24 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
+// we use this to short input.Port interfaces for the CheckInput() function.
+// not part of the input.Port interface proper because we don't want to expose
+// the CheckInput function to outside this package.
+type portPoller interface {
+	CheckInput() error
+}
+
 // check all devices for pending input
 func (vcs *VCS) checkDeviceInput() error {
-	err := vcs.HandController0.CheckInput()
+	err := vcs.HandController0.(portPoller).CheckInput()
 	if err != nil {
 		return err
 	}
 
-	err = vcs.HandController1.CheckInput()
+	err = vcs.HandController1.(portPoller).CheckInput()
 	if err != nil {
 		return err
 	}
 
-	return vcs.Panel.CheckInput()
+	return vcs.Panel.(portPoller).CheckInput()
 }

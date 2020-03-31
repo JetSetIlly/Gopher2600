@@ -31,7 +31,7 @@ import (
 const (
 	fieldID int = iota
 	fieldEvent
-	fieldEventValue
+	fieldEventData
 	fieldFrame
 	fieldScanline
 	fieldHorizPos

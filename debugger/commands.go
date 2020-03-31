@@ -947,7 +947,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		action, _ := tokens.Get()
 
 		var event input.Event
-		var value input.EventValue
+		var value input.EventData
 
 		switch strings.ToUpper(action) {
 		case "FIRE":

@@ -25,10 +25,10 @@ type Event string
 
 // List of defined events
 const (
-	NoEvent Event = "NoEvent"
+	NoEvent Event = "NoEvent" // nil
 
 	// the controller has been unplugged
-	Unplug Event = "Unplug"
+	Unplug Event = "Unplug" // nil
 
 	// joystick
 	Fire  Event = "Fire"  // bool
@@ -57,11 +57,11 @@ const (
 	KeypadDown Event = "KeypadDown" // rune
 	KeypadUp   Event = "KeypadUp"   // nil
 
-	PanelPowerOff Event = "PanelPowerOff"
+	PanelPowerOff Event = "PanelPowerOff" // nil
 )
 
-// EventValue is the value associated with the event. The underlying type
+// EventData is the value associated with the event. The underlying type
 // should be restricted to bool, float32, or int. string is also acceptable but
 // for simplicity of playback parsers, "true" or "false" should not be used and
 // numbers should be represented by float32 or int.
-type EventValue interface{}
+type EventData interface{}

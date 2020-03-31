@@ -39,10 +39,9 @@ const (
 // See the HandController and Panel types for more information
 type Port interface {
 	String() string
-	Handle(Event, EventValue) error
+	Handle(Event, EventData) error
 	AttachPlayback(Playback)
 	AttachEventRecorder(EventRecorder)
-	CheckInput() error
 }
 
 // port is the underlying commonality between all Port implementations
@@ -50,7 +49,7 @@ type port struct {
 	id       ID
 	playback Playback
 	recorder EventRecorder
-	handle   func(Event, EventValue) error
+	handle   func(Event, EventData) error
 }
 
 // Attach a Playback implementation to the port.  Events can still be

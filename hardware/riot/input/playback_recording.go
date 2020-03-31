@@ -22,12 +22,12 @@ package input
 // Playback implementations feed controller Events to the device on request
 // with the CheckInput() function.
 //
-// Intended to playback controller events previously recorded to a file on disk
-// but usable for many purposes I suspect. For example, AI control.
+// Intended for playback of controller events previously recorded to a file on
+// disk but usable for many purposes I suspect. For example, AI control.
 type Playback interface {
-	// note the type restrictions on EventValue in the type definition's
+	// note the type restrictions on EventData in the type definition's
 	// commentary
-	CheckInput(id ID) (Event, EventValue, error)
+	CheckInput(id ID) (Event, EventData, error)
 }
 
 // EventRecorder implementations mirror an incoming event.
@@ -36,5 +36,5 @@ type Playback interface {
 // peripheral at once. The ID parameter of the EventRecord() function will help
 // to differentiate between multiple devices.
 type EventRecorder interface {
-	RecordEvent(ID, Event, EventValue) error
+	RecordEvent(ID, Event, EventData) error
 }

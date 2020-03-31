@@ -121,7 +121,7 @@ func (pan *Panel) write() {
 }
 
 // Handle implements Port interface
-func (pan *Panel) Handle(event Event, value EventValue) error {
+func (pan *Panel) Handle(event Event, value EventData) error {
 	switch event {
 	case PanelSelect:
 		b, ok := value.(bool)

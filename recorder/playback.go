@@ -36,7 +36,7 @@ import (
 
 type playbackEntry struct {
 	event    input.Event
-	value    input.EventValue
+	value    input.EventData
 	frame    int
 	scanline int
 	horizpos int
@@ -150,7 +150,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 		entry.event = input.Event(toks[fieldEvent])
 
 		// parse entry value into the correct type
-		entry.value = parseEntryValue(toks[fieldEventValue])
+		entry.value = parseEventData(toks[fieldEventData])
 
 		// special condition for KeypadDown and KeypadUp events.
 		//
@@ -209,7 +209,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 // intersection between the sets of allowed values. a bool doesn't look like a
 // float which doesn't look like an int. if the value looks like none of those
 // things then we can return the original string unchanged.
-func parseEntryValue(value string) input.EventValue {
+func parseEventData(value string) input.EventData {
 	var err error
 
 	// the order of these conversions is important. ParseBool will interpret
@@ -266,7 +266,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 }
 
 // CheckInput implements the input.Playback interface.
-func (plb *Playback) CheckInput(id input.ID) (input.Event, input.EventValue, error) {
+func (plb *Playback) CheckInput(id input.ID) (input.Event, input.EventData, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 
