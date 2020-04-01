@@ -36,6 +36,10 @@ const resizeThreshold = 10
 // before we accept the frame characteristics
 const stabilityThreshold = 15
 
+// the number of scanlines required to be seen in the frame before we consider
+// the tv to be operating "out of spec"
+const excessiveScanlines = 3000
+
 // the number of scanlines past the NTSC limit before the specification flips
 // to PAL (auto flag permitting)
 const overageNTSC = 13
@@ -99,6 +103,9 @@ type television struct {
 	// if stability has not been reached the counter is reset whenever the top
 	// and bottom scanlines look like they might change
 	stabilityCt int
+
+	// has the tv frame ever been "out of spec"
+	outOfSpec bool
 
 	// the top and bottom values can change but we don't want to resize the
 	// screen by accident.
@@ -324,9 +331,28 @@ func (tv *television) Signal(sig SignalAttributes) error {
 			if !tv.IsStable() && tv.frameNum > 1 &&
 				tv.spec != SpecPAL && tv.auto &&
 				tv.scanline >= SpecNTSC.ScanlinesTotal+overageNTSC {
-
 				tv.SetSpec("PAL")
 				tv.resize = true
+			} else {
+				// this branch handles tv frames are out of spec. If the we've
+				// exceeded the number of scanlines in the specification by "a
+				// lot" or we've already seen this condition before, then force
+				// a new frame
+				//
+				// not an ideal solution but it's better than allowing the
+				// number of scanlines to race away indefinately
+				if tv.outOfSpec || tv.scanline > excessiveScanlines {
+					tv.outOfSpec = true
+					tv.stabilityCt = stabilityThreshold
+					tv.scanline = 0
+					tv.frameNum++
+					for f := range tv.renderers {
+						err := tv.renderers[f].NewFrame(tv.frameNum)
+						if err != nil {
+							return err
+						}
+					}
+				}
 			}
 		}
 
