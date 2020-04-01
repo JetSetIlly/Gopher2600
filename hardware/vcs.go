@@ -103,13 +103,18 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 // !!TODO: hard/soft reset option
 // !!TODO: random data on startup option
 func (vcs *VCS) Reset() error {
+	err := vcs.TV.Reset()
+	if err != nil {
+		return err
+	}
+
 	vcs.Mem.Cart.Initialise()
 
 	// !TODO: reset TIA and RIOT (including RAM)
 
 	vcs.CPU.Reset()
 
-	err := vcs.CPU.LoadPCIndirect(addresses.Reset)
+	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {
 		return err
 	}
