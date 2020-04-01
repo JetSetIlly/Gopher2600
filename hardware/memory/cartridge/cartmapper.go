@@ -25,6 +25,7 @@ package cartridge
 // normalised to a range of 0x0000 to 0x0fff
 type cartMapper interface {
 	initialise()
+	format() string
 	read(addr uint16) (data uint8, err error)
 	write(addr uint16, data uint8) error
 	numBanks() int

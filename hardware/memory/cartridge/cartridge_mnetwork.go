@@ -80,7 +80,8 @@ func fingerprintMnetwork(b []byte) bool {
 }
 
 type mnetwork struct {
-	method string
+	formatID    string
+	description string
 
 	banks [][]uint8
 	bank  int
@@ -106,11 +107,12 @@ func newMnetwork(data []byte) (cartMapper, error) {
 	const bankSize = 2048
 
 	cart := &mnetwork{}
-	cart.method = "m-network (E7)"
+	cart.description = "m-network"
+	cart.formatID = "E7"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -152,13 +154,17 @@ func newMnetwork(data []byte) (cartMapper, error) {
 
 func (cart mnetwork) String() string {
 	s := strings.Builder{}
-	s.WriteString(cart.method)
+	s.WriteString(fmt.Sprintf("%s [%s]", cart.description, cart.formatID))
 	s.WriteString(fmt.Sprintf(" Bank: %d ", cart.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
 	if cart.bank == 7 {
 		s.WriteString(" [+1k RAM]")
 	}
 	return s.String()
+}
+
+func (cart mnetwork) format() string {
+	return cart.formatID
 }
 
 func (cart *mnetwork) initialise() {
@@ -277,7 +283,7 @@ func (cart *mnetwork) getBank(addr uint16) (bank int) {
 
 func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -285,7 +291,7 @@ func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%#04x bank %d]", cart.method, addr, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%#04x bank %d]", cart.formatID, addr, bank))
 	}
 
 	return nil
@@ -327,7 +333,7 @@ func (cart *mnetwork) poke(addr uint16, data uint8) error {
 }
 
 func (cart *mnetwork) patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.method)
+	return errors.New(errors.UnpatchableCartType, cart.formatID)
 }
 
 func (cart mnetwork) getRAMinfo() []RAMinfo {

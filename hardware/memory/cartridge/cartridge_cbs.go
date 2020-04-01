@@ -26,7 +26,8 @@ import (
 )
 
 type cbs struct {
-	method string
+	formatID    string
+	description string
 
 	// cbs cartridges have 3 banks of 4096 bytes
 	banks [][]uint8
@@ -46,11 +47,12 @@ func newCBS(data []byte) (cartMapper, error) {
 	const bankSize = 4096
 
 	cart := &cbs{}
-	cart.method = "CBS (FA)"
+	cart.description = "CBS"
+	cart.formatID = "FA"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -79,7 +81,11 @@ func newCBS(data []byte) (cartMapper, error) {
 }
 
 func (cart cbs) String() string {
-	return fmt.Sprintf("%s Bank: %d", cart.method, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.formatID, cart.bank)
+}
+
+func (cart cbs) format() string {
+	return cart.formatID
 }
 
 func (cart *cbs) initialise() {
@@ -134,7 +140,7 @@ func (cart cbs) getBank(addr uint16) int {
 
 func (cart *cbs) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 	cart.bank = bank
 	return nil
@@ -164,7 +170,7 @@ func (cart *cbs) poke(addr uint16, data uint8) error {
 }
 
 func (cart *cbs) patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.method)
+	return errors.New(errors.UnpatchableCartType, cart.formatID)
 }
 
 func (cart cbs) getRAMinfo() []RAMinfo {

@@ -25,17 +25,17 @@
 // space available for cartridges in the VCS. This is called bank-switching.
 // All of these differences are handled transparently by the package.
 //
-// Currently supported cartridge types are:
+// Currently supported cartridge types are listed below. The strings in
+// quotation marks are the identifiers that should be used to specify a
+// particular format in the Format field of cartridgeloader.Loader:
 //
-//	- Atari 2k / 4k / 8k / 16k and 32k
-//
-//	- the above with additional Superchip (additional RAM in other words)
-//
-//	- Parker Bros.
-//
-//	- MNetwork
-//
-//	- Tigervision
-//
-//	- CBS
+// Atari 2k			"2k"
+// Atari 4k			"4k"
+// Atari 8k			"F8"
+// Atari 16k		"F6"
+// Atari 32k		"F4"
+// CBS case			"FA"
+// M-Network		"E7"
+// Parker Bros		"E0"
+// Tigervision		"3F"
 package cartridge

@@ -57,8 +57,10 @@ func fingerprintTigervision(b []byte) bool {
 }
 
 type tigervision struct {
-	method string
-	banks  [][]uint8
+	formatID    string
+	description string
+
+	banks [][]uint8
 
 	// tigervision cartridges divide memory into two 2k segments
 	//  o the last segment always points to the last bank
@@ -81,11 +83,12 @@ func newTigervision(data []byte) (cartMapper, error) {
 	numBanks := len(data) / bankSize
 
 	cart := &tigervision{}
-	cart.method = fmt.Sprintf("tigervision (3F) %dk:", len(data)/1024)
+	cart.description = "tigervision"
+	cart.formatID = "3F"
 	cart.banks = make([][]uint8, numBanks)
 
 	if len(data) != bankSize*numBanks {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < numBanks; k++ {
@@ -100,7 +103,11 @@ func newTigervision(data []byte) (cartMapper, error) {
 }
 
 func (cart tigervision) String() string {
-	return fmt.Sprintf("%s Banks: %d, %d", cart.method, cart.segment[0], cart.segment[1])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.description, cart.formatID, cart.segment[0], cart.segment[1])
+}
+
+func (cart tigervision) format() string {
+	return cart.formatID
 }
 
 func (cart *tigervision) initialise() {
@@ -137,7 +144,7 @@ func (cart *tigervision) getBank(addr uint16) (bank int) {
 
 func (cart *tigervision) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -145,7 +152,7 @@ func (cart *tigervision) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 
 	return nil
@@ -184,7 +191,7 @@ func (cart *tigervision) poke(addr uint16, data uint8) error {
 }
 
 func (cart *tigervision) patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.method)
+	return errors.New(errors.UnpatchableCartType, cart.formatID)
 }
 
 func (cart tigervision) getRAMinfo() []RAMinfo {

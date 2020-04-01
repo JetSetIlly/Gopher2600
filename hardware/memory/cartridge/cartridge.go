@@ -55,6 +55,11 @@ func (cart Cartridge) String() string {
 	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
 }
 
+// Format returns the cartridge format ID
+func (cart Cartridge) Format() string {
+	return cart.mapper.format()
+}
+
 // Peek is an implementation of memory.DebuggerBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
 	return cart.Read(addr)

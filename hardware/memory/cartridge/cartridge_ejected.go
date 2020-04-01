@@ -45,6 +45,10 @@ func (cart ejected) String() string {
 	return cart.method
 }
 
+func (cart ejected) format() string {
+	return "-"
+}
+
 func (cart *ejected) initialise() {
 }
 

@@ -59,8 +59,10 @@ func fingerprintParkerBros(b []byte) bool {
 //  o Lord of the Rings
 //  o etc.
 type parkerBros struct {
-	method string
-	banks  [][]uint8
+	formatID    string
+	description string
+
+	banks [][]uint8
 
 	// parker bros. cartridges divide memory into 4 segments
 	//  o the last segment always points to the last bank
@@ -75,11 +77,12 @@ func newparkerBros(data []byte) (cartMapper, error) {
 	const bankSize = 1024
 
 	cart := &parkerBros{}
-	cart.method = "parker bros. (E0)"
+	cart.description = "parker bros"
+	cart.formatID = "E0"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -94,7 +97,11 @@ func newparkerBros(data []byte) (cartMapper, error) {
 }
 
 func (cart parkerBros) String() string {
-	return fmt.Sprintf("%s Banks: %d, %d, %d, %d", cart.method, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.description, cart.formatID, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
+}
+
+func (cart parkerBros) format() string {
+	return cart.formatID
 }
 
 func (cart *parkerBros) initialise() {
@@ -208,7 +215,7 @@ func (cart parkerBros) getBank(addr uint16) int {
 
 func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank > cart.numBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -220,7 +227,7 @@ func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		// last segment always points to the last bank
 	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.formatID, bank))
 	}
 
 	return nil
@@ -243,7 +250,7 @@ func (cart *parkerBros) poke(addr uint16, data uint8) error {
 }
 
 func (cart *parkerBros) patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.method)
+	return errors.New(errors.UnpatchableCartType, cart.formatID)
 }
 
 func (cart parkerBros) getRAMinfo() []RAMinfo {

@@ -66,7 +66,8 @@ import (
 // read port.  This is needed, because there is no R/W line to the cart.
 
 type atari struct {
-	method string
+	formatID    string
+	description string
 
 	bankSize int
 
@@ -88,9 +89,13 @@ type atari struct {
 
 func (cart atari) String() string {
 	if len(cart.banks) == 1 {
-		return cart.method
+		return cart.description
 	}
-	return fmt.Sprintf("%s Bank: %d", cart.method, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.formatID, cart.bank)
+}
+
+func (cart atari) format() string {
+	return cart.formatID
 }
 
 func (cart *atari) initialise() {
@@ -109,7 +114,7 @@ func (cart atari) getBank(addr uint16) int {
 
 func (cart *atari) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank >= len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.method, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
 	}
 	cart.bank = bank
 	return nil
@@ -165,7 +170,7 @@ func (cart *atari) addSuperchip() bool {
 	cart.superchip = make([]uint8, 128)
 
 	// update method string
-	cart.method = fmt.Sprintf("%s (+ superchip RAM)", cart.method)
+	cart.description = fmt.Sprintf("%s (+ superchip RAM)", cart.description)
 
 	cart.ramInfo = make([]RAMinfo, 1)
 	cart.ramInfo[0] = RAMinfo{
@@ -216,11 +221,12 @@ type atari4k struct {
 func newAtari4k(data []byte) (cartMapper, error) {
 	cart := &atari4k{}
 	cart.bankSize = 4096
-	cart.method = "atari 4k"
+	cart.description = "atari 4k"
+	cart.formatID = "4k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -263,11 +269,12 @@ type atari2k struct {
 func newAtari2k(data []byte) (cartMapper, error) {
 	cart := &atari2k{}
 	cart.bankSize = 2048
-	cart.method = "atari 2k"
+	cart.description = "atari 2k"
+	cart.formatID = "2k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -308,11 +315,12 @@ type atari8k struct {
 func newAtari8k(data []uint8) (cartMapper, error) {
 	cart := &atari8k{}
 	cart.bankSize = 4096
-	cart.method = "atari 8k (F8)"
+	cart.description = "atari 8k"
+	cart.formatID = "F8"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -374,11 +382,12 @@ type atari16k struct {
 func newAtari16k(data []byte) (cartMapper, error) {
 	cart := &atari16k{}
 	cart.bankSize = 4096
-	cart.method = "atari 16k (F6)"
+	cart.description = "atari 16k"
+	cart.formatID = "F6"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -448,11 +457,12 @@ type atari32k struct {
 func newAtari32k(data []byte) (cartMapper, error) {
 	cart := &atari32k{}
 	cart.bankSize = 4096
-	cart.method = "atari 32k (F4)"
+	cart.description = "atari 32k"
+	cart.formatID = "F4"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.method))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
