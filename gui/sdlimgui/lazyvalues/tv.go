@@ -29,20 +29,22 @@ import (
 type LazyTV struct {
 	val *Values
 
-	atomicSpec      atomic.Value // television.Specification
-	atomicTVStr     atomic.Value // string
-	atomicFrame     atomic.Value // int
-	atomicScanline  atomic.Value // int
-	atomicHP        atomic.Value // int
-	atomicReqFPS    atomic.Value // float32
-	atomicActualFPS atomic.Value // float32
+	atomicSpec       atomic.Value // television.Specification
+	atomicTVStr      atomic.Value // string
+	atomicLastSignal atomic.Value // television.SignalAttributes
+	atomicFrame      atomic.Value // int
+	atomicScanline   atomic.Value // int
+	atomicHP         atomic.Value // int
+	atomicReqFPS     atomic.Value // float32
+	atomicActualFPS  atomic.Value // float32
 
-	Spec      television.Specification
-	TVstr     string
-	Frame     int
-	Scanline  int
-	HP        int
-	AcutalFPS float32
+	Spec       television.Specification
+	TVstr      string
+	LastSignal television.SignalAttributes
+	Frame      int
+	Scanline   int
+	HP         int
+	AcutalFPS  float32
 
 	// taken from debugger rather than tv
 	ReqFPS float32
@@ -56,19 +58,24 @@ func (lz *LazyTV) update() {
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicSpec.Store(*lz.val.VCS.TV.GetSpec())
 		lz.atomicTVStr.Store(lz.val.VCS.TV.String())
+		lz.atomicLastSignal.Store(lz.val.VCS.TV.GetLastSignal())
 
 		frame, _ := lz.val.VCS.TV.GetState(television.ReqFramenum)
 		lz.atomicFrame.Store(frame)
+
 		scanline, _ := lz.val.VCS.TV.GetState(television.ReqScanline)
 		lz.atomicScanline.Store(scanline)
+
 		hp, _ := lz.val.VCS.TV.GetState(television.ReqHorizPos)
 		lz.atomicHP.Store(hp)
 
 		lz.atomicReqFPS.Store(lz.val.Dbg.GetReqFPS())
 		lz.atomicActualFPS.Store(lz.val.VCS.TV.GetActualFPS())
+
 	})
 	lz.Spec, _ = lz.atomicSpec.Load().(television.Specification)
 	lz.TVstr, _ = lz.atomicTVStr.Load().(string)
+	lz.LastSignal, _ = lz.atomicLastSignal.Load().(television.SignalAttributes)
 	lz.Frame, _ = lz.atomicFrame.Load().(int)
 	lz.Scanline, _ = lz.atomicScanline.Load().(int)
 	lz.HP, _ = lz.atomicHP.Load().(int)

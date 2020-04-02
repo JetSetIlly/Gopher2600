@@ -21,6 +21,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -118,6 +119,23 @@ func (win *winScreen) draw() {
 			imguiText(fmt.Sprintf("%03.1f fps", win.img.lazy.TV.AcutalFPS))
 		}
 	}
+
+	// include tv signal information
+	imgui.SameLineV(0, 20)
+	signal := strings.Builder{}
+	if win.img.lazy.TV.LastSignal.VSync {
+		signal.WriteString("VSYNC ")
+	}
+	if win.img.lazy.TV.LastSignal.VBlank {
+		signal.WriteString("VBLANK ")
+	}
+	if win.img.lazy.TV.LastSignal.CBurst {
+		signal.WriteString("CBURST ")
+	}
+	if win.img.lazy.TV.LastSignal.HSync {
+		signal.WriteString("HSYNC ")
+	}
+	imgui.Text(signal.String())
 
 	// display toggles
 	imgui.Spacing()

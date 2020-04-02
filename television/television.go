@@ -78,7 +78,7 @@ type television struct {
 	scanline int
 
 	// record of signal attributes from the last call to Signal()
-	prevSignal SignalAttributes
+	lastSignal SignalAttributes
 
 	// vsyncCount records the number of consecutive colorClocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
@@ -260,7 +260,7 @@ func (tv *television) Reset() error {
 	tv.frameNum = 0
 	tv.scanline = 0
 	tv.vsyncCount = 0
-	tv.prevSignal = SignalAttributes{}
+	tv.lastSignal = SignalAttributes{}
 
 	tv.top = tv.spec.ScanlineTop
 	tv.bottom = tv.spec.ScanlineBottom
@@ -275,7 +275,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	//
 	// see SignalAttributes type definition for notes about the HSyncSimple
 	// attribute
-	if sig.HSyncSimple && !tv.prevSignal.HSyncSimple {
+	if sig.HSyncSimple && !tv.lastSignal.HSyncSimple {
 		tv.horizPos = -HorizClksHBlank
 		tv.scanline++
 
@@ -371,12 +371,12 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// scanlines, meaning A/B testing is relatively straightforward.
 	if sig.VSync {
 		// if this a new vsync sequence note the horizontal position
-		if !tv.prevSignal.VSync {
+		if !tv.lastSignal.VSync {
 			tv.vsyncPos = tv.horizPos
 		}
 		// bump the vsync count whenever vsync is set
 		tv.vsyncCount++
-	} else if tv.prevSignal.VSync {
+	} else if tv.lastSignal.VSync {
 		// if vsync has just be turned off then check that it has been held for
 		// the requisite number of scanlines for a new frame to be started
 		if tv.vsyncCount >= tv.spec.ScanlinesVSync {
@@ -496,7 +496,7 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	}
 
 	// record the current signal settings so they can be used for reference
-	tv.prevSignal = sig
+	tv.lastSignal = sig
 
 	return nil
 }
@@ -685,4 +685,9 @@ func (tv *television) fpsCalc() {
 		tv.fpsCalcFreq = int(tv.actFramesPerSecond)
 		tv.fpsCalcFreqCt = 0
 	}
+}
+
+// GetLastSignal implements the Television interface
+func (tv *television) GetLastSignal() SignalAttributes {
+	return tv.lastSignal
 }

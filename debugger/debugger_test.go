@@ -91,6 +91,10 @@ func (t *mockTV) GetActualFPS() float32 {
 	return 0.0
 }
 
+func (t *mockTV) GetLastSignal() television.SignalAttributes {
+	return television.SignalAttributes{}
+}
+
 func (g *mockGUI) Destroy(_ io.Writer) {
 }
 

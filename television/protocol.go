@@ -89,6 +89,9 @@ type Television interface {
 
 	// The current number of frames per second
 	GetActualFPS() float32
+
+	// Returns a copy of SignalAttributes for reference
+	GetLastSignal() SignalAttributes
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

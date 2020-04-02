@@ -59,6 +59,10 @@ type screen struct {
 
 	// whether to use the alternative pixel layer
 	useAltPixels bool
+
+	// the color of the screen cursor
+	cursorRGB          color.RGBA
+	offScreenCursorRGB color.RGBA
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -107,9 +111,11 @@ type screenCrit struct {
 
 func newScreen(img *SdlImgui) *screen {
 	scr := &screen{
-		img:     img,
-		scaling: defScaling,
-		cropped: true,
+		img:                img,
+		scaling:            defScaling,
+		cropped:            true,
+		cursorRGB:          color.RGBA{255, 255, 255, 255},
+		offScreenCursorRGB: color.RGBA{0, 0, 255, 255},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -121,6 +127,10 @@ func newScreen(img *SdlImgui) *screen {
 
 	// start off by showing entirity of NTSC screen
 	scr.resize(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
+
+	scr.crit.lastX = 0
+	scr.crit.lastY = 0
+	scr.pause(true)
 
 	return scr
 }
@@ -222,62 +232,88 @@ func (scr *screen) pause(set bool) {
 	// differentiate "old" pixels (from previous frame) and "new" pixels (drawn
 	// this frame)
 	if set {
-
-		// do no fade image if we're still on the first scanline after a new
+		// do not fade image if we're still on the first scanline after a new
 		// frame. this is to prevent the display being faded after a STEP
 		// FRAME. the user wouldn't expect the image to be faded after asking
 		// to step forward one frame
-		if scr.crit.lastY == 0 {
-			return
-		}
+		if scr.crit.lastY > 0 {
+			// pixel offset for last x/y coordinates. we're going to assume that
+			// the scr.pixels and scr.altPixels array are constructed exactyle the
+			// same (reasonable assumption)
+			o := scr.crit.pixels.PixOffset(scr.crit.lastX, scr.crit.lastY)
+			if o >= 0 && o < len(scr.crit.pixels.Pix) {
 
-		// pixel offset for last x/y coordinates. we're going to assume that
-		// the scr.pixels and scr.altPixels array are constructed exactyle the
-		// same (reasonable assumption)
-		o := scr.crit.pixels.PixOffset(scr.crit.lastX, scr.crit.lastY)
-		if o >= 0 && o < len(scr.crit.pixels.Pix) {
+				// make sure all pixels from current frame have full alpha value
+				for i := 0; i <= o; i += 4 {
+					scr.crit.pixels.Pix[i+3] = 255
+					scr.crit.altPixels.Pix[i+3] = 255
+				}
 
-			// make sure all pixels from current frame have full alpha value
-			for i := 0; i <= o; i += 4 {
-				scr.crit.pixels.Pix[i+3] = 255
-				scr.crit.altPixels.Pix[i+3] = 255
+				// make sure old pixels are faded
+				for i := o + 4; i < len(scr.crit.pixels.Pix); i += 4 {
+					scr.crit.pixels.Pix[i+3] = 100
+					scr.crit.altPixels.Pix[i+3] = 100
+				}
 			}
 
-			// make sure old pixels are faded
-			for i := o + 4; i < len(scr.crit.pixels.Pix); i += 4 {
-				scr.crit.pixels.Pix[i+3] = 100
-				scr.crit.altPixels.Pix[i+3] = 100
+			// similar process for masked pixels. some care is required when
+			// finding the starting offset for array traversal
+
+			x := scr.crit.lastX - television.HorizClksHBlank
+			if x < 0 {
+				x = 0
+			}
+
+			y := scr.crit.lastY - scr.crit.topScanline
+			if y < 0 {
+				// the y pixel is outside (and above) the masked display so
+				// logically the x pixel must be as well
+				y = 0
+				x = 0
+			}
+
+			o = scr.crit.croppedPixels.PixOffset(x, y)
+			if o >= 0 && o < len(scr.crit.croppedPixels.Pix) {
+				for i := 0; i <= o; i += 4 {
+					scr.crit.croppedPixels.Pix[i+3] = 255
+					scr.crit.croppedAltPixels.Pix[i+3] = 255
+				}
+
+				for i := o + 4; i < len(scr.crit.croppedPixels.Pix); i += 4 {
+					scr.crit.croppedPixels.Pix[i+3] = 100
+					scr.crit.croppedAltPixels.Pix[i+3] = 100
+				}
 			}
 		}
 
-		// similar process for masked pixels. some care is required when
-		// finding the starting offset for array traversal
+		// draw cursor
+		cx := scr.crit.lastX - television.HorizClksHBlank
+		cy := scr.crit.lastY - scr.crit.topScanline
 
-		x := scr.crit.lastX - television.HorizClksHBlank
-		if x < 0 {
-			x = 0
+		// make sure we can see the cursor if it's offscreen - we'll draw it in
+		// a different color to indicate that it's only an indicator of where
+		// the cursor is
+		cursorRGB := scr.cursorRGB
+		if cx < 0 {
+			cx = -1
+			cursorRGB = scr.offScreenCursorRGB
+		}
+		if scr.crit.lastY <= scr.crit.topScanline-1 {
+			cy = 0
+			cursorRGB = scr.offScreenCursorRGB
+		} else if scr.crit.lastY >= scr.crit.topScanline+scr.crit.scanlines {
+			cy = scr.crit.scanlines - 1
+			cursorRGB = scr.offScreenCursorRGB
 		}
 
-		y := scr.crit.lastY - scr.crit.topScanline
-		if y < 0 {
-			// the y pixel is outside (and above) the masked display so
-			// logically the x pixel must be as well
-			y = 0
-			x = 0
-		}
+		// draw cursor over cropped pixels
+		scr.crit.croppedPixels.SetRGBA(cx+1, cy, cursorRGB)
+		scr.crit.croppedAltPixels.SetRGBA(cx+1, cy, cursorRGB)
 
-		o = scr.crit.croppedPixels.PixOffset(x, y)
-		if o >= 0 && o < len(scr.crit.croppedPixels.Pix) {
-			for i := 0; i <= o; i += 4 {
-				scr.crit.croppedPixels.Pix[i+3] = 255
-				scr.crit.croppedAltPixels.Pix[i+3] = 255
-			}
-
-			for i := o + 4; i < len(scr.crit.croppedPixels.Pix); i += 4 {
-				scr.crit.croppedPixels.Pix[i+3] = 100
-				scr.crit.croppedAltPixels.Pix[i+3] = 100
-			}
-		}
+		// draw cursor over non-cropped pixels. we'll use the cropped pixel
+		// color for this
+		scr.crit.pixels.SetRGBA(scr.crit.lastX+1, scr.crit.lastY, cursorRGB)
+		scr.crit.altPixels.SetRGBA(scr.crit.lastX+1, scr.crit.lastY, cursorRGB)
 	}
 }
 
@@ -326,7 +362,9 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 	scr.crit.lastY = y
 
 	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	scr.crit.croppedPixels.SetRGBA(scr.crit.lastX-television.HorizClksHBlank, scr.crit.lastY-scr.crit.topScanline, rgb)
+	cx := scr.crit.lastX - television.HorizClksHBlank
+	cy := scr.crit.lastY - scr.crit.topScanline
+	scr.crit.croppedPixels.SetRGBA(cx, cy, rgb)
 
 	if x == television.HorizClksHBlank-1 ||
 		y == scr.crit.topScanline-1 ||
