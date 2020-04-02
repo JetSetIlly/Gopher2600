@@ -38,6 +38,10 @@ const stabilityThreshold = 15
 
 // the number of scanlines required to be seen in the frame before we consider
 // the tv to be operating "out of spec"
+//
+// this value is ridiculously wrong but I don't have any good reason for any
+// other value. It's only ever really a issue when the cartridge is starting up
+// but still, it would be nice to get right
 const excessiveScanlines = 3000
 
 // the number of scanlines past the NTSC limit before the specification flips
@@ -155,9 +159,6 @@ type television struct {
 	// update frame rate only once every N frames
 	fpsCalcFreqCt int
 	fpsCalcFreq   int
-
-	// the acutal number of scanlines in the last frame
-	actualScanlines int
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -279,10 +280,6 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		tv.horizPos = -HorizClksHBlank
 		tv.scanline++
 
-		// reset key color check for the new scanline
-		tv.key = true
-		tv.keyCol = VideoBlack
-
 		if tv.scanline <= tv.spec.ScanlinesTotal {
 			// when observing Stella we can see that on the first frame (frame
 			// number zero) a new frame is triggered when the scanline reaches
@@ -312,12 +309,6 @@ func (tv *television) Signal(sig SignalAttributes) error {
 				}
 			}
 		} else {
-			// allow scanline to increase indefinitely. debuggers are
-			// encouraged to monitor the scanline value and note when it is
-			// running "out-of-spec". previous versions of this file capped the
-			// scanline value at the specification maximum but means a loss of
-			// potentially useful information.
-
 			// PAL detection condition:
 			//   1. frame must be "unstable"
 			//   2. not be the first frame (because ROMs can still be in the
@@ -502,6 +493,10 @@ func (tv *television) Signal(sig SignalAttributes) error {
 }
 
 func (tv *television) newFrame() error {
+	// reset key color check
+	tv.key = true
+	tv.keyCol = VideoBlack
+
 	// screen resizing has been requested
 	if tv.resize {
 		for f := range tv.renderers {
