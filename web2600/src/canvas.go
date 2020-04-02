@@ -24,13 +24,14 @@ package main
 
 import (
 	"encoding/base64"
+	"image"
+	"image/color"
 	"syscall/js"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-const pixelDepth = 4
 const pixelWidth = 2
 const horizScale = 2
 const vertScale = 2
@@ -45,7 +46,7 @@ type Canvas struct {
 	height int
 	top    int
 
-	image []byte
+	image *image.RGBA
 }
 
 // NewCanvas is the preferred method of initialisation for the Canvas type
@@ -80,8 +81,7 @@ func (scr *Canvas) Resize(topScanline, numScanlines int) error {
 	// it's convenient to set the width too
 	scr.width = television.HorizClksVisible * pixelWidth * horizScale
 
-	// recreate image buffer of correct length
-	scr.image = make([]byte, scr.width*scr.height*pixelDepth)
+	scr.image = image.NewRGBA(image.Rect(0, 0, scr.width, scr.height))
 
 	// resize HTML canvas
 	scr.worker.Call("updateCanvasSize", scr.width, scr.height)
@@ -92,7 +92,7 @@ func (scr *Canvas) Resize(topScanline, numScanlines int) error {
 // NewFrame implements telvision.PixelRenderer
 func (scr *Canvas) NewFrame(frameNum int) error {
 	scr.worker.Call("updateDebug", "frameNum", frameNum)
-	encodedImage := base64.StdEncoding.EncodeToString(scr.image)
+	encodedImage := base64.StdEncoding.EncodeToString(scr.image.Pix)
 	scr.worker.Call("updateCanvas", encodedImage)
 
 	// give way to messageHandler - there must be a more elegant way of doing this
@@ -127,17 +127,14 @@ func (scr *Canvas) SetPixel(x, y int, red, green, blue byte, vblank bool) error 
 		return nil
 	}
 
-	baseIdx := pixelDepth * (y*vertScale*scr.width + x*pixelWidth*horizScale)
-	if baseIdx <= len(scr.image)-pixelDepth && baseIdx >= 0 {
-		for h := 0; h < vertScale; h++ {
-			vertAdj := h * (scr.width * pixelWidth * horizScale)
-			for w := 0; w < pixelWidth*horizScale; w++ {
-				horizAdj := baseIdx + (w * pixelDepth) + vertAdj
-				scr.image[horizAdj] = red
-				scr.image[horizAdj+1] = green
-				scr.image[horizAdj+2] = blue
-				scr.image[horizAdj+3] = 255
-			}
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+
+	for h := 0; h < vertScale; h++ {
+		for w := 0; w < horizScale*pixelWidth; w++ {
+			scr.image.SetRGBA(
+				(x*horizScale*pixelWidth)+w,
+				(y*vertScale)+h,
+				rgb)
 		}
 	}
 
