@@ -909,7 +909,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdPanel:
-		mode, _ := tokens.Get()
+		mode, ok := tokens.Get()
+		if !ok {
+			dbg.printInstrument(dbg.vcs.Panel)
+			return false, nil
+		}
+
 		switch strings.ToUpper(mode) {
 		case "TOGGLE":
 			arg, _ := tokens.Get()
@@ -937,6 +942,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "BW":
 				dbg.vcs.Panel.Handle(input.PanelSetColor, false)
 			}
+		default:
+			// we shouldn't need this check it should have been caught by the
+			// command line parser
+			// !!TODO: fix template for PANEL command
+			return false, errors.New(errors.CommandError, fmt.Sprintf("unrecognised argument (%s)", mode))
 		}
 		dbg.printInstrument(dbg.vcs.Panel)
 
