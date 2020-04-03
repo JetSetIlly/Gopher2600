@@ -25,13 +25,13 @@ import "sync/atomic"
 type LazyTimer struct {
 	val *Values
 
-	atomicRequested      atomic.Value // string
+	atomicDivider        atomic.Value // string
 	atomicINTIMvalue     atomic.Value // uint8
-	atomicTicksRemaining atomic.Value // uint16
+	atomicTicksRemaining atomic.Value // int
 
-	Requested      string
+	Divider        string
 	INTIMvalue     uint8
-	TicksRemaining uint16
+	TicksRemaining int
 }
 
 func newLazyTimer(val *Values) *LazyTimer {
@@ -40,11 +40,11 @@ func newLazyTimer(val *Values) *LazyTimer {
 
 func (lz *LazyTimer) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicRequested.Store(lz.val.VCS.RIOT.Timer.Requested.String())
+		lz.atomicDivider.Store(lz.val.VCS.RIOT.Timer.Divider.String())
 		lz.atomicINTIMvalue.Store(lz.val.VCS.RIOT.Timer.INTIMvalue)
 		lz.atomicTicksRemaining.Store(lz.val.VCS.RIOT.Timer.TicksRemaining)
 	})
-	lz.Requested, _ = lz.atomicRequested.Load().(string)
+	lz.Divider, _ = lz.atomicDivider.Load().(string)
 	lz.INTIMvalue, _ = lz.atomicINTIMvalue.Load().(uint8)
-	lz.TicksRemaining, _ = lz.atomicTicksRemaining.Load().(uint16)
+	lz.TicksRemaining, _ = lz.atomicTicksRemaining.Load().(int)
 }

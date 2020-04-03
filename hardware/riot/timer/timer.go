@@ -65,40 +65,33 @@ func (in Interval) String() string {
 type Timer struct {
 	mem bus.ChipBus
 
-	// the interval value most recently requested by the CPU. set with
-	// SetInterval() function
-	Requested Interval
-
-	// the current interval value (requested value can be superceded when timer
-	// value reaches zero). set with SetInterval() function
-	Current Interval
+	// the interval value most recently requested by the CPU
+	Divider Interval
 
 	// INTIMvalue is the current timer value and is a reflection of the INTIM
 	// RIOT memory register. set with SetValue() function
 	INTIMvalue uint8
 
+	// the state of TIMINT
+	TIMINT bool
+
 	// TicksRemaining is the number of CPU cycles remaining before the
 	// value is decreased. the following rules apply:
-	//		* set to 1 when new timer is set
-	//		* causes value to decrease whenever it reaches 0
-	//		* is reset to interval whenever value is decreased
+	//		* set to 0 when new timer is set
+	//		* causes value to decrease whenever it reaches -1
+	//		* is reset to divider whenever value is decreased
 	//
-	// with regards to the last point, note that interval changes to 1
-	// once value reaches 0 (see interval commentary above)
-	//
-	// the initial reset value is 1 because the first decrease of INTIM occurs
-	// immediately after ReadRIOTMemory(); we want the timer cycle to hit 0 at
-	// that time
-	TicksRemaining uint16
+	// with regards to the last point, note that divider changes to 1
+	// once INTIMvalue reaches 0
+	TicksRemaining int
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type
 func NewTimer(mem bus.ChipBus) *Timer {
 	tmr := &Timer{
 		mem:            mem,
-		Current:        T1024T,
-		Requested:      T1024T,
-		TicksRemaining: uint16(T1024T),
+		Divider:        T1024T,
+		TicksRemaining: int(T1024T),
 		INTIMvalue:     0,
 	}
 
@@ -109,11 +102,11 @@ func NewTimer(mem bus.ChipBus) *Timer {
 }
 
 func (tmr Timer) String() string {
-	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%d (%s)",
+	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%s INTIM=%v",
 		tmr.INTIMvalue,
 		tmr.TicksRemaining,
-		tmr.Current,
-		tmr.Requested,
+		tmr.Divider,
+		tmr.TIMINT,
 	)
 }
 
@@ -125,14 +118,28 @@ func (tmr *Timer) ReadMemory(data bus.ChipData) bool {
 		return true
 	}
 
+	if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
+		tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
+		tmr.TIMINT = true
+	} else {
+		// the difference in treatment when TIMINT is already on can be seen in
+		// test_ros/timer/test2.bas and test_roms/timer/testTIMINT_withDelay.bin
+		//
+		// whether this should similarly apply in the other instances where we
+		// clear the TIMINT flag, I don't know
+		if tmr.TIMINT {
+			tmr.mem.ChipWrite(addresses.TIMINT, 0x00)
+		} else {
+			tmr.mem.ChipWrite(addresses.TIMINT, 0x40)
+		}
+		tmr.TIMINT = false
+	}
+
 	tmr.INTIMvalue = data.Value
-	tmr.TicksRemaining = 1
+	tmr.TicksRemaining = 0
 
 	// write value to INTIM straight-away
 	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.INTIMvalue))
-
-	// clear bit 7 of TIMINT register
-	tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
 
 	return false
 }
@@ -144,30 +151,31 @@ func (tmr *Timer) Step() {
 	// have any discernable effect unless the timer interval has been flipped to
 	// 1 when INTIM cycles back to 255
 	if tmr.mem.LastReadRegister() == "INTIM" {
-		tmr.Current = tmr.Requested
-
-		// reading the INTIM register always clears TIMINT
-		tmr.mem.ChipWrite(addresses.TIMINT, 0x0)
+		if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
+			tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
+			tmr.TIMINT = true
+		} else {
+			tmr.mem.ChipWrite(addresses.TIMINT, 0x00)
+			tmr.TIMINT = false
+		}
 	}
 
 	tmr.TicksRemaining--
-	if tmr.TicksRemaining <= 0 {
-		if tmr.INTIMvalue == 0 {
-			// set bit 7 of TIMINT register
-			tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
-
-			// reset timer value
-			tmr.INTIMvalue = 255
-
-			// because timer value has cycled we flip timer interval to 1
-			tmr.Current = 1
-		} else {
-			tmr.INTIMvalue--
+	if tmr.TicksRemaining < 0 {
+		tmr.INTIMvalue--
+		if tmr.INTIMvalue == 0xff {
+			tmr.mem.ChipWrite(addresses.TIMINT, 0xff)
+			tmr.TIMINT = true
 		}
 
 		// copy value to INTIM memory register
 		tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
-		tmr.TicksRemaining = uint16(tmr.Current)
+
+		if tmr.TIMINT {
+			tmr.TicksRemaining = 0
+		} else {
+			tmr.TicksRemaining = int(tmr.Divider) - 1
+		}
 	}
 }
 
@@ -177,23 +185,20 @@ func (tmr *Timer) SetValue(value uint8) {
 	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 }
 
-// SetInterval sets the timer interval based on timer register name. Prefer
-// this to setting Current and Requested directly.
+// SetInterval sets the timer interval based on timer register name
 func (tmr *Timer) SetInterval(interval string) bool {
 	switch interval {
 	case "TIM1T":
-		tmr.Requested = TIM1T
+		tmr.Divider = TIM1T
 	case "TIM8T":
-		tmr.Requested = TIM8T
+		tmr.Divider = TIM8T
 	case "TIM64T":
-		tmr.Requested = TIM64T
+		tmr.Divider = TIM64T
 	case "T1024T":
-		tmr.Requested = T1024T
+		tmr.Divider = T1024T
 	default:
 		return true
 	}
-
-	tmr.Current = tmr.Requested
 
 	return false
 }

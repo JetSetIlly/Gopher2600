@@ -71,7 +71,7 @@ func (win *winTimer) draw() {
 	imgui.BeginV(winTimerTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
-	if imgui.BeginComboV("##timerinterval", win.img.lazy.Timer.Requested, imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##timerinterval", win.img.lazy.Timer.Divider, imgui.ComboFlagNoArrowButton) {
 		for _, s := range timer.IntervalList {
 			if imgui.Selectable(s) {
 				t := s // being careful about scope
@@ -102,7 +102,7 @@ func (win *winTimer) draw() {
 	imguiText("Ticks")
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.TicksRemaining = uint16(v) })
+			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.TicksRemaining = int(v) })
 		}
 	}
 	imgui.PopItemWidth()
