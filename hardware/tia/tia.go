@@ -273,10 +273,6 @@ func (tia *TIA) newScanline() {
 	// reset debugging information
 	tia.videoCycles = 0
 
-	// see SignalAttributes type definition for notes about the
-	// HSyncSimple attribute
-	tia.sig.HSyncSimple = true
-
 	// rather than include the reset signal in the delay, we will
 	// manually reset hsync counter when it reaches a count of 57
 }

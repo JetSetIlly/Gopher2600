@@ -260,7 +260,6 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 
 	var err error
 
-	// ----
 	// pixels arrays (including the overlay) and textures are always the
 	// maximum size allowed by the specification. we need to remake them here
 	// because the specification may have changed as part of the resize() event
@@ -276,9 +275,12 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	if err != nil {
 		return errors.New(errors.SDLDebug, err)
 	}
-	// ----
 
-	scr.setWindow(-1)
+	// setWindow dimensions. see commentary for Resize() function in
+	// PixelRenderer interface definition
+	if !scr.IsStable() {
+		scr.setWindow(-1)
+	}
 
 	return nil
 }

@@ -217,10 +217,5 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		}
 	}
 
-	// reset the HSyncSimple attribute as soon as the signal has been sent
-	// (see SignalAttributes type definition for notes about the HSyncSimple
-	// attribute)
-	tia.sig.HSyncSimple = false
-
 	return !tia.wsync, nil
 }

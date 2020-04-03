@@ -119,6 +119,17 @@ type PixelRenderer interface {
 	//
 	// Renderers should also make sure that any data structures that depend on
 	// the specification being used are still adequate.
+	//
+	// Renderers should consider how to handle increased scanlines. It's quite
+	// common for ROMs to need a few extra scanlines after a couple of screens,
+	// hardly worth resizing the display window for. A good strategy is to
+	// resize the display only when the screen in unstable. Otherwise, it is
+	// better that additional scanlines should be squeezed into the available
+	// physical space (see ladybug and tapper for good exampls of ROMs)
+	//
+	// Of course, there's a point when the squeezing becomes too much. There
+	// are no good examples of ROMs that are excessive in the use of scanlines
+	// but it's something to consider.
 	Resize(topScanline, visibleScanlines int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
@@ -189,23 +200,6 @@ type SignalAttributes struct {
 	// the fields above are real signal attributes in the sense that the
 	// information they represent is really sent to the TV in the real hardware
 	// setup. the fields below are not but help us along in the emulation.
-
-	// the HSyncSimple attribute is not part of the real TV spec. The signal
-	// for a real flyback is the HSync signal (held for 8 color clocks).
-	// however, this results in a confusing way of counting pixels - confusing
-	// at least to people who are used to the Stella method of counting.
-	//
-	// if we were to use HSync to detect a new scanline then we have to treat
-	// the front porch and back porch separately.  the convenient HSyncSimple
-	// attribute effectively pushes the front and back porches together meaning
-	// we can count from -68 to 159 - the same as Stella. this is helpful when
-	// A/B testing.
-	//
-	// the TIA emulation sends both HSync and HSyncSimple signals. television
-	// implementations can use either, it doesn't really make any difference
-	// except to debugging information. the "basic" television implementation
-	// uses HSyncSimple instead of HSync
-	HSyncSimple bool
 
 	// an alternative color signal for the next pixel
 	AltPixel colors.AltColor

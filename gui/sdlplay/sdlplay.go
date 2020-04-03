@@ -235,8 +235,11 @@ func (scr *SdlPlay) resize(topScanline, numScanlines int) error {
 		return errors.New(errors.SDLDebug, err)
 	}
 
-	// set window reapplies scaling to new textures
-	scr.setWindow(-1)
+	// setWindow dimensions. see commentary for Resize() function in
+	// PixelRenderer interface definition
+	if !scr.IsStable() {
+		scr.setWindow(-1)
+	}
 
 	return nil
 }

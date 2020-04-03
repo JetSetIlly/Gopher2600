@@ -41,12 +41,8 @@ const stabilityThreshold = 15
 //
 // this value is ridiculously wrong but I don't have any good reason for any
 // other value. It's only ever really a issue when the cartridge is starting up
-// but still, it would be nice to get right
-const excessiveScanlines = 3000
-
-// the number of scanlines past the NTSC limit before the specification flips
-// to PAL (auto flag permitting)
-const overageNTSC = 13
+// but still, it would be nice to have a value with some sort of pedigree
+const excessiveScanlines = 10000
 
 // for the purposes of frame size detection, we should consider the first
 // handful of frames to be unreliable
@@ -87,7 +83,6 @@ type television struct {
 	// vsyncCount records the number of consecutive colorClocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
-	vsyncPos   int
 
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
@@ -98,6 +93,9 @@ type television struct {
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
+
+	// resizer functionality
+	resizer resizer
 
 	// the number of frames the tv's top/bottom scanlines have remained the
 	// same (ie. not changed). stability count is increased every frame if it
@@ -110,29 +108,6 @@ type television struct {
 
 	// has the tv frame ever been "out of spec"
 	outOfSpec bool
-
-	// the top and bottom values can change but we don't want to resize the
-	// screen by accident.
-	//
-	// the following fields help detect the real occasions when the screen
-	// should be resized. this information is the forwarded to the attached
-	// pixel renderers.
-	//
-	// there are three sets of fields. one for the top scanline and one for the
-	// bottom scanline. and also fields which keep track of the color signal.
-	//
-	// the resizeTop and resizeBot record the most extreme value seen yet.
-	// resizeTopCt and resizeBotCt record how many times that extreme value
-	// hase been seen. lastly, resizeTopFr and resizeBotFr records which frame
-	// the extremity was last seen - we don't want to count that we have seen
-	// the new scanline every signal of the scanline.
-	resizeTop   int
-	resizeTopCt int
-	resizeTopFr int
-	resizeBot   int
-	resizeBotCt int
-	resizeBotFr int
-	resize      bool
 
 	// the key color keeps track of whether the color signal changes over the
 	// course of a scanline. if the color signal never changes (changing from
@@ -166,10 +141,12 @@ type television struct {
 func NewTelevision(spec string) (Television, error) {
 	tv := &television{
 		specIDOnCreation: strings.ToUpper(spec),
-		resizeTop:        -1,
-		resizeBot:        -1,
 		fpsFromSpec:      true,
 		fpsCap:           true,
+		resizer: resizer{
+			top: -1,
+			bot: -1,
+		},
 	}
 
 	err := tv.SetSpec(spec)
@@ -241,7 +218,7 @@ func NewTelevision(spec string) (Television, error) {
 
 func (tv television) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.frameNum, tv.scanline, tv.horizPos))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.frameNum, tv.scanline, tv.horizPos-HorizClksHBlank))
 	return s.String()
 }
 
@@ -257,7 +234,7 @@ func (tv *television) AddAudioMixer(m AudioMixer) {
 
 // Reset implements the Television interface
 func (tv *television) Reset() error {
-	tv.horizPos = -HorizClksHBlank
+	tv.horizPos = 0
 	tv.frameNum = 0
 	tv.scanline = 0
 	tv.vsyncCount = 0
@@ -271,124 +248,83 @@ func (tv *television) Reset() error {
 
 // Signal implements the Television interface
 func (tv *television) Signal(sig SignalAttributes) error {
-	// the following condition detects a new scanline by looking for the
-	// non-textbook HSyncSimple signal
-	//
-	// see SignalAttributes type definition for notes about the HSyncSimple
-	// attribute
-	if sig.HSyncSimple && !tv.lastSignal.HSyncSimple {
-		tv.horizPos = -HorizClksHBlank
+	tv.horizPos++
+
+	// once we reach the scanline's back-porch we'll reset the horizPos counter
+	// and wait for the HSYNC signal. we do this so that the front-porch and
+	// back-porch are 'together' at the beginning of the scanline. this isn't
+	// strictly technically correct but it's convenient to think about
+	// scanlines in this way (rather than having a split front and back porch)
+	if tv.horizPos >= HorizClksScanline {
+		tv.horizPos = 0
 		tv.scanline++
 
 		if tv.scanline <= tv.spec.ScanlinesTotal {
-			// when observing Stella we can see that on the first frame (frame
-			// number zero) a new frame is triggered when the scanline reaches
-			// 51.  it does this with every ROM and regardless of what signals
-			// have been sent.
-			//
-			// I'm not sure why it does this but we emulate the behaviour here
-			// in order to facilitate A/B testing.
-			if tv.frameNum == 0 && tv.scanline > 50 {
-				tv.scanline = 0
-				tv.frameNum++
-
-				// notify renderers of new frame
-				for f := range tv.renderers {
-					err := tv.renderers[f].NewFrame(tv.frameNum)
-					if err != nil {
-						return err
-					}
-				}
-			} else {
-				// notify renderers of new scanline
-				for f := range tv.renderers {
-					err := tv.renderers[f].NewScanline(tv.scanline)
-					if err != nil {
-						return err
-					}
-				}
+			err := tv.newScanline(sig.VBlank)
+			if err != nil {
+				return err
 			}
 		} else {
-			// PAL detection condition:
-			//   1. frame must be "unstable"
-			//   2. not be the first frame (because ROMs can still be in the
-			//       setup phae at this point)
-			//   3. not be in PAL mode already
-			//   4. have the auto flag set
-			//   5. be more than 10 scanlines beyond the NTSC specification
-			//
-			// Specification detection only works from NTSC to PAL. A PAL frame
-			// can never cause a flip to NTSC
-			if !tv.IsStable() && tv.frameNum > 1 &&
-				tv.spec != SpecPAL && tv.auto &&
-				tv.scanline >= SpecNTSC.ScanlinesTotal+overageNTSC {
-				tv.SetSpec("PAL")
-				tv.resize = true
-			} else {
-				// this branch handles tv frames are out of spec. If the we've
-				// exceeded the number of scanlines in the specification by "a
-				// lot" or we've already seen this condition before, then force
-				// a new frame
-				//
-				// not an ideal solution but it's better than allowing the
-				// number of scanlines to race away indefinately
-				if tv.outOfSpec || tv.scanline > excessiveScanlines {
-					tv.outOfSpec = true
-					tv.stabilityCt = stabilityThreshold
-					tv.scanline = 0
-					tv.frameNum++
-					for f := range tv.renderers {
-						err := tv.renderers[f].NewFrame(tv.frameNum)
-						if err != nil {
-							return err
-						}
-					}
+			if tv.IsStable() {
+				err := tv.newFrame()
+				if err != nil {
+					return err
 				}
+			} else if tv.scanline > excessiveScanlines {
+				// it looks like the ROM isn't going to send a VSYNC signal any
+				// time soon so we must fake the stabilityCt
+				//
+				// see test rom 'test-ane.bin' for an example of this
+				tv.stabilityCt = stabilityThreshold
+				err := tv.newFrame()
+				if err != nil {
+					return err
+				}
+
+				tv.outOfSpec = true
 			}
 		}
 
-	} else {
-		tv.horizPos++
-		if tv.horizPos > HorizClksScanline {
-			return errors.New(errors.Television, "no flyback signal")
-		}
 	}
 
-	// not doing anything with the "real" hsync or colour burst signals
+	// check vsync signal at the time of the flyback
+	//
+	// !!TODO: replace VSYNC signal with extended HSYNC signal
+	if sig.VSync && !tv.lastSignal.VSync {
+		tv.vsyncCount = 0
 
-	// simple vsync implementation. when compared to the HSync detection above,
-	// the following is correct (front porch at the end of the display and back
-	// porch at the beginning). it is also in keeping with how Stella counts
-	// scanlines, meaning A/B testing is relatively straightforward.
-	if sig.VSync {
-		// if this a new vsync sequence note the horizontal position
-		if !tv.lastSignal.VSync {
-			tv.vsyncPos = tv.horizPos
-		}
-		// bump the vsync count whenever vsync is set
-		tv.vsyncCount++
-	} else if tv.lastSignal.VSync {
-		// if vsync has just be turned off then check that it has been held for
-		// the requisite number of scanlines for a new frame to be started
-		if tv.vsyncCount >= tv.spec.ScanlinesVSync {
+	} else if !sig.VSync && tv.lastSignal.VSync {
+		if tv.vsyncCount > 0 {
 			err := tv.newFrame()
 			if err != nil {
 				return err
 			}
 		}
-
-		// reset vsync counter when vsync signal is dropped
-		tv.vsyncCount = 0
 	}
 
-	// current coordinates
-	x := tv.horizPos + HorizClksHBlank
-	y := tv.scanline
+	// we've "faked" the flyback signal above when horizPos reached
+	// horizClksScanline. we need to handle the real flyback signal however, by
+	// making sure we're at the correct horizPos value.  if horizPos doesn't
+	// equal 16 at the front of the HSYNC or 36 at then back of the HSYNC, then
+	// it indicates that the RSYNC register was used last scanline.
+	if sig.HSync && !tv.lastSignal.HSync {
+		tv.horizPos = 16
+
+		// count vsync lines at start of hsync
+		if sig.VSync || tv.lastSignal.VSync {
+			tv.vsyncCount++
+		}
+	}
+	if !sig.HSync && tv.lastSignal.HSync {
+		tv.horizPos = 36
+	}
+
+	// doing nothing with CBURST signal
 
 	// decode color using the alternative color signal
 	col := colors.GetAltColor(sig.AltPixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetAltPixel(x, y, col.Red, col.Green, col.Blue, sig.VBlank)
+		err := tv.renderers[f].SetAltPixel(tv.horizPos, tv.scanline, col.Red, col.Green, col.Blue, sig.VBlank)
 		if err != nil {
 			return err
 		}
@@ -397,7 +333,9 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// decode color using the regular color signal
 	col = tv.spec.getColor(sig.Pixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetPixel(x, y, col.Red, col.Green, col.Blue, sig.VBlank)
+		err := tv.renderers[f].SetPixel(tv.horizPos, tv.scanline,
+			col.Red, col.Green, col.Blue,
+			sig.VBlank)
 		if err != nil {
 			return err
 		}
@@ -412,69 +350,8 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// check to see if the VCS is trying to draw out of the current screen
-	// boundaries, taking into account the VBlank signal and whether the color
-	// signal is inconsistent.
-	//
-	// we also want to ignore the first few frames of the session because may
-	// give unreliable information with regards to the size of the frame
-	if !sig.VBlank && !tv.key && tv.frameNum > unreliableFrames {
-		// size detection:
-		//
-		// 1. if scanline is below/above current top/bottom or below/above current
-		//          candidate values for top/bottom
-		// 2. start a new count and consider current scanline as possibly the
-		//          new top/bottom
-		// 3. once the candidate value for the new top/bottom has been seen a
-		//          certain number of times on different frames, then accept
-		//          this as the new limit and set resize flag to true
-		//
-		// this is a little more complex that just looking for a stable value
-		// that endures for a threshold number of frame. this is because some
-		// ROMs never stabilise on a fixed value but otherwise consistently
-		// draw outside of the currently defined area. for example, Frogger's
-		// top scanline flutters between 35 and 40. we want it to settle on
-		// scanline 35.
-		if (tv.resizeTop != -1 && tv.scanline < tv.resizeTop) || (tv.resizeTop == -1 && tv.scanline < tv.top) {
-			tv.resizeTopCt = 0
-			tv.resizeTop = tv.scanline
-			tv.resizeTopFr = tv.frameNum
-
-			// if stability has not yet been reached, reset stability count
-			if !tv.IsStable() {
-				tv.stabilityCt = 0
-			}
-		} else if tv.frameNum > tv.resizeTopFr && tv.scanline == tv.resizeTop {
-			tv.resizeTopFr = tv.frameNum
-			tv.resizeTopCt++
-			if tv.resizeTopCt >= resizeThreshold {
-				tv.top = tv.resizeTop
-				tv.resize = true
-				tv.resizeTopCt = 0
-				tv.resizeTop = -1
-			}
-		}
-
-		if (tv.resizeBot != -1 && tv.scanline > tv.resizeBot) || (tv.resizeBot == -1 && tv.scanline > tv.bottom) {
-			tv.resizeBotFr = tv.frameNum
-			tv.resizeBotCt = 0
-			tv.resizeBot = tv.scanline
-
-			// if stability has not yet been reached, reset stability count
-			if !tv.IsStable() {
-				tv.stabilityCt = 0
-			}
-		} else if tv.frameNum > tv.resizeBotFr && tv.scanline == tv.resizeBot {
-			tv.resizeBotFr = tv.frameNum
-			tv.resizeBotCt++
-			if tv.resizeBotCt >= resizeThreshold {
-				tv.bottom = tv.resizeBot
-				tv.resize = true
-				tv.resizeBotCt = 0
-				tv.resizeBot = -1
-			}
-		}
-	}
+	// update resizing event information
+	tv.resizer.check(tv, sig)
 
 	// mix audio
 	if sig.AudioUpdate {
@@ -492,25 +369,41 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	return nil
 }
 
+func (tv *television) newScanline(vblank bool) error {
+	// reset key color check
+	if !vblank {
+		tv.key = true
+		tv.keyCol = VideoBlack
+	}
+
+	// notify renderers of new scanline
+	for f := range tv.renderers {
+		err := tv.renderers[f].NewScanline(tv.scanline)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (tv *television) newFrame() error {
 	// reset key color check
 	tv.key = true
 	tv.keyCol = VideoBlack
 
-	// screen resizing has been requested
-	if tv.resize {
-		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top+1)
-			if err != nil {
-				return err
-			}
-		}
-		tv.resize = false
+	// check to see if we should flip to PAL specficiation
+	if tv.auto && tv.spec != SpecPAL &&
+		tv.scanline >= maxNTSCscanlines &&
+		tv.frameNum > unreliableFrames {
 
-		// change fps
-		if tv.fpsFromSpec {
-			tv.SetFPS(tv.spec.FramesPerSecond)
-		}
+		// flip to PAL specifcation
+		tv.SetSpec("PAL")
+		tv.resizer.resize = true
+	}
+
+	// perform resize if necessary
+	if err := tv.resizer.setSize(tv); err != nil {
+		return err
 	}
 
 	// new frame
@@ -551,7 +444,7 @@ func (tv *television) GetState(request StateReq) (int, error) {
 	case ReqScanline:
 		return tv.scanline, nil
 	case ReqHorizPos:
-		return tv.horizPos, nil
+		return tv.horizPos - HorizClksHBlank, nil
 	}
 }
 
@@ -685,4 +578,124 @@ func (tv *television) fpsCalc() {
 // GetLastSignal implements the Television interface
 func (tv *television) GetLastSignal() SignalAttributes {
 	return tv.lastSignal
+}
+
+// resizer abstractifies the information and tasks required to set the
+// television screen to the right size
+type resizer struct {
+	// the top and bottom values can change but we don't want to resize the
+	// screen by accident.
+	//
+	// the following fields help detect the occasions when the screen should be
+	// resized. this information is the forwarded to the attached pixel
+	// renderers.
+	//
+	// there are three sets of fields. one for the top scanline and one for the
+	// bottom scanline. and also fields which keep track of the color signal.
+	//
+	// the top and bot fields record the most extreme value seen yet.
+	// resizeTopCt and resizeBotCt record how many times that extreme value
+	// hase been seen. lastly, resizeTopFr and resizeBotFr records which frame
+	// the extremity was last seen - we don't want to count that we have seen
+	// the new scanline every signal of the scanline.
+	top      int
+	topCt    int
+	resizeFr int
+	bot      int
+	botCt    int
+	botFr    int
+
+	// resize event should take place at earliest convenient time
+	resize bool
+}
+
+// check to see if the VCS is trying to draw out of the current screen
+// boundaries
+func (rz *resizer) check(tv *television, sig SignalAttributes) {
+
+	// take into account the VBlank signal and whether the color signal is inconsistent.
+	//
+	// we also want to ignore the first few frames of the session because may
+	// give unreliable information with regards to the size of the frame
+	//
+	// we also don't ever want to resize "out of spec" tv frames
+	if sig.VBlank || tv.key || tv.frameNum <= unreliableFrames || tv.outOfSpec {
+		return
+	}
+
+	// size detection:
+	//
+	// 1. if scanline is below/above current top/bottom or below/above current
+	//          candidate values for top/bottom
+	// 2. start a new count and consider current scanline as possibly the
+	//          new top/bottom
+	// 3. once the candidate value for the new top/bottom has been seen a
+	//          certain number of times on different frames, then accept
+	//          this as the new limit and set resize flag to true
+	//
+	// this is a little more complex that just looking for a stable value
+	// that endures for a threshold number of frame. this is because some
+	// ROMs never stabilise on a fixed value but otherwise consistently
+	// draw outside of the currently defined area. for example, Frogger's
+	// top scanline flutters between 35 and 40. we want it to settle on
+	// scanline 35.
+	if (rz.top != -1 && tv.scanline < rz.top) || (rz.top == -1 && tv.scanline < tv.top) {
+		rz.topCt = 0
+		rz.top = tv.scanline
+		rz.resizeFr = tv.frameNum
+
+		// if stability has not yet been reached, reset stability count
+		if !tv.IsStable() {
+			tv.stabilityCt = 0
+		}
+	} else if tv.frameNum > rz.resizeFr && tv.scanline == rz.top {
+		rz.resizeFr = tv.frameNum
+		rz.topCt++
+		if rz.topCt >= resizeThreshold {
+			tv.top = rz.top
+			rz.resize = true
+			rz.topCt = 0
+			rz.top = -1
+		}
+	}
+
+	if (rz.bot != -1 && tv.scanline > rz.bot) || (rz.bot == -1 && tv.scanline > tv.bottom) {
+		rz.botFr = tv.frameNum
+		rz.botCt = 0
+		rz.bot = tv.scanline
+
+		// if stability has not yet been reached, reset stability count
+		if !tv.IsStable() {
+			tv.stabilityCt = 0
+		}
+	} else if tv.frameNum > rz.botFr && tv.scanline == rz.bot {
+		rz.botFr = tv.frameNum
+		rz.botCt++
+		if rz.botCt >= resizeThreshold {
+			tv.bottom = rz.bot
+			rz.resize = true
+			rz.botCt = 0
+			rz.bot = -1
+		}
+	}
+}
+
+func (rz *resizer) setSize(tv *television) error {
+	if rz.resize {
+		for f := range tv.renderers {
+			err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top+1)
+			if err != nil {
+				return err
+			}
+		}
+
+		// change fps
+		if tv.fpsFromSpec {
+			tv.SetFPS(tv.spec.FramesPerSecond)
+		}
+
+		rz.resize = false
+	}
+
+	return nil
 }

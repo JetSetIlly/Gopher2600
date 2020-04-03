@@ -35,8 +35,11 @@
 //
 // The main means of communication is the Signal() function. This function
 // accepts an instance of SignalAttributes which gives details of how the
-// television should be behaving. The SignalAttributes type is meant to emulate
-// the electrical signal between the VCS and the television but some
-// concessions have been made for easement. The HSyncSimple in particular is a
-// large piece of fudge but a necessary one.
+// television should be behaving.
+//
+// Note that the television implementation no longer attempts to report the
+// same frame/scanline/horizpos information as Stella. Early versions of the
+// implementation did because it facilitated A/B testing but since we're
+// now confident that the TIA emulation is correct the need to keep in "sync"
+// with Stella is no longer required.
 package television
