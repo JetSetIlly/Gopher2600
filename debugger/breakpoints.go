@@ -453,13 +453,6 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 
 	if i != noBreakEqualivalent && g == BrkPCAddress {
 		bp.drop(i)
-
-		// try again incase there's a similar breakpoint (without a BANK
-		// condition)
-		if i != noBreakEqualivalent && g == BrkPCAddress {
-			bp.drop(i)
-		}
-
 		return
 	}
 

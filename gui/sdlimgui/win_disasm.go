@@ -191,6 +191,8 @@ func (win *winDisasm) draw() {
 	imgui.End()
 }
 
+// draw a bank for each tabitem in the tab bar. if there is only one bank then
+// drawBank() is called once
 func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool) {
 	height := imgui.WindowHeight() - imgui.CursorPosY() - win.optionsHeight - 8
 	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
@@ -275,6 +277,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	imgui.EndChild()
 }
 
+// drawEntry() is called many times from drawBank(), once for each entry in the list
 func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bool, cpuStep bool) {
 	imgui.BeginGroup()
 	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
@@ -355,8 +358,9 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 		win.alignOnPC = true
 	}
 
-	// double click toggles a PC breakpoint on the entries address
-	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDoubleClicked(0) {
+	// single click toggles a PC breakpoint on the entries address
+	//if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseClicked(0) {
+	if imgui.IsItemClicked() {
 		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.TogglePCBreak(e) })
 	}
 }
