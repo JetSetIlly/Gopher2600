@@ -72,8 +72,9 @@ type Timer struct {
 	// RIOT memory register. set with SetValue() function
 	INTIMvalue uint8
 
-	// the state of TIMINT
-	TIMINT bool
+	// the state of TIMINT. use timintValue() when writing to register
+	expired bool
+	pa7     bool
 
 	// TicksRemaining is the number of CPU cycles remaining before the
 	// value is decreased. the following rules apply:
@@ -93,21 +94,33 @@ func NewTimer(mem bus.ChipBus) *Timer {
 		Divider:        T1024T,
 		TicksRemaining: int(T1024T),
 		INTIMvalue:     0,
+		pa7:            true,
 	}
 
-	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.INTIMvalue))
+	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 	tmr.mem.ChipWrite(addresses.TIMINT, 0)
 
 	return tmr
 }
 
 func (tmr Timer) String() string {
-	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%s INTIM=%v",
+	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%s TIMINT=%v",
 		tmr.INTIMvalue,
 		tmr.TicksRemaining,
 		tmr.Divider,
-		tmr.TIMINT,
+		tmr.expired,
 	)
+}
+
+func (tmr Timer) timintValue() uint8 {
+	v := uint8(0)
+	if tmr.expired {
+		v |= 0x80
+	}
+	if tmr.pa7 {
+		v |= 0x40
+	}
+	return v
 }
 
 // ReadMemory checks to see if ChipData applies to the Timer type and
@@ -119,20 +132,11 @@ func (tmr *Timer) ReadMemory(data bus.ChipData) bool {
 	}
 
 	if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
-		tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
-		tmr.TIMINT = true
+		tmr.expired = true
+		tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
 	} else {
-		// the difference in treatment when TIMINT is already on can be seen in
-		// test_ros/timer/test2.bas and test_roms/timer/testTIMINT_withDelay.bin
-		//
-		// whether this should similarly apply in the other instances where we
-		// clear the TIMINT flag, I don't know
-		if tmr.TIMINT {
-			tmr.mem.ChipWrite(addresses.TIMINT, 0x00)
-		} else {
-			tmr.mem.ChipWrite(addresses.TIMINT, 0x40)
-		}
-		tmr.TIMINT = false
+		tmr.expired = false
+		tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
 	}
 
 	tmr.INTIMvalue = data.Value
@@ -146,32 +150,43 @@ func (tmr *Timer) ReadMemory(data bus.ChipData) bool {
 
 // Step timer forward one cycle
 func (tmr *Timer) Step() {
-	// some documentation (Atari 2600 Specifications.htm) claims that if INTIM is
-	// *read* then the decrement reverts to once per timer interval. this won't
-	// have any discernable effect unless the timer interval has been flipped to
-	// 1 when INTIM cycles back to 255
-	if tmr.mem.LastReadRegister() == "INTIM" {
-		if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
-			tmr.mem.ChipWrite(addresses.TIMINT, 0x80)
-			tmr.TIMINT = true
-		} else {
-			tmr.mem.ChipWrite(addresses.TIMINT, 0x00)
-			tmr.TIMINT = false
+	switch tmr.mem.LastReadRegister() {
+	case "INTIM":
+		// if INTIM is *read* then the decrement reverts to once per timer
+		// interval. this won't have any discernable effect unless the timer
+		// interval has been flipped to 1 when INTIM cycles back to 255
+		//
+		// if the expired flag has *just* been set (ie. in the previous cycle)
+		// then do not do the reversion
+		if tmr.TicksRemaining != 0 || tmr.INTIMvalue != 0xff {
+			tmr.expired = false
+			tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
 		}
+	case "TIMINT":
+		// from the NMOS 6532:
+		//
+		// "Clearing of the PA7 Interrupt Flag occurs when the microprocessor
+		// reads the Interrupt Flag Register."
+		//
+		// and from the Rockwell 6532 documenation:
+		//
+		// "To clear PA7 interrupt flag, simply read the Interrupt Flag
+		// Register"
+		tmr.pa7 = false
 	}
 
 	tmr.TicksRemaining--
 	if tmr.TicksRemaining < 0 {
 		tmr.INTIMvalue--
 		if tmr.INTIMvalue == 0xff {
-			tmr.mem.ChipWrite(addresses.TIMINT, 0xff)
-			tmr.TIMINT = true
+			tmr.expired = true
+			tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
 		}
 
 		// copy value to INTIM memory register
 		tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 
-		if tmr.TIMINT {
+		if tmr.expired {
 			tmr.TicksRemaining = 0
 		} else {
 			tmr.TicksRemaining = int(tmr.Divider) - 1
