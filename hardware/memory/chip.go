@@ -63,14 +63,14 @@ type ChipMemory struct {
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.New(errors.UnpeekableAddress, address)
+		return 0, errors.New(errors.UnpeekableAddress, fmt.Sprintf("%#04x", address))
 	}
 	return area.memory[address^area.origin], nil
 }
 
 // Poke is an implementation of memory.DebuggerBus. Address must be normalised.
 func (area ChipMemory) Poke(address uint16, value uint8) error {
-	return errors.New(errors.UnpokeableAddress, address)
+	return errors.New(errors.UnpokeableAddress, fmt.Sprintf("%#04x", address))
 }
 
 // ChipRead is an implementation of memory.ChipBus

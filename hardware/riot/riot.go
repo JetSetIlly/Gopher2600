@@ -55,25 +55,25 @@ func (riot RIOT) String() string {
 	return s.String()
 }
 
-// ReadMemory checks for the most recent write by the CPU to the RIOT memory
+// Update checks for the most recent write by the CPU to the RIOT memory
 // registers
-func (riot *RIOT) ReadMemory() {
+func (riot *RIOT) Update() {
 	serviceMemory, data := riot.mem.ChipRead()
 	if !serviceMemory {
 		return
 	}
 
-	serviceMemory = riot.Timer.ReadMemory(data)
+	serviceMemory = riot.Timer.Update(data)
 	if !serviceMemory {
 		return
 	}
 
-	_ = riot.Input.ReadMemory(data)
+	_ = riot.Input.Update(data)
 }
 
 // Step moves the state of the RIOT forward one video cycle
 func (riot *RIOT) Step() {
-	riot.ReadMemory()
+	riot.Update()
 	riot.Timer.Step()
 	riot.Input.Step()
 }

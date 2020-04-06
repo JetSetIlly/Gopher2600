@@ -98,7 +98,7 @@ func NewTimer(mem bus.ChipBus) *Timer {
 	}
 
 	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
-	tmr.mem.ChipWrite(addresses.TIMINT, 0)
+	tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
 
 	return tmr
 }
@@ -123,14 +123,17 @@ func (tmr Timer) timintValue() uint8 {
 	return v
 }
 
-// ReadMemory checks to see if ChipData applies to the Timer type and
-// updates the internal timer state accordingly. Returns true if the ChipData
-// was *not* serviced.
-func (tmr *Timer) ReadMemory(data bus.ChipData) bool {
+// Update checks to see if ChipData applies to the Timer type and updates the
+// internal timer state accordingly.
+//
+// Returns true if ChipData requires more attention.
+func (tmr *Timer) Update(data bus.ChipData) bool {
 	if tmr.SetInterval(data.Name) {
 		return true
 	}
 
+	// writing to INTIM register has a similar effect on the expired bit of the
+	// TIMINT register as reading. See commentary in the Step() function
 	if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
 		tmr.expired = true
 		tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
@@ -157,7 +160,11 @@ func (tmr *Timer) Step() {
 		// interval has been flipped to 1 when INTIM cycles back to 255
 		//
 		// if the expired flag has *just* been set (ie. in the previous cycle)
-		// then do not do the reversion
+		// then do not do the reversion. see discussion:
+		//
+		// https://atariage.com/forums/topic/303277-to-roll-or-not-to-roll/
+		//
+		// https://atariage.com/forums/topic/133686-please-explain-riot-timmers/?do=findComment&comment=1617207
 		if tmr.TicksRemaining != 0 || tmr.INTIMvalue != 0xff {
 			tmr.expired = false
 			tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())

@@ -109,10 +109,11 @@ func NewInput(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Input, error) {
 	return inp, nil
 }
 
-// ReadMemory checks to see if ChipData applies to the Input type and
-// updates the internal controller/panel states accordingly. Returns true if
-// the ChipData was *not* serviced.
-func (inp *Input) ReadMemory(data bus.ChipData) bool {
+// Update checks to see if ChipData applies to the Input type and updates the
+// internal controller/panel states accordingly.
+//
+// Returns true if ChipData requires more attention.
+func (inp *Input) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
 		inp.HandController0.readKeypad(data.Value)
