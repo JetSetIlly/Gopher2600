@@ -60,6 +60,9 @@ type screen struct {
 	// whether to use the alternative pixel layer
 	useAltPixels bool
 
+	// show pixel perfect image or with crt effect
+	pixelPerfect bool
+
 	// the color of the screen cursor
 	cursorRGB          color.RGBA
 	offScreenCursorRGB color.RGBA
@@ -114,6 +117,7 @@ func newScreen(img *SdlImgui) *screen {
 		img:                img,
 		scaling:            defScaling,
 		cropped:            true,
+		pixelPerfect:       true,
 		cursorRGB:          color.RGBA{255, 255, 255, 255},
 		offScreenCursorRGB: color.RGBA{0, 0, 255, 255},
 	}

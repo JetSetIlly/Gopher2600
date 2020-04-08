@@ -144,6 +144,8 @@ func (win *winScreen) draw() {
 	if imgui.Checkbox("Cropping", &win.scr.cropped) {
 		win.scr.setCropping(win.scr.cropped)
 	}
+	imgui.SameLine()
+	imgui.Checkbox("Pixel Perfect", &win.scr.pixelPerfect)
 
 	imgui.End()
 }

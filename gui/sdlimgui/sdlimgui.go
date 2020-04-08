@@ -104,7 +104,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		return nil, err
 	}
 
-	img.glsl, err = newGlsl(img.io)
+	img.glsl, err = newGlsl(img.io, img)
 	if err != nil {
 		return nil, err
 	}
