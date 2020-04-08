@@ -86,7 +86,10 @@ func (win *winAudio) draw() {
 
 // SetAudio implements television.AudioMixer
 func (win *winAudio) SetAudio(audioData uint8) error {
-	win.newData <- float32(audioData) / 256
+	select {
+	case win.newData <- float32(audioData) / 256:
+	default:
+	}
 	return nil
 }
 
