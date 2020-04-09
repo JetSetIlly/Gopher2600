@@ -36,6 +36,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdldebug"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui_play"
 	"github.com/jetsetilly/gopher2600/gui/sdlplay"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -222,6 +223,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
+	pixelPerfect := md.AddBool("pixelperfect", false, "pixel perfect display")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
@@ -260,8 +262,14 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// create gui
-		sync.creator <- func() (GuiCreator, error) {
-			return sdlplay.NewSdlPlay(tv, float32(*scaling))
+		if *pixelPerfect {
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
+			}
+		} else {
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlimgui_play.NewSdlImguiPlay(tv)
+			}
 		}
 
 		// wait for creator result

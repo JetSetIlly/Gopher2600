@@ -17,11 +17,9 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlimgui
+package sdlimgui_play
 
 import (
-	"time"
-
 	"github.com/jetsetilly/gopher2600/gui"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -29,7 +27,7 @@ import (
 )
 
 // Service implements GuiCreator interface
-func (img *SdlImgui) Service() {
+func (img *SdlImguiPlay) Service() {
 	// run any outstanding feature requests
 	select {
 	case r := <-img.featureReq:
@@ -61,50 +59,34 @@ func (img *SdlImgui) Service() {
 			case *sdl.QuitEvent:
 				img.events <- gui.EventQuit{}
 
-			case *sdl.TextInputEvent:
-				if !img.wm.scr.isCaptured {
-					img.io.AddInputCharacters(string(ev.Text[:]))
+			case *sdl.KeyboardEvent:
+				mod := gui.KeyModNone
+
+				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+					mod = gui.KeyModAlt
+				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+					mod = gui.KeyModShift
+				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+					mod = gui.KeyModCtrl
 				}
 
-			case *sdl.KeyboardEvent:
-				if img.wm.scr.isCaptured {
-					mod := gui.KeyModNone
-
-					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-						sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-						mod = gui.KeyModAlt
-					} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-						sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-						mod = gui.KeyModShift
-					} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-						sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-						mod = gui.KeyModCtrl
+				switch ev.Type {
+				case sdl.KEYDOWN:
+					if ev.Repeat == 0 {
+						img.events <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: true}
 					}
-
-					switch ev.Type {
-					case sdl.KEYDOWN:
-						if ev.Repeat == 0 {
-							img.events <- gui.EventKeyboard{
-								Key:  sdl.GetKeyName(ev.Keysym.Sym),
-								Mod:  mod,
-								Down: true}
-						}
-					case sdl.KEYUP:
-						if ev.Repeat == 0 {
-							img.events <- gui.EventKeyboard{
-								Key:  sdl.GetKeyName(ev.Keysym.Sym),
-								Mod:  mod,
-								Down: false}
-						}
-					}
-				} else {
-					switch ev.Type {
-					case sdl.KEYDOWN:
-						img.io.KeyPress(int(ev.Keysym.Scancode))
-						img.updateKeyModifier()
-					case sdl.KEYUP:
-						img.io.KeyRelease(int(ev.Keysym.Scancode))
-						img.updateKeyModifier()
+				case sdl.KEYUP:
+					if ev.Repeat == 0 {
+						img.events <- gui.EventKeyboard{
+							Key:  sdl.GetKeyName(ev.Keysym.Sym),
+							Mod:  mod,
+							Down: false}
 					}
 				}
 
@@ -118,18 +100,19 @@ func (img *SdlImgui) Service() {
 
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
-					if img.wm.scr.isCaptured {
+					if img.scr.isCaptured {
 						button = gui.MouseButtonLeft
-					} else if img.wm.scr.isHovered {
+					} else if img.scr.isHovered {
 
 						// left mouse button should capture mouse if
 						// not already done so.
 						swallow = true
-						img.wm.scr.isCaptured = true
+						img.scr.isCaptured = true
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
 							sdl.ShowCursor(sdl.DISABLE)
+							img.plt.window.SetTitle(windowTitleCaptured)
 						}
 					}
 
@@ -137,13 +120,14 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.wm.scr.isCaptured {
+					if img.scr.isCaptured {
 						swallow = true
-						img.wm.scr.isCaptured = false
+						img.scr.isCaptured = false
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
 							sdl.ShowCursor(sdl.ENABLE)
+							img.plt.window.SetTitle(windowTitle)
 						}
 					}
 				}
@@ -172,7 +156,7 @@ func (img *SdlImgui) Service() {
 		}
 
 		// mouse motion
-		if img.wm.scr.isCaptured {
+		if img.scr.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
 			if mx != img.mx || my != img.my {
 				w, h := img.plt.window.GetSize()
@@ -191,9 +175,6 @@ func (img *SdlImgui) Service() {
 			}
 		}
 	}
-
-	// update late values
-	img.lazy.Update()
 
 	// Signal start of a new frame
 	img.plt.newFrame()
@@ -217,9 +198,4 @@ func (img *SdlImgui) Service() {
 		f()
 	default:
 	}
-
-	// sleep to help avoid 100% CPU usage. apply this delay even if emulation
-	// is running (compare to sdldebug which ddoes not apply the delay when
-	// emulation is running)
-	<-time.After(time.Millisecond * 25)
 }

@@ -17,25 +17,23 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlimgui
+package sdlimgui_play
 
 import (
 	"io"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-const imguiIniFile = "debugger_imgui.ini"
+const imguiIniFile = "playmode_imgui.ini"
 
 // SdlImgui is an sdl based visualiser using imgui
-type SdlImgui struct {
+type SdlImguiPlay struct {
 	// the mechanical requirements for the gui
 	io      imgui.IO
 	context *imgui.Context
@@ -43,22 +41,13 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// references to the emulation
-	lazy *lazyvalues.Values
-	tv   television.Television
-
-	// terminal interface to the debugger
-	term *term
+	tv television.Television
 
 	// implementations of screen television protocols
 	screen *screen
 	audio  *sdlaudio.Audio
 
-	// imgui window management
-	wm *windowManager
-
-	// the colors used by the imgui system. includes the TV colors in a
-	// suitable format
-	cols *imguiColors
+	scr *winScreen
 
 	// functions that need to be performed in the main thread should be queued
 	// for service
@@ -73,18 +62,15 @@ type SdlImgui struct {
 	// events channel is not created but assigned with SetEventChannel()
 	events chan gui.Event
 
-	// is emulation running
-	paused bool
-
 	// mouse coords at last frame
 	mx, my int32
 }
 
-// NewSdlImgui is the preferred method of initialisation for type SdlImgui
+// NewSdlImguiPlay is the preferred method of initialisation for type SdlImguiPlay
 //
 // MUST ONLY be called from the #mainthread
-func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
-	img := &SdlImgui{
+func NewSdlImguiPlay(tv television.Television) (*SdlImguiPlay, error) {
+	img := &SdlImguiPlay{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),
 		tv:         tv,
@@ -93,9 +79,6 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		featureReq: make(chan featureRequest, 1),
 		featureErr: make(chan error, 1),
 	}
-
-	// define colors
-	img.cols = newColors()
 
 	var err error
 
@@ -115,14 +98,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
-	// we don't have access to the Debugger, Disassembly or the VCS yet. those
-	// fields in the lazy instance will be set when the requests come in
-	img.lazy = lazyvalues.NewValues()
-
 	img.screen = newScreen(img)
-	img.term = newTerm()
-
-	img.wm, err = newWindowManager(img)
+	img.scr, err = newWinScreen(img)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +122,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 // Destroy implements GuiCreator interface
 //
 // MUST ONLY be called from the #mainthread
-func (img *SdlImgui) Destroy(output io.Writer) {
-	img.wm.destroy()
+func (img *SdlImguiPlay) Destroy(output io.Writer) {
 	img.audio.EndMixing()
 	img.glsl.destroy()
 
@@ -158,19 +134,6 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	img.context.Destroy()
 }
 
-// GetTerminal implements terminal.Broker interface
-func (img *SdlImgui) GetTerminal() terminal.Terminal {
-	return img.term
-}
-
-func (img *SdlImgui) pause(set bool) {
-	img.paused = set
-	img.screen.pause(set)
-}
-
-func (img *SdlImgui) draw() {
-	if img.lazy.Dbg == nil {
-	} else {
-		img.wm.drawWindows()
-	}
+func (img *SdlImguiPlay) draw() {
+	img.scr.draw()
 }

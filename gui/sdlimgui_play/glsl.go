@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package sdlimgui
+package sdlimgui_play
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ import (
 
 type glsl struct {
 	imguiIO imgui.IO
-	img     *SdlImgui
+	img     *SdlImguiPlay
 
 	// handle for the compiled and linked shader program. we don't need to keep
 	// references to the component parts of the program, they're created and
@@ -61,7 +61,7 @@ type glsl struct {
 	screenTexture uint32
 }
 
-func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
+func newGlsl(io imgui.IO, img *SdlImguiPlay) (*glsl, error) {
 	err := gl.Init()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %v", err)

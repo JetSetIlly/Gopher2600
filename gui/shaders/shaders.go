@@ -60,11 +60,12 @@ void main()
 	vec2 coords = Frag_UV;
 
 	// split color channels
-	float split;
-	split = 0.001;
-	Out_Color.r = texture(Texture, vec2(coords.x-split, coords.y)).r;
-	Out_Color.g = texture(Texture, vec2(coords.x, coords.y+split)).g;
-	Out_Color.b = texture(Texture, vec2(coords.x+split, coords.y)).b;
+	vec2 split;
+	split.x = 0.001;
+	split.y = 0.001;
+	Out_Color.r = texture(Texture, vec2(coords.x-split.x, coords.y)).r;
+	Out_Color.g = texture(Texture, vec2(coords.x, coords.y+split.y)).g;
+	Out_Color.b = texture(Texture, vec2(coords.x+split.x, coords.y)).b;
 	Out_Color.a = Frag_Color.a;
 
 	// vignette effect
@@ -80,20 +81,17 @@ void main()
 	}
 
 	// bend screen
-	float xbend;
-	float ybend;
+	/* float xbend = 6.0; */
+	/* float ybend = 5.0; */
+	/* coords = (coords - 0.5) * 1.85; */
+	/* coords *= 1.11; */	
+	/* coords.x *= 1.0 + pow((abs(coords.y) / xbend), 2.0); */
+	/* coords.y *= 1.0 + pow((abs(coords.x) / ybend), 2.0); */
+	/* coords  = (coords / 2.05) + 0.5; */
 
-	xbend = 7.0;
-	ybend = 6.0;
-	coords = (coords - 0.5) * 1.85;
-	coords *= 1.11;	
-	coords.x *= 1.0 + pow((abs(coords.y) / xbend), 2.0);
-	coords.y *= 1.0 + pow((abs(coords.x) / ybend), 2.0);
-	coords  = (coords / 2.05) + 0.5;
-
-	// crop tiling
-	if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 ) {
-		discard;
-	}
+	/* // crop tiling */
+	/* if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 ) { */
+	/* 	discard; */
+	/* } */
 }
 `
