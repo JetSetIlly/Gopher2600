@@ -26,9 +26,8 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 )
-
-const glslVersion = "#version 150"
 
 type glsl struct {
 	imguiIO imgui.IO
@@ -42,14 +41,15 @@ type glsl struct {
 	vboHandle      uint32
 	elementsHandle uint32
 
-	// "attrtib" variables are the "communication" points between the shader
+	// "attrib" variables are the "communication" points between the shader
 	// program and the host language. "uniform" variables remain constant for
 	// the duration of each shader program executrion. non-uniform variables
 	// meanwhile change from one iteration to the next.
-	attribLocationTex      int32 // uniform
-	attribLocationProjMtx  int32 // uniform
 	attribImageType        int32 // uniform
 	attribPixelPerfect     int32 // uniform
+	attribResolution       int32 // uniform
+	attribLocationTex      int32 // uniform
+	attribLocationProjMtx  int32 // uniform
 	attribLocationPosition int32
 	attribLocationUV       int32
 	attribLocationColor    int32
@@ -218,6 +218,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
+
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
 				case rnd.screenTexture:
@@ -225,11 +226,14 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
 				}
+
 				if rnd.img.screen.pixelPerfect {
 					gl.Uniform1i(rnd.attribPixelPerfect, 1)
 				} else {
 					gl.Uniform1i(rnd.attribPixelPerfect, 0)
 				}
+
+				gl.Uniform2f(rnd.attribResolution, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
 
 				gl.BindTexture(gl.TEXTURE_2D, uint32(textureID))
 				clipRect := cmd.ClipRect()
@@ -289,86 +293,6 @@ func (rnd *glsl) setup() {
 	defer gl.BindBuffer(gl.ARRAY_BUFFER, uint32(lastArrayBuffer))
 	defer gl.BindVertexArray(uint32(lastVertexArray))
 
-	// define shaders
-	vertexShader := glslVersion + `
-uniform int ImageType;
-uniform mat4 ProjMtx;
-in vec2 Position;
-in vec2 UV;
-in vec4 Color;
-out vec2 Frag_UV;
-out vec4 Frag_Color;
-
-void main()
-{
-	// imgui textures
-	if (ImageType != 1) {
-		Frag_UV = UV;
-		Frag_Color = Color;
-		gl_Position = ProjMtx * vec4(Position.xy,0,1);
-		return;
-	}
-
-	// tv screen texture
-	Frag_UV = UV;
-	Frag_Color = Color;
-	gl_Position = ProjMtx * vec4(Position.xy,0,1);
-}
-`
-
-	// bending and colour splitting in fragment shader cribbed from shadertoy
-	// project: https://www.shadertoy.com/view/4sf3Dr
-
-	fragmentShader := glslVersion + `
-uniform sampler2D Texture;
-uniform int ImageType;
-uniform int PixelPerfect;
-in vec2 Frag_UV;
-in vec4 Frag_Color;
-out vec4 Out_Color;
-
-void main()
-{
-	// imgui textures
-	if (ImageType != 1) {
-		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
-		return;
-	}
-
-	// tv screen texture
-	
-	if (PixelPerfect == 1) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
-	}
-
-	// bend screen
-	vec2 coords;
-	float bend;
-	bend = 7.0;
-	coords = (Frag_UV - 0.5) * 1.85;
-	coords *= 1.1;	
-	coords.x *= 1.0 + pow((abs(coords.y) / bend), 2.0);
-	coords.y *= 1.0 + pow((abs(coords.x) / bend), 2.0);
-	coords  = (coords / 2.0) + 0.5;
-	if (coords.x < 0.001 || coords.x > 0.999 || coords.y < 0.0001 || coords.y > 0.999 ) {
-		discard;
-	}
-	
-	// split color channels
-	Out_Color.r = texture(Texture, vec2(coords.x-0.001, coords.y-0.001)).r;
-	Out_Color.g = texture(Texture, vec2(coords.x, coords.y+0.001)).g;
-	Out_Color.b = texture(Texture, vec2(coords.x+0.001, coords.y)).b;
-
-	// scanline effect
-	if (mod(floor(gl_FragCoord.y), 3.0) == 0.0) {
-		Out_Color.a = Frag_Color.a * 0.75;
-	} else {
-		Out_Color.a = Frag_Color.a;
-	}
-}
-`
-
 	// compile and link shader programs
 	rnd.shaderHandle = gl.CreateProgram()
 	vertHandle := gl.CreateShader(gl.VERTEX_SHADER)
@@ -381,8 +305,9 @@ void main()
 		gl.ShaderSource(handle, 1, csource, nil)
 	}
 
-	glShaderSource(vertHandle, vertexShader)
-	glShaderSource(fragHandle, fragmentShader)
+	// vertex and fragment glsl source defined in shaders.go (a generated file)
+	glShaderSource(vertHandle, shaders.Vertex)
+	glShaderSource(fragHandle, shaders.Fragment)
 
 	gl.CompileShader(vertHandle)
 	if log := getShaderCompileError(vertHandle); log != "" {
@@ -404,10 +329,11 @@ void main()
 	gl.DeleteShader(vertHandle)
 
 	// get references to shader attributes and uniforms variables
-	rnd.attribLocationTex = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
-	rnd.attribLocationProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
 	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
 	rnd.attribPixelPerfect = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PixelPerfect"+"\x00"))
+	rnd.attribResolution = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Resolution"+"\x00"))
+	rnd.attribLocationTex = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
+	rnd.attribLocationProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
 	rnd.attribLocationPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
 	rnd.attribLocationUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
 	rnd.attribLocationColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))

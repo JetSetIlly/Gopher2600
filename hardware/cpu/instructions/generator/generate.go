@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-//go:generate go run instructions_gen.go
+//go:generate go run generate.go
 
 package main
 
@@ -27,7 +27,6 @@ import (
 	"go/format"
 	"io"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -232,30 +231,7 @@ func printSummary(deftable map[uint8]instructions.Definition) {
 	if len(missing) == 0 {
 		return
 	}
-
-	fmt.Println("6507 implementation / unused opcodes")
-	fmt.Println("------------------------------------")
-
-	// sort missing instructions
-	missing = sort.IntSlice(missing)
-
-	// print and columnise missing instructions
-	c := 0
-	for i := range missing {
-		fmt.Printf("%#02x\t", missing[i])
-		c++
-		if c > 4 {
-			c = 0
-			fmt.Printf("\n")
-		}
-	}
-	if c != 0 {
-		fmt.Printf("\n")
-	}
-
-	// print summary
-	fmt.Printf("%d missing, %02.0f%% defined\n", len(missing), float32(100*(256-len(missing))/256))
-	fmt.Println("(defined means that the taxonomy of the instruction\nhas been identified, not necessarily implemented)")
+	fmt.Printf("cpu instructions generated (%d missing, %02.0f%% defined)\n", len(missing), float32(100*(256-len(missing))/256))
 }
 
 func main() {
