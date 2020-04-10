@@ -579,9 +579,24 @@ func (ps *playerSprite) pixel() (active bool, color uint8, collision bool) {
 		}
 	}
 
+	// scancounter is not active but we still need to check what the first
+	// pixel in the scancounter is in case the the player is latching in the
+	// HBLANK period.
+	//
+	// we can see this on the 3rd screen to the left of Keystone Kapers. the
+	// ball on the second corridor will wrongly collide with the policeman
+	// unless we take into account the first pixel of the scancounter
+
+	var firstPixel bool
+	if ps.Reflected {
+		firstPixel = (*ps.gfxData>>7)&0x01 == 0x01
+	} else {
+		firstPixel = *ps.gfxData&0x01 == 0x01
+	}
+
 	// always return player color because when in "scoremode" the playfield
 	// wants to know the color of the player
-	return false, ps.Color, *ps.hblank && ps.ScanCounter.IsLatching()
+	return false, ps.Color, firstPixel && *ps.hblank && ps.ScanCounter.IsLatching()
 }
 
 func (ps *playerSprite) setGfxData(data uint8) {
