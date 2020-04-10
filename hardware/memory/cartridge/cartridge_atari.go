@@ -99,7 +99,13 @@ func (cart atari) format() string {
 }
 
 func (cart *atari) initialise() {
-	cart.bank = 0
+	// which bank should be the start bank? this has gone back and forth but
+	// the current thinking (by me) is that it should be the last bank in the
+	// cartridge. most cartridges are setup so that it doesn't matter, but at
+	// least one cartridge will not "boot" if the start bank is anything other
+	// than the last bank (Hack em Hangly Pac Man)
+	cart.bank = len(cart.banks) - 1
+
 	for i := range cart.superchip {
 		cart.superchip[i] = 0x00
 	}
