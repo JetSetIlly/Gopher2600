@@ -111,10 +111,25 @@ func (r *Register) SubtractDecimal(val uint8, carry bool) (bool, bool, bool, boo
 	vtens := (val & 0xf0) >> 4
 	rtens, tcarry = subtractDecimal(rtens, vtens, ucarry)
 
+	// from the Cwik document:
+	//
+	// "The Z flag is computed before performing any decimal adjust."
+	zero = runits == 0x00 && rtens == 0x00
+
 	// decimal correction for units
 	if ucarry {
 		runits += 10
 	}
+
+	// from the Cwik document:
+	//
+	// "The N and V flags are computed after a decimal adjust of the low
+	// nibble, but before adjusting the high nibble."
+	//
+	// not forgetting that the tens value has not been shifted into the upper
+	// nibble yet
+	overflow = rtens&0x04 == 0x04
+	sign = rtens&0x08 == 0x08
 
 	// decimal correction for tens
 	if tcarry {

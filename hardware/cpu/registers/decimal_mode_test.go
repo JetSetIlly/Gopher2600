@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-func TestDecimalMode(t *testing.T) {
+func TestDecimalModeCarry(t *testing.T) {
 	var rcarry bool
 
 	// initialisation
@@ -73,6 +73,20 @@ func TestDecimalMode(t *testing.T) {
 	// subtraction on hundreds boundary
 	rcarry, _, _, _ = r8.SubtractDecimal(1, true)
 	rtest.EquateRegisters(t, r8, 0x99)
+}
+
+func TestDecimalModeZero(t *testing.T) {
+	var zero bool
+
+	// initialisation
+	r8 := registers.NewRegister(0, "test")
+
+	// subtract to zero
+	r8.Load(0x02)
+	_, zero, _, _ = r8.SubtractDecimal(1, true)
+	test.Equate(t, zero, false)
+	_, zero, _, _ = r8.SubtractDecimal(1, true)
+	test.Equate(t, zero, true)
 }
 
 func TestDecimalModeInvalid(t *testing.T) {
