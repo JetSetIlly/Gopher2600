@@ -489,10 +489,11 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
-	display := md.AddBool("display", false, "display TV output")
-	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
-	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	display := md.AddBool("display", false, "display TV output")
+	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
+	pixelPerfect := md.AddBool("pixelperfect", false, "pixel perfect display")
+	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
 
@@ -519,9 +520,15 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		tv.SetFPSCap(*fpsCap)
 
 		if *display {
-			// notify main thread of new gui creator
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
+			// create gui
+			if *pixelPerfect {
+				sync.creator <- func() (GuiCreator, error) {
+					return sdlplay.NewSdlPlay(tv, float32(*scaling))
+				}
+			} else {
+				sync.creator <- func() (GuiCreator, error) {
+					return sdlimgui_play.NewSdlImguiPlay(tv)
+				}
 			}
 
 			// wait for creator result
