@@ -20,6 +20,9 @@
 package sdlaudio
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -34,13 +37,20 @@ import (
 //
 // the following value has been discovered through trial and error. the precise
 // value is not critical.
-const bufferLength = 256
+const bufferLength = 512
 
 // Audio outputs sound using SDL
 type Audio struct {
-	id       sdl.AudioDeviceID
-	spec     sdl.AudioSpec
-	buffer   []uint8
+	id   sdl.AudioDeviceID
+	spec sdl.AudioSpec
+
+	// we keep two buffers which we swap after every flush. the other buffer
+	// can then be used to repeat and to fill in the gaps in the audio. see
+	// repeatAudio()
+	buffer   *[]uint8
+	other    *[]uint8
+	bufferA  []uint8
+	bufferB  []uint8
 	bufferCt int
 
 	// some ROMs do not output 0 as the silence value. silence is technically
@@ -53,6 +63,8 @@ type Audio struct {
 	detectedSilenceValue uint8
 	lastAudioData        uint8
 	countAudioData       int
+
+	isBufferEmpty chan bool
 }
 
 // the number of consecutive cycles for an audio signal to be considered the
@@ -61,11 +73,19 @@ const audioDataSilenceThreshold = 10000
 
 // NewAudio is the preferred method of initialisatoin for the Audio Type
 func NewAudio() (*Audio, error) {
-	aud := &Audio{}
+	aud := &Audio{
+		isBufferEmpty: make(chan bool),
+	}
 
-	aud.buffer = make([]uint8, bufferLength)
+	aud.bufferA = make([]uint8, bufferLength)
+	aud.bufferB = make([]uint8, bufferLength)
+	aud.buffer = &aud.bufferA
+	aud.other = &aud.bufferB
 
 	spec := &sdl.AudioSpec{
+		// TODO: reduce playback frequency according to actual speed of emulation
+		// Freq: int32(math.Floor(float64(audio.SampleFreq) * 0.90)),
+
 		Freq:     audio.SampleFreq,
 		Format:   sdl.AUDIO_U8,
 		Channels: 1,
@@ -83,6 +103,24 @@ func NewAudio() (*Audio, error) {
 	aud.spec = actualSpec
 	aud.detectedSilenceValue = aud.spec.Silence
 
+	// fill buffers with silence
+	for i, _ := range aud.bufferA {
+		aud.bufferA[i] = aud.spec.Silence
+	}
+	for i, _ := range aud.bufferB {
+		aud.bufferB[i] = aud.spec.Silence
+	}
+
+	go func() {
+		rate := float64(bufferLength) / audio.SampleFreq
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+		tck := time.NewTicker(dur)
+		for {
+			_ = <-tck.C
+			aud.isBufferEmpty <- true
+		}
+	}()
+
 	sdl.PauseAudioDevice(aud.id, false)
 
 	return aud, nil
@@ -90,8 +128,10 @@ func NewAudio() (*Audio, error) {
 
 // SetAudio implements the television.AudioMixer interface
 func (aud *Audio) SetAudio(audioData uint8) error {
-	if aud.bufferCt >= len(aud.buffer) {
-		return aud.flushAudio()
+	select {
+	case <-aud.isBufferEmpty:
+		_ = aud.repeatAudio()
+	default:
 	}
 
 	// silence detector
@@ -107,25 +147,39 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 
 	// never allow sound buffer to "output" silence - some sound devices take
 	// an appreciable amount of time to move from silence to non-silence
-	//
 	if audioData == aud.detectedSilenceValue {
-		aud.buffer[aud.bufferCt] = aud.spec.Silence
+		(*aud.buffer)[aud.bufferCt] = aud.spec.Silence
 	} else {
-		aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
+		(*aud.buffer)[aud.bufferCt] = audioData + aud.spec.Silence
 	}
 	aud.bufferCt++
+
+	if aud.bufferCt >= len(*aud.buffer) {
+		return aud.flushAudio()
+	}
 
 	return nil
 }
 
 func (aud *Audio) flushAudio() error {
-	err := sdl.QueueAudio(aud.id, aud.buffer)
+	sdl.ClearQueuedAudio(aud.id)
+	err := sdl.QueueAudio(aud.id, *aud.buffer)
 	if err != nil {
 		return err
 	}
 	aud.bufferCt = 0
+	aud.other = aud.buffer
+	if aud.buffer == &aud.bufferA {
+		aud.buffer = &aud.bufferA
+	} else {
+		aud.buffer = &aud.bufferB
+	}
 
 	return nil
+}
+
+func (aud *Audio) repeatAudio() error {
+	return sdl.QueueAudio(aud.id, *aud.other)
 }
 
 // EndMixing implements the television.AudioMixer interface
