@@ -27,11 +27,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/ansi"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/paths"
 )
+
+// ansi code for clear line
+const ansiClearLine = "\033[2K"
 
 // the location of the regressionDB file and the location of any regression
 // scripts. these should be wrapped by paths.ResourcePath()
@@ -121,7 +123,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 		return err
 	}
 
-	output.Write([]byte(ansi.ClearLine))
+	output.Write([]byte(ansiClearLine))
 	output.Write([]byte(fmt.Sprintf("\radded: %s\n", reg)))
 
 	return db.Add(reg)
@@ -246,7 +248,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 
 		// once regress() has completed we clear the line ready for the
 		// completion message
-		output.Write([]byte(ansi.ClearLine))
+		output.Write([]byte(ansiClearLine))
 
 		// print completion message depending on result of regress()
 		if err != nil {
