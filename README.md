@@ -177,7 +177,10 @@ Joystick, paddle and keypad inputs are supported. Currently, only joysticks and 
 
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
 
-The paddle is available through the mouse but only after the window has been clicked and the mouse "captured". The mouse pointer will disappear to indicate that the mouse has been captured. The paddle is operated by moving the mouse (or trackball) left and right and using the left button in place of the paddle's fire button. The mouse can be "released" by pressing the right mouse button. Note that if the game does not support or expect paddle input then the joystick will still work even if the mouse is "captured"
+The paddle is available by operating the mouse. To activate the paddle, click
+in the play window and waggle the mouse to the extremes three times. Note that
+once the window has been clicked, the mouse will be captured and the pointer
+will disappear. To "release" the mouse, click the right-mouse button.
 
 Keypad input is available only when the emulation thinks it is required. When keypad input is expected, neither joystick or paddle controls will work.
 
@@ -185,13 +188,21 @@ Keypad input is available only when the emulation thinks it is required. When ke
 
 * Cursor keys for stick direction
 * Space bar for fire
+*
+#### Joystick (right player)
 
-#### Paddle (right player)
+Not yet emulated
+
+#### Paddle (left player)
 
 * Left mouse button in window to capture mouse
 * Mouse left/right motion for paddle motion
 * Left mouse button for paddle's fire button
 * Right mouse button to leave "paddle mode"
+*
+#### Paddle (right player)
+
+Not yet emulated
 
 #### Keypad
 

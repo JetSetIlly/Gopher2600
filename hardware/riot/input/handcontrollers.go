@@ -97,11 +97,14 @@ type stick struct {
 	button uint8
 }
 
+// the number of times the paddle has to be waggled to the extremes before
+// the controller mode switches to paddle type
+const paddleTouchReq = 3
+
 // the paddle type implements the "paddle" hand controller
 type paddle struct {
 	puckReg addresses.ChipRegister
 
-	//
 	buttonMask uint8
 
 	// values indicating paddle state
@@ -114,6 +117,13 @@ type paddle struct {
 	// increased.
 	sensitivity float32
 	ticks       float32
+
+	// count of how many times the paddle has touched the extreme values. we
+	// use this to help decide whether to switch controller types
+	touchLeft     int
+	touchRight    int
+	touchingLeft  bool
+	touchingRight bool
 }
 
 // !!TODO: accurate paddle timings and sensitivity
@@ -228,6 +238,10 @@ func (hc *HandController) SwitchType(prospective ControllerType) bool {
 	if hc.which == prospective {
 		return true
 	}
+
+	// reset detection variables
+	hc.paddle.touchLeft = 0
+	hc.paddle.touchRight = 0
 
 	switch prospective {
 	case JoystickType:
@@ -354,10 +368,6 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(PaddleType) {
-			return nil
-		}
-
 		var v uint8
 
 		if b {
@@ -373,8 +383,33 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "float32")
 		}
 
-		if !hc.SwitchType(PaddleType) {
-			return nil
+		// switch to paddle type
+		if hc.which != PaddleType {
+			if hc.paddle.touchLeft < paddleTouchReq {
+				if f < 0.1 {
+					if !hc.paddle.touchingLeft {
+						hc.paddle.touchLeft++
+					}
+					hc.paddle.touchingLeft = true
+				} else {
+					hc.paddle.touchingLeft = false
+				}
+			}
+			if hc.paddle.touchRight < paddleTouchReq {
+				if f > 0.9 {
+					if !hc.paddle.touchingRight {
+						hc.paddle.touchRight++
+					}
+					hc.paddle.touchingRight = true
+				} else {
+					hc.paddle.touchingRight = false
+				}
+			}
+			if hc.paddle.touchLeft >= paddleTouchReq && hc.paddle.touchRight >= paddleTouchReq {
+				if !hc.SwitchType(PaddleType) {
+					return nil
+				}
+			}
 		}
 
 		hc.paddle.resistance = 1.0 - f
