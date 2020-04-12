@@ -188,18 +188,18 @@ Keypad input is available only when the emulation thinks it is required. When ke
 
 * Cursor keys for stick direction
 * Space bar for fire
-*
+
 #### Joystick (right player)
 
 Not yet emulated
 
 #### Paddle (left player)
 
-* Left mouse button in window to capture mouse
-* Mouse left/right motion for paddle motion
+* Left mouse button in window to capture mouse (waggle mouse to activate paddle)
+* Mouse left/right motion for paddle motion 
 * Left mouse button for paddle's fire button
 * Right mouse button to leave "paddle mode"
-*
+
 #### Paddle (right player)
 
 Not yet emulated
