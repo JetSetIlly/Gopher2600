@@ -1,7 +1,7 @@
 compileFlags = '-c 3 -B -wb=false'
 profilingRom = roms/Pitfall.bin
 
-.PHONY: all generate test clean run_assertions race build_assertions build release release_upx profile profile_display web
+.PHONY: all generate test clean run_assertions race build_assertions build release release_upx profile profile_display
 
 all:
 	@echo "use release target to build release binary"
@@ -46,6 +46,3 @@ profile_display:
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --display --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
-
-web:
-	cd web2600 && make release && make webserve
