@@ -24,7 +24,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -92,11 +91,8 @@ func NewSdlImguiPlay(tv television.Television) (*SdlImguiPlay, error) {
 		return nil, err
 	}
 
-	iniPath, err := paths.ResourcePath("", imguiIniFile)
-	if err != nil {
-		return nil, err
-	}
-	img.io.SetIniFilename(iniPath)
+	// we don't want to load or save an imgui ini file
+	img.io.SetIniFilename("")
 
 	img.screen = newScreen(img)
 	img.scr, err = newWinScreen(img)
