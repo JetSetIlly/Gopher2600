@@ -116,8 +116,9 @@ const (
 	UnpatchableCartType = "cartridge error: cannot patch this cartridge type (%v)"
 
 	// input
-	UnknownInputEvent = "input error: %v: unsupported event (%v)"
-	BadInputEventType = "input error: bad value type for event %v (expecting %s)"
+	UnknownInputEvent     = "input error: %v: unsupported event (%v)"
+	BadInputEventType     = "input error: bad value type for event %v (expecting %s)"
+	UnknownControllerType = "input error: unknown controller type (%v)"
 
 	// television
 	UnknownTVRequest = "television error: unsupported request (%v)"

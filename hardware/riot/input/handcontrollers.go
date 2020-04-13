@@ -44,6 +44,21 @@ const (
 	KeypadType
 )
 
+// ControllerTypeList is a list of all possible string representations of the Interval type
+var ControllerTypeList = []string{"Joystick", "Paddle", "Keypad"}
+
+func (c ControllerType) String() string {
+	switch c {
+	case JoystickType:
+		return "Joystick"
+	case PaddleType:
+		return "Paddle"
+	case KeypadType:
+		return "Keypad"
+	}
+	panic("unknown controller type")
+}
+
 // HandController represents the "joystick" port on the VCS. The different
 // devices (joysticks, paddles, etc.) send events to the Handle() function.
 //
@@ -53,8 +68,12 @@ type HandController struct {
 	mem     *inputMemory
 	control *VBlankBits
 
-	// which controller type is currently being used
-	which ControllerType
+	// the current controller type. use SwitchType() to set.
+	ControllerType ControllerType
+
+	// whether SwitchType() should respond to automatic switching. use
+	// SetAuto() to set.
+	AutoControllerType bool
 
 	// controller types
 	stick  stick
@@ -101,6 +120,24 @@ type stick struct {
 // the controller mode switches to paddle type
 const paddleTouchReq = 3
 
+// the value used to write to the paddle fire button. the value is mased by the
+// paddle.buttonMask value before writing to SWCHA
+const paddleFire = 0xff
+
+// as above but for when the first button is released
+const paddleNoFire = 0x00
+
+// !!TODO: accurate paddle timings and sensitivity
+//
+// for now, our best guess is 0.01. no idea if this value is correct but it
+// feels good during play so I'm going to go with it.
+//
+// justification: if the paddle resistor can take a value between 0.0 and 1.0
+// then the maximum number of ticks required to increase the capacitor charge
+// by 1 is 100. The maximum charge is 255 so it takes a maximum of 25500 ticks
+// to fill the capacitor.
+const paddleSensitivity = 0.01
+
 // the paddle type implements the "paddle" hand controller
 type paddle struct {
 	puckReg addresses.ChipRegister
@@ -126,17 +163,6 @@ type paddle struct {
 	touchingRight bool
 }
 
-// !!TODO: accurate paddle timings and sensitivity
-//
-// for now our, best guess is 0.01. no idea if this value is correct but it
-// feels good during play so I'm going to go with it.
-//
-// justification: if the paddle resistor can take a value between 0.0 and 1.0
-// then the maximum number of ticks required to increase the capacitor charge
-// by 1 is 100. The maximum charge is 255 so it takes a maximum of 25500 ticks
-// to fill the capacitor.
-const bestGuessSensitivity = 0.01
-
 // the keypad type implements the keypad or "keyboard" controller
 type keypad struct {
 	column [3]addresses.ChipRegister
@@ -150,9 +176,10 @@ const noKey = ' '
 // HandController for representing hand controller zero
 func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 	hc := &HandController{
-		mem:     mem,
-		control: control,
-		which:   JoystickType,
+		mem:                mem,
+		control:            control,
+		ControllerType:     JoystickType,
+		AutoControllerType: true,
 		stick: stick{
 			buttonReg: addresses.INPT4,
 			axis:      0xf0,
@@ -162,7 +189,7 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 			puckReg:     addresses.INPT0,
 			buttonMask:  0x7f,
 			resistance:  0.0,
-			sensitivity: bestGuessSensitivity,
+			sensitivity: paddleSensitivity,
 		},
 		keypad: keypad{
 			column: [3]addresses.ChipRegister{addresses.INPT0, addresses.INPT1, addresses.INPT4},
@@ -190,9 +217,10 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 // HandController for representing hand controller one
 func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 	hc := &HandController{
-		mem:     mem,
-		control: control,
-		which:   JoystickType,
+		mem:                mem,
+		control:            control,
+		ControllerType:     JoystickType,
+		AutoControllerType: true,
 		stick: stick{
 			buttonReg: addresses.INPT5,
 			axis:      0xf0,
@@ -202,7 +230,7 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 			puckReg:     addresses.INPT1,
 			buttonMask:  0xbf,
 			resistance:  0.0,
-			sensitivity: bestGuessSensitivity,
+			sensitivity: paddleSensitivity,
 		},
 		keypad: keypad{
 			column: [3]addresses.ChipRegister{addresses.INPT2, addresses.INPT3, addresses.INPT5},
@@ -231,35 +259,41 @@ func (hc *HandController) String() string {
 	return "nothing yet"
 }
 
-// SwitchType causes the HandController to swich controller type. If the type
-// is switched or if the type is already of the requested type then true is
-// returned.
-func (hc *HandController) SwitchType(prospective ControllerType) bool {
-	if hc.which == prospective {
-		return true
-	}
+// SetAuto turns automatic controller switching on or off. Note that calling
+// SwitchType() with a different type to what has been automatically selected
+// will also turn auto-switching off.
+func (hc *HandController) SetAuto(auto bool) {
+	hc.AutoControllerType = auto
 
 	// reset detection variables
 	hc.paddle.touchLeft = 0
 	hc.paddle.touchRight = 0
+}
 
-	switch prospective {
+// SwitchType causes the HandController to swich controller type. If the type
+// is switched or if the type is already of the requested type then true is
+// returned.
+func (hc *HandController) SwitchType(newType ControllerType) error {
+	// reset detection variables
+	hc.paddle.touchLeft = 0
+	hc.paddle.touchRight = 0
+
+	switch newType {
 	case JoystickType:
-		if hc.which != KeypadType {
-			hc.which = JoystickType
-			return true
-		}
+		hc.ControllerType = JoystickType
+		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
+		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 	case PaddleType:
-		if hc.which != KeypadType {
-			hc.which = PaddleType
-			return true
-		}
+		hc.ControllerType = PaddleType
+		hc.writeSWCHA(paddleFire, hc.writeMask)
 	case KeypadType:
-		hc.which = KeypadType
-		return true
+		hc.ControllerType = KeypadType
+
+	default:
+		return errors.New(errors.UnknownControllerType, newType)
 	}
 
-	return false
+	return nil
 }
 
 // Handle implements Port interface
@@ -276,8 +310,15 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(JoystickType) {
-			return nil
+		// smart switch to joystick type
+		if hc.ControllerType != JoystickType {
+			if hc.AutoControllerType {
+				if err := hc.SwitchType(JoystickType); err != nil {
+					return err
+				}
+			} else {
+				return nil
+			}
 		}
 
 		if b {
@@ -293,8 +334,15 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(JoystickType) {
-			return nil
+		// smart switch to joystick type
+		if hc.ControllerType != JoystickType {
+			if hc.AutoControllerType {
+				if err := hc.SwitchType(JoystickType); err != nil {
+					return err
+				}
+			} else {
+				return nil
+			}
 		}
 
 		if b {
@@ -310,8 +358,15 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(JoystickType) {
-			return nil
+		// smart switch to joystick type
+		if hc.ControllerType != JoystickType {
+			if hc.AutoControllerType {
+				if err := hc.SwitchType(JoystickType); err != nil {
+					return err
+				}
+			} else {
+				return nil
+			}
 		}
 
 		if b {
@@ -327,8 +382,15 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(JoystickType) {
-			return nil
+		// smart switch to joystick type
+		if hc.ControllerType != JoystickType {
+			if hc.AutoControllerType {
+				if err := hc.SwitchType(JoystickType); err != nil {
+					return err
+				}
+			} else {
+				return nil
+			}
 		}
 
 		if b {
@@ -344,8 +406,15 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
-		if !hc.SwitchType(JoystickType) {
-			return nil
+		// smart switch to joystick type
+		if hc.ControllerType != JoystickType {
+			if hc.AutoControllerType {
+				if err := hc.SwitchType(JoystickType); err != nil {
+					return err
+				}
+			} else {
+				return nil
+			}
 		}
 
 		// record state of fire button regardless of latch bit. we need to know
@@ -368,12 +437,17 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "bool")
 		}
 
+		// no smart switch on paddle fire
+		if hc.ControllerType != PaddleType {
+			return nil
+		}
+
 		var v uint8
 
 		if b {
-			v = 0x00
+			v = paddleNoFire
 		} else {
-			v = 0xff
+			v = paddleFire
 		}
 		hc.writeSWCHA(v, hc.paddle.buttonMask)
 
@@ -383,32 +457,38 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "float32")
 		}
 
-		// switch to paddle type
-		if hc.which != PaddleType {
-			if hc.paddle.touchLeft < paddleTouchReq {
-				if f < 0.1 {
-					if !hc.paddle.touchingLeft {
-						hc.paddle.touchLeft++
+		// smart-switch to paddle type. because the paddle is more likely to be
+		// triggered by accident (paddle is emulated with the mouse) we're a
+		// lot more careful than with joystick smart-switching
+		if hc.ControllerType != PaddleType {
+			if hc.AutoControllerType {
+				if hc.paddle.touchLeft < paddleTouchReq {
+					if f < 0.1 {
+						if !hc.paddle.touchingLeft {
+							hc.paddle.touchLeft++
+						}
+						hc.paddle.touchingLeft = true
+					} else {
+						hc.paddle.touchingLeft = false
 					}
-					hc.paddle.touchingLeft = true
-				} else {
-					hc.paddle.touchingLeft = false
 				}
-			}
-			if hc.paddle.touchRight < paddleTouchReq {
-				if f > 0.9 {
-					if !hc.paddle.touchingRight {
-						hc.paddle.touchRight++
+				if hc.paddle.touchRight < paddleTouchReq {
+					if f > 0.9 {
+						if !hc.paddle.touchingRight {
+							hc.paddle.touchRight++
+						}
+						hc.paddle.touchingRight = true
+					} else {
+						hc.paddle.touchingRight = false
 					}
-					hc.paddle.touchingRight = true
-				} else {
-					hc.paddle.touchingRight = false
 				}
-			}
-			if hc.paddle.touchLeft >= paddleTouchReq && hc.paddle.touchRight >= paddleTouchReq {
-				if !hc.SwitchType(PaddleType) {
-					return nil
+				if hc.paddle.touchLeft >= paddleTouchReq && hc.paddle.touchRight >= paddleTouchReq {
+					if err := hc.SwitchType(PaddleType); err != nil {
+						return err
+					}
 				}
+			} else {
+				return nil
 			}
 		}
 
@@ -420,7 +500,10 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "rune")
 		}
 
-		// keypad switched to only when DDR is switched
+		// keypad is smart selected when DDR is switched
+		if hc.ControllerType != KeypadType {
+			return nil
+		}
 
 		if v != '1' && v != '2' && v != '3' && v != '4' && v != '5' && v != '6' && v != '7' && v != '8' && v != '9' && v != '*' && v != '0' && v != '#' {
 			return errors.New(errors.BadInputEventType, event, "numeric rune or '*' or '#'")
@@ -434,7 +517,10 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 			return errors.New(errors.BadInputEventType, event, "nil")
 		}
 
-		// keypad switched to only when DDR is switched
+		// keypad is smart selected when DDR is switched
+		if hc.ControllerType != KeypadType {
+			return nil
+		}
 
 		hc.keypad.key = noKey
 
@@ -463,17 +549,26 @@ func (hc *HandController) setDDR(data uint8) {
 	// the the expected controller is most probably a keypad. not sure what
 	// we can say if ddr is only partially set to input.
 	if hc.ddr == 0xf0 {
-		hc.SwitchType(KeypadType)
+		if hc.AutoControllerType {
+			hc.SwitchType(KeypadType)
+
+			// unlike other controller types we can be reasonably sure that the
+			// required controller MUST be the keypad type because the ROM has
+			// asked for it. we can therefore turn auto off
+			hc.AutoControllerType = false
+		}
 	} else {
-		// switch to Joystick if DDR is anything other than 0xf0
-		hc.SwitchType(JoystickType)
+		if hc.AutoControllerType {
+			// switch to Joystick if DDR is anything other than 0xf0
+			hc.SwitchType(JoystickType)
+		}
 	}
 }
 
 // readKeypad() is called whenever SWCHA is tickled by the CPU. the state of
 // the ddr is of importance here.
 func (hc *HandController) readKeypad(data uint8) {
-	if hc.which != KeypadType {
+	if hc.ControllerType != KeypadType {
 		return
 	}
 
@@ -569,7 +664,7 @@ func (hc *HandController) readKeypad(data uint8) {
 // VBLANK bit 6 has been set. joystick button will latch, meaning that
 // releasing the fire button has no immediate effect
 func (hc *HandController) unlatch() {
-	if hc.which != JoystickType {
+	if hc.ControllerType != JoystickType {
 		return
 	}
 
@@ -588,7 +683,7 @@ func (hc *HandController) ground() {
 	// the the high bit of INPT1 and I'm now wondering if the charge value ever
 	// reaches the last bit (?) if it doesn't we can change the recharge
 	// function and not worry about clobbering the high bit
-	if hc.which != PaddleType {
+	if hc.ControllerType != PaddleType {
 		return
 	}
 
@@ -600,7 +695,7 @@ func (hc *HandController) ground() {
 func (hc *HandController) recharge() {
 	// as in the case of ground() I'm not sure if restricting recharge() events
 	// to the paddle type is strictly necessary.
-	if hc.which != PaddleType {
+	if hc.ControllerType != PaddleType {
 		return
 	}
 

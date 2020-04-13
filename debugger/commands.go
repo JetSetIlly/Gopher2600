@@ -908,6 +908,52 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, err
 		}
 
+	case cmdController:
+		player, _ := tokens.Get()
+
+		var p *input.HandController
+		switch player {
+		case "0":
+			p = dbg.vcs.HandController0
+		case "1":
+			p = dbg.vcs.HandController1
+		}
+
+		controller, ok := tokens.Get()
+		if ok {
+			switch strings.ToLower(controller) {
+			case "auto":
+				p.SetAuto(true)
+			case "noauto":
+				p.SetAuto(false)
+			case "joystick":
+				p.SwitchType(input.JoystickType)
+			case "paddle":
+				p.SwitchType(input.PaddleType)
+			case "keypad":
+				p.SwitchType(input.KeypadType)
+			}
+		}
+
+		s := strings.Builder{}
+
+		switch p.ControllerType {
+		case input.JoystickType:
+			s.WriteString("Joystick")
+		case input.PaddleType:
+			s.WriteString("Paddle")
+		case input.KeypadType:
+			s.WriteString("Keypad")
+		default:
+			s.WriteString("Unknown")
+		}
+
+		if p.AutoControllerType {
+			s.WriteString(" (auto)")
+		}
+
+		dbg.printLine(terminal.StyleFeedback, s.String())
+
 	case cmdPanel:
 		mode, ok := tokens.Get()
 		if !ok {
@@ -950,7 +996,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		dbg.printInstrument(dbg.vcs.Panel)
 
-	case cmdStick:
+	case cmdJoystick:
 		var err error
 
 		stick, _ := tokens.Get()

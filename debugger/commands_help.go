@@ -357,9 +357,12 @@ overlay decorates the display with markers showing when during the drawing
 process key video events were triggered.`,
 
 	// user input
+	cmdController: `Change the current controller type for the specified player. Specifying a
+controller turns off AUTO changing. Turn AUTO changing back on with the AUTO flag.`,
+
 	cmdPanel: "Inspect and set front panel settings. Switches can be set or toggled..",
 
-	cmdStick: `Set joystick input for Player 0 or Player 1 for the next and
+	cmdJoystick: `Set joystick input for Player 0 or Player 1 for the next and
 subsequent video cycles.
 
 Specify the player with the 0 or 1 arguments.

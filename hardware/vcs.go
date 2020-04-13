@@ -39,9 +39,9 @@ type VCS struct {
 
 	TV television.Television
 
-	Panel           input.Port
-	HandController0 input.Port
-	HandController1 input.Port
+	Panel           *input.Panel
+	HandController0 *input.HandController
+	HandController1 *input.HandController
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -122,24 +122,17 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-// we use this to short input.Port interfaces for the CheckInput() function.
-// not part of the input.Port interface proper because we don't want to expose
-// the CheckInput function to outside this package.
-type portPoller interface {
-	CheckInput() error
-}
-
 // check all devices for pending input
 func (vcs *VCS) checkDeviceInput() error {
-	err := vcs.HandController0.(portPoller).CheckInput()
+	err := vcs.HandController0.CheckInput()
 	if err != nil {
 		return err
 	}
 
-	err = vcs.HandController1.(portPoller).CheckInput()
+	err = vcs.HandController1.CheckInput()
 	if err != nil {
 		return err
 	}
 
-	return vcs.Panel.(portPoller).CheckInput()
+	return vcs.Panel.CheckInput()
 }
