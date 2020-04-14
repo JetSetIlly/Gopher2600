@@ -20,6 +20,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -87,7 +88,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		windowList: make([]string, 0),
 	}
 
-	addWindow := func(create func(img *SdlImgui) (managedWindow, error)) error {
+	addWindow := func(create func(img *SdlImgui) (managedWindow, error), open bool) error {
 		w, err := create(img)
 		if err != nil {
 			return err
@@ -97,39 +98,39 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		wm.windowList = append(wm.windowList, w.id())
 		sort.Strings(wm.windowList)
 
-		w.setOpen(true)
+		w.setOpen(open)
 
 		return nil
 	}
 
-	if err := addWindow(newWinControl); err != nil {
+	if err := addWindow(newWinControl, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCPU); err != nil {
+	if err := addWindow(newWinCPU, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinRAM); err != nil {
+	if err := addWindow(newWinRAM, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTIA); err != nil {
+	if err := addWindow(newWinTIA, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTimer); err != nil {
+	if err := addWindow(newWinTimer, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinDisasm); err != nil {
+	if err := addWindow(newWinDisasm, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinAudio); err != nil {
+	if err := addWindow(newWinAudio, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinScreen); err != nil {
+	if err := addWindow(newWinScreen, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinControllers); err != nil {
+	if err := addWindow(newWinTerm, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTerm); err != nil {
+	if err := addWindow(newWinControllers, false); err != nil {
 		return nil, err
 	}
 
@@ -183,11 +184,27 @@ func (wm *windowManager) drawMainMenu() {
 		imgui.EndMenu()
 	}
 
+	// window menu
 	if imgui.BeginMenu("Windows") {
 		for i := range wm.windowList {
 			id := wm.windowList[i]
+
+			// add decorator indicating if window is currently open
+			w := wm.windows[id]
+			if w.isOpen() {
+				// checkmark is unicode middle dot - code 00b7
+				id = fmt.Sprintf("· %s", id)
+			} else {
+				id = fmt.Sprintf("  %s", id)
+			}
+
 			if imgui.Selectable(id) {
-				wm.windows[id].setOpen(true)
+				// open/close window on select
+				if w.isOpen() {
+					w.setOpen(false)
+				} else {
+					w.setOpen(true)
+				}
 			}
 		}
 
