@@ -232,7 +232,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// unpause emulation if we're continuing emulation and this
 			// *wasn't* a checkTerm pause. we don't want to send an unpause
 			// request if we only entered HELP in the terminal, for example.
-			if !checkTerm && dbg.continueEmulation {
+			if !checkTerm && dbg.runUntilHalt {
 				err = dbg.scr.SetFeature(gui.ReqSetPause, false)
 				if err != nil {
 					return err

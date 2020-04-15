@@ -62,10 +62,6 @@ type screen struct {
 
 	// show pixel perfect image or with crt effect
 	pixelPerfect bool
-
-	// the color of the screen cursor
-	cursorRGB          color.RGBA
-	offScreenCursorRGB color.RGBA
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -83,28 +79,11 @@ type screenCrit struct {
 	pixels    *image.RGBA
 	altPixels *image.RGBA
 
-	// in addition to the unmasked pixel array we also maintain and draw to a
-	// smaller pixel array that represents the masked screen. ideally, we would
-	// only have the masked pixel array defined above, and to draw only a
-	// selected group of pixels when drawing a masked screen. however, there's
-	// no good way of doing this because gl.TexSubImage2d() expects the pixels
-	// in the pixel array to be contiguous. this seems wasteful (and possibly
-	// is) but it is easier and ultimately quicker to maintain two sets of
-	// arrays (according to my current understanding that is)
-	//
-	// this is obviously slower than writing to one set of pixels but not
-	// noticably so when SetRGBA() is used (rather than Set() which includes a
-	// needless conversion to RGBA format)
-	//
-	// why not just write to one set or the other depending on whether masking
-	// is activated or not? because we want to be able to flip between masked
-	// and unmapsed displays even when paused.
-	//
-	// would it be better to have two textures one which is "full" size and one
-	// which "zooms" on the pixels in the non-masked area of the screen? maybe,
-	// but it seems messy to me by comparison.
-	croppedPixels    *image.RGBA
-	croppedAltPixels *image.RGBA
+	// the cropped view of the screen pixels. note that these instances are
+	// created through the SubImage() command and should not be written to
+	// directly
+	cropPixels    *image.RGBA
+	cropAltPixels *image.RGBA
 
 	// the coordinates of the last SetPixel(). used to help set the alpha
 	// channel when emulation is paused
@@ -114,12 +93,10 @@ type screenCrit struct {
 
 func newScreen(img *SdlImgui) *screen {
 	scr := &screen{
-		img:                img,
-		scaling:            defScaling,
-		cropped:            true,
-		pixelPerfect:       true,
-		cursorRGB:          color.RGBA{255, 255, 255, 255},
-		offScreenCursorRGB: color.RGBA{0, 0, 255, 255},
+		img:          img,
+		scaling:      defScaling,
+		cropped:      true,
+		pixelPerfect: true,
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -134,7 +111,6 @@ func newScreen(img *SdlImgui) *screen {
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
-	scr.pause(true)
 
 	return scr
 }
@@ -149,8 +125,17 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.crit.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
-	scr.crit.croppedPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.crit.scanlines))
-	scr.crit.croppedAltPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksVisible, scr.crit.scanlines))
+	// create a cropped image from the main
+	r := image.Rectangle{
+		image.Point{television.HorizClksHBlank,
+			scr.crit.topScanline,
+		},
+		image.Point{television.HorizClksHBlank + television.HorizClksVisible,
+			scr.crit.topScanline + scr.crit.scanlines,
+		},
+	}
+	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropAltPixels = scr.crit.altPixels.SubImage(r).(*image.RGBA)
 
 	// releasing lock before calling SetPixels() and SetAltPixels() below
 	scr.crit.section.RUnlock()
@@ -173,11 +158,27 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 }
 
 func (scr *screen) scaledWidth() float32 {
-	return float32(scr.crit.croppedPixels.Bounds().Size().X*pixelWidth) * scr.aspectBias * scr.scaling
+	return float32(scr.crit.pixels.Bounds().Size().X) * scr.horizScaling()
 }
 
 func (scr *screen) scaledHeight() float32 {
-	return float32(scr.crit.croppedPixels.Bounds().Size().Y) * scr.scaling
+	return float32(scr.crit.pixels.Bounds().Size().Y) * scr.vertScaling()
+}
+
+func (scr *screen) scaledCroppedWidth() float32 {
+	return float32(scr.crit.cropPixels.Bounds().Size().X) * scr.horizScaling()
+}
+
+func (scr *screen) scaledCroppedHeight() float32 {
+	return float32(scr.crit.cropPixels.Bounds().Size().Y) * scr.vertScaling()
+}
+
+func (scr *screen) horizScaling() float32 {
+	return float32(pixelWidth * scr.aspectBias * scr.scaling)
+}
+
+func (scr *screen) vertScaling() float32 {
+	return scr.scaling
 }
 
 // render is called by service loop
@@ -188,137 +189,37 @@ func (scr *screen) render() {
 	var pixels *image.RGBA
 	if scr.useAltPixels {
 		if scr.cropped {
-			pixels = scr.crit.croppedAltPixels
+			pixels = scr.crit.cropAltPixels
 		} else {
 			pixels = scr.crit.altPixels
 		}
 	} else {
 		if scr.cropped {
-			pixels = scr.crit.croppedPixels
+			pixels = scr.crit.cropPixels
 		} else {
 			pixels = scr.crit.pixels
 		}
 	}
 
-	// if frame rate is below a given threshold then fake a pause image. we
-	// don't want to do this with too high of a threshold though because it
-	// would just look like weird
-	var pixelsCp []uint8
-	if scr.img.lazy.TV.ReqFPS < 3.0 {
-		copy(pixelsCp, pixels.Pix)
-		scr.pause(true)
-	}
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 
 	if scr.createTextures {
 		scr.createTextures = false
-		gl.ActiveTexture(gl.TEXTURE0)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
 	} else {
-		gl.ActiveTexture(gl.TEXTURE0)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 	}
 
-	// undo fake pause image
-	if scr.img.lazy.TV.ReqFPS < 3.0 {
-		copy(pixels.Pix, pixelsCp)
-	}
-}
-
-func (scr *screen) pause(set bool) {
-	// when emulation is paused, process the current pixel data to
-	// differentiate "old" pixels (from previous frame) and "new" pixels (drawn
-	// this frame)
-	if set {
-		// do not fade image if we're still on the first scanline after a new
-		// frame. this is to prevent the display being faded after a STEP
-		// FRAME. the user wouldn't expect the image to be faded after asking
-		// to step forward one frame
-		if scr.crit.lastY > 0 {
-			// pixel offset for last x/y coordinates. we're going to assume that
-			// the scr.pixels and scr.altPixels array are constructed exactyle the
-			// same (reasonable assumption)
-			o := scr.crit.pixels.PixOffset(scr.crit.lastX, scr.crit.lastY)
-			if o >= 0 && o < len(scr.crit.pixels.Pix) {
-
-				// make sure all pixels from current frame have full alpha value
-				for i := 0; i <= o; i += 4 {
-					scr.crit.pixels.Pix[i+3] = 255
-					scr.crit.altPixels.Pix[i+3] = 255
-				}
-
-				// make sure old pixels are faded
-				for i := o + 4; i < len(scr.crit.pixels.Pix); i += 4 {
-					scr.crit.pixels.Pix[i+3] = 100
-					scr.crit.altPixels.Pix[i+3] = 100
-				}
-			}
-
-			// similar process for masked pixels. some care is required when
-			// finding the starting offset for array traversal
-
-			x := scr.crit.lastX - television.HorizClksHBlank
-			if x < 0 {
-				x = 0
-			}
-
-			y := scr.crit.lastY - scr.crit.topScanline
-			if y < 0 {
-				// the y pixel is outside (and above) the masked display so
-				// logically the x pixel must be as well
-				y = 0
-				x = 0
-			}
-
-			o = scr.crit.croppedPixels.PixOffset(x, y)
-			if o >= 0 && o < len(scr.crit.croppedPixels.Pix) {
-				for i := 0; i <= o; i += 4 {
-					scr.crit.croppedPixels.Pix[i+3] = 255
-					scr.crit.croppedAltPixels.Pix[i+3] = 255
-				}
-
-				for i := o + 4; i < len(scr.crit.croppedPixels.Pix); i += 4 {
-					scr.crit.croppedPixels.Pix[i+3] = 100
-					scr.crit.croppedAltPixels.Pix[i+3] = 100
-				}
-			}
-		}
-
-		// draw cursor
-		cx := scr.crit.lastX - television.HorizClksHBlank
-		cy := scr.crit.lastY - scr.crit.topScanline
-
-		// make sure we can see the cursor if it's offscreen - we'll draw it in
-		// a different color to indicate that it's only an indicator of where
-		// the cursor is
-		cursorRGB := scr.cursorRGB
-		if cx < 0 {
-			cx = -1
-			cursorRGB = scr.offScreenCursorRGB
-		}
-		if scr.crit.lastY <= scr.crit.topScanline-1 {
-			cy = 0
-			cursorRGB = scr.offScreenCursorRGB
-		} else if scr.crit.lastY >= scr.crit.topScanline+scr.crit.scanlines {
-			cy = scr.crit.scanlines - 1
-			cursorRGB = scr.offScreenCursorRGB
-		}
-
-		// draw cursor over cropped pixels
-		scr.crit.croppedPixels.SetRGBA(cx+1, cy, cursorRGB)
-		scr.crit.croppedAltPixels.SetRGBA(cx+1, cy, cursorRGB)
-
-		// draw cursor over non-cropped pixels. we'll use the cropped pixel
-		// color for this
-		scr.crit.pixels.SetRGBA(scr.crit.lastX+1, scr.crit.lastY, cursorRGB)
-		scr.crit.altPixels.SetRGBA(scr.crit.lastX+1, scr.crit.lastY, cursorRGB)
-	}
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 }
 
 func (scr *screen) setCropping(set bool) {
@@ -362,25 +263,10 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 		blue = 0
 	}
 
+	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+
 	scr.crit.lastX = x
 	scr.crit.lastY = y
-
-	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	cx := scr.crit.lastX - television.HorizClksHBlank
-	cy := scr.crit.lastY - scr.crit.topScanline
-	scr.crit.croppedPixels.SetRGBA(cx, cy, rgb)
-
-	if x == television.HorizClksHBlank-1 ||
-		y == scr.crit.topScanline-1 ||
-		y == scr.crit.topScanline+scr.crit.scanlines+1 {
-		rgb.B = 50
-		rgb.A = 255
-	} else if y == scr.img.tv.GetSpec().ScanlineTop-1 ||
-		y == scr.img.tv.GetSpec().ScanlineBottom+1 {
-		rgb.R = 50
-		rgb.A = 255
-	}
-
 	scr.crit.pixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	return nil
@@ -392,7 +278,6 @@ func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vb
 	defer scr.crit.section.Unlock()
 
 	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	scr.crit.croppedAltPixels.SetRGBA(x-television.HorizClksHBlank, y-scr.crit.topScanline, rgb)
 	scr.crit.altPixels.SetRGBA(x, y, rgb)
 
 	return nil

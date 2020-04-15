@@ -128,7 +128,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 
 	// connect some screen properties to other parts of the system
-	img.glsl.screenTexture = img.screen.screenTexture
+	img.glsl.screenTextureID = img.screen.screenTexture
 	tv.AddPixelRenderer(img.screen)
 
 	// this audio mixer produces the sound. there is another AudioMixer
@@ -165,7 +165,6 @@ func (img *SdlImgui) GetTerminal() terminal.Terminal {
 
 func (img *SdlImgui) pause(set bool) {
 	img.paused = set
-	img.screen.pause(set)
 }
 
 func (img *SdlImgui) draw() {

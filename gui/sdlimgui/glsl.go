@@ -21,17 +21,26 @@ package sdlimgui
 
 import (
 	"fmt"
+	"math"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/gui/shaders"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 type glsl struct {
 	imguiIO imgui.IO
 	img     *SdlImgui
+
+	// font texture given to imgui. we take charge of its destruction
+	fontTextureID uint32
+
+	// texture created and managed by the screen type
+	screenTextureID uint32
 
 	// handle for the compiled and linked shader program. we don't need to keep
 	// references to the component parts of the program, they're created and
@@ -45,20 +54,28 @@ type glsl struct {
 	// program and the host language. "uniform" variables remain constant for
 	// the duration of each shader program executrion. non-uniform variables
 	// meanwhile change from one iteration to the next.
-	attribImageType        int32 // uniform
-	attribPixelPerfect     int32 // uniform
-	attribResolution       int32 // uniform
-	attribLocationTex      int32 // uniform
-	attribLocationProjMtx  int32 // uniform
-	attribLocationPosition int32
-	attribLocationUV       int32
-	attribLocationColor    int32
+	attribTexture  int32 // uniform
+	attribProjMtx  int32 // uniform
+	attribPosition int32
+	attribUV       int32
+	attribColor    int32
 
-	// font texture given to imgui. we take charge of its destruction
-	fontTexture uint32
+	// imagetype differentaites the screen texture from the rest of the imgui
+	// interface
+	attribImageType int32 // uniform
 
-	// texture created and managed by the screen type
-	screenTexture uint32
+	// the following attrib variables are strictly for the screen texture
+	attribPixelPerfect   int32 // uniform
+	attribDim            int32 // uniform
+	attribCropDim        int32 // uniform
+	attribShowScreenDraw int32 // uniform
+	attribCropped        int32 // uniform
+	attribLastX          int32 // uniform
+	attribLastY          int32 // uniform
+	attribHblank         int32 // uniform
+	attribTopScanline    int32 // uniform
+	attribBotScanline    int32 // uniform
+	attribAnimTime       int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -93,10 +110,10 @@ func (rnd *glsl) destroy() {
 	}
 	rnd.shaderHandle = 0
 
-	if rnd.fontTexture != 0 {
-		gl.DeleteTextures(1, &rnd.fontTexture)
+	if rnd.fontTextureID != 0 {
+		gl.DeleteTextures(1, &rnd.fontTextureID)
 		imgui.CurrentIO().Fonts().SetTextureID(0)
-		rnd.fontTexture = 0
+		rnd.fontTextureID = 0
 	}
 }
 
@@ -178,8 +195,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 	gl.UseProgram(rnd.shaderHandle)
-	gl.Uniform1i(rnd.attribLocationTex, 0)
-	gl.UniformMatrix4fv(rnd.attribLocationProjMtx, 1, false, &orthoProjection[0][0])
+	gl.Uniform1i(rnd.attribTexture, 0)
+	gl.UniformMatrix4fv(rnd.attribProjMtx, 1, false, &orthoProjection[0][0])
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
 
 	// Recreate the VAO every time
@@ -189,13 +206,13 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	gl.GenVertexArrays(1, &vaoHandle)
 	gl.BindVertexArray(vaoHandle)
 	gl.BindBuffer(gl.ARRAY_BUFFER, rnd.vboHandle)
-	gl.EnableVertexAttribArray(uint32(rnd.attribLocationPosition))
-	gl.EnableVertexAttribArray(uint32(rnd.attribLocationUV))
-	gl.EnableVertexAttribArray(uint32(rnd.attribLocationColor))
+	gl.EnableVertexAttribArray(uint32(rnd.attribPosition))
+	gl.EnableVertexAttribArray(uint32(rnd.attribUV))
+	gl.EnableVertexAttribArray(uint32(rnd.attribColor))
 	vertexSize, vertexOffsetPos, vertexOffsetUv, vertexOffsetCol := imgui.VertexBufferLayout()
-	gl.VertexAttribPointer(uint32(rnd.attribLocationPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
-	gl.VertexAttribPointer(uint32(rnd.attribLocationUV), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
-	gl.VertexAttribPointer(uint32(rnd.attribLocationColor), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
+	gl.VertexAttribPointer(uint32(rnd.attribPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
+	gl.VertexAttribPointer(uint32(rnd.attribUV), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
+	gl.VertexAttribPointer(uint32(rnd.attribColor), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
 	indexSize := imgui.IndexBufferLayout()
 	drawType := gl.UNSIGNED_SHORT
 	if indexSize == 4 {
@@ -221,23 +238,75 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
-				case rnd.screenTexture:
+
+				case rnd.screenTextureID:
+
+					// critical section
+					rnd.img.screen.crit.section.Lock()
+
+					vertScaling := rnd.img.screen.vertScaling()
+					horizScaling := rnd.img.screen.horizScaling()
+
+					// id of screen type
 					gl.Uniform1i(rnd.attribImageType, 1)
+
+					// pixel perfect rendering or whether to apply the CRT
+					// filters
+					if rnd.img.screen.pixelPerfect {
+						gl.Uniform1i(rnd.attribPixelPerfect, 1)
+					} else {
+						gl.Uniform1i(rnd.attribPixelPerfect, 0)
+					}
+
+					// the resolution information is used to scale the Last
+					gl.Uniform2f(rnd.attribDim, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
+					gl.Uniform2f(rnd.attribCropDim, rnd.img.screen.scaledCroppedWidth(), rnd.img.screen.scaledCroppedHeight())
+
+					// screen geometry
+					gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
+					gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
+					gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
+
+					// the coordinates of the last plot
+					if rnd.img.screen.cropped {
+						gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-television.HorizClksHBlank)*horizScaling)
+					} else {
+						gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
+					}
+					gl.Uniform1f(rnd.attribLastY, float32(rnd.img.screen.crit.lastY)*vertScaling)
+
+					// set ShowScreenDraw if emulation is paused or a low frame
+					// rate has been requested
+					if rnd.img.paused || rnd.img.tv.GetReqFPS() < 3.0 {
+						gl.Uniform1i(rnd.attribShowScreenDraw, 1)
+					} else {
+						gl.Uniform1i(rnd.attribShowScreenDraw, -1)
+					}
+
+					if rnd.img.screen.cropped {
+						gl.Uniform1i(rnd.attribCropped, 1)
+					} else {
+						gl.Uniform1i(rnd.attribCropped, -1)
+					}
+
+					// animation time
+					anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
+					anim = math.Abs(anim)
+					gl.Uniform1f(rnd.attribAnimTime, float32(anim))
+
+					// end of critical section
+					rnd.img.screen.crit.section.Unlock()
+
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
+
 				}
 
-				if rnd.img.screen.pixelPerfect {
-					gl.Uniform1i(rnd.attribPixelPerfect, 1)
-				} else {
-					gl.Uniform1i(rnd.attribPixelPerfect, 0)
-				}
-
-				gl.Uniform2f(rnd.attribResolution, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
-
-				gl.BindTexture(gl.TEXTURE_2D, uint32(textureID))
+				// clipping
 				clipRect := cmd.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+
+				gl.BindTexture(gl.TEXTURE_2D, uint32(textureID))
 				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
@@ -331,12 +400,22 @@ func (rnd *glsl) setup() {
 	// get references to shader attributes and uniforms variables
 	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
 	rnd.attribPixelPerfect = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PixelPerfect"+"\x00"))
-	rnd.attribResolution = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Resolution"+"\x00"))
-	rnd.attribLocationTex = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
-	rnd.attribLocationProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
-	rnd.attribLocationPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
-	rnd.attribLocationUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
-	rnd.attribLocationColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
+	rnd.attribDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Dim"+"\x00"))
+	rnd.attribCropDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropDim"+"\x00"))
+	rnd.attribShowScreenDraw = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowScreenDraw"+"\x00"))
+	rnd.attribCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Cropped"+"\x00"))
+	rnd.attribLastX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastX"+"\x00"))
+	rnd.attribLastY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastY"+"\x00"))
+	rnd.attribHblank = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Hblank"+"\x00"))
+	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
+	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
+	rnd.attribAnimTime = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("AnimTime"+"\x00"))
+
+	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
+	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
+	rnd.attribPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
+	rnd.attribUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
+	rnd.attribColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
@@ -348,8 +427,8 @@ func (rnd *glsl) setup() {
 
 	// Upload texture to graphics system
 	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
-	gl.GenTextures(1, &rnd.fontTexture)
-	gl.BindTexture(gl.TEXTURE_2D, rnd.fontTexture)
+	gl.GenTextures(1, &rnd.fontTextureID)
+	gl.BindTexture(gl.TEXTURE_2D, rnd.fontTextureID)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -357,7 +436,7 @@ func (rnd *glsl) setup() {
 		0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
 
 	// Store our identifier
-	rnd.imguiIO.Fonts().SetTextureID(imgui.TextureID(rnd.fontTexture))
+	rnd.imguiIO.Fonts().SetTextureID(imgui.TextureID(rnd.fontTextureID))
 
 	// Restore state
 	gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
