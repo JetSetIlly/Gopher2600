@@ -89,11 +89,16 @@ func (win *winScreen) draw() {
 	imgui.Spacing()
 
 	// actual display
+	var w, h float32
+	if win.scr.cropped {
+		w = win.scr.scaledCroppedWidth()
+		h = win.scr.scaledCroppedHeight()
+	} else {
+		w = win.scr.scaledWidth()
+		h = win.scr.scaledHeight()
+	}
 	imgui.Image(imgui.TextureID(win.scr.screenTexture),
-		imgui.Vec2{
-			win.scr.scaledWidth(),
-			win.scr.scaledHeight(),
-		})
+		imgui.Vec2{w, h})
 	win.isHovered = imgui.IsItemHovered()
 
 	// tv status line
