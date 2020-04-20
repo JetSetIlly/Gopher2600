@@ -81,7 +81,7 @@ func (trm *term) Silence(silenced bool) {
 
 // TermPrintLine implements the terminal.Output interface
 func (trm *term) TermPrintLine(style terminal.Style, s string) {
-	if trm.sideChannelSilence && (style == terminal.StyleInput || style == terminal.StyleError) {
+	if trm.sideChannelSilence && style == terminal.StyleInput {
 		trm.sideChannelSilence = false
 		return
 	}

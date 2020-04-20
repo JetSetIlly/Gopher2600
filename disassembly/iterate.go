@@ -48,7 +48,14 @@ type Iterate struct {
 // The function returns an instance of Iterate, a count of the number of
 // entries the correspond to the minLevel (see above), and any error.
 func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, int, error) {
-	if bank > len(dsm.reference) {
+	dsm.crit.RLock()
+	defer dsm.crit.RUnlock()
+
+	// silently reject iterations for non-existent banks. this may happen more
+	// often than you think. for example, loading a new cartridge with fewer
+	// banks than the current cartridge at the exact moment an illegal bank is
+	// being drawn by the sdlimgui disassembly window.
+	if bank > len(dsm.reference) || bank > len(dsm.counts) {
 		return nil, 0, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disassembly", bank))
 	}
 

@@ -37,6 +37,10 @@ type imguiColors struct {
 	TitleBgActive imgui.Vec4
 	Border        imgui.Vec4
 
+	// ROM selector
+	ROMSelectDir  imgui.Vec4
+	ROMSelectFile imgui.Vec4
+
 	// the color to draw the TV Screen window border when mouse is captured
 	CapturedScreenTitle  imgui.Vec4
 	CapturedScreenBorder imgui.Vec4
@@ -105,6 +109,10 @@ func newColors() *imguiColors {
 		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
 		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
+
+		// ROM selector
+		ROMSelectDir:  imgui.Vec4{1.0, 0.5, 0.5, 1.0},
+		ROMSelectFile: imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 
 		// deferring CapturedScreenTitle & CapturedScreenBorder
 

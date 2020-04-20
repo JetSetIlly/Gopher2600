@@ -30,6 +30,7 @@ import (
 // basic window management functionality. it partially implements the
 // managedWindow interface
 type windowManagement struct {
+	// prefer use of isOpen()/setOpen() to accssing the open field directly
 	open bool
 }
 
@@ -61,8 +62,16 @@ type windowManager struct {
 
 	hasInitialised bool
 
-	windows    map[string]managedWindow
+	windows map[string]managedWindow
+
+	// sorted list of windows to appear in the "windows" menu. not all windows
+	// in the windows map need appear in the windowList
 	windowList []string
+
+	// some windows need to be referenced elsewhere
+	term *winTerm
+	scr  *winScreen
+	rsel *winSelectROM
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -74,11 +83,6 @@ type windowManager struct {
 	// menu is always in the very top-left corner of the window it is a good
 	// proxy value
 	screenPos imgui.Vec2
-
-	// term and screen need to be accessfrom other areas of the package so we
-	// maintain pointers to them in addition to there windows entries
-	term *winTerm
-	scr  *winScreen
 }
 
 func newWindowManager(img *SdlImgui) (*windowManager, error) {
@@ -88,54 +92,61 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		windowList: make([]string, 0),
 	}
 
-	addWindow := func(create func(img *SdlImgui) (managedWindow, error), open bool) error {
+	addWindow := func(create func(img *SdlImgui) (managedWindow, error), open bool, list bool) error {
 		w, err := create(img)
 		if err != nil {
 			return err
 		}
 
 		wm.windows[w.id()] = w
-		wm.windowList = append(wm.windowList, w.id())
-		sort.Strings(wm.windowList)
+		if list {
+			wm.windowList = append(wm.windowList, w.id())
+			sort.Strings(wm.windowList)
+		}
 
 		w.setOpen(open)
 
 		return nil
 	}
 
-	if err := addWindow(newWinControl, true); err != nil {
+	if err := addWindow(newWinControl, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCPU, true); err != nil {
+	if err := addWindow(newWinCPU, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinRAM, true); err != nil {
+	if err := addWindow(newWinRAM, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTIA, true); err != nil {
+	if err := addWindow(newWinTIA, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTimer, true); err != nil {
+	if err := addWindow(newWinTimer, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinDisasm, true); err != nil {
+	if err := addWindow(newWinDisasm, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinAudio, true); err != nil {
+	if err := addWindow(newWinAudio, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinScreen, true); err != nil {
+	if err := addWindow(newWinScreen, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTerm, true); err != nil {
+	if err := addWindow(newWinTerm, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinControllers, false); err != nil {
+	if err := addWindow(newWinControllers, false, true); err != nil {
+		return nil, err
+	}
+
+	if err := addWindow(newFileSelector, false, false); err != nil {
 		return nil, err
 	}
 
 	wm.scr = wm.windows[winScreenTitle].(*winScreen)
 	wm.term = wm.windows[winTermTitle].(*winTerm)
+	wm.rsel = wm.windows[winSelectROMTitle].(*winSelectROM)
 
 	return wm, nil
 }
@@ -178,6 +189,9 @@ func (wm *windowManager) drawMainMenu() {
 	wm.screenPos = imgui.WindowPos()
 
 	if imgui.BeginMenu("Project") {
+		if imgui.Selectable("Select ROM...") {
+			wm.rsel.setOpen(true)
+		}
 		if imgui.Selectable("Quit") {
 			wm.img.term.pushCommand("QUIT")
 		}

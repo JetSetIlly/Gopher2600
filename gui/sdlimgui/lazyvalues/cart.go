@@ -29,12 +29,14 @@ import (
 type LazyCart struct {
 	val *Values
 
-	atomicString   atomic.Value // string
+	atomicSummary  atomic.Value // string
+	atomicFilename atomic.Value // string
 	atomicNumBanks atomic.Value // int
 	atomicCurrBank atomic.Value // int
 	atomicRAMinfo  atomic.Value // []cartridge.RAMinfo
 
-	String   string
+	Summary  string
+	Filename string
 	NumBanks int
 	CurrBank int
 	RAMinfo  []cartridge.RAMinfo
@@ -55,7 +57,8 @@ func (lz *LazyCart) update() {
 	PCaddr := lz.val.CPU.PCaddr
 
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicString.Store(lz.val.VCS.Mem.Cart.String())
+		lz.atomicSummary.Store(lz.val.VCS.Mem.Cart.String())
+		lz.atomicFilename.Store(lz.val.VCS.Mem.Cart.Filename)
 		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks())
 
 		// uses lazy PCaddr value from lazyvalues.CPU
@@ -72,7 +75,8 @@ func (lz *LazyCart) update() {
 			lz.atomicRAMinfo.Store(m)
 		}
 	})
-	lz.String, _ = lz.atomicString.Load().(string)
+	lz.Summary, _ = lz.atomicSummary.Load().(string)
+	lz.Filename, _ = lz.atomicFilename.Load().(string)
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
 	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
 	lz.RAMinfo, _ = lz.atomicRAMinfo.Load().([]cartridge.RAMinfo)

@@ -13,5 +13,4 @@ require (
 	github.com/inkyblackness/imgui-go/v2 v2.2.0
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/veandco/go-sdl2 v0.4.1
-	golang.org/x/sys v0.0.0-20200327173247-9dae0f8f5775 // indirect
 )

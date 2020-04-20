@@ -243,6 +243,8 @@ func (tv *television) Reset() error {
 	tv.top = tv.spec.ScanlineTop
 	tv.bottom = tv.spec.ScanlineBottom
 
+	tv.resizer.reset(tv)
+
 	return nil
 }
 
@@ -607,6 +609,16 @@ type resizer struct {
 
 	// resize event should take place at earliest convenient time
 	resize bool
+}
+
+func (rz *resizer) reset(tv *television) {
+	rz.top = 0
+	rz.topCt = 0
+	rz.resizeFr = 0
+	rz.bot = 0
+	rz.botCt = 0
+	rz.botFr = 0
+	rz.setSize(tv)
 }
 
 // check to see if the VCS is trying to draw out of the current screen

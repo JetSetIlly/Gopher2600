@@ -101,7 +101,7 @@ func (win *winDisasm) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winDisasmTitle, &win.open, 0)
 
-	imgui.Text(win.img.lazy.Cart.String)
+	imgui.Text(win.img.lazy.Cart.Summary)
 	imgui.Spacing()
 	imgui.Spacing()
 
@@ -136,6 +136,7 @@ func (win *winDisasm) draw() {
 			// create a new TabBar and iterate through the cartridge banks,
 			// adding a page for each one
 			imgui.BeginTabBar("")
+
 			for b := 0; b < win.img.lazy.Cart.NumBanks; b++ {
 				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS
@@ -161,8 +162,8 @@ func (win *winDisasm) draw() {
 		// note pc address to help set win.alignOnPC value next (imgui) frame
 		win.pcaddrPrevFrame = pcaddr
 
-		// draw options and status line
-		h := imgui.CursorPosY()
+		// draw options and status line. start height measurement
+		optionsHeight := imgui.CursorPosY()
 
 		// status line
 		if nonCart {
@@ -185,7 +186,8 @@ func (win *winDisasm) draw() {
 			win.alignOnPC = true
 		}
 
-		win.optionsHeight = imgui.CursorPosY() - h
+		// commit height measurement
+		win.optionsHeight = imgui.CursorPosY() - optionsHeight
 	}
 
 	imgui.End()
@@ -194,16 +196,21 @@ func (win *winDisasm) draw() {
 // draw a bank for each tabitem in the tab bar. if there is only one bank then
 // drawBank() is called once
 func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool) {
-	height := imgui.WindowHeight() - imgui.CursorPosY() - win.optionsHeight - 8
-	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
-
-	var itr *disassembly.Iterate
-	var count int
+	lvl := disassembly.EntryLevelBlessed
 	if win.showAllEntries {
-		itr, count, _ = win.img.lazy.Dsm.NewIteration(disassembly.EntryLevelDecoded, b)
-	} else {
-		itr, count, _ = win.img.lazy.Dsm.NewIteration(disassembly.EntryLevelBlessed, b)
+		lvl = disassembly.EntryLevelDecoded
 	}
+	itr, count, err := win.img.lazy.Dsm.NewIteration(lvl, b)
+
+	// check that NewIteration has succeeded. if it hasn't it probably means
+	// the cart has changed in the middle of the draw routine. but that's okay,
+	// we only have to wait one frame before we draw again
+	if err != nil {
+		return
+	}
+
+	height := imgui.WindowHeight() - imgui.CursorPosY() - win.optionsHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
+	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper

@@ -52,6 +52,13 @@ func NewCartridge() *Cartridge {
 }
 
 func (cart Cartridge) String() string {
+	return cart.Summary()
+}
+
+// Summary returns brief information about the cartridge. Two lines: first line
+// is the path to the cartridge and the second line is information about the
+// mapper, including bank information
+func (cart Cartridge) Summary() string {
 	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
 }
 
