@@ -223,7 +223,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
-	pixelPerfect := md.AddBool("pixelperfect", false, "pixel perfect display")
+	crt := md.AddBool("crt", true, "apply CRT effects")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
@@ -262,13 +262,13 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// create gui
-		if *pixelPerfect {
+		if *crt {
 			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
+				return sdlimgui_play.NewSdlImguiPlay(tv)
 			}
 		} else {
 			sync.creator <- func() (GuiCreator, error) {
-				return sdlimgui_play.NewSdlImguiPlay(tv)
+				return sdlplay.NewSdlPlay(tv, float32(*scaling))
 			}
 		}
 
@@ -492,7 +492,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	display := md.AddBool("display", false, "display TV output")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
-	pixelPerfect := md.AddBool("pixelperfect", false, "pixel perfect display")
+	crt := md.AddBool("crt", true, "apply CRT effects")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
@@ -521,13 +521,13 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 		if *display {
 			// create gui
-			if *pixelPerfect {
+			if *crt {
 				sync.creator <- func() (GuiCreator, error) {
-					return sdlplay.NewSdlPlay(tv, float32(*scaling))
+					return sdlimgui_play.NewSdlImguiPlay(tv)
 				}
 			} else {
 				sync.creator <- func() (GuiCreator, error) {
-					return sdlimgui_play.NewSdlImguiPlay(tv)
+					return sdlplay.NewSdlPlay(tv, float32(*scaling))
 				}
 			}
 
