@@ -259,6 +259,11 @@ func (hc *HandController) String() string {
 	return "nothing yet"
 }
 
+// Reset DDR of hand controller port
+func (hc *HandController) Reset() {
+	hc.setDDR(0x00)
+}
+
 // SetAuto turns automatic controller switching on or off. Note that calling
 // SwitchType() with a different type to what has been automatically selected
 // will also turn auto-switching off.
@@ -551,11 +556,6 @@ func (hc *HandController) setDDR(data uint8) {
 	if hc.ddr == 0xf0 {
 		if hc.AutoControllerType {
 			hc.SwitchType(KeypadType)
-
-			// unlike other controller types we can be reasonably sure that the
-			// required controller MUST be the keypad type because the ROM has
-			// asked for it. we can therefore turn auto off
-			hc.AutoControllerType = false
 		}
 	} else {
 		if hc.AutoControllerType {

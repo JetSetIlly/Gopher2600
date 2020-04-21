@@ -175,10 +175,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		err = dbg.tv.Reset()
-		if err != nil {
-			return false, err
-		}
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:

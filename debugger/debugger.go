@@ -296,11 +296,6 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	// repoint debug memory's symbol table
 	dbg.dbgmem.symtable = dbg.disasm.Symtable
 
-	err = dbg.vcs.TV.Reset()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

@@ -84,12 +84,6 @@ type television struct {
 	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
 
-	// list of renderer implementations to consult
-	renderers []PixelRenderer
-
-	// list of audio mixers to consult
-	mixers []AudioMixer
-
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
@@ -134,6 +128,12 @@ type television struct {
 	// update frame rate only once every N frames
 	fpsCalcFreqCt int
 	fpsCalcFreq   int
+
+	// list of renderer implementations to consult
+	renderers []PixelRenderer
+
+	// list of audio mixers to consult
+	mixers []AudioMixer
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -143,25 +143,19 @@ func NewTelevision(spec string) (Television, error) {
 		specIDOnCreation: strings.ToUpper(spec),
 		fpsFromSpec:      true,
 		fpsCap:           true,
-		resizer: resizer{
-			top: -1,
-			bot: -1,
-		},
 	}
 
-	err := tv.SetSpec(spec)
+	// initialise resizer
+	tv.resizer.reset(tv)
+
+	// set specification
+	err := tv.SetSpec(tv.specIDOnCreation)
 	if err != nil {
 		return nil, err
 	}
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
-
-	// initialise TVState
-	err = tv.Reset()
-	if err != nil {
-		return nil, err
-	}
 
 	// make unbuffered channels. limitTick must be unbuffered because a
 	// buffered channel seems to upset the time.Ticker self-regulation
@@ -232,8 +226,17 @@ func (tv *television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
 }
 
-// Reset implements the Television interface
+// Reset implements the Television interface.
 func (tv *television) Reset() error {
+
+	// we definitely do not call this on television initialisation because the
+	// rest of the system may not be yet be in a suitable state
+
+	err := tv.SetSpec(tv.specIDOnCreation)
+	if err != nil {
+		return err
+	}
+
 	tv.horizPos = 0
 	tv.frameNum = 0
 	tv.scanline = 0
@@ -243,7 +246,16 @@ func (tv *television) Reset() error {
 	tv.top = tv.spec.ScanlineTop
 	tv.bottom = tv.spec.ScanlineBottom
 
+	tv.stabilityCt = 0
+	tv.outOfSpec = false
+	tv.key = false
+	tv.keyCol = 0
+
 	tv.resizer.reset(tv)
+	tv.resizer.resize = true
+	if err := tv.resizer.setSize(tv); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -460,14 +472,8 @@ func (tv *television) SetSpec(spec string) error {
 		tv.spec = SpecPAL
 		tv.auto = false
 	case "AUTO":
+		tv.spec = SpecNTSC
 		tv.auto = true
-
-		// a tv.spec of nil means this is the first call of SetSpec() so
-		// as well as setting the auto flag we need to specify a
-		// specification
-		if tv.spec == nil {
-			tv.spec = SpecNTSC
-		}
 
 	default:
 		return errors.New(errors.Television, fmt.Sprintf("unsupported tv specifcation (%s)", spec))
@@ -612,12 +618,13 @@ type resizer struct {
 }
 
 func (rz *resizer) reset(tv *television) {
-	rz.top = 0
+	rz.top = -1
 	rz.topCt = 0
 	rz.resizeFr = 0
-	rz.bot = 0
+	rz.bot = -1
 	rz.botCt = 0
 	rz.botFr = 0
+	rz.resize = false
 	rz.setSize(tv)
 }
 

@@ -46,6 +46,7 @@ type VCS struct {
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play
+// !!TODO: option for random state on VCS creation
 func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
@@ -100,19 +101,18 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 }
 
 // Reset emulates the reset switch on the console panel
-// !!TODO: hard/soft reset option
-// !!TODO: random data on startup option
 func (vcs *VCS) Reset() error {
 	err := vcs.TV.Reset()
 	if err != nil {
 		return err
 	}
 
-	vcs.Mem.Cart.Initialise()
+	vcs.HandController0.Reset()
+	vcs.HandController1.Reset()
 
-	// !TODO: reset TIA and RIOT (including RAM)
-
-	vcs.CPU.Reset()
+	// not resetting anything else is effectively leaving the VCS in a random
+	// state (if the emulation has moved forward any cycles that is)
+	// !!TODO: option for random state on VCS reset
 
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {

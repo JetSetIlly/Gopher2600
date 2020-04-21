@@ -173,15 +173,6 @@ func (scr *SdlPlay) Destroy(output io.Writer) {
 	}
 }
 
-// Reset implements television.Television interface
-func (scr *SdlPlay) Reset() error {
-	err := scr.Television.Reset()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // show or hide window
 func (scr SdlPlay) showWindow(show bool) {
 	if show {

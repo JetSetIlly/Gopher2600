@@ -55,7 +55,7 @@ func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, i
 	// often than you think. for example, loading a new cartridge with fewer
 	// banks than the current cartridge at the exact moment an illegal bank is
 	// being drawn by the sdlimgui disassembly window.
-	if bank > len(dsm.reference) || bank > len(dsm.counts) {
+	if bank >= len(dsm.reference) || bank >= len(dsm.counts) {
 		return nil, 0, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disassembly", bank))
 	}
 
