@@ -174,8 +174,9 @@ func (win *winSelectROM) draw() {
 		if imgui.Button(s) {
 			// build terminal command and run
 			cmd := strings.Builder{}
-			cmd.WriteString("INSERT ")
+			cmd.WriteString("INSERT \"")
 			cmd.WriteString(win.selectedFile)
+			cmd.WriteString("\"")
 			win.img.term.pushCommand(cmd.String())
 			win.setOpen(false)
 		}

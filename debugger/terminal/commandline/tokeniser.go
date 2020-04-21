@@ -52,7 +52,12 @@ func (tk Tokens) IsEnd() bool {
 	return tk.curr >= len(tk.tokens)
 }
 
-// Remainder returns the remaining tokens as a string.
+// Len returns the number of tokens
+func (tk Tokens) Len() int {
+	return len(tk.tokens)
+}
+
+// Remainder returns the remaining tokens as a string
 func (tk Tokens) Remainder() string {
 	return strings.Join(tk.tokens[tk.curr:], " ")
 }
@@ -130,5 +135,42 @@ func TokeniseInput(input string) *Tokens {
 // TokeniseInput and anywhere else where we need to divide input into tokens
 // (eg. TabCompletion.Complete())
 func tokeniseInput(input string) []string {
-	return strings.Fields(input)
+	quoted := false
+	tokens := make([]string, 0)
+
+	markStart := 0
+	markEnd := 0
+
+	i := 0
+	for i = 0; i < len(input); i++ {
+		switch input[i] {
+		case ' ':
+			if !quoted {
+				if markEnd >= markStart {
+					tokens = append(tokens, input[markStart:markEnd+1])
+				}
+				markStart = i + 1
+			} else {
+				markEnd = i
+			}
+		case '"':
+			if quoted {
+				if markEnd > markStart {
+					tokens = append(tokens, input[markStart:markEnd+1])
+				}
+				markEnd = i
+			}
+			markStart = i + 1
+			quoted = !quoted
+		default:
+			markEnd = i
+		}
+	}
+	markEnd = i
+
+	if markEnd > markStart {
+		tokens = append(tokens, input[markStart:markEnd])
+	}
+
+	return tokens
 }
