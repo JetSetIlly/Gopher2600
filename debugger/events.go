@@ -154,8 +154,3 @@ func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 
 	return false, err
 }
-
-// PushRawEvent onto the event queue
-func (dbg *Debugger) PushRawEvent(f func()) {
-	dbg.events.RawEvents <- f
-}

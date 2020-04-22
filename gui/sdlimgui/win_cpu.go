@@ -86,12 +86,6 @@ func (win *winCPU) draw() {
 
 	win.drawLastResult()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
-
-	win.drawRDYFlag()
-
 	imgui.EndGroup()
 
 	imgui.Spacing()
@@ -133,6 +127,27 @@ func (win *winCPU) drawStatusRegister() {
 	if win.drawStatusRegisterBit(sr.Carry, "C") {
 		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Carry = !sr.Carry })
 	}
+
+	imgui.SameLine()
+	if win.drawRDYFlag() {
+		// not doing anything with button press
+	}
+}
+
+func (win *winCPU) drawRDYFlag() bool {
+	if win.img.lazy.CPU.RdyFlg {
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUFlgRdyOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUFlgRdyOn)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUFlgRdyOn)
+	} else {
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUFlgRdyOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUFlgRdyOff)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUFlgRdyOff)
+	}
+
+	defer imgui.PopStyleColorV(3)
+
+	return imgui.Button("RDY")
 }
 
 func (win *winCPU) drawStatusRegisterBit(bit bool, label string) bool {
@@ -193,7 +208,7 @@ func (win *winCPU) drawLastResult() {
 		if e != nil {
 			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-			imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
+			imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
 			if win.img.lazy.Cart.NumBanks == 1 {
 				imgui.Text(fmt.Sprintf("(%s)", e.Address))
 			} else {
@@ -210,31 +225,14 @@ func (win *winCPU) drawLastResult() {
 	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 	if e.Result.Defn != nil {
-		imgui.Text(fmt.Sprintf("%s cyc.", e.ActualCycles))
-		imgui.Text(fmt.Sprintf("of exp. %s [%s]", e.DefnCycles, e.BankDecorated))
+		imgui.Text(fmt.Sprintf("%s of %s cyc", e.ActualCycles, e.DefnCycles))
+		if win.img.lazy.Cart.NumBanks == 1 {
+			imgui.Text(fmt.Sprintf("(%s)", e.Address))
+		} else {
+			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
+		}
 	} else {
 		imgui.Text("")
 		imgui.Text("")
 	}
-}
-
-func (win *winCPU) drawRDYFlag() {
-	imguiText("RDY flag")
-	imgui.SameLine()
-
-	// decide on color for ready flag indicator
-	col := win.colFlgReadyOn
-	if !win.img.lazy.CPU.RdyFlg {
-		col = win.colFlgReadyOff
-	}
-
-	// position of indicator
-	r := imgui.FontSize() * 0.75
-	p := imgui.CursorScreenPos()
-	p.Y += r
-	p.X += r
-
-	// draw indicator
-	dl := imgui.WindowDrawList()
-	dl.AddCircleFilled(p, r, col)
 }

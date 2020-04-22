@@ -133,7 +133,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinScreen, true, true); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTerm, true, true); err != nil {
+	if err := addWindow(newWinTerm, false, true); err != nil {
 		return nil, err
 	}
 	if err := addWindow(newWinControllers, false, true); err != nil {

@@ -118,6 +118,7 @@ func newScreen(img *SdlImgui) *screen {
 // resize() is called by Resize() or resizeThread() depending on thread context
 func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.crit.section.RLock()
+	// we need to be careful with this lock (so no defer)
 
 	scr.crit.topScanline = topScanline
 	scr.crit.scanlines = visibleScanlines
@@ -137,10 +138,15 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropAltPixels = scr.crit.altPixels.SubImage(r).(*image.RGBA)
 
-	// releasing lock before calling SetPixels() and SetAltPixels() below
+	// clear pixels. SetPixel() alters the value of lastX and lastY. we don't
+	// really want it to do that however, so we note these value and restore
+	// them after the clearing loops
+	lastX := scr.crit.lastX
+	lastY := scr.crit.lastY
+
+	// unlock critical section before calling SetPixel() (or we'll deadlock)
 	scr.crit.section.RUnlock()
 
-	// clear pixels
 	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
 			scr.SetPixel(x, y, 0, 0, 0, false)
@@ -148,6 +154,13 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 		}
 	}
 
+	// reapply critical section after calls to SetPixel()
+	scr.crit.section.RLock()
+	scr.crit.lastX = lastX
+	scr.crit.lastY = lastY
+	scr.crit.section.RUnlock()
+
+	// update aspect-bias value
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
 
 	// defer re-creation of texture to render(). we have to do it in the

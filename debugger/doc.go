@@ -60,12 +60,8 @@
 // package or by hand. The cartloader argument must be an instance of
 // cartloader.
 //
-//
-// Machine interaction with the debugger can be achieved through the terminal
-// interface. For example, setting the debugging quantum can be done by
-// returning a "QUANTUM CPU" string from a terminal.TermRead() implementation.
-//
-// Retrieving information from the debugger is more conveniently and more
-// efficiently achieved with the Get*() commands. For example GetQuantum()
-// returns the emulator's current quantum value.
+// Interaction with the debugger for both user and programs that use the
+// debugger, is through the Terminal interface (see terminal package). Where
+// this is not possible, functions have been provided. For interaction from
+// other goroutines, the PushRawEvent() function should be used.
 package debugger
