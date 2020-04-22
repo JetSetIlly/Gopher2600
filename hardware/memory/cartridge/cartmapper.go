@@ -46,7 +46,15 @@ type cartMapper interface {
 	// being read from disk
 	patch(offset uint16, data uint8) error
 
+	// some cartridge formats have additional RAM. getRAMinfo() returns a copy
+	// of the ram, or nil if the cartridge has no RAM
 	getRAMinfo() []RAMinfo
+
+	// some cartridge formats have indpendent clocks that tick and change
+	// internal cartridge state. the step() function is called every cpu cycle
+	// at a rate of 1.19. cartridges with slower clocks need to handle the rate
+	// change.
+	step()
 }
 
 // optionalSuperchip are implemented by cartMappers that have an optional

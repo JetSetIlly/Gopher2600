@@ -341,3 +341,6 @@ func (cart mnetwork) getRAMinfo() []RAMinfo {
 	cart.ramInfo[1].Label = fmt.Sprintf("256byte [%d]", cart.ram256byteIdx)
 	return cart.ramInfo
 }
+
+func (cart *mnetwork) step() {
+}

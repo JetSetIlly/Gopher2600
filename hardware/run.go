@@ -56,6 +56,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		}
 
 		vcs.RIOT.Step()
+		vcs.Mem.Cart.Step()
 
 		return nil
 	}

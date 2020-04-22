@@ -180,6 +180,9 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newTigervision(data)
 	case "AR":
 		// !!TODO: AR cartridge format
+
+	case "DPC":
+		cart.mapper, err = newDPC(data)
 	}
 
 	if addSuperchip {
@@ -253,4 +256,10 @@ func (cart Cartridge) Listen(addr uint16, data uint8) {
 // GetRAMinfo returns an instance of RAMinfo or nil if catridge contains no RAM
 func (cart Cartridge) GetRAMinfo() []RAMinfo {
 	return cart.mapper.getRAMinfo()
+}
+
+// Step should be called every CPU cycle. The attached cartridge may or may not
+// change its state as a result. In fact, very few cartridges care about this.
+func (cart Cartridge) Step() {
+	cart.mapper.step()
 }

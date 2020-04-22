@@ -210,6 +210,9 @@ func (cart atari) getRAMinfo() []RAMinfo {
 	return cart.ramInfo
 }
 
+func (cart *atari) step() {
+}
+
 // atari4k is the original and most straightforward format
 //  o Pitfall
 //  o River Raid

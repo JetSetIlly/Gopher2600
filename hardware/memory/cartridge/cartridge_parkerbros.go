@@ -256,3 +256,6 @@ func (cart *parkerBros) patch(addr uint16, data uint8) error {
 func (cart parkerBros) getRAMinfo() []RAMinfo {
 	return nil
 }
+
+func (cart *parkerBros) step() {
+}

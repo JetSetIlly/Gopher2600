@@ -197,3 +197,6 @@ func (cart *tigervision) patch(addr uint16, data uint8) error {
 func (cart tigervision) getRAMinfo() []RAMinfo {
 	return nil
 }
+
+func (cart *tigervision) step() {
+}

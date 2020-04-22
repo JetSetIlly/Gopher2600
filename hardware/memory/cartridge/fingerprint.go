@@ -79,6 +79,15 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 			return err
 		}
 
+	case 10240:
+		fallthrough
+
+	case 10495:
+		cart.mapper, err = newDPC(data)
+		if err != nil {
+			return err
+		}
+
 	case 12288:
 		cart.mapper, err = newCBS(data)
 		if err != nil {

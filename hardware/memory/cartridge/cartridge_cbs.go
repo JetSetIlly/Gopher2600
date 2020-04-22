@@ -180,3 +180,6 @@ func (cart cbs) getRAMinfo() []RAMinfo {
 
 	return cart.ramInfo
 }
+
+func (cart *cbs) step() {
+}

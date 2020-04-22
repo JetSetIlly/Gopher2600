@@ -95,3 +95,6 @@ func (cart *ejected) patch(addr uint16, data uint8) error {
 func (cart ejected) getRAMinfo() []RAMinfo {
 	return nil
 }
+
+func (cart *ejected) step() {
+}

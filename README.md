@@ -35,7 +35,7 @@ There is a lot to add to the project but the key ommissions as it currently stan
 * Unimplemented cartridge formats
 	* F0 Megaboy
 	* AR Arcadia
-	* X1 chip (as used in Pitfall 2)
+	* DPC+
 * Disassembly of some cartridge formats is known to be inaccurate
 * Television display does not handle out-of-spec TV signals as it should
 
@@ -123,6 +123,7 @@ or less as you would expect:
 * Wabbit
 * Yar's Revenge
 * Midnight Madness
+* Pitfall 2
 
 ### Homebrew
 * Thrust (v1.2)
@@ -135,7 +136,7 @@ or less as you would expect:
 
 ## Compilation
 
-The project has most recently been tested with Go v1.13.4. It will not work with
+The project has most recently been tested with Go v1.14. It will not work with
 versions earlier than v1.13 because of language features added in that version
 (binary literals).
 
