@@ -235,10 +235,17 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 	return cart.mapper.restoreState(state)
 }
 
-// Listen for data at the specified address. Very wierd requirement of the
-// tigervision cartridge format. If there was a better way of implementing the
-// tigervision format, there'd be no need for this function. Address must be
-// normalised.
+// Listen for data at the specified address.
+//
+// The VCS cartridge port is wired up to all 13 address lines of the 6507.
+// Under normal operation, the chip-select line is used by the cartridge to
+// know when to put data on the data bus. If it's not "on" then the cartridge
+// does nothing.
+//
+// However, the option is there to "listen" on the address bus. Notably the
+// tigervision (3F) format listens for address 0x003f, which is in the TIA
+// address space. When this address is triggered, the tigervision cartridge
+// will use whatever is on the data bus to switch banks.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
 	cart.mapper.listen(addr, data)
 }

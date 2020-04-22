@@ -181,11 +181,12 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	mem.LastAccessID = mem.accessCount
 	mem.accessCount++
 
-	// as incredible as it may seem tigervision cartridges react to memory
-	// writes to (unmapped) addresses in the range 0x00 to 0x3f. the Listen()
-	// function is a horrible solution to this but I can't see how else to
-	// handle it.
-	mem.Cart.Listen(address, data)
+	// see the commentary for the Listen() function in the Cartridge interface
+	// for an explanation for what is going on here. more to the point, we only
+	// need to "listen" if the mapped address is not in Cartridge space
+	if ar != memorymap.Cartridge {
+		mem.Cart.Listen(address, data)
+	}
 
 	return area.(bus.CPUBus).Write(ma, data)
 }

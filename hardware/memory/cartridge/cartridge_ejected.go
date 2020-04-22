@@ -32,17 +32,18 @@ const ejectedMethod = "ejected"
 // ejected implements the cartMapper interface.
 
 type ejected struct {
-	method string
+	description string
 }
 
 func newEjected() *ejected {
-	cart := &ejected{method: ejectedMethod}
+	cart := &ejected{}
+	cart.description = ejectedName
 	cart.initialise()
 	return cart
 }
 
 func (cart ejected) String() string {
-	return cart.method
+	return cart.description
 }
 
 func (cart ejected) format() string {
@@ -88,7 +89,7 @@ func (cart *ejected) poke(addr uint16, data uint8) error {
 }
 
 func (cart *ejected) patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.method)
+	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
 func (cart ejected) getRAMinfo() []RAMinfo {

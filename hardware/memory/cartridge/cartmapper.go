@@ -34,9 +34,8 @@ type cartMapper interface {
 	saveState() interface{}
 	restoreState(interface{}) error
 
-	// tigervision cartridges have a very wierd bank-switching method that
-	// require a way of notifying the cartridge of writes to addresses outside
-	// of cartridge space
+	// see the commentary for the Listen() function in the Cartridge type for
+	// an explanation for what this does
 	listen(addr uint16, data uint8)
 
 	// poke new value anywhere into currently selected bank of cartridge memory
