@@ -44,6 +44,9 @@ type winRAM struct {
 
 	// we know this value after the first pass
 	headerRowStart float32
+
+	// height required to display VCS RAM in its entirity. calculated value
+	vcsRAMheight float32
 }
 
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
@@ -83,14 +86,28 @@ func (win *winRAM) draw() {
 
 	if len(win.img.lazy.Cart.RAMinfo) > 0 {
 		imgui.BeginTabBar("")
+
 		if imgui.BeginTabItemV(win.vcsRAMinfo.Label, nil, 0) {
+
+			// calculate the height required to display VCS RAM in its
+			// entirity. we reuse this to limit the amount of space used to
+			// show cart RAM
+			vcsRAMheight := imgui.CursorPosY()
 			win.drawGrid(win.vcsRAMinfo)
+			win.vcsRAMheight = imgui.CursorPosY() - vcsRAMheight
+
 			imgui.EndTabItem()
 		}
+
 		for i := 0; i < len(win.img.lazy.Cart.RAMinfo); i++ {
 			if win.img.lazy.Cart.RAMinfo[i].Active {
 				if imgui.BeginTabItemV(win.img.lazy.Cart.RAMinfo[i].Label, nil, 0) {
+
+					// display cart RAM and limit the amount of space it requires
+					imgui.BeginChildV(fmt.Sprintf("cartRAM##%d", i), imgui.Vec2{X: 0, Y: win.vcsRAMheight}, false, 0)
 					win.drawGrid(win.img.lazy.Cart.RAMinfo[i])
+					imgui.EndChild()
+
 					imgui.EndTabItem()
 				}
 			}
