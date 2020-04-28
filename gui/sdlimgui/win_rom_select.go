@@ -39,9 +39,9 @@ type winSelectROM struct {
 	entries  []os.FileInfo
 	err      error
 
-	selectedFile     string
-	showInvalidSizes bool
-	showHidden       bool
+	selectedFile string
+	showAllFiles bool
+	showHidden   bool
 
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
@@ -49,9 +49,9 @@ type winSelectROM struct {
 
 func newFileSelector(img *SdlImgui) (managedWindow, error) {
 	win := &winSelectROM{
-		img:              img,
-		showInvalidSizes: false,
-		showHidden:       false,
+		img:          img,
+		showAllFiles: false,
+		showHidden:   false,
 	}
 
 	path, err := os.Getwd()
@@ -130,7 +130,7 @@ func (win *winSelectROM) draw() {
 		}
 
 		// ignore invalid file sizes
-		if !win.showInvalidSizes && !(fi.Size() == 2048 || fi.Size()%4096 == 0) {
+		if !win.showAllFiles && strings.ToLower(filepath.Ext(fi.Name())) != ".bin" {
 			continue
 		}
 
@@ -149,7 +149,7 @@ func (win *winSelectROM) draw() {
 	// control buttons. start controlHeight measurement
 	controlHeight := imgui.CursorPosY()
 
-	imgui.Checkbox("Show invalid sizes", &win.showInvalidSizes)
+	imgui.Checkbox("Show all files", &win.showAllFiles)
 	imgui.SameLine()
 	imgui.Checkbox("Show hidden entries", &win.showHidden)
 
