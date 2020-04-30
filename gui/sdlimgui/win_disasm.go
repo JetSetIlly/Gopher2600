@@ -101,13 +101,13 @@ func (win *winDisasm) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winDisasmTitle, &win.open, 0)
 
-	imgui.Text(win.img.lazy.Cart.Summary)
+	imgui.Text(win.img.lz.Cart.Summary)
 	imgui.Spacing()
 	imgui.Spacing()
 
-	if win.img.lazy.Dsm != nil {
+	if win.img.lz.Dsm != nil {
 		// the bank that is currently selected
-		currBank := win.img.lazy.Cart.CurrBank
+		currBank := win.img.lz.Cart.CurrBank
 
 		// the value of pcAddr depends on the state of the CPU. if the
 		// Final state of the CPU's last execution result is true then we
@@ -115,21 +115,21 @@ func (win *winDisasm) draw() {
 		// instruction. we need this because we can never be sure when we
 		// are going to draw this window
 		var pcaddr uint16
-		cpuStep := win.img.lazy.CPU.LastResult.Final
+		cpuStep := win.img.lz.CPU.LastResult.Final
 		if cpuStep {
-			pcaddr = win.img.lazy.CPU.PCaddr
+			pcaddr = win.img.lz.CPU.PCaddr
 		} else {
 			// note that we're using LastResult straight from the CPU not the
 			// copy in debugger.LastDisasmEntry. the latter gets updated too
 			// late for our needs
-			pcaddr = win.img.lazy.CPU.LastResult.Address
+			pcaddr = win.img.lz.CPU.LastResult.Address
 		}
 
 		// sometimes a cartridge will try to run instructions from VCS RAM.
 		// for presentation purposes this means that we show a "VCS RAM" tab
 		nonCart := !memorymap.IsArea(pcaddr, memorymap.Cartridge)
 
-		if win.img.lazy.Cart.NumBanks == 1 {
+		if win.img.lz.Cart.NumBanks == 1 {
 			// for cartridges with just one bank we don't bother with a TabBar
 			win.drawBank(pcaddr, 0, !nonCart, cpuStep)
 		} else {
@@ -137,7 +137,7 @@ func (win *winDisasm) draw() {
 			// adding a page for each one
 			imgui.BeginTabBar("")
 
-			for b := 0; b < win.img.lazy.Cart.NumBanks; b++ {
+			for b := 0; b < win.img.lz.Cart.NumBanks; b++ {
 				// set tab flags. select the tab that represents the
 				// bank currently being referenced by the VCS
 				flgs := imgui.TabItemFlagsNone
@@ -200,7 +200,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
 	}
-	itr, count, err := win.img.lazy.Dsm.NewIteration(lvl, b)
+	itr, count, err := win.img.lz.Dsm.NewIteration(lvl, b)
 
 	// check that NewIteration has succeeded. if it hasn't it probably means
 	// the cart has changed in the middle of the draw routine. but that's okay,
@@ -321,35 +321,35 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	s := win.img.lazy.Dsm.GetField(disassembly.FldAddress, e)
+	s := win.img.lz.Dsm.GetField(disassembly.FldAddress, e)
 	imgui.Text(s)
 
 	if win.showByteCode {
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode.Plus(adj))
-		s := win.img.lazy.Dsm.GetField(disassembly.FldBytecode, e)
+		s := win.img.lz.Dsm.GetField(disassembly.FldBytecode, e)
 		imgui.Text(s)
 		imgui.PopStyleColorV(1)
 	}
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
-	s = win.img.lazy.Dsm.GetField(disassembly.FldMnemonic, e)
+	s = win.img.lz.Dsm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand.Plus(adj))
-	s = win.img.lazy.Dsm.GetField(disassembly.FldOperand, e)
+	s = win.img.lz.Dsm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles.Plus(adj))
-	s = win.img.lazy.Dsm.GetField(disassembly.FldDefnCycles, e)
+	s = win.img.lz.Dsm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-	s = win.img.lazy.Dsm.GetField(disassembly.FldDefnNotes, e)
+	s = win.img.lz.Dsm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(5)
@@ -368,12 +368,12 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 	// single click toggles a PC breakpoint on the entries address
 	//if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseClicked(0) {
 	if imgui.IsItemClicked() {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.TogglePCBreak(e) })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.TogglePCBreak(e) })
 	}
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
-	switch win.img.lazy.HasBreak(e) {
+	switch win.img.lz.HasBreak(e) {
 	case debugger.BrkPCAddress:
 		win.drawGutter(gutterSolid, win.colBreakAddress)
 	case debugger.BrkOther:

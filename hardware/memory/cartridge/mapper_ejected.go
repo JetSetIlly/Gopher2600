@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 const ejectedName = "ejected"
@@ -46,7 +47,7 @@ func (cart ejected) String() string {
 	return cart.description
 }
 
-func (cart ejected) format() string {
+func (cart ejected) id() string {
 	return "-"
 }
 
@@ -81,9 +82,6 @@ func (cart *ejected) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *ejected) listen(addr uint16, data uint8) {
-}
-
 func (cart *ejected) poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
@@ -92,9 +90,12 @@ func (cart *ejected) patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
-func (cart ejected) getRAMinfo() []RAMinfo {
-	return nil
+func (cart *ejected) listen(addr uint16, data uint8) {
 }
 
 func (cart *ejected) step() {
+}
+
+func (cart ejected) getRAM() []memorymap.SubArea {
+	return nil
 }

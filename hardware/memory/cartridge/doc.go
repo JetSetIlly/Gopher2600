@@ -27,7 +27,7 @@
 //
 // Currently supported cartridge types are listed below. The strings in
 // quotation marks are the identifiers that should be used to specify a
-// particular format in the Format field of cartridgeloader.Loader:
+// particular mapping in the Mapping field of cartridgeloader.Loader:
 //
 // Atari 2k			"2k"
 // Atari 4k			"4k"

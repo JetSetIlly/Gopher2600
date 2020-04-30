@@ -52,19 +52,12 @@ func NewCartridge() *Cartridge {
 }
 
 func (cart Cartridge) String() string {
-	return cart.Summary()
-}
-
-// Summary returns brief information about the cartridge. Two lines: first line
-// is the path to the cartridge and the second line is information about the
-// mapper, including bank information
-func (cart Cartridge) Summary() string {
 	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
 }
 
-// Format returns the cartridge format ID
-func (cart Cartridge) Format() string {
-	return cart.mapper.format()
+// ID returns the cartridge mapping ID
+func (cart Cartridge) ID() string {
+	return cart.mapper.id()
 }
 
 // Peek is an implementation of memory.DebuggerBus. Address must be normalised.
@@ -132,15 +125,15 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// the following implementation details have been cribbed from Kevin
 	// Horton's "Cart Information" document [sizes.txt]
 
-	cartload.Format = strings.ToUpper(cartload.Format)
+	cartload.Mapping = strings.ToUpper(cartload.Mapping)
 
-	if cartload.Format == "" || cartload.Format == "AUTO" {
+	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
 		return cart.fingerprint(data)
 	}
 
 	addSuperchip := false
 
-	switch cartload.Format {
+	switch cartload.Mapping {
 	case "2k":
 		cart.mapper, err = newAtari2k(data)
 	case "4k":
@@ -171,7 +164,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "FA":
 		cart.mapper, err = newCBS(data)
 	case "FE":
-		// !!TODO: FE cartridge format
+		// !!TODO: FE cartridge mapping
 	case "E0":
 		cart.mapper, err = newparkerBros(data)
 	case "E7":
@@ -179,7 +172,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "3F":
 		cart.mapper, err = newTigervision(data)
 	case "AR":
-		// !!TODO: AR cartridge format
+		// !!TODO: AR cartridge mapping
 
 	case "DPC":
 		cart.mapper, err = newDPC(data)
@@ -209,9 +202,6 @@ func (cart Cartridge) NumBanks() int {
 }
 
 // GetBank returns the current bank number for the specified address
-//
-// WARNING: For some cartridge types this is the same as asking for the current
-// address
 //
 // Address must be a normlised cartridge address.
 func (cart Cartridge) GetBank(addr uint16) int {
@@ -246,20 +236,30 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 // does nothing.
 //
 // However, the option is there to "listen" on the address bus. Notably the
-// tigervision (3F) format listens for address 0x003f, which is in the TIA
+// tigervision (3F) mapping listens for address 0x003f, which is in the TIA
 // address space. When this address is triggered, the tigervision cartridge
 // will use whatever is on the data bus to switch banks.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
 	cart.mapper.listen(addr, data)
 }
 
-// GetRAMinfo returns an instance of RAMinfo or nil if catridge contains no RAM
-func (cart Cartridge) GetRAMinfo() []RAMinfo {
-	return cart.mapper.getRAMinfo()
-}
-
 // Step should be called every CPU cycle. The attached cartridge may or may not
 // change its state as a result. In fact, very few cartridges care about this.
 func (cart Cartridge) Step() {
 	cart.mapper.step()
+}
+
+// GetRAM returns an array of memorymap.SubArea or nil if catridge contains no RAM
+func (cart Cartridge) GetRAM() []memorymap.SubArea {
+	return cart.mapper.getRAM()
+}
+
+// GetStaticArea returns interface to StaticArea of the cartridge. Unlike other
+// optional cartridge features (RAM, stepping, listening), static areas can
+// only be acceseed through the returned interface.
+func (cart Cartridge) GetStaticArea() StaticArea {
+	if sa, ok := cart.mapper.(StaticArea); ok {
+		return sa
+	}
+	return nil
 }

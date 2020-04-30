@@ -23,7 +23,7 @@ import "sync/atomic"
 
 // LazyPlayer lazily accesses player information from the emulator.
 type LazyPlayer struct {
-	val *Values
+	val *Lazy
 	id  int
 
 	atomicResetPixel    atomic.Value // int
@@ -63,7 +63,7 @@ type LazyPlayer struct {
 	ScanLatchedSizeAndCopies uint8
 }
 
-func newLazyPlayer(val *Values, id int) *LazyPlayer {
+func newLazyPlayer(val *Lazy, id int) *LazyPlayer {
 	return &LazyPlayer{val: val, id: id}
 }
 

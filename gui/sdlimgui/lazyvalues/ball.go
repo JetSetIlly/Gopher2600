@@ -23,7 +23,7 @@ import "sync/atomic"
 
 // LazyBall lazily accesses player information from the emulator.
 type LazyBall struct {
-	val *Values
+	val *Lazy
 
 	atomicResetPixel    atomic.Value // int
 	atomicHmovedPixel   atomic.Value // int
@@ -56,7 +56,7 @@ type LazyBall struct {
 	EncCpy        int
 }
 
-func newLazyBall(val *Values) *LazyBall {
+func newLazyBall(val *Lazy) *LazyBall {
 	return &LazyBall{val: val}
 }
 

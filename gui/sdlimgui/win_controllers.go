@@ -54,14 +54,13 @@ func (win *winControllers) id() string {
 	return winControllersTitle
 }
 
-// draw is called by service loop
 func (win *winControllers) draw() {
 	if !win.open {
 		return
 	}
 
-	if win.img.lazy.Controller.HandController0 == nil ||
-		win.img.lazy.Controller.HandController1 == nil {
+	if win.img.lz.Controller.HandController0 == nil ||
+		win.img.lz.Controller.HandController1 == nil {
 		return
 	}
 
@@ -73,7 +72,7 @@ func (win *winControllers) draw() {
 	imgui.Text("Left")
 	imgui.Spacing()
 
-	c := win.img.lazy.Controller.HandController0.ControllerType.String()
+	c := win.img.lz.Controller.HandController0.ControllerType.String()
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV("##handController0", c, imgui.ComboFlagNoArrowButton) {
@@ -88,7 +87,7 @@ func (win *winControllers) draw() {
 	}
 	imgui.PopItemWidth()
 
-	auto := win.img.lazy.Controller.HandController0.AutoControllerType
+	auto := win.img.lz.Controller.HandController0.AutoControllerType
 	if imgui.Checkbox("Auto##auto0", &auto) {
 		var termCmd string
 		if auto {
@@ -106,7 +105,7 @@ func (win *winControllers) draw() {
 	imgui.Text("Right")
 	imgui.Spacing()
 
-	c = win.img.lazy.Controller.HandController1.ControllerType.String()
+	c = win.img.lz.Controller.HandController1.ControllerType.String()
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV("##handController1", c, imgui.ComboFlagNoArrowButton) {
@@ -121,7 +120,7 @@ func (win *winControllers) draw() {
 	}
 	imgui.PopItemWidth()
 
-	auto = win.img.lazy.Controller.HandController1.AutoControllerType
+	auto = win.img.lz.Controller.HandController1.AutoControllerType
 	if imgui.Checkbox("Auto##auto1", &auto) {
 		var termCmd string
 		if auto {

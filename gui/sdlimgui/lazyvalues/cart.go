@@ -23,29 +23,37 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // LazyCart lazily accesses cartridge information from the emulator.
 type LazyCart struct {
-	val *Values
+	val *Lazy
 
-	atomicSummary  atomic.Value // string
-	atomicFilename atomic.Value // string
-	atomicNumBanks atomic.Value // int
-	atomicCurrBank atomic.Value // int
-	atomicRAMinfo  atomic.Value // []cartridge.RAMinfo
+	atomicID         atomic.Value // string
+	atomicSummary    atomic.Value // string
+	atomicFilename   atomic.Value // string
+	atomicNumBanks   atomic.Value // int
+	atomicCurrBank   atomic.Value // int
+	atomicRAMdetails atomic.Value // []memorymap.SubArea
 
-	Summary  string
-	Filename string
-	NumBanks int
-	CurrBank int
-	RAMinfo  []cartridge.RAMinfo
+	atomicStaticArea        atomic.Value // cartridge.StaticArea
+	atomicStaticAreaPresent atomic.Value // bool
 
-	// ramInfoRef is used to detect if a new allocation is required
-	ramInfoRef *[]cartridge.RAMinfo
+	ID         string
+	Summary    string
+	Filename   string
+	NumBanks   int
+	CurrBank   int
+	RAMdetails []memorymap.SubArea
+
+	// StaticArea is an interface to the cartridge mapper. interface functions
+	// need to be called through PushRawEvent()
+	StaticArea        cartridge.StaticArea
+	StaticAreaPresent bool
 }
 
-func newLazyCart(val *Values) *LazyCart {
+func newLazyCart(val *Lazy) *LazyCart {
 	return &LazyCart{val: val}
 }
 
@@ -57,27 +65,31 @@ func (lz *LazyCart) update() {
 	PCaddr := lz.val.CPU.PCaddr
 
 	lz.val.Dbg.PushRawEvent(func() {
+		lz.atomicID.Store(lz.val.VCS.Mem.Cart.ID())
 		lz.atomicSummary.Store(lz.val.VCS.Mem.Cart.String())
 		lz.atomicFilename.Store(lz.val.VCS.Mem.Cart.Filename)
 		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks())
-
-		// uses lazy PCaddr value from lazyvalues.CPU
+		lz.atomicRAMdetails.Store(lz.val.VCS.Mem.Cart.GetRAM())
 		lz.atomicCurrBank.Store(lz.val.VCS.Mem.Cart.GetBank(PCaddr))
 
-		// CartRAMinfo() returns a slice so we need to copy each
-		n := lz.val.VCS.Mem.Cart.GetRAMinfo()
-		if lz.ramInfoRef == nil || lz.ramInfoRef != &n {
-			lz.ramInfoRef = &n
-			m := make([]cartridge.RAMinfo, len(n))
-			for i := range n {
-				m[i] = n[i]
-			}
-			lz.atomicRAMinfo.Store(m)
+		sa := lz.val.VCS.Mem.Cart.GetStaticArea()
+		if sa != nil {
+			lz.atomicStaticAreaPresent.Store(true)
+			lz.atomicStaticArea.Store(sa)
+		} else {
+			lz.atomicStaticAreaPresent.Store(false)
 		}
 	})
+
+	lz.ID, _ = lz.atomicID.Load().(string)
 	lz.Summary, _ = lz.atomicSummary.Load().(string)
 	lz.Filename, _ = lz.atomicFilename.Load().(string)
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
 	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
-	lz.RAMinfo, _ = lz.atomicRAMinfo.Load().([]cartridge.RAMinfo)
+	lz.RAMdetails, _ = lz.atomicRAMdetails.Load().([]memorymap.SubArea)
+
+	lz.StaticAreaPresent, _ = lz.atomicStaticAreaPresent.Load().(bool)
+	if lz.StaticAreaPresent {
+		lz.StaticArea, _ = lz.atomicStaticArea.Load().(cartridge.StaticArea)
+	}
 }

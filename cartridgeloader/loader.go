@@ -29,13 +29,13 @@ import (
 )
 
 // Loader is used to specify the cartridge to use when Attach()ing to
-// the VCS. it also permits the called to specify the format of the cartridge
+// the VCS. it also permits the called to specify the mapping of the cartridge
 // (if necessary. fingerprinting is pretty good)
 type Loader struct {
 	Filename string
 
 	// empty string or "AUTO" indicates automatic fingerprinting
-	Format string
+	Mapping string
 
 	// expected hash of the loaded cartridge. empty string indicates that the
 	// hash is unknown and need not be validated

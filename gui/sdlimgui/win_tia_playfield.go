@@ -29,9 +29,9 @@ import (
 )
 
 func (win *winTIA) drawPlayfield() {
-	lz := win.img.lazy.Playfield
-	pf := win.img.lazy.VCS.TIA.Video.Playfield
-	bl := win.img.lazy.VCS.TIA.Video.Ball
+	lz := win.img.lz.Playfield
+	pf := win.img.lz.VCS.TIA.Video.Playfield
+	bl := win.img.lz.VCS.TIA.Video.Ball
 
 	imgui.Spacing()
 
@@ -43,9 +43,9 @@ func (win *winTIA) drawPlayfield() {
 	fgCol := lz.ForegroundColor
 	if win.img.imguiSwatch(fgCol) {
 		win.popupPalette.request(&fgCol, func() {
-			win.img.lazy.Dbg.PushRawEvent(func() { pf.ForegroundColor = fgCol })
+			win.img.lz.Dbg.PushRawEvent(func() { pf.ForegroundColor = fgCol })
 			// update ball color too
-			win.img.lazy.Dbg.PushRawEvent(func() { bl.Color = fgCol })
+			win.img.lz.Dbg.PushRawEvent(func() { bl.Color = fgCol })
 		})
 	}
 
@@ -54,7 +54,7 @@ func (win *winTIA) drawPlayfield() {
 	bgCol := lz.BackgroundColor
 	if win.img.imguiSwatch(bgCol) {
 		win.popupPalette.request(&bgCol, func() {
-			win.img.lazy.Dbg.PushRawEvent(func() { pf.BackgroundColor = bgCol })
+			win.img.lz.Dbg.PushRawEvent(func() { pf.BackgroundColor = bgCol })
 		})
 	}
 	imgui.EndGroup()
@@ -67,27 +67,27 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.img.lazy.Dbg.PushRawEvent(func() {
+		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Reflected = ref
-			win.img.lazy.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 	imgui.SameLine()
 	imguiText("Scoremode")
 	sm := lz.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
-		win.img.lazy.Dbg.PushRawEvent(func() {
+		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Scoremode = sm
-			win.img.lazy.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 	imgui.SameLine()
 	imguiText("Priority")
 	pri := lz.Priority
 	if imgui.Checkbox("##priority", &pri) {
-		win.img.lazy.Dbg.PushRawEvent(func() {
+		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Priority = pri
-			win.img.lazy.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 
@@ -98,7 +98,7 @@ func (win *winTIA) drawPlayfield() {
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", !win.img.paused, 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() {
+			win.img.lz.Dbg.PushRawEvent(func() {
 				pf.SetCTRLPF(uint8(v))
 
 				// update ball copy of CTRLPF too
@@ -128,7 +128,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFilled(col) {
 			pf0d ^= 0x80 >> i
-			win.img.lazy.Dbg.PushRawEvent(func() { pf.SetPF0(pf0d) })
+			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF0(pf0d) })
 		}
 		seq.sameLine()
 	}
@@ -149,7 +149,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFilled(col) {
 			pf1d ^= 0x80 >> i
-			win.img.lazy.Dbg.PushRawEvent(func() { pf.SetPF1(pf1d) })
+			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF1(pf1d) })
 		}
 		seq.sameLine()
 	}
@@ -170,7 +170,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFilled(col) {
 			pf2d ^= 0x80 >> i
-			win.img.lazy.Dbg.PushRawEvent(func() { pf.SetPF2(pf2d) })
+			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF2(pf2d) })
 		}
 		seq.sameLine()
 	}

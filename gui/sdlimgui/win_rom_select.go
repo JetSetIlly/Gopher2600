@@ -165,7 +165,7 @@ func (win *winSelectROM) draw() {
 		var s string
 
 		// load or reload button
-		if win.selectedFile == win.img.lazy.Cart.Filename {
+		if win.selectedFile == win.img.lz.Cart.Filename {
 			s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
 		} else {
 			s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
@@ -204,12 +204,12 @@ func (win *winSelectROM) setOpen(open bool) {
 		win.open = true
 
 		// goto current cartridge location
-		f, err := filepath.Abs(win.img.lazy.Cart.Filename)
+		f, err := filepath.Abs(win.img.lz.Cart.Filename)
 		if err != nil {
-			f = win.img.lazy.Cart.Filename
+			f = win.img.lz.Cart.Filename
 		}
 		win.setPath(filepath.Dir(f))
-		win.selectedFile = win.img.lazy.Cart.Filename
+		win.selectedFile = win.img.lz.Cart.Filename
 
 		return
 	}

@@ -23,7 +23,7 @@ import "sync/atomic"
 
 // LazyTimer lazily accesses RIOT timer information from the emulator.
 type LazyTimer struct {
-	val *Values
+	val *Lazy
 
 	atomicDivider        atomic.Value // string
 	atomicINTIMvalue     atomic.Value // uint8
@@ -34,7 +34,7 @@ type LazyTimer struct {
 	TicksRemaining int
 }
 
-func newLazyTimer(val *Values) *LazyTimer {
+func newLazyTimer(val *Lazy) *LazyTimer {
 	return &LazyTimer{val: val}
 }
 

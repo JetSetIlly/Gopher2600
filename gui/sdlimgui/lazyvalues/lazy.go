@@ -25,14 +25,13 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Values contains all values required by a debugger running in a different
+// Lazy contains all values required by a debugger running in a different
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
-type Values struct {
+type Lazy struct {
 	// these fields are racy, they should not be accessed except through the
 	// lazy evaluation system
 	VCS *hardware.VCS
@@ -54,7 +53,7 @@ type Values struct {
 	Cart       *LazyCart
 	Controller *LazyControllers
 
-	// \/\/\/ the following are read on demand rather than thorugh the update
+	// \/\/\/ the following are updated on demand rather than through the update
 	// function, because they require more context
 	//
 	// there are no corresponding, non-atomic values for these slices. instead
@@ -72,8 +71,8 @@ type Values struct {
 }
 
 // NewValues is the preferred method of initialisation for the Values type
-func NewValues() *Values {
-	val := &Values{}
+func NewValues() *Lazy {
+	val := &Lazy{}
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -100,7 +99,7 @@ func NewValues() *Values {
 }
 
 // Update lazy values, with the exception of RAM and break information.
-func (val *Values) Update() {
+func (val *Lazy) Update() {
 	if val.VCS == nil || val.Dbg == nil {
 		return
 	}
@@ -120,21 +119,21 @@ func (val *Values) Update() {
 }
 
 // ReadRAM returns the data at read address
-func (val *Values) ReadRAM(raminfo cartridge.RAMinfo, readAddr uint16) uint8 {
+func (val *Lazy) ReadRAM(ramDetails memorymap.SubArea, readAddr uint16) uint8 {
 	if val.Dbg == nil {
 		return 0
 	}
 
 	val.Dbg.PushRawEvent(func() {
 		d, _ := val.VCS.Mem.Read(readAddr)
-		val.atomicRAM[readAddr^raminfo.ReadOrigin].Store(d)
+		val.atomicRAM[readAddr^ramDetails.ReadOrigin].Store(d)
 	})
-	d, _ := val.atomicRAM[readAddr^raminfo.ReadOrigin].Load().(uint8)
+	d, _ := val.atomicRAM[readAddr^ramDetails.ReadOrigin].Load().(uint8)
 	return d
 }
 
 // HasBreak checks to see if disassembly entry has a break point
-func (val *Values) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
+func (val *Lazy) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
 	if val.Dbg == nil {
 		return debugger.BrkNone
 	}

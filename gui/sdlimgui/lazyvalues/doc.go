@@ -31,7 +31,7 @@
 // is not available through either of those systems or which would be too slow
 // to retrieve through the terminal.
 //
-// Reading values from the emulator can be done through the Values types and/or
+// Reading values from the emulator can be done through the Lazy types and/or
 // through one of the sub-types. For example, retrieving the foreground color
 // of the playfield:
 //
@@ -45,7 +45,7 @@
 //
 //	lazyval.Dbg.PushRawEvent(func() { lazyval.VCS.TIA.Video.Playfield.ForegroundColor = fgCol })
 //
-// Note that the Debugger and VCS instances are exposed by the Values type in
+// Note that the Debugger and VCS instances are exposed by the Lazy type in
 // this package but these *must not* be used except through PushRawEvent.
 //
 // Because of the nature of the lazyvalues system, variable scope needs to be

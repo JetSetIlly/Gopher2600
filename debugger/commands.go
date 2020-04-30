@@ -296,6 +296,33 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 						return false, err
 					}
 				}
+			case "STATIC":
+				sa := dbg.vcs.Mem.Cart.GetStaticArea()
+				if sa != nil {
+					s := &strings.Builder{}
+
+					// header for static data table
+					s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+					s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+					j := uint16(0)
+					for i := 0; i < sa.StaticSize(); i++ {
+						// begin new row every 16 iterations
+						if j%16 == 0 {
+							s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+						}
+						d, err := sa.StaticRead(uint16(i))
+						if err != nil {
+							return false, err
+						}
+						s.WriteString(fmt.Sprintf("%02x ", d))
+						j++
+					}
+
+					dbg.printInstrument(s)
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "cartridge does not have static area")
+				}
 			}
 		} else {
 			dbg.printInstrument(dbg.vcs.Mem.Cart)
@@ -710,30 +737,41 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "CART":
-				cartRAM := dbg.vcs.Mem.Cart.GetRAMinfo()
-				s := &strings.Builder{}
+				cr := dbg.vcs.Mem.Cart.GetRAM()
+				if len(cr) > 0 {
+					s := &strings.Builder{}
 
-				for b := 0; b < len(cartRAM); b++ {
-					if !cartRAM[b].Active {
-						continue
-					}
-
-					// header for table. assumes that origin address begins at xxx0
-					s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-					s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-					j := uint16(0)
-					for i := cartRAM[b].ReadOrigin; i <= cartRAM[b].ReadMemtop; i++ {
-						if j%16 == 0 {
-							s.WriteString(fmt.Sprintf("\n%03x- | ", i/16))
+					for b := 0; b < len(cr); b++ {
+						if !cr[b].Active {
+							continue
 						}
-						d, _ := dbg.vcs.Mem.Read(cartRAM[b].ReadOrigin + j)
-						s.WriteString(fmt.Sprintf("%02x ", d))
-						j++
-					}
-				}
 
-				dbg.printInstrument(s)
+						// if there are multiple RAM areas then include the
+						// area label
+						if len(cr) > 1 {
+							s.WriteString(cr[b].Label + "\n")
+						}
+
+						// header for table. assumes that origin address begins at xxx0
+						s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+						s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+						j := uint16(0)
+						for i := cr[b].ReadOrigin; i <= cr[b].ReadMemtop; i++ {
+							// begin new row every 16 iterations
+							if j%16 == 0 {
+								s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+							}
+							d, _ := dbg.vcs.Mem.Read(cr[b].ReadOrigin + j)
+							s.WriteString(fmt.Sprintf("%02x ", d))
+							j++
+						}
+					}
+
+					dbg.printInstrument(s)
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "cartridge does not have any RAM")
+				}
 			}
 		} else {
 			dbg.printInstrument(dbg.vcs.Mem.RAM)

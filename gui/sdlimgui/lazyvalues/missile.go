@@ -23,7 +23,7 @@ import "sync/atomic"
 
 // LazyMissil lazily accesses player information from the emulator.
 type LazyMissile struct {
-	val *Values
+	val *Lazy
 	id  int
 
 	atomicResetPixel    atomic.Value // int
@@ -57,7 +57,7 @@ type LazyMissile struct {
 	EncCpy        int
 }
 
-func newLazyMissile(val *Values, id int) *LazyMissile {
+func newLazyMissile(val *Lazy, id int) *LazyMissile {
 	return &LazyMissile{val: val, id: id}
 }
 

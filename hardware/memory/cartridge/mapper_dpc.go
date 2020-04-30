@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // dpc implements the cartMapper interface.
@@ -26,7 +27,7 @@ import (
 // column, line number & figure references to US patent 4,644,495 are used to
 // support coding decisions.
 type dpc struct {
-	formatID    string
+	mappingID   string
 	description string
 	banks       [][]byte
 	bank        int
@@ -84,12 +85,12 @@ func newDPC(data []byte) (*dpc, error) {
 	const gfxSize = 2048
 
 	cart := &dpc{}
-	cart.formatID = "DPC"
+	cart.mappingID = "DPC"
 	cart.description = "DPC Pitfall2 style"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) < bankSize*cart.numBanks()+gfxSize {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -107,11 +108,11 @@ func newDPC(data []byte) (*dpc, error) {
 }
 
 func (cart dpc) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.formatID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
-func (cart dpc) format() string {
-	return cart.formatID
+func (cart dpc) id() string {
+	return cart.mappingID
 }
 
 func (cart *dpc) initialise() {
@@ -314,9 +315,6 @@ func (cart *dpc) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *dpc) listen(addr uint16, data uint8) {
-}
-
 func (cart *dpc) poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
@@ -325,8 +323,7 @@ func (cart *dpc) patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
-func (cart dpc) getRAMinfo() []RAMinfo {
-	return nil
+func (cart *dpc) listen(addr uint16, data uint8) {
 }
 
 func (cart *dpc) step() {
@@ -357,4 +354,31 @@ func (cart *dpc) step() {
 			}
 		}
 	}
+}
+
+func (cart dpc) getRAM() []memorymap.SubArea {
+	return nil
+}
+
+// StaticRead implements the StaticArea interface
+func (cart dpc) StaticRead(addr uint16) (uint8, error) {
+	if int(addr) >= len(cart.gfx) {
+		return 0, errors.New(errors.CartridgeStaticOOB, addr)
+	}
+
+	return cart.gfx[addr], nil
+}
+
+// StaticWrite implements the StaticArea interface
+func (cart *dpc) StaticWrite(addr uint16, data uint8) error {
+	if int(addr) >= len(cart.gfx) {
+		return errors.New(errors.CartridgeStaticOOB, addr)
+	}
+	cart.gfx[addr] = data
+	return nil
+}
+
+// StaticSize implements the StaticArea interface
+func (cart dpc) StaticSize() int {
+	return len(cart.gfx)
 }

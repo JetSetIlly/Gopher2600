@@ -27,7 +27,7 @@ import (
 
 // LazyPlayfield lazily accesses playfield information from the emulator.
 type LazyPlayfield struct {
-	val *Values
+	val *Lazy
 
 	atomicCtrlpf          atomic.Value // uint8
 	atomicForegroundColor atomic.Value // uint8
@@ -56,7 +56,7 @@ type LazyPlayfield struct {
 	Data            [20]bool
 }
 
-func newLazyPlayfield(val *Values) *LazyPlayfield {
+func newLazyPlayfield(val *Lazy) *LazyPlayfield {
 	return &LazyPlayfield{val: val}
 }
 

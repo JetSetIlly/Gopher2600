@@ -114,16 +114,16 @@ func (win *winControl) draw() {
 	w -= win.fpsLabelDim.X
 
 	// fps slider
-	fps := win.img.lazy.TV.ReqFPS
+	fps := win.img.lz.TV.ReqFPS
 	imgui.PushItemWidth(w)
 	if imgui.SliderFloatV(fpsLabel, &fps, 0.1, 100, "%.1f", 1.0) {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.SetFPS(fps) })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.SetFPS(fps) })
 	}
 	imgui.PopItemWidth()
 
 	// reset to specifcation rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.Dbg.SetFPS(-1) })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.SetFPS(-1) })
 	}
 
 	imgui.End()
@@ -133,7 +133,7 @@ func (win *winControl) drawQuantumToggle() {
 	var videoStep bool
 
 	// make sure we know the current state of the debugger
-	if win.img.lazy.Debugger.Quantum == debugger.QuantumVideo {
+	if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
 		videoStep = true
 	}
 

@@ -42,7 +42,7 @@ const digestEntryID = "digest"
 const (
 	digestFieldMode int = iota
 	digestFieldCartName
-	digestFieldCartFormat
+	digestFieldCartMapping
 	digestFieldTVtype
 	digestFieldNumFrames
 	digestFieldState
@@ -78,7 +78,7 @@ func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, er
 
 	// string fields need no conversion
 	reg.CartLoad.Filename = fields[digestFieldCartName]
-	reg.CartLoad.Format = fields[digestFieldCartFormat]
+	reg.CartLoad.Mapping = fields[digestFieldCartMapping]
 	reg.TVtype = fields[digestFieldTVtype]
 	reg.digest = fields[digestFieldDigest]
 	reg.Notes = fields[digestFieldNotes]
@@ -132,7 +132,7 @@ func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.Mode.String(),
 			reg.CartLoad.Filename,
-			reg.CartLoad.Format,
+			reg.CartLoad.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.stateFile,

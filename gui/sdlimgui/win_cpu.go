@@ -74,11 +74,11 @@ func (win *winCPU) draw() {
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.img.lazy.VCS.CPU.PC)
-	win.drawRegister(win.img.lazy.VCS.CPU.A)
-	win.drawRegister(win.img.lazy.VCS.CPU.X)
-	win.drawRegister(win.img.lazy.VCS.CPU.Y)
-	win.drawRegister(win.img.lazy.VCS.CPU.SP)
+	win.drawRegister(win.img.lz.VCS.CPU.PC)
+	win.drawRegister(win.img.lz.VCS.CPU.A)
+	win.drawRegister(win.img.lz.VCS.CPU.X)
+	win.drawRegister(win.img.lz.VCS.CPU.Y)
+	win.drawRegister(win.img.lz.VCS.CPU.SP)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -98,34 +98,34 @@ func (win *winCPU) draw() {
 }
 
 func (win *winCPU) drawStatusRegister() {
-	sr := win.img.lazy.CPU.StatusReg
+	sr := win.img.lz.CPU.StatusReg
 
 	if win.drawStatusRegisterBit(sr.Sign, "S") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Sign = !sr.Sign })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Sign = !sr.Sign })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Overflow, "O") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Overflow = !sr.Overflow })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Overflow = !sr.Overflow })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Break, "B") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Break = !sr.Break })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Break = !sr.Break })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.DecimalMode, "D") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.DecimalMode = !sr.DecimalMode })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.DecimalMode = !sr.DecimalMode })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.InterruptDisable, "I") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.InterruptDisable = !sr.InterruptDisable })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.InterruptDisable = !sr.InterruptDisable })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Zero, "Z") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Zero = !sr.Zero })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Zero = !sr.Zero })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Carry, "C") {
-		win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.CPU.Status.Carry = !sr.Carry })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Carry = !sr.Carry })
 	}
 
 	imgui.SameLine()
@@ -135,7 +135,7 @@ func (win *winCPU) drawStatusRegister() {
 }
 
 func (win *winCPU) drawRDYFlag() bool {
-	if win.img.lazy.CPU.RdyFlg {
+	if win.img.lz.CPU.RdyFlg {
 		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUFlgRdyOn)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUFlgRdyOn)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUFlgRdyOn)
@@ -169,19 +169,19 @@ func (win *winCPU) drawStatusRegisterBit(bit bool, label string) bool {
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {
-	regLabel := win.img.lazy.CPU.RegLabel(reg)
+	regLabel := win.img.lz.CPU.RegLabel(reg)
 
 	imguiText(fmt.Sprintf("% 2s", regLabel))
 	imgui.SameLine()
 
 	label := fmt.Sprintf("##%s", regLabel)
-	content := win.img.lazy.CPU.RegValue(reg)
-	bitwidth := win.img.lazy.CPU.RegBitwidth(reg)
+	content := win.img.lz.CPU.RegValue(reg)
+	bitwidth := win.img.lz.CPU.RegBitwidth(reg)
 
 	imgui.PushItemWidth(win.regDim.X)
 	if imguiHexInput(label, !win.img.paused, bitwidth/4, &content) {
 		if v, err := strconv.ParseUint(content, 16, bitwidth); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { reg.LoadFromUint64(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { reg.LoadFromUint64(v) })
 		}
 	}
 	imgui.PopItemWidth()
@@ -190,7 +190,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 // draw most recent instruction in the CPU or as much as can be interpreted
 // currently
 func (win *winCPU) drawLastResult() {
-	if win.img.lazy.CPU.HasReset {
+	if win.img.lz.CPU.HasReset {
 		imgui.Text("")
 		imgui.Text("")
 		imgui.Text("")
@@ -198,18 +198,18 @@ func (win *winCPU) drawLastResult() {
 		return
 	}
 
-	formattedLastResult, _ := win.img.lazy.Dsm.FormatResult(
-		win.img.lazy.Debugger.LastBank,
-		win.img.lazy.CPU.LastResult,
+	formattedLastResult, _ := win.img.lz.Dsm.FormatResult(
+		win.img.lz.Debugger.LastBank,
+		win.img.lz.CPU.LastResult,
 		disassembly.EntryLevelDecoded)
 
-	if win.img.lazy.CPU.LastResult.Final {
+	if win.img.lz.CPU.LastResult.Final {
 		e := formattedLastResult
 		if e != nil {
 			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 			imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
-			if win.img.lazy.Cart.NumBanks == 1 {
+			if win.img.lz.Cart.NumBanks == 1 {
 				imgui.Text(fmt.Sprintf("(%s)", e.Address))
 			} else {
 				imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
@@ -221,12 +221,12 @@ func (win *winCPU) drawLastResult() {
 	// this is not a completed CPU instruction, we're in the middle of one, so
 	// we need to format the result for the partially completed instruction
 
-	e, _ := win.img.lazy.Dsm.FormatResult(win.img.lazy.Cart.CurrBank, win.img.lazy.CPU.LastResult, disassembly.EntryLevelBlessed)
+	e, _ := win.img.lz.Dsm.FormatResult(win.img.lz.Cart.CurrBank, win.img.lz.CPU.LastResult, disassembly.EntryLevelBlessed)
 	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 	if e.Result.Defn != nil {
 		imgui.Text(fmt.Sprintf("%s of %s cyc", e.ActualCycles, e.DefnCycles))
-		if win.img.lazy.Cart.NumBanks == 1 {
+		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
 			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))

@@ -34,13 +34,13 @@ func (win *winTIA) drawPlayer(num int) {
 	// and horizpos indicator
 	dl := imgui.WindowDrawList()
 
-	lz := win.img.lazy.Player0
-	ps := win.img.lazy.VCS.TIA.Video.Player0
-	ms := win.img.lazy.VCS.TIA.Video.Missile0
+	lz := win.img.lz.Player0
+	ps := win.img.lz.VCS.TIA.Video.Player0
+	ms := win.img.lz.VCS.TIA.Video.Missile0
 	if num != 0 {
-		lz = win.img.lazy.Player1
-		ps = win.img.lazy.VCS.TIA.Video.Player1
-		ms = win.img.lazy.VCS.TIA.Video.Missile1
+		lz = win.img.lz.Player1
+		ps = win.img.lz.VCS.TIA.Video.Player1
+		ms = win.img.lz.VCS.TIA.Video.Missile1
 	}
 
 	imgui.Spacing()
@@ -51,17 +51,17 @@ func (win *winTIA) drawPlayer(num int) {
 	col := lz.Color
 	if win.img.imguiSwatch(col) {
 		win.popupPalette.request(&col, func() {
-			win.img.lazy.Dbg.PushRawEvent(func() { ps.Color = col })
+			win.img.lz.Dbg.PushRawEvent(func() { ps.Color = col })
 
 			// update missile color too
-			win.img.lazy.Dbg.PushRawEvent(func() { ms.Color = col })
+			win.img.lz.Dbg.PushRawEvent(func() { ms.Color = col })
 		})
 	}
 
 	imguiText("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.img.lazy.Dbg.PushRawEvent(func() { ps.Reflected = ref })
+		win.img.lz.Dbg.PushRawEvent(func() { ps.Reflected = ref })
 	}
 
 	imgui.SameLine()
@@ -70,7 +70,7 @@ func (win *winTIA) drawPlayer(num int) {
 	if imgui.Checkbox("##vertdelay", &vd) {
 		// vertical delay affects which gfx register to use. set vertical delay
 		// using the SetVerticalDelay function
-		win.img.lazy.Dbg.PushRawEvent(func() { ps.SetVerticalDelay(vd) })
+		win.img.lz.Dbg.PushRawEvent(func() { ps.SetVerticalDelay(vd) })
 	}
 
 	imgui.Spacing()
@@ -83,7 +83,7 @@ func (win *winTIA) drawPlayer(num int) {
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
 		}
 	}
 	imgui.PopItemWidth()
@@ -93,7 +93,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d") {
-		win.img.lazy.Dbg.PushRawEvent(func() { ps.Hmove = uint8(hmoveSlider + 8) })
+		win.img.lz.Dbg.PushRawEvent(func() { ps.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 
@@ -114,7 +114,7 @@ func (win *winTIA) drawPlayer(num int) {
 		}
 		if ngfxSeq.rectFilled(col) {
 			od ^= 0x80 >> i
-			win.img.lazy.Dbg.PushRawEvent(func() { ps.GfxDataNew = od })
+			win.img.lz.Dbg.PushRawEvent(func() { ps.GfxDataNew = od })
 		}
 		ngfxSeq.sameLine()
 
@@ -138,7 +138,7 @@ func (win *winTIA) drawPlayer(num int) {
 		}
 		if ogfxSeq.rectFilled(col) {
 			nd ^= 0x80 >> i
-			win.img.lazy.Dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
+			win.img.lz.Dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
 		}
 		ogfxSeq.sameLine()
 
@@ -178,9 +178,9 @@ func (win *winTIA) drawPlayer(num int) {
 		for k := range video.PlayerSizes {
 			if imgui.Selectable(video.PlayerSizes[k]) {
 				v := uint8(k) // being careful about scope
-				win.img.lazy.Dbg.PushRawEvent(func() {
+				win.img.lz.Dbg.PushRawEvent(func() {
 					ps.SizeAndCopies = v
-					win.img.lazy.VCS.TIA.Video.UpdateNUSIZ(num, false)
+					win.img.lz.VCS.TIA.Video.UpdateNUSIZ(num, false)
 				})
 			}
 		}
@@ -196,7 +196,7 @@ func (win *winTIA) drawPlayer(num int) {
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", !win.img.paused, 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() {
+			win.img.lz.Dbg.PushRawEvent(func() {
 				ps.SetNUSIZ(uint8(v))
 
 				// update missile NUSIZ too

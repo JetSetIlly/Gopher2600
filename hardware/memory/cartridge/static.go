@@ -17,37 +17,19 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package lazyvalues
+package cartridge
 
-import (
-	"sync/atomic"
-
-	"github.com/jetsetilly/gopher2600/debugger"
-)
-
-// LazyDebugger lazily accesses Debgger information
-type LazyDebugger struct {
-	val *Lazy
-
-	atomicQuantum  atomic.Value // debugger.QuantumMode
-	atomicLastBank atomic.Value // int
-	Quantum        debugger.QuantumMode
-	LastBank       int
-}
-
-func newLazyDebugger(val *Lazy) *LazyDebugger {
-	lz := &LazyDebugger{val: val}
-	return lz
-}
-
-func (lz *LazyDebugger) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicLastBank.Store(lz.val.Dbg.GetLastBank())
-		lz.atomicQuantum.Store(lz.val.Dbg.GetQuantum())
-	})
-	lz.Quantum, _ = lz.atomicQuantum.Load().(debugger.QuantumMode)
-
-	if lz.atomicLastBank.Load() != nil {
-		lz.LastBank = lz.atomicLastBank.Load().(int)
-	}
+// StaticArea defines the operations required for a debugger to access
+// non-addressable areas of a cartridge.
+//
+// Some cartridge mappings (eg. DPC) have data that are not addressable by the
+// CPU (using DataFetchers to retreive that data in the case of DPC). For
+// debuggers therefore we cannot use the usual Read()/Write() mechanism or even
+// the Poke() mechanism.
+//
+// Address origin is 0x0000 is memtop is equal to StaticSize()-1.
+type StaticArea interface {
+	StaticRead(addr uint16) (data uint8, err error)
+	StaticWrite(addr uint16, data uint8) error
+	StaticSize() int
 }

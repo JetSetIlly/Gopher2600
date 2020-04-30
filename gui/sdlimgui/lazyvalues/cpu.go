@@ -29,9 +29,9 @@ import (
 
 // LazyCPU lazily accesses CPU information from the emulator.
 type LazyCPU struct {
-	val *Values
+	val *Lazy
 
-	atomicHasReset   atomic.Value //bool
+	atomicHasReset   atomic.Value // bool
 	atomicRdy        atomic.Value // bool
 	atomicPCAddr     atomic.Value // uint16
 	atomicLastResult atomic.Value // execution.Result
@@ -54,7 +54,7 @@ type LazyCPU struct {
 	atomicRegBitwidth map[registers.Generic]atomic.Value // int
 }
 
-func newLazyCPU(val *Values) *LazyCPU {
+func newLazyCPU(val *Lazy) *LazyCPU {
 	lz := &LazyCPU{val: val}
 	lz.atomicRegLabels = make(map[registers.Generic]atomic.Value)
 	lz.atomicRegValues = make(map[registers.Generic]atomic.Value)

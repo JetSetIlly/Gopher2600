@@ -26,22 +26,6 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-// windowManagement can be embedded into a real window struct for
-// basic window management functionality. it partially implements the
-// managedWindow interface
-type windowManagement struct {
-	// prefer use of isOpen()/setOpen() to accssing the open field directly
-	open bool
-}
-
-func (wm *windowManagement) isOpen() bool {
-	return wm.open
-}
-
-func (wm *windowManagement) setOpen(open bool) {
-	wm.open = open
-}
-
 // managedWindow conceptualises the functions required by a window such that
 // it can be managed by the windowManager
 type managedWindow interface {
@@ -55,18 +39,37 @@ type managedWindow interface {
 	setOpen(bool)
 }
 
-// windowManager is the nexus for all windows (including the main menu) in the
-// imgui application
+// windowManagement can be embedded into a real window struct for
+// basic window management functionality. it partially implements the
+// managedWindow interface.
+type windowManagement struct {
+	// prefer use of isOpen()/setOpen() instead of accessing the open field
+	// directly
+	open bool
+}
+
+func (wm *windowManagement) isOpen() bool {
+	return wm.open
+}
+
+func (wm *windowManagement) setOpen(open bool) {
+	wm.open = open
+}
+
+// windowManager is the nexus for all windows and menubar in the imgui
+// application
 type windowManager struct {
 	img *SdlImgui
 
+	// has the window manager gone through the initialisation process
 	hasInitialised bool
 
+	// the collection of managed windows in the system, indexed by window title
 	windows map[string]managedWindow
 
-	// sorted list of windows to appear in the "windows" menu. not all windows
-	// in the windows map need appear in the windowList
-	windowList []string
+	// windows can be open and closed through the menu bar. they are grouped
+	// according to type using the windowMenu constants defined below.
+	windowMenu map[string][]string
 
 	// some windows need to be referenced elsewhere
 	term *winTerm
@@ -85,67 +88,92 @@ type windowManager struct {
 	screenPos imgui.Vec2
 }
 
+// the window menus grouped by type. the types are:
+const (
+	windowMenuMain    = "Windows"
+	windowMenuCart    = "Cartridge"
+	windowMenuSpecial = ""
+
+	// additional window menus are grouped by cartridge type
+)
+
 func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	wm := &windowManager{
 		img:        img,
 		windows:    make(map[string]managedWindow),
-		windowList: make([]string, 0),
+		windowMenu: make(map[string][]string, 0),
 	}
 
-	addWindow := func(create func(img *SdlImgui) (managedWindow, error), open bool, list bool) error {
+	wm.windowMenu[windowMenuSpecial] = make([]string, 0)
+	wm.windowMenu[windowMenuMain] = make([]string, 0)
+
+	// creation function for all managed windows
+	addWindow := func(create func(img *SdlImgui) (managedWindow, error), open bool, group string) error {
 		w, err := create(img)
 		if err != nil {
 			return err
 		}
 
 		wm.windows[w.id()] = w
-		if list {
-			wm.windowList = append(wm.windowList, w.id())
-			sort.Strings(wm.windowList)
-		}
+		wm.windowMenu[group] = append(wm.windowMenu[group], w.id())
+		sort.Strings(wm.windowMenu[group])
 
 		w.setOpen(open)
 
 		return nil
 	}
 
-	if err := addWindow(newWinControl, true, true); err != nil {
+	// create main window types used in the system
+	if err := addWindow(newWinControl, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCPU, true, true); err != nil {
+	if err := addWindow(newWinCPU, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinRAM, true, true); err != nil {
+	if err := addWindow(newWinRAM, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTIA, true, true); err != nil {
+	if err := addWindow(newWinTIA, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTimer, true, true); err != nil {
+	if err := addWindow(newWinTimer, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinDisasm, true, true); err != nil {
+	if err := addWindow(newWinDisasm, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinAudio, true, true); err != nil {
+	if err := addWindow(newWinAudio, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinScreen, true, true); err != nil {
+	if err := addWindow(newWinScreen, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTerm, false, true); err != nil {
+	if err := addWindow(newWinTerm, false, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinControllers, false, true); err != nil {
-		return nil, err
-	}
-
-	if err := addWindow(newFileSelector, false, false); err != nil {
+	if err := addWindow(newWinControllers, false, windowMenuMain); err != nil {
 		return nil, err
 	}
 
+	// conditional windows are associated only with some cartridge types
+	if err := addWindow(newWinStatic, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+
+	// DPC cartridge types
+	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winStaticTitle)
+
+	// get references to specific window types that need to be referenced
+	// elsewhere in the system
 	wm.scr = wm.windows[winScreenTitle].(*winScreen)
 	wm.term = wm.windows[winTermTitle].(*winTerm)
+
+	// file selector is a special window with special handling (does not appear
+	// in any window list)
+	if err := addWindow(newFileSelector, false, windowMenuSpecial); err != nil {
+		return nil, err
+	}
+
 	wm.rsel = wm.windows[winSelectROMTitle].(*winSelectROM)
 
 	return wm, nil
@@ -170,17 +198,17 @@ func (wm *windowManager) destroy() {
 	}
 }
 
-func (wm *windowManager) drawWindows() {
-	if wm.img.lazy.VCS != nil && wm.img.lazy.Dsm != nil {
+func (wm *windowManager) draw() {
+	if wm.img.lz.VCS != nil && wm.img.lz.Dsm != nil {
 		wm.init()
-		wm.drawMainMenu()
+		wm.drawMenu()
 		for w := range wm.windows {
 			wm.windows[w].draw()
 		}
 	}
 }
 
-func (wm *windowManager) drawMainMenu() {
+func (wm *windowManager) drawMenu() {
 	if imgui.BeginMainMenuBar() == false {
 		return
 	}
@@ -199,10 +227,8 @@ func (wm *windowManager) drawMainMenu() {
 	}
 
 	// window menu
-	if imgui.BeginMenu("Windows") {
-		for i := range wm.windowList {
-			id := wm.windowList[i]
-
+	if imgui.BeginMenu(windowMenuMain) {
+		for _, id := range wm.windowMenu[windowMenuMain] {
 			// add decorator indicating if window is currently open
 			w := wm.windows[id]
 			if w.isOpen() {
@@ -223,6 +249,33 @@ func (wm *windowManager) drawMainMenu() {
 		}
 
 		imgui.EndMenu()
+	}
+
+	// add cartridge specific menu
+	if l, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok {
+		if imgui.BeginMenu(wm.img.lz.Cart.ID) {
+			for _, id := range l {
+				// add decorator indicating if window is currently open
+				w := wm.windows[id]
+				if w.isOpen() {
+					// checkmark is unicode middle dot - code 00b7
+					id = fmt.Sprintf("· %s", id)
+				} else {
+					id = fmt.Sprintf("  %s", id)
+				}
+
+				if imgui.Selectable(id) {
+					// open/close window on select
+					if w.isOpen() {
+						w.setOpen(false)
+					} else {
+						w.setOpen(true)
+					}
+				}
+			}
+
+			imgui.EndMenu()
+		}
 	}
 
 	imgui.EndMainMenuBar()

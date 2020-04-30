@@ -93,13 +93,13 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.pause(request.args[0].(bool))
 
 	case gui.ReqAddDebugger:
-		img.lazy.Dbg = request.args[0].(*debugger.Debugger)
+		img.lz.Dbg = request.args[0].(*debugger.Debugger)
 
 	case gui.ReqAddVCS:
-		img.lazy.VCS = request.args[0].(*hardware.VCS)
+		img.lz.VCS = request.args[0].(*hardware.VCS)
 
 	case gui.ReqAddDisasm:
-		img.lazy.Dsm = request.args[0].(*disassembly.Disassembly)
+		img.lz.Dsm = request.args[0].(*disassembly.Disassembly)
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request)

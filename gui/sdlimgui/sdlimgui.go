@@ -43,8 +43,8 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// references to the emulation
-	lazy *lazyvalues.Values
-	tv   television.Television
+	lz *lazyvalues.Lazy
+	tv television.Television
 
 	// terminal interface to the debugger
 	term *term
@@ -117,7 +117,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 
 	// we don't have access to the Debugger, Disassembly or the VCS yet. those
 	// fields in the lazy instance will be set when the requests come in
-	img.lazy = lazyvalues.NewValues()
+	img.lz = lazyvalues.NewValues()
 
 	img.screen = newScreen(img)
 	img.term = newTerm()
@@ -168,8 +168,8 @@ func (img *SdlImgui) pause(set bool) {
 }
 
 func (img *SdlImgui) draw() {
-	if img.lazy.Dbg == nil {
+	if img.lz.Dbg == nil {
 	} else {
-		img.wm.drawWindows()
+		img.wm.draw()
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // from bankswitch_sizes.txt:
@@ -66,7 +67,7 @@ import (
 // read port.  This is needed, because there is no R/W line to the cart.
 
 type atari struct {
-	formatID    string
+	mappingID   string
 	description string
 
 	bankSize int
@@ -78,24 +79,24 @@ type atari struct {
 	// identifies the currently selected bank
 	bank int
 
-	// some ROMs support aditional RAM. in these instances the first 128 bytes
-	// of each bank is mapped to RAM. this is sometimes referred to as the
-	// superchip
-	superchip []uint8
+	// some atari ROMs support aditional RAM. this is sometimes referred to as
+	// the superchip. ram is only added when it is detected (see addSuperchip()
+	// function)
+	ram []uint8
 
-	// ram details
-	ramInfo []RAMinfo
+	// subArea information for cartridge ram
+	ramDetails []memorymap.SubArea
 }
 
 func (cart atari) String() string {
 	if len(cart.banks) == 1 {
 		return cart.description
 	}
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.formatID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
-func (cart atari) format() string {
-	return cart.formatID
+func (cart atari) id() string {
+	return cart.mappingID
 }
 
 func (cart *atari) initialise() {
@@ -106,8 +107,8 @@ func (cart *atari) initialise() {
 	// than the last bank (Hack em Hangly Pac Man)
 	cart.bank = len(cart.banks) - 1
 
-	for i := range cart.superchip {
-		cart.superchip[i] = 0x00
+	for i := range cart.ram {
+		cart.ram[i] = 0x00
 	}
 }
 
@@ -120,37 +121,37 @@ func (cart atari) getBank(addr uint16) int {
 
 func (cart *atari) setBank(addr uint16, bank int) error {
 	if bank < 0 || bank >= len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.formatID, bank))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
 	}
 	cart.bank = bank
 	return nil
 }
 
 func (cart *atari) saveState() interface{} {
-	superchip := make([]uint8, len(cart.superchip))
-	copy(superchip, cart.superchip)
+	superchip := make([]uint8, len(cart.ram))
+	copy(superchip, cart.ram)
 	return []interface{}{cart.bank, superchip}
 }
 
 func (cart *atari) restoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
-	copy(cart.superchip, state.([]interface{})[1].([]uint8))
+	copy(cart.ram, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
 func (cart *atari) read(addr uint16) (uint8, bool) {
-	if cart.superchip != nil {
+	if cart.ram != nil {
 		if addr > 127 && addr < 256 {
-			return cart.superchip[addr-128], true
+			return cart.ram[addr-128], true
 		}
 	}
 	return 0, false
 }
 
 func (cart *atari) write(addr uint16, data uint8) bool {
-	if cart.superchip != nil {
+	if cart.ram != nil {
 		if addr <= 127 {
-			cart.superchip[addr] = data
+			cart.ram[addr] = data
 			return true
 		}
 	}
@@ -173,13 +174,13 @@ func (cart *atari) addSuperchip() bool {
 	}
 
 	// allocate RAM
-	cart.superchip = make([]uint8, 128)
+	cart.ram = make([]uint8, 128)
 
 	// update method string
 	cart.description = fmt.Sprintf("%s (+ superchip RAM)", cart.description)
 
-	cart.ramInfo = make([]RAMinfo, 1)
-	cart.ramInfo[0] = RAMinfo{
+	cart.ramDetails = make([]memorymap.SubArea, 1)
+	cart.ramDetails[0] = memorymap.SubArea{
 		Label:       "Superchip",
 		Active:      true,
 		ReadOrigin:  0x1080,
@@ -189,9 +190,6 @@ func (cart *atari) addSuperchip() bool {
 	}
 
 	return true
-}
-
-func (cart *atari) listen(addr uint16, data uint8) {
 }
 
 func (cart *atari) poke(addr uint16, data uint8) error {
@@ -206,11 +204,14 @@ func (cart *atari) patch(addr uint16, data uint8) error {
 	return nil
 }
 
-func (cart atari) getRAMinfo() []RAMinfo {
-	return cart.ramInfo
+func (cart *atari) listen(addr uint16, data uint8) {
 }
 
 func (cart *atari) step() {
+}
+
+func (cart atari) getRAM() []memorymap.SubArea {
+	return cart.ramDetails
 }
 
 // atari4k is the original and most straightforward format
@@ -231,11 +232,11 @@ func newAtari4k(data []byte) (cartMapper, error) {
 	cart := &atari4k{}
 	cart.bankSize = 4096
 	cart.description = "atari 4k"
-	cart.formatID = "4k"
+	cart.mappingID = "4k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -279,11 +280,11 @@ func newAtari2k(data []byte) (cartMapper, error) {
 	cart := &atari2k{}
 	cart.bankSize = 2048
 	cart.description = "atari 2k"
-	cart.formatID = "2k"
+	cart.mappingID = "2k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -325,11 +326,11 @@ func newAtari8k(data []uint8) (cartMapper, error) {
 	cart := &atari8k{}
 	cart.bankSize = 4096
 	cart.description = "atari 8k"
-	cart.formatID = "F8"
+	cart.mappingID = "F8"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -392,11 +393,11 @@ func newAtari16k(data []byte) (cartMapper, error) {
 	cart := &atari16k{}
 	cart.bankSize = 4096
 	cart.description = "atari 16k"
-	cart.formatID = "F6"
+	cart.mappingID = "F6"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {
@@ -467,11 +468,11 @@ func newAtari32k(data []byte) (cartMapper, error) {
 	cart := &atari32k{}
 	cart.bankSize = 4096
 	cart.description = "atari 32k"
-	cart.formatID = "F4"
+	cart.mappingID = "F4"
 	cart.banks = make([][]uint8, cart.numBanks())
 
 	if len(data) != cart.bankSize*cart.numBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.formatID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.numBanks(); k++ {

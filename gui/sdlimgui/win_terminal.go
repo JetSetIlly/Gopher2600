@@ -65,7 +65,6 @@ func (win *winTerm) id() string {
 	return winTermTitle
 }
 
-// draw is called by service loop
 func (win *winTerm) draw() {
 	done := false
 	for !done {

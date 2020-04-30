@@ -64,7 +64,6 @@ func (win *winScreen) id() string {
 	return winScreenTitle
 }
 
-// draw is called by service loop
 func (win *winScreen) draw() {
 	if !win.open {
 		return
@@ -103,14 +102,14 @@ func (win *winScreen) draw() {
 
 	// tv status line
 	imguiText("Frame:")
-	imguiText(fmt.Sprintf("%-4d", win.img.lazy.TV.Frame))
+	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
 	imgui.SameLineV(0, 15)
 	imguiText("Scanline:")
-	scanline := win.img.lazy.TV.Scanline
+	scanline := win.img.lz.TV.Scanline
 	imguiText(fmt.Sprintf("%-4d", scanline))
 	imgui.SameLineV(0, 15)
 	imguiText("Horiz Pos:")
-	imguiText(fmt.Sprintf("%-4d", win.img.lazy.TV.HP))
+	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.HP))
 
 	// fps indicator
 	imgui.SameLineV(0, 20)
@@ -118,26 +117,26 @@ func (win *winScreen) draw() {
 	if win.img.paused {
 		imguiText("no fps")
 	} else {
-		if win.img.lazy.TV.ReqFPS < 1.0 {
+		if win.img.lz.TV.ReqFPS < 1.0 {
 			imguiText("< 1 fps")
 		} else {
-			imguiText(fmt.Sprintf("%03.1f fps", win.img.lazy.TV.AcutalFPS))
+			imguiText(fmt.Sprintf("%03.1f fps", win.img.lz.TV.AcutalFPS))
 		}
 	}
 
 	// include tv signal information
 	imgui.SameLineV(0, 20)
 	signal := strings.Builder{}
-	if win.img.lazy.TV.LastSignal.VSync {
+	if win.img.lz.TV.LastSignal.VSync {
 		signal.WriteString("VSYNC ")
 	}
-	if win.img.lazy.TV.LastSignal.VBlank {
+	if win.img.lz.TV.LastSignal.VBlank {
 		signal.WriteString("VBLANK ")
 	}
-	if win.img.lazy.TV.LastSignal.CBurst {
+	if win.img.lz.TV.LastSignal.CBurst {
 		signal.WriteString("CBURST ")
 	}
-	if win.img.lazy.TV.LastSignal.HSync {
+	if win.img.lz.TV.LastSignal.HSync {
 		signal.WriteString("HSYNC ")
 	}
 	imgui.Text(signal.String())

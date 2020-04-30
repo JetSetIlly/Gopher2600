@@ -27,7 +27,7 @@ import (
 
 // LazyTV lazily accesses tv information from the emulator.
 type LazyTV struct {
-	val *Values
+	val *Lazy
 
 	atomicSpec       atomic.Value // television.Specification
 	atomicTVStr      atomic.Value // string
@@ -50,7 +50,7 @@ type LazyTV struct {
 	ReqFPS float32
 }
 
-func newLazyTV(val *Values) *LazyTV {
+func newLazyTV(val *Lazy) *LazyTV {
 	return &LazyTV{val: val}
 }
 

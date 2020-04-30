@@ -223,7 +223,7 @@ func launch(sync *mainSync) {
 func play(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
-	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
 	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
@@ -245,7 +245,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
-			Format:   *cartFormat,
+			Mapping:  *mapping,
 		}
 
 		tv, err := television.NewTelevision(*spec)
@@ -320,7 +320,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return errors.New(errors.DebuggerError, err)
 	}
 
-	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
@@ -402,7 +402,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		dbgRun := func() error {
 			cartload := cartridgeloader.Loader{
 				Filename: md.GetArg(0),
-				Format:   *cartFormat,
+				Mapping:  *mapping,
 			}
 			err := dbg.Start(*initScript, cartload)
 			if err != nil {
@@ -440,7 +440,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 func disasm(md *modalflag.Modes) error {
 	md.NewMode()
 
-	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
 	raw := md.AddBool("raw", false, "raw disassembly. show every byte with the disasm decision.")
 	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
@@ -461,7 +461,7 @@ func disasm(md *modalflag.Modes) error {
 
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
-			Format:   *cartFormat,
+			Mapping:  *mapping,
 		}
 		dsm, err := disassembly.FromCartridge(cartload)
 		if err != nil {
@@ -493,7 +493,7 @@ func disasm(md *modalflag.Modes) error {
 func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
-	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	display := md.AddBool("display", false, "display TV output")
 	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
@@ -513,7 +513,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		cartload := cartridgeloader.Loader{
 			Filename: md.GetArg(0),
-			Format:   *cartFormat,
+			Mapping:  *mapping,
 		}
 
 		tv, err := television.NewTelevision(*spec)
@@ -665,7 +665,7 @@ func regress(md *modalflag.Modes) error {
 func regressAdd(md *modalflag.Modes) error {
 	md.NewMode()
 
-	cartFormat := md.AddString("cartformat", "AUTO", "force use of cartridge format")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
 	numframes := md.AddInt("frames", 10, "number of frames to run [cartridge args only]")
 	state := md.AddBool("state", false, "record TV state at every CPU step [cartrdige args only]")
@@ -700,7 +700,7 @@ func regressAdd(md *modalflag.Modes) error {
 		} else {
 			cartload := cartridgeloader.Loader{
 				Filename: md.GetArg(0),
-				Format:   *cartFormat,
+				Mapping:  *mapping,
 			}
 
 			// parse digest mode, failing if string is not recognised

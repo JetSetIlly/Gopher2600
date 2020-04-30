@@ -61,7 +61,6 @@ func (win *winTimer) id() string {
 	return winTimerTitle
 }
 
-// draw is called by service loop
 func (win *winTimer) draw() {
 	if !win.open {
 		return
@@ -71,12 +70,12 @@ func (win *winTimer) draw() {
 	imgui.BeginV(winTimerTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
-	if imgui.BeginComboV("##timerinterval", win.img.lazy.Timer.Divider, imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##timerinterval", win.img.lz.Timer.Divider, imgui.ComboFlagNoArrowButton) {
 		for _, s := range timer.IntervalList {
 			if imgui.Selectable(s) {
 				t := s // being careful about scope
-				win.img.lazy.Dbg.PushRawEvent(func() {
-					win.img.lazy.VCS.RIOT.Timer.SetInterval(t)
+				win.img.lz.Dbg.PushRawEvent(func() {
+					win.img.lz.VCS.RIOT.Timer.SetInterval(t)
 				})
 			}
 		}
@@ -85,24 +84,24 @@ func (win *winTimer) draw() {
 	}
 	imgui.PopItemWidth()
 
-	value := fmt.Sprintf("%02x", win.img.lazy.Timer.INTIMvalue)
+	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiText("Value")
 	if imguiHexInput("##value", !win.img.paused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.SetValue(uint8(v)) })
+			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.RIOT.Timer.SetValue(uint8(v)) })
 		}
 	}
 	imgui.PopItemWidth()
 
-	remaining := fmt.Sprintf("%04x", win.img.lazy.Timer.TicksRemaining)
+	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
 	imgui.PushItemWidth(win.ticksDim.X)
 	imgui.SameLine()
 	imguiText("Ticks")
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
-			win.img.lazy.Dbg.PushRawEvent(func() { win.img.lazy.VCS.RIOT.Timer.TicksRemaining = int(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.RIOT.Timer.TicksRemaining = int(v) })
 		}
 	}
 	imgui.PopItemWidth()

@@ -27,7 +27,7 @@ import (
 
 // LazyControllers lazily accesses controller information from the emulator.
 type LazyControllers struct {
-	val *Values
+	val *Lazy
 
 	atomicHandController0 atomic.Value // input.HandController
 	atomicHandController1 atomic.Value // input.HandController
@@ -35,7 +35,7 @@ type LazyControllers struct {
 	HandController1       *input.HandController
 }
 
-func newLazyControllers(val *Values) *LazyControllers {
+func newLazyControllers(val *Lazy) *LazyControllers {
 	return &LazyControllers{val: val}
 }
 
