@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -43,7 +44,7 @@ type playmode struct {
 }
 
 // Play is a quick of setting up a playable instance of the emulator.
-func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string) error {
+func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -170,8 +171,35 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 	// ctrl-c is pressed. redirect interrupt signal to an os.Signal channel
 	signal.Notify(pl.intChan, os.Interrupt)
 
+	// register game and begin game session
+	var sess *hiscore.Session
+	if hiscoreServer {
+		sess, err = hiscore.NewSession()
+		if err != nil {
+			return errors.New(errors.PlayError, err)
+		}
+
+		err = sess.StartSession(cartload.ShortName(), vcs.Mem.Cart.Hash)
+		if err != nil {
+			return errors.New(errors.PlayError, err)
+		}
+	}
+
+	// note startime
+	startTime := time.Now()
+
 	// run and handle events
 	err = vcs.Run(pl.eventHandler)
+
+	// figure out amount of time played
+	playTime := time.Now().Sub(startTime)
+
+	// send to high score server
+	if hiscoreServer {
+		if err := sess.EndSession(playTime); err != nil {
+			return errors.New(errors.PlayError, err)
+		}
+	}
 
 	if err != nil {
 		if errors.Is(err, errors.PowerOff) {

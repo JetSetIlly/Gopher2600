@@ -135,4 +135,9 @@ const (
 	UnsupportedGUIRequest = "gui error: unsupported request (%v)"
 	SDLDebug              = "sdldebug: %v"
 	SDLPlay               = "sdlplay: %v"
+
+	// hiscore server
+	HiScore                 = "hiscore: %v"
+	HiScoreNoServer         = "hiscore: no server"
+	HiScoreNoAuthentication = "hiscore: no authentication"
 )

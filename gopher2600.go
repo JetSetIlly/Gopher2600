@@ -38,6 +38,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui_play"
 	"github.com/jetsetilly/gopher2600/gui/sdlplay"
+	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/performance"
@@ -179,7 +180,7 @@ func launch(sync *mainSync) {
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS", "HISCORE")
 
 	p, err := md.Parse()
 	switch p {
@@ -208,6 +209,9 @@ func launch(sync *mainSync) {
 
 	case "REGRESS":
 		err = regress(md)
+
+	case "HISCORE":
+		err = hiscoreServer(md)
 	}
 
 	if err != nil {
@@ -228,9 +232,10 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
+	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -291,7 +296,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile)
+		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile, *hiscore)
 		if err != nil {
 			return err
 		}
@@ -322,7 +327,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -441,7 +446,7 @@ func disasm(md *modalflag.Modes) error {
 	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -498,7 +503,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -577,7 +582,7 @@ func regress(md *modalflag.Modes) error {
 	md.AddSubModes("RUN", "LIST", "DELETE", "ADD")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -590,7 +595,7 @@ func regress(md *modalflag.Modes) error {
 		failOnError := md.AddBool("fail", false, "fail on error")
 
 		p, err := md.Parse()
-		if p != modalflag.ParseContinue {
+		if err != nil || p != modalflag.ParseContinue {
 			return err
 		}
 
@@ -605,7 +610,7 @@ func regress(md *modalflag.Modes) error {
 		// no additional arguments
 
 		p, err := md.Parse()
-		if p != modalflag.ParseContinue {
+		if err != nil || p != modalflag.ParseContinue {
 			return err
 		}
 
@@ -625,7 +630,7 @@ func regress(md *modalflag.Modes) error {
 		answerYes := md.AddBool("yes", false, "answer yes to confirmation")
 
 		p, err := md.Parse()
-		if p != modalflag.ParseContinue {
+		if err != nil || p != modalflag.ParseContinue {
 			return err
 		}
 
@@ -670,7 +675,7 @@ func regressAdd(md *modalflag.Modes) error {
 	md.AdditionalHelp("The regression test to be added can be the path to a cartrige file or a previously recorded playback file. For playback files, the flags marked [cartridge args only] do not make sense and will be ignored.")
 
 	p, err := md.Parse()
-	if p != modalflag.ParseContinue {
+	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
@@ -723,6 +728,78 @@ func regressAdd(md *modalflag.Modes) error {
 		}
 	default:
 		return fmt.Errorf("regression tests can only be added one at a time")
+	}
+
+	return nil
+}
+
+func hiscoreServer(md *modalflag.Modes) error {
+	md.NewMode()
+	md.AddSubModes("ABOUT", "SETSERVER", "LOGIN", "LOGOFF")
+	md.AdditionalHelp("Hiscore server support is EXPERIMENTAL")
+
+	p, err := md.Parse()
+	if err != nil || p != modalflag.ParseContinue {
+		return err
+	}
+
+	switch md.Mode() {
+	case "ABOUT":
+		fmt.Println("The hiscore server is experimental and is not currently fully functioning")
+
+	case "LOGIN":
+		md.NewMode()
+		p, err := md.Parse()
+		if err != nil || p != modalflag.ParseContinue {
+			return err
+		}
+
+		username := ""
+		args := md.RemainingArgs()
+
+		switch len(args) {
+		case 0:
+			// an empty string is okay
+		case 1:
+			username = args[0]
+		default:
+			return fmt.Errorf("too many arguments for %s", md)
+		}
+
+		err = hiscore.Login(os.Stdin, os.Stdout, username)
+		if err != nil {
+			return err
+		}
+
+	case "LOGOFF":
+		err = hiscore.Logoff()
+		if err != nil {
+			return err
+		}
+
+	case "SETSERVER":
+		md.NewMode()
+		p, err := md.Parse()
+		if err != nil || p != modalflag.ParseContinue {
+			return err
+		}
+
+		server := ""
+		args := md.RemainingArgs()
+
+		switch len(args) {
+		case 0:
+			// an empty string is okay
+		case 1:
+			server = args[0]
+		default:
+			return fmt.Errorf("too many arguments for %s", md)
+		}
+
+		err = hiscore.SetServer(os.Stdin, os.Stdout, server)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
