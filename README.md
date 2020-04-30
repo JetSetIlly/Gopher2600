@@ -1,7 +1,8 @@
 # Gopher2600
 
-Gopher 2600 is a more-or-less complete emulation of the Atari VCS. It is
-written in Go and was begun as a project for learning that language.
+Gopher 2600 is an emulator for the Atari VCS. It is written in Go and was begun as a project for learning that language. The screenshot below shows the default play window, complete with CRT effects.
+
+<img src=".screenshots/crt_hero.png" alt="gopher2600 showing Hero with CRT effects"/>
 
 ## Project Features
 
@@ -52,19 +53,15 @@ The screenshot below is of ET with the patches from http://www.neocomputer.org/p
 
 <img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
 
-The screenshot below show Keystone Kapers as seen through the debugger.
+The screenshot below shows the graphical debugger, windowing provided by `Dear Imgui`.
 
-<img src=".screenshots/keystone_imgui4.png" height="400" alt="keystone kapers with imgui interface"/>
+<img src=".screenshots/dear_debugger.png" height="400" alt="dear imgui debugger"/>
 
-The second picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. Again, this visualisation proved useful to me when developing the emulator.
+The two images below show some alternative debugger display. The first picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. 
 
-<img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/>
+The second screenshot shows `Pitfall`. The coloured pixels overlayed over the main image indicate when key TIA events have occured. For example, when `RESP0` has been triggered, or when `HMOVE` has been strobed. The most interesting part of this image perhaps, are the grey bars the extend to the right of the image. These bars show WSYNC signal activity. (Note that this overlay feature is not yet  available through the default graphical debugger and only through the `PLAIN` and `COLOR` term types)
 
-The final screenshot shows the debugging overlay on the Pitfall ROM. The additional coloured pixels indicate when key TIA events have occured. The most interesting part of this image perhaps, are the grey bars on the right of the image. These show WSYNC signal activity. This feature of the debugger needs a lot more work but even as it exists today was useful during the development of the emulator.
-
-<img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> 
-
-Note that this last feature is not currently available in the graphical debugger and only through the `PLAIN` and `COLOR` term types.
+<img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/> <img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> 
 
 ## Resources used
 
@@ -101,6 +98,9 @@ used frequently throughout development.
 
 The 6507 information was taken from Leventhal's "6502 Assembly Language
 Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
+
+US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
+(the format used in Pitfall 2)
 
 ## ROMs used during development
 
@@ -246,7 +246,7 @@ To run the debugger use the DEBUG submode
 
 	> gopher2600 debug roms/Pitfall.bin
 
-The default debugging mode display a windowed interface. A thorough explanation of the interface is not yet available but it is believed to be self explanatory. Note that the ROM can be interacted with by clicking on the screen image in  the `TV Screen` window. This will "capture" the mouse and allow the emulated VCS to be interacted with in the normal way. Click the right mouse button to release the captured mouse.
+The default debugging mode display a windowed interface. A thorough explanation of the interface is not yet available but it is should be self-explanatory. Note that the ROM can be "played" by clicking on the screen image in  the `TV Screen` window. This will "capture" the mouse and allow the emulated VCS to be interacted with in the normal way. Click the right mouse button to release the captured mouse.
 
 In addition to the controller and panel input described above, the following keys are also available during mouse capture:
 
@@ -399,18 +399,10 @@ The database is called `setupDB` and is located in the project's configuration d
 of the database is described in the setup package. Here is the direct link to the source
 level documentation: https://godoc.org/github.com/JetSetIlly/Gopher2600/setup
 
+## Gopher2600 Tools
 
-## WASM / HTML5 Canvas
-
-To compile and serve a WASM version of the emulator (no debugger) use:
-
-	> make web
-
-The server will be listening on port 2600. Note that you need a file in the
-web2600/www folder named "example.bin" for anything to work.
-
-Warning that this is a proof of concept only. The performance is currently
-very poor.
+See the https://github.com/JetSetIlly/Gopher2600-Utils/tree/master/web2600 repository for examples of tools
+that use `Gopher2600`.
 
 ## Futher Help
 
