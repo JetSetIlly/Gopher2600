@@ -44,7 +44,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	for bank := 0; bank < len(dsm.reference); bank++ {
+	for bank := 0; bank < dsm.NumBanks(); bank++ {
 		bankHeader := false
 
 		itr, _, err := dsm.NewIteration(EntryLevelBlessed, bank)

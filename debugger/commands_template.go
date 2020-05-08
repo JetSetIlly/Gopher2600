@@ -34,6 +34,7 @@ const (
 	cmdCartridge   = "CARTRIDGE"
 	cmdPatch       = "PATCH"
 	cmdDisassembly = "DISASSEMBLY"
+	cmdLint        = "LINT"
 	cmdGrep        = "GREP"
 	cmdSymbol      = "SYMBOL"
 	cmdOnHalt      = "ONHALT"
@@ -85,6 +86,7 @@ var commandTemplate = []string{
 	cmdCartridge + " (BANK %<number>N|STATIC)",
 	cmdPatch + " %<patch file>S",
 	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
+	cmdLint,
 	cmdGrep + " (MNEMONIC|OPERAND) %<search>S",
 	cmdSymbol + " [%<symbol>S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",

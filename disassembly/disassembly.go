@@ -163,3 +163,8 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 
 	return dsm, nil
 }
+
+// NumBanks returns the number of banks in the disassembly.
+func (dsm Disassembly) NumBanks() int {
+	return len(dsm.reference)
+}

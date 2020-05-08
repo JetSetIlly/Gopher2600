@@ -141,4 +141,7 @@ const (
 	HiScore                 = "hiscore: %v"
 	HiScoreNoServer         = "hiscore: no server"
 	HiScoreNoAuthentication = "hiscore: no authentication"
+
+	// linter
+	Linter = "linter: %v"
 )

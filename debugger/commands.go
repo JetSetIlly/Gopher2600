@@ -36,6 +36,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
@@ -373,6 +374,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 		dbg.printLine(terminal.StyleFeedback, s.String())
 
+	case cmdLint:
+		output := &strings.Builder{}
+		err := linter.Lint(dbg.disasm, output)
+		if err != nil {
+			return false, err
+		}
+		dbg.printLine(terminal.StyleFeedback, output.String())
+
 	case cmdGrep:
 		scope := disassembly.GrepAll
 
@@ -387,8 +396,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		search, _ := tokens.Get()
-		output := strings.Builder{}
-		err := dbg.disasm.Grep(&output, scope, search, false)
+		output := &strings.Builder{}
+		err := dbg.disasm.Grep(output, scope, search, false)
 		if err != nil {
 			return false, nil
 		}

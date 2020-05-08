@@ -26,12 +26,8 @@ const Reset = uint16(0xfffc)
 // IRQ is the address where the interrupt address is stored
 const IRQ = uint16(0xfffe)
 
-// CanonicalReadSymbols list all the writable addresses along with the
-// canonical names for those addresses. We don't use this structure in the
-// emulation because the map structure introduces an overhead that we'd like to
-// avoid. We do however use it to create a more suitable structure for
-// emulation.
-var CanonicalReadSymbols = map[uint16]string{
+// CanonicalTIAReadSymbols indexes all TIA read symbols by normalised address
+var CanonicalTIAReadSymbols = map[uint16]string{
 	// TIA
 	0x00: "CXM0P",
 	0x01: "CXM1P",
@@ -47,7 +43,10 @@ var CanonicalReadSymbols = map[uint16]string{
 	0x0b: "INPT3",
 	0x0c: "INPT4",
 	0x0d: "INPT5",
+}
 
+// CanonicalRIOTReadSymbols indexes all RIOT read symbols by normalised address
+var CanonicalRIOTReadSymbols = map[uint16]string{
 	// RIOT
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
@@ -57,10 +56,11 @@ var CanonicalReadSymbols = map[uint16]string{
 	0x0285: "TIMINT",
 }
 
-// CanonicalWriteSymbols list all the writable addresses along with the
-// canonical names for those addresses. (see above for commentary)
-var CanonicalWriteSymbols = map[uint16]string{
-	// TIA
+// CanonicalReadSymbols indexes all VCS read symbols normalised address
+var CanonicalReadSymbols = map[uint16]string{}
+
+// CanonicalTIAWriteSymbols indexes all TIA write symbols by normalised address
+var CanonicalTIAWriteSymbols = map[uint16]string{
 	0x00: "VSYNC",
 	0x01: "VBLANK",
 	0x02: "WSYNC",
@@ -106,8 +106,10 @@ var CanonicalWriteSymbols = map[uint16]string{
 	0x2A: "HMOVE",
 	0x2B: "HMCLR",
 	0x2C: "CXCLR",
+}
 
-	// RIOT
+// CanonicalRIOTWriteSymbols indexes all RIOT write symbols by normalised address
+var CanonicalRIOTWriteSymbols = map[uint16]string{
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
 	0x0294: "TIM1T",
@@ -115,6 +117,9 @@ var CanonicalWriteSymbols = map[uint16]string{
 	0x0296: "TIM64T",
 	0x0297: "T1024T",
 }
+
+// CanonicalWriteSymbols indexes all VCS write symbols by normalised address
+var CanonicalWriteSymbols = map[uint16]string{}
 
 // Read is a sparse array containing the canonical labels for VCS read
 // addresses. If the address is not named (empty string) then the address is
@@ -129,6 +134,25 @@ var Write []string
 // this init() function create the Read/Write arrays using the read/write maps
 // as a source
 func init() {
+
+	// build CanonicalReadSymbols out of the TIA and RIOT canonical read maps
+	for k, v := range CanonicalTIAReadSymbols {
+		CanonicalReadSymbols[k] = v
+	}
+
+	for k, v := range CanonicalRIOTReadSymbols {
+		CanonicalReadSymbols[k] = v
+	}
+
+	// build CanonicalWriteSymbols out of the TIA and RIOT canonical write maps
+	for k, v := range CanonicalTIAWriteSymbols {
+		CanonicalWriteSymbols[k] = v
+	}
+
+	for k, v := range CanonicalRIOTWriteSymbols {
+		CanonicalWriteSymbols[k] = v
+	}
+
 	// we know that the maximum address either chip can read or write to is
 	// 0x297, in RIOT memory space. we can say this is the extent of our Read
 	// and Write sparse arrays
