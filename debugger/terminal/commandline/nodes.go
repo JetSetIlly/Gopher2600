@@ -26,6 +26,18 @@ import (
 
 type nodeType int
 
+func (t nodeType) String() string {
+	switch t {
+	case nodeRoot:
+		return "nodeRoot"
+	case nodeRequired:
+		return "nodeRequired"
+	case nodeOptional:
+		return "nodeOptional"
+	}
+	panic("unknown nodeType")
+}
+
 const (
 	nodeRoot nodeType = iota + 1
 	nodeRequired

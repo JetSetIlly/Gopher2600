@@ -8,6 +8,7 @@ roms
 gopher2600
 *.dot
 *.ps
+*.pdf
 recording_*
 *cpu.profile
 *mem.profile

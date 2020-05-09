@@ -74,43 +74,6 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 }
 
 func (n *node) validate(tokens *Tokens, speculative bool) error {
-	// we cannot do anything useful with a node with an empty tag, but if there
-	// is a "next" node then we can move immediately to validation of that node
-	// instead.
-	//
-	// empty tags like this, happen as a result of parsing nested groups
-	//
-	// a node with an empty tag but no next array (or a next array with too
-	// many entries) is an illegal node and should not have been parsed
-	if n.tag == "" {
-		if n.next == nil || len(n.next) > 1 {
-			return errors.New(errors.PanicError, "commandline validation", "illegal empty node")
-		}
-
-		// speculatively validate the next node. don't do anything with any
-		// error just yet. if there is an error we need to validate against any
-		// branches. if there is still no match we cam return the error then
-
-		err := n.next[0].validate(tokens, true)
-		match := err == nil
-
-		if !match {
-			for bi := range n.branch {
-				tokens.Unget()
-				if n.branch[bi].validate(tokens, true) == nil {
-					match = true
-					break // for loop
-				}
-			}
-		}
-
-		if match {
-			return nil
-		}
-
-		return err
-	}
-
 	// make a note of the token queue before we proceed. we'll use this to
 	// decide whether to proceed with any repeat loops.
 	remainder := tokens.Remainder()
@@ -128,6 +91,43 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 			return fmt.Errorf("%s required", n.nodeVerbose())
 		}
 		return nil
+	}
+
+	// we cannot do anything useful with a node with an empty tag, but if there
+	// is a "next" node then we can move immediately to validation of that node
+	// instead.
+	//
+	// empty tags like this, happen as a result of parsing nested groups
+	//
+	// a node with an empty tag but no next array (or a next array with too
+	// many entries) is an illegal node and should not have been parsed
+	if n.tag == "" {
+		if n.next == nil {
+			return errors.New(errors.PanicError, "commandline validation", "illegal empty node")
+		}
+
+		// speculatively validate the next node. don't do anything with any
+		// error just yet. if there is an error we need to validate against any
+		// branches. if there is still no match we cam return the error then
+
+		var err error
+
+		tokens.Unget()
+		for ni := range n.next {
+			err = n.next[ni].validate(tokens, true)
+			if err != nil {
+				break
+			}
+		}
+
+		for bi := range n.branch {
+			tokens.Unget()
+			if n.branch[bi].validate(tokens, true) == nil {
+				return nil
+			}
+		}
+
+		return err
 	}
 
 	// check the current token against the node's tag, using placeholder

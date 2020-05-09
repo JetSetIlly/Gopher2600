@@ -133,6 +133,13 @@ func (tc *TabCompletion) Reset() {
 }
 
 func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
+	// if there is no more input then return true (validation has passed) if
+	// the node is optional, false if it is required
+	tok, ok := tokens.Get()
+	if !ok {
+		return
+	}
+
 	// we cannot do anything with a node with no tag, but if there is a "next"
 	// node then we can move immediately to validation of that node instead.
 	//
@@ -141,28 +148,20 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 	// a node with an empty tag but no next array (or a next array with to
 	// many entries) is an illegal node and should not have been parsed
 	if n.tag == "" {
-		if n.next == nil || len(n.next) > 1 {
+		if n.next == nil {
 			return
 		}
 
-		tc.buildMatches(n.next[0], tokens)
+		tokens.Unget()
+		for ni := range n.next {
+			tc.buildMatches(n.next[ni], tokens)
+		}
 
 		for bi := range n.branch {
-			// we want to use the current token again so we unget() the
-			// last token so that it is available at the beginning of the
-			// recursed function
 			tokens.Unget()
-
 			tc.buildMatches(n.branch[bi], tokens)
 		}
 
-		return
-	}
-
-	// if there is no more input then return true (validation has passed) if
-	// the node is optional, false if it is required
-	tok, ok := tokens.Get()
-	if !ok {
 		return
 	}
 
