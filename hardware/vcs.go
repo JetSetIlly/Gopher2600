@@ -112,6 +112,7 @@ func (vcs *VCS) Reset() error {
 
 	// not resetting anything else is effectively leaving the VCS in a random
 	// state (if the emulation has moved forward any cycles that is)
+
 	// !!TODO: option for random state on VCS reset
 
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)

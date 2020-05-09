@@ -468,4 +468,6 @@ DROP or CLEAR commands`,
 	cmdList:  "List currently defined BREAKS, TRAPS and WATCHES.",
 	cmdDrop:  "Drop a specific BREAK, TRAP or WATCH condition, using the number of the condition reported by LIST.",
 	cmdClear: "Clear all BREAKS, TRAPS and WATCHES.",
+
+	cmdPref: "Set preferences for debugger.",
 }

@@ -1211,6 +1211,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			// already caught by command line ValidateTokens()
 		}
 
+	case cmdPref:
+		action, _ := tokens.Get()
+		option, _ := tokens.Get()
+
+		option = strings.ToUpper(option)
+		switch option {
+		case "RANDSTART":
+		case "RANDPINS":
+			switch action {
+			case "SET":
+				dbg.vcs.Mem.RandomPins = true
+			case "NO":
+				dbg.vcs.Mem.RandomPins = false
+			case "TOGGLE":
+				dbg.vcs.Mem.RandomPins = !dbg.vcs.Mem.RandomPins
+			}
+		}
 	}
 
 	return false, nil

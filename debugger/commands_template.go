@@ -68,6 +68,9 @@ const (
 	cmdList  = "LIST"
 	cmdDrop  = "DROP"
 	cmdClear = "CLEAR"
+
+	// prefs
+	cmdPref = "PREF"
 )
 
 const cmdHelp = "HELP"
@@ -120,6 +123,9 @@ var commandTemplate = []string{
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH] %<number in list>N",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
+
+	// prefs
+	cmdPref + " ([SET|NO|TOGGLE] [RANDSTART|RANDPINS])",
 }
 
 // list of commands that should not be executed when recording/playing scripts

@@ -20,6 +20,8 @@
 package memory
 
 import (
+	"math/rand"
+
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -61,6 +63,12 @@ type VCSMemory struct {
 	// for practical purposes, the cycle period of type int is sufficiently
 	// large as to allow us to consider LastAccessID to be unique.
 	accessCount int
+
+	// unused pins when reading TIA/RIOT registers take the value of the last
+	// value on the bus. if RandomPins is true then the values of the unusued
+	// pins are randomised. this is the equivalent of the Stella option "drive
+	// unused pins randomly on a read/peek"
+	RandomPins bool
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
@@ -138,10 +146,18 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	if ma < uint16(len(addresses.DataMasks)) {
 		if !zeroPage {
 			data &= addresses.DataMasks[ma]
-			data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
+			if mem.RandomPins {
+				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
+			} else {
+				data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
+			}
 		} else {
 			data &= addresses.DataMasks[ma]
-			data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)
+			if mem.RandomPins {
+				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
+			} else {
+				data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)
+			}
 		}
 	}
 
