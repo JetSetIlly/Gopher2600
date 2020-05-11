@@ -125,7 +125,7 @@ var commandTemplate = []string{
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
 
 	// prefs
-	cmdPref + " ([SET|NO|TOGGLE] [RANDSTART|RANDPINS])",
+	cmdPref + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS])",
 }
 
 // list of commands that should not be executed when recording/playing scripts

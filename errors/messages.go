@@ -136,12 +136,16 @@ const (
 	UnsupportedGUIRequest = "gui error: unsupported request (%v)"
 	SDLDebug              = "sdldebug: %v"
 	SDLPlay               = "sdlplay: %v"
+	SDLImgui              = "sdlimgui: %v"
 
 	// hiscore server
-	HiScore                 = "hiscore: %v"
-	HiScoreNoServer         = "hiscore: no server"
-	HiScoreNoAuthentication = "hiscore: no authentication"
+	HiScore = "hiscore: %v"
 
 	// linter
 	Linter = "linter: %v"
+
+	// prefs
+	Prefs         = "prefs: %v"
+	PrefsNoFile   = "prefs: no file (%s)"
+	PrefsNotValid = "prefs: not a valid prefs file (%s)"
 )

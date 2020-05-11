@@ -21,11 +21,9 @@ package sdlimgui
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/inkyblackness/imgui-go/v2"
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -54,18 +52,13 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		img: img,
 	}
 
-	ini, err := plt.readIniFile()
-	if err != nil {
-		return nil, fmt.Errorf("SDL2: %v", err)
-	}
-
 	// map sdl key codes to imgui codes
 	plt.setKeyMapping()
 
 	plt.window, err = sdl.CreateWindow(windowTitle,
-		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
-		ini.width, ini.height,
-		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE)
+		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		1280, 740,
+		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN)
 
 	if err != nil {
 		sdl.Quit()
@@ -100,11 +93,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
-	err := plt.writeIniFile()
-	if err != nil {
-		return err
-	}
-
 	if plt.window != nil {
 		_ = plt.window.Destroy()
 		plt.window = nil
@@ -185,64 +173,10 @@ func (plt *platform) showWindow(show bool) {
 	}
 }
 
-// in addition to the imgui ini file we need to keep another ini file just for
-// the SDL window. we're calling it an ini file only because that is the system
-// imgui uses.
-//
-// we'll try to use the same precise ini syntax as the imgui file but for now
-// we're just storing window size so I'm not too worried about it; just using
-// simple Fprintf() and Fscanf()
-
-type iniFile struct {
-	width  int32
-	height int32
-}
-
-func (plt *platform) readIniFile() (*iniFile, error) {
-	iniPath, err := paths.ResourcePath("", winIniFile)
-	if err != nil {
-		return nil, fmt.Errorf("debugger_win.ini file error: %v", err)
+func (plt *platform) showWindow_main(show bool) {
+	if show {
+		plt.window.Show()
+	} else {
+		plt.window.Hide()
 	}
-
-	ini := &iniFile{
-		width:  1280,
-		height: 720,
-	}
-
-	f, err := os.Open(iniPath)
-	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
-			// path errors are okay. we'll just use the defaults and a new ini
-			// file will be created when the window is destroyed
-			return ini, nil
-		}
-		return nil, fmt.Errorf("debugger_win.ini file error: %v", err)
-	}
-	defer f.Close()
-
-	_, err = fmt.Fscanf(f, "%d, %d\n", &ini.width, &ini.height)
-	if err != nil {
-		return nil, fmt.Errorf("debugger_win.ini error: %v", err)
-	}
-
-	return ini, nil
-}
-
-func (plt *platform) writeIniFile() error {
-	iniPath, err := paths.ResourcePath("", winIniFile)
-	if err != nil {
-		return fmt.Errorf("writing window ini file: %v", err)
-	}
-
-	f, err := os.Create(iniPath)
-	if err != nil {
-		return fmt.Errorf("writing window ini file: %v", err)
-	}
-	defer f.Close()
-
-	w, h := plt.window.GetSize()
-	fmt.Fprintf(f, "%d, %d\n", w, h)
-
-	return nil
 }

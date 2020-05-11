@@ -102,7 +102,7 @@ func (tr traps) list() {
 }
 
 // parse tokens and add new trap
-func (tr *traps) parseTrap(tokens *commandline.Tokens) error {
+func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 	_, present := tokens.Peek()
 	for present {
 		tgt, err := parseTarget(tr.dbg, tokens)

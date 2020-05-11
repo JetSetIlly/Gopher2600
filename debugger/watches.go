@@ -152,7 +152,7 @@ func (wtc *watches) list() {
 
 // parse tokens and add new watch. unlike breakpoints and traps, only one watch
 // at a time can be specified on the command line.
-func (wtc *watches) parseWatch(tokens *commandline.Tokens) error {
+func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var event int
 
 	const (

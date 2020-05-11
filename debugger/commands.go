@@ -200,7 +200,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		default:
 			// does not change quantum
 			tokens.Unget()
-			err := dbg.stepTraps.parseTrap(tokens)
+			err := dbg.stepTraps.parseCommand(tokens)
 			if err != nil {
 				return false, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
 			}
@@ -1121,19 +1121,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdBreak:
-		err := dbg.breakpoints.parseBreakpoint(tokens)
+		err := dbg.breakpoints.parseCommand(tokens)
 		if err != nil {
 			return false, errors.New(errors.CommandError, err)
 		}
 
 	case cmdTrap:
-		err := dbg.traps.parseTrap(tokens)
+		err := dbg.traps.parseCommand(tokens)
 		if err != nil {
 			return false, errors.New(errors.CommandError, err)
 		}
 
 	case cmdWatch:
-		err := dbg.watches.parseWatch(tokens)
+		err := dbg.watches.parseCommand(tokens)
 		if err != nil {
 			return false, errors.New(errors.CommandError, err)
 		}
@@ -1212,21 +1212,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdPref:
-		action, _ := tokens.Get()
-		option, _ := tokens.Get()
-
-		option = strings.ToUpper(option)
-		switch option {
-		case "RANDSTART":
-		case "RANDPINS":
-			switch action {
-			case "SET":
-				dbg.vcs.Mem.RandomPins = true
-			case "NO":
-				dbg.vcs.Mem.RandomPins = false
-			case "TOGGLE":
-				dbg.vcs.Mem.RandomPins = !dbg.vcs.Mem.RandomPins
-			}
+		err := dbg.Prefs.parseCommand(tokens)
+		if err != nil {
+			return false, errors.New(errors.CommandError, err)
 		}
 	}
 

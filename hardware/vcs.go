@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
@@ -42,6 +43,8 @@ type VCS struct {
 	Panel           *input.Panel
 	HandController0 *input.HandController
 	HandController1 *input.HandController
+
+	RandomStart prefs.Bool
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is

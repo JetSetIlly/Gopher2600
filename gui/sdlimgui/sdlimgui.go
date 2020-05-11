@@ -20,13 +20,16 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -78,6 +81,9 @@ type SdlImgui struct {
 
 	// mouse coords at last frame
 	mx, my int32
+
+	// the preferences we'll be saving to disk
+	prefs *prefs.Disk
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -94,24 +100,24 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		featureErr: make(chan error, 1),
 	}
 
+	var err error
+
 	// define colors
 	img.cols = newColors()
 
-	var err error
-
 	img.plt, err = newPlatform(img)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDLImgui, err)
 	}
 
 	img.glsl, err = newGlsl(img.io, img)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDLImgui, err)
 	}
 
 	iniPath, err := paths.ResourcePath("", imguiIniFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDLImgui, err)
 	}
 	img.io.SetIniFilename(iniPath)
 
@@ -124,7 +130,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 
 	img.wm, err = newWindowManager(img)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDLImgui, err)
 	}
 
 	// connect some screen properties to other parts of the system
@@ -135,9 +141,70 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	// implementation in winAudio which visualises the sound
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SDLImgui, err)
 	}
 	tv.AddAudioMixer(img.audio)
+
+	// setup preferences
+	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
+	if err != nil {
+		return nil, errors.New(errors.SDLImgui, err)
+	}
+	img.prefs, err = prefs.NewDisk(pth)
+
+	err = img.prefs.Add("sdlimgui.debugger.windowsize", prefs.NewGeneric(
+		func(s string) error {
+			var w, h int32
+			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
+			if err != nil {
+				return err
+			}
+			img.plt.window.SetSize(w, h)
+			return nil
+		},
+		func() string {
+			w, h := img.plt.window.GetSize()
+			return fmt.Sprintf("%d,%d", w, h)
+		},
+	))
+	if err != nil {
+		return nil, err
+	}
+
+	err = img.prefs.Add("sdlimgui.debugger.windowpos", prefs.NewGeneric(
+		func(s string) error {
+			var x, y int32
+			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)
+			if err != nil {
+				return err
+			}
+			// !TODO: SetPosition doesn't seem to set window position as you
+			// might expect. On XWindow with Cinnamon WM, it seems to place the
+			// window top to the window further down and slightly to the right
+			// of where it should be. This means that the window "drifts" down
+			// the screen on subsequent loads
+			img.plt.window.SetPosition(x, y)
+			return nil
+		},
+		func() string {
+			x, y := img.plt.window.GetPosition()
+			return fmt.Sprintf("%d,%d", x, y)
+		},
+	))
+	if err != nil {
+		return nil, errors.New(errors.SDLImgui, err)
+	}
+
+	// load preferences from disk
+	err = img.prefs.Load()
+	if err != nil {
+		// ignore missing prefs file errors
+		if !errors.Is(err, errors.PrefsNoFile) {
+			return nil, errors.New(errors.SDLImgui, err)
+		}
+	}
+
+	img.plt.window.Show()
 
 	return img, nil
 }
@@ -146,6 +213,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (img *SdlImgui) Destroy(output io.Writer) {
+	_ = img.prefs.Save()
+
 	img.wm.destroy()
 	img.audio.EndMixing()
 	img.glsl.destroy()

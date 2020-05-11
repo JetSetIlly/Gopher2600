@@ -26,18 +26,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/paths"
 )
 
-const serverFile = "hiscoreServer"
-const authFile = "hiscoreAuthentication"
-
-// SetServer
+// SetServer to use for hiscore storage
 func SetServer(input io.Reader, output io.Writer, server string) error {
+	// get reference to hiscore preferences
+	prefs, err := loadPreferences()
+	if err != nil {
+		return errors.New(errors.HiScore, err)
+	}
+
 	// server has not been provided so prompt for it
 	if server == "" {
 		output.Write([]byte("Enter server: "))
@@ -50,37 +51,47 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 		server = string(b)
 	}
 
-	// limit extent of server setting
-	s := strings.Split(server, "\n")
-	server = s[0]
-	if len(server) > 64 {
-		server = server[:64]
-	}
+	// crop newline
+	server = strings.Split(server, "\n")[0]
 
-	// get path to server file
-	serverFilePath, err := paths.ResourcePath("", serverFile)
+	// parse entered url
+	url, err := url.Parse(server)
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
 
-	// create a new file and write server to it
-	f, err := os.Create(serverFilePath)
-	if err != nil {
-		return errors.New(errors.HiScore, err)
+	// error on path, but allow a single slash (by removing it)
+	if url.Path != "" {
+		if url.Path != "/" {
+			return errors.New(errors.HiScore, "do not include path in server setting")
+		}
 	}
-	defer f.Close()
-	fmt.Fprintf(f, "%s", server)
 
-	return nil
+	// nillify all fields aside from schema and host
+	url.Path = ""
+	url.RawPath = ""
+	url.Fragment = ""
+	url.RawQuery = ""
+	url.ForceQuery = false
+	url.Opaque = ""
+	url.User = nil
+
+	// update server setting and save changes
+	prefs.server.Set(url.String())
+	return prefs.save()
 }
 
 // Login prepares the authentication token for the hiscore server
 func Login(input io.Reader, output io.Writer, username string) error {
-	sess, err := NewSession()
+	// get reference to hiscore preferences
+	prefs, err := loadPreferences()
 	if err != nil {
-		if !errors.Is(err, errors.HiScoreNoAuthentication) {
-			return errors.New(errors.HiScore, err)
-		}
+		return errors.New(errors.HiScore, err)
+	}
+
+	// we can't login unless highscore server has been specified
+	if prefs.server.Get() == "" {
+		return errors.New(errors.HiScore, "no highscore server available")
 	}
 
 	// prompt for username if it has not been supplied
@@ -96,6 +107,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	}
 
 	// prompt for password
+	//
 	// !TODO: noecho hiscore server password
 	output.Write([]byte("(WARNING: password will be visible)\n"))
 	output.Write([]byte("Enter password: "))
@@ -107,10 +119,10 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	}
 	password := strings.Split(string(b), "\n")[0]
 
-	// send login for to server
+	// send login request to server
 	var cl http.Client
 	data := url.Values{"username": {username}, "password": {password}}
-	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", sess.server), data)
+	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.server), data)
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
@@ -128,40 +140,20 @@ func Login(input io.Reader, output io.Writer, username string) error {
 		return errors.New(errors.HiScore, err)
 	}
 
-	// get path to auth file
-	authFilePath, err := paths.ResourcePath("", authFile)
-	if err != nil {
-		return errors.New(errors.HiScore, err)
-	}
-
-	// create a new file (overwriting old file it exists) and write auth token
-	f, err := os.Create(authFilePath)
-	if err != nil {
-		return errors.New(errors.HiScore, err)
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "%s", key["key"])
-
-	return nil
+	// update authentication key and save changes
+	prefs.authToken.Set(key["key"])
+	return prefs.save()
 }
 
 // Logoff forgets the authentication token for the hiscore server
 func Logoff() error {
-
-	// !TODO: require hiscore server logoff confirmation
-
-	// get path to auth file
-	authFilePath, err := paths.ResourcePath("", authFile)
+	// get reference to hiscore preferences
+	prefs, err := loadPreferences()
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
 
-	// forget token by overwriting any existing auth file
-	f, err := os.Create(authFilePath)
-	if err != nil {
-		return errors.New(errors.HiScore, err)
-	}
-	defer f.Close()
-
-	return nil
+	// blank authentication key and save changes
+	prefs.authToken.Set("")
+	return prefs.save()
 }

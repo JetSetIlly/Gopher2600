@@ -242,7 +242,7 @@ func (bp breakpoints) list() {
 //	& SL 100 HP 0 X 10
 //
 // !!TODO: simplify breakpoints parser to match help description
-func (bp *breakpoints) parseBreakpoint(tokens *commandline.Tokens) error {
+func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	andBreaks := false
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint

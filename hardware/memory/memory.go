@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/prefs"
 )
 
 // VCSMemory is the monolithic representation of the memory in 2600.
@@ -68,7 +69,7 @@ type VCSMemory struct {
 	// value on the bus. if RandomPins is true then the values of the unusued
 	// pins are randomised. this is the equivalent of the Stella option "drive
 	// unused pins randomly on a read/peek"
-	RandomPins bool
+	RandomPins prefs.Bool
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory
@@ -146,14 +147,14 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	if ma < uint16(len(addresses.DataMasks)) {
 		if !zeroPage {
 			data &= addresses.DataMasks[ma]
-			if mem.RandomPins {
+			if mem.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		} else {
 			data &= addresses.DataMasks[ma]
-			if mem.RandomPins {
+			if mem.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)

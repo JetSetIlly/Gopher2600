@@ -23,78 +23,30 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/paths"
 )
 
+// Session represents a gaming session with the hi-score server. A session is
+// started (with StartSession()) when a game starts, and concludes (with
+// EndSession() when the game ends by uploading the game stats. Instances of
+// the Session type can be used more than once.
 type Session struct {
-	id        string
-	authToken string
-	server    string
+	id    string
+	prefs *preferences
 }
 
 // NewSession is the preferred method of initialisation of the Session type.
-//
-// Session value will be valid if error value is:
-//
-//		errors.HiScoreNoAuthentication
-//
-// This is useful for the login procedure where we might expect there to be no
-// authentication.
 func NewSession() (*Session, error) {
 	sess := &Session{}
 
-	// get hiscore server
-	serverFilePath, err := paths.ResourcePath("", serverFile)
-	if err != nil {
-		return nil, errors.New(errors.HiScore, err)
-	}
+	var err error
 
-	sf, err := os.Open(serverFilePath)
+	sess.prefs, err = loadPreferences()
 	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
-			return nil, errors.New(errors.HiScoreNoServer)
-		}
-		return nil, errors.New(errors.HiScore, err)
-	}
-	defer sf.Close()
-
-	_, err = fmt.Fscanf(sf, "%s", &sess.server)
-	if err != nil {
-		if err == io.EOF {
-			return nil, errors.New(errors.HiScoreNoServer)
-		}
-		return nil, errors.New(errors.HiScore, err)
-	}
-
-	// get authentication details
-	authFilePath, err := paths.ResourcePath("", authFile)
-	if err != nil {
-		return nil, errors.New(errors.HiScore, err)
-	}
-
-	af, err := os.Open(authFilePath)
-	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
-			return sess, errors.New(errors.HiScoreNoAuthentication)
-		}
-		return nil, errors.New(errors.HiScore, err)
-	}
-	defer af.Close()
-
-	_, err = fmt.Fscanf(af, "%s", &sess.authToken)
-	if err != nil {
-		if err == io.EOF {
-			return sess, errors.New(errors.HiScoreNoAuthentication)
-		}
 		return nil, errors.New(errors.HiScore, err)
 	}
 
@@ -152,7 +104,7 @@ func (sess *Session) EndSession(playTime time.Duration) error {
 // url should not contain the session server, it will be added automatically
 func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	// add server information to url
-	url = fmt.Sprintf("%s%s", sess.server, url)
+	url = fmt.Sprintf("%s%s", sess.prefs.server, url)
 
 	// prepare POST request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
@@ -161,7 +113,7 @@ func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	}
 
 	// add authorization head
-	req.Header.Add("Authorization", fmt.Sprintf("Token %s", sess.authToken))
+	req.Header.Add("Authorization", fmt.Sprintf("Token %s", sess.prefs.authToken))
 
 	// Send req using http Client
 	client := &http.Client{}
