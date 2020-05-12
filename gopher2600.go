@@ -137,6 +137,20 @@ func main() {
 			gui, err = creator()
 			if err != nil {
 				sync.creationError <- err
+
+				// gui is a variable of type interface. nil doesn't work as you
+				// might expect with interfaces. for instance, even though the
+				// following outputs "<nil>":
+				//
+				//	fmt.Println(gui)
+				//
+				// the following equation print false:
+				//
+				//	fmt.Println(gui == nil)
+				//
+				// as to the reason why gui does not equal nil, even though
+				// the creator() function returns nil? well, you tell me.
+				gui = nil
 			} else {
 				sync.creation <- gui
 			}
@@ -358,7 +372,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	case g := <-sync.creation:
 		scr = g.(gui.GUI)
 	case err := <-sync.creationError:
-		return errors.New(errors.PlayError, err)
+		return errors.New(errors.DebuggerError, err)
 	}
 
 	// if gui implements the terminal.Broker interface use that terminal
