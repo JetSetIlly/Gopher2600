@@ -82,6 +82,16 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 // Check should be called every video cycle to record the current state of the
 // emulation/system
 func (mon *Monitor) Check() error {
+	// send clear pixel signal before anything else. this is okay to send in
+	// addition to any potential signals from the functions called below
+	// because of hos ReflectPixel() works - always drawing at the location of last TV
+	// signal. I acknowledge that it is potentially redundant but the
+	// performance impact is minimal
+	sig := ReflectPixel{Label: "", Red: 0, Green: 0, Blue: 0, Alpha: 0}
+	if err := mon.renderer.SetReflectPixel(sig); err != nil {
+		return nil
+	}
+
 	if err := mon.checkWSYNC(); err != nil {
 		return err
 	}
@@ -120,7 +130,7 @@ func (mon *Monitor) checkWSYNC() error {
 
 	// special handling of WSYNC signal - we want every pixel to be coloured
 	// while the RdyFlag is false, not just when WSYNC is first triggered.
-	sig := ReflectPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 0, Alpha: 200}
+	sig := ReflectPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 100, Alpha: 120}
 	return mon.renderer.SetReflectPixel(sig)
 }
 

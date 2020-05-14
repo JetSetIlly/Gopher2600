@@ -135,7 +135,8 @@ func (plt *platform) newFrame() {
 	}
 	plt.time = currentTime
 
-	// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
+	// If a mouse press event came, always pass it as "mouse held this frame",
+	// so we don't miss click-release events that are shorter than 1 frame.
 	x, y, state := sdl.GetMouseState()
 
 	// if mouse is captured and the mouse is not over the tv screen then ignore

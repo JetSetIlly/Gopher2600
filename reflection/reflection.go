@@ -43,6 +43,6 @@ type Renderer interface {
 type StubRenderer struct{}
 
 // SetReflectPixel implements the relfection.Renderer interface
-func (mpx *StubRenderer) SetReflectPixel(_ ReflectPixel) error {
+func (_ *StubRenderer) SetReflectPixel(_ ReflectPixel) error {
 	return nil
 }

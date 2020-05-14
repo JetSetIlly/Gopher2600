@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -134,7 +135,8 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 
 	// connect some screen properties to other parts of the system
-	img.glsl.screenTextureID = img.screen.screenTexture
+	img.glsl.screenTexture = img.screen.screenTexture
+	img.glsl.overlayTexture = img.screen.overlayTexture
 	tv.AddPixelRenderer(img.screen)
 
 	// this audio mixer produces the sound. there is another AudioMixer
@@ -244,4 +246,9 @@ func (img *SdlImgui) draw() {
 	} else {
 		img.wm.draw()
 	}
+}
+
+// SetReflectPixel implements reflection.Renderer interface
+func (img *SdlImgui) SetReflectPixel(ref reflection.ReflectPixel) error {
+	return img.screen.SetReflectPixel(ref)
 }

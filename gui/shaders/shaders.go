@@ -49,9 +49,15 @@ const float cursorSize = 2.0;
 
 void main()
 {
-	// imgui textures
 	if (ImageType == 0) {
+		// imgui texture
 		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
+		return;
+	}
+
+	if (ImageType == 2) {
+		// overlay texture
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 		return;
 	}
 

@@ -205,8 +205,7 @@ func (img *SdlImgui) Service() {
 	// Rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
 
-	clearColor := [4]float32{0.0, 0.0, 0.0, 1.0}
-	img.glsl.preRender(clearColor)
+	img.glsl.preRender()
 	img.screen.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()

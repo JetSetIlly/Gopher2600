@@ -441,13 +441,13 @@ func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) e
 }
 
 // SetReflectPixel implements reflection.Renderer interface
-func (scr *SdlDebug) SetReflectPixel(mpx reflection.ReflectPixel) error {
+func (scr *SdlDebug) SetReflectPixel(ref reflection.ReflectPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
 	if i <= scr.overlay.length()-pixelDepth {
-		scr.overlay.pixels[i] = mpx.Red
-		scr.overlay.pixels[i+1] = mpx.Green
-		scr.overlay.pixels[i+2] = mpx.Blue
-		scr.overlay.pixels[i+3] = mpx.Alpha
+		scr.overlay.pixels[i] = ref.Red
+		scr.overlay.pixels[i+1] = ref.Green
+		scr.overlay.pixels[i+2] = ref.Blue
+		scr.overlay.pixels[i+3] = ref.Alpha
 	}
 
 	return nil

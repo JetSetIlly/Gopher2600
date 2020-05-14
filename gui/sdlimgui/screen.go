@@ -24,6 +24,7 @@ import (
 	"image/color"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/television"
 	"github.com/jetsetilly/gopher2600/test"
 
@@ -44,6 +45,9 @@ type screen struct {
 	// which set of pixels to use: cropped or unmasked
 	cropped bool
 
+	// whether to show the reflection overlay
+	overlay bool
+
 	// the basic amount by which the image should be scaled. image width
 	// is also scaled by pixelWidth and aspectBias value
 	scaling float32
@@ -55,7 +59,8 @@ type screen struct {
 	createTextures bool
 
 	// the tv screen texture
-	screenTexture uint32
+	screenTexture  uint32
+	overlayTexture uint32
 
 	// whether to use the alternative pixel layer
 	useAltPixels bool
@@ -78,12 +83,14 @@ type screenCrit struct {
 	// difference is the colors
 	pixels    *image.RGBA
 	altPixels *image.RGBA
+	refPixels *image.RGBA
 
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
 	// directly
 	cropPixels    *image.RGBA
 	cropAltPixels *image.RGBA
+	cropRefPixels *image.RGBA
 
 	// the coordinates of the last SetPixel(). used to help set the alpha
 	// channel when emulation is paused
@@ -106,6 +113,12 @@ func newScreen(img *SdlImgui) *screen {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
+	gl.ActiveTexture(gl.TEXTURE1)
+	gl.GenTextures(1, &scr.overlayTexture)
+	gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
 	// start off by showing entirity of NTSC screen
 	scr.resize(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
 
@@ -125,6 +138,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.crit.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.refPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
 	// create a cropped image from the main
 	r := image.Rectangle{
@@ -137,6 +151,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	}
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropAltPixels = scr.crit.altPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropRefPixels = scr.crit.refPixels.SubImage(r).(*image.RGBA)
 
 	// clear pixels. SetPixel() alters the value of lastX and lastY. we don't
 	// really want it to do that however, so we note these value and restore
@@ -200,44 +215,70 @@ func (scr *screen) render() {
 	defer scr.crit.section.RUnlock()
 
 	var pixels *image.RGBA
-	if scr.useAltPixels {
-		if scr.cropped {
+	var refPixels *image.RGBA
+
+	if scr.cropped {
+		if scr.useAltPixels {
 			pixels = scr.crit.cropAltPixels
 		} else {
-			pixels = scr.crit.altPixels
-		}
-	} else {
-		if scr.cropped {
 			pixels = scr.crit.cropPixels
+		}
+		refPixels = scr.crit.cropRefPixels
+	} else {
+		if scr.useAltPixels {
+			pixels = scr.crit.altPixels
 		} else {
 			pixels = scr.crit.pixels
 		}
+		refPixels = scr.crit.refPixels
 	}
 
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
+	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
 	if scr.createTextures {
-		scr.createTextures = false
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(refPixels.Pix))
+
+		scr.createTextures = false
 
 	} else {
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-	}
 
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+		if scr.overlay {
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
+			gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+				0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(refPixels.Pix))
+		}
+	}
 }
 
 func (scr *screen) setCropping(set bool) {
 	scr.cropped = set
 	scr.createTextures = true
+}
+
+func (scr *screen) setOverlay(set bool) {
+	scr.overlay = set
 }
 
 // Resize implements the television.PixelRenderer interface
@@ -298,5 +339,16 @@ func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vb
 
 // EndRendering implements the television.PixelRenderer interface
 func (scr *screen) EndRendering() error {
+	return nil
+}
+
+// SetReflectPixel implements reflection.Renderer interface
+func (scr *screen) SetReflectPixel(ref reflection.ReflectPixel) error {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	rgb := color.RGBA{uint8(ref.Red), uint8(ref.Green), uint8(ref.Blue), uint8(ref.Alpha)}
+	scr.crit.refPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+
 	return nil
 }

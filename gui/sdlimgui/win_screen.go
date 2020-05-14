@@ -96,8 +96,16 @@ func (win *winScreen) draw() {
 		w = win.scr.scaledWidth()
 		h = win.scr.scaledHeight()
 	}
-	imgui.Image(imgui.TextureID(win.scr.screenTexture),
-		imgui.Vec2{w, h})
+
+	// overlay texture on top of screen texture
+	imagePos := imgui.CursorScreenPos()
+	imgui.Image(imgui.TextureID(win.scr.screenTexture), imgui.Vec2{w, h})
+	if win.scr.overlay {
+		imgui.SetCursorScreenPos(imagePos)
+		imgui.Image(imgui.TextureID(win.scr.overlayTexture), imgui.Vec2{w, h})
+	}
+
+	// is cursor over the screen
 	win.isHovered = imgui.IsItemHovered()
 
 	// tv status line
@@ -150,6 +158,8 @@ func (win *winScreen) draw() {
 	}
 	imgui.SameLine()
 	imgui.Checkbox("Pixel Perfect", &win.scr.pixelPerfect)
+	imgui.SameLine()
+	imgui.Checkbox("Overlay", &win.scr.overlay)
 
 	imgui.End()
 }
