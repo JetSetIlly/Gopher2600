@@ -44,7 +44,8 @@ type VCS struct {
 	HandController0 *input.HandController
 	HandController1 *input.HandController
 
-	RandomStart prefs.Bool
+	// randomise state on startup
+	RandomState prefs.Bool
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -113,7 +114,7 @@ func (vcs *VCS) Reset() error {
 	vcs.HandController0.Reset()
 	vcs.HandController1.Reset()
 
-	vcs.CPU.Reset(vcs.RandomStart.Get().(bool))
+	vcs.CPU.Reset(vcs.RandomState.Get().(bool))
 
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {

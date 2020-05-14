@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
-// LazyPlayfield lazily accesses playfield information from the emulator.
+// LazyPlayfield lazily accesses playfield information from the emulator
 type LazyPlayfield struct {
 	val *Lazy
 

@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 )
 
-// LazyDebugger lazily accesses Debgger information
+// LazyDebugger lazily accesses Debugger information
 type LazyDebugger struct {
 	val *Lazy
 

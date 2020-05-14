@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// LazyTV lazily accesses tv information from the emulator.
+// LazyTV lazily accesses tv information from the emulator
 type LazyTV struct {
 	val *Lazy
 

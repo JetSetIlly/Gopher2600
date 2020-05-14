@@ -21,7 +21,7 @@ package lazyvalues
 
 import "sync/atomic"
 
-// LazyPlayer lazily accesses player information from the emulator.
+// LazyPlayer lazily accesses player information from the emulator
 type LazyPlayer struct {
 	val *Lazy
 	id  int

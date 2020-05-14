@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// LazyCart lazily accesses cartridge information from the emulator.
+// LazyCart lazily accesses cartridge information from the emulator
 type LazyCart struct {
 	val *Lazy
 

@@ -213,7 +213,10 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (img *SdlImgui) Destroy(output io.Writer) {
-	_ = img.prefs.Save()
+	// we don't want to save preferences if we're in the middle of a panic
+	if r := recover(); r == nil {
+		_ = img.prefs.Save()
+	}
 
 	img.wm.destroy()
 	img.audio.EndMixing()

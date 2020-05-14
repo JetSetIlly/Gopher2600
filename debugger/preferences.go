@@ -33,7 +33,7 @@ import (
 type Preferences struct {
 	dbg         *Debugger
 	dsk         *prefs.Disk
-	RandomStart *prefs.Bool
+	RandomState *prefs.Bool
 	RandomPins  *prefs.Bool
 }
 
@@ -44,7 +44,7 @@ func (p Preferences) String() string {
 func loadPreferences(dbg *Debugger) (*Preferences, error) {
 	p := &Preferences{
 		dbg:         dbg,
-		RandomStart: &dbg.vcs.RandomStart,
+		RandomState: &dbg.vcs.RandomState,
 		RandomPins:  &dbg.vcs.Mem.RandomPins,
 	}
 
@@ -57,7 +57,7 @@ func loadPreferences(dbg *Debugger) (*Preferences, error) {
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
-	err = p.dsk.Add("debugger.randstart", p.RandomStart)
+	err = p.dsk.Add("debugger.randstate", p.RandomState)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -106,12 +106,12 @@ func (p *Preferences) parseCommand(tokens *commandline.Tokens) error {
 	case "RANDSTART":
 		switch action {
 		case "SET":
-			p.RandomStart.Set(true)
+			p.RandomState.Set(true)
 		case "NO":
-			p.RandomStart.Set(false)
+			p.RandomState.Set(false)
 		case "TOGGLE":
-			v := p.RandomStart.Get().(bool)
-			p.RandomStart.Set(!v)
+			v := p.RandomState.Get().(bool)
+			p.RandomState.Set(!v)
 		}
 	case "RANDPINS":
 		switch action {

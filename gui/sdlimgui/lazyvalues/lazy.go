@@ -52,6 +52,7 @@ type Lazy struct {
 	TV         *LazyTV
 	Cart       *LazyCart
 	Controller *LazyControllers
+	Prefs      *LazyPrefs
 
 	// \/\/\/ the following are updated on demand rather than through the update
 	// function, because they require more context
@@ -86,6 +87,7 @@ func NewValues() *Lazy {
 	val.TV = newLazyTV(val)
 	val.Cart = newLazyCart(val)
 	val.Controller = newLazyControllers(val)
+	val.Prefs = newLazyPrefs(val)
 
 	// allocating enough ram for an entire cart bank because, theoretically, a
 	// cartridge format could have a RAM area as large as that
@@ -116,6 +118,7 @@ func (val *Lazy) Update() {
 	val.TV.update()
 	val.Cart.update()
 	val.Controller.update()
+	val.Prefs.update()
 }
 
 // ReadRAM returns the data at read address

@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 )
 
-// LazyCPU lazily accesses CPU information from the emulator.
+// LazyCPU lazily accesses CPU information from the emulator
 type LazyCPU struct {
 	val *Lazy
 

@@ -21,7 +21,7 @@ package lazyvalues
 
 import "sync/atomic"
 
-// LazyMissil lazily accesses player information from the emulator.
+// LazyMissile lazily accesses missile information from the emulator
 type LazyMissile struct {
 	val *Lazy
 	id  int

@@ -21,29 +21,29 @@ package lazyvalues
 
 import (
 	"sync/atomic"
-
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 )
 
-// LazyControllers lazily accesses controller information from the emulator
-type LazyControllers struct {
+// LazyPrefs lazily accesses the debugger/emulator's preference states
+type LazyPrefs struct {
 	val *Lazy
 
-	atomicHandController0 atomic.Value // input.HandController
-	atomicHandController1 atomic.Value // input.HandController
-	HandController0       *input.HandController
-	HandController1       *input.HandController
+	atomicRandomState atomic.Value // bool (from prefs.Bool.Get())
+	atomicRandomPins  atomic.Value // bool (from prefs.Bool.Get())
+
+	RandomState bool
+	RandomPins  bool
 }
 
-func newLazyControllers(val *Lazy) *LazyControllers {
-	return &LazyControllers{val: val}
+func newLazyPrefs(val *Lazy) *LazyPrefs {
+	lz := &LazyPrefs{val: val}
+	return lz
 }
 
-func (lz *LazyControllers) update() {
+func (lz *LazyPrefs) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicHandController0.Store(lz.val.VCS.HandController0)
-		lz.atomicHandController1.Store(lz.val.VCS.HandController1)
+		lz.atomicRandomState.Store(lz.val.Dbg.Prefs.RandomState.Get())
+		lz.atomicRandomPins.Store(lz.val.Dbg.Prefs.RandomPins.Get())
 	})
-	lz.HandController0, _ = lz.atomicHandController0.Load().(*input.HandController)
-	lz.HandController1, _ = lz.atomicHandController1.Load().(*input.HandController)
+	lz.RandomState, _ = lz.atomicRandomState.Load().(bool)
+	lz.RandomPins, _ = lz.atomicRandomPins.Load().(bool)
 }
