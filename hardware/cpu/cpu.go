@@ -22,6 +22,7 @@ package cpu
 import (
 	"fmt"
 	"log"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -76,7 +77,8 @@ type CPU struct {
 	NoFlowControl bool
 }
 
-// NewCPU is the preferred method of initialisation for the CPU structure
+// NewCPU is the preferred method of initialisation for the CPU structure. Note
+// that the CPU will be initialised in a random state.
 func NewCPU(mem bus.CPUBus) (*CPU, error) {
 	mc := &CPU{mem: mem}
 
@@ -97,7 +99,7 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 		return nil, err
 	}
 
-	return mc, mc.Reset()
+	return mc, mc.Reset(true)
 }
 
 func (mc *CPU) String() string {
@@ -108,7 +110,7 @@ func (mc *CPU) String() string {
 }
 
 // Reset reinitialises all registers
-func (mc *CPU) Reset() error {
+func (mc *CPU) Reset(randomState bool) error {
 	// we don't want the CPU to reset if we're in the middle of executing an
 	// instruction.
 	if mc.isExecuting {
@@ -118,19 +120,27 @@ func (mc *CPU) Reset() error {
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
 
-	mc.PC.Load(0)
-	mc.A.Load(0)
-	mc.X.Load(0)
-	mc.Y.Load(0)
-	mc.SP.Load(255)
-	mc.Status.Reset()
+	if randomState {
+		mc.PC.Load(uint16(rand.Intn(0xffff)))
+		mc.A.Load(uint8(rand.Intn(0xff)))
+		mc.X.Load(uint8(rand.Intn(0xff)))
+		mc.Y.Load(uint8(rand.Intn(0xff)))
+		mc.SP.Load(uint8(rand.Intn(0xff)))
+		mc.Status.FromValue(uint8(rand.Intn(0xff)))
+	} else {
+		mc.PC.Load(0)
+		mc.A.Load(0)
+		mc.X.Load(0)
+		mc.Y.Load(0)
+		mc.SP.Load(255)
+		mc.Status.Reset()
+	}
+
 	mc.Status.Zero = mc.A.IsZero()
 	mc.Status.Sign = mc.A.IsNegative()
-	mc.Status.InterruptDisable = false
-	mc.Status.Break = false
+	mc.RdyFlg = true
 	mc.isExecuting = false
 	mc.cycleCallback = nil
-	mc.RdyFlg = true
 
 	// not touching NoFlowControl
 

@@ -28,7 +28,7 @@ import (
 
 func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 	for b := 0; b < len(dsm.reference); b++ {
-		mc.Reset()
+		mc.Reset(false)
 		err := mc.LoadPCIndirect(addresses.Reset)
 		if err != nil {
 			return err

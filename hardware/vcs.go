@@ -110,10 +110,7 @@ func (vcs *VCS) Reset() error {
 	vcs.HandController0.Reset()
 	vcs.HandController1.Reset()
 
-	// not resetting anything else is effectively leaving the VCS in a random
-	// state (if the emulation has moved forward any cycles that is)
-
-	// !!TODO: option for random state on VCS reset
+	vcs.CPU.Reset(vcs.RandomStart.Get().(bool))
 
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {
