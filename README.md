@@ -57,11 +57,15 @@ The screenshot below shows the graphical debugger, windowing provided by `Dear I
 
 <img src=".screenshots/dear_debugger.png" height="400" alt="dear imgui debugger"/>
 
-The two images below show some alternative debugger display. The first picture shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. 
+The next image shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. 
 
-The second screenshot shows `Pitfall`. The coloured pixels overlayed over the main image indicate when key TIA events have occured. For example, when `RESP0` has been triggered, or when `HMOVE` has been strobed. The most interesting part of this image perhaps, are the grey bars the extend to the right of the image. These bars show WSYNC signal activity. (Note that this overlay feature is not yet  available through the default graphical debugger and only through the `PLAIN` and `COLOR` term types)
+<img src=".screenshots/barnstormer_debug_colors.png" width="400" alt="barnstormer with debug colors"/>
 
-<img src=".screenshots/barnstormer_with_debug_colors.png" height="200" alt="barnstormer with debug colors"/> <img src=".screenshots/pitfall_with_overlay.png" height="200" alt="pitfall with overlay"/> 
+This first screenshot below shows `Pitfall` with the reflection overlay turned on. The coloured pixels indicate when key TIA events have occured. For example, when `RESP0` has been triggered, or when `HMOVE` has been strobed. The most interesting part of this image perhaps, are the grey bars the extend to the right of the image. These bars show `WSYNC` signal activity.
+
+The potential usefulness of the `WSYNC` visualisation can be seen in the second image. This shows `Pitfall 2`. At first flush, it looks very similar but we can quickly see that in fact, the newer game works the `6502` much harder.
+
+<img src=".screenshots/pitfall_overlay.png" width="400" alt="pitfall with overlay"/> <img src=".screenshots/pitfall2_overlay.png" width="400" alt="pitfall with overlay"/> 
 
 ## Resources used
 
@@ -252,16 +256,9 @@ In addition to the controller and panel input described above, the following key
 
 * F12 (backtick) Toggle screen masking
 * F11 Toggle debugging colors
+* F10 Toggle debugging overlay
 * \+ Increase screen size
 * \- Decrease screen size
-
-Not available in the graphical debugger but available in the display for the
-`PLAIN` and `COLOR` terminal types is this:
-
-* F10 Toggle debugging overlay
-
-The debugging overlay will be added to the graphical debugger in a future
-version.
 
 #### Debugger Terminal
 
