@@ -101,13 +101,16 @@ func (rnd *glsl) destroy() {
 }
 
 // preRender clears the framebuffer.
-func (rnd *glsl) preRender(clearColor [4]float32) {
-	gl.ClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3])
+func (rnd *glsl) preRender() {
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
 func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, drawData imgui.DrawData) {
+	st := storeGLState()
+	defer st.restore()
+
 	// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
 	displayWidth, displayHeight := displaySize[0], displaySize[1]
 	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
@@ -118,45 +121,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		X: fbWidth / displayWidth,
 		Y: fbHeight / displayHeight,
 	})
-
-	// Backup GL state
-	var lastActiveTexture int32
-	gl.GetIntegerv(gl.ACTIVE_TEXTURE, &lastActiveTexture)
-	gl.ActiveTexture(gl.TEXTURE0)
-	var lastProgram int32
-	gl.GetIntegerv(gl.CURRENT_PROGRAM, &lastProgram)
-	var lastTexture int32
-	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
-	var lastSampler int32
-	gl.GetIntegerv(gl.SAMPLER_BINDING, &lastSampler)
-	var lastArrayBuffer int32
-	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &lastArrayBuffer)
-	var lastElementArrayBuffer int32
-	gl.GetIntegerv(gl.ELEMENT_ARRAY_BUFFER_BINDING, &lastElementArrayBuffer)
-	var lastVertexArray int32
-	gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &lastVertexArray)
-	var lastPolygonMode [2]int32
-	gl.GetIntegerv(gl.POLYGON_MODE, &lastPolygonMode[0])
-	var lastViewport [4]int32
-	gl.GetIntegerv(gl.VIEWPORT, &lastViewport[0])
-	var lastScissorBox [4]int32
-	gl.GetIntegerv(gl.SCISSOR_BOX, &lastScissorBox[0])
-	var lastBlendSrcRgb int32
-	gl.GetIntegerv(gl.BLEND_SRC_RGB, &lastBlendSrcRgb)
-	var lastBlendDstRgb int32
-	gl.GetIntegerv(gl.BLEND_DST_RGB, &lastBlendDstRgb)
-	var lastBlendSrcAlpha int32
-	gl.GetIntegerv(gl.BLEND_SRC_ALPHA, &lastBlendSrcAlpha)
-	var lastBlendDstAlpha int32
-	gl.GetIntegerv(gl.BLEND_DST_ALPHA, &lastBlendDstAlpha)
-	var lastBlendEquationRgb int32
-	gl.GetIntegerv(gl.BLEND_EQUATION_RGB, &lastBlendEquationRgb)
-	var lastBlendEquationAlpha int32
-	gl.GetIntegerv(gl.BLEND_EQUATION_ALPHA, &lastBlendEquationAlpha)
-	lastEnableBlend := gl.IsEnabled(gl.BLEND)
-	lastEnableCullFace := gl.IsEnabled(gl.CULL_FACE)
-	lastEnableDepthTest := gl.IsEnabled(gl.DEPTH_TEST)
-	lastEnableScissorTest := gl.IsEnabled(gl.SCISSOR_TEST)
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
 	gl.Enable(gl.BLEND)
@@ -244,40 +208,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		}
 	}
 	gl.DeleteVertexArrays(1, &vaoHandle)
-
-	// Restore modified GL state
-	gl.UseProgram(uint32(lastProgram))
-	gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
-	gl.BindSampler(0, uint32(lastSampler))
-	gl.ActiveTexture(uint32(lastActiveTexture))
-	gl.BindVertexArray(uint32(lastVertexArray))
-	gl.BindBuffer(gl.ARRAY_BUFFER, uint32(lastArrayBuffer))
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, uint32(lastElementArrayBuffer))
-	gl.BlendEquationSeparate(uint32(lastBlendEquationRgb), uint32(lastBlendEquationAlpha))
-	gl.BlendFuncSeparate(uint32(lastBlendSrcRgb), uint32(lastBlendDstRgb), uint32(lastBlendSrcAlpha), uint32(lastBlendDstAlpha))
-	if lastEnableBlend {
-		gl.Enable(gl.BLEND)
-	} else {
-		gl.Disable(gl.BLEND)
-	}
-	if lastEnableCullFace {
-		gl.Enable(gl.CULL_FACE)
-	} else {
-		gl.Disable(gl.CULL_FACE)
-	}
-	if lastEnableDepthTest {
-		gl.Enable(gl.DEPTH_TEST)
-	} else {
-		gl.Disable(gl.DEPTH_TEST)
-	}
-	if lastEnableScissorTest {
-		gl.Enable(gl.SCISSOR_TEST)
-	} else {
-		gl.Disable(gl.SCISSOR_TEST)
-	}
-	gl.PolygonMode(gl.FRONT_AND_BACK, uint32(lastPolygonMode[0]))
-	gl.Viewport(lastViewport[0], lastViewport[1], lastViewport[2], lastViewport[3])
-	gl.Scissor(lastScissorBox[0], lastScissorBox[1], lastScissorBox[2], lastScissorBox[3])
 }
 
 func (rnd *glsl) setup() {
@@ -379,4 +309,90 @@ func getShaderCompileError(shader uint32) string {
 		}
 	}
 	return ""
+}
+
+// glState stores GL state with the intention of restoration after a short period
+type glState struct {
+	lastActiveTexture      int32
+	lastProgram            int32
+	lastTexture            int32
+	lastSampler            int32
+	lastArrayBuffer        int32
+	lastElementArrayBuffer int32
+	lastVertexArray        int32
+	lastPolygonMode        [2]int32
+	lastViewport           [4]int32
+	lastScissorBox         [4]int32
+	lastBlendSrcRgb        int32
+	lastBlendDstRgb        int32
+	lastBlendSrcAlpha      int32
+	lastBlendDstAlpha      int32
+	lastBlendEquationRgb   int32
+	lastBlendEquationAlpha int32
+	lastEnableBlend        bool
+	lastEnableCullFace     bool
+	lastEnableDepthTest    bool
+	lastEnableScissorTest  bool
+}
+
+// storeGLState is the best way of initialising an instance of glState
+func storeGLState() *glState {
+	st := &glState{}
+	gl.GetIntegerv(gl.ACTIVE_TEXTURE, &st.lastActiveTexture)
+	gl.GetIntegerv(gl.CURRENT_PROGRAM, &st.lastProgram)
+	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &st.lastTexture)
+	gl.GetIntegerv(gl.SAMPLER_BINDING, &st.lastSampler)
+	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &st.lastArrayBuffer)
+	gl.GetIntegerv(gl.ELEMENT_ARRAY_BUFFER_BINDING, &st.lastElementArrayBuffer)
+	gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &st.lastVertexArray)
+	gl.GetIntegerv(gl.POLYGON_MODE, &st.lastPolygonMode[0])
+	gl.GetIntegerv(gl.VIEWPORT, &st.lastViewport[0])
+	gl.GetIntegerv(gl.SCISSOR_BOX, &st.lastScissorBox[0])
+	gl.GetIntegerv(gl.BLEND_SRC_RGB, &st.lastBlendSrcRgb)
+	gl.GetIntegerv(gl.BLEND_DST_RGB, &st.lastBlendDstRgb)
+	gl.GetIntegerv(gl.BLEND_SRC_ALPHA, &st.lastBlendSrcAlpha)
+	gl.GetIntegerv(gl.BLEND_DST_ALPHA, &st.lastBlendDstAlpha)
+	gl.GetIntegerv(gl.BLEND_EQUATION_RGB, &st.lastBlendEquationRgb)
+	gl.GetIntegerv(gl.BLEND_EQUATION_ALPHA, &st.lastBlendEquationAlpha)
+	st.lastEnableBlend = gl.IsEnabled(gl.BLEND)
+	st.lastEnableCullFace = gl.IsEnabled(gl.CULL_FACE)
+	st.lastEnableDepthTest = gl.IsEnabled(gl.DEPTH_TEST)
+	st.lastEnableScissorTest = gl.IsEnabled(gl.SCISSOR_TEST)
+	return st
+}
+
+// restore previously store glState
+func (st *glState) restore() {
+	gl.UseProgram(uint32(st.lastProgram))
+	gl.BindTexture(gl.TEXTURE_2D, uint32(st.lastTexture))
+	gl.BindSampler(0, uint32(st.lastSampler))
+	gl.ActiveTexture(uint32(st.lastActiveTexture))
+	gl.BindVertexArray(uint32(st.lastVertexArray))
+	gl.BindBuffer(gl.ARRAY_BUFFER, uint32(st.lastArrayBuffer))
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, uint32(st.lastElementArrayBuffer))
+	gl.BlendEquationSeparate(uint32(st.lastBlendEquationRgb), uint32(st.lastBlendEquationAlpha))
+	gl.BlendFuncSeparate(uint32(st.lastBlendSrcRgb), uint32(st.lastBlendDstRgb), uint32(st.lastBlendSrcAlpha), uint32(st.lastBlendDstAlpha))
+	if st.lastEnableBlend {
+		gl.Enable(gl.BLEND)
+	} else {
+		gl.Disable(gl.BLEND)
+	}
+	if st.lastEnableCullFace {
+		gl.Enable(gl.CULL_FACE)
+	} else {
+		gl.Disable(gl.CULL_FACE)
+	}
+	if st.lastEnableDepthTest {
+		gl.Enable(gl.DEPTH_TEST)
+	} else {
+		gl.Disable(gl.DEPTH_TEST)
+	}
+	if st.lastEnableScissorTest {
+		gl.Enable(gl.SCISSOR_TEST)
+	} else {
+		gl.Disable(gl.SCISSOR_TEST)
+	}
+	gl.PolygonMode(gl.FRONT_AND_BACK, uint32(st.lastPolygonMode[0]))
+	gl.Viewport(st.lastViewport[0], st.lastViewport[1], st.lastViewport[2], st.lastViewport[3])
+	gl.Scissor(st.lastScissorBox[0], st.lastScissorBox[1], st.lastScissorBox[2], st.lastScissorBox[3])
 }
