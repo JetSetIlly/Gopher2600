@@ -201,74 +201,68 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
+				// critical section
+				rnd.img.screen.crit.section.Lock()
 
+				vertScaling := rnd.img.screen.vertScaling()
+				horizScaling := rnd.img.screen.horizScaling()
+
+				// pixel perfect rendering or whether to apply the CRT
+				// filters
+				if rnd.img.screen.pixelPerfect {
+					gl.Uniform1i(rnd.attribPixelPerfect, 1)
+				} else {
+					gl.Uniform1i(rnd.attribPixelPerfect, 0)
+				}
+
+				// the resolution information is used to scale the Last
+				gl.Uniform2f(rnd.attribDim, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
+				gl.Uniform2f(rnd.attribCropDim, rnd.img.screen.scaledCroppedWidth(), rnd.img.screen.scaledCroppedHeight())
+
+				// screen geometry
+				gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
+				gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
+				gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
+
+				// the coordinates of the last plot
+				if rnd.img.screen.cropped {
+					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-television.HorizClksHBlank)*horizScaling)
+				} else {
+					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
+				}
+				gl.Uniform1f(rnd.attribLastY, float32(rnd.img.screen.crit.lastY)*vertScaling)
+
+				// set ShowScreenDraw if emulation is paused or a low frame
+				// rate has been requested
+				if rnd.img.paused || rnd.img.tv.GetReqFPS() < 3.0 {
+					gl.Uniform1i(rnd.attribShowScreenDraw, 1)
+				} else {
+					gl.Uniform1i(rnd.attribShowScreenDraw, -1)
+				}
+
+				if rnd.img.screen.cropped {
+					gl.Uniform1i(rnd.attribCropped, 1)
+				} else {
+					gl.Uniform1i(rnd.attribCropped, -1)
+				}
+
+				// animation time
+				anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
+				anim = math.Abs(anim)
+				gl.Uniform1f(rnd.attribAnimTime, float32(anim))
+
+				// end of critical section
+				rnd.img.screen.crit.section.Unlock()
+
+				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
-
 				case rnd.overlayTexture:
 					gl.Uniform1i(rnd.attribImageType, 2)
-
 				case rnd.screenTexture:
-
-					// critical section
-					rnd.img.screen.crit.section.Lock()
-
-					vertScaling := rnd.img.screen.vertScaling()
-					horizScaling := rnd.img.screen.horizScaling()
-
-					// id of screen type
 					gl.Uniform1i(rnd.attribImageType, 1)
-
-					// pixel perfect rendering or whether to apply the CRT
-					// filters
-					if rnd.img.screen.pixelPerfect {
-						gl.Uniform1i(rnd.attribPixelPerfect, 1)
-					} else {
-						gl.Uniform1i(rnd.attribPixelPerfect, 0)
-					}
-
-					// the resolution information is used to scale the Last
-					gl.Uniform2f(rnd.attribDim, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
-					gl.Uniform2f(rnd.attribCropDim, rnd.img.screen.scaledCroppedWidth(), rnd.img.screen.scaledCroppedHeight())
-
-					// screen geometry
-					gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
-					gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
-					gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
-
-					// the coordinates of the last plot
-					if rnd.img.screen.cropped {
-						gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-television.HorizClksHBlank)*horizScaling)
-					} else {
-						gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
-					}
-					gl.Uniform1f(rnd.attribLastY, float32(rnd.img.screen.crit.lastY)*vertScaling)
-
-					// set ShowScreenDraw if emulation is paused or a low frame
-					// rate has been requested
-					if rnd.img.paused || rnd.img.tv.GetReqFPS() < 3.0 {
-						gl.Uniform1i(rnd.attribShowScreenDraw, 1)
-					} else {
-						gl.Uniform1i(rnd.attribShowScreenDraw, -1)
-					}
-
-					if rnd.img.screen.cropped {
-						gl.Uniform1i(rnd.attribCropped, 1)
-					} else {
-						gl.Uniform1i(rnd.attribCropped, -1)
-					}
-
-					// animation time
-					anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
-					anim = math.Abs(anim)
-					gl.Uniform1f(rnd.attribAnimTime, float32(anim))
-
-					// end of critical section
-					rnd.img.screen.crit.section.Unlock()
-
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
-
 				}
 
 				// clipping

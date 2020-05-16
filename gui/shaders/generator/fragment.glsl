@@ -34,11 +34,6 @@ void main()
 		return;
 	}
 
-	if (ImageType == 2) {
-		// overlay texture
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
-	}
 
 	// tv screen texture
 	vec2 coords = Frag_UV.xy;
@@ -165,6 +160,12 @@ void main()
 		}
 	}
 
+	// if this is the overlay texture then we're done
+	if (ImageType == 2) {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		return;
+	}
+
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
 	if (PixelPerfect == 1) {
 		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
@@ -178,7 +179,8 @@ void main()
 		return;
 	}
 
-	// the remainder of the shader are the CRT effects
+	// the remainder of the shader are the CRT effects and we only apply these
+	// to the screen texture
 
 	// split color channels
 	vec2 split;
