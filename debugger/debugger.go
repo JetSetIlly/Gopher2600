@@ -171,13 +171,9 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 		return err
 	})
 
-	// set up reflection monitor. if screen implements the reflection.Renderer
-	// interface then use that. otherwise set up the stub renderer
-	if ref, ok := dbg.scr.(reflection.Renderer); ok {
-		dbg.reflect = reflection.NewMonitor(dbg.vcs, ref)
-	} else {
-		ref := &reflection.StubRenderer{}
-		dbg.reflect = reflection.NewMonitor(dbg.vcs, ref)
+	// setup reflection monitor
+	if b, ok := scr.(reflection.Broker); ok {
+		dbg.reflect = reflection.NewMonitor(dbg.vcs, b.GetReflectionRenderer())
 	}
 
 	// set up breakpoints/traps

@@ -35,6 +35,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	// vcsStep is to be called every video cycle when the quantum mode
 	// is set to CPU
 	vcsStep := func() error {
+		if dbg.reflect == nil {
+			return nil
+		}
 		return dbg.reflect.Check()
 	}
 

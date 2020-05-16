@@ -19,6 +19,8 @@
 
 package reflection
 
+import "github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+
 // ReflectPixel contains additional debugging information from the last video cycle.
 // it is up to the Renderer to match this up with the last television signal
 type ReflectPixel struct {
@@ -36,13 +38,22 @@ type ReflectPixel struct {
 // Renderer implementations accepts ReflectPixel values and associates it in
 // some way with the moste recent television signal
 type Renderer interface {
-	SetReflectPixel(ReflectPixel) error
+	NewReflectPixel(ResultWithBank) error
+	UpdateReflectPixel(ReflectPixel) error
 }
 
-// StubRenderer is a minimal implementation of reflection.StubRenderer
-type StubRenderer struct{}
+// Broker implementations can identify a reflection.Renderer
+type Broker interface {
+	GetReflectionRenderer() Renderer
+}
 
-// SetReflectPixel implements the relfection.Renderer interface
-func (_ *StubRenderer) SetReflectPixel(_ ReflectPixel) error {
-	return nil
+// ResultWithBank is an inexpensive way of associating an execution.Result with
+// its cartridge bank. For reasons given in the execution package, we don't
+// store bank information in execution.Result itself. The disassembly package
+// has a way of wrapping the two fields together, but it's an expensive
+// operation to perform every video cycle. The ResultWithBank type can be
+// though of as a half-way point between the two extremes.
+type ResultWithBank struct {
+	Res  execution.Result
+	Bank int
 }

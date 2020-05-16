@@ -82,13 +82,11 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 // Check should be called every video cycle to record the current state of the
 // emulation/system
 func (mon *Monitor) Check() error {
-	// send clear pixel signal before anything else. this is okay to send in
-	// addition to any potential signals from the functions called below
-	// because of hos ReflectPixel() works - always drawing at the location of last TV
-	// signal. I acknowledge that it is potentially redundant but the
-	// performance impact is minimal
-	sig := ReflectPixel{Label: "", Red: 0, Green: 0, Blue: 0, Alpha: 0}
-	if err := mon.renderer.SetReflectPixel(sig); err != nil {
+	res := ResultWithBank{
+		Res:  mon.vcs.CPU.LastResult,
+		Bank: mon.vcs.Mem.Cart.GetBank(mon.vcs.CPU.LastResult.Address),
+	}
+	if err := mon.renderer.NewReflectPixel(res); err != nil {
 		return nil
 	}
 
@@ -131,7 +129,7 @@ func (mon *Monitor) checkWSYNC() error {
 	// special handling of WSYNC signal - we want every pixel to be coloured
 	// while the RdyFlag is false, not just when WSYNC is first triggered.
 	sig := ReflectPixel{Label: "WSYNC", Red: 0, Green: 0, Blue: 100, Alpha: 120}
-	return mon.renderer.SetReflectPixel(sig)
+	return mon.renderer.UpdateReflectPixel(sig)
 }
 
 type overlaySignals map[uint16]ReflectPixel
@@ -199,7 +197,7 @@ func (adm *addressMonitor) check(rend Renderer, mem *memory.VCSMemory, delay fut
 	// not have an associated future.Event
 	if adm.lastEvent != nil || signalStart {
 		adm.lastEvent = nil
-		err := rend.SetReflectPixel(adm.signal)
+		err := rend.UpdateReflectPixel(adm.signal)
 		if err != nil {
 			return err
 		}

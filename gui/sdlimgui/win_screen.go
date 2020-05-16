@@ -24,6 +24,8 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/television"
 )
 
 const winScreenTitle = "TV Screen"
@@ -105,16 +107,72 @@ func (win *winScreen) draw() {
 		imgui.Image(imgui.TextureID(win.scr.overlayTexture), imgui.Vec2{w, h})
 	}
 
-	// is cursor over the screen
 	win.isHovered = imgui.IsItemHovered()
+
+	// if mouse is hovering over the image ...
+	if win.isHovered {
+		win.scr.crit.section.RLock()
+
+		// get mouse position and transform it so it relates to the underlying
+		// image
+		mp := imgui.MousePos().Minus(imagePos)
+		mx := mp.X / win.scr.scaledCroppedWidth()
+		my := mp.Y / win.scr.scaledCroppedHeight()
+
+		imageSz := win.scr.crit.cropPixels.Bounds().Size()
+
+		if win.scr.cropped {
+			mx *= float32(imageSz.X)
+			mx += float32(television.HorizClksHBlank)
+			my *= float32(imageSz.Y)
+			my += float32(win.scr.crit.topScanline)
+		} else {
+			mx *= float32(imageSz.X)
+			my *= float32(imageSz.Y)
+		}
+
+		// get reflection information
+		res := win.scr.crit.reflection[int(mx)][int(my)]
+
+		// present tooltip showing pixel coords and CPU state
+		if !win.isCaptured {
+			fmtRes, _ := win.img.lz.Dsm.FormatResult(res.Bank, res.Res, disassembly.EntryLevelBlessed)
+			if fmtRes.Address != "" {
+				imgui.BeginTooltip()
+				imgui.Text(fmt.Sprintf("Scanline: %d", int(my)))
+				imgui.Text(fmt.Sprintf("Horiz Pos: %d", int(mx)-television.HorizClksHBlank))
+
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+				if win.img.lz.Cart.NumBanks > 1 {
+					imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, res.Bank))
+				} else {
+					imgui.Text(fmtRes.Address)
+				}
+				imgui.PopStyleColor()
+
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic)
+				imgui.Text(fmtRes.Mnemonic)
+				imgui.PopStyleColor()
+
+				if fmtRes.Operand != "" {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+					imgui.Text(fmtRes.Operand)
+					imgui.PopStyleColor()
+				}
+
+				imgui.EndTooltip()
+			}
+		}
+
+		win.scr.crit.section.RUnlock()
+	}
 
 	// tv status line
 	imguiText("Frame:")
 	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
 	imgui.SameLineV(0, 15)
 	imguiText("Scanline:")
-	scanline := win.img.lz.TV.Scanline
-	imguiText(fmt.Sprintf("%-4d", scanline))
+	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Scanline))
 	imgui.SameLineV(0, 15)
 	imguiText("Horiz Pos:")
 	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.HP))

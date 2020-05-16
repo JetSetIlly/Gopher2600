@@ -232,23 +232,22 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	img.context.Destroy()
 }
 
-// GetTerminal implements terminal.Broker interface
-func (img *SdlImgui) GetTerminal() terminal.Terminal {
-	return img.term
-}
-
 func (img *SdlImgui) pause(set bool) {
 	img.paused = set
 }
 
 func (img *SdlImgui) draw() {
-	if img.lz.Dbg == nil {
-	} else {
+	if img.lz.Dbg != nil {
 		img.wm.draw()
 	}
 }
 
-// SetReflectPixel implements reflection.Renderer interface
-func (img *SdlImgui) SetReflectPixel(ref reflection.ReflectPixel) error {
-	return img.screen.SetReflectPixel(ref)
+// GetTerminal implements terminal.Broker interface
+func (img *SdlImgui) GetTerminal() terminal.Terminal {
+	return img.term
+}
+
+// GetReflectionRendere implements reflection.Broker interface
+func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
+	return img.screen
 }

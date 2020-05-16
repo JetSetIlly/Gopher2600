@@ -81,9 +81,12 @@ type screenCrit struct {
 
 	// pixels and altPixels should be constructed exactly the same. the only
 	// difference is the colors
-	pixels    *image.RGBA
-	altPixels *image.RGBA
-	refPixels *image.RGBA
+	pixels        *image.RGBA
+	altPixels     *image.RGBA
+	overlayPixels *image.RGBA
+
+	// 2d array of disasm entries. resized at the same time as overlayPixels resize
+	reflection [][]reflection.ResultWithBank
 
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
@@ -138,7 +141,13 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.crit.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
-	scr.crit.refPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+
+	// allocate disasm info
+	scr.crit.reflection = make([][]reflection.ResultWithBank, television.HorizClksScanline)
+	for x := 0; x < television.HorizClksScanline; x++ {
+		scr.crit.reflection[x] = make([]reflection.ResultWithBank, scr.img.tv.GetSpec().ScanlinesTotal)
+	}
 
 	// create a cropped image from the main
 	r := image.Rectangle{
@@ -151,7 +160,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	}
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropAltPixels = scr.crit.altPixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropRefPixels = scr.crit.refPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropRefPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
 
 	// clear pixels. SetPixel() alters the value of lastX and lastY. we don't
 	// really want it to do that however, so we note these value and restore
@@ -215,7 +224,7 @@ func (scr *screen) render() {
 	defer scr.crit.section.RUnlock()
 
 	var pixels *image.RGBA
-	var refPixels *image.RGBA
+	var overlayPixels *image.RGBA
 
 	if scr.cropped {
 		if scr.useAltPixels {
@@ -223,14 +232,14 @@ func (scr *screen) render() {
 		} else {
 			pixels = scr.crit.cropPixels
 		}
-		refPixels = scr.crit.cropRefPixels
+		overlayPixels = scr.crit.cropRefPixels
 	} else {
 		if scr.useAltPixels {
 			pixels = scr.crit.altPixels
 		} else {
 			pixels = scr.crit.pixels
 		}
-		refPixels = scr.crit.refPixels
+		overlayPixels = scr.crit.overlayPixels
 	}
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
@@ -249,7 +258,7 @@ func (scr *screen) render() {
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(refPixels.Pix))
+			gl.Ptr(overlayPixels.Pix))
 
 		scr.createTextures = false
 
@@ -267,7 +276,7 @@ func (scr *screen) render() {
 			gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 				0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(refPixels.Pix))
+				gl.Ptr(overlayPixels.Pix))
 		}
 	}
 }
@@ -342,13 +351,29 @@ func (scr *screen) EndRendering() error {
 	return nil
 }
 
-// SetReflectPixel implements reflection.Renderer interface
-func (scr *screen) SetReflectPixel(ref reflection.ReflectPixel) error {
+// NeweflectPixel implements reflection.Renderer interface
+func (scr *screen) NewReflectPixel(result reflection.ResultWithBank) error {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	// clear pixel
+	scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, color.RGBA{0, 0, 0, 0})
+
+	// store ResultWithBank instance
+	if scr.crit.lastX < len(scr.crit.reflection) && scr.crit.lastY < len(scr.crit.reflection[scr.crit.lastX]) {
+		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = result
+	}
+
+	return nil
+}
+
+// UpdateReflectPixel implements reflection.Renderer interface
+func (scr *screen) UpdateReflectPixel(ref reflection.ReflectPixel) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
 	rgb := color.RGBA{uint8(ref.Red), uint8(ref.Green), uint8(ref.Blue), uint8(ref.Alpha)}
-	scr.crit.refPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	return nil
 }

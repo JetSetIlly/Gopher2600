@@ -440,8 +440,18 @@ func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) e
 	return nil
 }
 
-// SetReflectPixel implements reflection.Renderer interface
-func (scr *SdlDebug) SetReflectPixel(ref reflection.ReflectPixel) error {
+// GetReflectionRenderer implements the relfection.Broker interface
+func (scr *SdlDebug) GetReflectionRenderer() reflection.Renderer {
+	return scr
+}
+
+// NewReflectPixel implements the relfection.Renderer interface
+func (_ *SdlDebug) NewReflectPixel(_ reflection.ResultWithBank) error {
+	return nil
+}
+
+// UpdateReflectPixel implements reflection.Renderer interface
+func (scr *SdlDebug) UpdateReflectPixel(ref reflection.ReflectPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
 	if i <= scr.overlay.length()-pixelDepth {
 		scr.overlay.pixels[i] = ref.Red
