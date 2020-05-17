@@ -34,10 +34,9 @@ const winCPUTitle = "CPU"
 
 type winCPU struct {
 	windowManagement
-	img *SdlImgui
+	widgetDimensions
 
-	// widget dimensions
-	regDim imgui.Vec2
+	img *SdlImgui
 
 	// ready flag colors
 	colFlgReadyOn  imgui.PackedColor
@@ -53,7 +52,7 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCPU) init() {
-	win.regDim = imguiGetFrameDim("FFFF")
+	win.widgetDimensions.init()
 	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
 	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
 }
@@ -178,7 +177,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 	content := win.img.lz.CPU.RegValue(reg)
 	bitwidth := win.img.lz.CPU.RegBitwidth(reg)
 
-	imgui.PushItemWidth(win.regDim.X)
+	imgui.PushItemWidth(win.fourDigitDim.X)
 	if imguiHexInput(label, !win.img.paused, bitwidth/4, &content) {
 		if v, err := strconv.ParseUint(content, 16, bitwidth); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { reg.LoadFromUint64(v) })

@@ -36,6 +36,9 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
+// imguiIniFile is where imgui will store the coordinates of the imgui windows
+// !TODO: duplicate imgui.SetIniFilename so that is uses prefs pacakge. we
+// should be able to do this a smart implementation of io.Reader and io.Writer
 const imguiIniFile = "debugger_imgui.ini"
 
 // SdlImgui is an sdl based visualiser using imgui
@@ -60,8 +63,8 @@ type SdlImgui struct {
 	// imgui window management
 	wm *windowManager
 
-	// the colors used by the imgui system. includes the TV colors in a
-	// suitable format
+	// the colors used by the imgui system. includes the TV colors converted to
+	// a suitable format
 	cols *imguiColors
 
 	// functions that need to be performed in the main thread should be queued
@@ -74,7 +77,8 @@ type SdlImgui struct {
 	featureReq chan featureRequest
 	featureErr chan error
 
-	// events channel is not created but assigned with SetEventChannel()
+	// events channel is not created but assigned with the feature request
+	// gui.ReqSetEventChan
 	events chan gui.Event
 
 	// is emulation running
@@ -134,10 +138,9 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 		return nil, errors.New(errors.SDLImgui, err)
 	}
 
-	// connect some screen properties to other parts of the system
-	img.glsl.screenTexture = img.screen.screenTexture
-	img.glsl.overlayTexture = img.screen.overlayTexture
+	// connect pixel renderer to television and texture renderer to pixel renderer
 	tv.AddPixelRenderer(img.screen)
+	img.screen.addTextureRenderer(img.wm.dbgScr)
 
 	// this audio mixer produces the sound. there is another AudioMixer
 	// implementation in winAudio which visualises the sound

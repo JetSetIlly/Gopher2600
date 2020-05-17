@@ -32,12 +32,12 @@ const winTimerTitle = "Timer"
 
 type winTimer struct {
 	windowManagement
+	widgetDimensions
+
 	img *SdlImgui
 
 	// widget dimensions
 	intervalComboDim imgui.Vec2
-	valueDim         imgui.Vec2
-	ticksDim         imgui.Vec2
 }
 
 func newWinTimer(img *SdlImgui) (managedWindow, error) {
@@ -49,9 +49,8 @@ func newWinTimer(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winTimer) init() {
+	win.widgetDimensions.init()
 	win.intervalComboDim = imguiGetFrameDim("", timer.IntervalList...)
-	win.ticksDim = imguiGetFrameDim("FFFF")
-	win.valueDim = imguiGetFrameDim("FF")
 }
 
 func (win *winTimer) destroy() {
@@ -85,7 +84,7 @@ func (win *winTimer) draw() {
 	imgui.PopItemWidth()
 
 	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
-	imgui.PushItemWidth(win.ticksDim.X)
+	imgui.PushItemWidth(win.fourDigitDim.X)
 	imgui.SameLine()
 	imguiText("Value")
 	if imguiHexInput("##value", !win.img.paused, 2, &value) {
@@ -96,7 +95,7 @@ func (win *winTimer) draw() {
 	imgui.PopItemWidth()
 
 	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
-	imgui.PushItemWidth(win.ticksDim.X)
+	imgui.PushItemWidth(win.fourDigitDim.X)
 	imgui.SameLine()
 	imguiText("Ticks")
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {

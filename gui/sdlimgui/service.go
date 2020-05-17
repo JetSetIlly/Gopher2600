@@ -62,12 +62,12 @@ func (img *SdlImgui) Service() {
 				img.events <- gui.EventQuit{}
 
 			case *sdl.TextInputEvent:
-				if !img.wm.scr.isCaptured {
+				if !img.wm.dbgScr.isCaptured {
 					img.io.AddInputCharacters(string(ev.Text[:]))
 				}
 
 			case *sdl.KeyboardEvent:
-				if img.wm.scr.isCaptured {
+				if img.wm.dbgScr.isCaptured {
 					mod := gui.KeyModNone
 
 					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
@@ -118,13 +118,13 @@ func (img *SdlImgui) Service() {
 
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
-					if img.wm.scr.isCaptured {
+					if img.wm.dbgScr.isCaptured {
 						button = gui.MouseButtonLeft
-					} else if img.wm.scr.isHovered && !img.wm.scr.isPopup {
+					} else if img.wm.dbgScr.isHovered && !img.wm.dbgScr.isPopup {
 						// left mouse button should capture mouse if
 						// not already done so.
 						swallow = true
-						img.wm.scr.isCaptured = true
+						img.wm.dbgScr.isCaptured = true
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
@@ -136,9 +136,9 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.wm.scr.isCaptured {
+					if img.wm.dbgScr.isCaptured {
 						swallow = true
-						img.wm.scr.isCaptured = false
+						img.wm.dbgScr.isCaptured = false
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
@@ -171,7 +171,7 @@ func (img *SdlImgui) Service() {
 		}
 
 		// mouse motion
-		if img.wm.scr.isCaptured {
+		if img.wm.dbgScr.isCaptured {
 			mx, my, _ := sdl.GetMouseState()
 			if mx != img.mx || my != img.my {
 				w, h := img.plt.window.GetSize()

@@ -28,7 +28,6 @@ import (
 )
 
 const windowTitle = "Gopher2600"
-const winIniFile = "debugger_win.ini"
 
 type platform struct {
 	img *SdlImgui
@@ -146,7 +145,7 @@ func (plt *platform) newFrame() {
 	// deactivated when the "invisible" mouse is outside the tv screen bounds.
 	//
 	// TODO: roll mouse updates into service loop
-	if plt.img.wm.scr.isCaptured && !plt.img.wm.scr.isHovered {
+	if plt.img.wm.dbgScr.isCaptured && !plt.img.wm.dbgScr.isHovered {
 		state = 0
 	}
 

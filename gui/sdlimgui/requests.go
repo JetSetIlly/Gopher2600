@@ -61,35 +61,35 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleVisibility:
 
 	case gui.ReqSetAltColors:
-		img.screen.useAltPixels = request.args[0].(bool)
+		img.wm.dbgScr.useAltPixels = request.args[0].(bool)
 
 	case gui.ReqToggleAltColors:
-		img.screen.useAltPixels = !img.screen.useAltPixels
+		img.wm.dbgScr.useAltPixels = !img.wm.dbgScr.useAltPixels
 
 	case gui.ReqSetCropping:
-		img.screen.setCropping(request.args[0].(bool))
+		img.wm.dbgScr.setCropping(request.args[0].(bool))
 
 	case gui.ReqToggleCropping:
-		img.screen.setCropping(!img.screen.cropped)
+		img.wm.dbgScr.setCropping(!img.wm.dbgScr.cropped)
 
 	case gui.ReqSetOverlay:
-		img.screen.setOverlay(request.args[0].(bool))
+		img.wm.dbgScr.setOverlay(request.args[0].(bool))
 
 	case gui.ReqToggleOverlay:
-		img.screen.setOverlay(!img.screen.overlay)
+		img.wm.dbgScr.setOverlay(!img.wm.dbgScr.overlay)
 
 	case gui.ReqIncScale:
-		if img.screen.scaling < 4.0 {
-			img.screen.scaling += 0.1
+		if img.wm.dbgScr.scaling < 4.0 {
+			img.wm.dbgScr.scaling += 0.1
 		}
 
 	case gui.ReqDecScale:
-		if img.screen.scaling > 0.5 {
-			img.screen.scaling -= 0.1
+		if img.wm.dbgScr.scaling > 0.5 {
+			img.wm.dbgScr.scaling -= 0.1
 		}
 
 	case gui.ReqSetScale:
-		img.screen.scaling = request.args[0].(float32)
+		img.wm.dbgScr.scaling = request.args[0].(float32)
 
 	case gui.ReqSetPause:
 		img.pause(request.args[0].(bool))

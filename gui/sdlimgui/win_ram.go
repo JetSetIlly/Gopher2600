@@ -32,13 +32,12 @@ const winRAMTitle = "RAM"
 
 type winRAM struct {
 	windowManagement
+	widgetDimensions
+
 	img *SdlImgui
 
 	// SubArea information for the internal VCS RAM
 	vcsSubArea memorymap.SubArea
-
-	// widget dimensions
-	byteDim imgui.Vec2
 
 	// the X position of the grid header. based on the width of the column
 	// headers (we know this value after the first pass)
@@ -65,7 +64,7 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winRAM) init() {
-	win.byteDim = imguiGetFrameDim("FF")
+	win.widgetDimensions.init()
 }
 
 func (win *winRAM) destroy() {
@@ -128,13 +127,13 @@ func (win *winRAM) drawGrid(ramDetails memorymap.SubArea) {
 	headerDim := imgui.Vec2{X: win.headerStartX, Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.byteDim.X
+		headerDim.X += win.twoDigitDim.X
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	// draw rows
-	imgui.PushItemWidth(win.byteDim.X)
+	imgui.PushItemWidth(win.twoDigitDim.X)
 	i := uint16(0)
 	for readAddr := ramDetails.ReadOrigin; readAddr <= ramDetails.ReadMemtop; readAddr++ {
 		// draw row header

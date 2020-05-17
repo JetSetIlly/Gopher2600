@@ -25,7 +25,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
-type vec4Palette []imgui.Vec4
+// the colors in the colors package need to be converted for use with imgui.
 type packedPalette []imgui.PackedColor
 
 // imguiColors defines all the colors used by the GUI
@@ -93,9 +93,6 @@ type imguiColors struct {
 	TermStyleInstrument      imgui.Vec4
 	TermStyleError           imgui.Vec4
 
-	vec4PaletteNTSC   vec4Palette
-	vec4PalettePAL    vec4Palette
-	vec4PaletteAlt    vec4Palette
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
 	packedPaletteAlt  packedPalette
@@ -179,7 +176,9 @@ func newColors() *imguiColors {
 	style.SetColor(imgui.StyleColorBorder, cols.Border)
 
 	// convert 2600 colours to format usable by imgui
-	cols.vec4PaletteNTSC = make(vec4Palette, 0, len(colors.PaletteNTSC))
+
+	// convert to imgiu.Vec4 first...
+	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(colors.PaletteNTSC))
 	for _, c := range colors.PaletteNTSC {
 		v := imgui.Vec4{
 			float32(c.Red) / 255,
@@ -187,10 +186,10 @@ func newColors() *imguiColors {
 			float32(c.Blue) / 255,
 			1.0,
 		}
-		cols.vec4PaletteNTSC = append(cols.vec4PaletteNTSC, v)
+		vec4PaletteNTSC = append(vec4PaletteNTSC, v)
 	}
 
-	cols.vec4PalettePAL = make(vec4Palette, 0, len(colors.PalettePAL))
+	vec4PalettePAL := make([]imgui.Vec4, 0, len(colors.PalettePAL))
 	for _, c := range colors.PalettePAL {
 		v := imgui.Vec4{
 			float32(c.Red) / 255,
@@ -198,10 +197,10 @@ func newColors() *imguiColors {
 			float32(c.Blue) / 255,
 			1.0,
 		}
-		cols.vec4PalettePAL = append(cols.vec4PalettePAL, v)
+		vec4PalettePAL = append(vec4PalettePAL, v)
 	}
 
-	cols.vec4PaletteAlt = make(vec4Palette, 0, len(colors.PaletteAlt))
+	vec4PaletteAlt := make([]imgui.Vec4, 0, len(colors.PaletteAlt))
 	for _, c := range colors.PaletteAlt {
 		v := imgui.Vec4{
 			float32(c.Red) / 255,
@@ -209,21 +208,22 @@ func newColors() *imguiColors {
 			float32(c.Blue) / 255,
 			1.0,
 		}
-		cols.vec4PaletteAlt = append(cols.vec4PaletteAlt, v)
+		vec4PaletteAlt = append(vec4PaletteAlt, v)
 	}
 
-	cols.packedPaletteNTSC = make(packedPalette, 0, len(cols.vec4PaletteNTSC))
-	for _, c := range cols.vec4PaletteNTSC {
+	// ...then to the packedPalette
+	cols.packedPaletteNTSC = make(packedPalette, 0, len(vec4PaletteNTSC))
+	for _, c := range vec4PaletteNTSC {
 		cols.packedPaletteNTSC = append(cols.packedPaletteNTSC, imgui.PackedColorFromVec4(c))
 	}
 
-	cols.packedPalettePAL = make(packedPalette, 0, len(cols.vec4PalettePAL))
-	for _, c := range cols.vec4PalettePAL {
+	cols.packedPalettePAL = make(packedPalette, 0, len(vec4PalettePAL))
+	for _, c := range vec4PalettePAL {
 		cols.packedPalettePAL = append(cols.packedPalettePAL, imgui.PackedColorFromVec4(c))
 	}
 
-	cols.packedPaletteAlt = make(packedPalette, 0, len(cols.vec4PaletteAlt))
-	for _, c := range cols.vec4PaletteAlt {
+	cols.packedPaletteAlt = make(packedPalette, 0, len(vec4PaletteAlt))
+	for _, c := range vec4PaletteAlt {
 		cols.packedPaletteAlt = append(cols.packedPaletteAlt, imgui.PackedColorFromVec4(c))
 	}
 

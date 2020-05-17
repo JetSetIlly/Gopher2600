@@ -27,46 +27,29 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/television"
 	"github.com/jetsetilly/gopher2600/test"
-
-	"github.com/go-gl/gl/v3.2-core/gl"
 )
 
-const (
-	pixelWidth = 2
-	defScaling = 2.0
-)
+// textureRenderers should consider that the timing of the VCS produces
+// "pixels" of two pixels across
+const pixelWidth = 2
+
+// textureRenderers can share the underlying pixels of the screen type instance
+type textureRenderers interface {
+	render()
+	resize()
+}
 
 // screen implements television.PixelRenderer
 type screen struct {
-	img *SdlImgui
-
+	img  *SdlImgui
 	crit screenCrit
 
-	// which set of pixels to use: cropped or unmasked
-	cropped bool
-
-	// whether to show the reflection overlay
-	overlay bool
-
-	// the basic amount by which the image should be scaled. image width
-	// is also scaled by pixelWidth and aspectBias value
-	scaling float32
+	// list of renderers to call from render. renderers are added with
+	// addTextureRenderer()
+	renderers []textureRenderers
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
-
-	// create texture on the next call of render
-	createTextures bool
-
-	// the tv screen texture
-	screenTexture  uint32
-	overlayTexture uint32
-
-	// whether to use the alternative pixel layer
-	useAltPixels bool
-
-	// show pixel perfect image or with crt effect
-	pixelPerfect bool
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -102,25 +85,7 @@ type screenCrit struct {
 }
 
 func newScreen(img *SdlImgui) *screen {
-	scr := &screen{
-		img:          img,
-		scaling:      defScaling,
-		cropped:      true,
-		pixelPerfect: true,
-	}
-
-	// set texture, creation of textures will be done after every call to resize()
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.GenTextures(1, &scr.screenTexture)
-	gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.ActiveTexture(gl.TEXTURE1)
-	gl.GenTextures(1, &scr.overlayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	scr := &screen{img: img}
 
 	// start off by showing entirity of NTSC screen
 	scr.resize(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
@@ -187,107 +152,12 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	// update aspect-bias value
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
 
-	// defer re-creation of texture to render(). we have to do it in the
-	// #mainthread so we may as wait until that function is called
-	scr.createTextures = true
+	// resize texture renderers
+	for _, r := range scr.renderers {
+		r.resize()
+	}
 
 	return nil
-}
-
-func (scr *screen) scaledWidth() float32 {
-	return float32(scr.crit.pixels.Bounds().Size().X) * scr.horizScaling()
-}
-
-func (scr *screen) scaledHeight() float32 {
-	return float32(scr.crit.pixels.Bounds().Size().Y) * scr.vertScaling()
-}
-
-func (scr *screen) scaledCroppedWidth() float32 {
-	return float32(scr.crit.cropPixels.Bounds().Size().X) * scr.horizScaling()
-}
-
-func (scr *screen) scaledCroppedHeight() float32 {
-	return float32(scr.crit.cropPixels.Bounds().Size().Y) * scr.vertScaling()
-}
-
-func (scr *screen) horizScaling() float32 {
-	return float32(pixelWidth * scr.aspectBias * scr.scaling)
-}
-
-func (scr *screen) vertScaling() float32 {
-	return scr.scaling
-}
-
-// render is called by service loop
-func (scr *screen) render() {
-	scr.crit.section.RLock()
-	defer scr.crit.section.RUnlock()
-
-	var pixels *image.RGBA
-	var overlayPixels *image.RGBA
-
-	if scr.cropped {
-		if scr.useAltPixels {
-			pixels = scr.crit.cropAltPixels
-		} else {
-			pixels = scr.crit.cropPixels
-		}
-		overlayPixels = scr.crit.cropRefPixels
-	} else {
-		if scr.useAltPixels {
-			pixels = scr.crit.altPixels
-		} else {
-			pixels = scr.crit.pixels
-		}
-		overlayPixels = scr.crit.overlayPixels
-	}
-
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
-	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-	if scr.createTextures {
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(overlayPixels.Pix))
-
-		scr.createTextures = false
-
-	} else {
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, scr.screenTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-
-		if scr.overlay {
-			gl.ActiveTexture(gl.TEXTURE1)
-			gl.BindTexture(gl.TEXTURE_2D, scr.overlayTexture)
-			gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-				0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(overlayPixels.Pix))
-		}
-	}
-}
-
-func (scr *screen) setCropping(set bool) {
-	scr.cropped = set
-	scr.createTextures = true
-}
-
-func (scr *screen) setOverlay(set bool) {
-	scr.overlay = set
 }
 
 // Resize implements the television.PixelRenderer interface
@@ -376,4 +246,15 @@ func (scr *screen) UpdateReflectPixel(ref reflection.ReflectPixel) error {
 	scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	return nil
+}
+
+// texture renderers can share the underlying pixels in the screen instance
+func (scr *screen) addTextureRenderer(r textureRenderers) {
+	scr.renderers = append(scr.renderers, r)
+}
+
+func (scr *screen) render() {
+	for _, r := range scr.renderers {
+		r.render()
+	}
 }

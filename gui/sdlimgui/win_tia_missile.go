@@ -74,7 +74,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.BeginGroup()
 	imguiText("HMOVE")
 	imgui.SameLine()
-	imgui.PushItemWidth(win.byteDim.X)
+	imgui.PushItemWidth(win.twoDigitDim.X)
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
@@ -132,7 +132,7 @@ func (win *winTIA) drawMissile(missile int) {
 
 	imgui.SameLine()
 	imguiText("NUSIZ")
-	imgui.PushItemWidth(win.byteDim.X)
+	imgui.PushItemWidth(win.twoDigitDim.X)
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", !win.img.paused, 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {

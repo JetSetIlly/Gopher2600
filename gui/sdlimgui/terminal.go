@@ -27,19 +27,22 @@ import (
 )
 
 type term struct {
-	inputChan  chan string
-	sideChan   chan string
+	// input from the terminal window
+	inputChan chan string
+
+	// input from other gui elements (eg. the run button in the control window)
+	sideChan chan string
+
+	// output to the terminal window to present as a prompt
 	promptChan chan string
+
+	// output to the terminal window to present in the main output window
 	outputChan chan terminalOutput
 
+	// the state of the last call to Silence()
 	silenced bool
 
-	// when sideChannelSilence is set to true output will not be recorded until
-	// output of style Input or Error is received. this system is based on the
-	// principal that every command sent by the sideChannel will result in an
-	// echo of the input
-	sideChannelSilence bool
-
+	// reference to tab completion. used by terminal window
 	tabCompletion terminal.TabCompletion
 }
 
@@ -81,11 +84,6 @@ func (trm *term) Silence(silenced bool) {
 
 // TermPrintLine implements the terminal.Output interface
 func (trm *term) TermPrintLine(style terminal.Style, s string) {
-	if trm.sideChannelSilence && style == terminal.StyleInput {
-		trm.sideChannelSilence = false
-		return
-	}
-
 	if trm.silenced && style != terminal.StyleError {
 		return
 	}
@@ -107,7 +105,6 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			return n + 1, nil
 
 		case s := <-trm.sideChan:
-			trm.sideChannelSilence = true
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")

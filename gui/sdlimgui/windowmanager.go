@@ -29,9 +29,7 @@ import (
 // managedWindow conceptualises the functions required by a window such that
 // it can be managed by the windowManager
 type managedWindow interface {
-	// init can be used to set up values that cannot be done during creation
 	init()
-
 	id() string
 	destroy()
 	draw()
@@ -39,25 +37,7 @@ type managedWindow interface {
 	setOpen(bool)
 }
 
-// windowManagement can be embedded into a real window struct for
-// basic window management functionality. it partially implements the
-// managedWindow interface.
-type windowManagement struct {
-	// prefer use of isOpen()/setOpen() instead of accessing the open field
-	// directly
-	open bool
-}
-
-func (wm *windowManagement) isOpen() bool {
-	return wm.open
-}
-
-func (wm *windowManagement) setOpen(open bool) {
-	wm.open = open
-}
-
-// windowManager is the nexus for all windows and menubar in the imgui
-// application
+// windowManager handles windows and menus in the system
 type windowManager struct {
 	img *SdlImgui
 
@@ -72,8 +52,8 @@ type windowManager struct {
 	windowMenu map[string][]string
 
 	// some windows need to be referenced elsewhere
-	term *winTerm
-	scr  *winScreen
+	term   *winTerm
+	dbgScr *winDbgScr
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -149,7 +129,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinAudio, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinScreen, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinDbgScr, true, windowMenuMain); err != nil {
 		return nil, err
 	}
 	if err := addWindow(newWinTerm, false, windowMenuMain); err != nil {
@@ -170,13 +150,12 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 
 	// get references to specific window types that need to be referenced
 	// elsewhere in the system
-	wm.scr = wm.windows[winScreenTitle].(*winScreen)
+	wm.dbgScr = wm.windows[winDbgScrTitle].(*winDbgScr)
 	wm.term = wm.windows[winTermTitle].(*winTerm)
 
 	return wm, nil
 }
 
-// init is called from drawWindows()
 func (wm *windowManager) init() {
 	if wm.hasInitialised {
 		return
@@ -197,7 +176,11 @@ func (wm *windowManager) destroy() {
 
 func (wm *windowManager) draw() {
 	if wm.img.lz.VCS != nil && wm.img.lz.Dsm != nil {
+
+		// there's no good place to call the init() function except during a
+		// call to draw. the init() function itself handles
 		wm.init()
+
 		wm.drawMenu()
 		for w := range wm.windows {
 			wm.windows[w].draw()

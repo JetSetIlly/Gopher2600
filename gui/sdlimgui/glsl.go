@@ -39,10 +39,6 @@ type glsl struct {
 	// font texture given to imgui. we take charge of its destruction
 	fontTexture uint32
 
-	// textures created and managed by the screen type
-	screenTexture  uint32
-	overlayTexture uint32
-
 	// handle for the compiled and linked shader program. we don't need to keep
 	// references to the component parts of the program, they're created and
 	// destroyed all within the setup() function
@@ -197,6 +193,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
+		// !TODO: different scaling values for different screen windows
+
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
@@ -204,20 +202,20 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				// critical section
 				rnd.img.screen.crit.section.Lock()
 
-				vertScaling := rnd.img.screen.vertScaling()
-				horizScaling := rnd.img.screen.horizScaling()
+				vertScaling := rnd.img.wm.dbgScr.vertScaling()
+				horizScaling := rnd.img.wm.dbgScr.horizScaling()
 
 				// pixel perfect rendering or whether to apply the CRT
 				// filters
-				if rnd.img.screen.pixelPerfect {
+				if rnd.img.wm.dbgScr.pixelPerfect {
 					gl.Uniform1i(rnd.attribPixelPerfect, 1)
 				} else {
 					gl.Uniform1i(rnd.attribPixelPerfect, 0)
 				}
 
 				// the resolution information is used to scale the Last
-				gl.Uniform2f(rnd.attribDim, rnd.img.screen.scaledWidth(), rnd.img.screen.scaledHeight())
-				gl.Uniform2f(rnd.attribCropDim, rnd.img.screen.scaledCroppedWidth(), rnd.img.screen.scaledCroppedHeight())
+				gl.Uniform2f(rnd.attribDim, rnd.img.wm.dbgScr.scaledWidth(), rnd.img.wm.dbgScr.scaledHeight())
+				gl.Uniform2f(rnd.attribCropDim, rnd.img.wm.dbgScr.scaledCroppedWidth(), rnd.img.wm.dbgScr.scaledCroppedHeight())
 
 				// screen geometry
 				gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
@@ -225,7 +223,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
 
 				// the coordinates of the last plot
-				if rnd.img.screen.cropped {
+				if rnd.img.wm.dbgScr.cropped {
 					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-television.HorizClksHBlank)*horizScaling)
 				} else {
 					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
@@ -240,7 +238,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 					gl.Uniform1i(rnd.attribShowScreenDraw, -1)
 				}
 
-				if rnd.img.screen.cropped {
+				if rnd.img.wm.dbgScr.cropped {
 					gl.Uniform1i(rnd.attribCropped, 1)
 				} else {
 					gl.Uniform1i(rnd.attribCropped, -1)
@@ -257,9 +255,9 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
-				case rnd.overlayTexture:
+				case rnd.img.wm.dbgScr.overlayTexture:
 					gl.Uniform1i(rnd.attribImageType, 2)
-				case rnd.screenTexture:
+				case rnd.img.wm.dbgScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, 1)
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
