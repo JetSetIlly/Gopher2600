@@ -130,6 +130,7 @@ func (bk *breaker) check() checkResult {
 	currVal := bk.target.TargetValue()
 	m := currVal == bk.value
 	if !m {
+		bk.ignoreValue = nil
 		return checkNoMatch
 	}
 

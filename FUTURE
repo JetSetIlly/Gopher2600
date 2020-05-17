@@ -50,6 +50,9 @@ o LAST to include additional information
 
 o CPU command to change status register
 
+o test harness to handle more sophisticated operatio of the debugger. for
+	example, making sure breakpoints are triggered and retriggered correctly.
+
 vcs
 ---
 
