@@ -25,6 +25,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
@@ -41,6 +42,12 @@ type winScreen struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
+	// is the popup break menu active
+	isPopup bool
+
+	// last mouse position (adjusted to be equivalent to horizpos and scanline)
+	mx, my int
+
 	threeDigitDim imgui.Vec2
 	fiveDigitDim  imgui.Vec2
 }
@@ -55,8 +62,8 @@ func newWinScreen(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winScreen) init() {
-	win.threeDigitDim = imguiGetFrameDim("000")
-	win.fiveDigitDim = imguiGetFrameDim("00000")
+	win.threeDigitDim = imguiGetFrameDim("FFF")
+	win.fiveDigitDim = imguiGetFrameDim("FFFF")
 }
 
 func (win *winScreen) destroy() {
@@ -107,40 +114,68 @@ func (win *winScreen) draw() {
 		imgui.Image(imgui.TextureID(win.scr.overlayTexture), imgui.Vec2{w, h})
 	}
 
-	win.isHovered = imgui.IsItemHovered()
+	// popup menu on right mouse button
+	win.isPopup = imgui.BeginPopupContextItem()
+	if win.isPopup {
+		imgui.Text("Break")
+		imgui.Separator()
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.my)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.my))
+		}
+		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.mx)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.mx))
+		}
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.my, win.mx)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.my, win.mx))
+		}
+		imgui.EndPopup()
+		win.isPopup = false
+	}
 
-	// if mouse is hovering over the image ...
+	// if mouse is hovering over the image. note that if popup menu is active
+	// then imgui.IsItemHovered() is false by definition
+	win.isHovered = imgui.IsItemHovered()
 	if win.isHovered {
+		// *** CRIT SECTION
 		win.scr.crit.section.RLock()
 
 		// get mouse position and transform it so it relates to the underlying
 		// image
 		mp := imgui.MousePos().Minus(imagePos)
-		mx := mp.X / win.scr.scaledCroppedWidth()
-		my := mp.Y / win.scr.scaledCroppedHeight()
+		mp.X = mp.X / win.scr.scaledCroppedWidth()
+		mp.Y = mp.Y / win.scr.scaledCroppedHeight()
 
 		imageSz := win.scr.crit.cropPixels.Bounds().Size()
 
 		if win.scr.cropped {
-			mx *= float32(imageSz.X)
-			mx += float32(television.HorizClksHBlank)
-			my *= float32(imageSz.Y)
-			my += float32(win.scr.crit.topScanline)
+			mp.X *= float32(imageSz.X)
+			mp.X += float32(television.HorizClksHBlank)
+			mp.Y *= float32(imageSz.Y)
+			mp.Y += float32(win.scr.crit.topScanline)
 		} else {
-			mx *= float32(imageSz.X)
-			my *= float32(imageSz.Y)
+			mp.X *= float32(imageSz.X)
+			mp.Y *= float32(imageSz.Y)
 		}
 
+		win.mx = int(mp.X)
+		win.my = int(mp.Y)
+
 		// get reflection information
-		res := win.scr.crit.reflection[int(mx)][int(my)]
+		var res reflection.ResultWithBank
+		if win.mx < len(win.scr.crit.reflection) && win.my < len(win.scr.crit.reflection[win.mx]) {
+			res = win.scr.crit.reflection[win.mx][win.my]
+		}
+
+		win.scr.crit.section.RUnlock()
+		// *** CRIT SECTION END ***
 
 		// present tooltip showing pixel coords and CPU state
 		if !win.isCaptured {
 			fmtRes, _ := win.img.lz.Dsm.FormatResult(res.Bank, res.Res, disassembly.EntryLevelBlessed)
 			if fmtRes.Address != "" {
 				imgui.BeginTooltip()
-				imgui.Text(fmt.Sprintf("Scanline: %d", int(my)))
-				imgui.Text(fmt.Sprintf("Horiz Pos: %d", int(mx)-television.HorizClksHBlank))
+				imgui.Text(fmt.Sprintf("Scanline: %d", win.my))
+				imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mx-television.HorizClksHBlank))
 
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 				if win.img.lz.Cart.NumBanks > 1 {
@@ -155,6 +190,7 @@ func (win *winScreen) draw() {
 				imgui.PopStyleColor()
 
 				if fmtRes.Operand != "" {
+					imgui.SameLine()
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 					imgui.Text(fmtRes.Operand)
 					imgui.PopStyleColor()
@@ -163,8 +199,6 @@ func (win *winScreen) draw() {
 				imgui.EndTooltip()
 			}
 		}
-
-		win.scr.crit.section.RUnlock()
 	}
 
 	// tv status line

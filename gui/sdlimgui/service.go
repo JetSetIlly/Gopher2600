@@ -120,8 +120,7 @@ func (img *SdlImgui) Service() {
 				case sdl.BUTTON_LEFT:
 					if img.wm.scr.isCaptured {
 						button = gui.MouseButtonLeft
-					} else if img.wm.scr.isHovered {
-
+					} else if img.wm.scr.isHovered && !img.wm.scr.isPopup {
 						// left mouse button should capture mouse if
 						// not already done so.
 						swallow = true
