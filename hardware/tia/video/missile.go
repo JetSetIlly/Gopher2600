@@ -440,18 +440,20 @@ func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
 	}
 
 	// the missile sprite has a special state where a stuffed HMOVE clock
-	// causes the sprite to this the start signal has happened one cycle early.
+	// forces the draw signal to true *if* the enclockifier is to begin next
+	// cycle.
 	earlyStart := ms.lastTickFromHmove && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
 
-	// similarly in the event of a stuffed HMOVE clock, and when the
+	// similarly, in the event of a stuffed HMOVE clock, and when the
 	// enclockifier is about to produce its last pixel
-	//
-	// see ball sprite for explanation for the LatePhi1() condition
 	earlyEnd := !ms.pclk.LatePhi1() && ms.lastTickFromHmove && ms.Enclockifier.aboutToEnd()
 
-	// both conditions are fully explained in the AtariAge post "Cosmic Ark
-	// Star Field Revisited" by crispy. as suggested by the post title this is
-	// the key to implementing the starfield in the Cosmic Ark ROM
+	// see ball sprite for explanation for the LatePhi1() condition
+
+	// both earlyStart and earlyEnd conditions are fully explained in the
+	// AtariAge post "Cosmic Ark Star Field Revisited" by crispy. as suggested
+	// by the post title this is the key to implementing the starfield in the
+	// Cosmic Ark ROM
 
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
