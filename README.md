@@ -218,21 +218,14 @@ Not yet emulated
 | 7 | 8 | 9 |		
 | * | 0 | # |	 	
 
-Using the guide above, we can see the corresponding keys on the PC keyboard for the left and right players.
+Using the guide above, we can see the corresponding keys on the PC keyboard for the left (p0) and right (p1) players.
 
-|   |left|   |
-|:-:|:-:|:-:|
-| 1 | 2 | 3 |		
-| q | w | e |		
-| a | s | d |		
-| z | x | c |	 	
-
-|   |right|   |
-|:-:|:-:|:-:|
-| 4 | 5 | 6 |		
-| r | t | y |		
-| f | g | h |		
-| v | b | n |	 	
+|   |p0|   |   |p1|   |
+|:-:|:-:|:-:|:-:|:-:|:-:|
+| 1 | 2 | 3 | 4 | 5 | 6 |		
+| q | w | e | r | t | y |		
+| a | s | d | f | g | h |		
+| z | x | c | v | b | n |
 
 #### Panel
 
@@ -270,13 +263,14 @@ by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
 	[ 0xf000 SEI ] >> help
-	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
-	           CPU   DISASSEMBLY       DISPLAY          DROP          GREP
-	          HELP        INSERT          LAST          LIST        MEMMAP
+        	 AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
+	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
+        	  GREP          HALT          HELP        INSERT      JOYSTICK
+	        KEYPAD          LAST          LINT          LIST        MEMMAP
 	       MISSILE        ONHALT        ONSTEP         PANEL         PATCH
-	          PEEK        PLAYER     PLAYFIELD          POKE       QUANTUM
-	          QUIT           RAM         RESET           RUN        SCRIPT
-	          STEP         STICK        SYMBOL           TIA         TIMER
+	          PEEK        PLAYER     PLAYFIELD          POKE          PREF
+	       QUANTUM          QUIT           RAM         RESET           RUN
+	        SCRIPT          STEP        SYMBOL           TIA         TIMER
 	          TRAP            TV         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
