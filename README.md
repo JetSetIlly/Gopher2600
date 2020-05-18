@@ -255,8 +255,7 @@ In addition to the controller and panel input described above, the following key
 
 #### Debugger Terminal
 
-As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window which opens by default on debugger launch. The rest of this section describes
-the operation of the terminal in detail.
+As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window. The rest of this section describesthe operation of the terminal in detail.
 
 Help is available with the HELP command. Help on a specific topic is available
 by specifying a keyword. The list below shows the currently defined keywords.
@@ -392,7 +391,7 @@ level documentation: https://godoc.org/github.com/JetSetIlly/Gopher2600/setup
 
 ## Gopher2600 Tools
 
-See the https://github.com/JetSetIlly/Gopher2600-Utils/tree/master/web2600 repository for examples of tools
+See the https://github.com/JetSetIlly/Gopher2600-Utils/ repository for examples of tools
 that use `Gopher2600`.
 
 ## Futher Help
