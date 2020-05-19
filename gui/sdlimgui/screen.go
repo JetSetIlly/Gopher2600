@@ -26,7 +26,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/television"
-	"github.com/jetsetilly/gopher2600/test"
 )
 
 // textureRenderers should consider that the timing of the VCS produces
@@ -184,8 +183,6 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixel implements the television.PixelRenderer interface
 func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	test.AssertNonMainThread()
-
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 

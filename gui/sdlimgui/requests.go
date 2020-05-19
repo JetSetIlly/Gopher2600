@@ -44,7 +44,7 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			img.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			img.featureErr <- errors.New(errors.PanicError, "sdlImgui.serviceFeatureRequests()", r)
 		}
 	}()
 
@@ -57,8 +57,10 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSetVisibleOnStable:
 
 	case gui.ReqSetVisibility:
+		img.wm.dbgScr.setOpen(request.args[0].(bool))
 
 	case gui.ReqToggleVisibility:
+		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
 	case gui.ReqSetAltColors:
 		img.wm.dbgScr.useAltPixels = request.args[0].(bool)
@@ -79,17 +81,13 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.wm.dbgScr.setOverlay(!img.wm.dbgScr.overlay)
 
 	case gui.ReqIncScale:
-		if img.wm.dbgScr.scaling < 4.0 {
-			img.wm.dbgScr.scaling += 0.1
-		}
+		img.setScale(0.1, true)
 
 	case gui.ReqDecScale:
-		if img.wm.dbgScr.scaling > 0.5 {
-			img.wm.dbgScr.scaling -= 0.1
-		}
+		img.setScale(-0.1, true)
 
 	case gui.ReqSetScale:
-		img.wm.dbgScr.scaling = request.args[0].(float32)
+		img.setScale(request.args[0].(float32), false)
 
 	case gui.ReqSetPause:
 		img.pause(request.args[0].(bool))
@@ -103,9 +101,16 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqAddDisasm:
 		img.lz.Dsm = request.args[0].(*disassembly.Disassembly)
 
+	case gui.ReqSetPlaymode:
+		err = img.setPlaymode(request.args[0].(bool))
+
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request)
 	}
 
-	img.featureErr <- err
+	if err == nil {
+		img.featureErr <- nil
+	} else {
+		img.featureErr <- errors.New(errors.SDLImgui, err)
+	}
 }

@@ -52,8 +52,9 @@ type windowManager struct {
 	windowMenu map[string][]string
 
 	// some windows need to be referenced elsewhere
-	term   *winTerm
-	dbgScr *winDbgScr
+	term    *winTerm
+	dbgScr  *winDbgScr
+	playScr *winPlayScr
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -139,11 +140,6 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		return nil, err
 	}
 
-	// windows called from cartridge specific menus
-	if err := addWindow(newWinStatic, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map
 	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winStaticTitle)
@@ -152,6 +148,14 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	// elsewhere in the system
 	wm.dbgScr = wm.windows[winDbgScrTitle].(*winDbgScr)
 	wm.term = wm.windows[winTermTitle].(*winTerm)
+
+	// create play window. this is a very special window that never appears
+	// directly in an any menu
+	playWin, err := newWinPlayScr(img)
+	if err != nil {
+		return nil, err
+	}
+	wm.playScr = playWin.(*winPlayScr)
 
 	return wm, nil
 }
@@ -176,7 +180,6 @@ func (wm *windowManager) destroy() {
 
 func (wm *windowManager) draw() {
 	if wm.img.lz.VCS != nil && wm.img.lz.Dsm != nil {
-
 		// there's no good place to call the init() function except during a
 		// call to draw. the init() function itself handles
 		wm.init()
@@ -186,6 +189,8 @@ func (wm *windowManager) draw() {
 			wm.windows[w].draw()
 		}
 	}
+
+	wm.playScr.draw()
 }
 
 func (wm *windowManager) drawMenu() {

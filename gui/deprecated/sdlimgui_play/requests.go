@@ -101,8 +101,11 @@ func (img *SdlImguiPlay) serviceFeatureRequests(request featureRequest) {
 		img.screen.scaling = request.args[0].(float32)
 		img.plt.fitDisplaySize()
 
+	case gui.ReqSetPlaymode:
+		// set playmode is implicit in for this gui implementation
+
 	default:
-		err = errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request.request)
 	}
 
 	img.featureErr <- err

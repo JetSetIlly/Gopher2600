@@ -133,7 +133,7 @@ const (
 	WavWriter = "wav writer: %v"
 
 	// gui
-	UnsupportedGUIRequest = "gui error: unsupported request (%v)"
+	UnsupportedGUIRequest = "unsupported request (%v)"
 	SDLDebug              = "sdldebug: %v"
 	SDLPlay               = "sdlplay: %v"
 	SDLImgui              = "sdlimgui: %v"

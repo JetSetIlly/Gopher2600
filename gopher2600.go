@@ -35,9 +35,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/deprecated/sdldebug"
-	"github.com/jetsetilly/gopher2600/gui/deprecated/sdlplay"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui_play"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -240,8 +238,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 3.0, "television scaling")
-	stable := md.AddBool("stable", true, "wait for stable frame before opening display")
-	crt := md.AddBool("crt", true, "apply CRT effects")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
@@ -281,14 +277,8 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// create gui
-		if *crt {
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlimgui_play.NewSdlImguiPlay(tv)
-			}
-		} else {
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlplay.NewSdlPlay(tv, float32(*scaling))
-			}
+		sync.creator <- func() (GuiCreator, error) {
+			return sdlimgui.NewSdlImgui(tv, true)
 		}
 
 		// wait for creator result
@@ -296,6 +286,10 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		select {
 		case g := <-sync.creation:
 			scr = g.(gui.GUI)
+			err = scr.SetFeature(gui.ReqSetPlaymode, true)
+			if err != nil {
+				return err
+			}
 		case err := <-sync.creationError:
 			return errors.New(errors.PlayError, err)
 		}
@@ -310,7 +304,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		err = playmode.Play(tv, scr, *stable, *record, cartload, *patchFile, *hiscore)
+		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore)
 		if err != nil {
 			return err
 		}
@@ -353,13 +347,12 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	var term terminal.Terminal
 
-	// decide which gui to use
+	// create gui
 	if *termType == "IMGUI" {
 		sync.creator <- func() (GuiCreator, error) {
-			return sdlimgui.NewSdlImgui(tv)
+			return sdlimgui.NewSdlImgui(tv, false)
 		}
 	} else {
-
 		// notify main thread of new gui creator
 		sync.creator <- func() (GuiCreator, error) {
 			return sdldebug.NewSdlDebug(tv, 2.0)
@@ -510,8 +503,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	display := md.AddBool("display", false, "display TV output")
-	scaling := md.AddFloat64("scale", 3.0, "display scaling (only valid if -display=true")
-	crt := md.AddBool("crt", true, "apply CRT effects")
+	scaling := md.AddFloat64("scale", 2.0, "display scaling (only valid if -display=true")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
@@ -540,14 +532,8 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 		if *display {
 			// create gui
-			if *crt {
-				sync.creator <- func() (GuiCreator, error) {
-					return sdlimgui_play.NewSdlImguiPlay(tv)
-				}
-			} else {
-				sync.creator <- func() (GuiCreator, error) {
-					return sdlplay.NewSdlPlay(tv, float32(*scaling))
-				}
+			sync.creator <- func() (GuiCreator, error) {
+				return sdlimgui.NewSdlImgui(tv, true)
 			}
 
 			// wait for creator result
@@ -563,12 +549,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
 			if err != nil {
 				return err
-			}
-
-			// show gui
-			err = scr.SetFeature(gui.ReqSetVisibility, true)
-			if err != nil {
-				return errors.New(errors.PerformanceError, err)
 			}
 		}
 

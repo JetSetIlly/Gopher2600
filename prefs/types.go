@@ -30,7 +30,6 @@ import (
 // types support by the prefs system must implement the pref interface
 type pref interface {
 	fmt.Stringer
-	fmt.GoStringer
 	Set(value interface{}) error
 	Get() interface{}
 }
@@ -43,11 +42,6 @@ type Bool struct {
 
 func (p Bool) String() string {
 	return fmt.Sprintf("%v", p.value)
-}
-
-// GoString implements the fmt.GoStringer interface
-func (p Bool) GoString() string {
-	return p.String()
 }
 
 // Set new value to Bool type. New value must be of type bool or string. A
@@ -85,11 +79,6 @@ func (p String) String() string {
 	return p.value
 }
 
-// GoString implements the fmt.GoStringer interface
-func (p String) GoString() string {
-	return p.String()
-}
-
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v interface{}) error {
 	p.value = fmt.Sprintf("%s", v)
@@ -109,11 +98,6 @@ type Int struct {
 
 func (p Int) String() string {
 	return fmt.Sprintf("%d", p.value)
-}
-
-// GoInt implements the fmt.GoStringer interface
-func (p Int) GoString() string {
-	return p.String()
 }
 
 // Set new value to Int type. New value can be an int or string.
@@ -157,11 +141,6 @@ func NewGeneric(set func(string) error, get func() string) *Generic {
 
 func (p Generic) String() string {
 	return p.get()
-}
-
-// GoString implements the fmt.GoStringer interface
-func (p Generic) GoString() string {
-	return p.String()
 }
 
 // Set triggers the set value procedure for the generic type

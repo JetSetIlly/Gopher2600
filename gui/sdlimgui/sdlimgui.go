@@ -20,7 +20,6 @@
 package sdlimgui
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -94,7 +93,7 @@ type SdlImgui struct {
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
 // MUST ONLY be called from the #mainthread
-func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
+func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),
@@ -141,6 +140,7 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	// connect pixel renderer to television and texture renderer to pixel renderer
 	tv.AddPixelRenderer(img.screen)
 	img.screen.addTextureRenderer(img.wm.dbgScr)
+	img.screen.addTextureRenderer(img.wm.playScr)
 
 	// this audio mixer produces the sound. there is another AudioMixer
 	// implementation in winAudio which visualises the sound
@@ -150,65 +150,10 @@ func NewSdlImgui(tv television.Television) (*SdlImgui, error) {
 	}
 	tv.AddAudioMixer(img.audio)
 
-	// setup preferences
-	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
-	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
-	}
-	img.prefs, err = prefs.NewDisk(pth)
+	// set playmode according to the playmode argument
+	img.setPlaymode(playmode)
 
-	err = img.prefs.Add("sdlimgui.debugger.windowsize", prefs.NewGeneric(
-		func(s string) error {
-			var w, h int32
-			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
-			if err != nil {
-				return err
-			}
-			img.plt.window.SetSize(w, h)
-			return nil
-		},
-		func() string {
-			w, h := img.plt.window.GetSize()
-			return fmt.Sprintf("%d,%d", w, h)
-		},
-	))
-	if err != nil {
-		return nil, err
-	}
-
-	err = img.prefs.Add("sdlimgui.debugger.windowpos", prefs.NewGeneric(
-		func(s string) error {
-			var x, y int32
-			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)
-			if err != nil {
-				return err
-			}
-			// !TODO: SetPosition doesn't seem to set window position as you
-			// might expect. On XWindow with Cinnamon WM, it seems to place the
-			// window top to the window further down and slightly to the right
-			// of where it should be. This means that the window "drifts" down
-			// the screen on subsequent loads
-			img.plt.window.SetPosition(x, y)
-			return nil
-		},
-		func() string {
-			x, y := img.plt.window.GetPosition()
-			return fmt.Sprintf("%d,%d", x, y)
-		},
-	))
-	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
-	}
-
-	// load preferences from disk
-	err = img.prefs.Load()
-	if err != nil {
-		// ignore missing prefs file errors
-		if !errors.Is(err, errors.PrefsNoFile) {
-			return nil, errors.New(errors.SDLImgui, err)
-		}
-	}
-
+	// open container window
 	img.plt.window.Show()
 
 	return img, nil
@@ -240,9 +185,7 @@ func (img *SdlImgui) pause(set bool) {
 }
 
 func (img *SdlImgui) draw() {
-	if img.lz.Dbg != nil {
-		img.wm.draw()
-	}
+	img.wm.draw()
 }
 
 // GetTerminal implements terminal.Broker interface
@@ -253,4 +196,90 @@ func (img *SdlImgui) GetTerminal() terminal.Terminal {
 // GetReflectionRendere implements reflection.Broker interface
 func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 	return img.screen
+}
+
+// the following functions are used to differentiate play-mode from debug-mode.
+// any operation that is dependent on playmode state should be abstracted to a
+// function and placed below.
+//
+// for simplicity, play-mode is defined as being on when playScr is open
+
+func (img *SdlImgui) isPlaymode() bool {
+	return img.wm != nil && img.wm.playScr.isOpen()
+}
+
+// set playmode and handle the changeover gracefully. this includes the saving
+// and loading of preference groups
+func (img *SdlImgui) setPlaymode(set bool) error {
+	if set {
+		if !img.isPlaymode() {
+			if img.prefs != nil {
+				if err := img.prefs.Save(); err != nil {
+					return err
+				}
+			}
+			img.initPrefs(prefsGrpPlaymode)
+			img.wm.playScr.setOpen(true)
+		}
+	} else {
+		if img.isPlaymode() {
+			if img.prefs != nil {
+				if err := img.prefs.Save(); err != nil {
+					return err
+				}
+			}
+			img.initPrefs(prefsGrpDebugger)
+			img.wm.playScr.setOpen(false)
+		}
+	}
+
+	return nil
+}
+
+func (img *SdlImgui) isCaptured() bool {
+	if img.isPlaymode() {
+		return img.wm.playScr.isCaptured
+	}
+	return img.wm.dbgScr.isCaptured
+}
+
+func (img *SdlImgui) setCapture(set bool) {
+	if img.isPlaymode() {
+		img.wm.playScr.isCaptured = set
+		return
+	}
+	img.wm.dbgScr.isCaptured = set
+}
+
+func (img *SdlImgui) isHovered() bool {
+	if img.isPlaymode() {
+		return true
+	}
+	return img.wm.dbgScr.isHovered && !img.wm.dbgScr.isPopup
+}
+
+// scaling of the tv screen also depends on whether playmode is active
+
+type scalingScreen interface {
+	getScaling(horiz bool) float32
+	setScaling(scaling float32)
+}
+
+func (img *SdlImgui) setScale(scaling float32, adjust bool) {
+	var scr scalingScreen
+
+	if img.isPlaymode() {
+		scr = img.wm.playScr
+	} else {
+		scr = img.wm.dbgScr
+	}
+
+	if adjust {
+		scale := scr.getScaling(false)
+		if scale > 0.5 && scale < 4.0 {
+			scr.setScaling(scale + scaling)
+		}
+	} else {
+		scr.setScaling(scaling)
+	}
 }

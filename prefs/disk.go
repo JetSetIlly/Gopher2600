@@ -54,7 +54,7 @@ func (e entryMap) String() string {
 
 	for _, k := range sorted {
 		v := e[k]
-		s.WriteString(fmt.Sprintf("%s%s%#v\n", k, keySep, v))
+		s.WriteString(fmt.Sprintf("%s%s%s\n", k, keySep, v))
 	}
 
 	return s.String()
@@ -151,8 +151,9 @@ func (dsk *Disk) Load() error {
 }
 
 // underlying function to load preference value froms disk. the limit boolean
-// controls whether to load all valid preference values from the file
-// or to ignore those values not already in the entryMap
+// controls whether to load all valid preference values from the file or to
+// ignore those values not already in the entryMap. limit=false is used by the
+// save() function in order to avoid clobbering unknown entries.
 func load(path string, entries *entryMap, limit bool) error {
 	// open existing prefs file
 	f, err := os.Open(path)

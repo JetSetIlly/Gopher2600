@@ -53,10 +53,6 @@ type winDbgScr struct {
 	// (re)create textures on next render()
 	createTextures bool
 
-	// the basic amount by which the image should be scaled. image width
-	// is also scaled by pixelWidth and aspectBias value
-	scaling float32
-
 	// is screen currently pointed at
 	isHovered bool
 
@@ -76,7 +72,22 @@ type winDbgScr struct {
 	// additional padding for the image so that it is centered in its content space
 	imagePadding imgui.Vec2
 
-	windowContentDimen imgui.Vec2
+	// size of window and content area in which to center the image. we need
+	// both depending on how we set the scaling from the screen. when resizing
+	// the window, we use contentDim (the area inside the window) to figure out
+	// the scaling value. when resizing numerically (with the getScale()
+	// function) on the other hand, we scale the entire window accordingly
+	winDim     imgui.Vec2
+	contentDim imgui.Vec2
+
+	// when set the scale value numerically (with the getScale() function) we
+	// need to alter how we set the window size for the first frame afterwards.
+	// the rescaled bool helps us do this.
+	rescaled bool
+
+	// the basic amount by which the image should be scaled. horizontal scaling
+	// is slightly different (see horizScaling() function)
+	scaling float32
 }
 
 func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
@@ -123,15 +134,21 @@ func (win *winDbgScr) draw() {
 	// actual display
 	var w, h float32
 	if win.cropped {
-		w = win.scaledCroppedWidth()
-		h = win.scaledCroppedHeight()
+		w = win.getScaledWidth(true)
+		h = win.getScaledHeight(true)
 	} else {
-		w = win.scaledWidth()
-		h = win.scaledHeight()
+		w = win.getScaledWidth(false)
+		h = win.getScaledHeight(false)
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{611, 470}, imgui.ConditionFirstUseEver)
+
+	if win.rescaled {
+		imgui.SetNextWindowSize(win.winDim)
+		win.rescaled = false
+	} else {
+		imgui.SetNextWindowSizeV(imgui.Vec2{611, 470}, imgui.ConditionFirstUseEver)
+	}
 
 	// if isCaptured flag is set then change the title and border colors of the
 	// TV Screen window.
@@ -144,8 +161,9 @@ func (win *winDbgScr) draw() {
 	// we don't want to ever show scrollbars
 	imgui.BeginV(winDbgScrTitle, &win.open, imgui.WindowFlagsNoScrollbar)
 
-	// note size of window
-	win.windowContentDimen = imgui.ContentRegionAvail()
+	// note size of window and content area
+	win.winDim = imgui.WindowSize()
+	win.contentDim = imgui.ContentRegionAvail()
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
@@ -164,6 +182,7 @@ func (win *winDbgScr) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 
 	// popup menu on right mouse button
+	// !TODO: RMB to release captured window causes popup to immediately open
 	win.isPopup = imgui.BeginPopupContextItem()
 	if win.isPopup {
 		imgui.Text("Break")
@@ -188,22 +207,18 @@ func (win *winDbgScr) draw() {
 		// *** CRIT SECTION
 		win.scr.crit.section.RLock()
 
-		// get mouse position and transform it so it relates to the underlying
-		// image
+		// get mouse position and transform
 		mp := imgui.MousePos().Minus(mouseOrigin)
-		mp.X = mp.X / win.scaledCroppedWidth()
-		mp.Y = mp.Y / win.scaledCroppedHeight()
-
-		imageSz := win.scr.crit.cropPixels.Bounds().Size()
-
 		if win.cropped {
-			mp.X *= float32(imageSz.X)
+			sz := win.scr.crit.cropPixels.Bounds().Size()
+			mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
+			mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
 			mp.X += float32(television.HorizClksHBlank)
-			mp.Y *= float32(imageSz.Y)
 			mp.Y += float32(win.scr.crit.topScanline)
 		} else {
-			mp.X *= float32(imageSz.X)
-			mp.Y *= float32(imageSz.Y)
+			sz := win.scr.crit.pixels.Bounds().Size()
+			mp.X = mp.X / win.getScaledWidth(false) * float32(sz.X)
+			mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
 		}
 
 		win.horizPos = int(mp.X)
@@ -314,56 +329,6 @@ func (win *winDbgScr) draw() {
 	imgui.End()
 }
 
-func (win *winDbgScr) setScaleFromWindow(sz imgui.Vec2) {
-	sz.Y -= win.toolBarHeight
-	winAspectRatio := sz.X / sz.Y
-
-	var imageH float32
-	var imageW float32
-	if win.cropped {
-		imageW = float32(win.scr.crit.cropPixels.Bounds().Size().X)
-		imageH = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	} else {
-		imageW = float32(win.scr.crit.pixels.Bounds().Size().X)
-		imageH = float32(win.scr.crit.pixels.Bounds().Size().Y)
-	}
-	imageW *= pixelWidth * win.scr.aspectBias
-
-	aspectRatio := imageW / imageH
-
-	if aspectRatio < winAspectRatio {
-		win.scaling = sz.Y / imageH
-		win.imagePadding = imgui.Vec2{X: float32(int((sz.X - (imageW * win.scaling)) / 2))}
-	} else {
-		win.scaling = sz.X / imageW
-		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
-	}
-}
-
-func (win *winDbgScr) scaledWidth() float32 {
-	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.horizScaling()
-}
-
-func (win *winDbgScr) scaledHeight() float32 {
-	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.vertScaling()
-}
-
-func (win *winDbgScr) scaledCroppedWidth() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.horizScaling()
-}
-
-func (win *winDbgScr) scaledCroppedHeight() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.vertScaling()
-}
-
-func (win *winDbgScr) horizScaling() float32 {
-	return float32(pixelWidth * win.scr.aspectBias * win.scaling)
-}
-
-func (win *winDbgScr) vertScaling() float32 {
-	return win.scaling
-}
-
 func (win *winDbgScr) setOverlay(set bool) {
 	win.overlay = set
 }
@@ -436,5 +401,59 @@ func (win *winDbgScr) render() {
 	}
 
 	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleFromWindow(win.windowContentDimen)
+	win.setScaleFromWindow(win.contentDim)
+}
+
+func (win *winDbgScr) getScaledWidth(cropped bool) float32 {
+	if cropped {
+		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
+	}
+	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.getScaling(true)
+}
+
+func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
+	if cropped {
+		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
+	}
+	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.getScaling(false)
+}
+
+func (win *winDbgScr) setScaleFromWindow(sz imgui.Vec2) {
+	// must be called from with a critical section
+
+	sz.Y -= win.toolBarHeight
+	winAspectRatio := sz.X / sz.Y
+
+	var imageW float32
+	var imageH float32
+	if win.cropped {
+		imageW = float32(win.scr.crit.cropPixels.Bounds().Size().X)
+		imageH = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
+	} else {
+		imageW = float32(win.scr.crit.pixels.Bounds().Size().X)
+		imageH = float32(win.scr.crit.pixels.Bounds().Size().Y)
+	}
+	imageW *= pixelWidth * win.scr.aspectBias
+
+	aspectRatio := imageW / imageH
+
+	if aspectRatio < winAspectRatio {
+		win.scaling = sz.Y / imageH
+		win.imagePadding = imgui.Vec2{X: float32(int((sz.X - (imageW * win.scaling)) / 2))}
+	} else {
+		win.scaling = sz.X / imageW
+		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
+	}
+}
+
+func (win *winDbgScr) getScaling(horiz bool) float32 {
+	if horiz {
+		return float32(pixelWidth * win.scr.aspectBias * win.scaling)
+	}
+	return win.scaling
+}
+
+func (win *winDbgScr) setScaling(scaling float32) {
+	win.rescaled = true
+	win.winDim = win.winDim.Times(scaling / win.scaling)
 }

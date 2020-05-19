@@ -142,13 +142,13 @@ func (pf *playfield) pixel() (bool, uint8) {
 		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
 		// document.  we believe this has the same effect.
 		switch pf.Region {
-		case 0:
+		case RegionOffScreen:
 			pf.Idx = pf.hsync.Count()
 			pf.currentPixelIsOn = false
-		case 1:
+		case RegionLeft:
 			pf.Idx = pf.hsync.Count() - 17
 			newPixel = true
-		case 2:
+		case RegionRight:
 			pf.Idx = pf.hsync.Count() - 37
 			newPixel = true
 		}

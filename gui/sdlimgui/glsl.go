@@ -171,8 +171,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	gl.EnableVertexAttribArray(uint32(rnd.attribUV))
 	gl.EnableVertexAttribArray(uint32(rnd.attribColor))
 	vertexSize, vertexOffsetPos, vertexOffsetUv, vertexOffsetCol := imgui.VertexBufferLayout()
-	gl.VertexAttribPointer(uint32(rnd.attribPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
 	gl.VertexAttribPointer(uint32(rnd.attribUV), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
+	gl.VertexAttribPointer(uint32(rnd.attribPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
 	gl.VertexAttribPointer(uint32(rnd.attribColor), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
 	indexSize := imgui.IndexBufferLayout()
 	drawType := gl.UNSIGNED_SHORT
@@ -202,8 +202,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				// critical section
 				rnd.img.screen.crit.section.Lock()
 
-				vertScaling := rnd.img.wm.dbgScr.vertScaling()
-				horizScaling := rnd.img.wm.dbgScr.horizScaling()
+				vertScaling := rnd.img.wm.dbgScr.getScaling(false)
+				horizScaling := rnd.img.wm.dbgScr.getScaling(true)
 
 				// pixel perfect rendering or whether to apply the CRT
 				// filters
@@ -214,8 +214,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				}
 
 				// the resolution information is used to scale the Last
-				gl.Uniform2f(rnd.attribDim, rnd.img.wm.dbgScr.scaledWidth(), rnd.img.wm.dbgScr.scaledHeight())
-				gl.Uniform2f(rnd.attribCropDim, rnd.img.wm.dbgScr.scaledCroppedWidth(), rnd.img.wm.dbgScr.scaledCroppedHeight())
+				gl.Uniform2f(rnd.attribDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
+				gl.Uniform2f(rnd.attribCropDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
 
 				// screen geometry
 				gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
@@ -257,6 +257,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				switch textureID {
 				case rnd.img.wm.dbgScr.overlayTexture:
 					gl.Uniform1i(rnd.attribImageType, 2)
+				case rnd.img.wm.playScr.screenTexture:
+					gl.Uniform1i(rnd.attribImageType, 3)
 				case rnd.img.wm.dbgScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, 1)
 				default:

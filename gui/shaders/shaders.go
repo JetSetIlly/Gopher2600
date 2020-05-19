@@ -49,12 +49,11 @@ const float cursorSize = 2.0;
 
 void main()
 {
+	// imgui texture
 	if (ImageType == 0) {
-		// imgui texture
 		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
 		return;
 	}
-
 
 	// tv screen texture
 	vec2 coords = Frag_UV.xy;
@@ -70,134 +69,136 @@ void main()
 	float lastX;
 	float lastY;
 
-	if (Cropped > 0) {
-		hblank = Hblank / CropDim.x;
-		lastX = LastX / CropDim.x;
-		topScanline = 0;
-		botScanline = (BotScanline - TopScanline) / CropDim.y;
-
-		// the LastY coordinate refers to the full-frame scanline. the cropped
-		// texture however counts from zero at the visible edge so we need to
-		// adjust the lastY value by the TopScanline value.
-		//
-		// note that there's no need to do this for LastX because the
-		// horizontal position is counted from -68 in all instances.
-		lastY = (LastY - TopScanline) / CropDim.y;
-	} else {
-		hblank = Hblank / Dim.x;
-		topScanline = TopScanline / Dim.y;
-		botScanline = BotScanline / Dim.y;
-		lastX = LastX / Dim.x;
-		lastY = LastY / Dim.y;
-	}
-
-	// if the entire frame is being shown then plot the screen guides
-	if (Cropped < 0) {
-		if (isNearEqual(coords.x, hblank, epsilonX) ||
-		   isNearEqual(coords.y, topScanline, epsilonY) ||
-		   isNearEqual(coords.y, botScanline, epsilonY)) {
-			Out_Color.r = 1.0;
-			Out_Color.g = 0.0;
-			Out_Color.b = 0.0;
-			Out_Color.a = 0.5;
-			return;
-		}
-	}
-
-	// when ShowScreenDraw is true then there's some additional image
-	// processing we need to perform:
-	//	- fade anything left over from previous frame
-	//	- draw cursor indicator
-	if (ShowScreenDraw > 0) {
-		
-		// draw cursor if pixel is at the last x/y position
-		if (isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, lastX, cursorSize*epsilonX)) {
-			Out_Color.r = 1.0;
-			Out_Color.g = 1.0;
-			Out_Color.b = 1.0;
-			Out_Color.a = AnimTime;
-			return;
-		}
-
-		// draw off-screen cursor for HBLANK
-		if (lastX < 0 && isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
-			Out_Color.r = 1.0;
-			Out_Color.a = AnimTime;
-			return;
-		}
-
-		// for cropped screens there are a few more conditions that we need to
-		// consider for drawing an off-screen cursor
+	if (ImageType == 1 || ImageType == 2) {
 		if (Cropped > 0) {
+			hblank = Hblank / CropDim.x;
+			lastX = LastX / CropDim.x;
+			topScanline = 0;
+			botScanline = (BotScanline - TopScanline) / CropDim.y;
 
-			// when VBLANK is active but HBLANK is off
-			if (isNearEqual(coords.x, lastX, cursorSize * epsilonX)) {
-				// top of screen
-				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
-					Out_Color.r = 1.0;
-					Out_Color.a = AnimTime;
-					return;
-				}
-			
-				// bottom of screen
-				if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
-					Out_Color.r = 1.0;
-					Out_Color.a = AnimTime;
-					return;
-				}
-			}
-
-			// when HBLANK and VBLANK are both active
-			if (lastX < 0 && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
-				// top/left corner of screen
-				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
-					Out_Color.r = 1.0;
-					Out_Color.a = AnimTime;
-					return;
-				}
-
-				// bottom/left corner of screen
-				if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
-					Out_Color.r = 1.0;
-					Out_Color.a = AnimTime;
-					return;
-				}
-			}
+			// the LastY coordinate refers to the full-frame scanline. the cropped
+			// texture however counts from zero at the visible edge so we need to
+			// adjust the lastY value by the TopScanline value.
+			//
+			// note that there's no need to do this for LastX because the
+			// horizontal position is counted from -68 in all instances.
+			lastY = (LastY - TopScanline) / CropDim.y;
+		} else {
+			hblank = Hblank / Dim.x;
+			topScanline = TopScanline / Dim.y;
+			botScanline = BotScanline / Dim.y;
+			lastX = LastX / Dim.x;
+			lastY = LastY / Dim.y;
 		}
 
-
-		// draw pixels with faded alpha. these pixels will be those left over
-		// from the previous frame.
-		//
-		// as a special case, we ignore the first scanline and do not fade the
-		// previous image on a brand new frame. note that we're using the
-		// unadjusted LastY value for this
-		if (LastY > 0) {
-			if (coords.y > lastY || (isNearEqual(coords.y, lastY, epsilonY) && coords.x > lastX)) {
-				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		// if the entire frame is being shown then plot the screen guides
+		if (Cropped < 0) {
+			if (isNearEqual(coords.x, hblank, epsilonX) ||
+			   isNearEqual(coords.y, topScanline, epsilonY) ||
+			   isNearEqual(coords.y, botScanline, epsilonY)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
+				Out_Color.b = 0.0;
 				Out_Color.a = 0.5;
 				return;
 			}
 		}
-	}
 
-	// if this is the overlay texture then we're done
-	if (ImageType == 2) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
-	}
+		// when ShowScreenDraw is true then there's some additional image
+		// processing we need to perform:
+		//	- fade anything left over from previous frame
+		//	- draw cursor indicator
+		if (ShowScreenDraw > 0) {
+			
+			// draw cursor if pixel is at the last x/y position
+			if (isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, lastX, cursorSize*epsilonX)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = AnimTime;
+				return;
+			}
 
-	// if pixel-perfect	rendering is selected then there's nothing much more to do
-	if (PixelPerfect == 1) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
-	}
+			// draw off-screen cursor for HBLANK
+			if (lastX < 0 && isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
+				Out_Color.r = 1.0;
+				Out_Color.a = AnimTime;
+				return;
+			}
 
-	// only apply CRT effects on the "cropped" area of the screen. we can think
-	// of the cropped area as the "play" area
-	if (Cropped < 0 && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline)) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
+			// for cropped screens there are a few more conditions that we need to
+			// consider for drawing an off-screen cursor
+			if (Cropped > 0) {
+
+				// when VBLANK is active but HBLANK is off
+				if (isNearEqual(coords.x, lastX, cursorSize * epsilonX)) {
+					// top of screen
+					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
+						Out_Color.r = 1.0;
+						Out_Color.a = AnimTime;
+						return;
+					}
+				
+					// bottom of screen
+					if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
+						Out_Color.r = 1.0;
+						Out_Color.a = AnimTime;
+						return;
+					}
+				}
+
+				// when HBLANK and VBLANK are both active
+				if (lastX < 0 && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
+					// top/left corner of screen
+					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
+						Out_Color.r = 1.0;
+						Out_Color.a = AnimTime;
+						return;
+					}
+
+					// bottom/left corner of screen
+					if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
+						Out_Color.r = 1.0;
+						Out_Color.a = AnimTime;
+						return;
+					}
+				}
+			}
+
+
+			// draw pixels with faded alpha. these pixels will be those left over
+			// from the previous frame.
+			//
+			// as a special case, we ignore the first scanline and do not fade the
+			// previous image on a brand new frame. note that we're using the
+			// unadjusted LastY value for this
+			if (LastY > 0) {
+				if (coords.y > lastY || (isNearEqual(coords.y, lastY, epsilonY) && coords.x > lastX)) {
+					Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+					Out_Color.a = 0.5;
+					return;
+				}
+			}
+		}
+
+		// if this is the overlay texture then we're done
+		if (ImageType == 2) {
+			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+			return;
+		}
+
+		// if pixel-perfect	rendering is selected then there's nothing much more to do
+		if (PixelPerfect == 1) {
+			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+			return;
+		}
+
+		// only apply CRT effects on the "cropped" area of the screen. we can think
+		// of the cropped area as the "play" area
+		if (Cropped < 0 && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline)) {
+			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+			return;
+		}
 	}
 
 	// the remainder of the shader are the CRT effects and we only apply these
@@ -236,17 +237,19 @@ void main()
 	}
 
 	// bend screen
-	/* float xbend = 6.0; */
-	/* float ybend = 5.0; */
-	/* coords = (coords - 0.5) * 1.85; */
-	/* coords *= 1.11; */	
-	/* coords.x *= 1.0 + pow((abs(coords.y) / xbend), 2.0); */
-	/* coords.y *= 1.0 + pow((abs(coords.x) / ybend), 2.0); */
-	/* coords  = (coords / 2.05) + 0.5; */
+	/* if (ImageType == 3) { */
+	/* 	float xbend = 6.0; */
+	/* 	float ybend = 5.0; */
+	/* 	coords = (coords - 0.5) * 1.85; */
+	/* 	coords *= 1.11; */	
+	/* 	coords.x *= 1.0 + pow((abs(coords.y) / xbend), 2.0); */
+	/* 	coords.y *= 1.0 + pow((abs(coords.x) / ybend), 2.0); */
+	/* 	coords  = (coords / 2.05) + 0.5; */
 
-	/* // crop tiling */
-	/* if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 ) { */
-	/* 	discard; */
+	/* 	// crop tiling */
+	/* 	if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 ) { */
+	/* 		discard; */
+	/* 	} */
 	/* } */
 }
 `

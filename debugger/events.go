@@ -48,9 +48,10 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 		if !handled {
 			if ev.Down && ev.Mod == gui.KeyModNone {
 				switch ev.Key {
+				// debugging helpers
 				case "F12":
+					// toggle croppint
 					err = dbg.scr.SetFeature(gui.ReqToggleCropping)
-
 				case "F11":
 					// toggle debugging colours
 					err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
@@ -58,8 +59,10 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 					// toggle overlay
 					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 
+				// screen scaling
 				case "=":
-					fallthrough // equal sign is the same as plus, for convenience
+					// equal sign is the same as plus, for convenience
+					fallthrough
 				case "+":
 					// increase scaling
 					err = dbg.scr.SetFeature(gui.ReqIncScale)

@@ -11,6 +11,8 @@ github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7 h1:SCYMcCJ89LjRGwEa0tRluN
 github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7/go.mod h1:482civXOzJJCPzJ4ZOX/pwvXBWSnzD4OKMdH4ClKGbk=
 github.com/inkyblackness/imgui-go/v2 v2.3.0 h1:AK37pUuPO3Uh+/5Kln5DZKGGApMgrqw8vyt0R2r0ork=
 github.com/inkyblackness/imgui-go/v2 v2.3.0/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
+github.com/inkyblackness/imgui-go/v2 v2.4.0 h1:Trb694GPM+ImDgJaOoEXNWk0ofvI1R05JFGTB6PLFH4=
+github.com/inkyblackness/imgui-go/v2 v2.4.0/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
 github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 h1:A7GG7zcGjl3jqAqGPmcNjd/D9hzL95SuoOQAaFNdLU0=
 github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

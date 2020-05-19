@@ -28,9 +28,7 @@ type FeatureReq string
 // probably crash.
 //
 // Note that, like the name suggests, these are requests, they may or may not
-// be satisifed depending other conditions in the GUI. For example, in the
-// imgui gui implementation, a capture mouse request will only be honoured if
-// the "TV screen" window is active.
+// be satisifed depending other conditions in the GUI.
 const (
 	ReqSetVisibility      FeatureReq = "ReqSetVisibility"      // bool
 	ReqToggleVisibility   FeatureReq = "ReqToggleVisibility"   // none
@@ -54,4 +52,9 @@ const (
 	// own go routine but regardless, the event channel is used for this
 	// purpose.
 	ReqSetEventChan FeatureReq = "ReqSetEventChan" // chan gui.Event()
+
+	// playmode is called whenever the play/debugger looper is changed. like
+	// all other requests this may not do anything, depending on the GUI
+	// specifics
+	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
 )

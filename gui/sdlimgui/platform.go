@@ -145,7 +145,7 @@ func (plt *platform) newFrame() {
 	// deactivated when the "invisible" mouse is outside the tv screen bounds.
 	//
 	// TODO: roll mouse updates into service loop
-	if plt.img.wm.dbgScr.isCaptured && !plt.img.wm.dbgScr.isHovered {
+	if plt.img.isCaptured() && !plt.img.wm.dbgScr.isHovered {
 		state = 0
 	}
 

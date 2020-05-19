@@ -62,12 +62,12 @@ func (img *SdlImgui) Service() {
 				img.events <- gui.EventQuit{}
 
 			case *sdl.TextInputEvent:
-				if !img.wm.dbgScr.isCaptured {
+				if !img.isCaptured() {
 					img.io.AddInputCharacters(string(ev.Text[:]))
 				}
 
 			case *sdl.KeyboardEvent:
-				if img.wm.dbgScr.isCaptured {
+				if img.isPlaymode() || img.isCaptured() {
 					mod := gui.KeyModNone
 
 					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
@@ -112,19 +112,11 @@ func (img *SdlImgui) Service() {
 				// the button event to send
 				var button gui.MouseButton
 
-				// mouse events are swallowed by the service loop
-				// if they've been handled
-				var swallow bool
-
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
-					if img.wm.dbgScr.isCaptured {
-						button = gui.MouseButtonLeft
-					} else if img.wm.dbgScr.isHovered && !img.wm.dbgScr.isPopup {
-						// left mouse button should capture mouse if
-						// not already done so.
-						swallow = true
-						img.wm.dbgScr.isCaptured = true
+					button = gui.MouseButtonLeft
+					if img.isHovered() {
+						img.setCapture(true)
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
@@ -136,9 +128,8 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.wm.dbgScr.isCaptured {
-						swallow = true
-						img.wm.dbgScr.isCaptured = false
+					if img.isCaptured() {
+						img.setCapture(false)
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
@@ -147,7 +138,7 @@ func (img *SdlImgui) Service() {
 					}
 				}
 
-				if !swallow {
+				if img.isCaptured() {
 					img.events <- gui.EventMouseButton{
 						Button: button,
 						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
@@ -171,7 +162,7 @@ func (img *SdlImgui) Service() {
 		}
 
 		// mouse motion
-		if img.wm.dbgScr.isCaptured {
+		if img.isCaptured() {
 			mx, my, _ := sdl.GetMouseState()
 			if mx != img.mx || my != img.my {
 				w, h := img.plt.window.GetSize()
@@ -192,7 +183,9 @@ func (img *SdlImgui) Service() {
 	}
 
 	// update late values
-	img.lz.Update()
+	if !img.isPlaymode() {
+		img.lz.Update()
+	}
 
 	// Signal start of a new frame
 	img.plt.newFrame()
@@ -216,8 +209,10 @@ func (img *SdlImgui) Service() {
 	default:
 	}
 
-	// sleep to help avoid 100% CPU usage. apply this delay even if emulation
-	// is running (compare to sdldebug which ddoes not apply the delay when
-	// emulation is running)
-	<-time.After(time.Millisecond * 25)
+	// sleep to help avoid 100% CPU usage when in non-play mode. when in
+	// playmode we want all the cycles as is necessary - excess cycles will be
+	// "given back" by the frame limiter
+	if !img.isPlaymode() {
+		<-time.After(time.Millisecond * 25)
+	}
 }

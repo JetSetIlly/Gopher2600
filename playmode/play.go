@@ -44,7 +44,7 @@ type playmode struct {
 }
 
 // Play is a quick of setting up a playable instance of the emulator.
-func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
+func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
 	var transcript string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -158,11 +158,7 @@ func Play(tv television.Television, scr gui.GUI, showOnStable bool, newRecording
 	}
 
 	// request television visibility
-	request := gui.ReqSetVisibility
-	if showOnStable {
-		request = gui.ReqSetVisibleOnStable
-	}
-	err = scr.SetFeature(request, true)
+	err = scr.SetFeature(gui.ReqSetVisibility, true)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
