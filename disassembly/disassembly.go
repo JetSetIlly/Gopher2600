@@ -55,7 +55,7 @@ type Disassembly struct {
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified bank/address.
-func (dsm Disassembly) GetEntryByAddress(bank int, address uint16) (*Entry, bool) {
+func (dsm *Disassembly) GetEntryByAddress(bank int, address uint16) (*Entry, bool) {
 	col := dsm.reference[bank][address&ref.AddressMaskCart]
 	return col, col != nil
 }
@@ -165,6 +165,6 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 }
 
 // NumBanks returns the number of banks in the disassembly.
-func (dsm Disassembly) NumBanks() int {
+func (dsm *Disassembly) NumBanks() int {
 	return len(dsm.reference)
 }
