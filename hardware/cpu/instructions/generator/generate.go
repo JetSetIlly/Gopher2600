@@ -136,17 +136,17 @@ func parseCSV() (string, error) {
 		case "ABSOLUTE":
 			newDef.AddressingMode = instructions.Absolute
 			newDef.Bytes = 3
-		case "ZERO_PAGE":
+		case "ZEROPAGE":
 			newDef.AddressingMode = instructions.ZeroPage
 			newDef.Bytes = 2
 		case "INDIRECT":
 			newDef.AddressingMode = instructions.Indirect
 			newDef.Bytes = 3
-		case "PRE_INDEX_INDIRECT":
-			newDef.AddressingMode = instructions.PreIndexedIndirect
+		case "INDEXED_INDIRECT":
+			newDef.AddressingMode = instructions.IndexedIndirect
 			newDef.Bytes = 2
-		case "POST_INDEX_INDIRECT":
-			newDef.AddressingMode = instructions.PostIndexedIndirect
+		case "INDIRECT_INDEXED":
+			newDef.AddressingMode = instructions.IndirectIndexed
 			newDef.Bytes = 2
 		case "ABSOLUTE_INDEXED_X":
 			newDef.AddressingMode = instructions.AbsoluteIndexedX
@@ -154,11 +154,11 @@ func parseCSV() (string, error) {
 		case "ABSOLUTE_INDEXED_Y":
 			newDef.AddressingMode = instructions.AbsoluteIndexedY
 			newDef.Bytes = 3
-		case "INDEXED_ZERO_PAGE_X":
-			newDef.AddressingMode = instructions.IndexedZeroPageX
+		case "ZEROPAGE_INDEXED_X":
+			newDef.AddressingMode = instructions.ZeroPageIndexedX
 			newDef.Bytes = 2
-		case "INDEXED_ZERO_PAGE_Y":
-			newDef.AddressingMode = instructions.IndexedZeroPageY
+		case "ZEROPAGE_INDEXED_Y":
+			newDef.AddressingMode = instructions.ZeroPageIndexedY
 			newDef.Bytes = 2
 		}
 

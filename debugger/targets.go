@@ -173,6 +173,17 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 						},
 					}
 
+				case "ADDRESSMODE", "AM":
+					trg = &target{
+						label: "AddressMode",
+						currentValue: func() interface{} {
+							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
+								return ""
+							}
+							return int(dbg.vcs.CPU.LastResult.Defn.AddressingMode)
+						},
+					}
+
 				case "EFFECT", "EFF":
 					trg = &target{
 						label: "Instruction Effect",

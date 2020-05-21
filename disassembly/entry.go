@@ -125,6 +125,12 @@ type Entry struct {
 	ActualNotes  string
 }
 
+// String returns a very basic representation of an Entry. Provided for
+// convenience. Probably not of any use except for the simplest of tools.
+func (d *Entry) String() string {
+	return fmt.Sprintf("%s %s %s", d.Address, d.Mnemonic, d.Operand)
+}
+
 // FormatResult It is the preferred method of initialising for the Entry type.
 // It creates a disassembly.Entry based on the bank and result information.
 func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level EntryLevel) (*Entry, error) {
@@ -284,17 +290,17 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 	case instructions.ZeroPage:
 	case instructions.Indirect:
 		d.Operand = fmt.Sprintf("(%s)", d.Operand)
-	case instructions.PreIndexedIndirect:
+	case instructions.IndexedIndirect:
 		d.Operand = fmt.Sprintf("(%s,X)", d.Operand)
-	case instructions.PostIndexedIndirect:
+	case instructions.IndirectIndexed:
 		d.Operand = fmt.Sprintf("(%s),Y", d.Operand)
 	case instructions.AbsoluteIndexedX:
 		d.Operand = fmt.Sprintf("%s,X", d.Operand)
 	case instructions.AbsoluteIndexedY:
 		d.Operand = fmt.Sprintf("%s,Y", d.Operand)
-	case instructions.IndexedZeroPageX:
+	case instructions.ZeroPageIndexedX:
 		d.Operand = fmt.Sprintf("%s,X", d.Operand)
-	case instructions.IndexedZeroPageY:
+	case instructions.ZeroPageIndexedY:
 		d.Operand = fmt.Sprintf("%s,Y", d.Operand)
 	default:
 	}

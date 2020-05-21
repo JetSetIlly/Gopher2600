@@ -538,19 +538,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case instructions.Absolute:
-		if defn.Effect != instructions.Subroutine {
-			// +2 cycles
-			address, err = mc.read16BitPC()
-			if err != nil {
-				return err
-			}
-			mc.LastResult.InstructionData = address
-		}
-
-		// else... for JSR, addresses are read slightly differently so we defer
-		// this part of the operation to the mnemonic switch below
-
 	case instructions.Relative:
 		// relative addressing is only used for branch instructions, the address
 		// is an offset value from the current PC position
@@ -569,6 +556,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		address = uint16(value)
 
+	case instructions.Absolute:
+		if defn.Effect != instructions.Subroutine {
+			// +2 cycles
+			address, err = mc.read16BitPC()
+			if err != nil {
+				return err
+			}
+			mc.LastResult.InstructionData = address
+		}
+
+		// else... for JSR, addresses are read slightly differently so we defer
+		// this part of the operation to the mnemonic switch below
+
 	case instructions.ZeroPage:
 		zeroPage = true
 
@@ -584,64 +584,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		address = uint16(value)
-
-	case instructions.IndexedZeroPageX:
-		zeroPage = true
-
-		// +1 cycles
-		var indirectAddress uint8
-		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = uint16(indirectAddress)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.X.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
-		}
-
-		// +1 cycle
-		err = mc.endCycle()
-		if err != nil {
-			return err
-		}
-
-	case instructions.IndexedZeroPageY:
-		zeroPage = true
-
-		// used exclusively for LDX ZeroPage,y
-
-		// +1 cycles
-		var indirectAddress uint8
-		err = mc.read8BitPC(&indirectAddress, func() error {
-			mc.LastResult.InstructionData = uint16(indirectAddress)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.Y.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
-		}
-
-		// +1 cycle
-		err = mc.endCycle()
-		if err != nil {
-			return err
-		}
 
 	case instructions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
@@ -702,7 +644,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
-	case instructions.PreIndexedIndirect: // x indexing
+	case instructions.IndexedIndirect: // x indexing
 		// +1 cycle
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
@@ -738,7 +680,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// never a page fault wth pre-index indirect addressing
 
-	case instructions.PostIndexedIndirect: // y indexing
+	case instructions.IndirectIndexed: // y indexing
 		// +1 cycle
 		var indirectAddress uint8
 		err = mc.read8BitPC(&indirectAddress, func() error {
@@ -833,6 +775,64 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// fix MSB of address
 		mc.acc16.Add(indirectAddress & 0xff00)
 		address = mc.acc16.Address()
+
+	case instructions.ZeroPageIndexedX:
+		zeroPage = true
+
+		// +1 cycles
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = uint16(indirectAddress)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		mc.acc8.Load(indirectAddress)
+		mc.acc8.Add(mc.X.Value(), false)
+		address = mc.acc8.Address()
+
+		// make a note of zero page index bug
+		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
+			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
+		}
+
+		// +1 cycle
+		err = mc.endCycle()
+		if err != nil {
+			return err
+		}
+
+	case instructions.ZeroPageIndexedY:
+		zeroPage = true
+
+		// used exclusively for LDX ZeroPage,y
+
+		// +1 cycles
+		var indirectAddress uint8
+		err = mc.read8BitPC(&indirectAddress, func() error {
+			mc.LastResult.InstructionData = uint16(indirectAddress)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		mc.acc8.Load(indirectAddress)
+		mc.acc8.Add(mc.Y.Value(), false)
+		address = mc.acc8.Address()
+
+		// make a note of zero page index bug
+		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
+			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
+		}
+
+		// +1 cycle
+		err = mc.endCycle()
+		if err != nil {
+			return err
+		}
 
 	default:
 		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)

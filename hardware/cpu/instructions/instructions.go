@@ -30,16 +30,18 @@ const (
 	Immediate
 	Relative // relative addressing is used for branch instructions
 
-	Absolute // sometimes called absolute addressing
-	ZeroPage
-	Indirect // indirect addressing (with no indexing) is only for JMP instructions
+	Absolute // abs
+	ZeroPage // zpg
+	Indirect // ind
 
-	PreIndexedIndirect  // uses X register
-	PostIndexedIndirect // uses Y register
-	AbsoluteIndexedX
-	AbsoluteIndexedY
-	IndexedZeroPageX
-	IndexedZeroPageY // only used for LDX
+	IndexedIndirect // (ind,X)
+	IndirectIndexed // (ind), Y
+
+	AbsoluteIndexedX // abs,X
+	AbsoluteIndexedY // abs,Y
+
+	ZeroPageIndexedX // zpg,X
+	ZeroPageIndexedY // zpg,Y
 )
 
 // EffectCategory categorises an instruction by the effect it has
