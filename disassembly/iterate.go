@@ -94,26 +94,26 @@ func (itr *Iterate) Start() *Entry {
 // Next entry in the disassembly of the previously specified type. Returns nil
 // if end of disassembly has been reached.
 func (itr *Iterate) Next() *Entry {
-	var e *Entry
-
-	if itr.idx > len(itr.dsm.reference[itr.bank])-1 {
+	if itr.idx >= len(itr.dsm.reference[itr.bank]) {
 		return nil
 	}
 
-	e = itr.dsm.reference[itr.bank][itr.idx]
 	itr.idx++
 
 	itr.dsm.crit.RLock()
 	defer itr.dsm.crit.RUnlock()
 
-	for itr.idx < len(itr.dsm.reference[itr.bank]) && e.Level < itr.minLevel {
-		e = itr.dsm.reference[itr.bank][itr.idx]
+	for itr.idx < len(itr.dsm.reference[itr.bank]) && itr.dsm.reference[itr.bank][itr.idx].Level < itr.minLevel {
 		itr.idx++
 	}
 
-	itr.lastEntry = e
+	if itr.idx >= len(itr.dsm.reference[itr.bank]) {
+		return nil
+	}
 
-	return e
+	itr.lastEntry = itr.dsm.reference[itr.bank][itr.idx]
+
+	return itr.lastEntry
 }
 
 // SkipNext n entries and return that Entry. An n value of < 0 returns the most
