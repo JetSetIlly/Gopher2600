@@ -44,8 +44,8 @@ const onEmptyInput = "STEP"
 
 // Debugger is the basic debugging frontend for the emulation
 type Debugger struct {
-	vcs    *hardware.VCS
-	disasm *disassembly.Disassembly
+	VCS    *hardware.VCS
+	Disasm *disassembly.Disassembly
 
 	// the cartridge bank that was active before the last instruction was
 	// executed
@@ -146,14 +146,14 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	}
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(dbg.tv)
+	dbg.VCS, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
 
 	// create instance of disassembly -- the same base structure is used
 	// for disassemblies subseuquent to the first one.
-	dbg.disasm, err = disassembly.FromMemory(dbg.vcs.Mem.Cart, nil)
+	dbg.Disasm, err = disassembly.FromMemory(dbg.VCS.Mem.Cart, nil)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -163,7 +163,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	// is dangerous if we don't care to reset the symtable when disasm changes.
 	// As it is, we only change the disasm poointer in the loadCartridge()
 	// function.
-	dbg.dbgmem = &memoryDebug{mem: dbg.vcs.Mem, symtable: dbg.disasm.Symtable}
+	dbg.dbgmem = &memoryDebug{mem: dbg.VCS.Mem, symtable: dbg.Disasm.Symtable}
 
 	// set up frame limiter
 	dbg.lmtr = newLimiter(tv, func() error {
@@ -173,7 +173,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 
 	// setup reflection monitor
 	if b, ok := scr.(reflection.Broker); ok {
-		dbg.reflect = reflection.NewMonitor(dbg.vcs, b.GetReflectionRenderer())
+		dbg.reflect = reflection.NewMonitor(dbg.VCS, b.GetReflectionRenderer())
 	}
 
 	// set up breakpoints/traps
@@ -207,9 +207,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
-
-	// try to add to gui context
-	dbg.scr.SetFeature(gui.ReqAddVCS, dbg.vcs)
 
 	// try to add debugger (self) to gui context
 	dbg.scr.SetFeature(gui.ReqAddDebugger, dbg)
@@ -281,7 +278,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of symtable in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
-	err := setup.AttachCartridge(dbg.vcs, cartload)
+	err := setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !errors.Has(err, errors.CartridgeEjected) {
 		return err
 	}
@@ -292,15 +289,13 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 		// continuing because symtable is always valid even if err non-nil
 	}
 
-	dbg.disasm, err = disassembly.FromMemory(dbg.vcs.Mem.Cart, symtable)
+	dbg.Disasm, err = disassembly.FromMemory(dbg.VCS.Mem.Cart, symtable)
 	if err != nil {
 		return err
 	}
 
-	dbg.scr.SetFeature(gui.ReqAddDisasm, dbg.disasm)
-
 	// repoint debug memory's symbol table
-	dbg.dbgmem.symtable = dbg.disasm.Symtable
+	dbg.dbgmem.symtable = dbg.Disasm.Symtable
 
 	return nil
 }

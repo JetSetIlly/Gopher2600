@@ -41,8 +41,8 @@ func newLazyControllers(val *Lazy) *LazyControllers {
 
 func (lz *LazyControllers) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicHandController0.Store(lz.val.VCS.HandController0)
-		lz.atomicHandController1.Store(lz.val.VCS.HandController1)
+		lz.atomicHandController0.Store(lz.val.Dbg.VCS.HandController0)
+		lz.atomicHandController1.Store(lz.val.Dbg.VCS.HandController1)
 	})
 	lz.HandController0, _ = lz.atomicHandController0.Load().(*input.HandController)
 	lz.HandController1, _ = lz.atomicHandController1.Load().(*input.HandController)

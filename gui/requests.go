@@ -30,22 +30,30 @@ type FeatureReq string
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisifed depending other conditions in the GUI.
 const (
-	ReqSetVisibility      FeatureReq = "ReqSetVisibility"      // bool
-	ReqToggleVisibility   FeatureReq = "ReqToggleVisibility"   // none
-	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
-	ReqSetPause           FeatureReq = "ReqSetPause"           // bool
-	ReqSetCropping        FeatureReq = "ReqSetCropping"        // bool
-	ReqToggleCropping     FeatureReq = "ReqToggleCropping"     // none
-	ReqSetAltColors       FeatureReq = "ReqSetAltColors"       // bool
-	ReqToggleAltColors    FeatureReq = "ReqToggleAltColors"    // none
-	ReqSetOverlay         FeatureReq = "ReqSetOverlay"         // bool
-	ReqToggleOverlay      FeatureReq = "ReqToggleOverlay"      // none
-	ReqSetScale           FeatureReq = "ReqSetScale"           // float
-	ReqIncScale           FeatureReq = "ReqIncScale"           // none
-	ReqDecScale           FeatureReq = "ReqDecScale"           // none
-	ReqAddDebugger        FeatureReq = "ReqAddDebugger"        // *debugger.Debugger
-	ReqAddVCS             FeatureReq = "ReqAddVCS"             // *hardware.VCS
-	ReqAddDisasm          FeatureReq = "ReqAddDisasm"          // *disassembly.Disassembly
+	// visibility can be interpreted by the gui implementation in different
+	// ways. at it's simplest it should set the visibility of the TV screen
+	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
+	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
+
+	// the following requests should set or toggle visual elements of the
+	// debugger
+	ReqSetCropping     FeatureReq = "ReqSetCropping"     // bool
+	ReqToggleCropping  FeatureReq = "ReqToggleCropping"  // none
+	ReqSetAltColors    FeatureReq = "ReqSetAltColors"    // bool
+	ReqToggleAltColors FeatureReq = "ReqToggleAltColors" // none
+	ReqSetOverlay      FeatureReq = "ReqSetOverlay"      // bool
+	ReqToggleOverlay   FeatureReq = "ReqToggleOverlay"   // none
+	ReqSetScale        FeatureReq = "ReqSetScale"        // float
+	ReqIncScale        FeatureReq = "ReqIncScale"        // none
+	ReqDecScale        FeatureReq = "ReqDecScale"        // none
+
+	// pause is set when the debugger has paused it's loop. the gui can then
+	// present information differently as necessary
+	ReqSetPause FeatureReq = "ReqSetPause" // bool
+
+	// The add debugger request must be made by the debugger if debug access to
+	// the the machine is required by the GUI
+	ReqAddDebugger FeatureReq = "ReqAddDebugger" // *debugger.Debugger
 
 	// the event channel is used to by the GUI implementation to send
 	// information back to the main program. the GUI may or may not be in its
@@ -57,4 +65,10 @@ const (
 	// all other requests this may not do anything, depending on the GUI
 	// specifics
 	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
+
+	// whether to save preferences or not. useful for performance testing mode
+	ReqNoSavePrefs FeatureReq = "ReqNoSetPrefs" // bool
+
+	// the following requests are deprecated
+	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
 )

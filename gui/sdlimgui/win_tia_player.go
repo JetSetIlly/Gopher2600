@@ -35,12 +35,12 @@ func (win *winTIA) drawPlayer(num int) {
 	dl := imgui.WindowDrawList()
 
 	lz := win.img.lz.Player0
-	ps := win.img.lz.VCS.TIA.Video.Player0
-	ms := win.img.lz.VCS.TIA.Video.Missile0
+	ps := win.img.lz.Dbg.VCS.TIA.Video.Player0
+	ms := win.img.lz.Dbg.VCS.TIA.Video.Missile0
 	if num != 0 {
 		lz = win.img.lz.Player1
-		ps = win.img.lz.VCS.TIA.Video.Player1
-		ms = win.img.lz.VCS.TIA.Video.Missile1
+		ps = win.img.lz.Dbg.VCS.TIA.Video.Player1
+		ms = win.img.lz.Dbg.VCS.TIA.Video.Missile1
 	}
 
 	imgui.Spacing()
@@ -180,7 +180,7 @@ func (win *winTIA) drawPlayer(num int) {
 				v := uint8(k) // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
 					ps.SizeAndCopies = v
-					win.img.lz.VCS.TIA.Video.UpdateNUSIZ(num, false)
+					win.img.lz.Dbg.VCS.TIA.Video.UpdateNUSIZ(num, false)
 				})
 			}
 		}

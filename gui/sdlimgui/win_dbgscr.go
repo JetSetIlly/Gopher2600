@@ -235,7 +235,7 @@ func (win *winDbgScr) draw() {
 
 		// present tooltip showing pixel coords and CPU state
 		if !win.isCaptured {
-			fmtRes, _ := win.img.lz.Dsm.FormatResult(res.Bank, res.Res, disassembly.EntryLevelBlessed)
+			fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(res.Bank, res.Res, disassembly.EntryLevelBlessed)
 			if fmtRes.Address != "" {
 				imgui.BeginTooltip()
 				imgui.Text(fmt.Sprintf("Scanline: %d", win.scanline))

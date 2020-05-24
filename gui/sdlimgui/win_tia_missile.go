@@ -31,12 +31,12 @@ import (
 
 func (win *winTIA) drawMissile(missile int) {
 	lz := win.img.lz.Missile0
-	ps := win.img.lz.VCS.TIA.Video.Player0
-	ms := win.img.lz.VCS.TIA.Video.Missile0
+	ps := win.img.lz.Dbg.VCS.TIA.Video.Player0
+	ms := win.img.lz.Dbg.VCS.TIA.Video.Missile0
 	if missile != 0 {
 		lz = win.img.lz.Missile1
-		ps = win.img.lz.VCS.TIA.Video.Player1
-		ms = win.img.lz.VCS.TIA.Video.Missile1
+		ps = win.img.lz.Dbg.VCS.TIA.Video.Player1
+		ms = win.img.lz.Dbg.VCS.TIA.Video.Missile1
 	}
 
 	imgui.Spacing()
@@ -104,7 +104,7 @@ func (win *winTIA) drawMissile(missile int) {
 				v := uint8(k) // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
 					ms.Copies = v
-					win.img.lz.VCS.TIA.Video.UpdateNUSIZ(missile, true)
+					win.img.lz.Dbg.VCS.TIA.Video.UpdateNUSIZ(missile, true)
 				})
 			}
 		}
@@ -121,7 +121,7 @@ func (win *winTIA) drawMissile(missile int) {
 				v := uint8(k) // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
 					ms.Size = v
-					win.img.lz.VCS.TIA.Video.UpdateNUSIZ(missile, true)
+					win.img.lz.Dbg.VCS.TIA.Video.UpdateNUSIZ(missile, true)
 				})
 			}
 		}

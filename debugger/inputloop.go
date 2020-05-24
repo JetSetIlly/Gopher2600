@@ -92,14 +92,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 		// check for breakpoints and traps
 		if !videoCycle ||
-			(dbg.vcs.CPU.LastResult.Final &&
-				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
-				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
-				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt) ||
-			(!dbg.vcs.CPU.LastResult.Final &&
-				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Flow &&
-				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Subroutine &&
-				dbg.vcs.CPU.LastResult.Defn.Effect != instructions.Interrupt) {
+			(dbg.VCS.CPU.LastResult.Final &&
+				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Flow ||
+				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
+				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Interrupt) ||
+			(!dbg.VCS.CPU.LastResult.Final &&
+				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Flow &&
+				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Subroutine &&
+				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Interrupt) {
 
 			dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 			dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
@@ -251,13 +251,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// get bank information before we execute the next instruction. we
 			// use this value to prepare the LastDisasmEntry.
-			dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+			dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
 
 			switch dbg.quantum {
 			case QuantumCPU:
-				err = dbg.vcs.Step(vcsStep)
+				err = dbg.VCS.Step(vcsStep)
 			case QuantumVideo:
-				err = dbg.vcs.Step(vcsStepVideo)
+				err = dbg.VCS.Step(vcsStepVideo)
 			default:
 				err = errors.New(errors.DebuggerError, "unknown quantum mode")
 			}
@@ -276,16 +276,16 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// !!TODO: this seems like it might be a race-condition. the
 				// race detector hasn't detected anything but it might just be
 				// a very rare occurrence
-				dbg.disasm.BlessEntry(
-					dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()),
-					dbg.vcs.CPU.PC.Address())
+				dbg.Disasm.BlessEntry(
+					dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address()),
+					dbg.VCS.CPU.PC.Address())
 
 				// check validity of instruction result
-				if dbg.vcs.CPU.LastResult.Final {
-					err := dbg.vcs.CPU.LastResult.IsValid()
+				if dbg.VCS.CPU.LastResult.Final {
+					err := dbg.VCS.CPU.LastResult.IsValid()
 					if err != nil {
-						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
-						dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
+						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult.Defn)
+						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult)
 						return errors.New(errors.DebuggerError, err)
 					}
 				}

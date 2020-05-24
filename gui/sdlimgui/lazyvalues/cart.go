@@ -65,14 +65,14 @@ func (lz *LazyCart) update() {
 	PCaddr := lz.val.CPU.PCaddr
 
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicID.Store(lz.val.VCS.Mem.Cart.ID())
-		lz.atomicSummary.Store(lz.val.VCS.Mem.Cart.String())
-		lz.atomicFilename.Store(lz.val.VCS.Mem.Cart.Filename)
-		lz.atomicNumBanks.Store(lz.val.VCS.Mem.Cart.NumBanks())
-		lz.atomicRAMdetails.Store(lz.val.VCS.Mem.Cart.GetRAM())
-		lz.atomicCurrBank.Store(lz.val.VCS.Mem.Cart.GetBank(PCaddr))
+		lz.atomicID.Store(lz.val.Dbg.VCS.Mem.Cart.ID())
+		lz.atomicSummary.Store(lz.val.Dbg.VCS.Mem.Cart.String())
+		lz.atomicFilename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
+		lz.atomicNumBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
+		lz.atomicRAMdetails.Store(lz.val.Dbg.VCS.Mem.Cart.GetRAM())
+		lz.atomicCurrBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(PCaddr))
 
-		sa := lz.val.VCS.Mem.Cart.GetStaticArea()
+		sa := lz.val.Dbg.VCS.Mem.Cart.GetStaticArea()
 		if sa != nil {
 			lz.atomicStaticAreaPresent.Store(true)
 			lz.atomicStaticArea.Store(sa)

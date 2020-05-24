@@ -44,8 +44,8 @@ func (p Preferences) String() string {
 func loadPreferences(dbg *Debugger) (*Preferences, error) {
 	p := &Preferences{
 		dbg:         dbg,
-		RandomState: &dbg.vcs.RandomState,
-		RandomPins:  &dbg.vcs.Mem.RandomPins,
+		RandomState: &dbg.VCS.RandomState,
+		RandomPins:  &dbg.VCS.Mem.RandomPins,
 	}
 
 	// setup preferences and load from disk

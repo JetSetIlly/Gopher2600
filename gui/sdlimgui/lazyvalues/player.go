@@ -68,9 +68,9 @@ func newLazyPlayer(val *Lazy, id int) *LazyPlayer {
 }
 
 func (lz *LazyPlayer) update() {
-	ps := lz.val.VCS.TIA.Video.Player0
+	ps := lz.val.Dbg.VCS.TIA.Video.Player0
 	if lz.id != 0 {
-		ps = lz.val.VCS.TIA.Video.Player1
+		ps = lz.val.Dbg.VCS.TIA.Video.Player1
 	}
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicResetPixel.Store(ps.ResetPixel)

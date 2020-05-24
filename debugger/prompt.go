@@ -35,17 +35,17 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	//  if last result was final or if address of last result is zero then
 	//  print the PC address. the second part of the condition catches a newly
 	//  reset CPU.
-	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
-		addr = dbg.vcs.CPU.PC.Address()
+	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
+		addr = dbg.VCS.CPU.PC.Address()
 	} else {
 		// if we're in the middle of an instruction then use the
 		// addresss in lastResult - in video-stepping mode we want the
 		// prompt to report the instruction that we're working on, not
 		// the next one to be stepped into.
-		addr = dbg.vcs.CPU.LastResult.Address
+		addr = dbg.VCS.CPU.LastResult.Address
 	}
 
-	bank = dbg.vcs.Mem.Cart.GetBank(addr)
+	bank = dbg.VCS.Mem.Cart.GetBank(addr)
 
 	prompt := strings.Builder{}
 	prompt.WriteString("[")
@@ -59,7 +59,7 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		// prompt address doesn't seem to be pointing to the cartridge, prepare
 		// "non-cart" prompt
 		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", addr))
-	} else if d, ok := dbg.disasm.GetEntryByAddress(bank, addr); ok {
+	} else if d, ok := dbg.Disasm.GetEntryByAddress(bank, addr); ok {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
 		prompt.WriteString(fmt.Sprintf(" %#04x %s", addr, d.Mnemonic))
@@ -88,12 +88,12 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 
 	// display indicator that the CPU is waiting for WSYNC to end. only applies
 	// when in video step mode.
-	if videoCycle && !dbg.vcs.CPU.RdyFlg {
+	if videoCycle && !dbg.VCS.CPU.RdyFlg {
 		prompt.WriteString(" !")
 	}
 
 	// video cycle prompt
-	if videoCycle && !dbg.vcs.CPU.LastResult.Final {
+	if videoCycle && !dbg.VCS.CPU.LastResult.Final {
 		prompt.WriteString(" > ")
 		return terminal.Prompt{Content: prompt.String(), Style: terminal.StylePromptVideoStep}
 	}

@@ -73,11 +73,11 @@ func (win *winCPU) draw() {
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.img.lz.VCS.CPU.PC)
-	win.drawRegister(win.img.lz.VCS.CPU.A)
-	win.drawRegister(win.img.lz.VCS.CPU.X)
-	win.drawRegister(win.img.lz.VCS.CPU.Y)
-	win.drawRegister(win.img.lz.VCS.CPU.SP)
+	win.drawRegister(win.img.lz.Dbg.VCS.CPU.PC)
+	win.drawRegister(win.img.lz.Dbg.VCS.CPU.A)
+	win.drawRegister(win.img.lz.Dbg.VCS.CPU.X)
+	win.drawRegister(win.img.lz.Dbg.VCS.CPU.Y)
+	win.drawRegister(win.img.lz.Dbg.VCS.CPU.SP)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -100,31 +100,31 @@ func (win *winCPU) drawStatusRegister() {
 	sr := win.img.lz.CPU.StatusReg
 
 	if win.drawStatusRegisterBit(sr.Sign, "S") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Sign = !sr.Sign })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Sign = !sr.Sign })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Overflow, "O") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Overflow = !sr.Overflow })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Overflow = !sr.Overflow })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Break, "B") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Break = !sr.Break })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Break = !sr.Break })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.DecimalMode, "D") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.DecimalMode = !sr.DecimalMode })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.DecimalMode = !sr.DecimalMode })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.InterruptDisable, "I") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.InterruptDisable = !sr.InterruptDisable })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.InterruptDisable = !sr.InterruptDisable })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Zero, "Z") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Zero = !sr.Zero })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Zero = !sr.Zero })
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Carry, "C") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.CPU.Status.Carry = !sr.Carry })
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Carry = !sr.Carry })
 	}
 
 	imgui.SameLine()
@@ -197,7 +197,7 @@ func (win *winCPU) drawLastResult() {
 		return
 	}
 
-	formattedLastResult, _ := win.img.lz.Dsm.FormatResult(
+	formattedLastResult, _ := win.img.lz.Dbg.Disasm.FormatResult(
 		win.img.lz.Debugger.LastBank,
 		win.img.lz.CPU.LastResult,
 		disassembly.EntryLevelDecoded)
@@ -220,7 +220,7 @@ func (win *winCPU) drawLastResult() {
 	// this is not a completed CPU instruction, we're in the middle of one, so
 	// we need to format the result for the partially completed instruction
 
-	e, _ := win.img.lz.Dsm.FormatResult(win.img.lz.Cart.CurrBank, win.img.lz.CPU.LastResult, disassembly.EntryLevelBlessed)
+	e, _ := win.img.lz.Dbg.Disasm.FormatResult(win.img.lz.Cart.CurrBank, win.img.lz.CPU.LastResult, disassembly.EntryLevelBlessed)
 	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 	if e.Result.Defn != nil {

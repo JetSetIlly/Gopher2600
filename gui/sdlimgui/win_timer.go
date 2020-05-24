@@ -74,7 +74,7 @@ func (win *winTimer) draw() {
 			if imgui.Selectable(s) {
 				t := s // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
-					win.img.lz.VCS.RIOT.Timer.SetInterval(t)
+					win.img.lz.Dbg.VCS.RIOT.Timer.SetInterval(t)
 				})
 			}
 		}
@@ -89,7 +89,7 @@ func (win *winTimer) draw() {
 	imguiText("Value")
 	if imguiHexInput("##value", !win.img.paused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.RIOT.Timer.SetValue(uint8(v)) })
+			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.SetValue(uint8(v)) })
 		}
 	}
 	imgui.PopItemWidth()
@@ -100,7 +100,7 @@ func (win *winTimer) draw() {
 	imguiText("Ticks")
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.VCS.RIOT.Timer.TicksRemaining = int(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.TicksRemaining = int(v) })
 		}
 	}
 	imgui.PopItemWidth()

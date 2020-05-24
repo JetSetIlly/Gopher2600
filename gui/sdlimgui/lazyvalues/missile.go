@@ -62,9 +62,9 @@ func newLazyMissile(val *Lazy, id int) *LazyMissile {
 }
 
 func (lz *LazyMissile) update() {
-	ms := lz.val.VCS.TIA.Video.Missile0
+	ms := lz.val.Dbg.VCS.TIA.Video.Missile0
 	if lz.id != 0 {
-		ms = lz.val.VCS.TIA.Video.Missile1
+		ms = lz.val.Dbg.VCS.TIA.Video.Missile1
 	}
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicResetPixel.Store(ms.ResetPixel)

@@ -167,7 +167,7 @@ func (win *winRAM) drawEditByte(ramDetails memorymap.SubArea, readAddr uint16, w
 			// we're sending the write through the high-level memory write,
 			// which will map the address for us.
 			win.img.lz.Dbg.PushRawEvent(func() {
-				win.img.lz.VCS.Mem.Write(writeAddr, uint8(v))
+				win.img.lz.Dbg.VCS.Mem.Write(writeAddr, uint8(v))
 			})
 		}
 	}

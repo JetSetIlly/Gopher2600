@@ -31,8 +31,8 @@ import (
 
 func (win *winTIA) drawBall() {
 	lz := win.img.lz.Ball
-	bl := win.img.lz.VCS.TIA.Video.Ball
-	pf := win.img.lz.VCS.TIA.Video.Playfield
+	bl := win.img.lz.Dbg.VCS.TIA.Video.Ball
+	pf := win.img.lz.Dbg.VCS.TIA.Video.Playfield
 
 	imgui.Spacing()
 
@@ -99,7 +99,7 @@ func (win *winTIA) drawBall() {
 				v := uint8(k) // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
 					bl.Size = v
-					win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
+					win.img.lz.Dbg.VCS.TIA.Video.UpdateCTRLPF()
 				})
 			}
 		}

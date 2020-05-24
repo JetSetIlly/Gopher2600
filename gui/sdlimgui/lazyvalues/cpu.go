@@ -64,11 +64,11 @@ func newLazyCPU(val *Lazy) *LazyCPU {
 
 func (lz *LazyCPU) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicHasReset.Store(lz.val.VCS.CPU.HasReset())
-		lz.atomicRdy.Store(lz.val.VCS.CPU.RdyFlg)
-		lz.atomicPCAddr.Store(lz.val.VCS.CPU.PC.Address())
-		lz.atomicLastResult.Store(lz.val.VCS.CPU.LastResult)
-		lz.atomicStatusReg.Store(*lz.val.VCS.CPU.Status)
+		lz.atomicHasReset.Store(lz.val.Dbg.VCS.CPU.HasReset())
+		lz.atomicRdy.Store(lz.val.Dbg.VCS.CPU.RdyFlg)
+		lz.atomicPCAddr.Store(lz.val.Dbg.VCS.CPU.PC.Address())
+		lz.atomicLastResult.Store(lz.val.Dbg.VCS.CPU.LastResult)
+		lz.atomicStatusReg.Store(*lz.val.Dbg.VCS.CPU.Status)
 	})
 	lz.HasReset, _ = lz.atomicHasReset.Load().(bool)
 	lz.RdyFlg, _ = lz.atomicRdy.Load().(bool)

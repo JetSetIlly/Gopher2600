@@ -30,8 +30,8 @@ import (
 
 func (win *winTIA) drawPlayfield() {
 	lz := win.img.lz.Playfield
-	pf := win.img.lz.VCS.TIA.Video.Playfield
-	bl := win.img.lz.VCS.TIA.Video.Ball
+	pf := win.img.lz.Dbg.VCS.TIA.Video.Playfield
+	bl := win.img.lz.Dbg.VCS.TIA.Video.Ball
 
 	imgui.Spacing()
 
@@ -69,7 +69,7 @@ func (win *winTIA) drawPlayfield() {
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Reflected = ref
-			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.Dbg.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 	imgui.SameLine()
@@ -78,7 +78,7 @@ func (win *winTIA) drawPlayfield() {
 	if imgui.Checkbox("##scoremode", &sm) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Scoremode = sm
-			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.Dbg.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 	imgui.SameLine()
@@ -87,7 +87,7 @@ func (win *winTIA) drawPlayfield() {
 	if imgui.Checkbox("##priority", &pri) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			pf.Priority = pri
-			win.img.lz.VCS.TIA.Video.UpdateCTRLPF()
+			win.img.lz.Dbg.VCS.TIA.Video.UpdateCTRLPF()
 		})
 	}
 

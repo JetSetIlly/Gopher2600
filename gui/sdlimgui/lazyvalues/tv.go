@@ -56,21 +56,21 @@ func newLazyTV(val *Lazy) *LazyTV {
 
 func (lz *LazyTV) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicSpec.Store(*lz.val.VCS.TV.GetSpec())
-		lz.atomicTVStr.Store(lz.val.VCS.TV.String())
-		lz.atomicLastSignal.Store(lz.val.VCS.TV.GetLastSignal())
+		lz.atomicSpec.Store(*lz.val.Dbg.VCS.TV.GetSpec())
+		lz.atomicTVStr.Store(lz.val.Dbg.VCS.TV.String())
+		lz.atomicLastSignal.Store(lz.val.Dbg.VCS.TV.GetLastSignal())
 
-		frame, _ := lz.val.VCS.TV.GetState(television.ReqFramenum)
+		frame, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqFramenum)
 		lz.atomicFrame.Store(frame)
 
-		scanline, _ := lz.val.VCS.TV.GetState(television.ReqScanline)
+		scanline, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqScanline)
 		lz.atomicScanline.Store(scanline)
 
-		hp, _ := lz.val.VCS.TV.GetState(television.ReqHorizPos)
+		hp, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqHorizPos)
 		lz.atomicHP.Store(hp)
 
 		lz.atomicReqFPS.Store(lz.val.Dbg.GetReqFPS())
-		lz.atomicActualFPS.Store(lz.val.VCS.TV.GetActualFPS())
+		lz.atomicActualFPS.Store(lz.val.Dbg.VCS.TV.GetActualFPS())
 
 	})
 	lz.Spec, _ = lz.atomicSpec.Load().(television.Specification)

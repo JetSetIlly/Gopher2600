@@ -40,9 +40,9 @@ func newLazyTimer(val *Lazy) *LazyTimer {
 
 func (lz *LazyTimer) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicDivider.Store(lz.val.VCS.RIOT.Timer.Divider.String())
-		lz.atomicINTIMvalue.Store(lz.val.VCS.RIOT.Timer.INTIMvalue)
-		lz.atomicTicksRemaining.Store(lz.val.VCS.RIOT.Timer.TicksRemaining)
+		lz.atomicDivider.Store(lz.val.Dbg.VCS.RIOT.Timer.Divider.String())
+		lz.atomicINTIMvalue.Store(lz.val.Dbg.VCS.RIOT.Timer.INTIMvalue)
+		lz.atomicTicksRemaining.Store(lz.val.Dbg.VCS.RIOT.Timer.TicksRemaining)
 	})
 	lz.Divider, _ = lz.atomicDivider.Load().(string)
 	lz.INTIMvalue, _ = lz.atomicINTIMvalue.Load().(uint8)

@@ -21,10 +21,8 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 type featureRequest struct {
@@ -95,14 +93,11 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqAddDebugger:
 		img.lz.Dbg = request.args[0].(*debugger.Debugger)
 
-	case gui.ReqAddVCS:
-		img.lz.VCS = request.args[0].(*hardware.VCS)
-
-	case gui.ReqAddDisasm:
-		img.lz.Dsm = request.args[0].(*disassembly.Disassembly)
-
 	case gui.ReqSetPlaymode:
 		err = img.setPlaymode(request.args[0].(bool))
+
+	case gui.ReqNoSavePrefs:
+		img.savePrefs = !request.args[0].(bool)
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request)

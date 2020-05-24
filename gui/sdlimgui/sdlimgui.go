@@ -87,7 +87,8 @@ type SdlImgui struct {
 	mx, my int32
 
 	// the preferences we'll be saving to disk
-	prefs *prefs.Disk
+	savePrefs bool
+	prefs     *prefs.Disk
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -102,6 +103,7 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 		serviceErr: make(chan error, 1),
 		featureReq: make(chan featureRequest, 1),
 		featureErr: make(chan error, 1),
+		savePrefs:  true,
 	}
 
 	var err error
@@ -150,6 +152,10 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 	}
 	tv.AddAudioMixer(img.audio)
 
+	// initialise debugger preferences. in the event of playmode being set this
+	// will immediately be replaced but frankly doing it this way is cleaner
+	img.initPrefs(prefsGrpDebugger)
+
 	// set playmode according to the playmode argument
 	img.setPlaymode(playmode)
 
@@ -165,7 +171,9 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 func (img *SdlImgui) Destroy(output io.Writer) {
 	// we don't want to save preferences if we're in the middle of a panic
 	if r := recover(); r == nil {
-		_ = img.prefs.Save()
+		if img.savePrefs {
+			_ = img.prefs.Save()
+		}
 	}
 
 	img.wm.destroy()
@@ -213,7 +221,7 @@ func (img *SdlImgui) isPlaymode() bool {
 func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
 		if !img.isPlaymode() {
-			if img.prefs != nil {
+			if img.prefs != nil && img.savePrefs {
 				if err := img.prefs.Save(); err != nil {
 					return err
 				}
@@ -223,7 +231,7 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 		}
 	} else {
 		if img.isPlaymode() {
-			if img.prefs != nil {
+			if img.prefs != nil && img.savePrefs {
 				if err := img.prefs.Save(); err != nil {
 					return err
 				}

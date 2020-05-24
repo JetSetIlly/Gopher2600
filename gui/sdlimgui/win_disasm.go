@@ -105,7 +105,7 @@ func (win *winDisasm) draw() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	if win.img.lz.Dsm != nil {
+	if win.img.lz.Dbg.Disasm != nil {
 		// the bank that is currently selected
 		currBank := win.img.lz.Cart.CurrBank
 
@@ -200,7 +200,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
 	}
-	itr, count, err := win.img.lz.Dsm.NewIteration(lvl, b)
+	itr, count, err := win.img.lz.Dbg.Disasm.NewIteration(lvl, b)
 
 	// check that NewIteration has succeeded. if it hasn't it probably means
 	// the cart has changed in the middle of the draw routine. but that's okay,
@@ -321,35 +321,35 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	s := win.img.lz.Dsm.GetField(disassembly.FldAddress, e)
+	s := win.img.lz.Dbg.Disasm.GetField(disassembly.FldAddress, e)
 	imgui.Text(s)
 
 	if win.showByteCode {
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode.Plus(adj))
-		s := win.img.lz.Dsm.GetField(disassembly.FldBytecode, e)
+		s := win.img.lz.Dbg.Disasm.GetField(disassembly.FldBytecode, e)
 		imgui.Text(s)
 		imgui.PopStyleColorV(1)
 	}
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
-	s = win.img.lz.Dsm.GetField(disassembly.FldMnemonic, e)
+	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldMnemonic, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand.Plus(adj))
-	s = win.img.lz.Dsm.GetField(disassembly.FldOperand, e)
+	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldOperand, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles.Plus(adj))
-	s = win.img.lz.Dsm.GetField(disassembly.FldDefnCycles, e)
+	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-	s = win.img.lz.Dsm.GetField(disassembly.FldDefnNotes, e)
+	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldDefnNotes, e)
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(5)

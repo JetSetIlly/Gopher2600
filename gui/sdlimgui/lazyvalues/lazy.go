@@ -24,7 +24,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -34,9 +33,7 @@ import (
 type Lazy struct {
 	// these fields are racy, they should not be accessed except through the
 	// lazy evaluation system
-	VCS *hardware.VCS
 	Dbg *debugger.Debugger
-	Dsm *disassembly.Disassembly
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
@@ -102,7 +99,7 @@ func NewValues() *Lazy {
 
 // Update lazy values, with the exception of RAM and break information.
 func (val *Lazy) Update() {
-	if val.VCS == nil || val.Dbg == nil {
+	if val.Dbg == nil {
 		return
 	}
 
@@ -128,7 +125,7 @@ func (val *Lazy) ReadRAM(ramDetails memorymap.SubArea, readAddr uint16) uint8 {
 	}
 
 	val.Dbg.PushRawEvent(func() {
-		d, _ := val.VCS.Mem.Read(readAddr)
+		d, _ := val.Dbg.VCS.Mem.Read(readAddr)
 		val.atomicRAM[readAddr^ramDetails.ReadOrigin].Store(d)
 	})
 	d, _ := val.atomicRAM[readAddr^ramDetails.ReadOrigin].Load().(uint8)

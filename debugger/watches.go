@@ -64,7 +64,7 @@ type watches struct {
 func newWatches(dbg *Debugger) *watches {
 	wtc := &watches{
 		dbg:    dbg,
-		vcsmem: dbg.vcs.Mem,
+		vcsmem: dbg.VCS.Mem,
 	}
 	wtc.clear()
 	return wtc

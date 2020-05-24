@@ -179,7 +179,7 @@ func (wm *windowManager) destroy() {
 }
 
 func (wm *windowManager) draw() {
-	if wm.img.lz.VCS != nil && wm.img.lz.Dsm != nil {
+	if wm.img.lz.Dbg != nil {
 		// there's no good place to call the init() function except during a
 		// call to draw. the init() function itself handles
 		wm.init()
