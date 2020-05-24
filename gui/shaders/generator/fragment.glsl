@@ -185,12 +185,14 @@ void main()
 
 	// split color channels
 	vec2 split;
-	split.x = 0.001;
+	split.x = 0.0015;
 	split.y = 0.001;
-	Out_Color.r = texture(Texture, vec2(coords.x-split.x, coords.y)).r;
-	Out_Color.g = texture(Texture, vec2(coords.x, coords.y+split.y)).g;
-	Out_Color.b = texture(Texture, vec2(coords.x+split.x, coords.y)).b;
-	Out_Color.a = Frag_Color.a;
+	if (coords.x > split.x && coords.y > split.y) {
+		Out_Color.r = texture(Texture, vec2(coords.x-split.x, coords.y)).r;
+		Out_Color.g = texture(Texture, vec2(coords.x, coords.y-split.y)).g;
+		Out_Color.b = texture(Texture, vec2(coords.x+split.x, coords.y)).b;
+		Out_Color.a = Frag_Color.a;
+	}
 
 	// vignette effect
 	float vignette;
