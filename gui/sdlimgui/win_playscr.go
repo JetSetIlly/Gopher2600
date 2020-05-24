@@ -127,13 +127,17 @@ func (win *winPlayScr) resize() {
 
 // render is called by service loop
 func (win *winPlayScr) render() {
-	win.scr.crit.section.RLock()
-	defer win.scr.crit.section.RUnlock()
+	// critical section
+	win.scr.crit.section.Lock()
 
 	// set screen image scaling (and image padding) based on the current window size
 	win.setScaleFromWindow(win.contentDim)
 
+	// get pixels
 	pixels := win.scr.crit.cropPixels
+
+	win.scr.crit.section.Unlock()
+	// end of critical section
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -159,10 +163,12 @@ func (win *winPlayScr) render() {
 }
 
 func (win *winPlayScr) getScaledWidth() float32 {
+	// must be called from with a critical section
 	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
 }
 
 func (win *winPlayScr) getScaledHeight() float32 {
+	// must be called from with a critical section
 	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
 }
 

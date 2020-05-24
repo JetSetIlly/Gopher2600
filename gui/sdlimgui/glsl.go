@@ -199,8 +199,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
-				// critical section
-				rnd.img.screen.crit.section.Lock()
 
 				vertScaling := rnd.img.wm.dbgScr.getScaling(false)
 				horizScaling := rnd.img.wm.dbgScr.getScaling(true)
@@ -217,6 +215,9 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				gl.Uniform2f(rnd.attribDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
 				gl.Uniform2f(rnd.attribCropDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
 
+				// critical section
+				rnd.img.screen.crit.section.Lock()
+
 				// screen geometry
 				gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
 				gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
@@ -229,6 +230,9 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
 				}
 				gl.Uniform1f(rnd.attribLastY, float32(rnd.img.screen.crit.lastY)*vertScaling)
+
+				rnd.img.screen.crit.section.Unlock()
+				// end of critical section
 
 				// set ShowScreenDraw if emulation is paused or a low frame
 				// rate has been requested
@@ -248,9 +252,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
 				anim = math.Abs(anim)
 				gl.Uniform1f(rnd.attribAnimTime, float32(anim))
-
-				// end of critical section
-				rnd.img.screen.crit.section.Unlock()
 
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())

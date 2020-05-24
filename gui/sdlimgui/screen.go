@@ -55,7 +55,7 @@ type screen struct {
 // their own subtype
 type screenCrit struct {
 	// critical sectioning
-	section sync.RWMutex
+	section sync.Mutex
 
 	// current values for *playable* area of the screen
 	topScanline int
@@ -97,7 +97,7 @@ func newScreen(img *SdlImgui) *screen {
 
 // resize() is called by Resize() or resizeThread() depending on thread context
 func (scr *screen) resize(topScanline int, visibleScanlines int) error {
-	scr.crit.section.RLock()
+	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
 
 	scr.crit.topScanline = topScanline
@@ -133,7 +133,7 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	lastY := scr.crit.lastY
 
 	// unlock critical section before calling SetPixel() (or we'll deadlock)
-	scr.crit.section.RUnlock()
+	scr.crit.section.Unlock()
 
 	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
@@ -143,10 +143,10 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	}
 
 	// reapply critical section after calls to SetPixel()
-	scr.crit.section.RLock()
+	scr.crit.section.Lock()
 	scr.crit.lastX = lastX
 	scr.crit.lastY = lastY
-	scr.crit.section.RUnlock()
+	scr.crit.section.Unlock()
 
 	// update aspect-bias value
 	scr.aspectBias = scr.img.tv.GetSpec().AspectBias

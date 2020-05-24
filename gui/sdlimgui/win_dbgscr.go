@@ -204,8 +204,8 @@ func (win *winDbgScr) draw() {
 	// then imgui.IsItemHovered() is false by definition
 	win.isHovered = imgui.IsItemHovered()
 	if win.isHovered {
-		// *** CRIT SECTION
-		win.scr.crit.section.RLock()
+		// critical section
+		win.scr.crit.section.Lock()
 
 		// get mouse position and transform
 		mp := imgui.MousePos().Minus(mouseOrigin)
@@ -230,8 +230,8 @@ func (win *winDbgScr) draw() {
 			res = win.scr.crit.reflection[win.horizPos][win.scanline]
 		}
 
-		win.scr.crit.section.RUnlock()
-		// *** CRIT SECTION END ***
+		win.scr.crit.section.Unlock()
+		// end of critical section
 
 		// present tooltip showing pixel coords and CPU state
 		if !win.isCaptured {
@@ -344,11 +344,11 @@ func (win *winDbgScr) resize() {
 
 // render is called by service loop
 func (win *winDbgScr) render() {
-	win.scr.crit.section.RLock()
-	defer win.scr.crit.section.RUnlock()
-
 	var pixels *image.RGBA
 	var overlayPixels *image.RGBA
+
+	// critical section
+	win.scr.crit.section.Lock()
 
 	if win.cropped {
 		if win.useAltPixels {
@@ -365,6 +365,9 @@ func (win *winDbgScr) render() {
 		}
 		overlayPixels = win.scr.crit.overlayPixels
 	}
+
+	win.scr.crit.section.Unlock()
+	// end of critical section
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
