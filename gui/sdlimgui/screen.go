@@ -218,7 +218,7 @@ func (scr *screen) EndRendering() error {
 	return nil
 }
 
-// NeweflectPixel implements reflection.Renderer interface
+// NewReflectPixel implements reflection.Renderer interface
 func (scr *screen) NewReflectPixel(result reflection.ResultWithBank) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()

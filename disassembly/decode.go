@@ -22,6 +22,7 @@ package disassembly
 import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -37,6 +38,45 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 		err = dsm.decodeBank(mc, b)
 		if err != nil {
 			return err
+		}
+	}
+
+	return dsm.polish()
+}
+
+func (dsm *Disassembly) polish() error {
+	for b := 0; b < dsm.NumBanks(); b++ {
+		for i := 0; i < len(dsm.reference[b]); i++ {
+			var p, d, n *Entry
+
+			// reference to current, previous and next entry in the list
+			d = dsm.reference[b][i]
+			if i > 0 {
+				p = dsm.reference[b][i-1]
+			}
+			if i < len(dsm.reference[b])-1 {
+				n = dsm.reference[b][i+1]
+			}
+
+			// if this is a dead instruction then ignore it
+			if d.Result.Defn == nil {
+				continue // for loop
+			}
+
+			// very basic polish to get rid of cumulative instructions that
+			// wouldn't be useful. this makes the assumption that real code
+			// wouldn't do silly things like this.
+			if d.Result.Defn.Mnemonic == "BRK" {
+				if p != nil && p.Result.Defn != nil && p.Result.Defn.Mnemonic == "BRK" {
+					if n != nil && n.Result.Defn != nil && n.Result.Defn.Mnemonic == "BRK" {
+						d.Level = EntryLevelDecoded
+					}
+				}
+			} else if d.Result.Defn.Effect == instructions.Flow {
+				if p != nil && p.Result.Defn != nil && p.Result.Defn.Effect == instructions.Flow {
+					d.Level = EntryLevelDecoded
+				}
+			}
 		}
 	}
 
@@ -78,25 +118,26 @@ func (dsm *Disassembly) decodeBank(mc *cpu.CPU, b int) error {
 		ent.BankDecorated = Bank(b)
 
 		if !unimplementedInstruction {
-			err = mc.LastResult.IsValid()
-			if err != nil {
+			if err = mc.LastResult.IsValid(); err != nil {
 				return err
 			}
+
+			ent.Level = EntryLevelDecoded
 
 			// set entry type depending on whether we're at an expected decode
 			// point
 			if address == nextDecodePoint {
+				// we're reasonably sure this is a real instruction
 				ent.Level = EntryLevelBlessed
 
 				// as far as we can tell this is a "real" instruction so
 				// note the next expected decode point
 				nextDecodePoint += uint16(mc.LastResult.Defn.Bytes)
 
-				// update field formatting information
-				dsm.fields.updateWidths(ent)
-			} else {
-				ent.Level = EntryLevelDecoded
 			}
+
+			// update field formatting information
+			dsm.fields.updateWidths(ent)
 		}
 
 		// insert into Entries array
