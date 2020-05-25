@@ -157,6 +157,10 @@ func main() {
 			switch state {
 			case reqQuit:
 				done = true
+				if gui != nil {
+					gui.Destroy(os.Stderr)
+				}
+
 			case reqNoIntSig:
 				signal.Reset(os.Interrupt)
 			}
@@ -168,11 +172,6 @@ func main() {
 				gui.Service()
 			}
 		}
-	}
-
-	// destroy gui
-	if gui != nil {
-		gui.Destroy(os.Stderr)
 	}
 
 	fmt.Print("\r")
@@ -315,6 +314,12 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			fmt.Println("! recording completed")
 		}
 
+		// save preferences before finishing successfully
+		err = scr.SetFeature(gui.ReqSavePrefs)
+		if err != nil {
+			return err
+		}
+
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
@@ -443,6 +448,12 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
+	// save preferences before finishing successfully
+	err = scr.SetFeature(gui.ReqSavePrefs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -547,14 +558,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 				return errors.New(errors.PlayError, err)
 			}
 
-			// do not save preferences
-			err = scr.SetFeature(gui.ReqNoSavePrefs, true)
-			if err != nil {
-				if !errors.Is(err, errors.UnsupportedGUIRequest) {
-					return err
-				}
-			}
-
 			// set scaling value
 			if *scaling > 0.0 {
 				err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
@@ -568,6 +571,8 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		if err != nil {
 			return err
 		}
+
+		// no saving of gui preferences
 
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)

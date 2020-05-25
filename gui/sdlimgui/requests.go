@@ -96,8 +96,8 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSetPlaymode:
 		err = img.setPlaymode(request.args[0].(bool))
 
-	case gui.ReqNoSavePrefs:
-		img.savePrefs = !request.args[0].(bool)
+	case gui.ReqSavePrefs:
+		err = img.prefs.Save()
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request)

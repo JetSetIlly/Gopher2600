@@ -87,8 +87,7 @@ type SdlImgui struct {
 	mx, my int32
 
 	// the preferences we'll be saving to disk
-	savePrefs bool
-	prefs     *prefs.Disk
+	prefs *prefs.Disk
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -103,7 +102,6 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 		serviceErr: make(chan error, 1),
 		featureReq: make(chan featureRequest, 1),
 		featureErr: make(chan error, 1),
-		savePrefs:  true,
 	}
 
 	var err error
@@ -169,13 +167,6 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the #mainthread
 func (img *SdlImgui) Destroy(output io.Writer) {
-	// we don't want to save preferences if we're in the middle of a panic
-	if r := recover(); r == nil {
-		if img.savePrefs {
-			_ = img.prefs.Save()
-		}
-	}
-
 	img.wm.destroy()
 	img.audio.EndMixing()
 	img.glsl.destroy()
@@ -221,7 +212,7 @@ func (img *SdlImgui) isPlaymode() bool {
 func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
 		if !img.isPlaymode() {
-			if img.prefs != nil && img.savePrefs {
+			if img.prefs != nil {
 				if err := img.prefs.Save(); err != nil {
 					return err
 				}
@@ -231,7 +222,7 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 		}
 	} else {
 		if img.isPlaymode() {
-			if img.prefs != nil && img.savePrefs {
+			if img.prefs != nil {
 				if err := img.prefs.Save(); err != nil {
 					return err
 				}

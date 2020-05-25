@@ -66,8 +66,9 @@ const (
 	// specifics
 	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
 
-	// whether to save preferences or not. useful for performance testing mode
-	ReqNoSavePrefs FeatureReq = "ReqNoSetPrefs" // bool
+	// trigger a save preferences event. usually performed before gui is
+	// destroyed or before some other destructive action
+	ReqSavePrefs FeatureReq = "ReqSavePrefs" // none
 
 	// the following requests are deprecated
 	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
