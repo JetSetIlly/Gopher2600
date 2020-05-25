@@ -146,7 +146,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 
 				// pause tv when emulation has halted
-				err = dbg.scr.SetFeature(gui.ReqSetPause, true)
+				err = dbg.scr.ReqFeature(gui.ReqSetPause, true)
 				if err != nil {
 					return err
 				}
@@ -236,7 +236,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// *wasn't* a checkTerm pause. we don't want to send an unpause
 			// request if we only entered HELP in the terminal, for example.
 			if !checkTerm && dbg.runUntilHalt {
-				err = dbg.scr.SetFeature(gui.ReqSetPause, false)
+				err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
 				if err != nil {
 					return err
 				}

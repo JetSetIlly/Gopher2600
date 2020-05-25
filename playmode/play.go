@@ -152,13 +152,13 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetEventChan, pl.guiChan)
+	err = scr.ReqFeature(gui.ReqSetEventChan, pl.guiChan)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
 
 	// request television visibility
-	err = scr.SetFeature(gui.ReqSetVisibility, true)
+	err = scr.ReqFeature(gui.ReqSetVisibility, true)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}

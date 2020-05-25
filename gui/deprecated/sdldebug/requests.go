@@ -31,8 +31,8 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// SetFeature implements the GUI interface
-func (scr *SdlDebug) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+// ReqFeature implements the GUI interface
+func (scr *SdlDebug) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	scr.featureReq <- featureRequest{request: request, args: args}
 	err := <-scr.featureErr
 	return err
@@ -44,7 +44,7 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			scr.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			scr.featureErr <- errors.New(errors.PanicError, "sdl.ReqFeature()", r)
 		}
 	}()
 
@@ -112,8 +112,11 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 		}
 		scr.update()
 
+	case gui.ReqSavePrefs:
+		// no gui related prefs to save
+
 	default:
-		err = errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request.request)
 	}
 
 	scr.featureErr <- err

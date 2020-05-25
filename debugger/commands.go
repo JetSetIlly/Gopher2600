@@ -885,10 +885,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		action = strings.ToUpper(action)
 		switch action {
 		case "ON":
-			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
+			err = dbg.scr.ReqFeature(gui.ReqSetVisibility, true)
 
 		case "OFF":
-			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
+			err = dbg.scr.ReqFeature(gui.ReqSetVisibility, false)
 
 		case "SCALE":
 			scl, ok := tokens.Get()
@@ -901,18 +901,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				return false, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", cmdDisplay, action, scl))
 			}
 
-			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
+			err = dbg.scr.ReqFeature(gui.ReqSetScale, float32(scale))
 
 		case "MASKING":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetCropping, false)
+				err = dbg.scr.ReqFeature(gui.ReqSetCropping, false)
 			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetCropping, true)
+				err = dbg.scr.ReqFeature(gui.ReqSetCropping, true)
 			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleCropping)
+				err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
 			}
 
 		case "ALT":
@@ -920,25 +920,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetAltColors, false)
+				err = dbg.scr.ReqFeature(gui.ReqSetAltColors, false)
 			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetAltColors, true)
+				err = dbg.scr.ReqFeature(gui.ReqSetAltColors, true)
 			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
+				err = dbg.scr.ReqFeature(gui.ReqToggleAltColors)
 			}
 		case "OVERLAY":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
+				err = dbg.scr.ReqFeature(gui.ReqSetOverlay, false)
 			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
+				err = dbg.scr.ReqFeature(gui.ReqSetOverlay, true)
 			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
+				err = dbg.scr.ReqFeature(gui.ReqToggleOverlay)
 			}
 		default:
-			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
+			err = dbg.scr.ReqFeature(gui.ReqToggleVisibility)
 			if err != nil {
 				return false, err
 			}

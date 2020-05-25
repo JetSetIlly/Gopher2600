@@ -71,7 +71,7 @@ type SdlImgui struct {
 	service    chan func()
 	serviceErr chan error
 
-	// SetFeature() hands off requests to the featureReq channel for servicing.
+	// ReqFeature() hands off requests to the featureReq channel for servicing.
 	// think of this as a special instance of the service chan
 	featureReq chan featureRequest
 	featureErr chan error

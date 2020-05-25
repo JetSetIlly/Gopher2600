@@ -165,7 +165,7 @@ func (img *SdlImguiPlay) Service() {
 				//  no need to worry about negative numbers and numbers greater
 				//  than 1.0 because we (should) have restricted mouse movement
 				//  to the window (with window.SetGrab(). see the ReqCaptureMouse
-				//  case in the SetFeature() function)
+				//  case in the ReqFeature() function)
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 

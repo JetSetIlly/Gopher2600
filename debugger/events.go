@@ -51,13 +51,13 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 				// debugging helpers
 				case "F12":
 					// toggle croppint
-					err = dbg.scr.SetFeature(gui.ReqToggleCropping)
+					err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
 				case "F11":
 					// toggle debugging colours
-					err = dbg.scr.SetFeature(gui.ReqToggleAltColors)
+					err = dbg.scr.ReqFeature(gui.ReqToggleAltColors)
 				case "F10":
 					// toggle overlay
-					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
+					err = dbg.scr.ReqFeature(gui.ReqToggleOverlay)
 
 				// screen scaling
 				case "=":
@@ -65,10 +65,10 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 					fallthrough
 				case "+":
 					// increase scaling
-					err = dbg.scr.SetFeature(gui.ReqIncScale)
+					err = dbg.scr.ReqFeature(gui.ReqIncScale)
 				case "-":
 					// decrease window scanling
-					err = dbg.scr.SetFeature(gui.ReqDecScale)
+					err = dbg.scr.ReqFeature(gui.ReqDecScale)
 				}
 			}
 		}

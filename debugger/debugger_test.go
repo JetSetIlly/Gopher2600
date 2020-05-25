@@ -102,7 +102,7 @@ func (g *mockGUI) IsVisible() bool {
 	return false
 }
 
-func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...interface{}) error {
+func (g *mockGUI) ReqFeature(request gui.FeatureReq, args ...interface{}) error {
 	return nil
 }
 

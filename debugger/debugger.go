@@ -197,7 +197,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
+	err = scr.ReqFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -209,7 +209,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
 	// try to add debugger (self) to gui context
-	dbg.scr.SetFeature(gui.ReqAddDebugger, dbg)
+	dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
 
 	// setup preferences and load from disk
 	dbg.Prefs, err = loadPreferences(dbg)

@@ -22,5 +22,5 @@ package gui
 // GUI defines the operations that can be performed on visual user interfaces.
 type GUI interface {
 	// send a request to set a gui feature
-	SetFeature(request FeatureReq, args ...interface{}) error
+	ReqFeature(request FeatureReq, args ...interface{}) error
 }

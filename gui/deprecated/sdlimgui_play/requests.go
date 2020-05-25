@@ -30,8 +30,8 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// SetFeature implements gui.GUI interface
-func (img *SdlImguiPlay) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+// ReqFeature implements gui.GUI interface
+func (img *SdlImguiPlay) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	img.featureReq <- featureRequest{request: request, args: args}
 	return <-img.featureErr
 }
@@ -42,7 +42,7 @@ func (img *SdlImguiPlay) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			img.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			img.featureErr <- errors.New(errors.PanicError, "sdl.ReqFeature()", r)
 		}
 	}()
 

@@ -39,7 +39,7 @@ type SdlDebug struct {
 	service    chan func()
 	serviceErr chan error
 
-	// SetFeature() hands off requests to the featureReq channel for servicing
+	// ReqFeature() hands off requests to the featureReq channel for servicing
 	featureReq chan featureRequest
 	featureErr chan error
 
@@ -287,7 +287,7 @@ func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
 }
 
 // update is called automatically on every call to NewFrame() and whenever a
-// state change in SetFeature() requires it.
+// state change in ReqFeature() requires it.
 func (scr *SdlDebug) update() error {
 	scr.renderer.SetDrawColor(0, 0, 0, 255)
 	err := scr.renderer.Clear()

@@ -30,8 +30,8 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// SetFeature implements gui.GUI interface
-func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
+// ReqFeature implements gui.GUI interface
+func (img *SdlImgui) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	img.featureReq <- featureRequest{request: request, args: args}
 	return <-img.featureErr
 }
@@ -100,7 +100,7 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		err = img.prefs.Save()
 
 	default:
-		err = errors.New(errors.UnsupportedGUIRequest, request)
+		err = errors.New(errors.UnsupportedGUIRequest, request.request)
 	}
 
 	if err == nil {

@@ -31,8 +31,8 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// SetFeature implements the GUI interface
-func (scr *SdlPlay) SetFeature(request gui.FeatureReq, args ...interface{}) error {
+// ReqFeature implements the GUI interface
+func (scr *SdlPlay) ReqFeature(request gui.FeatureReq, args ...interface{}) error {
 	scr.featureReq <- featureRequest{request: request, args: args}
 	return <-scr.featureErr
 }
@@ -43,7 +43,7 @@ func (scr *SdlPlay) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			scr.featureErr <- errors.New(errors.PanicError, "sdl.SetFeature()", r)
+			scr.featureErr <- errors.New(errors.PanicError, "sdl.ReqFeature()", r)
 		}
 	}()
 
