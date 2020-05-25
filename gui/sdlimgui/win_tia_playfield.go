@@ -41,7 +41,7 @@ func (win *winTIA) drawPlayfield() {
 
 	imguiText("Foreground")
 	fgCol := lz.ForegroundColor
-	if win.img.imguiSwatch(fgCol) {
+	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.lz.Dbg.PushRawEvent(func() { pf.ForegroundColor = fgCol })
 			// update ball color too
@@ -52,7 +52,7 @@ func (win *winTIA) drawPlayfield() {
 	// background color indicator. when clicked popup palette is requested
 	imguiText("Background")
 	bgCol := lz.BackgroundColor
-	if win.img.imguiSwatch(bgCol) {
+	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
 			win.img.lz.Dbg.PushRawEvent(func() { pf.BackgroundColor = bgCol })
 		})

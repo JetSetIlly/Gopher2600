@@ -61,21 +61,20 @@ type screenCrit struct {
 	topScanline int
 	scanlines   int
 
-	// pixels and altPixels should be constructed exactly the same. the only
-	// difference is the colors
+	// all pixel arrays should be constructed the same
 	pixels        *image.RGBA
-	altPixels     *image.RGBA
+	debugPixels   *image.RGBA
 	overlayPixels *image.RGBA
 
 	// 2d array of disasm entries. resized at the same time as overlayPixels resize
-	reflection [][]reflection.ResultWithBank
+	reflection [][]reflection.LastResult
 
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
 	// directly
-	cropPixels    *image.RGBA
-	cropAltPixels *image.RGBA
-	cropRefPixels *image.RGBA
+	cropPixels        *image.RGBA
+	cropElementPixels *image.RGBA
+	cropOverlayPixels *image.RGBA
 
 	// the coordinates of the last SetPixel(). used to help set the alpha
 	// channel when emulation is paused
@@ -104,13 +103,13 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.crit.scanlines = visibleScanlines
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
-	scr.crit.altPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.debugPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
 	// allocate disasm info
-	scr.crit.reflection = make([][]reflection.ResultWithBank, television.HorizClksScanline)
+	scr.crit.reflection = make([][]reflection.LastResult, television.HorizClksScanline)
 	for x := 0; x < television.HorizClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.ResultWithBank, scr.img.tv.GetSpec().ScanlinesTotal)
+		scr.crit.reflection[x] = make([]reflection.LastResult, scr.img.tv.GetSpec().ScanlinesTotal)
 	}
 
 	// create a cropped image from the main
@@ -123,8 +122,8 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 		},
 	}
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropAltPixels = scr.crit.altPixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropRefPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropElementPixels = scr.crit.debugPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
 
 	// clear pixels. SetPixel() alters the value of lastX and lastY. we don't
 	// really want it to do that however, so we note these value and restore
@@ -132,18 +131,13 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	lastX := scr.crit.lastX
 	lastY := scr.crit.lastY
 
-	// unlock critical section before calling SetPixel() (or we'll deadlock)
-	scr.crit.section.Unlock()
-
 	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-			scr.SetPixel(x, y, 0, 0, 0, false)
-			scr.SetAltPixel(x, y, 0, 0, 0, false)
+			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.debugPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 		}
 	}
 
-	// reapply critical section after calls to SetPixel()
-	scr.crit.section.Lock()
 	scr.crit.lastX = lastX
 	scr.crit.lastY = lastY
 	scr.crit.section.Unlock()
@@ -202,45 +196,31 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 	return nil
 }
 
-// SetAltPixel implements the television.PixelRenderer interface
-func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
-
-	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
-	scr.crit.altPixels.SetRGBA(x, y, rgb)
-
-	return nil
-}
-
 // EndRendering implements the television.PixelRenderer interface
 func (scr *screen) EndRendering() error {
 	return nil
 }
 
-// NewReflectPixel implements reflection.Renderer interface
-func (scr *screen) NewReflectPixel(result reflection.ResultWithBank) error {
+// Reflect implements reflection.Renderer interface
+func (scr *screen) Reflect(result reflection.LastResult) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// clear pixel
-	scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, color.RGBA{0, 0, 0, 0})
-
-	// store ResultWithBank instance
+	// store LastResult instance
 	if scr.crit.lastX < len(scr.crit.reflection) && scr.crit.lastY < len(scr.crit.reflection[scr.crit.lastX]) {
 		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = result
 	}
 
-	return nil
-}
+	// set debug pixel
+	rgb := reflection.PaletteElements[result.VideoElement]
+	scr.crit.debugPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
-// UpdateReflectPixel implements reflection.Renderer interface
-func (scr *screen) UpdateReflectPixel(ref reflection.ReflectPixel) error {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
-
-	rgb := color.RGBA{uint8(ref.Red), uint8(ref.Green), uint8(ref.Blue), uint8(ref.Alpha)}
-	scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	// write to overlay (in order of importance)
+	if result.WSYNC {
+		scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, reflection.PaletteEvents["WSYNC"])
+	} else {
+		scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, color.RGBA{0, 0, 0, 0})
+	}
 
 	return nil
 }

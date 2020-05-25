@@ -41,10 +41,10 @@ type winDbgScr struct {
 	scr *screen
 
 	// how to present the screen in the window
+	debugColors  bool
+	cropped      bool
 	pixelPerfect bool
 	overlay      bool
-	useAltPixels bool
-	cropped      bool
 
 	// textures
 	screenTexture  uint32
@@ -225,17 +225,14 @@ func (win *winDbgScr) draw() {
 		win.scanline = int(mp.Y)
 
 		// get reflection information
-		var res reflection.ResultWithBank
+		var ref reflection.LastResult
 		if win.horizPos < len(win.scr.crit.reflection) && win.scanline < len(win.scr.crit.reflection[win.horizPos]) {
-			res = win.scr.crit.reflection[win.horizPos][win.scanline]
+			ref = win.scr.crit.reflection[win.horizPos][win.scanline]
 		}
-
-		win.scr.crit.section.Unlock()
-		// end of critical section
 
 		// present tooltip showing pixel coords and CPU state
 		if !win.isCaptured {
-			fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(res.Bank, res.Res, disassembly.EntryLevelBlessed)
+			fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 			if fmtRes.Address != "" {
 				imgui.BeginTooltip()
 				imgui.Text(fmt.Sprintf("Scanline: %d", win.scanline))
@@ -243,7 +240,7 @@ func (win *winDbgScr) draw() {
 
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 				if win.img.lz.Cart.NumBanks > 1 {
-					imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, res.Bank))
+					imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, ref.Bank))
 				} else {
 					imgui.Text(fmtRes.Address)
 				}
@@ -260,9 +257,28 @@ func (win *winDbgScr) draw() {
 					imgui.PopStyleColor()
 				}
 
+				imgui.Spacing()
+
+				ref := win.scr.crit.reflection[int(mp.X)][int(mp.Y)]
+				win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
+				imguiText(ref.VideoElement.String())
+
+				tv := strings.Builder{}
+				if win.horizPos < television.HorizClksHBlank {
+					tv.WriteString("HBLANK ")
+				}
+				tv.WriteString(ref.TV.String())
+				if len(tv.String()) > 0 {
+					imgui.Spacing()
+					imgui.Text(tv.String())
+				}
+
 				imgui.EndTooltip()
 			}
 		}
+
+		win.scr.crit.section.Unlock()
+		// end of critical section
 	}
 
 	// start of tool bar
@@ -296,24 +312,11 @@ func (win *winDbgScr) draw() {
 
 	// include tv signal information
 	imgui.SameLineV(0, 20)
-	signal := strings.Builder{}
-	if win.img.lz.TV.LastSignal.VSync {
-		signal.WriteString("VSYNC ")
-	}
-	if win.img.lz.TV.LastSignal.VBlank {
-		signal.WriteString("VBLANK ")
-	}
-	if win.img.lz.TV.LastSignal.CBurst {
-		signal.WriteString("CBURST ")
-	}
-	if win.img.lz.TV.LastSignal.HSync {
-		signal.WriteString("HSYNC ")
-	}
-	imgui.Text(signal.String())
+	imgui.Text(win.img.lz.TV.LastSignal.String())
 
 	// display toggles
 	imgui.Spacing()
-	imgui.Checkbox("Debug Colours", &win.useAltPixels)
+	imgui.Checkbox("Debug Colours", &win.debugColors)
 	imgui.SameLine()
 	if imgui.Checkbox("Cropping", &win.cropped) {
 		win.setCropping(win.cropped)
@@ -327,10 +330,6 @@ func (win *winDbgScr) draw() {
 	win.toolBarHeight = imgui.CursorPosY() - toolBarTop
 
 	imgui.End()
-}
-
-func (win *winDbgScr) setOverlay(set bool) {
-	win.overlay = set
 }
 
 func (win *winDbgScr) setCropping(set bool) {
@@ -351,15 +350,15 @@ func (win *winDbgScr) render() {
 	win.scr.crit.section.Lock()
 
 	if win.cropped {
-		if win.useAltPixels {
-			pixels = win.scr.crit.cropAltPixels
+		if win.debugColors {
+			pixels = win.scr.crit.cropElementPixels
 		} else {
 			pixels = win.scr.crit.cropPixels
 		}
-		overlayPixels = win.scr.crit.cropRefPixels
+		overlayPixels = win.scr.crit.cropOverlayPixels
 	} else {
-		if win.useAltPixels {
-			pixels = win.scr.crit.altPixels
+		if win.debugColors {
+			pixels = win.scr.crit.debugPixels
 		} else {
 			pixels = win.scr.crit.pixels
 		}

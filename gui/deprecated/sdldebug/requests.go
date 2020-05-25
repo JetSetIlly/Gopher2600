@@ -80,12 +80,12 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 		scr.setWindow(-1)
 		scr.update()
 
-	case gui.ReqSetAltColors:
-		scr.useAltColors = request.args[0].(bool)
+	case gui.ReqSetDbgColors:
+		scr.useDbgColors = request.args[0].(bool)
 		scr.update()
 
-	case gui.ReqToggleAltColors:
-		scr.useAltColors = !scr.useAltColors
+	case gui.ReqToggleDbgColors:
+		scr.useDbgColors = !scr.useDbgColors
 		scr.update()
 
 	case gui.ReqSetOverlay:

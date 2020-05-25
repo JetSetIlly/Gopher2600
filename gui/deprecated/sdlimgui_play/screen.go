@@ -198,11 +198,6 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 	return nil
 }
 
-// SetAltPixel implements the television.PixelRenderer interface
-func (scr *screen) SetAltPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	return nil
-}
-
 // EndRendering implements the television.PixelRenderer interface
 func (scr *screen) EndRendering() error {
 	return nil

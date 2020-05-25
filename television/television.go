@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/television/colors"
 )
 
 // the number of times we must see new top/bottom scanline in the
@@ -335,20 +334,11 @@ func (tv *television) Signal(sig SignalAttributes) error {
 
 	// doing nothing with CBURST signal
 
-	// decode color using the alternative color signal
-	col := colors.GetAltColor(sig.AltPixel)
-	for f := range tv.renderers {
-		err := tv.renderers[f].SetAltPixel(tv.horizPos, tv.scanline, col.Red, col.Green, col.Blue, sig.VBlank)
-		if err != nil {
-			return err
-		}
-	}
-
 	// decode color using the regular color signal
-	col = tv.spec.getColor(sig.Pixel)
+	col := tv.spec.getColor(sig.Pixel)
 	for f := range tv.renderers {
 		err := tv.renderers[f].SetPixel(tv.horizPos, tv.scanline,
-			col.Red, col.Green, col.Blue,
+			col.R, col.G, col.B,
 			sig.VBlank)
 		if err != nil {
 			return err

@@ -60,11 +60,11 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleVisibility:
 		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
-	case gui.ReqSetAltColors:
-		img.wm.dbgScr.useAltPixels = request.args[0].(bool)
+	case gui.ReqSetDbgColors:
+		img.wm.dbgScr.debugColors = request.args[0].(bool)
 
-	case gui.ReqToggleAltColors:
-		img.wm.dbgScr.useAltPixels = !img.wm.dbgScr.useAltPixels
+	case gui.ReqToggleDbgColors:
+		img.wm.dbgScr.debugColors = !img.wm.dbgScr.debugColors
 
 	case gui.ReqSetCropping:
 		img.wm.dbgScr.setCropping(request.args[0].(bool))
@@ -73,10 +73,10 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.wm.dbgScr.setCropping(!img.wm.dbgScr.cropped)
 
 	case gui.ReqSetOverlay:
-		img.wm.dbgScr.setOverlay(request.args[0].(bool))
+		img.wm.dbgScr.overlay = request.args[0].(bool)
 
 	case gui.ReqToggleOverlay:
-		img.wm.dbgScr.setOverlay(!img.wm.dbgScr.overlay)
+		img.wm.dbgScr.overlay = !img.wm.dbgScr.overlay
 
 	case gui.ReqIncScale:
 		img.setScale(0.1, true)

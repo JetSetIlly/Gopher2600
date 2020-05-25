@@ -20,7 +20,8 @@
 package sdlimgui
 
 import (
-	"github.com/jetsetilly/gopher2600/television/colors"
+	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -178,34 +179,34 @@ func newColors() *imguiColors {
 	// convert 2600 colours to format usable by imgui
 
 	// convert to imgiu.Vec4 first...
-	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(colors.PaletteNTSC))
-	for _, c := range colors.PaletteNTSC {
+	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(television.PaletteNTSC))
+	for _, c := range television.PaletteNTSC {
 		v := imgui.Vec4{
-			float32(c.Red) / 255,
-			float32(c.Green) / 255,
-			float32(c.Blue) / 255,
+			float32(c.R) / 255,
+			float32(c.G) / 255,
+			float32(c.B) / 255,
 			1.0,
 		}
 		vec4PaletteNTSC = append(vec4PaletteNTSC, v)
 	}
 
-	vec4PalettePAL := make([]imgui.Vec4, 0, len(colors.PalettePAL))
-	for _, c := range colors.PalettePAL {
+	vec4PalettePAL := make([]imgui.Vec4, 0, len(television.PalettePAL))
+	for _, c := range television.PalettePAL {
 		v := imgui.Vec4{
-			float32(c.Red) / 255,
-			float32(c.Green) / 255,
-			float32(c.Blue) / 255,
+			float32(c.R) / 255,
+			float32(c.G) / 255,
+			float32(c.B) / 255,
 			1.0,
 		}
 		vec4PalettePAL = append(vec4PalettePAL, v)
 	}
 
-	vec4PaletteAlt := make([]imgui.Vec4, 0, len(colors.PaletteAlt))
-	for _, c := range colors.PaletteAlt {
+	vec4PaletteAlt := make([]imgui.Vec4, 0, len(reflection.PaletteElements))
+	for _, c := range reflection.PaletteElements {
 		v := imgui.Vec4{
-			float32(c.Red) / 255,
-			float32(c.Green) / 255,
-			float32(c.Blue) / 255,
+			float32(c.R) / 255,
+			float32(c.G) / 255,
+			float32(c.B) / 255,
 			1.0,
 		}
 		vec4PaletteAlt = append(vec4PaletteAlt, v)

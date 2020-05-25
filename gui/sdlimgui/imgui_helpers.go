@@ -124,16 +124,21 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 }
 
 // draw swatch. returns true if clicked. a good response to a click event is to
-// open up an instance of popupPalette
-func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
+// open up an instance of popupPalette.
+//
+// size argument should be expressed as a fraction the fraction will be applied
+// to imgui.FontSize() to obtain the radius of the swatch
+func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	_, pal := img.imguiTVPalette()
 	c := pal[col]
 
+	r := imgui.FontSize() * size
+
 	// position & dimensions of swatch
-	r := imgui.FontSize() * 0.75
+	l := imgui.FontSize() * 0.75
 	p := imgui.CursorScreenPos()
 	p.X += r
-	p.Y += r
+	p.Y += l
 
 	// if mouse is clicked in the range of the swatch. very simple detection,
 	// not accounting for the fact that the swatch is visibly circular
@@ -148,7 +153,7 @@ func (img *SdlImgui) imguiSwatch(col uint8) (clicked bool) {
 
 	// set up cursor for next widget
 	p.X += 2 * r
-	p.Y -= r
+	p.Y -= l
 	imgui.SetCursorScreenPos(p)
 
 	return clicked

@@ -54,7 +54,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 					err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
 				case "F11":
 					// toggle debugging colours
-					err = dbg.scr.ReqFeature(gui.ReqToggleAltColors)
+					err = dbg.scr.ReqFeature(gui.ReqToggleDbgColors)
 				case "F10":
 					// toggle overlay
 					err = dbg.scr.ReqFeature(gui.ReqToggleOverlay)

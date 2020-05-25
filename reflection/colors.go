@@ -20,30 +20,23 @@
 package reflection
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-	"github.com/jetsetilly/gopher2600/television"
+	"image/color"
 )
 
-// Renderer implementations accepts ReflectPixel values and associates it in
-// some way with the moste recent television signal
-type Renderer interface {
-	Reflect(LastResult) error
+// PaletteElements lists the colors to be used when displaying TIA video in a
+// debugger's "debug colors" mode. The default colors are the same as the the
+// debug colors found in the Stella emulator.
+var PaletteElements = []color.RGBA{
+	color.RGBA{R: 17, G: 17, B: 17, A: 255},
+	color.RGBA{R: 132, G: 200, B: 252, A: 255},
+	color.RGBA{R: 146, G: 70, B: 192, A: 255},
+	color.RGBA{R: 144, G: 28, B: 0, A: 255},
+	color.RGBA{R: 232, G: 232, B: 74, A: 255},
+	color.RGBA{R: 213, G: 130, B: 74, A: 255},
+	color.RGBA{R: 50, G: 132, B: 50, A: 255},
 }
 
-// Broker implementations can identify a reflection.Renderer
-type Broker interface {
-	GetReflectionRenderer() Renderer
-}
-
-// LastResult packages together the details of the the last video step. It
-// includes the CPU execution result, the bank from which the instruction
-// originated and the video element that produced the last video pixel on
-// screen.
-type LastResult struct {
-	CPU          execution.Result
-	WSYNC        bool
-	Bank         int
-	VideoElement video.Element
-	TV           television.SignalAttributes
+// PaletteEvents
+var PaletteEvents = map[string]color.RGBA{
+	"WSYNC": color.RGBA{R: 50, G: 50, B: 255, A: 100},
 }

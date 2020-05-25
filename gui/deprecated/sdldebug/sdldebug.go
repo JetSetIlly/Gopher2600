@@ -77,8 +77,8 @@ type SdlDebug struct {
 	// if the emulation is paused then the image is output slightly differently
 	paused bool
 
-	// use alternative color palette
-	useAltColors bool
+	// use debug colors to highlight video elements
+	useDbgColors bool
 
 	// use metapixel overlay
 	useOverlay bool
@@ -295,10 +295,10 @@ func (scr *SdlDebug) update() error {
 		return err
 	}
 
-	// decide whether to use regular or alt pixels
+	// decide whether to use regular or dbg pixels
 	pixels := scr.pixels.regular
-	if scr.useAltColors {
-		pixels = scr.pixels.alt
+	if scr.useDbgColors {
+		pixels = scr.pixels.dbg
 	}
 
 	// render main textures
@@ -427,37 +427,33 @@ func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 	return nil
 }
 
-// SetAltPixel implements television.PixelRenderer interface
-func (scr *SdlDebug) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
-	i := (y*int(television.HorizClksScanline) + x) * pixelDepth
-	if i <= scr.pixels.length()-pixelDepth {
-		scr.pixels.alt[i] = red
-		scr.pixels.alt[i+1] = green
-		scr.pixels.alt[i+2] = blue
-		scr.pixels.alt[i+3] = 255
-	}
-
-	return nil
-}
-
 // GetReflectionRenderer implements the relfection.Broker interface
 func (scr *SdlDebug) GetReflectionRenderer() reflection.Renderer {
 	return scr
 }
 
-// NewReflectPixel implements the relfection.Renderer interface
-func (_ *SdlDebug) NewReflectPixel(_ reflection.ResultWithBank) error {
-	return nil
-}
+// Reflect implements the relfection.Renderer interface
+func (scr *SdlDebug) Reflect(result reflection.LastResult) error {
+	col := reflection.PaletteElements[result.VideoElement]
 
-// UpdateReflectPixel implements reflection.Renderer interface
-func (scr *SdlDebug) UpdateReflectPixel(ref reflection.ReflectPixel) error {
 	i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
-	if i <= scr.overlay.length()-pixelDepth {
-		scr.overlay.pixels[i] = ref.Red
-		scr.overlay.pixels[i+1] = ref.Green
-		scr.overlay.pixels[i+2] = ref.Blue
-		scr.overlay.pixels[i+3] = ref.Alpha
+	if i <= scr.pixels.length()-pixelDepth {
+		scr.pixels.dbg[i] = col.R
+		scr.pixels.dbg[i+1] = col.G
+		scr.pixels.dbg[i+2] = col.B
+		scr.pixels.dbg[i+3] = col.A
+
+	}
+
+	if result.WSYNC {
+		i := (scr.lastY*int(television.HorizClksScanline) + scr.lastX) * pixelDepth
+		if i <= scr.overlay.length()-pixelDepth {
+			rgb := reflection.PaletteEvents["WSYNC"]
+			scr.overlay.pixels[i] = rgb.R
+			scr.overlay.pixels[i+1] = rgb.G
+			scr.overlay.pixels[i+2] = rgb.B
+			scr.overlay.pixels[i+3] = rgb.A
+		}
 	}
 
 	return nil

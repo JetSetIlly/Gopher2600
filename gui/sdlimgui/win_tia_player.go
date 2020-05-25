@@ -49,7 +49,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// selection in palette, missile color is changed too
 	imguiText("Colour")
 	col := lz.Color
-	if win.img.imguiSwatch(col) {
+	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.lz.Dbg.PushRawEvent(func() { ps.Color = col })
 

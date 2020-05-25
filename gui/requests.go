@@ -37,10 +37,10 @@ const (
 
 	// the following requests should set or toggle visual elements of the
 	// debugger
+	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
+	ReqToggleDbgColors FeatureReq = "ReqToggleDbgColors" // none
 	ReqSetCropping     FeatureReq = "ReqSetCropping"     // bool
 	ReqToggleCropping  FeatureReq = "ReqToggleCropping"  // none
-	ReqSetAltColors    FeatureReq = "ReqSetAltColors"    // bool
-	ReqToggleAltColors FeatureReq = "ReqToggleAltColors" // none
 	ReqSetOverlay      FeatureReq = "ReqSetOverlay"      // bool
 	ReqToggleOverlay   FeatureReq = "ReqToggleOverlay"   // none
 	ReqSetScale        FeatureReq = "ReqSetScale"        // float

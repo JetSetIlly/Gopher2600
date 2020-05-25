@@ -17,17 +17,24 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package colors
+package television
 
-// colors used when alternative colors are selected. these colors mirror the
-// so called debug colors used by the Stella emulator
-var alt32bit = []uint32{
-	0x111111, 0x84c8fc, 0x9246c0, 0x901c00, 0xe8e84a, 0xd5824a, 0x328432,
-}
+import "image/color"
 
-// the raw color values are the component values expressed as a single 32 bit
-// number. we'll use these raw values in the init() function below to create
-// the real palette
+// PaletteNTSC is the collection of NTSC colours
+var PaletteNTSC = []color.RGBA{}
+
+// PalettePAL is the collection of PAL colours
+var PalettePAL = []color.RGBA{}
+
+// VideoBlack is the color produced by a television in the absence of a color
+// signal
+var videoBlack = color.RGBA{0, 0, 0, 255}
+
+// the raw color values are the component RGB values expressed as a single 32
+// bit number. we'll use these raw values in the init() function below to
+// create the real palette
+
 var ntsc32bit = []uint32{
 	0x000000, 0x404040, 0x6c6c6c, 0x909090, 0xb0b0b0, 0xc8c8c8, 0xdcdcdc, 0xececec,
 	0x444400, 0x646410, 0x848424, 0xa0a034, 0xb8b840, 0xd0d050, 0xe8e85c, 0xfcfc68,
@@ -66,26 +73,21 @@ var pal32bit = []uint32{
 	0x000000, 0x282828, 0x505050, 0x747474, 0x949494, 0xb4b4b4, 0xd0d0d0, 0xececec,
 }
 
-// this init() function converts the "raw" color values to the RGB components
+// convert the "raw" color values to the RGB components
 func init() {
 	for _, col := range ntsc32bit {
 		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 
 		// repeat color twice in palette
-		PaletteNTSC = append(PaletteNTSC, RGB{red, green, blue})
-		PaletteNTSC = append(PaletteNTSC, RGB{red, green, blue})
+		PaletteNTSC = append(PaletteNTSC, color.RGBA{red, green, blue, 255})
+		PaletteNTSC = append(PaletteNTSC, color.RGBA{red, green, blue, 255})
 	}
 
 	for _, col := range pal32bit {
 		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
 
 		// repeat color twice in palette
-		PalettePAL = append(PalettePAL, RGB{red, green, blue})
-		PalettePAL = append(PalettePAL, RGB{red, green, blue})
-	}
-
-	for _, col := range alt32bit {
-		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)
-		PaletteAlt = append(PaletteAlt, RGB{red, green, blue})
+		PalettePAL = append(PalettePAL, color.RGBA{red, green, blue, 255})
+		PalettePAL = append(PalettePAL, color.RGBA{red, green, blue, 255})
 	}
 }

@@ -26,8 +26,42 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/television"
-	"github.com/jetsetilly/gopher2600/television/colors"
 )
+
+// Element is used to record from which video sub-system the pixel
+// was generated, taking video priority into account
+type Element int
+
+// List of valid Element Signals
+const (
+	ElementBackground Element = iota
+	ElementBall
+	ElementPlayfield
+	ElementPlayer0
+	ElementPlayer1
+	ElementMissile0
+	ElementMissile1
+)
+
+func (e Element) String() string {
+	switch e {
+	case ElementBackground:
+		return "Background"
+	case ElementBall:
+		return "Ball"
+	case ElementPlayfield:
+		return "Playfield"
+	case ElementPlayer0:
+		return "Player 0"
+	case ElementPlayer1:
+		return "Player 1"
+	case ElementMissile0:
+		return "Missile 0"
+	case ElementMissile1:
+		return "Missile 1"
+	}
+	panic("unknown video element")
+}
 
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
@@ -138,7 +172,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() (uint8, colors.AltColor) {
+func (vd *Video) Pixel() (uint8, Element) {
 	bgc := vd.Playfield.BackgroundColor
 	pfa, pfc := vd.Playfield.pixel()
 	p0a, p0c, p0k := vd.Player0.pixel()
@@ -228,7 +262,7 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 
 	// apply priorities to get pixel color
 	var col uint8
-	var altCol colors.AltColor
+	var element Element
 
 	// the interaction of the priority and scoremode bits are a little more
 	// complex than at first glance:
@@ -261,39 +295,39 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 				col = pfc
 			}
 
-			altCol = colors.AltColPlayfield
+			element = ElementPlayfield
 		} else if bla {
 			col = blc
-			altCol = colors.AltColBall
+			element = ElementBall
 		} else if p0a { // priority 2
 			col = p0c
-			altCol = colors.AltColPlayer0
+			element = ElementPlayer0
 		} else if m0a {
 			col = m0c
-			altCol = colors.AltColMissile0
+			element = ElementMissile0
 		} else if p1a { // priority 3
 			col = p1c
-			altCol = colors.AltColPlayer1
+			element = ElementPlayer1
 		} else if m1a {
 			col = m1c
-			altCol = colors.AltColMissile1
+			element = ElementMissile1
 		} else {
 			col = bgc
-			altCol = colors.AltColBackground
+			element = ElementBackground
 		}
 	} else {
 		if p0a { // priority 1
 			col = p0c
-			altCol = colors.AltColPlayer0
+			element = ElementPlayer0
 		} else if m0a {
 			col = m0c
-			altCol = colors.AltColMissile0
+			element = ElementMissile0
 		} else if p1a { // priority 2
 			col = p1c
-			altCol = colors.AltColPlayer1
+			element = ElementPlayer1
 		} else if m1a {
 			col = m1c
-			altCol = colors.AltColMissile1
+			element = ElementMissile1
 		} else if vd.Playfield.Scoremode && (bla || pfa) {
 			// priority 3 (scoremode without priority bit)
 			if pfa {
@@ -304,29 +338,29 @@ func (vd *Video) Pixel() (uint8, colors.AltColor) {
 				case RegionRight:
 					col = p1c
 				}
-				altCol = colors.AltColPlayfield
+				element = ElementPlayfield
 			} else if bla { // priority 3
 				col = blc
-				altCol = colors.AltColBall
+				element = ElementBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
 			if bla { // priority 3
 				col = blc
-				altCol = colors.AltColBall
+				element = ElementBall
 			} else if pfa {
 				col = pfc
-				altCol = colors.AltColPlayfield
+				element = ElementPlayfield
 			} else {
 				col = bgc
-				altCol = colors.AltColBackground
+				element = ElementBackground
 			}
 		}
 
 	}
 
 	// priority 4
-	return col, altCol
+	return col, element
 }
 
 // UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF

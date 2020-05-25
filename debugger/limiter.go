@@ -164,11 +164,6 @@ func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) erro
 	return lmtr.limit()
 }
 
-// SetAltPixel implements television.PixleRenderer
-func (lmtr *limiter) SetAltPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) error {
-	return nil
-}
-
 // EndRendering implements television.PixleRenderer
 func (lmtr *limiter) EndRendering() error {
 	lmtr.lmtr.Stop()

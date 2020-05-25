@@ -19,7 +19,7 @@
 
 package television
 
-import "github.com/jetsetilly/gopher2600/television/colors"
+import "strings"
 
 // Television defines the operations that can be performed on the conceptual
 // television. Note that the television implementation itself does not present
@@ -136,8 +136,8 @@ type PixelRenderer interface {
 	NewFrame(frameNum int) error
 	NewScanline(scanline int) error
 
-	// setPixel() and setAltPixel() are called every cycle regardless of the
-	// state of VBLANK and HBLANK.
+	// setPixel() is called every cycle regardless of the state of VBLANK and
+	// HBLANK.
 	//
 	// things to consider:
 	//
@@ -162,7 +162,6 @@ type PixelRenderer interface {
 	//	* ET (turns VBLANK off late on scanline 40)
 	//
 	SetPixel(x, y int, red, green, blue byte, vblank bool) error
-	SetAltPixel(x, y int, red, green, blue byte, vblank bool) error
 
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
@@ -197,16 +196,25 @@ type SignalAttributes struct {
 	Pixel     ColorSignal
 	AudioData uint8
 
-	// the fields above are real signal attributes in the sense that the
-	// information they represent is really sent to the TV in the real hardware
-	// setup. the fields below are not but help us along in the emulation.
-
-	// an alternative color signal for the next pixel
-	AltPixel colors.AltColor
-
-	// whether the AudioData is valid. should be true only every 114th clock,
 	// which equates to 30Khz
 	AudioUpdate bool
+}
+
+func (a SignalAttributes) String() string {
+	s := strings.Builder{}
+	if a.VSync {
+		s.WriteString("VSYNC ")
+	}
+	if a.VBlank {
+		s.WriteString("VBLANK ")
+	}
+	if a.CBurst {
+		s.WriteString("CBURST ")
+	}
+	if a.HSync {
+		s.WriteString("HSYNC ")
+	}
+	return s.String()
 }
 
 // StateReq is used to identify which television attribute is being asked

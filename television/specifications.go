@@ -19,12 +19,12 @@
 
 package television
 
-import "github.com/jetsetilly/gopher2600/television/colors"
+import "image/color"
 
 // Specification is used to define the two television specifications
 type Specification struct {
 	ID     string
-	Colors colors.Palette
+	Colors []color.RGBA
 
 	// the number of scanlines the 2600 Programmer's guide recommends for the
 	// top/bottom parts of the screen:
@@ -74,12 +74,12 @@ type Specification struct {
 }
 
 // getColor translates a signals to the color type
-func (spec *Specification) getColor(col ColorSignal) colors.RGB {
+func (spec *Specification) getColor(col ColorSignal) color.RGBA {
 	// we're usng the ColorSignal to index an array so we need to be extra
 	// careful to make sure the value is valid. if it's not a valid index then
 	// assume the intention was video black
 	if col == VideoBlack {
-		return colors.VideoBlack
+		return videoBlack
 	}
 	return spec.Colors[col]
 }
@@ -113,7 +113,7 @@ var SpecPAL *Specification
 func init() {
 	SpecNTSC = &Specification{
 		ID:                "NTSC",
-		Colors:            colors.PaletteNTSC,
+		Colors:            PaletteNTSC,
 		ScanlinesVSync:    3,
 		scanlinesVBlank:   37,
 		ScanlinesVisible:  192,
@@ -128,7 +128,7 @@ func init() {
 
 	SpecPAL = &Specification{
 		ID:                "PAL",
-		Colors:            colors.PalettePAL,
+		Colors:            PalettePAL,
 		ScanlinesVSync:    3,
 		scanlinesVBlank:   45,
 		ScanlinesVisible:  228,

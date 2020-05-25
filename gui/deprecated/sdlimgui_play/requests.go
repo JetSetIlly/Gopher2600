@@ -73,9 +73,9 @@ func (img *SdlImguiPlay) serviceFeatureRequests(request featureRequest) {
 			img.plt.window.Hide()
 		}
 
-	case gui.ReqSetAltColors:
+	case gui.ReqSetDbgColors:
 
-	case gui.ReqToggleAltColors:
+	case gui.ReqToggleDbgColors:
 
 	case gui.ReqSetCropping:
 

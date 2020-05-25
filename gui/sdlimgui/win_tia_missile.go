@@ -44,7 +44,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.BeginGroup()
 	imguiText("Colour")
 	col := lz.Color
-	if win.img.imguiSwatch(col) {
+	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.lz.Dbg.PushRawEvent(func() { ms.Color = col })
 

@@ -326,13 +326,6 @@ func (scr *SdlPlay) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetAltPixel implements television.PixelRenderer interface
-//
-// UNUSED
-func (scr *SdlPlay) SetAltPixel(x, y int, red, green, blue byte, vblank bool) error {
-	return nil
-}
-
 // EndRendering implements television.PixelRenderer interface
 //
 // UNUSED

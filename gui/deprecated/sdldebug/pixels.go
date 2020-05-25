@@ -28,7 +28,7 @@ const pixelWidth = 2.0
 type pixels struct {
 	l       int
 	regular []byte
-	alt     []byte
+	dbg     []byte
 	clr     []byte
 }
 
@@ -40,17 +40,17 @@ func newPixels(w, h int) *pixels {
 	pxl := &pixels{
 		l:       l,
 		regular: make([]byte, l),
-		alt:     make([]byte, l),
+		dbg:     make([]byte, l),
 		clr:     make([]byte, l),
 	}
 
-	// set alpha bit for regular and alt pixels to opaque. we'll be changing
+	// set alpha bit for regular and dbg pixels to opaque. we'll be changing
 	// this value during clear() and setPixel() operations but it's important
 	// we set it to opaque for when we first use the pixels, or we'll get to
 	// see nasty artefacts on the screen.
 	for i := pixelDepth - 1; i < l; i += pixelDepth {
 		pxl.regular[i] = 255
-		pxl.alt[i] = 255
+		pxl.dbg[i] = 255
 	}
 
 	return pxl
@@ -62,5 +62,5 @@ func (pxl pixels) length() int {
 
 func (pxl pixels) clear() {
 	copy(pxl.regular, pxl.clr)
-	copy(pxl.alt, pxl.clr)
+	copy(pxl.dbg, pxl.clr)
 }

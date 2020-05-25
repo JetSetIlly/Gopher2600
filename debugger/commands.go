@@ -915,16 +915,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
 			}
 
-		case "ALT":
+		case "DBG":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.ReqFeature(gui.ReqSetAltColors, false)
+				err = dbg.scr.ReqFeature(gui.ReqSetDbgColors, false)
 			case "ON":
-				err = dbg.scr.ReqFeature(gui.ReqSetAltColors, true)
+				err = dbg.scr.ReqFeature(gui.ReqSetDbgColors, true)
 			default:
-				err = dbg.scr.ReqFeature(gui.ReqToggleAltColors)
+				err = dbg.scr.ReqFeature(gui.ReqToggleDbgColors)
 			}
 		case "OVERLAY":
 			action, _ := tokens.Get()
