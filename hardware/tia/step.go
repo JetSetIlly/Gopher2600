@@ -183,8 +183,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// resolve video pixels. note that we always send the debug color
 	// regardless of hblank
-	pixelColor, videoElement := tia.Video.Pixel()
-	tia.LastVideoElement = videoElement
+	pixelColor := tia.Video.Pixel()
 	if tia.hblank {
 		// if hblank is on then we don't sent the resolved color but the video
 		// black signal instead

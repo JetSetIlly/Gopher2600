@@ -23,11 +23,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 )
 
-// Monitor watches for writes to specific video related memory locations. when
-// these locations are written to, a signal is sent to the Renderer
-// implementation. moreover, if the monitor detects that the effect of the
-// memory write is delayed or sustained, then the signal is repeated as
-// appropriate.
+// Monitor should be run (with the Check() function) every video cycle. The
+// (reflection) Renderer's Reflect() function is consequently also called every
+// video cycle with a populated instance of LastResult.
 type Monitor struct {
 	vcs      *hardware.VCS
 	renderer Renderer
@@ -50,7 +48,7 @@ func (mon *Monitor) Check() error {
 		CPU:          mon.vcs.CPU.LastResult,
 		WSYNC:        !mon.vcs.CPU.RdyFlg,
 		Bank:         mon.vcs.Mem.Cart.GetBank(mon.vcs.CPU.LastResult.Address),
-		VideoElement: mon.vcs.TIA.LastVideoElement,
+		VideoElement: mon.vcs.TIA.Video.LastElement,
 		TV:           mon.vcs.TV.GetLastSignal(),
 	}
 

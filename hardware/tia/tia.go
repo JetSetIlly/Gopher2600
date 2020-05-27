@@ -98,11 +98,6 @@ type TIA struct {
 	// similarly for HMOVE events. we use this to help us decide whether we
 	// have a late or early HBLANK
 	hmoveEvent *future.Event
-
-	// LastVideoElement records from which TIA video sub-system the most recent
-	// pixel was generated, taking priority into account. see Pixel() function
-	// for details
-	LastVideoElement video.Element
 }
 
 // Label returns an identifying label for the TIA

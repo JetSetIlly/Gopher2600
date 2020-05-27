@@ -77,6 +77,11 @@ type Video struct {
 	Missile0 *missileSprite
 	Missile1 *missileSprite
 	Ball     *ballSprite
+
+	// LastElement records from which TIA video sub-system the most recent
+	// pixel was generated, taking priority into account. see Pixel() function
+	// for details
+	LastElement Element
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure.
@@ -172,7 +177,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() (uint8, Element) {
+func (vd *Video) Pixel() uint8 {
 	bgc := vd.Playfield.BackgroundColor
 	pfa, pfc := vd.Playfield.pixel()
 	p0a, p0c, p0k := vd.Player0.pixel()
@@ -359,8 +364,10 @@ func (vd *Video) Pixel() (uint8, Element) {
 
 	}
 
+	vd.LastElement = element
+
 	// priority 4
-	return col, element
+	return col
 }
 
 // UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF
