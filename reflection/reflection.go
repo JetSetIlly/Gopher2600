@@ -48,4 +48,9 @@ type LastResult struct {
 	Bank         int
 	VideoElement video.Element
 	TV           television.SignalAttributes
+	Collision    bool
 }
+
+// OverlayList is the list of overlays that should be supported by a
+// reflection.Renderer.
+var OverlayList = []string{"WSYNC", "Collisions"}

@@ -50,6 +50,7 @@ func (mon *Monitor) Check() error {
 		Bank:         mon.vcs.Mem.Cart.GetBank(mon.vcs.CPU.LastResult.Address),
 		VideoElement: mon.vcs.TIA.Video.LastElement,
 		TV:           mon.vcs.TV.GetLastSignal(),
+		Collision:    mon.vcs.TIA.Video.Collisions.Active,
 	}
 
 	if err := mon.renderer.Reflect(res); err != nil {

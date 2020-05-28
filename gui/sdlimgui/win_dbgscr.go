@@ -77,8 +77,9 @@ type winDbgScr struct {
 	// the window, we use contentDim (the area inside the window) to figure out
 	// the scaling value. when resizing numerically (with the getScale()
 	// function) on the other hand, we scale the entire window accordingly
-	winDim     imgui.Vec2
-	contentDim imgui.Vec2
+	winDim          imgui.Vec2
+	contentDim      imgui.Vec2
+	overlayComboDim imgui.Vec2
 
 	// when set the scale value numerically (with the getScale() function) we
 	// need to alter how we set the window size for the first frame afterwards.
@@ -117,6 +118,7 @@ func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 
 func (win *winDbgScr) init() {
 	win.widgetDimensions.init()
+	win.overlayComboDim = imguiGetFrameDim("", reflection.OverlayList...)
 }
 
 func (win *winDbgScr) destroy() {
@@ -130,6 +132,9 @@ func (win *winDbgScr) draw() {
 	if !win.open {
 		return
 	}
+
+	win.scr.crit.section.Lock()
+	defer win.scr.crit.section.Unlock()
 
 	// actual display
 	var w, h float32
@@ -204,8 +209,6 @@ func (win *winDbgScr) draw() {
 	// then imgui.IsItemHovered() is false by definition
 	win.isHovered = imgui.IsItemHovered()
 	if win.isHovered {
-		// critical section
-		win.scr.crit.section.Lock()
 
 		// get mouse position and transform
 		mp := imgui.MousePos().Minus(mouseOrigin)
@@ -276,9 +279,6 @@ func (win *winDbgScr) draw() {
 				imgui.EndTooltip()
 			}
 		}
-
-		win.scr.crit.section.Unlock()
-		// end of critical section
 	}
 
 	// start of tool bar
@@ -325,6 +325,19 @@ func (win *winDbgScr) draw() {
 	imgui.Checkbox("Pixel Perfect", &win.pixelPerfect)
 	imgui.SameLine()
 	imgui.Checkbox("Overlay", &win.overlay)
+	imgui.SameLine()
+	imgui.PushItemWidth(win.overlayComboDim.X)
+	if imgui.BeginComboV("##overlay", win.img.screen.crit.overlay, imgui.ComboFlagNoArrowButton) {
+		for _, s := range reflection.OverlayList {
+			if imgui.Selectable(s) {
+				win.img.screen.crit.overlay = s
+				win.img.screen.replotOverlay()
+			}
+		}
+
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
 
 	// note height of tool bar
 	win.toolBarHeight = imgui.CursorPosY() - toolBarTop

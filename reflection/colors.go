@@ -38,5 +38,6 @@ var PaletteElements = []color.RGBA{
 
 // PaletteEvents
 var PaletteEvents = map[string]color.RGBA{
-	"WSYNC": color.RGBA{R: 50, G: 50, B: 255, A: 100},
+	"WSYNC":      color.RGBA{R: 50, G: 50, B: 255, A: 100},
+	"Collisions": color.RGBA{R: 255, G: 25, B: 25, A: 200},
 }

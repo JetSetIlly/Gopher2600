@@ -139,6 +139,9 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinControllers, false, windowMenuMain); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCollisions, false, windowMenuMain); err != nil {
+		return nil, err
+	}
 
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map

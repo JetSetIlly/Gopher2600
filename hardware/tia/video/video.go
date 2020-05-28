@@ -66,7 +66,7 @@ func (e Element) String() string {
 // Video contains all the components of the video sub-system of the VCS TIA chip
 type Video struct {
 	// collision matrix
-	collisions *collisions
+	Collisions *Collisions
 
 	// playfield
 	Playfield *playfield
@@ -102,7 +102,7 @@ func NewVideo(mem bus.ChipBus,
 	tv television.Television, hblank, hmoveLatch *bool) (*Video, error) {
 
 	vd := &Video{
-		collisions: newCollisions(mem),
+		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
 	}
 
@@ -191,78 +191,96 @@ func (vd *Video) Pixel() uint8 {
 	// other sprites. it is not used when detecting collisions with the
 	// playfield. for playfield collisions we just use the active condition
 	// (the first returned value)
+	//
+
+	vd.Collisions.Active = false
 
 	if m0k && p1k {
-		vd.collisions.cxm0p |= 0x80
-		vd.collisions.setMemory(addresses.CXM0P)
+		vd.Collisions.CXM0P |= 0x80
+		vd.Collisions.setMemory(addresses.CXM0P)
+		vd.Collisions.Active = true
 	}
 	if m0k && p0k {
-		vd.collisions.cxm0p |= 0x40
-		vd.collisions.setMemory(addresses.CXM0P)
+		vd.Collisions.CXM0P |= 0x40
+		vd.Collisions.setMemory(addresses.CXM0P)
+		vd.Collisions.Active = true
 	}
 
 	if m1k && p0k {
-		vd.collisions.cxm1p |= 0x80
-		vd.collisions.setMemory(addresses.CXM1P)
+		vd.Collisions.CXM1P |= 0x80
+		vd.Collisions.setMemory(addresses.CXM1P)
+		vd.Collisions.Active = true
 	}
 	if m1k && p1k {
-		vd.collisions.cxm1p |= 0x40
-		vd.collisions.setMemory(addresses.CXM1P)
+		vd.Collisions.CXM1P |= 0x40
+		vd.Collisions.setMemory(addresses.CXM1P)
+		vd.Collisions.Active = true
 	}
 
 	// use active bit when comparing with playfield
 	if p0a && pfa {
-		vd.collisions.cxp0fb |= 0x80
-		vd.collisions.setMemory(addresses.CXP0FB)
+		vd.Collisions.CXP0FB |= 0x80
+		vd.Collisions.setMemory(addresses.CXP0FB)
+		vd.Collisions.Active = true
 	}
 	if p0k && blk {
-		vd.collisions.cxp0fb |= 0x40
-		vd.collisions.setMemory(addresses.CXP0FB)
+		vd.Collisions.CXP0FB |= 0x40
+		vd.Collisions.setMemory(addresses.CXP0FB)
+		vd.Collisions.Active = true
 	}
 
 	// use active bit when comparing with playfield
 	if p1a && pfa {
-		vd.collisions.cxp1fb |= 0x80
-		vd.collisions.setMemory(addresses.CXP1FB)
+		vd.Collisions.CXP1FB |= 0x80
+		vd.Collisions.setMemory(addresses.CXP1FB)
+		vd.Collisions.Active = true
 	}
 	if p1k && blk {
-		vd.collisions.cxp1fb |= 0x40
-		vd.collisions.setMemory(addresses.CXP1FB)
+		vd.Collisions.CXP1FB |= 0x40
+		vd.Collisions.setMemory(addresses.CXP1FB)
+		vd.Collisions.Active = true
 	}
 
 	// use active bit when comparing with playfield
 	if m0a && pfa {
-		vd.collisions.cxm0fb |= 0x80
-		vd.collisions.setMemory(addresses.CXM0FB)
+		vd.Collisions.CXM0FB |= 0x80
+		vd.Collisions.setMemory(addresses.CXM0FB)
+		vd.Collisions.Active = true
 	}
 	if m0k && blk {
-		vd.collisions.cxm0fb |= 0x40
-		vd.collisions.setMemory(addresses.CXM0FB)
+		vd.Collisions.CXM0FB |= 0x40
+		vd.Collisions.setMemory(addresses.CXM0FB)
+		vd.Collisions.Active = true
 	}
 
 	// use active bit when comparing with playfield
 	if m1a && pfa {
-		vd.collisions.cxm1fb |= 0x80
-		vd.collisions.setMemory(addresses.CXM1FB)
+		vd.Collisions.CXM1FB |= 0x80
+		vd.Collisions.setMemory(addresses.CXM1FB)
+		vd.Collisions.Active = true
 	}
 	if m1k && blk {
-		vd.collisions.cxm1fb |= 0x40
-		vd.collisions.setMemory(addresses.CXM1FB)
+		vd.Collisions.CXM1FB |= 0x40
+		vd.Collisions.setMemory(addresses.CXM1FB)
+		vd.Collisions.Active = true
 	}
 
 	if blk && pfa {
-		vd.collisions.cxblpf |= 0x80
-		vd.collisions.setMemory(addresses.CXBLPF)
+		vd.Collisions.CXBLPF |= 0x80
+		vd.Collisions.setMemory(addresses.CXBLPF)
+		vd.Collisions.Active = true
 	}
 	// no bit 6 for CXBLPF
 
 	if p0k && p1k {
-		vd.collisions.cxppmm |= 0x80
-		vd.collisions.setMemory(addresses.CXPPMM)
+		vd.Collisions.CXPPMM |= 0x80
+		vd.Collisions.setMemory(addresses.CXPPMM)
+		vd.Collisions.Active = true
 	}
 	if m0k && m1k {
-		vd.collisions.cxppmm |= 0x40
-		vd.collisions.setMemory(addresses.CXPPMM)
+		vd.Collisions.CXPPMM |= 0x40
+		vd.Collisions.setMemory(addresses.CXPPMM)
+		vd.Collisions.Active = true
 	}
 
 	// apply priorities to get pixel color
@@ -554,7 +572,7 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 		vd.Player1.setNUSIZ(data.Value)
 		vd.Missile1.SetNUSIZ(data.Value)
 	case "CXCLR":
-		vd.collisions.clear()
+		vd.Collisions.clear()
 	default:
 		return true
 	}

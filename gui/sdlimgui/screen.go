@@ -66,6 +66,9 @@ type screenCrit struct {
 	debugPixels   *image.RGBA
 	overlayPixels *image.RGBA
 
+	// the selected overlay
+	overlay string
+
 	// 2d array of disasm entries. resized at the same time as overlayPixels resize
 	reflection [][]reflection.LastResult
 
@@ -90,6 +93,7 @@ func newScreen(img *SdlImgui) *screen {
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
+	scr.crit.overlay = reflection.OverlayList[0]
 
 	return scr
 }
@@ -215,14 +219,34 @@ func (scr *screen) Reflect(result reflection.LastResult) error {
 	rgb := reflection.PaletteElements[result.VideoElement]
 	scr.crit.debugPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
-	// write to overlay (in order of importance)
-	if result.WSYNC {
-		scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, reflection.PaletteEvents["WSYNC"])
-	} else {
-		scr.crit.overlayPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, color.RGBA{0, 0, 0, 0})
-	}
+	// write to overlay
+	scr.plotOverlay(scr.crit.lastX, scr.crit.lastY, result)
 
 	return nil
+}
+
+// replotOverlay should be called inside a scr.crit.section Lock
+func (scr *screen) replotOverlay() {
+	for y := 0; y < scr.crit.overlayPixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.overlayPixels.Bounds().Size().X; x++ {
+			scr.plotOverlay(x, y, scr.crit.reflection[x][y])
+		}
+	}
+}
+
+// plotOverlay should be called inside a scr.crit.section Lock
+func (scr *screen) plotOverlay(x, y int, result reflection.LastResult) {
+	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
+	switch scr.crit.overlay {
+	case "WSYNC":
+		if result.WSYNC {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["WSYNC"])
+		}
+	case "Collisions":
+		if result.Collision {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Collisions"])
+		}
+	}
 }
 
 // texture renderers can share the underlying pixels in the screen instance

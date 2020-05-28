@@ -256,12 +256,12 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
+				case rnd.img.wm.dbgScr.screenTexture:
+					gl.Uniform1i(rnd.attribImageType, 1)
 				case rnd.img.wm.dbgScr.overlayTexture:
 					gl.Uniform1i(rnd.attribImageType, 2)
 				case rnd.img.wm.playScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, 3)
-				case rnd.img.wm.dbgScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, 1)
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
 				}

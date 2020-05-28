@@ -48,7 +48,13 @@ void main()
 	float lastX;
 	float lastY;
 
-	if (ImageType == 1 || ImageType == 2) {
+	// if this is the overlay texture then we're done
+	if (ImageType == 2) {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		return;
+	}
+
+	if (ImageType == 1) {
 		if (Cropped > 0) {
 			hblank = Hblank / CropDim.x;
 			lastX = LastX / CropDim.x;
@@ -76,9 +82,9 @@ void main()
 			   isNearEqual(coords.y, topScanline, epsilonY) ||
 			   isNearEqual(coords.y, botScanline, epsilonY)) {
 				Out_Color.r = 1.0;
-				Out_Color.g = 0.0;
-				Out_Color.b = 0.0;
-				Out_Color.a = 0.5;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 0.2;
 				return;
 			}
 		}
@@ -158,12 +164,6 @@ void main()
 					return;
 				}
 			}
-		}
-
-		// if this is the overlay texture then we're done
-		if (ImageType == 2) {
-			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-			return;
 		}
 
 		// if pixel-perfect	rendering is selected then there's nothing much more to do
