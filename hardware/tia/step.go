@@ -91,7 +91,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			// CPU cycle of the scanline; the CLK stuffing will still take
 			// place during the HBlank and the HSYNC latch will be set just
 			// before the counter wraps around."
-			tia.hmoveLatch = false
+			tia.HmoveLatch = false
 
 		case 56: // [SHB]
 			// allow a new scanline event to occur naturally only when an RSYNC
@@ -135,7 +135,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
-			if !tia.hmoveLatch {
+			if !tia.HmoveLatch {
 				tia.Delay.Schedule(hsyncDelay, tia._futureResetHBlank, "HRB")
 			}
 
@@ -143,7 +143,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 18:
 			// late HBLANK off if hmoveLatch is true
-			if tia.hmoveLatch {
+			if tia.HmoveLatch {
 				tia.Delay.Schedule(hsyncDelay, tia._futureResetHBlank, "LHRB")
 			}
 		}
@@ -172,12 +172,12 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(!tia.Hblank, isHmove, tia.hmoveCt)
+	tia.Video.Tick(!tia.Hblank, isHmove, tia.HmoveCt)
 
 	// update hmove counter value
 	if isHmove {
-		if tia.hmoveCt != 0xff {
-			tia.hmoveCt--
+		if tia.HmoveCt != 0xff {
+			tia.HmoveCt--
 		}
 	}
 

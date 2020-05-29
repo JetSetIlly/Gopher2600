@@ -54,6 +54,17 @@ func (mon *Monitor) Check() error {
 		Collision:    mon.vcs.TIA.Video.Collisions.Activity.String(),
 	}
 
+	// reflect HMOVE state
+	if mon.vcs.TIA.HmoveEvent != nil {
+		res.Hmove.Delay = true
+		res.Hmove.DelayCt = mon.vcs.TIA.HmoveEvent.RemainingCycles()
+	}
+	if mon.vcs.TIA.HmoveLatch {
+		res.Hmove.Latch = true
+		res.Hmove.RippleCt = mon.vcs.TIA.HmoveCt
+	}
+
+	// send reflection
 	if err := mon.renderer.Reflect(res); err != nil {
 		return nil
 	}

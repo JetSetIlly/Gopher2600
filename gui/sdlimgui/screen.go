@@ -206,21 +206,21 @@ func (scr *screen) EndRendering() error {
 }
 
 // Reflect implements reflection.Renderer interface
-func (scr *screen) Reflect(result reflection.LastResult) error {
+func (scr *screen) Reflect(ref reflection.LastResult) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
 	// store LastResult instance
 	if scr.crit.lastX < len(scr.crit.reflection) && scr.crit.lastY < len(scr.crit.reflection[scr.crit.lastX]) {
-		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = result
+		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = ref
 	}
 
 	// set debug pixel
-	rgb := reflection.PaletteElements[result.VideoElement]
+	rgb := reflection.PaletteElements[ref.VideoElement]
 	scr.crit.debugPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	// write to overlay
-	scr.plotOverlay(scr.crit.lastX, scr.crit.lastY, result)
+	scr.plotOverlay(scr.crit.lastX, scr.crit.lastY, ref)
 
 	return nil
 }
@@ -235,16 +235,27 @@ func (scr *screen) replotOverlay() {
 }
 
 // plotOverlay should be called from within a scr.crit.section Lock()
-func (scr *screen) plotOverlay(x, y int, result reflection.LastResult) {
+func (scr *screen) plotOverlay(x, y int, ref reflection.LastResult) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
 	case "WSYNC":
-		if result.WSYNC {
+		if ref.WSYNC {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["WSYNC"])
 		}
 	case "Collisions":
-		if result.Collision != "" {
+		if ref.Collision != "" {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Collisions"])
+		}
+	case "HMOVE":
+		// HmoveCt counts to -1 (or 255 for a uint8)
+		if ref.Hmove.Delay {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE delay"])
+		} else if ref.Hmove.Latch {
+			if ref.Hmove.RippleCt != 255 {
+				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE"])
+			} else {
+				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE latched"])
+			}
 		}
 	}
 }

@@ -50,8 +50,18 @@ type LastResult struct {
 	TV           television.SignalAttributes
 	Hblank       bool
 	Collision    string
+	Hmove        Hmove
+}
+
+// Hmove groups the HMOVE reflection information. It's too complex a property
+// to distill into a single variable.
+type Hmove struct {
+	Delay    bool
+	DelayCt  int
+	Latch    bool
+	RippleCt uint8
 }
 
 // OverlayList is the list of overlays that should be supported by a
 // reflection.Renderer.
-var OverlayList = []string{"WSYNC", "Collisions"}
+var OverlayList = []string{"WSYNC", "Collisions", "HMOVE"}

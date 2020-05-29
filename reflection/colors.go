@@ -38,6 +38,9 @@ var PaletteElements = []color.RGBA{
 
 // PaletteEvents
 var PaletteEvents = map[string]color.RGBA{
-	"WSYNC":      color.RGBA{R: 50, G: 50, B: 255, A: 100},
-	"Collisions": color.RGBA{R: 255, G: 25, B: 25, A: 200},
+	"WSYNC":         color.RGBA{R: 50, G: 50, B: 255, A: 100},
+	"Collisions":    color.RGBA{R: 255, G: 25, B: 25, A: 200},
+	"HMOVE delay":   color.RGBA{R: 150, G: 50, B: 50, A: 255},
+	"HMOVE":         color.RGBA{R: 50, G: 150, B: 50, A: 255},
+	"HMOVE latched": color.RGBA{R: 50, G: 50, B: 150, A: 255},
 }

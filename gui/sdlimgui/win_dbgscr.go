@@ -326,6 +326,21 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 			} else {
 				imgui.Text("no collision")
 			}
+		case "HMOVE":
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			if ref.Hmove.Delay {
+				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
+			} else if ref.Hmove.Latch {
+				if ref.Hmove.RippleCt != 255 {
+					imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
+				} else {
+					imgui.Text("HMOVE latched")
+				}
+			} else {
+				imgui.Text("no HMOVE")
+			}
 		}
 		return
 	}

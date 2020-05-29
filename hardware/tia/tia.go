@@ -63,17 +63,17 @@ type TIA struct {
 	wsync bool
 
 	// HMOVE information. each sprite object also contains HOMVE information
-	// - hmoveLatch indicates whether HMOVE has been triggered this scanline.
+	// - HmoveLatch indicates whether HMOVE has been triggered this scanline.
 	// it is reset when a new scanline begins
-	hmoveLatch bool
+	HmoveLatch bool
 
-	// - hmoveCt counts backwards from 15 to -1 (represented by 255). note that
+	// - HmoveCt counts backwards from 15 to -1 (represented by 255). note that
 	// unlike how it is described in TIA_HW_Notes.txt, we always send the extra
-	// tick to the sprites on Phi1.  however, we also send the hmoveCt value,
+	// tick to the sprites on Phi1.  however, we also send the HmoveCt value,
 	// whether or not the extra should be honoured is up to the sprite.
-	// (TIA_HW_Notes.txt says that hmoveCt is checked *before* sending the
+	// (TIA_HW_Notes.txt says that HmoveCt is checked *before* sending the
 	// extra tick)
-	hmoveCt uint8
+	HmoveCt uint8
 
 	// TIA_HW_Notes.txt describes the hsync counter:
 	//
@@ -97,7 +97,7 @@ type TIA struct {
 
 	// similarly for HMOVE events. we use this to help us decide whether we
 	// have a late or early HBLANK
-	hmoveEvent *future.Event
+	HmoveEvent *future.Event
 }
 
 // Label returns an identifying label for the TIA
@@ -112,8 +112,8 @@ func (tia TIA) String() string {
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 
-	if tia.hmoveCt != 0xff {
-		s.WriteString(fmt.Sprintf(" hm=%04b", tia.hmoveCt))
+	if tia.HmoveCt != 0xff {
+		s.WriteString(fmt.Sprintf(" hm=%04b", tia.HmoveCt))
 	}
 
 	return s.String()
@@ -137,9 +137,9 @@ func NewTIA(tv television.Television, mem bus.ChipBus, vblankBits *input.VBlankB
 	tia.Delay = future.NewTicker("TIA")
 
 	tia.pclk.Reset()
-	tia.hmoveCt = 0xff
+	tia.HmoveCt = 0xff
 
-	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.Hblank, &tia.hmoveLatch)
+	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.Hblank, &tia.HmoveLatch)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// * Test RSYNC - test rom by Omegamatrix
 
-		tia.rsyncEvent = tia.Delay.Schedule(3, tia._futureRSYNCnewScanline, "RSYNC (new scanline)")
+		tia.rsyncEvent = tia.Delay.Schedule(3, tia._futureRSYNCnewScanline, "RSYNC (alignment)")
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
@@ -234,7 +234,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		tia.Delay.Schedule(delay, tia._futureHMOVElatch, "HMOVE")
 
 		delay += 3
-		tia.hmoveEvent = tia.Delay.Schedule(delay, tia._futureHMOVEprep, "HMOVE (prep)")
+		tia.HmoveEvent = tia.Delay.Schedule(delay, tia._futureHMOVEprep, "HMOVE (latch)")
 
 		// from TIA_HW_Notes:
 		//
@@ -306,17 +306,17 @@ func (tia *TIA) _futureRSYNCnewScanline() {
 		tia.Video.RSYNC(adj)
 	}
 
-	tia.rsyncEvent = tia.Delay.Schedule(4, tia._futureRSYNCreset, "RSYNC (reset)")
+	tia.rsyncEvent = tia.Delay.Schedule(4, tia._futureRSYNCreset, "RSYNC (latch)")
 }
 
 func (tia *TIA) _futureHMOVElatch() {
-	tia.hmoveLatch = true
+	tia.HmoveLatch = true
 }
 
 func (tia *TIA) _futureHMOVEprep() {
 	tia.Video.PrepareSpritesForHMOVE()
-	tia.hmoveCt = 15
-	tia.hmoveEvent = nil
+	tia.HmoveCt = 15
+	tia.HmoveEvent = nil
 }
 
 func (tia *TIA) _futureResetHSYNC() {
