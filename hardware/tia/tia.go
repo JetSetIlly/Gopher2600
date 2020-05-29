@@ -57,7 +57,7 @@ type TIA struct {
 	// television. it is turned on at the end of the visible screen and turned
 	// on depending on the HMOVE latch. it is also used to control when sprite
 	// counters are ticked.
-	hblank bool
+	Hblank bool
 
 	// wsync records whether the cpu is to halt until hsync resets to 000000
 	wsync bool
@@ -125,7 +125,7 @@ func NewTIA(tv television.Television, mem bus.ChipBus, vblankBits *input.VBlankB
 		tv:         tv,
 		mem:        mem,
 		vblankBits: vblankBits,
-		hblank:     true}
+		Hblank:     true}
 
 	var err error
 
@@ -139,7 +139,7 @@ func NewTIA(tv television.Television, mem bus.ChipBus, vblankBits *input.VBlankB
 	tia.pclk.Reset()
 	tia.hmoveCt = 0xff
 
-	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.hblank, &tia.hmoveLatch)
+	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.Hblank, &tia.hmoveLatch)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (tia *TIA) newScanline() {
 
 	// start HBLANK. start of new scanline for the TIA. turn hblank
 	// on
-	tia.hblank = true
+	tia.Hblank = true
 
 	// reset debugging information
 	tia.videoCycles = 0
@@ -329,5 +329,5 @@ func (tia *TIA) _futureResetColorBurst() {
 }
 
 func (tia *TIA) _futureResetHBlank() {
-	tia.hblank = false
+	tia.Hblank = false
 }

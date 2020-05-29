@@ -21,10 +21,31 @@ package video
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
+
+type CollisionsActivity struct {
+	s strings.Builder
+}
+
+func (c *CollisionsActivity) Active() bool {
+	return c.s.Len() > 0
+}
+
+func (c *CollisionsActivity) String() string {
+	return c.s.String()
+}
+
+func (c *CollisionsActivity) newPixel() {
+	c.s.Reset()
+}
+
+func (c *CollisionsActivity) add(s string) {
+	c.s.WriteString(s)
+}
 
 type Collisions struct {
 	mem bus.ChipBus
@@ -39,7 +60,7 @@ type Collisions struct {
 	CXPPMM uint8
 
 	// Active is set if there is any collision at all
-	Active bool
+	Activity CollisionsActivity
 }
 
 func newCollisions(mem bus.ChipBus) *Collisions {

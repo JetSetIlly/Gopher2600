@@ -48,7 +48,8 @@ type LastResult struct {
 	Bank         int
 	VideoElement video.Element
 	TV           television.SignalAttributes
-	Collision    bool
+	Hblank       bool
+	Collision    string
 }
 
 // OverlayList is the list of overlays that should be supported by a

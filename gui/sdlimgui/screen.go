@@ -225,7 +225,7 @@ func (scr *screen) Reflect(result reflection.LastResult) error {
 	return nil
 }
 
-// replotOverlay should be called inside a scr.crit.section Lock
+// replotOverlay should be called from within a scr.crit.section Lock()
 func (scr *screen) replotOverlay() {
 	for y := 0; y < scr.crit.overlayPixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.overlayPixels.Bounds().Size().X; x++ {
@@ -234,7 +234,7 @@ func (scr *screen) replotOverlay() {
 	}
 }
 
-// plotOverlay should be called inside a scr.crit.section Lock
+// plotOverlay should be called from within a scr.crit.section Lock()
 func (scr *screen) plotOverlay(x, y int, result reflection.LastResult) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
@@ -243,7 +243,7 @@ func (scr *screen) plotOverlay(x, y int, result reflection.LastResult) {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["WSYNC"])
 		}
 	case "Collisions":
-		if result.Collision {
+		if result.Collision != "" {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Collisions"])
 		}
 	}

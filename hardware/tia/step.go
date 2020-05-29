@@ -172,7 +172,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(!tia.hblank, isHmove, tia.hmoveCt)
+	tia.Video.Tick(!tia.Hblank, isHmove, tia.hmoveCt)
 
 	// update hmove counter value
 	if isHmove {
@@ -184,7 +184,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// resolve video pixels. note that we always send the debug color
 	// regardless of hblank
 	pixelColor := tia.Video.Pixel()
-	if tia.hblank {
+	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the video
 		// black signal instead
 		tia.sig.Pixel = television.VideoBlack

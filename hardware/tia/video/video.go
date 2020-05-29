@@ -191,96 +191,95 @@ func (vd *Video) Pixel() uint8 {
 	// other sprites. it is not used when detecting collisions with the
 	// playfield. for playfield collisions we just use the active condition
 	// (the first returned value)
-	//
 
-	vd.Collisions.Active = false
+	vd.Collisions.Activity.newPixel()
 
 	if m0k && p1k {
 		vd.Collisions.CXM0P |= 0x80
 		vd.Collisions.setMemory(addresses.CXM0P)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M0 >< P1")
 	}
 	if m0k && p0k {
 		vd.Collisions.CXM0P |= 0x40
 		vd.Collisions.setMemory(addresses.CXM0P)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M0 >< P0")
 	}
 
 	if m1k && p0k {
 		vd.Collisions.CXM1P |= 0x80
 		vd.Collisions.setMemory(addresses.CXM1P)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M1 >< P0")
 	}
 	if m1k && p1k {
 		vd.Collisions.CXM1P |= 0x40
 		vd.Collisions.setMemory(addresses.CXM1P)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M1 >< P1")
 	}
 
 	// use active bit when comparing with playfield
 	if p0a && pfa {
 		vd.Collisions.CXP0FB |= 0x80
 		vd.Collisions.setMemory(addresses.CXP0FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("P0 >< PF")
 	}
 	if p0k && blk {
 		vd.Collisions.CXP0FB |= 0x40
 		vd.Collisions.setMemory(addresses.CXP0FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("P0 >< BL")
 	}
 
 	// use active bit when comparing with playfield
 	if p1a && pfa {
 		vd.Collisions.CXP1FB |= 0x80
 		vd.Collisions.setMemory(addresses.CXP1FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("P1 >< PF")
 	}
 	if p1k && blk {
 		vd.Collisions.CXP1FB |= 0x40
 		vd.Collisions.setMemory(addresses.CXP1FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("P1 >< BL")
 	}
 
 	// use active bit when comparing with playfield
 	if m0a && pfa {
 		vd.Collisions.CXM0FB |= 0x80
 		vd.Collisions.setMemory(addresses.CXM0FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M0 >< PF")
 	}
 	if m0k && blk {
 		vd.Collisions.CXM0FB |= 0x40
 		vd.Collisions.setMemory(addresses.CXM0FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M1 >< BL")
 	}
 
 	// use active bit when comparing with playfield
 	if m1a && pfa {
 		vd.Collisions.CXM1FB |= 0x80
 		vd.Collisions.setMemory(addresses.CXM1FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M1 >< PF")
 	}
 	if m1k && blk {
 		vd.Collisions.CXM1FB |= 0x40
 		vd.Collisions.setMemory(addresses.CXM1FB)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M1 >< BL")
 	}
 
 	if blk && pfa {
 		vd.Collisions.CXBLPF |= 0x80
 		vd.Collisions.setMemory(addresses.CXBLPF)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("BL >< PF")
 	}
 	// no bit 6 for CXBLPF
 
 	if p0k && p1k {
 		vd.Collisions.CXPPMM |= 0x80
 		vd.Collisions.setMemory(addresses.CXPPMM)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("P0 >< P1")
 	}
 	if m0k && m1k {
 		vd.Collisions.CXPPMM |= 0x40
 		vd.Collisions.setMemory(addresses.CXPPMM)
-		vd.Collisions.Active = true
+		vd.Collisions.Activity.add("M0 >< M1")
 	}
 
 	// apply priorities to get pixel color

@@ -22,7 +22,6 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"strings"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
@@ -63,8 +62,8 @@ type winDbgScr struct {
 	isPopup bool
 
 	// horizPos and scanline equivalent position of the mouse. only updated when isHovered is true
-	horizPos int
-	scanline int
+	mousHorizPos  int
+	mouseScanline int
 
 	// height of tool bar at bottom of window. valid after first frame.
 	toolBarHeight float32
@@ -192,14 +191,14 @@ func (win *winDbgScr) draw() {
 	if win.isPopup {
 		imgui.Text("Break")
 		imgui.Separator()
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.scanline)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.scanline))
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
 		}
-		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.horizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.horizPos))
+		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.mousHorizPos)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.mousHorizPos))
 		}
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.scanline, win.horizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.scanline, win.horizPos))
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.mouseScanline, win.mousHorizPos)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.mouseScanline, win.mousHorizPos))
 		}
 		imgui.EndPopup()
 		win.isPopup = false
@@ -208,77 +207,10 @@ func (win *winDbgScr) draw() {
 	// if mouse is hovering over the image. note that if popup menu is active
 	// then imgui.IsItemHovered() is false by definition
 	win.isHovered = imgui.IsItemHovered()
+
+	// draw tool tip
 	if win.isHovered {
-
-		// get mouse position and transform
-		mp := imgui.MousePos().Minus(mouseOrigin)
-		if win.cropped {
-			sz := win.scr.crit.cropPixels.Bounds().Size()
-			mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
-			mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
-			mp.X += float32(television.HorizClksHBlank)
-			mp.Y += float32(win.scr.crit.topScanline)
-		} else {
-			sz := win.scr.crit.pixels.Bounds().Size()
-			mp.X = mp.X / win.getScaledWidth(false) * float32(sz.X)
-			mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
-		}
-
-		win.horizPos = int(mp.X)
-		win.scanline = int(mp.Y)
-
-		// get reflection information
-		var ref reflection.LastResult
-		if win.horizPos < len(win.scr.crit.reflection) && win.scanline < len(win.scr.crit.reflection[win.horizPos]) {
-			ref = win.scr.crit.reflection[win.horizPos][win.scanline]
-		}
-
-		// present tooltip showing pixel coords and CPU state
-		if !win.isCaptured {
-			fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
-			if fmtRes.Address != "" {
-				imgui.BeginTooltip()
-				imgui.Text(fmt.Sprintf("Scanline: %d", win.scanline))
-				imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.horizPos-television.HorizClksHBlank))
-
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-				if win.img.lz.Cart.NumBanks > 1 {
-					imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, ref.Bank))
-				} else {
-					imgui.Text(fmtRes.Address)
-				}
-				imgui.PopStyleColor()
-
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic)
-				imgui.Text(fmtRes.Mnemonic)
-				imgui.PopStyleColor()
-
-				if fmtRes.Operand != "" {
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-					imgui.Text(fmtRes.Operand)
-					imgui.PopStyleColor()
-				}
-
-				imgui.Spacing()
-
-				ref := win.scr.crit.reflection[int(mp.X)][int(mp.Y)]
-				win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
-				imguiText(ref.VideoElement.String())
-
-				tv := strings.Builder{}
-				if win.horizPos < television.HorizClksHBlank {
-					tv.WriteString("HBLANK ")
-				}
-				tv.WriteString(ref.TV.String())
-				if len(tv.String()) > 0 {
-					imgui.Spacing()
-					imgui.Text(tv.String())
-				}
-
-				imgui.EndTooltip()
-			}
-		}
+		win.drawReflectionTooltip(mouseOrigin)
 	}
 
 	// start of tool bar
@@ -343,6 +275,110 @@ func (win *winDbgScr) draw() {
 	win.toolBarHeight = imgui.CursorPosY() - toolBarTop
 
 	imgui.End()
+}
+
+// called from within a win.scr.crit.section Lock()
+func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
+	// get mouse position and transform
+	mp := imgui.MousePos().Minus(mouseOrigin)
+	if win.cropped {
+		sz := win.scr.crit.cropPixels.Bounds().Size()
+		mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
+		mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
+		mp.X += float32(television.HorizClksHBlank)
+		mp.Y += float32(win.scr.crit.topScanline)
+	} else {
+		sz := win.scr.crit.pixels.Bounds().Size()
+		mp.X = mp.X / win.getScaledWidth(false) * float32(sz.X)
+		mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
+	}
+
+	win.mousHorizPos = int(mp.X)
+	win.mouseScanline = int(mp.Y)
+
+	// get reflection information
+	var ref reflection.LastResult
+
+	if win.mousHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mousHorizPos]) {
+		ref = win.scr.crit.reflection[win.mousHorizPos][win.mouseScanline]
+	}
+
+	// present tooltip showing pixel coords and CPU state
+	if win.isCaptured {
+		return
+	}
+
+	imgui.BeginTooltip()
+	defer imgui.EndTooltip()
+
+	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
+	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mousHorizPos-television.HorizClksHBlank))
+
+	if win.overlay {
+		switch win.scr.crit.overlay {
+		case "WSYNC":
+		case "Collisions":
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			if ref.Collision != "" {
+				imgui.Text(ref.Collision)
+			} else {
+				imgui.Text("no collision")
+			}
+		}
+		return
+	}
+
+	fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	if fmtRes.Address == "" {
+		return
+	}
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
+	if ref.Hblank || ref.TV.VBlank {
+		win.img.imguiSwatch(0, 0.5)
+	} else {
+		win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
+	}
+
+	// element information regardless of HBLANK/VBLANK state
+	imguiText(ref.VideoElement.String())
+
+	// add HBLANK/VBLANK information
+	if ref.Hblank {
+		imgui.SameLine()
+		imguiText("[HBLANK]")
+	} else if ref.TV.VBlank {
+		imgui.SameLine()
+		imguiText("[VBLANK]")
+	}
+
+	imgui.Spacing()
+
+	// instruction information
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+	if win.img.lz.Cart.NumBanks > 1 {
+		imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, ref.Bank))
+	} else {
+		imgui.Text(fmtRes.Address)
+	}
+	imgui.PopStyleColor()
+
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic)
+	imgui.Text(fmtRes.Mnemonic)
+	imgui.PopStyleColor()
+
+	if fmtRes.Operand != "" {
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+		imgui.Text(fmtRes.Operand)
+		imgui.PopStyleColor()
+	}
 }
 
 func (win *winDbgScr) setCropping(set bool) {
