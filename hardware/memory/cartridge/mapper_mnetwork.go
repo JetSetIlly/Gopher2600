@@ -110,13 +110,13 @@ func newMnetwork(data []byte) (cartMapper, error) {
 	cart := &mnetwork{}
 	cart.description = "m-network"
 	cart.mappingID = "E7"
-	cart.banks = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
-	for k := 0; k < cart.numBanks(); k++ {
+	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
 		offset := k * bankSize
 		copy(cart.banks[k], data[offset:offset+bankSize])
@@ -148,7 +148,7 @@ func newMnetwork(data []byte) (cartMapper, error) {
 		WriteMemtop: 0x18ff,
 	}
 
-	cart.initialise()
+	cart.Initialise()
 
 	return cart, nil
 }
@@ -164,11 +164,11 @@ func (cart mnetwork) String() string {
 	return s.String()
 }
 
-func (cart mnetwork) id() string {
+func (cart mnetwork) ID() string {
 	return cart.mappingID
 }
 
-func (cart *mnetwork) initialise() {
+func (cart *mnetwork) Initialise() {
 	cart.bank = 0
 	cart.ram256byteIdx = 0
 
@@ -183,7 +183,7 @@ func (cart *mnetwork) initialise() {
 	}
 }
 
-func (cart *mnetwork) read(addr uint16) (uint8, error) {
+func (cart *mnetwork) Read(addr uint16) (uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -199,7 +199,7 @@ func (cart *mnetwork) read(addr uint16) (uint8, error) {
 			data = cart.ram256byte[cart.ram256byteIdx][addr&0x00ff]
 		} else {
 			// if address is not in ram space then read from the last rom bank
-			data = cart.banks[cart.numBanks()-1][addr&0x07ff]
+			data = cart.banks[cart.NumBanks()-1][addr&0x07ff]
 			cart.bankSwitchOnAccess(addr)
 		}
 	} else {
@@ -209,7 +209,7 @@ func (cart *mnetwork) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *mnetwork) write(addr uint16, data uint8) error {
+func (cart *mnetwork) Write(addr uint16, data uint8) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if addr <= 0x03ff && cart.bank == 7 {
 			cart.ram1k[addr&0x03ff] = data
@@ -271,19 +271,19 @@ func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
 	return true
 }
 
-func (cart *mnetwork) numBanks() int {
+func (cart *mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
-func (cart *mnetwork) getBank(addr uint16) (bank int) {
+func (cart *mnetwork) GetBank(addr uint16) (bank int) {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return cart.bank
 	}
 	return cart.ram256byteIdx
 }
 
-func (cart *mnetwork) setBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.numBanks() {
+func (cart *mnetwork) SetBank(addr uint16, bank int) error {
+	if bank < 0 || bank > cart.NumBanks() {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
 	}
 
@@ -298,7 +298,7 @@ func (cart *mnetwork) setBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *mnetwork) saveState() interface{} {
+func (cart *mnetwork) SaveState() interface{} {
 	ram1k := make([]uint8, len(cart.ram1k))
 	copy(ram1k, cart.ram1k)
 
@@ -311,7 +311,7 @@ func (cart *mnetwork) saveState() interface{} {
 	return []interface{}{cart.bank, cart.ram256byteIdx, ram1k, ram256byte}
 }
 
-func (cart *mnetwork) restoreState(state interface{}) error {
+func (cart *mnetwork) RestoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
 	cart.ram256byteIdx = state.([]interface{})[1].(int)
 
@@ -326,21 +326,21 @@ func (cart *mnetwork) restoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *mnetwork) poke(addr uint16, data uint8) error {
+func (cart *mnetwork) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *mnetwork) patch(addr uint16, data uint8) error {
+func (cart *mnetwork) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
-func (cart *mnetwork) listen(addr uint16, data uint8) {
+func (cart *mnetwork) Listen(addr uint16, data uint8) {
 }
 
-func (cart *mnetwork) step() {
+func (cart *mnetwork) Step() {
 }
 
-func (cart mnetwork) getRAM() []memorymap.SubArea {
+func (cart mnetwork) GetRAM() []memorymap.SubArea {
 	cart.ramDetails[0].Active = cart.bank == 7
 	cart.ramDetails[1].Label = fmt.Sprintf("256byte [%d]", cart.ram256byteIdx)
 	return cart.ramDetails

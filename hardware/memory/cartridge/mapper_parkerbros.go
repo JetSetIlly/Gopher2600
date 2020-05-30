@@ -80,19 +80,19 @@ func newparkerBros(data []byte) (cartMapper, error) {
 	cart := &parkerBros{}
 	cart.description = "parker bros"
 	cart.mappingID = "E0"
-	cart.banks = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
-	for k := 0; k < cart.numBanks(); k++ {
+	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
 		offset := k * bankSize
 		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
-	cart.initialise()
+	cart.Initialise()
 
 	return cart, nil
 }
@@ -101,18 +101,18 @@ func (cart parkerBros) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.description, cart.mappingID, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
-func (cart parkerBros) id() string {
+func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
-func (cart *parkerBros) initialise() {
-	cart.segment[0] = cart.numBanks() - 4
-	cart.segment[1] = cart.numBanks() - 3
-	cart.segment[2] = cart.numBanks() - 2
-	cart.segment[3] = cart.numBanks() - 1
+func (cart *parkerBros) Initialise() {
+	cart.segment[0] = cart.NumBanks() - 4
+	cart.segment[1] = cart.NumBanks() - 3
+	cart.segment[2] = cart.NumBanks() - 2
+	cart.segment[3] = cart.NumBanks() - 1
 }
 
-func (cart *parkerBros) read(addr uint16) (uint8, error) {
+func (cart *parkerBros) Read(addr uint16) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.segment[0]][addr&0x03ff]
@@ -127,7 +127,7 @@ func (cart *parkerBros) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *parkerBros) write(addr uint16, data uint8) error {
+func (cart *parkerBros) Write(addr uint16, data uint8) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
@@ -199,11 +199,11 @@ func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
 	return true
 }
 
-func (cart parkerBros) numBanks() int {
+func (cart parkerBros) NumBanks() int {
 	return 8
 }
 
-func (cart parkerBros) getBank(addr uint16) int {
+func (cart parkerBros) GetBank(addr uint16) int {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.segment[0]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
@@ -214,8 +214,8 @@ func (cart parkerBros) getBank(addr uint16) int {
 	return cart.segment[3]
 }
 
-func (cart *parkerBros) setBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.numBanks() {
+func (cart *parkerBros) SetBank(addr uint16, bank int) error {
+	if bank < 0 || bank > cart.NumBanks() {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
 	}
 
@@ -234,29 +234,29 @@ func (cart *parkerBros) setBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *parkerBros) saveState() interface{} {
+func (cart *parkerBros) SaveState() interface{} {
 	return cart.segment
 }
 
-func (cart *parkerBros) restoreState(state interface{}) error {
+func (cart *parkerBros) RestoreState(state interface{}) error {
 	cart.segment = state.([len(cart.segment)]int)
 	return nil
 }
 
-func (cart *parkerBros) poke(addr uint16, data uint8) error {
+func (cart *parkerBros) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *parkerBros) patch(addr uint16, data uint8) error {
+func (cart *parkerBros) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
-func (cart *parkerBros) listen(addr uint16, data uint8) {
+func (cart *parkerBros) Listen(addr uint16, data uint8) {
 }
 
-func (cart *parkerBros) step() {
+func (cart *parkerBros) Step() {
 }
 
-func (cart parkerBros) getRAM() []memorymap.SubArea {
+func (cart parkerBros) GetRAM() []memorymap.SubArea {
 	return nil
 }

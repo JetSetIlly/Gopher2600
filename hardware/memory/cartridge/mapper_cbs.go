@@ -49,13 +49,13 @@ func newCBS(data []byte) (cartMapper, error) {
 	cart := &cbs{}
 	cart.description = "CBS"
 	cart.mappingID = "FA"
-	cart.banks = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) != bankSize*cart.numBanks() {
+	if len(data) != bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
-	for k := 0; k < cart.numBanks(); k++ {
+	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
 		offset := k * bankSize
 		copy(cart.banks[k], data[offset:offset+bankSize])
@@ -75,7 +75,7 @@ func newCBS(data []byte) (cartMapper, error) {
 		WriteMemtop: 0x107f,
 	}
 
-	cart.initialise()
+	cart.Initialise()
 
 	return cart, nil
 }
@@ -84,18 +84,18 @@ func (cart cbs) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
-func (cart cbs) id() string {
+func (cart cbs) ID() string {
 	return cart.mappingID
 }
 
-func (cart *cbs) initialise() {
+func (cart *cbs) Initialise() {
 	cart.bank = len(cart.banks) - 1
 	for i := range cart.ram {
 		cart.ram[i] = 0x00
 	}
 }
 
-func (cart *cbs) read(addr uint16) (uint8, error) {
+func (cart *cbs) Read(addr uint16) (uint8, error) {
 	if addr >= 0x0100 && addr <= 0x01ff {
 		return cart.ram[addr-0x100], nil
 	}
@@ -113,7 +113,7 @@ func (cart *cbs) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *cbs) write(addr uint16, data uint8) error {
+func (cart *cbs) Write(addr uint16, data uint8) error {
 	if addr <= 0x00ff {
 		cart.ram[addr] = data
 		return nil
@@ -132,17 +132,17 @@ func (cart *cbs) write(addr uint16, data uint8) error {
 	return nil
 }
 
-func (cart *cbs) numBanks() int {
+func (cart *cbs) NumBanks() int {
 	return 3
 }
 
-func (cart cbs) getBank(addr uint16) int {
+func (cart cbs) GetBank(addr uint16) int {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
 	return cart.bank
 }
 
-func (cart *cbs) setBank(addr uint16, bank int) error {
+func (cart *cbs) SetBank(addr uint16, bank int) error {
 	if bank < 0 || bank > len(cart.banks) {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
 	}
@@ -150,33 +150,33 @@ func (cart *cbs) setBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *cbs) saveState() interface{} {
+func (cart *cbs) SaveState() interface{} {
 	superchip := make([]uint8, len(cart.ram))
 	copy(superchip, cart.ram)
 	return []interface{}{cart.bank, superchip}
 }
 
-func (cart *cbs) restoreState(state interface{}) error {
+func (cart *cbs) RestoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
 	copy(cart.ram, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
-func (cart *cbs) poke(addr uint16, data uint8) error {
+func (cart *cbs) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *cbs) patch(addr uint16, data uint8) error {
+func (cart *cbs) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
-func (cart *cbs) listen(addr uint16, data uint8) {
+func (cart *cbs) Listen(addr uint16, data uint8) {
 }
 
-func (cart *cbs) step() {
+func (cart *cbs) Step() {
 }
 
-func (cart cbs) getRAM() []memorymap.SubArea {
+func (cart cbs) GetRAM() []memorymap.SubArea {
 	if cart.ram == nil {
 		return nil
 	}

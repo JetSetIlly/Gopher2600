@@ -57,7 +57,7 @@ func (cart Cartridge) String() string {
 
 // ID returns the cartridge mapping ID
 func (cart Cartridge) ID() string {
-	return cart.mapper.id()
+	return cart.mapper.ID()
 }
 
 // Peek is an implementation of memory.DebuggerBus. Address must be normalised.
@@ -69,23 +69,23 @@ func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
 // cartridge bank. See Patch for a different method. Address must be
 // normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.poke(addr^memorymap.OriginCart, data)
+	return cart.mapper.Poke(addr^memorymap.OriginCart, data)
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
 // cartridge memory. It differs from Poke in that respect
 func (cart *Cartridge) Patch(offset uint16, data uint8) error {
-	return cart.mapper.patch(offset, data)
+	return cart.mapper.Patch(offset, data)
 }
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	return cart.mapper.read(addr ^ memorymap.OriginCart)
+	return cart.mapper.Read(addr ^ memorymap.OriginCart)
 }
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.write(addr^memorymap.OriginCart, data)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -193,19 +193,19 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 // Initialise the cartridge
 func (cart *Cartridge) Initialise() {
-	cart.mapper.initialise()
+	cart.mapper.Initialise()
 }
 
 // NumBanks returns the number of banks in the catridge
 func (cart Cartridge) NumBanks() int {
-	return cart.mapper.numBanks()
+	return cart.mapper.NumBanks()
 }
 
 // GetBank returns the current bank number for the specified address
 //
 // Address must be a normlised cartridge address.
 func (cart Cartridge) GetBank(addr uint16) int {
-	return cart.mapper.getBank(addr & memorymap.AddressMaskCart)
+	return cart.mapper.GetBank(addr & memorymap.AddressMaskCart)
 }
 
 // SetBank maps the specified address such that it references the specified
@@ -214,18 +214,18 @@ func (cart Cartridge) GetBank(addr uint16) int {
 //
 // NOTE: For some cartridge types, the specific address is not important
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	return cart.mapper.setBank(addr&memorymap.AddressMaskCart, bank)
+	return cart.mapper.SetBank(addr&memorymap.AddressMaskCart, bank)
 }
 
 // SaveState notes and returns the current state of the cartridge (RAM
 // contents, selected bank)
 func (cart *Cartridge) SaveState() interface{} {
-	return cart.mapper.saveState()
+	return cart.mapper.SaveState()
 }
 
 // RestoreState retuns the state of the cartridge to a previously known state
 func (cart *Cartridge) RestoreState(state interface{}) error {
-	return cart.mapper.restoreState(state)
+	return cart.mapper.RestoreState(state)
 }
 
 // Listen for data at the specified address.
@@ -240,18 +240,18 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 // address space. When this address is triggered, the tigervision cartridge
 // will use whatever is on the data bus to switch banks.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
-	cart.mapper.listen(addr, data)
+	cart.mapper.Listen(addr, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
 // change its state as a result. In fact, very few cartridges care about this.
 func (cart Cartridge) Step() {
-	cart.mapper.step()
+	cart.mapper.Step()
 }
 
 // GetRAM returns an array of memorymap.SubArea or nil if catridge contains no RAM
 func (cart Cartridge) GetRAM() []memorymap.SubArea {
-	return cart.mapper.getRAM()
+	return cart.mapper.GetRAM()
 }
 
 // GetStaticArea returns interface to StaticArea of the cartridge. Unlike other

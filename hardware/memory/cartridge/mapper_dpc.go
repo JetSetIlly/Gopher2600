@@ -87,22 +87,22 @@ func newDPC(data []byte) (*dpc, error) {
 	cart := &dpc{}
 	cart.mappingID = "DPC"
 	cart.description = "DPC Pitfall2 style"
-	cart.banks = make([][]uint8, cart.numBanks())
+	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) < bankSize*cart.numBanks()+gfxSize {
+	if len(data) < bankSize*cart.NumBanks()+gfxSize {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
-	for k := 0; k < cart.numBanks(); k++ {
+	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, bankSize)
 		offset := k * bankSize
 		cart.banks[k] = data[offset : offset+bankSize]
 	}
 
-	gfxStart := cart.numBanks() * bankSize
+	gfxStart := cart.NumBanks() * bankSize
 	cart.gfx = data[gfxStart : gfxStart+gfxSize]
 
-	cart.initialise()
+	cart.Initialise()
 
 	return cart, nil
 }
@@ -111,15 +111,15 @@ func (cart dpc) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
-func (cart dpc) id() string {
+func (cart dpc) ID() string {
 	return cart.mappingID
 }
 
-func (cart *dpc) initialise() {
+func (cart *dpc) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-func (cart *dpc) read(addr uint16) (uint8, error) {
+func (cart *dpc) Read(addr uint16) (uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
@@ -235,7 +235,7 @@ func (cart *dpc) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *dpc) write(addr uint16, data uint8) error {
+func (cart *dpc) Write(addr uint16, data uint8) error {
 	if addr == 0x0ff8 {
 		cart.bank = 0
 	} else if addr == 0x0ff9 {
@@ -294,39 +294,39 @@ func (cart *dpc) write(addr uint16, data uint8) error {
 	return nil
 }
 
-func (cart dpc) numBanks() int {
+func (cart dpc) NumBanks() int {
 	return 2
 }
 
-func (cart *dpc) setBank(addr uint16, bank int) error {
+func (cart *dpc) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
 	return nil
 }
 
-func (cart dpc) getBank(addr uint16) int {
+func (cart dpc) GetBank(addr uint16) int {
 	return cart.bank
 }
 
-func (cart *dpc) saveState() interface{} {
+func (cart *dpc) SaveState() interface{} {
 	return nil
 }
 
-func (cart *dpc) restoreState(state interface{}) error {
+func (cart *dpc) RestoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *dpc) poke(addr uint16, data uint8) error {
+func (cart *dpc) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *dpc) patch(addr uint16, data uint8) error {
+func (cart *dpc) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
-func (cart *dpc) listen(addr uint16, data uint8) {
+func (cart *dpc) Listen(addr uint16, data uint8) {
 }
 
-func (cart *dpc) step() {
+func (cart *dpc) Step() {
 	// clock music enabled data fetchers if oscClock is active [col 7, ln 25-27]
 
 	// documented update rate is 42Khz [col 7, ln 25-27]
@@ -356,7 +356,7 @@ func (cart *dpc) step() {
 	}
 }
 
-func (cart dpc) getRAM() []memorymap.SubArea {
+func (cart dpc) GetRAM() []memorymap.SubArea {
 	return nil
 }
 

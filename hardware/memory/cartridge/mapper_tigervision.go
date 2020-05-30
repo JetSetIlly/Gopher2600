@@ -98,7 +98,7 @@ func newTigervision(data []byte) (cartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+bankSize])
 	}
 
-	cart.initialise()
+	cart.Initialise()
 
 	return cart, nil
 }
@@ -107,18 +107,18 @@ func (cart tigervision) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.description, cart.mappingID, cart.segment[0], cart.segment[1])
 }
 
-func (cart tigervision) id() string {
+func (cart tigervision) ID() string {
 	return cart.mappingID
 }
 
-func (cart *tigervision) initialise() {
-	cart.segment[0] = cart.numBanks() - 2
+func (cart *tigervision) Initialise() {
+	cart.segment[0] = cart.NumBanks() - 2
 
 	// the last segment always points to the last bank
-	cart.segment[1] = cart.numBanks() - 1
+	cart.segment[1] = cart.NumBanks() - 1
 }
 
-func (cart *tigervision) read(addr uint16) (uint8, error) {
+func (cart *tigervision) Read(addr uint16) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
 		data = cart.banks[cart.segment[0]][addr&0x07ff]
@@ -128,23 +128,23 @@ func (cart *tigervision) read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *tigervision) write(addr uint16, data uint8) error {
+func (cart *tigervision) Write(addr uint16, data uint8) error {
 	return errors.New(errors.BusError, addr)
 }
 
-func (cart tigervision) numBanks() int {
+func (cart tigervision) NumBanks() int {
 	return len(cart.banks)
 }
 
-func (cart *tigervision) getBank(addr uint16) (bank int) {
+func (cart *tigervision) GetBank(addr uint16) (bank int) {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return cart.segment[0]
 	}
 	return cart.segment[1]
 }
 
-func (cart *tigervision) setBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.numBanks() {
+func (cart *tigervision) SetBank(addr uint16, bank int) error {
+	if bank < 0 || bank > cart.NumBanks() {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
 	}
 
@@ -159,24 +159,24 @@ func (cart *tigervision) setBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart *tigervision) saveState() interface{} {
+func (cart *tigervision) SaveState() interface{} {
 	return cart.segment
 }
 
-func (cart *tigervision) restoreState(state interface{}) error {
+func (cart *tigervision) RestoreState(state interface{}) error {
 	cart.segment = state.([len(cart.segment)]int)
 	return nil
 }
 
-func (cart *tigervision) poke(addr uint16, data uint8) error {
+func (cart *tigervision) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *tigervision) patch(addr uint16, data uint8) error {
+func (cart *tigervision) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
-func (cart *tigervision) listen(addr uint16, data uint8) {
+func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
 	// listen() function.
@@ -187,7 +187,7 @@ func (cart *tigervision) listen(addr uint16, data uint8) {
 	// 3 bits of the value being written is used to set the segment.
 
 	if addr < 0x40 {
-		cart.segment[0] = int(data & uint8(cart.numBanks()-1))
+		cart.segment[0] = int(data & uint8(cart.NumBanks()-1))
 	}
 
 	// this bank switching method causes a problem when the CPU wants to write
@@ -195,9 +195,9 @@ func (cart *tigervision) listen(addr uint16, data uint8) {
 	// tigervision cartridges use mirror addresses to write to the TIA.
 }
 
-func (cart *tigervision) step() {
+func (cart *tigervision) Step() {
 }
 
-func (cart tigervision) getRAM() []memorymap.SubArea {
+func (cart tigervision) GetRAM() []memorymap.SubArea {
 	return nil
 }
