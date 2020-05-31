@@ -20,9 +20,8 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
 const winCollisionsTitle = "Collisions"
@@ -34,8 +33,7 @@ type winCollisions struct {
 	img *SdlImgui
 
 	// ready flag colors
-	colFlgReadyOn  imgui.PackedColor
-	colFlgReadyOff imgui.PackedColor
+	colIndicator imgui.PackedColor
 }
 
 func newWinCollisions(img *SdlImgui) (managedWindow, error) {
@@ -48,8 +46,7 @@ func newWinCollisions(img *SdlImgui) (managedWindow, error) {
 
 func (win *winCollisions) init() {
 	win.widgetDimensions.init()
-	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
-	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
+	win.colIndicator = imgui.PackedColorFromVec4(win.img.cols.CollisionIndicator)
 }
 
 func (win *winCollisions) destroy() {
@@ -64,40 +61,68 @@ func (win *winCollisions) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{623, 527}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCollisionsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.Text("CXM0P ")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXM0P))
+	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0P, video.CollisionMask)
 
 	imgui.Text("CXM1P ")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXM1P))
+	win.drawCollision(win.img.lz.Collisions.CXM1P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1P, video.CollisionMask)
 
 	imgui.Text("CXP0FB")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXP0FB))
+	win.drawCollision(win.img.lz.Collisions.CXP0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP0FB, video.CollisionMask)
 
 	imgui.Text("CXP1FB")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXP1FB))
+	win.drawCollision(win.img.lz.Collisions.CXP1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP1FB, video.CollisionMask)
 
 	imgui.Text("CXM0FB")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXM0FB))
+	win.drawCollision(win.img.lz.Collisions.CXM0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0FB, video.CollisionMask)
 
 	imgui.Text("CXM1FB")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXM1FB))
+	win.drawCollision(win.img.lz.Collisions.CXM1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1FB, video.CollisionMask)
 
 	imgui.Text("CXBLPF")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXBLPF))
+	win.drawCollision(win.img.lz.Collisions.CXBLPF, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXBLPF, video.CollisionCXBLPFMask)
 
 	imgui.Text("CXPPMM")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%08b", win.img.lz.Collisions.CXPPMM))
+	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
+
+	if imgui.Button("Clear Collisions") {
+		win.img.lz.Dbg.PushRawEvent(func() {
+			win.img.lz.Dbg.VCS.TIA.Video.Collisions.Clear()
+		})
+	}
 
 	imgui.End()
+}
+
+func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1)
+	for i := 0; i < 8; i++ {
+		if mask<<i&0x80 == 0x80 {
+			if (read<<i)&0x80 != 0x80 {
+				seq.nextItemDepressed = true
+			}
+			if seq.rectFill(win.colIndicator) {
+				b := read ^ (0x80 >> i)
+				win.img.lz.Dbg.PushRawEvent(func() {
+					*write = b
+				})
+			}
+		} else {
+			seq.nextItemDepressed = true
+			seq.rectEmpty(win.colIndicator)
+		}
+		seq.sameLine()
+	}
+	seq.end()
 }

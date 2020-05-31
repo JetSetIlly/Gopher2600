@@ -20,7 +20,6 @@
 package video
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/future"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -191,96 +190,7 @@ func (vd *Video) Pixel() uint8 {
 	// other sprites. it is not used when detecting collisions with the
 	// playfield. for playfield collisions we just use the active condition
 	// (the first returned value)
-
-	vd.Collisions.Activity.newPixel()
-
-	if m0k && p1k {
-		vd.Collisions.CXM0P |= 0x80
-		vd.Collisions.setMemory(addresses.CXM0P)
-		vd.Collisions.Activity.add("M0 >< P1")
-	}
-	if m0k && p0k {
-		vd.Collisions.CXM0P |= 0x40
-		vd.Collisions.setMemory(addresses.CXM0P)
-		vd.Collisions.Activity.add("M0 >< P0")
-	}
-
-	if m1k && p0k {
-		vd.Collisions.CXM1P |= 0x80
-		vd.Collisions.setMemory(addresses.CXM1P)
-		vd.Collisions.Activity.add("M1 >< P0")
-	}
-	if m1k && p1k {
-		vd.Collisions.CXM1P |= 0x40
-		vd.Collisions.setMemory(addresses.CXM1P)
-		vd.Collisions.Activity.add("M1 >< P1")
-	}
-
-	// use active bit when comparing with playfield
-	if p0a && pfa {
-		vd.Collisions.CXP0FB |= 0x80
-		vd.Collisions.setMemory(addresses.CXP0FB)
-		vd.Collisions.Activity.add("P0 >< PF")
-	}
-	if p0k && blk {
-		vd.Collisions.CXP0FB |= 0x40
-		vd.Collisions.setMemory(addresses.CXP0FB)
-		vd.Collisions.Activity.add("P0 >< BL")
-	}
-
-	// use active bit when comparing with playfield
-	if p1a && pfa {
-		vd.Collisions.CXP1FB |= 0x80
-		vd.Collisions.setMemory(addresses.CXP1FB)
-		vd.Collisions.Activity.add("P1 >< PF")
-	}
-	if p1k && blk {
-		vd.Collisions.CXP1FB |= 0x40
-		vd.Collisions.setMemory(addresses.CXP1FB)
-		vd.Collisions.Activity.add("P1 >< BL")
-	}
-
-	// use active bit when comparing with playfield
-	if m0a && pfa {
-		vd.Collisions.CXM0FB |= 0x80
-		vd.Collisions.setMemory(addresses.CXM0FB)
-		vd.Collisions.Activity.add("M0 >< PF")
-	}
-	if m0k && blk {
-		vd.Collisions.CXM0FB |= 0x40
-		vd.Collisions.setMemory(addresses.CXM0FB)
-		vd.Collisions.Activity.add("M1 >< BL")
-	}
-
-	// use active bit when comparing with playfield
-	if m1a && pfa {
-		vd.Collisions.CXM1FB |= 0x80
-		vd.Collisions.setMemory(addresses.CXM1FB)
-		vd.Collisions.Activity.add("M1 >< PF")
-	}
-	if m1k && blk {
-		vd.Collisions.CXM1FB |= 0x40
-		vd.Collisions.setMemory(addresses.CXM1FB)
-		vd.Collisions.Activity.add("M1 >< BL")
-	}
-
-	if blk && pfa {
-		vd.Collisions.CXBLPF |= 0x80
-		vd.Collisions.setMemory(addresses.CXBLPF)
-		vd.Collisions.Activity.add("BL >< PF")
-	}
-	// no bit 6 for CXBLPF
-
-	if p0k && p1k {
-		vd.Collisions.CXPPMM |= 0x80
-		vd.Collisions.setMemory(addresses.CXPPMM)
-		vd.Collisions.Activity.add("P0 >< P1")
-	}
-	if m0k && m1k {
-		vd.Collisions.CXPPMM |= 0x40
-		vd.Collisions.setMemory(addresses.CXPPMM)
-		vd.Collisions.Activity.add("M0 >< M1")
-	}
+	vd.Collisions.tick(p0k, p1k, m0k, m1k, blk, pfa)
 
 	// apply priorities to get pixel color
 	var col uint8
@@ -571,7 +481,7 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 		vd.Player1.setNUSIZ(data.Value)
 		vd.Missile1.SetNUSIZ(data.Value)
 	case "CXCLR":
-		vd.Collisions.clear()
+		vd.Collisions.Clear()
 	default:
 		return true
 	}

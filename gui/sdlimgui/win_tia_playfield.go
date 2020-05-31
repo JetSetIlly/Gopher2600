@@ -126,7 +126,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFilled(col) {
+		if seq.rectFillTvCol(col) {
 			pf0d ^= 0x80 >> i
 			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF0(pf0d) })
 		}
@@ -147,7 +147,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFilled(col) {
+		if seq.rectFillTvCol(col) {
 			pf1d ^= 0x80 >> i
 			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF1(pf1d) })
 		}
@@ -168,7 +168,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFilled(col) {
+		if seq.rectFillTvCol(col) {
 			pf2d ^= 0x80 >> i
 			win.img.lz.Dbg.PushRawEvent(func() { pf.SetPF2(pf2d) })
 		}
@@ -193,7 +193,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = lz.BackgroundColor
 		}
-		seq.rectFilled(col)
+		seq.rectFillTvCol(col)
 		seq.sameLine()
 	}
 
@@ -210,7 +210,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = lz.BackgroundColor
 		}
-		seq.rectFilled(col)
+		seq.rectFillTvCol(col)
 		seq.sameLine()
 	}
 	seq.end()

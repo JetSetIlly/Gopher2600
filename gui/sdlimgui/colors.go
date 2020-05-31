@@ -81,6 +81,9 @@ type imguiColors struct {
 	// tia window
 	IdxPointer imgui.Vec4
 
+	// collision window
+	CollisionIndicator imgui.Vec4
+
 	// terminal
 	TermBackground           imgui.Vec4
 	TermStyleInput           imgui.Vec4
@@ -147,6 +150,9 @@ func newColors() *imguiColors {
 
 		// tia
 		IdxPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+
+		// collision window
+		CollisionIndicator: imgui.Vec4{0.7, 0.2, 0.2, 1.0},
 
 		// terminal
 		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},

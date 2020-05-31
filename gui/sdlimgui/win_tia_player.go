@@ -112,7 +112,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ngfxSeq.nextItemDepressed = true
 		}
-		if ngfxSeq.rectFilled(col) {
+		if ngfxSeq.rectFillTvCol(col) {
 			od ^= 0x80 >> i
 			win.img.lz.Dbg.PushRawEvent(func() { ps.GfxDataNew = od })
 		}
@@ -136,7 +136,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ogfxSeq.nextItemDepressed = true
 		}
-		if ogfxSeq.rectFilled(col) {
+		if ogfxSeq.rectFillTvCol(col) {
 			nd ^= 0x80 >> i
 			win.img.lz.Dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
 		}

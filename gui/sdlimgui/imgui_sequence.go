@@ -84,7 +84,11 @@ func (seq *drawlistSequence) offsetX(n int) float32 {
 	return seq.startX + float32(n)*(seq.size.X+seq.spacing.X) + seq.size.X*0.5
 }
 
-func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
+func (seq *drawlistSequence) rectFillTvCol(col uint8) (clicked bool) {
+	return seq.rectFill(seq.palette[col])
+}
+
+func (seq *drawlistSequence) rectFill(col imgui.PackedColor) (clicked bool) {
 	var x, y float32
 
 	if seq.nextItemSameLine {
@@ -97,9 +101,6 @@ func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
 
 	// reset sameline flag
 	seq.nextItemSameLine = false
-
-	// get color
-	c := seq.palette[col]
 
 	// position & dimensions of playfield bit
 	a := imgui.Vec2{X: x, Y: y}
@@ -122,11 +123,11 @@ func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
 		a.Y += seq.depressionAmount
 		b.X -= seq.depressionAmount
 		b.Y -= seq.depressionAmount
-		dl.AddRectFilled(a, b, c)
+		dl.AddRectFilled(a, b, col)
 		a.X -= seq.depressionAmount
 		a.Y -= seq.depressionAmount
 	} else {
-		dl.AddRectFilled(a, b, c)
+		dl.AddRectFilled(a, b, col)
 	}
 
 	// record coordinates for use by next element
@@ -137,4 +138,48 @@ func (seq *drawlistSequence) rectFilled(col uint8) (clicked bool) {
 	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
 
 	return clicked
+}
+
+func (seq *drawlistSequence) rectEmpty(col imgui.PackedColor) {
+	var x, y float32
+
+	if seq.nextItemSameLine {
+		x = seq.prevX + seq.size.X + seq.spacing.X
+		y = seq.prevY
+	} else {
+		x = seq.startX
+		y = seq.prevY + seq.size.Y + seq.spacing.Y
+	}
+
+	// reset sameline flag
+	seq.nextItemSameLine = false
+
+	// position & dimensions of playfield bit
+	a := imgui.Vec2{X: x, Y: y}
+	b := a
+	b.X += seq.size.X
+	b.Y += seq.size.Y
+
+	// draw square
+	dl := imgui.WindowDrawList()
+
+	if seq.nextItemDepressed {
+		seq.nextItemDepressed = false
+		a.X += seq.depressionAmount
+		a.Y += seq.depressionAmount
+		b.X -= seq.depressionAmount
+		b.Y -= seq.depressionAmount
+		dl.AddRect(a, b, col)
+		a.X -= seq.depressionAmount
+		a.Y -= seq.depressionAmount
+	} else {
+		dl.AddRect(a, b, col)
+	}
+
+	// record coordinates for use by next element
+	seq.prevX = a.X
+	seq.prevY = a.Y
+
+	// set cursor position for any non colorSequence widgets
+	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
 }
