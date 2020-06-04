@@ -115,6 +115,7 @@ const (
 	CartridgeEjected    = "cartridge error: no cartridge attached"
 	UnpatchableCartType = "cartridge error: cannot patch this cartridge type (%v)"
 	CartridgeStaticOOB  = "cartridge error: static data address to high (%#04x)"
+	HarmonyError        = "harmony error: %v"
 
 	// input
 	UnknownInputEvent     = "input error: %v: unsupported event (%v)"

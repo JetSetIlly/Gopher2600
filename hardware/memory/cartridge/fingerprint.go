@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 )
 
 func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
@@ -59,6 +60,14 @@ func (cart Cartridge) fingerprint32k(data []byte) func([]byte) (cartMapper, erro
 
 func (cart *Cartridge) fingerprint(data []byte) error {
 	var err error
+
+	// harmony cartridges have a recognisable byte sequence. we can use this
+	// regardless of length. any further differentiation can be done in the
+	// harmony emulation itself.
+	if data[0x20] == 0x1e && data[0x21] == 0xab && data[0x22] == 0xad && data[0x23] == 0x10 {
+		cart.mapper, err = harmony.NewHarmony(data)
+		return err
+	}
 
 	switch len(data) {
 	case 2048:

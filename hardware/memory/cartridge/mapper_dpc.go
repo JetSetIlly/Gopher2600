@@ -80,7 +80,7 @@ func (df *dataFetcher) setFlag() {
 	}
 }
 
-func newDPC(data []byte) (*dpc, error) {
+func newDPC(data []byte) (cartMapper, error) {
 	const bankSize = 4096
 	const gfxSize = 2048
 
