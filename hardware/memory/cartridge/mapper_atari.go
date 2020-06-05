@@ -127,9 +127,6 @@ func (cart atari) GetBank(addr uint16) int {
 }
 
 func (cart *atari) SetBank(addr uint16, bank int) error {
-	if bank < 0 || bank >= len(cart.banks) {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
-	}
 	cart.bank = bank
 	return nil
 }

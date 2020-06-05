@@ -55,7 +55,12 @@ void main()
 		return;
 	}
 
-	// tv screen texture
+	// if this is the overlay texture then we're done
+	if (ImageType == 2) {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		return;
+	}
+
 	vec2 coords = Frag_UV.xy;
 
 	// epsilon is equal to one "pixel"
@@ -69,12 +74,7 @@ void main()
 	float lastX;
 	float lastY;
 
-	// if this is the overlay texture then we're done
-	if (ImageType == 2) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-		return;
-	}
-
+	// debug tv screen texture
 	if (ImageType == 1) {
 		if (Cropped > 0) {
 			hblank = Hblank / CropDim.x;
@@ -201,8 +201,7 @@ void main()
 		}
 	}
 
-	// the remainder of the shader are the CRT effects and we only apply these
-	// to the screen texture
+	// basic CRT effects
 
 	// split color channels
 	vec2 split;

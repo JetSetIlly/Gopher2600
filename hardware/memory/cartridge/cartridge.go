@@ -214,6 +214,9 @@ func (cart Cartridge) GetBank(addr uint16) int {
 //
 // NOTE: For some cartridge types, the specific address is not important
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
+	if bank < 0 || bank > cart.mapper.NumBanks()-1 {
+		return errors.New(errors.CartridgeError, "requested bank is invalid")
+	}
 	return cart.mapper.SetBank(addr&memorymap.AddressMaskCart, bank)
 }
 

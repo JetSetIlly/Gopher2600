@@ -283,10 +283,6 @@ func (cart *mnetwork) GetBank(addr uint16) (bank int) {
 }
 
 func (cart *mnetwork) SetBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.NumBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
-	}
-
 	if addr >= 0x0000 && addr <= 0x07ff {
 		cart.bank = bank
 	} else if addr >= 0x0800 && addr <= 0x0fff {

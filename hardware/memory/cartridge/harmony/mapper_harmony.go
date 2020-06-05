@@ -147,7 +147,6 @@ func NewHarmony(data []byte) (*harmony, error) {
 	cart := &harmony{}
 	cart.mappingID = "DPC+"
 	cart.description = "DPC+ (Harmony)"
-	cart.banks = make([][]uint8, cart.NumBanks())
 
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - armSize - freqSize

@@ -34,8 +34,7 @@ type winPlayScr struct {
 	scr *screen
 
 	// textures
-	screenTexture  uint32
-	overlayTexture uint32
+	screenTexture uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -68,12 +67,6 @@ func newWinPlayScr(img *SdlImgui) (managedWindow, error) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.GenTextures(1, &win.overlayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 

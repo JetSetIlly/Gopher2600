@@ -215,10 +215,6 @@ func (cart parkerBros) GetBank(addr uint16) int {
 }
 
 func (cart *parkerBros) SetBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.NumBanks() {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid bank [%d]", cart.mappingID, bank))
-	}
-
 	if addr >= 0x0000 && addr <= 0x03ff {
 		cart.segment[0] = bank
 	} else if addr >= 0x0400 && addr <= 0x07ff {
