@@ -64,12 +64,19 @@ func (win *winPrefs) draw() {
 		win.img.term.pushCommand("PREF TOGGLE RANDPINS")
 	}
 
+	termOnError := win.img.wm.term.openOnError.Get().(bool)
+	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
+		win.img.wm.term.openOnError.Set(termOnError)
+	}
+
 	if imgui.Button("Save") {
+		win.img.prefs.Save()
 		win.img.term.pushCommand("PREF SAVE")
 	}
 
 	imgui.SameLine()
 	if imgui.Button("Restore") {
+		win.img.prefs.Load()
 		win.img.term.pushCommand("PREF LOAD")
 	}
 

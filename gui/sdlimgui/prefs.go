@@ -86,6 +86,11 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		return err
 	}
 
+	err = img.prefs.Add(fmt.Sprintf("%s.terminalOnError", group), &img.wm.term.openOnError)
+	if err != nil {
+		return err
+	}
+
 	// load preferences from disk
 	err = img.prefs.Load()
 	if err != nil {

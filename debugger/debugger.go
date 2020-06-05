@@ -285,7 +285,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
 	if err != nil {
-		dbg.printLine(terminal.StyleError, "%s", err)
+		dbg.printLine(terminal.StyleFeedbackNonInteractive, "%s", err)
 		// continuing because symtable is always valid even if err non-nil
 	}
 

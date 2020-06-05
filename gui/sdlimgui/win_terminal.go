@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/prefs"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -43,6 +44,8 @@ type winTerm struct {
 
 	history    []string
 	historyIdx int
+
+	openOnError prefs.Bool
 }
 
 func newWinTerm(img *SdlImgui) (managedWindow, error) {
@@ -79,6 +82,10 @@ func (win *winTerm) draw() {
 				win.output = append(win.output[1:], t)
 			} else {
 				win.output = append(win.output, t)
+			}
+
+			if win.openOnError.Get().(bool) && t.style == terminal.StyleError {
+				win.setOpen(true)
 			}
 
 			win.moreOutput = true
