@@ -79,10 +79,12 @@ func (dsm *Disassembly) BlessEntry(bank int, address uint16) {
 	}
 }
 
-// FromCartridge initialises a new partial emulation and returns a
-// disassembly from the supplied cartridge filename. - useful for one-shot
-// disassemblies, like the gopher2600 "disasm" mode
+// FromCartridge initialises a new partial emulation and returns a disassembly
+// from the supplied cartridge filename. Useful for one-shot disassemblies,
+// like the gopher2600 "disasm" mode.
 func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
+	dsm := &Disassembly{}
+
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
 	symtable, _ := symbols.ReadSymbolsFile(cartload.Filename)
@@ -94,7 +96,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, errors.New(errors.DisasmError, err)
 	}
 
-	dsm, err := FromMemory(cart, symtable)
+	err = dsm.FromMemory(cart, symtable)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
@@ -103,17 +105,16 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 }
 
 // FromMemory disassembles an existing instance of cartridge memory using a
-// cpu with no flow control.
-func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembly, error) {
-	dsm := &Disassembly{}
-
+// cpu with no flow control. Unlike the FromCartridge() function this function
+// requires an existing instance of Disassembly.
+func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) error {
 	dsm.cart = cart
 	dsm.Symtable = symtable
 	dsm.reference = make([][ref.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
-		return dsm, nil
+		return nil
 	}
 
 	// save cartridge state and defer at end of disassembly. this is necessary
@@ -131,14 +132,14 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
-		return nil, errors.New(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 	mc.NoFlowControl = true
 
 	// decode pass
 	err = dsm.decode(mc)
 	if err != nil {
-		return nil, errors.New(errors.DisasmError, err)
+		return errors.New(errors.DisasmError, err)
 	}
 
 	// count entry types
@@ -161,7 +162,7 @@ func FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) (*Disassembl
 		}
 	}
 
-	return dsm, nil
+	return nil
 }
 
 // NumBanks returns the number of banks in the disassembly.

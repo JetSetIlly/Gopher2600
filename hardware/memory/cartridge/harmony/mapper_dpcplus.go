@@ -17,36 +17,27 @@ package harmony
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// harmony implements the cartMapper interface.
+// dpcPlus implements the cartMapper interface.
 //
 // https://atariage.com/forums/topic/163495-harmony-dpc-programming
-type harmony struct {
+type dpcPlus struct {
 	mappingID   string
 	description string
 
-	arm   []byte
+	// banks and the currently selected bank
 	banks [][]byte
-	data  []byte
-	freq  []byte
+	bank  int
 
-	// the currently selected bank
-	bank int
-
-	fetcher      [8]dataFetcher
-	fracFetcher  [8]fractionalDataFetcher
-	musicFetcher [3]musicDataFetcher
-	window       [4]bool
-
-	// random number generator
-	rng randomNumberFetcher
-
-	// fast fetch read mode
-	fastFatch bool
+	registers DPCplusRegisters
+	static    DPCplusStaticAreas
 
 	// was the last instruction read the opcode for "lda <immediate>"
 	lda bool
@@ -56,95 +47,14 @@ type harmony struct {
 	beats int
 }
 
-type randomNumberFetcher struct {
-	value uint32
-}
-
-func (rng *randomNumberFetcher) next() {
-	if rng.value&(1<<10) != 0 {
-		rng.value = 0x10adab1e ^ ((rng.value >> 11) | (rng.value << 21))
-	} else {
-		rng.value = 0x00 ^ ((rng.value >> 11) | (rng.value << 21))
-	}
-}
-
-func (rng *randomNumberFetcher) prev() {
-	if rng.value&(1<<31) != 0 {
-		rng.value = ((0x10adab1e & rng.value) << 11) | ((0x10adab1e ^ rng.value) >> 21)
-	} else {
-		rng.value = (rng.value << 11) | (rng.value >> 21)
-	}
-}
-
-type musicDataFetcher struct {
-	waveform uint32
-	freq     uint32
-	count    uint32
-}
-
-type dataFetcher struct {
-	low byte
-	hi  byte
-
-	top    byte
-	bottom byte
-}
-
-func (df *dataFetcher) isWindow() bool {
-	// unlike the original DPC format checing to see if a data fetcher is in
-	// its window has to be done on demand. it has to be like this because the
-	// demo ROMs that show off the DPC+ format require it. to put it simply, if
-	// we implemented the window flag is it is described in the DPC patent then
-	// the DPC+ demo ROMs would miss the window by setting the low attribute
-	// toa high (ie. beyond the top value) for the window to caught in the
-	// flag->true condition.
-
-	if df.top > df.bottom {
-		return df.low > df.top || df.low < df.bottom
-	}
-	return df.low > df.top && df.low < df.bottom
-}
-
-func (df *dataFetcher) inc() {
-	df.low++
-	if df.low == 0x00 {
-		df.hi++
-	}
-}
-
-func (df *dataFetcher) dec() {
-	df.low--
-	if df.low == 0x00 {
-		df.hi--
-	}
-}
-
-type fractionalDataFetcher struct {
-	low byte
-	hi  byte
-
-	increment byte
-	count     byte
-}
-
-func (df *fractionalDataFetcher) inc() {
-	df.count += df.increment
-	if df.count < df.increment {
-		df.low++
-		if df.low == 0x00 {
-			df.hi++
-		}
-	}
-}
-
-// NewHarmony is the preferred method of initialisation for the harmony type
-func NewHarmony(data []byte) (*harmony, error) {
+// NewDPCplus is the preferred method of initialisation for the harmony type
+func NewDPCplus(data []byte) (*dpcPlus, error) {
 	const armSize = 3072
 	const bankSize = 4096
 	const dataSize = 4096
 	const freqSize = 1024
 
-	cart := &harmony{}
+	cart := &dpcPlus{}
 	cart.mappingID = "DPC+"
 	cart.description = "DPC+ (Harmony)"
 
@@ -153,11 +63,11 @@ func NewHarmony(data []byte) (*harmony, error) {
 
 	// size check
 	if bankLen%bankSize != 0 {
-		return nil, errors.New(errors.HarmonyError, fmt.Sprintf("%d bytes not supported", len(data)))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: %d bytes not supported", cart.mappingID, len(data)))
 	}
 
 	// partition
-	cart.arm = data[:armSize]
+	cart.static.Arm = data[:armSize]
 
 	// allocate enough banks
 	cart.banks = make([][]uint8, bankLen/bankSize)
@@ -172,8 +82,8 @@ func NewHarmony(data []byte) (*harmony, error) {
 
 	// gfx and frequency table at end of file
 	s := armSize + (bankSize * cart.NumBanks())
-	cart.data = data[s : s+dataSize]
-	cart.freq = data[s+dataSize:]
+	cart.static.Data = data[s : s+dataSize]
+	cart.static.Freq = data[s+dataSize:]
 
 	// initialise cartridge before returning success
 	cart.Initialise()
@@ -181,19 +91,19 @@ func NewHarmony(data []byte) (*harmony, error) {
 	return cart, nil
 }
 
-func (cart harmony) String() string {
+func (cart dpcPlus) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
-func (cart harmony) ID() string {
+func (cart dpcPlus) ID() string {
 	return cart.mappingID
 }
 
-func (cart *harmony) Initialise() {
+func (cart *dpcPlus) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-func (cart *harmony) Read(addr uint16) (uint8, error) {
+func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
 	var data uint8
 
 	// if address is above register space then we only need to check for bank
@@ -215,18 +125,18 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 			data = cart.banks[cart.bank][addr]
 		}
 
-		// if fastFetch mode is on and the preceeding data value was 0xa9 (the
+		// if FastFetch mode is on and the preceeding data value was 0xa9 (the
 		// opcode for LDA <immediate>) then the data we've just read this cycle
 		// should be interpreted as an address to read from. we can do this by
 		// recursing into the Read() function (there is no worry about deep
 		// recursions because we reset the lda flag before recursing and the
 		// lda flag being set is a prerequisite for the recursion to take
 		// place)
-		if cart.fastFatch && cart.lda && data < 0x28 {
+		if cart.registers.FastFetch && cart.lda && data < 0x28 {
 			cart.lda = false
 			return cart.Read(uint16(data))
 		} else {
-			cart.lda = cart.fastFatch && data == 0xa9
+			cart.lda = cart.registers.FastFetch && data == 0xa9
 			return data, nil
 		}
 	}
@@ -238,23 +148,23 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 	switch addr {
 	// random number generator
 	case 0x00:
-		cart.rng.next()
-		data = uint8(cart.rng.value)
+		cart.registers.RNG.next()
+		data = uint8(cart.registers.RNG.Value)
 	case 0x01:
-		cart.rng.prev()
-		data = uint8(cart.rng.value)
+		cart.registers.RNG.prev()
+		data = uint8(cart.registers.RNG.Value)
 	case 0x02:
-		data = uint8(cart.rng.value >> 8)
+		data = uint8(cart.registers.RNG.Value >> 8)
 	case 0x03:
-		data = uint8(cart.rng.value >> 16)
+		data = uint8(cart.registers.RNG.Value >> 16)
 	case 0x04:
-		data = uint8(cart.rng.value >> 24)
+		data = uint8(cart.registers.RNG.Value >> 24)
 
 	// music fetcher
 	case 0x05:
-		data = cart.data[(cart.musicFetcher[0].waveform<<5)+(cart.musicFetcher[0].count>>27)]
-		data += cart.data[(cart.musicFetcher[1].waveform<<5)+(cart.musicFetcher[1].count>>27)]
-		data += cart.data[(cart.musicFetcher[2].waveform<<5)+(cart.musicFetcher[2].count>>27)]
+		data = cart.static.Data[(cart.registers.MusicFetcher[0].Waveform<<5)+(cart.registers.MusicFetcher[0].Count>>27)]
+		data += cart.static.Data[(cart.registers.MusicFetcher[1].Waveform<<5)+(cart.registers.MusicFetcher[1].Count>>27)]
+		data += cart.static.Data[(cart.registers.MusicFetcher[2].Waveform<<5)+(cart.registers.MusicFetcher[2].Count>>27)]
 
 	// reserved
 	case 0x06:
@@ -277,10 +187,10 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 		fallthrough
 	case 0x0f:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.fetcher[f].hi)<<8 | uint16(cart.fetcher[f].low)
+		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
 		dataAddr = dataAddr & 0x0fff
-		data = cart.data[dataAddr]
-		cart.fetcher[f].inc()
+		data = cart.static.Data[dataAddr]
+		cart.registers.Fetcher[f].inc()
 
 	// data fetcher (windowed)
 	case 0x10:
@@ -299,12 +209,12 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 		fallthrough
 	case 0x17:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.fetcher[f].hi)<<8 | uint16(cart.fetcher[f].low)
+		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
 		dataAddr = dataAddr & 0x0fff
-		if cart.fetcher[f].isWindow() {
-			data = cart.data[dataAddr]
+		if cart.registers.Fetcher[f].isWindow() {
+			data = cart.static.Data[dataAddr]
 		}
-		cart.fetcher[f].inc()
+		cart.registers.Fetcher[f].inc()
 
 	// fractional data fetcher
 	case 0x18:
@@ -323,10 +233,10 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 		fallthrough
 	case 0x1f:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.fracFetcher[f].hi)<<8 | uint16(cart.fracFetcher[f].low)
+		dataAddr := uint16(cart.registers.FracFetcher[f].Hi)<<8 | uint16(cart.registers.FracFetcher[f].Low)
 		dataAddr = dataAddr & 0x0fff
-		data = cart.data[dataAddr]
-		cart.fracFetcher[f].inc()
+		data = cart.static.Data[dataAddr]
+		cart.registers.FracFetcher[f].inc()
 
 	// data fetcher window flag
 	case 0x20:
@@ -337,7 +247,7 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 		fallthrough
 	case 0x23:
 		f := addr & 0x0007
-		if cart.fetcher[f].isWindow() {
+		if cart.registers.Fetcher[f].isWindow() {
 			data = 0xff
 		}
 
@@ -351,7 +261,7 @@ func (cart *harmony) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *harmony) Write(addr uint16, data uint8) error {
+func (cart *dpcPlus) Write(addr uint16, data uint8) error {
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr == 0x0ff6 {
@@ -390,7 +300,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x2f:
 		f := addr & 0x0007
-		cart.fracFetcher[f].low = data
+		cart.registers.FracFetcher[f].Low = data
 
 	// fractional data fetcher, high
 	case 0x30:
@@ -409,7 +319,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x37:
 		f := addr & 0x0007
-		cart.fracFetcher[f].hi = data
+		cart.registers.FracFetcher[f].Hi = data
 
 	// fractional data fetcher, incrememnt
 	case 0x38:
@@ -428,8 +338,8 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x3f:
 		f := addr & 0x0007
-		cart.fracFetcher[f].increment = data
-		cart.fracFetcher[f].count = data
+		cart.registers.FracFetcher[f].Increment = data
+		cart.registers.FracFetcher[f].Count = data
 
 	// data fetcher, window top
 	case 0x40:
@@ -448,7 +358,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x47:
 		f := addr & 0x0007
-		cart.fetcher[f].top = data
+		cart.registers.Fetcher[f].Top = data
 
 	// data fetcher, window bottom
 	case 0x48:
@@ -467,7 +377,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x4f:
 		f := addr & 0x0007
-		cart.fetcher[f].bottom = data
+		cart.registers.Fetcher[f].Bottom = data
 
 	// data fetcher, low pointer
 	case 0x50:
@@ -486,7 +396,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x57:
 		f := addr & 0x0007
-		cart.fetcher[f].low = data
+		cart.registers.Fetcher[f].Low = data
 
 	// fast fetch mode
 	case 0x58:
@@ -497,7 +407,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		//  reads use LDA Absolute addressing (LDA DF0DATA) which takes 4 cycles to
 		//  process.  Fast Fetch Mode intercepts LDA Immediate addressing (LDA #<DF0DATA)
 		//  which takes only 2 cycles!  Only immediate values < $28 are intercepted
-		cart.fastFatch = data == 0
+		cart.registers.FastFetch = data == 0
 
 	// function support - parameter
 	case 0x59:
@@ -511,9 +421,9 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 
 	// waveforms
 	case 0x5d:
-		cart.musicFetcher[0].waveform = uint32(data & 0x7f)
+		cart.registers.MusicFetcher[0].Waveform = uint32(data & 0x7f)
 	case 0x5e:
-		cart.musicFetcher[1].waveform = uint32(data & 0x7f)
+		cart.registers.MusicFetcher[1].Waveform = uint32(data & 0x7f)
 	case 0x5f:
 		// ----------------------------------------
 		//  Waveforms
@@ -526,7 +436,7 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		//
 		//  Valid values are 0-127 and point to the 4K Display Data bank.  The formula
 		//  (* & $1fff)/32 as shown below will calculate the value for you
-		cart.musicFetcher[2].waveform = uint32(data & 0x7f)
+		cart.registers.MusicFetcher[2].Waveform = uint32(data & 0x7f)
 
 	// data fetcher, push stack
 	case 0x60:
@@ -552,10 +462,10 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		//  then Push to it.  The Data Fetcher's pointer will be decremented BEFORE
 		//  the data is written.
 		f := addr & 0x0007
-		cart.fetcher[f].dec()
-		dataAddr := uint16(cart.fetcher[f].hi)<<8 | uint16(cart.fetcher[f].low)
+		cart.registers.Fetcher[f].dec()
+		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		cart.data[dataAddr] = data
+		cart.static.Data[dataAddr] = data
 
 	// data fetcher, high pointer
 	case 0x68:
@@ -574,40 +484,40 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		fallthrough
 	case 0x6f:
 		f := addr & 0x0007
-		cart.fetcher[f].hi = data
+		cart.registers.Fetcher[f].Hi = data
 
 	// random number initialisation
 	case 0x70:
-		cart.rng.value = 0x2b435044
+		cart.registers.RNG.Value = 0x2b435044
 	case 0x71:
-		cart.rng.value &= 0xffffff00
-		cart.rng.value |= uint32(data)
+		cart.registers.RNG.Value &= 0xffffff00
+		cart.registers.RNG.Value |= uint32(data)
 	case 0x72:
-		cart.rng.value &= 0xffff00ff
-		cart.rng.value |= uint32(data) << 8
+		cart.registers.RNG.Value &= 0xffff00ff
+		cart.registers.RNG.Value |= uint32(data) << 8
 	case 0x73:
-		cart.rng.value &= 0xff00ffff
-		cart.rng.value |= uint32(data) << 16
+		cart.registers.RNG.Value &= 0xff00ffff
+		cart.registers.RNG.Value |= uint32(data) << 16
 	case 0x74:
-		cart.rng.value &= 0x00ffffff
-		cart.rng.value |= uint32(data) << 24
+		cart.registers.RNG.Value &= 0x00ffffff
+		cart.registers.RNG.Value |= uint32(data) << 24
 
 	// musical notes
 	case 0x75:
-		cart.musicFetcher[0].freq = uint32(cart.freq[data<<2])
-		cart.musicFetcher[0].freq += uint32(cart.freq[(data<<2)+1]) << 8
-		cart.musicFetcher[0].freq += uint32(cart.freq[(data<<2)+2]) << 16
-		cart.musicFetcher[0].freq += uint32(cart.freq[(data<<2)+3]) << 24
+		cart.registers.MusicFetcher[0].Freq = uint32(cart.static.Freq[data<<2])
+		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 	case 0x76:
-		cart.musicFetcher[1].freq = uint32(cart.freq[data<<2])
-		cart.musicFetcher[1].freq += uint32(cart.freq[(data<<2)+1]) << 8
-		cart.musicFetcher[1].freq += uint32(cart.freq[(data<<2)+2]) << 16
-		cart.musicFetcher[1].freq += uint32(cart.freq[(data<<2)+3]) << 24
+		cart.registers.MusicFetcher[1].Freq = uint32(cart.static.Freq[data<<2])
+		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 	case 0x77:
-		cart.musicFetcher[2].freq = uint32(cart.freq[data<<2])
-		cart.musicFetcher[2].freq += uint32(cart.freq[(data<<2)+1]) << 8
-		cart.musicFetcher[2].freq += uint32(cart.freq[(data<<2)+2]) << 16
-		cart.musicFetcher[2].freq += uint32(cart.freq[(data<<2)+3]) << 24
+		cart.registers.MusicFetcher[2].Freq = uint32(cart.static.Freq[data<<2])
+		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 
 	// data fetcher, queue
 	case 0x78:
@@ -633,48 +543,48 @@ func (cart *harmony) Write(addr uint16, data uint8) error {
 		//  then Write to it  The Data Fetcher's pointer will be incremented AFTER
 		//  the data is written.
 		f := addr & 0x0007
-		dataAddr := uint16(cart.fetcher[f].hi)<<8 | uint16(cart.fetcher[f].low)
+		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		cart.data[dataAddr] = data
-		cart.fetcher[f].inc()
+		cart.static.Data[dataAddr] = data
+		cart.registers.Fetcher[f].inc()
 	}
 
 	return nil
 }
 
-func (cart harmony) NumBanks() int {
+func (cart dpcPlus) NumBanks() int {
 	return len(cart.banks)
 }
 
-func (cart *harmony) SetBank(addr uint16, bank int) error {
+func (cart *dpcPlus) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
 	return nil
 }
 
-func (cart harmony) GetBank(addr uint16) int {
+func (cart dpcPlus) GetBank(addr uint16) int {
 	return cart.bank
 }
 
-func (cart *harmony) SaveState() interface{} {
+func (cart *dpcPlus) SaveState() interface{} {
 	return nil
 }
 
-func (cart *harmony) RestoreState(state interface{}) error {
+func (cart *dpcPlus) RestoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *harmony) Poke(addr uint16, data uint8) error {
+func (cart *dpcPlus) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
-func (cart *harmony) Patch(addr uint16, data uint8) error {
+func (cart *dpcPlus) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
-func (cart *harmony) Listen(addr uint16, data uint8) {
+func (cart *dpcPlus) Listen(addr uint16, data uint8) {
 }
 
-func (cart *harmony) Step() {
+func (cart *dpcPlus) Step() {
 	// sample rate of 20KHz.
 	//
 	// Step() is called at a rate of 1.19Mhz. so:
@@ -689,35 +599,124 @@ func (cart *harmony) Step() {
 	cart.beats++
 	if cart.beats%59 == 0 {
 		cart.beats = 0
-		cart.musicFetcher[0].count += cart.musicFetcher[0].freq
-		cart.musicFetcher[1].count += cart.musicFetcher[1].freq
-		cart.musicFetcher[2].count += cart.musicFetcher[2].freq
+		cart.registers.MusicFetcher[0].Count += cart.registers.MusicFetcher[0].Freq
+		cart.registers.MusicFetcher[1].Count += cart.registers.MusicFetcher[1].Freq
+		cart.registers.MusicFetcher[2].Count += cart.registers.MusicFetcher[2].Freq
 	}
 }
 
-func (cart harmony) GetRAM() []memorymap.SubArea {
+func (cart dpcPlus) GetRAM() []memorymap.SubArea {
 	return nil
 }
 
-// StaticRead implements the StaticArea interface
-func (cart harmony) StaticRead(addr uint16) (uint8, error) {
-	if int(addr) >= len(cart.data) {
-		return 0, errors.New(errors.CartridgeStaticOOB, addr)
-	}
-
-	return cart.data[addr], nil
+// GetRegisters implements the bus.CartDebugBus interface
+func (cart dpcPlus) GetRegisters() bus.CartRegisters {
+	return cart.registers
 }
 
-// StaticWrite implements the StaticArea interface
-func (cart *harmony) StaticWrite(addr uint16, data uint8) error {
-	if int(addr) >= len(cart.data) {
+// PutRegister implements the bus.CartDebugBus interface
+//
+// Register specification is divided with the "::" string. The following table
+// describes what the valid register strings and, after the = sign, the type to
+// which the data argument will be converted.
+//
+//	fetcher::%int::hi = uint8
+//	fetcher::%int::low = uint8
+//	fetcher::%int::top = uint8
+//	fetcher::%int::bottom = uint8
+//	frac::%int::hi = uint8
+//	frac::%int::low = uint8
+//	frac::%int::increment = uint8
+//	frac::%int::count = uint8
+//	music::%int::waveform = uint8
+//	music::%int::freq = uint8
+//	music::%int::count = uint8
+//	rng = uint8
+//	fastfetch = bool
+//
+// note that PutRegister() will panic() if the register or data string is invalid.
+func (cart *dpcPlus) PutRegister(register string, data string) {
+	// most data is expected to an integer (a uint8 specifically) so we try
+	// to convert it here. if it doesn't convert then it doesn't matter
+	d, _ := strconv.ParseUint(data, 16, 8)
+
+	r := strings.Split(register, "::")
+	switch r[0] {
+	case "fetcher":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.Fetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "hi":
+			cart.registers.Fetcher[f].Hi = uint8(d)
+		case "low":
+			cart.registers.Fetcher[f].Low = uint8(d)
+		case "top":
+			cart.registers.Fetcher[f].Top = uint8(d)
+		case "bottom":
+			cart.registers.Fetcher[f].Bottom = uint8(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "frac":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.FracFetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "hi":
+			cart.registers.FracFetcher[f].Hi = uint8(d)
+		case "low":
+			cart.registers.FracFetcher[f].Low = uint8(d)
+		case "increment":
+			cart.registers.FracFetcher[f].Increment = uint8(d)
+		case "count":
+			cart.registers.FracFetcher[f].Count = uint8(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "music":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.MusicFetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "waveform":
+			cart.registers.MusicFetcher[f].Waveform = uint32(d)
+		case "freq":
+			cart.registers.MusicFetcher[f].Freq = uint32(d)
+		case "increment":
+			cart.registers.MusicFetcher[f].Count = uint32(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "rng":
+		cart.registers.RNG.Value = uint32(d)
+	case "fastfetch":
+		switch data {
+		case "true":
+			cart.registers.FastFetch = true
+		case "false":
+			cart.registers.FastFetch = false
+		default:
+			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
+		}
+	default:
+		panic(fmt.Sprintf("unrecognised variable [%s]", register))
+	}
+}
+
+// GetStaticAreas implements the bus.CartDebugBus interface
+func (cart dpcPlus) GetStaticAreas() bus.CartStaticAreas {
+	return bus.CartStaticAreas(cart.static)
+}
+
+// StaticWrite implements the bus.CartDebugBus interface
+func (cart *dpcPlus) StaticWrite(addr uint16, data uint8) error {
+	if int(addr) >= len(cart.static.Data) {
 		return errors.New(errors.CartridgeStaticOOB, addr)
 	}
-	cart.data[addr] = data
+	cart.static.Data[addr] = data
 	return nil
-}
-
-// StaticSize implements the StaticArea interface
-func (cart harmony) StaticSize() int {
-	return len(cart.data)
 }

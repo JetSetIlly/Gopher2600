@@ -21,7 +21,9 @@
 // memory package documentation.
 package bus
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+)
 
 // CPUBus defines the operations for the memory system when accessed from the CPU
 // All memory areas implement this interface because they are all accessible
@@ -68,12 +70,4 @@ type ChipBus interface {
 // practice, this includes the front panel in addition to joysticks, etc.
 type InputDeviceBus interface {
 	InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8)
-}
-
-// DebuggerBus defines the meta-operations for all memory areas. Think of these
-// functions as "debugging" functions, that is operations outside of the normal
-// operation of the machine.
-type DebuggerBus interface {
-	Peek(address uint16) (uint8, error)
-	Poke(address uint16, value uint8) error
 }

@@ -257,11 +257,9 @@ func (cart Cartridge) GetRAM() []memorymap.SubArea {
 	return cart.mapper.GetRAM()
 }
 
-// GetStaticArea returns interface to StaticArea of the cartridge. Unlike other
-// optional cartridge features (RAM, stepping, listening), static areas can
-// only be acceseed through the returned interface.
-func (cart Cartridge) GetStaticArea() StaticArea {
-	if sa, ok := cart.mapper.(StaticArea); ok {
+// GetDebugBus returns interface to the debugging bus to the cartridge.
+func (cart Cartridge) GetDebugBus() bus.CartDebugBus {
+	if sa, ok := cart.mapper.(bus.CartDebugBus); ok {
 		return sa
 	}
 	return nil

@@ -42,10 +42,14 @@ const defaultOnHalt = "CPU; TV"
 const defaultOnStep = "LAST"
 const onEmptyInput = "STEP"
 
-// Debugger is the basic debugging frontend for the emulation
+// Debugger is the basic debugging frontend for the emulation. In order to be
+// kind to code that accesses the debugger from a different goroutine (ie. a
+// GUI), we try not to reinitialise anything once it has been initialised. For
+// example, disassembly on a cartridge change (which can happen at any time)
+// updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
 	VCS    *hardware.VCS
-	Disasm *disassembly.Disassembly
+	Disasm disassembly.Disassembly
 
 	// the cartridge bank that was active before the last instruction was
 	// executed
@@ -147,13 +151,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 
 	// create a new VCS instance
 	dbg.VCS, err = hardware.NewVCS(dbg.tv)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
-
-	// create instance of disassembly -- the same base structure is used
-	// for disassemblies subseuquent to the first one.
-	dbg.Disasm, err = disassembly.FromMemory(dbg.VCS.Mem.Cart, nil)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -278,7 +275,13 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of symtable in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
-	err := setup.AttachCartridge(dbg.VCS, cartload)
+	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)
+	if err != nil {
+		return errors.New(errors.DebuggerError, err)
+	}
+	defer dbg.scr.ReqFeature(gui.ReqChangingCartridge, false)
+
+	err = setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !errors.Has(err, errors.CartridgeEjected) {
 		return err
 	}
@@ -289,7 +292,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 		// continuing because symtable is always valid even if err non-nil
 	}
 
-	dbg.Disasm, err = disassembly.FromMemory(dbg.VCS.Mem.Cart, symtable)
+	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symtable)
 	if err != nil {
 		return err
 	}

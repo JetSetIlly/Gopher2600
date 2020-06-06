@@ -105,90 +105,88 @@ func (win *winDisasm) draw() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	if win.img.lz.Dbg.Disasm != nil {
-		// the bank that is currently selected
-		currBank := win.img.lz.Cart.CurrBank
+	// the bank that is currently selected
+	currBank := win.img.lz.Cart.CurrBank
 
-		// the value of pcAddr depends on the state of the CPU. if the
-		// Final state of the CPU's last execution result is true then we
-		// can be sure the PC value is valid and points to a real
-		// instruction. we need this because we can never be sure when we
-		// are going to draw this window
-		var pcaddr uint16
-		cpuStep := win.img.lz.CPU.LastResult.Final
-		if cpuStep {
-			pcaddr = win.img.lz.CPU.PCaddr
-		} else {
-			// note that we're using LastResult straight from the CPU not the
-			// copy in debugger.LastDisasmEntry. the latter gets updated too
-			// late for our needs
-			pcaddr = win.img.lz.CPU.LastResult.Address
-		}
+	// the value of pcAddr depends on the state of the CPU. if the
+	// Final state of the CPU's last execution result is true then we
+	// can be sure the PC value is valid and points to a real
+	// instruction. we need this because we can never be sure when we
+	// are going to draw this window
+	var pcaddr uint16
+	cpuStep := win.img.lz.CPU.LastResult.Final
+	if cpuStep {
+		pcaddr = win.img.lz.CPU.PCaddr
+	} else {
+		// note that we're using LastResult straight from the CPU not the
+		// copy in debugger.LastDisasmEntry. the latter gets updated too
+		// late for our needs
+		pcaddr = win.img.lz.CPU.LastResult.Address
+	}
 
-		// sometimes a cartridge will try to run instructions from VCS RAM.
-		// for presentation purposes this means that we show a "VCS RAM" tab
-		nonCart := !memorymap.IsArea(pcaddr, memorymap.Cartridge)
+	// sometimes a cartridge will try to run instructions from VCS RAM.
+	// for presentation purposes this means that we show a "VCS RAM" tab
+	nonCart := !memorymap.IsArea(pcaddr, memorymap.Cartridge)
 
-		if win.img.lz.Cart.NumBanks == 1 {
-			// for cartridges with just one bank we don't bother with a TabBar
-			win.drawBank(pcaddr, 0, !nonCart, cpuStep)
-		} else {
-			// create a new TabBar and iterate through the cartridge banks,
-			// adding a page for each one
-			imgui.BeginTabBar("")
+	if win.img.lz.Cart.NumBanks == 1 {
+		// for cartridges with just one bank we don't bother with a TabBar
+		win.drawBank(pcaddr, 0, !nonCart, cpuStep)
+	} else {
+		// create a new TabBar and iterate through the cartridge banks,
+		// adding a page for each one
+		imgui.BeginTabBar("")
 
-			for b := 0; b < win.img.lz.Cart.NumBanks; b++ {
-				// set tab flags. select the tab that represents the
-				// bank currently being referenced by the VCS
-				flgs := imgui.TabItemFlagsNone
-				if !nonCart && win.alignOnPC && b == currBank {
-					flgs = imgui.TabItemFlagsSetSelected
-				}
-
-				// BeginTabItem() will return true when the item is selected.
-				if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-					win.drawBank(pcaddr, b, b == currBank && !nonCart, cpuStep)
-					imgui.EndTabItem()
-				}
+		for b := 0; b < win.img.lz.Cart.NumBanks; b++ {
+			// set tab flags. select the tab that represents the
+			// bank currently being referenced by the VCS
+			flgs := imgui.TabItemFlagsNone
+			if !nonCart && win.alignOnPC && b == currBank {
+				flgs = imgui.TabItemFlagsSetSelected
 			}
 
-			imgui.EndTabBar()
+			// BeginTabItem() will return true when the item is selected.
+			if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
+				win.drawBank(pcaddr, b, b == currBank && !nonCart, cpuStep)
+				imgui.EndTabItem()
+			}
 		}
 
-		// set alignOnPC flag when PC address has not changed since last
-		// (imgui) frame
-		win.alignOnPC = pcaddr != win.pcaddrPrevFrame
-
-		// note pc address to help set win.alignOnPC value next (imgui) frame
-		win.pcaddrPrevFrame = pcaddr
-
-		// draw options and status line. start height measurement
-		optionsHeight := imgui.CursorPosY()
-
-		// status line
-		if nonCart {
-			imgui.Text("executing from VCS RAM")
-		} else {
-			imgui.Text("")
-		}
-
-		// options line
-		if imgui.Checkbox("Show all", &win.showAllEntries) {
-			win.alignOnOtherAddress = true
-			win.alignAddress = win.addressTopList
-		}
-
-		imgui.SameLine()
-		imgui.Checkbox("Show Bytecode", &win.showByteCode)
-
-		imgui.SameLine()
-		if imgui.Button("Goto PC") {
-			win.alignOnPC = true
-		}
-
-		// commit height measurement
-		win.optionsHeight = imgui.CursorPosY() - optionsHeight
+		imgui.EndTabBar()
 	}
+
+	// set alignOnPC flag when PC address has not changed since last
+	// (imgui) frame
+	win.alignOnPC = pcaddr != win.pcaddrPrevFrame
+
+	// note pc address to help set win.alignOnPC value next (imgui) frame
+	win.pcaddrPrevFrame = pcaddr
+
+	// draw options and status line. start height measurement
+	optionsHeight := imgui.CursorPosY()
+
+	// status line
+	if nonCart {
+		imgui.Text("executing from VCS RAM")
+	} else {
+		imgui.Text("")
+	}
+
+	// options line
+	if imgui.Checkbox("Show all", &win.showAllEntries) {
+		win.alignOnOtherAddress = true
+		win.alignAddress = win.addressTopList
+	}
+
+	imgui.SameLine()
+	imgui.Checkbox("Show Bytecode", &win.showByteCode)
+
+	imgui.SameLine()
+	if imgui.Button("Goto PC") {
+		win.alignOnPC = true
+	}
+
+	// commit height measurement
+	win.optionsHeight = imgui.CursorPosY() - optionsHeight
 
 	imgui.End()
 }

@@ -115,6 +115,9 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSavePrefs:
 		// no gui related prefs to save
 
+	case gui.ReqChangingCartridge:
+		// gui doesn't need to know when the cartridge is being changed
+
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request.request)
 	}

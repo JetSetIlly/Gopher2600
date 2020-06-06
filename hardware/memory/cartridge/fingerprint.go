@@ -65,7 +65,8 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 	// regardless of length. any further differentiation can be done in the
 	// harmony emulation itself.
 	if data[0x20] == 0x1e && data[0x21] == 0xab && data[0x22] == 0xad && data[0x23] == 0x10 {
-		cart.mapper, err = harmony.NewHarmony(data)
+		// !TODO: this might be a CFDJ cartridge. check for that.
+		cart.mapper, err = harmony.NewDPCplus(data)
 		return err
 	}
 

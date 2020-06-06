@@ -47,6 +47,7 @@ type widgetDimensions struct {
 	twoDigitDim   imgui.Vec2
 	threeDigitDim imgui.Vec2
 	fourDigitDim  imgui.Vec2
+	eightDigitDim imgui.Vec2
 }
 
 // window types that embed widgetDimensions should call this init() from the
@@ -55,4 +56,5 @@ func (wd *widgetDimensions) init() {
 	wd.twoDigitDim = imguiGetFrameDim("FF")
 	wd.threeDigitDim = imguiGetFrameDim("FFF")
 	wd.fourDigitDim = imguiGetFrameDim("FFFF")
+	wd.eightDigitDim = imguiGetFrameDim("FFFFFFFF")
 }

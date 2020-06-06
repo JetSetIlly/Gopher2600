@@ -31,6 +31,8 @@ import (
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
 type Lazy struct {
+	active atomic.Value
+
 	// these fields are racy, they should not be accessed except through the
 	// lazy evaluation system
 	Dbg *debugger.Debugger
@@ -96,12 +98,34 @@ func NewValues() *Lazy {
 	// about bank sizes or anything like that.
 	val.atomicBrk = make([]atomic.Value, memorymap.MemtopCart-memorymap.OriginCart+1)
 
+	val.active.Store(true)
+
 	return val
+}
+
+// Reset lazy values instance. The lynchpin of the lazy system is the
+// atomic.Value mechanism. Some atomic.Value instances accept interfaces, the
+// underlying type of which may change when something changes in the system.
+// For example, the underlying type of bus.CartRegisters interface may change.
+//
+// The thing is, we can't assign a different type to an atomic.Value once a
+// type has been assigned to it, so this reset step is required.
+func (val *Lazy) Reset(changingCart bool) {
+	active := !changingCart
+	if !active {
+		val.active.Store(false)
+	}
+
+	val.Cart = newLazyCart(val)
+
+	if active {
+		val.active.Store(true)
+	}
 }
 
 // Update lazy values, with the exception of RAM and break information.
 func (val *Lazy) Update() {
-	if val.Dbg == nil {
+	if !val.active.Load().(bool) || val.Dbg == nil {
 		return
 	}
 
@@ -123,7 +147,7 @@ func (val *Lazy) Update() {
 
 // ReadRAM returns the data at read address
 func (val *Lazy) ReadRAM(ramDetails memorymap.SubArea, readAddr uint16) uint8 {
-	if val.Dbg == nil {
+	if !val.active.Load().(bool) || val.Dbg == nil {
 		return 0
 	}
 
@@ -137,7 +161,7 @@ func (val *Lazy) ReadRAM(ramDetails memorymap.SubArea, readAddr uint16) uint8 {
 
 // HasBreak checks to see if disassembly entry has a break point
 func (val *Lazy) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
-	if val.Dbg == nil {
+	if !val.active.Load().(bool) || val.Dbg == nil {
 		return debugger.BrkNone
 	}
 

@@ -298,31 +298,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					}
 				}
 			case "STATIC":
-				sa := dbg.VCS.Mem.Cart.GetStaticArea()
-				if sa != nil {
-					s := &strings.Builder{}
-
-					// header for static data table
-					s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-					s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-					j := uint16(0)
-					for i := 0; i < sa.StaticSize(); i++ {
-						// begin new row every 16 iterations
-						if j%16 == 0 {
-							s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-						}
-						d, err := sa.StaticRead(uint16(i))
-						if err != nil {
-							return false, err
-						}
-						s.WriteString(fmt.Sprintf("%02x ", d))
-						j++
-					}
-
-					dbg.printInstrument(s)
+				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {
+					dbg.printInstrument(db.GetStaticAreas())
 				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge does not have static area")
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no special features")
+				}
+			case "REGISTERS":
+				sa := dbg.VCS.Mem.Cart.GetDebugBus()
+				if sa != nil {
+					dbg.printInstrument(sa.GetRegisters())
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no special features")
 				}
 			}
 		} else {
@@ -376,7 +362,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 	case cmdLint:
 		output := &strings.Builder{}
-		err := linter.Lint(dbg.Disasm, output)
+		err := linter.Lint(&dbg.Disasm, output)
 		if err != nil {
 			return false, err
 		}

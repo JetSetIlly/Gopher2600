@@ -52,8 +52,6 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSetEventChan:
 		img.events = request.args[0].(chan gui.Event)
 
-	case gui.ReqSetVisibleOnStable:
-
 	case gui.ReqSetVisibility:
 		img.wm.dbgScr.setOpen(request.args[0].(bool))
 
@@ -98,6 +96,11 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 
 	case gui.ReqSavePrefs:
 		err = img.prefs.Save()
+
+	case gui.ReqChangingCartridge:
+		// a new cartridge requires us to reset the lazy system (see the
+		// lazyvalues.Reset() function commentary for why)
+		img.lz.Reset(request.args[0].(bool))
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request.request)

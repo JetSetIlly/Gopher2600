@@ -143,9 +143,26 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		return nil, err
 	}
 
+	// windows that appear in cartridge specific menus
+	if err := addWindow(newWinDPCstatic, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinDPCregisters, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinDPCplusRegisters, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinDPCplusStatic, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map
-	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winStaticTitle)
+	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCstaticTitle)
+	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCregistersTitle)
+	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusStaticTitle)
+	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusRegistersTitle)
 
 	// get references to specific window types that need to be referenced
 	// elsewhere in the system
@@ -268,7 +285,6 @@ func (wm *windowManager) drawMenu() {
 					}
 				}
 			}
-
 			imgui.EndMenu()
 		}
 	}

@@ -24,11 +24,12 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
-const winStaticTitle = "Static"
+const winDPCstaticTitle = "DPC Static Areas"
 
-type winStatic struct {
+type winDPCstatic struct {
 	windowManagement
 	widgetDimensions
 
@@ -36,52 +37,59 @@ type winStatic struct {
 
 	// the X position of the grid header. based on the width of the column
 	// headers (we know this value after the first pass)
-	headerStartX float32
+	xPos float32
 }
 
-func newWinStatic(img *SdlImgui) (managedWindow, error) {
-	win := &winStatic{img: img}
+func newWinDPCstatic(img *SdlImgui) (managedWindow, error) {
+	win := &winDPCstatic{img: img}
 
 	return win, nil
 }
 
-func (win *winStatic) init() {
+func (win *winDPCstatic) init() {
 	win.widgetDimensions.init()
 }
 
-func (win *winStatic) destroy() {
+func (win *winDPCstatic) destroy() {
 }
 
-func (win *winStatic) id() string {
-	return winStaticTitle
+func (win *winDPCstatic) id() string {
+	return winDPCstaticTitle
 }
 
-func (win *winStatic) draw() {
+func (win *winDPCstatic) draw() {
 	if !win.open {
+		return
+	}
+
+	// do not open window if there is no valid cartridge debug bus available
+	sa, ok := win.img.lz.Cart.StaticAreas.(cartridge.DPCstaticAreas)
+	if !win.img.lz.Cart.HasDebugBus || !ok {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 
-	imgui.BeginV(winStaticTitle, &win.open, 0)
+	imgui.BeginV(winDPCstaticTitle, &win.open, 0)
 
-	if win.img.lz.Cart.StaticAreaPresent {
-		win.drawGrid()
-	} else {
-		imgui.Text("Cartridge has no static memory")
+	imgui.BeginTabBar("")
+	if imgui.BeginTabItemV("Gfx", nil, 0) {
+		win.drawGrid(sa.Gfx)
+		imgui.EndTabItem()
 	}
+	imgui.EndTabBar()
 
 	imgui.End()
 }
 
-func (win *winStatic) drawGrid() {
+func (win *winDPCstatic) drawGrid(a []byte) {
 	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 
-	// draw headers for each column. this relies headerStartX, which requires
+	// draw headers for each column. this relies on win.xPos, which requires
 	// one frame before it is accurate.
-	headerDim := imgui.Vec2{X: win.headerStartX, Y: imgui.CursorPosY()}
+	headerDim := imgui.Vec2{X: win.xPos, Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
 		headerDim.X += win.twoDigitDim.X
@@ -92,17 +100,17 @@ func (win *winStatic) drawGrid() {
 	// draw rows
 	imgui.PushItemWidth(win.twoDigitDim.X)
 	i := uint16(0)
-	for addr := 0; addr < win.img.lz.Cart.StaticArea.StaticSize(); addr++ {
+	for addr := 0; addr < len(a); addr++ {
 		// draw row header
 		if i%16 == 0 {
 			imgui.AlignTextToFramePadding()
 			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
 			imgui.SameLine()
-			win.headerStartX = imgui.CursorPosX()
+			win.xPos = imgui.CursorPosX()
 		} else {
 			imgui.SameLine()
 		}
-		win.drawEditByte(uint16(addr))
+		win.drawEditByte(uint16(addr), a[i])
 		i++
 	}
 	imgui.PopItemWidth()
@@ -111,16 +119,15 @@ func (win *winStatic) drawGrid() {
 	imgui.PopStyleVar()
 }
 
-func (win *winStatic) drawEditByte(addr uint16) {
-	d, _ := win.img.lz.Cart.StaticArea.StaticRead(addr)
-
+func (win *winDPCstatic) drawEditByte(addr uint16, b byte) {
 	label := fmt.Sprintf("##%d", addr)
-	content := fmt.Sprintf("%02x", d)
+	content := fmt.Sprintf("%02x", b)
 
 	if imguiHexInput(label, !win.img.paused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				win.img.lz.Cart.StaticArea.StaticWrite(addr, uint8(v))
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b.StaticWrite(addr, uint8(v))
 			})
 		}
 	}

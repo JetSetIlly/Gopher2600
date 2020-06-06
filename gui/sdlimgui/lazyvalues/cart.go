@@ -22,7 +22,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -37,8 +37,9 @@ type LazyCart struct {
 	atomicCurrBank   atomic.Value // int
 	atomicRAMdetails atomic.Value // []memorymap.SubArea
 
-	atomicStaticArea        atomic.Value // cartridge.StaticArea
-	atomicStaticAreaPresent atomic.Value // bool
+	atomicStaticAreas atomic.Value
+	atomicDebugBus    atomic.Value // bus.CartDebugBus
+	atomicRegisters   atomic.Value // bus.CartRegisters
 
 	ID         string
 	Summary    string
@@ -47,10 +48,11 @@ type LazyCart struct {
 	CurrBank   int
 	RAMdetails []memorymap.SubArea
 
-	// StaticArea is an interface to the cartridge mapper. interface functions
-	// need to be called through PushRawEvent()
-	StaticArea        cartridge.StaticArea
-	StaticAreaPresent bool
+	// CartDebugBus is an interface to the cartridge mapper
+	HasDebugBus bool
+	DebugBus    bus.CartDebugBus
+	StaticAreas bus.CartStaticAreas
+	Registers   bus.CartRegisters
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -72,12 +74,11 @@ func (lz *LazyCart) update() {
 		lz.atomicRAMdetails.Store(lz.val.Dbg.VCS.Mem.Cart.GetRAM())
 		lz.atomicCurrBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(PCaddr))
 
-		sa := lz.val.Dbg.VCS.Mem.Cart.GetStaticArea()
-		if sa != nil {
-			lz.atomicStaticAreaPresent.Store(true)
-			lz.atomicStaticArea.Store(sa)
-		} else {
-			lz.atomicStaticAreaPresent.Store(false)
+		b := lz.val.Dbg.VCS.Mem.Cart.GetDebugBus()
+		if b != nil {
+			lz.atomicDebugBus.Store(b)
+			lz.atomicStaticAreas.Store(b.GetStaticAreas())
+			lz.atomicRegisters.Store(b.GetRegisters())
 		}
 	})
 
@@ -88,8 +89,9 @@ func (lz *LazyCart) update() {
 	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
 	lz.RAMdetails, _ = lz.atomicRAMdetails.Load().([]memorymap.SubArea)
 
-	lz.StaticAreaPresent, _ = lz.atomicStaticAreaPresent.Load().(bool)
-	if lz.StaticAreaPresent {
-		lz.StaticArea, _ = lz.atomicStaticArea.Load().(cartridge.StaticArea)
+	lz.DebugBus, lz.HasDebugBus = lz.atomicDebugBus.Load().(bus.CartDebugBus)
+	if lz.HasDebugBus {
+		lz.StaticAreas, _ = lz.atomicStaticAreas.Load().(bus.CartStaticAreas)
+		lz.Registers, _ = lz.atomicRegisters.Load().(bus.CartRegisters)
 	}
 }

@@ -70,6 +70,10 @@ const (
 	// destroyed or before some other destructive action
 	ReqSavePrefs FeatureReq = "ReqSavePrefs" // none
 
+	// triggered when cartridge is being change
+	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
+
+	// ------------------------------------------------------
 	// the following requests are deprecated
 	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
 )

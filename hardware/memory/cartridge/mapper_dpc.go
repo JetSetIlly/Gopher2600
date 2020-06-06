@@ -17,8 +17,11 @@ package cartridge
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -29,14 +32,13 @@ import (
 type dpc struct {
 	mappingID   string
 	description string
-	banks       [][]byte
-	bank        int
-	gfx         []byte
 
-	fetcher [8]dataFetcher
+	// banks and the currently selected bank
+	banks [][]byte
+	bank  int
 
-	// the current random number value
-	rng uint8
+	static    DPCstaticAreas
+	registers DPCregisters
 
 	// the OSC clock found in DPC cartridges runs at slower than the VCS itself
 	// to effectively emulate the slower clock therefore, we need to discount
@@ -44,39 +46,92 @@ type dpc struct {
 	beats int
 }
 
-type dataFetcher struct {
-	top    byte
-	bottom byte
-	low    byte
-	hi     byte
-	flag   bool
-
-	// music mode not used for all data fetcher instances
-	musicMode bool
-	oscClock  bool
+// DPCstaticAreas implements the bus.CartStaticAreas interface
+type DPCstaticAreas struct {
+	Gfx []byte
 }
 
-func (df *dataFetcher) clk() {
+func (sa DPCstaticAreas) String() string {
+	s := &strings.Builder{}
+
+	// header for static data table
+	s.WriteString("Gfx     -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+	s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+	j := uint16(0)
+	for i := 0; i < len(sa.Gfx); i++ {
+		// begin new row every 16 iterations
+		if j%16 == 0 {
+			s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+		}
+		s.WriteString(fmt.Sprintf("%02x ", sa.Gfx[i]))
+		j++
+	}
+
+	return s.String()
+}
+
+// DPCregisters implements the bus.CartRegisters interface
+type DPCregisters struct {
+	Fetcher [8]DPCdataFetcher
+
+	// the current random number value
+	RNG uint8
+}
+
+// String implements the bus.CartDebugBus interface
+func (r DPCregisters) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("RNG: %#02x\n", r.RNG))
+	for f := 0; f < len(r.Fetcher); f++ {
+		s.WriteString(fmt.Sprintf("F%d: l:%#02x h:%#02x t:%#02x b:%#02x mm:%v", f,
+			r.Fetcher[f].Low,
+			r.Fetcher[f].Hi,
+			r.Fetcher[f].Top,
+			r.Fetcher[f].Bottom,
+			r.Fetcher[f].MusicMode,
+		))
+		s.WriteString("\n")
+	}
+	return s.String()
+}
+
+// DPCdataFetcher represents a single DPC data fetcher
+type DPCdataFetcher struct {
+	Low    byte
+	Hi     byte
+	Top    byte
+	Bottom byte
+
+	// is the Low byte in the window between top and bottom
+	Flag bool
+
+	// music mode only used by data fetchers 4-7
+	MusicMode bool
+	OSCclock  bool
+}
+
+func (df *DPCdataFetcher) clk() {
 	// decrease low byte [col 5, ln 65 - col 6, ln 3]
-	df.low--
-	if df.low == 0xff {
+	df.Low--
+	if df.Low == 0xff {
 		// decrease hi-address byte on carry bit
-		df.hi--
+		df.Hi--
 
 		// reset low to top when in music mode [col7, ln 14-19]
-		if df.musicMode {
-			df.low = df.top
+		if df.MusicMode {
+			df.Low = df.Top
 		}
 	}
 }
 
-func (df *dataFetcher) setFlag() {
+func (df *DPCdataFetcher) setFlag() {
 	// set flag register [col 6, ln 7-12]
 
-	if df.low == df.top {
-		df.flag = true
-	} else if df.low == df.bottom {
-		df.flag = false
+	if df.Low == df.Top {
+		df.Flag = true
+	} else if df.Low == df.Bottom {
+		df.Flag = false
 	}
 }
 
@@ -100,7 +155,7 @@ func newDPC(data []byte) (cartMapper, error) {
 	}
 
 	gfxStart := cart.NumBanks() * bankSize
-	cart.gfx = data[gfxStart : gfxStart+gfxSize]
+	cart.static.Gfx = data[gfxStart : gfxStart+gfxSize]
 
 	cart.Initialise()
 
@@ -123,8 +178,8 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
-	cart.rng |= (cart.rng>>3)&0x01 ^ (cart.rng>>4)&0x01 ^ (cart.rng>>5)&0x01 ^ (cart.rng>>7)&0x01
-	cart.rng <<= 1
+	cart.registers.RNG |= (cart.registers.RNG>>3)&0x01 ^ (cart.registers.RNG>>4)&0x01 ^ (cart.registers.RNG>>5)&0x01 ^ (cart.registers.RNG>>7)&0x01
+	cart.registers.RNG <<= 1
 
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
@@ -146,7 +201,7 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 	// registers [see below]
 	if addr >= 0x0000 && addr <= 0x0003 {
 		// RNG value
-		return cart.rng, nil
+		return cart.registers.RNG, nil
 
 	} else if addr >= 0x0004 && addr <= 0x0007 {
 		// music value. mix music data-fetchers:
@@ -156,15 +211,15 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 
 		// SIN signals are weighted and added together [col 7, ln 3-7, fig 12]
 
-		if cart.fetcher[5].musicMode && cart.fetcher[5].flag {
+		if cart.registers.Fetcher[5].MusicMode && cart.registers.Fetcher[5].Flag {
 			data += 4
 		}
 
-		if cart.fetcher[6].musicMode && cart.fetcher[6].flag {
+		if cart.registers.Fetcher[6].MusicMode && cart.registers.Fetcher[6].Flag {
 			data += 5
 		}
 
-		if cart.fetcher[7].musicMode && cart.fetcher[7].flag {
+		if cart.registers.Fetcher[7].MusicMode && cart.registers.Fetcher[7].Flag {
 			data += 6
 		}
 
@@ -179,28 +234,28 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 
 	// most data-fetcher functions address gfx memory (only the flag registers
 	// do not)
-	gfxAddr := uint16(cart.fetcher[f].hi)<<8 | uint16(cart.fetcher[f].low)
+	gfxAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
 
 	// only the 11 least-significant bits are used. gfx memory is also
 	// addressed with reference from memtop so inverse the bits
 	gfxAddr = gfxAddr&0x07ff ^ 0x07ff
 
 	// set flag
-	cart.fetcher[f].setFlag()
+	cart.registers.Fetcher[f].setFlag()
 
-	if f >= 0x5 && cart.fetcher[f].musicMode {
+	if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
 		// when in music mode return top register [col 7, ln 6-9]
-		data = cart.fetcher[f].top
+		data = cart.registers.Fetcher[f].Top
 
 	} else {
 		if addr >= 0x0008 && addr <= 0x000f {
 			// display data
-			data = cart.gfx[gfxAddr]
+			data = cart.static.Gfx[gfxAddr]
 
 		} else if addr >= 0x0010 && addr <= 0x0017 {
 			// display data AND w/flag
-			if cart.fetcher[f].flag {
-				data = cart.gfx[gfxAddr]
+			if cart.registers.Fetcher[f].Flag {
+				data = cart.static.Gfx[gfxAddr]
 			}
 
 		} else if addr >= 0x0018 && addr <= 0x001f {
@@ -211,26 +266,26 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 
 		} else if addr >= 0x0028 && addr <= 0x002f {
 			// display data AND w/flag, ROR
-			if cart.fetcher[f].flag {
-				data = cart.gfx[gfxAddr] >> 1
+			if cart.registers.Fetcher[f].Flag {
+				data = cart.static.Gfx[gfxAddr] >> 1
 			}
 
 		} else if addr >= 0x0030 && addr <= 0x0037 {
 			// display data AND w/flag, ROL
-			if cart.fetcher[f].flag {
-				data = cart.gfx[gfxAddr] << 1
+			if cart.registers.Fetcher[f].Flag {
+				data = cart.static.Gfx[gfxAddr] << 1
 			}
 
 		} else if addr >= 0x0038 && addr <= 0x003f {
 			// DFx flag
-			if f >= 0x5 && cart.fetcher[f].flag {
+			if f >= 0x5 && cart.registers.Fetcher[f].Flag {
 				data = 0xff
 			}
 		}
 	}
 
 	// clock signal is active whenever data fetcher is used
-	cart.fetcher[f].clk()
+	cart.registers.Fetcher[f].clk()
 
 	return data, nil
 }
@@ -249,43 +304,42 @@ func (cart *dpc) Write(addr uint16, data uint8) error {
 
 		if addr >= 0x0040 && addr <= 0x0047 {
 			// set top register
-			cart.fetcher[f].top = data
-			cart.fetcher[f].flag = false
+			cart.registers.Fetcher[f].Top = data
+			cart.registers.Fetcher[f].Flag = false
 
 		} else if addr >= 0x0048 && addr <= 0x004f {
 			// set bottom register
-			cart.fetcher[f].bottom = data
+			cart.registers.Fetcher[f].Bottom = data
 
 		} else if addr >= 0x0050 && addr <= 0x0057 {
 			// set low register
 
 			// treat music mode capable registers slightly differently
-			if f >= 0x5 && cart.fetcher[f].musicMode {
+			if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
 				// low is loaded with top value on low function [col 7, ln 12-14]
-				cart.fetcher[f].low = cart.fetcher[f].top
+				cart.registers.Fetcher[f].Low = cart.registers.Fetcher[f].Top
 
 			} else {
-				cart.fetcher[f].low = data
+				cart.registers.Fetcher[f].Low = data
 
 			}
 
 		} else if addr >= 0x0058 && addr <= 0x005f {
 			// set high register
-			cart.fetcher[f].hi = data
+			cart.registers.Fetcher[f].Hi = data
 
 			// treat music mode capable registers slightly differently
 			if f >= 0x5 && addr >= 0x005d { // && addr <= 0x00f5 is implied
 				// set music mode [col 7, ln 1-6]
-				cart.fetcher[f].musicMode = data&0x10 == 0x10
+				cart.registers.Fetcher[f].MusicMode = data&0x10 == 0x10
 
 				// set osc clock [col 7, ln 20-22]
-				cart.fetcher[f].oscClock = data&0x20 == 0x20
+				cart.registers.Fetcher[f].OSCclock = data&0x20 == 0x20
 			}
 
 		} else if addr >= 0x0070 && addr <= 0x0077 {
 			// reset random number generator
-			cart.rng = 0xff
-
+			cart.registers.RNG = 0xff
 		}
 
 		// other addresses are not write registers and are ignored
@@ -348,9 +402,9 @@ func (cart *dpc) Step() {
 	if cart.beats%59 == 0 {
 		cart.beats = 0
 		for f := 5; f <= 7; f++ {
-			if cart.fetcher[f].musicMode && cart.fetcher[f].oscClock {
-				cart.fetcher[f].clk()
-				cart.fetcher[f].setFlag()
+			if cart.registers.Fetcher[f].MusicMode && cart.registers.Fetcher[f].OSCclock {
+				cart.registers.Fetcher[f].clk()
+				cart.registers.Fetcher[f].setFlag()
 			}
 		}
 	}
@@ -360,25 +414,76 @@ func (cart dpc) GetRAM() []memorymap.SubArea {
 	return nil
 }
 
-// StaticRead implements the StaticArea interface
-func (cart dpc) StaticRead(addr uint16) (uint8, error) {
-	if int(addr) >= len(cart.gfx) {
-		return 0, errors.New(errors.CartridgeStaticOOB, addr)
-	}
-
-	return cart.gfx[addr], nil
+// GetRegisters implements the bus.CartDebugBus interface
+func (cart dpc) GetRegisters() bus.CartRegisters {
+	return bus.CartRegisters(cart.registers)
 }
 
-// StaticWrite implements the StaticArea interface
+// PutRegister implements the bus.CartDebugBus interface
+//
+// Register specification is divided with the "::" string. The following table
+// describes what the valid register strings and, after the = sign, the type to
+// which the data argument will be converted.
+//
+//	fetcher::%int::hi = uint8
+//	fetcher::%int::low = uint8
+//	fetcher::%int::top = uint8
+//	fetcher::%int::bottom = uint8
+//	fetcher::%int::musicmode = bool
+//	rng = uint8
+//
+// note that PutRegister() will panic() if the register or data string is invalid.
+func (cart *dpc) PutRegister(register string, data string) {
+	// most data is expected to an integer (a uint8 specifically) so we try
+	// to convert it here. if it doesn't convert then it doesn't matter
+	d, _ := strconv.ParseUint(data, 16, 8)
+
+	r := strings.Split(register, "::")
+	switch r[0] {
+	case "fetcher":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.Fetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+
+		switch r[2] {
+		case "hi":
+			cart.registers.Fetcher[f].Hi = uint8(d)
+		case "low":
+			cart.registers.Fetcher[f].Low = uint8(d)
+		case "top":
+			cart.registers.Fetcher[f].Top = uint8(d)
+		case "bottom":
+			cart.registers.Fetcher[f].Bottom = uint8(d)
+		case "musicmode":
+			switch data {
+			case "true":
+				cart.registers.Fetcher[f].MusicMode = true
+			case "false":
+				cart.registers.Fetcher[f].MusicMode = false
+			default:
+				panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
+			}
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "rng":
+		cart.registers.RNG = uint8(d)
+	default:
+		panic(fmt.Sprintf("unrecognised variable [%s]", register))
+	}
+}
+
+// GetStaticAreas implements the bus.CartDebugBus interface
+func (cart dpc) GetStaticAreas() bus.CartStaticAreas {
+	return bus.CartStaticAreas(cart.static)
+}
+
+// StaticWrite implements the bus.CartDebugBus interface
 func (cart *dpc) StaticWrite(addr uint16, data uint8) error {
-	if int(addr) >= len(cart.gfx) {
+	if int(addr) >= len(cart.static.Gfx) {
 		return errors.New(errors.CartridgeStaticOOB, addr)
 	}
-	cart.gfx[addr] = data
+	cart.static.Gfx[addr] = data
 	return nil
-}
-
-// StaticSize implements the StaticArea interface
-func (cart dpc) StaticSize() int {
-	return len(cart.gfx)
 }
