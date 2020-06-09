@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // from bankswitch_sizes.txt:
@@ -59,12 +59,14 @@ import (
 // banks instead of 4.  You use 1FF4 to 1FFB to select the desired bank.
 //
 //
-// Some carts have extra RAM; There are three known formats for this:
+// Some carts have extra RAM. The way of doing this for Atari format cartridges
+// is with the addition of a "superchip".
 //
 // Atari's 'Super Chip' is nothing more than a 128-byte RAM chip that maps
-// itsself in the first 256 bytes of cart memory.  (1000-10FFh)
-// The first 128 bytes is the write port, while the second 128 bytes is the
-// read port.  This is needed, because there is no R/W line to the cart.
+// itsself in the first 256 bytes of cart memory.  (1000-10FFh) The first 128
+// bytes is the write port, while the second 128 bytes is the read port. The
+// difference in addresses is because there is no dedicated address line to the
+// cart to differentiate between read and write operations.
 
 type atari struct {
 	mappingID   string
@@ -83,9 +85,6 @@ type atari struct {
 	// the superchip. ram is only added when it is detected (see addSuperchip()
 	// function)
 	ram []uint8
-
-	// subArea information for cartridge ram
-	ramDetails []memorymap.SubArea
 }
 
 func (cart atari) String() string {
@@ -95,10 +94,12 @@ func (cart atari) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
+// ID implements the cartMapper interface
 func (cart atari) ID() string {
 	return cart.mappingID
 }
 
+// Initialise implements the cartMapper interface
 func (cart *atari) Initialise() {
 	// which bank should be the start bank? this has gone back and forth but
 	// the current thinking (by me) is that it should be the last bank in the
@@ -113,12 +114,9 @@ func (cart *atari) Initialise() {
 	} else {
 		cart.bank = 1
 	}
-
-	for i := range cart.ram {
-		cart.ram[i] = 0x00
-	}
 }
 
+// GetBank implements the cartMapper interface
 func (cart atari) GetBank(addr uint16) int {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
@@ -126,23 +124,27 @@ func (cart atari) GetBank(addr uint16) int {
 	return cart.bank
 }
 
+// SetBank implements the cartMapper interface
 func (cart *atari) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
 	return nil
 }
 
+// SaveState implements the cartMapper interface
 func (cart *atari) SaveState() interface{} {
 	superchip := make([]uint8, len(cart.ram))
 	copy(superchip, cart.ram)
 	return []interface{}{cart.bank, superchip}
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *atari) RestoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
 	copy(cart.ram, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
+// Read implements the cartMapper interface
 func (cart *atari) Read(addr uint16) (uint8, bool) {
 	if cart.ram != nil {
 		if addr > 127 && addr < 256 {
@@ -152,6 +154,7 @@ func (cart *atari) Read(addr uint16) (uint8, bool) {
 	return 0, false
 }
 
+// Write implements the cartMapper interface
 func (cart *atari) Write(addr uint16, data uint8) bool {
 	if cart.ram != nil {
 		if addr <= 127 {
@@ -180,27 +183,24 @@ func (cart *atari) addSuperchip() bool {
 	// allocate RAM
 	cart.ram = make([]uint8, 128)
 
+	// clear memory
+	for i := range cart.ram {
+		cart.ram[i] = 0x00
+	}
+
 	// update method string
 	cart.description = fmt.Sprintf("%s (+ superchip RAM)", cart.description)
-
-	cart.ramDetails = make([]memorymap.SubArea, 1)
-	cart.ramDetails[0] = memorymap.SubArea{
-		Label:       "Superchip",
-		Active:      true,
-		ReadOrigin:  0x1080,
-		ReadMemtop:  0x10ff,
-		WriteOrigin: 0x1000,
-		WriteMemtop: 0x107f,
-	}
 
 	return true
 }
 
+// Poke implements the cartMapper interface
 func (cart *atari) Poke(addr uint16, data uint8) error {
 	cart.banks[cart.bank][addr] = data
 	return nil
 }
 
+// Patch implements the cartMapper interface
 func (cart *atari) Patch(addr uint16, data uint8) error {
 	bank := int(addr) / cart.bankSize
 	addr = addr % uint16(cart.bankSize)
@@ -208,14 +208,33 @@ func (cart *atari) Patch(addr uint16, data uint8) error {
 	return nil
 }
 
+// Listen implements the cartMapper interface
 func (cart *atari) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *atari) Step() {
 }
 
-func (cart atari) GetRAM() []memorymap.SubArea {
-	return cart.ramDetails
+// GetRAM implements the bus.CartRAMBus interface
+func (cart atari) GetRAM() []bus.CartRAM {
+	if cart.ram == nil {
+		return nil
+	}
+
+	r := make([]bus.CartRAM, 1)
+	r[0] = bus.CartRAM{
+		Label:  "Superchip",
+		Origin: 0x1080,
+		Data:   make([]uint8, len(cart.ram)),
+	}
+	copy(r[0].Data, cart.ram)
+	return r
+}
+
+// PutRAM implements the bus.CartRAMBus interface
+func (cart *atari) PutRAM(_ int, idx int, data uint8) {
+	cart.ram[idx] = data
 }
 
 // atari4k is the original and most straightforward format
@@ -251,10 +270,12 @@ func newAtari4k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart atari4k) NumBanks() int {
 	return 1
 }
 
+// Read implements the cartMapper interface
 func (cart *atari4k) Read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.Read(addr); ok {
 		return data, nil
@@ -262,6 +283,7 @@ func (cart *atari4k) Read(addr uint16) (uint8, error) {
 	return cart.banks[0][addr], nil
 }
 
+// Write implements the cartMapper interface
 func (cart *atari4k) Write(addr uint16, data uint8) error {
 	if ok := cart.atari.Write(addr, data); ok {
 		return nil
@@ -299,10 +321,12 @@ func newAtari2k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart atari2k) NumBanks() int {
 	return 1
 }
 
+// Read implements the cartMapper interface
 func (cart *atari2k) Read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.Read(addr); ok {
 		return data, nil
@@ -310,6 +334,7 @@ func (cart *atari2k) Read(addr uint16) (uint8, error) {
 	return cart.banks[0][addr&0x07ff], nil
 }
 
+// Write implements the cartMapper interface
 func (cart *atari2k) Write(addr uint16, data uint8) error {
 	if ok := cart.atari.Write(addr, data); ok {
 		return nil
@@ -348,10 +373,12 @@ func newAtari8k(data []uint8) (cartMapper, error) {
 	return cart, nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart atari8k) NumBanks() int {
 	return 2
 }
 
+// Read implements the cartMapper interface
 func (cart *atari8k) Read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.Read(addr); ok {
 		return data, nil
@@ -368,6 +395,7 @@ func (cart *atari8k) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *atari8k) Write(addr uint16, data uint8) error {
 	if ok := cart.atari.Write(addr, data); ok {
 		return nil
@@ -415,10 +443,12 @@ func newAtari16k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart atari16k) NumBanks() int {
 	return 4
 }
 
+// Read implements the cartMapper interface
 func (cart *atari16k) Read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.Read(addr); ok {
 		return data, nil
@@ -439,6 +469,7 @@ func (cart *atari16k) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *atari16k) Write(addr uint16, data uint8) error {
 	if ok := cart.atari.Write(addr, data); ok {
 		return nil
@@ -490,10 +521,12 @@ func newAtari32k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart atari32k) NumBanks() int {
 	return 8
 }
 
+// Read implements the cartMapper interface
 func (cart *atari32k) Read(addr uint16) (uint8, error) {
 	if data, ok := cart.atari.Read(addr); ok {
 		return data, nil
@@ -522,6 +555,7 @@ func (cart *atari32k) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *atari32k) Write(addr uint16, data uint8) error {
 	if ok := cart.atari.Write(addr, data); ok {
 		return nil

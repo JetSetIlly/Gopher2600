@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 const ejectedName = "ejected"
@@ -47,55 +46,64 @@ func (cart ejected) String() string {
 	return cart.description
 }
 
+// ID implements the cartMapper interface
 func (cart ejected) ID() string {
 	return "-"
 }
 
+// Initialise implements the cartMapper interface
 func (cart *ejected) Initialise() {
 }
 
+// Read implements the cartMapper interface
 func (cart *ejected) Read(addr uint16) (uint8, error) {
 	return 0, errors.New(errors.CartridgeEjected)
 }
 
+// Write implements the cartMapper interface
 func (cart *ejected) Write(addr uint16, data uint8) error {
 	return errors.New(errors.CartridgeEjected)
 }
 
+// NumBanks implements the cartMapper interface
 func (cart ejected) NumBanks() int {
 	return 0
 }
 
+// SetBank implements the cartMapper interface
 func (cart *ejected) SetBank(addr uint16, bank int) error {
 	return errors.New(errors.CartridgeError, fmt.Sprintf("ejected cartridge"))
 }
 
+// GetBank implements the cartMapper interface
 func (cart ejected) GetBank(addr uint16) int {
 	return 0
 }
 
+// SaveState implements the cartMapper interface
 func (cart *ejected) SaveState() interface{} {
 	return nil
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *ejected) RestoreState(state interface{}) error {
 	return nil
 }
 
+// Poke implements the cartMapper interface
 func (cart *ejected) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
+// Patch implements the cartMapper interface
 func (cart *ejected) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
+// Listen implements the cartMapper interface
 func (cart *ejected) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *ejected) Step() {
-}
-
-func (cart ejected) GetRAM() []memorymap.SubArea {
-	return nil
 }

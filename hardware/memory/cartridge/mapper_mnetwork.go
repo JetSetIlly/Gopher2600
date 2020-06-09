@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // from bankswitch_sizes.txt:
@@ -80,6 +80,8 @@ func fingerprintMnetwork(b []byte) bool {
 	return false
 }
 
+const num256ByteRAMbanks = 4
+
 type mnetwork struct {
 	mappingID   string
 	description string
@@ -87,7 +89,7 @@ type mnetwork struct {
 	banks [][]uint8
 	bank  int
 
-	ram256byte    [4][]uint8
+	ram256byte    [num256ByteRAMbanks][]uint8
 	ram256byteIdx int
 
 	//  o ram1k is read through addresses 0x1000 to 0x13ff and written
@@ -99,9 +101,6 @@ type mnetwork struct {
 	// (addresses quoted above are of course masked so that they fall into the
 	// allocation range)
 	ram1k []uint8
-
-	// subArea information for cartridge ram
-	ramDetails []memorymap.SubArea
 }
 
 func newMnetwork(data []byte) (cartMapper, error) {
@@ -129,25 +128,6 @@ func newMnetwork(data []byte) (cartMapper, error) {
 		cart.ram256byte[i] = make([]uint8, 256)
 	}
 
-	// prepare ram details
-	cart.ramDetails = make([]memorymap.SubArea, 2)
-	cart.ramDetails[0] = memorymap.SubArea{
-		Label: "1k",
-		// whether the segment is active depends on the value of bank
-		ReadOrigin:  0x1000,
-		ReadMemtop:  0x13ff,
-		WriteOrigin: 0x1400,
-		WriteMemtop: 0x177f,
-	}
-	cart.ramDetails[1] = memorymap.SubArea{
-		// the name of the segment depends on the value of ram256byteIdx
-		Active:      true,
-		ReadOrigin:  0x1900,
-		ReadMemtop:  0x19ff,
-		WriteOrigin: 0x1800,
-		WriteMemtop: 0x18ff,
-	}
-
 	cart.Initialise()
 
 	return cart, nil
@@ -164,10 +144,12 @@ func (cart mnetwork) String() string {
 	return s.String()
 }
 
+// ID implements the cartMapper interface
 func (cart mnetwork) ID() string {
 	return cart.mappingID
 }
 
+// Initialise implements the cartMapper interface
 func (cart *mnetwork) Initialise() {
 	cart.bank = 0
 	cart.ram256byteIdx = 0
@@ -183,6 +165,7 @@ func (cart *mnetwork) Initialise() {
 	}
 }
 
+// Read implements the cartMapper interface
 func (cart *mnetwork) Read(addr uint16) (uint8, error) {
 	var data uint8
 
@@ -209,6 +192,7 @@ func (cart *mnetwork) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *mnetwork) Write(addr uint16, data uint8) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if addr <= 0x03ff && cart.bank == 7 {
@@ -271,10 +255,12 @@ func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
 	return true
 }
 
+// NumBanks implements the cartMapper interface
 func (cart *mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
+// GetBank implements the cartMapper interface
 func (cart *mnetwork) GetBank(addr uint16) (bank int) {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return cart.bank
@@ -282,6 +268,7 @@ func (cart *mnetwork) GetBank(addr uint16) (bank int) {
 	return cart.ram256byteIdx
 }
 
+// SetBank implements the cartMapper interface
 func (cart *mnetwork) SetBank(addr uint16, bank int) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		cart.bank = bank
@@ -294,6 +281,7 @@ func (cart *mnetwork) SetBank(addr uint16, bank int) error {
 	return nil
 }
 
+// SaveState implements the cartMapper interface
 func (cart *mnetwork) SaveState() interface{} {
 	ram1k := make([]uint8, len(cart.ram1k))
 	copy(ram1k, cart.ram1k)
@@ -307,6 +295,7 @@ func (cart *mnetwork) SaveState() interface{} {
 	return []interface{}{cart.bank, cart.ram256byteIdx, ram1k, ram256byte}
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *mnetwork) RestoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
 	cart.ram256byteIdx = state.([]interface{})[1].(int)
@@ -322,22 +311,52 @@ func (cart *mnetwork) RestoreState(state interface{}) error {
 	return nil
 }
 
+// Poke implements the cartMapper interface
 func (cart *mnetwork) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
+// Patch implements the cartMapper interface
 func (cart *mnetwork) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
+// Listen implements the cartMapper interface
 func (cart *mnetwork) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *mnetwork) Step() {
 }
 
-func (cart mnetwork) GetRAM() []memorymap.SubArea {
-	cart.ramDetails[0].Active = cart.bank == 7
-	cart.ramDetails[1].Label = fmt.Sprintf("256byte [%d]", cart.ram256byteIdx)
-	return cart.ramDetails
+// GetRAM implements the bus.CartRAMBus interface
+func (cart mnetwork) GetRAM() []bus.CartRAM {
+	r := make([]bus.CartRAM, num256ByteRAMbanks+1)
+
+	r[0] = bus.CartRAM{
+		Label:  "1k",
+		Origin: 0x1000,
+		Data:   make([]uint8, len(cart.ram1k)),
+	}
+	copy(r[0].Data, cart.ram1k)
+
+	for i := 0; i < num256ByteRAMbanks; i++ {
+		r[i+1] = bus.CartRAM{
+			Label:  fmt.Sprintf("256B [%d]", i),
+			Origin: 0x1900,
+			Data:   make([]uint8, len(cart.ram1k)),
+		}
+		copy(r[i+1].Data, cart.ram256byte[i])
+	}
+
+	return r
+}
+
+// PutRAM implements the bus.CartRAMBus interface
+func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
+	if bank == 0 {
+		cart.ram1k[idx] = data
+		return
+	}
+	cart.ram256byte[bank-1][idx] = data
 }

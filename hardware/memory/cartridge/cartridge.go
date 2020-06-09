@@ -252,15 +252,18 @@ func (cart Cartridge) Step() {
 	cart.mapper.Step()
 }
 
-// GetRAM returns an array of memorymap.SubArea or nil if catridge contains no RAM
-func (cart Cartridge) GetRAM() []memorymap.SubArea {
-	return cart.mapper.GetRAM()
-}
-
 // GetDebugBus returns interface to the debugging bus to the cartridge.
 func (cart Cartridge) GetDebugBus() bus.CartDebugBus {
-	if sa, ok := cart.mapper.(bus.CartDebugBus); ok {
-		return sa
+	if bus, ok := cart.mapper.(bus.CartDebugBus); ok {
+		return bus
+	}
+	return nil
+}
+
+// GetRAMbus returns an array of bus.CartRAM or nil if catridge contains no RAM
+func (cart Cartridge) GetRAMbus() bus.CartRAMbus {
+	if bus, ok := cart.mapper.(bus.CartRAMbus); ok {
+		return bus
 	}
 	return nil
 }

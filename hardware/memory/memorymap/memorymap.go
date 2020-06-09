@@ -121,15 +121,3 @@ func IsArea(address uint16, area Area) bool {
 	_, a := MapAddress(address, true)
 	return area == a
 }
-
-// SubArea details the read/write addresses for an arbitrary area of memory.
-// Useful for identifying/partitioning logical areas of memory within the four
-// principle areas (TIA/RAM/RIOT/Cartridge)
-type SubArea struct {
-	Label       string
-	Active      bool
-	ReadOrigin  uint16
-	ReadMemtop  uint16
-	WriteOrigin uint16
-	WriteMemtop uint16
-}

@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // dpc implements the cartMapper interface.
@@ -37,7 +36,7 @@ type dpc struct {
 	banks [][]byte
 	bank  int
 
-	static    DPCstaticAreas
+	static    DPCstatic
 	registers DPCregisters
 
 	// the OSC clock found in DPC cartridges runs at slower than the VCS itself
@@ -46,12 +45,12 @@ type dpc struct {
 	beats int
 }
 
-// DPCstaticAreas implements the bus.CartStaticAreas interface
-type DPCstaticAreas struct {
+// DPCstatic implements the bus.CartStatic interface
+type DPCstatic struct {
 	Gfx []byte
 }
 
-func (sa DPCstaticAreas) String() string {
+func (sa DPCstatic) String() string {
 	s := &strings.Builder{}
 
 	// header for static data table
@@ -166,14 +165,17 @@ func (cart dpc) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
+// ID implements the cartMapper interface
 func (cart dpc) ID() string {
 	return cart.mappingID
 }
 
+// Initialise implements the cartMapper interface
 func (cart *dpc) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
+// Read implements the cartMapper interface
 func (cart *dpc) Read(addr uint16) (uint8, error) {
 	var data uint8
 
@@ -290,6 +292,7 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *dpc) Write(addr uint16, data uint8) error {
 	if addr == 0x0ff8 {
 		cart.bank = 0
@@ -348,38 +351,47 @@ func (cart *dpc) Write(addr uint16, data uint8) error {
 	return nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart dpc) NumBanks() int {
 	return 2
 }
 
+// SetBank implements the cartMapper interface
 func (cart *dpc) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
 	return nil
 }
 
+// GetBank implements the cartMapper interface
 func (cart dpc) GetBank(addr uint16) int {
 	return cart.bank
 }
 
+// SaveState implements the cartMapper interface
 func (cart *dpc) SaveState() interface{} {
 	return nil
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *dpc) RestoreState(state interface{}) error {
 	return nil
 }
 
+// Poke implements the cartMapper interface
 func (cart *dpc) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
+// Patch implements the cartMapper interface
 func (cart *dpc) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.description)
 }
 
+// Listen implements the cartMapper interface
 func (cart *dpc) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *dpc) Step() {
 	// clock music enabled data fetchers if oscClock is active [col 7, ln 25-27]
 
@@ -408,10 +420,6 @@ func (cart *dpc) Step() {
 			}
 		}
 	}
-}
-
-func (cart dpc) GetRAM() []memorymap.SubArea {
-	return nil
 }
 
 // GetRegisters implements the bus.CartDebugBus interface
@@ -474,13 +482,17 @@ func (cart *dpc) PutRegister(register string, data string) {
 	}
 }
 
-// GetStaticAreas implements the bus.CartDebugBus interface
-func (cart dpc) GetStaticAreas() bus.CartStaticAreas {
-	return bus.CartStaticAreas(cart.static)
+// GetStatic implements the bus.CartDebugBus interface
+func (cart dpc) GetStatic() bus.CartStatic {
+	s := DPCstatic{
+		Gfx: make([]byte, len(cart.static.Gfx)),
+	}
+	copy(s.Gfx, cart.static.Gfx)
+	return bus.CartStatic(s)
 }
 
-// StaticWrite implements the bus.CartDebugBus interface
-func (cart *dpc) StaticWrite(addr uint16, data uint8) error {
+// PutStatic implements the bus.CartDebugBus interface
+func (cart *dpc) PutStatic(addr uint16, data uint8) error {
 	if int(addr) >= len(cart.static.Gfx) {
 		return errors.New(errors.CartridgeStaticOOB, addr)
 	}

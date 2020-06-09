@@ -73,9 +73,9 @@ type CartDebugBus interface {
 	// in the mapper documentation.
 	PutRegister(register string, data string)
 
-	// GetStaticAreas returns a copy of the cartridge's static areas
-	GetStaticAreas() CartStaticAreas
-	StaticWrite(addr uint16, data uint8) error
+	// GetStatic returns a copy of the cartridge's static areas
+	GetStatic() CartStatic
+	PutStatic(addr uint16, data uint8) error
 }
 
 // CartRegisters conceptualises the cartridge specific registers that are
@@ -84,8 +84,33 @@ type CartRegisters interface {
 	fmt.Stringer
 }
 
-// CartStaticArea conceptualises the cartridge's static data areas that are
+// CartStatic conceptualises the cartridge's static data areas that are
 // inaccessible through normal addressing
-type CartStaticAreas interface {
+type CartStatic interface {
 	fmt.Stringer
+}
+
+// CartRAMbus is implemented for catridge mappers that have an addressable RAM
+// area. This differs from a Static area which is not addressable by the VCS.
+//
+// Note that some mappers will implement this interface but have no RAM for the
+// specific cartridge. In these case GetRAM() will return nil.
+type CartRAMbus interface {
+	GetRAM() []CartRAM
+	PutRAM(bank int, idx int, data uint8)
+}
+
+// CartRAM represents a single segment of RAM in the cartridge. A cartridge may
+// contain more than one segment of RAM. The Label field can help distinguish
+// between the different segments.
+//
+// The Origin field specifies the address of the lowest byte in RAM. The Data
+// field is a copy of the actual bytes in the cartidge RAM. Because Cartidge is
+// addressable, it is also possible to update cartridge RAM through the normal
+// memory buses; although in the context of a debugger it is probably more
+// convience to use PutRAM() in the CartRAMbus interface
+type CartRAM struct {
+	Label  string
+	Origin uint16
+	Data   []uint8
 }

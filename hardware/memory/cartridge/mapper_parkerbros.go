@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // from bankswitch_sizes.txt:
@@ -101,10 +100,12 @@ func (cart parkerBros) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.description, cart.mappingID, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
+// ID implements the cartMapper interface
 func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
+// Initialise implements the cartMapper interface
 func (cart *parkerBros) Initialise() {
 	cart.segment[0] = cart.NumBanks() - 4
 	cart.segment[1] = cart.NumBanks() - 3
@@ -112,6 +113,7 @@ func (cart *parkerBros) Initialise() {
 	cart.segment[3] = cart.NumBanks() - 1
 }
 
+// Read implements the cartMapper interface
 func (cart *parkerBros) Read(addr uint16) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -127,6 +129,7 @@ func (cart *parkerBros) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *parkerBros) Write(addr uint16, data uint8) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
@@ -199,10 +202,12 @@ func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
 	return true
 }
 
+// NumBanks implements the cartMapper interface
 func (cart parkerBros) NumBanks() int {
 	return 8
 }
 
+// GetBank implements the cartMapper interface
 func (cart parkerBros) GetBank(addr uint16) int {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.segment[0]
@@ -214,6 +219,7 @@ func (cart parkerBros) GetBank(addr uint16) int {
 	return cart.segment[3]
 }
 
+// SetBank implements the cartMapper interface
 func (cart *parkerBros) SetBank(addr uint16, bank int) error {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		cart.segment[0] = bank
@@ -230,29 +236,31 @@ func (cart *parkerBros) SetBank(addr uint16, bank int) error {
 	return nil
 }
 
+// SaveState implements the cartMapper interface
 func (cart *parkerBros) SaveState() interface{} {
 	return cart.segment
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *parkerBros) RestoreState(state interface{}) error {
 	cart.segment = state.([len(cart.segment)]int)
 	return nil
 }
 
+// Poke implements the cartMapper interface
 func (cart *parkerBros) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
+// Patch implements the cartMapper interface
 func (cart *parkerBros) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
+// Listen implements the cartMapper interface
 func (cart *parkerBros) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *parkerBros) Step() {
-}
-
-func (cart parkerBros) GetRAM() []memorymap.SubArea {
-	return nil
 }

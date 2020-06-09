@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 type cbs struct {
@@ -38,9 +38,6 @@ type cbs struct {
 
 	// CBS cartridges always have a RAM area
 	ram []uint8
-
-	// subArea information for cartridge ram
-	ramDetails []memorymap.SubArea
 }
 
 func newCBS(data []byte) (cartMapper, error) {
@@ -64,17 +61,6 @@ func newCBS(data []byte) (cartMapper, error) {
 	// 256 bytes of cartidge ram in all instances
 	cart.ram = make([]uint8, 256)
 
-	// prepare ram details
-	cart.ramDetails = make([]memorymap.SubArea, 5)
-	cart.ramDetails[0] = memorymap.SubArea{
-		Label:       "CBS RAM+",
-		Active:      true,
-		ReadOrigin:  0x1080,
-		ReadMemtop:  0x10ff,
-		WriteOrigin: 0x1000,
-		WriteMemtop: 0x107f,
-	}
-
 	cart.Initialise()
 
 	return cart, nil
@@ -84,10 +70,12 @@ func (cart cbs) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
 }
 
+// ID implements the cartMapper interface
 func (cart cbs) ID() string {
 	return cart.mappingID
 }
 
+// Initialise implements the cartMapper interface
 func (cart *cbs) Initialise() {
 	cart.bank = len(cart.banks) - 1
 	for i := range cart.ram {
@@ -95,6 +83,7 @@ func (cart *cbs) Initialise() {
 	}
 }
 
+// Read implements the cartMapper interface
 func (cart *cbs) Read(addr uint16) (uint8, error) {
 	if addr >= 0x0100 && addr <= 0x01ff {
 		return cart.ram[addr-0x100], nil
@@ -113,6 +102,7 @@ func (cart *cbs) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the cartMapper interface
 func (cart *cbs) Write(addr uint16, data uint8) error {
 	if addr <= 0x00ff {
 		cart.ram[addr] = data
@@ -132,50 +122,69 @@ func (cart *cbs) Write(addr uint16, data uint8) error {
 	return nil
 }
 
+// NumBanks implements the cartMapper interface
 func (cart *cbs) NumBanks() int {
 	return 3
 }
 
+// GetBank implements the cartMapper interface
 func (cart cbs) GetBank(addr uint16) int {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
 	return cart.bank
 }
 
+// SetBank implements the cartMapper interface
 func (cart *cbs) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
 	return nil
 }
 
+// SaveState implements the cartMapper interface
 func (cart *cbs) SaveState() interface{} {
 	superchip := make([]uint8, len(cart.ram))
 	copy(superchip, cart.ram)
 	return []interface{}{cart.bank, superchip}
 }
 
+// RestoreState implements the cartMapper interface
 func (cart *cbs) RestoreState(state interface{}) error {
 	cart.bank = state.([]interface{})[0].(int)
 	copy(cart.ram, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
+// Poke implements the cartMapper interface
 func (cart *cbs) Poke(addr uint16, data uint8) error {
 	return errors.New(errors.UnpokeableAddress, addr)
 }
 
+// Patch implements the cartMapper interface
 func (cart *cbs) Patch(addr uint16, data uint8) error {
 	return errors.New(errors.UnpatchableCartType, cart.mappingID)
 }
 
+// Listen implements the cartMapper interface
 func (cart *cbs) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the cartMapper interface
 func (cart *cbs) Step() {
 }
 
-func (cart cbs) GetRAM() []memorymap.SubArea {
-	if cart.ram == nil {
-		return nil
+// GetRAM implements the bus.CartRAMBus interface
+func (cart cbs) GetRAM() []bus.CartRAM {
+	r := make([]bus.CartRAM, 1)
+	r[0] = bus.CartRAM{
+		Label:  "CBS+RAM",
+		Origin: 0x1080,
+		Data:   make([]uint8, len(cart.ram)),
 	}
-	return cart.ramDetails
+	copy(r[0].Data, cart.ram)
+	return r
+}
+
+// PutRAM implements the bus.CartRAMBus interface
+func (cart *cbs) PutRAM(_ int, idx int, data uint8) {
+	cart.ram[idx] = data
 }

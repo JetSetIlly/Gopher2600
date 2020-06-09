@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // dpcPlus implements the cartMapper interface.
@@ -37,7 +36,7 @@ type dpcPlus struct {
 	bank  int
 
 	registers DPCplusRegisters
-	static    DPCplusStaticAreas
+	static    DPCplusStatic
 
 	// was the last instruction read the opcode for "lda <immediate>"
 	lda bool
@@ -605,10 +604,6 @@ func (cart *dpcPlus) Step() {
 	}
 }
 
-func (cart dpcPlus) GetRAM() []memorymap.SubArea {
-	return nil
-}
-
 // GetRegisters implements the bus.CartDebugBus interface
 func (cart dpcPlus) GetRegisters() bus.CartRegisters {
 	return cart.registers
@@ -707,16 +702,29 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 	}
 }
 
-// GetStaticAreas implements the bus.CartDebugBus interface
-func (cart dpcPlus) GetStaticAreas() bus.CartStaticAreas {
-	return bus.CartStaticAreas(cart.static)
+// GetStatic implements the bus.CartDebugBus interface
+func (cart dpcPlus) GetStatic() bus.CartStatic {
+	s := DPCplusStatic{
+		Arm:  make([]byte, len(cart.static.Arm)),
+		Data: make([]byte, len(cart.static.Data)),
+		Freq: make([]byte, len(cart.static.Freq)),
+	}
+	copy(s.Arm, cart.static.Arm)
+	copy(s.Data, cart.static.Data)
+	copy(s.Freq, cart.static.Freq)
+	return bus.CartStatic(s)
 }
 
 // StaticWrite implements the bus.CartDebugBus interface
-func (cart *dpcPlus) StaticWrite(addr uint16, data uint8) error {
+func (cart *dpcPlus) PutStatic(addr uint16, data uint8) error {
 	if int(addr) >= len(cart.static.Data) {
 		return errors.New(errors.CartridgeStaticOOB, addr)
 	}
 	cart.static.Data[addr] = data
+	return nil
+}
+
+// StaticWrite implements the bus.CartRAMbus interface
+func (cart dpcPlus) GetRAM() [][]uint8 {
 	return nil
 }

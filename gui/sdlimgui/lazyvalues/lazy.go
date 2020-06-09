@@ -41,6 +41,7 @@ type Lazy struct {
 	// detector for some reason.
 	Debugger   *LazyDebugger
 	CPU        *LazyCPU
+	RAM        *LazyRAM
 	Timer      *LazyTimer
 	Playfield  *LazyPlayfield
 	Player0    *LazyPlayer
@@ -77,6 +78,7 @@ func NewValues() *Lazy {
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
+	val.RAM = newLazyRAM(val)
 	val.Timer = newLazyTimer(val)
 	val.Playfield = newLazyPlayfield(val)
 	val.Player0 = newLazyPlayer(val, 0)
@@ -89,10 +91,6 @@ func NewValues() *Lazy {
 	val.Controller = newLazyControllers(val)
 	val.Prefs = newLazyPrefs(val)
 	val.Collisions = newLazyCollisions(val)
-
-	// allocating enough ram for an entire cart bank because, theoretically, a
-	// cartridge format could have a RAM area as large as that
-	val.atomicRAM = make([]atomic.Value, memorymap.MemtopCart-memorymap.OriginCart+1)
 
 	// allocating enough space for every byte in cartridge space. not worrying
 	// about bank sizes or anything like that.
@@ -131,6 +129,7 @@ func (val *Lazy) Update() {
 
 	val.Debugger.update()
 	val.CPU.update()
+	val.RAM.update()
 	val.Timer.update()
 	val.Playfield.update()
 	val.Player0.update()
@@ -143,20 +142,6 @@ func (val *Lazy) Update() {
 	val.Controller.update()
 	val.Prefs.update()
 	val.Collisions.update()
-}
-
-// ReadRAM returns the data at read address
-func (val *Lazy) ReadRAM(ramDetails memorymap.SubArea, readAddr uint16) uint8 {
-	if !val.active.Load().(bool) || val.Dbg == nil {
-		return 0
-	}
-
-	val.Dbg.PushRawEvent(func() {
-		d, _ := val.Dbg.VCS.Mem.Read(readAddr)
-		val.atomicRAM[readAddr^ramDetails.ReadOrigin].Store(d)
-	})
-	d, _ := val.atomicRAM[readAddr^ramDetails.ReadOrigin].Load().(uint8)
-	return d
 }
 
 // HasBreak checks to see if disassembly entry has a break point

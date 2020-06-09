@@ -19,8 +19,6 @@
 
 package cartridge
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-
 // cartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
 // convenience, functions with an address argument recieve that address
@@ -40,6 +38,9 @@ type cartMapper interface {
 	// (including ROM).
 	Poke(addr uint16, data uint8) error
 
+	// cartMapper does not need a dedicated Peek() function. the Cartridge type
+	// implements Peek() and can just call the cartMapper's Read() function
+
 	// patch differs from poke in that it alters the data as though it was
 	// being read from disk
 	Patch(offset uint16, data uint8) error
@@ -53,10 +54,6 @@ type cartMapper interface {
 	// at a rate of 1.19. cartridges with slower clocks need to handle the rate
 	// change.
 	Step()
-
-	// some cartridge mappings have additional RAM. getRAM() returns an array of
-	// memorymap.SubArea, or nil if the cartridge has no RAM
-	GetRAM() []memorymap.SubArea
 }
 
 // optionalSuperchip are implemented by cartMappers that have an optional

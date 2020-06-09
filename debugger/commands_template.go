@@ -86,7 +86,7 @@ var commandTemplate = []string{
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (BANK %<number>N|STATIC|REGISTERS)",
+	cmdCartridge + " (BANK %<number>N|STATIC|REGISTERS|RAM)",
 	cmdPatch + " %<patch file>S",
 	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
 	cmdLint,
@@ -99,7 +99,7 @@ var commandTemplate = []string{
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%<register value>N])",
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
-	cmdRAM + " (CART)",
+	cmdRAM,
 	cmdTimer,
 	cmdTIA + " (DELAYS)",
 	cmdAudio,

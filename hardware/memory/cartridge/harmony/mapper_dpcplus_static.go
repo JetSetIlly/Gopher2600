@@ -20,14 +20,14 @@ import (
 	"strings"
 )
 
-// DPCplusStaticAreas implements the bus.CartStaticAreas interface
-type DPCplusStaticAreas struct {
+// DPCplusStatic implements the bus.CartStatic interface
+type DPCplusStatic struct {
 	Arm  []byte
 	Data []byte
 	Freq []byte
 }
 
-func (sa DPCplusStaticAreas) String() string {
+func (sa DPCplusStatic) String() string {
 	s := &strings.Builder{}
 
 	// static data

@@ -32,7 +32,7 @@ import (
 type RAM struct {
 	bus.DebuggerBus
 	bus.CPUBus
-	memory []uint8
+	RAM []uint8
 }
 
 // newRAM is the preferred method of initialisation for the RAM memory area
@@ -40,7 +40,7 @@ func newRAM() *RAM {
 	ram := &RAM{}
 
 	// allocate the mininmal amount of memory
-	ram.memory = make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1)
+	ram.RAM = make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1)
 
 	return ram
 }
@@ -52,7 +52,7 @@ func (ram RAM) String() string {
 	for y := 0; y < 8; y++ {
 		s.WriteString(fmt.Sprintf("%X- | ", y+8))
 		for x := 0; x < 16; x++ {
-			s.WriteString(fmt.Sprintf(" %02x", ram.memory[uint16((y*16)+x)]))
+			s.WriteString(fmt.Sprintf(" %02x", ram.RAM[uint16((y*16)+x)]))
 		}
 		s.WriteString("\n")
 	}
@@ -73,11 +73,11 @@ func (ram RAM) Poke(address uint16, value uint8) error {
 
 // Read is an implementatio of memory.ChipBus. Address must be normalised.
 func (ram RAM) Read(address uint16) (uint8, error) {
-	return ram.memory[address^memorymap.OriginRAM], nil
+	return ram.RAM[address^memorymap.OriginRAM], nil
 }
 
 // Write is an implementatio of memory.ChipBus. Address must be normalised.
 func (ram *RAM) Write(address uint16, data uint8) error {
-	ram.memory[address^memorymap.OriginRAM] = data
+	ram.RAM[address^memorymap.OriginRAM] = data
 	return nil
 }

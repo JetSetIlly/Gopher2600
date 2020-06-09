@@ -299,16 +299,48 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 			case "STATIC":
 				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {
-					dbg.printInstrument(db.GetStaticAreas())
+					dbg.printInstrument(db.GetStatic())
 				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge has no special features")
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 				}
 			case "REGISTERS":
-				sa := dbg.VCS.Mem.Cart.GetDebugBus()
-				if sa != nil {
-					dbg.printInstrument(sa.GetRegisters())
+				bus := dbg.VCS.Mem.Cart.GetDebugBus()
+				if bus != nil {
+					dbg.printInstrument(bus.GetRegisters())
 				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge has no special features")
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no registers")
+				}
+
+			case "RAM":
+				bus := dbg.VCS.Mem.Cart.GetRAMbus()
+				if bus != nil {
+					s := &strings.Builder{}
+					ram := bus.GetRAM()
+					if ram != nil {
+						for b := 0; b < len(ram); b++ {
+							s.WriteString(ram[b].Label + "\n")
+
+							// header for table. assumes that origin address begins at xxx0
+							s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+							s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+							for i := 0; i < len(ram[b].Data); i++ {
+								// begin new row every 16 iterations
+								if i%16 == 0 {
+									s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+								}
+								d, _ := dbg.VCS.Mem.Read(ram[b].Origin + uint16(i))
+								s.WriteString(fmt.Sprintf("%02x ", d))
+							}
+							s.WriteString("\n\n")
+						}
+
+						dbg.printInstrument(s)
+					} else {
+						dbg.printLine(terminal.StyleFeedback, "cartridge has no RAM")
+					}
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no RAM")
 				}
 			}
 		} else {
@@ -727,50 +759,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdRAM:
-		option, ok := tokens.Get()
-		if ok {
-			option = strings.ToUpper(option)
-			switch option {
-			case "CART":
-				cr := dbg.VCS.Mem.Cart.GetRAM()
-				if len(cr) > 0 {
-					s := &strings.Builder{}
-
-					for b := 0; b < len(cr); b++ {
-						if !cr[b].Active {
-							continue
-						}
-
-						// if there are multiple RAM areas then include the
-						// area label
-						if len(cr) > 1 {
-							s.WriteString(cr[b].Label + "\n")
-						}
-
-						// header for table. assumes that origin address begins at xxx0
-						s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-						s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-						j := uint16(0)
-						for i := cr[b].ReadOrigin; i <= cr[b].ReadMemtop; i++ {
-							// begin new row every 16 iterations
-							if j%16 == 0 {
-								s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-							}
-							d, _ := dbg.VCS.Mem.Read(cr[b].ReadOrigin + j)
-							s.WriteString(fmt.Sprintf("%02x ", d))
-							j++
-						}
-					}
-
-					dbg.printInstrument(s)
-				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge does not have any RAM")
-				}
-			}
-		} else {
-			dbg.printInstrument(dbg.VCS.Mem.RAM)
-		}
+		dbg.printInstrument(dbg.VCS.Mem.RAM)
 
 	case cmdTimer:
 		dbg.printInstrument(dbg.VCS.RIOT.Timer)

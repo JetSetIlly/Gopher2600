@@ -23,36 +23,39 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // LazyCart lazily accesses cartridge information from the emulator
 type LazyCart struct {
 	val *Lazy
 
-	atomicID         atomic.Value // string
-	atomicSummary    atomic.Value // string
-	atomicFilename   atomic.Value // string
-	atomicNumBanks   atomic.Value // int
-	atomicCurrBank   atomic.Value // int
-	atomicRAMdetails atomic.Value // []memorymap.SubArea
+	atomicID       atomic.Value // string
+	atomicSummary  atomic.Value // string
+	atomicFilename atomic.Value // string
+	atomicNumBanks atomic.Value // int
+	atomicCurrBank atomic.Value // int
 
-	atomicStaticAreas atomic.Value
-	atomicDebugBus    atomic.Value // bus.CartDebugBus
-	atomicRegisters   atomic.Value // bus.CartRegisters
+	atomicDebugBus  atomic.Value // bus.CartDebugBus
+	atomicStatic    atomic.Value
+	atomicRegisters atomic.Value // bus.CartRegisters
 
-	ID         string
-	Summary    string
-	Filename   string
-	NumBanks   int
-	CurrBank   int
-	RAMdetails []memorymap.SubArea
+	atomicRAMbus atomic.Value // bus.CartRAMbus
+	atomicRAM    atomic.Value // []bus.CartRAM
 
-	// CartDebugBus is an interface to the cartridge mapper
+	ID       string
+	Summary  string
+	Filename string
+	NumBanks int
+	CurrBank int
+
 	HasDebugBus bool
 	DebugBus    bus.CartDebugBus
-	StaticAreas bus.CartStaticAreas
+	Static      bus.CartStatic
 	Registers   bus.CartRegisters
+
+	HasRAMbus bool
+	RAMbus    bus.CartRAMbus
+	RAM       []bus.CartRAM
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -71,14 +74,19 @@ func (lz *LazyCart) update() {
 		lz.atomicSummary.Store(lz.val.Dbg.VCS.Mem.Cart.String())
 		lz.atomicFilename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
 		lz.atomicNumBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
-		lz.atomicRAMdetails.Store(lz.val.Dbg.VCS.Mem.Cart.GetRAM())
 		lz.atomicCurrBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(PCaddr))
 
 		b := lz.val.Dbg.VCS.Mem.Cart.GetDebugBus()
 		if b != nil {
 			lz.atomicDebugBus.Store(b)
-			lz.atomicStaticAreas.Store(b.GetStaticAreas())
+			lz.atomicStatic.Store(b.GetStatic())
 			lz.atomicRegisters.Store(b.GetRegisters())
+		}
+
+		r := lz.val.Dbg.VCS.Mem.Cart.GetRAMbus()
+		if r != nil {
+			lz.atomicRAMbus.Store(r)
+			lz.atomicRAM.Store(r.GetRAM())
 		}
 	})
 
@@ -87,11 +95,18 @@ func (lz *LazyCart) update() {
 	lz.Filename, _ = lz.atomicFilename.Load().(string)
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
 	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
-	lz.RAMdetails, _ = lz.atomicRAMdetails.Load().([]memorymap.SubArea)
 
 	lz.DebugBus, lz.HasDebugBus = lz.atomicDebugBus.Load().(bus.CartDebugBus)
 	if lz.HasDebugBus {
-		lz.StaticAreas, _ = lz.atomicStaticAreas.Load().(bus.CartStaticAreas)
+		lz.Static, _ = lz.atomicStatic.Load().(bus.CartStatic)
 		lz.Registers, _ = lz.atomicRegisters.Load().(bus.CartRegisters)
+	}
+
+	lz.RAMbus, lz.HasRAMbus = lz.atomicRAMbus.Load().(bus.CartRAMbus)
+	if lz.HasRAMbus {
+		lz.RAM, _ = lz.atomicRAM.Load().([]bus.CartRAM)
+		if lz.RAM == nil {
+			lz.HasRAMbus = false
+		}
 	}
 }
