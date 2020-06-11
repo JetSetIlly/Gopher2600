@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -174,6 +175,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	case "DPC":
 		cart.mapper, err = newDPC(data)
+	case "DPC+":
+		cart.mapper, err = harmony.NewDPCplus(data)
 	}
 
 	if addSuperchip {
