@@ -215,18 +215,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 						},
 					}
 
-				case "BUS":
-					trg = &target{
-						label: "Bus Error",
-						currentValue: func() interface{} {
-							s := dbg.VCS.CPU.LastResult.BusError
-							if s == "" {
-								return "ok"
-							}
-							return s
-						},
-					}
-
 				default:
 					return nil, errors.New(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
 				}

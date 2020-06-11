@@ -298,12 +298,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					}
 				}
 			case "STATIC":
+				// !TODO: poke/peek static cartridge static data areas
 				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {
 					dbg.printInstrument(db.GetStatic())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 				}
 			case "REGISTERS":
+				// !TODO: poke/peek cartridge registers
 				bus := dbg.VCS.Mem.Cart.GetDebugBus()
 				if bus != nil {
 					dbg.printInstrument(bus.GetRegisters())
@@ -312,6 +314,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 
 			case "RAM":
+				// cartridge RAM is accessible through the normal VCS buses so
+				// the normal peek/poke commands will work
 				bus := dbg.VCS.Mem.Cart.GetRAMbus()
 				if bus != nil {
 					s := &strings.Builder{}
@@ -725,10 +729,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		// get address token
 		a, _ := tokens.Get()
 
-		// convert address
+		// convert address. note that the calls to dbgmem.poke() also call
+		// mapAddress(). the reason we map the address here is because we want
+		// a numeric address that we can iterate with in the for loop below.
+		// simply converting to a number is no good because we want the user to
+		// be able to specify an address by name, so we may as well just call
+		// mapAddress, even if it does seem redundant.
 		ai := dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			// using poke error because hexload is basically the same as poking
 			dbg.printLine(terminal.StyleError, errors.New(errors.UnpokeableAddress, a).Error())
 			return false, nil
 		}
@@ -745,7 +753,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				continue // for loop (without advancing address)
 			}
 
-			// perform individual poke
 			ai, err := dbg.dbgmem.poke(addr, uint8(val))
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)

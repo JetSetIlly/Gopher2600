@@ -86,7 +86,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 
 		pokeLine := strings.Split(lines[i], pokeLineSeparator)
 
-		// ignore any lines that don't match the required [address: values...] format
+		// ignore any lines that don't match the required [offset: values...] format
 		if len(pokeLine) != 2 {
 			continue // for loop
 		}
@@ -95,8 +95,8 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 		pokeLine[0] = strings.TrimSpace(pokeLine[0])
 		pokeLine[1] = strings.TrimSpace(pokeLine[1])
 
-		// parse address
-		address, err := strconv.ParseInt(pokeLine[0], 16, 16)
+		// parse offset
+		offset, err := strconv.ParseInt(pokeLine[0], 16, 16)
 		if err != nil {
 			continue // for loop
 		}
@@ -120,14 +120,14 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 			}
 
 			// patch memory
-			err = mem.Patch(uint16(address), uint8(v))
+			err = mem.Patch(int(offset), uint8(v))
 			if err != nil {
 				return patched, errors.New(errors.PatchError, err)
 			}
 			patched = true
 
-			// advance address
-			address++
+			// advance offset
+			offset++
 		}
 	}
 

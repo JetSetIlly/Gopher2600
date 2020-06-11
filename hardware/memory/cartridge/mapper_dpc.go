@@ -33,11 +33,18 @@ type dpc struct {
 	description string
 
 	// banks and the currently selected bank
-	banks [][]byte
-	bank  int
+	bankSize int
+	banks    [][]byte
+	bank     int
 
-	static    DPCstatic
+	// DPC registers are directly accessible by the VCS but have a special
+	// meaning when written to and read. the DPCregisters type implements the
+	// functionality of these special addresses and a copy of the field is
+	// returned by the GetRegisters() function
 	registers DPCregisters
+
+	// dpc specific areas of the cartridge, not accessible by the normal VCS bus
+	static DPCstatic
 
 	// the OSC clock found in DPC cartridges runs at slower than the VCS itself
 	// to effectively emulate the slower clock therefore, we need to discount
@@ -126,7 +133,6 @@ func (df *DPCdataFetcher) clk() {
 
 func (df *DPCdataFetcher) setFlag() {
 	// set flag register [col 6, ln 7-12]
-
 	if df.Low == df.Top {
 		df.Flag = true
 	} else if df.Low == df.Bottom {
@@ -135,26 +141,28 @@ func (df *DPCdataFetcher) setFlag() {
 }
 
 func newDPC(data []byte) (cartMapper, error) {
-	const bankSize = 4096
-	const gfxSize = 2048
+	const staticSize = 2048
 
-	cart := &dpc{}
-	cart.mappingID = "DPC"
-	cart.description = "DPC Pitfall2 style"
+	cart := &dpc{
+		mappingID:   "DPC",
+		description: "DPC Pitfall2 style",
+		bankSize:    4096,
+	}
+
 	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) < bankSize*cart.NumBanks()+gfxSize {
+	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		cart.banks[k] = data[offset : offset+bankSize]
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
-	gfxStart := cart.NumBanks() * bankSize
-	cart.static.Gfx = data[gfxStart : gfxStart+gfxSize]
+	staticStart := cart.NumBanks() * cart.bankSize
+	cart.static.Gfx = data[staticStart : staticStart+staticSize]
 
 	cart.Initialise()
 
@@ -293,7 +301,7 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *dpc) Write(addr uint16, data uint8) error {
+func (cart *dpc) Write(addr uint16, data uint8, poke bool) error {
 	if addr == 0x0ff8 {
 		cart.bank = 0
 	} else if addr == 0x0ff9 {
@@ -348,7 +356,12 @@ func (cart *dpc) Write(addr uint16, data uint8) error {
 		// other addresses are not write registers and are ignored
 	}
 
-	return nil
+	if poke {
+		cart.banks[cart.bank][addr] = data
+		return nil
+	}
+
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 // NumBanks implements the cartMapper interface
@@ -377,18 +390,25 @@ func (cart *dpc) RestoreState(state interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *dpc) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *dpc) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.description)
+func (cart *dpc) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.Gfx) {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
+
+	staticStart := cart.NumBanks() * cart.bankSize
+	if staticStart >= staticStart {
+		cart.static.Gfx[offset] = data
+	} else {
+		bank := int(offset) / cart.bankSize
+		offset = offset % cart.bankSize
+		cart.banks[bank][offset] = data
+	}
+	return nil
 }
 
 // Listen implements the cartMapper interface
-func (cart *dpc) Listen(addr uint16, data uint8) {
+func (cart *dpc) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface

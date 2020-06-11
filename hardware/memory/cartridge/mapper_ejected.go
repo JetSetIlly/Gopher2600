@@ -20,8 +20,6 @@
 package cartridge
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/errors"
 )
 
@@ -56,12 +54,12 @@ func (cart *ejected) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *ejected) Read(addr uint16) (uint8, error) {
+func (cart *ejected) Read(_ uint16) (uint8, error) {
 	return 0, errors.New(errors.CartridgeEjected)
 }
 
 // Write implements the cartMapper interface
-func (cart *ejected) Write(addr uint16, data uint8) error {
+func (cart *ejected) Write(_ uint16, _ uint8, _ bool) error {
 	return errors.New(errors.CartridgeEjected)
 }
 
@@ -71,12 +69,12 @@ func (cart ejected) NumBanks() int {
 }
 
 // SetBank implements the cartMapper interface
-func (cart *ejected) SetBank(addr uint16, bank int) error {
-	return errors.New(errors.CartridgeError, fmt.Sprintf("ejected cartridge"))
+func (cart *ejected) SetBank(_ uint16, _ int) error {
+	return errors.New(errors.CartridgeEjected)
 }
 
 // GetBank implements the cartMapper interface
-func (cart ejected) GetBank(addr uint16) int {
+func (cart ejected) GetBank(_ uint16) int {
 	return 0
 }
 
@@ -86,22 +84,17 @@ func (cart *ejected) SaveState() interface{} {
 }
 
 // RestoreState implements the cartMapper interface
-func (cart *ejected) RestoreState(state interface{}) error {
+func (cart *ejected) RestoreState(_ interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *ejected) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *ejected) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.description)
+func (cart *ejected) Patch(_ int, _ uint8) error {
+	return errors.New(errors.CartridgeEjected)
 }
 
 // Listen implements the cartMapper interface
-func (cart *ejected) Listen(addr uint16, data uint8) {
+func (cart *ejected) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface

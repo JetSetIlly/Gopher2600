@@ -27,23 +27,18 @@ type cartMapper interface {
 	Initialise()
 	ID() string
 	Read(addr uint16) (data uint8, err error)
-	Write(addr uint16, data uint8) error
+	Write(addr uint16, data uint8, poke bool) error
 	NumBanks() int
 	GetBank(addr uint16) (bank int)
 	SetBank(addr uint16, bank int) error
 	SaveState() interface{}
 	RestoreState(interface{}) error
 
-	// poke new value anywhere into currently selected bank of cartridge memory
-	// (including ROM).
-	Poke(addr uint16, data uint8) error
-
-	// cartMapper does not need a dedicated Peek() function. the Cartridge type
-	// implements Peek() and can just call the cartMapper's Read() function
-
-	// patch differs from poke in that it alters the data as though it was
-	// being read from disk
-	Patch(offset uint16, data uint8) error
+	// patch differs from write/poke in that it alters the data as though it
+	// was being read from disk. that is, the offset is measured from the start
+	// of the file. the cartmapper must translate the offset and update the
+	// correct data structure as appropriate.
+	Patch(offset int, data uint8) error
 
 	// see the commentary for the Listen() function in the Cartridge type for
 	// an explanation for what this does

@@ -148,12 +148,10 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 		return nil, errors.New(errors.DebuggerError, errors.New(errors.UnpeekableAddress, address))
 	}
 
-	ar, err := dbgmem.mem.GetArea(ai.area)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
+	area := dbgmem.mem.GetArea(ai.area)
 
-	ai.data, err = ar.Peek(ai.mappedAddress)
+	var err error
+	ai.data, err = area.Peek(ai.mappedAddress)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -171,12 +169,9 @@ func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, e
 		return nil, errors.New(errors.DebuggerError, errors.New(errors.UnpokeableAddress, address))
 	}
 
-	ar, err := dbgmem.mem.GetArea(ai.area)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
+	area := dbgmem.mem.GetArea(ai.area)
 
-	err = ar.Poke(ai.mappedAddress, data)
+	err := area.Poke(ai.mappedAddress, data)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}

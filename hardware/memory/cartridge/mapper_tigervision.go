@@ -60,7 +60,8 @@ type tigervision struct {
 	mappingID   string
 	description string
 
-	banks [][]uint8
+	bankSize int
+	banks    [][]uint8
 
 	// tigervision cartridges divide memory into two 2k segments
 	//  o the last segment always points to the last bank
@@ -74,27 +75,27 @@ type tigervision struct {
 // should work with any size cartridge that is a multiple of 2048
 //  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo)
 func newTigervision(data []byte) (cartMapper, error) {
-	const bankSize = 2048
+	cart := &tigervision{
+		description: "tigervision",
+		mappingID:   "3F",
+		bankSize:    2048,
+	}
 
-	if len(data)%bankSize != 0 {
+	if len(data)%cart.bankSize != 0 {
 		return nil, errors.New(errors.CartridgeError, "tigervision (3F): cartridge size must be multiple of 2048")
 	}
 
-	numBanks := len(data) / bankSize
-
-	cart := &tigervision{}
-	cart.description = "tigervision"
-	cart.mappingID = "3F"
+	numBanks := len(data) / cart.bankSize
 	cart.banks = make([][]uint8, numBanks)
 
-	if len(data) != bankSize*numBanks {
+	if len(data) != cart.bankSize*numBanks {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < numBanks; k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	cart.Initialise()
@@ -131,8 +132,15 @@ func (cart *tigervision) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *tigervision) Write(addr uint16, data uint8) error {
-	return errors.New(errors.BusError, addr)
+func (cart *tigervision) Write(addr uint16, data uint8, poke bool) error {
+	if poke {
+		if addr >= 0x0000 && addr <= 0x07ff {
+			cart.banks[cart.segment[0]][addr&0x07ff] = data
+		} else if addr >= 0x0800 && addr <= 0x0fff {
+			cart.banks[cart.segment[1]][addr&0x07ff] = data
+		}
+	}
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 // NumBanks implements the cartMapper interface
@@ -172,14 +180,16 @@ func (cart *tigervision) RestoreState(state interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *tigervision) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *tigervision) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.mappingID)
+func (cart *tigervision) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
+
+	bank := int(offset) / cart.bankSize
+	offset = offset % cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }
 
 // Listen implements the cartMapper interface

@@ -66,8 +66,8 @@ type Result struct {
 	// whether a known buggy code path (in the emulated CPU) was triggered
 	CPUBug string
 
-	// whether the last memory access resulted in a bus error
-	BusError string
+	// error string. will be a memory access error
+	Error string
 
 	// whether this data has been finalised - some fields in this struct will
 	// be undefined if Final is false
@@ -83,6 +83,6 @@ func (r *Result) Reset() {
 	r.ActualCycles = 0
 	r.PageFault = false
 	r.CPUBug = ""
-	r.BusError = ""
+	r.Error = ""
 	r.Final = false
 }

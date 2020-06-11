@@ -189,10 +189,10 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return 0, err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	// +1 cycle
@@ -211,10 +211,10 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	val, err := mc.mem.ReadZeroPage(address)
 
 	if err != nil {
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return 0, err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	// +1 cycle
@@ -237,10 +237,10 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	if err != nil {
 		// don't worry about unwritable addresses (unless strict addressing
 		// is on)
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	return nil
@@ -252,10 +252,10 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return 0, err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	// +1 cycle
@@ -266,10 +266,10 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return 0, err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	// +1 cycle
@@ -291,10 +291,10 @@ func (mc *CPU) read8BitPC(val *uint8, f func() error) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !errors.Is(err, errors.BusError) {
+		if !errors.Is(err, errors.MemoryBusError) {
 			return err
 		}
-		mc.LastResult.BusError = err.Error()
+		mc.LastResult.Error = err.Error()
 	}
 
 	carry, _ := mc.PC.Add(1)
@@ -601,19 +601,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err := mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !errors.Is(err, errors.BusError) {
+				if !errors.Is(err, errors.MemoryBusError) {
 					return err
 				}
-				mc.LastResult.BusError = err.Error()
+				mc.LastResult.Error = err.Error()
 			}
 
 			// +1 cycle
 			err = mc.endCycle()
 			if err != nil {
-				if !errors.Is(err, errors.BusError) {
+				if !errors.Is(err, errors.MemoryBusError) {
 					return err
 				}
-				mc.LastResult.BusError = err.Error()
+				mc.LastResult.Error = err.Error()
 				return err
 			}
 

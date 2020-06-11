@@ -31,7 +31,8 @@ type cbs struct {
 	description string
 
 	// cbs cartridges have 3 banks of 4096 bytes
-	banks [][]uint8
+	bankSize int
+	banks    [][]uint8
 
 	// identifies the currently selected bank
 	bank int
@@ -41,25 +42,24 @@ type cbs struct {
 }
 
 func newCBS(data []byte) (cartMapper, error) {
-	const bankSize = 4096
+	cart := &cbs{
+		description: "CBS",
+		mappingID:   "FA",
+		bankSize:    4096,
+		ram:         make([]uint8, 256),
+	}
 
-	cart := &cbs{}
-	cart.description = "CBS"
-	cart.mappingID = "FA"
-	cart.banks = make([][]uint8, cart.NumBanks())
-
-	if len(data) != bankSize*cart.NumBanks() {
+	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
-	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
-	}
+	cart.banks = make([][]uint8, cart.NumBanks())
 
-	// 256 bytes of cartidge ram in all instances
-	cart.ram = make([]uint8, 256)
+	for k := 0; k < cart.NumBanks(); k++ {
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
 
 	cart.Initialise()
 
@@ -103,7 +103,7 @@ func (cart *cbs) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *cbs) Write(addr uint16, data uint8) error {
+func (cart *cbs) Write(addr uint16, data uint8, poke bool) error {
 	if addr <= 0x00ff {
 		cart.ram[addr] = data
 		return nil
@@ -115,11 +115,14 @@ func (cart *cbs) Write(addr uint16, data uint8) error {
 		cart.bank = 1
 	} else if addr == 0x0ffa {
 		cart.bank = 2
-	} else {
-		return errors.New(errors.BusError, addr)
 	}
 
-	return nil
+	if poke {
+		cart.banks[cart.bank][addr] = data
+		return nil
+	}
+
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 // NumBanks implements the cartMapper interface
@@ -154,18 +157,20 @@ func (cart *cbs) RestoreState(state interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *cbs) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *cbs) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.mappingID)
+func (cart *cbs) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
+
+	bank := int(offset) / cart.bankSize
+	offset = offset % cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }
 
 // Listen implements the cartMapper interface
-func (cart *cbs) Listen(addr uint16, data uint8) {
+func (cart *cbs) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface

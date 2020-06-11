@@ -42,12 +42,12 @@
 // Rules:
 //
 //	1. Lines beginning with a hyphen or white space are ignored
-//	2. Addresses and values are expressed in hex (case-insensitive)
-//	3. Values and addresses are separated by a colon
-//	4. Multiple values on a line are poked into consecutive addresses, starting
-//	    from the address value
+//	2. Offset and values are expressed in hex (case-insensitive)
+//	3. Values and offsets are separated by a colon
+//	4. Multiple values on a line are poked into consecutive offsets, starting
+//	    from the offset value
 //
-// Note that addresses are expressed with origin zero and have no relationship
+// Note that offsets are expressed with origin zero and have no relationship
 // to how memory is mapped inside the VCS. Imagine that the patches are being
 // applied to the cartridge file image. The cartridge mapper handles the VCS
 // memory side of things.

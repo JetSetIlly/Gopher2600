@@ -33,27 +33,28 @@ type DebuggerBus interface {
 	Poke(address uint16, value uint8) error
 }
 
-// CartDebugBus defines the operations required for a debugger to access
-// non-addressable areas of a cartridge. You have to know the precise cartridge
-// mapper for PutRegister() to work effectively.
+// CartDebugBus defines the operations required for a debugger to access the
+// static and special function areas of a cartrudge.
 //
 // The mapper is allowed to panic if it is not interfaced with correctly.
 //
-// So what's the point of the interface if you need to know the details of the
-// underlying type? Well, it goes some way to helping us understand what parts
-// of the cartridge are beyond the scope of the regular buses.
+// You should know the precise cartridge mapper for the CartRegister and
+// CartStatic type to be usable.
 //
-// Primarily though, it is useful when used in conjunction with the lazy
-// evaluation system used by GUI systems running in a different goroutine. The
-// point of the lazy system is to prevent race conditions, the way we do that
-// is to make a copy of the system variable before using it in the GUI. Now,
-// because we must know the internals of the cartridge format, could we not
-// just make those copies manually? Well we could, but it would mean another
-// place where the cartridge internal knowledge needs to be coded (we need to
-// use that knowledge in the GUI code but it would be nice to avoid it in the
-// lazy system). The GetRegisters() allows us to conceptualise the copying
-// process and to keep the details inside the cartridge implementation as much
-// as possible.
+// So what's the point of the interface if you need to know the details of the
+// underlying type? Couldn't we just use a type assertion?
+//
+// Yes, but doing it this way helps with the lazy evaluation system used by
+// debugging GUIs. The point of the lazy system is to prevent race conditions
+// and the way we do that is to make copies of system variables before using it
+// in the GUI. Now, because we must know the internals of the cartridge format,
+// could we not just make those copies manually? Again, yes. But that would
+// mean another place where the cartridge's internal knowledge needs to be
+// coded (we need to use that knowledge in the GUI code but it would be nice to
+// avoid it in the lazy system).
+//
+// The GetRegisters() allows us to conceptualise the copying process and to
+// keep the details inside the cartridge implementation as much as possible.
 type CartDebugBus interface {
 	// GetRegisters returns a copy of the cartridge's registers
 	GetRegisters() CartRegisters

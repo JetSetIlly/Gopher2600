@@ -32,8 +32,9 @@ type dpcPlus struct {
 	description string
 
 	// banks and the currently selected bank
-	banks [][]byte
-	bank  int
+	bankSize int
+	banks    [][]byte
+	bank     int
 
 	registers DPCplusRegisters
 	static    DPCplusStatic
@@ -44,24 +45,36 @@ type dpcPlus struct {
 	// music fetchers are clocked at a fixed (slower) rate than the reference
 	// to the VCS's clock. see Step() function.
 	beats int
+
+	// patch help. offsets in the original data file for the different areas
+	// in the cartridge
+	//
+	// we only do this because of the complexity of the dpcPlus file and only
+	// for the purposes of the Patch() function. we don't bother with anything
+	// like this for the simpler cartridge formats
+	banksOffset int
+	dataOffset  int
+	freqOffset  int
+	fileSize    int
 }
 
 // NewDPCplus is the preferred method of initialisation for the harmony type
 func NewDPCplus(data []byte) (*dpcPlus, error) {
 	const armSize = 3072
-	const bankSize = 4096
 	const dataSize = 4096
 	const freqSize = 1024
 
-	cart := &dpcPlus{}
-	cart.mappingID = "DPC+"
-	cart.description = "DPC+ (Harmony)"
+	cart := &dpcPlus{
+		mappingID:   "DPC+",
+		description: "DPC+ (Harmony)",
+		bankSize:    4096,
+	}
 
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - armSize - freqSize
 
 	// size check
-	if bankLen%bankSize != 0 {
+	if bankLen%cart.bankSize != 0 {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: %d bytes not supported", cart.mappingID, len(data)))
 	}
 
@@ -69,23 +82,29 @@ func NewDPCplus(data []byte) (*dpcPlus, error) {
 	cart.static.Arm = data[:armSize]
 
 	// allocate enough banks
-	cart.banks = make([][]uint8, bankLen/bankSize)
+	cart.banks = make([][]uint8, bankLen/cart.bankSize)
 
 	// partition data into banks
 	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
 		offset += armSize
-		cart.banks[k] = data[offset : offset+bankSize]
+		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
 	// gfx and frequency table at end of file
-	s := armSize + (bankSize * cart.NumBanks())
-	cart.static.Data = data[s : s+dataSize]
-	cart.static.Freq = data[s+dataSize:]
+	dataOffset := armSize + (cart.bankSize * cart.NumBanks())
+	cart.static.Data = data[dataOffset : dataOffset+dataSize]
+	cart.static.Freq = data[dataOffset+dataSize:]
 
 	// initialise cartridge before returning success
 	cart.Initialise()
+
+	// patch offsets
+	cart.banksOffset = armSize
+	cart.dataOffset = dataOffset
+	cart.freqOffset = dataOffset + dataSize
+	cart.fileSize = len(data)
 
 	return cart, nil
 }
@@ -141,7 +160,7 @@ func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
 	}
 
 	if addr > 0x0027 {
-		return 0, errors.New(errors.BusError, addr)
+		return 0, errors.New(errors.MemoryBusError, addr)
 	}
 
 	switch addr {
@@ -260,7 +279,7 @@ func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *dpcPlus) Write(addr uint16, data uint8) error {
+func (cart *dpcPlus) Write(addr uint16, data uint8, poke bool) error {
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr == 0x0ff6 {
@@ -278,7 +297,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8) error {
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
-		return errors.New(errors.BusError, addr)
+		return errors.New(errors.MemoryBusError, addr)
 	}
 
 	switch addr {
@@ -548,7 +567,12 @@ func (cart *dpcPlus) Write(addr uint16, data uint8) error {
 		cart.registers.Fetcher[f].inc()
 	}
 
-	return nil
+	if poke {
+		cart.banks[cart.bank][addr] = data
+		return nil
+	}
+
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 func (cart dpcPlus) NumBanks() int {
@@ -572,12 +596,24 @@ func (cart *dpcPlus) RestoreState(state interface{}) error {
 	return nil
 }
 
-func (cart *dpcPlus) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
+func (cart *dpcPlus) Patch(offset int, data uint8) error {
+	if offset >= cart.fileSize {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
 
-func (cart *dpcPlus) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.description)
+	if offset >= cart.freqOffset {
+		cart.static.Freq[offset-cart.freqOffset] = data
+	} else if offset >= cart.dataOffset {
+		cart.static.Data[offset-cart.dataOffset] = data
+	} else if offset >= cart.banksOffset {
+		bank := int(offset) / cart.bankSize
+		offset = offset % cart.bankSize
+		cart.banks[bank][offset] = data
+	} else {
+		cart.static.Arm[offset-cart.banksOffset] = data
+	}
+
+	return nil
 }
 
 func (cart *dpcPlus) Listen(addr uint16, data uint8) {

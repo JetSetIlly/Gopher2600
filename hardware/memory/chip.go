@@ -108,7 +108,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	// do not allow reads from memory that do not have symbol name
 	if _, ok := addresses.CanonicalReadSymbols[address]; !ok {
-		return 0, errors.New(errors.BusError, address)
+		return 0, errors.New(errors.MemoryBusError, address)
 	}
 
 	return area.memory[address^area.origin], nil
@@ -116,14 +116,15 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.
 func (area *ChipMemory) Write(address uint16, data uint8) error {
-	// check that the last write to this memory area has been serviced
+	// check that the last write to this memory area has been serviced. this
+	// shouldn't ever happen.
 	if area.writeSignal {
-		return errors.New(errors.MemoryError, fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.writeAddress]))
+		panic(fmt.Sprintf("unserviced write to chip memory (%s)", addresses.Write[area.writeAddress]))
 	}
 
 	// do not allow writes to memory that do not have symbol name
 	if _, ok := addresses.CanonicalWriteSymbols[address]; !ok {
-		return errors.New(errors.BusError, address)
+		return errors.New(errors.MemoryBusError, address)
 	}
 
 	// signal the chips that their chip memory has been written to

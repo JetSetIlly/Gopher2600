@@ -22,7 +22,6 @@ package memory
 import (
 	"math/rand"
 
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -83,10 +82,6 @@ func NewVCSMemory() (*VCSMemory, error) {
 	mem.RAM = newRAM()
 	mem.Cart = cartridge.NewCartridge()
 
-	if mem.RIOT == nil || mem.TIA == nil || mem.RAM == nil || mem.Cart == nil {
-		return nil, errors.New(errors.MemoryError, "cannot create memory areas")
-	}
-
 	// create the memory map by associating all addresses in each memory area
 	// with that area
 	for i := memorymap.OriginTIA; i <= memorymap.MemtopTIA; i++ {
@@ -109,19 +104,19 @@ func NewVCSMemory() (*VCSMemory, error) {
 }
 
 // GetArea returns the actual memory of the specified area type
-func (mem *VCSMemory) GetArea(area memorymap.Area) (bus.DebuggerBus, error) {
+func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebuggerBus {
 	switch area {
 	case memorymap.TIA:
-		return mem.TIA, nil
+		return mem.TIA
 	case memorymap.RAM:
-		return mem.RAM, nil
+		return mem.RAM
 	case memorymap.RIOT:
-		return mem.RIOT, nil
+		return mem.RIOT
 	case memorymap.Cartridge:
-		return mem.Cart, nil
+		return mem.Cart
 	}
 
-	return nil, errors.New(errors.MemoryError, "area not mapped correctly")
+	panic("memory areas are not mapped correctly")
 }
 
 // read maps an address to the normalised for all memory areas.
@@ -129,10 +124,7 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	// optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
 
 	ma, ar := memorymap.MapAddress(address, true)
-	area, err := mem.GetArea(ar)
-	if err != nil {
-		return 0, err
-	}
+	area := mem.GetArea(ar)
 
 	data, err := area.(bus.CPUBus).Read(ma)
 
@@ -187,10 +179,7 @@ func (mem *VCSMemory) ReadZeroPage(address uint8) (uint8, error) {
 // processed by the correct memory areas.
 func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
-	area, err := mem.GetArea(ar)
-	if err != nil {
-		return err
-	}
+	area := mem.GetArea(ar)
 
 	mem.LastAccessAddress = ma
 	mem.LastAccessWrite = true

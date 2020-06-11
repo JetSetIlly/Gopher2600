@@ -62,7 +62,8 @@ type parkerBros struct {
 	mappingID   string
 	description string
 
-	banks [][]uint8
+	bankSize int
+	banks    [][]uint8
 
 	// parker bros. cartridges divide memory into 4 segments
 	//  o the last segment always points to the last bank
@@ -74,21 +75,22 @@ type parkerBros struct {
 }
 
 func newparkerBros(data []byte) (cartMapper, error) {
-	const bankSize = 1024
+	cart := &parkerBros{
+		description: "parker bros",
+		mappingID:   "E0",
+		bankSize:    1024,
+	}
 
-	cart := &parkerBros{}
-	cart.description = "parker bros"
-	cart.mappingID = "E0"
 	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) != bankSize*cart.NumBanks() {
+	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	cart.Initialise()
@@ -130,11 +132,24 @@ func (cart *parkerBros) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *parkerBros) Write(addr uint16, data uint8) error {
+func (cart *parkerBros) Write(addr uint16, data uint8, poke bool) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
-	return errors.New(errors.BusError, addr)
+
+	if poke {
+		if addr >= 0x0000 && addr <= 0x03ff {
+			cart.banks[cart.segment[0]][addr&0x3dd] = data
+		} else if addr >= 0x0400 && addr <= 0x07ff {
+			cart.banks[cart.segment[1]][addr&0x3dd] = data
+		} else if addr >= 0x0800 && addr <= 0x0bff {
+			cart.banks[cart.segment[2]][addr&0x3dd] = data
+		} else if addr >= 0x0c00 && addr <= 0x0fff {
+			cart.banks[cart.segment[3]][addr&0x3dd] = data
+		}
+	}
+
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
@@ -247,18 +262,20 @@ func (cart *parkerBros) RestoreState(state interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *parkerBros) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *parkerBros) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.mappingID)
+func (cart *parkerBros) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
+
+	bank := int(offset) / cart.bankSize
+	offset = offset % cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }
 
 // Listen implements the cartMapper interface
-func (cart *parkerBros) Listen(addr uint16, data uint8) {
+func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface

@@ -86,6 +86,8 @@ type mnetwork struct {
 	mappingID   string
 	description string
 
+	bankSize int
+
 	banks [][]uint8
 	bank  int
 
@@ -104,21 +106,22 @@ type mnetwork struct {
 }
 
 func newMnetwork(data []byte) (cartMapper, error) {
-	const bankSize = 2048
+	cart := &mnetwork{
+		description: "m-network",
+		mappingID:   "E7",
+		bankSize:    2048,
+	}
 
-	cart := &mnetwork{}
-	cart.description = "m-network"
-	cart.mappingID = "E7"
 	cart.banks = make([][]uint8, cart.NumBanks())
 
-	if len(data) != bankSize*cart.NumBanks() {
+	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, bankSize)
-		offset := k * bankSize
-		copy(cart.banks[k], data[offset:offset+bankSize])
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
 	// not all m-network cartridges have any RAM but we'll allocate it for all
@@ -186,14 +189,14 @@ func (cart *mnetwork) Read(addr uint16) (uint8, error) {
 			cart.bankSwitchOnAccess(addr)
 		}
 	} else {
-		return 0, errors.New(errors.BusError, addr)
+		return 0, errors.New(errors.MemoryBusError, addr)
 	}
 
 	return data, nil
 }
 
 // Write implements the cartMapper interface
-func (cart *mnetwork) Write(addr uint16, data uint8) error {
+func (cart *mnetwork) Write(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if addr <= 0x03ff && cart.bank == 7 {
 			cart.ram1k[addr&0x03ff] = data
@@ -206,7 +209,12 @@ func (cart *mnetwork) Write(addr uint16, data uint8) error {
 		return nil
 	}
 
-	return errors.New(errors.BusError, addr)
+	if poke {
+		cart.banks[cart.bank][addr] = data
+		return nil
+	}
+
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
@@ -311,18 +319,20 @@ func (cart *mnetwork) RestoreState(state interface{}) error {
 	return nil
 }
 
-// Poke implements the cartMapper interface
-func (cart *mnetwork) Poke(addr uint16, data uint8) error {
-	return errors.New(errors.UnpokeableAddress, addr)
-}
-
 // Patch implements the cartMapper interface
-func (cart *mnetwork) Patch(addr uint16, data uint8) error {
-	return errors.New(errors.UnpatchableCartType, cart.mappingID)
+func (cart *mnetwork) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return errors.New(errors.CartridgePatchOOB, offset)
+	}
+
+	bank := int(offset) / cart.bankSize
+	offset = offset % cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }
 
 // Listen implements the cartMapper interface
-func (cart *mnetwork) Listen(addr uint16, data uint8) {
+func (cart *mnetwork) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface

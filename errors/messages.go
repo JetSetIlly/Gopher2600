@@ -105,16 +105,15 @@ const (
 	CPUBug                         = "cpu bug: %v"
 
 	// memory
-	MemoryError       = "memory error: %v"
 	UnpokeableAddress = "memory error: cannot poke address (%v)"
 	UnpeekableAddress = "memory error: cannot peek address (%v)"
-	BusError          = "bus error: address %#04x"
+	MemoryBusError    = "memory error: inaccessible address (%v)"
 
 	// cartridges
-	CartridgeError      = "cartridge error: %v"
-	CartridgeEjected    = "cartridge error: no cartridge attached"
-	UnpatchableCartType = "cartridge error: cannot patch this cartridge type (%v)"
-	CartridgeStaticOOB  = "cartridge error: static data address to high (%#04x)"
+	CartridgeError     = "cartridge error: %v"
+	CartridgeEjected   = "cartridge error: no cartridge attached"
+	CartridgePatchOOB  = "cartrdige error: patch offset too high (%#04x)"
+	CartridgeStaticOOB = "cartridge error: static data address too high (%#04x)"
 
 	// input
 	UnknownInputEvent     = "input error: %v: unsupported event (%v)"

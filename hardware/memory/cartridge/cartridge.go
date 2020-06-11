@@ -65,16 +65,14 @@ func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
 	return cart.Read(addr)
 }
 
-// Poke is an implementation of memory.DebuggerBus. This poke pokes the current
-// cartridge bank. See Patch for a different method. Address must be
-// normalised.
+// Poke is an implementation of memory.DebuggerBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.Poke(addr^memorymap.OriginCart, data)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data, true)
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
 // cartridge memory. It differs from Poke in that respect
-func (cart *Cartridge) Patch(offset uint16, data uint8) error {
+func (cart *Cartridge) Patch(offset int, data uint8) error {
 	return cart.mapper.Patch(offset, data)
 }
 
@@ -85,7 +83,7 @@ func (cart *Cartridge) Read(addr uint16) (uint8, error) {
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
