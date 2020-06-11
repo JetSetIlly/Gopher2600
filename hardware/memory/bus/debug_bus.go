@@ -93,8 +93,12 @@ type CartStatic interface {
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM
 // area. This differs from a Static area which is not addressable by the VCS.
 //
-// Note that some mappers will implement this interface but have no RAM for the
-// specific cartridge. In these case GetRAM() will return nil.
+// Note that for convenience, some mappers will implement this interface but
+// have no RAM for the specific cartridge. In these case GetRAM() will return
+// nil.
+//
+// The test for whether a specific cartridge has additional RAM should include
+// a interface type asserstion as well as checking GetRAM() == nil
 type CartRAMbus interface {
 	GetRAM() []CartRAM
 	PutRAM(bank int, idx int, data uint8)

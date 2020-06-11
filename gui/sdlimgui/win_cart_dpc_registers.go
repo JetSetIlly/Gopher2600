@@ -65,7 +65,7 @@ func (win *winDPCregisters) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{633, 451}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winDPCregistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// random number generator value

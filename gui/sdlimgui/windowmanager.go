@@ -118,9 +118,6 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinRAM, true, windowMenuMain); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCartRAM, false, windowMenuMain); err != nil {
-		return nil, err
-	}
 	if err := addWindow(newWinTIA, true, windowMenuMain); err != nil {
 		return nil, err
 	}
@@ -159,9 +156,18 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinDPCplusStatic, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCartRAM, false, windowMenuCart); err != nil {
+		return nil, err
+	}
 
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map
+	//
+	// note that the name of the window menu's we use here must match the ID
+	// used by the cartridge mapper.
+	//
+	// also note that we don't need to add the cartridge RAM window to these
+	// lists. we can detect when to add that automatically
 	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCstaticTitle)
 	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCregistersTitle)
 	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusStaticTitle)
@@ -243,54 +249,52 @@ func (wm *windowManager) drawMenu() {
 	// window menu
 	if imgui.BeginMenu(windowMenuMain) {
 		for _, id := range wm.windowMenu[windowMenuMain] {
-			// add decorator indicating if window is currently open
-			w := wm.windows[id]
-			if w.isOpen() {
-				// checkmark is unicode middle dot - code 00b7
-				id = fmt.Sprintf("· %s", id)
-			} else {
-				id = fmt.Sprintf("  %s", id)
-			}
-
-			if imgui.Selectable(id) {
-				// windows in this menu are toggleable
-				if w.isOpen() {
-					w.setOpen(false)
-				} else {
-					w.setOpen(true)
-				}
-			}
+			wm.drawMenuWindowEntry(wm.windows[id], id)
 		}
 
 		imgui.EndMenu()
 	}
 
-	// add cartridge specific menu
-	if l, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok {
+	// add cartridge specific menu if cartridge has a RAM bus or a debug bus.
+	// note that debug bus windows need to have been added to the window menu
+	// for the specific cartridge ID. see newWindowManager() function above
+	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus
+	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasDebugBus {
+		cartSpecificMenu = true
+	}
+	if cartSpecificMenu {
 		if imgui.BeginMenu(wm.img.lz.Cart.ID) {
-			for _, id := range l {
-				w := wm.windows[id]
-
-				// decorate the menu entry with an "window open" indicator
-				if w.isOpen() {
-					// checkmark is unicode middle dot - code 00b7
-					id = fmt.Sprintf("· %s", id)
-				} else {
-					id = fmt.Sprintf("  %s", id)
-				}
-
-				if imgui.Selectable(id) {
-					// windows in this menu are toggleable
-					if w.isOpen() {
-						w.setOpen(false)
-					} else {
-						w.setOpen(true)
-					}
-				}
+			cartSpecificMenu = true
+			for _, id := range wm.windowMenu[wm.img.lz.Cart.ID] {
+				wm.drawMenuWindowEntry(wm.windows[id], id)
 			}
+
+			if wm.img.lz.Cart.HasRAMbus {
+				wm.drawMenuWindowEntry(wm.windows[winCartRAMTitle], winCartRAMTitle)
+			}
+
 			imgui.EndMenu()
 		}
 	}
 
 	imgui.EndMainMenuBar()
+}
+
+func (wm *windowManager) drawMenuWindowEntry(w managedWindow, id string) {
+	// decorate the menu entry with an "window open" indicator
+	if w.isOpen() {
+		// checkmark is unicode middle dot - code 00b7
+		id = fmt.Sprintf("· %s", id)
+	} else {
+		id = fmt.Sprintf("  %s", id)
+	}
+
+	// window menu entries are toggleable
+	if imgui.Selectable(id) {
+		if w.isOpen() {
+			w.setOpen(false)
+		} else {
+			w.setOpen(true)
+		}
+	}
 }

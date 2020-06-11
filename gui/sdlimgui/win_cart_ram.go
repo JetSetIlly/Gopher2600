@@ -68,8 +68,8 @@ func (win *winCartRAM) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{890, 29}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{X: 558, Y: 201}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{616, 524}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 402, Y: 232}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winCartRAMTitle, &win.open, 0)
 
 	// no spacing between any of the drawEditByte() objects

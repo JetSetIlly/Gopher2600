@@ -105,6 +105,10 @@ func (lz *LazyCart) update() {
 	lz.RAMbus, lz.HasRAMbus = lz.atomicRAMbus.Load().(bus.CartRAMbus)
 	if lz.HasRAMbus {
 		lz.RAM, _ = lz.atomicRAM.Load().([]bus.CartRAM)
+
+		// as explained in the commentary for the CartRAMbus interface, a
+		// cartridge my implement the interface but not actually have any RAM.
+		// we check for this here and correct the HasRAMbus boolean accordingly
 		if lz.RAM == nil {
 			lz.HasRAMbus = false
 		}
