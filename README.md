@@ -36,7 +36,7 @@ There is a lot to add to the project but the key ommissions as it currently stan
 * Unimplemented cartridge formats
 	* F0 Megaboy
 	* AR Arcadia
-	* DPC+
+* DPC+ format is partially implemented but there is no support for ARM yet
 * Disassembly of some cartridge formats is known to be inaccurate
 * Television display does not handle out-of-spec TV signals as it should
 
@@ -105,6 +105,8 @@ Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
 (the format used in Pitfall 2)
+
+DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
 
 ## ROMs used during development
 
