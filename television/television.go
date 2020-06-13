@@ -355,7 +355,9 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	}
 
 	// update resizing event information
-	tv.resizer.check(tv, sig)
+	if tv.auto {
+		tv.resizer.check(tv, sig)
+	}
 
 	// mix audio
 	if sig.AudioUpdate {

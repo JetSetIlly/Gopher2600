@@ -165,19 +165,19 @@ void main()
 				}
 			}
 		}
+	}
 
-		// if pixel-perfect	rendering is selected then there's nothing much more to do
-		if (PixelPerfect == 1) {
-			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-			return;
-		}
+	// if pixel-perfect	rendering is selected then there's nothing much more to do
+	if (PixelPerfect == 1) {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		return;
+	}
 
-		// only apply CRT effects on the "cropped" area of the screen. we can think
-		// of the cropped area as the "play" area
-		if (Cropped < 0 && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline)) {
-			Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-			return;
-		}
+	// only apply CRT effects on the "cropped" area of the screen. we can think
+	// of the cropped area as the "play" area
+	if (Cropped < 0 && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline)) {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+		return;
 	}
 
 	// basic CRT effects

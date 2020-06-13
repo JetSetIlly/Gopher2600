@@ -76,6 +76,9 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleOverlay:
 		img.wm.dbgScr.overlay = !img.wm.dbgScr.overlay
 
+	case gui.ReqCRTeffects:
+		img.wm.dbgScr.pixelPerfect = !request.args[0].(bool)
+
 	case gui.ReqIncScale:
 		img.setScale(0.1, true)
 

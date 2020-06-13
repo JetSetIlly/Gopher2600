@@ -43,6 +43,7 @@ const (
 	ReqToggleCropping  FeatureReq = "ReqToggleCropping"  // none
 	ReqSetOverlay      FeatureReq = "ReqSetOverlay"      // bool
 	ReqToggleOverlay   FeatureReq = "ReqToggleOverlay"   // none
+	ReqCRTeffects      FeatureReq = "ReqCRTeffects"      // bool
 	ReqSetScale        FeatureReq = "ReqSetScale"        // float
 	ReqIncScale        FeatureReq = "ReqIncScale"        // none
 	ReqDecScale        FeatureReq = "ReqDecScale"        // none
