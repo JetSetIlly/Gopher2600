@@ -33,8 +33,8 @@ There is a lot to add to the project but the key ommissions as it currently stan
 
 * Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
-* Supports most cartridge formats, includeing DPC+ and 3E+
-* DPC+ format is partially implemented but there is no support for ARM yet
+* Supports most cartridge formats, including DPC+ and 3E+
+* DPC+ format is only partially implemented but there is no support for ARM yet
 * Disassembly of some cartridge formats is known to be inaccurate
 * Television display does not handle out-of-spec TV signals as it should
 
