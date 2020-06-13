@@ -110,14 +110,6 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 			return err
 		}
 
-	case 28672:
-		if fingerprint3ePlus(data) {
-			cart.mapper, err = new3ePlus(data)
-			if err != nil {
-				return err
-			}
-		}
-
 	case 32768:
 		cart.mapper, err = cart.fingerprint32k(data)(data)
 		if err != nil {
@@ -128,7 +120,15 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
 
 	default:
-		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
+		// some mapping formats can be any size
+		if fingerprint3ePlus(data) {
+			cart.mapper, err = new3ePlus(data)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
+		}
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try
