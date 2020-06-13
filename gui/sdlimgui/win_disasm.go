@@ -131,10 +131,11 @@ func (win *winDisasm) draw() {
 	if win.img.lz.Cart.NumBanks == 1 {
 		// for cartridges with just one bank we don't bother with a TabBar
 		win.drawBank(pcaddr, 0, !nonCart, cpuStep)
+
 	} else {
 		// create a new TabBar and iterate through the cartridge banks,
 		// adding a page for each one
-		imgui.BeginTabBar("")
+		imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 
 		for b := 0; b < win.img.lz.Cart.NumBanks; b++ {
 			// set tab flags. select the tab that represents the

@@ -75,7 +75,7 @@ func (win *winCartRAM) draw() {
 	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 
-	imgui.BeginTabBar("")
+	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := 0; bank < len(win.img.lz.Cart.RAM); bank++ {
 		if imgui.BeginTabItem(win.img.lz.Cart.RAM[bank].Label) {
 			// draw headers for each column. this relies xPos, which requires
