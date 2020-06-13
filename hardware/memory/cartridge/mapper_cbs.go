@@ -43,8 +43,8 @@ type cbs struct {
 
 func newCBS(data []byte) (cartMapper, error) {
 	cart := &cbs{
-		description: "CBS",
 		mappingID:   "FA",
+		description: "CBS",
 		bankSize:    4096,
 		ram:         make([]uint8, 256),
 	}
@@ -67,7 +67,7 @@ func newCBS(data []byte) (cartMapper, error) {
 }
 
 func (cart cbs) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
 // ID implements the cartMapper interface

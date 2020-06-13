@@ -107,7 +107,7 @@ type mnetwork struct {
 
 func newMnetwork(data []byte) (cartMapper, error) {
 	cart := &mnetwork{
-		description: "m-network",
+		description: "mnetwork",
 		mappingID:   "E7",
 		bankSize:    2048,
 	}
@@ -138,7 +138,7 @@ func newMnetwork(data []byte) (cartMapper, error) {
 
 func (cart mnetwork) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s [%s]", cart.description, cart.mappingID))
+	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
 	s.WriteString(fmt.Sprintf(" Bank: %d ", cart.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
 	if cart.bank == 7 {
@@ -354,7 +354,7 @@ func (cart mnetwork) GetRAM() []bus.CartRAM {
 		r[i+1] = bus.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
-			Data:   make([]uint8, len(cart.ram1k)),
+			Data:   make([]uint8, len(cart.ram256byte[i])),
 		}
 		copy(r[i+1].Data, cart.ram256byte[i])
 	}

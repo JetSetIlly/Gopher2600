@@ -71,8 +71,8 @@ func (lz *LazyCart) update() {
 
 	lz.val.Dbg.PushRawEvent(func() {
 		lz.atomicID.Store(lz.val.Dbg.VCS.Mem.Cart.ID())
-		lz.atomicSummary.Store(lz.val.Dbg.VCS.Mem.Cart.String())
 		lz.atomicFilename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
+		lz.atomicSummary.Store(lz.val.Dbg.VCS.Mem.Cart.MappingSummary())
 		lz.atomicNumBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
 		lz.atomicCurrBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(PCaddr))
 

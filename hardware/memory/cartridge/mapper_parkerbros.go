@@ -74,10 +74,10 @@ type parkerBros struct {
 	segment [4]int
 }
 
-func newparkerBros(data []byte) (cartMapper, error) {
+func newParkerBros(data []byte) (cartMapper, error) {
 	cart := &parkerBros{
-		description: "parker bros",
 		mappingID:   "E0",
+		description: "parker bros",
 		bankSize:    1024,
 	}
 
@@ -99,7 +99,7 @@ func newparkerBros(data []byte) (cartMapper, error) {
 }
 
 func (cart parkerBros) String() string {
-	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.description, cart.mappingID, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
 // ID implements the cartMapper interface

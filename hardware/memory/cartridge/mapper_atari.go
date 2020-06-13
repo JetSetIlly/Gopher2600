@@ -88,9 +88,9 @@ type atari struct {
 
 func (cart atari) String() string {
 	if len(cart.banks) == 1 {
-		return cart.description
+		return fmt.Sprintf("%s [%s]", cart.mappingID, cart.description)
 	}
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
 // ID implements the cartMapper interface
@@ -194,7 +194,7 @@ func (cart *atari) addSuperchip() bool {
 	}
 
 	// update method string
-	cart.description = fmt.Sprintf("%s (+ superchip RAM)", cart.description)
+	cart.description = fmt.Sprintf("%s +RAM", cart.description)
 
 	return true
 }
@@ -257,8 +257,8 @@ type atari4k struct {
 func newAtari4k(data []byte) (cartMapper, error) {
 	cart := &atari4k{}
 	cart.bankSize = 4096
-	cart.description = "atari 4k"
 	cart.mappingID = "4k"
+	cart.description = "atari 4k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -308,8 +308,8 @@ type atari2k struct {
 func newAtari2k(data []byte) (cartMapper, error) {
 	cart := &atari2k{}
 	cart.bankSize = 2048
-	cart.description = "atari 2k"
 	cart.mappingID = "2k"
+	cart.description = "atari 2k"
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -357,8 +357,8 @@ type atari8k struct {
 func newAtari8k(data []uint8) (cartMapper, error) {
 	cart := &atari8k{}
 	cart.bankSize = 4096
-	cart.description = "atari 8k"
 	cart.mappingID = "F8"
+	cart.description = "atari 8k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -425,8 +425,8 @@ type atari16k struct {
 func newAtari16k(data []byte) (cartMapper, error) {
 	cart := &atari16k{}
 	cart.bankSize = 4096
-	cart.description = "atari 16k"
 	cart.mappingID = "F6"
+	cart.description = "atari 16k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -501,8 +501,8 @@ type atari32k struct {
 func newAtari32k(data []byte) (cartMapper, error) {
 	cart := &atari32k{}
 	cart.bankSize = 4096
-	cart.description = "atari 32k"
 	cart.mappingID = "F4"
+	cart.description = "atari 32k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {

@@ -277,6 +277,9 @@ func (wm *windowManager) drawMenu() {
 		}
 	}
 
+	imgui.SameLineV(imgui.WindowWidth()-imguiGetFrameDim(wm.img.lz.Cart.Filename).X-20.0, 0.0)
+	imgui.Text(wm.img.lz.Cart.Filename)
+
 	imgui.EndMainMenuBar()
 }
 

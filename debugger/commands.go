@@ -285,13 +285,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				if bank == "" {
 					dbg.printLine(
 						terminal.StyleInstrument,
-						fmt.Sprintf("%d", dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())),
+						fmt.Sprintf("%s", dbg.VCS.Mem.Cart.MappingSummary()),
 					)
 				} else {
 					n, err := strconv.Atoi(bank)
 					if err != nil {
 						return false, errors.New(errors.CommandError, "bank must be numeric")
 					}
+
+					// !TODO: set bank for any address
+
 					err = dbg.VCS.Mem.Cart.SetBank(dbg.VCS.CPU.PC.Address(), n)
 					if err != nil {
 						return false, err

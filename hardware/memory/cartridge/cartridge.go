@@ -53,7 +53,12 @@ func NewCartridge() *Cartridge {
 }
 
 func (cart Cartridge) String() string {
-	return fmt.Sprintf("%s\n%s", cart.Filename, cart.mapper)
+	return cart.Filename
+}
+
+// MappingSummary returns a current string summary of the mapper
+func (cart Cartridge) MappingSummary() string {
+	return fmt.Sprintf("%s", cart.mapper)
 }
 
 // ID returns the cartridge mapping ID
@@ -165,7 +170,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "FE":
 		// !!TODO: FE cartridge mapping
 	case "E0":
-		cart.mapper, err = newparkerBros(data)
+		cart.mapper, err = newParkerBros(data)
 	case "E7":
 		cart.mapper, err = newMnetwork(data)
 	case "3F":

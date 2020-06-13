@@ -32,7 +32,7 @@ func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error
 	}
 
 	if fingerprintParkerBros(data) {
-		return newparkerBros
+		return newParkerBros
 	}
 
 	return newAtari8k
@@ -108,6 +108,14 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		cart.mapper, err = cart.fingerprint16k(data)(data)
 		if err != nil {
 			return err
+		}
+
+	case 28672:
+		if fingerprint3ePlus(data) {
+			cart.mapper, err = new3ePlus(data)
+			if err != nil {
+				return err
+			}
 		}
 
 	case 32768:

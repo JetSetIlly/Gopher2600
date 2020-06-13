@@ -66,7 +66,7 @@ func NewDPCplus(data []byte) (*dpcPlus, error) {
 
 	cart := &dpcPlus{
 		mappingID:   "DPC+",
-		description: "DPC+ (Harmony)",
+		description: "(harmony)",
 		bankSize:    4096,
 	}
 
@@ -110,7 +110,7 @@ func NewDPCplus(data []byte) (*dpcPlus, error) {
 }
 
 func (cart dpcPlus) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
 func (cart dpcPlus) ID() string {

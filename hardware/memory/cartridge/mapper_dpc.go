@@ -144,8 +144,8 @@ func newDPC(data []byte) (cartMapper, error) {
 	const staticSize = 2048
 
 	cart := &dpc{
+		description: "pitfall2 style",
 		mappingID:   "DPC",
-		description: "DPC Pitfall2 style",
 		bankSize:    4096,
 	}
 
@@ -170,7 +170,7 @@ func newDPC(data []byte) (cartMapper, error) {
 }
 
 func (cart dpc) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.description, cart.mappingID, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
 // ID implements the cartMapper interface

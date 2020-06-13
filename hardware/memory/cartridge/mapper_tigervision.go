@@ -76,13 +76,13 @@ type tigervision struct {
 //  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo)
 func newTigervision(data []byte) (cartMapper, error) {
 	cart := &tigervision{
-		description: "tigervision",
 		mappingID:   "3F",
+		description: "tigervision",
 		bankSize:    2048,
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, errors.New(errors.CartridgeError, "tigervision (3F): cartridge size must be multiple of 2048")
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: cartridge size must be multiple of %d", cart.mappingID, cart.bankSize))
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -104,7 +104,7 @@ func newTigervision(data []byte) (cartMapper, error) {
 }
 
 func (cart tigervision) String() string {
-	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.description, cart.mappingID, cart.segment[0], cart.segment[1])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1])
 }
 
 // ID implements the cartMapper interface
@@ -197,11 +197,17 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
 	// listen() function.
+	//
+	// update: tigervision is not unique. the 3e+ mapper also uses this
+	// mechanism
 
 	// although address 3F is used primarily, in actual fact writing anywhere
 	// in TIA space is okay. from  the description from Kevin Horton's document
 	// (quoted above) whenever an address in TIA space is written to, the lower
 	// 3 bits of the value being written is used to set the segment.
+
+	// !TODO: lint check for data writes that specify a bank > NumBanks(). the
+	// format allows this but it might be a mistake
 
 	if addr < 0x40 {
 		cart.segment[0] = int(data & uint8(cart.NumBanks()-1))
