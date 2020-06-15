@@ -33,6 +33,10 @@ type term struct {
 	// input from other gui elements (eg. the run button in the control window)
 	sideChan chan string
 
+	// last string sent to sideChan. we use this to suppress echoing of GUI
+	// commands
+	lastSideChan string
+
 	// output to the terminal window to present as a prompt
 	promptChan chan string
 
@@ -88,6 +92,17 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
+	// do not strings of input style if it is the same as the last string sent
+	// to the sideChan
+	//
+	// this will not supress echoing of sideChan messages that are not suitably
+	// normalised, but that's okay because it will serve as a visual indicator
+	// that the sideChan command is not ideal.
+	if style == terminal.StyleInput && s == trm.lastSideChan {
+		trm.lastSideChan = ""
+		return
+	}
+
 	trm.outputChan <- terminalOutput{style: style, text: s}
 }
 
@@ -108,6 +123,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			s = strings.TrimSpace(s)
 			n := len(s)
 			copy(buffer, s+"\n")
+			trm.lastSideChan = s
 			return n + 1, nil
 
 		case ev := <-events.GuiEvents:
