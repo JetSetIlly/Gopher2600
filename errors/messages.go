@@ -114,6 +114,7 @@ const (
 	CartridgeEjected   = "cartridge error: no cartridge attached"
 	CartridgePatchOOB  = "cartrdige error: patch offset too high (%#04x)"
 	CartridgeStaticOOB = "cartridge error: static data address too high (%#04x)"
+	SuperchargerError  = "supercharger error: %v"
 
 	// input
 	UnknownInputEvent     = "input error: %v: unsupported event (%v)"

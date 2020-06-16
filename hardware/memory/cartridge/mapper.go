@@ -26,8 +26,8 @@ package cartridge
 type cartMapper interface {
 	Initialise()
 	ID() string
-	Read(addr uint16) (data uint8, err error)
-	Write(addr uint16, data uint8, poke bool) error
+	Read(addr uint16, active bool) (data uint8, err error)
+	Write(addr uint16, data uint8, active bool, poke bool) error
 	NumBanks() int
 	GetBank(addr uint16) (bank int)
 	SetBank(addr uint16, bank int) error

@@ -116,7 +116,7 @@ func (cart *parkerBros) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *parkerBros) Read(addr uint16) (uint8, error) {
+func (cart *parkerBros) Read(addr uint16, active bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.segment[0]][addr&0x03ff]
@@ -132,7 +132,7 @@ func (cart *parkerBros) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *parkerBros) Write(addr uint16, data uint8, poke bool) error {
+func (cart *parkerBros) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}

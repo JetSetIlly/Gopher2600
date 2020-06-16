@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
 func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
@@ -67,6 +68,16 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 	if data[0x20] == 0x1e && data[0x21] == 0xab && data[0x22] == 0xad && data[0x23] == 0x10 {
 		// !TODO: this might be a CFDJ cartridge. check for that.
 		cart.mapper, err = harmony.NewDPCplus(data)
+		return err
+	}
+
+	if supercharger.FingerprintSupercharger(data) {
+		cart.mapper, err = supercharger.NewSupercharger(data)
+		return err
+	}
+
+	if fingerprint3ePlus(data) {
+		cart.mapper, err = new3ePlus(data)
 		return err
 	}
 
@@ -120,15 +131,7 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
 
 	default:
-		// some mapping formats can be any size
-		if fingerprint3ePlus(data) {
-			cart.mapper, err = new3ePlus(data)
-			if err != nil {
-				return err
-			}
-		} else {
-			return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
-		}
+		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try

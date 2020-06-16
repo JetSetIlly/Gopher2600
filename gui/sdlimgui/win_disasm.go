@@ -220,9 +220,11 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 
 		// note address of top entry in the list. we use this to help
 		// list alignment
-		if e != nil {
-			win.addressTopList = e.Result.Address
+		if e == nil {
+			break // clipper.Step() loop
 		}
+
+		win.addressTopList = e.Result.Address
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
 			// if address value of current disasm entry and current PC value
@@ -231,7 +233,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 
 			e = itr.Next()
 			if e == nil {
-				break // clipper for loop
+				break // clipper.DisplayStart loop
 			}
 		}
 	}

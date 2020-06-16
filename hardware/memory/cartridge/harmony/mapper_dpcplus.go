@@ -121,7 +121,7 @@ func (cart *dpcPlus) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
+func (cart *dpcPlus) Read(addr uint16, Active bool) (uint8, error) {
 	var data uint8
 
 	// if address is above register space then we only need to check for bank
@@ -152,7 +152,7 @@ func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
 		// place)
 		if cart.registers.FastFetch && cart.lda && data < 0x28 {
 			cart.lda = false
-			return cart.Read(uint16(data))
+			return cart.Read(uint16(data), Active)
 		} else {
 			cart.lda = cart.registers.FastFetch && data == 0xa9
 			return data, nil
@@ -279,7 +279,7 @@ func (cart *dpcPlus) Read(addr uint16) (uint8, error) {
 	return data, nil
 }
 
-func (cart *dpcPlus) Write(addr uint16, data uint8, poke bool) error {
+func (cart *dpcPlus) Write(addr uint16, data uint8, active bool, poke bool) error {
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr == 0x0ff6 {

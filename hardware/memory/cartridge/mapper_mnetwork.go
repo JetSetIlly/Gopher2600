@@ -169,7 +169,7 @@ func (cart *mnetwork) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *mnetwork) Read(addr uint16) (uint8, error) {
+func (cart *mnetwork) Read(addr uint16, active bool) (uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -196,7 +196,7 @@ func (cart *mnetwork) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *mnetwork) Write(addr uint16, data uint8, poke bool) error {
+func (cart *mnetwork) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if addr <= 0x03ff && cart.bank == 7 {
 			cart.ram1k[addr&0x03ff] = data

@@ -34,8 +34,9 @@ type ejected struct {
 }
 
 func newEjected() *ejected {
-	cart := &ejected{}
-	cart.description = ejectedName
+	cart := &ejected{
+		description: "ejected",
+	}
 	cart.Initialise()
 	return cart
 }
@@ -54,12 +55,12 @@ func (cart *ejected) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *ejected) Read(_ uint16) (uint8, error) {
+func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
 	return 0, errors.New(errors.CartridgeEjected)
 }
 
 // Write implements the cartMapper interface
-func (cart *ejected) Write(_ uint16, _ uint8, _ bool) error {
+func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
 	return errors.New(errors.CartridgeEjected)
 }
 

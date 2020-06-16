@@ -121,7 +121,7 @@ func (cart *tigervision) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *tigervision) Read(addr uint16) (uint8, error) {
+func (cart *tigervision) Read(addr uint16, active bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
 		data = cart.banks[cart.segment[0]][addr&0x07ff]
@@ -132,7 +132,7 @@ func (cart *tigervision) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *tigervision) Write(addr uint16, data uint8, poke bool) error {
+func (cart *tigervision) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
 			cart.banks[cart.segment[0]][addr&0x07ff] = data

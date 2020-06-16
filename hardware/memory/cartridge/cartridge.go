@@ -36,6 +36,8 @@ type Cartridge struct {
 	bus.DebuggerBus
 	bus.CPUBus
 
+	Active bool
+
 	Filename string
 	Hash     string
 
@@ -47,7 +49,9 @@ type Cartridge struct {
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type
 func NewCartridge() *Cartridge {
-	cart := &Cartridge{}
+	cart := &Cartridge{
+		Active: true,
+	}
 	cart.Eject()
 	return cart
 }
@@ -68,12 +72,12 @@ func (cart Cartridge) ID() string {
 
 // Peek is an implementation of memory.DebuggerBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	return cart.Read(addr)
+	return cart.mapper.Read(addr^memorymap.OriginCart, false)
 }
 
 // Poke is an implementation of memory.DebuggerBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data, true)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data, false, true)
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
@@ -84,25 +88,26 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr ^ memorymap.OriginCart)
+	return cart.mapper.Read(addr^memorymap.OriginCart, cart.Active)
 }
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data, false)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data, cart.Active, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
 // attaches a bank of empty memory - for convenience of the debugger
 func (cart *Cartridge) Eject() {
-	cart.Filename = ejectedName
-	cart.Hash = ejectedHash
+	cart.Filename = "ejected"
+	cart.Hash = ""
 	cart.mapper = newEjected()
 }
 
 // IsEjected returns true if no cartridge is attached
 func (cart *Cartridge) IsEjected() bool {
-	return cart.Hash == ejectedHash
+	_, ok := cart.mapper.(*ejected)
+	return ok
 }
 
 // Attach the cartridge loader to the VCS and make available the data to the CPU

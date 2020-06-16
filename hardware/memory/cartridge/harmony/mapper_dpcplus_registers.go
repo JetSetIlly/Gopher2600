@@ -33,7 +33,6 @@ type DPCplusRegisters struct {
 	FastFetch bool
 }
 
-// String implements the bus.CartDebugBus interface
 func (r DPCplusRegisters) String() string {
 	s := strings.Builder{}
 

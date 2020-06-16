@@ -85,7 +85,6 @@ type DPCregisters struct {
 	RNG uint8
 }
 
-// String implements the bus.CartDebugBus interface
 func (r DPCregisters) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("RNG: %#02x\n", r.RNG))
@@ -184,7 +183,7 @@ func (cart *dpc) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *dpc) Read(addr uint16) (uint8, error) {
+func (cart *dpc) Read(addr uint16, active bool) (uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
@@ -301,7 +300,7 @@ func (cart *dpc) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *dpc) Write(addr uint16, data uint8, poke bool) error {
+func (cart *dpc) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if addr == 0x0ff8 {
 		cart.bank = 0
 	} else if addr == 0x0ff9 {

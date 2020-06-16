@@ -144,7 +144,7 @@ func (cart *atari) RestoreState(state interface{}) error {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari) Read(addr uint16) (uint8, bool) {
+func (cart *atari) Read(addr uint16, active bool) (uint8, bool) {
 	if cart.ram != nil {
 		if addr > 127 && addr < 256 {
 			return cart.ram[addr-128], true
@@ -154,7 +154,7 @@ func (cart *atari) Read(addr uint16) (uint8, bool) {
 }
 
 // Write implements the cartMapper interface
-func (cart *atari) Write(addr uint16, data uint8, poke bool) bool {
+func (cart *atari) Write(addr uint16, data uint8, active bool, poke bool) bool {
 	if cart.ram != nil {
 		if addr <= 127 {
 			cart.ram[addr] = data
@@ -279,16 +279,16 @@ func (cart atari4k) NumBanks() int {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari4k) Read(addr uint16) (uint8, error) {
-	if data, ok := cart.atari.Read(addr); ok {
+func (cart *atari4k) Read(addr uint16, active bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, active); ok {
 		return data, nil
 	}
 	return cart.banks[0][addr], nil
 }
 
 // Write implements the cartMapper interface
-func (cart *atari4k) Write(addr uint16, data uint8, poke bool) error {
-	if ok := cart.atari.Write(addr, data, poke); ok {
+func (cart *atari4k) Write(addr uint16, data uint8, active bool, poke bool) error {
+	if ok := cart.atari.Write(addr, data, active, poke); ok {
 		return nil
 	}
 
@@ -330,16 +330,16 @@ func (cart atari2k) NumBanks() int {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari2k) Read(addr uint16) (uint8, error) {
-	if data, ok := cart.atari.Read(addr); ok {
+func (cart *atari2k) Read(addr uint16, active bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, active); ok {
 		return data, nil
 	}
 	return cart.banks[0][addr&0x07ff], nil
 }
 
 // Write implements the cartMapper interface
-func (cart *atari2k) Write(addr uint16, data uint8, poke bool) error {
-	if ok := cart.atari.Write(addr, data, poke); ok {
+func (cart *atari2k) Write(addr uint16, data uint8, active bool, poke bool) error {
+	if ok := cart.atari.Write(addr, data, active, poke); ok {
 		return nil
 	}
 
@@ -382,8 +382,8 @@ func (cart atari8k) NumBanks() int {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari8k) Read(addr uint16) (uint8, error) {
-	if data, ok := cart.atari.Read(addr); ok {
+func (cart *atari8k) Read(addr uint16, active bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, active); ok {
 		return data, nil
 	}
 
@@ -399,14 +399,14 @@ func (cart *atari8k) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *atari8k) Write(addr uint16, data uint8, poke bool) error {
+func (cart *atari8k) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if addr == 0x0ff8 {
 		cart.bank = 0
 	} else if addr == 0x0ff9 {
 		cart.bank = 1
 	}
 
-	if ok := cart.atari.Write(addr, data, poke); !ok {
+	if ok := cart.atari.Write(addr, data, active, poke); !ok {
 		return errors.New(errors.MemoryBusError, addr)
 	}
 
@@ -450,8 +450,8 @@ func (cart atari16k) NumBanks() int {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari16k) Read(addr uint16) (uint8, error) {
-	if data, ok := cart.atari.Read(addr); ok {
+func (cart *atari16k) Read(addr uint16, active bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, active); ok {
 		return data, nil
 	}
 
@@ -471,7 +471,7 @@ func (cart *atari16k) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *atari16k) Write(addr uint16, data uint8, poke bool) error {
+func (cart *atari16k) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if addr == 0x0ff6 {
 		cart.bank = 0
 	} else if addr == 0x0ff7 {
@@ -482,7 +482,7 @@ func (cart *atari16k) Write(addr uint16, data uint8, poke bool) error {
 		cart.bank = 3
 	}
 
-	if ok := cart.atari.Write(addr, data, poke); !ok {
+	if ok := cart.atari.Write(addr, data, active, poke); !ok {
 		return errors.New(errors.MemoryBusError, addr)
 	}
 
@@ -526,8 +526,8 @@ func (cart atari32k) NumBanks() int {
 }
 
 // Read implements the cartMapper interface
-func (cart *atari32k) Read(addr uint16) (uint8, error) {
-	if data, ok := cart.atari.Read(addr); ok {
+func (cart *atari32k) Read(addr uint16, active bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, active); ok {
 		return data, nil
 	}
 
@@ -555,7 +555,7 @@ func (cart *atari32k) Read(addr uint16) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *atari32k) Write(addr uint16, data uint8, poke bool) error {
+func (cart *atari32k) Write(addr uint16, data uint8, active bool, poke bool) error {
 	if addr == 0x0ff4 {
 		cart.bank = 0
 	} else if addr == 0x0ff5 {
@@ -574,7 +574,7 @@ func (cart *atari32k) Write(addr uint16, data uint8, poke bool) error {
 		cart.bank = 7
 	}
 
-	if ok := cart.atari.Write(addr, data, poke); !ok {
+	if ok := cart.atari.Write(addr, data, active, poke); !ok {
 		return errors.New(errors.MemoryBusError, addr)
 	}
 

@@ -150,6 +150,12 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	}
 	mc.NoFlowControl = true
 
+	// some cartridge types react when certain registers are read/written. for
+	// disassembly purposes we don't want that so we turn off the Active flag
+	// for the duration
+	dsm.cart.Active = false
+	defer func() { dsm.cart.Active = true }()
+
 	// decode pass
 	err = dsm.decode(mc)
 	if err != nil {
@@ -175,6 +181,8 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 			}
 		}
 	}
+
+	dsm.cart.Initialise()
 
 	return nil
 }
