@@ -236,7 +236,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 
 				// set ShowScreenDraw if emulation is paused or a low frame
 				// rate has been requested
-				if rnd.img.paused || rnd.img.tv.GetReqFPS() < 3.0 {
+				if rnd.img.paused || rnd.img.lz.TV.ReqFPS < 3.0 {
 					gl.Uniform1i(rnd.attribShowScreenDraw, 1)
 				} else {
 					gl.Uniform1i(rnd.attribShowScreenDraw, -1)
