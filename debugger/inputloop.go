@@ -148,7 +148,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// pause tv when emulation has halted
 				err = dbg.scr.ReqFeature(gui.ReqSetPause, true)
 				if err != nil {
-					return err
+					return errors.New(errors.DebuggerError, err)
 				}
 			}
 
@@ -177,7 +177,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					default:
 						// the error is probably serious. exit input loop with
 						// err
-						return err
+						return errors.New(errors.DebuggerError, err)
 					}
 				}
 
@@ -210,7 +210,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 				// all other errors are passed upwards to the calling function
 				default:
-					return err
+					return errors.New(errors.DebuggerError, err)
 				}
 			}
 
@@ -238,7 +238,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if !checkTerm && dbg.runUntilHalt {
 				err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
 				if err != nil {
-					return err
+					return errors.New(errors.DebuggerError, err)
 				}
 			}
 		}
@@ -265,24 +265,23 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if err != nil {
 				// exit input loop only if error is not an AtariError...
 				if !errors.IsAny(err) {
-					return err
+					return errors.New(errors.DebuggerError, err)
 				}
 
 				// ...set lastStepError instead and allow emulation to halt
 				dbg.lastStepError = true
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
-				// make sure the address we've landed on has been blessed
-				// !!TODO: this seems like it might be a race-condition. the
-				// race detector hasn't detected anything but it might just be
-				// a very rare occurrence
-				dbg.Disasm.BlessEntry(
-					dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address()),
-					dbg.VCS.CPU.PC.Address())
+				err := dbg.Disasm.UpdateEntry(
+					dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.LastResult.Address),
+					dbg.VCS.CPU.LastResult)
+				if err != nil {
+					return errors.New(errors.DebuggerError, err)
+				}
 
 				// check validity of instruction result
 				if dbg.VCS.CPU.LastResult.Final {
-					err := dbg.VCS.CPU.LastResult.IsValid()
+					err = dbg.VCS.CPU.LastResult.IsValid()
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult.Defn)
 						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult)

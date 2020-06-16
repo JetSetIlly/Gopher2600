@@ -366,6 +366,9 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 		address |= 0xff00
 	}
 
+	// note branching result
+	mc.LastResult.BranchSuccess = flag
+
 	if flag {
 		// note current PC for reference
 		oldPC := mc.PC.Address()

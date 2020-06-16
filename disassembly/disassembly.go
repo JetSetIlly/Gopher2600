@@ -25,8 +25,9 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	ref "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -39,7 +40,7 @@ type Disassembly struct {
 
 	// indexed by address. address should be masked with
 	// memorymap.AddressMaskCart before access.
-	reference [][ref.AddressMaskCart + 1]*Entry
+	reference [][memorymap.AddressMaskCart + 1]*Entry
 
 	// the number of each type of entry. we use this to help prepare
 	// disassembly iterations
@@ -51,32 +52,45 @@ type Disassembly struct {
 	fields fields
 
 	// critical sectioning
-	crit sync.RWMutex
+	crit sync.Mutex
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified bank/address.
 func (dsm *Disassembly) GetEntryByAddress(bank int, address uint16) (*Entry, bool) {
-	col := dsm.reference[bank][address&ref.AddressMaskCart]
+	col := dsm.reference[bank][address&memorymap.AddressMaskCart]
 	return col, col != nil
 }
 
-// BlessEntry promotes an entry to the stated EntryLevel
-func (dsm *Disassembly) BlessEntry(bank int, address uint16) {
+// UpdateEntry to more closely resemble the most recent execution.Result
+func (dsm *Disassembly) UpdateEntry(bank int, result execution.Result) error {
 	if bank >= len(dsm.reference) {
-		return
+		return nil
 	}
+
+	idx := result.Address & memorymap.AddressMaskCart
 
 	// get entry at address
-	e := dsm.reference[bank][address&ref.AddressMaskCart]
+	e := dsm.reference[bank][idx]
 
-	// loop while there are entries to bless, stop on a dead entry
-	for e != nil && e.Level != EntryLevelDead && e.Level < EntryLevelBlessed {
-		dsm.crit.Lock()
-		e.Level = EntryLevelBlessed
-		dsm.crit.Unlock()
-		address += uint16(e.Result.ByteCount)
-		e = dsm.reference[bank][address&ref.AddressMaskCart]
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	if e == nil || e.Result.Defn.OpCode != result.Defn.OpCode {
+		var err error
+		dsm.reference[bank][idx], err = dsm.FormatResult(bank, result, EntryLevelExecuted)
+		if err != nil {
+			return errors.New(errors.DisasmError, err)
+		}
+
+	} else if e.Level < EntryLevelExecuted || e.UpdateActualOnExecute {
+		dsm.counts[bank][e.Level]--
+		e.Level = EntryLevelExecuted
+		e.Result = result
+		e.updateActual()
+		dsm.counts[bank][e.Level]++
 	}
+
+	return nil
 }
 
 // FromCartridge initialises a new partial emulation and returns a disassembly
@@ -110,7 +124,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) error {
 	dsm.cart = cart
 	dsm.Symtable = symtable
-	dsm.reference = make([][ref.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
+	dsm.reference = make([][memorymap.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {

@@ -66,6 +66,7 @@ const (
 	EntryLevelDead EntryLevel = iota
 	EntryLevelDecoded
 	EntryLevelBlessed
+	EntryLevelExecuted
 )
 
 func (t EntryLevel) String() string {
@@ -78,6 +79,8 @@ func (t EntryLevel) String() string {
 		return "decoded "
 	case EntryLevelBlessed:
 		return "blessed "
+	case EntryLevelExecuted:
+		return "executed "
 	}
 
 	return ""
@@ -123,18 +126,22 @@ type Entry struct {
 	// the computation
 	ActualCycles string
 	ActualNotes  string
+
+	// does the entry represent an instruction that might have different "actual"
+	// strings depending on the specifics of execution
+	UpdateActualOnExecute bool
 }
 
 // String returns a very basic representation of an Entry. Provided for
 // convenience. Probably not of any use except for the simplest of tools.
-func (d *Entry) String() string {
-	return fmt.Sprintf("%s %s %s", d.Address, d.Mnemonic, d.Operand)
+func (e *Entry) String() string {
+	return fmt.Sprintf("%s %s %s", e.Address, e.Mnemonic, e.Operand)
 }
 
 // FormatResult It is the preferred method of initialising for the Entry type.
 // It creates a disassembly.Entry based on the bank and result information.
 func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level EntryLevel) (*Entry, error) {
-	d := &Entry{
+	e := &Entry{
 		Result:        result,
 		Level:         level,
 		Bank:          bank,
@@ -143,26 +150,26 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 
 	// set BankDecorated correctly
 	if memorymap.IsArea(result.Address, memorymap.RAM) {
-		d.BankDecorated = BankRAM
+		e.BankDecorated = BankRAM
 	}
 
 	// if the operator hasn't been decoded yet then use placeholder strings for
 	// important fields
 	if result.Defn == nil {
-		d.Bytecode = "??"
-		return d, nil
+		e.Bytecode = "??"
+		return e, nil
 	}
 
 	// address of instruction
-	d.Address = fmt.Sprintf("0x%04x", result.Address)
+	e.Address = fmt.Sprintf("0x%04x", result.Address)
 
 	// look up address in symbol table
 	if v, ok := dsm.Symtable.Locations.Symbols[result.Address]; ok {
-		d.Location = v
+		e.Location = v
 	}
 
 	// mnemonic is just a string anyway
-	d.Mnemonic = result.Defn.Mnemonic
+	e.Mnemonic = result.Defn.Mnemonic
 
 	// bytecode and operand string is assembled depending on the number of
 	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
@@ -180,14 +187,14 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 		case 3:
 			operandDecoded = true
 			operand = result.InstructionData
-			d.Operand = fmt.Sprintf("$%04x", operand)
-			d.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
+			e.Operand = fmt.Sprintf("$%04x", operand)
+			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
 		case 2:
-			d.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
-			d.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
+			e.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
+			e.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
 		case 1:
-			d.Operand = "$????"
-			d.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
+			e.Operand = "$????"
+			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -198,11 +205,11 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 		case 2:
 			operandDecoded = true
 			operand = result.InstructionData
-			d.Operand = fmt.Sprintf("$%02x", operand)
-			d.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
+			e.Operand = fmt.Sprintf("$%02x", operand)
+			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			d.Operand = "$??"
-			d.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
+			e.Operand = "$??"
+			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -211,7 +218,7 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 	case 1:
 		switch result.ByteCount {
 		case 1:
-			d.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
+			e.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
@@ -222,12 +229,12 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 	default:
 		panic("instructions of more than 3 bytes is not possible")
 	}
-	d.Bytecode = strings.TrimSpace(d.Bytecode)
+	e.Bytecode = strings.TrimSpace(e.Bytecode)
 
 	// use symbol for the operand if available/appropriate. we should only do
 	// this if operand has been decoded
 	if operandDecoded {
-		if d.Operand == "" || d.Operand[0] != '?' {
+		if e.Operand == "" || e.Operand[0] != '?' {
 			if result.Defn.AddressingMode != instructions.Immediate {
 
 				switch result.Defn.Effect {
@@ -257,23 +264,27 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 
 						// -- look up mock program counter value in symbol table
 						if v, ok := dsm.Symtable.Locations.Symbols[pc.Address()]; ok {
-							d.Operand = v
+							e.Operand = v
+						} else {
+							// -- if no symbol exists change operand to the
+							// address (rather than the branch offset)
+							e.Operand = fmt.Sprintf("$%04x", pc.Address())
 						}
 
 					} else {
 						if v, ok := dsm.Symtable.Locations.Symbols[operand]; ok {
-							d.Operand = v
+							e.Operand = v
 						}
 					}
 				case instructions.Read:
 					if v, ok := dsm.Symtable.Read.Symbols[operand]; ok {
-						d.Operand = v
+						e.Operand = v
 					}
 				case instructions.Write:
 					fallthrough
 				case instructions.RMW:
 					if v, ok := dsm.Symtable.Write.Symbols[operand]; ok {
-						d.Operand = v
+						e.Operand = v
 					}
 				}
 			}
@@ -284,49 +295,69 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 	switch result.Defn.AddressingMode {
 	case instructions.Implied:
 	case instructions.Immediate:
-		d.Operand = fmt.Sprintf("#%s", d.Operand)
+		e.Operand = fmt.Sprintf("#%s", e.Operand)
 	case instructions.Relative:
 	case instructions.Absolute:
 	case instructions.ZeroPage:
 	case instructions.Indirect:
-		d.Operand = fmt.Sprintf("(%s)", d.Operand)
+		e.Operand = fmt.Sprintf("(%s)", e.Operand)
 	case instructions.IndexedIndirect:
-		d.Operand = fmt.Sprintf("(%s,X)", d.Operand)
+		e.Operand = fmt.Sprintf("(%s,X)", e.Operand)
 	case instructions.IndirectIndexed:
-		d.Operand = fmt.Sprintf("(%s),Y", d.Operand)
+		e.Operand = fmt.Sprintf("(%s),Y", e.Operand)
 	case instructions.AbsoluteIndexedX:
-		d.Operand = fmt.Sprintf("%s,X", d.Operand)
+		e.Operand = fmt.Sprintf("%s,X", e.Operand)
 	case instructions.AbsoluteIndexedY:
-		d.Operand = fmt.Sprintf("%s,Y", d.Operand)
+		e.Operand = fmt.Sprintf("%s,Y", e.Operand)
 	case instructions.ZeroPageIndexedX:
-		d.Operand = fmt.Sprintf("%s,X", d.Operand)
+		e.Operand = fmt.Sprintf("%s,X", e.Operand)
 	case instructions.ZeroPageIndexedY:
-		d.Operand = fmt.Sprintf("%s,Y", d.Operand)
+		e.Operand = fmt.Sprintf("%s,Y", e.Operand)
 	default:
 	}
 
 	// definintion cycles
 	if result.Defn.IsBranch() {
-		d.DefnCycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
+		e.DefnCycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
 	} else {
-		d.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
+		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
 	}
 
-	// definition notes
-	if result.Defn.PageSensitive {
-		d.DefnNotes = fmt.Sprintf("%s [+1]", d.DefnNotes)
+	if level == EntryLevelExecuted {
+		e.updateActual()
 	}
 
+	e.UpdateActualOnExecute = result.Defn.IsBranch() || result.Defn.PageSensitive
+
+	return e, nil
+}
+
+// build entry fields that are really dependent on accurate, actual execution,
+// rather than a fake disassembly execution. these fields will likely be
+// updated frequently during the course of a real execution
+func (e *Entry) updateActual() {
 	// actual cycles
-	d.ActualCycles = fmt.Sprintf("%d", result.ActualCycles)
+	e.ActualCycles = fmt.Sprintf("%d", e.Result.ActualCycles)
 
 	// actual notes
-	if result.PageFault {
-		d.ActualNotes = fmt.Sprintf("%s [+1]", d.ActualNotes)
-	}
-	if result.CPUBug != "" {
-		d.ActualNotes = fmt.Sprintf("%s * %s *", d.ActualNotes, result.CPUBug)
+	s := strings.Builder{}
+
+	if e.Result.PageFault {
+		s.WriteString("[+1] ")
 	}
 
-	return d, nil
+	if e.Result.Defn.IsBranch() {
+		if e.Result.BranchSuccess {
+			s.WriteString("branched")
+		} else {
+			s.WriteString("next")
+		}
+	}
+
+	if e.Result.CPUBug != "" {
+		s.WriteString(e.Result.CPUBug)
+		s.WriteString(" ")
+	}
+
+	e.ActualNotes = strings.TrimSpace(s.String())
 }

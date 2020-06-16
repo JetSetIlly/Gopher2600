@@ -69,6 +69,10 @@ type Result struct {
 	// error string. will be a memory access error
 	Error string
 
+	// whether branch instruction test passed (ie. branched) or not. testing of
+	// this field should be used in conjuction with Defn.IsBranch()
+	BranchSuccess bool
+
 	// whether this data has been finalised - some fields in this struct will
 	// be undefined if Final is false
 	Final bool

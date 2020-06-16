@@ -25,7 +25,12 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 )
 
-// Iterate faciliates traversal of the disassembly
+// Iterate faciliates traversal of the disassembly.
+//
+// Instances of Entry returned by Start(), Next() and SkipNext() are copies of
+// the disassembly entry, so the Iterate mechanism is suitable for use in a
+// goroutine different to that which is handling (eg. updating) the disassembly
+// itslef.
 type Iterate struct {
 	dsm       *Disassembly
 	minLevel  EntryLevel
@@ -35,7 +40,7 @@ type Iterate struct {
 }
 
 // NewIteration initialises a new iteration of a dissasembly bank. The minLevel
-// argument specifies the minumum entry level which should returned in the
+// argument specifies the minumum entry level which should be returned in the
 // iteration. So, using the following as a guide:
 //
 //	dead < decoded < blessed
@@ -48,8 +53,8 @@ type Iterate struct {
 // The function returns an instance of Iterate, a count of the number of
 // entries the correspond to the minLevel (see above), and any error.
 func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, int, error) {
-	dsm.crit.RLock()
-	defer dsm.crit.RUnlock()
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
 	// silently reject iterations for non-existent banks. this may happen more
 	// often than you think. for example, loading a new cartridge with fewer
@@ -72,13 +77,19 @@ func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, i
 		count = dsm.counts[bank][EntryLevelDead]
 		count += dsm.counts[bank][EntryLevelDecoded]
 		count += dsm.counts[bank][EntryLevelBlessed]
+		count += dsm.counts[bank][EntryLevelExecuted]
 
 	case EntryLevelDecoded:
 		count = dsm.counts[bank][EntryLevelDecoded]
 		count += dsm.counts[bank][EntryLevelBlessed]
+		count += dsm.counts[bank][EntryLevelExecuted]
 
 	case EntryLevelBlessed:
 		count = dsm.counts[bank][EntryLevelBlessed]
+		count += dsm.counts[bank][EntryLevelExecuted]
+
+	case EntryLevelExecuted:
+		count = dsm.counts[bank][EntryLevelExecuted]
 	}
 
 	return itr, count, nil
@@ -94,14 +105,14 @@ func (itr *Iterate) Start() *Entry {
 // Next entry in the disassembly of the previously specified type. Returns nil
 // if end of disassembly has been reached.
 func (itr *Iterate) Next() *Entry {
+	itr.dsm.crit.Lock()
+	defer itr.dsm.crit.Unlock()
+
 	if itr.idx >= len(itr.dsm.reference[itr.bank]) {
 		return nil
 	}
 
 	itr.idx++
-
-	itr.dsm.crit.RLock()
-	defer itr.dsm.crit.RUnlock()
 
 	for itr.idx < len(itr.dsm.reference[itr.bank]) && itr.dsm.reference[itr.bank][itr.idx].Level < itr.minLevel {
 		itr.idx++
@@ -113,7 +124,14 @@ func (itr *Iterate) Next() *Entry {
 
 	itr.lastEntry = itr.dsm.reference[itr.bank][itr.idx]
 
-	return itr.lastEntry
+	return makeCopyofEntry(*itr.lastEntry)
+}
+
+// we don't want to return the actual entry in the disassembly because it will
+// result in a race condition erorr if the entry is updated at the same time as
+// we're dealing with the iteration.
+func makeCopyofEntry(e Entry) *Entry {
+	return &e
 }
 
 // SkipNext n entries and return that Entry. An n value of < 0 returns the most

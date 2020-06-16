@@ -346,12 +346,15 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldDefnCycles, e)
 	imgui.Text(s)
 
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldDefnNotes, e)
-	imgui.Text(s)
+	imgui.PopStyleColorV(4)
 
-	imgui.PopStyleColorV(5)
+	if e.Level == disassembly.EntryLevelExecuted {
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
+		s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldActualNotes, e)
+		imgui.Text(s)
+		imgui.PopStyleColor()
+	}
 
 	imgui.EndGroup()
 
