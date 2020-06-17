@@ -66,7 +66,7 @@ func NewDPCplus(data []byte) (*dpcPlus, error) {
 
 	cart := &dpcPlus{
 		mappingID:   "DPC+",
-		description: "(harmony)",
+		description: "harmony",
 		bankSize:    4096,
 	}
 
@@ -121,27 +121,17 @@ func (cart *dpcPlus) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-func (cart *dpcPlus) Read(addr uint16, Active bool) (uint8, error) {
+func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
+	if cart.hotspot(addr, passive) {
+		return 0, nil
+	}
+
 	var data uint8
 
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr > 0x007f {
-		if addr == 0x0ff6 {
-			cart.bank = 0
-		} else if addr == 0x0ff7 {
-			cart.bank = 1
-		} else if addr == 0x0ff8 {
-			cart.bank = 2
-		} else if addr == 0x0ff9 {
-			cart.bank = 3
-		} else if addr == 0x0ffa {
-			cart.bank = 4
-		} else if addr == 0x0ffb {
-			cart.bank = 5
-		} else {
-			data = cart.banks[cart.bank][addr]
-		}
+		data = cart.banks[cart.bank][addr]
 
 		// if FastFetch mode is on and the preceeding data value was 0xa9 (the
 		// opcode for LDA <immediate>) then the data we've just read this cycle
@@ -152,7 +142,7 @@ func (cart *dpcPlus) Read(addr uint16, Active bool) (uint8, error) {
 		// place)
 		if cart.registers.FastFetch && cart.lda && data < 0x28 {
 			cart.lda = false
-			return cart.Read(uint16(data), Active)
+			return cart.Read(uint16(data), passive)
 		} else {
 			cart.lda = cart.registers.FastFetch && data == 0xa9
 			return data, nil
@@ -279,21 +269,9 @@ func (cart *dpcPlus) Read(addr uint16, Active bool) (uint8, error) {
 	return data, nil
 }
 
-func (cart *dpcPlus) Write(addr uint16, data uint8, active bool, poke bool) error {
-	// if address is above register space then we only need to check for bank
-	// switching before returning data at the quoted address
-	if addr == 0x0ff6 {
-		cart.bank = 0
-	} else if addr == 0x0ff7 {
-		cart.bank = 1
-	} else if addr == 0x0ff8 {
-		cart.bank = 2
-	} else if addr == 0x0ff9 {
-		cart.bank = 3
-	} else if addr == 0x0ffa {
-		cart.bank = 4
-	} else if addr == 0x0ffb {
-		cart.bank = 5
+func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.hotspot(addr, passive) {
+		return nil
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
@@ -575,6 +553,30 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, active bool, poke bool) erro
 	return errors.New(errors.MemoryBusError, addr)
 }
 
+// bankswitch on hotspot access
+func (cart *dpcPlus) hotspot(addr uint16, passive bool) bool {
+	if addr >= 0x0ff6 && addr <= 0x0ffb {
+		if passive {
+			return true
+		}
+		if addr == 0x0ff6 {
+			cart.bank = 0
+		} else if addr == 0x0ff7 {
+			cart.bank = 1
+		} else if addr == 0x0ff8 {
+			cart.bank = 2
+		} else if addr == 0x0ff9 {
+			cart.bank = 3
+		} else if addr == 0x0ffa {
+			cart.bank = 4
+		} else if addr == 0x0ffb {
+			cart.bank = 5
+		}
+		return true
+	}
+	return false
+}
+
 func (cart dpcPlus) NumBanks() int {
 	return len(cart.banks)
 }
@@ -586,14 +588,6 @@ func (cart *dpcPlus) SetBank(addr uint16, bank int) error {
 
 func (cart dpcPlus) GetBank(addr uint16) int {
 	return cart.bank
-}
-
-func (cart *dpcPlus) SaveState() interface{} {
-	return nil
-}
-
-func (cart *dpcPlus) RestoreState(state interface{}) error {
-	return nil
 }
 
 func (cart *dpcPlus) Patch(offset int, data uint8) error {

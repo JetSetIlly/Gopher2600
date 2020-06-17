@@ -62,15 +62,14 @@ type parkerBros struct {
 	mappingID   string
 	description string
 
+	// parkerBros cartridges have 8 banks of 1024 bytes
 	bankSize int
 	banks    [][]uint8
 
-	// parker bros. cartridges divide memory into 4 segments
+	// parkerBros cartridges divide memory into 4 segments
 	//  o the last segment always points to the last bank
 	//  o the other segments can point to any one of the eight banks in the ROM
 	//		(including the last bank)
-	//
-	// switching of segments is performed by the bankSwitchOnAccess() function
 	segment [4]int
 }
 
@@ -116,7 +115,11 @@ func (cart *parkerBros) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *parkerBros) Read(addr uint16, active bool) (uint8, error) {
+func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
+	if cart.hotspot(addr, passive) {
+		return 0, nil
+	}
+
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.segment[0]][addr&0x03ff]
@@ -126,14 +129,13 @@ func (cart *parkerBros) Read(addr uint16, active bool) (uint8, error) {
 		data = cart.banks[cart.segment[2]][addr&0x03ff]
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		data = cart.banks[cart.segment[3]][addr&0x03ff]
-		cart.bankSwitchOnAccess(addr)
 	}
 	return data, nil
 }
 
 // Write implements the cartMapper interface
-func (cart *parkerBros) Write(addr uint16, data uint8, active bool, poke bool) error {
-	if cart.bankSwitchOnAccess(addr) {
+func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.hotspot(addr, passive) {
 		return nil
 	}
 
@@ -152,69 +154,73 @@ func (cart *parkerBros) Write(addr uint16, data uint8, active bool, poke bool) e
 	return errors.New(errors.MemoryBusError, addr)
 }
 
-func (cart *parkerBros) bankSwitchOnAccess(addr uint16) bool {
-	switch addr {
-	// segment 0
-	case 0x0fe0:
-		cart.segment[0] = 0
-	case 0x0fe1:
-		cart.segment[0] = 1
-	case 0x0fe2:
-		cart.segment[0] = 2
-	case 0x0fe3:
-		cart.segment[0] = 3
-	case 0x0fe4:
-		cart.segment[0] = 4
-	case 0x0fe5:
-		cart.segment[0] = 5
-	case 0x0fe6:
-		cart.segment[0] = 6
-	case 0x0fe7:
-		cart.segment[0] = 7
+// bankswitch on hotspot access
+func (cart *parkerBros) hotspot(addr uint16, passive bool) bool {
+	if addr >= 0xfe0 && addr <= 0xff7 {
+		if passive {
+			return true
+		}
 
-	// segment 1
-	case 0x0fe8:
-		cart.segment[1] = 0
-	case 0x0fe9:
-		cart.segment[1] = 1
-	case 0x0fea:
-		cart.segment[1] = 2
-	case 0x0feb:
-		cart.segment[1] = 3
-	case 0x0fec:
-		cart.segment[1] = 4
-	case 0x0fed:
-		cart.segment[1] = 5
-	case 0x0fee:
-		cart.segment[1] = 6
-	case 0x0fef:
-		cart.segment[1] = 7
+		switch addr {
+		// segment 0
+		case 0x0fe0:
+			cart.segment[0] = 0
+		case 0x0fe1:
+			cart.segment[0] = 1
+		case 0x0fe2:
+			cart.segment[0] = 2
+		case 0x0fe3:
+			cart.segment[0] = 3
+		case 0x0fe4:
+			cart.segment[0] = 4
+		case 0x0fe5:
+			cart.segment[0] = 5
+		case 0x0fe6:
+			cart.segment[0] = 6
+		case 0x0fe7:
+			cart.segment[0] = 7
 
-	// segment 2
-	case 0x0ff0:
-		cart.segment[2] = 0
-	case 0x0ff1:
-		cart.segment[2] = 1
-	case 0x0ff2:
-		cart.segment[2] = 2
-	case 0x0ff3:
-		cart.segment[2] = 3
-	case 0x0ff4:
-		cart.segment[2] = 4
-	case 0x0ff5:
-		cart.segment[2] = 5
-	case 0x0ff6:
-		cart.segment[2] = 6
-	case 0x0ff7:
-		cart.segment[2] = 7
+		// segment 1
+		case 0x0fe8:
+			cart.segment[1] = 0
+		case 0x0fe9:
+			cart.segment[1] = 1
+		case 0x0fea:
+			cart.segment[1] = 2
+		case 0x0feb:
+			cart.segment[1] = 3
+		case 0x0fec:
+			cart.segment[1] = 4
+		case 0x0fed:
+			cart.segment[1] = 5
+		case 0x0fee:
+			cart.segment[1] = 6
+		case 0x0fef:
+			cart.segment[1] = 7
 
-	// segment 3 always points to bank 7
+		// segment 2
+		case 0x0ff0:
+			cart.segment[2] = 0
+		case 0x0ff1:
+			cart.segment[2] = 1
+		case 0x0ff2:
+			cart.segment[2] = 2
+		case 0x0ff3:
+			cart.segment[2] = 3
+		case 0x0ff4:
+			cart.segment[2] = 4
+		case 0x0ff5:
+			cart.segment[2] = 5
+		case 0x0ff6:
+			cart.segment[2] = 6
+		case 0x0ff7:
+			cart.segment[2] = 7
+		}
 
-	default:
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
 // NumBanks implements the cartMapper interface
@@ -248,17 +254,6 @@ func (cart *parkerBros) SetBank(addr uint16, bank int) error {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.mappingID, bank))
 	}
 
-	return nil
-}
-
-// SaveState implements the cartMapper interface
-func (cart *parkerBros) SaveState() interface{} {
-	return cart.segment
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *parkerBros) RestoreState(state interface{}) error {
-	cart.segment = state.([len(cart.segment)]int)
 	return nil
 }
 

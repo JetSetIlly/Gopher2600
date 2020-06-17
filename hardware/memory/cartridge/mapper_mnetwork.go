@@ -86,10 +86,12 @@ type mnetwork struct {
 	mappingID   string
 	description string
 
+	// mnetwork cartridges have 8 banks of 2048 bytes
 	bankSize int
+	banks    [][]uint8
 
-	banks [][]uint8
-	bank  int
+	// identifies the currently selected bank
+	bank int
 
 	ram256byte    [num256ByteRAMbanks][]uint8
 	ram256byteIdx int
@@ -169,7 +171,11 @@ func (cart *mnetwork) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *mnetwork) Read(addr uint16, active bool) (uint8, error) {
+func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
+	if cart.hotspot(addr, passive) {
+		return 0, nil
+	}
+
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -186,7 +192,6 @@ func (cart *mnetwork) Read(addr uint16, active bool) (uint8, error) {
 		} else {
 			// if address is not in ram space then read from the last rom bank
 			data = cart.banks[cart.NumBanks()-1][addr&0x07ff]
-			cart.bankSwitchOnAccess(addr)
 		}
 	} else {
 		return 0, errors.New(errors.MemoryBusError, addr)
@@ -196,7 +201,11 @@ func (cart *mnetwork) Read(addr uint16, active bool) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *mnetwork) Write(addr uint16, data uint8, active bool, poke bool) error {
+func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.hotspot(addr, passive) {
+		return nil
+	}
+
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if addr <= 0x03ff && cart.bank == 7 {
 			cart.ram1k[addr&0x03ff] = data
@@ -204,8 +213,6 @@ func (cart *mnetwork) Write(addr uint16, data uint8, active bool, poke bool) err
 		}
 	} else if addr >= 0x0800 && addr <= 0x08ff {
 		cart.ram256byte[cart.ram256byteIdx][addr&0x00ff] = data
-		return nil
-	} else if cart.bankSwitchOnAccess(addr) {
 		return nil
 	}
 
@@ -217,54 +224,60 @@ func (cart *mnetwork) Write(addr uint16, data uint8, active bool, poke bool) err
 	return errors.New(errors.MemoryBusError, addr)
 }
 
-func (cart *mnetwork) bankSwitchOnAccess(addr uint16) bool {
-	switch addr {
-	case 0x0fe0:
-		cart.bank = 0
-	case 0x0fe1:
-		cart.bank = 1
-	case 0x0fe2:
-		cart.bank = 2
-	case 0x0fe3:
-		cart.bank = 3
-	case 0x0fe4:
-		cart.bank = 4
-	case 0x0fe5:
-		cart.bank = 5
-	case 0x0fe6:
-		cart.bank = 6
+// bankswitch on hotspot access
+func (cart *mnetwork) hotspot(addr uint16, passive bool) bool {
+	if (addr >= 0xfe0 && addr <= 0xfe7) || (addr >= 0xff8 && addr <= 0x0ffb) {
+		if passive {
+			return true
+		}
 
-		// from bankswitch_sizes.txt: "Note that you cannot select the last 2K
-		// of the ROM image into the lower 2K of the cart!  Accessing 1FE7
-		// selects 1K of RAM at 1000-17FF instead of ROM!"
-		//
-		// we're using bank number -1 to indicate the use of RAM
-	case 0x0fe7:
-		cart.bank = 7
+		switch addr {
+		case 0x0fe0:
+			cart.bank = 0
+		case 0x0fe1:
+			cart.bank = 1
+		case 0x0fe2:
+			cart.bank = 2
+		case 0x0fe3:
+			cart.bank = 3
+		case 0x0fe4:
+			cart.bank = 4
+		case 0x0fe5:
+			cart.bank = 5
+		case 0x0fe6:
+			cart.bank = 6
 
-		// from bankswitch_sizes.txt: "You select which 256 byte block appears
-		// here by accessing 1FF8 to 1FFB."
-		//
-		// "here" refers to the read range 0x0900 to 0x09ff and the write range
-		// 0x0800 to 0x08ff
-	case 0x0ff8:
-		cart.ram256byteIdx = 0
-	case 0x0ff9:
-		cart.ram256byteIdx = 1
-	case 0x0ffa:
-		cart.ram256byteIdx = 2
-	case 0x0ffb:
-		cart.ram256byteIdx = 3
+			// from bankswitch_sizes.txt: "Note that you cannot select the last 2K
+			// of the ROM image into the lower 2K of the cart!  Accessing 1FE7
+			// selects 1K of RAM at 1000-17FF instead of ROM!"
+			//
+			// we're using bank number -1 to indicate the use of RAM
+		case 0x0fe7:
+			cart.bank = 7
 
-	default:
-		return false
+			// from bankswitch_sizes.txt: "You select which 256 byte block appears
+			// here by accessing 1FF8 to 1FFB."
+			//
+			// "here" refers to the read range 0x0900 to 0x09ff and the write range
+			// 0x0800 to 0x08ff
+		case 0x0ff8:
+			cart.ram256byteIdx = 0
+		case 0x0ff9:
+			cart.ram256byteIdx = 1
+		case 0x0ffa:
+			cart.ram256byteIdx = 2
+		case 0x0ffb:
+			cart.ram256byteIdx = 3
+		}
+
+		return true
 	}
 
-	return true
+	return false
 }
 
 // NumBanks implements the cartMapper interface
-func (cart *mnetwork) NumBanks() int {
+func (cart mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
@@ -284,36 +297,6 @@ func (cart *mnetwork) SetBank(addr uint16, bank int) error {
 		// last segment always points to the last bank
 	} else {
 		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%#04x bank %d]", cart.mappingID, addr, bank))
-	}
-
-	return nil
-}
-
-// SaveState implements the cartMapper interface
-func (cart *mnetwork) SaveState() interface{} {
-	ram1k := make([]uint8, len(cart.ram1k))
-	copy(ram1k, cart.ram1k)
-
-	ram256byte := [4][]uint8{}
-	for i := range ram256byte {
-		ram256byte[i] = make([]uint8, len(cart.ram256byte[i]))
-		copy(ram256byte[i], cart.ram256byte[i])
-	}
-
-	return []interface{}{cart.bank, cart.ram256byteIdx, ram1k, ram256byte}
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *mnetwork) RestoreState(state interface{}) error {
-	cart.bank = state.([]interface{})[0].(int)
-	cart.ram256byteIdx = state.([]interface{})[1].(int)
-
-	ram1k := state.([]interface{})[2].([]uint8)
-	copy(cart.ram1k, ram1k)
-
-	ram256byte := state.([]interface{})[3].([4][]uint8)
-	for i := range cart.ram256byte {
-		copy(cart.ram256byte[i], ram256byte[i])
 	}
 
 	return nil

@@ -54,14 +54,20 @@ type mapper3ePlus struct {
 	mappingID   string
 	description string
 
+	// 3e+ cartridge memory is segmented
 	bankSize int
 	banks    [][]uint8
 
 	// 64 is the maximum number of banks possible under the 3e+ scheme
 	ram [64][]uint8
 
-	slot      [4]int
-	slotIsRam [4]bool
+	// cartridge memory is segmented in the 3e+ format. the 3e+ documentation
+	// refers to these as slots. we prefer the segment terminology for
+	// consistency.
+	//
+	// hotspots are provided by the Listen() function
+	segment      [4]int
+	segmentIsRam [4]bool
 }
 
 // should work with any size cartridge that is a multiple of 1024
@@ -109,10 +115,10 @@ func new3ePlus(data []byte) (cartMapper, error) {
 
 func (cart mapper3ePlus) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s Slots: ", cart.mappingID))
-	for i := range cart.slot {
-		s.WriteString(fmt.Sprintf("%d", cart.slot[i]))
-		if cart.slotIsRam[i] {
+	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
+	for i := range cart.segment {
+		s.WriteString(fmt.Sprintf("%d", cart.segment[i]))
+		if cart.segmentIsRam[i] {
 			s.WriteString("R ")
 		} else {
 			s.WriteString(" ")
@@ -134,32 +140,32 @@ func (cart *mapper3ePlus) Initialise() {
 	// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
 	// must be placed at the end of the first 1K in the ROM image.
 
-	for i := range cart.slot {
-		cart.slot[i] = 0
-		cart.slotIsRam[i] = false
+	for i := range cart.segment {
+		cart.segment[i] = 0
+		cart.segmentIsRam[i] = false
 	}
 }
 
 // Read implements the cartMapper interface
-func (cart *mapper3ePlus) Read(addr uint16, active bool) (uint8, error) {
-	var slot int
+func (cart *mapper3ePlus) Read(addr uint16, passive bool) (uint8, error) {
+	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
-		slot = 0
+		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		slot = 1
+		segment = 1
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		slot = 2
+		segment = 2
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		slot = 3
+		segment = 3
 	}
 
 	var data uint8
 
-	if cart.slotIsRam[slot] {
-		data = cart.ram[cart.slot[slot]][addr&0x01ff]
+	if cart.segmentIsRam[segment] {
+		data = cart.ram[cart.segment[segment]][addr&0x01ff]
 	} else {
-		bank := cart.slot[slot]
+		bank := cart.segment[segment]
 		if bank < len(cart.banks) {
 			data = cart.banks[bank][addr&0x03ff]
 		}
@@ -169,23 +175,24 @@ func (cart *mapper3ePlus) Read(addr uint16, active bool) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *mapper3ePlus) Write(addr uint16, data uint8, active bool, poke bool) error {
-	var slot int
+func (cart *mapper3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	var segment int
+
 	if addr >= 0x0000 && addr <= 0x03ff {
-		slot = 0
+		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		slot = 1
+		segment = 1
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		slot = 2
+		segment = 2
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		slot = 3
+		segment = 3
 	}
 
-	if cart.slotIsRam[slot] {
-		cart.ram[cart.slot[slot]][addr&0x01ff] = data
+	if cart.segmentIsRam[segment] {
+		cart.ram[cart.segment[segment]][addr&0x01ff] = data
 		return nil
 	} else if poke {
-		cart.banks[cart.slot[slot]][addr&0x03ff] = data
+		cart.banks[cart.segment[segment]][addr&0x03ff] = data
 		return nil
 	}
 
@@ -200,69 +207,28 @@ func (cart mapper3ePlus) NumBanks() int {
 // GetBank implements the cartMapper interface
 func (cart *mapper3ePlus) GetBank(addr uint16) (bank int) {
 	if addr >= 0x0000 && addr <= 0x03ff {
-		return cart.slot[0]
+		return cart.segment[0]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		return cart.slot[1]
+		return cart.segment[1]
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		return cart.slot[2]
+		return cart.segment[2]
 	}
 
 	// remaining address is between 0x0c00 and 0x0fff
-	return cart.slot[3]
+	return cart.segment[3]
 }
 
 // SetBank implements the cartMapper interface
 func (cart *mapper3ePlus) SetBank(addr uint16, bank int) error {
 	if addr >= 0x0000 && addr <= 0x03ff {
-		cart.slot[0] = bank
+		cart.segment[0] = bank
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		cart.slot[1] = bank
+		cart.segment[1] = bank
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		cart.slot[2] = bank
+		cart.segment[2] = bank
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		cart.slot[3] = bank
+		cart.segment[3] = bank
 	}
-	return nil
-}
-
-// SaveState implements the cartMapper interface
-func (cart *mapper3ePlus) SaveState() interface{} {
-	ram := [64][]uint8{}
-	for i := range ram {
-		ram[i] = make([]uint8, len(cart.ram[i]))
-		copy(ram[i], cart.ram[i])
-	}
-
-	var slot [4]int
-	for i := range slot {
-		slot[i] = cart.slot[i]
-	}
-
-	var slotIsRam [4]bool
-	for i := range slotIsRam {
-		slotIsRam[i] = cart.slotIsRam[i]
-	}
-
-	return []interface{}{slot, slotIsRam, ram}
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *mapper3ePlus) RestoreState(state interface{}) error {
-	slot := state.([]interface{})[0].([4]int)
-	for i := range slot {
-		cart.slot[i] = slot[i]
-	}
-
-	slotIsRam := state.([]interface{})[1].([4]bool)
-	for i := range slotIsRam {
-		cart.slotIsRam[i] = slotIsRam[i]
-	}
-
-	ram := state.([]interface{})[2].([64][]uint8)
-	for i := range ram {
-		copy(cart.ram[i], ram[i])
-	}
-
 	return nil
 }
 
@@ -283,16 +249,17 @@ func (cart *mapper3ePlus) Listen(addr uint16, data uint8) {
 	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
 	// mechanism
 
+	// bankswitch on hotspot access
 	if addr == 0x3f {
-		slot := data >> 6
+		segment := data >> 6
 		bank := data & 0x3f
-		cart.slot[slot] = int(bank)
-		cart.slotIsRam[slot] = false
+		cart.segment[segment] = int(bank)
+		cart.segmentIsRam[segment] = false
 	} else if addr == 0x3e {
-		slot := data >> 6
+		segment := data >> 6
 		bank := data & 0x3f
-		cart.slot[slot] = int(bank)
-		cart.slotIsRam[slot] = true
+		cart.segment[segment] = int(bank)
+		cart.segmentIsRam[segment] = true
 	}
 }
 

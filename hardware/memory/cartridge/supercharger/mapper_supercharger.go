@@ -27,7 +27,7 @@ import (
 )
 
 // supercharger has 6k of RAM in total
-const numRamBanks = 3
+const numRamBanks = 4
 const bankSize = 2048
 
 // Supercharger represents a supercharger cartridge
@@ -180,7 +180,7 @@ func (cart *Supercharger) Write(addr uint16, data uint8, active bool, poke bool)
 
 // NumBanks implements the cartMapper interface
 func (cart Supercharger) NumBanks() int {
-	return numRamBanks + 1
+	return numRamBanks
 }
 
 // SetBank implements the cartMapper interface
@@ -240,16 +240,6 @@ func (cart Supercharger) GetBank(addr uint16) int {
 		return 2
 	}
 	panic("unknown banking method")
-}
-
-// SaveState implements the cartMapper interface
-func (cart *Supercharger) SaveState() interface{} {
-	return nil
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *Supercharger) RestoreState(_ interface{}) error {
-	return nil
 }
 
 // Patch implements the cartMapper interface

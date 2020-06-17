@@ -32,10 +32,12 @@ type dpc struct {
 	mappingID   string
 	description string
 
-	// banks and the currently selected bank
+	// dpc cartridge have two banks of 4096 bytes
 	bankSize int
 	banks    [][]byte
-	bank     int
+
+	// currently selected bank
+	bank int
 
 	// DPC registers are directly accessible by the VCS but have a special
 	// meaning when written to and read. the DPCregisters type implements the
@@ -183,24 +185,22 @@ func (cart *dpc) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *dpc) Read(addr uint16, active bool) (uint8, error) {
+func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
 	cart.registers.RNG |= (cart.registers.RNG>>3)&0x01 ^ (cart.registers.RNG>>4)&0x01 ^ (cart.registers.RNG>>5)&0x01 ^ (cart.registers.RNG>>7)&0x01
 	cart.registers.RNG <<= 1
 
+	// bankswitch on hotspot access
+	if cart.hotspot(addr, passive) {
+		return 0, nil
+	}
+
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr > 0x003f {
-		if addr == 0x0ff8 {
-			cart.bank = 0
-		} else if addr == 0x0ff9 {
-			cart.bank = 1
-		} else {
-			data = cart.banks[cart.bank][addr]
-		}
-		return data, nil
+		return cart.banks[cart.bank][addr], nil
 	}
 
 	// * the remaining addresses are function registers [col 4, ln 10-20]
@@ -300,60 +300,57 @@ func (cart *dpc) Read(addr uint16, active bool) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *dpc) Write(addr uint16, data uint8, active bool, poke bool) error {
-	if addr == 0x0ff8 {
-		cart.bank = 0
-	} else if addr == 0x0ff9 {
-		cart.bank = 1
-	} else {
+func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.hotspot(addr, passive) {
+		return nil
+	}
 
-		// if the write address if a write address then the effect is on a
-		// specific data-fetcher. the data-fetcher is specified by the three
-		// least-significant bits
-		f := addr & 0x0007
+	// if the write address if a write address then the effect is on a
+	// specific data-fetcher. the data-fetcher is specified by the three
+	// least-significant bits
+	f := addr & 0x0007
 
-		if addr >= 0x0040 && addr <= 0x0047 {
-			// set top register
-			cart.registers.Fetcher[f].Top = data
-			cart.registers.Fetcher[f].Flag = false
+	if addr >= 0x0040 && addr <= 0x0047 {
+		// set top register
+		cart.registers.Fetcher[f].Top = data
+		cart.registers.Fetcher[f].Flag = false
 
-		} else if addr >= 0x0048 && addr <= 0x004f {
-			// set bottom register
-			cart.registers.Fetcher[f].Bottom = data
+	} else if addr >= 0x0048 && addr <= 0x004f {
+		// set bottom register
+		cart.registers.Fetcher[f].Bottom = data
 
-		} else if addr >= 0x0050 && addr <= 0x0057 {
-			// set low register
+	} else if addr >= 0x0050 && addr <= 0x0057 {
+		// set low register
 
-			// treat music mode capable registers slightly differently
-			if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
-				// low is loaded with top value on low function [col 7, ln 12-14]
-				cart.registers.Fetcher[f].Low = cart.registers.Fetcher[f].Top
+		// treat music mode capable registers slightly differently
+		if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
+			// low is loaded with top value on low function [col 7, ln 12-14]
+			cart.registers.Fetcher[f].Low = cart.registers.Fetcher[f].Top
 
-			} else {
-				cart.registers.Fetcher[f].Low = data
+		} else {
+			cart.registers.Fetcher[f].Low = data
 
-			}
-
-		} else if addr >= 0x0058 && addr <= 0x005f {
-			// set high register
-			cart.registers.Fetcher[f].Hi = data
-
-			// treat music mode capable registers slightly differently
-			if f >= 0x5 && addr >= 0x005d { // && addr <= 0x00f5 is implied
-				// set music mode [col 7, ln 1-6]
-				cart.registers.Fetcher[f].MusicMode = data&0x10 == 0x10
-
-				// set osc clock [col 7, ln 20-22]
-				cart.registers.Fetcher[f].OSCclock = data&0x20 == 0x20
-			}
-
-		} else if addr >= 0x0070 && addr <= 0x0077 {
-			// reset random number generator
-			cart.registers.RNG = 0xff
 		}
 
-		// other addresses are not write registers and are ignored
+	} else if addr >= 0x0058 && addr <= 0x005f {
+		// set high register
+		cart.registers.Fetcher[f].Hi = data
+
+		// treat music mode capable registers slightly differently
+		if f >= 0x5 && addr >= 0x005d { // && addr <= 0x00f5 is implied
+			// set music mode [col 7, ln 1-6]
+			cart.registers.Fetcher[f].MusicMode = data&0x10 == 0x10
+
+			// set osc clock [col 7, ln 20-22]
+			cart.registers.Fetcher[f].OSCclock = data&0x20 == 0x20
+		}
+
+	} else if addr >= 0x0070 && addr <= 0x0077 {
+		// reset random number generator
+		cart.registers.RNG = 0xff
 	}
+
+	// other addresses are not write registers and are ignored
 
 	if poke {
 		cart.banks[cart.bank][addr] = data
@@ -361,6 +358,22 @@ func (cart *dpc) Write(addr uint16, data uint8, active bool, poke bool) error {
 	}
 
 	return errors.New(errors.MemoryBusError, addr)
+}
+
+// bank switch on hotspot access
+func (cart *dpc) hotspot(addr uint16, passive bool) bool {
+	if addr >= 0x0ff8 && addr <= 0x0ff9 {
+		if passive {
+			return true
+		}
+		if addr == 0x0ff8 {
+			cart.bank = 0
+		} else if addr == 0x0ff9 {
+			cart.bank = 1
+		}
+		return true
+	}
+	return false
 }
 
 // NumBanks implements the cartMapper interface
@@ -377,16 +390,6 @@ func (cart *dpc) SetBank(addr uint16, bank int) error {
 // GetBank implements the cartMapper interface
 func (cart dpc) GetBank(addr uint16) int {
 	return cart.bank
-}
-
-// SaveState implements the cartMapper interface
-func (cart *dpc) SaveState() interface{} {
-	return nil
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *dpc) RestoreState(state interface{}) error {
-	return nil
 }
 
 // Patch implements the cartMapper interface

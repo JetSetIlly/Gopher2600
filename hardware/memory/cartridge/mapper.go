@@ -31,8 +31,6 @@ type cartMapper interface {
 	NumBanks() int
 	GetBank(addr uint16) (bank int)
 	SetBank(addr uint16, bank int) error
-	SaveState() interface{}
-	RestoreState(interface{}) error
 
 	// patch differs from write/poke in that it alters the data as though it
 	// was being read from disk. that is, the offset is measured from the start

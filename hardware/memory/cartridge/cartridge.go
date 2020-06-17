@@ -35,23 +35,24 @@ import (
 type Cartridge struct {
 	bus.DebuggerBus
 	bus.CPUBus
-
-	Active bool
-
 	Filename string
 	Hash     string
 
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
 	mapper cartMapper
+
+	// when cartridge is in passive mode, cartridge hotspots do not work. We
+	// send the passive value to the Read() and Write() functions of the mapper
+	// and we also use it to prevent the Listen() function from triggering.
+	// Useful for disassembly when we don't want the cartridge to react.
+	Passive bool
 }
 
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type
 func NewCartridge() *Cartridge {
-	cart := &Cartridge{
-		Active: true,
-	}
+	cart := &Cartridge{}
 	cart.Eject()
 	return cart
 }
@@ -88,12 +89,12 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr^memorymap.OriginCart, cart.Active)
+	return cart.mapper.Read(addr^memorymap.OriginCart, cart.Passive)
 }
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data, cart.Active, false)
+	return cart.mapper.Write(addr^memorymap.OriginCart, data, cart.Passive, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -231,17 +232,6 @@ func (cart *Cartridge) SetBank(addr uint16, bank int) error {
 	return cart.mapper.SetBank(addr&memorymap.AddressMaskCart, bank)
 }
 
-// SaveState notes and returns the current state of the cartridge (RAM
-// contents, selected bank)
-func (cart *Cartridge) SaveState() interface{} {
-	return cart.mapper.SaveState()
-}
-
-// RestoreState retuns the state of the cartridge to a previously known state
-func (cart *Cartridge) RestoreState(state interface{}) error {
-	return cart.mapper.RestoreState(state)
-}
-
 // Listen for data at the specified address.
 //
 // The VCS cartridge port is wired up to all 13 address lines of the 6507.
@@ -254,7 +244,9 @@ func (cart *Cartridge) RestoreState(state interface{}) error {
 // address space. When this address is triggered, the tigervision cartridge
 // will use whatever is on the data bus to switch banks.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
-	cart.mapper.Listen(addr, data)
+	if !cart.Passive {
+		cart.mapper.Listen(addr, data)
+	}
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not

@@ -98,7 +98,7 @@ func (dsm *Disassembly) NewIteration(minLevel EntryLevel, bank int) (*Iterate, i
 // Start new iteration from the first instance of the EntryLevel specified in
 // NewIteration.
 func (itr *Iterate) Start() *Entry {
-	itr.idx = 0
+	itr.idx = -1
 	return itr.Next()
 }
 

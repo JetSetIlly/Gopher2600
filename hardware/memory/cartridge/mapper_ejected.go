@@ -79,16 +79,6 @@ func (cart ejected) GetBank(_ uint16) int {
 	return 0
 }
 
-// SaveState implements the cartMapper interface
-func (cart *ejected) SaveState() interface{} {
-	return nil
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *ejected) RestoreState(_ interface{}) error {
-	return nil
-}
-
 // Patch implements the cartMapper interface
 func (cart *ejected) Patch(_ int, _ uint8) error {
 	return errors.New(errors.CartridgeEjected)

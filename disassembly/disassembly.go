@@ -131,12 +131,6 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 		return nil
 	}
 
-	// save cartridge state and defer at end of disassembly. this is necessary
-	// because during the disassembly process we may changed mutable parts of
-	// the cartridge (eg. extra RAM)
-	state := dsm.cart.SaveState()
-	defer dsm.cart.RestoreState(state)
-
 	// put cart into its initial state
 	dsm.cart.Initialise()
 
@@ -151,10 +145,10 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	mc.NoFlowControl = true
 
 	// some cartridge types react when certain registers are read/written. for
-	// disassembly purposes we don't want that so we turn off the Active flag
+	// disassembly purposes we don't want that so we turn on the Passive flag
 	// for the duration
-	dsm.cart.Active = false
-	defer func() { dsm.cart.Active = true }()
+	dsm.cart.Passive = true
+	defer func() { dsm.cart.Passive = false }()
 
 	// decode pass
 	err = dsm.decode(mc)

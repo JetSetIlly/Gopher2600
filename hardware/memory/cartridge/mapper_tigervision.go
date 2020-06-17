@@ -60,6 +60,8 @@ type tigervision struct {
 	mappingID   string
 	description string
 
+	// tigervision cartridges traditionally have 4 of banks of 2048 bytes. but
+	// it can theoretically support anything up to 512 banks
 	bankSize int
 	banks    [][]uint8
 
@@ -121,7 +123,7 @@ func (cart *tigervision) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *tigervision) Read(addr uint16, active bool) (uint8, error) {
+func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
 		data = cart.banks[cart.segment[0]][addr&0x07ff]
@@ -132,7 +134,7 @@ func (cart *tigervision) Read(addr uint16, active bool) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *tigervision) Write(addr uint16, data uint8, active bool, poke bool) error {
+func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
 			cart.banks[cart.segment[0]][addr&0x07ff] = data
@@ -169,17 +171,6 @@ func (cart *tigervision) SetBank(addr uint16, bank int) error {
 	return nil
 }
 
-// SaveState implements the cartMapper interface
-func (cart *tigervision) SaveState() interface{} {
-	return cart.segment
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *tigervision) RestoreState(state interface{}) error {
-	cart.segment = state.([len(cart.segment)]int)
-	return nil
-}
-
 // Patch implements the cartMapper interface
 func (cart *tigervision) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
@@ -209,6 +200,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// !TODO: lint check for data writes that specify a bank > NumBanks(). the
 	// format allows this but it might be a mistake
 
+	// bankswitch on hotspot access
 	if addr < 0x40 {
 		cart.segment[0] = int(data & uint8(cart.NumBanks()-1))
 	}

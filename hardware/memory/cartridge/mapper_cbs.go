@@ -84,37 +84,29 @@ func (cart *cbs) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *cbs) Read(addr uint16, active bool) (uint8, error) {
+func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
+	if cart.hotspot(addr, passive) {
+		return 0, nil
+	}
+
 	if addr >= 0x0100 && addr <= 0x01ff {
 		return cart.ram[addr-0x100], nil
 	}
 
 	data := cart.banks[cart.bank][addr]
 
-	if addr == 0x0ff8 {
-		cart.bank = 0
-	} else if addr == 0x0ff9 {
-		cart.bank = 1
-	} else if addr == 0x0ffa {
-		cart.bank = 2
-	}
-
 	return data, nil
 }
 
 // Write implements the cartMapper interface
-func (cart *cbs) Write(addr uint16, data uint8, active bool, poke bool) error {
-	if addr <= 0x00ff {
-		cart.ram[addr] = data
+func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.hotspot(addr, passive) {
 		return nil
 	}
 
-	if addr == 0x0ff8 {
-		cart.bank = 0
-	} else if addr == 0x0ff9 {
-		cart.bank = 1
-	} else if addr == 0x0ffa {
-		cart.bank = 2
+	if addr <= 0x00ff {
+		cart.ram[addr] = data
+		return nil
 	}
 
 	if poke {
@@ -125,8 +117,26 @@ func (cart *cbs) Write(addr uint16, data uint8, active bool, poke bool) error {
 	return errors.New(errors.MemoryBusError, addr)
 }
 
+// bankswitch on hotspot access
+func (cart *cbs) hotspot(addr uint16, passive bool) bool {
+	if addr >= 0x0ff8 && addr <= 0xffa {
+		if passive {
+			return true
+		}
+		if addr == 0x0ff8 {
+			cart.bank = 0
+		} else if addr == 0x0ff9 {
+			cart.bank = 1
+		} else if addr == 0x0ffa {
+			cart.bank = 2
+		}
+		return true
+	}
+	return false
+}
+
 // NumBanks implements the cartMapper interface
-func (cart *cbs) NumBanks() int {
+func (cart cbs) NumBanks() int {
 	return 3
 }
 
@@ -140,20 +150,6 @@ func (cart cbs) GetBank(addr uint16) int {
 // SetBank implements the cartMapper interface
 func (cart *cbs) SetBank(addr uint16, bank int) error {
 	cart.bank = bank
-	return nil
-}
-
-// SaveState implements the cartMapper interface
-func (cart *cbs) SaveState() interface{} {
-	superchip := make([]uint8, len(cart.ram))
-	copy(superchip, cart.ram)
-	return []interface{}{cart.bank, superchip}
-}
-
-// RestoreState implements the cartMapper interface
-func (cart *cbs) RestoreState(state interface{}) error {
-	cart.bank = state.([]interface{})[0].(int)
-	copy(cart.ram, state.([]interface{})[1].([]uint8))
 	return nil
 }
 
