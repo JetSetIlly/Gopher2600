@@ -25,14 +25,20 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-type preferences struct {
-	dsk       *prefs.Disk
-	authToken prefs.String
-	server    prefs.String
+type Preferences struct {
+	dsk *prefs.Disk
+
+	AuthToken prefs.String
+	Server    prefs.String
 }
 
-func loadPreferences() (*preferences, error) {
-	p := &preferences{}
+func (p Preferences) String() string {
+	return p.dsk.String()
+}
+
+// newPreferences is the preferred method of initialisation for the Preferences type
+func newPreferences() (*Preferences, error) {
+	p := &Preferences{}
 
 	// save server using the prefs package
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -41,8 +47,8 @@ func loadPreferences() (*preferences, error) {
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
-	p.dsk.Add("hiscore.server", &p.server)
-	p.dsk.Add("hiscore.authtoken", &p.authToken)
+	p.dsk.Add("hiscore.server", &p.Server)
+	p.dsk.Add("hiscore.authtoken", &p.AuthToken)
 
 	err = p.dsk.Load()
 	if err != nil {
@@ -52,6 +58,12 @@ func loadPreferences() (*preferences, error) {
 	return p, nil
 }
 
-func (p *preferences) save() error {
+// Load hiscore preferences from disk
+func (p *Preferences) Load() error {
+	return p.dsk.Load()
+}
+
+// Save current hiscore preferences to disk
+func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

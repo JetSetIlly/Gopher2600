@@ -48,6 +48,12 @@ type winDisasm struct {
 	// set it when we want to force the listview to realign on the PC
 	alignOnPC bool
 
+	// depending on how big the disassembly is and where in the list the PC is
+	// currently, it may take a couple of frames before the PC is aligned. the
+	// hasAlignedOnPC variable keeps track of this. alignOnPC will not be
+	// unset, once it has been set, so long as hasAlignedOnPC is true
+	hasAlignedOnPC bool
+
 	// it's sometimes useful to align on an arbitrary address. when
 	// alignOnOtherAddress is set to true, alignAddress should also be set. we
 	// use this when toggling showAllEntries flag
@@ -114,40 +120,38 @@ func (win *winDisasm) draw() {
 	// instruction. we need this because we can never be sure when we
 	// are going to draw this window
 	var pcaddr uint16
-	cpuStep := win.img.lz.CPU.LastResult.Final
+	cpuStep := win.img.lz.Debugger.LastResult.Result.Final
 	if cpuStep {
 		pcaddr = win.img.lz.CPU.PCaddr
 	} else {
 		// note that we're using LastResult straight from the CPU not the
 		// copy in debugger.LastDisasmEntry. the latter gets updated too
 		// late for our needs
-		pcaddr = win.img.lz.CPU.LastResult.Address
+		pcaddr = win.img.lz.Debugger.LastResult.Result.Address
 	}
-
-	// sometimes a cartridge will try to run instructions from VCS RAM.
-	// for presentation purposes this means that we show a "VCS RAM" tab
-	nonCart := !memorymap.IsArea(pcaddr, memorymap.Cartridge)
 
 	if win.img.lz.Cart.NumBanks == 1 {
 		// for cartridges with just one bank we don't bother with a TabBar
-		win.drawBank(pcaddr, 0, !nonCart, cpuStep)
+		win.drawBank(pcaddr, 0, !currBank.NonCart, cpuStep)
 
 	} else {
 		// create a new TabBar and iterate through the cartridge banks,
 		// adding a page for each one
 		imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 
-		for b := 0; b < win.img.lz.Cart.NumBanks; b++ {
+		citr, _ := win.img.lz.Dbg.Disasm.NewCartIteration()
+		citr.Start()
+		for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 			// set tab flags. select the tab that represents the
 			// bank currently being referenced by the VCS
 			flgs := imgui.TabItemFlagsNone
-			if !nonCart && win.alignOnPC && b == currBank {
+			if !currBank.NonCart && win.alignOnPC && b == currBank.Number {
 				flgs = imgui.TabItemFlagsSetSelected
 			}
 
 			// BeginTabItem() will return true when the item is selected.
 			if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-				win.drawBank(pcaddr, b, b == currBank && !nonCart, cpuStep)
+				win.drawBank(pcaddr, b, b == currBank.Number && !currBank.NonCart, cpuStep)
 				imgui.EndTabItem()
 			}
 		}
@@ -155,9 +159,8 @@ func (win *winDisasm) draw() {
 		imgui.EndTabBar()
 	}
 
-	// set alignOnPC flag when PC address has not changed since last
-	// (imgui) frame
-	win.alignOnPC = pcaddr != win.pcaddrPrevFrame
+	// set alignOnPC flag when PC address has not changed since last (imgui) frame
+	win.alignOnPC = pcaddr != win.pcaddrPrevFrame || !win.hasAlignedOnPC
 
 	// note pc address to help set win.alignOnPC value next (imgui) frame
 	win.pcaddrPrevFrame = pcaddr
@@ -166,8 +169,10 @@ func (win *winDisasm) draw() {
 	optionsHeight := imgui.CursorPosY()
 
 	// status line
-	if nonCart {
+	if currBank.NonCart {
 		imgui.Text("executing from VCS RAM")
+	} else if currBank.IsRAM {
+		imgui.Text("executing from cartridge RAM")
 	} else {
 		imgui.Text("")
 	}
@@ -176,6 +181,7 @@ func (win *winDisasm) draw() {
 	if imgui.Checkbox("Show all", &win.showAllEntries) {
 		win.alignOnOtherAddress = true
 		win.alignAddress = win.addressTopList
+		win.alignOnPC = true
 	}
 
 	imgui.SameLine()
@@ -190,6 +196,10 @@ func (win *winDisasm) draw() {
 	win.optionsHeight = imgui.CursorPosY() - optionsHeight
 
 	imgui.End()
+
+	// unset hasAlignedOnPC if alignOnPC has been set (either by
+	// pcaddrPrevFramee moving on of the "Goto PC" button being pressed)
+	win.hasAlignedOnPC = !win.alignOnPC
 }
 
 // draw a bank for each tabitem in the tab bar. if there is only one bank then
@@ -199,11 +209,11 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
 	}
-	itr, count, err := win.img.lz.Dbg.Disasm.NewIteration(lvl, b)
+	bitr, count, err := win.img.lz.Dbg.Disasm.NewBankIteration(lvl, b)
 
-	// check that NewIteration has succeeded. if it hasn't it probably means
-	// the cart has changed in the middle of the draw routine. but that's okay,
-	// we only have to wait one frame before we draw again
+	// check that NewBankIteration has succeeded. if it hasn't it probably
+	// means the cart has changed in the middle of the draw routine. but that's
+	// okay, we only have to wait one frame before we draw again
 	if err != nil {
 		return
 	}
@@ -215,8 +225,8 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	var clipper imgui.ListClipper
 	clipper.Begin(count)
 	for clipper.Step() {
-		e := itr.Start()
-		e = itr.SkipNext(clipper.DisplayStart)
+		_, e := bitr.Start()
+		_, e = bitr.SkipNext(clipper.DisplayStart)
 
 		// note address of top entry in the list. we use this to help
 		// list alignment
@@ -231,7 +241,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 			// match then highlight the entry
 			win.drawEntry(e, pcaddr, selected, cpuStep)
 
-			e = itr.Next()
+			_, e = bitr.Next()
 			if e == nil {
 				break // clipper.DisplayStart loop
 			}
@@ -259,13 +269,17 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 		} else {
 			addr = pcaddr
 			scrollMargin = 4
+
+			// we have centered on the PC. the alignOnPC will be unset next
+			// frame (so long as the the CPU hasn't moved on)
+			win.hasAlignedOnPC = true
 		}
 
 		// walk through disassembly and note the count for the current entry
 		hlEntry := float32(0.0)
 		i := float32(0.0)
-		for e := itr.Start(); e != nil; e = itr.Next() {
-			if e.Result.Address&memorymap.AddressMaskCart == addr&memorymap.AddressMaskCart {
+		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
+			if e.Result.Address&memorymap.CartridgeBits == addr&memorymap.CartridgeBits {
 				hlEntry = i
 				break // for loop
 			}
@@ -297,7 +311,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 
 	// if the entry is being drawn by a selected bank then highlight the entry
 	// for the current pc address
-	if selected && pcaddr&memorymap.AddressMaskCart == e.Result.Address&memorymap.AddressMaskCart {
+	if selected && pcaddr&memorymap.CartridgeBits == e.Result.Address&memorymap.CartridgeBits {
 		p1 := imgui.CursorScreenPos()
 		p2 := p1
 		p2.X += imgui.WindowWidth()

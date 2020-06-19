@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // dpc implements the cartMapper interface.
@@ -388,8 +389,8 @@ func (cart *dpc) SetBank(addr uint16, bank int) error {
 }
 
 // GetBank implements the cartMapper interface
-func (cart dpc) GetBank(addr uint16) int {
-	return cart.bank
+func (cart dpc) GetBank(addr uint16) memorymap.BankDetails {
+	return memorymap.BankDetails{Number: cart.bank, IsRAM: false}
 }
 
 // Patch implements the cartMapper interface

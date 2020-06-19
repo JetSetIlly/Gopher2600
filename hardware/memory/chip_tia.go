@@ -27,9 +27,8 @@ import (
 // newTIA is the preferred method of initialisation for the TIA memory area
 func newTIA() *ChipMemory {
 	area := &ChipMemory{
-		origin:      memorymap.OriginTIA,
-		memtop:      memorymap.MemtopTIA,
-		cpuReadMask: memorymap.AddressMaskTIA,
+		origin: memorymap.OriginTIA,
+		memtop: memorymap.MemtopTIA,
 	}
 
 	// allocation the minimal amount of memory

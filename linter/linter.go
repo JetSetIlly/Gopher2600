@@ -35,16 +35,18 @@ import (
 func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 
 	// look at every bank in the disassembly
-	for bank := 0; bank < dsm.NumBanks(); bank++ {
+	citr, _ := dsm.NewCartIteration()
+	citr.Start()
+	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 
 		// create a new iteration for the bank
-		itr, _, err := dsm.NewIteration(disassembly.EntryLevelBlessed, bank)
+		bitr, _, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
 		if err != nil {
 			return errors.New(errors.Linter, err)
 		}
 
 		// iterate through disassembled bank
-		for d := itr.Start(); d != nil; d = itr.Next() {
+		for _, d := bitr.Start(); d != nil; _, d = bitr.Next() {
 
 			// if instruction has a read opcode, and the addressing mode seems
 			// to be reading from non-read addresses in TIA or RIOT space then

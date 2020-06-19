@@ -150,7 +150,7 @@ func (val *Lazy) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
 		return debugger.BrkNone
 	}
 
-	addr := e.Result.Address & memorymap.AddressMaskCart
+	addr := e.Result.Address & memorymap.CartridgeBits
 
 	val.Dbg.PushRawEvent(func() {
 		val.atomicBrk[addr].Store(val.Dbg.HasBreak(e))

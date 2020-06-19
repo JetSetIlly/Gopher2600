@@ -19,7 +19,25 @@
 
 package disassembly
 
-import "fmt"
+import (
+	"fmt"
+)
+
+// Field identifies which part of the disassmbly entry is of interest
+type Field int
+
+// List of valid fields
+const (
+	FldLocation Field = iota
+	FldBytecode
+	FldAddress
+	FldMnemonic
+	FldOperand
+	FldDefnCycles
+	FldDefnNotes
+	FldActualCycles
+	FldActualNotes
+)
 
 type widths struct {
 	location     int
@@ -33,6 +51,9 @@ type widths struct {
 	actualNotes  int
 }
 
+// formatting strings to be applied to the values in the entries. the
+// formatting string is of the form (for example), "%Ns" where N is the
+// corresponding width value from the widths struct
 type format struct {
 	location     string
 	bytecode     string
@@ -91,41 +112,33 @@ func (fld *fields) updateWidths(d *Entry) {
 	fld.fmt.actualNotes = fmt.Sprintf("%%%ds", fld.widths.actualNotes)
 }
 
-// Field identifies which part of the disassmbly entry is of interest
-type Field int
-
-// List of valid fields
-const (
-	FldLocation Field = iota
-	FldBytecode
-	FldAddress
-	FldMnemonic
-	FldOperand
-	FldDefnCycles
-	FldDefnNotes
-	FldActualCycles
-	FldActualNotes
-)
-
 // GetField returns the formatted field from the speficied Entry
 func (dsm *Disassembly) GetField(field Field, e *Entry) string {
 	switch field {
 	case FldLocation:
 		return fmt.Sprintf(dsm.fields.fmt.location, e.Location)
+
 	case FldBytecode:
 		return fmt.Sprintf(dsm.fields.fmt.bytecode, e.Bytecode)
+
 	case FldAddress:
 		return fmt.Sprintf(dsm.fields.fmt.address, e.Address)
+
 	case FldMnemonic:
 		return fmt.Sprintf(dsm.fields.fmt.mnemonic, e.Mnemonic)
+
 	case FldOperand:
 		return fmt.Sprintf(dsm.fields.fmt.operand, e.Operand)
+
 	case FldDefnCycles:
 		return fmt.Sprintf(dsm.fields.fmt.defnCycles, e.DefnCycles)
+
 	case FldDefnNotes:
 		return fmt.Sprintf(dsm.fields.fmt.defnNotes, e.DefnNotes)
+
 	case FldActualCycles:
 		return fmt.Sprintf(dsm.fields.fmt.actualCycles, e.ActualCycles)
+
 	case FldActualNotes:
 		return fmt.Sprintf(dsm.fields.fmt.actualNotes, e.ActualNotes)
 	}

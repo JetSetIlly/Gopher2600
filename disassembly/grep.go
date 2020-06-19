@@ -44,26 +44,28 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	for bank := 0; bank < dsm.NumBanks(); bank++ {
+	citr, _ := dsm.NewCartIteration()
+	citr.Start()
+	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 		bankHeader := false
 
-		itr, _, err := dsm.NewIteration(EntryLevelBlessed, bank)
+		bitr, _, err := dsm.NewBankIteration(EntryLevelBlessed, b)
 		if err != nil {
 			return err
 		}
 
-		for d := itr.Start(); d != nil; d = itr.Next() {
+		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
 			// line representation of Instruction. we'll print this
 			// in case of a match
 			line := &bytes.Buffer{}
-			dsm.WriteEntry(line, WriteAttr{}, d)
+			dsm.WriteEntry(line, WriteAttr{}, e)
 
 			// limit scope of grep to the correct Instruction field
 			switch scope {
 			case GrepMnemonic:
-				s = d.Mnemonic
+				s = e.Mnemonic
 			case GrepOperand:
-				s = d.Operand
+				s = e.Operand
 			case GrepAll:
 				s = line.String()
 			}
@@ -79,11 +81,11 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 				// if we've not yet printed head for the current bank then
 				// print it now
 				if !bankHeader {
-					if bank > 0 {
+					if b > 0 {
 						output.Write([]byte("\n"))
 					}
 
-					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
+					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", b)))
 					bankHeader = true
 				}
 

@@ -30,7 +30,6 @@ import (
 func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	// decide which address value to use
 	var addr uint16
-	var bank int
 
 	//  if last result was final or if address of last result is zero then
 	//  print the PC address. the second part of the condition catches a newly
@@ -45,8 +44,6 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		addr = dbg.VCS.CPU.LastResult.Address
 	}
 
-	bank = dbg.VCS.Mem.Cart.GetBank(addr)
-
 	prompt := strings.Builder{}
 	prompt.WriteString("[")
 
@@ -59,29 +56,29 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		// prompt address doesn't seem to be pointing to the cartridge, prepare
 		// "non-cart" prompt
 		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", addr))
-	} else if d, ok := dbg.Disasm.GetEntryByAddress(bank, addr); ok {
+	} else if e := dbg.Disasm.GetEntryByAddress(addr); e != nil {
 		// because we're using the raw disassmebly the reported address
 		// in that disassembly may be misleading.
-		prompt.WriteString(fmt.Sprintf(" %#04x %s", addr, d.Mnemonic))
-		if d.Operand != "" {
-			prompt.WriteString(fmt.Sprintf(" %s", d.Operand))
+		prompt.WriteString(fmt.Sprintf(" %#04x %s", addr, e.Mnemonic))
+		if e.Operand != "" {
+			prompt.WriteString(fmt.Sprintf(" %s", e.Operand))
 		}
 		prompt.WriteString(" ]")
 	} else {
 		// incomplete disassembly, prepare "no disasm" prompt
 		ai := dbg.dbgmem.mapAddress(addr, true)
 		if ai == nil {
-			prompt.WriteString(fmt.Sprintf(" %#04x (%d) unmappable address ]", addr, bank))
+			prompt.WriteString(fmt.Sprintf(" %#04x unmappable address ]", addr))
 		} else {
 			switch ai.area {
 			case memorymap.RAM:
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) in RAM! ]", addr, bank))
+				prompt.WriteString(fmt.Sprintf(" %#04x in RAM! ]", addr))
 			case memorymap.Cartridge:
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) no disasm ]", addr, bank))
+				prompt.WriteString(fmt.Sprintf(" %#04x no disasm ]", addr))
 			default:
 				// if we're not in RAM or Cartridge space then we must be in
 				// the TIA or RIOT - this would be very odd indeed
-				prompt.WriteString(fmt.Sprintf(" %#04x (%d) WTF! ]", addr, bank))
+				prompt.WriteString(fmt.Sprintf(" %#04x WTF! ]", addr))
 			}
 		}
 	}

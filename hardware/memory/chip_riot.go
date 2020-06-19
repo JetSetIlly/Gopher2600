@@ -26,9 +26,8 @@ import (
 // newRIOT is the preferred method of initialisation for the RIOT memory area
 func newRIOT() *ChipMemory {
 	area := &ChipMemory{
-		origin:      memorymap.OriginRIOT,
-		memtop:      memorymap.MemtopRIOT,
-		cpuReadMask: memorymap.AddressMaskRIOT,
+		origin: memorymap.OriginRIOT,
+		memtop: memorymap.MemtopRIOT,
 	}
 
 	// allocation the minimal amount of memory

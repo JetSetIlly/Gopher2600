@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // from bankswitch_sizes.txt:
@@ -116,11 +117,11 @@ func (cart *atari) Initialise() {
 }
 
 // GetBank implements the cartMapper interface
-func (cart atari) GetBank(addr uint16) int {
+func (cart atari) GetBank(addr uint16) memorymap.BankDetails {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
-	return cart.bank
+	return memorymap.BankDetails{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
 // SetBank implements the cartMapper interface
@@ -132,7 +133,7 @@ func (cart *atari) SetBank(addr uint16, bank int) error {
 // Read implements the cartMapper interface
 func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 	if cart.ram != nil {
-		if addr > 127 && addr < 256 {
+		if addr >= 0x80 && addr <= 0xff {
 			return cart.ram[addr-128], true
 		}
 	}
@@ -140,20 +141,20 @@ func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 }
 
 // Write implements the cartMapper interface
-func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) bool {
+func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.ram != nil {
-		if addr <= 127 {
+		if addr <= 0x7f {
 			cart.ram[addr] = data
-			return true
+			return nil
 		}
 	}
 
 	if poke {
 		cart.banks[cart.bank][addr] = data
-		return true
+		return nil
 	}
 
-	return false
+	return errors.New(errors.MemoryBusError, addr)
 }
 
 func (cart *atari) addSuperchip() bool {
@@ -274,11 +275,10 @@ func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if ok := cart.atari.Write(addr, data, passive, poke); ok {
+	if passive {
 		return nil
 	}
-
-	return errors.New(errors.MemoryBusError, addr)
+	return cart.atari.Write(addr, data, passive, poke)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes
@@ -325,11 +325,10 @@ func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if ok := cart.atari.Write(addr, data, passive, poke); ok {
+	if passive {
 		return nil
 	}
-
-	return errors.New(errors.MemoryBusError, addr)
+	return cart.atari.Write(addr, data, passive, poke)
 }
 
 // atari8k (F8)
@@ -384,15 +383,15 @@ func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if passive {
+		return nil
+	}
+
 	if cart.hotspot(addr, passive) {
 		return nil
 	}
 
-	if ok := cart.atari.Write(addr, data, passive, poke); !ok {
-		return errors.New(errors.MemoryBusError, addr)
-	}
-
-	return nil
+	return cart.atari.Write(addr, data, passive, poke)
 }
 
 // bankswitch on hotspot access
@@ -464,15 +463,15 @@ func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if passive {
+		return nil
+	}
+
 	if cart.hotspot(addr, passive) {
 		return nil
 	}
 
-	if ok := cart.atari.Write(addr, data, passive, poke); !ok {
-		return errors.New(errors.MemoryBusError, addr)
-	}
-
-	return nil
+	return cart.atari.Write(addr, data, passive, poke)
 }
 
 // bankswitch on hotspot access
@@ -548,15 +547,15 @@ func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if passive {
+		return nil
+	}
+
 	if cart.hotspot(addr, passive) {
 		return nil
 	}
 
-	if ok := cart.atari.Write(addr, data, passive, poke); !ok {
-		return errors.New(errors.MemoryBusError, addr)
-	}
-
-	return nil
+	return cart.atari.Write(addr, data, passive, poke)
 }
 
 // bankswitch on hotspot access

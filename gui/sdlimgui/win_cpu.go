@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -197,22 +196,16 @@ func (win *winCPU) drawLastResult() {
 		return
 	}
 
-	formattedLastResult, _ := win.img.lz.Dbg.Disasm.FormatResult(
-		win.img.lz.Debugger.LastBank,
-		win.img.lz.CPU.LastResult,
-		disassembly.EntryLevelDecoded)
+	e := win.img.lz.Debugger.LastResult
 
-	if win.img.lz.CPU.LastResult.Final {
-		e := formattedLastResult
-		if e != nil {
-			imgui.Text(fmt.Sprintf("%s", e.Bytecode))
-			imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-			imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
-			if win.img.lz.Cart.NumBanks == 1 {
-				imgui.Text(fmt.Sprintf("(%s)", e.Address))
-			} else {
-				imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
-			}
+	if e.Result.Final {
+		imgui.Text(fmt.Sprintf("%s", e.Bytecode))
+		imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+		imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
+		if win.img.lz.Cart.NumBanks == 1 {
+			imgui.Text(fmt.Sprintf("(%s)", e.Address))
+		} else {
+			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.Bank))
 		}
 		return
 	}
@@ -220,7 +213,6 @@ func (win *winCPU) drawLastResult() {
 	// this is not a completed CPU instruction, we're in the middle of one, so
 	// we need to format the result for the partially completed instruction
 
-	e, _ := win.img.lz.Dbg.Disasm.FormatResult(win.img.lz.Cart.CurrBank, win.img.lz.CPU.LastResult, disassembly.EntryLevelBlessed)
 	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 	if e.Result.Defn != nil {
@@ -228,7 +220,7 @@ func (win *winCPU) drawLastResult() {
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
-			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.BankDecorated))
+			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.Bank))
 		}
 	} else {
 		imgui.Text("")

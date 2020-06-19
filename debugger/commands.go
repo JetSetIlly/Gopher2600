@@ -288,14 +288,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 						fmt.Sprintf("%s", dbg.VCS.Mem.Cart.MappingSummary()),
 					)
 				} else {
-					n, err := strconv.Atoi(bank)
+					b, err := strconv.Atoi(bank)
 					if err != nil {
 						return false, errors.New(errors.CommandError, "bank must be numeric")
 					}
 
 					// !TODO: set bank for any address
 
-					err = dbg.VCS.Mem.Cart.SetBank(dbg.VCS.CPU.PC.Address(), n)
+					err = dbg.VCS.Mem.Cart.SetBank(dbg.VCS.CPU.PC.Address(), b)
 					if err != nil {
 						return false, err
 					}
@@ -401,7 +401,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 	case cmdLint:
 		output := &strings.Builder{}
-		err := linter.Lint(&dbg.Disasm, output)
+		err := linter.Lint(dbg.Disasm, output)
 		if err != nil {
 			return false, err
 		}
@@ -617,13 +617,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdLast:
 		s := strings.Builder{}
 
-		e, err := dbg.Disasm.FormatResult(dbg.lastBank,
-			dbg.VCS.CPU.LastResult,
-			disassembly.EntryLevelDecoded)
-		if err != nil {
-			return false, err
-		}
-		if e == nil {
+		if dbg.lastResult == nil {
 			return false, nil
 		}
 
@@ -639,22 +633,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				return false, nil
 
 			case "BYTECODE":
-				s.WriteString(dbg.Disasm.GetField(disassembly.FldBytecode, e))
+				s.WriteString(dbg.Disasm.GetField(disassembly.FldBytecode, dbg.lastResult))
 			}
 		}
 
 		if dbg.VCS.Mem.Cart.NumBanks() > 1 {
-			s.WriteString(fmt.Sprintf("[%s] ", e.BankDecorated))
+			s.WriteString(fmt.Sprintf("[%s] ", dbg.lastResult.Bank))
 		}
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldAddress, e))
+		s.WriteString(dbg.Disasm.GetField(disassembly.FldAddress, dbg.lastResult))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldMnemonic, e))
+		s.WriteString(dbg.Disasm.GetField(disassembly.FldMnemonic, dbg.lastResult))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldOperand, e))
+		s.WriteString(dbg.Disasm.GetField(disassembly.FldOperand, dbg.lastResult))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualCycles, e))
+		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualCycles, dbg.lastResult))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualNotes, e))
+		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualNotes, dbg.lastResult))
 
 		if dbg.VCS.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())
@@ -1197,9 +1191,70 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdPref:
-		err := dbg.Prefs.parseCommand(tokens)
-		if err != nil {
-			return false, errors.New(errors.CommandError, err)
+		action, ok := tokens.Get()
+
+		if !ok {
+			dbg.printLine(terminal.StyleFeedback, dbg.Prefs.String())
+			dbg.printLine(terminal.StyleFeedback, dbg.Disasm.Prefs.String())
+			return false, nil
+		}
+
+		switch action {
+		case "LOAD":
+			err := dbg.Prefs.load()
+			if err != nil {
+				return false, errors.New(errors.CommandError, err)
+			}
+			err = dbg.Disasm.Prefs.Load()
+			if err != nil {
+				return false, errors.New(errors.CommandError, err)
+			}
+
+		case "SAVE":
+			err := dbg.Prefs.save()
+			if err != nil {
+				return false, errors.New(errors.CommandError, err)
+			}
+			err = dbg.Disasm.Prefs.Save()
+			if err != nil {
+				return false, errors.New(errors.CommandError, err)
+			}
+		}
+
+		option, _ := tokens.Get()
+
+		option = strings.ToUpper(option)
+		switch option {
+		case "RANDSTART":
+			switch action {
+			case "SET":
+				dbg.Prefs.RandomState.Set(true)
+			case "UNSET":
+				dbg.Prefs.RandomState.Set(false)
+			case "TOGGLE":
+				v := dbg.Prefs.RandomState.Get().(bool)
+				dbg.Prefs.RandomState.Set(!v)
+			}
+		case "RANDPINS":
+			switch action {
+			case "SET":
+				dbg.Prefs.RandomPins.Set(true)
+			case "UNSET":
+				dbg.Prefs.RandomPins.Set(false)
+			case "TOGGLE":
+				v := dbg.Prefs.RandomPins.Get().(bool)
+				dbg.Prefs.RandomPins.Set(!v)
+			}
+		case "FXXXMIRROR":
+			switch action {
+			case "SET":
+				dbg.Disasm.Prefs.FxxxMirror.Set(true)
+			case "UNSET":
+				dbg.Disasm.Prefs.FxxxMirror.Set(false)
+			case "TOGGLE":
+				v := dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
+				dbg.Disasm.Prefs.FxxxMirror.Set(!v)
+			}
 		}
 	}
 

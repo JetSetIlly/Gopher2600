@@ -33,71 +33,72 @@ import (
 
 // Disassembly represents the annotated disassembly of a 6507 binary
 type Disassembly struct {
+	Prefs *Preferences
+
+	// the cartridge to which the disassembly refers
 	cart *cartridge.Cartridge
+
+	// the lowest value to use when formatting address values. changed by the
+	// preferences system
+	mirrorOrigin uint16
+
+	// the number and size of ther segmentation of cartridge memory. for many
+	// cartridges there will be one segment with a size of 4096
+	segmentSize uint16
+	numSegments int
+
+	// segmentBits is the corollory of memorymap.CartridgeBits in that it
+	// specified the bits that are used to specify an address within in a
+	// segment
+	segmentBits uint16
 
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
-	// indexed by address. address should be masked with
-	// memorymap.AddressMaskCart before access.
-	reference [][memorymap.AddressMaskCart + 1]*Entry
+	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
+	disasm [][]*Entry
 
-	// the number of each type of entry. we use this to help prepare
-	// disassembly iterations
-	counts []map[EntryLevel]int
-
-	// formatting information for all entries found during the flow pass.
-	// excluding entries only found during the linear pass because
-	// false-positive entries might upset the formatting.
+	// formatting information for all entries in the disassembly
 	fields fields
 
-	// critical sectioning
+	// critical sectioning. the iteration functions in particular maybe called
+	// from a different goroutine. the entries will likely be updating more or
+	// less constantly with UpdateEntry() so it's important we section off
+	// access to the disasm array.
+	//
+	// an alternative and maybe better solution would be to run the disassembly
+	// as a service. so UpdateEntry() would be a channel request, iteration
+	// would be a channel request, etc.
+	//
+	// !!TODO: look into turning the disassembly into a channel driven service
 	crit sync.Mutex
 }
 
-// GetEntryByAddress returns the disassembly entry at the specified bank/address.
-func (dsm *Disassembly) GetEntryByAddress(bank int, address uint16) (*Entry, bool) {
-	col := dsm.reference[bank][address&memorymap.AddressMaskCart]
-	return col, col != nil
-}
-
-// UpdateEntry to more closely resemble the most recent execution.Result
-func (dsm *Disassembly) UpdateEntry(bank int, result execution.Result) error {
-	if bank >= len(dsm.reference) {
-		return nil
+func NewDisassembly() (*Disassembly, error) {
+	dsm := &Disassembly{
+		mirrorOrigin: memorymap.OriginCart, // default. may be changed by during newPreferences()
 	}
 
-	idx := result.Address & memorymap.AddressMaskCart
+	var err error
 
-	// get entry at address
-	e := dsm.reference[bank][idx]
-
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
-	if e == nil || e.Result.Defn.OpCode != result.Defn.OpCode {
-		var err error
-		dsm.reference[bank][idx], err = dsm.FormatResult(bank, result, EntryLevelExecuted)
-		if err != nil {
-			return errors.New(errors.DisasmError, err)
+	dsm.Prefs, err = newPreferences(dsm)
+	if err != nil {
+		if !errors.Is(err, errors.PrefsNoFile) {
+			return nil, errors.New(errors.DisasmError, err)
 		}
-
-	} else if e.Level < EntryLevelExecuted || e.UpdateActualOnExecute {
-		dsm.counts[bank][e.Level]--
-		e.Level = EntryLevelExecuted
-		e.Result = result
-		e.updateActual()
-		dsm.counts[bank][e.Level]++
 	}
 
-	return nil
+	return dsm, nil
 }
 
 // FromCartridge initialises a new partial emulation and returns a disassembly
 // from the supplied cartridge filename. Useful for one-shot disassemblies,
 // like the gopher2600 "disasm" mode.
 func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
-	dsm := &Disassembly{}
+	dsm, err := NewDisassembly()
+	if err != nil {
+		return nil, err
+	}
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
@@ -105,7 +106,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	cart := cartridge.NewCartridge()
 
-	err := cart.Attach(cartload)
+	err = cart.Attach(cartload)
 	if err != nil {
 		return nil, errors.New(errors.DisasmError, err)
 	}
@@ -120,19 +121,32 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
-// requires an existing instance of Disassembly.
+// requires an existing instance of Disassembly
+//
+// cartridge will finish in its initialised state
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) error {
 	dsm.cart = cart
+
+	dsm.segmentSize = cart.BankSize()
+	dsm.numSegments = 4096 / int(cart.BankSize())
+	dsm.segmentBits = cart.BankSize() - 1
+
 	dsm.Symtable = symtable
-	dsm.reference = make([][memorymap.AddressMaskCart + 1]*Entry, dsm.cart.NumBanks())
+	dsm.disasm = make([][]*Entry, dsm.cart.NumBanks())
+	for b := 0; b < len(dsm.disasm); b++ {
+		dsm.disasm[b] = make([]*Entry, memorymap.CartridgeBits+1)
+	}
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
 		return nil
 	}
 
-	// put cart into its initial state
+	// begin and start with the cartridge in its initialised state. note that
+	// the disassemble() function passes over the cartridge multiple times and
+	// will initialise the cartridge in between each stage.
 	dsm.cart.Initialise()
+	defer dsm.cart.Initialise()
 
 	// create new memory
 	mem := &disasmMemory{cart: cart}
@@ -150,30 +164,10 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	dsm.cart.Passive = true
 	defer func() { dsm.cart.Passive = false }()
 
-	// decode pass
-	err = dsm.decode(mc)
+	// disassemble cartridge binary
+	err = dsm.disassemble(mc)
 	if err != nil {
 		return errors.New(errors.DisasmError, err)
-	}
-
-	// count entry types
-	dsm.counts = make([]map[EntryLevel]int, len(dsm.reference))
-	for b := 0; b < len(dsm.counts); b++ {
-		dsm.counts[b] = make(map[EntryLevel]int)
-		for _, e := range dsm.reference[b] {
-			if e != nil {
-				switch e.Level {
-				case EntryLevelDead:
-					dsm.counts[b][EntryLevelDead]++
-
-				case EntryLevelDecoded:
-					dsm.counts[b][EntryLevelDecoded]++
-
-				case EntryLevelBlessed:
-					dsm.counts[b][EntryLevelBlessed]++
-				}
-			}
-		}
 	}
 
 	dsm.cart.Initialise()
@@ -181,7 +175,64 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	return nil
 }
 
-// NumBanks returns the number of banks in the disassembly.
-func (dsm *Disassembly) NumBanks() int {
-	return len(dsm.reference)
+// GetEntryByAddress returns the disassembly entry at the specified bank/address.
+func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
+	bank := dsm.cart.GetBank(address)
+	return dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
+}
+
+// UpdateEntry to more closely resemble the most recent execution.Result
+func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) error {
+	bank := dsm.cart.GetBank(result.Address)
+
+	// not touching any result which is not in cartridge ROM. Maybe we should
+	// keep a running log just for RAM execution, similar to would be produced
+	// with the LAST command.
+	//
+	// !!TODO: disassembly package to keep a running log of execution.
+	if bank.IsRAM || bank.NonCart {
+		return nil
+	}
+
+	if bank.Number >= len(dsm.disasm) {
+		return nil
+	}
+
+	idx := result.Address & memorymap.CartridgeBits
+
+	// get entry at address
+	e := dsm.disasm[bank.Number][idx]
+
+	// updating an origin can happen at the same time as iteration which is
+	// probably being run from a different goroutine. acknowledge the critical
+	// section
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	if e == nil || e.Result.Defn.OpCode != result.Defn.OpCode {
+		var err error
+		dsm.disasm[bank.Number][idx], err = dsm.formatResult(bank, result, EntryLevelExecuted)
+		if err != nil {
+			return errors.New(errors.DisasmError, err)
+		}
+
+	} else if e.Level < EntryLevelExecuted || e.UpdateActualOnExecute {
+		e.Level = EntryLevelExecuted
+		e.Result = result
+
+		// not updating the formatted results. this means that address
+		// values will be the same as they were during the disassembly and how
+		// they were set by the setBankOrigin() function
+
+		e.updateActual()
+	}
+
+	// bless next entry in case it was missed by the original decoding
+	bank = dsm.cart.GetBank(nextAddr)
+	e = dsm.disasm[bank.Number][nextAddr&memorymap.CartridgeBits]
+	if e.Level < EntryLevelBlessed {
+		e.Level = EntryLevelBlessed
+	}
+
+	return nil
 }

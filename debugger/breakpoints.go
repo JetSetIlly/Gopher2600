@@ -362,7 +362,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			if bp.dbg.VCS.Mem.Cart.NumBanks() > 1 {
 				nb.next = &breaker{
 					target: bankTarget(bp.dbg),
-					value:  bp.dbg.VCS.Mem.Cart.GetBank(bp.dbg.VCS.CPU.PC.Address()),
+					value:  bp.dbg.VCS.Mem.Cart.GetBank(bp.dbg.VCS.CPU.PC.Address()).Number,
 				}
 				nb.next.ignoreValue = nb.next.value
 			}
@@ -424,7 +424,7 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 
 		// critical that we cast to int because we'll be comparing against the
 		// result of cartridge.GetBank()
-		value: e.Bank,
+		value: e.Bank.Number,
 	}
 
 	// check for a breaker for the PC value AND bank value. if
@@ -471,7 +471,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 			target: bp.checkBankBreak,
 
 			// see above for casting commentary
-			value: e.Bank,
+			value: e.Bank.Number,
 		}
 	}
 

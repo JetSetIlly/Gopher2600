@@ -20,10 +20,6 @@
 package debugger
 
 import (
-	"strings"
-
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -31,8 +27,9 @@ import (
 
 // Preferences defines and collates all the preference values used by the debugger
 type Preferences struct {
-	dbg         *Debugger
-	dsk         *prefs.Disk
+	dbg *Debugger
+	dsk *prefs.Disk
+
 	RandomState *prefs.Bool
 	RandomPins  *prefs.Bool
 }
@@ -41,7 +38,8 @@ func (p Preferences) String() string {
 	return p.dsk.String()
 }
 
-func loadPreferences(dbg *Debugger) (*Preferences, error) {
+// newPreferences is the preferred method of initialisation for the Preferences type
+func newPreferences(dbg *Debugger) (*Preferences, error) {
 	p := &Preferences{
 		dbg:         dbg,
 		RandomState: &dbg.VCS.RandomState,
@@ -82,48 +80,4 @@ func (p *Preferences) load() error {
 
 func (p *Preferences) save() error {
 	return p.dsk.Save()
-}
-
-func (p *Preferences) parseCommand(tokens *commandline.Tokens) error {
-	action, ok := tokens.Get()
-
-	if !ok {
-		p.dbg.printLine(terminal.StyleFeedback, p.String())
-		return nil
-	}
-
-	switch action {
-	case "LOAD":
-		return p.load()
-	case "SAVE":
-		return p.save()
-	}
-
-	option, _ := tokens.Get()
-
-	option = strings.ToUpper(option)
-	switch option {
-	case "RANDSTART":
-		switch action {
-		case "SET":
-			p.RandomState.Set(true)
-		case "NO":
-			p.RandomState.Set(false)
-		case "TOGGLE":
-			v := p.RandomState.Get().(bool)
-			p.RandomState.Set(!v)
-		}
-	case "RANDPINS":
-		switch action {
-		case "SET":
-			p.RandomPins.Set(true)
-		case "NO":
-			p.RandomPins.Set(true)
-		case "TOGGLE":
-			v := p.RandomPins.Get().(bool)
-			p.RandomPins.Set(!v)
-		}
-	}
-
-	return nil
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type cbs struct {
@@ -141,10 +142,10 @@ func (cart cbs) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart cbs) GetBank(addr uint16) int {
+func (cart cbs) GetBank(addr uint16) memorymap.BankDetails {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return cart.bank
+	return memorymap.BankDetails{Number: cart.bank, IsRAM: addr <= 0x00ff}
 }
 
 // SetBank implements the cartMapper interface

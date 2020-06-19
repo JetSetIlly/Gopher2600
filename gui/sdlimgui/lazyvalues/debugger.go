@@ -23,16 +23,20 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
 // LazyDebugger lazily accesses Debugger information
 type LazyDebugger struct {
 	val *Lazy
 
-	atomicQuantum  atomic.Value // debugger.QuantumMode
-	atomicLastBank atomic.Value // int
-	Quantum        debugger.QuantumMode
-	LastBank       int
+	atomicQuantum    atomic.Value // debugger.QuantumMode
+	atomicLastResult atomic.Value // disassembly.Entry
+	Quantum          debugger.QuantumMode
+
+	// a LastResult value is also part of the reflection structure but it's
+	// more convenient to get it direcetly, in addition to reflection.
+	LastResult disassembly.Entry
 }
 
 func newLazyDebugger(val *Lazy) *LazyDebugger {
@@ -42,12 +46,12 @@ func newLazyDebugger(val *Lazy) *LazyDebugger {
 
 func (lz *LazyDebugger) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicLastBank.Store(lz.val.Dbg.GetLastBank())
 		lz.atomicQuantum.Store(lz.val.Dbg.GetQuantum())
+		lz.atomicLastResult.Store(lz.val.Dbg.GetLastResult())
 	})
 	lz.Quantum, _ = lz.atomicQuantum.Load().(debugger.QuantumMode)
 
-	if lz.atomicLastBank.Load() != nil {
-		lz.LastBank = lz.atomicLastBank.Load().(int)
+	if lz.atomicLastResult.Load() != nil {
+		lz.LastResult = lz.atomicLastResult.Load().(disassembly.Entry)
 	}
 }

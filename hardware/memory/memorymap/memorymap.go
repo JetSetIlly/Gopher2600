@@ -19,6 +19,8 @@
 
 package memorymap
 
+import "fmt"
+
 // Area represents the different areas of memory
 type Area int
 
@@ -64,24 +66,46 @@ const (
 	MemtopCart = uint16(0x1fff)
 )
 
+// Cartridge memory is mirrored in a number of places in the address space. The
+// most useful mirror is the Fxxx mirror which many programmers use when
+// writing assembly programs. The following constants are used by the
+// disassembly package to reference the disassembly to the Fxxx mirror.
+//
+// Be extra careful when looping with MemtopCartFxxxMirror because it is at the
+// very edge of uint16. Limit detection may need to consider the overflow
+// conditions.
+const (
+	OriginCartFxxxMirror = uint16(0xf000)
+	MemtopCartFxxxMirror = uint16(0xffff)
+)
+
 // Memtop is the top most address of memory in the VCS. It is the same as the
 // cartridge memtop.
 const Memtop = uint16(0x1fff)
 
-// Adressess in the RIOT and TIA areas that are being used to read from from
-// memory require an additional transformation
+// Within RIOT and TIA mirrors there are smaller mirrors (for the want of a
+// better phrase). MaskRIOT and MaskTIA keep only the relevent bits of a RIOT
+// and TIA address. Should only be applied to addresses that are definately
+// either a RIOT or TIA address.
 const (
-	AddressMaskRIOT = uint16(0x02f7)
-	AddressMaskTIA  = uint16(0x000f)
+	MaskRIOT = uint16(0x02f7)
+	MaskTIA  = uint16(0x000f)
 )
 
-// The top nibble of a cartridge address can be anything. AddressMaskCart takes
-// away the uninteresting bits
+// CartridgeBits identifies the bits in an address that are relevent to the
+// cartridge address. Useful for discounting those bits that determine the
+// cartridge mirror. For example, the following will be true:
 //
-// Good way of normalising cartridge addresses to start from 0x000 (useful for
-// arrays) *if* you know that the address is for certain a cartridge address
+//	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
+//
+// Alternatively, the following is an effective way to index an array:
+//
+//  addr := 0xf000
+//  mem[addr & CartridgeBits] = 0xff
+//
+// In the example, index zero of the mem array is assigned the value 0xff.
 const (
-	AddressMaskCart = MemtopCart ^ OriginCart
+	CartridgeBits = OriginCart ^ MemtopCart
 )
 
 // MapAddress translates the address argument from mirror space to primary
@@ -98,7 +122,7 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 	// RIOT addresses
 	if address&OriginRIOT == OriginRIOT {
 		if read {
-			return address & MemtopRIOT & AddressMaskRIOT, RIOT
+			return address & MemtopRIOT & MaskRIOT, RIOT
 		}
 		return address & MemtopRIOT, RIOT
 	}
@@ -110,7 +134,7 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 
 	// everything else is in TIA space
 	if read {
-		return address & MemtopTIA & AddressMaskTIA, TIA
+		return address & MemtopTIA & MaskTIA, TIA
 	}
 
 	return address & MemtopTIA, TIA
@@ -120,4 +144,24 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 func IsArea(address uint16, area Area) bool {
 	_, a := MapAddress(address, true)
 	return area == a
+}
+
+// BankDetails is used to identify a cartridge bank. In some contexts bank is
+// represented by an integer only. The Bank type is used when more information
+// about a bank is required.
+type BankDetails struct {
+	Number  int
+	IsRAM   bool
+	NonCart bool
+	Segment int
+}
+
+func (b BankDetails) String() string {
+	if b.NonCart {
+		return "-"
+	}
+	if b.IsRAM {
+		return fmt.Sprintf("%dR", b.Number)
+	}
+	return fmt.Sprintf("%d", b.Number)
 }

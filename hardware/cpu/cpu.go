@@ -116,7 +116,6 @@ func (mc *CPU) Reset(randomState bool) error {
 	if mc.isExecuting {
 		return errors.New(errors.InvalidOperationMidInstruction, "reset")
 	}
-
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
 
@@ -473,13 +472,47 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	var defn *instructions.Definition
 	err = mc.read8BitPC(&opcode, func() error {
 		defn = mc.instructions[opcode]
+
+		// !TODO: remove this once all opcodes are defined/implemented
 		if defn == nil {
 			return errors.New(errors.UnimplementedInstruction, opcode, mc.PC.Address()-1)
 		}
+
 		mc.LastResult.Defn = defn
+
 		return nil
 	})
 	if err != nil {
+		// even when there is an error we need to update some LastResult field
+		// values before returning the error. the calling function might still
+		// want to make use of LastResult even when an error has occurred and
+		// there's no reason to disagree (see disassembly package for an exmple
+		// of this)
+		//
+		// I don't believe similar treatment is necessary for other error
+		// conditions in the rest of the ExecuteInstruction() function
+
+		// firstly, the number of bytes read is by definition one
+		mc.LastResult.ByteCount = 1
+
+		// secondly, the definition field. this is only required while we have
+		// undefined opcodes in the CPU definition.
+
+		// finally, this is the final byte of the instruction
+		mc.LastResult.Final = true
+
+		// if there is no definition create a fake one
+		// !TODO: remove this once all opcodes are defined/implemented
+		if mc.LastResult.Defn == nil {
+			mc.LastResult.Defn = &instructions.Definition{
+				OpCode:   opcode,
+				Mnemonic: "??",
+				Bytes:    1,
+				Cycles:   0,
+				// remaining fields are undefined
+			}
+		}
+
 		return err
 	}
 

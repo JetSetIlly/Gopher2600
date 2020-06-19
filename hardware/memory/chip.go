@@ -43,9 +43,6 @@ type ChipMemory struct {
 
 	memory []uint8
 
-	// additional mask to further reduce address space when read from the CPU
-	cpuReadMask uint16
-
 	// when the CPU writes to chip memory it is not writing to memory in the
 	// way we might expect. instead we note the address that has been written
 	// to, and a boolean true to indicate that a write has been performed by

@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 func fingerprint3ePlus(b []byte) bool {
@@ -176,6 +177,10 @@ func (cart *mapper3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *mapper3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if passive {
+		return nil
+	}
+
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -205,29 +210,38 @@ func (cart mapper3ePlus) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart *mapper3ePlus) GetBank(addr uint16) (bank int) {
+func (cart *mapper3ePlus) GetBank(addr uint16) memorymap.BankDetails {
+	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
-		return cart.segment[0]
+		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		return cart.segment[1]
+		seg = 1
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		return cart.segment[2]
+		seg = 2
+	} else { // remaining address is between 0x0c00 and 0x0fff
+		seg = 3
 	}
 
-	// remaining address is between 0x0c00 and 0x0fff
-	return cart.segment[3]
+	if cart.segmentIsRam[seg] {
+		return memorymap.BankDetails{Number: cart.segment[seg], IsRAM: true, Segment: seg}
+	}
+	return memorymap.BankDetails{Number: cart.segment[seg], Segment: seg}
 }
 
 // SetBank implements the cartMapper interface
 func (cart *mapper3ePlus) SetBank(addr uint16, bank int) error {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		cart.segment[0] = bank
+		cart.segmentIsRam[0] = false
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		cart.segment[1] = bank
+		cart.segmentIsRam[1] = false
 	} else if addr >= 0x0800 && addr <= 0x0bff {
 		cart.segment[2] = bank
+		cart.segmentIsRam[2] = false
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		cart.segment[3] = bank
+		cart.segmentIsRam[3] = false
 	}
 	return nil
 }

@@ -64,6 +64,10 @@ func (win *winPrefs) draw() {
 		win.img.term.pushCommand("PREF TOGGLE RANDPINS")
 	}
 
+	if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
+		win.img.term.pushCommand("PREF TOGGLE FXXXMIRROR")
+	}
+
 	termOnError := win.img.wm.term.openOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
 		win.img.wm.term.openOnError.Set(termOnError)

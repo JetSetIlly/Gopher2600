@@ -23,7 +23,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 )
 
@@ -31,17 +30,15 @@ import (
 type LazyCPU struct {
 	val *Lazy
 
-	atomicHasReset   atomic.Value // bool
-	atomicRdy        atomic.Value // bool
-	atomicPCAddr     atomic.Value // uint16
-	atomicLastResult atomic.Value // execution.Result
-	atomicStatusReg  atomic.Value // registers.StatusRegister
+	atomicHasReset  atomic.Value // bool
+	atomicRdy       atomic.Value // bool
+	atomicPCAddr    atomic.Value // uint16
+	atomicStatusReg atomic.Value // registers.StatusRegister
 
-	HasReset   bool
-	RdyFlg     bool
-	PCaddr     uint16
-	LastResult execution.Result
-	StatusReg  registers.StatusRegister
+	HasReset  bool
+	RdyFlg    bool
+	PCaddr    uint16
+	StatusReg registers.StatusRegister
 
 	// register labels/value require a generic register. note use of mutex for
 	// map access
@@ -67,13 +64,11 @@ func (lz *LazyCPU) update() {
 		lz.atomicHasReset.Store(lz.val.Dbg.VCS.CPU.HasReset())
 		lz.atomicRdy.Store(lz.val.Dbg.VCS.CPU.RdyFlg)
 		lz.atomicPCAddr.Store(lz.val.Dbg.VCS.CPU.PC.Address())
-		lz.atomicLastResult.Store(lz.val.Dbg.VCS.CPU.LastResult)
 		lz.atomicStatusReg.Store(*lz.val.Dbg.VCS.CPU.Status)
 	})
 	lz.HasReset, _ = lz.atomicHasReset.Load().(bool)
 	lz.RdyFlg, _ = lz.atomicRdy.Load().(bool)
 	lz.PCaddr, _ = lz.atomicPCAddr.Load().(uint16)
-	lz.LastResult, _ = lz.atomicLastResult.Load().(execution.Result)
 	lz.StatusReg, _ = lz.atomicStatusReg.Load().(registers.StatusRegister)
 }
 

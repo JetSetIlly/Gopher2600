@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // supercharger has 6k of RAM in total
@@ -147,7 +148,7 @@ func (cart *Supercharger) Read(addr uint16, active bool) (uint8, error) {
 	}
 
 	bios := false
-	bank := cart.GetBank(addr)
+	bank := cart.GetBank(addr).Number
 
 	switch bank {
 	case 0:
@@ -189,55 +190,55 @@ func (cart *Supercharger) SetBank(_ uint16, _ int) error {
 }
 
 // GetBank implements the cartMapper interface
-func (cart Supercharger) GetBank(addr uint16) int {
+func (cart Supercharger) GetBank(addr uint16) memorymap.BankDetails {
 	switch cart.registers.BankingMode {
 	case 0:
 		if addr >= 0x800 {
-			return 0
+			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
 		}
-		return 3
+		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
 
 	case 1:
 		if addr >= 0x800 {
-			return 0
+			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
 		}
-		return 1
+		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
 
 	case 2:
 		if addr >= 0x800 {
-			return 1
+			return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 0}
 		}
-		return 3
+		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
 
 	case 3:
 		if addr >= 0x800 {
-			return 3
+			return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 0}
 		}
-		return 1
+		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
 
 	case 4:
 		if addr >= 0x800 {
-			return 0
+			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
 		}
-		return 3
+		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
 
 	case 5:
 		if addr >= 0x800 {
-			return 0
+			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
 		}
-		return 2
+		return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 1}
 
 	case 6:
 		if addr >= 0x800 {
-			return 2
+			return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 0}
 		}
-		return 1
+		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
 
 	case 7:
 		if addr >= 0x800 {
-			return 3
+			return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 0}
 		}
-		return 2
+		return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 1}
 	}
 	panic("unknown banking method")
 }

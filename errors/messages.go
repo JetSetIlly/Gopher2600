@@ -98,11 +98,13 @@ const (
 	PolycounterError = "polycounter error: %v"
 
 	// cpu
-	UnimplementedInstruction       = "cpu error: unimplemented instruction (%#02x) at (%#04x)"
 	InvalidResult                  = "cpu error: %v"
 	ProgramCounterCycled           = "cpu error: program counter cycled back to 0x0000"
 	InvalidOperationMidInstruction = "cpu error: invalid operation mid-instruction (%v)"
 	CPUBug                         = "cpu bug: %v"
+
+	// TODO: remove this once all opcodes are defined/implemented
+	UnimplementedInstruction = "cpu error: unimplemented instruction (%#02x) at (%#04x)"
 
 	// memory
 	UnpokeableAddress = "memory error: cannot poke address (%v)"
@@ -110,11 +112,12 @@ const (
 	MemoryBusError    = "memory error: inaccessible address (%v)"
 
 	// cartridges
-	CartridgeError     = "cartridge error: %v"
-	CartridgeEjected   = "cartridge error: no cartridge attached"
-	CartridgePatchOOB  = "cartrdige error: patch offset too high (%#04x)"
-	CartridgeStaticOOB = "cartridge error: static data address too high (%#04x)"
-	SuperchargerError  = "supercharger error: %v"
+	CartridgeError       = "cartridge error: %v"
+	CartridgeEjected     = "cartridge error: no cartridge attached"
+	CartridgeNotMappable = "cartridge error: bank %d can not be mapped to that address (%#04x)"
+	CartridgePatchOOB    = "cartrdige error: patch offset too high (%#04x)"
+	CartridgeStaticOOB   = "cartridge error: static data address too high (%#04x)"
+	SuperchargerError    = "supercharger error: %v"
 
 	// input
 	UnknownInputEvent     = "input error: %v: unsupported event (%v)"

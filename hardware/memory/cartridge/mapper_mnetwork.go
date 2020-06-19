@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // from bankswitch_sizes.txt:
@@ -281,22 +282,30 @@ func (cart mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
+// !TODO: fix mnetwork GetBank and SetBank
+
 // GetBank implements the cartMapper interface
-func (cart *mnetwork) GetBank(addr uint16) (bank int) {
+func (cart *mnetwork) GetBank(addr uint16) memorymap.BankDetails {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return cart.bank
+		return memorymap.BankDetails{Number: cart.bank, IsRAM: false, Segment: 0}
 	}
-	return cart.ram256byteIdx
+	if cart.bank == 7 {
+		return memorymap.BankDetails{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
+	}
+	return memorymap.BankDetails{Number: cart.bank, IsRAM: false, Segment: 1}
 }
 
 // SetBank implements the cartMapper interface
 func (cart *mnetwork) SetBank(addr uint16, bank int) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
+		if bank == 7 {
+			return errors.New(errors.CartridgeNotMappable, bank, addr)
+		}
 		cart.bank = bank
 	} else if addr >= 0x0800 && addr <= 0x0fff {
-		// last segment always points to the last bank
-	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%#04x bank %d]", cart.mappingID, addr, bank))
+		if bank != 7 {
+			return errors.New(errors.CartridgeNotMappable, bank, addr)
+		}
 	}
 
 	return nil

@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // LazyCart lazily accesses cartridge information from the emulator
@@ -46,7 +47,7 @@ type LazyCart struct {
 	Summary  string
 	Filename string
 	NumBanks int
-	CurrBank int
+	CurrBank memorymap.BankDetails
 
 	HasDebugBus bool
 	DebugBus    bus.CartDebugBus
@@ -94,7 +95,7 @@ func (lz *LazyCart) update() {
 	lz.Summary, _ = lz.atomicSummary.Load().(string)
 	lz.Filename, _ = lz.atomicFilename.Load().(string)
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
-	lz.CurrBank, _ = lz.atomicCurrBank.Load().(int)
+	lz.CurrBank, _ = lz.atomicCurrBank.Load().(memorymap.BankDetails)
 
 	lz.DebugBus, lz.HasDebugBus = lz.atomicDebugBus.Load().(bus.CartDebugBus)
 	if lz.HasDebugBus {

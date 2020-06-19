@@ -39,10 +39,10 @@ func (dbg *Debugger) GetQuantum() QuantumMode {
 	return dbg.quantum
 }
 
-// GetLastBank returns the selected cartridge bank from before the last
-// instruction was executed
-func (dbg *Debugger) GetLastBank() int {
-	return dbg.lastBank
+// GetLastResult returns the formatted disasembly entry of the last CPU
+// execution
+func (dbg *Debugger) GetLastResult() disassembly.Entry {
+	return *dbg.lastResult
 }
 
 // HasBreak returns true if there is a breakpoint at the address. the second

@@ -32,6 +32,8 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/symbols"
@@ -49,11 +51,11 @@ const onEmptyInput = "STEP"
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
 	VCS    *hardware.VCS
-	Disasm disassembly.Disassembly
+	Disasm *disassembly.Disassembly
 
-	// the cartridge bank that was active before the last instruction was
-	// executed
-	lastBank int
+	// the bank and the formatted result of the last step (cpu or video)
+	lastBank   memorymap.BankDetails
+	lastResult *disassembly.Entry
 
 	// gui, tv and terminal
 	tv   television.Television
@@ -147,10 +149,19 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 		tv:   tv,
 		scr:  scr,
 		term: term,
+
+		// create a minimal lastResult for initialisation
+		lastResult: &disassembly.Entry{Result: execution.Result{Final: true}},
 	}
 
 	// create a new VCS instance
 	dbg.VCS, err = hardware.NewVCS(dbg.tv)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	// create a new disassembly instance
+	dbg.Disasm, err = disassembly.NewDisassembly()
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
@@ -209,7 +220,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
 
 	// setup preferences and load from disk
-	dbg.Prefs, err = loadPreferences(dbg)
+	dbg.Prefs, err = newPreferences(dbg)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}

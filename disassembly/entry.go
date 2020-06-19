@@ -27,26 +27,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/symbols"
 )
-
-// Bank refers to the cartridge bank or one of a group of special conditions.
-type Bank int
-
-// List of allowed Bank special conditions.
-const (
-	BankUnknown Bank = -1
-	BankRAM     Bank = -2
-)
-
-func (b Bank) String() string {
-	switch b {
-	case BankUnknown:
-		return "?"
-	case BankRAM:
-		return "R"
-	}
-	return fmt.Sprintf("%d", b)
-}
 
 // EntryLevel describes the level of the Entry
 type EntryLevel int
@@ -62,8 +44,13 @@ type EntryLevel int
 //
 // Blessed instructions are deemed to be more accurate because they have been
 // reached according to the flow of the instructions from the start address.
+//
+// For normal debugging operations there is no need to use EntryLevelNotMappable
+// outside of the disassembly package. It used for the unusual case where a
+// bank is not able to be referenced from the Entry address. See M-Network for
+// an example of this, where Bank 7 cannot be mapped to the lower segment.
 const (
-	EntryLevelDead EntryLevel = iota
+	EntryLevelNotMappable EntryLevel = iota
 	EntryLevelDecoded
 	EntryLevelBlessed
 	EntryLevelExecuted
@@ -73,8 +60,8 @@ func (t EntryLevel) String() string {
 	// adding space to short strings so that they line up (we're only using
 	// this in a single place for a specific purpose so this is okay)
 	switch t {
-	case EntryLevelDead:
-		return "dead    "
+	case EntryLevelNotMappable:
+		return "dead "
 	case EntryLevelDecoded:
 		return "decoded "
 	case EntryLevelBlessed:
@@ -95,13 +82,7 @@ type Entry struct {
 	// execution.Result does not specify which bank the instruction is from
 	// because that information isn't available to the CPU. we note it here if
 	// possible.
-	Bank int
-
-	// BankDecorated is a "decorated" instance of the Bank integer. Positive
-	// values can be cast to int and treated just like Bank. However,
-	// BankDecorated can also take other values that indicate special
-	// conditions. The allowed values are defined above.
-	BankDecorated Bank
+	Bank memorymap.BankDetails
 
 	// /\/\ the fields above are not set by newEntry() they should be set
 	// manually when newEntry() returns
@@ -127,8 +108,9 @@ type Entry struct {
 	ActualCycles string
 	ActualNotes  string
 
-	// does the entry represent an instruction that might have different "actual"
-	// strings depending on the specifics of execution
+	// does the entry represent an instruction that might have different
+	// "actual" strings depending on the specifics of execution. practically,
+	// this means branch and page-sensitive instructions
 	UpdateActualOnExecute bool
 }
 
@@ -140,28 +122,35 @@ func (e *Entry) String() string {
 
 // FormatResult It is the preferred method of initialising for the Entry type.
 // It creates a disassembly.Entry based on the bank and result information.
-func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level EntryLevel) (*Entry, error) {
-	e := &Entry{
-		Result:        result,
-		Level:         level,
-		Bank:          bank,
-		BankDecorated: Bank(bank),
-	}
-
-	// set BankDecorated correctly
-	if memorymap.IsArea(result.Address, memorymap.RAM) {
-		e.BankDecorated = BankRAM
-	}
-
-	// if the operator hasn't been decoded yet then use placeholder strings for
-	// important fields
+func (dsm *Disassembly) FormatResult(bank memorymap.BankDetails, result execution.Result, level EntryLevel) (*Entry, error) {
+	// protect against empty definitions. we shouldn't hit this condition from
+	// the disassembly package itself, but it is possible to get it from ad-hoc
+	// formatting from GUI interfaces (see CPU window in sdlimgui)
 	if result.Defn == nil {
-		e.Bytecode = "??"
-		return e, nil
+		return &Entry{}, nil
+	}
+
+	return dsm.formatResult(bank, result, level)
+}
+
+// the guts of FormatResult(). we use this within the disassembly package when
+// we're sure we don't need the additional special condition handling
+func (dsm *Disassembly) formatResult(bank memorymap.BankDetails, result execution.Result, level EntryLevel) (*Entry, error) {
+	// protect against empty definitions. we shouldn't hit this condition from
+	// the disassembly package itself, but it is possible to get it from ad-hoc
+	// formatting from GUI interfaces (see CPU window in sdlimgui)
+	if result.Defn == nil {
+		return &Entry{}, nil
+	}
+
+	e := &Entry{
+		Result: result,
+		Level:  level,
+		Bank:   bank,
 	}
 
 	// address of instruction
-	e.Address = fmt.Sprintf("0x%04x", result.Address)
+	e.Address = fmt.Sprintf("$%04x", result.Address)
 
 	// look up address in symbol table
 	if v, ok := dsm.Symtable.Locations.Symbols[result.Address]; ok {
@@ -240,37 +229,7 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 				switch result.Defn.Effect {
 				case instructions.Flow:
 					if result.Defn.IsBranch() {
-						// relative labels. to get the correct label we have to
-						// simulate what a successful branch instruction would do:
-
-						// 	-- we create a mock register with the instruction's
-						// 	address as the initial value
-						pc := registers.NewProgramCounter(result.Address)
-
-						// -- add the number of instruction bytes to get the PC as
-						// it would be at the end of the instruction
-						pc.Add(uint16(result.Defn.Bytes))
-
-						// -- because we're doing 16 bit arithmetic with an 8bit
-						// value, we need to make sure the sign bit has been
-						// propogated to the more-significant bits
-						if operand&0x0080 == 0x0080 {
-							operand |= 0xff00
-						}
-
-						// -- add the 2s-complement value to the mock program
-						// counter
-						pc.Add(operand)
-
-						// -- look up mock program counter value in symbol table
-						if v, ok := dsm.Symtable.Locations.Symbols[pc.Address()]; ok {
-							e.Operand = v
-						} else {
-							// -- if no symbol exists change operand to the
-							// address (rather than the branch offset)
-							e.Operand = fmt.Sprintf("$%04x", pc.Address())
-						}
-
+						e.Operand = formatBranchOperand(e.Result.Address, operand, e.Result.ByteCount, dsm.Symtable)
 					} else {
 						if v, ok := dsm.Symtable.Locations.Symbols[operand]; ok {
 							e.Operand = v
@@ -327,6 +286,7 @@ func (dsm *Disassembly) FormatResult(bank int, result execution.Result, level En
 		e.updateActual()
 	}
 
+	// note instructions that required active updating on execution
 	e.UpdateActualOnExecute = result.Defn.IsBranch() || result.Defn.PageSensitive
 
 	return e, nil
@@ -360,4 +320,38 @@ func (e *Entry) updateActual() {
 	}
 
 	e.ActualNotes = strings.TrimSpace(s.String())
+}
+
+// format and return a formatted  branch operand. if a symbol is available for
+// the target address then that will be used, otherwise use the target address
+// rather than the offset value.
+func formatBranchOperand(addr uint16, operand uint16, bytes int, symtable *symbols.Table) string {
+	// relative labels. to get the correct label we have to
+	// simulate what a successful branch instruction would do:
+
+	// create a mock register with the instruction's address as the initial value
+	pc := registers.NewProgramCounter(addr)
+
+	// add the number of instruction bytes to get the PC as
+	// it would be at the end of the instruction
+	pc.Add(uint16(bytes))
+
+	// because we're doing 16 bit arithmetic with an 8bit
+	// value, we need to make sure the sign bit has been
+	// propogated to the more-significant bits
+	if operand&0x0080 == 0x0080 {
+		operand |= 0xff00
+	}
+
+	// add the 2s-complement value to the mock program
+	// counter
+	pc.Add(operand)
+
+	// look up mock program counter value in symbol table
+	if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
+		return v
+	}
+
+	return fmt.Sprintf("$%04x", pc.Address())
+
 }

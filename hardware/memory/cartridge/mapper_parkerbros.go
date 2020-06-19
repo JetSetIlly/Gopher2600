@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // from bankswitch_sizes.txt:
@@ -229,15 +230,19 @@ func (cart parkerBros) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart parkerBros) GetBank(addr uint16) int {
+func (cart parkerBros) GetBank(addr uint16) memorymap.BankDetails {
+	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
-		return cart.segment[0]
+		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		return cart.segment[1]
+		seg = 1
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		return cart.segment[2]
+		seg = 2
+	} else { // remaining address is between 0x0c00 and 0x0fff
+		seg = 3
 	}
-	return cart.segment[3]
+
+	return memorymap.BankDetails{Number: cart.segment[seg], IsRAM: false, Segment: seg}
 }
 
 // SetBank implements the cartMapper interface
@@ -250,8 +255,6 @@ func (cart *parkerBros) SetBank(addr uint16, bank int) error {
 		cart.segment[2] = bank
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		// last segment always points to the last bank
-	} else {
-		return errors.New(errors.CartridgeError, fmt.Sprintf("%s: invalid address [%d]", cart.mappingID, bank))
 	}
 
 	return nil

@@ -34,7 +34,7 @@ import (
 // SetServer to use for hiscore storage
 func SetServer(input io.Reader, output io.Writer, server string) error {
 	// get reference to hiscore preferences
-	prefs, err := loadPreferences()
+	prefs, err := newPreferences()
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
@@ -77,20 +77,20 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	url.User = nil
 
 	// update server setting and save changes
-	prefs.server.Set(url.String())
-	return prefs.save()
+	prefs.Server.Set(url.String())
+	return prefs.Save()
 }
 
 // Login prepares the authentication token for the hiscore server
 func Login(input io.Reader, output io.Writer, username string) error {
 	// get reference to hiscore preferences
-	prefs, err := loadPreferences()
+	prefs, err := newPreferences()
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
 
 	// we can't login unless highscore server has been specified
-	if prefs.server.Get() == "" {
+	if prefs.Server.Get() == "" {
 		return errors.New(errors.HiScore, "no highscore server available")
 	}
 
@@ -122,7 +122,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	// send login request to server
 	var cl http.Client
 	data := url.Values{"username": {username}, "password": {password}}
-	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.server), data)
+	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.Server), data)
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
@@ -141,19 +141,19 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	}
 
 	// update authentication key and save changes
-	prefs.authToken.Set(key["key"])
-	return prefs.save()
+	prefs.AuthToken.Set(key["key"])
+	return prefs.Save()
 }
 
 // Logoff forgets the authentication token for the hiscore server
 func Logoff() error {
 	// get reference to hiscore preferences
-	prefs, err := loadPreferences()
+	prefs, err := newPreferences()
 	if err != nil {
 		return errors.New(errors.HiScore, err)
 	}
 
 	// blank authentication key and save changes
-	prefs.authToken.Set("")
-	return prefs.save()
+	prefs.AuthToken.Set("")
+	return prefs.Save()
 }

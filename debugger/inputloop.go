@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
@@ -44,6 +45,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	// vcsStepVideo is to be called every video cycle when the quantum mode
 	// is set to Video
 	vcsStepVideo := func() error {
+		var err error
+
+		// format last CPU execution result for vcs step. this is in addition
+		// to the FormatResult() call in the main dbg.running loop below.
+		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+		if err != nil {
+			return errors.New(errors.DebuggerError, err)
+		}
 
 		// update debugger the same way for video quantum as for cpu quantum
 		vcsStep()
@@ -250,31 +259,48 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			}
 
 			// get bank information before we execute the next instruction. we
-			// use this value to prepare the LastDisasmEntry.
+			// use this when formatting the last result from the CPU. this has
+			// to happen before we call the VCS.Step() function
 			dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+
+			// not using the err variable because we'll clobber it before we
+			// get to check the result of VCS.Step()
+			var cpuErr error
 
 			switch dbg.quantum {
 			case QuantumCPU:
-				err = dbg.VCS.Step(vcsStep)
+				cpuErr = dbg.VCS.Step(vcsStep)
 			case QuantumVideo:
-				err = dbg.VCS.Step(vcsStepVideo)
+				cpuErr = dbg.VCS.Step(vcsStepVideo)
 			default:
-				err = errors.New(errors.DebuggerError, "unknown quantum mode")
+				cpuErr = errors.New(errors.DebuggerError, "unknown quantum mode")
 			}
 
+			// format last CPU execution result. we'll do this even if there's
+			// been a cpuError because the debugger may want to display the
+			// result even if there was an error.
+			//
+			// we considered having Disasm.UpdateEntry() always returning an
+			// Entry result but we want lastResult to record errant results if
+			// necessary and not just results that are to be stored in the
+			// disasembly. we don't want to add any complexity to the
+			// UpdateEntry() function and the performance hit is minimal.
+			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
 			if err != nil {
+				return errors.New(errors.DebuggerError, err)
+			}
+
+			if cpuErr != nil {
 				// exit input loop only if error is not an AtariError...
-				if !errors.IsAny(err) {
-					return errors.New(errors.DebuggerError, err)
+				if !errors.IsAny(cpuErr) {
+					return errors.New(errors.DebuggerError, cpuErr)
 				}
 
 				// ...set lastStepError instead and allow emulation to halt
 				dbg.lastStepError = true
-				dbg.printLine(terminal.StyleError, "%s", err)
+				dbg.printLine(terminal.StyleError, "%s", cpuErr)
 			} else {
-				err := dbg.Disasm.UpdateEntry(
-					dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.LastResult.Address),
-					dbg.VCS.CPU.LastResult)
+				err := dbg.Disasm.UpdateEntry(dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
 				if err != nil {
 					return errors.New(errors.DebuggerError, err)
 				}

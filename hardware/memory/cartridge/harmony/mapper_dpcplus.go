@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // dpcPlus implements the cartMapper interface.
@@ -586,8 +587,8 @@ func (cart *dpcPlus) SetBank(addr uint16, bank int) error {
 	return nil
 }
 
-func (cart dpcPlus) GetBank(addr uint16) int {
-	return cart.bank
+func (cart dpcPlus) GetBank(addr uint16) memorymap.BankDetails {
+	return memorymap.BankDetails{Number: cart.bank, IsRAM: false}
 }
 
 func (cart *dpcPlus) Patch(offset int, data uint8) error {

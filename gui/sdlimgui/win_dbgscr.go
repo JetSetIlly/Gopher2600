@@ -378,7 +378,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	// instruction information
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 	if win.img.lz.Cart.NumBanks > 1 {
-		imgui.Text(fmt.Sprintf("%s [bank %d]", fmtRes.Address, ref.Bank))
+		imgui.Text(fmt.Sprintf("%s [bank %s]", fmtRes.Address, ref.Bank))
 	} else {
 		imgui.Text(fmtRes.Address)
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -213,23 +214,49 @@ func (cart Cartridge) NumBanks() int {
 	return cart.mapper.NumBanks()
 }
 
-// GetBank returns the current bank number for the specified address
-//
-// Address must be a normlised cartridge address.
-func (cart Cartridge) GetBank(addr uint16) int {
-	return cart.mapper.GetBank(addr & memorymap.AddressMaskCart)
+// GetBank returns the current bank information for the specified address. See
+// documentation for memorymap.Bank for more information.
+func (cart Cartridge) GetBank(addr uint16) memorymap.BankDetails {
+	if addr&memorymap.OriginCart != memorymap.OriginCart {
+		return memorymap.BankDetails{NonCart: true}
+	}
+
+	return cart.mapper.GetBank(addr & memorymap.CartridgeBits)
 }
 
-// SetBank maps the specified address such that it references the specified
-// bank. For many cart mappers this just means switching banks for the entire
-// cartridge. Address must be normalised.
+// SetBank maps in a bank to the segment at the stated address. For many
+// cartridge mappers memory is not segmented and the address is ignored (except
+// to check for whether it is a valid cartridge address).
 //
-// NOTE: For some cartridge types, the specific address is not important
+// SetBank() will return a CartridgeSetBank error if for some reason the bank
+// cannot be mapped to a specified address.
 func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	if bank < 0 || bank > cart.mapper.NumBanks()-1 {
-		return errors.New(errors.CartridgeError, "requested bank is invalid")
+	if addr&memorymap.OriginCart != memorymap.OriginCart {
+		return errors.New(errors.CartridgeError, "address not in cartridge area")
 	}
-	return cart.mapper.SetBank(addr&memorymap.AddressMaskCart, bank)
+	if bank < 0 && bank >= cart.mapper.NumBanks() {
+		return errors.New(errors.CartridgeError, "bank invalid")
+	}
+	return cart.mapper.SetBank(addr&memorymap.CartridgeBits, bank)
+}
+
+// BankSize returns the number of bytes in each bank. The number of segments
+// can be obtained by dividing 4096 by the returned value.
+func (cart Cartridge) BankSize() uint16 {
+	switch cart.mapper.(type) {
+	case *mapper3ePlus:
+		return 1024
+	case *mnetwork:
+		return 2048
+	case *parkerBros:
+		return 1024
+	case *tigervision:
+		return 2048
+	case *supercharger.Supercharger:
+		return 2048
+	default:
+		return 4096
+	}
 }
 
 // Listen for data at the specified address.

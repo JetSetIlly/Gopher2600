@@ -19,6 +19,8 @@
 
 package cartridge
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+
 // cartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
 // convenience, functions with an address argument recieve that address
@@ -29,7 +31,7 @@ type cartMapper interface {
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error
 	NumBanks() int
-	GetBank(addr uint16) (bank int)
+	GetBank(addr uint16) memorymap.BankDetails
 	SetBank(addr uint16, bank int) error
 
 	// patch differs from write/poke in that it alters the data as though it
