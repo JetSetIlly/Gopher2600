@@ -648,6 +648,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		s.WriteString(" ")
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualCycles, dbg.lastResult))
 		s.WriteString(" ")
+		if !dbg.lastResult.Result.Final {
+			s.WriteString(fmt.Sprintf("(of %d) ", dbg.lastResult.Result.Defn.Cycles))
+		}
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualNotes, dbg.lastResult))
 
 		if dbg.VCS.CPU.LastResult.Final {
