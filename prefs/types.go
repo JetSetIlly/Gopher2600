@@ -37,7 +37,8 @@ type pref interface {
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
-	value bool
+	value    bool
+	callback func(value interface{}) error
 }
 
 func (p Bool) String() string {
@@ -61,6 +62,11 @@ func (p *Bool) Set(v interface{}) error {
 	default:
 		return errors.New(errors.Prefs, fmt.Sprintf("cannot convert %T to prefs.Bool", v))
 	}
+
+	if p.callback != nil {
+		return p.callback(p.value)
+	}
+
 	return nil
 }
 
@@ -69,10 +75,17 @@ func (p Bool) Get() interface{} {
 	return p.value
 }
 
+// RegisterCallback sets the callback function to be called when the value has
+// changed. Not required but is useful in some contexts.
+func (p *Bool) RegisterCallback(f func(value interface{}) error) {
+	p.callback = f
+}
+
 // String implements a string type in the prefs system.
 type String struct {
 	pref
-	value string
+	value    string
+	callback func(value interface{}) error
 }
 
 func (p String) String() string {
@@ -82,6 +95,11 @@ func (p String) String() string {
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v interface{}) error {
 	p.value = fmt.Sprintf("%s", v)
+
+	if p.callback != nil {
+		return p.callback(p.value)
+	}
+
 	return nil
 }
 
@@ -90,10 +108,17 @@ func (p String) Get() interface{} {
 	return p.value
 }
 
+// RegisterCallback sets the callback function to be called when the value has
+// changed. Not required but is useful in some contexts.
+func (p *String) RegisterCallback(f func(value interface{}) error) {
+	p.callback = f
+}
+
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
-	value int
+	value    int
+	callback func(value interface{}) error
 }
 
 func (p Int) String() string {
@@ -114,6 +139,11 @@ func (p *Int) Set(v interface{}) error {
 	default:
 		return errors.New(errors.Prefs, fmt.Sprintf("cannot convert %T to prefs.Int", v))
 	}
+
+	if p.callback != nil {
+		return p.callback(p.value)
+	}
+
 	return nil
 }
 
@@ -122,9 +152,17 @@ func (p Int) Get() interface{} {
 	return p.value
 }
 
+// RegisterCallback sets the callback function to be called when the value has
+// changed. Not required but is useful in some contexts.
+func (p *Int) RegisterCallback(f func(value interface{}) error) {
+	p.callback = f
+}
+
 // Generic is a general purpose prefererences type, useful for values that
 // cannot be represented by a single live value.  You must use the NewGeneric()
 // function to initialise a new instance of Generic.
+//
+// The Generic prefs type does not have a way of registering a callback function.
 type Generic struct {
 	pref
 	set func(string) error
@@ -145,7 +183,12 @@ func (p Generic) String() string {
 
 // Set triggers the set value procedure for the generic type
 func (p *Generic) Set(v interface{}) error {
-	return p.set(v.(string))
+	err := p.set(v.(string))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Get triggers the get value procedure for the generic type.
