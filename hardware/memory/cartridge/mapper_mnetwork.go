@@ -282,8 +282,6 @@ func (cart mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
-// !TODO: fix mnetwork GetBank and SetBank
-
 // GetBank implements the cartMapper interface
 func (cart *mnetwork) GetBank(addr uint16) memorymap.BankDetails {
 	if addr >= 0x0000 && addr <= 0x07ff {

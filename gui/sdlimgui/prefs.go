@@ -69,7 +69,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 			if err != nil {
 				return err
 			}
-			// !TODO: SetPosition doesn't seem to set window position as you
+			// !!TODO: SetPosition doesn't seem to set window position as you
 			// might expect. On XWindow with Cinnamon WM, it seems to place the
 			// window top to the window further down and slightly to the right
 			// of where it should be. This means that the window "drifts" down

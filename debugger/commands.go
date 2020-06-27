@@ -293,7 +293,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 						return false, errors.New(errors.CommandError, "bank must be numeric")
 					}
 
-					// !TODO: set bank for any address
+					// !!TODO: set bank for any address
 
 					err = dbg.VCS.Mem.Cart.SetBank(dbg.VCS.CPU.PC.Address(), b)
 					if err != nil {
@@ -301,14 +301,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					}
 				}
 			case "STATIC":
-				// !TODO: poke/peek static cartridge static data areas
+				// !!TODO: poke/peek static cartridge static data areas
 				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {
 					dbg.printInstrument(db.GetStatic())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 				}
 			case "REGISTERS":
-				// !TODO: poke/peek cartridge registers
+				// !!TODO: poke/peek cartridge registers
 				bus := dbg.VCS.Mem.Cart.GetDebugBus()
 				if bus != nil {
 					dbg.printInstrument(bus.GetRegisters())

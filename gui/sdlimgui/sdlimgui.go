@@ -36,7 +36,7 @@ import (
 )
 
 // imguiIniFile is where imgui will store the coordinates of the imgui windows
-// !TODO: duplicate imgui.SetIniFilename so that is uses prefs pacakge. we
+// !!TODO: duplicate imgui.SetIniFilename so that is uses prefs pacakge. we
 // should be able to do this a smart implementation of io.Reader and io.Writer
 const imguiIniFile = "debugger_imgui.ini"
 

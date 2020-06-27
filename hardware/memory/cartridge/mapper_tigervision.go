@@ -196,7 +196,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// (quoted above) whenever an address in TIA space is written to, the lower
 	// 3 bits of the value being written is used to set the segment.
 
-	// !TODO: lint check for data writes that specify a bank > NumBanks(). the
+	// !!TODO: lint check for data writes that specify a bank > NumBanks(). the
 	// format allows this but it might be a mistake
 
 	// bankswitch on hotspot access

@@ -118,7 +118,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU) error {
 				}
 
 				// if mnemonic is unknown than end the sequence.
-				// !TODO: remove this check once every opcode is defined/implemented
+				// !!TODO: remove this check once every opcode is defined/implemented
 				mnemonic := dsm.disasm[b][a].Result.Defn.Mnemonic
 				if mnemonic == "??" {
 					break

@@ -108,7 +108,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 
 	// prompt for password
 	//
-	// !TODO: noecho hiscore server password
+	// !!TODO: noecho hiscore server password
 	output.Write([]byte("(WARNING: password will be visible)\n"))
 	output.Write([]byte("Enter password: "))
 	var b []byte

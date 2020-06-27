@@ -187,7 +187,7 @@ func (cart Supercharger) NumBanks() int {
 
 // SetBank implements the cartMapper interface
 func (cart *Supercharger) SetBank(addr uint16, bank int) error {
-	// !! TODO: a way of setting the registers.BankingMode from the request addr and bank
+	// !!TODO: a way of setting the registers.BankingMode from the request addr and bank
 	return nil
 }
 

@@ -473,7 +473,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	err = mc.read8BitPC(&opcode, func() error {
 		defn = mc.instructions[opcode]
 
-		// !TODO: remove this once all opcodes are defined/implemented
+		// !!TODO: remove this once all opcodes are defined/implemented
 		if defn == nil {
 			return errors.New(errors.UnimplementedInstruction, opcode, mc.PC.Address()-1)
 		}
@@ -502,7 +502,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.LastResult.Final = true
 
 		// if there is no definition create a fake one
-		// !TODO: remove this once all opcodes are defined/implemented
+		// !!TODO: remove this once all opcodes are defined/implemented
 		if mc.LastResult.Defn == nil {
 			mc.LastResult.Defn = &instructions.Definition{
 				OpCode:   opcode,

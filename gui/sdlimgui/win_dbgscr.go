@@ -186,7 +186,7 @@ func (win *winDbgScr) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 
 	// popup menu on right mouse button
-	// !TODO: RMB to release captured window causes popup to immediately open
+	// !!TODO: RMB to release captured window causes popup to immediately open
 	win.isPopup = imgui.BeginPopupContextItem()
 	if win.isPopup {
 		imgui.Text("Break")

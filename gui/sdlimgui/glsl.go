@@ -193,7 +193,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
-		// !TODO: different scaling values for different screen windows
+		// !!TODO: different scaling values for different screen windows
 
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {

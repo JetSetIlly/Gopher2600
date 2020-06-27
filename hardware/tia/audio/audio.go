@@ -137,6 +137,6 @@ func (au *Audio) Mix() (bool, uint8) {
 	//
 	// https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 	//
-	// !TODO: simulate analogue sound generation
+	// !!TODO: simulate analogue sound generation
 	return true, au.channel0.actualVol + au.channel1.actualVol
 }
