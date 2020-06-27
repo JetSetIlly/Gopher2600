@@ -176,7 +176,7 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0xa8, Mnemonic: "TAY", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xa9, Mnemonic: "LDA", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xaa, Mnemonic: "TAX", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0},
-		nil,
+		&Definition{OpCode: 0xab, Mnemonic: "lax", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xac, Mnemonic: "LDY", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xad, Mnemonic: "LDA", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xae, Mnemonic: "LDX", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},

@@ -170,8 +170,6 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 		return errors.New(errors.DisasmError, err)
 	}
 
-	dsm.cart.Initialise()
-
 	return nil
 }
 
