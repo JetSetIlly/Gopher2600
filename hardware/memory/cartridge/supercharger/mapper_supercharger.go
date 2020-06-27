@@ -40,7 +40,6 @@ type Supercharger struct {
 
 	bios []uint8
 	ram  [3][]uint8
-	bank int
 
 	tape        []byte
 	tapeCtr     int
@@ -61,7 +60,7 @@ type SuperChargerRegisters struct {
 
 func (r SuperChargerRegisters) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("wd: %03b  bbb: %03b  ram: %v  rom: %v", r.WriteDelay, r.BankingMode, r.RAMwrite, r.ROMpower))
+	s.WriteString(fmt.Sprintf("wd: %d  bbb: %d  ram: %v  rom: %v", r.WriteDelay, r.BankingMode, r.RAMwrite, r.ROMpower))
 	return s.String()
 }
 
@@ -113,8 +112,10 @@ func (cart Supercharger) ID() string {
 
 // Initialise implements the cartMapper interface
 func (cart *Supercharger) Initialise() {
-	cart.bank = 0
+	cart.registers.WriteDelay = 0
+	cart.registers.BankingMode = 0
 	cart.registers.ROMpower = true
+	cart.registers.RAMwrite = true
 }
 
 // Read implements the cartMapper interface
@@ -185,7 +186,8 @@ func (cart Supercharger) NumBanks() int {
 }
 
 // SetBank implements the cartMapper interface
-func (cart *Supercharger) SetBank(_ uint16, _ int) error {
+func (cart *Supercharger) SetBank(addr uint16, bank int) error {
+	// !! TODO: a way of setting the registers.BankingMode from the request addr and bank
 	return nil
 }
 
@@ -193,52 +195,52 @@ func (cart *Supercharger) SetBank(_ uint16, _ int) error {
 func (cart Supercharger) GetBank(addr uint16) memorymap.BankDetails {
 	switch cart.registers.BankingMode {
 	case 0:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 1:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 2:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 3:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 4:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 5:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 0, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 6:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 1, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 
 	case 7:
-		if addr >= 0x800 {
-			return memorymap.BankDetails{Number: 3, IsRAM: true, Segment: 0}
+		if addr >= 0x0800 {
+			return memorymap.BankDetails{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 0}
 		}
-		return memorymap.BankDetails{Number: 2, IsRAM: true, Segment: 1}
+		return memorymap.BankDetails{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 1}
 	}
 	panic("unknown banking method")
 }
