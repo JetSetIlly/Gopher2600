@@ -93,6 +93,9 @@ func (win *winPlayScr) draw() {
 	w := win.getScaledWidth()
 	h := win.getScaledHeight()
 
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
+
 	imgui.SetNextWindowPosV(imgui.Vec2{0, 0}, 0, imgui.Vec2{0, 0})
 	dimen := win.img.plt.displaySize()
 	win.winDim = imgui.Vec2{dimen[0], dimen[1]}
@@ -110,6 +113,8 @@ func (win *winPlayScr) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
+
+	imgui.PopStyleColorV(2)
 
 	imgui.End()
 }
