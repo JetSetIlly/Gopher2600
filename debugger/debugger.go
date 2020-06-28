@@ -33,7 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/symbols"
@@ -54,7 +54,7 @@ type Debugger struct {
 	Disasm *disassembly.Disassembly
 
 	// the bank and the formatted result of the last step (cpu or video)
-	lastBank   memorymap.BankDetails
+	lastBank   banks.Details
 	lastResult *disassembly.Entry
 
 	// gui, tv and terminal

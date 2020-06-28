@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -152,22 +153,11 @@ func (cart tigervision) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart *tigervision) GetBank(addr uint16) memorymap.BankDetails {
+func (cart *tigervision) GetBank(addr uint16) banks.Details {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return memorymap.BankDetails{Number: cart.segment[0], IsRAM: false, Segment: 0}
+		return banks.Details{Number: cart.segment[0], IsRAM: false, Segment: 0}
 	}
-	return memorymap.BankDetails{Number: cart.segment[1], IsRAM: false, Segment: 1}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *tigervision) SetBank(addr uint16, bank int) error {
-	if addr >= 0x0000 && addr <= 0x07ff {
-		cart.segment[0] = bank
-	} else if addr >= 0x0800 && addr <= 0x0fff {
-		// last segment always points to the last bank
-	}
-
-	return nil
+	return banks.Details{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the cartMapper interface
@@ -211,4 +201,31 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 
 // Step implements the cartMapper interface
 func (cart *tigervision) Step() {
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart tigervision) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b >= 0 && b < len(cart.banks)-1 {
+		// banks 0 to 6 can occupy any of the three segments
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCart + uint16(cart.bankSize)*2,
+			},
+		}
+	} else if b == len(cart.banks)-1 {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				// cannot point to the first segment
+				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCart + uint16(cart.bankSize)*2,
+				memorymap.OriginCart + uint16(cart.bankSize)*3,
+			},
+		}
+	}
+	return nil
 }

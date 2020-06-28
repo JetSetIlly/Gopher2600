@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -98,7 +99,7 @@ type mnetwork struct {
 	ram256byteIdx int
 
 	//  o ram1k is read through addresses 0x1000 to 0x13ff and written
-	//  through addresses 0x1400 to 0x17ff * when bank == 7 *
+	//  through addresses 0x1400 to 0x17ff * when use1kRAM is true
 	//
 	//  o ram256byte is read through addresses 0x1900 to 0x19fd and written
 	//  through address 0x1800 to 0x18ff in all cases
@@ -106,6 +107,11 @@ type mnetwork struct {
 	// (addresses quoted above are of course masked so that they fall into the
 	// allocation range)
 	ram1k []uint8
+
+	// use1kRAM is set to true when hotspot 0x0fe7 has been triggered. it's not
+	// clear when, if ever, the flag should be set to false. we have taken the
+	// view that is is when any of hotspots 0x0fe0 to 0x0fe6 are triggered
+	use1kRAM bool
 }
 
 func newMnetwork(data []byte) (cartMapper, error) {
@@ -144,7 +150,7 @@ func (cart mnetwork) String() string {
 	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
 	s.WriteString(fmt.Sprintf(" Bank: %d ", cart.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
-	if cart.bank == 7 {
+	if cart.use1kRAM {
 		s.WriteString(" [+1k RAM]")
 	}
 	return s.String()
@@ -180,7 +186,7 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
-		if cart.bank == 7 && addr >= 0x0400 {
+		if cart.use1kRAM && addr >= 0x0400 {
 			data = cart.ram1k[addr&0x03ff]
 		} else {
 			data = cart.banks[cart.bank][addr&0x07ff]
@@ -208,7 +214,7 @@ func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) er
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
-		if addr <= 0x03ff && cart.bank == 7 {
+		if addr <= 0x03ff && cart.use1kRAM {
 			cart.ram1k[addr&0x03ff] = data
 			return nil
 		}
@@ -235,18 +241,25 @@ func (cart *mnetwork) hotspot(addr uint16, passive bool) bool {
 		switch addr {
 		case 0x0fe0:
 			cart.bank = 0
+			cart.use1kRAM = false
 		case 0x0fe1:
 			cart.bank = 1
+			cart.use1kRAM = false
 		case 0x0fe2:
 			cart.bank = 2
+			cart.use1kRAM = false
 		case 0x0fe3:
 			cart.bank = 3
+			cart.use1kRAM = false
 		case 0x0fe4:
 			cart.bank = 4
+			cart.use1kRAM = false
 		case 0x0fe5:
 			cart.bank = 5
+			cart.use1kRAM = false
 		case 0x0fe6:
 			cart.bank = 6
+			cart.use1kRAM = false
 
 			// from bankswitch_sizes.txt: "Note that you cannot select the last 2K
 			// of the ROM image into the lower 2K of the cart!  Accessing 1FE7
@@ -254,7 +267,7 @@ func (cart *mnetwork) hotspot(addr uint16, passive bool) bool {
 			//
 			// we're using bank number -1 to indicate the use of RAM
 		case 0x0fe7:
-			cart.bank = 7
+			cart.use1kRAM = true
 
 			// from bankswitch_sizes.txt: "You select which 256 byte block appears
 			// here by accessing 1FF8 to 1FFB."
@@ -283,30 +296,19 @@ func (cart mnetwork) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart *mnetwork) GetBank(addr uint16) memorymap.BankDetails {
+func (cart *mnetwork) GetBank(addr uint16) banks.Details {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return memorymap.BankDetails{Number: cart.bank, IsRAM: false, Segment: 0}
-	}
-	if cart.bank == 7 {
-		return memorymap.BankDetails{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
-	}
-	return memorymap.BankDetails{Number: cart.bank, IsRAM: false, Segment: 1}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *mnetwork) SetBank(addr uint16, bank int) error {
-	if addr >= 0x0000 && addr <= 0x07ff {
-		if bank == 7 {
-			return errors.New(errors.CartridgeNotMappable, bank, addr)
+		if cart.use1kRAM {
+			return banks.Details{Number: cart.bank, IsRAM: true, Segment: 0}
 		}
-		cart.bank = bank
-	} else if addr >= 0x0800 && addr <= 0x0fff {
-		if bank != 7 {
-			return errors.New(errors.CartridgeNotMappable, bank, addr)
-		}
+		return banks.Details{Number: cart.bank, IsRAM: false, Segment: 0}
 	}
 
-	return nil
+	if addr >= 0x0800 && addr <= 0x08ff {
+		return banks.Details{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
+	}
+
+	return banks.Details{Number: 7, IsRAM: false, Segment: 1}
 }
 
 // Patch implements the cartMapper interface
@@ -359,4 +361,27 @@ func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 		return
 	}
 	cart.ram256byte[bank-1][idx] = data
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart mnetwork) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b >= 0 && b <= 6 {
+		// includes 1k ram section
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+			},
+		}
+	} else if b == 7 {
+		// includes 256B ram section
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart + uint16(cart.bankSize),
+			},
+		}
+	}
+	return nil
 }

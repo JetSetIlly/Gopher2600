@@ -19,7 +19,9 @@
 
 package cartridge
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+)
 
 // cartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
@@ -31,8 +33,7 @@ type cartMapper interface {
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error
 	NumBanks() int
-	GetBank(addr uint16) memorymap.BankDetails
-	SetBank(addr uint16, bank int) error
+	GetBank(addr uint16) banks.Details
 
 	// patch differs from write/poke in that it alters the data as though it
 	// was being read from disk. that is, the offset is measured from the start
@@ -49,6 +50,10 @@ type cartMapper interface {
 	// at a rate of 1.19. cartridges with slower clocks need to handle the rate
 	// change.
 	Step()
+
+	// return all the banks in the cartridge in sequence. see commentary for
+	// IterateBanks() function in the Cartridge type for details.
+	IterateBanks(prev *banks.Content) *banks.Content
 }
 
 // optionalSuperchip are implemented by cartMappers that have an optional

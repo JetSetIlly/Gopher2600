@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -117,17 +118,11 @@ func (cart *atari) Initialise() {
 }
 
 // GetBank implements the cartMapper interface
-func (cart atari) GetBank(addr uint16) memorymap.BankDetails {
+func (cart atari) GetBank(addr uint16) banks.Details {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
-	return memorymap.BankDetails{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *atari) SetBank(addr uint16, bank int) error {
-	cart.bank = bank
-	return nil
+	return banks.Details{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
 // Read implements the cartMapper interface
@@ -225,6 +220,20 @@ func (cart atari) GetRAM() []bus.CartRAM {
 // PutRAM implements the bus.CartRAMBus interface
 func (cart *atari) PutRAM(_ int, idx int, data uint8) {
 	cart.ram[idx] = data
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart atari) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b < len(cart.banks) {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+			},
+		}
+	}
+	return nil
 }
 
 // atari4k is the original and most straightforward format

@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -82,7 +82,7 @@ type Entry struct {
 	// execution.Result does not specify which bank the instruction is from
 	// because that information isn't available to the CPU. we note it here if
 	// possible.
-	Bank memorymap.BankDetails
+	Bank banks.Details
 
 	// /\/\ the fields above are not set by newEntry() they should be set
 	// manually when newEntry() returns
@@ -122,7 +122,7 @@ func (e *Entry) String() string {
 
 // FormatResult It is the preferred method of initialising for the Entry type.
 // It creates a disassembly.Entry based on the bank and result information.
-func (dsm *Disassembly) FormatResult(bank memorymap.BankDetails, result execution.Result, level EntryLevel) (*Entry, error) {
+func (dsm *Disassembly) FormatResult(bank banks.Details, result execution.Result, level EntryLevel) (*Entry, error) {
 	// protect against empty definitions. we shouldn't hit this condition from
 	// the disassembly package itself, but it is possible to get it from ad-hoc
 	// formatting from GUI interfaces (see CPU window in sdlimgui)
@@ -135,7 +135,7 @@ func (dsm *Disassembly) FormatResult(bank memorymap.BankDetails, result executio
 
 // the guts of FormatResult(). we use this within the disassembly package when
 // we're sure we don't need the additional special condition handling
-func (dsm *Disassembly) formatResult(bank memorymap.BankDetails, result execution.Result, level EntryLevel) (*Entry, error) {
+func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result, level EntryLevel) (*Entry, error) {
 	// protect against empty definitions. we shouldn't hit this condition from
 	// the disassembly package itself, but it is possible to get it from ad-hoc
 	// formatting from GUI interfaces (see CPU window in sdlimgui)

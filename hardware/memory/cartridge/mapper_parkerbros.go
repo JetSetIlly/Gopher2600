@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -230,7 +231,7 @@ func (cart parkerBros) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart parkerBros) GetBank(addr uint16) memorymap.BankDetails {
+func (cart parkerBros) GetBank(addr uint16) banks.Details {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -242,22 +243,7 @@ func (cart parkerBros) GetBank(addr uint16) memorymap.BankDetails {
 		seg = 3
 	}
 
-	return memorymap.BankDetails{Number: cart.segment[seg], IsRAM: false, Segment: seg}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *parkerBros) SetBank(addr uint16, bank int) error {
-	if addr >= 0x0000 && addr <= 0x03ff {
-		cart.segment[0] = bank
-	} else if addr >= 0x0400 && addr <= 0x07ff {
-		cart.segment[1] = bank
-	} else if addr >= 0x0800 && addr <= 0x0bff {
-		cart.segment[2] = bank
-	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		// last segment always points to the last bank
-	}
-
-	return nil
+	return banks.Details{Number: cart.segment[seg], IsRAM: false, Segment: seg}
 }
 
 // Patch implements the cartMapper interface
@@ -278,4 +264,34 @@ func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 
 // Step implements the cartMapper interface
 func (cart *parkerBros) Step() {
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart parkerBros) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b >= 0 && b <= 6 {
+		// banks 0 to 6 can occupy any of the three segments
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCart + uint16(cart.bankSize)*2,
+			},
+		}
+	} else if b == 7 {
+		// bank 7 can occupy any of the four segments (the last segment always
+		// points to bank 7 but bank 7 can also be in another segment at the
+		// same time)
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCart + uint16(cart.bankSize)*2,
+				memorymap.OriginCart + uint16(cart.bankSize)*3,
+			},
+		}
+	}
+	return nil
 }

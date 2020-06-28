@@ -281,25 +281,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		if ok {
 			switch arg {
 			case "BANK":
-				bank, _ := tokens.Get()
-				if bank == "" {
-					dbg.printLine(
-						terminal.StyleInstrument,
-						fmt.Sprintf("%s", dbg.VCS.Mem.Cart.MappingSummary()),
-					)
-				} else {
-					b, err := strconv.Atoi(bank)
-					if err != nil {
-						return false, errors.New(errors.CommandError, "bank must be numeric")
-					}
+				dbg.printLine(
+					terminal.StyleInstrument,
+					fmt.Sprintf("%s", dbg.VCS.Mem.Cart.MappingSummary()),
+				)
 
-					// !!TODO: set bank for any address
-
-					err = dbg.VCS.Mem.Cart.SetBank(dbg.VCS.CPU.PC.Address(), b)
-					if err != nil {
-						return false, err
-					}
-				}
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
 				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {

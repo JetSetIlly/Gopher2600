@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -216,28 +217,12 @@ func (cart Cartridge) NumBanks() int {
 
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
-func (cart Cartridge) GetBank(addr uint16) memorymap.BankDetails {
+func (cart Cartridge) GetBank(addr uint16) banks.Details {
 	if addr&memorymap.OriginCart != memorymap.OriginCart {
-		return memorymap.BankDetails{NonCart: true}
+		return banks.Details{NonCart: true}
 	}
 
 	return cart.mapper.GetBank(addr & memorymap.CartridgeBits)
-}
-
-// SetBank maps in a bank to the segment at the stated address. For many
-// cartridge mappers memory is not segmented and the address is ignored (except
-// to check for whether it is a valid cartridge address).
-//
-// SetBank() will return a CartridgeSetBank error if for some reason the bank
-// cannot be mapped to a specified address.
-func (cart *Cartridge) SetBank(addr uint16, bank int) error {
-	if addr&memorymap.OriginCart != memorymap.OriginCart {
-		return errors.New(errors.CartridgeError, "address not in cartridge area")
-	}
-	if bank < 0 && bank >= cart.mapper.NumBanks() {
-		return errors.New(errors.CartridgeError, "bank invalid")
-	}
-	return cart.mapper.SetBank(addr&memorymap.CartridgeBits, bank)
 }
 
 // BankSize returns the number of bytes in each bank. The number of segments
@@ -296,4 +281,17 @@ func (cart Cartridge) GetRAMbus() bus.CartRAMbus {
 		return bus
 	}
 	return nil
+}
+
+// IterateBanks returns the sequence of banks in a cartridge. To return the
+// next bank in the sequence, call the function with the instance of
+// banks.Content returned from the previous call. The end of the sequence is
+// indicated by the nil value. Start a new iteration with the nil argument.
+func (cart Cartridge) IterateBanks(prev *banks.Content) (*banks.Content, error) {
+	// to keep the mappers as neat as possible, handle the nil special condition here
+	if prev == nil {
+		prev = &banks.Content{Number: -1}
+	}
+
+	return cart.mapper.IterateBanks(prev), nil
 }

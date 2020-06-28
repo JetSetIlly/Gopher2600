@@ -42,16 +42,6 @@ type Disassembly struct {
 	// preferences system
 	mirrorOrigin uint16
 
-	// the number and size of ther segmentation of cartridge memory. for many
-	// cartridges there will be one segment with a size of 4096
-	segmentSize uint16
-	numSegments int
-
-	// segmentBits is the corollory of memorymap.CartridgeBits in that it
-	// specified the bits that are used to specify an address within in a
-	// segment
-	segmentBits uint16
-
 	// symbols used to format disassembly output
 	Symtable *symbols.Table
 
@@ -127,11 +117,8 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) error {
 	dsm.cart = cart
 
-	dsm.segmentSize = cart.BankSize()
-	dsm.numSegments = 4096 / int(cart.BankSize())
-	dsm.segmentBits = cart.BankSize() - 1
-
 	dsm.Symtable = symtable
+
 	dsm.disasm = make([][]*Entry, dsm.cart.NumBanks())
 	for b := 0; b < len(dsm.disasm); b++ {
 		dsm.disasm[b] = make([]*Entry, memorymap.CartridgeBits+1)
@@ -165,7 +152,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	defer func() { dsm.cart.Passive = false }()
 
 	// disassemble cartridge binary
-	err = dsm.disassemble(mc)
+	err = dsm.disassemble(mc, mem)
 	if err != nil {
 		return errors.New(errors.DisasmError, err)
 	}
@@ -218,9 +205,9 @@ func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) er
 		e.Level = EntryLevelExecuted
 		e.Result = result
 
-		// not updating the formatted results. this means that address
-		// values will be the same as they were during the disassembly and how
-		// they were set by the setBankOrigin() function
+		// not updating the formatted results. this means that address values
+		// will be the same as they were during the disassembly and how they
+		// were set by the setCartMirror() function
 
 		e.updateActual()
 	}

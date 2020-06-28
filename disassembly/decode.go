@@ -23,17 +23,24 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-func (dsm *Disassembly) disassemble(mc *cpu.CPU) error {
+func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	// basic decoding pass
-	err := dsm.decode(mc)
+	err := dsm.decode(mc, mem)
 	if err != nil {
 		return err
 	}
 
-	// reinitialise cartridge
+	// after the decoding pass we won't be using the memory again except to to
+	// read the reset address. to do this however it's best we access the
+	// cartridge in the natural way. setting the bank field to nil will do
+	// this.
+	mem.bank = nil
+
+	// reinitialise cartridge in case its internal state has been changed
 	dsm.cart.Initialise()
 
 	// bless those entries which we're reasonably sure are real instructions
@@ -42,16 +49,13 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU) error {
 		return err
 	}
 
+	// convert addresses to preferred mirror
+	dsm.setCartMirror(dsm.Prefs.FxxxMirror.Get().(bool))
+
 	return nil
 }
 
 func (dsm *Disassembly) bless(mc *cpu.CPU) error {
-	// list of start points for every bank
-	blessings := make([][]uint16, len(dsm.disasm))
-	for b := range dsm.disasm {
-		blessings[b] = make([]uint16, 0)
-	}
-
 	// get start bank for cartridge before we do anything else
 	mc.Reset(false)
 	err := mc.LoadPCIndirect(addresses.Reset)
@@ -63,19 +67,34 @@ func (dsm *Disassembly) bless(mc *cpu.CPU) error {
 		return nil
 	}
 
-	// get the reset address contained in the reset vector of the active bank
-	blessings[bank.Number] = append(blessings[bank.Number], mc.PC.Value()&memorymap.CartridgeBits)
+	// bless the sequence starting from the reset bank/address. this is the
+	// only sequence that we can be sure of so we do this first (see
+	// blessSequence() function for interleave detection).
+	//
+	// if we add it to the list of start points we accumulate below, we can't
+	// be sure it will be first to run
+	dsm.blessSequence(bank.Number, mc.PC.Value()&memorymap.CartridgeBits)
+
+	// list of start points for every bank
+	blessings := make([][]uint16, len(dsm.disasm))
+	for b := range dsm.disasm {
+		blessings[b] = make([]uint16, 0)
+	}
 
 	// loop through every bank in the cartridge and collate a list of blessings
 	// for the bank. deliberately not using IterateCart for this.
+	//
+	// !!TODO: find blessing start point due to bank switch.
+	//	for example: HeMan bank 7 addr $fa03 jumps to $f7e8 jumping to bank 5
+	//	in the process
 	for b := range dsm.disasm {
+
 		bitr, _, err := dsm.NewBankIteration(EntryLevelDecoded, b)
 		if err != nil {
 			return err
 		}
 
 		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
-
 			// if instruciton is a JMP or JSR then take the jump address to be a
 			// blessing and add it to the list
 			if e.Result.Defn.Mnemonic == "JMP" || e.Result.Defn.Mnemonic == "JSR" {
@@ -98,101 +117,128 @@ func (dsm *Disassembly) bless(mc *cpu.CPU) error {
 		}
 	}
 
-	// blessing can happen at the same time as iteration which is probably
-	// being run from a different goroutine. acknowledge the critical section
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
-	// now that we have a list of blessings, we'll performa a linear traversal
-	// and bless each instruction in sequence, starting at each blessing point.
-	//
-	// we only bless instructions that naturally follow on from the previous
-	// instruction. we also stop when a significant flow control event or
-	// interrupt has occurred
+	// now that we have a list of blessings, we can bless each instruction in
+	// sequence, starting at each blessing point accumulated above.
 	for b := range blessings {
 		for _, a := range blessings[b] {
-			for a < uint16(len(dsm.disasm[b])) && dsm.disasm[b][a].Level != EntryLevelBlessed {
-				if dsm.disasm[b][a].Level == EntryLevelNotMappable {
-					a++
-					continue
-				}
-
-				// if mnemonic is unknown than end the sequence.
-				// !!TODO: remove this check once every opcode is defined/implemented
-				mnemonic := dsm.disasm[b][a].Result.Defn.Mnemonic
-				if mnemonic == "??" {
-					break
-				}
-
-				// promote the entry
-				dsm.disasm[b][a].Level = EntryLevelBlessed
-
-				// not breaking on JSR because the sequence will continue if
-				// the jumped-to sequence has an RTS (which it probably will
-				// have)
-				if mnemonic == "JMP" || mnemonic == "RTS" || mnemonic == "BRK" {
-					break
-				}
-
-				a += uint16(dsm.disasm[b][a].Result.ByteCount)
-
-				// break if address has looped around. while this is possible
-				// I'm not allowing it unless I can find an example of it being
-				// used in actuality.
-				if a > a&memorymap.CartridgeBits {
-					break
-				}
-			}
+			dsm.blessSequence(b, a)
 		}
 	}
 
 	return nil
 }
 
-func (dsm *Disassembly) decode(mc *cpu.CPU) error {
-	// make sure cpu is in initial state
-	mc.Reset(false)
+func (dsm *Disassembly) blessSequence(b int, a uint16) {
+	// blessing can happen at the same time as iteration which is probably
+	// being run from a different goroutine. acknowledge the critical section
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
+	// examine every entry from the starting point a. next entry determined in
+	// program counter style (ie. address plus instruction byte count)
+	//
+	// sequence will stop if:
+	//  . instruction is not defined
+	//		(condition can be removed once all opcodes have been defined)
+	//  . there is a blessed instruction between this and the next entry
+	//		(we call this interleaving and we don't allow it)
+	//  . a flow control instruction is encountered
+	//		(this is normal and expected)
+	//  . if the end of cartridge has been reached
+	//		(execution could theoretically carry one but we don't allow it)
+	//
+	for a < uint16(len(dsm.disasm[b])) {
+
+		// if mnemonic is unknown than end the sequence.
+		// !!TODO: remove this check once every opcode is defined/implemented
+		mnemonic := dsm.disasm[b][a].Result.Defn.Mnemonic
+		if mnemonic == "??" {
+			return
+		}
+
+		next := a + uint16(dsm.disasm[b][a].Result.ByteCount)
+
+		// break if address has looped around. while this is possible
+		// I'm not allowing it unless I can find an example of it being
+		// used in actuality.
+		if next > next&memorymap.CartridgeBits {
+			return
+		}
+
+		// if an entry between this entry and the next has already been
+		// blessed then this track is probably not correct.
+		for i := a + 1; i < next; i++ {
+			if dsm.disasm[b][i].Level == EntryLevelBlessed {
+				return
+			}
+		}
+
+		// promote the entry
+		dsm.disasm[b][a].Level = EntryLevelBlessed
+
+		// not breaking on JSR because the sequence will continue if
+		// the jumped-to sequence has an RTS (which it probably will
+		// have)
+		if mnemonic == "JMP" || mnemonic == "RTS" || mnemonic == "BRK" {
+			return
+		}
+
+		a = next
+	}
+}
+
+func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 	// decoding can happen at the same time as iteration which is probably
 	// being run from a different goroutine. acknowledge the critical section
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	for b := range dsm.disasm {
-		mc.Reset(false)
+	bank, err := dsm.cart.IterateBanks(nil)
+	if err != nil {
+		return err
+	}
 
-		for seg := 0; seg < dsm.numSegments; seg++ {
-			// origin and memtop
-			origin := dsm.mirrorOrigin + (uint16(seg) * dsm.segmentSize)
-			memtop := origin + dsm.segmentBits
+	// count the number of times IterateBanks() has return valid bank
+	// infomration. we'll use this to sanity check the decoding.
+	bankCt := 0
 
-			// by default the EntryLevel we'll use in the decoding is
-			// EntryLevelDecoded. we'll flip this if necessary
-			entryLevel := EntryLevelDecoded
+	for bank != nil {
+		bankCt++
 
-			// set bank every iteration because of segmented cartridge memory
-			if err := dsm.cart.SetBank(origin, b); err != nil {
-				if !errors.Is(err, errors.CartridgeNotMappable) {
-					return err
+		// point memory implementation to iterated bank
+		mem.bank = bank
+
+		for _, origin := range bank.Origins {
+
+			// make sure origin address is rooted correctly. we'll convert all
+			// addresses to the preferred mirror at the end of the disassembly
+			mem.origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCart
+			memtop := origin + uint16(len(bank.Data)) - 1
+
+			mc.Reset(false)
+
+			// loop over entire address space for every bank. even then bank
+			// sizes are smaller than the address space it makes things easier
+			// later if we put a valid entry at every index. entries outside of
+			// the bank space will be marked as NotMappable
+			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
+
+				// check that entry has not already been decoded. cartridge
+				// segments should not be able to overlap
+				e := dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
+				if e != nil && e.Level > EntryLevelNotMappable {
+					continue
 				}
 
-				// we tried setting the bank for the address but couldn't do
-				// it, so we flip the entryLevel to NotMappable. the traversal
-				// of the bank will continue in the normal way.
-				//
-				// we could just continue the seg loop and not bother with the
-				// reset of the loop. however we would then be left with a
-				// sparse array which would complicate iteration. it does mean
-				// we'll have entries in the array that are not valid in the
-				// strictest sense but with the EntryLevelNotMappable group the
-				// method is easier/safer and reasonably clear
-				entryLevel = EntryLevelNotMappable
-			}
+				// decide whether address is mappable or not. even if it isn't,
+				// we'll still go through the decoding process so that we have
+				// a usuable entry at all points in the disassembly. this
+				// simplifies future iterations.
+				entryLevel := EntryLevelNotMappable
+				if address >= origin && address <= memtop {
+					entryLevel = EntryLevelDecoded
+				}
 
-			// we're using uint16 for addresses so if memtop is defined to be
-			// 0xffff the clause address <= memtop will always be true. the
-			// additional clause detects the overflow condition
-			for address := origin; address <= memtop && address >= origin; address++ {
 				// execute instruction at address
 				mc.PC.Load(address)
 				err := mc.ExecuteInstruction(nil)
@@ -206,23 +252,40 @@ func (dsm *Disassembly) decode(mc *cpu.CPU) error {
 				}
 
 				// create a new disassembly entry using last result
-				ent, err := dsm.formatResult(memorymap.BankDetails{Number: b}, mc.LastResult, entryLevel)
+				ent, err := dsm.formatResult(banks.Details{Number: bank.Number}, mc.LastResult, entryLevel)
 				if err != nil {
 					return err
 				}
 
+				// if it's a valid instruction then update the field width information
 				if !unimplementedInstruction && !programCounterCycled {
 					if err = mc.LastResult.IsValid(); err != nil {
 						return err
 					}
-
-					// update field formatting information
 					dsm.fields.updateWidths(ent)
 				}
 
-				// add entry to disassmebly. we do this even if we've encountered a
+				// add entry to disassembly. we do this even if we've encountered a
 				// unimplemented instruction or some other error
-				dsm.disasm[b][address&memorymap.CartridgeBits] = ent
+				dsm.disasm[bank.Number][address&memorymap.CartridgeBits] = ent
+			}
+		}
+
+		// onto the next bank
+		bank, err = dsm.cart.IterateBanks(bank)
+		if err != nil {
+			return err
+		}
+	}
+
+	// sanity checks
+	if bankCt != dsm.cart.NumBanks() {
+		return errors.New(errors.DisasmError, "number of banks in disassembly is different to NumBanks()")
+	}
+	for b := range dsm.disasm {
+		for _, a := range dsm.disasm[b] {
+			if a == nil {
+				return errors.New(errors.DisasmError, "not every address has been decoded")
 			}
 		}
 	}

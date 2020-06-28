@@ -113,6 +113,10 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 	// count the number of entries with the minimum level
 	count := 0
 	for _, a := range dsm.disasm[bank] {
+		if a == nil {
+			return nil, 0, errors.New(errors.IterationError, "disassembly not complete")
+		}
+
 		if a.Level >= minLevel {
 			count++
 		}

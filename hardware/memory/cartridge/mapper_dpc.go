@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -382,15 +383,9 @@ func (cart dpc) NumBanks() int {
 	return 2
 }
 
-// SetBank implements the cartMapper interface
-func (cart *dpc) SetBank(addr uint16, bank int) error {
-	cart.bank = bank
-	return nil
-}
-
 // GetBank implements the cartMapper interface
-func (cart dpc) GetBank(addr uint16) memorymap.BankDetails {
-	return memorymap.BankDetails{Number: cart.bank, IsRAM: false}
+func (cart dpc) GetBank(addr uint16) banks.Details {
+	return banks.Details{Number: cart.bank, IsRAM: false}
 }
 
 // Patch implements the cartMapper interface
@@ -520,5 +515,19 @@ func (cart *dpc) PutStatic(addr uint16, data uint8) error {
 		return errors.New(errors.CartridgeStaticOOB, addr)
 	}
 	cart.static.Gfx[addr] = data
+	return nil
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart dpc) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b < len(cart.banks) {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+			},
+		}
+	}
 	return nil
 }

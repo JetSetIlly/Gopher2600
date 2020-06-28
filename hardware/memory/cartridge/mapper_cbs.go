@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -142,16 +143,10 @@ func (cart cbs) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart cbs) GetBank(addr uint16) memorymap.BankDetails {
+func (cart cbs) GetBank(addr uint16) banks.Details {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return memorymap.BankDetails{Number: cart.bank, IsRAM: addr <= 0x00ff}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *cbs) SetBank(addr uint16, bank int) error {
-	cart.bank = bank
-	return nil
+	return banks.Details{Number: cart.bank, IsRAM: addr <= 0x00ff}
 }
 
 // Patch implements the cartMapper interface
@@ -189,4 +184,18 @@ func (cart cbs) GetRAM() []bus.CartRAM {
 // PutRAM implements the bus.CartRAMBus interface
 func (cart *cbs) PutRAM(_ int, idx int, data uint8) {
 	cart.ram[idx] = data
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart cbs) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b < len(cart.banks) {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+			},
+		}
+	}
+	return nil
 }

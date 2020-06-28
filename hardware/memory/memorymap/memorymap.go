@@ -19,8 +19,6 @@
 
 package memorymap
 
-import "fmt"
-
 // Area represents the different areas of memory
 type Area int
 
@@ -144,24 +142,4 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 func IsArea(address uint16, area Area) bool {
 	_, a := MapAddress(address, true)
 	return area == a
-}
-
-// BankDetails is used to identify a cartridge bank. In some contexts bank is
-// represented by an integer only. The Bank type is used when more information
-// about a bank is required.
-type BankDetails struct {
-	Number  int
-	IsRAM   bool
-	NonCart bool
-	Segment int
-}
-
-func (b BankDetails) String() string {
-	if b.NonCart {
-		return "-"
-	}
-	if b.IsRAM {
-		return fmt.Sprintf("%dR", b.Number)
-	}
-	return fmt.Sprintf("%d", b.Number)
 }

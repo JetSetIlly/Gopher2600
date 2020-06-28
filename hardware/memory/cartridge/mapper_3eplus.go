@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -210,7 +211,7 @@ func (cart mapper3ePlus) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart *mapper3ePlus) GetBank(addr uint16) memorymap.BankDetails {
+func (cart *mapper3ePlus) GetBank(addr uint16) banks.Details {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -223,27 +224,9 @@ func (cart *mapper3ePlus) GetBank(addr uint16) memorymap.BankDetails {
 	}
 
 	if cart.segmentIsRam[seg] {
-		return memorymap.BankDetails{Number: cart.segment[seg], IsRAM: true, Segment: seg}
+		return banks.Details{Number: cart.segment[seg], IsRAM: true, Segment: seg}
 	}
-	return memorymap.BankDetails{Number: cart.segment[seg], Segment: seg}
-}
-
-// SetBank implements the cartMapper interface
-func (cart *mapper3ePlus) SetBank(addr uint16, bank int) error {
-	if addr >= 0x0000 && addr <= 0x03ff {
-		cart.segment[0] = bank
-		cart.segmentIsRam[0] = false
-	} else if addr >= 0x0400 && addr <= 0x07ff {
-		cart.segment[1] = bank
-		cart.segmentIsRam[1] = false
-	} else if addr >= 0x0800 && addr <= 0x0bff {
-		cart.segment[2] = bank
-		cart.segmentIsRam[2] = false
-	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		cart.segment[3] = bank
-		cart.segmentIsRam[3] = false
-	}
-	return nil
+	return banks.Details{Number: cart.segment[seg], Segment: seg}
 }
 
 // Patch implements the cartMapper interface
@@ -300,4 +283,20 @@ func (cart mapper3ePlus) GetRAM() []bus.CartRAM {
 // PutRAM implements the bus.CartRAMBus interface
 func (cart *mapper3ePlus) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
+}
+
+// IterateBank implemnts the disassemble interface
+func (cart mapper3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
+	b := prev.Number + 1
+	if b < len(cart.banks) {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				memorymap.OriginCart,
+				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCart + uint16(cart.bankSize)*2,
+				memorymap.OriginCart + uint16(cart.bankSize)*3},
+		}
+	}
+	return nil
 }
