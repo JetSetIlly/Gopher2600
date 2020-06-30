@@ -22,25 +22,28 @@ package memory
 import (
 	"math/rand"
 
+	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
 // VCSMemory is the monolithic representation of the memory in 2600.
 type VCSMemory struct {
+	bus.DebugBus
 	bus.CPUBus
 
 	// memmap is a hash for every address in the VCS address space, returning
 	// one of the four memory areas
-	Memmap []bus.DebuggerBus
+	Memmap []bus.DebugBus
 
 	// the four memory areas
-	RIOT *ChipMemory
-	TIA  *ChipMemory
-	RAM  *RAM
+	RIOT *vcs.ChipMemory
+	TIA  *vcs.ChipMemory
+	RAM  *vcs.RAM
 	Cart *cartridge.Cartridge
 
 	// the following are only used by the debugging interface. it would be
@@ -77,11 +80,11 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := &VCSMemory{}
 
-	mem.Memmap = make([]bus.DebuggerBus, memorymap.Memtop+1)
+	mem.Memmap = make([]bus.DebugBus, memorymap.Memtop+1)
 
-	mem.RIOT = newRIOT()
-	mem.TIA = newTIA()
-	mem.RAM = newRAM()
+	mem.RIOT = vcs.NewRIOT()
+	mem.TIA = vcs.NewTIA()
+	mem.RAM = vcs.NewRAM()
 	mem.Cart = cartridge.NewCartridge()
 
 	// create the memory map by associating all addresses in each memory area
@@ -106,7 +109,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 }
 
 // GetArea returns the actual memory of the specified area type
-func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebuggerBus {
+func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebugBus {
 	switch area {
 	case memorymap.TIA:
 		return mem.TIA
@@ -128,7 +131,15 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	area := mem.GetArea(ar)
 
-	data, err := area.(bus.CPUBus).Read(ma)
+	var data uint8
+	var err error
+
+	if ar == memorymap.Cartridge {
+		// some cartridge mappers want to see the unmapped address
+		data, err = area.(*cartridge.Cartridge).Read(address)
+	} else {
+		data, err = area.(bus.CPUBus).Read(ma)
+	}
 
 	// some memory areas do not change all the bits on the data bus, leaving
 	// some bits of the address in the result
@@ -163,6 +174,11 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	mem.LastAccessID = mem.accessCount
 	mem.accessCount++
 
+	// see the commentary for the Listen() function in the Cartridge interface
+	// for an explanation for what is going on here. more to the point, we only
+	// need to "listen" if the mapped address is not in Cartridge space
+	mem.Cart.Listen(address, data)
+
 	return data, err
 }
 
@@ -194,9 +210,25 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	// see the commentary for the Listen() function in the Cartridge interface
 	// for an explanation for what is going on here. more to the point, we only
 	// need to "listen" if the mapped address is not in Cartridge space
-	if ar != memorymap.Cartridge {
-		mem.Cart.Listen(address, data)
-	}
+	mem.Cart.Listen(address, data)
 
 	return area.(bus.CPUBus).Write(ma, data)
+}
+
+// Peek implements the DebugBus interface
+func (mem VCSMemory) Peek(address uint16) (uint8, error) {
+	ma, ar := memorymap.MapAddress(address, true)
+	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
+		return area.Peek(ma)
+	}
+	return 0, errors.New(errors.UnpeekableAddress, address)
+}
+
+// Poke implements the DebugBus interface
+func (mem VCSMemory) Poke(address uint16, data uint8) error {
+	ma, ar := memorymap.MapAddress(address, true)
+	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
+		return area.(bus.DebugBus).Poke(ma, data)
+	}
+	return errors.New(errors.UnpokeableAddress, address)
 }

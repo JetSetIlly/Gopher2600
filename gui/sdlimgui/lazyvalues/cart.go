@@ -36,9 +36,11 @@ type LazyCart struct {
 	atomicNumBanks atomic.Value // int
 	atomicCurrBank atomic.Value // int
 
-	atomicDebugBus  atomic.Value // bus.CartDebugBus
-	atomicStatic    atomic.Value
-	atomicRegisters atomic.Value // bus.CartRegisters
+	atomicStaticBus atomic.Value // bus.CartStaticBus
+	atomicStatic    atomic.Value // bus.CartStatic
+
+	atomicRegistersBus atomic.Value // bus.CartRegistersBus
+	atomicRegisters    atomic.Value // bus.CartRegisters
 
 	atomicRAMbus atomic.Value // bus.CartRAMbus
 	atomicRAM    atomic.Value // []bus.CartRAM
@@ -49,10 +51,13 @@ type LazyCart struct {
 	NumBanks int
 	CurrBank banks.Details
 
-	HasDebugBus bool
-	DebugBus    bus.CartDebugBus
-	Static      bus.CartStatic
-	Registers   bus.CartRegisters
+	HasStaticBus bool
+	StaticBus    bus.CartStaticBus
+	Static       bus.CartStatic
+
+	HasRegistersBus bool
+	RegistersBus    bus.CartRegistersBus
+	Registers       bus.CartRegisters
 
 	HasRAMbus bool
 	RAMbus    bus.CartRAMbus
@@ -77,11 +82,16 @@ func (lz *LazyCart) update() {
 		lz.atomicNumBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
 		lz.atomicCurrBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(PCaddr))
 
-		b := lz.val.Dbg.VCS.Mem.Cart.GetDebugBus()
-		if b != nil {
-			lz.atomicDebugBus.Store(b)
-			lz.atomicStatic.Store(b.GetStatic())
-			lz.atomicRegisters.Store(b.GetRegisters())
+		sb := lz.val.Dbg.VCS.Mem.Cart.GetStaticBus()
+		if sb != nil {
+			lz.atomicStaticBus.Store(sb)
+			lz.atomicStatic.Store(sb.GetStatic())
+		}
+
+		rb := lz.val.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		if rb != nil {
+			lz.atomicRegistersBus.Store(rb)
+			lz.atomicRegisters.Store(rb.GetRegisters())
 		}
 
 		r := lz.val.Dbg.VCS.Mem.Cart.GetRAMbus()
@@ -97,9 +107,13 @@ func (lz *LazyCart) update() {
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
 	lz.CurrBank, _ = lz.atomicCurrBank.Load().(banks.Details)
 
-	lz.DebugBus, lz.HasDebugBus = lz.atomicDebugBus.Load().(bus.CartDebugBus)
-	if lz.HasDebugBus {
+	lz.StaticBus, lz.HasStaticBus = lz.atomicStaticBus.Load().(bus.CartStaticBus)
+	if lz.HasStaticBus {
 		lz.Static, _ = lz.atomicStatic.Load().(bus.CartStatic)
+	}
+
+	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(bus.CartRegistersBus)
+	if lz.HasRegistersBus {
 		lz.Registers, _ = lz.atomicRegisters.Load().(bus.CartRegisters)
 	}
 

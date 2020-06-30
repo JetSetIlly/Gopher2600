@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
 // inputLoop has two modes, defined by the videoCycle argument. when videoCycle
@@ -291,14 +292,29 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			}
 
 			if cpuErr != nil {
-				// exit input loop only if error is not an AtariError...
-				if !errors.IsAny(cpuErr) {
-					return errors.New(errors.DebuggerError, cpuErr)
-				}
+				// the supercharger ROM will eventually start execution from the PC
+				// address given in the supercharger file. when "fast-loading"
+				// supercharger bin files however, we need a way of doing this without
+				// the ROM. the TapeLoaded error allows us to do this by interpreting
+				// the error as a uint16 address which we can then load into the
+				// program counter directly.
+				if onTapeLoaded, ok := cpuErr.(supercharger.TapeLoaded); ok {
+					err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM)
+					if err != nil {
+						return err
+					}
 
-				// ...set lastStepError instead and allow emulation to halt
-				dbg.lastStepError = true
-				dbg.printLine(terminal.StyleError, "%s", cpuErr)
+					// !!TODO: (re)disassemble memory on TapeLoaded error signal
+				} else {
+					// exit input loop only if error is not an AtariError...
+					if !errors.IsAny(cpuErr) {
+						return errors.New(errors.DebuggerError, cpuErr)
+					}
+
+					// ...set lastStepError instead and allow emulation to halt
+					dbg.lastStepError = true
+					dbg.printLine(terminal.StyleError, "%s", cpuErr)
+				}
 			} else {
 				err := dbg.Disasm.UpdateEntry(dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
 				if err != nil {

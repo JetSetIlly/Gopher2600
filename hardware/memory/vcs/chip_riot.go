@@ -17,44 +17,25 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package lazyvalues
+package vcs
 
 import (
-	"sync/atomic"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// LazyRAM lazily accesses the RAM area of VCS memory
-type LazyRAM struct {
-	val *Lazy
-
-	atomicRAM []atomic.Value // []uint8
-}
-
-func newLazyRAM(val *Lazy) *LazyRAM {
-	return &LazyRAM{
-		val:       val,
-		atomicRAM: make([]atomic.Value, memorymap.MemtopRAM-memorymap.OriginRAM+1),
-	}
-}
-
-func (lz *LazyRAM) update() {
-	// does not update
-}
-
-// Read returns the data at read address
-func (lz *LazyRAM) Read(addr uint16) uint8 {
-	if !lz.val.active.Load().(bool) || lz.val.Dbg == nil {
-		return 0
+// NewRIOT is the preferred method of initialisation for the RIOT memory area
+func NewRIOT() *ChipMemory {
+	area := &ChipMemory{
+		origin: memorymap.OriginRIOT,
+		memtop: memorymap.MemtopRIOT,
 	}
 
-	lz.val.Dbg.PushRawEvent(func() {
-		d, _ := lz.val.Dbg.VCS.Mem.Peek(addr)
-		lz.atomicRAM[addr^memorymap.OriginRAM].Store(d)
-	})
+	// allocation the minimal amount of memory
+	area.memory = make([]uint8, area.memtop-area.origin+1)
 
-	d, _ := lz.atomicRAM[addr^memorymap.OriginRAM].Load().(uint8)
+	// SWCHA set on startup by NewHandController0() and NewHandController1()
 
-	return d
+	// SWCHB set on startup NewPanel()
+
+	return area
 }

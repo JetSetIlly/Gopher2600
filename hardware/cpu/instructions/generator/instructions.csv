@@ -55,7 +55,6 @@
 # !!TODO: maybe the number of cycles can be inferred in a similar way
 
 # no operation
-# (also see the undocuemted instruction, DOP)
 0xea, NOP, 2, IMPLIED, False
 
 # status flags
@@ -262,6 +261,7 @@
 0x80, nop, 2, IMMEDIATE, False
 0x82, nop, 2, IMMEDIATE, False
 0x14, nop, 4, ZEROPAGE_INDEXED_X, False
+0x5a, nop, 2, IMMEDIATE, False
 0x0c, skw, 4, ABSOLUTE, False
 0x1c, skw, 4, ABSOLUTE_INDEXED_X, True
 0x3c, skw, 4, ABSOLUTE_INDEXED_X, True

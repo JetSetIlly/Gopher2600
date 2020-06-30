@@ -17,25 +17,29 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package memory
+package vcs
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// newRIOT is the preferred method of initialisation for the RIOT memory area
-func newRIOT() *ChipMemory {
+// NewTIA is the preferred method of initialisation for the TIA memory area
+func NewTIA() *ChipMemory {
 	area := &ChipMemory{
-		origin: memorymap.OriginRIOT,
-		memtop: memorymap.MemtopRIOT,
+		origin: memorymap.OriginTIA,
+		memtop: memorymap.MemtopTIA,
 	}
 
 	// allocation the minimal amount of memory
 	area.memory = make([]uint8, area.memtop-area.origin+1)
 
-	// SWCHA set on startup by NewHandController0() and NewHandController1()
-
-	// SWCHB set on startup NewPanel()
+	// initial values
+	area.memory[addresses.INPT1] = 0x00
+	area.memory[addresses.INPT2] = 0x00
+	area.memory[addresses.INPT3] = 0x00
+	area.memory[addresses.INPT4] = 0x80
+	area.memory[addresses.INPT5] = 0x80
 
 	return area
 }

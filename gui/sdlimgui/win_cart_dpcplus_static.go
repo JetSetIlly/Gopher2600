@@ -64,7 +64,7 @@ func (win *winDPCplusStatic) draw() {
 
 	// do not open window if there is no valid cartridge debug bus available
 	sa, ok := win.img.lz.Cart.Static.(harmony.DPCplusStatic)
-	if !win.img.lz.Cart.HasDebugBus || !ok {
+	if !win.img.lz.Cart.HasStaticBus || !ok {
 		return
 	}
 
@@ -134,7 +134,7 @@ func (win *winDPCplusStatic) drawEditByte(addr uint16, b byte) {
 	if imguiHexInput(label, !win.img.paused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
 				b.PutStatic(addr, uint8(v))
 			})
 		}

@@ -156,6 +156,9 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinDPCplusStatic, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinSuperchargerRegisters, false, windowMenuCart); err != nil {
+		return nil, err
+	}
 	if err := addWindow(newWinCartRAM, false, windowMenuCart); err != nil {
 		return nil, err
 	}
@@ -172,6 +175,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCregistersTitle)
 	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusStaticTitle)
 	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusRegistersTitle)
+	wm.windowMenu["AR"] = append(wm.windowMenu["AR"], winSuperchargerRegistersTitle)
 
 	// get references to specific window types that need to be referenced
 	// elsewhere in the system
@@ -259,11 +263,13 @@ func (wm *windowManager) drawMenu() {
 	// note that debug bus windows need to have been added to the window menu
 	// for the specific cartridge ID. see newWindowManager() function above
 	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus
-	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasDebugBus {
+	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasRegistersBus {
+		cartSpecificMenu = true
+	} else if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasStaticBus {
 		cartSpecificMenu = true
 	}
 	if cartSpecificMenu {
-		if imgui.BeginMenu(wm.img.lz.Cart.ID) {
+		if imgui.BeginMenu(fmt.Sprintf("Cartridge [%s]", wm.img.lz.Cart.ID)) {
 			cartSpecificMenu = true
 			for _, id := range wm.windowMenu[wm.img.lz.Cart.ID] {
 				wm.drawMenuWindowEntry(wm.windows[id], id)

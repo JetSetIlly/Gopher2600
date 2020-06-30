@@ -52,7 +52,7 @@ func fingerprint3ePlus(b []byte) bool {
 	return false
 }
 
-type mapper3ePlus struct {
+type m3ePlus struct {
 	mappingID   string
 	description string
 
@@ -81,7 +81,7 @@ type mapper3ePlus struct {
 func new3ePlus(data []byte) (cartMapper, error) {
 	const ramSize = 512
 
-	cart := &mapper3ePlus{
+	cart := &m3ePlus{
 		mappingID:   "3E+",
 		description: "", // no description
 		bankSize:    1024,
@@ -115,7 +115,7 @@ func new3ePlus(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
-func (cart mapper3ePlus) String() string {
+func (cart m3ePlus) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
 	for i := range cart.segment {
@@ -130,12 +130,12 @@ func (cart mapper3ePlus) String() string {
 }
 
 // ID implements the cartMapper interface
-func (cart mapper3ePlus) ID() string {
+func (cart m3ePlus) ID() string {
 	return cart.mappingID
 }
 
 // Initialise implements the cartMapper interface
-func (cart *mapper3ePlus) Initialise() {
+func (cart *m3ePlus) Initialise() {
 	// from spec:
 	//
 	// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
@@ -149,7 +149,7 @@ func (cart *mapper3ePlus) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *mapper3ePlus) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -177,7 +177,7 @@ func (cart *mapper3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the cartMapper interface
-func (cart *mapper3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
 	}
@@ -206,12 +206,12 @@ func (cart *mapper3ePlus) Write(addr uint16, data uint8, passive bool, poke bool
 }
 
 // NumBanks implements the cartMapper interface
-func (cart mapper3ePlus) NumBanks() int {
+func (cart m3ePlus) NumBanks() int {
 	return len(cart.banks)
 }
 
 // GetBank implements the cartMapper interface
-func (cart *mapper3ePlus) GetBank(addr uint16) banks.Details {
+func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -230,7 +230,7 @@ func (cart *mapper3ePlus) GetBank(addr uint16) banks.Details {
 }
 
 // Patch implements the cartMapper interface
-func (cart *mapper3ePlus) Patch(offset int, data uint8) error {
+func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
 	}
@@ -242,7 +242,7 @@ func (cart *mapper3ePlus) Patch(offset int, data uint8) error {
 }
 
 // Listen implements the cartMapper interface
-func (cart *mapper3ePlus) Listen(addr uint16, data uint8) {
+func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
 	// mechanism
 
@@ -261,11 +261,11 @@ func (cart *mapper3ePlus) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the cartMapper interface
-func (cart *mapper3ePlus) Step() {
+func (cart *m3ePlus) Step() {
 }
 
 // GetRAM implements the bus.CartRAMBus interface
-func (cart mapper3ePlus) GetRAM() []bus.CartRAM {
+func (cart m3ePlus) GetRAM() []bus.CartRAM {
 	r := make([]bus.CartRAM, len(cart.ram))
 
 	for i := range cart.ram {
@@ -281,12 +281,12 @@ func (cart mapper3ePlus) GetRAM() []bus.CartRAM {
 }
 
 // PutRAM implements the bus.CartRAMBus interface
-func (cart *mapper3ePlus) PutRAM(bank int, idx int, data uint8) {
+func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
 }
 
 // IterateBank implemnts the disassemble interface
-func (cart mapper3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
+func (cart m3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
 	b := prev.Number + 1
 	if b < len(cart.banks) {
 		return &banks.Content{Number: b,

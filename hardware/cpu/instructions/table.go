@@ -95,7 +95,7 @@ func GetDefinitions() ([]*Definition, error) {
 		nil,
 		&Definition{OpCode: 0x58, Mnemonic: "CLI", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0x59, Mnemonic: "EOR", Bytes: 3, Cycles: 4, AddressingMode: 9, PageSensitive: true, Effect: 0},
-		nil,
+		&Definition{OpCode: 0x5a, Mnemonic: "nop", Bytes: 2, Cycles: 2, AddressingMode: 1, PageSensitive: false, Effect: 0},
 		nil,
 		&Definition{OpCode: 0x5c, Mnemonic: "skw", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},
 		&Definition{OpCode: 0x5d, Mnemonic: "EOR", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},

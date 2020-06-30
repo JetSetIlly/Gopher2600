@@ -35,7 +35,7 @@ import (
 
 // Cartridge defines the information and operations for a VCS cartridge
 type Cartridge struct {
-	bus.DebuggerBus
+	bus.DebugBus
 	bus.CPUBus
 	Filename string
 	Hash     string
@@ -73,14 +73,14 @@ func (cart Cartridge) ID() string {
 	return cart.mapper.ID()
 }
 
-// Peek is an implementation of memory.DebuggerBus. Address must be normalised.
+// Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr^memorymap.OriginCart, false)
+	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
 }
 
-// Poke is an implementation of memory.DebuggerBus. Address must be normalised.
+// Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data, false, true)
+	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, false, true)
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
@@ -89,14 +89,22 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 	return cart.mapper.Patch(offset, data)
 }
 
-// Read is an implementation of memory.CPUBus. Address must be normalised.
+// Read is an implementation of memory.CPUBus. Address should not be
+// normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr^memorymap.OriginCart, cart.Passive)
+	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
+		return cart.mapper.Read(addr, cart.Passive)
+	}
+	return cart.mapper.Read(addr&memorymap.CartridgeBits, cart.Passive)
 }
 
-// Write is an implementation of memory.CPUBus. Address must be normalised.
+// Write is an implementation of memory.CPUBus. Address should not be
+// normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr^memorymap.OriginCart, data, cart.Passive, false)
+	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
+		return cart.mapper.Write(addr, data, cart.Passive, false)
+	}
+	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, cart.Passive, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -225,25 +233,6 @@ func (cart Cartridge) GetBank(addr uint16) banks.Details {
 	return cart.mapper.GetBank(addr & memorymap.CartridgeBits)
 }
 
-// BankSize returns the number of bytes in each bank. The number of segments
-// can be obtained by dividing 4096 by the returned value.
-func (cart Cartridge) BankSize() uint16 {
-	switch cart.mapper.(type) {
-	case *mapper3ePlus:
-		return 1024
-	case *mnetwork:
-		return 2048
-	case *parkerBros:
-		return 1024
-	case *tigervision:
-		return 2048
-	case *supercharger.Supercharger:
-		return 2048
-	default:
-		return 4096
-	}
-}
-
 // Listen for data at the specified address.
 //
 // The VCS cartridge port is wired up to all 13 address lines of the 6507.
@@ -267,9 +256,17 @@ func (cart Cartridge) Step() {
 	cart.mapper.Step()
 }
 
-// GetDebugBus returns interface to the debugging bus to the cartridge.
-func (cart Cartridge) GetDebugBus() bus.CartDebugBus {
-	if bus, ok := cart.mapper.(bus.CartDebugBus); ok {
+// GetRegistersBus returns interface to the debugging bus to the cartridge.
+func (cart Cartridge) GetRegistersBus() bus.CartRegistersBus {
+	if bus, ok := cart.mapper.(bus.CartRegistersBus); ok {
+		return bus
+	}
+	return nil
+}
+
+// GetStaticBus returns interface to the debugging bus to the cartridge.
+func (cart Cartridge) GetStaticBus() bus.CartStaticBus {
+	if bus, ok := cart.mapper.(bus.CartStaticBus); ok {
 		return bus
 	}
 	return nil

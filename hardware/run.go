@@ -19,7 +19,10 @@
 
 package hardware
 
-import "github.com/jetsetilly/gopher2600/television"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
+	"github.com/jetsetilly/gopher2600/television"
+)
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
@@ -65,7 +68,15 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	for cont {
 		err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
-			return err
+			// see Step() funciton for explanation
+			if onTapeLoaded, ok := err.(supercharger.TapeLoaded); ok {
+				err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
 		}
 
 		cont, err = continueCheck()

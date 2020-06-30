@@ -25,21 +25,21 @@ import (
 	"fmt"
 )
 
-// DebuggerBus defines the meta-operations for all memory areas. Think of these
+// DebugBus defines the meta-operations for all memory areas. Think of these
 // functions as "debugging" functions, that is operations outside of the normal
 // operation of the machine.
-type DebuggerBus interface {
+type DebugBus interface {
 	Peek(address uint16) (uint8, error)
 	Poke(address uint16, value uint8) error
 }
 
-// CartDebugBus defines the operations required for a debugger to access the
-// static and special function areas of a cartrudge.
+// CartRegistersBus defines the operations required for a debugger to access the
+// registers in a cartridge.
 //
 // The mapper is allowed to panic if it is not interfaced with correctly.
 //
-// You should know the precise cartridge mapper for the CartRegister and
-// CartStatic type to be usable.
+// You should know the precise cartridge mapper for the CartRegisters to be
+// usable.
 //
 // So what's the point of the interface if you need to know the details of the
 // underlying type? Couldn't we just use a type assertion?
@@ -55,7 +55,7 @@ type DebuggerBus interface {
 //
 // The GetRegisters() allows us to conceptualise the copying process and to
 // keep the details inside the cartridge implementation as much as possible.
-type CartDebugBus interface {
+type CartRegistersBus interface {
 	// GetRegisters returns a copy of the cartridge's registers
 	GetRegisters() CartRegisters
 
@@ -73,7 +73,13 @@ type CartDebugBus interface {
 	// representation. Again, the details of what is valid should be specified
 	// in the mapper documentation.
 	PutRegister(register string, data string)
+}
 
+// CartStaticBus defines the operations required for a debugger to access the
+// static area of a cartridge.
+//
+// The commentary above for the CartRegistersBus applies to the CartStaticBus
+type CartStaticBus interface {
 	// GetStatic returns a copy of the cartridge's static areas
 	GetStatic() CartStatic
 	PutStatic(addr uint16, data uint8) error

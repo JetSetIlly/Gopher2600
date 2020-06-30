@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package memory
+package vcs
 
 import (
 	"fmt"
@@ -30,13 +30,13 @@ import (
 // RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
 // VCS.
 type RAM struct {
-	bus.DebuggerBus
+	bus.DebugBus
 	bus.CPUBus
 	RAM []uint8
 }
 
-// newRAM is the preferred method of initialisation for the RAM memory area
-func newRAM() *RAM {
+// NewRAM is the preferred method of initialisation for the RAM memory area
+func NewRAM() *RAM {
 	ram := &RAM{}
 
 	// allocate the mininmal amount of memory
@@ -59,13 +59,13 @@ func (ram RAM) String() string {
 	return strings.Trim(s.String(), "\n")
 }
 
-// Peek is the implementation of memory.DebuggerBus. Address must be
+// Peek is the implementation of memory.DebugBus. Address must be
 // normalised.
 func (ram RAM) Peek(address uint16) (uint8, error) {
 	return ram.Read(address)
 }
 
-// Poke is the implementation of memory.DebuggerBus. Address must be
+// Poke is the implementation of memory.DebugBus. Address must be
 // normalised.
 func (ram RAM) Poke(address uint16, value uint8) error {
 	return ram.Write(address, value)

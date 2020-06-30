@@ -106,6 +106,8 @@ US Patent Number 4,644,495 was referenced for the implementation of the DPC cart
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
 
+The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
+
 ## ROMs used during development
 
 The following ROMs were used throughout development and compared with the

@@ -18,12 +18,15 @@
 // notice is not present ***
 
 // Package cartridge fully implements loading of mapping of cartridge memory.
+// Cartridge memory is memory that is peripheral to the VCS and can grow quite
+// complex.
 //
-// There are many different types of cartridge most of which are supported by
-// the package. Some cartridge types contain additional RAM but the main
-// difference is how they map additional ROM to the relatively small address
-// space available for cartridges in the VCS. This is called bank-switching.
-// All of these differences are handled transparently by the package.
+// There are many different types of mapping scheme supported by the package.
+//
+// Some cartridge types contain additional RAM but the main difference is how
+// they map additional ROM into the relatively small address space available
+// for cartridges in the VCS. This is called bank-switching. All of these
+// differences are handled transparently by the package.
 //
 // Currently supported cartridge types are listed below. The strings in
 // quotation marks are the identifiers that should be used to specify a
@@ -41,4 +44,6 @@
 //	Tigervision		"3F"
 //	DPC (Pitfall2)  "DPC"
 //	DPC+			"DPC+"
+//	3E+				"3E+"
+//	Supercharger	"AR"
 package cartridge

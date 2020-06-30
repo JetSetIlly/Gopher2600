@@ -288,14 +288,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
-				if db := dbg.VCS.Mem.Cart.GetDebugBus(); db != nil {
+				if db := dbg.VCS.Mem.Cart.GetStaticBus(); db != nil {
 					dbg.printInstrument(db.GetStatic())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 				}
 			case "REGISTERS":
 				// !!TODO: poke/peek cartridge registers
-				bus := dbg.VCS.Mem.Cart.GetDebugBus()
+				bus := dbg.VCS.Mem.Cart.GetRegistersBus()
 				if bus != nil {
 					dbg.printInstrument(bus.GetRegisters())
 				} else {

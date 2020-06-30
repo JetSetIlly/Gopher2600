@@ -22,5 +22,6 @@ package supercharger
 // FingerprintSupercharger tests returns true if the byte stream represents a
 // probable supercharger binary file
 func FingerprintSupercharger(b []byte) bool {
-	return (len(b)-256)%1024 == 0
+	// only the 8448byte bin file is supported for now
+	return len(b) == 8448
 }

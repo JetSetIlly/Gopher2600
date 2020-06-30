@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -37,39 +38,12 @@ type Supercharger struct {
 	mappingID   string
 	description string
 
-	registers SuperChargerRegisters
+	tape      Tape
+	registers Registers
 
 	bankSize int
 	bios     []uint8
 	ram      [3][]uint8
-
-	tape        []byte
-	tapeCtr     int
-	tapeByteCtr int
-}
-
-// SuperChargerRegisters implements the bus.CartRegisters interface
-type SuperChargerRegisters struct {
-	value uint8
-
-	WriteDelay  int
-	BankingMode int
-	RAMwrite    bool
-	ROMpower    bool
-
-	Transitions int // 0=off, 1=trigger
-}
-
-func (r SuperChargerRegisters) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("wd: %d  bbb: %d  ram: %v  rom: %v", r.WriteDelay, r.BankingMode, r.RAMwrite, r.ROMpower))
-	return s.String()
-}
-
-func (r *SuperChargerRegisters) tick() {
-	if r.Transitions > 0 {
-		r.Transitions--
-	}
 }
 
 // NewSupercharger is the preferred method of initialisation for the
@@ -79,8 +53,11 @@ func NewSupercharger(data []byte) (*Supercharger, error) {
 		mappingID:   "AR",
 		description: "supercharger",
 		bankSize:    2048,
-		tape:        data,
 	}
+
+	// set up tape
+	cart.tape.cart = cart
+	cart.tape.data = data
 
 	// allocate ram
 	for i := range cart.ram {
@@ -102,15 +79,14 @@ func NewSupercharger(data []byte) (*Supercharger, error) {
 
 func (cart Supercharger) String() string {
 	s := strings.Builder{}
-	s.WriteString(cart.description)
-	s.WriteString(" ")
-	s.WriteString(cart.registers.String())
+	s.WriteString(fmt.Sprintf("%s [%s] ", cart.mappingID, cart.description))
+	s.WriteString(cart.registers.BankString())
 	return s.String()
 }
 
 // ID implements the cartMapper interface
 func (cart Supercharger) ID() string {
-	return "-"
+	return cart.mappingID
 }
 
 // Initialise implements the cartMapper interface
@@ -122,46 +98,45 @@ func (cart *Supercharger) Initialise() {
 }
 
 // Read implements the cartMapper interface
-func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
-	cart.registers.tick()
+func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
+	addr := fullAddr & memorymap.CartridgeBits
 
-	switch addr {
-	case 0x0ff8:
-		// control register
-		cart.registers.ROMpower = cart.registers.value&0x01 != 0x01
-		cart.registers.RAMwrite = cart.registers.value&0x02 == 0x02
-		cart.registers.BankingMode = int((cart.registers.value >> 2) & 0x07)
-		cart.registers.WriteDelay = int((cart.registers.value >> 5) & 0x07)
-		return 0, nil
-
-	case 0x0ff9:
-		if cart.tapeCtr >= len(cart.tape) {
+	if !passive {
+		switch addr {
+		case 0x0ff8:
+			// control register
+			cart.registers.setConfigByte(cart.registers.Value)
+			cart.registers.Delay = 0
 			return 0, nil
+
+		case 0x0ff9:
+			// call load() whenever address is touched, although do not allow
+			// it if RAMwrite is false
+			if !cart.registers.RAMwrite {
+				return 0, nil
+			}
+			return 0, cart.tape.load()
 		}
 
-		b := (cart.tape[cart.tapeCtr] >> cart.tapeByteCtr) & 0x01
-		cart.tapeByteCtr++
-		if cart.tapeByteCtr > 7 {
-			cart.tapeByteCtr = 0
-			cart.tapeCtr++
+		// note address to be used as the next value in the control register
+		if fullAddr&0xf000 == 0xf000 && fullAddr <= 0xf0ff {
+			if cart.registers.Delay == 0 {
+				cart.registers.Value = uint8(fullAddr & 0x00ff)
+				cart.registers.Delay = 6
+			}
 		}
-
-		return b, nil
 	}
 
-	// note address to be used as the next value in the control register
-	if !passive && addr <= 0x00ff {
-		cart.registers.value = uint8(addr & 0xff)
-		cart.registers.Transitions = 4
-	}
-
-	bios := false
+	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
+	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
 
+	bios := false
 	switch bank {
 	case 0:
 		bios = true
 	default:
+		// RAM banks are indexed from 0 to 2
 		bank--
 	}
 
@@ -172,9 +147,14 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 		return 0, errors.New(errors.SuperchargerError, "ROM is powered off")
 	}
 
-	if cart.registers.Transitions == 1 {
+	if !passive && cart.registers.Delay == 1 {
+		if bios {
+			return 0, errors.New(errors.SuperchargerError, "trying to write to ROM")
+		}
 		if cart.registers.RAMwrite {
-			cart.ram[bank][addr&0x7ff] = cart.registers.value
+			cart.ram[bank][addr&0x7ff] = cart.registers.Value
+			cart.registers.LastWriteAddress = fullAddr
+			cart.registers.LastWriteValue = cart.registers.Value
 		}
 	}
 
@@ -183,7 +163,6 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the cartMapper interface
 func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	cart.registers.tick()
 	return nil
 }
 
@@ -199,49 +178,49 @@ func (cart Supercharger) GetBank(addr uint16) banks.Details {
 		if addr >= 0x0800 {
 			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 1:
 		if addr >= 0x0800 {
 			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 0}
+			return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 3:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 0}
+			return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 4:
 		if addr >= 0x0800 {
 			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 5:
 		if addr >= 0x0800 {
 			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 6:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 0}
+			return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 1, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 7:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 3, IsRAM: !cart.registers.RAMwrite, Segment: 0}
+			return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 2, IsRAM: !cart.registers.RAMwrite, Segment: 1}
+		return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
 	}
 	panic("unknown banking method")
 }
@@ -252,8 +231,8 @@ func (cart *Supercharger) Patch(_ int, _ uint8) error {
 }
 
 // Listen implements the cartMapper interface
-func (cart *Supercharger) Listen(_ uint16, _ uint8) {
-	cart.registers.tick()
+func (cart *Supercharger) Listen(addr uint16, _ uint8) {
+	cart.registers.transitionCount(addr)
 }
 
 // Step implements the cartMapper interface
@@ -281,4 +260,29 @@ func (cart Supercharger) IterateBanks(prev *banks.Content) *banks.Content {
 		}
 	}
 	return nil
+}
+
+// GetRAM implements the bus.CartRAMBus interface
+func (cart Supercharger) GetRAM() []bus.CartRAM {
+	r := make([]bus.CartRAM, len(cart.ram))
+
+	// !!TODO: indicate whether RAM is mapped and use correct origin
+	for i := 0; i < len(cart.ram); i++ {
+		r[i] = bus.CartRAM{
+			Label:  fmt.Sprintf("2048k [%d]", i+1),
+			Origin: 0x1000,
+			Data:   make([]uint8, len(cart.ram[i])),
+		}
+		copy(r[i].Data, cart.ram[i])
+	}
+
+	return r
+}
+
+// PutRAM implements the bus.CartRAMBus interface
+func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
+	if bank == 0 {
+		cart.ram[bank][idx] = data
+		return
+	}
 }

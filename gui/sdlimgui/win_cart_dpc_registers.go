@@ -61,7 +61,7 @@ func (win *winDPCregisters) draw() {
 
 	// do not open window if there is no valid cartridge debug bus available
 	r, ok := win.img.lz.Cart.Registers.(cartridge.DPCregisters)
-	if !win.img.lz.Cart.HasDebugBus || !ok {
+	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 
@@ -74,7 +74,7 @@ func (win *winDPCregisters) draw() {
 	imgui.PushItemWidth(win.twoDigitDim.X)
 	if imguiHexInput("##rng", !win.img.paused, 2, &rng) {
 		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("rng", rng)
 		})
 	}
@@ -98,7 +98,7 @@ func (win *winDPCregisters) draw() {
 		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
 			})
 		}
@@ -111,7 +111,7 @@ func (win *winDPCregisters) draw() {
 		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
 			})
 		}
@@ -124,7 +124,7 @@ func (win *winDPCregisters) draw() {
 		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
 			})
 		}
@@ -137,7 +137,7 @@ func (win *winDPCregisters) draw() {
 		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)
 			})
 		}
@@ -149,7 +149,7 @@ func (win *winDPCregisters) draw() {
 			mm := r.Fetcher[i].MusicMode
 			if imgui.Checkbox(fmt.Sprintf("##%dmusicmode", i), &mm) {
 				win.img.lz.Dbg.PushRawEvent(func() {
-					b := win.img.lz.Dbg.VCS.Mem.Cart.GetDebugBus()
+					b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 					b.PutRegister(fmt.Sprintf("fetcher::%d::musicmode", f), fmt.Sprintf("%v", mm))
 				})
 			}

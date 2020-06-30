@@ -17,7 +17,7 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-package memory
+package vcs
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ import (
 // ChipMemory defines the information for and operations allowed for those
 // memory areas accessed by the VCS chips as well as the CPU
 type ChipMemory struct {
-	bus.DebuggerBus
+	bus.DebugBus
 	bus.ChipBus
 	bus.CPUBus
 	bus.InputDeviceBus
@@ -56,7 +56,7 @@ type ChipMemory struct {
 	readRegister string
 }
 
-// Peek is an implementation of memory.DebuggerBus. Address must be normalised.
+// Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
@@ -65,7 +65,7 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	return area.memory[address^area.origin], nil
 }
 
-// Poke is an implementation of memory.DebuggerBus. Address must be normalised.
+// Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (area ChipMemory) Poke(address uint16, value uint8) error {
 	return errors.New(errors.UnpokeableAddress, fmt.Sprintf("%#04x", address))
 }

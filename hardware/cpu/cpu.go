@@ -207,7 +207,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 //
 // * note that read8BitZeroPage calls endCycle as appropriate
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
-	val, err := mc.mem.ReadZeroPage(address)
+	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
 
 	if err != nil {
 		if !errors.Is(err, errors.MemoryBusError) {
