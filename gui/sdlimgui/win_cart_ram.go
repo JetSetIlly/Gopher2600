@@ -95,7 +95,7 @@ func (win *winCartRAM) draw() {
 				// draw row header
 				if i%16 == 0 {
 					imgui.AlignTextToFramePadding()
-					imgui.Text(fmt.Sprintf("%04x- ", (i/16)+int(win.img.lz.Cart.RAM[bank].Origin)))
+					imgui.Text(fmt.Sprintf("%03x- ", (i+int(win.img.lz.Cart.RAM[bank].Origin))/16))
 					imgui.SameLine()
 					win.xPos = imgui.CursorPosX()
 				} else {
