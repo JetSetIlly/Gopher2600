@@ -119,7 +119,7 @@ var commandTemplate = []string{
 	// halt conditions
 	cmdBreak + " [%<target>S %<value>N|%<pc value>S] {& %<target>S %<value>S|& %<value>S}",
 	cmdTrap + " [%<target>S] {%<targets>S}",
-	cmdWatch + " (READ|WRITE) [%<address>S] (%<value>S)",
+	cmdWatch + " (READ|WRITE) (MIRRORS|ANY) [%<address>S] (%<value>S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH] %<number in list>N",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",

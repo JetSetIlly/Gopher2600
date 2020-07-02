@@ -37,6 +37,10 @@ type watcher struct {
 	// watcher will match regardless of the value
 	matchValue bool
 	value      uint8
+
+	// wether to compare the address as used or whether to consider mirrored
+	// addresses too
+	mirrors bool
 }
 
 func (wtr watcher) String() string {
@@ -98,9 +102,16 @@ func (wtc *watches) check(previousResult string) string {
 	checkString.WriteString(previousResult)
 
 	for i := range wtc.watches {
+
 		// continue loop if we're not matching last address accessed
-		if wtc.watches[i].ai.address != wtc.vcsmem.LastAccessAddress {
-			continue
+		if wtc.watches[i].mirrors {
+			if wtc.watches[i].ai.mappedAddress != wtc.vcsmem.LastAccessAddressMapped {
+				continue
+			}
+		} else {
+			if wtc.watches[i].ai.address != wtc.vcsmem.LastAccessAddress {
+				continue
+			}
 		}
 
 		// continue if this is a repeat of the last address accessed
@@ -154,6 +165,7 @@ func (wtc *watches) list() {
 // at a time can be specified on the command line.
 func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var event int
+	var mirrors bool
 
 	const (
 		either int = iota
@@ -161,16 +173,29 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		write
 	)
 
-	// read mode
-	mode, _ := tokens.Get()
-	mode = strings.ToUpper(mode)
-	switch mode {
+	// event type
+	arg, _ := tokens.Get()
+	arg = strings.ToUpper(arg)
+	switch arg {
 	case "READ":
 		event = read
 	case "WRITE":
 		event = write
 	default:
 		event = either
+		tokens.Unget()
+	}
+
+	// mirror address or not
+	arg, _ = tokens.Get()
+	arg = strings.ToUpper(arg)
+	switch arg {
+	case "MIRRORS":
+		fallthrough
+	case "ANY":
+		mirrors = true
+	default:
+		mirrors = false
 		tokens.Unget()
 	}
 
@@ -181,17 +206,12 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var ai *addressInfo
 
 	switch event {
+	default:
+		fallthrough // default to read case
 	case read:
 		ai = wtc.dbg.dbgmem.mapAddress(a, true)
 	case write:
 		ai = wtc.dbg.dbgmem.mapAddress(a, false)
-	default:
-		// default to write address and then read address if that's not
-		// possible
-		ai = wtc.dbg.dbgmem.mapAddress(a, false)
-		if ai == nil {
-			ai = wtc.dbg.dbgmem.mapAddress(a, true)
-		}
 	}
 
 	// mapping of the address was unsucessful
@@ -214,6 +234,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		ai:         *ai,
 		matchValue: useVal,
 		value:      uint8(val),
+		mirrors:    mirrors,
 	}
 
 	// check to see if watch already exists

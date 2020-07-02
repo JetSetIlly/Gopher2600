@@ -47,14 +47,16 @@ type VCSMemory struct {
 	// lovely to remove these for non-debugging emulation but there's not much
 	// impact on performance so they can stay for now:
 	//
-	//  . a note of the last (mapped) memory address to be accessed
+	//  . a note of the last (unmapped) memory address to be accessed
+	//  . as above but the mapped address
 	//  . the value that was written/read from the last address accessed
 	//  . whether the last addres accessed was written or read
 	//  . the ID of the last memory access (currently a timestamp)
-	LastAccessAddress uint16
-	LastAccessValue   uint8
-	LastAccessWrite   bool
-	LastAccessID      int
+	LastAccessAddress       uint16
+	LastAccessAddressMapped uint16
+	LastAccessValue         uint8
+	LastAccessWrite         bool
+	LastAccessID            int
 
 	// accessCount is incremented every time memory is read or written to.  the
 	// current value of accessCount is noted every read and write and
@@ -154,7 +156,8 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 		}
 	}
 
-	mem.LastAccessAddress = ma
+	mem.LastAccessAddress = address
+	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = false
 	mem.LastAccessValue = data
 	mem.LastAccessID = mem.accessCount
@@ -181,7 +184,8 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
 
-	mem.LastAccessAddress = ma
+	mem.LastAccessAddress = address
+	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = true
 	mem.LastAccessValue = data
 	mem.LastAccessID = mem.accessCount

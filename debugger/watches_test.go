@@ -57,7 +57,7 @@ func (trm *mockTerm) testWatches() {
 	trm.cmpOutput("invalid watch address: VSYNC")
 
 	// add address by symbol. no read/write modifier means it tries
-	trm.sndInput("WATCH VSYNC")
+	trm.sndInput("WATCH WRITE VSYNC")
 	trm.cmpOutput("")
 
 	// last item in list watches should be the new entry
@@ -66,7 +66,7 @@ func (trm *mockTerm) testWatches() {
 
 	// add address by symbol. no read/write modifier means it tries
 	// plus a specific value
-	trm.sndInput("WATCH VSYNC 0x1")
+	trm.sndInput("WATCH WRITE VSYNC 0x1")
 	trm.cmpOutput("")
 
 	// last item in list watches should be the new entry
