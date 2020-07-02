@@ -607,6 +607,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, nil
 		}
 
+		// whether to show bytecode
+		bytecode := false
+
 		option, ok := tokens.Get()
 		if ok {
 			switch strings.ToUpper(option) {
@@ -619,7 +622,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				return false, nil
 
 			case "BYTECODE":
-				s.WriteString(dbg.Disasm.GetField(disassembly.FldBytecode, dbg.lastResult))
+				bytecode = true
 			}
 		}
 
@@ -628,6 +631,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldAddress, dbg.lastResult))
 		s.WriteString(" ")
+		if bytecode {
+			s.WriteString(dbg.Disasm.GetField(disassembly.FldBytecode, dbg.lastResult))
+			s.WriteString(" ")
+		}
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldMnemonic, dbg.lastResult))
 		s.WriteString(" ")
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldOperand, dbg.lastResult))
