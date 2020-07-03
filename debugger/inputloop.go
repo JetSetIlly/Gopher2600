@@ -127,11 +127,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// expand halt to include step-once/many flag
 		haltEmulation = haltEmulation || !dbg.runUntilHalt
 
-		// step traps are cleared once they have been encountered
-		if stepTrapMessage != "" {
-			dbg.stepTraps.clear()
-		}
-
 		// print and reset accumulated break/trap/watch messages
 		dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
 		dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
@@ -145,6 +140,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 		// something has happened to cause the emulation to halt
 		if haltEmulation || checkTerm {
+
+			// always clear steptraps. if the emulation has halted for any
+			// reason then any existing step trap is stale.
+			dbg.stepTraps.clear()
+
 			// some things we don't want to if this is only a momentary halt
 			if haltEmulation {
 				// input has halted. print on halt command if it is defined
