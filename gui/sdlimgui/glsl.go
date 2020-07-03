@@ -63,9 +63,11 @@ type glsl struct {
 
 	// the following attrib variables are strictly for the screen texture
 	attribPixelPerfect   int32 // uniform
-	attribDim            int32 // uniform
-	attribCropDim        int32 // uniform
+	attribScreenDim      int32 // uniform
+	attribCropScreenDim  int32 // uniform
 	attribShowScreenDraw int32 // uniform
+	attribScalingX       int32 // uniform
+	attribScalingY       int32 // uniform
 	attribCropped        int32 // uniform
 	attribLastX          int32 // uniform
 	attribLastY          int32 // uniform
@@ -212,8 +214,10 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				}
 
 				// the resolution information is used to scale the Last
-				gl.Uniform2f(rnd.attribDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
-				gl.Uniform2f(rnd.attribCropDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+				gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
+				gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+				gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
+				gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
 
 				// critical section
 				rnd.img.screen.crit.section.Lock()
@@ -330,9 +334,11 @@ func (rnd *glsl) setup() {
 	// get references to shader attributes and uniforms variables
 	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
 	rnd.attribPixelPerfect = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PixelPerfect"+"\x00"))
-	rnd.attribDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Dim"+"\x00"))
-	rnd.attribCropDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropDim"+"\x00"))
+	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
+	rnd.attribCropScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropScreenDim"+"\x00"))
 	rnd.attribShowScreenDraw = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowScreenDraw"+"\x00"))
+	rnd.attribScalingX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingX"+"\x00"))
+	rnd.attribScalingY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingY"+"\x00"))
 	rnd.attribCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Cropped"+"\x00"))
 	rnd.attribLastX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastX"+"\x00"))
 	rnd.attribLastY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastY"+"\x00"))

@@ -5,8 +5,10 @@ uniform int ImageType;
 uniform int PixelPerfect;
 uniform int ShowScreenDraw; // false <= 0; true > 0
 uniform int Cropped; // false <= 0; true > 0
-uniform vec2 Dim;
-uniform vec2 CropDim;
+uniform vec2 ScreenDim;
+uniform vec2 CropScreenDim;
+uniform float ScalingX;
+uniform float ScalingY;
 uniform float LastX; 
 uniform float LastY;
 uniform float Hblank;
@@ -24,7 +26,7 @@ bool isNearEqual(float x, float y, float epsilon)
 	return abs(x - y) <= epsilon;
 }
 
-const float cursorSize = 2.0;
+const float cursorSize = 0.5;
 
 void main()
 {
@@ -42,10 +44,6 @@ void main()
 
 	vec2 coords = Frag_UV.xy;
 
-	// epsilon is equal to one "pixel"
-	float epsilonX = 1 / Dim.x;
-	float epsilonY = 1 / Dim.y;
-
 	// bring geometry values into workable range
 	float hblank;
 	float topScanline;
@@ -53,13 +51,21 @@ void main()
 	float lastX;
 	float lastY;
 
+
 	// debug tv screen texture
 	if (ImageType == 1) {
+
+		// the size of one texel (used for painting and cursor positioning)
+		float texelX;
+		float texelY;
+
 		if (Cropped > 0) {
-			hblank = Hblank / CropDim.x;
-			lastX = LastX / CropDim.x;
+			texelX = ScalingX / CropScreenDim.x;
+			texelY = ScalingY / CropScreenDim.y;
+			hblank = Hblank / CropScreenDim.x;
+			lastX = LastX / CropScreenDim.x;
 			topScanline = 0;
-			botScanline = (BotScanline - TopScanline) / CropDim.y;
+			botScanline = (BotScanline - TopScanline) / CropScreenDim.y;
 
 			// the LastY coordinate refers to the full-frame scanline. the cropped
 			// texture however counts from zero at the visible edge so we need to
@@ -67,20 +73,26 @@ void main()
 			//
 			// note that there's no need to do this for LastX because the
 			// horizontal position is counted from -68 in all instances.
-			lastY = (LastY - TopScanline) / CropDim.y;
+			lastY = (LastY - TopScanline) / CropScreenDim.y;
 		} else {
-			hblank = Hblank / Dim.x;
-			topScanline = TopScanline / Dim.y;
-			botScanline = BotScanline / Dim.y;
-			lastX = LastX / Dim.x;
-			lastY = LastY / Dim.y;
+			texelX = ScalingX / ScreenDim.x;
+			texelY = ScalingY / ScreenDim.y;
+			hblank = Hblank / ScreenDim.x;
+			topScanline = TopScanline / ScreenDim.y;
+			botScanline = BotScanline / ScreenDim.y;
+			lastX = LastX / ScreenDim.x;
+			lastY = LastY / ScreenDim.y;
 		}
+
+		// pixels are texels without the scaling applied
+		float pixelX = texelX / ScalingX;
+		float pixelY = texelY / ScalingY;
 
 		// if the entire frame is being shown then plot the screen guides
 		if (Cropped < 0) {
-			if (isNearEqual(coords.x, hblank, epsilonX) ||
-			   isNearEqual(coords.y, topScanline, epsilonY) ||
-			   isNearEqual(coords.y, botScanline, epsilonY)) {
+			if (isNearEqual(coords.x, hblank, pixelX) ||
+			   isNearEqual(coords.y, topScanline, pixelY) ||
+			   isNearEqual(coords.y, botScanline, pixelY)) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
 				Out_Color.b = 1.0;
@@ -96,7 +108,7 @@ void main()
 		if (ShowScreenDraw > 0) {
 			
 			// draw cursor if pixel is at the last x/y position
-			if (isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, lastX, cursorSize*epsilonX)) {
+			if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
 				Out_Color.b = 1.0;
@@ -105,7 +117,7 @@ void main()
 			}
 
 			// draw off-screen cursor for HBLANK
-			if (lastX < 0 && isNearEqual(coords.y, lastY, cursorSize*epsilonY) && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
+			if (lastX < 0 && isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
 				Out_Color.r = 1.0;
 				Out_Color.a = AnimTime;
 				return;
@@ -116,16 +128,17 @@ void main()
 			if (Cropped > 0) {
 
 				// when VBLANK is active but HBLANK is off
-				if (isNearEqual(coords.x, lastX, cursorSize * epsilonX)) {
+				if (isNearEqual(coords.x, lastX, cursorSize * texelX/2)) {
 					// top of screen
-					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
+					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
 						Out_Color.a = AnimTime;
 						return;
 					}
 				
-					// bottom of screen
-					if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
+					// bottom of screen (knocking a pixel off the scanline
+					// boundary check to make sure the cursor is visible)
+					if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
 						Out_Color.a = AnimTime;
 						return;
@@ -133,16 +146,18 @@ void main()
 				}
 
 				// when HBLANK and VBLANK are both active
-				if (lastX < 0 && isNearEqual(coords.x, 0, cursorSize*epsilonX)) {
+				if (lastX < 0 && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
 					// top/left corner of screen
-					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*epsilonY)) {
+					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
 						Out_Color.a = AnimTime;
 						return;
 					}
 
-					// bottom/left corner of screen
-					if (lastY > botScanline && isNearEqual(coords.y, botScanline, cursorSize*epsilonY)) {
+					// bottom/left corner of screen (knocking a pixel off the
+					// scanline boundary check to make sure the cursor is
+					// visible)
+					if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
 						Out_Color.a = AnimTime;
 						return;
@@ -150,15 +165,14 @@ void main()
 				}
 			}
 
-
-			// draw pixels with faded alpha. these pixels will be those left over
-			// from the previous frame.
+			// painting effect draws pixels with faded alpha if lastX and lastY
+			// are less than rendering coords.
 			//
 			// as a special case, we ignore the first scanline and do not fade the
 			// previous image on a brand new frame. note that we're using the
 			// unadjusted LastY value for this
 			if (LastY > 0) {
-				if (coords.y > lastY || (isNearEqual(coords.y, lastY, epsilonY) && coords.x > lastX)) {
+				if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
 					Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 					Out_Color.a = 0.5;
 					return;
@@ -202,7 +216,7 @@ void main()
 		// understand this well enough to say for sure what the relationship
 		// between 25 and 10 is, but the following ratio between
 		// cropped/uncropped widths gives us a value of 23.5
-		float f = 10*CropDim.x/(Dim.x-CropDim.x);
+		float f = 10*CropScreenDim.x/(ScreenDim.x-CropScreenDim.x);
 		vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
 	} else {
 		vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
