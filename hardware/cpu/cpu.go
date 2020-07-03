@@ -774,7 +774,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happends for Write and RMW)
 			// +1 cycle
-			_, err := mc.read8Bit(address)
+			_, err := mc.read8Bit((indirectAddress & 0xff00) | (address & 0x00ff))
 			if err != nil {
 				return err
 			}
@@ -802,7 +802,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happends for Write and RMW)
 			// +1 cycle
-			_, err := mc.read8Bit(address)
+			_, err := mc.read8Bit((indirectAddress & 0xff00) | (address & 0x00ff))
 			if err != nil {
 				return err
 			}
