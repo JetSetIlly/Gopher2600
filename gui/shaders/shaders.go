@@ -72,13 +72,12 @@ void main()
 	float lastX;
 	float lastY;
 
+	// the size of one texel (used for painting and cursor positioning)
+	float texelX;
+	float texelY;
 
 	// debug tv screen texture
 	if (ImageType == 1) {
-
-		// the size of one texel (used for painting and cursor positioning)
-		float texelX;
-		float texelY;
 
 		if (Cropped > 0) {
 			texelX = ScalingX / CropScreenDim.x;
@@ -200,6 +199,9 @@ void main()
 				}
 			}
 		}
+	} else {
+		texelX = ScalingX / CropScreenDim.x;
+		texelY = ScalingY / CropScreenDim.y;
 	}
 
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
@@ -230,25 +232,24 @@ void main()
 
 	// vignette effect
 	float vignette;
-	if (Cropped < 0) {
+	if (Cropped > 0) {
+		vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
+	} else {
 		// f is used to factor the vignette value. In the "cropped" branch we
 		// use a factor value of 10. to visually mimic the vignette effect a
 		// value of about 25 is required (using Pitfall as a template). I don't
 		// understand this well enough to say for sure what the relationship
 		// between 25 and 10 is, but the following ratio between
 		// cropped/uncropped widths gives us a value of 23.5
-		float f = 10*CropScreenDim.x/(ScreenDim.x-CropScreenDim.x);
+		float f = 10*ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
 		vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
-	} else {
-		vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
 	}
-	Out_Color.r *= pow(vignette, 0.15) * 1.4;
-	Out_Color.g *= pow(vignette, 0.2) * 1.3;
-	Out_Color.b *= pow(vignette, 0.2) * 1.3;
+	Out_Color.rgb *= pow(vignette, 0.2) * 1.2;
 
 	// scanline effect
-	if (mod(floor(gl_FragCoord.y), 3.0) == 0.0) {
-		Out_Color.a = Frag_Color.a * 0.75;
+	float oneLine = gl_FragCoord.y/gl_FragCoord.y;
+	if ( isNearEqual(mod(gl_FragCoord.y, 3.0*oneLine), 0.0, oneLine) ) {
+		Out_Color.a = Frag_Color.a * 0.85;
 	}
 
 	// bend screen
