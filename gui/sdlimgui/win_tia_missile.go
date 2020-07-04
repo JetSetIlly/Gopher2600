@@ -153,10 +153,12 @@ func (win *winTIA) drawMissile(missile int) {
 			s.WriteString("2nd half of ")
 		}
 		switch lz.EncCpy {
-		case 1:
+		case 0:
 			s.WriteString("1st copy")
-		case 2:
+		case 1:
 			s.WriteString("2nd copy")
+		case 2:
+			s.WriteString("3rd copy")
 		}
 	}
 	imgui.SameLine()
@@ -168,7 +170,7 @@ func (win *winTIA) drawMissile(missile int) {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. Draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. First copy draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
 	if lz.MoreHmove {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")

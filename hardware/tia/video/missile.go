@@ -265,6 +265,10 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	if ms.ResetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
+
+		// missile-to-player also resets position information
+		ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
+		ms.HmovedPixel = ms.ResetPixel
 	}
 
 	// early return if nothing to do

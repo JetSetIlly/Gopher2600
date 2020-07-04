@@ -129,13 +129,7 @@ func (win *winTIA) drawBall() {
 	if lz.EncActive {
 		s.WriteString("drawing ")
 		if lz.EncSecondHalf {
-			s.WriteString("2nd half of ")
-		}
-		switch lz.EncCpy {
-		case 1:
-			s.WriteString("1st copy")
-		case 2:
-			s.WriteString("2nd copy")
+			s.WriteString("(2nd half)")
 		}
 	}
 	imgui.SameLine()

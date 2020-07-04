@@ -151,9 +151,9 @@ func (win *winTIA) drawPlayer(num int) {
 	if lz.ScanIsActive {
 		var idx int
 		if lz.Reflected {
-			idx = 7 - lz.ScanPixel
-		} else {
 			idx = lz.ScanPixel
+		} else {
+			idx = 7 - lz.ScanPixel
 		}
 
 		seq := ngfxSeq
@@ -236,7 +236,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// horizontal positioning
-	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. Draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. First copy draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
 
 	if lz.MoreHmove {
 		imgui.SameLine()
