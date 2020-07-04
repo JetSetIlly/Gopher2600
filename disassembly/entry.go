@@ -136,13 +136,6 @@ func (dsm *Disassembly) FormatResult(bank banks.Details, result execution.Result
 // the guts of FormatResult(). we use this within the disassembly package when
 // we're sure we don't need the additional special condition handling
 func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result, level EntryLevel) (*Entry, error) {
-	// protect against empty definitions. we shouldn't hit this condition from
-	// the disassembly package itself, but it is possible to get it from ad-hoc
-	// formatting from GUI interfaces (see CPU window in sdlimgui)
-	if result.Defn == nil {
-		return &Entry{}, nil
-	}
-
 	e := &Entry{
 		Result: result,
 		Level:  level,
@@ -177,10 +170,11 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 			operandDecoded = true
 			operand = result.InstructionData
 			e.Operand = fmt.Sprintf("$%04x", operand)
-			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0xff00>>8, operand&0x00ff)
+			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
 		case 2:
+			operand = result.InstructionData
 			e.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
-			e.Bytecode = fmt.Sprintf("%02x %02x ??", result.Defn.OpCode, operand&0xff00>>8)
+			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
 		case 1:
 			e.Operand = "$????"
 			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
