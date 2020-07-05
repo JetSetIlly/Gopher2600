@@ -311,6 +311,8 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) b
 		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF1, data.Value, "PF1")
 	case "PF2":
 		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF2, data.Value, "PF2")
+	case "VDELBL":
+		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
 		return true
 	}
@@ -460,8 +462,6 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 	case "CTRLPF":
 		vd.Ball.SetCTRLPF(data.Value)
 		vd.Playfield.SetCTRLPF(data.Value)
-	case "VDELBL":
-		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	case "VDELP0":
 		vd.Player0.SetVerticalDelay(data.Value&0x01 == 0x01)
 	case "VDELP1":

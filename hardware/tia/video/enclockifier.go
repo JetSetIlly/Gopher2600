@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/tia/future"
-	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 )
 
 // enclockifier is the mechanism controlling how many pixels to output for both
@@ -45,8 +44,6 @@ import (
 // commentary in start() function for possible problems caused by this
 // decision - start() rules may need some refinement.
 type enclockifier struct {
-	size  *uint8
-	pclk  *phaseclock.PhaseClock
 	delay *future.Ticker
 
 	Active     bool
@@ -57,6 +54,9 @@ type enclockifier struct {
 	// copy). value of zero means the primary copy is being drawn (if enable is
 	// true)
 	Cpy int
+
+	// size of ball/missile
+	size *uint8
 }
 
 func (en *enclockifier) String() string {

@@ -129,10 +129,11 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 
 	ms.Delay = future.NewTicker(label)
 
-	ms.Enclockifier.size = &ms.Size
-	ms.Enclockifier.pclk = &ms.pclk
 	ms.Enclockifier.delay = ms.Delay
+	ms.Enclockifier.size = &ms.Size
+
 	ms.position.Reset()
+
 	return &ms, nil
 
 }

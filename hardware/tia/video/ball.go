@@ -109,9 +109,9 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 
 	bs.Delay = future.NewTicker(label)
 
-	bs.Enclockifier.size = &bs.Size
-	bs.Enclockifier.pclk = &bs.pclk
 	bs.Enclockifier.delay = bs.Delay
+	bs.Enclockifier.size = &bs.Size
+
 	bs.position.Reset()
 
 	return &bs, nil
