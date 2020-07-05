@@ -108,10 +108,7 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 	}
 
 	bs.Delay = future.NewTicker(label)
-
-	bs.Enclockifier.delay = bs.Delay
 	bs.Enclockifier.size = &bs.Size
-
 	bs.position.Reset()
 
 	return &bs, nil
@@ -236,6 +233,8 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 			bs.position.Reset()
 		}
 	}
+
+	bs.Enclockifier.tick()
 
 	// tick future events that are goverened by the sprite
 	bs.Delay.Tick()
@@ -383,7 +382,7 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	//
 	// // the ball sprite pixel is drawn under specific conditions
 	// px := bs.enclockifier.Active ||
-	// 	(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+	//	(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
 	px := !earlyEnd && (bs.Enclockifier.Active || earlyStart)
 

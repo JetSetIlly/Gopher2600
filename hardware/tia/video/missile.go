@@ -128,10 +128,7 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 	}
 
 	ms.Delay = future.NewTicker(label)
-
-	ms.Enclockifier.delay = ms.Delay
 	ms.Enclockifier.size = &ms.Size
-
 	ms.position.Reset()
 
 	return &ms, nil
@@ -251,6 +248,11 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	ms.lastHmoveCt = hmoveCt
 
+	// early return if nothing to do
+	if !(isHmove && ms.MoreHMOVE) && !visible {
+		return
+	}
+
 	// reset missile to player position. from TIA_HW_Notes.txt:
 	//
 	// "The Missile-to-player reset is implemented by resetting the M0 counter
@@ -263,6 +265,12 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 	//
 	// note: the FSTOB output is the primary flag in the parent player's
 	// scancounter
+	//
+	// placement note: we don't do the missile-to-player reset unless we're
+	// hmoving or ticking. if we place this block before the "early return if
+	// nothing to do" block above, then it will produce incorrect results. we
+	// can see this (occasionally) in Supercharger Frogger - the top row of
+	// trucks will sometimes extend by a pixel as they drive off screen.
 	if ms.ResetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
 		ms.position.Reset()
 		ms.pclk.Reset()
@@ -270,11 +278,6 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		// missile-to-player also resets position information
 		ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
 		ms.HmovedPixel = ms.ResetPixel
-	}
-
-	// early return if nothing to do
-	if !(isHmove && ms.MoreHMOVE) && !visible {
-		return
 	}
 
 	// note whether this is an additional hmove tick. see pixel() function
@@ -329,6 +332,8 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 		}
 	}
 
+	ms.Enclockifier.tick()
+
 	// tick future events that are goverened by the sprite
 	ms.Delay.Tick()
 }
@@ -374,7 +379,7 @@ func (ms *missileSprite) resetPosition() {
 	// to end. in other words, if they are not about to end they are allowed to
 	// continue naturally while reset event is waiting to conclude
 	if !ms.Enclockifier.aboutToEnd() {
-		ms.Enclockifier.pause()
+		ms.Enclockifier.Paused = true
 	}
 	if ms.startDrawingEvent != nil && !ms.startDrawingEvent.AboutToEnd() {
 		ms.startDrawingEvent.Pause()

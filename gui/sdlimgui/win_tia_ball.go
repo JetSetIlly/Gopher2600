@@ -131,6 +131,7 @@ func (win *winTIA) drawBall() {
 		if lz.EncSecondHalf {
 			s.WriteString("(2nd half)")
 		}
+		s.WriteString(fmt.Sprintf(" [%d]", lz.EncTicks))
 	}
 	imgui.SameLine()
 	imgui.Text(s.String())

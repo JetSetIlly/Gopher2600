@@ -51,10 +51,12 @@ type LazyMissile struct {
 	atomicEncActive     atomic.Value // bool
 	atomicEncSecondHalf atomic.Value // bool
 	atomicEncCpy        atomic.Value // int
+	atomicEncTicks      atomic.Value // int
 
 	EncActive     bool
 	EncSecondHalf bool
 	EncCpy        int
+	EncTicks      int
 }
 
 func newLazyMissile(val *Lazy, id int) *LazyMissile {
@@ -80,6 +82,7 @@ func (lz *LazyMissile) update() {
 		lz.atomicEncActive.Store(ms.Enclockifier.Active)
 		lz.atomicEncSecondHalf.Store(ms.Enclockifier.SecondHalf)
 		lz.atomicEncCpy.Store(ms.Enclockifier.Cpy)
+		lz.atomicEncTicks.Store(ms.Enclockifier.Ticks)
 	})
 	lz.ResetPixel, _ = lz.atomicResetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.atomicHmovedPixel.Load().(int)
@@ -94,4 +97,5 @@ func (lz *LazyMissile) update() {
 	lz.EncActive, _ = lz.atomicEncActive.Load().(bool)
 	lz.EncSecondHalf, _ = lz.atomicEncSecondHalf.Load().(bool)
 	lz.EncCpy, _ = lz.atomicEncCpy.Load().(int)
+	lz.EncTicks, _ = lz.atomicEncTicks.Load().(int)
 }

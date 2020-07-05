@@ -693,7 +693,7 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		}
 	} else if ps.ScanCounter.IsLatching() || ps.ScanCounter.IsActive() {
 		if (ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07) && (value == 0x05 || value == 0x07) {
-			// minimal delay current if future/current NUSIZ is double/quadruple width
+			// minimal delay if future/current NUSIZ is double/quadruple width
 			delay = 0
 		} else {
 			delay = 1

@@ -50,10 +50,12 @@ type LazyBall struct {
 	atomicEncActive     atomic.Value // bool
 	atomicEncSecondHalf atomic.Value // bool
 	atomicEncCpy        atomic.Value // int
+	atomicEncTicks      atomic.Value // int
 
 	EncActive     bool
 	EncSecondHalf bool
 	EncCpy        int
+	EncTicks      int
 }
 
 func newLazyBall(val *Lazy) *LazyBall {
@@ -75,6 +77,7 @@ func (lz *LazyBall) update() {
 		lz.atomicEncActive.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Active)
 		lz.atomicEncSecondHalf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.SecondHalf)
 		lz.atomicEncCpy.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Cpy)
+		lz.atomicEncTicks.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Ticks)
 	})
 	lz.ResetPixel, _ = lz.atomicResetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.atomicHmovedPixel.Load().(int)
@@ -89,4 +92,5 @@ func (lz *LazyBall) update() {
 	lz.EncActive, _ = lz.atomicEncActive.Load().(bool)
 	lz.EncSecondHalf, _ = lz.atomicEncSecondHalf.Load().(bool)
 	lz.EncCpy, _ = lz.atomicEncCpy.Load().(int)
+	lz.EncTicks, _ = lz.atomicEncTicks.Load().(int)
 }

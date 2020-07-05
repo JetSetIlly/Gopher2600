@@ -160,6 +160,7 @@ func (win *winTIA) drawMissile(missile int) {
 		case 2:
 			s.WriteString("3rd copy")
 		}
+		s.WriteString(fmt.Sprintf(" [%d]", lz.EncTicks))
 	}
 	imgui.SameLine()
 	imgui.Text(s.String())
