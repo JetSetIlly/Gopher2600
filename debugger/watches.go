@@ -43,16 +43,16 @@ type watcher struct {
 	mirrors bool
 }
 
-func (wtr watcher) String() string {
+func (w watcher) String() string {
 	val := ""
-	if wtr.matchValue {
-		val = fmt.Sprintf(" (value=%#02x)", wtr.value)
+	if w.matchValue {
+		val = fmt.Sprintf(" (value=%#02x)", w.value)
 	}
 	event := "write"
-	if wtr.ai.read {
+	if w.ai.read {
 		event = "read"
 	}
-	return fmt.Sprintf("%s %s%s", wtr.ai, event, val)
+	return fmt.Sprintf("%s %s%s", w.ai, event, val)
 }
 
 // the list of currently defined watches in the system

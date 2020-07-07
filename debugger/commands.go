@@ -481,9 +481,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			if len(dbg.commandOnHalt) == 0 {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
 			} else {
+				s := strings.Builder{}
 				for _, c := range dbg.commandOnHalt {
-					dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
+					s.WriteString(c.String())
+					s.WriteString("; ")
 				}
+				dbg.printLine(terminal.StyleFeedback, "command on halt: %s", strings.TrimSuffix(s.String(), "; "))
 			}
 			return false, nil
 		}
@@ -494,7 +497,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		switch strings.ToUpper(option) {
 		case "OFF":
 			dbg.commandOnHalt = dbg.commandOnHalt[:0]
-			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: OFF")
+			dbg.printLine(terminal.StyleFeedback, "no command on halt")
 			return false, nil
 
 		case "ON":
@@ -532,20 +535,26 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		dbg.commandOnHaltStored = dbg.commandOnHalt
 
 		// display the new ONHALT command(s)
+		s := strings.Builder{}
 		for _, c := range dbg.commandOnHalt {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
+			s.WriteString(c.String())
+			s.WriteString("; ")
 		}
+		dbg.printLine(terminal.StyleFeedback, "command on halt: %s", strings.TrimSuffix(s.String(), "; "))
 
 		return false, nil
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
 			if len(dbg.commandOnStep) == 0 {
-				dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
+				dbg.printLine(terminal.StyleFeedback, "no command on step")
 			} else {
+				s := strings.Builder{}
 				for _, c := range dbg.commandOnStep {
-					dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
+					s.WriteString(c.String())
+					s.WriteString("; ")
 				}
+				dbg.printLine(terminal.StyleFeedback, "command on step: %s", strings.TrimSuffix(s.String(), "; "))
 			}
 			return false, nil
 		}
@@ -590,20 +599,90 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			dbg.commandOnStep = append(dbg.commandOnStep, toks)
 		}
 
-		// make a copy of
+		// store new commandOnStep
 		dbg.commandOnStepStored = dbg.commandOnStep
 
 		// display the new ONSTEP command(s)
+		s := strings.Builder{}
 		for _, c := range dbg.commandOnStep {
-			dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
+			s.WriteString(c.String())
+			s.WriteString("; ")
 		}
+		dbg.printLine(terminal.StyleFeedback, "command on step: %s", strings.TrimSuffix(s.String(), "; "))
+
+		return false, nil
+
+	case cmdOnTrace:
+		if tokens.Remaining() == 0 {
+			if len(dbg.commandOnTrace) == 0 {
+				dbg.printLine(terminal.StyleFeedback, "no command on trace")
+			} else {
+				s := strings.Builder{}
+				for _, c := range dbg.commandOnTrace {
+					s.WriteString(c.String())
+					s.WriteString("; ")
+				}
+				dbg.printLine(terminal.StyleFeedback, "command on trace: %s", strings.TrimSuffix(s.String(), "; "))
+			}
+			return false, nil
+		}
+
+		var input string
+
+		option, _ := tokens.Get()
+		switch strings.ToUpper(option) {
+		case "OFF":
+			dbg.commandOnTrace = dbg.commandOnTrace[:0]
+			dbg.printLine(terminal.StyleFeedback, "auto-command on trace: OFF")
+			return false, nil
+
+		case "ON":
+			dbg.commandOnTrace = dbg.commandOnTraceStored
+			for _, c := range dbg.commandOnTrace {
+				dbg.printLine(terminal.StyleFeedback, "auto-command on trace: %s", c)
+			}
+			return false, nil
+
+		default:
+			// token isn't one we recognise so push it back onto the token queue
+			tokens.Unget()
+
+			// use remaininder of command line to form the ONTRACE command sequence
+			input = strings.TrimSpace(tokens.Remainder())
+			tokens.End()
+		}
+
+		// empty list of tokens. taking note of existing command
+		existingOnTrace := dbg.commandOnTrace
+		dbg.commandOnTrace = dbg.commandOnTrace[:0]
+
+		// tokenise commands to check for integrity
+		for _, s := range strings.Split(input, ",") {
+			toks, err := dbg.tokeniseCommand(s, false, false)
+			if err != nil {
+				dbg.commandOnTrace = existingOnTrace
+				return false, err
+			}
+			dbg.commandOnTrace = append(dbg.commandOnTrace, toks)
+			fmt.Println(toks)
+		}
+
+		// store new commandOnTrace
+		dbg.commandOnTraceStored = dbg.commandOnTrace
+
+		// display the new ONTRACE command(s)
+		s := strings.Builder{}
+		for _, c := range dbg.commandOnTrace {
+			s.WriteString(c.String())
+			s.WriteString("; ")
+		}
+		dbg.printLine(terminal.StyleFeedback, "command on trace: %s", strings.TrimSuffix(s.String(), "; "))
 
 		return false, nil
 
 	case cmdLast:
-		s := strings.Builder{}
-
-		if dbg.lastResult == nil {
+		if dbg.lastResult == nil || dbg.lastResult.Result.Defn == nil {
+			dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
 			return false, nil
 		}
 
@@ -625,6 +704,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				bytecode = true
 			}
 		}
+
+		s := strings.Builder{}
 
 		if dbg.VCS.Mem.Cart.NumBanks() > 1 {
 			s.WriteString(fmt.Sprintf("[%s] ", dbg.lastResult.Bank))
@@ -1113,6 +1194,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, errors.New(errors.CommandError, err)
 		}
 
+	case cmdTrace:
+		err := dbg.traces.parseCommand(tokens)
+		if err != nil {
+			return false, errors.New(errors.CommandError, err)
+		}
+
 	case cmdList:
 		list, _ := tokens.Get()
 		list = strings.ToUpper(list)
@@ -1123,10 +1210,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			dbg.traps.list()
 		case "WATCHES":
 			dbg.watches.list()
+		case "TRACES":
+			dbg.traces.list()
 		case "ALL":
 			dbg.breakpoints.list()
 			dbg.traps.list()
 			dbg.watches.list()
+			dbg.traces.list()
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -1160,6 +1250,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				return false, err
 			}
 			dbg.printLine(terminal.StyleFeedback, "watch #%d dropped", num)
+		case "TRACE":
+			err := dbg.traces.drop(num)
+			if err != nil {
+				return false, err
+			}
+			dbg.printLine(terminal.StyleFeedback, "trace #%d dropped", num)
 		default:
 			// already caught by command line ValidateTokens()
 		}
@@ -1177,11 +1273,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "WATCHES":
 			dbg.watches.clear()
 			dbg.printLine(terminal.StyleFeedback, "watches cleared")
+		case "TRACES":
+			dbg.traces.clear()
+			dbg.printLine(terminal.StyleFeedback, "traces cleared")
 		case "ALL":
 			dbg.breakpoints.clear()
 			dbg.traps.clear()
 			dbg.watches.clear()
-			dbg.printLine(terminal.StyleFeedback, "breakpoints, traps and watches cleared")
+			dbg.traces.clear()
+			dbg.printLine(terminal.StyleFeedback, "breakpoints, traps, watches and traces cleared")
 		default:
 			// already caught by command line ValidateTokens()
 		}

@@ -133,9 +133,16 @@ a comma.
 THE OFF argument can be used to toggle the ONSTEP commands temporarily. Use the
 ON argument to resume ONSTEP reporting.
 
-By default the ONSTEP command is
+By default the ONSTEP command is:
 
 	ONSTEP LAST`,
+
+	cmdOnTrace: `Define commands to run whenever a trace condition is met. Unlike the ONSTEP
+and ONHALT commands there is no OFF argument.
+
+By default the ONTRACE command is:
+
+	ONTRACE LAST`,
 
 	cmdLast: `Prints the disassembly of the last cpu/video cycle. Use the BYTECODE argument 
 to display the raw bytes alongside the disassembly. The DEFN argument meanwhile
@@ -470,9 +477,24 @@ if the CPU attempts to read 0x1000, the watch will match.
 Existing watches can be reviewed with the LIST command and deleted with the
 DROP or CLEAR commands`,
 
-	cmdList:  "List currently defined BREAKS, TRAPS and WATCHES.",
-	cmdDrop:  "Drop a specific BREAK, TRAP or WATCH condition, using the number of the condition reported by LIST.",
-	cmdClear: "Clear all BREAKS, TRAPS and WATCHES.",
+	cmdTrace: `"Trace activity on the specied memory address. This means any activity, read or write.
+There is no way to isolate one activity from the other. Use WATCH for that.
+
+When activity at a TRACED address is found the terminal will display the CPU instruction that caused
+the activity. For example, as a result of "TRACE 0x80":
+
+	$f006 STA VSYNC,X -> write 0x0080 (RAM)
+	$faa3 STA $80 -> write 0x0080 (RAM)
+	$f0ed LDA $80 -> read 0x0080 (RAM)
+
+There is currently no ONTRACE command.
+
+Generally, WATCH is a more flexible instrument but TRACE can be useful to quickly gather information
+about an address.`,
+
+	cmdList:  "List currently defined BREAKS, TRAPS, WATCHES and TRACES.",
+	cmdDrop:  "Drop a specific BREAK, TRAP, WATCH or TRACE condition, using the number of the condition reported by LIST.",
+	cmdClear: "Clear all BREAKS, TRAPS, WATCHES and TRACES.",
 
 	cmdPref: "Set preferences for debugger.",
 }

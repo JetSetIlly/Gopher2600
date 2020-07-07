@@ -20,6 +20,7 @@
 package debugger
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -96,6 +97,18 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// if we don't do this then debugging output will be wrong and confusing.
 		if videoCycle && dbg.continueEmulation && dbg.quantum == QuantumCPU {
 			return nil
+		}
+
+		// check trace and output in context of last CPU result
+		trace := dbg.traces.check()
+		if trace != "" {
+			if dbg.commandOnTrace != nil {
+				_, err := dbg.processTokenGroup(dbg.commandOnTrace)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				}
+			}
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf(" <trace> %s", trace))
 		}
 
 		var stepTrapMessage string

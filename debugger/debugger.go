@@ -79,23 +79,24 @@ type Debugger struct {
 	breakpoints *breakpoints
 	traps       *traps
 	watches     *watches
+	traces      *traces
 
 	// single-fire step traps. these are used for the STEP command, allowing
 	// things like "STEP FRAME".
 	stepTraps *traps
 
 	// commandOnHalt is the sequence of commands that runs when emulation
-	// halts. the string is parsed every time it's required, this is
-	// inefficient but it gives us enough flexibility to store multiple
-	// commands
+	// halts
 	commandOnHalt       []*commandline.Tokens
 	commandOnHaltStored []*commandline.Tokens
 
-	// commandOnStep is the command to run afer every cpu/video cycle. unlike
-	// commandOnHalt, we store these as Tokens. this gives us a little
-	// performance improvement
+	// commandOnStep is the command to run afer every cpu/video cycle
 	commandOnStep       []*commandline.Tokens
 	commandOnStepStored []*commandline.Tokens
+
+	// commandOnTrace is the command run whenever a trace condition is met.
+	commandOnTrace       []*commandline.Tokens
+	commandOnTraceStored []*commandline.Tokens
 
 	// quantum to use when stepping/running
 	quantum QuantumMode
@@ -191,7 +192,16 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	}
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
+	dbg.traces = newTraces(dbg)
 	dbg.stepTraps = newTraps(dbg)
+
+	// default ONSTEP command
+	dbg.term.Silence(true)
+	_, err = dbg.parseCommand("ONSTEP LAST", false, false)
+	if err != nil {
+		return nil, errors.New(errors.DebuggerError, err)
+	}
+	dbg.term.Silence(false)
 
 	// make synchronisation channels
 	dbg.events = &terminal.ReadEvents{
@@ -249,7 +259,6 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		scr, err := script.RescribeScript(initScript)
 		if err == nil {
 			dbg.term.Silence(true)
-
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
 				dbg.term.Silence(false)

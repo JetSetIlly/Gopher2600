@@ -39,6 +39,7 @@ const (
 	cmdSymbol      = "SYMBOL"
 	cmdOnHalt      = "ONHALT"
 	cmdOnStep      = "ONSTEP"
+	cmdOnTrace     = "ONTRACE"
 	cmdLast        = "LAST"
 	cmdMemMap      = "MEMMAP"
 	cmdCPU         = "CPU"
@@ -65,6 +66,7 @@ const (
 	cmdBreak = "BREAK"
 	cmdTrap  = "TRAP"
 	cmdWatch = "WATCH"
+	cmdTrace = "TRACE"
 	cmdList  = "LIST"
 	cmdDrop  = "DROP"
 	cmdClear = "CLEAR"
@@ -94,6 +96,7 @@ var commandTemplate = []string{
 	cmdSymbol + " [%<symbol>S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",
+	cmdOnTrace + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdLast + " (DEFN|BYTECODE)",
 	cmdMemMap,
 	cmdCPU + " (SET [PC|A|X|Y|SP] [%<register value>N])",
@@ -120,9 +123,10 @@ var commandTemplate = []string{
 	cmdBreak + " [%<target>S %<value>N|%<pc value>S] {& %<target>S %<value>S|& %<value>S}",
 	cmdTrap + " [%<target>S] {%<targets>S}",
 	cmdWatch + " (READ|WRITE) (MIRRORS|ANY) [%<address>S] (%<value>S)",
-	cmdList + " [BREAKS|TRAPS|WATCHES|ALL]",
-	cmdDrop + " [BREAK|TRAP|WATCH] %<number in list>N",
-	cmdClear + " [BREAKS|TRAPS|WATCHES|ALL]",
+	cmdTrace + " (%<address>S)",
+	cmdList + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
+	cmdDrop + " [BREAK|TRAP|WATCH|TRACE] %<number in list>N",
+	cmdClear + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 
 	// prefs
 	cmdPref + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR])",

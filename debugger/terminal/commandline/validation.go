@@ -130,6 +130,18 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		return err
 	}
 
+	// normalise hex notation and update token. this is a blind transformation
+	// regardless of tag type. we originally confined the conversion to the %N
+	// tag type but we want to do this for string types too because address
+	// arguments that allow symbolic addresses in addition to numeric addresses
+	// need to be affected also.
+	//
+	// !!TODO introduce a special purpose "address" tag type?
+	if tok[0] == '$' {
+		tok = fmt.Sprintf("0x%s", tok[1:])
+	}
+	tokens.Update(tok)
+
 	// check the current token against the node's tag, using placeholder
 	// matching if appropriate.
 	//
@@ -147,12 +159,6 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 
 	switch n.tag {
 	case "%N":
-		// normalise hex notation and update token
-		if tok[0] == '$' {
-			tok = fmt.Sprintf("0x%s", tok[1:])
-		}
-		tokens.Update(tok)
-
 		_, e := strconv.ParseInt(tok, 0, 32)
 		match = e == nil
 
