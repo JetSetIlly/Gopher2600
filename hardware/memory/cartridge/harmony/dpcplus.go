@@ -751,11 +751,6 @@ func (cart *dpcPlus) PutStatic(addr uint16, data uint8) error {
 	return nil
 }
 
-// StaticWrite implements the bus.CartRAMbus interface
-func (cart dpcPlus) GetRAM() [][]uint8 {
-	return nil
-}
-
 // IterateBank implemnts the disassemble interface
 func (cart dpcPlus) IterateBanks(prev *banks.Content) *banks.Content {
 	b := prev.Number + 1

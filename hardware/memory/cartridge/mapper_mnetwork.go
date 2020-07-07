@@ -339,6 +339,7 @@ func (cart mnetwork) GetRAM() []bus.CartRAM {
 		Label:  "1k",
 		Origin: 0x1000,
 		Data:   make([]uint8, len(cart.ram1k)),
+		Mapped: cart.use1kRAM,
 	}
 	copy(r[0].Data, cart.ram1k)
 
@@ -347,6 +348,7 @@ func (cart mnetwork) GetRAM() []bus.CartRAM {
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
 			Data:   make([]uint8, len(cart.ram256byte[i])),
+			Mapped: cart.ram256byteIdx == i,
 		}
 		copy(r[i+1].Data, cart.ram256byte[i])
 	}

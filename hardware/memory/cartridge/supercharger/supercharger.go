@@ -266,12 +266,67 @@ func (cart Supercharger) IterateBanks(prev *banks.Content) *banks.Content {
 func (cart Supercharger) GetRAM() []bus.CartRAM {
 	r := make([]bus.CartRAM, len(cart.ram))
 
-	// !!TODO: indicate whether RAM is mapped and use correct origin
 	for i := 0; i < len(cart.ram); i++ {
+		mapped := false
+		origin := uint16(0x1000)
+
+		// in the documentation and for presentation purporses, RAM banks are
+		// counted from 1. when deciding if a bank is mapped or not, we'll use
+		// this value rather than the i index; being consistent with the
+		// documentation is clearer
+		bank := i + 1
+
+		switch cart.registers.BankingMode {
+		case 0:
+			mapped = bank == 3
+
+		case 1:
+			mapped = bank == 1
+
+		case 2:
+			mapped = bank == 1
+			if mapped {
+				origin = 0x1800
+			} else {
+				mapped = bank == 3
+			}
+
+		case 3:
+			mapped = bank == 3
+			if mapped {
+				origin = 0x1800
+			} else {
+				mapped = bank == 1
+			}
+
+		case 4:
+			mapped = bank == 3
+
+		case 5:
+			mapped = bank == 2
+
+		case 6:
+			mapped = bank == 2
+			if mapped {
+				origin = 0x1800
+			} else {
+				mapped = bank == 3
+			}
+
+		case 7:
+			mapped = bank == 3
+			if mapped {
+				origin = 0x1800
+			} else {
+				mapped = bank == 2
+			}
+		}
+
 		r[i] = bus.CartRAM{
-			Label:  fmt.Sprintf("2048k [%d]", i+1),
-			Origin: 0x1000,
+			Label:  fmt.Sprintf("2048k [%d]", bank),
+			Origin: origin,
 			Data:   make([]uint8, len(cart.ram[i])),
+			Mapped: mapped,
 		}
 		copy(r[i].Data, cart.ram[i])
 	}
@@ -281,7 +336,7 @@ func (cart Supercharger) GetRAM() []bus.CartRAM {
 
 // PutRAM implements the bus.CartRAMBus interface
 func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
-	if bank == 0 {
+	if bank < len(cart.ram) {
 		cart.ram[bank][idx] = data
 		return
 	}

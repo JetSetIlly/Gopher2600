@@ -74,21 +74,14 @@ func (win *winControl) draw() {
 	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	if win.img.paused {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlRun)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlRunHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlRunActive)
-		if imgui.ButtonV(runButtonLabel, win.runButtonDim) {
+		if imguiBooleanButtonV(win.img.cols, true, "Run", win.runButtonDim) {
 			win.img.term.pushCommand("RUN")
 		}
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.ControlHalt)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.ControlHaltHovered)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.ControlHaltActive)
-		if imgui.ButtonV(haltButtonLabel, win.runButtonDim) {
+		if imguiBooleanButtonV(win.img.cols, false, "Halt", win.runButtonDim) {
 			win.img.term.pushCommand("HALT")
 		}
 	}
-	imgui.PopStyleColorV(3)
 
 	win.drawQuantumToggle()
 	imgui.Spacing()

@@ -218,7 +218,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 		return
 	}
 
-	height := imgui.WindowHeight() - imgui.CursorPosY() - win.optionsHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
+	height := imguiRemainingWinHeight() - win.optionsHeight
 	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
 
 	// only draw elements that will be visible

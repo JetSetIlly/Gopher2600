@@ -124,4 +124,5 @@ type CartRAM struct {
 	Label  string
 	Origin uint16
 	Data   []uint8
+	Mapped bool
 }

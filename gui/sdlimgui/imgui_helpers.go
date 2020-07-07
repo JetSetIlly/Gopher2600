@@ -23,6 +23,14 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
+// return the height of the window from the current cursor position to the end
+// of the window frame. useful for calculating scroll areas for windows with a
+// static header. the height of a static footer must be subtracted from the
+// returned value.
+func imguiRemainingWinHeight() float32 {
+	return imgui.WindowHeight() - imgui.CursorPosY() - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
+}
+
 // requires the minimum Vec2{} required to fit any of the string values
 // listed in the arguments
 func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
@@ -79,6 +87,28 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) (clicked bool) {
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
 
 	return clicked
+}
+
+// button with coloring indicating whether state is true or false. alternative
+// to checkbox.
+func imguiBooleanButton(cols *imguiColors, state bool, text string) bool {
+	return imguiBooleanButtonV(cols, state, text, imgui.Vec2{})
+}
+
+// imguiBooleanButton with dimension argument
+func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.Vec2) bool {
+	if state {
+		imgui.PushStyleColor(imgui.StyleColorButton, cols.True)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.True)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.True)
+	} else {
+		imgui.PushStyleColor(imgui.StyleColorButton, cols.False)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.False)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.False)
+	}
+	b := imgui.ButtonV(text, dim)
+	imgui.PopStyleColorV(3)
+	return b
 }
 
 // calls Text but preceeds it with AlignTextToFramePadding() and follows it

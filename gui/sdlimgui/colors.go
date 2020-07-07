@@ -38,6 +38,10 @@ type imguiColors struct {
 	TitleBgActive imgui.Vec4
 	Border        imgui.Vec4
 
+	// addtional general colors
+	True  imgui.Vec4
+	False imgui.Vec4
+
 	// playscreen color
 	PlayWindowBg     imgui.Vec4
 	PlayWindowBorder imgui.Vec4
@@ -53,8 +57,6 @@ type imguiColors struct {
 	// CPU status register buttons
 	CPUStatusOn  imgui.Vec4
 	CPUStatusOff imgui.Vec4
-	CPUFlgRdyOn  imgui.Vec4
-	CPUFlgRdyOff imgui.Vec4
 
 	// control window buttons
 	ControlRun         imgui.Vec4
@@ -118,6 +120,10 @@ func newColors() *imguiColors {
 		PlayWindowBg:     imgui.Vec4{0.0, 0.0, 0.0, 1.0},
 		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
 
+		// additional general colors
+		True:  imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		False: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{1.0, 0.5, 0.5, 1.0},
 		ROMSelectFile: imgui.Vec4{1.0, 1.0, 1.0, 1.0},
@@ -127,8 +133,6 @@ func newColors() *imguiColors {
 		// CPU status register buttons
 		CPUStatusOn:  imgui.Vec4{0.8, 0.6, 0.2, 1.0},
 		CPUStatusOff: imgui.Vec4{0.7, 0.5, 0.1, 1.0},
-		CPUFlgRdyOn:  imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		CPUFlgRdyOff: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 
 		// control window buttons
 		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},

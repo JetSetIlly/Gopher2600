@@ -264,15 +264,35 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 func (cart *m3ePlus) Step() {
 }
 
-// GetRAM implements the bus.CartRAMBus interface
+// GetRAM implements the bus.CartRAMBus interface.
 func (cart m3ePlus) GetRAM() []bus.CartRAM {
 	r := make([]bus.CartRAM, len(cart.ram))
 
 	for i := range cart.ram {
+		mapped := false
+		origin := uint16(0x0000)
+
+		for s := range cart.segment {
+			mapped = cart.segment[s] == i && cart.segmentIsRam[s]
+			if mapped {
+				switch s {
+				case 0:
+					origin = uint16(0x1000)
+				case 1:
+					origin = uint16(0x1400)
+				case 2:
+					origin = uint16(0x1800)
+				case 3:
+					origin = uint16(0x1c00)
+				}
+			}
+		}
+
 		r[i] = bus.CartRAM{
 			Label:  fmt.Sprintf("%d", i),
-			Origin: 0x1000,
+			Origin: origin,
 			Data:   make([]uint8, len(cart.ram[i])),
+			Mapped: mapped,
 		}
 		copy(r[i].Data, cart.ram[i])
 	}

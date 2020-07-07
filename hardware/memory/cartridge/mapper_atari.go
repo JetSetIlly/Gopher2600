@@ -212,7 +212,9 @@ func (cart atari) GetRAM() []bus.CartRAM {
 		Label:  "Superchip",
 		Origin: 0x1080,
 		Data:   make([]uint8, len(cart.ram)),
+		Mapped: true,
 	}
+
 	copy(r[0].Data, cart.ram)
 	return r
 }

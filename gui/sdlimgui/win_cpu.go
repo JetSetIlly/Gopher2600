@@ -52,8 +52,6 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 
 func (win *winCPU) init() {
 	win.widgetDimensions.init()
-	win.colFlgReadyOn = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOn)
-	win.colFlgReadyOff = imgui.PackedColorFromVec4(win.img.cols.CPUFlgRdyOff)
 }
 
 func (win *winCPU) destroy() {
@@ -127,25 +125,7 @@ func (win *winCPU) drawStatusRegister() {
 	}
 
 	imgui.SameLine()
-	if win.drawRDYFlag() {
-		// not doing anything with button press
-	}
-}
-
-func (win *winCPU) drawRDYFlag() bool {
-	if win.img.lz.CPU.RdyFlg {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUFlgRdyOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUFlgRdyOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUFlgRdyOn)
-	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUFlgRdyOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUFlgRdyOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUFlgRdyOff)
-	}
-
-	defer imgui.PopStyleColorV(3)
-
-	return imgui.Button("RDY")
+	_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY")
 }
 
 func (win *winCPU) drawStatusRegisterBit(bit bool, label string) bool {
