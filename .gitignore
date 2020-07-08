@@ -10,6 +10,7 @@ gopher2600
 *.ps
 *.pdf
 recording_*
+terminal_*
 *cpu.profile
 *mem.profile
 out
