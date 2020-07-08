@@ -186,9 +186,15 @@ func (win *winDbgScr) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 
 	// popup menu on right mouse button
-	// !!TODO: RMB to release captured window causes popup to immediately open
-	win.isPopup = imgui.BeginPopupContextItem()
-	if win.isPopup {
+	//
+	// we only call OpenPopup() if it's not already open. also, care taken to
+	// avoid menu opening when releasing a captured mouse.
+	if !win.isPopup && !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup("breakmenu")
+	}
+
+	if imgui.BeginPopup("breakmenu") {
+		win.isPopup = true
 		imgui.Text("Break")
 		imgui.Separator()
 		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
@@ -201,6 +207,7 @@ func (win *winDbgScr) draw() {
 			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.mouseScanline, win.mousHorizPos))
 		}
 		imgui.EndPopup()
+	} else {
 		win.isPopup = false
 	}
 

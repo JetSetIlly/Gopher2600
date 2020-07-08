@@ -128,7 +128,7 @@ func (img *SdlImgui) Service() {
 					button = gui.MouseButtonRight
 
 					// right mouse button releases a captured mouse
-					if img.isCaptured() {
+					if img.isCaptured() && ev.Type == sdl.MOUSEBUTTONUP {
 						img.setCapture(false)
 						err := sdl.CaptureMouse(false)
 						if err == nil {
