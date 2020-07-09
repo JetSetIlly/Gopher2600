@@ -101,15 +101,12 @@ func (cart *Supercharger) Initialise() {
 func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	addr := fullAddr & memorymap.CartridgeBits
 
-	if !passive {
-		switch addr {
-		case 0x0ff8:
-			// control register
-			cart.registers.setConfigByte(cart.registers.Value)
-			cart.registers.Delay = 0
-			return 0, nil
+	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
+	// one of the RAM banks
+	bank := cart.GetBank(addr).Number
 
-		case 0x0ff9:
+	if !passive {
+		if addr == 0x0ff9 {
 			// call load() whenever address is touched, although do not allow
 			// it if RAMwrite is false
 			if !cart.registers.RAMwrite {
@@ -127,10 +124,6 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 		}
 	}
 
-	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
-	// one of the RAM banks
-	bank := cart.GetBank(addr).Number
-
 	bios := false
 	switch bank {
 	case 0:
@@ -142,7 +135,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.registers.ROMpower {
-			return cart.bios[addr&0x7ff], nil
+			return cart.bios[addr&0x07ff], nil
 		}
 		return 0, errors.New(errors.SuperchargerError, "ROM is powered off")
 	}
@@ -152,13 +145,24 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			return 0, errors.New(errors.SuperchargerError, "trying to write to ROM")
 		}
 		if cart.registers.RAMwrite {
-			cart.ram[bank][addr&0x7ff] = cart.registers.Value
+			cart.ram[bank][addr&0x07ff] = cart.registers.Value
 			cart.registers.LastWriteAddress = fullAddr
 			cart.registers.LastWriteValue = cart.registers.Value
 		}
 	}
 
-	return cart.ram[bank][addr&0x7ff], nil
+	// control register has been. I've opted to return the value at the address before
+	// the bank switch. I think this is correct but I'm not sure.
+	if addr == 0x0ff8 {
+		b := cart.ram[bank][addr&0x07ff]
+		if !passive {
+			cart.registers.setConfigByte(cart.registers.Value)
+			cart.registers.Delay = 0
+		}
+		return b, nil
+	}
+
+	return cart.ram[bank][addr&0x07ff], nil
 }
 
 // Write implements the cartMapper interface

@@ -312,7 +312,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// the error as a uint16 address which we can then load into the
 				// program counter directly.
 				if onTapeLoaded, ok := cpuErr.(supercharger.TapeLoaded); ok {
-					err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM)
+					err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM, dbg.VCS.RIOT.Timer)
 					if err != nil {
 						return err
 					}

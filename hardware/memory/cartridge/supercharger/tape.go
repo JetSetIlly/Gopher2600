@@ -24,9 +24,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
-type TapeLoaded func(*cpu.CPU, *vcs.RAM) error
+type TapeLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
 
 func (er TapeLoaded) Error() string {
 	return fmt.Sprintf("supercharger tape loaded, preparing VCS")
@@ -85,8 +86,9 @@ func (tap *Tape) load() error {
 	// setup cartridge according to tape instructions. we do this by returning
 	// a function disguised as an error type. The VCS knows how to interpret
 	// this error and will call the function
-	return TapeLoaded(func(mc *cpu.CPU, ram *vcs.RAM) error {
+	return TapeLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		tap.cart.registers.setConfigByte(configByte)
+
 		mc.PC.Load(startAddress)
 
 		// clear RAM
@@ -94,13 +96,24 @@ func (tap *Tape) load() error {
 			ram.Poke(a, 0x00)
 		}
 
-		ram.Poke(0x80, 0x0b)
+		// poke some values into RAM
 		ram.Poke(0xfa, 0xcd)
 		ram.Poke(0xfb, 0xf8)
 		ram.Poke(0xfc, 0xff)
 		ram.Poke(0xfd, 0x4c)
 		ram.Poke(0xfe, uint8(startAddress))
 		ram.Poke(0xff, uint8(startAddress>>8))
+
+		// RAM address 0x80 seems to be sensitive to the specific cartridge. it
+		// seems to be used for bank-switching
+		//
+		// for Frogger and Communist Mutants it must 0x0b
+		// for Killer Instinct it must be 0x0f
+		ram.Poke(0x80, 0x0b)
+
+		// reset timer. rabbit transit requires this
+		tmr.SetInterval("T1024T")
+		tmr.SetValue(0x4c)
 
 		return nil
 	})

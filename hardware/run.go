@@ -70,7 +70,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		if err != nil {
 			// see Step() funciton for explanation
 			if onTapeLoaded, ok := err.(supercharger.TapeLoaded); ok {
-				err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM)
+				err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
 				if err != nil {
 					return err
 				}
