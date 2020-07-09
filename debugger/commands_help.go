@@ -148,7 +148,8 @@ By default the ONTRACE command is:
 to display the raw bytes alongside the disassembly. The DEFN argument meanwhile
 will display the definition of the opcode that was used during execution.`,
 
-	cmdMemMap: "Display high-level VCS memory map.",
+	cmdMemMap: `Display high-level VCS memory map. With the optional address argument information
+about the address will be displayed.`,
 
 	cmdCPU: `Display the current state of the CPU. The SET argument can be used to change the
 contents of the CPU registers.`,

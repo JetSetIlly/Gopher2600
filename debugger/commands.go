@@ -734,7 +734,59 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdMemMap:
-		dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
+		address, ok := tokens.Get()
+		if ok {
+
+			// if an address argument has been specified then map the address
+			// in a read and write context and display the information
+
+			// if hasMapped is false after the read/write mappings then the
+			// address could no be resolved and we print an appropriate notice
+			// to the user
+			hasMapped := false
+
+			s := strings.Builder{}
+
+			ai := dbg.dbgmem.mapAddress(address, true)
+			if ai != nil {
+				hasMapped = true
+				s.WriteString("Read:\n")
+				if ai.address != ai.mappedAddress {
+					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.address, ai.mappedAddress))
+				} else {
+					s.WriteString(fmt.Sprintf("  %#04x ", ai.address))
+				}
+				s.WriteString(fmt.Sprintf("in area %s\n", ai.area.String()))
+				if ai.addressLabel != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.addressLabel))
+				}
+			}
+			ai = dbg.dbgmem.mapAddress(address, false)
+			if ai != nil {
+				hasMapped = true
+				s.WriteString("Write:\n")
+				if ai.address != ai.mappedAddress {
+					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.address, ai.mappedAddress))
+				} else {
+					s.WriteString(fmt.Sprintf("  %#04x ", ai.address))
+				}
+				s.WriteString(fmt.Sprintf("in area %s\n", ai.area.String()))
+				if ai.addressLabel != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.addressLabel))
+				}
+			}
+
+			// print results
+			if hasMapped {
+				dbg.printLine(terminal.StyleInstrument, "%s", s.String())
+			} else {
+				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%v is not a mappable address", address))
+			}
+
+		} else {
+			// without an address argument print the memorymap summary table
+			dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
+		}
 
 	case cmdCPU:
 		action, ok := tokens.Get()
