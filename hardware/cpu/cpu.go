@@ -429,7 +429,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 		}
 
 		// add LSB to PC
-		// this is a bit wierd but without implementing the PC differently (with
+		// this is a bit weird but without implementing the PC differently (with
 		// two 8bit bytes perhaps) this is the only way I can see how to do it with
 		// the desired cycle accuracy:
 		//  o Add full (sign extended) 16bit address to PC
@@ -798,7 +798,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happens for Write and RMW)
 			// +1 cycle
-			_, err = mc.read8Bit(address)
+			_, err = mc.read8Bit((indexedAddress & 0xff00) | (address & 0x00ff))
 			if err != nil {
 				return err
 			}
