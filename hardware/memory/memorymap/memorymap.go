@@ -81,15 +81,6 @@ const (
 // cartridge memtop.
 const Memtop = uint16(0x1fff)
 
-// Within RIOT and TIA mirrors there are smaller mirrors (for the want of a
-// better phrase). MaskRIOT and MaskTIA keep only the relevent bits of a RIOT
-// and TIA address. Should only be applied to addresses that are definately
-// either a RIOT or TIA address.
-const (
-	MaskRIOT = uint16(0x02f7)
-	MaskTIA  = uint16(0x000f)
-)
-
 // CartridgeBits identifies the bits in an address that are relevent to the
 // cartridge address. Useful for discounting those bits that determine the
 // cartridge mirror. For example, the following will be true:
@@ -106,6 +97,17 @@ const (
 	CartridgeBits = OriginCart ^ MemtopCart
 )
 
+// The masks to apply to an address to bring any address into the primary
+// range. Prefer to use MapAddress() for ease of use.
+const (
+	MaskCart      = MemtopCart
+	MaskReadRIOT  = uint16(0x0287)
+	MaskWriteRIOT = MemtopRIOT
+	MaskRAM       = MemtopRAM
+	MaskReadTIA   = uint16(0x000f)
+	MaskWriteTIA  = MemtopTIA
+)
+
 // MapAddress translates the address argument from mirror space to primary
 // space.  Generally, an address should be passed through this function before
 // accessing memory.
@@ -114,28 +116,28 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 
 	// cartridge addresses
 	if address&OriginCart == OriginCart {
-		return address & MemtopCart, Cartridge
+		return address & MaskCart, Cartridge
 	}
 
 	// RIOT addresses
 	if address&OriginRIOT == OriginRIOT {
 		if read {
-			return address & MemtopRIOT & MaskRIOT, RIOT
+			return address & MaskReadRIOT, RIOT
 		}
-		return address & MemtopRIOT, RIOT
+		return address & MaskWriteRIOT, RIOT
 	}
 
 	// RAM addresses
 	if address&OriginRAM == OriginRAM {
-		return address & MemtopRAM, RAM
+		return address & MaskRAM, RAM
 	}
 
 	// everything else is in TIA space
 	if read {
-		return address & MemtopTIA & MaskTIA, TIA
+		return address & MaskReadTIA, TIA
 	}
 
-	return address & MemtopTIA, TIA
+	return address & MaskWriteTIA, TIA
 }
 
 // IsArea returns true if the address is in the specificied area
