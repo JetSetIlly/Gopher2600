@@ -98,11 +98,10 @@ const (
 	PolycounterError = "polycounter error: %v"
 
 	// cpu
-	InvalidResult                  = "cpu error: %v"
-	ProgramCounterCycled           = "cpu error: program counter cycled back to 0x0000"
-	InvalidOperationMidInstruction = "cpu error: invalid operation mid-instruction (%v)"
-	CPUBug                         = "cpu bug: %v"
-
+	InvalidResult          = "cpu error: %v"
+	ProgramCounterCycled   = "cpu error: program counter cycled back to 0x0000"
+	InvalidDuringExecution = "cpu error: invalid operation mid-instruction (%v)"
+	CPUBug                 = "cpu bug: %v"
 	// TODO: remove this once all opcodes are defined/implemented
 	UnimplementedInstruction = "cpu error: unimplemented instruction (%#02x) at (%#04x)"
 

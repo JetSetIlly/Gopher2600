@@ -22,6 +22,7 @@ package supercharger
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -89,7 +90,10 @@ func (tap *Tape) load() error {
 	return TapeLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		tap.cart.registers.setConfigByte(configByte)
 
-		mc.PC.Load(startAddress)
+		err := mc.LoadPC(startAddress)
+		if err != nil {
+			return errors.New(errors.SuperchargerError, err)
+		}
 
 		// clear RAM
 		for a := uint16(0x80); a <= 0xff; a++ {

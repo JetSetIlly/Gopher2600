@@ -24,26 +24,10 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
 func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
-	// decide which address value to use
-	var addr uint16
-
-	//  if last result was final or if address of last result is zero then
-	//  print the PC address. the second part of the condition catches a newly
-	//  reset CPU.
-	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
-		addr = dbg.VCS.CPU.PC.Address()
-	} else {
-		// if we're in the middle of an instruction then use the
-		// addresss in lastResult - in video-stepping mode we want the
-		// prompt to report the instruction that we're working on, not
-		// the next one to be stepped into.
-		addr = dbg.VCS.CPU.LastResult.Address
-	}
-
 	prompt := strings.Builder{}
 	prompt.WriteString("[")
 
@@ -51,37 +35,31 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 		prompt.WriteString("(rec)")
 	}
 
-	// build prompt depending on address and whether a disassembly is available
-	if !memorymap.IsArea(addr, memorymap.Cartridge) {
-		// prompt address doesn't seem to be pointing to the cartridge, prepare
-		// "non-cart" prompt
-		prompt.WriteString(fmt.Sprintf(" %#04x non-cart space ]", addr))
-	} else if e := dbg.Disasm.GetEntryByAddress(addr); e != nil {
-		// because we're using the raw disassmebly the reported address
-		// in that disassembly may be misleading.
-		prompt.WriteString(fmt.Sprintf(" %#04x %s", addr, e.Mnemonic))
+	// decide which address value to use
+	var e *disassembly.Entry
+	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
+		e = dbg.Disasm.GetEntryByAddress(dbg.VCS.CPU.PC.Address())
+	} else {
+		// if we're in the middle of an instruction then use the addresss in
+		// lastResult. in these instances we want the  prompt to report the
+		// instruction that the CPU is working on, not the next one to be
+		// stepped into.
+		e = dbg.lastResult
+	}
+
+	// build prompt based on how confident we are of the contents of the
+	// disassembly entry. starting with the condition of no disassembly at all
+	if e == nil {
+		prompt.WriteString(" unsure")
+	} else if e.Level == disassembly.EntryLevelUnused {
+		prompt.WriteString(fmt.Sprintf(" %s unsure", e.Address))
+	} else {
+		prompt.WriteString(fmt.Sprintf(" %s %s", e.Address, e.Mnemonic))
 		if e.Operand != "" {
 			prompt.WriteString(fmt.Sprintf(" %s", e.Operand))
 		}
-		prompt.WriteString(" ]")
-	} else {
-		// incomplete disassembly, prepare "no disasm" prompt
-		ai := dbg.dbgmem.mapAddress(addr, true)
-		if ai == nil {
-			prompt.WriteString(fmt.Sprintf(" %#04x unmappable address ]", addr))
-		} else {
-			switch ai.area {
-			case memorymap.RAM:
-				prompt.WriteString(fmt.Sprintf(" %#04x in RAM! ]", addr))
-			case memorymap.Cartridge:
-				prompt.WriteString(fmt.Sprintf(" %#04x no disasm ]", addr))
-			default:
-				// if we're not in RAM or Cartridge space then we must be in
-				// the TIA or RIOT - this would be very odd indeed
-				prompt.WriteString(fmt.Sprintf(" %#04x WTF! ]", addr))
-			}
-		}
 	}
+	prompt.WriteString(" ]")
 
 	// display indicator that the CPU is waiting for WSYNC to end. only applies
 	// when in video step mode.
@@ -90,8 +68,18 @@ func (dbg *Debugger) buildPrompt(videoCycle bool) terminal.Prompt {
 	}
 
 	// video cycle prompt
-	if videoCycle && !dbg.VCS.CPU.LastResult.Final {
-		prompt.WriteString(" > ")
+	if !dbg.VCS.CPU.LastResult.Final {
+		if videoCycle {
+			prompt.WriteString(" > ")
+		} else {
+			// we're in the middle of a cpu instruction but this is not a video
+			// cycle prompt. while this is possible it is unusual. indicate
+			// this by appending a double question mark
+			//
+			// an example of this is when the supercharger.TapeLoaded error has
+			// been triggered
+			prompt.WriteString(" ?? ")
+		}
 		return terminal.Prompt{Content: prompt.String(), Style: terminal.StylePromptVideoStep}
 	}
 

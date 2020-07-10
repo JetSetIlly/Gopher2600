@@ -68,8 +68,9 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	for cont {
 		err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
-			// see Step() funciton for explanation
+			// see inputLoop() funciton for explanation
 			if onTapeLoaded, ok := err.(supercharger.TapeLoaded); ok {
+				vcs.CPU.Interrupted = true
 				err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
 				if err != nil {
 					return err

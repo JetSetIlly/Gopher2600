@@ -21,6 +21,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -128,6 +129,7 @@ func (win *winDisasm) draw() {
 		// copy in debugger.LastDisasmEntry. the latter gets updated too
 		// late for our needs
 		pcaddr = win.img.lz.Debugger.LastResult.Result.Address
+		currBank = win.img.lz.Debugger.LastResult.Bank
 	}
 
 	if win.img.lz.Cart.NumBanks == 1 {
@@ -169,13 +171,13 @@ func (win *winDisasm) draw() {
 	optionsHeight := imgui.CursorPosY()
 
 	// status line
+	s := strings.Builder{}
 	if currBank.NonCart {
-		imgui.Text("executing from VCS RAM")
+		s.WriteString("execution in VCS RAM")
 	} else if currBank.IsRAM {
-		imgui.Text("executing from cartridge RAM")
-	} else {
-		imgui.Text("")
+		s.WriteString("execution in cartridge RAM")
 	}
+	imgui.Text(s.String())
 
 	// options line
 	if imgui.Checkbox("Show all", &win.showAllEntries) {

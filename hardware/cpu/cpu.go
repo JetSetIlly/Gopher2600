@@ -49,10 +49,6 @@ type CPU struct {
 	mem          bus.CPUBus
 	instructions []*instructions.Definition
 
-	// isExecuting is used for sanity checks - to make sure we're not calling CPU
-	// functions when we shouldn't
-	isExecuting bool
-
 	// cycleCallback is called by endCycle() for additional emulator
 	// functionality
 	cycleCallback func() error
@@ -75,6 +71,12 @@ type CPU struct {
 	// possible even if NoFlowControl is true. this is because bank switching
 	// is outside of the direct control of the CPU.
 	NoFlowControl bool
+
+	// Interrupted indicated that the CPU has been put into a state outside of
+	// its normal operation. When true work may be done on the CPU that would
+	// otherwise be considered an error. Resets to false on every call to
+	// ExecuteInstruction()
+	Interrupted bool
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
@@ -111,11 +113,6 @@ func (mc *CPU) String() string {
 
 // Reset reinitialises all registers
 func (mc *CPU) Reset(randomState bool) error {
-	// we don't want the CPU to reset if we're in the middle of executing an
-	// instruction.
-	if mc.isExecuting {
-		return errors.New(errors.InvalidOperationMidInstruction, "reset")
-	}
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
 
@@ -138,7 +135,6 @@ func (mc *CPU) Reset(randomState bool) error {
 	mc.Status.Zero = mc.A.IsZero()
 	mc.Status.Sign = mc.A.IsNegative()
 	mc.RdyFlg = true
-	mc.isExecuting = false
 	mc.cycleCallback = nil
 
 	// not touching NoFlowControl
@@ -153,8 +149,8 @@ func (mc CPU) HasReset() bool {
 
 // LoadPCIndirect loads the contents of indirectAddress into the PC
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
-	if mc.isExecuting {
-		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
+	if !mc.LastResult.Final && !mc.Interrupted {
+		return errors.New(errors.InvalidDuringExecution, "load PC")
 	}
 
 	// read 16 bit address from specified indirect address
@@ -182,8 +178,8 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 // LoadPC loads the contents of directAddress into the PC
 func (mc *CPU) LoadPC(directAddress uint16) error {
-	if mc.isExecuting {
-		return errors.New(errors.InvalidOperationMidInstruction, "load PC")
+	if !mc.LastResult.Final && !mc.Interrupted {
+		return errors.New(errors.InvalidDuringExecution, "load PC")
 	}
 
 	mc.PC.Load(directAddress)
@@ -490,9 +486,12 @@ func (mc *CPU) endCycle() error {
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
-	if mc.isExecuting {
-		return errors.New(errors.InvalidOperationMidInstruction, "a previous call to ExecuteInstruction() has not yet completed")
+	if !mc.LastResult.Final && !mc.Interrupted {
+		return errors.New(errors.InvalidDuringExecution, "a previous call to ExecuteInstruction() has not yet completed")
 	}
+
+	// reset Interrupted flag
+	mc.Interrupted = false
 
 	// update cycle callback
 	mc.cycleCallback = cycleCallback
@@ -509,7 +508,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// register end cycle callback
 	defer func() {
-		mc.isExecuting = false
 		mc.cycleCallback = nil
 	}()
 

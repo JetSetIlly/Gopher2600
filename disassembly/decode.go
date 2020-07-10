@@ -24,10 +24,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
+func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory, startAddress ...uint16) error {
 	// basic decoding pass
 	err := dsm.decode(mc, mem)
 	if err != nil {
@@ -41,10 +42,17 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	mem.bank = nil
 
 	// reinitialise cartridge in case its internal state has been changed
-	dsm.cart.Initialise()
+	//
+	// we shouldn't really need this and in some case it's downright dangerous
+	// to do (eg. Supercharger) but it's harmless in most cases.
+	//
+	// !!TODO: satisfy ourselves that cartridge initialisation during disassembly is not needed
+	if dsm.cart.ID() != supercharger.MappingID {
+		dsm.cart.Initialise()
+	}
 
 	// bless those entries which we're reasonably sure are real instructions
-	err = dsm.bless(mc)
+	err = dsm.bless(mc, startAddress...)
 	if err != nil {
 		return err
 	}
@@ -55,25 +63,39 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	return nil
 }
 
-func (dsm *Disassembly) bless(mc *cpu.CPU) error {
-	// get start bank for cartridge before we do anything else
-	mc.Reset(false)
-	err := mc.LoadPCIndirect(addresses.Reset)
-	if err != nil {
-		return err
-	}
-	bank := dsm.cart.GetBank(mc.PC.Value())
-	if bank.IsRAM {
-		return nil
-	}
+func (dsm *Disassembly) bless(mc *cpu.CPU, startAddress ...uint16) error {
+	if len(startAddress) == 0 {
+		// if no startPoints have been supplied then we start off with the
+		// machine reset address. this is the only sequence that we can be sure
+		// of so we do this first (see blessSequence() function for interleave
+		// detection).
+		//
+		// if we add it to the list of start points we accumulate below, we can't
+		// be sure it will be first to run
+		mc.Reset(false)
+		err := mc.LoadPCIndirect(addresses.Reset)
+		if err != nil {
+			return err
+		}
+		bank := dsm.cart.GetBank(mc.PC.Value())
+		if !bank.NonCart {
+			dsm.blessSequence(bank.Number, mc.PC.Value()&memorymap.CartridgeBits)
+		}
 
-	// bless the sequence starting from the reset bank/address. this is the
-	// only sequence that we can be sure of so we do this first (see
-	// blessSequence() function for interleave detection).
-	//
-	// if we add it to the list of start points we accumulate below, we can't
-	// be sure it will be first to run
-	dsm.blessSequence(bank.Number, mc.PC.Value()&memorymap.CartridgeBits)
+	} else {
+
+		// walk through list of startPoints. we do this first for the same
+		// reason the Reset address is added first (see commentary above)
+		//
+		// this relies on the cartridge being in the correct state. for the
+		// startAddress to be valid
+		for _, s := range startAddress {
+			bank := dsm.cart.GetBank(s)
+			if !bank.NonCart {
+				dsm.blessSequence(bank.Number, s&memorymap.CartridgeBits)
+			}
+		}
+	}
 
 	// list of start points for every bank
 	blessings := make([][]uint16, len(dsm.disasm))
@@ -220,13 +242,13 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 			// loop over entire address space for every bank. even then bank
 			// sizes are smaller than the address space it makes things easier
 			// later if we put a valid entry at every index. entries outside of
-			// the bank space will be marked as NotMappable
+			// the bank space will be marked as Unused
 			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 
 				// check that entry has not already been decoded. cartridge
 				// segments should not be able to overlap
 				e := dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
-				if e != nil && e.Level > EntryLevelNotMappable {
+				if e != nil && e.Level > EntryLevelUnused {
 					continue
 				}
 
@@ -234,7 +256,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				// we'll still go through the decoding process so that we have
 				// a usuable entry at all points in the disassembly. this
 				// simplifies future iterations.
-				entryLevel := EntryLevelNotMappable
+				entryLevel := EntryLevelUnused
 				if address >= origin && address <= memtop {
 					entryLevel = EntryLevelDecoded
 				}

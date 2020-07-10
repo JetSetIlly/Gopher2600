@@ -45,12 +45,12 @@ type EntryLevel int
 // Blessed instructions are deemed to be more accurate because they have been
 // reached according to the flow of the instructions from the start address.
 //
-// For normal debugging operations there is no need to use EntryLevelNotMappable
+// For normal debugging operations there is no need to use EntryLevelUnused
 // outside of the disassembly package. It used for the unusual case where a
 // bank is not able to be referenced from the Entry address. See M-Network for
 // an example of this, where Bank 7 cannot be mapped to the lower segment.
 const (
-	EntryLevelNotMappable EntryLevel = iota
+	EntryLevelUnused EntryLevel = iota
 	EntryLevelDecoded
 	EntryLevelBlessed
 	EntryLevelExecuted
@@ -60,8 +60,8 @@ func (t EntryLevel) String() string {
 	// adding space to short strings so that they line up (we're only using
 	// this in a single place for a specific purpose so this is okay)
 	switch t {
-	case EntryLevelNotMappable:
-		return "dead "
+	case EntryLevelUnused:
+		return "unused "
 	case EntryLevelDecoded:
 		return "decoded "
 	case EntryLevelBlessed:

@@ -109,6 +109,23 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	return dsm, nil
 }
 
+// FromMemoryAgain repeats the disassembly using the existing structures
+func (dsm *Disassembly) FromMemoryAgain(startAddress ...uint16) error {
+	// demote any entry level lower then "executed" to "unused
+	for b := 0; b < len(dsm.disasm); b++ {
+		for _, a := range dsm.disasm[b] {
+			if a.Level < EntryLevelExecuted {
+				a.Level = EntryLevelUnused
+			}
+		}
+	}
+
+	// it's important that we don't initiliase the cartridge during the
+	// fromMemory() process
+
+	return dsm.fromMemory(startAddress...)
+}
+
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
 // requires an existing instance of Disassembly
@@ -129,14 +146,17 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 		return nil
 	}
 
-	// begin and start with the cartridge in its initialised state. note that
-	// the disassemble() function passes over the cartridge multiple times and
-	// will initialise the cartridge in between each stage.
+	// begin and start with the cartridge in its initialised state.
 	dsm.cart.Initialise()
 	defer dsm.cart.Initialise()
 
+	return dsm.fromMemory()
+}
+
+// fromMemory is the underlying function for both FromMemory() and FromMemoryAgain()
+func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	// create new memory
-	mem := &disasmMemory{cart: cart}
+	mem := &disasmMemory{cart: dsm.cart}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
@@ -152,7 +172,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 	defer func() { dsm.cart.Passive = false }()
 
 	// disassemble cartridge binary
-	err = dsm.disassemble(mc, mem)
+	err = dsm.disassemble(mc, mem, startAddress...)
 	if err != nil {
 		return errors.New(errors.DisasmError, err)
 	}
@@ -163,6 +183,9 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 // GetEntryByAddress returns the disassembly entry at the specified bank/address.
 func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	bank := dsm.cart.GetBank(address)
+	if bank.Number >= len(dsm.disasm) {
+		return nil
+	}
 	return dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
 }
 
@@ -170,12 +193,10 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) error {
 	bank := dsm.cart.GetBank(result.Address)
 
-	// not touching any result which is not in cartridge ROM. Maybe we should
-	// keep a running log just for RAM execution, similar to would be produced
-	// with the LAST command.
-	//
-	// !!TODO: disassembly package to keep a running log of execution.
-	if bank.IsRAM || bank.NonCart {
+	// not touching any result which is not in cartridge space. we are noting
+	// execution results from cartridge RAM. the banks.Details field in the
+	// disassembly entry notes whether execution was from RAM
+	if bank.NonCart {
 		return nil
 	}
 
@@ -213,6 +234,8 @@ func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) er
 	}
 
 	// bless next entry in case it was missed by the original decoding
+	//
+	// !!TODO: maybe make sure next entry has been disassembled in it's current form
 	bank = dsm.cart.GetBank(nextAddr)
 	e = dsm.disasm[bank.Number][nextAddr&memorymap.CartridgeBits]
 	if e.Level < EntryLevelBlessed {

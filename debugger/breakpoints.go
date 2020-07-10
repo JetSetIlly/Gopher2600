@@ -32,6 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // breakpoints keeps track of all the currently defined breakers
@@ -264,10 +265,8 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	// them to newBreaks first and then check that we aren't adding duplicates
 	newBreaks := make([]breaker, 0, 10)
 
-	// a note about whether the PC target has been specified explicitely. we
-	// use this to decide whether to add an automatic BANK condition to PC
-	// targets (see below)
-	explicitPCTarget := false
+	// whether to add a bank condition to a singular PC BREAK target
+	addBankCondition := true
 
 	// loop over tokens:
 	//	o if token is a valid type value then add the breakpoint for the current target
@@ -310,6 +309,10 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			if tgt.Label() == "PC" {
 				ai := bp.dbg.dbgmem.mapAddress(uint16(val.(int)), true)
 				val = int(ai.mappedAddress)
+
+				// unusual case but if PC break is not in cartridge area we
+				// don't want to add a bank condition
+				addBankCondition = addBankCondition && ai.area == memorymap.Cartridge
 			}
 
 			if andBreaks {
@@ -332,8 +335,9 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			} else if tok == "|" {
 				andBreaks = false
 			} else {
-				// note whether PC target has been specified explicitly
-				explicitPCTarget = explicitPCTarget || strings.ToUpper(tok) == "PC"
+				// if PC target has not been explicitely specified then add
+				// bank condition
+				addBankCondition = addBankCondition && strings.ToUpper(tok) != "PC"
 
 				// token is not a number or a composition symbol so try to
 				// parse a new target
@@ -358,7 +362,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		// if the break is a singular, undecorated PC target then add a BANK
 		// condition for the current BANK. this is arguably what the user
 		// intends to happen.
-		if nb.next == nil && nb.target.label == "PC" && !explicitPCTarget {
+		if nb.next == nil && nb.target.label == "PC" && addBankCondition {
 			if bp.dbg.VCS.Mem.Cart.NumBanks() > 1 {
 				nb.next = &breaker{
 					target: bankTarget(bp.dbg),

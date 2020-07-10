@@ -152,7 +152,7 @@ func newColors() *imguiColors {
 
 		// disassembly other
 		DisasmCPUstep:   imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		DisasmVideoStep: imgui.Vec4{1.0, 0.8, 0.8, 0.07},
+		DisasmVideoStep: imgui.Vec4{0.5, 0.5, 0.5, 0.07},
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
 		// audio oscilloscope

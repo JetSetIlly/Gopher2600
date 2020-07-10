@@ -279,15 +279,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// not using the err variable because we'll clobber it before we
 			// get to check the result of VCS.Step()
-			var cpuErr error
+			var stepErr error
 
 			switch dbg.quantum {
 			case QuantumCPU:
-				cpuErr = dbg.VCS.Step(vcsStep)
+				stepErr = dbg.VCS.Step(vcsStep)
 			case QuantumVideo:
-				cpuErr = dbg.VCS.Step(vcsStepVideo)
+				stepErr = dbg.VCS.Step(vcsStepVideo)
 			default:
-				cpuErr = errors.New(errors.DebuggerError, "unknown quantum mode")
+				stepErr = errors.New(errors.DebuggerError, "unknown quantum mode")
 			}
 
 			// format last CPU execution result. we'll do this even if there's
@@ -304,29 +304,49 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				return errors.New(errors.DebuggerError, err)
 			}
 
-			if cpuErr != nil {
+			if stepErr != nil {
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file. when "fast-loading"
 				// supercharger bin files however, we need a way of doing this without
-				// the ROM. the TapeLoaded error allows us to do this by interpreting
-				// the error as a uint16 address which we can then load into the
-				// program counter directly.
-				if onTapeLoaded, ok := cpuErr.(supercharger.TapeLoaded); ok {
+				// the ROM. the TapeLoaded error allows us to do this.
+				if onTapeLoaded, ok := stepErr.(supercharger.TapeLoaded); ok {
+
+					// CPU execution has been interrupted. update state of CPU
+					dbg.VCS.CPU.Interrupted = true
+
+					// call function to complete tape loading procedure
 					err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM, dbg.VCS.RIOT.Timer)
 					if err != nil {
 						return err
 					}
 
-					// !!TODO: (re)disassemble memory on TapeLoaded error signal
+					// (re)disassemble memory on TapeLoaded error signal
+					err = dbg.Disasm.FromMemoryAgain(dbg.VCS.CPU.PC.Address())
+					if err != nil {
+						return err
+					}
+
 				} else {
 					// exit input loop only if error is not an AtariError...
-					if !errors.IsAny(cpuErr) {
-						return errors.New(errors.DebuggerError, cpuErr)
+					if !errors.IsAny(stepErr) {
+						return errors.New(errors.DebuggerError, stepErr)
 					}
 
 					// ...set lastStepError instead and allow emulation to halt
 					dbg.lastStepError = true
-					dbg.printLine(terminal.StyleError, "%s", cpuErr)
+					dbg.printLine(terminal.StyleError, "%s", stepErr)
+
+					// if this is not a video cycle loop and the error has occured in the middle of
+					// a CPU cycle (ie. CPU result is not final) then issue an additional warning
+					// and update CPU interrupt state
+					//
+					// !!TODO: errors that occur mid-CPU cycle to continue inside video-cycle loop
+					// * this will need quite a bit of work with uncertain benefits
+					//
+					if !videoCycle && !dbg.lastResult.Result.Final {
+						dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
+						dbg.VCS.CPU.Interrupted = true
+					}
 				}
 			} else {
 				err := dbg.Disasm.UpdateEntry(dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())

@@ -29,6 +29,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
+const MappingID = "AR"
+
 // supercharger has 6k of RAM in total
 const numRamBanks = 4
 const bankSize = 2048
@@ -50,7 +52,7 @@ type Supercharger struct {
 // Supercharger type
 func NewSupercharger(data []byte) (*Supercharger, error) {
 	cart := &Supercharger{
-		mappingID:   "AR",
+		mappingID:   MappingID,
 		description: "supercharger",
 		bankSize:    2048,
 	}
