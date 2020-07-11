@@ -27,7 +27,89 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
-func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint3ePlus(b []byte) bool {
+	// 3e is similar to tigervision, a key difference being that it uses 0x3e
+	// to switch ram, in addition to 0x3f for switching banks.
+	//
+	// postulating that the fingerprint method can be the same except for the
+	// write address.
+
+	threshold3e := 5
+	threshold3f := 5
+	for i := range b {
+		if b[i] == 0x85 && b[i+1] == 0x3e {
+			threshold3e--
+		}
+		if b[i] == 0x85 && b[i+1] == 0x3f {
+			threshold3f--
+		}
+		if threshold3e <= 0 && threshold3f <= 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func fingerprintMnetwork(b []byte) bool {
+	threshold := 2
+	for i := 0; i < len(b)-3; i++ {
+		if b[i] == 0x7e && b[i+1] == 0x66 && b[i+2] == 0x66 && b[i+3] == 0x66 {
+			threshold--
+		}
+		if threshold == 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func fingerprintParkerBros(b []byte) bool {
+	// fingerprint patterns taken from Stella CartDetector.cxx
+	for i := 0; i <= len(b)-3; i++ {
+		if (b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x5f) ||
+			(b[i] == 0x8d && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
+			(b[i] == 0x0c && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0xad && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
+			(b[i] == 0xad && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
+			(b[i] == 0xad && b[i+1] == 0xed && b[i+2] == 0xff) ||
+			(b[i] == 0xad && b[i+1] == 0xf3 && b[i+2] == 0xbf) {
+			return true
+		}
+
+	}
+
+	return false
+}
+
+func fingerprintHarmony(b []byte) bool {
+	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
+}
+
+func fingerprintSuperchargerFastLoad(b []byte) bool {
+	// only the 8448byte bin file is supported for now
+	return len(b) == 8448
+}
+
+func fingerprintTigervision(b []byte) bool {
+	// tigervision cartridges change banks by writing to memory address 0x3f. we
+	// can hypothesize that these types of cartridges will have that instruction
+	// sequence "85 3f" many times in a ROM whereas other cartridge types will not
+
+	threshold := 5
+	for i := 0; i < len(b)-1; i++ {
+		if b[i] == 0x85 && b[i+1] == 0x3f {
+			threshold--
+		}
+		if threshold == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -39,7 +121,7 @@ func (cart Cartridge) fingerprint8k(data []byte) func([]byte) (cartMapper, error
 	return newAtari8k
 }
 
-func (cart Cartridge) fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -51,7 +133,7 @@ func (cart Cartridge) fingerprint16k(data []byte) func([]byte) (cartMapper, erro
 	return newAtari16k
 }
 
-func (cart Cartridge) fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -62,16 +144,13 @@ func (cart Cartridge) fingerprint32k(data []byte) func([]byte) (cartMapper, erro
 func (cart *Cartridge) fingerprint(data []byte) error {
 	var err error
 
-	// harmony cartridges have a recognisable byte sequence. we can use this
-	// regardless of length. any further differentiation can be done in the
-	// harmony emulation itself.
-	if data[0x20] == 0x1e && data[0x21] == 0xab && data[0x22] == 0xad && data[0x23] == 0x10 {
+	if fingerprintHarmony(data) {
 		// !!TODO: this might be a CFDJ cartridge. check for that.
 		cart.mapper, err = harmony.NewDPCplus(data)
 		return err
 	}
 
-	if supercharger.FingerprintSupercharger(data) {
+	if fingerprintSuperchargerFastLoad(data) {
 		cart.mapper, err = supercharger.NewSupercharger(data)
 		return err
 	}
@@ -95,7 +174,7 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		}
 
 	case 8192:
-		cart.mapper, err = cart.fingerprint8k(data)(data)
+		cart.mapper, err = fingerprint8k(data)(data)
 		if err != nil {
 			return err
 		}
@@ -116,13 +195,13 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		}
 
 	case 16384:
-		cart.mapper, err = cart.fingerprint16k(data)(data)
+		cart.mapper, err = fingerprint16k(data)(data)
 		if err != nil {
 			return err
 		}
 
 	case 32768:
-		cart.mapper, err = cart.fingerprint32k(data)(data)
+		cart.mapper, err = fingerprint32k(data)(data)
 		if err != nil {
 			return err
 		}

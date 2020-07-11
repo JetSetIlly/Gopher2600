@@ -41,23 +41,6 @@ import (
 // here has no effect other than switching banks.  Very clever; especially
 // since you can implement this with only one chip! (a 74LS173)
 
-func fingerprintTigervision(b []byte) bool {
-	// tigervision cartridges change banks by writing to memory address 0x3f. we
-	// can hypothesize that these types of cartridges will have that instruction
-	// sequence "85 3f" many times in a ROM whereas other cartridge types will not
-
-	threshold := 5
-	for i := 0; i < len(b)-1; i++ {
-		if b[i] == 0x85 && b[i+1] == 0x3f {
-			threshold--
-		}
-		if threshold == 0 {
-			return true
-		}
-	}
-	return false
-}
-
 type tigervision struct {
 	mappingID   string
 	description string

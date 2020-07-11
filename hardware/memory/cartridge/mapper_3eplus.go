@@ -29,29 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-func fingerprint3ePlus(b []byte) bool {
-	// 3e is similar to tigervision, a key difference being that it uses 0x3e
-	// to switch ram, in addition to 0x3f for switching banks.
-	//
-	// postulating that the fingerprint method can be the same except for the
-	// write address.
-
-	threshold3e := 5
-	threshold3f := 5
-	for i := range b {
-		if b[i] == 0x85 && b[i+1] == 0x3e {
-			threshold3e--
-		}
-		if b[i] == 0x85 && b[i+1] == 0x3f {
-			threshold3f--
-		}
-		if threshold3e <= 0 && threshold3f <= 0 {
-			return true
-		}
-	}
-	return false
-}
-
 type m3ePlus struct {
 	mappingID   string
 	description string

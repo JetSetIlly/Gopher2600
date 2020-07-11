@@ -28,18 +28,51 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
-type TapeLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
-
-func (er TapeLoaded) Error() string {
-	return fmt.Sprintf("supercharger tape loaded, preparing VCS")
-}
-
-type Tape struct {
+// FastLoad implements the Tape interface. It loads data from a binary file
+// rather than a sound file.
+//
+// On success it returns the FastLoaded error. This must be interpreted by the
+// emulator driver and called with the arguments listed in the error type.
+//
+// Format information from mailing list:
+//		Subject: Re: [stella] Supercharger BIN format
+//		From: Eckhard Stolberg
+//		Date: Fri, 08 Jan 1999
+type FastLoad struct {
 	cart *Supercharger
 	data []byte
 }
 
-func (tap *Tape) load() error {
+// FastLoaded error is returned on success of FastLoad.Load(). It must be
+// honoured (ie. caught and the function called) by the driving emulator for
+// the fastload process to complete.
+//
+// It is unusual to use an error in this way but this is the only effective way
+// of sending a signal that something unusual has happened. In that sense, it
+// is an error, the normal run of the emulator has been interrupted and must be
+// handled.
+//
+// That there is nothing else like this in the 2600 emulation, using an error
+// like this is justified. It is an exception to the rule, so to speak, and
+// setting up another way of sending the "fast load completed" signal is
+// inappropriate.
+type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
+
+func (er FastLoaded) Error() string {
+	return fmt.Sprintf("supercharger tape loaded, preparing VCS")
+}
+
+// NewFastLoad is the preferred method of initialisation for the FastLoad type
+func NewFastLoad(cart *Supercharger, data interface{}) (Tape, error) {
+	tap := &FastLoad{
+		cart: cart,
+		data: data.([]byte),
+	}
+	return tap, nil
+}
+
+// Load implements the Tape interface
+func (tap *FastLoad) Load() error {
 	gameData := tap.data[0:0x1eff]
 
 	// only 8448 .bin format is supported currently
@@ -55,21 +88,21 @@ func (tap *Tape) load() error {
 	numPages := int(gameHeader[3])
 
 	// not using the following in any meaningful way
-	checksum := gameHeader[4]
-	multiLoad := gameHeader[5]
-	progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
+	// checksum := gameHeader[4]
+	// multiLoad := gameHeader[5]
+	// progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	fmt.Printf("start address: %#04x\n", startAddress)
-	fmt.Printf("config byte: %#08b\n", configByte)
-	fmt.Printf("num pages: %d\n", numPages)
-	fmt.Printf("checksum: %#02x\n", checksum)
-	fmt.Printf("multi load: %#02x\n", multiLoad)
-	fmt.Printf("progress counter: %#02x\n", progressCounter)
-	fmt.Println("")
+	// fmt.Printf("start address: %#04x\n", startAddress)
+	// fmt.Printf("config byte: %#08b\n", configByte)
+	// fmt.Printf("num pages: %d\n", numPages)
+	// fmt.Printf("checksum: %#02x\n", checksum)
+	// fmt.Printf("multi load: %#02x\n", multiLoad)
+	// fmt.Printf("progress counter: %#02x\n", progressCounter)
+	// fmt.Println("")
 
 	// data is loaded accoring to page table
 	pageTable := tap.data[0x2010:0x2028]
-	fmt.Printf("page-table\n----------\n%v\n\n", pageTable)
+	// fmt.Printf("page-table\n----------\n%v\n\n", pageTable)
 
 	// copy data to RAM banks
 	for i := 0; i < numPages; i++ {
@@ -81,13 +114,13 @@ func (tap *Tape) load() error {
 		data := gameData[binOffset : binOffset+0x100]
 		copy(tap.cart.ram[bank][bankOffset:bankOffset+0x100], data)
 
-		fmt.Printf("copying %#04x:%#04x to bank %d page %d, offset %#04x\n", binOffset, binOffset+0x100, bank, page, bankOffset)
+		// fmt.Printf("copying %#04x:%#04x to bank %d page %d, offset %#04x\n", binOffset, binOffset+0x100, bank, page, bankOffset)
 	}
 
 	// setup cartridge according to tape instructions. we do this by returning
 	// a function disguised as an error type. The VCS knows how to interpret
 	// this error and will call the function
-	return TapeLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	return FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		tap.cart.registers.setConfigByte(configByte)
 
 		err := mc.LoadPC(startAddress)

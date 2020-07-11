@@ -68,20 +68,6 @@ import (
 // Note that the 256-byte banks and the large 1K bank are seperate entities.
 // The M-Network carts are about as complex as it gets.
 
-func fingerprintMnetwork(b []byte) bool {
-	threshold := 2
-	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 0x7e && b[i+1] == 0x66 && b[i+2] == 0x66 && b[i+3] == 0x66 {
-			threshold--
-		}
-		if threshold == 0 {
-			return true
-		}
-	}
-
-	return false
-}
-
 const num256ByteRAMbanks = 4
 
 type mnetwork struct {

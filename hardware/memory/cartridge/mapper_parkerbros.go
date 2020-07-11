@@ -37,25 +37,6 @@ import (
 // for the third 1K.  The last 1K always points to the last 1K of the ROM image
 // so that the cart always starts up in the exact same place.
 
-func fingerprintParkerBros(b []byte) bool {
-	// fingerprint patterns taken from Stella CartDetector.cxx
-	for i := 0; i <= len(b)-3; i++ {
-		if (b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x5f) ||
-			(b[i] == 0x8d && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
-			(b[i] == 0x0c && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0xad && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0xad && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
-			(b[i] == 0xad && b[i+1] == 0xed && b[i+2] == 0xff) ||
-			(b[i] == 0xad && b[i+1] == 0xf3 && b[i+2] == 0xbf) {
-			return true
-		}
-
-	}
-
-	return false
-}
-
 // parkerBros implements the cartMapper interface.
 //  o Montezuma's Revenge
 //  o Lord of the Rings

@@ -309,7 +309,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// address given in the supercharger file. when "fast-loading"
 				// supercharger bin files however, we need a way of doing this without
 				// the ROM. the TapeLoaded error allows us to do this.
-				if onTapeLoaded, ok := stepErr.(supercharger.TapeLoaded); ok {
+				if onTapeLoaded, ok := stepErr.(supercharger.FastLoaded); ok {
 
 					// CPU execution has been interrupted. update state of CPU
 					dbg.VCS.CPU.Interrupted = true

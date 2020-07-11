@@ -123,6 +123,11 @@ func (cart *Cartridge) IsEjected() bool {
 
 // Attach the cartridge loader to the VCS and make available the data to the CPU
 // bus
+//
+// How cartridges are mapped into the VCS's 4k space can differs dramatically.
+// Much of the implementation details have been cribbed from Kevin Horton's
+// "Cart Information" document [sizes.txt]. Other sources of information noted
+// as appropriate.
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	data, err := cartload.Load()
 	if err != nil {
@@ -140,10 +145,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	if cartload.Hash != "" && cartload.Hash != cart.Hash {
 		return errors.New(errors.CartridgeError, "unexpected hash value")
 	}
-
-	// how cartridges are mapped into the 4k space can differs dramatically.
-	// the following implementation details have been cribbed from Kevin
-	// Horton's "Cart Information" document [sizes.txt]
 
 	cartload.Mapping = strings.ToUpper(cartload.Mapping)
 

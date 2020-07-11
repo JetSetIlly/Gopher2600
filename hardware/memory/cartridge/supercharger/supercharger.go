@@ -35,6 +35,13 @@ const MappingID = "AR"
 const numRamBanks = 4
 const bankSize = 2048
 
+// Tape defines the operations required by the $fff9 tape loader. With this
+// interface, the Supercharger implementation supports both fast-loading
+// from a Stella bin file, and "slow" loading from a sound file.
+type Tape interface {
+	Load() error
+}
+
 // Supercharger represents a supercharger cartridge
 type Supercharger struct {
 	mappingID   string
@@ -57,16 +64,18 @@ func NewSupercharger(data []byte) (*Supercharger, error) {
 		bankSize:    2048,
 	}
 
+	var err error
+
 	// set up tape
-	cart.tape.cart = cart
-	cart.tape.data = data
+	cart.tape, err = NewFastLoad(cart, data)
+	if err != nil {
+		return nil, err
+	}
 
 	// allocate ram
 	for i := range cart.ram {
 		cart.ram[i] = make([]uint8, bankSize)
 	}
-
-	var err error
 
 	// load bios and activate
 	cart.bios, err = loadBIOS()
@@ -114,7 +123,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			if !cart.registers.RAMwrite {
 				return 0, nil
 			}
-			return 0, cart.tape.load()
+			return 0, cart.tape.Load()
 		}
 
 		// note address to be used as the next value in the control register
