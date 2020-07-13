@@ -98,6 +98,10 @@ func (wtc *watches) drop(num int) error {
 // condition. returns a string listing every condition that matches (separated
 // by \n)
 func (wtc *watches) check(previousResult string) string {
+	if len(wtc.watches) == 0 {
+		return previousResult
+	}
+
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
 

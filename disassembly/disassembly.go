@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
@@ -189,19 +190,20 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	return dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
 }
 
-// UpdateEntry to more closely resemble the most recent execution.Result
-func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) error {
-	bank := dsm.cart.GetBank(result.Address)
-
+// UpdateEntry to more closely resemble the most recent execution.Result.
+//
+// If the result is transient (ie. executed from RAM) then nothing is updated
+// but a formatted result is returned.
+func (dsm *Disassembly) UpdateEntry(bank banks.Details, result execution.Result, nextAddr uint16) (*Entry, error) {
 	// not touching any result which is not in cartridge space. we are noting
 	// execution results from cartridge RAM. the banks.Details field in the
 	// disassembly entry notes whether execution was from RAM
 	if bank.NonCart {
-		return nil
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
 	}
 
 	if bank.Number >= len(dsm.disasm) {
-		return nil
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
 	}
 
 	idx := result.Address & memorymap.CartridgeBits
@@ -219,7 +221,7 @@ func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) er
 		var err error
 		dsm.disasm[bank.Number][idx], err = dsm.formatResult(bank, result, EntryLevelExecuted)
 		if err != nil {
-			return errors.New(errors.DisasmError, err)
+			return nil, errors.New(errors.DisasmError, err)
 		}
 
 	} else if e.Level < EntryLevelExecuted || e.UpdateActualOnExecute {
@@ -233,14 +235,16 @@ func (dsm *Disassembly) UpdateEntry(result execution.Result, nextAddr uint16) er
 		e.updateActual()
 	}
 
-	// bless next entry in case it was missed by the original decoding
+	// bless next entry in case it was missed by the original decoding. there's
+	// no guarantee that the bank for the next address will be the same as the
+	// current bank, so we have to call the GetBank() function.
 	//
 	// !!TODO: maybe make sure next entry has been disassembled in it's current form
 	bank = dsm.cart.GetBank(nextAddr)
-	e = dsm.disasm[bank.Number][nextAddr&memorymap.CartridgeBits]
-	if e.Level < EntryLevelBlessed {
-		e.Level = EntryLevelBlessed
+	ne := dsm.disasm[bank.Number][nextAddr&memorymap.CartridgeBits]
+	if ne.Level < EntryLevelBlessed {
+		ne.Level = EntryLevelBlessed
 	}
 
-	return nil
+	return e, nil
 }

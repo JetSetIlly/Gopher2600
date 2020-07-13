@@ -80,6 +80,10 @@ func (trc *traces) drop(num int) error {
 // condition. returns a string with the first match found (it is not believed
 // to be possible for more one trace to match at the same time).
 func (trc *traces) check() string {
+	if len(trc.traces) == 0 {
+		return ""
+	}
+
 	s := strings.Builder{}
 
 	for i := range trc.traces {

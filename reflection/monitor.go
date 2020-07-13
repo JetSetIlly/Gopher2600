@@ -21,6 +21,7 @@ package reflection
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 )
 
 // Monitor should be run (with the Check() function) every video cycle. The
@@ -42,12 +43,16 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 }
 
 // Check should be called every video cycle to record the current state of the
-// emulation/system
-func (mon *Monitor) Check() error {
+// emulation/system.
+//
+// Note that getting banks.Details is relatively expensive so it is supplied as an
+// argument to the function. It has probably been figured out and used
+// elsewhere already.
+func (mon *Monitor) Check(bank banks.Details) error {
 	res := LastResult{
 		CPU:          mon.vcs.CPU.LastResult,
 		WSYNC:        !mon.vcs.CPU.RdyFlg,
-		Bank:         mon.vcs.Mem.Cart.GetBank(mon.vcs.CPU.LastResult.Address),
+		Bank:         bank,
 		VideoElement: mon.vcs.TIA.Video.LastElement,
 		TV:           mon.vcs.TV.GetLastSignal(),
 		Hblank:       mon.vcs.TIA.Hblank,

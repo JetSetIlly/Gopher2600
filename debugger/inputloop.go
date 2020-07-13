@@ -41,7 +41,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		if dbg.reflect == nil {
 			return nil
 		}
-		return dbg.reflect.Check()
+		return dbg.reflect.Check(dbg.lastBank)
 	}
 
 	// vcsStepVideo is to be called every video cycle when the quantum mode
@@ -72,11 +72,23 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		return dbg.inputLoop(inputter, true)
 	}
 
+	// to speed things a bit we only check for input events every
+	// "inputCtDelay" iterations.
+	const inputCtDelay = 50
+	inputCt := 0
+
 	for dbg.running {
-		// check for events
-		checkTerm, err := dbg.checkEvents(inputter)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "%s", err)
+		var err error
+		var checkTerm bool
+
+		inputCt++
+		if inputCt%inputCtDelay == 0 {
+			inputCt = 0
+			// check for events
+			checkTerm, err = dbg.checkEvents(inputter)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "%s", err)
+			}
 		}
 
 		// if debugger is no longer running after checking interrupts and
@@ -140,18 +152,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// expand halt to include step-once/many flag
 		haltEmulation = haltEmulation || !dbg.runUntilHalt
 
-		// print and reset accumulated break/trap/watch messages
-		dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
-		dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
-		dbg.printLine(terminal.StyleFeedback, dbg.watchMessages)
-		dbg.breakMessages = ""
-		dbg.trapMessages = ""
-		dbg.watchMessages = ""
-
 		// reset last step error
 		dbg.lastStepError = false
 
-		// something has happened to cause the emulation to halt
+		// if emulation is to be halted or if we need to check the terminal
 		if haltEmulation || checkTerm {
 
 			// always clear steptraps. if the emulation has halted for any
@@ -160,6 +164,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// some things we don't want to if this is only a momentary halt
 			if haltEmulation {
+				// print and reset accumulated break/trap/watch messages
+				dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
+				dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
+				dbg.printLine(terminal.StyleFeedback, dbg.watchMessages)
+				dbg.breakMessages = ""
+				dbg.trapMessages = ""
+				dbg.watchMessages = ""
+
 				// input has halted. print on halt command if it is defined
 				if dbg.commandOnHalt != nil {
 					_, err := dbg.processTokenGroup(dbg.commandOnHalt)
@@ -290,21 +302,18 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				stepErr = errors.New(errors.DebuggerError, "unknown quantum mode")
 			}
 
-			// format last CPU execution result. we'll do this even if there's
-			// been a cpuError because the debugger may want to display the
-			// result even if there was an error.
-			//
-			// we considered having Disasm.UpdateEntry() always returning an
-			// Entry result but we want lastResult to record errant results if
-			// necessary and not just results that are to be stored in the
-			// disasembly. we don't want to add any complexity to the
-			// UpdateEntry() function and the performance hit is minimal.
-			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
-			if err != nil {
-				return errors.New(errors.DebuggerError, err)
-			}
+			// check step error. note that we format and store last CPU
+			// execution result whether there was an error or not. in the case
+			// of an error the resul a fresh formatting. if there was no error
+			// the formatted result is returned by the UpdateEntry function.
 
 			if stepErr != nil {
+				// format last execution result even on error
+				dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+				if err != nil {
+					return errors.New(errors.DebuggerError, err)
+				}
+
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file. when "fast-loading"
 				// supercharger bin files however, we need a way of doing this without
@@ -349,7 +358,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					}
 				}
 			} else {
-				err := dbg.Disasm.UpdateEntry(dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
+				// update entry and store result as last result
+				dbg.lastResult, err = dbg.Disasm.UpdateEntry(dbg.lastBank, dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
 				if err != nil {
 					return errors.New(errors.DebuggerError, err)
 				}

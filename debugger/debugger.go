@@ -195,14 +195,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.traces = newTraces(dbg)
 	dbg.stepTraps = newTraps(dbg)
 
-	// default ONSTEP command
-	dbg.term.Silence(true)
-	_, err = dbg.parseCommand("ONSTEP LAST", false, false)
-	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
-	}
-	dbg.term.Silence(false)
-
 	// make synchronisation channels
 	dbg.events = &terminal.ReadEvents{
 		GuiEvents:       make(chan gui.Event, 2),

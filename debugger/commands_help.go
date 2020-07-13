@@ -131,18 +131,10 @@ is defined by the QUANTUM command. Specify multiple commands by seperating with
 a comma.
 
 THE OFF argument can be used to toggle the ONSTEP commands temporarily. Use the
-ON argument to resume ONSTEP reporting.
-
-By default the ONSTEP command is:
-
-	ONSTEP LAST`,
+ON argument to resume ONSTEP reporting.`,
 
 	cmdOnTrace: `Define commands to run whenever a trace condition is met. Unlike the ONSTEP
-and ONHALT commands there is no OFF argument.
-
-By default the ONTRACE command is:
-
-	ONTRACE LAST`,
+and ONHALT commands there is no OFF argument.`,
 
 	cmdLast: `Prints the disassembly of the last cpu/video cycle. Use the BYTECODE argument 
 to display the raw bytes alongside the disassembly. The DEFN argument meanwhile

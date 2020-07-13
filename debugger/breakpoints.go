@@ -203,6 +203,10 @@ func (bp *breakpoints) drop(num int) error {
 // condition. returns a string listing every condition that matches (separated
 // by \n)
 func (bp *breakpoints) check(previousResult string) string {
+	if len(bp.breaks) == 0 {
+		return previousResult
+	}
+
 	checkString := strings.Builder{}
 	checkString.WriteString(previousResult)
 	for i := range bp.breaks {
