@@ -240,7 +240,7 @@ func (ms *missileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
+func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
@@ -250,7 +250,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// early return if nothing to do
 	if !(isHmove && ms.MoreHMOVE) && !visible {
-		return
+		return false
 	}
 
 	// reset missile to player position. from TIA_HW_Notes.txt:
@@ -336,6 +336,8 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	ms.Delay.Tick()
+
+	return true
 }
 
 func (ms *missileSprite) _futureStartDrawingEvent(v interface{}) {

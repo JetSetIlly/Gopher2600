@@ -193,7 +193,7 @@ func (bs *ballSprite) rsync(adjustment int) {
 	}
 }
 
-func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
+func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(hmoveCt, bs.Hmove)
@@ -203,7 +203,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// early return if nothing to do
 	if !(isHmove && bs.MoreHMOVE) && !visible {
-		return
+		return false
 	}
 
 	// note whether this text is additional hmove tick. see pixel() function
@@ -238,6 +238,8 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	bs.Delay.Tick()
+
+	return true
 }
 
 func (bs *ballSprite) _futureStartDrawingEvent() {

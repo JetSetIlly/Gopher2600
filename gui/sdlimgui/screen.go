@@ -257,6 +257,10 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.LastResult) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE latched"])
 			}
 		}
+	case "Unchanged":
+		if ref.Unchanged {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Unchanged"])
+		}
 	}
 }
 

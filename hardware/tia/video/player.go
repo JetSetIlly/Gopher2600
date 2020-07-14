@@ -312,7 +312,7 @@ func (ps *playerSprite) rsync(adjustment int) {
 }
 
 // tick moves the sprite counters along (both position and graphics scan).
-func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
+func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(hmoveCt, ps.Hmove)
@@ -322,7 +322,7 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// early return if nothing to do
 	if !(isHmove && ps.MoreHMOVE) && !visible {
-		return
+		return false
 	}
 
 	// update hmoved pixel value
@@ -414,6 +414,8 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) {
 
 	// tick future events that are goverened by the sprite
 	ps.Delay.Tick()
+
+	return true
 }
 
 func (ps *playerSprite) _futureStartDrawingEvent(v interface{}) {

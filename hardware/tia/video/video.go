@@ -81,6 +81,13 @@ type Video struct {
 	// pixel was generated, taking priority into account. see Pixel() function
 	// for details
 	LastElement Element
+
+	// keeping track of whether any sprite element has changed since last call
+	// to Pixel(). we use this for some small optimisations
+	spriteHasChanged    bool
+	lastPlayfieldActive bool
+	lastPixelColor      uint8
+	Unchanged           bool
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure.
@@ -157,11 +164,12 @@ func (vd *Video) RSYNC(adjustment int) {
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
-	vd.Player0.tick(visible, hmove, hmoveCt)
-	vd.Player1.tick(visible, hmove, hmoveCt)
-	vd.Missile0.tick(visible, hmove, hmoveCt)
-	vd.Missile1.tick(visible, hmove, hmoveCt)
-	vd.Ball.tick(visible, hmove, hmoveCt)
+	p0 := vd.Player0.tick(visible, hmove, hmoveCt)
+	p1 := vd.Player1.tick(visible, hmove, hmoveCt)
+	m0 := vd.Missile0.tick(visible, hmove, hmoveCt)
+	m1 := vd.Missile1.tick(visible, hmove, hmoveCt)
+	bl := vd.Ball.tick(visible, hmove, hmoveCt)
+	vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
 }
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
@@ -177,8 +185,22 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
 func (vd *Video) Pixel() uint8 {
-	bgc := vd.Playfield.BackgroundColor
 	pfa, pfc := vd.Playfield.pixel()
+
+	// optimisation: if nothing has changed since last pixel then return early
+	// with the color of the previous pixel. note that we're not optimising
+	// based on whether video is on/off (ie. VBLANK/HBLANK)
+	if !vd.spriteHasChanged && (!pfa || (pfa && !vd.lastPlayfieldActive)) {
+		vd.spriteHasChanged = false
+		vd.lastPlayfieldActive = pfa
+		vd.Unchanged = true
+		return vd.lastPixelColor
+	}
+	vd.spriteHasChanged = false
+	vd.lastPlayfieldActive = pfa
+	vd.Unchanged = false
+
+	bgc := vd.Playfield.BackgroundColor
 	p0a, p0c, p0k := vd.Player0.pixel()
 	p1a, p1c, p1k := vd.Player1.pixel()
 	m0a, m0c, m0k := vd.Missile0.pixel()
@@ -292,6 +314,7 @@ func (vd *Video) Pixel() uint8 {
 	}
 
 	vd.LastElement = element
+	vd.lastPixelColor = col
 
 	// priority 4
 	return col
@@ -312,6 +335,7 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) b
 	case "PF2":
 		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF2, data.Value, "PF2")
 	case "VDELBL":
+		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
 		return true
@@ -376,6 +400,7 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData)
 		return true
 	}
 
+	vd.spriteHasChanged = true
 	return false
 }
 
@@ -400,6 +425,7 @@ func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 		return true
 	}
 
+	vd.spriteHasChanged = true
 	return false
 }
 
@@ -449,6 +475,7 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 		return true
 	}
 
+	vd.spriteHasChanged = true
 	return false
 }
 
@@ -486,6 +513,7 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 		return true
 	}
 
+	vd.spriteHasChanged = true
 	return false
 }
 
@@ -512,6 +540,7 @@ func (vd *Video) UpdateCTRLPF() {
 
 	vd.Playfield.Ctrlpf = ctrlpf
 	vd.Ball.Ctrlpf = ctrlpf
+	vd.spriteHasChanged = true
 }
 
 // UpdateNUSIZ should be called whenever the player/missile size/copies
@@ -550,4 +579,5 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 		vd.Player1.Nusiz = nusiz
 		vd.Missile1.Nusiz = nusiz
 	}
+	vd.spriteHasChanged = true
 }

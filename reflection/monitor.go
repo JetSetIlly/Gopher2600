@@ -57,6 +57,7 @@ func (mon *Monitor) Check(bank banks.Details) error {
 		TV:           mon.vcs.TV.GetLastSignal(),
 		Hblank:       mon.vcs.TIA.Hblank,
 		Collision:    mon.vcs.TIA.Video.Collisions.Activity.String(),
+		Unchanged:    mon.vcs.TIA.Video.Unchanged,
 	}
 
 	// reflect HMOVE state

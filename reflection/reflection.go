@@ -53,6 +53,7 @@ type LastResult struct {
 	Hblank       bool
 	Collision    string
 	Hmove        Hmove
+	Unchanged    bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
@@ -66,4 +67,4 @@ type Hmove struct {
 
 // OverlayList is the list of overlays that should be supported by a
 // reflection.Renderer.
-var OverlayList = []string{"WSYNC", "Collisions", "HMOVE"}
+var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Unchanged"}
