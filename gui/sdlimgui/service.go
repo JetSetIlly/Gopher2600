@@ -209,10 +209,6 @@ func (img *SdlImgui) Service() {
 	default:
 	}
 
-	// sleep to help avoid 100% CPU usage when in non-play mode. when in
-	// playmode we want all the cycles as is necessary - excess cycles will be
-	// "given back" by the frame limiter
-	if !img.isPlaymode() {
-		<-time.After(time.Millisecond * 25)
-	}
+	// sleep to help avoid 100% CPU usage
+	<-time.After(time.Millisecond * 5)
 }

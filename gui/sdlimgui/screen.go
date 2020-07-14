@@ -61,8 +61,20 @@ type screenCrit struct {
 	topScanline int
 	scanlines   int
 
-	// all pixel arrays should be constructed the same
-	pixels        *image.RGBA
+	// the pixels array is used in the presentation texture of the play and
+	// debug screen.
+	pixels *image.RGBA
+
+	// backingPixels are what we plot pixels to while we wait for a frame to
+	// complete. see NewFrame() and render() functions below for how we achieve
+	// this.
+	backingPixels         [2]*image.RGBA
+	backingPixelsCurrent  int
+	backingPixelsToRender int
+	backingPixelsUpdate   bool
+
+	// debug colors and overlay colors are only used in the debugger. we're not
+	// worried about drawing to them directly
 	debugPixels   *image.RGBA
 	overlayPixels *image.RGBA
 
@@ -107,6 +119,9 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 	scr.crit.scanlines = visibleScanlines
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	for i := range scr.crit.backingPixels {
+		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	}
 	scr.crit.debugPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
 
@@ -171,6 +186,16 @@ func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
 //
 // MUST NOT be called from the #mainthread
 func (scr *screen) NewFrame(frameNum int) error {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	scr.crit.backingPixelsUpdate = true
+	if scr.crit.backingPixelsCurrent < len(scr.crit.backingPixels)-1 {
+		scr.crit.backingPixelsCurrent++
+	} else {
+		scr.crit.backingPixelsCurrent = 0
+	}
+
 	return nil
 }
 
@@ -195,7 +220,7 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 
 	scr.crit.lastX = x
 	scr.crit.lastY = y
-	scr.crit.pixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	return nil
 }
@@ -270,6 +295,16 @@ func (scr *screen) addTextureRenderer(r textureRenderers) {
 }
 
 func (scr *screen) render() {
+	// critical section
+	scr.crit.section.Lock()
+	if scr.crit.backingPixelsUpdate {
+		copy(scr.crit.pixels.Pix, scr.crit.backingPixels[scr.crit.backingPixelsToRender].Pix)
+		scr.crit.backingPixelsToRender = scr.crit.backingPixelsCurrent
+		scr.crit.backingPixelsUpdate = false
+	}
+	scr.crit.section.Unlock()
+	// end of critical section
+
 	for _, r := range scr.renderers {
 		r.render()
 	}

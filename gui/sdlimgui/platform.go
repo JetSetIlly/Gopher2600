@@ -42,6 +42,16 @@ type platform struct {
 func newPlatform(img *SdlImgui) (*platform, error) {
 	runtime.LockOSThread()
 
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
+	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
+	_ = sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
+	_ = sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
+	_ = sdl.GLSetAttribute(sdl.GL_STENCIL_SIZE, 8)
+
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
 		return nil, fmt.Errorf("SDL2: %v", err)
@@ -63,16 +73,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		sdl.Quit()
 		return nil, fmt.Errorf("SDL: window creation: %v", err)
 	}
-
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
-	_ = sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
-	_ = sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
-	_ = sdl.GLSetAttribute(sdl.GL_STENCIL_SIZE, 8)
 
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
@@ -127,11 +127,15 @@ func (plt *platform) newFrame() {
 	// Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
 	frequency := sdl.GetPerformanceFrequency()
 	currentTime := sdl.GetPerformanceCounter()
+
 	if plt.time > 0 {
-		plt.img.io.SetDeltaTime(float32(currentTime-plt.time) / float32(frequency))
+		deltaTime := float32(currentTime-plt.time) / float32(frequency)
+		plt.img.io.SetDeltaTime(deltaTime)
+		sdl.Delay(uint32(deltaTime))
 	} else {
 		plt.img.io.SetDeltaTime(1.0 / 60.0)
 	}
+
 	plt.time = currentTime
 
 	// If a mouse press event came, always pass it as "mouse held this frame",

@@ -221,7 +221,7 @@ void main()
 
 	// split color channels
 	vec2 split;
-	split.x = 0.0015;
+	split.x = 0.0001;
 	split.y = 0.001;
 	if (coords.x > split.x && coords.y > split.y) {
 		Out_Color.r = texture(Texture, vec2(coords.x-split.x, coords.y)).r;
@@ -241,10 +241,10 @@ void main()
 		// understand this well enough to say for sure what the relationship
 		// between 25 and 10 is, but the following ratio between
 		// cropped/uncropped widths gives us a value of 23.5
-		float f = 10*ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
+		float f =ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
 		vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
 	}
-	Out_Color.rgb *= pow(vignette, 0.2) * 1.2;
+	Out_Color.rgb *= pow(vignette, 0.10) * 1.2;
 
 	// scanline effect
 	float oneLine = gl_FragCoord.y/gl_FragCoord.y;
