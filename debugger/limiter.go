@@ -41,6 +41,9 @@ import (
 //
 // note that frame rate measurement is still performed by the television. Use
 // the GetActualFPS() function in the television interface.
+//
+// we should probably get this version of the limiter to measure actual fps
+// to ensure accuracy when we flip to scanline/colclock throttle levels.
 
 // there's no science behind when we flip from one throttle system to another.
 // the thresholds are based simply on what looks effective.
@@ -134,13 +137,13 @@ func (lmtr *limiter) getReqFPS() float32 {
 	return lmtr.reqFrames
 }
 
-// Resize implements television.PixleRenderer
+// Resize implements television.PixelRenderer
 func (lmtr *limiter) Resize(topScanline int, visibleScanlines int) error {
 	lmtr.setFPS(-1)
 	return nil
 }
 
-// NewFrame implements television.PixleRenderer
+// NewFrame implements television.PixelRenderer
 func (lmtr *limiter) NewFrame(_ int) error {
 	if lmtr.throt != throtFrame {
 		return nil
@@ -148,7 +151,7 @@ func (lmtr *limiter) NewFrame(_ int) error {
 	return lmtr.limit()
 }
 
-// NewScanline implements television.PixleRenderer
+// NewScanline implements television.PixelRenderer
 func (lmtr *limiter) NewScanline(_ int) error {
 	if lmtr.throt != throtScanline {
 		return nil
@@ -156,7 +159,7 @@ func (lmtr *limiter) NewScanline(_ int) error {
 	return lmtr.limit()
 }
 
-// SetPixel implements television.PixleRenderer
+// SetPixel implements television.PixelRenderer
 func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) error {
 	if lmtr.throt != throtColClock {
 		return nil
@@ -164,7 +167,7 @@ func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) erro
 	return lmtr.limit()
 }
 
-// EndRendering implements television.PixleRenderer
+// EndRendering implements television.PixelRenderer
 func (lmtr *limiter) EndRendering() error {
 	lmtr.lmtr.Stop()
 	return nil
