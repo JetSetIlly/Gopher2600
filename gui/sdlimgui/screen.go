@@ -154,6 +154,11 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.debugPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+
+			// backing pixels too
+			for i := range scr.crit.backingPixels {
+				scr.crit.backingPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
 		}
 	}
 
@@ -191,8 +196,10 @@ func (scr *screen) NewFrame(frameNum int) error {
 
 	scr.crit.backingPixelsUpdate = true
 	if scr.crit.backingPixelsCurrent < len(scr.crit.backingPixels)-1 {
+		copy(scr.crit.backingPixels[scr.crit.backingPixelsCurrent+1].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
 		scr.crit.backingPixelsCurrent++
 	} else {
+		copy(scr.crit.backingPixels[0].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
 		scr.crit.backingPixelsCurrent = 0
 	}
 
@@ -220,7 +227,7 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 
 	scr.crit.lastX = x
 	scr.crit.lastY = y
-	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(x, y, rgb)
 
 	return nil
 }

@@ -36,5 +36,4 @@
 [TODO] option for random state on VCS creation (hardware/vcs.go:53)
 [TODO] noecho hiscore server password (hiscore/settings.go:111)
 [TODO] more nuanced results from IsPlaybackFile() (recorder/fileformat.go:110)
-[TODO] measurement is not accurate at rates below 10fps (television/framerate.go:126)
-[TODO] replace VSYNC signal with extended HSYNC signal (television/television.go:248)
+[TODO] replace VSYNC signal with extended HSYNC signal (television/television.go:225)

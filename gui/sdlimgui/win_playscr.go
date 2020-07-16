@@ -142,21 +142,24 @@ func (win *winPlayScr) render() {
 
 	gl.ActiveTexture(gl.TEXTURE0)
 
-	if win.createTextures {
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
+	// only draw image if television frame is stable
+	if win.img.tv.IsStable() {
+		if win.createTextures {
+			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(pixels.Pix))
 
-		win.createTextures = false
+			win.createTextures = false
 
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
+		} else {
+			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+			gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+				0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(pixels.Pix))
+		}
 	}
 }
 
