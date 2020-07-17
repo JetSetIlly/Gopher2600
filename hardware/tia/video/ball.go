@@ -362,7 +362,7 @@ func (bs *ballSprite) _futureResetPosition() {
 
 func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	if !bs.Enabled || (bs.VerticalDelay && !bs.EnabledDelay) {
-		return false, bs.Color, *bs.hblank && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd()
+		return false, bs.Color, false
 	}
 
 	// earlyStart condition the same as for missile sprites. see missile
@@ -389,11 +389,10 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	px := !earlyEnd && (bs.Enclockifier.Active || earlyStart)
 
 	if bs.VerticalDelay {
-		return bs.EnabledDelay && px, bs.Color, px || (*bs.hblank && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
-
+		return px, bs.Color, px || (*bs.hblank && bs.EnabledDelay && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 	}
 
-	return px, bs.Color, px || (*bs.hblank && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+	return px, bs.Color, px || (*bs.hblank && bs.Enabled && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 }
 
 // the delayed enable bit is copied from the first when the gfx register for
