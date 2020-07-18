@@ -37,6 +37,7 @@ type LazyTV struct {
 	atomicHP         atomic.Value // int
 	atomicReqFPS     atomic.Value // float32
 	atomicActualFPS  atomic.Value // float32
+	atomicIsStable   atomic.Value // float32
 
 	Spec       television.Specification
 	TVstr      string
@@ -45,6 +46,7 @@ type LazyTV struct {
 	Scanline   int
 	HP         int
 	AcutalFPS  float32
+	IsStable   bool
 
 	// taken from debugger rather than tv
 	ReqFPS float32
@@ -71,6 +73,7 @@ func (lz *LazyTV) update() {
 
 		lz.atomicReqFPS.Store(lz.val.Dbg.GetReqFPS())
 		lz.atomicActualFPS.Store(lz.val.Dbg.VCS.TV.GetActualFPS())
+		lz.atomicIsStable.Store(lz.val.Dbg.VCS.TV.IsStable())
 
 	})
 	lz.Spec, _ = lz.atomicSpec.Load().(television.Specification)
@@ -81,4 +84,5 @@ func (lz *LazyTV) update() {
 	lz.HP, _ = lz.atomicHP.Load().(int)
 	lz.ReqFPS, _ = lz.atomicReqFPS.Load().(float32)
 	lz.AcutalFPS, _ = lz.atomicActualFPS.Load().(float32)
+	lz.IsStable, _ = lz.atomicIsStable.Load().(bool)
 }

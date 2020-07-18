@@ -133,7 +133,7 @@ type PixelRenderer interface {
 	Resize(topScanline, visibleScanlines int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
-	NewFrame(frameNum int) error
+	NewFrame(frameNum int, isStable bool) error
 	NewScanline(scanline int) error
 
 	// setPixel() is called every cycle regardless of the state of VBLANK and

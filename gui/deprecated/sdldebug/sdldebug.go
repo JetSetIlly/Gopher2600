@@ -385,7 +385,7 @@ func (scr *SdlDebug) update() error {
 }
 
 // NewFrame implements television.PixelRenderer interface
-func (scr *SdlDebug) NewFrame(frameNum int) error {
+func (scr *SdlDebug) NewFrame(frameNum int, _ bool) error {
 	// the sdlplay version of this function does not wait for the error signal
 	// before continuing. we do so here (in the update() function) because if
 	// we don't the screen image will tear badly. the difference is because in

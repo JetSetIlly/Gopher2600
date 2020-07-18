@@ -26,6 +26,10 @@ import (
 
 const winPlayScrTitle = "Atari VCS"
 
+// note that values from the lazy package will not be updated in the service
+// loop when the emulator is in playmode. nothing in winPlayScr() therefore
+// should rely on any lazy value
+
 type winPlayScr struct {
 	windowManagement
 	widgetDimensions
@@ -143,7 +147,7 @@ func (win *winPlayScr) render() {
 	gl.ActiveTexture(gl.TEXTURE0)
 
 	// only draw image if television frame is stable
-	if win.img.tv.IsStable() {
+	if win.scr.isStable {
 		if win.createTextures {
 			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 			gl.TexImage2D(gl.TEXTURE_2D, 0,

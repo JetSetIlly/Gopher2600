@@ -332,7 +332,7 @@ func (tv *television) newFrame(synced bool) error {
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
-		err := tv.renderers[f].NewFrame(tv.frameNum)
+		err := tv.renderers[f].NewFrame(tv.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}

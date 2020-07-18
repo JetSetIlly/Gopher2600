@@ -49,6 +49,8 @@ type screen struct {
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
+
+	isStable bool
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -190,9 +192,11 @@ func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread
-func (scr *screen) NewFrame(frameNum int) error {
+func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
+
+	scr.isStable = isStable
 
 	scr.crit.backingPixelsUpdate = true
 	if scr.crit.backingPixelsCurrent < len(scr.crit.backingPixels)-1 {

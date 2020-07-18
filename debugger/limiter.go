@@ -144,7 +144,7 @@ func (lmtr *limiter) Resize(topScanline int, visibleScanlines int) error {
 }
 
 // NewFrame implements television.PixelRenderer
-func (lmtr *limiter) NewFrame(_ int) error {
+func (lmtr *limiter) NewFrame(_ int, _ bool) error {
 	if lmtr.throt != throtFrame {
 		return nil
 	}
