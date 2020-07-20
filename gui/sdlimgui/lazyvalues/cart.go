@@ -53,7 +53,7 @@ type LazyCart struct {
 
 	HasStaticBus bool
 	StaticBus    bus.CartStaticBus
-	Static       bus.CartStatic
+	Static       []bus.CartStatic
 
 	HasRegistersBus bool
 	RegistersBus    bus.CartRegistersBus
@@ -109,7 +109,7 @@ func (lz *LazyCart) update() {
 
 	lz.StaticBus, lz.HasStaticBus = lz.atomicStaticBus.Load().(bus.CartStaticBus)
 	if lz.HasStaticBus {
-		lz.Static, _ = lz.atomicStatic.Load().(bus.CartStatic)
+		lz.Static, _ = lz.atomicStatic.Load().([]bus.CartStatic)
 	}
 
 	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(bus.CartRegistersBus)

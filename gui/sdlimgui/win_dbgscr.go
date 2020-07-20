@@ -78,6 +78,7 @@ type winDbgScr struct {
 	// function) on the other hand, we scale the entire window accordingly
 	winDim          imgui.Vec2
 	contentDim      imgui.Vec2
+	specComboDim    imgui.Vec2
 	overlayComboDim imgui.Vec2
 
 	// when set the scale value numerically (with the getScale() function) we
@@ -118,6 +119,7 @@ func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 func (win *winDbgScr) init() {
 	win.widgetDimensions.init()
 	win.overlayComboDim = imguiGetFrameDim("", reflection.OverlayList...)
+	win.specComboDim = imguiGetFrameDim("", television.SpecificationList...)
 }
 
 func (win *winDbgScr) destroy() {
@@ -227,6 +229,18 @@ func (win *winDbgScr) draw() {
 	imgui.Spacing()
 
 	// tv status line
+	imgui.PushItemWidth(win.specComboDim.X)
+	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
+		for _, s := range television.SpecificationList {
+			if imgui.Selectable(s) {
+				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
+			}
+		}
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
+
+	imgui.SameLineV(0, 15)
 	imguiText("Frame:")
 	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
 	imgui.SameLineV(0, 15)

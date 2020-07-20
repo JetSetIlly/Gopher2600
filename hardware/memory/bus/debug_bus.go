@@ -75,25 +75,9 @@ type CartRegistersBus interface {
 	PutRegister(register string, data string)
 }
 
-// CartStaticBus defines the operations required for a debugger to access the
-// static area of a cartridge.
-//
-// The commentary above for the CartRegistersBus applies to the CartStaticBus
-type CartStaticBus interface {
-	// GetStatic returns a copy of the cartridge's static areas
-	GetStatic() CartStatic
-	PutStatic(addr uint16, data uint8) error
-}
-
 // CartRegisters conceptualises the cartridge specific registers that are
 // inaccessible through normal addressing
 type CartRegisters interface {
-	fmt.Stringer
-}
-
-// CartStatic conceptualises the cartridge's static data areas that are
-// inaccessible through normal addressing
-type CartStatic interface {
 	fmt.Stringer
 }
 
@@ -125,4 +109,27 @@ type CartRAM struct {
 	Origin uint16
 	Data   []uint8
 	Mapped bool
+}
+
+// CartStaticBus defines the operations required for a debugger to access the
+// static area of a cartridge.
+type CartStaticBus interface {
+	fmt.Stringer
+
+	// GetStatic returns a copy of the cartridge's static areas
+	GetStatic() []CartStatic
+	PutStatic(tag string, addr uint16, data uint8) error
+}
+
+// CartStatic conceptualises tatic data areas that is inaccessible through.
+// Of the cartridge types that have static areas some have more than one static
+// area.
+//
+// Unlike CartRAM, there is no indication of the origin address of the
+// StaticArea. This is because the areas are not addressable in the usual way
+// and so the concept of an origin address is meaningless and possibly
+// misleading.
+type CartStatic struct {
+	Label string
+	Data  []uint8
 }

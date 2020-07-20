@@ -97,8 +97,8 @@ type television struct {
 	top    int
 	bottom int
 
-	// the potential new bottom scanline. part of the size detection method
-	resizeBottom int
+	// frame resizer
+	resizer resizer
 
 	// framerate limiter
 	lmtr limiter
@@ -118,6 +118,7 @@ type television struct {
 func NewTelevision(spec string) (Television, error) {
 	tv := &television{
 		specIDOnCreation: strings.ToUpper(spec),
+		resizer:          &simpleResizer{},
 	}
 
 	// set specification
@@ -186,11 +187,8 @@ func (tv *television) Signal(sig SignalAttributes) error {
 		}
 	}
 
-	// if vblank is off at any point of then extend the bottom of the screen.
-	// we'll commit the resize procedure in the newFrame() function
-	if !sig.VBlank && (tv.scanline >= tv.spec.ScanlineBottom || tv.scanline >= tv.bottom) {
-		tv.resizeBottom = tv.scanline
-	}
+	// examine signal for resizing possibility
+	tv.resizer.examine(tv, sig)
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.horizPos++
@@ -288,11 +286,11 @@ func (tv *television) newScanline() error {
 
 func (tv *television) newFrame(synced bool) error {
 	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
-	if synced {
+	if tv.syncedFrame {
 		tv.syncedFrameNum++
 	}
 
-	// if we're still in the range of frames where things can change...
+	// specification change
 	if tv.syncedFrameNum > leadingFrames && tv.syncedFrameNum < stabilityThreshold {
 		if tv.auto && !tv.syncedFrame && tv.scanline > excessScanlinesNTSC {
 			// flip from NTSC to PAL
@@ -302,33 +300,14 @@ func (tv *television) newFrame(synced bool) error {
 		}
 	}
 
-	// always perform resize operation
-	if synced && tv.syncedFrameNum > leadingFrames && tv.resizeBottom != tv.bottom {
-		diff := tv.resizeBottom - tv.bottom
+	// commit any resizing that maybe pending
+	tv.resizer.commit(tv)
 
-		// reduce top by same amount as bottom
-		tv.top -= diff
-		if tv.top < 0 {
-			tv.top = 0
-		}
-
-		// new bottom value is what we detected
-		tv.bottom = tv.resizeBottom
-
-		// call Resize() for all attached pixel rendered
-		if tv.top < tv.bottom {
-			for f := range tv.renderers {
-				err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	tv.syncedFrame = synced
+	// prepare for next frame
 	tv.frameNum++
 	tv.scanline = 0
+	tv.resizer.prepare(tv)
+	tv.syncedFrame = synced
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
@@ -374,9 +353,10 @@ func (tv *television) SetSpec(spec string) error {
 
 	tv.top = tv.spec.ScanlineTop
 	tv.bottom = tv.spec.ScanlineBottom
+	tv.resizer.prepare(tv)
 
 	for f := range tv.renderers {
-		err := tv.renderers[f].Resize(tv.top, tv.bottom-tv.top)
+		err := tv.renderers[f].Resize(tv.spec, tv.top, tv.bottom-tv.top)
 		if err != nil {
 			return err
 		}
@@ -391,8 +371,8 @@ func (tv *television) SpecIDOnCreation() string {
 }
 
 // GetSpec implements the Television interface
-func (tv television) GetSpec() *Specification {
-	return tv.spec
+func (tv television) GetSpec() (*Specification, bool) {
+	return tv.spec, tv.auto
 }
 
 // IsStable implements the Television interface

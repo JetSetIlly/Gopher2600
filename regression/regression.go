@@ -229,7 +229,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail, %d skipped", numSucceed, numFail, numSkipped)))
 
 		if numError > 0 {
-			output.Write([]byte(" [with errors]"))
+			output.Write([]byte(fmt.Sprintf(" [with %d errors]", numError)))
 		}
 		output.Write([]byte("\n"))
 	}()
@@ -253,11 +253,11 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		// print completion message depending on result of regress()
 		if err != nil {
 			numError++
-			output.Write([]byte(fmt.Sprintf("\r ERROR: %s\n", reg)))
+			output.Write([]byte(fmt.Sprintf("\rerror: %s\n", reg)))
 
 			// output any error message on following line
 			if verbose {
-				output.Write([]byte(fmt.Sprintf("%s\n", err)))
+				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
 			}
 
 			if failOnError {

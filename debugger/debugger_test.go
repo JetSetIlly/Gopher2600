@@ -61,8 +61,8 @@ func (t *mockTV) SetSpec(_ string) error {
 	return nil
 }
 
-func (t *mockTV) GetSpec() *television.Specification {
-	return television.SpecNTSC
+func (t *mockTV) GetSpec() (*television.Specification, bool) {
+	return television.SpecNTSC, false
 }
 
 func (t *mockTV) IsStable() bool {

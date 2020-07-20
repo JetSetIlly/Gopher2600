@@ -25,6 +25,7 @@ import "github.com/jetsetilly/gopher2600/television"
 // frames-per-second and the accuracy of that value as a percentage.
 func CalcFPS(tv television.Television, numFrames int, duration float64) (fps float64, accuracy float64) {
 	fps = float64(numFrames) / duration
-	accuracy = 100 * float64(numFrames) / (duration * float64(tv.GetSpec().FramesPerSecond))
+	spec, _ := tv.GetSpec()
+	accuracy = 100 * float64(numFrames) / (duration * float64(spec.FramesPerSecond))
 	return fps, accuracy
 }

@@ -17,7 +17,9 @@ package harmony
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // DPCplusStatic implements the bus.CartStatic interface
@@ -27,37 +29,49 @@ type DPCplusStatic struct {
 	Freq []byte
 }
 
-func (sa DPCplusStatic) String() string {
-	s := &strings.Builder{}
+// GetStatic implements the bus.CartDebugBus interface
+func (cart dpcPlus) GetStatic() []bus.CartStatic {
+	s := make([]bus.CartStatic, 3)
 
-	// static data
-	s.WriteString("Data    -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-	s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+	s[0].Label = "ARM"
+	s[1].Label = "Data"
+	s[2].Label = "Freq"
 
-	j := uint16(0)
-	for i := 0; i < len(sa.Data); i++ {
-		// begin new row every 16 iterations
-		if j%16 == 0 {
-			s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+	s[0].Data = make([]byte, len(cart.static.Arm))
+	s[1].Data = make([]byte, len(cart.static.Data))
+	s[2].Data = make([]byte, len(cart.static.Freq))
+
+	copy(s[0].Data, cart.static.Arm)
+	copy(s[1].Data, cart.static.Data)
+	copy(s[2].Data, cart.static.Freq)
+
+	return s
+}
+
+// StaticWrite implements the bus.CartDebugBus interface
+func (cart *dpcPlus) PutStatic(label string, addr uint16, data uint8) error {
+	switch label {
+	case "ARM":
+		if int(addr) >= len(cart.static.Arm) {
+			return errors.New(errors.CartridgeStaticArea, fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
-		s.WriteString(fmt.Sprintf("%02x ", sa.Data[i]))
-		j++
+		cart.static.Arm[addr] = data
+
+	case "Data":
+		if int(addr) >= len(cart.static.Data) {
+			return errors.New(errors.CartridgeStaticArea, fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		}
+		cart.static.Data[addr] = data
+
+	case "Freq":
+		if int(addr) >= len(cart.static.Freq) {
+			return errors.New(errors.CartridgeStaticArea, fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		}
+		cart.static.Freq[addr] = data
+
+	default:
+		return errors.New(errors.CartridgeStaticArea, fmt.Errorf("unknown static area (%s)", label))
 	}
 
-	// frequency table
-	s.WriteString("\n\n")
-	s.WriteString("Freq    -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-	s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-	j = uint16(0)
-	for i := 0; i < len(sa.Freq); i++ {
-		// begin new row every 16 iterations
-		if j%16 == 0 {
-			s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-		}
-		s.WriteString(fmt.Sprintf("%02x ", sa.Freq[i]))
-		j++
-	}
-
-	return s.String()
+	return nil
 }

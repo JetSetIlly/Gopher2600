@@ -73,9 +73,9 @@ const (
 	DatabaseFileUnavailable = "database error: cannot open database (%v)"
 
 	// regression
-	RegressionError         = "regression error: %v"
-	RegressionDigestError   = "digest entry: %v"
-	RegressionPlaybackError = "playback entry: %v"
+	RegressionError         = "regression: %v"
+	RegressionDigestError   = "digest regression: %v"
+	RegressionPlaybackError = "playback regression: %v"
 
 	// setup
 	SetupError           = "setup error: %v"
@@ -115,7 +115,7 @@ const (
 	CartridgeEjected     = "cartridge error: no cartridge attached"
 	CartridgeNotMappable = "cartridge error: bank %d can not be mapped to that address (%#04x)"
 	CartridgePatchOOB    = "cartrdige error: patch offset too high (%#04x)"
-	CartridgeStaticOOB   = "cartridge error: static data address too high (%#04x)"
+	CartridgeStaticArea  = "cartridge error: static area: %v"
 	SuperchargerError    = "supercharger error: %v"
 
 	// input

@@ -144,16 +144,10 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	}
 
 	// windows that appear in cartridge specific menus
-	if err := addWindow(newWinDPCstatic, false, windowMenuCart); err != nil {
-		return nil, err
-	}
 	if err := addWindow(newWinDPCregisters, false, windowMenuCart); err != nil {
 		return nil, err
 	}
 	if err := addWindow(newWinDPCplusRegisters, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinDPCplusStatic, false, windowMenuCart); err != nil {
 		return nil, err
 	}
 	if err := addWindow(newWinSuperchargerRegisters, false, windowMenuCart); err != nil {
@@ -162,20 +156,20 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCartRAM, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
+		return nil, err
+	}
 
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map
 	//
 	// note that the name of the window menu's we use here must match the ID
 	// used by the cartridge mapper.
-	//
-	// also note that we don't need to add the cartridge RAM window to these
-	// lists. we can detect when to add that automatically
-	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCstaticTitle)
 	wm.windowMenu["DPC"] = append(wm.windowMenu["DPC"], winDPCregistersTitle)
-	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusStaticTitle)
 	wm.windowMenu["DPC+"] = append(wm.windowMenu["DPC+"], winDPCplusRegistersTitle)
 	wm.windowMenu["AR"] = append(wm.windowMenu["AR"], winSuperchargerRegistersTitle)
+
+	// cartridges with RAM and static areas will be added automatically
 
 	// get references to specific window types that need to be referenced
 	// elsewhere in the system
@@ -262,21 +256,23 @@ func (wm *windowManager) drawMenu() {
 	// add cartridge specific menu if cartridge has a RAM bus or a debug bus.
 	// note that debug bus windows need to have been added to the window menu
 	// for the specific cartridge ID. see newWindowManager() function above
-	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus
+	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasStaticBus
 	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasRegistersBus {
 		cartSpecificMenu = true
-	} else if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasStaticBus {
-		cartSpecificMenu = true
 	}
+
 	if cartSpecificMenu {
 		if imgui.BeginMenu(fmt.Sprintf("Cartridge [%s]", wm.img.lz.Cart.ID)) {
-			cartSpecificMenu = true
 			for _, id := range wm.windowMenu[wm.img.lz.Cart.ID] {
 				wm.drawMenuWindowEntry(wm.windows[id], id)
 			}
 
 			if wm.img.lz.Cart.HasRAMbus {
 				wm.drawMenuWindowEntry(wm.windows[winCartRAMTitle], winCartRAMTitle)
+			}
+
+			if wm.img.lz.Cart.HasStaticBus {
+				wm.drawMenuWindowEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
 			}
 
 			imgui.EndMenu()

@@ -42,6 +42,10 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 		}
 	}
 	w.Y = imgui.FontSize() + (imgui.CurrentStyle().FramePadding().Y * 2.0)
+
+	// comboboxes in particuar look better with a small amount of trailing space
+	w.X += imgui.CurrentStyle().FramePadding().X
+
 	return w
 }
 

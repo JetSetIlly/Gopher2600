@@ -92,8 +92,9 @@ func newLimiter(tv television.Television, checkEvents func() error) *limiter {
 }
 
 func (lmtr *limiter) setFPS(fps float32) {
+	spec, _ := lmtr.tv.GetSpec()
 	if fps < 0 {
-		fps = lmtr.tv.GetSpec().FramesPerSecond
+		fps = spec.FramesPerSecond
 	}
 	lmtr.reqFrames = fps
 
@@ -106,7 +107,7 @@ func (lmtr *limiter) setFPS(fps float32) {
 		dur = time.Duration(float32(279000 * fps))
 	} else if fps < scanlineGranThresh {
 		// low frame rates and we move to scanline granularity
-		rate := float32(1.0) / (fps * float32(lmtr.tv.GetSpec().ScanlinesTotal))
+		rate := float32(1.0) / (fps * float32(spec.ScanlinesTotal))
 		dur, _ = time.ParseDuration(fmt.Sprintf("%fs", rate))
 		lmtr.throt = throtScanline
 	} else {
@@ -138,7 +139,7 @@ func (lmtr *limiter) getReqFPS() float32 {
 }
 
 // Resize implements television.PixelRenderer
-func (lmtr *limiter) Resize(topScanline int, visibleScanlines int) error {
+func (lmtr *limiter) Resize(_ *television.Specification, topScanline int, visibleScanlines int) error {
 	lmtr.setFPS(-1)
 	return nil
 }

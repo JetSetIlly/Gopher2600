@@ -61,26 +61,6 @@ type DPCstatic struct {
 	Gfx []byte
 }
 
-func (sa DPCstatic) String() string {
-	s := &strings.Builder{}
-
-	// header for static data table
-	s.WriteString("Gfx     -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-	s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-	j := uint16(0)
-	for i := 0; i < len(sa.Gfx); i++ {
-		// begin new row every 16 iterations
-		if j%16 == 0 {
-			s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-		}
-		s.WriteString(fmt.Sprintf("%02x ", sa.Gfx[i]))
-		j++
-	}
-
-	return s.String()
-}
-
 // DPCregisters implements the bus.CartRegisters interface
 type DPCregisters struct {
 	Fetcher [8]DPCdataFetcher
@@ -501,20 +481,25 @@ func (cart *dpc) PutRegister(register string, data string) {
 }
 
 // GetStatic implements the bus.CartDebugBus interface
-func (cart dpc) GetStatic() bus.CartStatic {
-	s := DPCstatic{
-		Gfx: make([]byte, len(cart.static.Gfx)),
-	}
-	copy(s.Gfx, cart.static.Gfx)
-	return bus.CartStatic(s)
+func (cart dpc) GetStatic() []bus.CartStatic {
+	s := make([]bus.CartStatic, 1)
+	s[0].Label = "Gfx"
+	s[0].Data = make([]byte, len(cart.static.Gfx))
+	copy(s[0].Data, cart.static.Gfx)
+	return s
 }
 
 // PutStatic implements the bus.CartDebugBus interface
-func (cart *dpc) PutStatic(addr uint16, data uint8) error {
-	if int(addr) >= len(cart.static.Gfx) {
-		return errors.New(errors.CartridgeStaticOOB, addr)
+func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
+	if label == "Gfx" {
+		if int(addr) >= len(cart.static.Gfx) {
+			return errors.New(errors.CartridgeStaticArea, fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		}
+		cart.static.Gfx[addr] = data
+	} else {
+		return errors.New(errors.CartridgeStaticArea, fmt.Errorf("unknown static area (%s)", label))
 	}
-	cart.static.Gfx[addr] = data
+
 	return nil
 }
 

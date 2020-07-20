@@ -26,7 +26,7 @@ bool isNearEqual(float x, float y, float epsilon)
 	return abs(x - y) <= epsilon;
 }
 
-const float cursorSize = 0.5;
+const float cursorSize = 1.0;
 
 void main()
 {
@@ -107,12 +107,14 @@ void main()
 		if (ShowScreenDraw > 0) {
 			
 			// draw cursor if pixel is at the last x/y position
-			if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
-				Out_Color.r = 1.0;
-				Out_Color.g = 1.0;
-				Out_Color.b = 1.0;
-				Out_Color.a = AnimTime;
-				return;
+			if (lastY >= 0 && lastX >= 0) {
+				if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
+					Out_Color.r = 1.0;
+					Out_Color.g = 1.0;
+					Out_Color.b = 1.0;
+					Out_Color.a = AnimTime;
+					return;
+				}
 			}
 
 			// draw off-screen cursor for HBLANK

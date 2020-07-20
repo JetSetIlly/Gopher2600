@@ -35,6 +35,7 @@ import (
 // a cryptographic task.
 type Video struct {
 	television.Television
+	spec     *television.Specification
 	digest   [sha1.Size]byte
 	pixels   []byte
 	frameNum int
@@ -56,8 +57,9 @@ func NewVideo(tv television.Television) (*Video, error) {
 	// digest value
 	l := len(dig.digest)
 
-	// alloscate enough pixels for entire frame
-	l += ((television.HorizClksScanline + 1) * (dig.GetSpec().ScanlinesTotal + 1) * pixelDepth)
+	// allocate enough pixels for entire frame
+	dig.spec, _ = dig.GetSpec()
+	l += ((television.HorizClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return dig, nil
@@ -77,15 +79,21 @@ func (dig *Video) ResetDigest() {
 
 // Resize implements television.PixelRenderer interface
 //
-// Note that Resize() does nothing in this implementation because we always
-// work on the entire frame.
-//
-// that said, we could record resize events by having a flag bit in the pixel
-// array. this additional bit (or byte) will then be included in the hashing
-// process.
-//
-// !!TODO: consider resize flag bit for digest.Video
-func (dig *Video) Resize(_, _ int) error {
+// In this implementation we only handle specification changes. This means the
+// digest is immune from changes to the frame resizing method used by the
+// television implementation. Changes to how the specification is flipped might
+// cause comparison failures however.
+func (dig *Video) Resize(spec *television.Specification, _, _ int) error {
+	if spec == dig.spec {
+		return nil
+	}
+
+	// allocate enough pixels for entire frame
+	dig.spec = spec
+	l := len(dig.digest)
+	l += ((television.HorizClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
+	dig.pixels = make([]byte, l)
+
 	return nil
 }
 

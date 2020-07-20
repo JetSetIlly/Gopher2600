@@ -106,7 +106,7 @@ var commandTemplate = []string{
 	cmdTimer,
 	cmdTIA + " (DELAYS)",
 	cmdAudio,
-	cmdTV + " (SPEC)",
+	cmdTV + " (SPEC (PAL|NTSC|AUTO))",
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,
@@ -115,7 +115,7 @@ var commandTemplate = []string{
 
 	// user input
 	cmdController + " [0|1] (AUTO|NOAUTO|JOYSTICK|PADDLE|KEYPAD)",
-	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL])",
+	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
 	cmdJoystick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdKeypad + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
 

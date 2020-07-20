@@ -17,11 +17,8 @@ package harmony
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -299,6 +296,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	case 0x2f:
 		f := addr & 0x0007
 		cart.registers.FracFetcher[f].Low = data
+		cart.registers.FracFetcher[f].Count = 0
 
 	// fractional data fetcher, high
 	case 0x30:
@@ -318,6 +316,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	case 0x37:
 		f := addr & 0x0007
 		cart.registers.FracFetcher[f].Hi = data
+		cart.registers.FracFetcher[f].Count = 0
 
 	// fractional data fetcher, incrememnt
 	case 0x38:
@@ -337,7 +336,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	case 0x3f:
 		f := addr & 0x0007
 		cart.registers.FracFetcher[f].Increment = data
-		cart.registers.FracFetcher[f].Count = data
+		cart.registers.FracFetcher[f].Count = 0
 
 	// data fetcher, window top
 	case 0x40:
@@ -629,126 +628,6 @@ func (cart *dpcPlus) Step() {
 		cart.registers.MusicFetcher[1].Count += cart.registers.MusicFetcher[1].Freq
 		cart.registers.MusicFetcher[2].Count += cart.registers.MusicFetcher[2].Freq
 	}
-}
-
-// GetRegisters implements the bus.CartDebugBus interface
-func (cart dpcPlus) GetRegisters() bus.CartRegisters {
-	return cart.registers
-}
-
-// PutRegister implements the bus.CartDebugBus interface
-//
-// Register specification is divided with the "::" string. The following table
-// describes what the valid register strings and, after the = sign, the type to
-// which the data argument will be converted.
-//
-//	fetcher::%int::hi = uint8
-//	fetcher::%int::low = uint8
-//	fetcher::%int::top = uint8
-//	fetcher::%int::bottom = uint8
-//	frac::%int::hi = uint8
-//	frac::%int::low = uint8
-//	frac::%int::increment = uint8
-//	frac::%int::count = uint8
-//	music::%int::waveform = uint8
-//	music::%int::freq = uint8
-//	music::%int::count = uint8
-//	rng = uint8
-//	fastfetch = bool
-//
-// note that PutRegister() will panic() if the register or data string is invalid.
-func (cart *dpcPlus) PutRegister(register string, data string) {
-	// most data is expected to an integer (a uint8 specifically) so we try
-	// to convert it here. if it doesn't convert then it doesn't matter
-	d, _ := strconv.ParseUint(data, 16, 8)
-
-	r := strings.Split(register, "::")
-	switch r[0] {
-	case "fetcher":
-		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.Fetcher) {
-			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
-		}
-		switch r[2] {
-		case "hi":
-			cart.registers.Fetcher[f].Hi = uint8(d)
-		case "low":
-			cart.registers.Fetcher[f].Low = uint8(d)
-		case "top":
-			cart.registers.Fetcher[f].Top = uint8(d)
-		case "bottom":
-			cart.registers.Fetcher[f].Bottom = uint8(d)
-		default:
-			panic(fmt.Sprintf("unrecognised variable [%s]", register))
-		}
-	case "frac":
-		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.FracFetcher) {
-			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
-		}
-		switch r[2] {
-		case "hi":
-			cart.registers.FracFetcher[f].Hi = uint8(d)
-		case "low":
-			cart.registers.FracFetcher[f].Low = uint8(d)
-		case "increment":
-			cart.registers.FracFetcher[f].Increment = uint8(d)
-		case "count":
-			cart.registers.FracFetcher[f].Count = uint8(d)
-		default:
-			panic(fmt.Sprintf("unrecognised variable [%s]", register))
-		}
-	case "music":
-		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.MusicFetcher) {
-			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
-		}
-		switch r[2] {
-		case "waveform":
-			cart.registers.MusicFetcher[f].Waveform = uint32(d)
-		case "freq":
-			cart.registers.MusicFetcher[f].Freq = uint32(d)
-		case "increment":
-			cart.registers.MusicFetcher[f].Count = uint32(d)
-		default:
-			panic(fmt.Sprintf("unrecognised variable [%s]", register))
-		}
-	case "rng":
-		cart.registers.RNG.Value = uint32(d)
-	case "fastfetch":
-		switch data {
-		case "true":
-			cart.registers.FastFetch = true
-		case "false":
-			cart.registers.FastFetch = false
-		default:
-			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
-		}
-	default:
-		panic(fmt.Sprintf("unrecognised variable [%s]", register))
-	}
-}
-
-// GetStatic implements the bus.CartDebugBus interface
-func (cart dpcPlus) GetStatic() bus.CartStatic {
-	s := DPCplusStatic{
-		Arm:  make([]byte, len(cart.static.Arm)),
-		Data: make([]byte, len(cart.static.Data)),
-		Freq: make([]byte, len(cart.static.Freq)),
-	}
-	copy(s.Arm, cart.static.Arm)
-	copy(s.Data, cart.static.Data)
-	copy(s.Freq, cart.static.Freq)
-	return bus.CartStatic(s)
-}
-
-// StaticWrite implements the bus.CartDebugBus interface
-func (cart *dpcPlus) PutStatic(addr uint16, data uint8) error {
-	if int(addr) >= len(cart.static.Data) {
-		return errors.New(errors.CartridgeStaticOOB, addr)
-	}
-	cart.static.Data[addr] = data
-	return nil
 }
 
 // IterateBank implemnts the disassemble interface

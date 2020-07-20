@@ -24,12 +24,11 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 )
 
-const winDPCplusStaticTitle = "DPC+ Static Areas"
+const winCartStaticTitle = "Static Areas"
 
-type winDPCplusStatic struct {
+type winCartStatic struct {
 	windowManagement
 	widgetDimensions
 
@@ -40,58 +39,52 @@ type winDPCplusStatic struct {
 	xPos float32
 }
 
-func newWinDPCplusStatic(img *SdlImgui) (managedWindow, error) {
-	win := &winDPCplusStatic{img: img}
+func newWinCartStatic(img *SdlImgui) (managedWindow, error) {
+	win := &winCartStatic{img: img}
 
 	return win, nil
 }
 
-func (win *winDPCplusStatic) init() {
+func (win *winCartStatic) init() {
 	win.widgetDimensions.init()
 }
 
-func (win *winDPCplusStatic) destroy() {
+func (win *winCartStatic) destroy() {
 }
 
-func (win *winDPCplusStatic) id() string {
-	return winDPCplusStaticTitle
+func (win *winCartStatic) id() string {
+	return winCartStaticTitle
 }
 
-func (win *winDPCplusStatic) draw() {
+func (win *winCartStatic) draw() {
 	if !win.open {
 		return
 	}
 
-	// do not open window if there is no valid cartridge debug bus available
-	sa, ok := win.img.lz.Cart.Static.(harmony.DPCplusStatic)
-	if !win.img.lz.Cart.HasStaticBus || !ok {
+	if !win.img.lz.Cart.HasStaticBus {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 
-	imgui.BeginV(winDPCplusStaticTitle, &win.open, 0)
+	imgui.BeginV(winCartStaticTitle, &win.open, 0)
 
 	imgui.BeginTabBar("")
-	if imgui.BeginTabItemV("Arm", nil, 0) {
-		win.drawGrid(sa.Arm)
-		imgui.EndTabItem()
-	}
-	if imgui.BeginTabItemV("Data", nil, 0) {
-		win.drawGrid(sa.Data)
-		imgui.EndTabItem()
-	}
-	if imgui.BeginTabItemV("Freq", nil, 0) {
-		win.drawGrid(sa.Freq)
-		imgui.EndTabItem()
+	for _, s := range win.img.lz.Cart.Static {
+		if imgui.BeginTabItemV(s.Label, nil, 0) {
+			win.drawGrid(s.Label, s.Data)
+			imgui.EndTabItem()
+		}
 	}
 	imgui.EndTabBar()
 
 	imgui.End()
 }
 
-func (win *winDPCplusStatic) drawGrid(a []byte) {
+func (win *winCartStatic) drawGrid(tag string, a []byte) {
+	imgui.BeginChild(tag)
+
 	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 
@@ -118,24 +111,26 @@ func (win *winDPCplusStatic) drawGrid(a []byte) {
 		} else {
 			imgui.SameLine()
 		}
-		win.drawEditByte(uint16(addr), a[i])
+		win.drawEditByte(tag, uint16(addr), a[i])
 		i++
 	}
 	imgui.PopItemWidth()
 
 	// finished with spacing setting
 	imgui.PopStyleVar()
+
+	imgui.EndChild()
 }
 
-func (win *winDPCplusStatic) drawEditByte(addr uint16, b byte) {
-	label := fmt.Sprintf("##%d", addr)
+func (win *winCartStatic) drawEditByte(tag string, addr uint16, b byte) {
+	l := fmt.Sprintf("##%d", addr)
 	content := fmt.Sprintf("%02x", b)
 
-	if imguiHexInput(label, !win.img.paused, 2, &content) {
+	if imguiHexInput(l, !win.img.paused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
-				b.PutStatic(addr, uint8(v))
+				b.PutStatic(tag, addr, uint8(v))
 			})
 		}
 	}

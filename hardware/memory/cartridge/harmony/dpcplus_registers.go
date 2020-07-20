@@ -17,7 +17,10 @@ package harmony
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // DPCplusRegisters implements the bus.CartRegisters interface
@@ -127,7 +130,7 @@ func (df *dataFetcher) inc() {
 
 func (df *dataFetcher) dec() {
 	df.Low--
-	if df.Low == 0x00 {
+	if df.Low == 0xff {
 		df.Hi--
 	}
 }
@@ -155,5 +158,103 @@ func (rng *randomNumberFetcher) prev() {
 		rng.Value = ((0x10adab1e & rng.Value) << 11) | ((0x10adab1e ^ rng.Value) >> 21)
 	} else {
 		rng.Value = (rng.Value << 11) | (rng.Value >> 21)
+	}
+}
+
+// GetRegisters implements the bus.CartDebugBus interface
+func (cart dpcPlus) GetRegisters() bus.CartRegisters {
+	return cart.registers
+}
+
+// PutRegister implements the bus.CartDebugBus interface
+//
+// Register specification is divided with the "::" string. The following table
+// describes what the valid register strings and, after the = sign, the type to
+// which the data argument will be converted.
+//
+//	fetcher::%int::hi = uint8
+//	fetcher::%int::low = uint8
+//	fetcher::%int::top = uint8
+//	fetcher::%int::bottom = uint8
+//	frac::%int::hi = uint8
+//	frac::%int::low = uint8
+//	frac::%int::increment = uint8
+//	frac::%int::count = uint8
+//	music::%int::waveform = uint8
+//	music::%int::freq = uint8
+//	music::%int::count = uint8
+//	rng = uint8
+//	fastfetch = bool
+//
+// note that PutRegister() will panic() if the register or data string is invalid.
+func (cart *dpcPlus) PutRegister(register string, data string) {
+	// most data is expected to an integer (a uint8 specifically) so we try
+	// to convert it here. if it doesn't convert then it doesn't matter
+	d, _ := strconv.ParseUint(data, 16, 8)
+
+	r := strings.Split(register, "::")
+	switch r[0] {
+	case "fetcher":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.Fetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "hi":
+			cart.registers.Fetcher[f].Hi = uint8(d)
+		case "low":
+			cart.registers.Fetcher[f].Low = uint8(d)
+		case "top":
+			cart.registers.Fetcher[f].Top = uint8(d)
+		case "bottom":
+			cart.registers.Fetcher[f].Bottom = uint8(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "frac":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.FracFetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "hi":
+			cart.registers.FracFetcher[f].Hi = uint8(d)
+		case "low":
+			cart.registers.FracFetcher[f].Low = uint8(d)
+		case "increment":
+			cart.registers.FracFetcher[f].Increment = uint8(d)
+		case "count":
+			cart.registers.FracFetcher[f].Count = uint8(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "music":
+		f, err := strconv.Atoi(r[1])
+		if err != nil || f > len(cart.registers.MusicFetcher) {
+			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+		}
+		switch r[2] {
+		case "waveform":
+			cart.registers.MusicFetcher[f].Waveform = uint32(d)
+		case "freq":
+			cart.registers.MusicFetcher[f].Freq = uint32(d)
+		case "increment":
+			cart.registers.MusicFetcher[f].Count = uint32(d)
+		default:
+			panic(fmt.Sprintf("unrecognised variable [%s]", register))
+		}
+	case "rng":
+		cart.registers.RNG.Value = uint32(d)
+	case "fastfetch":
+		switch data {
+		case "true":
+			cart.registers.FastFetch = true
+		case "false":
+			cart.registers.FastFetch = false
+		default:
+			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
+		}
+	default:
+		panic(fmt.Sprintf("unrecognised variable [%s]", register))
 	}
 }

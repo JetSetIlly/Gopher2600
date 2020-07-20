@@ -42,4 +42,11 @@
 // implementation did because it facilitated A/B testing but since we're
 // now confident that the TIA emulation is correct the need to keep in "sync"
 // with Stella is no longer required.
+//
+// The reference implementation also handles framerate limiting according to
+// the current TV specification (ie. PAL or NTSC) or an aribitrary value, using
+// the SetFPSCap() function.
+//
+// Framesize adaptation is also handled by the reference implementation and is
+// currently functional but rudimentary.
 package television

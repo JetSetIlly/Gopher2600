@@ -288,15 +288,38 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
-				if db := dbg.VCS.Mem.Cart.GetStaticBus(); db != nil {
-					dbg.printInstrument(db.GetStatic())
+				if bus := dbg.VCS.Mem.Cart.GetStaticBus(); bus != nil {
+					s := &strings.Builder{}
+					static := bus.GetStatic()
+					if static != nil {
+						for b := 0; b < len(static); b++ {
+							s.WriteString(static[b].Label + "\n")
+
+							// header for table. assumes that origin address begins at xxx0
+							s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
+							s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
+
+							for i := 0; i < len(static[b].Data); i++ {
+								// begin new row every 16 iterations
+								if i%16 == 0 {
+									s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
+								}
+								d, _ := dbg.VCS.Mem.Read(uint16(i))
+								s.WriteString(fmt.Sprintf("%02x ", d))
+							}
+							s.WriteString("\n\n")
+						}
+
+						dbg.printInstrument(s)
+					} else {
+						dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
+					}
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 				}
 			case "REGISTERS":
 				// !!TODO: poke/peek cartridge registers
-				bus := dbg.VCS.Mem.Cart.GetRegistersBus()
-				if bus != nil {
+				if bus := dbg.VCS.Mem.Cart.GetRegistersBus(); bus != nil {
 					dbg.printInstrument(bus.GetRegisters())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no registers")
@@ -305,8 +328,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "RAM":
 				// cartridge RAM is accessible through the normal VCS buses so
 				// the normal peek/poke commands will work
-				bus := dbg.VCS.Mem.Cart.GetRAMbus()
-				if bus != nil {
+				if bus := dbg.VCS.Mem.Cart.GetRAMbus(); bus != nil {
 					s := &strings.Builder{}
 					ram := bus.GetRAM()
 					if ram != nil {
@@ -925,7 +947,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			option = strings.ToUpper(option)
 			switch option {
 			case "SPEC":
-				dbg.printLine(terminal.StyleInstrument, dbg.tv.GetSpec().ID)
+				newspec, ok := tokens.Get()
+				if ok {
+					// unknown specifciations already handled by ValidateTokens()
+					err := dbg.tv.SetSpec(newspec)
+					if err != nil {
+						return false, err
+					}
+				}
+
+				spec, auto := dbg.tv.GetSpec()
+				s := strings.Builder{}
+				s.WriteString(spec.ID)
+				if auto {
+					s.WriteString(" (auto)")
+				}
+				dbg.printLine(terminal.StyleInstrument, s.String())
 			default:
 				// already caught by command line ValidateTokens()
 			}
@@ -1139,11 +1176,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "BW":
 				dbg.VCS.Panel.Handle(input.PanelSetColor, false)
 			}
-		default:
-			// we shouldn't need this check it should have been caught by the
-			// command line parser
-			// !!TODO: fix template for PANEL command
-			return false, errors.New(errors.CommandError, fmt.Sprintf("unrecognised argument (%s)", mode))
+		case "HOLD":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "SELECT":
+				dbg.VCS.Panel.Handle(input.PanelSelect, true)
+			case "RESET":
+				dbg.VCS.Panel.Handle(input.PanelReset, true)
+			}
+		case "RELEASE":
+			arg, _ := tokens.Get()
+			switch strings.ToUpper(arg) {
+			case "SELECT":
+				dbg.VCS.Panel.Handle(input.PanelSelect, false)
+			case "RESET":
+				dbg.VCS.Panel.Handle(input.PanelReset, false)
+			}
 		}
 		dbg.printInstrument(dbg.VCS.Panel)
 

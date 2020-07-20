@@ -144,7 +144,8 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	scr.AddPixelRenderer(scr)
 
 	// resize window
-	err = scr.resize(scr.GetSpec().ScanlineTop, scr.GetSpec().ScanlinesVisible)
+	spec, _ := scr.GetSpec()
+	err = scr.resize(spec.ScanlineTop, spec.ScanlinesVisible)
 	if err != nil {
 		return nil, errors.New(errors.SDLDebug, err)
 	}
@@ -192,7 +193,8 @@ func (scr SdlDebug) showWindow(show bool) {
 // the desired window width is different depending on whether the frame is
 // cropped or uncropped
 func (scr SdlDebug) windowWidth() (int32, float32) {
-	scale := scr.pixelScale * pixelWidth * scr.GetSpec().AspectBias
+	spec, _ := scr.GetSpec()
+	scale := scr.pixelScale * pixelWidth * spec.AspectBias
 
 	if scr.cropped {
 		return int32(float32(television.HorizClksVisible) * scale), scale
@@ -208,7 +210,8 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 		return int32(float32(scr.scanlines) * scr.pixelScale), scr.pixelScale
 	}
 
-	return int32(float32(scr.GetSpec().ScanlinesTotal) * scr.pixelScale), scr.pixelScale
+	spec, _ := scr.GetSpec()
+	return int32(float32(spec.ScanlinesTotal) * scr.pixelScale), scr.pixelScale
 }
 
 // use scale of -1 to reapply existing scale value
@@ -234,9 +237,10 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 			television.HorizClksVisible, scr.scanlines,
 		}
 	} else {
+		spec, _ := scr.GetSpec()
 		scr.cpyRect = &sdl.Rect{
 			0, 0,
-			television.HorizClksScanline, int32(scr.GetSpec().ScanlinesTotal),
+			television.HorizClksScanline, int32(spec.ScanlinesTotal),
 		}
 	}
 
@@ -255,14 +259,15 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// maximum size allowed by the specification. we need to remake them here
 	// because the specification may have changed as part of the resize() event
 
-	scr.pixels = newPixels(television.HorizClksScanline, scr.GetSpec().ScanlinesTotal)
+	spec, _ := scr.GetSpec()
+	scr.pixels = newPixels(television.HorizClksScanline, spec.ScanlinesTotal)
 
-	scr.textures, err = newTextures(scr.renderer, television.HorizClksScanline, scr.GetSpec().ScanlinesTotal)
+	scr.textures, err = newTextures(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
 	if err != nil {
 		return errors.New(errors.SDLDebug, err)
 	}
 
-	scr.overlay, err = newOverlay(scr.renderer, television.HorizClksScanline, scr.GetSpec().ScanlinesTotal)
+	scr.overlay, err = newOverlay(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
 	if err != nil {
 		return errors.New(errors.SDLDebug, err)
 	}
@@ -279,7 +284,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 // Resize implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread
-func (scr *SdlDebug) Resize(topScanline, numScanlines int) error {
+func (scr *SdlDebug) Resize(_ *television.Specification, topScanline, numScanlines int) error {
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -307,26 +312,28 @@ func (scr *SdlDebug) update() error {
 		return err
 	}
 
+	spec, _ := scr.GetSpec()
+
 	// render screen guides
 	if !scr.cropped {
 		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		scr.renderer.SetDrawColor(100, 100, 100, 50)
 		r := &sdl.Rect{0, 0,
-			int32(television.HorizClksHBlank), int32(scr.GetSpec().ScanlinesTotal)}
+			int32(television.HorizClksHBlank), int32(spec.ScanlinesTotal)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err
 		}
 
 		r = &sdl.Rect{0, 0,
-			int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlineTop)}
+			int32(television.HorizClksScanline), int32(spec.ScanlineTop)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err
 		}
 
-		r = &sdl.Rect{0, int32(scr.GetSpec().ScanlineBottom),
-			int32(television.HorizClksScanline), int32(scr.GetSpec().ScanlinesOverscan)}
+		r = &sdl.Rect{0, int32(spec.ScanlineBottom),
+			int32(television.HorizClksScanline), int32(spec.ScanlinesOverscan)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err

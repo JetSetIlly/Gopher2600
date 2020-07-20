@@ -21,6 +21,9 @@ package television
 
 import "image/color"
 
+// SpecificationList is the list of specifications that the television may adopt
+var SpecificationList = []string{"NTSC", "PAL"}
+
 // Specification is used to define the two television specifications
 type Specification struct {
 	ID     string

@@ -63,7 +63,21 @@ func NewPanel(mem *inputMemory) *Panel {
 func (pan *Panel) String() string {
 	s := strings.Builder{}
 
-	s.WriteString("p0=")
+	s.WriteString("sel=")
+	if pan.selectPressed {
+		s.WriteString("held")
+	} else {
+		s.WriteString("no")
+	}
+
+	s.WriteString(", res=")
+	if pan.resetPressed {
+		s.WriteString("held")
+	} else {
+		s.WriteString("no")
+	}
+
+	s.WriteString(", p0=")
 	if pan.p0pro {
 		s.WriteString("pro")
 	} else {

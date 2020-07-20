@@ -188,7 +188,10 @@ current delay information for all TIA video components.`,
                               |
            volume ------------+`,
 
-	cmdTV: "Display the current TV state.",
+	cmdTV: `Display the current TV state. Optional argument SPEC will display the currently
+selected TV specification. Supplying an argument to the TV SPEC command will set the TV to that
+specification. AUTO indicates that the specification will change if the condition of the TV signal
+suggest that it should.`,
 
 	cmdPlayer: `Display the current state of the player sprites. The player information to
 display can be selected with 0 or 1 arguments. Omitting this argument will show

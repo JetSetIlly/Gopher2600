@@ -104,7 +104,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr := &screen{img: img}
 
 	// start off by showing entirity of NTSC screen
-	scr.resize(television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
+	scr.resize(television.SpecNTSC, television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
@@ -114,24 +114,24 @@ func newScreen(img *SdlImgui) *screen {
 }
 
 // resize() is called by Resize() or resizeThread() depending on thread context
-func (scr *screen) resize(topScanline int, visibleScanlines int) error {
+func (scr *screen) resize(spec *television.Specification, topScanline int, visibleScanlines int) error {
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
 
 	scr.crit.topScanline = topScanline
 	scr.crit.scanlines = visibleScanlines
 
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 	for i := range scr.crit.backingPixels {
-		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 	}
-	scr.crit.debugPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, scr.img.tv.GetSpec().ScanlinesTotal))
+	scr.crit.debugPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 
 	// allocate disasm info
 	scr.crit.reflection = make([][]reflection.LastResult, television.HorizClksScanline)
 	for x := 0; x < television.HorizClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.LastResult, scr.img.tv.GetSpec().ScanlinesTotal)
+		scr.crit.reflection[x] = make([]reflection.LastResult, spec.ScanlinesTotal)
 	}
 
 	// create a cropped image from the main
@@ -167,10 +167,12 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 
 	scr.crit.lastX = lastX
 	scr.crit.lastY = lastY
+
+	// end critical section
 	scr.crit.section.Unlock()
 
 	// update aspect-bias value
-	scr.aspectBias = scr.img.tv.GetSpec().AspectBias
+	scr.aspectBias = spec.AspectBias
 
 	// resize texture renderers
 	for _, r := range scr.renderers {
@@ -183,9 +185,9 @@ func (scr *screen) resize(topScanline int, visibleScanlines int) error {
 // Resize implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread
-func (scr *screen) Resize(topScanline int, visibleScanlines int) error {
+func (scr *screen) Resize(spec *television.Specification, topScanline int, visibleScanlines int) error {
 	scr.img.service <- func() {
-		scr.img.serviceErr <- scr.resize(topScanline, visibleScanlines)
+		scr.img.serviceErr <- scr.resize(spec, topScanline, visibleScanlines)
 	}
 	return <-scr.img.serviceErr
 }

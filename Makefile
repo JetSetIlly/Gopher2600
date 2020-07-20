@@ -19,7 +19,7 @@ clean:
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
 race:
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Cryscast.bin
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Homebrew/chaoticGrill-2019-08-18--NTSC.bin
 
 build_assertions:
 	go build -gcflags $(compileFlags) -tags=assertions
