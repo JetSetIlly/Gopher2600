@@ -49,8 +49,6 @@ type screen struct {
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
-
-	isStable bool
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -58,6 +56,9 @@ type screen struct {
 type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
+
+	// whether the current frame was generated from a stable television state
+	isStable bool
 
 	// current values for *playable* area of the screen
 	topScanline int
@@ -196,7 +197,7 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	scr.isStable = isStable
+	scr.crit.isStable = isStable
 
 	scr.crit.backingPixelsUpdate = true
 	if scr.crit.backingPixelsCurrent < len(scr.crit.backingPixels)-1 {

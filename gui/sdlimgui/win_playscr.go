@@ -129,6 +129,10 @@ func (win *winPlayScr) resize() {
 
 // render is called by service loop
 func (win *winPlayScr) render() {
+	if !win.open {
+		return
+	}
+
 	// critical section
 	win.scr.crit.section.Lock()
 
@@ -137,6 +141,9 @@ func (win *winPlayScr) render() {
 
 	// get pixels
 	pixels := win.scr.crit.cropPixels
+
+	// make a note of fram stability for later on outside of the critical section
+	isStable := win.scr.crit.isStable
 
 	win.scr.crit.section.Unlock()
 	// end of critical section
@@ -147,7 +154,7 @@ func (win *winPlayScr) render() {
 	gl.ActiveTexture(gl.TEXTURE0)
 
 	// only draw image if television frame is stable
-	if win.scr.isStable {
+	if isStable {
 		if win.createTextures {
 			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 			gl.TexImage2D(gl.TEXTURE_2D, 0,
