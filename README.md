@@ -12,7 +12,7 @@ Gopher 2600 is an emulator for the Atari VCS. It is written in Go and was begun 
 	* Dear Imgui interface
 	* Line terminal interface
 	* CPU and Video stepping
-	* Breakpoints, traps, watches
+	* Breakpoints, traps, watches & traces
 	* Script recording and playback
 * Gameplay session recording and playback
 * Regression database
@@ -33,7 +33,7 @@ There is a lot to add to the project but the key ommissions as it currently stan
 
 * Not all CPU instructions are implemented. Although adding the missing opcodes
 	when encountered should be straightforward.
-* Supports most cartridge formats, including DPC+ and 3E+
+* Supports most cartridge formats, including DPC+ and 3E+ and partial support for Supercharger
 * DPC+ format is only partially implemented but there is no support for ARM yet
 * Disassembly of some cartridge formats is known to be inaccurate
 * Television display does not handle out-of-spec TV signals as it should
@@ -108,37 +108,12 @@ DPC+ format implemented according to notes provided by Spiceware https://atariag
 
 The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
 
+Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
+
 ## ROMs used during development
 
-The following ROMs were used throughout development and compared with the
-Stella emulator for accuracy. As far as I can tell the following ROMs work more
-or less as you would expect:
-
-### Commercial
-* Pitfall
-* Adventure
-* Barnstormer
-* Krull
-* He-Man
-* ET
-* Fatal Run
-* Cosmic Ark
-* Keystone Kapers
-* River Raiders
-* Tennis
-* Wabbit
-* Yar's Revenge
-* Midnight Madness
-* Pitfall 2
-
-### Homebrew
-* Thrust (v1.2)
-* Hack'em (pac man clone)
-* Donkey Kong (v1.0)
-
-### Demos
-* Tricade by Trilobit
-* Chiphead by KK of Altair
+A variety of ROMs were used throughout development and compared with the
+Stella emulator for accuracy.
 
 ## Compilation
 
@@ -263,16 +238,15 @@ Help is available with the HELP command. Help on a specific topic is available
 by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
-	[ 0xf000 SEI ] >> help
-        	 AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
+	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
 	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
-        	  GREP          HALT          HELP        INSERT      JOYSTICK
+	          GREP          HALT          HELP        INSERT      JOYSTICK
 	        KEYPAD          LAST          LINT          LIST        MEMMAP
-	       MISSILE        ONHALT        ONSTEP         PANEL         PATCH
-	          PEEK        PLAYER     PLAYFIELD          POKE          PREF
-	       QUANTUM          QUIT           RAM         RESET           RUN
-	        SCRIPT          STEP        SYMBOL           TIA         TIMER
-	          TRAP            TV         WATCH
+	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
+	         PATCH          PEEK        PLAYER     PLAYFIELD          POKE
+	          PREF       QUANTUM          QUIT           RAM         RESET
+	           RUN        SCRIPT          STEP        SYMBOL           TIA
+	         TIMER         TRACE          TRAP            TV         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
@@ -285,13 +259,6 @@ Whenever the emulation does halt, the `ONHALT` command will run. For example, a 
 The debugger can step forward either, one CPU instruction at a time, or by one video cycle at a time. We can change this mode with the `QUANTUM` command. We can also conveniently use the `STEP` command, for example `STEP VIDEO`, performing the quantum change and stepping forward in one go. The `STEP` command can also be used to run until the next time a target changes. For example, `STEP SCANLINE`. Using `STEP` in this way is often more useful than setting up a `TRAP`.
 
 Scripts can be recorded and played back with the `SCRIPT` command. All commands are available when in script recording mode, except `RUN` and further `SCRIPT RECORD` command. Playing back a script while recording a new script is possible.
-
-On startup, the debugger will load a configuration script, which consists of debugger commands available at the debugger's command line. A useful startup script would be:
-
-	DISPLAY SCALE 3.0
-	DISPLAY
-	
-This opens the debugger with the debugging screen open and ready for use. See the section "Configuration Directories" for more information.
 
 ## Configuration Directory
 
