@@ -68,6 +68,11 @@ func NewFastLoad(cart *Supercharger, data interface{}) (Tape, error) {
 		cart: cart,
 		data: data.([]byte),
 	}
+
+	if len(tap.data) != 8448 {
+		return nil, errors.New(errors.SuperchargerError, "wrong number of bytes in cartridge data")
+	}
+
 	return tap, nil
 }
 

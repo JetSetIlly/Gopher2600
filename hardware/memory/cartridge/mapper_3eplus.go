@@ -65,15 +65,11 @@ func new3ePlus(data []byte) (cartMapper, error) {
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, errors.New(errors.CartridgeError, "%s: cartridge size must be multiple of %d", cart.mappingID, cart.bankSize)
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.mappingID))
 	}
 
 	numBanks := len(data) / cart.bankSize
 	cart.banks = make([][]uint8, numBanks)
-
-	if len(data) != cart.bankSize*numBanks {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.mappingID))
-	}
 
 	// partition binary
 	for k := 0; k < numBanks; k++ {

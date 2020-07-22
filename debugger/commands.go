@@ -270,7 +270,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
-		err := dbg.loadCartridge(cartridgeloader.Loader{Filename: cart})
+		err := dbg.loadCartridge(cartridgeloader.NewLoader(cart, "AUTO"))
 		if err != nil {
 			return false, err
 		}

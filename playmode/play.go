@@ -43,12 +43,17 @@ type playmode struct {
 	guiChan chan gui.Event
 }
 
-// Play is a quick of setting up a playable instance of the emulator.
+// Play creates a 'playable' instance of the emulator.
+//
+// The cartload argument can be used to specify a recording to playback. The
+// contents of the file specified in Filename field of the Loader instance will
+// be checked. If it is a playback file then the playback codepath will be
+// used.
 func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
-	var transcript string
+	var recording string
 
 	// if supplied cartridge name is actually a playback file then set
-	// transcript and dump cartridgeLoader information
+	// recording variable and dump cartridgeLoader information
 	if recorder.IsPlaybackFile(cartload.Filename) {
 
 		// do not allow this if a new recording has been requested
@@ -56,7 +61,10 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 			return errors.New(errors.PlayError, "cannot make a new recording using a playback file")
 		}
 
-		transcript = cartload.Filename
+		recording = cartload.Filename
+
+		// nullify cartload instance. we'll use the Loader instance in the
+		// Playback instance
 		cartload = cartridgeloader.Loader{}
 	}
 
@@ -73,12 +81,12 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 
 		// create a unique filename
 		n := time.Now()
-		transcript = fmt.Sprintf("recording_%s_%s",
+		recording = fmt.Sprintf("recording_%s_%s",
 			cartload.ShortName(), fmt.Sprintf("%04d%02d%02d_%02d%02d%02d",
 				n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second()))
 
 		// prepare new recording
-		rec, err := recorder.NewRecorder(transcript, vcs)
+		rec, err := recorder.NewRecorder(recording, vcs)
 		if err != nil {
 			return errors.New(errors.PlayError, err)
 		}
@@ -95,17 +103,13 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 			return errors.New(errors.PlayError, err)
 		}
 
-	} else if transcript != "" {
-		// not a new recording but a transcript has been supplied. this is a
+	} else if recording != "" {
+		// not a new recording but a recording has been supplied. this is a
 		// playback request
 
-		plb, err := recorder.NewPlayback(transcript)
+		plb, err := recorder.NewPlayback(recording)
 		if err != nil {
 			return err
-		}
-
-		if cartload.Filename != "" && cartload.Filename != plb.CartLoad.Filename {
-			return errors.New(errors.PlayError, "cartridge doesn't match name in the playback recording")
 		}
 
 		// not using setup.AttachCartridge. if the playback was recorded with setup
@@ -126,7 +130,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		}
 
 	} else {
-		// no new recording requested and no transcript given. this is a 'normal'
+		// no new recording requested and no recording given. this is a 'normal'
 		// launch of the emalator for regular play
 
 		err = setup.AttachCartridge(vcs, cartload)

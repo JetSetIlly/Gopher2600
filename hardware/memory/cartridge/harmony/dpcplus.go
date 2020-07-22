@@ -73,8 +73,8 @@ func NewDPCplus(data []byte) (*dpcPlus, error) {
 	bankLen := len(data) - dataSize - armSize - freqSize
 
 	// size check
-	if bankLen%cart.bankSize != 0 {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: %d bytes not supported", cart.mappingID, len(data)))
+	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in cartridge data", cart.mappingID))
 	}
 
 	// partition

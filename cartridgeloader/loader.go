@@ -20,7 +20,10 @@
 package cartridgeloader
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -32,16 +35,93 @@ import (
 // the VCS. it also permits the called to specify the mapping of the cartridge
 // (if necessary. fingerprinting is pretty good)
 type Loader struct {
+
+	// filename of cartridge to load.
 	Filename string
 
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
 	// expected hash of the loaded cartridge. empty string indicates that the
-	// hash is unknown and need not be validated
+	// hash is unknown and need not be validated. after a load operation the
+	// value will be the hash of the loaded data
 	Hash string
 
+	// copy of the loaded data. subsequence calls to Load() will return a copy
+	// of this data
 	data []byte
+}
+
+// NewLoader is the preferred method of initialisation for the Loader type.
+//
+// The mapping argument will be used to set the Mapping field, unless the
+// argument is either "AUTO" or the empty string. In which case the file
+// extension is used to set the field.
+//
+// File extensions should be the same as the ID of the intended mapper, as
+// defined in the cartridge package. The exception is the DPC+ format which
+// requires the file extension "DP+"
+//
+// File extensions ".BIN" and "A26" will set the Mapping field to "AUTO".
+//
+// Alphabetic characters in file extensions can be in upper or lower case or a
+// mixture of both.
+func NewLoader(filename string, mapping string) Loader {
+	cl := Loader{
+		Filename: filename,
+		Mapping:  "AUTO",
+	}
+
+	mapping = strings.TrimSpace(strings.ToUpper(mapping))
+	if mapping != "AUTO" && mapping != "" {
+		cl.Mapping = mapping
+	} else {
+		ext := strings.ToUpper(path.Ext(filename))
+		switch ext {
+		case ".BIN":
+			fallthrough
+		case ".A26":
+			cl.Mapping = "AUTO"
+		case ".2k":
+			fallthrough
+		case ".4k":
+			fallthrough
+		case ".F8":
+			fallthrough
+		case ".F6":
+			fallthrough
+		case ".F4":
+			fallthrough
+		case ".2k+":
+			fallthrough
+		case ".4k+":
+			fallthrough
+		case ".F8+":
+			fallthrough
+		case ".F6+":
+			fallthrough
+		case ".F4+":
+			fallthrough
+		case ".FA":
+			fallthrough
+		case ".FE":
+			fallthrough
+		case ".E0":
+			fallthrough
+		case ".E7":
+			fallthrough
+		case ".3F":
+			fallthrough
+		case ".AR":
+			fallthrough
+		case ".DPC":
+			cl.Mapping = ext[1:]
+		case "DP+":
+			cl.Mapping = "DPC+"
+		}
+	}
+
+	return cl
 }
 
 // ShortName returns a shortened version of the CartridgeLoader filename
@@ -56,18 +136,22 @@ func (cl Loader) HasLoaded() bool {
 	return len(cl.data) > 0
 }
 
-// Load the cartridge
+// Load the cartridge data and return as a byte array. Loader filenames with a
+// valid schema will use that method to load the data. Currently supported
+// schemes are HTTP and local files.
 func (cl Loader) Load() ([]byte, error) {
 	if len(cl.data) > 0 {
-		return cl.data, nil
+		return cl.data[:], nil
 	}
 
-	var err error
+	url, err := url.Parse(cl.Filename)
+	if err != nil {
+		return nil, errors.New(errors.CartridgeLoader, err)
+	}
 
-	if strings.HasPrefix(cl.Filename, "http://") {
-		var resp *http.Response
-
-		resp, err = http.Get(cl.Filename)
+	switch url.Scheme {
+	case "http":
+		resp, err := http.Get(cl.Filename)
 		if err != nil {
 			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
 		}
@@ -80,9 +164,12 @@ func (cl Loader) Load() ([]byte, error) {
 		if err != nil {
 			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
 		}
-	} else {
-		var f *os.File
-		f, err = os.Open(cl.Filename)
+
+	case "file":
+		fallthrough
+
+	case "":
+		f, err := os.Open(cl.Filename)
 		if err != nil {
 			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
 		}
@@ -100,7 +187,21 @@ func (cl Loader) Load() ([]byte, error) {
 		if err != nil {
 			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
 		}
+
+	default:
+		return nil, errors.New(errors.CartridgeLoader, fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
 	}
 
-	return cl.data, nil
+	// generate hash
+	hash := fmt.Sprintf("%x", sha1.Sum(cl.data))
+
+	// check for hash consistency
+	if cl.Hash != "" && cl.Hash != hash {
+		return nil, errors.New(errors.CartridgeLoader, "unexpected hash value")
+	}
+
+	// not generated hash
+	cl.Hash = hash
+
+	return cl.data[:], nil
 }

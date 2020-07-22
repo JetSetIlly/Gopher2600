@@ -17,16 +17,23 @@
 // git repository, are also covered by the licence, even when this
 // notice is not present ***
 
-// Package cartridgeloader represents cartridge data when not attached to the
-// VCS. When a reference to a cartridge is required functions expect an
-// instance of cartridgeloader.Loader.
+// Package cartridgeloader is used to specify the data that is to be attached
+// to the emulated VCS.
+//
+// When the cartridge is ready to be loaded into the emulator, the Load()
+// function should be used. The Load() function handles loading of data from a
+// different sources. Currently on local-file and data over HTTP is supported.
+//
+// As well as the filename, the Loader type allows the cartridge mapping to be
+// specified, if required.
+//
+// The simplest instance of the Loader type:
 //
 //	cl := cartridgeloader.Loader{
 //		Filename: "roms/Pitfall.bin",
 //	}
 //
-// When the cartridge is ready to be loaded the emulator calls the Load()
-// function. This function currently handles files (specified with Filename)
-// that are stored locally and also over http. Other protocols could easily be
-// added. A good improvement would be to allow loading from zip or tar files.
+// It is preferred however that the NewLoader() function is used. The
+// NewLoader() function will set the mapping field automatically according to
+// the filename extension.
 package cartridgeloader

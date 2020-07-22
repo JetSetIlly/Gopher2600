@@ -52,7 +52,7 @@ func newCBS(data []byte) (cartMapper, error) {
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge data", cart.mappingID))
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())

@@ -116,7 +116,7 @@ const (
 	CartridgeNotMappable = "cartridge error: bank %d can not be mapped to that address (%#04x)"
 	CartridgePatchOOB    = "cartrdige error: patch offset too high (%#04x)"
 	CartridgeStaticArea  = "cartridge error: static area: %v"
-	SuperchargerError    = "supercharger error: %v"
+	SuperchargerError    = "cartridge error: AR: %v"
 
 	// input
 	UnknownInputEvent     = "input error: %v: unsupported event (%v)"

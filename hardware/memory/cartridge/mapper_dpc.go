@@ -135,7 +135,7 @@ func newDPC(data []byte) (cartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge file", cart.mappingID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge data", cart.mappingID))
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

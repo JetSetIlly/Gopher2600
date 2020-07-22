@@ -20,7 +20,6 @@
 package cartridge
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"strings"
 
@@ -138,14 +137,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	cart.Filename = cartload.Filename
 	cart.mapper = newEjected()
 
-	// generate hash
-	cart.Hash = fmt.Sprintf("%x", sha1.Sum(data))
-
-	// check that the hash matches the expected value
-	if cartload.Hash != "" && cartload.Hash != cart.Hash {
-		return errors.New(errors.CartridgeError, "unexpected hash value")
-	}
-
 	cartload.Mapping = strings.ToUpper(cartload.Mapping)
 
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
@@ -165,23 +156,21 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newAtari16k(data)
 	case "F4":
 		cart.mapper, err = newAtari32k(data)
-
-	case "2k+SC":
+	case "2k+":
 		cart.mapper, err = newAtari2k(data)
 		addSuperchip = true
-	case "4k+SC":
+	case "4k+":
 		cart.mapper, err = newAtari4k(data)
 		addSuperchip = true
-	case "F8+SC":
+	case "F8+":
 		cart.mapper, err = newAtari8k(data)
 		addSuperchip = true
-	case "F6+SC":
+	case "F6+":
 		cart.mapper, err = newAtari16k(data)
 		addSuperchip = true
-	case "F4+SC":
+	case "F4+":
 		cart.mapper, err = newAtari32k(data)
 		addSuperchip = true
-
 	case "FA":
 		cart.mapper, err = newCBS(data)
 	case "FE":
@@ -193,8 +182,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "3F":
 		cart.mapper, err = newTigervision(data)
 	case "AR":
-		// !!TODO: AR cartridge mapping
-
+		cart.mapper, err = supercharger.NewSupercharger(data)
 	case "DPC":
 		cart.mapper, err = newDPC(data)
 	case "DPC+":

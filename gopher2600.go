@@ -253,10 +253,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		cartload := cartridgeloader.Loader{
-			Filename: md.GetArg(0),
-			Mapping:  *mapping,
-		}
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -424,10 +421,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		// set up a running function
 		dbgRun := func() error {
-			cartload := cartridgeloader.Loader{
-				Filename: md.GetArg(0),
-				Mapping:  *mapping,
-			}
+			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+
 			err := dbg.Start(*initScript, cartload)
 			if err != nil {
 				return err
@@ -489,10 +484,8 @@ func disasm(md *modalflag.Modes) error {
 			Raw:      *raw,
 		}
 
-		cartload := cartridgeloader.Loader{
-			Filename: md.GetArg(0),
-			Mapping:  *mapping,
-		}
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+
 		dsm, err := disassembly.FromCartridge(cartload)
 		if err != nil {
 			// print what disassembly output we do have
@@ -540,10 +533,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		cartload := cartridgeloader.Loader{
-			Filename: md.GetArg(0),
-			Mapping:  *mapping,
-		}
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -719,10 +709,7 @@ func regressAdd(md *modalflag.Modes) error {
 				Notes:  *notes,
 			}
 		} else {
-			cartload := cartridgeloader.Loader{
-				Filename: md.GetArg(0),
-				Mapping:  *mapping,
-			}
+			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
 			// parse digest mode, failing if string is not recognised
 			m, err := regression.ParseDigestMode(*mode)
