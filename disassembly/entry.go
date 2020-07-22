@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -230,13 +231,15 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 						}
 					}
 				case instructions.Read:
-					if v, ok := dsm.Symtable.Read.Symbols[operand]; ok {
+					mappedOperand, _ := memorymap.MapAddress(operand, true)
+					if v, ok := dsm.Symtable.Read.Symbols[mappedOperand]; ok {
 						e.Operand = v
 					}
 				case instructions.Write:
 					fallthrough
 				case instructions.RMW:
-					if v, ok := dsm.Symtable.Write.Symbols[operand]; ok {
+					mappedOperand, _ := memorymap.MapAddress(operand, false)
+					if v, ok := dsm.Symtable.Write.Symbols[mappedOperand]; ok {
 						e.Operand = v
 					}
 				}
