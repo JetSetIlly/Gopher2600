@@ -323,6 +323,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					// CPU execution has been interrupted. update state of CPU
 					dbg.VCS.CPU.Interrupted = true
 
+					// the interrupted CPU means it never got a chance to
+					// finalise the result. we force that here by simply
+					// setting the Final flag to true.
+					dbg.VCS.CPU.LastResult.Final = true
+
+					// we've already obtained the disassembled lastResult so we
+					// need to change the final flag there too
+					dbg.lastResult.Result.Final = true
+
 					// call function to complete tape loading procedure
 					err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM, dbg.VCS.RIOT.Timer)
 					if err != nil {

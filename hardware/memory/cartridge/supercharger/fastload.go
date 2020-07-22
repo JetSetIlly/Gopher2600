@@ -69,7 +69,8 @@ func NewFastLoad(cart *Supercharger, data interface{}) (Tape, error) {
 		data: data.([]byte),
 	}
 
-	if len(tap.data) != 8448 {
+	l := len(tap.data)
+	if l != 8448 && l != 25344 && l != 33792 {
 		return nil, errors.New(errors.SuperchargerError, "wrong number of bytes in cartridge data")
 	}
 
@@ -93,17 +94,17 @@ func (tap *FastLoad) Load() error {
 	numPages := int(gameHeader[3])
 
 	// not using the following in any meaningful way
-	// checksum := gameHeader[4]
-	// multiLoad := gameHeader[5]
-	// progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
+	checksum := gameHeader[4]
+	multiload := gameHeader[5]
+	progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	// fmt.Printf("start address: %#04x\n", startAddress)
-	// fmt.Printf("config byte: %#08b\n", configByte)
-	// fmt.Printf("num pages: %d\n", numPages)
-	// fmt.Printf("checksum: %#02x\n", checksum)
-	// fmt.Printf("multi load: %#02x\n", multiLoad)
-	// fmt.Printf("progress counter: %#02x\n", progressCounter)
-	// fmt.Println("")
+	fmt.Printf("start address: %#04x\n", startAddress)
+	fmt.Printf("config byte: %#08b\n", configByte)
+	fmt.Printf("num pages: %d\n", numPages)
+	fmt.Printf("checksum: %#02x\n", checksum)
+	fmt.Printf("multi load: %#02x\n", multiload)
+	fmt.Printf("progress counter: %#02x\n", progressCounter)
+	fmt.Println("")
 
 	// data is loaded accoring to page table
 	pageTable := tap.data[0x2010:0x2028]
@@ -133,27 +134,33 @@ func (tap *FastLoad) Load() error {
 			return errors.New(errors.SuperchargerError, err)
 		}
 
-		// clear RAM
+		// initialise VCS RAM with zeros
 		for a := uint16(0x80); a <= 0xff; a++ {
 			ram.Poke(a, 0x00)
 		}
 
-		// poke some values into RAM
-		ram.Poke(0xfa, 0xcd)
-		ram.Poke(0xfb, 0xf8)
-		ram.Poke(0xfc, 0xff)
+		// poke values into RAM. these values would be the by-product of the
+		// tape-loading process. because we are short-circuiting that process
+		// however, by injecting the binary data into supercharger RAM
+		// directly, the necessary code will not be run.
+
+		//  - RAM address 0x80 contains the intial configbyte
+		ram.Poke(0x80, configByte)
+
+		//  - JMP <absolute address>
 		ram.Poke(0xfd, 0x4c)
 		ram.Poke(0xfe, uint8(startAddress))
 		ram.Poke(0xff, uint8(startAddress>>8))
 
-		// RAM address 0x80 seems to be sensitive to the specific cartridge. it
-		// seems to be used for bank-switching
+		// similar to the RAM poking above, there are other side-effects of the
+		// elided tape loading process. some ROMs rely on these side-effect so
+		// we must recreate them here.
 		//
-		// for Frogger and Communist Mutants it must 0x0b
-		// for Killer Instinct it must be 0x0f
-		ram.Poke(0x80, 0x0b)
+		// note that we can count the zeroing of VCS RAM in this category. for
+		// example, Frogger sets the background color on the opening screen to
+		// black, which depends on the correct byte in RAM being set to zero.
 
-		// reset timer. rabbit transit requires this
+		//  - reset timer [required by rabbit transit]
 		tmr.SetInterval("T1024T")
 		tmr.SetValue(0x4c)
 

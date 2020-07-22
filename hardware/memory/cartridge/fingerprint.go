@@ -88,8 +88,8 @@ func fingerprintHarmony(b []byte) bool {
 }
 
 func fingerprintSuperchargerFastLoad(b []byte) bool {
-	// only the 8448byte bin file is supported for now
-	return len(b) == 8448
+	l := len(b)
+	return l == 8448 || l == 25344 || l == 33792
 }
 
 func fingerprintTigervision(b []byte) bool {
