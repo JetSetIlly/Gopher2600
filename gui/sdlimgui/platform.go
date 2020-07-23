@@ -42,8 +42,11 @@ type platform struct {
 func newPlatform(img *SdlImgui) (*platform, error) {
 	runtime.LockOSThread()
 
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
+	err := sdl.Init(sdl.INIT_EVERYTHING)
+	if err != nil {
+		return nil, fmt.Errorf("SDL2: %v", err)
+	}
+
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
@@ -51,11 +54,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	_ = sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 	_ = sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
 	_ = sdl.GLSetAttribute(sdl.GL_STENCIL_SIZE, 8)
-
-	err := sdl.Init(sdl.INIT_EVERYTHING)
-	if err != nil {
-		return nil, fmt.Errorf("SDL2: %v", err)
-	}
 
 	plt := &platform{
 		img: img,
