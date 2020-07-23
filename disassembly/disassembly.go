@@ -137,10 +137,14 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.
 
 	dsm.Symtable = symtable
 
+	// allocate memory for disassembly. the GUI may find itself trying to
+	// iterate through disassembly at the same time as we're doing this.
+	dsm.crit.Lock()
 	dsm.disasm = make([][]*Entry, dsm.cart.NumBanks())
 	for b := 0; b < len(dsm.disasm); b++ {
 		dsm.disasm[b] = make([]*Entry, memorymap.CartridgeBits+1)
 	}
+	dsm.crit.Unlock()
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.cart.IsEjected() {
