@@ -2,7 +2,7 @@
 
 Gopher 2600 is an emulator for the Atari VCS. It is written in Go and was begun as a project for learning that language. The screenshot below shows the default play window, complete with CRT effects.
 
-<img src=".screenshots/crt_hero.png" alt="gopher2600 showing Hero with CRT effects"/>
+<img src=".screenshots/crt_official_frogger.png" alt="gopher2600 showing Official Frogger with CRT effects"/>
 
 ## Project Features
 
