@@ -34,10 +34,11 @@ import (
 // On success it returns the FastLoaded error. This must be interpreted by the
 // emulator driver and called with the arguments listed in the error type.
 //
-// Format information from mailing list:
-//		Subject: Re: [stella] Supercharger BIN format
-//		From: Eckhard Stolberg
-//		Date: Fri, 08 Jan 1999
+// Format information for fast-loca binary rom mailing list post:
+//
+// Subject: Re: [stella] Supercharger BIN format
+// From: Eckhard Stolberg
+// Date: Fri, 08 Jan 1999
 type FastLoad struct {
 	cart *Supercharger
 	data []byte

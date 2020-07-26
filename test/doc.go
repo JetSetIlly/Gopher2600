@@ -46,4 +46,11 @@
 // the main thread or from a non-main thread. These functions do nothing unless
 // the "assertions" build tag is specified at compile time.
 
+// Package test bundles a bunch of useful functions useful for testing
+// purposes, particular useful in conjunction with the standard go test harness
+//
+// The AssertMainThread() and AssertNonMainThread() functions require a bit of
+// explanation. When compiled with the "assertions" tag these functions will
+// panic if the calling function is in the wrong thread. Otherwise they are
+// stubbed.
 package test
