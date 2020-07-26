@@ -12,10 +12,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
-//
-// *** NOTE: all historical versions of this file, as found in any
-// git repository, are also covered by the licence, even when this
-// notice is not present ***
 
 // breakpoints are used to halt execution when a  target is *changed to* a
 // specific value.  compare to traps which are used to halt execution when the

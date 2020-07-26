@@ -12,10 +12,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
-//
-// *** NOTE: all historical versions of this file, as found in any
-// git repository, are also covered by the licence, even when this
-// notice is not present ***
 
 // Package easyterm is a wrapper for "github.com/pkg/term/termios". it provides
 // some features not present in the third-party package, such as terminal
