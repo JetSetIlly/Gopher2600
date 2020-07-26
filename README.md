@@ -272,7 +272,9 @@ For release executables, the directory is placed in the user's configuration dir
 the location of which is dependent on the host OS. On modern Linux systems, the location
 is `.config/gopher2600`.
 
-In both instances, the directory, sub-directory and files will be created automatically
+For MacOS the directory for release executables is `~/Library/Application Support/gopher2600`
+
+In all instances, the directory, sub-directory and files will be created automatically
 as required.
 
 ## Recording Gameplay
