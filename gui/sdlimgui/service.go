@@ -210,5 +210,5 @@ func (img *SdlImgui) Service() {
 	}
 
 	// sleep to help avoid 100% CPU usage
-	<-time.After(time.Millisecond * 5)
+	<-time.After(time.Millisecond * 25)
 }
