@@ -83,8 +83,8 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 			for {
 				select {
 				case v := <-timerChan:
-					// timerchan has returned true, which means measurement
-					// period has finished, return false to cause vcs.Run() t
+					// timerChan has returned true, which means measurement
+					// period has finished, return false to cause vcs.Run() to
 					// return
 					if v {
 						return false, nil
@@ -104,7 +104,7 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 		return nil
 	}
 
-	// launch runner through the CPU profiler or just directly, depending on
+	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
 	if profile {
 		err = ProfileCPU("cpu.profile", runner)

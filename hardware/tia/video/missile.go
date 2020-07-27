@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/television"
@@ -76,7 +76,6 @@ type missileSprite struct {
 
 	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
-	Delay       *future.Ticker
 	MoreHMOVE   bool
 	Hmove       uint8
 	lastHmoveCt uint8
@@ -93,19 +92,27 @@ type missileSprite struct {
 	// ^^^ the above are common to all sprite types ^^^
 	//		(see player sprite for commentary)
 
-	Color   uint8 // equal to missile color
-	Enabled bool
+	Color         uint8 // equal to missile color
+	Enabled       bool
+	ResetToPlayer bool
 
 	// for convenience we split the NUSIZ register into size and copies
 	Nusiz  uint8
 	Size   uint8
 	Copies uint8
 
-	Enclockifier       enclockifier
-	parentPlayer       *playerSprite
-	ResetToPlayer      bool
-	startDrawingEvent  *future.Event
-	resetPositionEvent *future.Event
+	// the player sprite which the missile is "connected" to. used in
+	// conjunction with the ResetToPlayer field
+	parentPlayer *playerSprite
+
+	// position reset and enclockifier start events are both delayed by a small
+	// number of cycles
+	futureReset delay.Event
+	futureStart delay.Event
+
+	// outputting of pixels is handled by the ball/missile enclockifier.
+	// equivalent to the ScanCounter used by the player sprites
+	Enclockifier enclockifier
 }
 
 func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*missileSprite, error) {
@@ -123,7 +130,6 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 		return nil, err
 	}
 
-	ms.Delay = future.NewTicker(label)
 	ms.Enclockifier.size = &ms.Size
 	ms.position.Reset()
 
@@ -298,11 +304,11 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 		// start drawing if there is no reset or it has just started AND
 		// there wasn't a reset event ongoing when the current event
 		// started
-		if ms.resetPositionEvent == nil || ms.resetPositionEvent.JustStarted() {
+		if !ms.futureReset.IsActive() || ms.futureReset.JustStarted() {
 			switch ms.position.Count() {
 			case 3:
 				if ms.Copies == 0x01 || ms.Copies == 0x03 {
-					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 1, "START")
+					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, 1)
 				}
 			case 7:
 				if ms.Copies == 0x03 || ms.Copies == 0x02 || ms.Copies == 0x06 {
@@ -310,7 +316,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 					if ms.Copies == 0x03 {
 						cpy = 2
 					}
-					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
+					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, cpy)
 				}
 			case 15:
 				if ms.Copies == 0x04 || ms.Copies == 0x06 {
@@ -318,10 +324,10 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 					if ms.Copies == 0x06 {
 						cpy = 2
 					}
-					ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, cpy, "START")
+					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, cpy)
 				}
 			case 39:
-				ms.startDrawingEvent = ms.Delay.ScheduleWithArg(4, ms._futureStartDrawingEvent, 0, "START")
+				ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, 0)
 			case 40:
 				ms.position.Reset()
 			}
@@ -330,16 +336,16 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 	ms.Enclockifier.tick()
 
-	// tick future events that are goverened by the sprite
-	ms.Delay.Tick()
+	// tick delayed events. note that the order of these ticks is important.
+	ms.futureReset.Tick()
+	ms.futureStart.Tick()
 
 	return true
 }
 
 func (ms *missileSprite) _futureStartDrawingEvent(v interface{}) {
-	ms.Enclockifier.start()
 	ms.Enclockifier.Cpy = v.(int)
-	ms.startDrawingEvent = nil
+	ms.Enclockifier.start()
 }
 
 func (ms *missileSprite) prepareForHMOVE() {
@@ -379,8 +385,8 @@ func (ms *missileSprite) resetPosition() {
 	if !ms.Enclockifier.aboutToEnd() {
 		ms.Enclockifier.Paused = true
 	}
-	if ms.startDrawingEvent != nil && !ms.startDrawingEvent.AboutToEnd() {
-		ms.startDrawingEvent.Pause()
+	if ms.futureStart.IsActive() && !ms.futureStart.AboutToEnd() {
+		ms.futureStart.Pause()
 	}
 
 	// stop any existing reset events. generally, this codepath will not apply
@@ -390,15 +396,15 @@ func (ms *missileSprite) resetPosition() {
 	//
 	// in the case of the missile sprite, we can see such an occurance in the
 	// test.bin test ROM
-	if ms.resetPositionEvent != nil {
-		ms.resetPositionEvent.Push()
+	if ms.futureReset.IsActive() {
+		ms.futureReset.Push()
 		return
 	}
 
-	ms.resetPositionEvent = ms.Delay.Schedule(delay, ms._futureResetPosition, "RESMx")
+	ms.futureReset.Schedule(delay, ms._futureResetPosition, nil)
 }
 
-func (ms *missileSprite) _futureResetPosition() {
+func (ms *missileSprite) _futureResetPosition(_ interface{}) {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
@@ -429,13 +435,9 @@ func (ms *missileSprite) _futureResetPosition() {
 	ms.pclk.Reset()
 
 	ms.Enclockifier.force()
-	if ms.startDrawingEvent != nil {
-		ms.startDrawingEvent.Force()
-		ms.startDrawingEvent = nil
+	if ms.futureStart.IsActive() {
+		ms.futureStart.Force()
 	}
-
-	// dump reference to reset event
-	ms.resetPositionEvent = nil
 }
 
 func (ms *missileSprite) setResetToPlayer(on bool) {
@@ -450,7 +452,7 @@ func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
 	// the missile sprite has a special state where a stuffed HMOVE clock
 	// forces the draw signal to true *if* the enclockifier is to begin next
 	// cycle.
-	earlyStart := ms.lastTickFromHmove && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd()
+	earlyStart := ms.lastTickFromHmove && ms.futureStart.AboutToEnd()
 
 	// similarly, in the event of a stuffed HMOVE clock, and when the
 	// enclockifier is about to produce its last pixel
@@ -466,7 +468,7 @@ func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	px := !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
-	return px, ms.Color, px || (*ms.hblank && ms.Enabled && ms.startDrawingEvent != nil && ms.startDrawingEvent.AboutToEnd())
+	return px, ms.Color, px || (*ms.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
 }
 
 func (ms *missileSprite) setEnable(enable bool) {

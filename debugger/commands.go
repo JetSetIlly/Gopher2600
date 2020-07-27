@@ -916,23 +916,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		dbg.printInstrument(dbg.VCS.RIOT.Timer)
 
 	case cmdTIA:
-		option, ok := tokens.Get()
-		if ok {
-			option = strings.ToUpper(option)
-			switch option {
-			case "DELAYS":
-				// for convience asking for TIA delays also prints delays for
-				// the sprites
-				dbg.printInstrument(dbg.VCS.TIA.Delay)
-				dbg.printInstrument(dbg.VCS.TIA.Video.Player0.Delay)
-				dbg.printInstrument(dbg.VCS.TIA.Video.Player1.Delay)
-				dbg.printInstrument(dbg.VCS.TIA.Video.Missile0.Delay)
-				dbg.printInstrument(dbg.VCS.TIA.Video.Missile1.Delay)
-				dbg.printInstrument(dbg.VCS.TIA.Video.Ball.Delay)
-			}
-		} else {
-			dbg.printInstrument(dbg.VCS.TIA)
-		}
+		dbg.printInstrument(dbg.VCS.TIA)
 
 	case cmdAudio:
 		dbg.printInstrument(dbg.VCS.TIA.Audio)

@@ -17,8 +17,8 @@ package performance
 
 import "github.com/jetsetilly/gopher2600/television"
 
-// CalcFPS takes the the number of frames and duration and returns the
-// frames-per-second and the accuracy of that value as a percentage.
+// CalcFPS takes the the number of frames and duration (in seconds) and returns
+// the frames-per-second and the accuracy of that value as a percentage.
 func CalcFPS(tv television.Television, numFrames int, duration float64) (fps float64, accuracy float64) {
 	fps = float64(numFrames) / duration
 	spec, _ := tv.GetSpec()

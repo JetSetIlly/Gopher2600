@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/television"
@@ -52,7 +52,6 @@ type ballSprite struct {
 
 	position    *polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
-	Delay       *future.Ticker
 	MoreHMOVE   bool
 	Hmove       uint8
 	lastHmoveCt uint8
@@ -80,12 +79,17 @@ type ballSprite struct {
 	Ctrlpf uint8
 	Size   uint8
 
-	VerticalDelay      bool
-	Enabled            bool
-	EnabledDelay       bool
-	Enclockifier       enclockifier
-	startDrawingEvent  *future.Event
-	resetPositionEvent *future.Event
+	VerticalDelay bool
+	Enabled       bool
+	EnabledDelay  bool
+
+	// position reset and enclockifier start events are both delayed by a small
+	// number of cycles
+	futureReset delay.Event
+	futureStart delay.Event
+
+	// outputting of pixels is handled by the ball/missile enclockifier
+	Enclockifier enclockifier
 }
 
 func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*ballSprite, error) {
@@ -103,7 +107,6 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 		return nil, err
 	}
 
-	bs.Delay = future.NewTicker(label)
 	bs.Enclockifier.size = &bs.Size
 	bs.position.Reset()
 
@@ -223,8 +226,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		switch bs.position.Count() {
 		case 39:
-			const startDelay = 4
-			bs.startDrawingEvent = bs.Delay.Schedule(startDelay, bs._futureStartDrawingEvent, "START")
+			bs.futureStart.Schedule(4, bs._futureStartDrawingEvent, nil)
 		case 40:
 			bs.position.Reset()
 		}
@@ -232,15 +234,15 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 	bs.Enclockifier.tick()
 
-	// tick future events that are goverened by the sprite
-	bs.Delay.Tick()
+	// tick delayed events
+	bs.futureReset.Tick()
+	bs.futureStart.Tick()
 
 	return true
 }
 
-func (bs *ballSprite) _futureStartDrawingEvent() {
+func (bs *ballSprite) _futureStartDrawingEvent(_ interface{}) {
 	bs.Enclockifier.start()
-	bs.startDrawingEvent = nil
 }
 
 func (bs *ballSprite) prepareForHMOVE() {
@@ -273,33 +275,31 @@ func (bs *ballSprite) resetPosition() {
 	// drawing of ball sprite must end immediately upon a reset strobe. it will
 	// start drawing again after the reset delay period
 	bs.Enclockifier.drop()
-	if bs.startDrawingEvent != nil {
-		bs.startDrawingEvent.Drop()
-		bs.startDrawingEvent = nil
+	if bs.futureStart.IsActive() {
+		bs.futureStart.Drop()
 	}
 
 	// stop any existing reset events. generally, this codepath will not apply
 	// because a resetPositionEvent will conculde before being triggere again.
 	// but it is possible when using a very quick instruction on the reset register,
 	// like a zero page INC, for requests to overlap
-	if bs.resetPositionEvent != nil {
-		bs.resetPositionEvent.Push()
+	if bs.futureReset.IsActive() {
+		bs.futureReset.Push()
 		return
 	}
 
-	bs.resetPositionEvent = bs.Delay.Schedule(delay, bs._futureResetPosition, "RESBL")
+	bs.futureReset.Schedule(delay, bs._futureResetPosition, nil)
 }
 
-func (bs *ballSprite) _futureResetPosition() {
+func (bs *ballSprite) _futureResetPosition(_ interface{}) {
 	// end drawing of sprite in case it has started during the delay
 	// period. believe it or not, we can get rid of this and pixel output
 	// will still be correct (because of how the delayed END signal in the
 	// enclockifier works) but debugging information will be confusing if
 	// we did this.
 	bs.Enclockifier.drop()
-	if bs.startDrawingEvent != nil {
-		bs.startDrawingEvent.Drop()
-		bs.startDrawingEvent = nil
+	if bs.futureStart.IsActive() {
+		bs.futureStart.Drop()
 	}
 
 	// the pixel at which the sprite has been reset, in relation to the
@@ -351,9 +351,6 @@ func (bs *ballSprite) _futureResetPosition() {
 	// since you can trigger it as many times as you like across the same
 	// scanline and it will start drawing immediately each time :)
 	bs.Enclockifier.start()
-
-	// dump reference to reset event
-	bs.resetPositionEvent = nil
 }
 
 func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
@@ -363,7 +360,7 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 
 	// earlyStart condition the same as for missile sprites. see missile
 	// pixel() function for details
-	earlyStart := bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd()
+	earlyStart := bs.lastTickFromHmove && bs.futureStart.AboutToEnd()
 
 	// the LatePhi1() condition has been added to accomodate a artefact in
 	// (on?) "Spike's Peak". On the first screen, there is a break in the path
@@ -385,10 +382,10 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	px := !earlyEnd && (bs.Enclockifier.Active || earlyStart)
 
 	if bs.VerticalDelay {
-		return px, bs.Color, px || (*bs.hblank && bs.EnabledDelay && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+		return px, bs.Color, px || (*bs.hblank && bs.EnabledDelay && bs.futureStart.AboutToEnd())
 	}
 
-	return px, bs.Color, px || (*bs.hblank && bs.Enabled && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
+	return px, bs.Color, px || (*bs.hblank && bs.Enabled && bs.futureStart.AboutToEnd())
 }
 
 // the delayed enable bit is copied from the first when the gfx register for

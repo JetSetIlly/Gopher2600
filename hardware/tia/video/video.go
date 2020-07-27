@@ -17,7 +17,7 @@ package video
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/television"
@@ -84,6 +84,10 @@ type Video struct {
 	lastPlayfieldActive bool
 	lastPixelColor      uint8
 	Unchanged           bool
+
+	// some register writes require a small latching delay. they never overlap
+	// so one event is sufficient
+	writing delay.Event
 }
 
 // NewVideo is the preferred method of initialisation for the Video structure.
@@ -160,6 +164,7 @@ func (vd *Video) RSYNC(adjustment int) {
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
+	vd.writing.Tick()
 	p0 := vd.Player0.tick(visible, hmove, hmoveCt)
 	p1 := vd.Player1.tick(visible, hmove, hmoveCt)
 	m0 := vd.Missile0.tick(visible, hmove, hmoveCt)
@@ -320,16 +325,16 @@ func (vd *Video) Pixel() uint8 {
 // is serviced in UpdateSpriteVariations().
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) bool {
+func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
 	// homebrew Donkey Kong shows the need for a delay of at least two cycles
 	// to write new playfield data
 	switch data.Name {
 	case "PF0":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF0, data.Value, "PF0")
+		vd.writing.Schedule(2, vd.Playfield.setPF0, data.Value)
 	case "PF1":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF1, data.Value, "PF1")
+		vd.writing.Schedule(2, vd.Playfield.setPF1, data.Value)
 	case "PF2":
-		tiaDelay.ScheduleWithArg(2, vd.Playfield.setPF2, data.Value, "PF2")
+		vd.writing.Schedule(2, vd.Playfield.setPF2, data.Value)
 	case "VDELBL":
 		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
@@ -343,7 +348,7 @@ func (vd *Video) UpdatePlayfield(tiaDelay future.Scheduler, data bus.ChipData) b
 // UpdateSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData) bool {
+func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
@@ -377,21 +382,24 @@ func (vd *Video) UpdateSpriteHMOVE(tiaDelay future.Scheduler, data bus.ChipData)
 	// the only common value that satisfies all test cases is 1, which equates
 	// to a delay of two cycles
 	case "HMP0":
-		tiaDelay.ScheduleWithArg(1, vd.Player0.setHmoveValue, data.Value&0xf0, "HMPx")
+		vd.writing.Schedule(1, vd.Player0.setHmoveValue, data.Value&0xf0)
 	case "HMP1":
-		tiaDelay.ScheduleWithArg(1, vd.Player1.setHmoveValue, data.Value&0xf0, "HMPx")
+		vd.writing.Schedule(1, vd.Player1.setHmoveValue, data.Value&0xf0)
 	case "HMM0":
-		tiaDelay.ScheduleWithArg(1, vd.Missile0.setHmoveValue, data.Value&0xf0, "HMMx")
+		vd.writing.Schedule(1, vd.Missile0.setHmoveValue, data.Value&0xf0)
 	case "HMM1":
-		tiaDelay.ScheduleWithArg(1, vd.Missile1.setHmoveValue, data.Value&0xf0, "HMMx")
+		vd.writing.Schedule(1, vd.Missile1.setHmoveValue, data.Value&0xf0)
 	case "HMBL":
-		tiaDelay.ScheduleWithArg(1, vd.Ball.setHmoveValue, data.Value&0xf0, "HMBL")
+		vd.writing.Schedule(1, vd.Ball.setHmoveValue, data.Value&0xf0)
 	case "HMCLR":
-		tiaDelay.Schedule(1, vd.Player0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(1, vd.Player1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(1, vd.Missile0.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(1, vd.Missile1.clearHmoveValue, "HMCLR")
-		tiaDelay.Schedule(1, vd.Ball.clearHmoveValue, "HMCLR")
+		vd.writing.Schedule(1, func(_ interface{}) {
+			vd.Player0.clearHmoveValue()
+			vd.Player1.clearHmoveValue()
+			vd.Missile0.clearHmoveValue()
+			vd.Missile1.clearHmoveValue()
+			vd.Ball.clearHmoveValue()
+		}, nil)
+
 	default:
 		return true
 	}

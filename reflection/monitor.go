@@ -57,9 +57,9 @@ func (mon *Monitor) Check(bank banks.Details) error {
 	}
 
 	// reflect HMOVE state
-	if mon.vcs.TIA.HmoveEvent != nil {
+	if mon.vcs.TIA.FutureHmove.IsActive() {
 		res.Hmove.Delay = true
-		res.Hmove.DelayCt = mon.vcs.TIA.HmoveEvent.RemainingCycles()
+		res.Hmove.DelayCt = mon.vcs.TIA.FutureHmove.Remaining()
 	}
 	if mon.vcs.TIA.HmoveLatch {
 		res.Hmove.Latch = true

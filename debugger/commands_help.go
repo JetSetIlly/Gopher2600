@@ -168,10 +168,7 @@ video information:
                                      |
                cpu cycles -----------+
 
-Video and CPU cycles are counted from the beginning of the current scanline.
-
-The TIA command can take one of two optional arguments. DELAYS will display
-current delay information for all TIA video components.`,
+Video and CPU cycles are counted from the beginning of the current scanline.`,
 
 	cmdAudio: `Display the current state of the audio subsystem.
 

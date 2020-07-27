@@ -100,7 +100,7 @@ var commandTemplate = []string{
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
 	cmdRAM,
 	cmdTimer,
-	cmdTIA + " (DELAYS)",
+	cmdTIA,
 	cmdAudio,
 	cmdTV + " (SPEC (PAL|NTSC|AUTO))",
 	cmdPlayer + " (0|1)",

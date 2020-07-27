@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
-	"github.com/jetsetilly/gopher2600/hardware/tia/future"
+	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
@@ -80,20 +81,13 @@ type TIA struct {
 	hsync *polycounter.Polycounter
 	pclk  phaseclock.PhaseClock
 
-	// TIA_HW_Notes.txt talks about there being a delay when altering some
-	// video objects/attributes. the following future.Group ticks every color
-	// clock. in addition to this, each sprite has it's own future.Group that
-	// only ticks under certain conditions.
-	Delay *future.Ticker
-
-	// a reference to the delayed rsync event. we use this to determine if an
-	// rsync has been scheduled and to hold off naturally occuring new
-	// scanline events if it has
-	rsyncEvent *future.Event
-
-	// similarly for HMOVE events. we use this to help us decide whether we
-	// have a late or early HBLANK
-	HmoveEvent *future.Event
+	// some events are delayed
+	futureVblank     delay.Event
+	futureRsyncAlign delay.Event
+	futureRsyncReset delay.Event
+	futureHmoveLatch delay.Event
+	FutureHmove      delay.Event
+	futureHsync      delay.Event
 }
 
 // Label returns an identifying label for the TIA
@@ -130,8 +124,6 @@ func NewTIA(tv television.Television, mem bus.ChipBus, vblankBits *input.VBlankB
 		return nil, err
 	}
 
-	tia.Delay = future.NewTicker("TIA")
-
 	tia.pclk.Reset()
 	tia.HmoveCt = 0xff
 
@@ -160,7 +152,16 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	case "VBLANK":
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
-		tia.Delay.ScheduleWithArg(1, tia._futureVBLANK, data.Value, "VBLANK")
+		tia.futureVblank.Schedule(1, func(v interface{}) {
+			// actual vblank signal
+			tia.sig.VBlank = v.(uint8)&0x02 == 0x02
+
+			// dump paddle capacitors to ground
+			tia.vblankBits.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
+
+			// joystick fire button latches
+			tia.vblankBits.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
+		}, data.Value)
 
 		return false
 
@@ -195,7 +196,23 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// * Test RSYNC - test rom by Omegamatrix
 
-		tia.rsyncEvent = tia.Delay.Schedule(3, tia._futureRSYNCnewScanline, "RSYNC (alignment)")
+		tia.futureRsyncAlign.Schedule(3, func(_ interface{}) {
+			tia.newScanline(nil)
+
+			// adjust video elements by the number of visible pixels that have
+			// been consumed. adding one to the value because the tv pixel we
+			// want to hit has not been reached just yet
+			adj, _ := tia.tv.GetState(television.ReqHorizPos)
+			adj++
+			if adj > 0 {
+				tia.Video.RSYNC(adj)
+			}
+		}, nil)
+
+		tia.futureRsyncReset.Schedule(7, func(_ interface{}) {
+			tia.hsync.Reset()
+			tia.pclk.Reset()
+		}, nil)
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
@@ -227,10 +244,14 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 			delay = 2
 		}
 
-		tia.Delay.Schedule(delay, tia._futureHMOVElatch, "HMOVE")
+		tia.futureHmoveLatch.Schedule(delay, func(_ interface{}) {
+			tia.HmoveLatch = true
+		}, nil)
 
-		delay += 3
-		tia.HmoveEvent = tia.Delay.Schedule(delay, tia._futureHMOVEprep, "HMOVE (latch)")
+		tia.FutureHmove.Schedule(delay+3, func(_ interface{}) {
+			tia.Video.PrepareSpritesForHMOVE()
+			tia.HmoveCt = 15
+		}, nil)
 
 		// from TIA_HW_Notes:
 		//
@@ -253,7 +274,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	return true
 }
 
-func (tia *TIA) newScanline() {
+func (tia *TIA) newScanline(_ interface{}) {
 	// the CPU's WSYNC concludes at the beginning of a scanline
 	// from the TIA_1A document:
 	//
@@ -273,57 +294,209 @@ func (tia *TIA) newScanline() {
 	// manually reset hsync counter when it reaches a count of 57
 }
 
-func (tia *TIA) _futureVBLANK(v interface{}) {
-	// actual vblank signal
-	tia.sig.VBlank = v.(uint8)&0x02 == 0x02
+// Step moves the state of the tia forward one video cycle returns the state of
+// the CPU's RDY flag.
+func (tia *TIA) Step(readMemory bool) (bool, error) {
+	// update debugging information
+	tia.videoCycles++
 
-	// dump paddle capacitors to ground
-	tia.vblankBits.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
+	var memoryData bus.ChipData
 
-	// joystick fire button latches
-	tia.vblankBits.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
-}
-
-func (tia *TIA) _futureRSYNCreset() {
-	tia.hsync.Reset()
-	tia.pclk.Reset()
-	tia.rsyncEvent = nil
-}
-
-func (tia *TIA) _futureRSYNCnewScanline() {
-	tia.newScanline()
-
-	// adjust video elements by the number of visible pixels that have
-	// been consumed. adding one to the value because the tv pixel we
-	// want to hit has not been reached just yet
-	adj, _ := tia.tv.GetState(television.ReqHorizPos)
-	adj++
-	if adj > 0 {
-		tia.Video.RSYNC(adj)
+	// update memory if required
+	if readMemory {
+		readMemory, memoryData = tia.mem.ChipRead()
 	}
 
-	tia.rsyncEvent = tia.Delay.Schedule(4, tia._futureRSYNCreset, "RSYNC (latch)")
-}
+	// make alterations to video state and playfield
+	if readMemory {
+		readMemory = tia.UpdateTIA(memoryData)
+	}
+	if readMemory {
+		readMemory = tia.Video.UpdatePlayfield(memoryData)
+	}
 
-func (tia *TIA) _futureHMOVElatch() {
-	tia.HmoveLatch = true
-}
+	// tick phase clock
+	tia.pclk.Tick()
 
-func (tia *TIA) _futureHMOVEprep() {
-	tia.Video.PrepareSpritesForHMOVE()
-	tia.HmoveCt = 15
-	tia.HmoveEvent = nil
-}
+	// tick delayed events
+	tia.futureVblank.Tick()
+	tia.futureRsyncAlign.Tick()
+	tia.futureRsyncReset.Tick()
+	tia.futureHmoveLatch.Tick()
+	tia.FutureHmove.Tick()
+	tia.futureHsync.Tick()
 
-func (tia *TIA) _futureResetHSYNC() {
-	tia.sig.HSync = false
-	tia.sig.CBurst = true
-}
+	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
+	//
+	// "This table shows the elapsed number of CLK, CPU cycles, Playfield
+	// (PF) bits and Playfield pixels at the start of each counter state
+	// (ie when the counter changes to this state on the rising edge of
+	// the H@2 clock)."
+	//
+	// the context of this passage is the Horizontal Sync Counter. It is
+	// explicitely saying that the HSYNC counter ticks forward on the rising
+	// edge of Phi2.
+	if tia.pclk.Phi2() {
+		tia.hsync.Tick()
 
-func (tia *TIA) _futureResetColorBurst() {
-	tia.sig.CBurst = false
-}
+		// hsyncDelay is the number of cycles required before, for example, hblank
+		// is reset
+		const hsyncDelay = 3
 
-func (tia *TIA) _futureResetHBlank() {
-	tia.Hblank = false
+		// this switch statement is based on the "Horizontal Sync Counter"
+		// table in TIA_HW_Notes.txt. the "key" at the end of that table
+		// suggests that (most of) the events are delayed by 4 clocks due to
+		// "latching".
+		switch tia.hsync.Count() {
+		case 57:
+			// from TIA_HW_Notes.txt:
+			//
+			// "The HSync counter resets itself after 57 counts; the decode on
+			// HCount=56 performs a reset to 000000 delayed by 4 CLK, so
+			// HCount=57 becomes HCount=0. This gives a period of 57 counts
+			// or 228 CLK."
+			tia.hsync.Reset()
+
+			// from TIA_HW_Notes.txt:
+			//
+			// "Also of note, the HMOVE latch used to extend the HBlank time
+			// is cleared when the HSync Counter wraps around. This fact is
+			// exploited by the trick that invloves hitting HMOVE on the 74th
+			// CPU cycle of the scanline; the CLK stuffing will still take
+			// place during the HBlank and the HSYNC latch will be set just
+			// before the counter wraps around."
+			tia.HmoveLatch = false
+
+		case 56: // [SHB]
+			// allow a new scanline event to occur naturally only when an RSYNC
+			// has not been scheduled
+			if !tia.futureRsyncAlign.IsActive() {
+				tia.futureHsync.Schedule(hsyncDelay, tia.newScanline, nil)
+			}
+
+		case 4: // [SHS]
+			// start HSYNC. start of new scanline for the television
+			// * TIA_HW_Notes.txt does not say there is a 4 clock delay for
+			// this. not clear if this is the case.
+			//
+			// !!TODO: check accuracy of HSync timing
+			tia.sig.HSync = true
+
+		case 8: // [RHS]
+			// reset HSYNC
+			tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+				tia.sig.HSync = false
+				tia.sig.CBurst = true
+			}, nil)
+
+		case 12: // [RCB]
+			// reset color burst
+			tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+				tia.sig.CBurst = false
+			}, nil)
+
+		// the two cases below handle the turning off of the hblank flag. from
+		// TIA_HW_Notes.txt:
+		//
+		// "In principle the operation of HMOVE is quite straight-forward; if a
+		// HMOVE is initiated immediately after HBlank starts, which is the
+		// case when HMOVE is used as documented, the [HMOVE] signal is latched
+		// and used to delay the end of the HBlank by exactly 8 CLK, or two
+		// counts of the HSync Counter. This is achieved in the TIA by
+		// resetting the HB (HBlank) latch on the [LRHB] (Late Reset H-Blank)
+		// counter decode rather than the normal [RHB] (Reset H-Blank) decode."
+
+		// in practice we have to careful about when HMOVE has been triggered.
+		// the condition below for HSYNC=16 includes a test for an active HMOVE
+		// event and whether it is about to be completed. we can see the effect
+		// of this in particular in the test ROM "games that do bad thing to
+		// HMOVE" at value 14
+
+		case 16: // [RHB]
+			// early HBLANK off if hmoveLatch is false
+			if !tia.HmoveLatch {
+				tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+					tia.Hblank = false
+				}, nil)
+			}
+
+		// ... and "two counts of the HSync Counter" later ...
+
+		case 18:
+			// late HBLANK off if hmoveLatch is true
+			if tia.HmoveLatch {
+				tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+					tia.Hblank = false
+				}, nil)
+			}
+		}
+	}
+
+	// alter state of video subsystem. occuring after ticking of TIA clock
+	// because some the side effects of some registers require that. in
+	// particular, the RESxx registers need to have correct information about
+	// the state of HBLANK and the HMOVE latch.
+	//
+	// to see the effect of this, try moving this function call before the
+	// HSYNC tick and see how the ball sprite is rendered incorrectly in
+	// Keystone Kapers (this is because the ball is reset on the very last
+	// pixel and before HBLANK etc. are in the state they need to be)
+	if readMemory {
+		readMemory = tia.Video.UpdateSpritePositioning(memoryData)
+	}
+	if readMemory {
+		readMemory = tia.Video.UpdateColor(memoryData)
+	}
+
+	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
+	// as an extra 'stuffed' clock signal."
+	isHmove := tia.pclk.Phi2()
+
+	// we always call TickSprites but whether or not (and how) the tick
+	// actually occurs is left for the sprite object to decide based on the
+	// arguments passed here.
+	tia.Video.Tick(!tia.Hblank, isHmove, tia.HmoveCt)
+
+	// update hmove counter value
+	if isHmove {
+		if tia.HmoveCt != 0xff {
+			tia.HmoveCt--
+		}
+	}
+
+	// resolve video pixels
+	pixelColor := tia.Video.Pixel()
+	if tia.Hblank {
+		// if hblank is on then we don't sent the resolved color but the video
+		// black signal instead
+		tia.sig.Pixel = television.VideoBlack
+	} else {
+		tia.sig.Pixel = television.ColorSignal(pixelColor)
+	}
+
+	if readMemory {
+		readMemory = tia.Video.UpdateSpriteHMOVE(memoryData)
+	}
+	if readMemory {
+		readMemory = tia.Video.UpdateSpriteVariations(memoryData)
+	}
+	if readMemory {
+		readMemory = tia.Video.UpdateSpritePixels(memoryData)
+	}
+	if readMemory {
+		readMemory = tia.Audio.UpdateRegisters(memoryData)
+	}
+
+	// copy audio to television signal
+	tia.sig.AudioUpdate, tia.sig.AudioData = tia.Audio.Mix()
+
+	// send signal to television
+	if err := tia.tv.Signal(tia.sig); err != nil {
+		// allow out-of-spec errors for now. this should be optional
+		if !errors.Is(err, errors.TVOutOfSpec) {
+			return !tia.wsync, err
+		}
+	}
+
+	return !tia.wsync, nil
 }
