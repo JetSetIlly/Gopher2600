@@ -131,6 +131,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	// note name of cartridge
 	cart.Filename = cartload.Filename
+	cart.Hash = cartload.Hash
 	cart.mapper = newEjected()
 
 	cartload.Mapping = strings.ToUpper(cartload.Mapping)

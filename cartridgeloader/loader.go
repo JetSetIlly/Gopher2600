@@ -135,7 +135,7 @@ func (cl Loader) HasLoaded() bool {
 // Load the cartridge data and return as a byte array. Loader filenames with a
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
-func (cl Loader) Load() ([]byte, error) {
+func (cl *Loader) Load() ([]byte, error) {
 	if len(cl.data) > 0 {
 		return cl.data[:], nil
 	}
