@@ -206,5 +206,7 @@ func (img *SdlImgui) Service() {
 	}
 
 	// sleep to help avoid 100% CPU usage
-	<-time.After(time.Millisecond * 25)
+	if !img.isPlaymode() {
+		<-time.After(time.Millisecond * 25)
+	}
 }

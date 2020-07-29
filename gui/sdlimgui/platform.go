@@ -40,7 +40,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, fmt.Errorf("SDL2: %v", err)
+		return nil, fmt.Errorf("SDL: %v", err)
 	}
 
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -65,21 +65,26 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	if err != nil {
 		sdl.Quit()
-		return nil, fmt.Errorf("SDL: window creation: %v", err)
+		return nil, fmt.Errorf("SDL: %v", err)
 	}
 
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
 		plt.destroy()
-		return nil, fmt.Errorf("SDL: OpenGL: %v", err)
+		return nil, fmt.Errorf("SDL: %v", err)
 	}
 	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
 		plt.destroy()
-		return nil, fmt.Errorf("SDL: OpenGL: %v", err)
+		return nil, fmt.Errorf("SDL: %v", err)
 	}
 
-	_ = sdl.GLSetSwapInterval(1)
+	if sdl.GLSetSwapInterval(-1) != nil {
+		_ = sdl.GLSetSwapInterval(1)
+
+		// if we can't set VSYNC then that's too bad
+		// !!TODO: log VSYNC failure
+	}
 
 	return plt, nil
 }
@@ -122,13 +127,14 @@ func (plt *platform) newFrame() {
 	frequency := sdl.GetPerformanceFrequency()
 	currentTime := sdl.GetPerformanceCounter()
 
+	var deltaTime float32
 	if plt.time > 0 {
-		deltaTime := float32(currentTime-plt.time) / float32(frequency)
+		deltaTime = float32(currentTime-plt.time) / float32(frequency)
 		plt.img.io.SetDeltaTime(deltaTime)
-		sdl.Delay(uint32(deltaTime))
 	} else {
-		plt.img.io.SetDeltaTime(1.0 / 60.0)
+		deltaTime = 1.0 / 60.0
 	}
+	sdl.Delay(uint32(deltaTime))
 
 	plt.time = currentTime
 
