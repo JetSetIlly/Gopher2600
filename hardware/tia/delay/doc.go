@@ -14,7 +14,8 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package delay is a replacement for the future package, which has now been
-// removed.
+// removed. This package (and the package it replaces) helps emulate the
+// latching delays of the TIA.
 //
 // The future package served it's purpose during early, exploratory phases of
 // the emulator's development. I wasn't sure at first what was needed and the
@@ -27,13 +28,9 @@
 // represents a single future change to the TIA system, which will take place
 // after the stated number of cycles.
 //
-// Because of how the TIA is constructed these Events can be dropped,
-// rescheduled or premepted almost at will. Study of the TIA, and video/sprite
-// sub-systems will show how the Events interact.
+// To effectively emulate the electronics of the TIA these Events can be
+// dropped, rescheduled or premepted almost at will.
 //
-// The major difference between the delay package and the erstwhile future
-// package is that the latter impliciely encoded the time relationship between
-// two events but after the experimentation phase, it was found that this
-// wasn't really necessary, except in a couple of very specific and easily
-// mititgated instances.
+// Ordering of Events is rarely significant but in the instances where it is
+// comments are included in the code.
 package delay
