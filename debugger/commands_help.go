@@ -486,4 +486,5 @@ about an address.`,
 	cmdClear: "Clear all BREAKS, TRAPS, WATCHES and TRACES.",
 
 	cmdPref: "Set preferences for debugger.",
+	cmdLog:  "Print log to terminal.",
 }

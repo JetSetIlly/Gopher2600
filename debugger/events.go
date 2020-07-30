@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/playmode"
 )
 
@@ -75,7 +76,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 			if ev.Down {
 				_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, ev.Scanline, ev.HorizPos), false, false)
 				if err == nil {
-					dbg.printLine(terminal.StyleFeedbackNonInteractive, "mouse break on sl->%d and hp->%d", ev.Scanline, ev.HorizPos)
+					logger.Log("mouse break", fmt.Sprintf("on sl->%d and hp->%d", ev.Scanline, ev.HorizPos))
 				}
 			}
 		}

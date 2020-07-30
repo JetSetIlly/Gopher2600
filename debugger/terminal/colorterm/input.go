@@ -16,7 +16,6 @@
 package colorterm
 
 import (
-	"fmt"
 	"unicode"
 	"unicode/utf8"
 
@@ -68,15 +67,31 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	// for this to work we need to place the cursor in it's initial position
 	// before we begin the loop
 	ct.EasyTerm.TermPrint("\r")
-	ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
+	ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.String())))
 
 	for {
 		// print prompt and what we have of the user input
 		ct.EasyTerm.TermPrint(ansi.CursorStore)
-		ct.TermPrintLine(prompt.Style, fmt.Sprintf("%s%s", ansi.ClearLine, prompt.Content))
+		ct.EasyTerm.TermPrint(ansi.ClearLine)
+		ct.EasyTerm.TermPrint("\r")
+
+		// style prompt
+		switch prompt.Type {
+		case terminal.PromptTypeCPUStep:
+			ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
+		case terminal.PromptTypeVideoStep:
+			// no styling
+		case terminal.PromptTypeConfirm:
+			ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
+			ct.EasyTerm.TermPrint(ansi.Pens["blue"])
+		}
+
+		ct.EasyTerm.TermPrint(prompt.String())
+		ct.EasyTerm.TermPrint(ansi.NormalPen)
 		ct.EasyTerm.TermPrint(string(input[:inputLen]))
 		ct.EasyTerm.TermPrint(ansi.CursorRestore)
 
+		// wait for an event and respond
 		select {
 		case _ = <-events.IntEvents:
 			// terminal is in raw mode so we won't recieve these from the

@@ -33,6 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 	"github.com/jetsetilly/gopher2600/linter"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
@@ -91,7 +92,7 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	// print normalised input if this is command from an interactive source
 	// and not an auto-command
 	if echo {
-		dbg.printLine(terminal.StyleInput, tokens.String())
+		dbg.printLine(terminal.StyleEcho, tokens.String())
 	}
 
 	// test to see if command is allowed when recording/playing a script
@@ -306,7 +307,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 							s.WriteString("\n\n")
 						}
 
-						dbg.printInstrument(s)
+						dbg.printLine(terminal.StyleInstrument, s.String())
 					} else {
 						dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
 					}
@@ -316,7 +317,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "REGISTERS":
 				// !!TODO: poke/peek cartridge registers
 				if bus := dbg.VCS.Mem.Cart.GetRegistersBus(); bus != nil {
-					dbg.printInstrument(bus.GetRegisters())
+					dbg.printLine(terminal.StyleInstrument, bus.GetRegisters().String())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no registers")
 				}
@@ -346,7 +347,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 							s.WriteString("\n\n")
 						}
 
-						dbg.printInstrument(s)
+						dbg.printLine(terminal.StyleInstrument, s.String())
 					} else {
 						dbg.printLine(terminal.StyleFeedback, "cartridge has no RAM")
 					}
@@ -355,7 +356,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 			}
 		} else {
-			dbg.printInstrument(dbg.VCS.Mem.Cart)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.Cart.String())
 		}
 
 	case cmdPatch:
@@ -745,7 +746,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualNotes, dbg.lastResult))
 
-		if dbg.VCS.CPU.LastResult.Final {
+		// change terminal output style depending on condition of last CPU result
+		if dbg.lastResult.Result.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())
 		} else {
 			dbg.printLine(terminal.StyleVideoStep, s.String())
@@ -798,7 +800,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			if hasMapped {
 				dbg.printLine(terminal.StyleInstrument, "%s", s.String())
 			} else {
-				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%v is not a mappable address", address))
+				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%v is not a mappable address", address))
 			}
 
 		} else {
@@ -849,7 +851,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printInstrument(dbg.VCS.CPU)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.CPU.String())
 		}
 
 	case cmdPeek:
@@ -910,16 +912,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdRAM:
-		dbg.printInstrument(dbg.VCS.Mem.RAM)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.RAM.String())
 
 	case cmdTimer:
-		dbg.printInstrument(dbg.VCS.RIOT.Timer)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Timer.String())
 
 	case cmdTIA:
-		dbg.printInstrument(dbg.VCS.TIA)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.String())
 
 	case cmdAudio:
-		dbg.printInstrument(dbg.VCS.TIA.Audio)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Audio.String())
 
 	case cmdTV:
 		option, ok := tokens.Get()
@@ -947,7 +949,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printInstrument(dbg.tv)
+			dbg.printLine(terminal.StyleInstrument, dbg.tv.String())
 		}
 
 	// information about the machine (sprites, playfield)
@@ -964,14 +966,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 		switch plyr {
 		case 0:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Player0)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player0.String())
 
 		case 1:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Player1)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player1.String())
 
 		default:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Player0)
-			dbg.printInstrument(dbg.VCS.TIA.Video.Player1)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player1.String())
 		}
 
 	case cmdMissile:
@@ -987,21 +989,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 		switch miss {
 		case 0:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Missile0)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile0.String())
 
 		case 1:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Missile1)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile1.String())
 
 		default:
-			dbg.printInstrument(dbg.VCS.TIA.Video.Missile0)
-			dbg.printInstrument(dbg.VCS.TIA.Video.Missile1)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile1.String())
 		}
 
 	case cmdBall:
-		dbg.printInstrument(dbg.VCS.TIA.Video.Ball)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Ball.String())
 
 	case cmdPlayfield:
-		dbg.printInstrument(dbg.VCS.TIA.Video.Playfield)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Playfield.String())
 
 	case cmdDisplay:
 		var err error
@@ -1125,7 +1127,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdPanel:
 		mode, ok := tokens.Get()
 		if !ok {
-			dbg.printInstrument(dbg.VCS.Panel)
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.Panel.String())
 			return false, nil
 		}
 
@@ -1173,7 +1175,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				dbg.VCS.Panel.Handle(input.PanelReset, false)
 			}
 		}
-		dbg.printInstrument(dbg.VCS.Panel)
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Panel.String())
 
 	case cmdJoystick:
 		var err error
@@ -1430,6 +1432,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "TOGGLE":
 				v := dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
 				dbg.Disasm.Prefs.FxxxMirror.Set(!v)
+			}
+		}
+
+	case cmdLog:
+		option, ok := tokens.Get()
+		if ok {
+			switch option {
+			case "CLEAR":
+				logger.Clear()
+			}
+		} else {
+			s := &strings.Builder{}
+			if logger.Write(s) {
+				dbg.printLine(terminal.StyleLog, s.String())
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "log is empty")
 			}
 		}
 	}

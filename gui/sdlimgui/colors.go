@@ -87,17 +87,15 @@ type imguiColors struct {
 	CollisionIndicator imgui.Vec4
 
 	// terminal
-	TermBackground           imgui.Vec4
-	TermStyleInput           imgui.Vec4
-	TermStyleHelp            imgui.Vec4
-	TermStylePromptCPUStep   imgui.Vec4
-	TermStylePromptVideoStep imgui.Vec4
-	TermStylePromptConfirm   imgui.Vec4
-	TermStyleFeedback        imgui.Vec4
-	TermStyleCPUStep         imgui.Vec4
-	TermStyleVideoStep       imgui.Vec4
-	TermStyleInstrument      imgui.Vec4
-	TermStyleError           imgui.Vec4
+	TermBackground      imgui.Vec4
+	TermStyleEcho       imgui.Vec4
+	TermStyleHelp       imgui.Vec4
+	TermStyleFeedback   imgui.Vec4
+	TermStyleCPUStep    imgui.Vec4
+	TermStyleVideoStep  imgui.Vec4
+	TermStyleInstrument imgui.Vec4
+	TermStyleError      imgui.Vec4
+	TermStyleLog        imgui.Vec4
 
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
@@ -162,17 +160,15 @@ func newColors() *imguiColors {
 		CollisionIndicator: imgui.Vec4{0.7, 0.2, 0.2, 1.0},
 
 		// terminal
-		TermBackground:           imgui.Vec4{0.1, 0.1, 0.2, 0.9},
-		TermStyleInput:           imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		TermStyleHelp:            imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStylePromptCPUStep:   imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStylePromptVideoStep: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		TermStylePromptConfirm:   imgui.Vec4{0.1, 0.4, 0.9, 1.0},
-		TermStyleFeedback:        imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStyleCPUStep:         imgui.Vec4{0.9, 0.9, 0.5, 1.0},
-		TermStyleVideoStep:       imgui.Vec4{0.7, 0.7, 0.3, 1.0},
-		TermStyleInstrument:      imgui.Vec4{0.1, 0.95, 0.9, 1.0},
-		TermStyleError:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		TermBackground:      imgui.Vec4{0.1, 0.1, 0.2, 0.9},
+		TermStyleEcho:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		TermStyleHelp:       imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		TermStyleFeedback:   imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		TermStyleCPUStep:    imgui.Vec4{0.9, 0.9, 0.5, 1.0},
+		TermStyleVideoStep:  imgui.Vec4{0.7, 0.7, 0.3, 1.0},
+		TermStyleInstrument: imgui.Vec4{0.1, 0.95, 0.9, 1.0},
+		TermStyleError:      imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		TermStyleLog:        imgui.Vec4{0.8, 0.7, 0.3, 1.0},
 	}
 
 	// we deferred setting of some colours. set them now.

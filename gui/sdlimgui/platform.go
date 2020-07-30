@@ -20,6 +20,7 @@ import (
 	"runtime"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -82,8 +83,8 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	if sdl.GLSetSwapInterval(-1) != nil {
 		_ = sdl.GLSetSwapInterval(1)
 
-		// if we can't set VSYNC then that's too bad
-		// !!TODO: log VSYNC failure
+		// if we can't set VSYNC then that's too bad. log it and carry on
+		logger.Log("SDL", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
 	return plt, nil

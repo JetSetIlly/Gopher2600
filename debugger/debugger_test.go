@@ -149,7 +149,7 @@ func (trm *mockTerm) IsInteractive() bool {
 }
 
 func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
-	if sty == terminal.StyleInput {
+	if sty == terminal.StyleEcho {
 		return
 	}
 

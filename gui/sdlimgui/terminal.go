@@ -34,7 +34,7 @@ type term struct {
 	lastSideChan string
 
 	// output to the terminal window to present as a prompt
-	promptChan chan string
+	promptChan chan terminal.Prompt
 
 	// output to the terminal window to present in the main output window
 	outputChan chan terminalOutput
@@ -56,7 +56,7 @@ func newTerm() *term {
 		// channel, with predictable results.
 		sideChan: make(chan string, 1),
 
-		promptChan: make(chan string, 1),
+		promptChan: make(chan terminal.Prompt, 1),
 
 		// generous buffer for output channel
 		outputChan: make(chan terminalOutput, 4096),
@@ -94,7 +94,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	// this will not supress echoing of sideChan messages that are not suitably
 	// normalised, but that's okay because it will serve as a visual indicator
 	// that the sideChan command is not ideal.
-	if style == terminal.StyleInput && s == trm.lastSideChan {
+	if style == terminal.StyleEcho && s == trm.lastSideChan {
 		trm.lastSideChan = ""
 		return
 	}
@@ -104,7 +104,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 
 // TermRead implements the terminal.Input interface
 func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	trm.promptChan <- strings.TrimSpace(prompt.Content)
+	trm.promptChan <- prompt
 
 	// the debugger is waiting for input from the terminal but we still need to
 	// service gui events in the meantime.

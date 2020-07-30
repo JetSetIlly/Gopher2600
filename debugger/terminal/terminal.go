@@ -21,12 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 )
 
-// Prompt specifies the prompt text and the prompt style.
-type Prompt struct {
-	Content string
-	Style   Style
-}
-
 // Input defines the operations required by an interface that allows input.
 type Input interface {
 	// the TermRead loop should listenfor events on eventChannel and call

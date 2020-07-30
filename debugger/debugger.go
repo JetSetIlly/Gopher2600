@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/symbols"
@@ -296,8 +297,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 
 	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
 	if err != nil {
-		dbg.printLine(terminal.StyleFeedbackNonInteractive, "%s", err)
-		// continuing because symtable is always valid even if err non-nil
+		logger.Log("symbols", err.Error())
 	}
 
 	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symtable)

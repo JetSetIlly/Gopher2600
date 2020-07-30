@@ -26,8 +26,8 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
-	// we don't need to output normalised input for this type of terminal
-	if style == terminal.StyleInput {
+	// we don't need to echo user input for this type of terminal
+	if style == terminal.StyleEcho {
 		return
 	}
 
@@ -36,36 +36,28 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	switch style {
 	case terminal.StyleHelp:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
-	case terminal.StylePromptCPUStep:
-		ct.EasyTerm.TermPrint(ansi.PenStyles["bold"])
-	case terminal.StylePromptVideoStep:
-		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
-	case terminal.StylePromptConfirm:
-		ct.EasyTerm.TermPrint(ansi.PenColor["blue"])
+
 	case terminal.StyleFeedback:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
+
 	case terminal.StyleCPUStep:
-		ct.EasyTerm.TermPrint(ansi.PenColor["yellow"])
+		ct.EasyTerm.TermPrint(ansi.Pens["yellow"])
+
 	case terminal.StyleVideoStep:
 		ct.EasyTerm.TermPrint(ansi.DimPens["yellow"])
+
 	case terminal.StyleInstrument:
-		ct.EasyTerm.TermPrint(ansi.PenColor["cyan"])
-	case terminal.StyleFeedbackNonInteractive:
-		// making sure there's a newline before printing the string.
-		// because this is non-interactive feedback, the user will
-		// not have pressed the return key so we need to simulate
-		// this
-		ct.EasyTerm.TermPrint("")
-		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
+		ct.EasyTerm.TermPrint(ansi.Pens["cyan"])
+
 	case terminal.StyleError:
-		ct.EasyTerm.TermPrint(ansi.PenColor["red"])
+		ct.EasyTerm.TermPrint(ansi.Pens["red"])
+
+	case terminal.StyleLog:
+		ct.EasyTerm.TermPrint(ansi.Pens["magenta"])
 	}
 
 	ct.EasyTerm.TermPrint(s)
 	ct.EasyTerm.TermPrint(ansi.NormalPen)
 
-	// add a newline if print style is anything other than prompt or input line
-	if !style.IsPrompt() {
-		ct.EasyTerm.TermPrint("\n")
-	}
+	ct.EasyTerm.TermPrint("\n")
 }

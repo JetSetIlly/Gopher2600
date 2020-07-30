@@ -50,8 +50,8 @@ const (
 	attrStrike    = 8
 )
 
-// PenColor is the table of colors to be used for text
-var PenColor map[string]string
+// Pens is the table of colors to be used for text
+var Pens map[string]string
 
 // DimPens is the table of pastel colors to be used for text
 var DimPens map[string]string
@@ -65,7 +65,7 @@ var NormalPen string
 func init() {
 	var err error
 
-	PenColor = make(map[string]string)
+	Pens = make(map[string]string)
 	DimPens = make(map[string]string)
 	PenStyles = make(map[string]string)
 
@@ -74,31 +74,31 @@ func init() {
 		fmt.Println(err)
 	}
 
-	PenColor["red"], err = ColorBuild("red", "normal", "", true, false)
+	Pens["red"], err = ColorBuild("red", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["green"], err = ColorBuild("green", "normal", "", true, false)
+	Pens["green"], err = ColorBuild("green", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["yellow"], err = ColorBuild("yellow", "normal", "", true, false)
+	Pens["yellow"], err = ColorBuild("yellow", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["blue"], err = ColorBuild("blue", "normal", "", true, false)
+	Pens["blue"], err = ColorBuild("blue", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["magenta"], err = ColorBuild("magenta", "normal", "", true, false)
+	Pens["magenta"], err = ColorBuild("magenta", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["cyan"], err = ColorBuild("cyan", "normal", "", true, false)
+	Pens["cyan"], err = ColorBuild("cyan", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}
-	PenColor["white"], err = ColorBuild("white", "normal", "", true, false)
+	Pens["white"], err = ColorBuild("white", "normal", "", true, false)
 	if err != nil {
 		fmt.Println(err)
 	}

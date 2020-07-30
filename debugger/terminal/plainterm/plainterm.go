@@ -61,8 +61,8 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
-	// we don't need to output normalised input for this type of terminal
-	if style == terminal.StyleInput {
+	// we don't need to echo user input for this type of terminal
+	if style == terminal.StyleEcho {
 		return
 	}
 
@@ -72,10 +72,7 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 	}
 
 	pt.output.Write([]byte(s))
-
-	if !style.IsPrompt() {
-		pt.output.Write([]byte("\n"))
-	}
+	pt.output.Write([]byte("\n"))
 }
 
 // TermRead implements the terminal.Input interface
@@ -84,7 +81,8 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 		return 0, nil
 	}
 
-	pt.TermPrintLine(prompt.Style, prompt.Content)
+	// insert prompt into output stream
+	pt.output.Write([]byte(prompt.String()))
 
 	n, err := pt.input.Read(input)
 	if err != nil {

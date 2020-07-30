@@ -192,7 +192,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			dbg.haltImmediately = false
 
 			// get user input
-			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(videoCycle), dbg.events)
+			inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
 
 			// errors returned by UserRead() functions are very rich. the
 			// following block interprets the error carefully and proceeds
@@ -416,7 +416,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
 		_, err := inputter.TermRead(confirm,
 			terminal.Prompt{
 				Content: "really quit (y/n) ",
-				Style:   terminal.StylePromptConfirm},
+				Type:    terminal.PromptTypeConfirm},
 			dbg.events)
 
 		if err != nil {

@@ -37,7 +37,7 @@ type winTerm struct {
 	term *term
 
 	input      string
-	prompt     string
+	prompt     terminal.Prompt
 	output     []terminalOutput
 	moreOutput bool
 
@@ -159,9 +159,10 @@ func (win *winTerm) draw() {
 	// we have from the lazy system, and not using the prompt received through
 	// the prompt channel at all
 	if win.img.paused {
-		imguiText(win.prompt)
+		// !!TODO: fancier prompt for GUI terminal
+		imguiText(strings.TrimSpace(win.prompt.String()))
 	} else {
-		imguiText(" >> ")
+		imguiText("[ running ] >>")
 	}
 	imgui.SameLine()
 
@@ -289,20 +290,11 @@ type terminalOutput struct {
 
 func (l terminalOutput) draw() {
 	switch l.style {
-	case terminal.StyleInput:
-		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleInput)
+	case terminal.StyleEcho:
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleEcho)
 
 	case terminal.StyleHelp:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleHelp)
-
-	case terminal.StylePromptCPUStep:
-		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptCPUStep)
-
-	case terminal.StylePromptVideoStep:
-		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptVideoStep)
-
-	case terminal.StylePromptConfirm:
-		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStylePromptConfirm)
 
 	case terminal.StyleFeedback:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedback)
@@ -316,12 +308,11 @@ func (l terminalOutput) draw() {
 	case terminal.StyleInstrument:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleInstrument)
 
-	case terminal.StyleFeedbackNonInteractive:
-		// just use regular feedback style for this
-		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedback)
-
 	case terminal.StyleError:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleError)
+
+	case terminal.StyleLog:
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleLog)
 	}
 
 	imgui.Text(l.text)

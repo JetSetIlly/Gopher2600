@@ -16,7 +16,10 @@
 package sdlaudio
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -93,6 +96,11 @@ func NewAudio() (*Audio, error) {
 	}
 
 	aud.spec = actualSpec
+
+	logger.Log("sdl audio", fmt.Sprintf("frequency: %d samples/sec", aud.spec.Freq))
+	logger.Log("sdl audio", fmt.Sprintf("format: %d", aud.spec.Format))
+	logger.Log("sdl audio", fmt.Sprintf("channels: %d", aud.spec.Channels))
+	logger.Log("sdl audio", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
 
 	aud.detectedSilenceValue = aud.spec.Silence
 

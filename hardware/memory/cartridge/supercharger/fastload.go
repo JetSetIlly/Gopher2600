@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // FastLoad implements the Tape interface. It loads data from a binary file
@@ -95,17 +96,16 @@ func (tap *FastLoad) Load() error {
 	multiload := gameHeader[5]
 	progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	fmt.Printf("start address: %#04x\n", startAddress)
-	fmt.Printf("config byte: %#08b\n", configByte)
-	fmt.Printf("num pages: %d\n", numPages)
-	fmt.Printf("checksum: %#02x\n", checksum)
-	fmt.Printf("multi load: %#02x\n", multiload)
-	fmt.Printf("progress counter: %#02x\n", progressCounter)
-	fmt.Println("")
+	logger.Log("supercharger", fmt.Sprintf("start address: %#04x", startAddress))
+	logger.Log("supercharger", fmt.Sprintf("config byte: %#08b", configByte))
+	logger.Log("supercharger", fmt.Sprintf("num pages: %d", numPages))
+	logger.Log("supercharger", fmt.Sprintf("checksum: %#02x", checksum))
+	logger.Log("supercharger", fmt.Sprintf("multi load: %#02x", multiload))
+	logger.Log("supercharger", fmt.Sprintf("progress counter: %#02x", progressCounter))
 
 	// data is loaded accoring to page table
 	pageTable := tap.data[0x2010:0x2028]
-	// fmt.Printf("page-table\n----------\n%v\n\n", pageTable)
+	logger.Log("supercharger", fmt.Sprintf("page-table: %v", pageTable))
 
 	// copy data to RAM banks
 	for i := 0; i < numPages; i++ {
@@ -117,7 +117,7 @@ func (tap *FastLoad) Load() error {
 		data := gameData[binOffset : binOffset+0x100]
 		copy(tap.cart.ram[bank][bankOffset:bankOffset+0x100], data)
 
-		// fmt.Printf("copying %#04x:%#04x to bank %d page %d, offset %#04x\n", binOffset, binOffset+0x100, bank, page, bankOffset)
+		logger.Log("supercharger", fmt.Sprintf("copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset))
 	}
 
 	// setup cartridge according to tape instructions. we do this by returning
