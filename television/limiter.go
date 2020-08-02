@@ -116,7 +116,8 @@ func (lmtr *limiter) checkRate() {
 	}
 }
 
-// called every frame to calculate the actual frame rate being achieved
+// called every scanline (although internally limited) to calculate the actual
+// frame rate being achieved.
 func (lmtr *limiter) measureActual() {
 	lmtr.actualCt++
 	if lmtr.actualCt >= lmtr.actualCtTarget {

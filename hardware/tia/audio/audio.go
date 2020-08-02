@@ -110,7 +110,7 @@ func (au *Audio) Mix() (bool, uint8) {
 	// immediately except on the 114th tick, whereupon we process the current
 	// audio registers and mix the two signals
 	au.clock114++
-	if au.clock114 < 114 {
+	if au.clock114 < 115 {
 		return false, 0
 	}
 

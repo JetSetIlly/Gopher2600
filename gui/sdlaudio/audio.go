@@ -22,15 +22,22 @@ import (
 )
 
 // the buffer length is important to get right. unfortunately, there's no
-// special way (that I know of) that can tells us what the ideal value is. we
-// don't want it to be long because we can introduce unnecessary lag between
-// the audio and video signal; by the same token we don't want it too short because
-// we will end up calling FlushAudio() too often - FlushAudio() is a
-// computationally expensive function.
+// special way (that I know of) that can tells us what the ideal value is
 //
-// the following value has been discovered through trial and error. the precise
-// value is not critical.
-const bufferLength = 512
+// the bufferLegnth value is the maximum size of the buffer. once the buffer is
+// full the audio will be queued
+const bufferLength = 1024
+
+// if the audio queue is ever less than minQueueLength then the buffer
+// will be pushed to the queue immediately
+const minQueueLength = 256
+
+// if audio queue is ever less than critQueueLength the the buffer is pushed to
+// the queue but the buffer is not reset
+const critQueueLength = 64
+
+// if queued audio ever exceeds this value then clip the audio
+const maxQueueLength = 8192
 
 // Audio outputs sound using SDL
 type Audio struct {
@@ -42,6 +49,7 @@ type Audio struct {
 	// repeatAudio()
 	buffer   []uint8
 	bufferCt int
+	critCt   int
 
 	// some ROMs do not output 0 as the silence value. silence is technically
 	// caused by constant unchanging value so this shouldn't be a problem. the
@@ -85,6 +93,7 @@ func NewAudio() (*Audio, error) {
 	}
 
 	aud.spec = actualSpec
+
 	aud.detectedSilenceValue = aud.spec.Silence
 
 	// fill buffers with silence
@@ -119,18 +128,53 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 	}
 	aud.bufferCt++
 
-	remaining := int(sdl.GetQueuedAudioSize(aud.id))
-
 	if aud.bufferCt >= len(aud.buffer) {
+		// if buffer is full then queue audio unconditionally
 		err := sdl.QueueAudio(aud.id, aud.buffer)
 		if err != nil {
 			return err
 		}
 		aud.bufferCt = 0
-	} else if remaining <= len(aud.buffer)/2 {
-		err := sdl.QueueAudio(aud.id, aud.buffer)
-		if err != nil {
-			return err
+
+	} else {
+
+		remaining := int(sdl.GetQueuedAudioSize(aud.id))
+
+		if remaining < critQueueLength {
+			// if we're running short of bits in the queue the queue what we have
+			// in the buffer and NOT clearing the buffer
+			//
+			// condition valid when the frame rate is SIGNIFICANTLY LESS than 50/60fps
+			err := sdl.QueueAudio(aud.id, aud.buffer)
+			if err != nil {
+				return err
+			}
+
+		} else if remaining < minQueueLength && aud.bufferCt > 10 {
+			// if we're running short of bits in the queue the queue what we have
+			// in the buffer.
+			//
+			// condition valid when the frame rate is LESS than 50/60fps
+			//
+			// the additional condition makes sure we're not queueing a slice
+			// that is too short. SDL has been known to hang with short audio
+			// queues
+			err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt-1])
+			if err != nil {
+				return err
+			}
+			aud.bufferCt = 0
+
+		} else if remaining > maxQueueLength {
+			// if length of SDL audio queue is getting too long then clear it
+			//
+			// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
+			//
+			// if we don't do this the video will get ahead of the audio (ie. the audio
+			// will lag)
+			//
+			// this is a brute force approach but it'll do for now
+			sdl.ClearQueuedAudio(aud.id)
 		}
 	}
 
