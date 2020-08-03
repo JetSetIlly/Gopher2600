@@ -46,3 +46,6 @@ profile_display:
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --display --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
+
+windows:
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -x .
