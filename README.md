@@ -275,7 +275,7 @@ as required.
 ### Supercharger ROMs
 
 Supercharger ROMs require the presence of the supercharger BIOS in the
-configuration directory. It must be named `Supercharger BIOS.bin`.
+configuration directory. It should be named `Supercharger BIOS.bin`.
 
 ## Recording Gameplay
 

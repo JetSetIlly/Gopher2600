@@ -22,34 +22,43 @@ import (
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
-const biosFile = "Supercharger BIOS.bin"
+var biosFile = [...]string{
+	"Supercharger BIOS.bin",
+	"Supercharger.BIOS.bin",
+	"Supercharger_BIOS.bin",
+}
 
 func loadBIOS() ([]uint8, error) {
-	var f *os.File
+	for _, b := range biosFile {
+		biosFilePath, err := paths.ResourcePath("", b)
+		if err != nil {
+		}
 
-	biosFilePath, err := paths.ResourcePath("", biosFile)
-	if err != nil {
-		return nil, errors.New(errors.SuperchargerError, err)
+		var f *os.File
+
+		f, err = os.Open(biosFilePath)
+		if err != nil {
+			continue
+		}
+		defer f.Close()
+
+		// get file info. not using Stat() on the file handle because the
+		// windows version (when running under wine) does not handle that
+		cfi, err := os.Stat(biosFilePath)
+		if err != nil {
+			continue
+		}
+		size := cfi.Size()
+
+		data := make([]byte, size)
+		_, err = f.Read(data)
+		if err != nil {
+			continue
+		}
+
+		return data, nil
 	}
 
-	f, err = os.Open(biosFilePath)
-	if err != nil {
-		return nil, errors.New(errors.SuperchargerError, "can't load BIOS")
-	}
-	defer f.Close()
+	return nil, errors.New(errors.SuperchargerError, "can't load BIOS")
 
-	// get file info
-	cfi, err := f.Stat()
-	if err != nil {
-		return nil, errors.New(errors.SuperchargerError, "can't load BIOS")
-	}
-	size := cfi.Size()
-
-	data := make([]byte, size)
-	_, err = f.Read(data)
-	if err != nil {
-		return nil, errors.New(errors.SuperchargerError, "can't load BIOS")
-	}
-
-	return data, nil
 }
