@@ -122,17 +122,32 @@ versions earlier than v1.13 because of language features added in that version
 (binary literals).
 
 The project uses the Go module system and dependencies will be resolved
-automatically. Do note however, that you will required the SDL development
-libraries for the Go SDL module to compile.
+automatically. Do note however, that you will also require the SDL development
+kit installed on the system. For users of UNIX like systems, installation from
+your package manager is the easiest option (for MacOS use the homebrew package
+manager https://formulae.brew.sh/formula/sdl2)
 
 Compile with GNU Make
 
-	> make build
+	> make release
 
 During development, programmers may find it more useful to use the go command
 directly
 
 	> go run gopher2600.go
+
+## Cross-Compilation
+
+Native compilation of a Windows executable has not yet been tried. But
+cross-compilation does work via the Makefile:
+
+	> make cross_windows
+
+Or for a statically linked binary:
+	
+	> make cross_windows_static
+
+This has been tested on a Linux system with mingw installed.
 
 ## Basic usage
 
@@ -238,15 +253,16 @@ Help is available with the HELP command. Help on a specific topic is available
 by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
-	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
-	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
-	          GREP          HALT          HELP        INSERT      JOYSTICK
-	        KEYPAD          LAST          LINT          LIST        MEMMAP
-	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
-	         PATCH          PEEK        PLAYER     PLAYFIELD          POKE
-	          PREF       QUANTUM          QUIT           RAM         RESET
-	           RUN        SCRIPT          STEP        SYMBOL           TIA
-	         TIMER         TRACE          TRAP            TV         WATCH
+	[ $f000 SEI ] >> help
+			 AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
+		    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
+			  GREP          HALT          HELP        INSERT      JOYSTICK
+			KEYPAD          LAST          LINT          LIST           LOG
+			MEMMAP       MISSILE        ONHALT        ONSTEP       ONTRACE
+			 PANEL         PATCH          PEEK        PLAYER     PLAYFIELD
+			  POKE          PREF       QUANTUM          QUIT           RAM
+			 RESET           RUN        SCRIPT          STEP        SYMBOL
+			   TIA
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
@@ -273,6 +289,8 @@ the location of which is dependent on the host OS. On modern Linux systems, the 
 is `.config/gopher2600`.
 
 For MacOS the directory for release executables is `~/Library/Application Support/gopher2600`
+
+For Window, files will be in the user's `Application Data/gopher2600` folder
 
 In all instances, the directory, sub-directory and files will be created automatically
 as required.

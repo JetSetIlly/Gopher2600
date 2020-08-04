@@ -149,7 +149,7 @@ func (cl *Loader) Load() ([]byte, error) {
 	case "http":
 		resp, err := http.Get(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
+			return nil, errors.New(errors.CartridgeLoader, err)
 		}
 		defer resp.Body.Close()
 
@@ -158,7 +158,7 @@ func (cl *Loader) Load() ([]byte, error) {
 		cl.data = make([]byte, size)
 		_, err = resp.Body.Read(cl.data)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
+			return nil, errors.New(errors.CartridgeLoader, err)
 		}
 
 	case "file":
@@ -167,21 +167,22 @@ func (cl *Loader) Load() ([]byte, error) {
 	case "":
 		f, err := os.Open(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
+			return nil, errors.New(errors.CartridgeLoader, err)
 		}
 		defer f.Close()
 
-		// get file info
-		cfi, err := f.Stat()
+		// get file info. not using Stat() on the file handle because the
+		// windows version (when running under wine) does not handle that
+		cfi, err := os.Stat(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
+			return nil, errors.New(errors.CartridgeLoader, err)
 		}
 		size := cfi.Size()
 
 		cl.data = make([]byte, size)
 		_, err = f.Read(cl.data)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, cl.Filename)
+			return nil, errors.New(errors.CartridgeLoader, err)
 		}
 
 	default:

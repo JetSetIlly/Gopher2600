@@ -6,6 +6,7 @@ test_roms/*
 roms
 .gopher2600/*
 gopher2600
+gopher2600.exe
 *.dot
 *.ps
 *.pdf
