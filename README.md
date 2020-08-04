@@ -295,6 +295,11 @@ For Window, files will be in the user's `Application Data/gopher2600` folder
 In all instances, the directory, sub-directory and files will be created automatically
 as required.
 
+### Supercharger ROMs
+
+Supercharger ROMs require the presence of the supercharger BIOS in the
+configuration directory. It must be named `Supercharger BIOS.bin`.
+
 ## Recording Gameplay
 
 Gopher2600 can record all user input and playback for future viewing. This is a very efficient way

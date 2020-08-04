@@ -1,3 +1,0 @@
-#!/bin/bash
-
-grep -rL --exclude-dir="roms" --exclude-dir="test_roms" "This file is part of Gopher2600" *

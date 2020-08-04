@@ -15,8 +15,7 @@
 
 // +build windows
 
-// Package colorterm implements the Terminal interface for the gopher2600
-// debugger. It supports color output, history and tab completion.
+// Package colorterm is not available under windows
 package colorterm
 
 import (
