@@ -1,67 +1,51 @@
 # Gopher2600
 
-Gopher 2600 is an emulator for the Atari VCS. It is written in Go and was begun as a project for learning that language. The screenshot below shows the default play window, complete with CRT effects.
+Gopher2600 is an emulator for the Atari 2600. Whilst the performance is not as efficient as some other emulators it is none-the-less suitable for playing games, on a reasonably modern computer, at the required 60fps. (The development machine for Gopher2600 has been an i3-3225, dating from around 2012.)
 
 <img src=".screenshots/crt_official_frogger.png" alt="gopher2600 showing Official Frogger with CRT effects"/>
 
-## Project Features
+The accuracy of the emulation is very high although this is difficult to prove. Certainly, there are no known outstanding issues in the TIA or RIOT.
 
-* Support for joystick, paddle and keyboard hand controllers
-	* Auto-handling of input type *
-* Debugger
-	* Dear Imgui interface
-	* Line terminal interface
-	* CPU and Video stepping
-	* Breakpoints, traps, watches & traces
-	* Script recording and playback
-* Gameplay session recording and playback
-* Regression database
-	* useful for ensuring continuing code accuracy when changing the emulation code
-* ROM patching
-* Auto-detection of television specification *
-* Setup preferences for individual ROMs
-	* Television specification
-	* Setting of panel switches
-	* Automatic application of ROM patches
+The 6507 emulation is also very accurate although, at the time of writing, not all undocumentated opcodes are implemented. That said, the emulation method used for the CPU means adding a missing opcode is trivial.
 
-The asterisks in the list indicate that these features are experimental. They have performed
-well during development but there will undoubtedly be cases when the systems fail. To mitigate
-this, Gopher2600's setup system is available (although, as yet the specifying of input type
-is not supported).
+The emulator also comes with a powerful graphical debugger. This is still in active development with many planned additional features but currently it features:
 
-There is a lot to add to the project but the key ommissions as it currently stands are:
+* CPU and Video stepping
+* Breakpoints, traps, watches on various CPU, TIA, RIOT targets
+* Interactive TV Screen
+* Specialist windows for specific cartridge types (eg. Supercharger)
+* Script recording and playback
+* Line terminal interface for harder to reach parts of the emulation
 
-* Not all CPU instructions are implemented. Although adding the missing opcodes
-	when encountered should be straightforward.
-* Supports most cartridge formats, including DPC+ and 3E+ and partial support for Supercharger
-* DPC+ format is only partially implemented but there is no support for ARM yet
-* Disassembly of some cartridge formats is known to be inaccurate
-* Television display does not handle out-of-spec TV signals as it should
+<img src=".screenshots/dear_debugger.png" height="400" alt="gopher2600's graphical debugger"/>
 
-## Performance
+In addition to the debugger, `Gopher2600` can record and playback gameplay sessions. This powerful feature efficiently records user input to a text file, suitable for passing along to other people for viewing.
 
-On a 3GHz i3 processor, the emulator (with SDL display) can reach 60fps or
-thereabouts. 
+The gameplay playback feature is also used in the inbuilt "regression database". This database allow for easy testing of the emulator's integrity and was of invaluable use during development of the emulator. This feature will also be of use perhaps when developing new ROMs for the Atari 2600 - a way of recording the ideal output of the ROM for future comparison.
+
+The Atari 2600 comes with a variety of hand controllers and `Gopher2600` does it's very best to automatically select the correct input device. This is an feature that will be expanded on greatly in the future but currently joysticks, paddles and keyboard are all supported.
+
+`Gopher2600` is in active development and feature requests are welcomed.
 
 ## Screenshots
 
+A variety of screenshots from various points in the emulator's development.
+
 <img src=".screenshots/barnstormer.png" height="200" alt="barnstormer"/> <img src=".screenshots/pole_position.png" height="200" alt="pole position"/> <img src=".screenshots/ateam.png" height="200" alt="ateam"/> <img src=".screenshots/he_man_title.png" height="200" alt="he man title screen"/>
 
-The screenshot below is of ET with the patches from http://www.neocomputer.org/projects/et/ automatically applied. Auto-patching of ROMs is a feature of the emulator
+The following screenshot shows the fabled `ET` ROM. In this case the ROM has been patched to fix some notorious issues with the original game. Notice, the colour of ET and how he is standing in front of the pit? The patches in question were taken from http://www.neocomputer.org/projects/et/ and automatically applied. Auto-patching of ROMs is a feature of the emulator
 
 <img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
 
-The screenshot below shows the graphical debugger, windowing provided by `Dear Imgui`.
-
-<img src=".screenshots/dear_debugger.png" height="400" alt="dear imgui debugger"/>
-
-The next image shows Barnstormer with the "debug colours" turned on. These debug colours are the same as you will see in the Stella emulator. Unlike Stella however, we can also see the off screen areas of the tv image, and in particular, the sprites as they "appear" off screen. 
+The next three images show the "TV screen" of the graphical debugger in various states. In the first screenshot, we see `Barnstormer` with the "debug colours" turned on. This idea was taken from the Stella emulator and indeed, these are the same colours used in that emulator. Unlike Stella however, we can also see the off-screen areas of the tv image, and in particular, the sprites as they "appear" off-screen. 
 
 <img src=".screenshots/barnstormer_debug_colors.png" width="400" alt="barnstormer with debug colors"/>
 
-This first screenshot below shows `Pitfall` with the reflection overlay turned on. The coloured pixels indicate when key TIA events have occured. For example, when `RESP0` has been triggered, or when `HMOVE` has been strobed. The most interesting part of this image perhaps, are the grey bars the extend to the right of the image. These bars show `WSYNC` signal activity.
+The next two screenshots show the `Gopher2600's` overlay feature. An overlay is a way of adding information to the TV screen with the aim of helping the debugging process.
 
-The potential usefulness of the `WSYNC` visualisation can be seen in the second image. This shows `Pitfall 2`. At first flush, it looks very similar but we can quickly see that in fact, the newer game works the `6502` much harder.
+The first screenshot shows the `WSYNC` overlay. This overlay shows us graphically the scanlines on which WSYNC has been triggered. In Atari 2600 programming terms, the WSYNC is a way of synchronising the CPU with the TIA. The downside of the WSYNC is that CPU cycles are wasted - something that is not always obvious when looking at the ROM's assembly.
+
+The second screenshot shows 'Pitfall 2' are we can see straight away that fewer CPU cycles are wasted, simply by the shorted and less frequent blue bars extending to the right of the screen.
 
 <img src=".screenshots/pitfall_overlay.png" width="400" alt="pitfall with overlay"/> <img src=".screenshots/pitfall2_overlay.png" width="400" alt="pitfall with overlay"/> 
 
@@ -203,14 +187,7 @@ Not yet emulated
 
 #### Keypad
 
-|   |VCS|   |
-|:-:|:-:|:-:|
-| 1 | 2 | 3 |		
-| 4 | 5 | 6 |		
-| 7 | 8 | 9 |		
-| * | 0 | # |	 	
-
-Using the guide above, we can see the corresponding keys on the PC keyboard for the left (p0) and right (p1) players.
+Keypads for both player 0 and player 1 are supported. 
 
 |   |p0|   |   |p1|   |
 |:-:|:-:|:-:|:-:|:-:|:-:|
@@ -412,7 +389,7 @@ own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
 The following projects are used in the gopher2600 project.
 
 * https://github.com/ocornut/imgui
-* https://github.com/inkyblackness/imgui-go (occasionally using a fork in the JetSetIlly repository)
+* https://github.com/inkyblackness/imgui-go
 * https://github.com/veandco/go-sdl2
 * https://github.com/go-gl/gl
 * https://github.com/go-audio/audio
