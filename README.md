@@ -45,7 +45,7 @@ The next two screenshots show the `Gopher2600's` overlay feature. An overlay is 
 
 The first screenshot shows the `WSYNC` overlay. This overlay shows us graphically the scanlines on which WSYNC has been triggered. In Atari 2600 programming terms, the WSYNC is a way of synchronising the CPU with the TIA. The downside of the WSYNC is that CPU cycles are wasted - something that is not always obvious when looking at the ROM's assembly.
 
-The second screenshot shows 'Pitfall 2' are we can see straight away that fewer CPU cycles are wasted, simply by the shorted and less frequent blue bars extending to the right of the screen.
+The second screenshot shows 'Pitfall 2' and we can see straight away that fewer CPU cycles are wasted, simply by the shorter and less frequent blue bars extending to the right of the screen.
 
 <img src=".screenshots/pitfall_overlay.png" width="400" alt="pitfall with overlay"/> <img src=".screenshots/pitfall2_overlay.png" width="400" alt="pitfall with overlay"/> 
 
