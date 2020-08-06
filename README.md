@@ -224,7 +224,7 @@ In addition to the controller and panel input described above, the following key
 
 #### Debugger Terminal
 
-As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window. The rest of this section describesthe operation of the terminal in detail.
+As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window. The rest of this section describes the operation of the terminal in detail.
 
 Help is available with the HELP command. Help on a specific topic is available
 by specifying a keyword. The list below shows the currently defined keywords.
@@ -239,7 +239,8 @@ The rest of the section will give a brief run down of debugger features.
 			 PANEL         PATCH          PEEK        PLAYER     PLAYFIELD
 			  POKE          PREF       QUANTUM          QUIT           RAM
 			 RESET           RUN        SCRIPT          STEP        SYMBOL
-			   TIA
+			   TIA         TIMER         TRACE          TRAP            TV
+			 WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
