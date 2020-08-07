@@ -17,6 +17,7 @@ package debugger
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strconv"
@@ -291,19 +292,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					if static != nil {
 						for b := 0; b < len(static); b++ {
 							s.WriteString(static[b].Label + "\n")
-
-							// header for table. assumes that origin address begins at xxx0
-							s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-							s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-							for i := 0; i < len(static[b].Data); i++ {
-								// begin new row every 16 iterations
-								if i%16 == 0 {
-									s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-								}
-								d, _ := dbg.VCS.Mem.Read(uint16(i))
-								s.WriteString(fmt.Sprintf("%02x ", d))
-							}
+							s.WriteString(strings.Repeat("-", len(static[b].Label)))
+							s.WriteString("\n")
+							s.WriteString(hex.Dump(static[b].Data))
 							s.WriteString("\n\n")
 						}
 
@@ -326,24 +317,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				// cartridge RAM is accessible through the normal VCS buses so
 				// the normal peek/poke commands will work
 				if bus := dbg.VCS.Mem.Cart.GetRAMbus(); bus != nil {
-					s := &strings.Builder{}
 					ram := bus.GetRAM()
 					if ram != nil {
+						s := &strings.Builder{}
 						for b := 0; b < len(ram); b++ {
 							s.WriteString(ram[b].Label + "\n")
-
-							// header for table. assumes that origin address begins at xxx0
-							s.WriteString("        -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-							s.WriteString("      ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --")
-
-							for i := 0; i < len(ram[b].Data); i++ {
-								// begin new row every 16 iterations
-								if i%16 == 0 {
-									s.WriteString(fmt.Sprintf("\n%03x- |  ", i/16))
-								}
-								d, _ := dbg.VCS.Mem.Read(ram[b].Origin + uint16(i))
-								s.WriteString(fmt.Sprintf("%02x ", d))
-							}
+							s.WriteString(strings.Repeat("-", len(ram[b].Label)))
+							s.WriteString("\n")
+							s.WriteString(hex.Dump(ram[b].Data))
 							s.WriteString("\n\n")
 						}
 

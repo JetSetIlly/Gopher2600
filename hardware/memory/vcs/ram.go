@@ -16,8 +16,7 @@
 package vcs
 
 import (
-	"fmt"
-	"strings"
+	"encoding/hex"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -42,17 +41,7 @@ func NewRAM() *RAM {
 }
 
 func (ram RAM) String() string {
-	s := strings.Builder{}
-	s.WriteString("      -0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -A -B -C -D -E -F\n")
-	s.WriteString("    ---- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --\n")
-	for y := 0; y < 8; y++ {
-		s.WriteString(fmt.Sprintf("%X- | ", y+8))
-		for x := 0; x < 16; x++ {
-			s.WriteString(fmt.Sprintf(" %02x", ram.RAM[uint16((y*16)+x)]))
-		}
-		s.WriteString("\n")
-	}
-	return strings.Trim(s.String(), "\n")
+	return hex.Dump(ram.RAM)
 }
 
 // Peek is the implementation of memory.DebugBus. Address must be
