@@ -575,57 +575,57 @@ func (hc *HandController) readKeypad(data uint8) {
 	switch hc.keypad.key {
 	// row 0
 	case '1':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == data && hc.ddr&0xe0 == 0xe0 {
 			column = 1
 		}
 	case '2':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == data && hc.ddr&0xe0 == 0xe0 {
 			column = 2
 		}
 	case '3':
-		if data&0xe0 == 0xe0 && hc.ddr&0xe0 == 0xe0 {
+		if data&0xe0 == data && hc.ddr&0xe0 == 0xe0 {
 			column = 3
 		}
 
 		// row 2
 	case '4':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == data && hc.ddr&0xd0 == 0xd0 {
 			column = 1
 		}
 	case '5':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == data && hc.ddr&0xd0 == 0xd0 {
 			column = 2
 		}
 	case '6':
-		if data&0xd0 == 0xd0 && hc.ddr&0xd0 == 0xd0 {
+		if data&0xd0 == data && hc.ddr&0xd0 == 0xd0 {
 			column = 3
 		}
 
 		// row 3
 	case '7':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == data && hc.ddr&0xb0 == 0xb0 {
 			column = 1
 		}
 	case '8':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == data && hc.ddr&0xb0 == 0xb0 {
 			column = 2
 		}
 	case '9':
-		if data&0xb0 == 0xb0 && hc.ddr&0xb0 == 0xb0 {
+		if data&0xb0 == data && hc.ddr&0xb0 == 0xb0 {
 			column = 3
 		}
 
 		// row 4
 	case '*':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0x70 == data && hc.ddr&0x70 == 0x70 {
 			column = 1
 		}
 	case '0':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0x70 == data && hc.ddr&0x70 == 0x70 {
 			column = 2
 		}
 	case '#':
-		if data&0x70 == 0x70 && hc.ddr&0x70 == 0x70 {
+		if data&0x70 == data && hc.ddr&0x70 == 0x70 {
 			column = 3
 		}
 	}
