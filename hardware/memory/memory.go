@@ -137,6 +137,13 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 		data, err = area.(bus.CPUBus).Read(ma)
 	}
 
+	// we do not return error early because we still want to note the
+	// LastAccessAddress, call the cartridge.Listen() function etc. or,
+	// for example, the WATCH command will not function as expected
+	//
+	// we just need to be careful that we do not clobber the err value
+	//                                    ----------------------------
+
 	// some memory areas do not change all the bits on the data bus, leaving
 	// some bits of the address in the result
 	//
@@ -171,8 +178,7 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	mem.accessCount++
 
 	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here. more to the point, we only
-	// need to "listen" if the mapped address is not in Cartridge space
+	// for an explanation for what is going on here.
 	mem.Cart.Listen(address, data)
 
 	return data, err

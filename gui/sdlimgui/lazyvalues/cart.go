@@ -41,6 +41,9 @@ type LazyCart struct {
 	atomicRAMbus atomic.Value // bus.CartRAMbus
 	atomicRAM    atomic.Value // []bus.CartRAM
 
+	atomicTapeBus   atomic.Value // bus.CartTapeBus
+	atomicTapeState atomic.Value // bus.CartTapeState
+
 	ID       string
 	Summary  string
 	Filename string
@@ -58,6 +61,10 @@ type LazyCart struct {
 	HasRAMbus bool
 	RAMbus    bus.CartRAMbus
 	RAM       []bus.CartRAM
+
+	HasTapeBus bool
+	TapeBus    bus.CartTapeBus
+	TapeState  bus.CartTapeState
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -95,6 +102,16 @@ func (lz *LazyCart) update() {
 			lz.atomicRAMbus.Store(r)
 			lz.atomicRAM.Store(r.GetRAM())
 		}
+
+		t := lz.val.Dbg.VCS.Mem.Cart.GetTapeBus()
+		if t != nil {
+			// additional check to see if the tape bus is valid. check boolean
+			// result of GetTapeState()
+			if ok, s := t.GetTapeState(); ok {
+				lz.atomicTapeBus.Store(t)
+				lz.atomicTapeState.Store(s)
+			}
+		}
 	})
 
 	lz.ID, _ = lz.atomicID.Load().(string)
@@ -123,5 +140,10 @@ func (lz *LazyCart) update() {
 		if lz.RAM == nil {
 			lz.HasRAMbus = false
 		}
+	}
+
+	lz.TapeBus, lz.HasTapeBus = lz.atomicTapeBus.Load().(bus.CartTapeBus)
+	if lz.HasTapeBus {
+		lz.TapeState, _ = lz.atomicTapeState.Load().(bus.CartTapeState)
 	}
 }

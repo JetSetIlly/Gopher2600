@@ -117,7 +117,7 @@ type CartStaticBus interface {
 	PutStatic(tag string, addr uint16, data uint8) error
 }
 
-// CartStatic conceptualises tatic data areas that is inaccessible through.
+// CartStatic conceptualises a static data area that is inaccessible through.
 // Of the cartridge types that have static areas some have more than one static
 // area.
 //
@@ -128,4 +128,24 @@ type CartStaticBus interface {
 type CartStatic struct {
 	Label string
 	Data  []uint8
+}
+
+// CartTapeState is the current state of the tape
+type CartTapeState struct {
+	Counter    int
+	MaxCounter int
+	Time       float64
+	MaxTime    float64
+	Data       []float32
+}
+
+// CartTapeBus defines additional debugging functions for cartridge types that use tapes
+type CartTapeBus interface {
+	// Move tape loading to the specified mark. returns true if rewind was
+	// effective
+	Rewind() bool
+
+	// GetTapeState retrieves a copy of the current state of the tape. returns
+	// true is state is valid
+	GetTapeState() (bool, CartTapeState)
 }

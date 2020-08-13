@@ -18,7 +18,7 @@ package supercharger
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -41,7 +41,7 @@ type FastLoad struct {
 	data []byte
 }
 
-// FastLoaded error is returned on success of FastLoad.Load(). It must be
+// FastLoaded error is returned on success of FastLoad.load(). It must be
 // honoured (ie. caught and the function called) by the driving emulator for
 // the fastload process to complete.
 //
@@ -61,22 +61,22 @@ func (er FastLoaded) Error() string {
 }
 
 // NewFastLoad is the preferred method of initialisation for the FastLoad type
-func NewFastLoad(cart *Supercharger, data interface{}) (Tape, error) {
+func NewFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &FastLoad{
 		cart: cart,
-		data: data.([]byte),
+		data: loader.Data,
 	}
 
 	l := len(tap.data)
 	if l != 8448 && l != 25344 && l != 33792 {
-		return nil, errors.New(errors.SuperchargerError, "wrong number of bytes in cartridge data")
+		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 
 	return tap, nil
 }
 
-// Load implements the Tape interface
-func (tap *FastLoad) Load() error {
+// load implements the tape interface
+func (tap *FastLoad) load() (uint8, error) {
 	gameData := tap.data[0:0x1eff]
 
 	// only 8448 .bin format is supported currently
@@ -94,18 +94,18 @@ func (tap *FastLoad) Load() error {
 	// not using the following in any meaningful way
 	checksum := gameHeader[4]
 	multiload := gameHeader[5]
-	progressCounter := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
+	progressSpeed := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	logger.Log("supercharger", fmt.Sprintf("start address: %#04x", startAddress))
-	logger.Log("supercharger", fmt.Sprintf("config byte: %#08b", configByte))
-	logger.Log("supercharger", fmt.Sprintf("num pages: %d", numPages))
-	logger.Log("supercharger", fmt.Sprintf("checksum: %#02x", checksum))
-	logger.Log("supercharger", fmt.Sprintf("multi load: %#02x", multiload))
-	logger.Log("supercharger", fmt.Sprintf("progress counter: %#02x", progressCounter))
+	logger.Log("supercharger: fastload", fmt.Sprintf("start address: %#04x", startAddress))
+	logger.Log("supercharger: fastload", fmt.Sprintf("config byte: %#08b", configByte))
+	logger.Log("supercharger: fastload", fmt.Sprintf("num pages: %d", numPages))
+	logger.Log("supercharger: fastload", fmt.Sprintf("checksum: %#02x", checksum))
+	logger.Log("supercharger: fastload", fmt.Sprintf("multiload: %#02x", multiload))
+	logger.Log("supercharger: fastload", fmt.Sprintf("progress speed: %#02x", progressSpeed))
 
 	// data is loaded accoring to page table
 	pageTable := tap.data[0x2010:0x2028]
-	logger.Log("supercharger", fmt.Sprintf("page-table: %v", pageTable))
+	logger.Log("supercharger: fastload", fmt.Sprintf("page-table: %v", pageTable))
 
 	// copy data to RAM banks
 	for i := 0; i < numPages; i++ {
@@ -117,18 +117,18 @@ func (tap *FastLoad) Load() error {
 		data := gameData[binOffset : binOffset+0x100]
 		copy(tap.cart.ram[bank][bankOffset:bankOffset+0x100], data)
 
-		logger.Log("supercharger", fmt.Sprintf("copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset))
+		logger.Log("supercharger: fastload", fmt.Sprintf("copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset))
 	}
 
 	// setup cartridge according to tape instructions. we do this by returning
 	// a function disguised as an error type. The VCS knows how to interpret
 	// this error and will call the function
-	return FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		tap.cart.registers.setConfigByte(configByte)
 
 		err := mc.LoadPC(startAddress)
 		if err != nil {
-			return errors.New(errors.SuperchargerError, err)
+			return fmt.Errorf("fastload: %v", err)
 		}
 
 		// initialise VCS RAM with zeros
@@ -163,4 +163,8 @@ func (tap *FastLoad) Load() error {
 
 		return nil
 	})
+}
+
+// step implements the Tape interface
+func (tap *FastLoad) step() {
 }

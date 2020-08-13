@@ -43,8 +43,8 @@ type cartMapper interface {
 
 	// some cartridge mappings have indpendent clocks that tick and change
 	// internal cartridge state. the step() function is called every cpu cycle
-	// at a rate of 1.19. cartridges with slower clocks need to handle the rate
-	// change.
+	// at a rate of 1.19MHz. cartridges with slower clocks need to handle the
+	// rate change.
 	Step()
 
 	// return all the banks in the cartridge in sequence. see commentary for

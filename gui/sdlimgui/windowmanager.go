@@ -155,6 +155,12 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
+		return nil, err
+	}
 
 	// associate cartridge types with cartridge specific menus. using cartridge
 	// ID as the key in the windowMenu map
@@ -261,6 +267,10 @@ func (wm *windowManager) drawMenu() {
 		if imgui.BeginMenu(fmt.Sprintf("Cartridge [%s]", wm.img.lz.Cart.ID)) {
 			for _, id := range wm.windowMenu[wm.img.lz.Cart.ID] {
 				wm.drawMenuWindowEntry(wm.windows[id], id)
+			}
+
+			if wm.img.lz.Cart.HasTapeBus {
+				wm.drawMenuWindowEntry(wm.windows[winCartTapeTitle], winCartTapeTitle)
 			}
 
 			if wm.img.lz.Cart.HasRAMbus {

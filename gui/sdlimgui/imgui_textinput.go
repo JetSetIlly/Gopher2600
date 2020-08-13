@@ -26,6 +26,11 @@ func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *str
 	return imguiInput(label, aggressiveUpdate, digits, content, "abcdefABCDEF0123456789")
 }
 
+// calls imguiInput with the string of numeric characters.
+func imguiDecimalInput(label string, aggressiveUpdate bool, digits int, content *string) bool {
+	return imguiInput(label, aggressiveUpdate, digits, content, "0123456789")
+}
+
 // input text that accepts a maximum number of hex digits. physical width of
 // InpuText should be controlled with PushItemWidth()/PopItemWidth() as normal.
 func imguiInput(label string, aggressiveUpdate bool, digits int, content *string, allowedChars string) bool {

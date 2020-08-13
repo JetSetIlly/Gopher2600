@@ -41,11 +41,17 @@ type Loader struct {
 	// expected hash of the loaded cartridge. empty string indicates that the
 	// hash is unknown and need not be validated. after a load operation the
 	// value will be the hash of the loaded data
+	//
+	// in the case of sound data (IsSoundData is true) then the hash is of the
+	// original binary file not he decoded PCM data
 	Hash string
 
 	// copy of the loaded data. subsequence calls to Load() will return a copy
 	// of this data
-	data []byte
+	Data []byte
+
+	// does the Data field consist of sound (PCM) data
+	IsSoundData bool
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
@@ -112,8 +118,11 @@ func NewLoader(filename string, mapping string) Loader {
 			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
-		case "DP+":
+		case ".DP+":
 			cl.Mapping = "DPC+"
+		case ".WAV":
+			cl.Mapping = "AR"
+			cl.IsSoundData = true
 		}
 	}
 
@@ -129,36 +138,37 @@ func (cl Loader) ShortName() string {
 
 // HasLoaded returns true if Load() has been successfully called
 func (cl Loader) HasLoaded() bool {
-	return len(cl.data) > 0
+	return len(cl.Data) > 0
 }
 
 // Load the cartridge data and return as a byte array. Loader filenames with a
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
-func (cl *Loader) Load() ([]byte, error) {
-	if len(cl.data) > 0 {
-		return cl.data[:], nil
+func (cl *Loader) Load() error {
+	if len(cl.Data) > 0 {
+		// !!TODO: already-loaded error?
+		return nil
 	}
 
 	url, err := url.Parse(cl.Filename)
 	if err != nil {
-		return nil, errors.New(errors.CartridgeLoader, err)
+		return errors.New(errors.CartridgeLoader, err)
 	}
 
 	switch url.Scheme {
 	case "http":
 		resp, err := http.Get(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, err)
+			return errors.New(errors.CartridgeLoader, err)
 		}
 		defer resp.Body.Close()
 
 		size := resp.ContentLength
 
-		cl.data = make([]byte, size)
-		_, err = resp.Body.Read(cl.data)
+		cl.Data = make([]byte, size)
+		_, err = resp.Body.Read(cl.Data)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, err)
+			return errors.New(errors.CartridgeLoader, err)
 		}
 
 	case "file":
@@ -167,7 +177,7 @@ func (cl *Loader) Load() ([]byte, error) {
 	case "":
 		f, err := os.Open(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, err)
+			return errors.New(errors.CartridgeLoader, err)
 		}
 		defer f.Close()
 
@@ -175,30 +185,30 @@ func (cl *Loader) Load() ([]byte, error) {
 		// windows version (when running under wine) does not handle that
 		cfi, err := os.Stat(cl.Filename)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, err)
+			return errors.New(errors.CartridgeLoader, err)
 		}
 		size := cfi.Size()
 
-		cl.data = make([]byte, size)
-		_, err = f.Read(cl.data)
+		cl.Data = make([]byte, size)
+		_, err = f.Read(cl.Data)
 		if err != nil {
-			return nil, errors.New(errors.CartridgeLoader, err)
+			return errors.New(errors.CartridgeLoader, err)
 		}
 
 	default:
-		return nil, errors.New(errors.CartridgeLoader, fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
+		return errors.New(errors.CartridgeLoader, fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
 	}
 
 	// generate hash
-	hash := fmt.Sprintf("%x", sha1.Sum(cl.data))
+	hash := fmt.Sprintf("%x", sha1.Sum(cl.Data))
 
 	// check for hash consistency
 	if cl.Hash != "" && cl.Hash != hash {
-		return nil, errors.New(errors.CartridgeLoader, "unexpected hash value")
+		return errors.New(errors.CartridgeLoader, "unexpected hash value")
 	}
 
 	// not generated hash
 	cl.Hash = hash
 
-	return cl.data[:], nil
+	return nil
 }

@@ -18,6 +18,7 @@ package cartridge
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -83,8 +84,8 @@ func fingerprintHarmony(b []byte) bool {
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
 }
 
-func fingerprintSuperchargerFastLoad(b []byte) bool {
-	l := len(b)
+func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
+	l := len(cartload.Data)
 	return l == 8448 || l == 25344 || l == 33792
 }
 
@@ -137,40 +138,40 @@ func fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
 	return newAtari32k
 }
 
-func (cart *Cartridge) fingerprint(data []byte) error {
+func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
 
-	if fingerprintHarmony(data) {
+	if fingerprintHarmony(cartload.Data) {
 		// !!TODO: this might be a CFDJ cartridge. check for that.
-		cart.mapper, err = harmony.NewDPCplus(data)
+		cart.mapper, err = harmony.NewDPCplus(cartload.Data)
 		return err
 	}
 
-	if fingerprintSuperchargerFastLoad(data) {
-		cart.mapper, err = supercharger.NewSupercharger(data)
+	if fingerprintSuperchargerFastLoad(cartload) {
+		cart.mapper, err = supercharger.NewSupercharger(cartload)
 		return err
 	}
 
-	if fingerprint3ePlus(data) {
-		cart.mapper, err = new3ePlus(data)
+	if fingerprint3ePlus(cartload.Data) {
+		cart.mapper, err = new3ePlus(cartload.Data)
 		return err
 	}
 
-	switch len(data) {
+	switch len(cartload.Data) {
 	case 2048:
-		cart.mapper, err = newAtari2k(data)
+		cart.mapper, err = newAtari2k(cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 4096:
-		cart.mapper, err = newAtari4k(data)
+		cart.mapper, err = newAtari4k(cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 8192:
-		cart.mapper, err = fingerprint8k(data)(data)
+		cart.mapper, err = fingerprint8k(cartload.Data)(cartload.Data)
 		if err != nil {
 			return err
 		}
@@ -179,25 +180,25 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		fallthrough
 
 	case 10495:
-		cart.mapper, err = newDPC(data)
+		cart.mapper, err = newDPC(cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 12288:
-		cart.mapper, err = newCBS(data)
+		cart.mapper, err = newCBS(cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 16384:
-		cart.mapper, err = fingerprint16k(data)(data)
+		cart.mapper, err = fingerprint16k(cartload.Data)(cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 32768:
-		cart.mapper, err = fingerprint32k(data)(data)
+		cart.mapper, err = fingerprint32k(cartload.Data)(cartload.Data)
 		if err != nil {
 			return err
 		}
@@ -206,7 +207,7 @@ func (cart *Cartridge) fingerprint(data []byte) error {
 		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
 
 	default:
-		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(data)))
+		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(cartload.Data)))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try

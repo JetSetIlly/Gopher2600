@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
@@ -31,11 +32,12 @@ const MappingID = "AR"
 const numRamBanks = 4
 const bankSize = 2048
 
-// Tape defines the operations required by the $fff9 tape loader. With this
+// tape defines the operations required by the $fff9 tape loader. With this
 // interface, the Supercharger implementation supports both fast-loading
 // from a Stella bin file, and "slow" loading from a sound file.
-type Tape interface {
-	Load() error
+type tape interface {
+	load() (uint8, error)
+	step()
 }
 
 // Supercharger represents a supercharger cartridge
@@ -43,7 +45,7 @@ type Supercharger struct {
 	mappingID   string
 	description string
 
-	tape      Tape
+	tape      tape
 	registers Registers
 
 	bankSize int
@@ -53,7 +55,7 @@ type Supercharger struct {
 
 // NewSupercharger is the preferred method of initialisation for the
 // Supercharger type
-func NewSupercharger(data []byte) (*Supercharger, error) {
+func NewSupercharger(cartload cartridgeloader.Loader) (*Supercharger, error) {
 	cart := &Supercharger{
 		mappingID:   MappingID,
 		description: "supercharger",
@@ -63,9 +65,13 @@ func NewSupercharger(data []byte) (*Supercharger, error) {
 	var err error
 
 	// set up tape
-	cart.tape, err = NewFastLoad(cart, data)
+	if cartload.IsSoundData {
+		cart.tape, err = NewSoundLoad(cart, cartload)
+	} else {
+		cart.tape, err = NewFastLoad(cart, cartload)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SuperchargerError, err)
 	}
 
 	// allocate ram
@@ -76,7 +82,7 @@ func NewSupercharger(data []byte) (*Supercharger, error) {
 	// load bios and activate
 	cart.bios, err = loadBIOS()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errors.SuperchargerError, err)
 	}
 
 	cart.Initialise()
@@ -112,25 +118,6 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
 
-	if !passive {
-		if addr == 0x0ff9 {
-			// call load() whenever address is touched, although do not allow
-			// it if RAMwrite is false
-			if !cart.registers.RAMwrite {
-				return 0, nil
-			}
-			return 0, cart.tape.Load()
-		}
-
-		// note address to be used as the next value in the control register
-		if fullAddr&0xf000 == 0xf000 && fullAddr <= 0xf0ff {
-			if cart.registers.Delay == 0 {
-				cart.registers.Value = uint8(fullAddr & 0x00ff)
-				cart.registers.Delay = 6
-			}
-		}
-	}
-
 	bios := false
 	switch bank {
 	case 0:
@@ -138,6 +125,38 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	default:
 		// RAM banks are indexed from 0 to 2
 		bank--
+	}
+
+	// control register has been read. I've opted to return the value at the
+	// address before the bank switch. I think this is correct but I'm not
+	// sure.
+	if addr == 0x0ff8 {
+		b := cart.ram[bank][addr&0x07ff]
+		if !passive {
+			cart.registers.setConfigByte(cart.registers.Value)
+			cart.registers.Delay = 0
+		}
+		return b, nil
+	}
+
+	if addr == 0x0ff9 {
+		// call load() whenever address is touched, although do not allow
+		// it if RAMwrite is false
+		if passive || !cart.registers.RAMwrite {
+			return 0, nil
+		}
+
+		return cart.tape.load()
+	}
+
+	// note address to be used as the next value in the control register
+	if !passive {
+		if fullAddr&0xf000 == 0xf000 && fullAddr <= 0xf0ff {
+			if cart.registers.Delay == 0 {
+				cart.registers.Value = uint8(fullAddr & 0x00ff)
+				cart.registers.Delay = 6
+			}
+		}
 	}
 
 	if bios {
@@ -156,17 +175,6 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			cart.registers.LastWriteAddress = fullAddr
 			cart.registers.LastWriteValue = cart.registers.Value
 		}
-	}
-
-	// control register has been. I've opted to return the value at the address before
-	// the bank switch. I think this is correct but I'm not sure.
-	if addr == 0x0ff8 {
-		b := cart.ram[bank][addr&0x07ff]
-		if !passive {
-			cart.registers.setConfigByte(cart.registers.Value)
-			cart.registers.Delay = 0
-		}
-		return b, nil
 	}
 
 	return cart.ram[bank][addr&0x07ff], nil
@@ -248,6 +256,7 @@ func (cart *Supercharger) Listen(addr uint16, _ uint8) {
 
 // Step implements the cartMapper interface
 func (cart *Supercharger) Step() {
+	cart.tape.step()
 }
 
 // IterateBank implemnts the disassemble interface
@@ -351,4 +360,26 @@ func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 		cart.ram[bank][idx] = data
 		return
 	}
+}
+
+// Rewind implements the bus.CartTapeBus interface
+//
+// Whether this does anything meaningful depends on the interal implementation
+// of the 'tape' interface.
+func (cart *Supercharger) Rewind() bool {
+	if tape, ok := cart.tape.(bus.CartTapeBus); ok {
+		return tape.Rewind()
+	}
+	return false
+}
+
+// GetTapeState implements the bus.CartTapeBus interface
+//
+// Whether this does anything meaningful depends on the interal implementation
+// of the 'tape' interface.
+func (cart *Supercharger) GetTapeState() (bool, bus.CartTapeState) {
+	if tape, ok := cart.tape.(bus.CartTapeBus); ok {
+		return tape.GetTapeState()
+	}
+	return false, bus.CartTapeState{}
 }

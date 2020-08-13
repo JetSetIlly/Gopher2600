@@ -124,7 +124,7 @@ func (cart *Cartridge) IsEjected() bool {
 // "Cart Information" document [sizes.txt]. Other sources of information noted
 // as appropriate.
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
-	data, err := cartload.Load()
+	err := cartload.Load()
 	if err != nil {
 		return err
 	}
@@ -137,53 +137,53 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	cartload.Mapping = strings.ToUpper(cartload.Mapping)
 
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
-		return cart.fingerprint(data)
+		return cart.fingerprint(cartload)
 	}
 
 	addSuperchip := false
 
 	switch cartload.Mapping {
 	case "2k":
-		cart.mapper, err = newAtari2k(data)
+		cart.mapper, err = newAtari2k(cartload.Data)
 	case "4k":
-		cart.mapper, err = newAtari4k(data)
+		cart.mapper, err = newAtari4k(cartload.Data)
 	case "F8":
-		cart.mapper, err = newAtari8k(data)
+		cart.mapper, err = newAtari8k(cartload.Data)
 	case "F6":
-		cart.mapper, err = newAtari16k(data)
+		cart.mapper, err = newAtari16k(cartload.Data)
 	case "F4":
-		cart.mapper, err = newAtari32k(data)
+		cart.mapper, err = newAtari32k(cartload.Data)
 	case "2k+":
-		cart.mapper, err = newAtari2k(data)
+		cart.mapper, err = newAtari2k(cartload.Data)
 		addSuperchip = true
 	case "4k+":
-		cart.mapper, err = newAtari4k(data)
+		cart.mapper, err = newAtari4k(cartload.Data)
 		addSuperchip = true
 	case "F8+":
-		cart.mapper, err = newAtari8k(data)
+		cart.mapper, err = newAtari8k(cartload.Data)
 		addSuperchip = true
 	case "F6+":
-		cart.mapper, err = newAtari16k(data)
+		cart.mapper, err = newAtari16k(cartload.Data)
 		addSuperchip = true
 	case "F4+":
-		cart.mapper, err = newAtari32k(data)
+		cart.mapper, err = newAtari32k(cartload.Data)
 		addSuperchip = true
 	case "FA":
-		cart.mapper, err = newCBS(data)
+		cart.mapper, err = newCBS(cartload.Data)
 	case "FE":
 		// !!TODO: FE cartridge mapping
 	case "E0":
-		cart.mapper, err = newParkerBros(data)
+		cart.mapper, err = newParkerBros(cartload.Data)
 	case "E7":
-		cart.mapper, err = newMnetwork(data)
+		cart.mapper, err = newMnetwork(cartload.Data)
 	case "3F":
-		cart.mapper, err = newTigervision(data)
+		cart.mapper, err = newTigervision(cartload.Data)
 	case "AR":
-		cart.mapper, err = supercharger.NewSupercharger(data)
+		cart.mapper, err = supercharger.NewSupercharger(cartload)
 	case "DPC":
-		cart.mapper, err = newDPC(data)
+		cart.mapper, err = newDPC(cartload.Data)
 	case "DPC+":
-		cart.mapper, err = harmony.NewDPCplus(data)
+		cart.mapper, err = harmony.NewDPCplus(cartload.Data)
 	}
 
 	if addSuperchip {
@@ -242,7 +242,8 @@ func (cart Cartridge) Step() {
 	cart.mapper.Step()
 }
 
-// GetRegistersBus returns interface to the debugging bus to the cartridge.
+// GetRegistersBus returns interface to the registers of the cartridge or nil
+// if cartridge has no registers
 func (cart Cartridge) GetRegistersBus() bus.CartRegistersBus {
 	if bus, ok := cart.mapper.(bus.CartRegistersBus); ok {
 		return bus
@@ -250,7 +251,8 @@ func (cart Cartridge) GetRegistersBus() bus.CartRegistersBus {
 	return nil
 }
 
-// GetStaticBus returns interface to the debugging bus to the cartridge.
+// GetStaticBus returns interface to the static area of the cartridge or nil if
+// cartridge has no static area
 func (cart Cartridge) GetStaticBus() bus.CartStaticBus {
 	if bus, ok := cart.mapper.(bus.CartStaticBus); ok {
 		return bus
@@ -261,6 +263,14 @@ func (cart Cartridge) GetStaticBus() bus.CartStaticBus {
 // GetRAMbus returns an array of bus.CartRAM or nil if catridge contains no RAM
 func (cart Cartridge) GetRAMbus() bus.CartRAMbus {
 	if bus, ok := cart.mapper.(bus.CartRAMbus); ok {
+		return bus
+	}
+	return nil
+}
+
+// GetTapeBus returns interface to a tape bus or nil if catridge has no tape
+func (cart Cartridge) GetTapeBus() bus.CartTapeBus {
+	if bus, ok := cart.mapper.(bus.CartTapeBus); ok {
 		return bus
 	}
 	return nil

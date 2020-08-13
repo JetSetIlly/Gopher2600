@@ -16,9 +16,9 @@
 package supercharger
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
@@ -59,6 +59,6 @@ func loadBIOS() ([]uint8, error) {
 		return data, nil
 	}
 
-	return nil, errors.New(errors.SuperchargerError, "can't load BIOS")
+	return nil, fmt.Errorf("can't load BIOS")
 
 }
