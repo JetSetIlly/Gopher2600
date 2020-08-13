@@ -33,6 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/deprecated/sdldebug"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hiscore"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/performance"
@@ -239,11 +240,15 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	wav := md.AddString("wav", "", "record audio to wav file")
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
 	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
+	log := md.AddBool("log", false, "echo debugging log to stdout")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
+
+	// set debugging log echo
+	logger.SetEcho(*log)
 
 	switch len(md.RemainingArgs()) {
 	case 0:

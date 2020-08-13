@@ -18,6 +18,7 @@ package logger
 import (
 	"fmt"
 	"io"
+	"os"
 )
 
 type Entry struct {
@@ -25,8 +26,13 @@ type Entry struct {
 	detail string
 }
 
+func (e *Entry) String() string {
+	return fmt.Sprintf("%s: %s\n", e.tag, e.detail)
+}
+
 type logger struct {
 	entries []Entry
+	echo    bool
 }
 
 func newLogger() *logger {
@@ -45,7 +51,11 @@ func init() {
 
 // Log adds an entry to the central logger
 func Log(tag, detail string) {
-	central.entries = append(central.entries, Entry{tag: tag, detail: detail})
+	e := Entry{tag: tag, detail: detail}
+	if central.echo {
+		io.WriteString(os.Stdout, e.String())
+	}
+	central.entries = append(central.entries, e)
 }
 
 // Clear all entries from central logger
@@ -59,8 +69,7 @@ func Write(output io.Writer) bool {
 		return false
 	}
 	for _, e := range central.entries {
-		io.WriteString(output,
-			fmt.Sprintf("%s: %s\n", e.tag, e.detail))
+		io.WriteString(output, e.String())
 	}
 	return true
 }
@@ -73,7 +82,11 @@ func Tail(output io.Writer, number int) {
 	}
 
 	for _, e := range central.entries[len(central.entries)-number:] {
-		io.WriteString(output,
-			fmt.Sprintf("%s: %s\n", e.tag, e.detail))
+		io.WriteString(output, e.String())
 	}
+}
+
+// SetEcho to print new entries to os.Stdout
+func SetEcho(echo bool) {
+	central.echo = echo
 }
