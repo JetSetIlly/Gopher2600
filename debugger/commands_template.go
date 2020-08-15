@@ -108,7 +108,7 @@ var commandTemplate = []string{
 	cmdMissile + " (0|1)",
 	cmdBall,
 	cmdPlayfield,
-	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|ALT (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|DEBUG (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 
 	// user input
 	cmdController + " [0|1] (AUTO|NOAUTO|JOYSTICK|PADDLE|KEYPAD)",

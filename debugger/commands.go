@@ -1023,7 +1023,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
 			}
 
-		case "DBG":
+		case "DEBUG":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
