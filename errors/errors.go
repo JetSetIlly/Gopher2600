@@ -78,6 +78,10 @@ func Has(err error, head string) bool {
 		return true
 	}
 
+	if _, ok := err.(AtariError); !ok {
+		return false
+	}
+
 	for i := range err.(AtariError).Values {
 		if e, ok := err.(AtariError).Values[i].(error); ok {
 			if Has(e, head) {
