@@ -109,6 +109,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 // FromMemoryAgain repeats the disassembly using the existing structures
 func (dsm *Disassembly) FromMemoryAgain(startAddress ...uint16) error {
 	// demote any entry level lower then "executed" to "unused
+	dsm.crit.Lock()
 	for b := 0; b < len(dsm.disasm); b++ {
 		for _, a := range dsm.disasm[b] {
 			if a.Level < EntryLevelExecuted {
@@ -116,6 +117,7 @@ func (dsm *Disassembly) FromMemoryAgain(startAddress ...uint16) error {
 			}
 		}
 	}
+	dsm.crit.Unlock()
 
 	// it's important that we don't initiliase the cartridge during the
 	// fromMemory() process
