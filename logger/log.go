@@ -19,15 +19,23 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 type Entry struct {
-	tag    string
-	detail string
+	tag      string
+	detail   string
+	repeated int
 }
 
 func (e *Entry) String() string {
-	return fmt.Sprintf("%s: %s\n", e.tag, e.detail)
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s: %s", e.tag, e.detail))
+	if e.repeated > 0 {
+		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.repeated+1))
+	}
+	s.WriteString("\n")
+	return s.String()
 }
 
 type logger struct {
@@ -55,7 +63,14 @@ func Log(tag, detail string) {
 	if central.echo {
 		io.WriteString(os.Stdout, e.String())
 	}
-	central.entries = append(central.entries, e)
+
+	if len(central.entries) == 0 ||
+		(e.detail != central.entries[len(central.entries)-1].detail ||
+			e.tag != central.entries[len(central.entries)-1].tag) {
+		central.entries = append(central.entries, e)
+	} else {
+		central.entries[len(central.entries)-1].repeated++
+	}
 }
 
 // Clear all entries from central logger
