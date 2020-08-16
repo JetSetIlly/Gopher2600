@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -82,17 +83,25 @@ func (scr *SdlDebug) Service() {
 				switch ev.Type {
 				case sdl.KEYDOWN:
 					if ev.Repeat == 0 {
-						scr.events <- gui.EventKeyboard{
+						select {
+						case scr.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
-							Down: true}
+							Down: true}:
+						default:
+							logger.Log("sdldebug", "dropped key down event")
+						}
 					}
 				case sdl.KEYUP:
 					if ev.Repeat == 0 {
-						scr.events <- gui.EventKeyboard{
+						select {
+						case scr.events <- gui.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
-							Down: false}
+							Down: false}:
+						default:
+							logger.Log("sdldebug", "dropped key up event")
+						}
 					}
 				}
 
@@ -148,17 +157,33 @@ func (scr *SdlDebug) Service() {
 				if !swallow {
 					if debugClick {
 						hp, sl := scr.convertMouseCoords(ev)
-						scr.events <- gui.EventDbgMouseButton{
+						select {
+						case scr.events <- gui.EventDbgMouseButton{
 							Button:   button,
 							Down:     ev.Type == sdl.MOUSEBUTTONDOWN,
 							X:        int(ev.X),
 							Y:        int(ev.Y),
 							HorizPos: hp,
-							Scanline: sl}
+							Scanline: sl}:
+						default:
+							if ev.Type == sdl.MOUSEBUTTONDOWN {
+								logger.Log("sdlimgui", "dropped mouse down event")
+							} else {
+								logger.Log("sdlimgui", "dropped mouse up event")
+							}
+						}
 					} else {
-						scr.events <- gui.EventMouseButton{
+						select {
+						case scr.events <- gui.EventMouseButton{
 							Button: button,
-							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
+						default:
+							if ev.Type == sdl.MOUSEBUTTONDOWN {
+								logger.Log("sdlimgui", "dropped mouse down event")
+							} else {
+								logger.Log("sdlimgui", "dropped mouse up event")
+							}
+						}
 					}
 				}
 
@@ -179,7 +204,11 @@ func (scr *SdlDebug) Service() {
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 
-				scr.events <- gui.EventMouseMotion{X: x, Y: y}
+				select {
+				case scr.events <- gui.EventMouseMotion{X: x, Y: y}:
+				default:
+					logger.Log("sdldebug", "dropped mouse motion event")
+				}
 				scr.mx = mx
 				scr.my = my
 			}

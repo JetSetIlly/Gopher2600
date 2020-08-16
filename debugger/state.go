@@ -17,6 +17,7 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // The functions in this file are all about getting information in/out of the
@@ -58,5 +59,9 @@ func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
 // of the debygger into another goroutine. Useful for when there is no
 // equivalent terminal command.
 func (dbg *Debugger) PushRawEvent(f func()) {
-	dbg.events.RawEvents <- f
+	select {
+	case dbg.events.RawEvents <- f:
+	default:
+		logger.Log("debugger", "dropped raw event push")
+	}
 }

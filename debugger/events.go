@@ -141,6 +141,7 @@ func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 					dbg.running = false
 				}
 			}
+
 		case ev := <-dbg.events.GuiEvents:
 			err = dbg.guiEventHandler(ev)
 

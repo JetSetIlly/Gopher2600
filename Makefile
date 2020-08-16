@@ -20,7 +20,12 @@ clean:
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
 race:
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Homebrew/chaoticGrill-2019-08-18--NTSC.bin
+# in some instances the overhead of the race detector will cause debugger.PushRawEvent()
+# to drop events on startup. this will result in more log messages than you would
+# normally see
+
+#	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Homebrew/chaoticGrill-2019-08-18--NTSC.bin
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug "/home/steve/Desktop/The Official Frogger.wav"
 
 build_assertions:
 	go build -gcflags $(compileFlags) -tags=assertions

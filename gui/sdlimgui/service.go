@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/veandco/go-sdl2/sdl"
@@ -55,7 +56,11 @@ func (img *SdlImgui) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				img.events <- gui.EventQuit{}
+				select {
+				case img.events <- gui.EventQuit{}:
+				default:
+					panic("quit event jammed: forcing quit (contact developer)")
+				}
 
 			case *sdl.TextInputEvent:
 				if !img.isCaptured() {
@@ -80,17 +85,25 @@ func (img *SdlImgui) Service() {
 					switch ev.Type {
 					case sdl.KEYDOWN:
 						if ev.Repeat == 0 {
-							img.events <- gui.EventKeyboard{
+							select {
+							case img.events <- gui.EventKeyboard{
 								Key:  sdl.GetKeyName(ev.Keysym.Sym),
 								Mod:  mod,
-								Down: true}
+								Down: true}:
+							default:
+								logger.Log("sdlimgui", "dropped key down event")
+							}
 						}
 					case sdl.KEYUP:
 						if ev.Repeat == 0 {
-							img.events <- gui.EventKeyboard{
+							select {
+							case img.events <- gui.EventKeyboard{
 								Key:  sdl.GetKeyName(ev.Keysym.Sym),
 								Mod:  mod,
-								Down: false}
+								Down: false}:
+							default:
+								logger.Log("sdlimgui", "dropped key up event")
+							}
 						}
 					}
 				} else {
@@ -135,9 +148,17 @@ func (img *SdlImgui) Service() {
 				}
 
 				if img.isCaptured() {
-					img.events <- gui.EventMouseButton{
+					select {
+					case img.events <- gui.EventMouseButton{
 						Button: button,
-						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}
+						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
+					default:
+						if ev.Type == sdl.MOUSEBUTTONDOWN {
+							logger.Log("sdlimgui", "dropped mouse down event")
+						} else {
+							logger.Log("sdlimgui", "dropped mouse up event")
+						}
+					}
 				}
 
 			case *sdl.MouseWheelEvent:
@@ -171,7 +192,11 @@ func (img *SdlImgui) Service() {
 				x := float32(mx) / float32(w)
 				y := float32(my) / float32(h)
 
-				img.events <- gui.EventMouseMotion{X: x, Y: y}
+				select {
+				case img.events <- gui.EventMouseMotion{X: x, Y: y}:
+				default:
+					logger.Log("sdlimgui", "dropped mouse motion event")
+				}
 				img.mx = mx
 				img.my = my
 			}
