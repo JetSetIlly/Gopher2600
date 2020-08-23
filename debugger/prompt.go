@@ -26,8 +26,9 @@ import (
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	content := strings.Builder{}
 
-	// decide which address value to use
 	var e *disassembly.Entry
+
+	// decide which address value to use
 	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
 		e = dbg.Disasm.GetEntryByAddress(dbg.VCS.CPU.PC.Address())
 	} else {
@@ -41,9 +42,9 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	// build prompt based on how confident we are of the contents of the
 	// disassembly entry. starting with the condition of no disassembly at all
 	if e == nil {
-		content.WriteString("unsure")
+		content.WriteString(fmt.Sprintf("$%04x", dbg.VCS.CPU.PC.Address()))
 	} else if e.Level == disassembly.EntryLevelUnused {
-		content.WriteString(fmt.Sprintf("%s unsure", e.Address))
+		content.WriteString(fmt.Sprintf("%s", e.Address))
 	} else {
 		// this is the ideal path. the address is in the disassembly and we've
 		// decoded it already

@@ -46,9 +46,15 @@ type Content struct {
 // about a bank is required.
 type Details struct {
 	Number  int
-	IsRAM   bool
-	NonCart bool
 	Segment int
+
+	// is cartridge bank is writable
+	IsRAM bool
+
+	// if the address used to generate the Details is not a cartridge address.
+	// this happens deliberately for example, during the Supercharger load
+	// procedure, where execution happens (briefly) inside the main VCS RAM
+	NonCart bool
 }
 
 func (b Details) String() string {

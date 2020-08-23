@@ -84,6 +84,8 @@ type Entry struct {
 	// /\/\ the fields above are not set by newEntry() they should be set
 	// manually when newEntry() returns
 
+	// \/\/ the entries below are not defined if Level == EntryLevelUnused
+
 	// copy of the CPU execution
 	Result execution.Result
 

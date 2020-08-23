@@ -183,12 +183,17 @@ func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	return nil
 }
 
-// GetEntryByAddress returns the disassembly entry at the specified bank/address.
+// GetEntryByAddress returns the disassembly entry at the specified
+// bank/address. a returned value of nil indicates the entry is not in the
+// cartridge; this will usually mean the address is in main VCS RAM
 func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	bank := dsm.cart.GetBank(address)
-	if bank.Number >= len(dsm.disasm) {
+
+	if bank.NonCart {
+		// !!TODO: attempt to decode instructions not in cartridge
 		return nil
 	}
+
 	return dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
 }
 
