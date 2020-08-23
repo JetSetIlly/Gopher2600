@@ -30,10 +30,8 @@ import (
 // function. output will be normalised and sent to the attached terminal as
 // required.
 func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
-	// resolve string placeholders for styles other than the help style. not
-	// filtering the help style causes HELP output to fail; because the
-	// commandline template uses fmt style placeholders.
-	if sty != terminal.StyleHelp {
+	// resolve placeholders if there are arguments to insert
+	if len(a) > 0 {
 		s = fmt.Sprintf(s, a...)
 	}
 
