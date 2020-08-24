@@ -124,6 +124,8 @@ func NewLoader(filename string, mapping string) Loader {
 			fallthrough
 		case ".AR":
 			fallthrough
+		case ".EF":
+			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
 
