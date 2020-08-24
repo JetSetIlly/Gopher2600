@@ -50,7 +50,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 			return nil, fmt.Errorf("soundload: wav file: %s", err)
 		}
 
-		logger.Log(logTag, "loading from wav file")
+		logger.Log(soundloadLogTag, "loading from wav file")
 		return b.AsFloat32Buffer(), nil
 	}
 
@@ -95,7 +95,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 		}
 	}
 
-	logger.Log(logTag, "loading from mp3 file")
+	logger.Log(soundloadLogTag, "loading from mp3 file")
 	return b.AsFloat32Buffer(), nil
 
 }

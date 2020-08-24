@@ -25,7 +25,7 @@ import (
 )
 
 // tag string used in called to Log()
-const logTag = "supercharger: soundload"
+const soundloadLogTag = "supercharger: soundload"
 
 // SoundLoad implements the Tape interface. It loads data from a sound file.
 //
@@ -79,24 +79,24 @@ func NewSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	}
 
 	// PCM info
-	logger.Log(logTag, fmt.Sprintf("num channels: %d (using one)", numChannels))
-	logger.Log(logTag, fmt.Sprintf("sample rate: %0.2fHz", tap.sampleRate))
-	logger.Log(logTag, fmt.Sprintf("total time: %.02fs", float64(len(tap.samples))/tap.sampleRate))
+	logger.Log(soundloadLogTag, fmt.Sprintf("num channels: %d (using one)", numChannels))
+	logger.Log(soundloadLogTag, fmt.Sprintf("sample rate: %0.2fHz", tap.sampleRate))
+	logger.Log(soundloadLogTag, fmt.Sprintf("total time: %.02fs", float64(len(tap.samples))/tap.sampleRate))
 
 	// the length of time of each sample in microseconds
 	timePerSample := 1000000.0 / tap.sampleRate
-	logger.Log(logTag, fmt.Sprintf("time per sample: %.02fus", timePerSample))
+	logger.Log(soundloadLogTag, fmt.Sprintf("time per sample: %.02fus", timePerSample))
 
 	// number of samples in a cycle for it to be interpreted as a zero or a one
 	// values taken from "Atari 2600 Mappers" document by Kevin Horton
-	logger.Log(logTag, fmt.Sprintf("min/opt/max samples for zero-bit: %d/%d/%d",
+	logger.Log(soundloadLogTag, fmt.Sprintf("min/opt/max samples for zero-bit: %d/%d/%d",
 		int(158.0/timePerSample), int(227.0/timePerSample), int(317.0/timePerSample)))
-	logger.Log(logTag, fmt.Sprintf("min/opt/max samples for one-bit: %d/%d/%d",
+	logger.Log(soundloadLogTag, fmt.Sprintf("min/opt/max samples for one-bit: %d/%d/%d",
 		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample)))
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
 	tap.regulator = int(math.Round(1190000.0 / tap.sampleRate))
-	logger.Log(logTag, fmt.Sprintf("tape regulator: %d", tap.regulator))
+	logger.Log(soundloadLogTag, fmt.Sprintf("tape regulator: %d", tap.regulator))
 
 	// rewind tape to start of header
 	tap.Rewind()
@@ -152,14 +152,14 @@ func (tap *SoundLoad) skipLeader() {
 		tap.idx++
 	}
 	tap.idx--
-	logger.Log(logTag, "tape leader skipped")
+	logger.Log(soundloadLogTag, "tape leader skipped")
 }
 
 // Rewind implements the bus.CartTapeBus interface
 func (tap *SoundLoad) Rewind() bool {
 	// rewinding happens instantaneously
 	tap.idx = 0
-	logger.Log(logTag, "tape rewound")
+	logger.Log(soundloadLogTag, "tape rewound")
 	return true
 }
 

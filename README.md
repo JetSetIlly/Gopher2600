@@ -275,11 +275,18 @@ as required.
 
 ### Supercharger ROMs
 
-Supercharger ROMs require the presence of the supercharger BIOS in the
-configuration directory. It should be named `Supercharger BIOS.bin`.
-
 Gopher2600 can load from MP3, WAV recordings of supercharger tapes, in addition
 to supercharger BIN files.
+
+A copy of the BIOS file must be present. The file should be named:
+
+* Supercharger BIOS.bin
+* Supercharger.BIOS.bin
+* Supercharger_BIOS.bin
+
+The file can be placed in the current working directory or in the same
+directory as the supercharger ROM being loaded. Alternatively, it can be placed
+in the emulator's configuration directory.
 
 ## Recording Gameplay
 

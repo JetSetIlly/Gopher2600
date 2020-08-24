@@ -18,47 +18,89 @@ package supercharger
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
+// list of allowed filenames for the supercharger BIOS
 var biosFile = [...]string{
 	"Supercharger BIOS.bin",
 	"Supercharger.BIOS.bin",
 	"Supercharger_BIOS.bin",
 }
 
-func loadBIOS() ([]uint8, error) {
+// tag string used in called to Log()
+const biosLogTag = "supercharger: bios"
+
+// loadBIOS attempts to load BIOS from (in order of priority):
+//	- current working directory
+//	- the same directory as the tape/bin file
+//	- the emulator's resource path
+func loadBIOS(path string) ([]uint8, error) {
+	// current working directory
 	for _, b := range biosFile {
-		biosFilePath, err := paths.ResourcePath("", b)
-		if err != nil {
-		}
-
-		var f *os.File
-
-		f, err = os.Open(biosFilePath)
-		if err != nil {
-			continue
-		}
-		defer f.Close()
-
-		// get file info. not using Stat() on the file handle because the
-		// windows version (when running under wine) does not handle that
-		cfi, err := os.Stat(biosFilePath)
-		if err != nil {
-			continue
-		}
-		size := cfi.Size()
-
-		data := make([]byte, size)
-		_, err = f.Read(data)
+		d, err := _loadBIOS(b)
 		if err != nil {
 			continue
 		}
 
-		return data, nil
+		logger.Log(biosLogTag, fmt.Sprintf("using %s (from current working directory)", b))
+		return d, nil
+	}
+
+	// the same directory as the tape/bin file
+	for _, b := range biosFile {
+		p := filepath.Join(path, b)
+		d, err := _loadBIOS(p)
+		if err != nil {
+			continue
+		}
+
+		logger.Log(biosLogTag, fmt.Sprintf("using %s", p))
+		return d, nil
+	}
+
+	// the emulator's resource path
+	for _, b := range biosFile {
+		p, err := paths.ResourcePath("", b)
+		if err != nil {
+			return nil, err
+		}
+
+		d, err := _loadBIOS(p)
+		if err != nil {
+			continue
+		}
+
+		logger.Log(biosLogTag, fmt.Sprintf("using %s", p))
+		return d, nil
 	}
 
 	return nil, fmt.Errorf("can't load BIOS")
+}
 
+func _loadBIOS(biosFilePath string) ([]uint8, error) {
+	f, err := os.Open(biosFilePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	// get file info. not using Stat() on the file handle because the
+	// windows version (when running under wine) does not handle that
+	cfi, err := os.Stat(biosFilePath)
+	if err != nil {
+		return nil, err
+	}
+	size := cfi.Size()
+
+	data := make([]byte, size)
+	_, err = f.Read(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
