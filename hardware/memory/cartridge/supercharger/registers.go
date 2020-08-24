@@ -105,7 +105,7 @@ func (r Registers) BankString() string {
 	}
 	s.WriteString("]")
 
-	s.WriteString(fmt.Sprintf("   config-byte: %d", r.ConfigByte))
+	s.WriteString(fmt.Sprintf("   config-byte: %02x", r.ConfigByte))
 
 	return s.String()
 }
