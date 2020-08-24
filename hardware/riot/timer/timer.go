@@ -220,3 +220,8 @@ func (tmr *Timer) SetInterval(interval string) bool {
 
 	return false
 }
+
+// SetTicks sets the number of remaining ticks
+func (tmr *Timer) SetTicks(ticks int) {
+	tmr.TicksRemaining = ticks
+}

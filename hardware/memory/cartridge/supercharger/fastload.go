@@ -127,12 +127,6 @@ func (tap *FastLoad) load() (uint8, error) {
 	// a function disguised as an error type. The VCS knows how to interpret
 	// this error and will call the function
 	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-		tap.cart.registers.setConfigByte(configByte)
-
-		err := mc.LoadPC(startAddress)
-		if err != nil {
-			return fmt.Errorf("fastload: %v", err)
-		}
 
 		// initialise VCS RAM with zeros
 		for a := uint16(0x80); a <= 0xff; a++ {
@@ -144,25 +138,35 @@ func (tap *FastLoad) load() (uint8, error) {
 		// however, by injecting the binary data into supercharger RAM
 		// directly, the necessary code will not be run.
 
-		//  - RAM address 0x80 contains the intial configbyte
+		// RAM address 0x80 contains the intial configbyte
 		ram.Poke(0x80, configByte)
 
-		//  - JMP <absolute address>
+		// CMP $fff8
+		ram.Poke(0xfa, 0xcd)
+		ram.Poke(0xfb, 0xf8)
+		ram.Poke(0xfc, 0xff)
+
+		// JMP <absolute address>
 		ram.Poke(0xfd, 0x4c)
 		ram.Poke(0xfe, uint8(startAddress))
 		ram.Poke(0xff, uint8(startAddress>>8))
 
-		// similar to the RAM poking above, there are other side-effects of the
-		// elided tape loading process. some ROMs rely on these side-effect so
-		// we must recreate them here.
-		//
-		// note that we can count the zeroing of VCS RAM in this category. for
-		// example, Frogger sets the background color on the opening screen to
-		// black, which depends on the correct byte in RAM being set to zero.
+		// reset timer. in refernce to real tape loading, the number of ticks
+		// is the value at the moment the PC reaches address 0x00fa
+		tmr.SetInterval("TIM64T")
+		tmr.SetValue(0x0a)
+		tmr.SetTicks(0x1e)
 
-		//  - reset timer [required by rabbit transit]
-		tmr.SetInterval("T1024T")
-		tmr.SetValue(0x4c)
+		// jump to VCS RAM location 0x00fa. a short bootstrap program has been
+		// poked there already
+		err := mc.LoadPC(0x00fa)
+		if err != nil {
+			return fmt.Errorf("fastload: %v", err)
+		}
+
+		// set the value to be used in the first instruction of the bootstrap program
+		tap.cart.registers.Value = configByte
+		tap.cart.registers.Delay = 0
 
 		return nil
 	})
