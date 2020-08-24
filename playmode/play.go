@@ -48,6 +48,13 @@ type playmode struct {
 func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
 	var recording string
 
+	// set OnLoaded function for specific cartridge formats
+	if cartload.Mapping == "AR" {
+		cartload.OnLoaded = func() error {
+			return tv.Reset()
+		}
+	}
+
 	// if supplied cartridge name is actually a playback file then set
 	// recording variable and dump cartridgeLoader information
 	if recorder.IsPlaybackFile(cartload.Filename) {

@@ -294,6 +294,17 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of symtable in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
+	// set OnLoaded function for specific cartridge formats
+	if cartload.Mapping == "AR" {
+		cartload.OnLoaded = func() error {
+			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
+			// during loading. not completely necessary I don't think, but it would be
+			// nice to have.
+			dbg.Disasm.FromMemoryAgain()
+			return dbg.tv.Reset()
+		}
+	}
+
 	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)
 	if err != nil {
 		return errors.New(errors.DebuggerError, err)

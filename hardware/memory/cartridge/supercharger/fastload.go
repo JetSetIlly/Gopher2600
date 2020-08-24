@@ -54,6 +54,9 @@ type FastLoad struct {
 // like this is justified. It is an exception to the rule, so to speak, and
 // setting up another way of sending the "fast load completed" signal is
 // inappropriate.
+//
+// !!TODO: is there a good way of handling FastLoading completion through the
+// cartridgeloader.OnLoader() mechanism?
 type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
 
 func (er FastLoaded) Error() string {

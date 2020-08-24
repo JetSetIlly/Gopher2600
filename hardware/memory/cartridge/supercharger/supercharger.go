@@ -52,6 +52,8 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 	ram      [3][]uint8
+
+	onLoaded func() error
 }
 
 // NewSupercharger is the preferred method of initialisation for the
@@ -84,6 +86,13 @@ func NewSupercharger(cartload cartridgeloader.Loader) (*Supercharger, error) {
 	cart.bios, err = loadBIOS(path.Dir(cartload.Filename))
 	if err != nil {
 		return nil, errors.New(errors.SuperchargerError, err)
+	}
+
+	// prepare onLoaded function
+	if cartload.OnLoaded == nil {
+		cart.onLoaded = func() error { return nil }
+	} else {
+		cart.onLoaded = cartload.OnLoaded
 	}
 
 	cart.Initialise()
@@ -162,15 +171,24 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.registers.ROMpower {
+			// trigger onLoaded() function whenever BIOS address $fa1a (specifically)
+			// is touched. note that this method means that the onLoaded()
+			// function will called whatever the context the address is read
+			// and not just when the PC is at the address.
+			if fullAddr == 0xfa1a {
+				err := cart.onLoaded()
+				if err != nil {
+					return 0, errors.New(errors.SuperchargerError, err)
+				}
+			}
+
 			return cart.bios[addr&0x07ff], nil
 		}
+
 		return 0, errors.New(errors.SuperchargerError, "ROM is powered off")
 	}
 
 	if !passive && cart.registers.Delay == 1 {
-		if bios {
-			return 0, errors.New(errors.SuperchargerError, "trying to write to ROM")
-		}
 		if cart.registers.RAMwrite {
 			cart.ram[bank][addr&0x07ff] = cart.registers.Value
 			cart.registers.LastWriteAddress = fullAddr

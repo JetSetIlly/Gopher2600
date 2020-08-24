@@ -31,7 +31,6 @@ import (
 // the VCS. it also permits the called to specify the mapping of the cartridge
 // (if necessary. fingerprinting is pretty good)
 type Loader struct {
-
 	// filename of cartridge to load.
 	Filename string
 
@@ -52,6 +51,13 @@ type Loader struct {
 
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
+
+	// callback function when cartridge has been successfully inserted/loaded.
+	// not all cartridge formats support this. currently only supercharger
+	// supports/requires it.
+	//
+	// !!TODO: all cartridge formats to support OnLoaded() callback (for completeness)
+	OnLoaded func() error
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
