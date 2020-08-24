@@ -155,7 +155,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		vcs:     vcs,
 		scr:     scr,
 		intChan: make(chan os.Signal, 1),
-		guiChan: make(chan gui.Event, 1),
+		guiChan: make(chan gui.Event, 10),
 	}
 
 	// connect gui

@@ -204,7 +204,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	// RawEvents are pushed thick and fast and the channel queue should be
 	// pretty lengthy to prevent dropped events (see PushRawEvent() function).
 	dbg.events = &terminal.ReadEvents{
-		GuiEvents:       make(chan gui.Event, 1),
+		GuiEvents:       make(chan gui.Event, 10),
 		GuiEventHandler: dbg.guiEventHandler,
 		IntEvents:       make(chan os.Signal, 1),
 		RawEvents:       make(chan func(), 1024),
