@@ -278,6 +278,9 @@ as required.
 Supercharger ROMs require the presence of the supercharger BIOS in the
 configuration directory. It should be named `Supercharger BIOS.bin`.
 
+Gopher2600 can load from MP3, WAV recordings of supercharger tapes, in addition
+to supercharger BIN files.
+
 ## Recording Gameplay
 
 Gopher2600 can record all user input and playback for future viewing. This is a very efficient way
@@ -395,4 +398,5 @@ The following projects are used in the gopher2600 project.
 * https://github.com/go-gl/gl
 * https://github.com/go-audio/audio
 * https://github.com/go-audio/wav
+* https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term

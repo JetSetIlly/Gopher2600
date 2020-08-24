@@ -17,11 +17,8 @@ package supercharger
 
 import (
 	"fmt"
-	"io"
 	"math"
 
-	"github.com/go-audio/audio"
-	"github.com/go-audio/wav"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -187,73 +184,4 @@ func (tap *SoundLoad) GetTapeState() (bool, bus.CartTapeState) {
 	}
 
 	return true, state
-}
-
-// pcmDecoder is an implementation of io.ReadSeeker. it is used by the wav.Decoder type
-type pcmDecoder struct {
-	data   []uint8
-	offset int
-}
-
-func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
-	dec := wav.NewDecoder(&pcmDecoder{data: cl.Data})
-
-	if !dec.IsValidFile() {
-		return nil, fmt.Errorf("soundload: data is not a valid WAV file")
-	}
-
-	b, err := dec.FullPCMBuffer()
-	if err != nil {
-		return nil, err
-	}
-
-	return b.AsFloat32Buffer(), nil
-}
-
-// Read is an implementation of io.ReadSeeker
-func (d *pcmDecoder) Read(p []byte) (int, error) {
-	// return EOF error if no more bytes to copy
-	if d.offset >= len(d.data) {
-		return 0, io.EOF
-	}
-
-	// end byte of the data we're copying from
-	n := d.offset + len(p)
-
-	if n > len(d.data) {
-		n = len(d.data)
-	}
-
-	// copy data to p
-	copy(p, d.data[d.offset:n])
-
-	// how many bytes were read
-	n = n - d.offset
-
-	// advance offset
-	d.offset += n
-	if d.offset > len(d.data) {
-		d.offset = len(d.data)
-	}
-
-	return n, nil
-}
-
-// Seek is an implementation of io.ReadSeeker
-func (d *pcmDecoder) Seek(offset int64, whence int) (int64, error) {
-	switch whence {
-	case io.SeekStart:
-		d.offset = int(offset)
-	case io.SeekCurrent:
-		d.offset += int(offset)
-	case io.SeekEnd:
-		d.offset = len(d.data) - int(offset)
-	}
-
-	if d.offset < 0 {
-		d.offset = 0
-		return int64(d.offset), io.EOF
-	}
-
-	return int64(d.offset), nil
 }

@@ -80,10 +80,12 @@ func NewLoader(filename string, mapping string) Loader {
 	} else {
 		ext := strings.ToUpper(path.Ext(filename))
 		switch ext {
+
 		case ".BIN":
 			fallthrough
 		case ".A26":
 			cl.Mapping = "AUTO"
+
 		case ".2k":
 			fallthrough
 		case ".4k":
@@ -118,9 +120,13 @@ func NewLoader(filename string, mapping string) Loader {
 			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
+
 		case ".DP+":
 			cl.Mapping = "DPC+"
+
 		case ".WAV":
+			fallthrough
+		case ".MP3":
 			cl.Mapping = "AR"
 			cl.IsSoundData = true
 		}
