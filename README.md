@@ -1,6 +1,6 @@
 # Gopher2600
 
-Gopher2600 is an emulator for the Atari 2600. Whilst the performance is not as efficient as some other emulators it is none-the-less suitable for playing games, on a reasonably modern computer, at the required 60fps. (The development machine for Gopher2600 has been an i3-3225, dating from around 2012.)
+`Gopher2600` is an emulator for the Atari 2600. Whilst the performance is not as efficient as some other emulators it is none-the-less suitable for playing games, on a reasonably modern computer, at the required 60fps. (The development machine for `Gopher2600` has been an i3-3225, dating from around 2012.)
 
 <img src=".screenshots/crt_official_frogger.png" alt="gopher2600 showing Official Frogger with CRT effects"/>
 
@@ -8,7 +8,7 @@ The accuracy of the emulation is very high although this is difficult to prove. 
 
 The 6507 emulation is also very accurate although, at the time of writing, not all undocumentated opcodes are implemented. That said, the emulation method used for the CPU means adding a missing opcode is trivial.
 
-The emulator also comes with a powerful graphical debugger. This is still in active development with many planned additional features but currently it features:
+The emulator also comes with a powerful [graphical debugger](#debugger). This is still in active development with many planned additional features but currently it features:
 
 * CPU and Video stepping
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
@@ -19,11 +19,13 @@ The emulator also comes with a powerful graphical debugger. This is still in act
 
 <img src=".screenshots/dear_debugger.png" height="400" alt="gopher2600's graphical debugger"/>
 
-In addition to the debugger, `Gopher2600` can record and playback gameplay sessions. This powerful feature efficiently records user input to a text file, suitable for passing along to other people for viewing.
+In addition to the debugger, `Gopher2600` can [record and playback gameplay sessions](#recording-gameplay). This powerful feature efficiently records user input to a text file, suitable for passing along to other people for viewing.
 
-The gameplay playback feature is also used in the inbuilt "regression database". This database allow for easy testing of the emulator's integrity and was of invaluable use during development of the emulator. This feature will also be of use perhaps when developing new ROMs for the Atari 2600 - a way of recording the ideal output of the ROM for future comparison.
+The gameplay playback feature is also used in the inbuilt [regression database](#regression-database). This database allow for easy testing of the emulator's integrity and was of invaluable use during development of the emulator. This feature will also be of use perhaps when developing new ROMs for the Atari 2600 - a way of recording the ideal output of the ROM for future comparison.
 
-The Atari 2600 comes with a variety of hand controllers and `Gopher2600` does it's very best to automatically select the correct input device. This is an feature that will be expanded on greatly in the future but currently joysticks, paddles and keyboard are all supported.
+The Atari 2600 comes with a variety of [hand controllers](#hand-controllers) and `Gopher2600` does it's very best to automatically select the correct input device. This is an feature that will be expanded on greatly in the future but currently joysticks, paddles and keyboard are all supported.
+
+`Gopher2600` supports a variety of cartridge formats including [Supercharger](#supercharger-roms) from MP3 or WAV files. It supports `DPC+` format although there is no support for the ARM as yet. Most other formats are also supported.
 
 `Gopher2600` is in active development and feature requests are welcomed.
 
@@ -33,11 +35,11 @@ A variety of screenshots from various points in the emulator's development.
 
 <img src=".screenshots/barnstormer.png" height="200" alt="barnstormer"/> <img src=".screenshots/pole_position.png" height="200" alt="pole position"/> <img src=".screenshots/ateam.png" height="200" alt="ateam"/> <img src=".screenshots/he_man_title.png" height="200" alt="he man title screen"/>
 
-The following screenshot shows the fabled `ET` ROM. In this case the ROM has been patched to fix some notorious issues with the original game. Notice, the colour of ET and how he is standing in front of the pit? The patches in question were taken from http://www.neocomputer.org/projects/et/ and automatically applied. Auto-patching of ROMs is a feature of the emulator
+The following screenshot shows the fabled _ET_ ROM. In this case the ROM has been patched to fix some notorious issues with the original game. Notice, the colour of _ET_ and how he is standing in front of the pit? The patches in question were taken from http://www.neocomputer.org/projects/et/ and automatically applied. Auto-patching of ROMs is a feature of the emulator
 
 <img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
 
-The next three images show the "TV screen" of the graphical debugger in various states. In the first screenshot, we see `Barnstormer` with the "debug colours" turned on. This idea was taken from the Stella emulator and indeed, these are the same colours used in that emulator. Unlike Stella however, we can also see the off-screen areas of the tv image, and in particular, the sprites as they "appear" off-screen. 
+The next three images show the "TV screen" of the graphical debugger in various states. In the first screenshot, we see _Barnstormer_ with the "debug colours" turned on. This idea was taken from the Stella emulator and indeed, these are the same colours used in that emulator. Unlike Stella however, we can also see the off-screen areas of the tv image, and in particular, the sprites as they "appear" off-screen. 
 
 <img src=".screenshots/barnstormer_debug_colors.png" width="400" alt="barnstormer with debug colors"/>
 
@@ -45,7 +47,7 @@ The next two screenshots show the `Gopher2600's` overlay feature. An overlay is 
 
 The first screenshot shows the `WSYNC` overlay. This overlay shows us graphically the scanlines on which WSYNC has been triggered. In Atari 2600 programming terms, the WSYNC is a way of synchronising the CPU with the TIA. The downside of the WSYNC is that CPU cycles are wasted - something that is not always obvious when looking at the ROM's assembly.
 
-The second screenshot shows 'Pitfall 2' and we can see straight away that fewer CPU cycles are wasted, simply by the shorter and less frequent blue bars extending to the right of the screen.
+The second screenshot shows _Pitfall 2_ and we can see straight away that fewer CPU cycles are wasted, simply by the shorter and less frequent blue bars extending to the right of the screen.
 
 <img src=".screenshots/pitfall_overlay.png" width="400" alt="pitfall with overlay"/> <img src=".screenshots/pitfall2_overlay.png" width="400" alt="pitfall with overlay"/> 
 
@@ -54,7 +56,7 @@ The second screenshot shows 'Pitfall 2' and we can see straight away that fewer 
 The Stella project (https://stella-emu.github.io/) was used as a reference for
 video output. I made the decision not to use or even to look at any of Stella's
 implementation details. The exception to this was a peek at the audio
-sub-system. Primarily however, Gopher2600's audio implementation references Ron
+sub-system. Primarily however, `Gopher2600's` audio implementation references Ron
 Fries' original TIASound.c file.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
@@ -94,16 +96,10 @@ The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/
 
 Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
 
-## ROMs used during development
-
-A variety of ROMs were used throughout development and compared with the
-Stella emulator for accuracy.
-
 ## Compilation
 
-The project has most recently been tested with Go v1.14. It will not work with
-versions earlier than v1.13 because of language features added in that version
-(binary literals).
+The project has most recently been tested with Go v1.15. Earlier versions may work
+but v1.15 is recommended due to recent performance improvements.
 
 The project uses the Go module system and dependencies will be resolved
 automatically. Do note however, that you will also require the SDL development
@@ -256,7 +252,7 @@ Scripts can be recorded and played back with the `SCRIPT` command. All commands 
 
 ## Configuration Directory
 
-Gopher2600 will look for certain files in a configuration directory. The location
+`Gopher2600` will look for certain files in a configuration directory. The location
 of this directory depends on whether the executable is a release executable (built
 with "make release") or a development executable (made with "make build"). For
 development executables the configuration directory is named `.gopher2600` and is 
@@ -273,10 +269,9 @@ For Window, files will be in the user's `Application Data/gopher2600` folder
 In all instances, the directory, sub-directory and files will be created automatically
 as required.
 
-### Supercharger ROMs
+## Supercharger ROMs
 
-Gopher2600 can load from MP3, WAV recordings of supercharger tapes, in addition
-to supercharger BIN files.
+`Gopher2600` can load supercharger tapes from MP3 and WAV file, in addition to supercharger BIN files.
 
 A copy of the BIOS file must be present. The file should be named:
 
@@ -286,11 +281,11 @@ A copy of the BIOS file must be present. The file should be named:
 
 The file can be placed in the current working directory or in the same
 directory as the supercharger ROM being loaded. Alternatively, it can be placed
-in the emulator's configuration directory.
+in the emulator's [configuration directory](#configuration-directory).
 
 ## Recording Gameplay
 
-Gopher2600 can record all user input and playback for future viewing. This is a very efficient way
+`Gopher2600` can record all user input and playback for future viewing. This is a very efficient way
 of recording gameplay and results in far smaller files than a video recording. It also has other uses,
 not least for the recording of complex tests for the regression database.
 
@@ -397,7 +392,7 @@ own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
 
 ## Other Software / Libraries
 
-The following projects are used in the gopher2600 project.
+The following projects are used in the `Gopher2600` project.
 
 * https://github.com/ocornut/imgui
 * https://github.com/inkyblackness/imgui-go
