@@ -262,10 +262,9 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				err := mc.ExecuteInstruction(nil)
 
 				unimplementedInstruction := errors.Is(err, errors.UnimplementedInstruction)
-				programCounterCycled := errors.Is(err, errors.ProgramCounterCycled)
 
 				// filter out the predictable errors
-				if err != nil && !unimplementedInstruction && !programCounterCycled {
+				if err != nil && !unimplementedInstruction {
 					return err
 				}
 
@@ -276,7 +275,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				}
 
 				// if it's a valid instruction then update the field width information
-				if !unimplementedInstruction && !programCounterCycled {
+				if !unimplementedInstruction {
 					if err = mc.LastResult.IsValid(); err != nil {
 						return err
 					}

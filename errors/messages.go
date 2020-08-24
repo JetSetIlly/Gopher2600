@@ -95,7 +95,6 @@ const (
 
 	// cpu
 	InvalidResult          = "cpu error: %v"
-	ProgramCounterCycled   = "cpu error: program counter cycled back to 0x0000"
 	InvalidDuringExecution = "cpu error: invalid operation mid-instruction (%v)"
 	CPUBug                 = "cpu bug: %v"
 	// TODO: remove this once all opcodes are defined/implemented

@@ -304,7 +304,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 
 	carry, _ := mc.PC.Add(1)
 	if carry {
-		return errors.New(errors.ProgramCounterCycled)
+		// program counter cycled
 	}
 
 	// bump the number of bytes read during instruction decode
@@ -347,7 +347,7 @@ func (mc *CPU) read16BitPC() error {
 
 	carry, _ := mc.PC.Add(1)
 	if carry {
-		return errors.New(errors.ProgramCounterCycled)
+		// program counter cycled
 	}
 
 	// bump the number of bytes read during instruction decode
@@ -372,7 +372,7 @@ func (mc *CPU) read16BitPC() error {
 
 	carry, _ = mc.PC.Add(1)
 	if carry {
-		return errors.New(errors.ProgramCounterCycled)
+		// program counter cycled
 	}
 
 	// bump the number of bytes read during instruction decode
