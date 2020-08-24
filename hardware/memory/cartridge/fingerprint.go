@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func fingerprint3ePlus(b []byte) bool {
@@ -80,6 +81,10 @@ func fingerprintParkerBros(b []byte) bool {
 	return false
 }
 
+func fingerprintDF(b []byte) bool {
+	return b[0xff8] == 'D' && b[0xff9] == 'F' && b[0xffa] == 'S' && b[0xffb] == 'C'
+}
+
 func fingerprintHarmony(b []byte) bool {
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
 }
@@ -136,6 +141,15 @@ func fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
 	}
 
 	return newAtari32k
+}
+
+func fingerprint128k(data []byte) func([]byte) (cartMapper, error) {
+	if fingerprintDF(data) {
+		return newDF
+	}
+
+	logger.Log("fingerprint", "not confident that this is DF file")
+	return newDF
 }
 
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
@@ -205,6 +219,12 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	case 65536:
 		return errors.New(errors.CartridgeError, "65536 bytes not yet supported")
+
+	case 131072:
+		cart.mapper, err = fingerprint128k(cartload.Data)(cartload.Data)
+		if err != nil {
+			return err
+		}
 
 	default:
 		return errors.New(errors.CartridgeError, fmt.Sprintf("unrecognised cartridge size (%d bytes)", len(cartload.Data)))

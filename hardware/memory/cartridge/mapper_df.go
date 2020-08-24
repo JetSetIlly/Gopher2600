@@ -39,10 +39,10 @@ type df struct {
 	ram []uint8
 }
 
-func newdf(data []byte) (cartMapper, error) {
+func newDF(data []byte) (cartMapper, error) {
 	cart := &df{
-		mappingID:   "df",
-		description: "df",
+		mappingID:   "DF",
+		description: "128KB",
 		bankSize:    4096,
 		ram:         make([]uint8, 256),
 	}
@@ -75,7 +75,8 @@ func (cart df) ID() string {
 
 // Initialise implements the cartMapper interface
 func (cart *df) Initialise() {
-	cart.bank = len(cart.banks) - 1
+	cart.bank = 15
+
 	for i := range cart.ram {
 		cart.ram[i] = 0x00
 	}
@@ -87,8 +88,8 @@ func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
 		return 0, nil
 	}
 
-	if addr >= 0x0100 && addr <= 0x01ff {
-		return cart.ram[addr-0x100], nil
+	if addr >= 0x0080 && addr <= 0x00ff {
+		return cart.ram[addr-0x80], nil
 	}
 
 	data := cart.banks[cart.bank][addr]
@@ -102,7 +103,7 @@ func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		return nil
 	}
 
-	if addr <= 0x00ff {
+	if addr <= 0x007f {
 		cart.ram[addr] = data
 		return nil
 	}
@@ -117,16 +118,77 @@ func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 
 // bankswitch on hotspot access
 func (cart *df) hotspot(addr uint16, passive bool) bool {
-	if addr >= 0x0ff8 && addr <= 0xffa {
+	if addr >= 0x0fc0 && addr <= 0xfdf {
 		if passive {
 			return true
 		}
-		if addr == 0x0ff8 {
+
+		// looking at this switch, I'm now thinking hotspots could be done
+		// programmatically. for now though, we'll keep it like this.
+		if addr == 0x0fc0 {
 			cart.bank = 0
-		} else if addr == 0x0ff9 {
+		} else if addr == 0x0fc1 {
 			cart.bank = 1
-		} else if addr == 0x0ffa {
+		} else if addr == 0x0fc2 {
 			cart.bank = 2
+		} else if addr == 0x0fc3 {
+			cart.bank = 3
+		} else if addr == 0x0fc4 {
+			cart.bank = 4
+		} else if addr == 0x0fc5 {
+			cart.bank = 5
+		} else if addr == 0x0fc6 {
+			cart.bank = 6
+		} else if addr == 0x0fc7 {
+			cart.bank = 7
+		} else if addr == 0x0fc8 {
+			cart.bank = 8
+		} else if addr == 0x0fc9 {
+			cart.bank = 9
+		} else if addr == 0x0fca {
+			cart.bank = 10
+		} else if addr == 0x0fcb {
+			cart.bank = 11
+		} else if addr == 0x0fcc {
+			cart.bank = 12
+		} else if addr == 0x0fcd {
+			cart.bank = 13
+		} else if addr == 0x0fce {
+			cart.bank = 14
+		} else if addr == 0x0fcf {
+			cart.bank = 15
+		} else if addr == 0x0fd0 {
+			cart.bank = 16
+		} else if addr == 0x0fd1 {
+			cart.bank = 17
+		} else if addr == 0x0fd2 {
+			cart.bank = 18
+		} else if addr == 0x0fd3 {
+			cart.bank = 19
+		} else if addr == 0x0fd4 {
+			cart.bank = 20
+		} else if addr == 0x0fd5 {
+			cart.bank = 21
+		} else if addr == 0x0fd6 {
+			cart.bank = 22
+		} else if addr == 0x0fd7 {
+			cart.bank = 23
+		} else if addr == 0x0fd8 {
+			cart.bank = 24
+		} else if addr == 0x0fd9 {
+			cart.bank = 25
+		} else if addr == 0x0fda {
+			cart.bank = 26
+		} else if addr == 0x0fdb {
+			cart.bank = 27
+		} else if addr == 0x0fdc {
+			cart.bank = 28
+		} else if addr == 0x0fdd {
+			cart.bank = 29
+		} else if addr == 0x0fde {
+			cart.bank = 30
+		} else if addr == 0x0fdf {
+			cart.bank = 31
 		}
 		return true
 	}
@@ -135,7 +197,7 @@ func (cart *df) hotspot(addr uint16, passive bool) bool {
 
 // NumBanks implements the cartMapper interface
 func (cart df) NumBanks() int {
-	return 16
+	return 32
 }
 
 // GetBank implements the cartMapper interface
