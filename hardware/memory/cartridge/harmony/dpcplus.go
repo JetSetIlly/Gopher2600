@@ -122,6 +122,7 @@ func (cart *dpcPlus) Initialise() {
 
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	if cart.hotspot(addr, passive) {
+		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
 	}
 

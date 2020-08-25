@@ -84,17 +84,13 @@ func (cart *df) Initialise() {
 
 // Read implements the cartMapper interface
 func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
-		return 0, nil
-	}
-
 	if addr >= 0x0080 && addr <= 0x00ff {
 		return cart.ram[addr-0x80], nil
 	}
 
-	data := cart.banks[cart.bank][addr]
+	cart.hotspot(addr, passive)
 
-	return data, nil
+	return cart.banks[cart.bank][addr], nil
 }
 
 // Write implements the cartMapper interface

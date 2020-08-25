@@ -375,17 +375,13 @@ func (cart atari8k) NumBanks() int {
 
 // Read implements the cartMapper interface
 func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
-		return 0, nil
-	}
-
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
 	}
 
-	data := cart.banks[cart.bank][addr]
+	cart.hotspot(addr, passive)
 
-	return data, nil
+	return cart.banks[cart.bank][addr], nil
 }
 
 // Write implements the cartMapper interface
@@ -455,17 +451,13 @@ func (cart atari16k) NumBanks() int {
 
 // Read implements the cartMapper interface
 func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
-		return 0, nil
-	}
-
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
 	}
 
-	data := cart.banks[cart.bank][addr]
+	cart.hotspot(addr, passive)
 
-	return data, nil
+	return cart.banks[cart.bank][addr], nil
 }
 
 // Write implements the cartMapper interface
@@ -539,17 +531,13 @@ func (cart atari32k) NumBanks() int {
 
 // Read implements the cartMapper interface
 func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
-		return 0, nil
-	}
-
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
 	}
 
-	data := cart.banks[cart.bank][addr]
+	cart.hotspot(addr, passive)
 
-	return data, nil
+	return cart.banks[cart.bank][addr], nil
 }
 
 // Write implements the cartMapper interface

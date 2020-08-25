@@ -95,10 +95,6 @@ func (cart *parkerBros) Initialise() {
 
 // Read implements the cartMapper interface
 func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
-		return 0, nil
-	}
-
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.segment[0]][addr&0x03ff]
@@ -109,15 +105,14 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		data = cart.banks[cart.segment[3]][addr&0x03ff]
 	}
+
+	cart.hotspot(addr, passive)
+
 	return data, nil
 }
 
 // Write implements the cartMapper interface
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.hotspot(addr, passive) {
-		return nil
-	}
-
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
 			cart.banks[cart.segment[0]][addr&0x3dd] = data
@@ -129,6 +124,8 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 			cart.banks[cart.segment[3]][addr&0x3dd] = data
 		}
 	}
+
+	cart.hotspot(addr, passive)
 
 	return errors.New(errors.MemoryBusError, addr)
 }
