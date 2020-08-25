@@ -182,7 +182,7 @@ func (win *winTIA) drawPlayfield() {
 	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1)
 
 	// first half of the playfield
-	for _, v := range lz.Data {
+	for _, v := range lz.LeftData {
 		var col uint8
 		if v {
 			col = lz.ForegroundColor
@@ -194,12 +194,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 
 	// second half of the playfield
-	for i, v := range lz.Data {
-		// correct for reflected playfield
-		if lz.Reflected {
-			v = lz.Data[len(lz.Data)-1-i]
-		}
-
+	for _, v := range lz.RightData {
 		var col uint8
 		if v {
 			col = lz.ForegroundColor
@@ -215,7 +210,7 @@ func (win *winTIA) drawPlayfield() {
 	if lz.Region != video.RegionOffScreen {
 		idx := lz.Idx
 		if lz.Region == video.RegionRight {
-			idx += len(lz.Data)
+			idx += len(lz.LeftData)
 		}
 
 		p1 := imgui.Vec2{

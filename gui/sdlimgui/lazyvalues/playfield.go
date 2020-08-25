@@ -36,7 +36,8 @@ type LazyPlayfield struct {
 	atomicPF1             atomic.Value // uint8
 	atomicPF2             atomic.Value // uint8
 	atomicIdx             atomic.Value // int
-	atomicData            atomic.Value // []uint8
+	atomicLeftData        atomic.Value // []bool
+	atomicRightData       atomic.Value // []bool
 
 	Ctrlpf          uint8
 	ForegroundColor uint8
@@ -49,7 +50,8 @@ type LazyPlayfield struct {
 	PF1             uint8
 	PF2             uint8
 	Idx             int
-	Data            [20]bool
+	LeftData        []bool
+	RightData       []bool
 }
 
 func newLazyPlayfield(val *Lazy) *LazyPlayfield {
@@ -69,8 +71,15 @@ func (lz *LazyPlayfield) update() {
 		lz.atomicPF1.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.PF1)
 		lz.atomicPF2.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.PF2)
 		lz.atomicIdx.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.Idx)
-		lz.atomicData.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.Data)
+
+		l := make([]bool, video.RegionWidth)
+		r := make([]bool, video.RegionWidth)
+		copy(l, *lz.val.Dbg.VCS.TIA.Video.Playfield.LeftData)
+		copy(r, *lz.val.Dbg.VCS.TIA.Video.Playfield.RightData)
+		lz.atomicLeftData.Store(l)
+		lz.atomicRightData.Store(r)
 	})
+
 	lz.Ctrlpf, _ = lz.atomicCtrlpf.Load().(uint8)
 	lz.ForegroundColor, _ = lz.atomicForegroundColor.Load().(uint8)
 	lz.BackgroundColor, _ = lz.atomicBackgroundColor.Load().(uint8)
@@ -82,5 +91,6 @@ func (lz *LazyPlayfield) update() {
 	lz.PF1, _ = lz.atomicPF1.Load().(uint8)
 	lz.PF2, _ = lz.atomicPF2.Load().(uint8)
 	lz.Idx, _ = lz.atomicIdx.Load().(int)
-	lz.Data, _ = lz.atomicData.Load().([20]bool)
+	lz.LeftData, _ = lz.atomicLeftData.Load().([]bool)
+	lz.RightData, _ = lz.atomicRightData.Load().([]bool)
 }
