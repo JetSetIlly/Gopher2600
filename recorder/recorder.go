@@ -23,13 +23,13 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// Recorder transcribes user input to a file. The transcribed file is intended
-// for future playback. The Recorder type implements the
-// riot.input.EventRecorder interface.
+// Recorder transcribes user input to a file. The recorded file is intended
+// for future playback. The Recorder type implements the ports.EventRecorder
+// interface.
 type Recorder struct {
 	vcs    *hardware.VCS
 	output *os.File
@@ -54,9 +54,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	rec := &Recorder{vcs: vcs}
 
 	// attach recorder to vcs peripherals, including the panel
-	vcs.HandController0.AttachEventRecorder(rec)
-	vcs.HandController1.AttachEventRecorder(rec)
-	vcs.Panel.AttachEventRecorder(rec)
+	vcs.RIOT.Ports.AttachEventRecorder(rec)
 
 	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)
@@ -90,7 +88,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End flushes all remaining transcription to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	err := rec.RecordEvent(input.PanelID, input.PanelPowerOff, nil)
+	err := rec.RecordEvent(ports.PanelID, ports.PanelPowerOff, nil)
 	if err != nil {
 		return errors.New(errors.RecordingError, err)
 	}
@@ -103,8 +101,8 @@ func (rec *Recorder) End() error {
 	return nil
 }
 
-// RecordEvent implements the input.EventRecorder interface
-func (rec *Recorder) RecordEvent(id input.ID, event input.Event, value input.EventData) error {
+// RecordEvent implements the ports.EventRecorder interface
+func (rec *Recorder) RecordEvent(id ports.ID, event ports.Event, value ports.EventData) error {
 	var err error
 
 	// write header if it's not been written already
@@ -117,7 +115,7 @@ func (rec *Recorder) RecordEvent(id input.ID, event input.Event, value input.Eve
 	}
 
 	// don't do anything if event is the NoEvent
-	if event == input.NoEvent {
+	if event == ports.NoEvent {
 		return nil
 	}
 

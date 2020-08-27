@@ -32,7 +32,8 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -1062,53 +1063,57 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdController:
 		player, _ := tokens.Get()
 
-		var p *input.HandController
+		var p ports.Peripheral
 		switch player {
 		case "0":
-			p = dbg.VCS.HandController0
+			p = dbg.VCS.RIOT.Ports.Player0
 		case "1":
-			p = dbg.VCS.HandController1
+			p = dbg.VCS.RIOT.Ports.Player1
 		}
 
-		controller, ok := tokens.Get()
-		if ok {
-			switch strings.ToLower(controller) {
-			case "auto":
-				p.SetAuto(true)
-			case "noauto":
-				p.SetAuto(false)
-			case "joystick":
-				p.SwitchType(input.JoystickType)
-			case "paddle":
-				p.SwitchType(input.PaddleType)
-			case "keypad":
-				p.SwitchType(input.KeypadType)
+		if p, ok := p.(*controllers.Multi); ok {
+			controller, ok := tokens.Get()
+			if ok {
+				switch strings.ToLower(controller) {
+				case "auto":
+					p.SetAuto(true)
+				case "noauto":
+					p.SetAuto(false)
+				case "joystick":
+					p.SwitchType(controllers.JoystickType)
+				case "paddle":
+					p.SwitchType(controllers.PaddleType)
+				case "keypad":
+					p.SwitchType(controllers.KeypadType)
+				}
 			}
+
+			s := strings.Builder{}
+
+			switch p.ControllerType {
+			case controllers.JoystickType:
+				s.WriteString("Joystick")
+			case controllers.PaddleType:
+				s.WriteString("Paddle")
+			case controllers.KeypadType:
+				s.WriteString("Keypad")
+			default:
+				s.WriteString("Unknown")
+			}
+
+			if p.AutoControllerType {
+				s.WriteString(" (auto)")
+			}
+
+			dbg.printLine(terminal.StyleFeedback, s.String())
+		} else {
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
 		}
-
-		s := strings.Builder{}
-
-		switch p.ControllerType {
-		case input.JoystickType:
-			s.WriteString("Joystick")
-		case input.PaddleType:
-			s.WriteString("Paddle")
-		case input.KeypadType:
-			s.WriteString("Keypad")
-		default:
-			s.WriteString("Unknown")
-		}
-
-		if p.AutoControllerType {
-			s.WriteString(" (auto)")
-		}
-
-		dbg.printLine(terminal.StyleFeedback, s.String())
 
 	case cmdPanel:
 		mode, ok := tokens.Get()
 		if !ok {
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.Panel.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
 			return false, nil
 		}
 
@@ -1117,46 +1122,46 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				dbg.VCS.Panel.Handle(input.PanelTogglePlayer0Pro, nil)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelTogglePlayer0Pro, nil)
 			case "P1":
-				dbg.VCS.Panel.Handle(input.PanelTogglePlayer1Pro, nil)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelTogglePlayer1Pro, nil)
 			case "COL":
-				dbg.VCS.Panel.Handle(input.PanelToggleColor, nil)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelToggleColor, nil)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				dbg.VCS.Panel.Handle(input.PanelSetPlayer0Pro, true)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer0Pro, true)
 			case "P1PRO":
-				dbg.VCS.Panel.Handle(input.PanelSetPlayer1Pro, true)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer1Pro, true)
 			case "P0AM":
-				dbg.VCS.Panel.Handle(input.PanelSetPlayer0Pro, false)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer0Pro, false)
 			case "P1AM":
-				dbg.VCS.Panel.Handle(input.PanelSetPlayer1Pro, false)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer1Pro, false)
 			case "COL":
-				dbg.VCS.Panel.Handle(input.PanelSetColor, true)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetColor, true)
 			case "BW":
-				dbg.VCS.Panel.Handle(input.PanelSetColor, false)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSetColor, false)
 			}
 		case "HOLD":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				dbg.VCS.Panel.Handle(input.PanelSelect, true)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSelect, true)
 			case "RESET":
-				dbg.VCS.Panel.Handle(input.PanelReset, true)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelReset, true)
 			}
 		case "RELEASE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				dbg.VCS.Panel.Handle(input.PanelSelect, false)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelSelect, false)
 			case "RESET":
-				dbg.VCS.Panel.Handle(input.PanelReset, false)
+				dbg.VCS.RIOT.Ports.Panel.HandleEvent(ports.PanelReset, false)
 			}
 		}
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Panel.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
 
 	case cmdJoystick:
 		var err error
@@ -1164,49 +1169,49 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		stick, _ := tokens.Get()
 		action, _ := tokens.Get()
 
-		var event input.Event
-		var value input.EventData
+		var event ports.Event
+		var value ports.EventData
 
 		switch strings.ToUpper(action) {
 		case "FIRE":
-			event = input.Fire
+			event = ports.Fire
 			value = true
 		case "UP":
-			event = input.Up
+			event = ports.Up
 			value = true
 		case "DOWN":
-			event = input.Down
+			event = ports.Down
 			value = true
 		case "LEFT":
-			event = input.Left
+			event = ports.Left
 			value = true
 		case "RIGHT":
-			event = input.Right
+			event = ports.Right
 			value = true
 
 		case "NOFIRE":
-			event = input.Fire
+			event = ports.Fire
 			value = false
 		case "NOUP":
-			event = input.Up
+			event = ports.Up
 			value = false
 		case "NODOWN":
-			event = input.Down
+			event = ports.Down
 			value = false
 		case "NOLEFT":
-			event = input.Left
+			event = ports.Left
 			value = false
 		case "NORIGHT":
-			event = input.Right
+			event = ports.Right
 			value = false
 		}
 
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.VCS.HandController0.Handle(event, value)
+			err = dbg.VCS.RIOT.Ports.Player0.HandleEvent(event, value)
 		case 1:
-			err = dbg.VCS.HandController1.Handle(event, value)
+			err = dbg.VCS.RIOT.Ports.Player1.HandleEvent(event, value)
 		}
 
 		if err != nil {
@@ -1223,15 +1228,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		switch n {
 		case 0:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.VCS.HandController0.Handle(input.KeypadUp, nil)
+				err = dbg.VCS.RIOT.Ports.Player0.HandleEvent(ports.KeypadUp, nil)
 			} else {
-				err = dbg.VCS.HandController0.Handle(input.KeypadDown, rune(key[0]))
+				err = dbg.VCS.RIOT.Ports.Player0.HandleEvent(ports.KeypadDown, rune(key[0]))
 			}
 		case 1:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.VCS.HandController1.Handle(input.KeypadUp, nil)
+				err = dbg.VCS.RIOT.Ports.Player1.HandleEvent(ports.KeypadUp, nil)
 			} else {
-				err = dbg.VCS.HandController1.Handle(input.KeypadDown, rune(key[0]))
+				err = dbg.VCS.RIOT.Ports.Player1.HandleEvent(ports.KeypadDown, rune(key[0]))
 			}
 		}
 

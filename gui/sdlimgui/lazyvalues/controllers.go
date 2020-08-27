@@ -18,7 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
 
 // LazyControllers lazily accesses controller information from the emulator
@@ -27,8 +27,8 @@ type LazyControllers struct {
 
 	atomicHandController0 atomic.Value // input.HandController
 	atomicHandController1 atomic.Value // input.HandController
-	HandController0       *input.HandController
-	HandController1       *input.HandController
+	HandController0       *controllers.Multi
+	HandController1       *controllers.Multi
 }
 
 func newLazyControllers(val *Lazy) *LazyControllers {
@@ -37,9 +37,13 @@ func newLazyControllers(val *Lazy) *LazyControllers {
 
 func (lz *LazyControllers) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicHandController0.Store(lz.val.Dbg.VCS.HandController0)
-		lz.atomicHandController1.Store(lz.val.Dbg.VCS.HandController1)
+		if p, ok := lz.val.Dbg.VCS.RIOT.Ports.Player0.(*controllers.Multi); ok {
+			lz.atomicHandController0.Store(p)
+		}
+		if p, ok := lz.val.Dbg.VCS.RIOT.Ports.Player1.(*controllers.Multi); ok {
+			lz.atomicHandController1.Store(p)
+		}
 	})
-	lz.HandController0, _ = lz.atomicHandController0.Load().(*input.HandController)
-	lz.HandController1, _ = lz.atomicHandController1.Load().(*input.HandController)
+	lz.HandController0, _ = lz.atomicHandController0.Load().(*controllers.Multi)
+	lz.HandController1, _ = lz.atomicHandController1.Load().(*controllers.Multi)
 }

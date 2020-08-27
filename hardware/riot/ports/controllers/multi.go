@@ -13,56 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package input
+package controllers
 
 import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// ControllerType keeps track of which controller type is being used at any
-// given moment. we need this so that we don't ground/recharge the paddle if it
-// is not being used. if we did then joystick input would be wrong.
-//
-// we default to the joystick type which should be fine. for non-joystick
-// games, the paddle/keypad will be activated once the user starts using the
-// corresponding controls.
-//
-// if a paddle/keypad ROM requires paddle/keypad probing from the instant
-// the machine starts (are there any examples of this?) then we will need to
-// initialise the hand controller accordingly, using the setup system.
-type ControllerType int
-
-// List of allowed ControllerTypes
-const (
-	JoystickType ControllerType = iota
-	PaddleType
-	KeypadType
-)
-
-// ControllerTypeList is a list of all possible string representations of the Interval type
-var ControllerTypeList = []string{"Joystick", "Paddle", "Keypad"}
-
-func (c ControllerType) String() string {
-	switch c {
-	case JoystickType:
-		return "Joystick"
-	case PaddleType:
-		return "Paddle"
-	case KeypadType:
-		return "Keypad"
-	}
-	panic("unknown controller type")
-}
-
-// HandController represents the "joystick" port on the VCS. The different
-// devices (joysticks, paddles, etc.) send events to the Handle() function.
-//
-// Note that handcontrollers need access to TIA memory as well as RIOT memory.
-type HandController struct {
-	port
-	mem     *inputMemory
-	control *VBlankBits
+// Multi is an implementation of the ports.Peripheral interface and attempts to
+// handle automatic switching between the three main controller types
+type Multi struct {
+	ports.Recordable
+	mem *ports.MemoryAccess
 
 	// the current controller type. use SwitchType() to set.
 	ControllerType ControllerType
@@ -84,7 +48,7 @@ type HandController struct {
 
 	// the two hand controllers, for both joysticks and keypads, share
 	// registers for certain values. In each instance where this is the case,
-	// HandController0 uses the upper nibble and HandControll1er1 uses the
+	// Multi0 uses the upper nibble and HandControll1er1 uses the
 	// lower nibble.
 	//
 	// The normalise functions 'transform' the data to the correct nibble
@@ -105,11 +69,13 @@ type stick struct {
 	buttonReg addresses.ChipRegister
 
 	// joysticks always write axis data to SWCHA and adjusted according to
-	// normaliseOnWrite() in the HandController
+	// normaliseOnWrite() in the Multi
 
 	// values indicating joystick state
 	axis   uint8
 	button uint8
+
+	latchFireButton bool
 }
 
 // the number of times the paddle has to be waggled to the extremes before
@@ -123,22 +89,16 @@ const paddleFire = 0xff
 // as above but for when the first button is released
 const paddleNoFire = 0x00
 
-// !!TODO: accurate paddle timings and sensitivity
-//
-// for now, our best guess is 0.01. no idea if this value is correct but it
-// feels good during play so I'm going to go with it.
-//
-// justification: if the paddle resistor can take a value between 0.0 and 1.0
-// then the maximum number of ticks required to increase the capacitor charge
-// by 1 is 100. The maximum charge is 255 so it takes a maximum of 25500 ticks
-// to fill the capacitor.
-const paddleSensitivity = 0.01
+// sensitivity of the paddle puck
+const paddleSensitivity = 0.009
 
 // the paddle type implements the "paddle" hand controller
 type paddle struct {
 	puckReg addresses.ChipRegister
 
 	buttonMask uint8
+
+	ground bool
 
 	// values indicating paddle state
 	charge     uint8
@@ -168,12 +128,11 @@ type keypad struct {
 // the value of keypad.key when nothing is being pressed
 const noKey = ' '
 
-// NewHandController0 is the preferred method of creating a new instance of
-// HandController for representing hand controller zero
-func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
-	hc := &HandController{
+// NewMulti0 is the preferred method of creating a new instance of
+// Multi for representing hand controller zero
+func NewMultiController0(mem *ports.MemoryAccess) ports.Peripheral {
+	hc := &Multi{
 		mem:                mem,
-		control:            control,
 		ControllerType:     JoystickType,
 		AutoControllerType: true,
 		stick: stick{
@@ -197,24 +156,23 @@ func NewHandController0(mem *inputMemory, control *VBlankBits) *HandController {
 		ddr:              0x00,
 	}
 
-	hc.port = port{
-		id:     HandControllerZeroID,
-		handle: hc.Handle,
+	hc.Recordable = ports.Recordable{
+		ID:          ports.PlayerZeroID,
+		HandleEvent: hc.HandleEvent,
 	}
 
 	// write initial joystick values
 	hc.writeSWCHA(hc.stick.axis, hc.writeMask)
-	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
+	hc.mem.TIA.InputDeviceWrite(hc.stick.buttonReg, 0x80, 0x00)
 
 	return hc
 }
 
-// NewHandController1 is the preferred method of creating a new instance of
-// HandController for representing hand controller one
-func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
-	hc := &HandController{
+// NewMulti1 is the preferred method of creating a new instance of
+// Multi for representing hand controller one
+func NewMultiController1(mem *ports.MemoryAccess) ports.Peripheral {
+	hc := &Multi{
 		mem:                mem,
-		control:            control,
 		ControllerType:     JoystickType,
 		AutoControllerType: true,
 		stick: stick{
@@ -238,32 +196,32 @@ func NewHandController1(mem *inputMemory, control *VBlankBits) *HandController {
 		ddr:              0x00,
 	}
 
-	hc.port = port{
-		id:     HandControllerOneID,
-		handle: hc.Handle,
+	hc.Recordable = ports.Recordable{
+		ID:          ports.PlayerOneID,
+		HandleEvent: hc.HandleEvent,
 	}
 
 	// write initial joystick values
 	hc.writeSWCHA(hc.stick.axis, hc.writeMask)
-	hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
+	hc.mem.TIA.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 
 	return hc
 }
 
-// String implements the Port interface
-func (hc *HandController) String() string {
+// String implements the Peripheral interface
+func (hc *Multi) String() string {
 	return "nothing yet"
 }
 
-// Reset DDR of hand controller port
-func (hc *HandController) Reset() {
-	hc.setDDR(0x00)
+// Reset implements the Peripheral interface
+func (hc *Multi) Reset() {
+	hc.updateSWACNT(0x00)
 }
 
 // SetAuto turns automatic controller switching on or off. Note that calling
 // SwitchType() with a different type to what has been automatically selected
 // will also turn auto-switching off.
-func (hc *HandController) SetAuto(auto bool) {
+func (hc *Multi) SetAuto(auto bool) {
 	hc.AutoControllerType = auto
 
 	// reset detection variables
@@ -271,10 +229,10 @@ func (hc *HandController) SetAuto(auto bool) {
 	hc.paddle.touchRight = 0
 }
 
-// SwitchType causes the HandController to swich controller type. If the type
+// SwitchType causes the Multi to swich controller type. If the type
 // is switched or if the type is already of the requested type then true is
 // returned.
-func (hc *HandController) SwitchType(newType ControllerType) error {
+func (hc *Multi) SwitchType(newType ControllerType) error {
 	// reset detection variables
 	hc.paddle.touchLeft = 0
 	hc.paddle.touchRight = 0
@@ -283,7 +241,7 @@ func (hc *HandController) SwitchType(newType ControllerType) error {
 	case JoystickType:
 		hc.ControllerType = JoystickType
 		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 	case PaddleType:
 		hc.ControllerType = PaddleType
 		hc.writeSWCHA(paddleFire, hc.writeMask)
@@ -297,15 +255,15 @@ func (hc *HandController) SwitchType(newType ControllerType) error {
 	return nil
 }
 
-// Handle implements Port interface
-func (hc *HandController) Handle(event Event, value EventData) error {
+// HandleEvent implements Peripheral interface
+func (hc *Multi) HandleEvent(event ports.Event, value ports.EventData) error {
 	switch event {
 
 	// do nothing at all if event is a NoEvent
-	case NoEvent:
+	case ports.NoEvent:
 		return nil
 
-	case Left:
+	case ports.Left:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -329,7 +287,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		}
 		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
-	case Right:
+	case ports.Right:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -353,7 +311,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		}
 		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
-	case Up:
+	case ports.Up:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -377,7 +335,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		}
 		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
-	case Down:
+	case ports.Down:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -401,7 +359,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		}
 		hc.writeSWCHA(hc.stick.axis, hc.writeMask)
 
-	case Fire:
+	case ports.Fire:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -428,11 +386,11 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 
 		// write memory if button is pressed or it is not and the button latch
 		// is false
-		if hc.stick.button == stickButtonOn || !hc.control.latchFireButton {
-			hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
+		if hc.stick.button == stickButtonOn || !hc.stick.latchFireButton {
+			hc.mem.TIA.InputDeviceWrite(hc.stick.buttonReg, hc.stick.button, 0x00)
 		}
 
-	case PaddleFire:
+	case ports.PaddleFire:
 		b, ok := value.(bool)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "bool")
@@ -452,7 +410,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		}
 		hc.writeSWCHA(v, hc.paddle.buttonMask)
 
-	case PaddleSet:
+	case ports.PaddleSet:
 		f, ok := value.(float32)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "float32")
@@ -495,7 +453,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 
 		hc.paddle.resistance = 1.0 - f
 
-	case KeypadDown:
+	case ports.KeypadDown:
 		v, ok := value.(rune)
 		if !ok {
 			return errors.New(errors.BadInputEventType, event, "rune")
@@ -513,7 +471,7 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 		// note key for use by readKeypad()
 		hc.keypad.key = v
 
-	case KeypadUp:
+	case ports.KeypadUp:
 		if value != nil {
 			return errors.New(errors.BadInputEventType, event, "nil")
 		}
@@ -525,25 +483,55 @@ func (hc *HandController) Handle(event Event, value EventData) error {
 
 		hc.keypad.key = noKey
 
-	case Unplug:
-		return errors.New(errors.InputDeviceUnplugged, hc.id)
+	case ports.Unplug:
+		return errors.New(errors.InputDeviceUnplugged, hc.ID)
 
 	// return now if there is no event to process
 	default:
-		return errors.New(errors.UnknownInputEvent, hc.id, event)
+		return errors.New(errors.UnknownInputEvent, hc.ID, event)
 	}
 
 	// record event with the EventRecorder
-	if hc.recorder != nil {
-		return hc.recorder.RecordEvent(hc.id, event, value)
+	if hc.Recorder != nil {
+		return hc.Recorder.RecordEvent(hc.ID, event, value)
 	}
 
 	return nil
 }
 
-// set DDR value. values should be normalised to the upper nibble before being
+// Update implements the Peripheral interface
+func (hc *Multi) Update(data bus.ChipData) bool {
+	switch data.Name {
+	case "VBLANK":
+		// dump paddle capacitors to ground
+		hc.paddle.ground = data.Value&0x80 == 0x80
+		// !!TODO: surely whether we acutally ground should be based on the
+		// state of the ground bit
+		hc.ground()
+
+		hc.stick.latchFireButton = data.Value&0x40 == 0x40
+		if !hc.stick.latchFireButton {
+			hc.unlatch()
+		}
+
+	case "SWCHA":
+		hc.updateSWCHA(data.Value)
+		hc.mem.RIOT.InputDeviceWrite(addresses.SWCHA, data.Value, 0x00)
+
+	case "SWACNT":
+		hc.updateSWACNT(data.Value)
+		hc.mem.RIOT.InputDeviceWrite(addresses.SWACNT, data.Value, 0x00)
+
+	default:
+		return true
+	}
+
+	return false
+}
+
+// updateSWACNT values should be normalised to the upper nibble before being
 // passed to the function. this simplifies the implementation.
-func (hc *HandController) setDDR(data uint8) {
+func (hc *Multi) updateSWACNT(data uint8) {
 	hc.ddr = hc.normaliseOnRead(data)
 
 	// if the ddr value is being such so that SWCHA is input rather than output
@@ -561,9 +549,9 @@ func (hc *HandController) setDDR(data uint8) {
 	}
 }
 
-// readKeypad() is called whenever SWCHA is tickled by the CPU. the state of
+// updateSWCHA() is called whenever SWCHA is tickled by the CPU. the state of
 // the ddr is of importance here.
-func (hc *HandController) readKeypad(data uint8) {
+func (hc *Multi) updateSWCHA(data uint8) {
 	if hc.ControllerType != KeypadType {
 		return
 	}
@@ -639,39 +627,39 @@ func (hc *HandController) readKeypad(data uint8) {
 	// !!TODO: Consider adding 400ms delay for DDR settings to take effect.
 	switch column {
 	case 1:
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x00, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[0], 0x00, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	case 2:
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x00, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[1], 0x00, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	case 3:
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x00, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[2], 0x00, 0x00)
 	default:
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
-		hc.mem.tia.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[0], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[1], 0x80, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.keypad.column[2], 0x80, 0x00)
 	}
 }
 
 // VBLANK bit 6 has been set. joystick button will latch, meaning that
 // releasing the fire button has no immediate effect
-func (hc *HandController) unlatch() {
+func (hc *Multi) unlatch() {
 	if hc.ControllerType != JoystickType {
 		return
 	}
 
 	// only unlatch if button is not pressed
 	if hc.stick.button == stickButtonOff {
-		hc.mem.tia.InputDeviceWrite(hc.stick.buttonReg, stickButtonOff, 0x00)
+		hc.mem.TIA.InputDeviceWrite(hc.stick.buttonReg, stickButtonOff, 0x00)
 	}
 }
 
 // VBLANK bit 7 has been set. input capacitor is grounded.
-func (hc *HandController) ground() {
+func (hc *Multi) ground() {
 	// don't allow grounding unless controller type is paddle type. if we don't
 	// then it will play havoc with keyboard controllers.
 	//
@@ -684,11 +672,12 @@ func (hc *HandController) ground() {
 	}
 
 	hc.paddle.charge = 0
-	hc.mem.riot.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
+	hc.mem.RIOT.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 }
 
-// recharge() is called every video step via Input.Step()
-func (hc *HandController) recharge() {
+// Step implements the Peripheral interface. It is called every video step via
+// Input.Step()
+func (hc *Multi) Step() {
 	// as in the case of ground() I'm not sure if restricting recharge() events
 	// to the paddle type is strictly necessary.
 	if hc.ControllerType != PaddleType {
@@ -711,7 +700,7 @@ func (hc *HandController) recharge() {
 		if hc.paddle.ticks >= hc.paddle.resistance {
 			hc.paddle.ticks = 0
 			hc.paddle.charge++
-			hc.mem.tia.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
+			hc.mem.TIA.InputDeviceWrite(hc.paddle.puckReg, hc.paddle.charge, 0x00)
 		}
 	}
 }
@@ -720,7 +709,7 @@ func (hc *HandController) recharge() {
 // register (DDR). joysticks always write their axis data to SWCHA and paddles
 // always write fire button data to SWCHA, according to a mask for which hand
 // controller is issuing the call
-func (hc *HandController) writeSWCHA(data uint8, mask uint8) {
+func (hc *Multi) writeSWCHA(data uint8, mask uint8) {
 	data = hc.normaliseOnWrite(data & (hc.ddr ^ 0xff))
-	hc.mem.riot.InputDeviceWrite(addresses.SWCHA, data, mask)
+	hc.mem.RIOT.InputDeviceWrite(addresses.SWCHA, data, mask)
 }

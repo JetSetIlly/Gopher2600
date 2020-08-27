@@ -59,8 +59,8 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	// I don't believe any visual or audible artefacts of the VCS (undocumented
 	// or not) rely on the details of the CPU-TIA relationship.
 	videoCycle := func() error {
-		// ensure controllers have updated their input
-		if err := vcs.checkDeviceInput(); err != nil {
+		// probe for playback events
+		if err := vcs.RIOT.Ports.GetPlayback(); err != nil {
 			return err
 		}
 

@@ -55,14 +55,14 @@ func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 
 					switch area {
 					case memorymap.TIA:
-						_, isRead := addresses.CanonicalTIAReadSymbols[ma]
+						_, isRead := addresses.TIAReadSymbols[ma]
 						if !isRead {
 							s := fmt.Sprintf("%#04x\tread TIA address [%#04x (%#04x)]\n", d.Result.Address, d.Result.InstructionData, ma)
 							output.Write([]byte(s))
 						}
 
 					case memorymap.RIOT:
-						_, isRead := addresses.CanonicalRIOTReadSymbols[ma]
+						_, isRead := addresses.RIOTReadSymbols[ma]
 						if !isRead {
 							s := fmt.Sprintf("%#04x\tread RIOT address [%#04x (%#04x)]\n", d.Result.Address, d.Result.InstructionData, ma)
 							output.Write([]byte(s))

@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/television"
@@ -35,10 +35,6 @@ type VCS struct {
 	RIOT *riot.RIOT
 
 	TV television.Television
-
-	Panel           *input.Panel
-	HandController0 *input.HandController
-	HandController1 *input.HandController
 
 	// randomise state on startup
 	RandomState prefs.Bool
@@ -67,14 +63,21 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, &vcs.RIOT.Input.VBlankBits)
+	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.Panel = vcs.RIOT.Input.Panel
-	vcs.HandController0 = vcs.RIOT.Input.HandController0
-	vcs.HandController1 = vcs.RIOT.Input.HandController1
+	// !!TODO: allow user to specify what to attach to the ports
+	err = vcs.RIOT.Ports.AttachPlayer0(controllers.NewMultiController0)
+	if err != nil {
+		return nil, err
+	}
+
+	err = vcs.RIOT.Ports.AttachPlayer1(controllers.NewMultiController1)
+	if err != nil {
+		return nil, err
+	}
 
 	return vcs, nil
 }
@@ -109,8 +112,7 @@ func (vcs *VCS) Reset() error {
 		return err
 	}
 
-	vcs.HandController0.Reset()
-	vcs.HandController1.Reset()
+	vcs.RIOT.Ports.Reset()
 
 	vcs.CPU.Reset(vcs.RandomState.Get().(bool))
 
@@ -120,19 +122,4 @@ func (vcs *VCS) Reset() error {
 	}
 
 	return nil
-}
-
-// check all devices for pending input
-func (vcs *VCS) checkDeviceInput() error {
-	err := vcs.HandController0.CheckInput()
-	if err != nil {
-		return err
-	}
-
-	err = vcs.HandController1.CheckInput()
-	if err != nil {
-		return err
-	}
-
-	return vcs.Panel.CheckInput()
 }

@@ -35,7 +35,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	// see the equivalient videoCycle() in the VCS.Step() function for an
 	// explanation for what's going on here:
 	videoCycle := func() error {
-		if err := vcs.checkDeviceInput(); err != nil {
+		if err := vcs.RIOT.Ports.GetPlayback(); err != nil {
 			return err
 		}
 

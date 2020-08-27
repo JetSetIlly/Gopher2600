@@ -101,7 +101,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 	area.readRegister = addresses.Read[address]
 
 	// do not allow reads from memory that do not have symbol name
-	if _, ok := addresses.CanonicalReadSymbols[address]; !ok {
+	if _, ok := addresses.ReadSymbols[address]; !ok {
 		return 0, errors.New(errors.MemoryBusError, address)
 	}
 
@@ -117,7 +117,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 	}
 
 	// do not allow writes to memory that do not have symbol name
-	if _, ok := addresses.CanonicalWriteSymbols[address]; !ok {
+	if _, ok := addresses.WriteSymbols[address]; !ok {
 		return errors.New(errors.MemoryBusError, address)
 	}
 

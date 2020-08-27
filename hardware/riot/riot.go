@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
@@ -28,7 +28,7 @@ type RIOT struct {
 	mem bus.ChipBus
 
 	Timer *timer.Timer
-	Input *input.Input
+	Ports *ports.Ports
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT type
@@ -37,7 +37,7 @@ func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) (*RIOT, error) {
 
 	riot := &RIOT{mem: mem}
 	riot.Timer = timer.NewTimer(mem)
-	riot.Input, err = input.NewInput(mem, tiaMem)
+	riot.Ports, err = ports.NewPorts(mem, tiaMem)
 	if err != nil {
 		return nil, err
 	}
@@ -64,12 +64,12 @@ func (riot *RIOT) Update() {
 		return
 	}
 
-	_ = riot.Input.Update(data)
+	_ = riot.Ports.Update(data)
 }
 
 // Step moves the state of the RIOT forward one video cycle
 func (riot *RIOT) Step() {
 	riot.Update()
 	riot.Timer.Step()
-	riot.Input.Step()
+	riot.Ports.Step()
 }

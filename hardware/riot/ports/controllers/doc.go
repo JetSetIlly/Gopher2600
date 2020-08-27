@@ -13,25 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package vcs
-
-import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-)
-
-// NewRIOT is the preferred method of initialisation for the RIOT memory area
-func NewRIOT() *ChipMemory {
-	area := &ChipMemory{
-		origin: memorymap.OriginRIOT,
-		memtop: memorymap.MemtopRIOT,
-	}
-
-	// allocation the minimal amount of memory
-	area.memory = make([]uint8, area.memtop-area.origin+1)
-
-	// SWCHA should be set when a peripheral is attached
-
-	// SWCHB is set on panel attachement
-
-	return area
-}
+// Package controllers contains the implementations for all the emulated
+// controllers for the VCS. Currently, there is one implemenation called Multi
+// which attempts to automatically switch between the standard Joystick, Paddle
+// and Keyboard.
+package controllers

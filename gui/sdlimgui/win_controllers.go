@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v2"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
 
 const winControllersTitle = "Controllers"
@@ -40,7 +40,7 @@ func newWinControllers(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winControllers) init() {
-	win.controllerComboDim = imguiGetFrameDim("", input.ControllerTypeList...)
+	win.controllerComboDim = imguiGetFrameDim("", controllers.ControllerTypeList...)
 }
 
 func (win *winControllers) destroy() {
@@ -72,7 +72,7 @@ func (win *winControllers) draw() {
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV("##handController0", c, imgui.ComboFlagNoArrowButton) {
-		for _, s := range input.ControllerTypeList {
+		for _, s := range controllers.ControllerTypeList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("CONTROLLER 0 %s", s)
 				win.img.term.pushCommand(termCmd)
@@ -105,7 +105,7 @@ func (win *winControllers) draw() {
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV("##handController1", c, imgui.ComboFlagNoArrowButton) {
-		for _, s := range input.ControllerTypeList {
+		for _, s := range controllers.ControllerTypeList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("CONTROLLER 1 %s", s)
 				win.img.term.pushCommand(termCmd)

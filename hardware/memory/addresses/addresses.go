@@ -22,8 +22,8 @@ const Reset = uint16(0xfffc)
 // IRQ is the address where the interrupt address is stored
 const IRQ = uint16(0xfffe)
 
-// CanonicalTIAReadSymbols indexes all TIA read symbols by normalised address
-var CanonicalTIAReadSymbols = map[uint16]string{
+// TIAReadSymbols indexes all TIA read symbols by normalised address
+var TIAReadSymbols = map[uint16]string{
 	// TIA
 	0x00: "CXM0P",
 	0x01: "CXM1P",
@@ -41,8 +41,8 @@ var CanonicalTIAReadSymbols = map[uint16]string{
 	0x0d: "INPT5",
 }
 
-// CanonicalRIOTReadSymbols indexes all RIOT read symbols by normalised address
-var CanonicalRIOTReadSymbols = map[uint16]string{
+// RIOTReadSymbols indexes all RIOT read symbols by normalised address
+var RIOTReadSymbols = map[uint16]string{
 	// RIOT
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
@@ -52,11 +52,8 @@ var CanonicalRIOTReadSymbols = map[uint16]string{
 	0x0285: "TIMINT",
 }
 
-// CanonicalReadSymbols indexes all VCS read symbols normalised address
-var CanonicalReadSymbols = map[uint16]string{}
-
-// CanonicalTIAWriteSymbols indexes all TIA write symbols by normalised address
-var CanonicalTIAWriteSymbols = map[uint16]string{
+// TIAWriteSymbols indexes all TIA write symbols by normalised address
+var TIAWriteSymbols = map[uint16]string{
 	0x00: "VSYNC",
 	0x01: "VBLANK",
 	0x02: "WSYNC",
@@ -104,8 +101,8 @@ var CanonicalTIAWriteSymbols = map[uint16]string{
 	0x2C: "CXCLR",
 }
 
-// CanonicalRIOTWriteSymbols indexes all RIOT write symbols by normalised address
-var CanonicalRIOTWriteSymbols = map[uint16]string{
+// RIOTWriteSymbols indexes all RIOT write symbols by normalised address
+var RIOTWriteSymbols = map[uint16]string{
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
 	0x0294: "TIM1T",
@@ -114,39 +111,52 @@ var CanonicalRIOTWriteSymbols = map[uint16]string{
 	0x0297: "T1024T",
 }
 
-// CanonicalWriteSymbols indexes all VCS write symbols by normalised address
-var CanonicalWriteSymbols = map[uint16]string{}
+// ReadSymbols indexes all VCS read symbols by normalised address
+var ReadSymbols = map[uint16]string{}
+
+// WriteSymbols indexes all VCS write symbols by normalised address
+var WriteSymbols = map[uint16]string{}
+
+// ReadAddress indexes all VCS read addresses by canonical symbol.
+var ReadAddress = map[string]uint16{}
+
+// WriteAddress indexes all VCS write addresses by canonical symbol
+var WriteAddress = map[string]uint16{}
 
 // Read is a sparse array containing the canonical labels for VCS read
-// addresses. If the address is not named (empty string) then the address is
-// not reabable
+// addresses. If the address indexes as empty string then the address is not
+// reabable
 var Read []string
 
 // Write is a sparse array containing the canonical labels for VCS write
-// addresses. If the address is not named (empty string) then the address is
-// not writable
+// addresses. If the address indexes an empty string then the address is not
+// writable
 var Write []string
 
 // this init() function create the Read/Write arrays using the read/write maps
 // as a source
 func init() {
 
-	// build CanonicalReadSymbols out of the TIA and RIOT canonical read maps
-	for k, v := range CanonicalTIAReadSymbols {
-		CanonicalReadSymbols[k] = v
+	// build ReadSymbols out of the TIA and RIOT canonical read maps
+	for k, v := range TIAReadSymbols {
+		ReadSymbols[k] = v
+		ReadAddress[v] = k
 	}
 
-	for k, v := range CanonicalRIOTReadSymbols {
-		CanonicalReadSymbols[k] = v
+	for k, v := range RIOTReadSymbols {
+		ReadSymbols[k] = v
+		ReadAddress[v] = k
 	}
 
-	// build CanonicalWriteSymbols out of the TIA and RIOT canonical write maps
-	for k, v := range CanonicalTIAWriteSymbols {
-		CanonicalWriteSymbols[k] = v
+	// build WriteSymbols out of the TIA and RIOT canonical write maps
+	for k, v := range TIAWriteSymbols {
+		WriteSymbols[k] = v
+		WriteAddress[v] = k
 	}
 
-	for k, v := range CanonicalRIOTWriteSymbols {
-		CanonicalWriteSymbols[k] = v
+	for k, v := range RIOTWriteSymbols {
+		WriteSymbols[k] = v
+		WriteAddress[v] = k
 	}
 
 	// we know that the maximum address either chip can read or write to is
@@ -155,12 +165,12 @@ func init() {
 	const chipTop = 0x297
 
 	Read = make([]string, chipTop+1)
-	for k, v := range CanonicalReadSymbols {
+	for k, v := range ReadSymbols {
 		Read[k] = v
 	}
 
 	Write = make([]string, chipTop+1)
-	for k, v := range CanonicalWriteSymbols {
+	for k, v := range WriteSymbols {
 		Write[k] = v
 	}
 }

@@ -26,13 +26,13 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
 type playbackEntry struct {
-	event    input.Event
-	value    input.EventData
+	event    ports.Event
+	value    ports.EventData
 	frame    int
 	scanline int
 	horizpos int
@@ -47,8 +47,8 @@ type playbackSequence struct {
 	eventCt int
 }
 
-// Playback is used to reperform the user input recorded in a previously transcribed
-// file. It implements the input.Playback interface.
+// Playback is used to reperform the user input recorded in a previously
+// recorded file. It implements the ports.Playback interface.
 type Playback struct {
 	transcript string
 
@@ -92,7 +92,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
 	plb := &Playback{transcript: transcript}
-	plb.sequences = make([]*playbackSequence, input.NumIDs)
+	plb.sequences = make([]*playbackSequence, ports.NumIDs)
 	for i := range plb.sequences {
 		plb.sequences[i] = &playbackSequence{}
 	}
@@ -136,14 +136,14 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		id := input.ID(n)
+		id := ports.ID(n)
 
 		// create a new entry and convert tokens accordingly
 		// any errors in the transcript causes failure
 		entry := playbackEntry{line: i + 1}
 
 		// no need to convert event field
-		entry.event = input.Event(toks[fieldEvent])
+		entry.event = ports.Event(toks[fieldEvent])
 
 		// parse entry value into the correct type
 		entry.value = parseEventData(toks[fieldEventData])
@@ -163,9 +163,9 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// likewise for KeypadUp events. the handcontroller Handle() function
 		// expects a nil argument for these events but we store the empty
 		// string, instead of nil.
-		if entry.event == input.KeypadDown {
+		if entry.event == ports.KeypadDown {
 			entry.value = rune(entry.value.(float32))
-		} else if entry.event == input.KeypadUp {
+		} else if entry.event == ports.KeypadUp {
 			entry.value = nil
 		}
 
@@ -205,7 +205,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 // intersection between the sets of allowed values. a bool doesn't look like a
 // float which doesn't look like an int. if the value looks like none of those
 // things then we can return the original string unchanged.
-func parseEventData(value string) input.EventData {
+func parseEventData(value string) ports.EventData {
 	var err error
 
 	// the order of these conversions is important. ParseBool will interpret
@@ -253,48 +253,46 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 		return errors.New(errors.RecordingError, err)
 	}
 
-	// attach playback to vcs ports
-	vcs.HandController0.AttachPlayback(plb)
-	vcs.HandController1.AttachPlayback(plb)
-	vcs.Panel.AttachPlayback(plb)
+	// attach playback to all vcs ports
+	vcs.RIOT.Ports.AttachPlayback(plb)
 
 	return nil
 }
 
-// CheckInput implements the input.Playback interface.
-func (plb *Playback) CheckInput(id input.ID) (input.Event, input.EventData, error) {
+// GetPlaybackEvent implements the ports.EventPlayback interface.
+func (plb *Playback) GetPlaybackEvent(id ports.ID) (ports.Event, ports.EventData, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 
 	// we've reached the end of the list of events for this id
 	if seq.eventCt >= len(seq.events) {
-		return input.NoEvent, nil, nil
+		return ports.NoEvent, nil, nil
 	}
 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return input.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
 	entry := seq.events[seq.eventCt]
 	if frame == entry.frame && scanline == entry.scanline && horizpos == entry.horizpos {
 		if entry.hash != plb.digest.Hash() {
-			return input.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
+			return ports.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
 		}
 		seq.eventCt++
 		return entry.event, entry.value, nil
 	}
 
 	// next event does not match
-	return input.NoEvent, nil, nil
+	return ports.NoEvent, nil, nil
 }

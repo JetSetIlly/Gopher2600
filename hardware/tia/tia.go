@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/riot/input"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -32,9 +31,11 @@ import (
 
 // TIA contains all the sub-components of the VCS TIA sub-system
 type TIA struct {
-	tv         television.Television
-	mem        bus.ChipBus
-	vblankBits *input.VBlankBits
+	tv  television.Television
+	mem bus.ChipBus
+
+	// the VBLANK register also affects the input sub-system
+	input bus.UpdateBus
 
 	// number of video cycles since the last WSYNC. also cycles back to 0 on
 	// RSYNC and when polycounter reaches count 56
@@ -110,12 +111,12 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation
-func NewTIA(tv television.Television, mem bus.ChipBus, vblankBits *input.VBlankBits) (*TIA, error) {
+func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) (*TIA, error) {
 	tia := TIA{
-		tv:         tv,
-		mem:        mem,
-		vblankBits: vblankBits,
-		Hblank:     true}
+		tv:     tv,
+		mem:    mem,
+		input:  input,
+		Hblank: true}
 
 	var err error
 
@@ -155,13 +156,10 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		tia.futureVblank.Schedule(1, func(v interface{}) {
 			// actual vblank signal
 			tia.sig.VBlank = v.(uint8)&0x02 == 0x02
-
-			// dump paddle capacitors to ground
-			tia.vblankBits.SetGroundPaddles(v.(uint8)&0x80 == 0x80)
-
-			// joystick fire button latches
-			tia.vblankBits.SetLatchFireButton(v.(uint8)&0x40 == 0x40)
 		}, data.Value)
+
+		// the VBLANK register also affects the input sub-system
+		tia.input.Update(data)
 
 		return false
 

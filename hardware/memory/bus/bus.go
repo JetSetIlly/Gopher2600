@@ -73,3 +73,11 @@ type ChipBus interface {
 type InputDeviceBus interface {
 	InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8)
 }
+
+// UpdateBus is an bus internal to the emulation. It exposes the Update()
+// function of one sub-system to another sub-system. Currently used to connect
+// the RIOT input sub-system to the TIA VBLANK (by calling Update() on the
+// input sub-system from the TIA)
+type UpdateBus interface {
+	Update(ChipData) bool
+}

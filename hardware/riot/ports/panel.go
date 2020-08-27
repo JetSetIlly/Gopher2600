@@ -13,20 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package input
+package ports
 
 import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // Panel represents the console's front control panel
 type Panel struct {
-	port
-
-	mem *inputMemory
+	Recordable
+	mem *MemoryAccess
 
 	p0pro         bool
 	p1pro         bool
@@ -39,15 +39,15 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(mem *inputMemory) *Panel {
+func NewPanel(mem *MemoryAccess) Peripheral {
 	pan := &Panel{
 		mem:   mem,
 		color: true,
 	}
 
-	pan.port = port{
-		id:     PanelID,
-		handle: pan.Handle,
+	pan.Recordable = Recordable{
+		ID:          PanelID,
+		HandleEvent: pan.HandleEvent,
 	}
 
 	pan.write()
@@ -98,6 +98,13 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
+// Reset implements the Port interface
+func (pan *Panel) Reset() {
+	// does nothing. this isn't the same as pressing the Reset panel switch
+	//
+	// !!TODO: reset panel switches to either a default or to the relevent "setup" preference
+}
+
 func (pan *Panel) write() {
 	// commit changes to RIOT memory
 	v := uint8(0)
@@ -127,11 +134,11 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.mem.riot.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
+	pan.mem.RIOT.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
 }
 
-// Handle implements Port interface
-func (pan *Panel) Handle(event Event, value EventData) error {
+// HandleEvent implements Port interface
+func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	switch event {
 	case PanelSelect:
 		b, ok := value.(bool)
@@ -184,15 +191,24 @@ func (pan *Panel) Handle(event Event, value EventData) error {
 		return nil
 
 	default:
-		return errors.New(errors.UnknownInputEvent, pan.id, event)
+		return errors.New(errors.UnknownInputEvent, pan.ID, event)
 	}
 
 	pan.write()
 
 	// record event with the EventRecorder
-	if pan.recorder != nil {
-		return pan.recorder.RecordEvent(pan.id, event, value)
+	if pan.Recorder != nil {
+		return pan.Recorder.RecordEvent(pan.ID, event, value)
 	}
 
 	return nil
+}
+
+// Update implements the Port interface
+func (pan *Panel) Update(data bus.ChipData) bool {
+	return false
+}
+
+// Step implements the Port interface
+func (pan *Panel) Step() {
 }
