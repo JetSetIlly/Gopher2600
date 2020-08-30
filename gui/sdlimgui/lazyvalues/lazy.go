@@ -35,21 +35,22 @@ type Lazy struct {
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
-	Debugger   *LazyDebugger
-	CPU        *LazyCPU
-	RAM        *LazyRAM
-	Timer      *LazyTimer
-	Playfield  *LazyPlayfield
-	Player0    *LazyPlayer
-	Player1    *LazyPlayer
-	Missile0   *LazyMissile
-	Missile1   *LazyMissile
-	Ball       *LazyBall
-	TV         *LazyTV
-	Cart       *LazyCart
-	Controller *LazyControllers
-	Prefs      *LazyPrefs
-	Collisions *LazyCollisions
+	Debugger      *LazyDebugger
+	CPU           *LazyCPU
+	RAM           *LazyRAM
+	Timer         *LazyTimer
+	Playfield     *LazyPlayfield
+	Player0       *LazyPlayer
+	Player1       *LazyPlayer
+	Missile0      *LazyMissile
+	Missile1      *LazyMissile
+	Ball          *LazyBall
+	TV            *LazyTV
+	Cart          *LazyCart
+	Controller    *LazyControllers
+	Prefs         *LazyPrefs
+	Collisions    *LazyCollisions
+	ChipRegisters *LazyChipRegisters
 
 	// \/\/\/ the following are updated on demand rather than through the update
 	// function, because they require more context
@@ -87,6 +88,7 @@ func NewValues() *Lazy {
 	val.Controller = newLazyControllers(val)
 	val.Prefs = newLazyPrefs(val)
 	val.Collisions = newLazyCollisions(val)
+	val.ChipRegisters = newLazyChipRegisters(val)
 
 	// allocating enough space for every byte in cartridge space. not worrying
 	// about bank sizes or anything like that.
@@ -138,6 +140,7 @@ func (val *Lazy) Update() {
 	val.Controller.update()
 	val.Prefs.update()
 	val.Collisions.update()
+	val.ChipRegisters.update()
 }
 
 // HasBreak checks to see if disassembly entry has a break point

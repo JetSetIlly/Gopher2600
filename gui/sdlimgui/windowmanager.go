@@ -138,6 +138,9 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCollisions, false, windowMenuMain); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinChipRegisters, false, windowMenuMain); err != nil {
+		return nil, err
+	}
 
 	// windows that appear in cartridge specific menus
 	if err := addWindow(newWinDPCregisters, false, windowMenuCart); err != nil {

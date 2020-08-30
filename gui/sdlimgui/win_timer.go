@@ -79,10 +79,10 @@ func (win *winTimer) draw() {
 	}
 	imgui.PopItemWidth()
 
-	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
-	imgui.PushItemWidth(win.fourDigitDim.X)
 	imgui.SameLine()
+	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
 	imguiText("Value")
+	imgui.PushItemWidth(win.fourDigitDim.X)
 	if imguiHexInput("##value", !win.img.paused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.SetValue(uint8(v)) })
@@ -90,10 +90,10 @@ func (win *winTimer) draw() {
 	}
 	imgui.PopItemWidth()
 
-	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
-	imgui.PushItemWidth(win.fourDigitDim.X)
 	imgui.SameLine()
+	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
 	imguiText("Ticks")
+	imgui.PushItemWidth(win.fourDigitDim.X)
 	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.TicksRemaining = int(v) })

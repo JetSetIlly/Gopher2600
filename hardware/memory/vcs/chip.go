@@ -63,7 +63,8 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (area ChipMemory) Poke(address uint16, value uint8) error {
-	return errors.New(errors.UnpokeableAddress, fmt.Sprintf("%#04x", address))
+	area.memory[address^area.origin] = value
+	return nil
 }
 
 // ChipRead is an implementation of memory.ChipBus
