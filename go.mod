@@ -11,7 +11,7 @@ require (
 	github.com/go-audio/wav v1.0.0
 	github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7
 	github.com/hajimehoshi/go-mp3 v0.3.1
-	github.com/inkyblackness/imgui-go/v2 v2.4.1
+	github.com/inkyblackness/imgui-go/v2 v2.5.0
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
 	github.com/veandco/go-sdl2 v0.4.4
 )
