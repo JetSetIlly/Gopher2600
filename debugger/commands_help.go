@@ -486,5 +486,9 @@ about an address.`,
 	cmdClear: "Clear all BREAKS, TRAPS, WATCHES and TRACES.",
 
 	cmdPref: "Set preferences for debugger.",
-	cmdLog:  "Print log to terminal.",
+	cmdLog: `Print log to terminal. The LAST argument will cause the most recent log entry to be printed.
+
+Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will always print the last
+log entry after every step, even if the last log entry is not new. "ONSTEP LOG LAST; LOG CLEAR" is maybe more intuitive
+but with the maybe unwanted side effect of clearing the log.`,
 }

@@ -1422,6 +1422,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			switch option {
 			case "CLEAR":
 				logger.Clear()
+			case "LAST":
+				s := &strings.Builder{}
+				logger.Tail(s, 1)
+				dbg.printLine(terminal.StyleLog, s.String())
 			}
 		} else {
 			s := &strings.Builder{}

@@ -127,7 +127,7 @@ var commandTemplate = []string{
 
 	// meta
 	cmdPref + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR])",
-	cmdLog + " (CLEAR)",
+	cmdLog + " (LAST|CLEAR)",
 }
 
 // list of commands that should not be executed when recording/playing scripts
