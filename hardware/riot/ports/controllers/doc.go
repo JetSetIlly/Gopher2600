@@ -14,7 +14,20 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package controllers contains the implementations for all the emulated
-// controllers for the VCS. Currently, there is one implemenation called Multi
-// which attempts to automatically switch between the standard Joystick, Paddle
-// and Keyboard.
+// controllers for the VCS.
+//
+// The Auto type handles flipping of the other controller types according to
+// user input and the state of the machine. The Auto type will forward all
+// functions to the "real" controller (ie. the stick, paddle or keyboard)
+// transparently. So for example, ID() will return the ID() of the "real"
+// controller. If you really need to know whether the real controller has been
+// automatically selected via the Auto type then you can (test the Player 0
+// port, for example):
+//
+//	if _, ok := ports.Player0.(controllers.Auto); ok {
+//		// is auto
+//	} else {
+//		// is not auto
+//	}
+//
 package controllers

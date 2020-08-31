@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
 
@@ -40,7 +41,7 @@ func newWinControllers(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winControllers) init() {
-	win.controllerComboDim = imguiGetFrameDim("", controllers.ControllerTypeList...)
+	win.controllerComboDim = imguiGetFrameDim("", controllers.ControllerList...)
 }
 
 func (win *winControllers) destroy() {
@@ -55,8 +56,9 @@ func (win *winControllers) draw() {
 		return
 	}
 
-	if win.img.lz.Controller.HandController0 == nil ||
-		win.img.lz.Controller.HandController1 == nil {
+	// don't show the window if either of the controllers are unplugged
+	// !!TODO: show something meaningful for unplugged controllers
+	if win.img.lz.Controllers.Player0 == nil || win.img.lz.Controllers.Player1 == nil {
 		return
 	}
 
@@ -65,49 +67,37 @@ func (win *winControllers) draw() {
 
 	imgui.BeginGroup()
 	imgui.Spacing()
-	imgui.Text("Left")
+	imgui.Text("Player 0")
 	imgui.Spacing()
-
-	c := win.img.lz.Controller.HandController0.ControllerType.String()
-
-	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV("##handController0", c, imgui.ComboFlagNoArrowButton) {
-		for _, s := range controllers.ControllerTypeList {
-			if imgui.Selectable(s) {
-				termCmd := fmt.Sprintf("CONTROLLER 0 %s", s)
-				win.img.term.pushCommand(termCmd)
-			}
-		}
-
-		imgui.EndCombo()
-	}
-	imgui.PopItemWidth()
-
-	auto := win.img.lz.Controller.HandController0.AutoControllerType
-	if imgui.Checkbox("Auto##auto0", &auto) {
-		var termCmd string
-		if auto {
-			termCmd = fmt.Sprintf("CONTROLLER 0 AUTO")
-		} else {
-			termCmd = fmt.Sprintf("CONTROLLER 0 NOAUTO")
-		}
-		win.img.term.pushCommand(termCmd)
-	}
+	win.drawController(0)
 	imgui.EndGroup()
 
 	imgui.SameLine()
 
 	imgui.BeginGroup()
-	imgui.Text("Right")
+	imgui.Text("Player 1")
 	imgui.Spacing()
+	win.drawController(1)
+	imgui.EndGroup()
 
-	c = win.img.lz.Controller.HandController1.ControllerType.String()
+	imgui.End()
+}
+
+func (win *winControllers) drawController(player int) {
+	var p ports.Peripheral
+
+	switch player {
+	case 0:
+		p = win.img.lz.Controllers.Player0
+	case 1:
+		p = win.img.lz.Controllers.Player1
+	}
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV("##handController1", c, imgui.ComboFlagNoArrowButton) {
-		for _, s := range controllers.ControllerTypeList {
+	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.ID(), imgui.ComboFlagNoArrowButton) {
+		for _, s := range controllers.ControllerList {
 			if imgui.Selectable(s) {
-				termCmd := fmt.Sprintf("CONTROLLER 1 %s", s)
+				termCmd := fmt.Sprintf("CONTROLLER %d %s", player, s)
 				win.img.term.pushCommand(termCmd)
 			}
 		}
@@ -116,17 +106,14 @@ func (win *winControllers) draw() {
 	}
 	imgui.PopItemWidth()
 
-	auto = win.img.lz.Controller.HandController1.AutoControllerType
-	if imgui.Checkbox("Auto##auto1", &auto) {
+	_, auto := p.(*controllers.Auto)
+	if imgui.Checkbox(fmt.Sprintf("Auto##%d", player), &auto) {
 		var termCmd string
 		if auto {
-			termCmd = fmt.Sprintf("CONTROLLER 1 AUTO")
+			termCmd = fmt.Sprintf("CONTROLLER %d AUTO", player)
 		} else {
-			termCmd = fmt.Sprintf("CONTROLLER 1 NOAUTO")
+			termCmd = fmt.Sprintf("CONTROLLER %d %s", player, p.ID())
 		}
 		win.img.term.pushCommand(termCmd)
 	}
-	imgui.EndGroup()
-
-	imgui.End()
 }

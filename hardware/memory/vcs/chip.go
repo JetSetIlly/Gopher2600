@@ -90,9 +90,8 @@ func (area *ChipMemory) LastReadRegister() string {
 }
 
 // InputDeviceWrite implements memory.InputDeviceBus
-func (area *ChipMemory) InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8) {
-	d := area.memory[reg] & preserveBits
-	area.memory[reg] = data | d
+func (area *ChipMemory) InputDeviceWrite(reg addresses.ChipRegister, data uint8, mask uint8) {
+	area.memory[reg] = (data & mask) | (area.memory[reg] & (mask ^ 0xff))
 }
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.

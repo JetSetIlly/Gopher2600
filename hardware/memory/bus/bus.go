@@ -71,7 +71,9 @@ type ChipBus interface {
 // parts of the emulation are peripheral to the operation of the machine. In
 // practice, this includes the front panel in addition to joysticks, etc.
 type InputDeviceBus interface {
-	InputDeviceWrite(reg addresses.ChipRegister, data uint8, preserveBits uint8)
+	// mask specifies the bits that are to be affected (one bits are affected,
+	// zero bits are unaffected)
+	InputDeviceWrite(reg addresses.ChipRegister, data uint8, mask uint8)
 }
 
 // UpdateBus is an bus internal to the emulation. It exposes the Update()

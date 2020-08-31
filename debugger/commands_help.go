@@ -353,21 +353,28 @@ overlay decorates the display with markers showing when during the drawing
 process key video events were triggered.`,
 
 	// user input
-	cmdController: `Change the current controller type for the specified player. Specifying a
-controller turns off AUTO changing. Turn AUTO changing back on with the AUTO flag.`,
+	cmdController: `Change the current controller type for the specified player. The AUTO
+controller handles changes of controller according to user input and where possible what
+can be inferred from the ROM.`,
 
-	cmdPanel: "Inspect and set front panel settings. Switches can be set or toggled..",
+	cmdPanel: "Inspect and set front panel settings. Switches can be set or toggled.",
 
-	cmdJoystick: `Set joystick input for Player 0 or Player 1 for the next and
+	cmdStick: `Set joystick input for Player 0 or Player 1 for the next and
 subsequent video cycles.
+
+If the current controller for that player is not a stick (or the auto controller type) then
+an error will be returned.
 
 Specify the player with the 0 or 1 arguments.
 
 Note that it is possible to set the stick combinations that would normally not
 be possible with a joystick. For example, LEFT and RIGHT set at the same time.`,
 
-	cmdKeypad: `Set keyboard input for Player 0 or Player 1 for the next and subsequent
+	cmdKeyboard: `Set the keyboard input for Player 0 or Player 1 for the next and subsequent
 video cycles.
+
+If the current controller for that player is not a keyboard (or the auto controller type) then
+an error will be returned.
 
 Specify the player with the 0 or 1 arguments.`,
 

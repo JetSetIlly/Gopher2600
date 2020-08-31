@@ -15,37 +15,7 @@
 
 package controllers
 
-// ControllerType keeps track of which controller type is being used at any
-// given moment. we need this so that we don't ground/recharge the paddle if it
-// is not being used. if we did then joystick input would be wrong.
-//
-// we default to the joystick type which should be fine. for non-joystick
-// games, the paddle/keypad will be activated once the user starts using the
-// corresponding controls.
-//
-// if a paddle/keypad ROM requires paddle/keypad probing from the instant
-// the machine starts (are there any examples of this?) then we will need to
-// initialise the hand controller accordingly, using the setup system.
-type ControllerType int
-
-// List of allowed ControllerTypes
-const (
-	JoystickType ControllerType = iota
-	PaddleType
-	KeypadType
-)
-
-// ControllerTypeList is a list of all possible string representations of the Interval type
-var ControllerTypeList = []string{"Joystick", "Paddle", "Keypad"}
-
-func (c ControllerType) String() string {
-	switch c {
-	case JoystickType:
-		return "Joystick"
-	case PaddleType:
-		return "Paddle"
-	case KeypadType:
-		return "Keypad"
-	}
-	panic("unknown controller type")
-}
+// ControllerList is the list of controllers. These are the values that can be
+// returned by the ID() function of the ports.Peripheral implementations in
+// this package
+var ControllerList = []string{"Auto", "Stick", "Paddle", "Keyboard"}

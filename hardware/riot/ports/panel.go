@@ -19,43 +19,32 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
 // Panel represents the console's front control panel
 type Panel struct {
-	Recordable
-	mem *MemoryAccess
+	mem MemoryAccess
 
 	p0pro         bool
 	p1pro         bool
 	color         bool
 	selectPressed bool
 	resetPressed  bool
-
-	// data direction register
-	ddr uint8
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(mem *MemoryAccess) Peripheral {
+func NewPanel(mem MemoryAccess) Peripheral {
 	pan := &Panel{
 		mem:   mem,
 		color: true,
 	}
-
-	pan.Recordable = Recordable{
-		ID:          PanelID,
-		HandleEvent: pan.HandleEvent,
-	}
-
 	pan.write()
 
 	return pan
 }
 
-// String implements the Port interface
+// String implements the Peripheral interface
 func (pan *Panel) String() string {
 	s := strings.Builder{}
 
@@ -98,7 +87,12 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
-// Reset implements the Port interface
+// ID implements the Peripheral interface
+func (pan *Panel) ID() string {
+	return "Panel"
+}
+
+// Reset implements the Peripheral interface
 func (pan *Panel) Reset() {
 	// does nothing. this isn't the same as pressing the Reset panel switch
 	//
@@ -134,46 +128,27 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.mem.RIOT.InputDeviceWrite(addresses.SWCHB, v, pan.ddr)
+	pan.mem.WriteSWCHx(PanelID, v)
 }
 
-// HandleEvent implements Port interface
+// HandleEvent implements Peripheral interface
 func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	switch event {
+
 	case PanelSelect:
-		b, ok := value.(bool)
-		if !ok {
-			return errors.New(errors.BadInputEventType, event, "bool")
-		}
-		pan.selectPressed = b
+		pan.selectPressed = value.(bool)
 
 	case PanelReset:
-		b, ok := value.(bool)
-		if !ok {
-			return errors.New(errors.BadInputEventType, event, "bool")
-		}
-		pan.resetPressed = b
+		pan.resetPressed = value.(bool)
 
 	case PanelSetColor:
-		b, ok := value.(bool)
-		if !ok {
-			return errors.New(errors.BadInputEventType, event, "bool")
-		}
-		pan.color = b
+		pan.color = value.(bool)
 
 	case PanelSetPlayer0Pro:
-		b, ok := value.(bool)
-		if !ok {
-			return errors.New(errors.BadInputEventType, event, "bool")
-		}
-		pan.p0pro = b
+		pan.p0pro = value.(bool)
 
 	case PanelSetPlayer1Pro:
-		b, ok := value.(bool)
-		if !ok {
-			return errors.New(errors.BadInputEventType, event, "bool")
-		}
-		pan.p1pro = b
+		pan.p1pro = value.(bool)
 
 	case PanelToggleColor:
 		pan.color = !pan.color
@@ -187,28 +162,18 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	case PanelPowerOff:
 		return errors.New(errors.PowerOff)
 
-	case NoEvent:
-		return nil
-
-	default:
-		return errors.New(errors.UnknownInputEvent, pan.ID, event)
 	}
 
 	pan.write()
 
-	// record event with the EventRecorder
-	if pan.Recorder != nil {
-		return pan.Recorder.RecordEvent(pan.ID, event, value)
-	}
-
 	return nil
 }
 
-// Update implements the Port interface
+// Update implements the Peripheral interface
 func (pan *Panel) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step implements the Port interface
+// Step implements the Peripheral interface
 func (pan *Panel) Step() {
 }

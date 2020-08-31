@@ -102,7 +102,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the ports.EventRecorder interface
-func (rec *Recorder) RecordEvent(id ports.ID, event ports.Event, value ports.EventData) error {
+func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports.EventData) error {
 	var err error
 
 	// write header if it's not been written already

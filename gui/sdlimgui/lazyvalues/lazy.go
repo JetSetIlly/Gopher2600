@@ -47,7 +47,7 @@ type Lazy struct {
 	Ball          *LazyBall
 	TV            *LazyTV
 	Cart          *LazyCart
-	Controller    *LazyControllers
+	Controllers   *LazyControllers
 	Prefs         *LazyPrefs
 	Collisions    *LazyCollisions
 	ChipRegisters *LazyChipRegisters
@@ -85,7 +85,7 @@ func NewValues() *Lazy {
 	val.Ball = newLazyBall(val)
 	val.TV = newLazyTV(val)
 	val.Cart = newLazyCart(val)
-	val.Controller = newLazyControllers(val)
+	val.Controllers = newLazyControllers(val)
 	val.Prefs = newLazyPrefs(val)
 	val.Collisions = newLazyCollisions(val)
 	val.ChipRegisters = newLazyChipRegisters(val)
@@ -137,7 +137,7 @@ func (val *Lazy) Update() {
 	val.Ball.update()
 	val.TV.update()
 	val.Cart.update()
-	val.Controller.update()
+	val.Controllers.update()
 	val.Prefs.update()
 	val.Collisions.update()
 	val.ChipRegisters.update()

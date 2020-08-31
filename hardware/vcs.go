@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -69,12 +70,12 @@ func NewVCS(tv television.Television) (*VCS, error) {
 	}
 
 	// !!TODO: allow user to specify what to attach to the ports
-	err = vcs.RIOT.Ports.AttachPlayer0(controllers.NewMultiController0)
+	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.AttachPlayer1(controllers.NewMultiController1)
+	err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, controllers.NewAuto)
 	if err != nil {
 		return nil, err
 	}

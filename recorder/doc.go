@@ -17,7 +17,4 @@
 // type implements the riot.input.EventRecorder() interface. Once added as a
 // transcriber to the VCS port, it will record all user input to the specified
 // file.
-//
-// Currently, a recorder and playback is attached to all ports of the VCS,
-// including the panel.
 package recorder

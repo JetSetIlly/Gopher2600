@@ -55,8 +55,8 @@ const (
 	// user input
 	cmdController = "CONTROLLER"
 	cmdPanel      = "PANEL"
-	cmdJoystick   = "JOYSTICK"
-	cmdKeypad     = "KEYPAD"
+	cmdStick      = "STICK"
+	cmdKeyboard   = "KEYBOARD"
 
 	// halt conditions
 	cmdBreak = "BREAK"
@@ -111,10 +111,10 @@ var commandTemplate = []string{
 	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|DEBUG (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 
 	// user input
-	cmdController + " [0|1] (AUTO|NOAUTO|JOYSTICK|PADDLE|KEYPAD)",
+	cmdController + " [0|1] (AUTO|STICK|PADDLE|KEYBOARD)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
-	cmdJoystick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
-	cmdKeypad + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
+	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
+	cmdKeyboard + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
 	cmdBreak + " [%<target>S %<value>N|%<pc value>S] {& %<target>S %<value>S|& %<value>S}",

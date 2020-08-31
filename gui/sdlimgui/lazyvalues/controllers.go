@@ -16,34 +16,47 @@
 package lazyvalues
 
 import (
-	"sync/atomic"
-
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
 // LazyControllers lazily accesses controller information from the emulator
 type LazyControllers struct {
 	val *Lazy
 
-	atomicHandController0 atomic.Value // input.HandController
-	atomicHandController1 atomic.Value // input.HandController
-	HandController0       *controllers.Multi
-	HandController1       *controllers.Multi
+	// we can't use atomic values here because the underlying type of the
+	// ports.Periperhal interface might change.
+
+	chanPlayer0 chan ports.Peripheral
+	chanPlayer1 chan ports.Peripheral
+	Player0     ports.Peripheral
+	Player1     ports.Peripheral
 }
 
 func newLazyControllers(val *Lazy) *LazyControllers {
-	return &LazyControllers{val: val}
+	return &LazyControllers{
+		val:         val,
+		chanPlayer0: make(chan ports.Peripheral, 1),
+		chanPlayer1: make(chan ports.Peripheral, 1),
+	}
 }
 
 func (lz *LazyControllers) update() {
 	lz.val.Dbg.PushRawEvent(func() {
-		if p, ok := lz.val.Dbg.VCS.RIOT.Ports.Player0.(*controllers.Multi); ok {
-			lz.atomicHandController0.Store(p)
+		select {
+		case lz.chanPlayer0 <- lz.val.Dbg.VCS.RIOT.Ports.Player0:
+		default:
 		}
-		if p, ok := lz.val.Dbg.VCS.RIOT.Ports.Player1.(*controllers.Multi); ok {
-			lz.atomicHandController1.Store(p)
+		select {
+		case lz.chanPlayer1 <- lz.val.Dbg.VCS.RIOT.Ports.Player1:
+		default:
 		}
 	})
-	lz.HandController0, _ = lz.atomicHandController0.Load().(*controllers.Multi)
-	lz.HandController1, _ = lz.atomicHandController1.Load().(*controllers.Multi)
+	select {
+	case lz.Player0 = <-lz.chanPlayer0:
+	default:
+	}
+	select {
+	case lz.Player1 = <-lz.chanPlayer1:
+	default:
+	}
 }

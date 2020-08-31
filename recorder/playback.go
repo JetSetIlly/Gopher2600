@@ -92,7 +92,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
 	plb := &Playback{transcript: transcript}
-	plb.sequences = make([]*playbackSequence, ports.NumIDs)
+	plb.sequences = make([]*playbackSequence, ports.NumPortIDs)
 	for i := range plb.sequences {
 		plb.sequences[i] = &playbackSequence{}
 	}
@@ -136,7 +136,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		id := ports.ID(n)
+		id := ports.PortID(n)
 
 		// create a new entry and convert tokens accordingly
 		// any errors in the transcript causes failure
@@ -148,11 +148,11 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// parse entry value into the correct type
 		entry.value = parseEventData(toks[fieldEventData])
 
-		// special condition for KeypadDown and KeypadUp events.
+		// special condition for KeyboardDown and KeyboardUp events.
 		//
 		// we don't like special conditions but it's difficult to get around
-		// this elegantly. is we store strings for KeypadDown events then,
-		// because the keypad is mostly numbers, converting them back from the
+		// this elegantly. is we store strings for KeyboardDown events then,
+		// because the keyboard is mostly numbers, converting them back from the
 		// file will require a prefix of some sort to force it to look like a
 		// string, rather than a float. that's probably a more ugly solution.
 		//
@@ -160,12 +160,12 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// implementation which I don't want to do - the problem is caused here
 		// and so should be mitigated here.
 		//
-		// likewise for KeypadUp events. the handcontroller Handle() function
+		// likewise for KeyboardUp events. the handcontroller Handle() function
 		// expects a nil argument for these events but we store the empty
 		// string, instead of nil.
-		if entry.event == ports.KeypadDown {
+		if entry.event == ports.KeyboardDown {
 			entry.value = rune(entry.value.(float32))
-		} else if entry.event == ports.KeypadUp {
+		} else if entry.event == ports.KeyboardUp {
 			entry.value = nil
 		}
 
@@ -260,7 +260,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 }
 
 // GetPlaybackEvent implements the ports.EventPlayback interface.
-func (plb *Playback) GetPlaybackEvent(id ports.ID) (ports.Event, ports.EventData, error) {
+func (plb *Playback) GetPlaybackEvent(id ports.PortID) (ports.Event, ports.EventData, error) {
 	// there's no events for this id at all
 	seq := plb.sequences[id]
 

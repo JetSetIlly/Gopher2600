@@ -33,10 +33,13 @@ type RIOT struct {
 
 // NewRIOT is the preferred method of initialisation for the RIOT type
 func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) (*RIOT, error) {
-	var err error
+	riot := &RIOT{
+		mem: mem,
+	}
 
-	riot := &RIOT{mem: mem}
 	riot.Timer = timer.NewTimer(mem)
+
+	var err error
 	riot.Ports, err = ports.NewPorts(mem, tiaMem)
 	if err != nil {
 		return nil, err
@@ -51,16 +54,16 @@ func (riot RIOT) String() string {
 	return s.String()
 }
 
-// Update checks for the most recent write by the CPU to the RIOT memory
+// UpdateRIOT checks for the most recent write by the CPU to the RIOT memory
 // registers
-func (riot *RIOT) Update() {
-	serviceMemory, data := riot.mem.ChipRead()
-	if !serviceMemory {
+func (riot *RIOT) UpdateRIOT() {
+	ok, data := riot.mem.ChipRead()
+	if !ok {
 		return
 	}
 
-	serviceMemory = riot.Timer.Update(data)
-	if !serviceMemory {
+	ok = riot.Timer.Update(data)
+	if !ok {
 		return
 	}
 
@@ -69,7 +72,7 @@ func (riot *RIOT) Update() {
 
 // Step moves the state of the RIOT forward one video cycle
 func (riot *RIOT) Step() {
-	riot.Update()
+	riot.UpdateRIOT()
 	riot.Timer.Step()
 	riot.Ports.Step()
 }

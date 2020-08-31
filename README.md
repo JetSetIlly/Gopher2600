@@ -150,7 +150,7 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Joystick, paddle and keypad inputs are supported. Currently, only joysticks and paddles for the left player are available however. 
+Joystick, paddle and keyboard inputs are supported. Currently, only joysticks and paddles for the left player are available however. 
 
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
 
@@ -158,8 +158,6 @@ The paddle is available by operating the mouse. To activate the paddle, click
 in the play window and waggle the mouse to the extremes three times. Note that
 once the window has been clicked, the mouse will be captured and the pointer
 will disappear. To "release" the mouse, click the right-mouse button.
-
-Keypad input is available only when the emulation thinks it is required. When keypad input is expected, neither joystick or paddle controls will work.
 
 #### Joystick (left player)
 
@@ -181,9 +179,9 @@ Not yet emulated
 
 Not yet emulated
 
-#### Keypad
+#### Keyboard
 
-Keypads for both player 0 and player 1 are supported. 
+Keyboards for both player 0 and player 1 are supported. 
 
 |   |p0|   |   |p1|   |
 |:-:|:-:|:-:|:-:|:-:|:-:|
@@ -227,16 +225,16 @@ by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
 	[ $f000 SEI ] >> help
-			 AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
-		    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
-			  GREP          HALT          HELP        INSERT      JOYSTICK
-			KEYPAD          LAST          LINT          LIST           LOG
-			MEMMAP       MISSILE        ONHALT        ONSTEP       ONTRACE
-			 PANEL         PATCH          PEEK        PLAYER     PLAYFIELD
-			  POKE          PREF       QUANTUM          QUIT           RAM
-			 RESET           RUN        SCRIPT          STEP        SYMBOL
-			   TIA         TIMER         TRACE          TRAP            TV
-			 WATCH
+	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
+	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
+	          GREP          HALT          HELP        INSERT      KEYBOARD
+	          LAST          LINT          LIST           LOG        MEMMAP
+	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
+	         PATCH          PEEK        PLAYER     PLAYFIELD          POKE
+	          PREF       QUANTUM          QUIT           RAM         RESET
+	           RUN        SCRIPT          STEP         STICK        SYMBOL
+	           TIA         TIMER         TRACE          TRAP            TV
+	         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 

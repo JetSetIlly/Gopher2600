@@ -21,12 +21,11 @@ const (
 	PanicError = "panic: %v: %v"
 
 	// sentinals
-	UserInterrupt        = "user interrupt"
-	UserQuit             = "user quit"
-	ScriptEnd            = "end of script (%v)"
-	PowerOff             = "emulated machine has been powered off"
-	InputDeviceUnplugged = "controller unplugged from %v"
-	TVOutOfSpec          = "tv out of spec: %v"
+	UserInterrupt = "user interrupt"
+	UserQuit      = "user quit"
+	ScriptEnd     = "end of script (%v)"
+	PowerOff      = "emulated machine has been powered off"
+	TVOutOfSpec   = "tv out of spec: %v"
 
 	// program modes
 	PlayError        = "error emulating vcs: %v"
@@ -115,9 +114,11 @@ const (
 	SuperchargerEndOfTape = "end of tape"
 
 	// input
-	UnknownInputEvent     = "input error: %v: unsupported event (%v)"
-	BadInputEventType     = "input error: bad value type for event %v (expecting %s)"
-	UnknownControllerType = "input error: unknown controller type (%v)"
+	InputError     = "input error: %v"
+	UnhandledEvent = "unhandled event: %s does not support event %v"
+	KeyboardError  = "keyboard: %v"
+	StickError     = "stick: %v"
+	PaddleError    = "paddle: %v"
 
 	// television
 	UnknownTVRequest = "television error: unsupported request (%v)"

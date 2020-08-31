@@ -17,5 +17,5 @@
 // RIOT).
 //
 // Implementations of the Peripheral interface can be attached with the
-// AttachPlayer0() and AttachPlayer1() functions.
+// AttachPlayer() functions.
 package ports

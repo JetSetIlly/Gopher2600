@@ -49,9 +49,9 @@ const (
 	PaddleFire Event = "PaddleFire" // bool
 	PaddleSet  Event = "PaddleSet"  // float64
 
-	// keypad (only need down event)
-	KeypadDown Event = "KeypadDown" // rune
-	KeypadUp   Event = "KeypadUp"   // nil
+	// keyboard
+	KeyboardDown Event = "KeyboardDown" // rune
+	KeyboardUp   Event = "KeyboardUp"   // nil
 
 	PanelPowerOff Event = "PanelPowerOff" // nil
 )
@@ -70,7 +70,7 @@ type EventData interface{}
 type EventPlayback interface {
 	// note the type restrictions on EventData in the type definition's
 	// commentary
-	GetPlaybackEvent(id ID) (Event, EventData, error)
+	GetPlaybackEvent(id PortID) (Event, EventData, error)
 }
 
 // EventRecorder implementations mirror an incoming event.
@@ -79,5 +79,5 @@ type EventPlayback interface {
 // peripheral at once. The ID parameter of the EventRecord() function will help
 // to differentiate between multiple devices.
 type EventRecorder interface {
-	RecordEvent(ID, Event, EventData) error
+	RecordEvent(PortID, Event, EventData) error
 }

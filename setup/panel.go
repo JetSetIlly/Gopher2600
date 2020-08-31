@@ -115,31 +115,31 @@ func (set PanelSetup) matchCartHash(hash string) bool {
 // apply implements setupEntry interface
 func (set PanelSetup) apply(vcs *hardware.VCS) error {
 	if set.p0 {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer0Pro, true); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer0Pro, false); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, false); err != nil {
 			return err
 		}
 	}
 
 	if set.p1 {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer1Pro, true); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetPlayer1Pro, false); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, false); err != nil {
 			return err
 		}
 	}
 
 	if set.col {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetColor, true); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, true); err != nil {
 			return err
 		}
 	} else {
-		if err := vcs.RIOT.Ports.Panel.HandleEvent(ports.PanelSetColor, false); err != nil {
+		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, false); err != nil {
 			return err
 		}
 	}
