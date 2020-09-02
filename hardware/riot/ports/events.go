@@ -23,15 +23,20 @@ type Event string
 const (
 	NoEvent Event = "NoEvent" // nil
 
-	// the controller has been unplugged
-	Unplug Event = "Unplug" // nil
-
 	// joystick
 	Fire  Event = "Fire"  // bool
 	Up    Event = "Up"    // bool
 	Down  Event = "Down"  // bool
 	Left  Event = "Left"  // bool
 	Right Event = "Right" // bool
+
+	// paddles
+	PaddleFire Event = "PaddleFire" // bool
+	PaddleSet  Event = "PaddleSet"  // float64
+
+	// keyboard
+	KeyboardDown Event = "KeyboardDown" // rune
+	KeyboardUp   Event = "KeyboardUp"   // nil
 
 	// panel
 	PanelSelect Event = "PanelSelect" // bool
@@ -44,14 +49,6 @@ const (
 	PanelToggleColor      Event = "PanelToggleColor"      // nil
 	PanelTogglePlayer0Pro Event = "PanelTogglePlayer0Pro" // nil
 	PanelTogglePlayer1Pro Event = "PanelTogglePlayer1Pro" // nil
-
-	// paddles
-	PaddleFire Event = "PaddleFire" // bool
-	PaddleSet  Event = "PaddleSet"  // float64
-
-	// keyboard
-	KeyboardDown Event = "KeyboardDown" // rune
-	KeyboardUp   Event = "KeyboardUp"   // nil
 
 	PanelPowerOff Event = "PanelPowerOff" // nil
 )
@@ -70,7 +67,7 @@ type EventData interface{}
 type EventPlayback interface {
 	// note the type restrictions on EventData in the type definition's
 	// commentary
-	GetPlaybackEvent(id PortID) (Event, EventData, error)
+	GetPlayback() (PortID, Event, EventData, error)
 }
 
 // EventRecorder implementations mirror an incoming event.

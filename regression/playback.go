@@ -161,30 +161,20 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	})
 
 	if err != nil {
-		if !errors.IsAny(err) {
-			return false, "", errors.New(errors.RegressionPlaybackError, err)
-		}
-
-		switch err.(errors.AtariError).Message {
-		// the PowerOff error is expected. if we receive it then that means
-		// the regression test has succeeded
-		case errors.PowerOff:
-			break
-
-		// PlaybackHashError means that a screen digest somewhere in the
-		// playback script did not work. filter error and return false to
-		// indicate failure
-		case errors.PlaybackHashError:
+		if errors.Has(err, errors.PowerOff) {
+			// PowerOff is okay and is to be expected
+		} else if errors.Has(err, errors.PlaybackHashError) {
+			// PlaybackHashError means that a screen digest somewhere in the
+			// playback script did not work. filter error and return false to
+			// indicate failure
 			fr, _ := tv.GetState(television.ReqFramenum)
 			sl, _ := tv.GetState(television.ReqScanline)
 			hp, _ := tv.GetState(television.ReqHorizPos)
 			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, hp=%d", err, fr, sl, hp)
 			return false, failm, nil
-
-		default:
+		} else {
 			return false, "", errors.New(errors.RegressionPlaybackError, err)
 		}
-
 	}
 
 	// if this is a new regression we want to store the script in the

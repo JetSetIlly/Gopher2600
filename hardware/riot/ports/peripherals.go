@@ -25,10 +25,10 @@ type PortID int
 
 // List of defined IDs
 const (
+	NoPortID  PortID = -1
 	Player0ID PortID = iota
 	Player1ID
 	PanelID
-	NumPortIDs
 )
 
 // Peripheral represents a (input or output) device that can attached to the

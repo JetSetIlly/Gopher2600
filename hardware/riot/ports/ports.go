@@ -151,26 +151,16 @@ func (p *Ports) GetPlayback() error {
 		return nil
 	}
 
-	if err := p.getPlayback(PanelID, p.Panel); err != nil {
-		return err
-	}
-	if err := p.getPlayback(Player0ID, p.Player0); err != nil {
-		return err
-	}
-	if err := p.getPlayback(Player1ID, p.Player1); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Ports) getPlayback(id PortID, periph Peripheral) error {
-	ev, v, err := p.playback.GetPlaybackEvent(id)
+	id, ev, v, err := p.playback.GetPlayback()
 	if err != nil {
 		return err
 	}
 
-	return periph.HandleEvent(ev, v)
+	if id == NoPortID || ev == NoEvent {
+		return nil
+	}
+
+	return p.HandleEvent(id, ev, v)
 }
 
 func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {

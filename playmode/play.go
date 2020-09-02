@@ -205,7 +205,9 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	}
 
 	if err != nil {
-		if errors.Is(err, errors.PowerOff) {
+		if errors.Has(err, errors.PowerOff) {
+			// PowerOff is okay and is to be expected. swallow the error
+			// message and return as normal
 			return nil
 		}
 		return errors.New(errors.PlayError, err)

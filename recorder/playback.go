@@ -31,6 +31,7 @@ import (
 )
 
 type playbackEntry struct {
+	portID   ports.PortID
 	event    ports.Event
 	value    ports.EventData
 	frame    int
@@ -42,11 +43,6 @@ type playbackEntry struct {
 	line int
 }
 
-type playbackSequence struct {
-	events  []playbackEntry
-	eventCt int
-}
-
 // Playback is used to reperform the user input recorded in a previously
 // recorded file. It implements the ports.Playback interface.
 type Playback struct {
@@ -55,9 +51,11 @@ type Playback struct {
 	CartLoad cartridgeloader.Loader
 	TVSpec   string
 
-	sequences []*playbackSequence
-	vcs       *hardware.VCS
-	digest    *digest.Video
+	sequence []playbackEntry
+	seqCt    int
+
+	vcs    *hardware.VCS
+	digest *digest.Video
 
 	// the last frame where an event occurs
 	endFrame int
@@ -91,10 +89,9 @@ func (plb Playback) EndFrame() (bool, error) {
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
-	plb := &Playback{transcript: transcript}
-	plb.sequences = make([]*playbackSequence, ports.NumPortIDs)
-	for i := range plb.sequences {
-		plb.sequences[i] = &playbackSequence{}
+	plb := &Playback{
+		transcript: transcript,
+		sequence:   make([]playbackEntry, 0),
 	}
 
 	tf, err := os.Open(transcript)
@@ -136,11 +133,13 @@ func NewPlayback(transcript string) (*Playback, error) {
 			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
 			return nil, errors.New(errors.PlaybackError, msg)
 		}
-		id := ports.PortID(n)
 
 		// create a new entry and convert tokens accordingly
 		// any errors in the transcript causes failure
-		entry := playbackEntry{line: i + 1}
+		entry := playbackEntry{
+			portID: ports.PortID(n),
+			line:   i + 1,
+		}
 
 		// no need to convert event field
 		entry.event = ports.Event(toks[fieldEvent])
@@ -194,8 +193,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 		entry.hash = toks[fieldHash]
 
 		// add new entry to list of events in the correct playback sequence
-		seq := plb.sequences[id]
-		seq.events = append(seq.events, entry)
+		plb.sequence = append(plb.sequence, entry)
 	}
 
 	return plb, nil
@@ -259,40 +257,38 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	return nil
 }
 
-// GetPlaybackEvent implements the ports.EventPlayback interface.
-func (plb *Playback) GetPlaybackEvent(id ports.PortID) (ports.Event, ports.EventData, error) {
-	// there's no events for this id at all
-	seq := plb.sequences[id]
-
+// GetPlayback returns an event and source portID for an event occuring at the
+// current TV frame/scanline/horizpos
+func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id
-	if seq.eventCt >= len(seq.events) {
-		return ports.NoEvent, nil, nil
+	if plb.seqCt >= len(plb.sequence) {
+		return ports.NoPortID, ports.NoEvent, nil, nil
 	}
 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
 	}
 
 	// compare current state with the recording
-	entry := seq.events[seq.eventCt]
+	entry := plb.sequence[plb.seqCt]
 	if frame == entry.frame && scanline == entry.scanline && horizpos == entry.horizpos {
+		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return ports.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
+			return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
 		}
-		seq.eventCt++
-		return entry.event, entry.value, nil
+		return entry.portID, entry.event, entry.value, nil
 	}
 
 	// next event does not match
-	return ports.NoEvent, nil, nil
+	return ports.NoPortID, ports.NoEvent, nil, nil
 }
