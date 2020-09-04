@@ -29,7 +29,6 @@ type ChipMemory struct {
 	bus.DebugBus
 	bus.ChipBus
 	bus.CPUBus
-	bus.InputDeviceBus
 
 	// because we're servicing two different memory areas with this type, we
 	// need to store the origin and memtop values here, rather than using the
@@ -87,11 +86,6 @@ func (area *ChipMemory) LastReadRegister() string {
 	r := area.readRegister
 	area.readRegister = ""
 	return r
-}
-
-// InputDeviceWrite implements memory.InputDeviceBus
-func (area *ChipMemory) InputDeviceWrite(reg addresses.ChipRegister, data uint8, mask uint8) {
-	area.memory[reg] = (data & mask) | (area.memory[reg] & (mask ^ 0xff))
 }
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.

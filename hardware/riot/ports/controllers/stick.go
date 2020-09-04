@@ -38,7 +38,7 @@ const (
 // Stick represents the VCS digital joystick controller
 type Stick struct {
 	id  ports.PortID
-	mem ports.MemoryAccess
+	bus ports.PeripheralBus
 
 	axis   uint8
 	button uint8
@@ -49,10 +49,10 @@ type Stick struct {
 // NewStick is the preferred method of initialisation for the Stick type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1()
-func NewStick(id ports.PortID, mem ports.MemoryAccess) ports.Peripheral {
+func NewStick(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	stk := &Stick{
 		id:     id,
-		mem:    mem,
+		bus:    bus,
 		axis:   axisCenter,
 		button: stickNoFire,
 	}
@@ -73,8 +73,8 @@ func (stk *Stick) String() string {
 	return fmt.Sprintf("stick: axis=%02x fire=%02x", stk.axis, stk.button)
 }
 
-// ID implements the ports.Peripheral interface
-func (stk *Stick) ID() string {
+// Name implements the ports.Peripheral interface
+func (stk *Stick) Name() string {
 	return "Stick"
 }
 
@@ -82,7 +82,7 @@ func (stk *Stick) ID() string {
 func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, stk.ID(), event)
+		return errors.New(errors.UnhandledEvent, stk.Name(), event)
 
 	case ports.NoEvent:
 
@@ -92,7 +92,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			stk.axis |= axisLeft
 		}
-		stk.mem.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
 
 	case ports.Right:
 		if data.(bool) {
@@ -100,7 +100,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			stk.axis |= axisRight
 		}
-		stk.mem.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
 
 	case ports.Up:
 		if data.(bool) {
@@ -108,7 +108,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			stk.axis |= axisUp
 		}
-		stk.mem.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
 
 	case ports.Down:
 		if data.(bool) {
@@ -116,7 +116,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			stk.axis |= axisDown
 		}
-		stk.mem.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
 
 	case ports.Fire:
 		if data.(bool) {
@@ -124,7 +124,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			stk.button = stickNoFire
 		}
-		stk.mem.WriteINPTx(stk.inptx, stk.button)
+		stk.bus.WriteINPTx(stk.inptx, stk.button)
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func (stk *Stick) Update(data bus.ChipData) bool {
 	case "VBLANK":
 		if data.Value&0x40 != 0x40 {
 			if stk.button == stickNoFire {
-				stk.mem.WriteINPTx(stk.inptx, stk.button)
+				stk.bus.WriteINPTx(stk.inptx, stk.button)
 			}
 		}
 
@@ -153,6 +153,6 @@ func (stk *Stick) Step() {
 
 // Reset implements the ports.Peripheral interface
 func (stk *Stick) Reset() {
-	stk.mem.WriteSWCHx(stk.id, stk.axis)
-	stk.mem.WriteINPTx(stk.inptx, stk.button)
+	stk.bus.WriteSWCHx(stk.id, stk.axis)
+	stk.bus.WriteINPTx(stk.inptx, stk.button)
 }

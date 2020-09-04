@@ -27,7 +27,7 @@ import (
 // Keyboard represents the VCS keyboard (or keypad) type
 type Keyboard struct {
 	id     ports.PortID
-	mem    ports.MemoryAccess
+	bus    ports.PeripheralBus
 	column [3]addresses.ChipRegister
 	key    rune
 }
@@ -38,10 +38,10 @@ const noKey = ' '
 // NewKeyboard is the preferred method of initialisation for the Keyboard type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1()
-func NewKeyboard(id ports.PortID, mem ports.MemoryAccess) ports.Peripheral {
+func NewKeyboard(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	key := &Keyboard{
 		id:  id,
-		mem: mem,
+		bus: bus,
 	}
 
 	switch id {
@@ -60,8 +60,8 @@ func (key *Keyboard) String() string {
 	return fmt.Sprintf("keyboard: key=%v", key.key)
 }
 
-// ID implements the ports.Peripheral interface
-func (key *Keyboard) ID() string {
+// Name implements the ports.Peripheral interface
+func (key *Keyboard) Name() string {
 	return "Keyboard"
 }
 
@@ -69,7 +69,7 @@ func (key *Keyboard) ID() string {
 func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, key.ID(), event)
+		return errors.New(errors.UnhandledEvent, key.Name(), event)
 
 	case ports.NoEvent:
 
@@ -173,21 +173,21 @@ func (key *Keyboard) Update(data bus.ChipData) bool {
 		// !!TODO: Consider adding 400ms delay for SWACNT settings to take effect.
 		switch column {
 		case 1:
-			key.mem.WriteINPTx(key.column[0], 0x00)
-			key.mem.WriteINPTx(key.column[1], 0x80)
-			key.mem.WriteINPTx(key.column[2], 0x80)
+			key.bus.WriteINPTx(key.column[0], 0x00)
+			key.bus.WriteINPTx(key.column[1], 0x80)
+			key.bus.WriteINPTx(key.column[2], 0x80)
 		case 2:
-			key.mem.WriteINPTx(key.column[0], 0x80)
-			key.mem.WriteINPTx(key.column[1], 0x00)
-			key.mem.WriteINPTx(key.column[2], 0x80)
+			key.bus.WriteINPTx(key.column[0], 0x80)
+			key.bus.WriteINPTx(key.column[1], 0x00)
+			key.bus.WriteINPTx(key.column[2], 0x80)
 		case 3:
-			key.mem.WriteINPTx(key.column[0], 0x80)
-			key.mem.WriteINPTx(key.column[1], 0x80)
-			key.mem.WriteINPTx(key.column[2], 0x00)
+			key.bus.WriteINPTx(key.column[0], 0x80)
+			key.bus.WriteINPTx(key.column[1], 0x80)
+			key.bus.WriteINPTx(key.column[2], 0x00)
 		default:
-			key.mem.WriteINPTx(key.column[0], 0x80)
-			key.mem.WriteINPTx(key.column[1], 0x80)
-			key.mem.WriteINPTx(key.column[2], 0x80)
+			key.bus.WriteINPTx(key.column[0], 0x80)
+			key.bus.WriteINPTx(key.column[1], 0x80)
+			key.bus.WriteINPTx(key.column[2], 0x80)
 		}
 	}
 

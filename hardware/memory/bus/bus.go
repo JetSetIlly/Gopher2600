@@ -13,8 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package bus defines the memory bus concept. For an explanation see the
-// memory package documentation.
 package bus
 
 import (
@@ -43,9 +41,11 @@ type CPUBusZeroPage interface {
 	ReadZeroPage(address uint8) (uint8, error)
 }
 
-// ChipData is returned by ChipBus.ChipRead()
+// ChipData packages together the name of the chip register that has been
+// written to and the value that was written. Useful for passing values without
+// losing context - for example, the UpdateBus.Update() function.
 type ChipData struct {
-	// the canonical name of the chip register writter to
+	// the canonical name of the chip register written to
 	Name string
 
 	// the data value written to the chip register
@@ -67,16 +67,7 @@ type ChipBus interface {
 	LastReadRegister() string
 }
 
-// InputDeviceBus defines the operations for the memory system when accessed from
-// parts of the emulation are peripheral to the operation of the machine. In
-// practice, this includes the front panel in addition to joysticks, etc.
-type InputDeviceBus interface {
-	// mask specifies the bits that are to be affected (one bits are affected,
-	// zero bits are unaffected)
-	InputDeviceWrite(reg addresses.ChipRegister, data uint8, mask uint8)
-}
-
-// UpdateBus is an bus internal to the emulation. It exposes the Update()
+// UpdateBus is a bus internal to the emulation. It exposes the Update()
 // function of one sub-system to another sub-system. Currently used to connect
 // the RIOT input sub-system to the TIA VBLANK (by calling Update() on the
 // input sub-system from the TIA)

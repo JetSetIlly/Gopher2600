@@ -24,7 +24,7 @@ import (
 
 // Panel represents the console's front control panel
 type Panel struct {
-	mem MemoryAccess
+	bus PeripheralBus
 
 	p0pro         bool
 	p1pro         bool
@@ -34,9 +34,9 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type
-func NewPanel(mem MemoryAccess) Peripheral {
+func NewPanel(bus PeripheralBus) Peripheral {
 	pan := &Panel{
-		mem:   mem,
+		bus:   bus,
 		color: true,
 	}
 	pan.write()
@@ -87,8 +87,8 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
-// ID implements the Peripheral interface
-func (pan *Panel) ID() string {
+// Name implements the Peripheral interface
+func (pan *Panel) Name() string {
 	return "Panel"
 }
 
@@ -128,7 +128,7 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.mem.WriteSWCHx(PanelID, v)
+	pan.bus.WriteSWCHx(PanelID, v)
 }
 
 // HandleEvent implements Peripheral interface

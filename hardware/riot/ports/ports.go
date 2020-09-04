@@ -25,10 +25,8 @@ import (
 
 // Input implements the input/output part of the RIOT (the IO in RIOT)
 type Ports struct {
-	riot   bus.InputDeviceBus
-	tia    bus.InputDeviceBus
-	swacnt uint8
-	latch  bool
+	riot bus.ChipBus
+	tia  bus.ChipBus
 
 	Panel   Peripheral
 	Player0 Peripheral
@@ -36,15 +34,47 @@ type Ports struct {
 
 	playback EventPlayback
 	recorder EventRecorder
+
+	// local copies of key chip memory registers
+
+	// the latch bit represents the value of bit 6 of the VBLANK register. used
+	// to affect how INPTx registers are written. see WriteINPTx() function
+	latch bool
+
+	// the swacnt field is the local copy of the SWACNT register. used to mask
+	// bits in the SWACHA register. a 1 bit indicates the corresponding SWACHA
+	// bit is used for output from the VCS, while a 0 bit indicates that it is
+	// used for input to the VCS.
+	swacnt uint8
+
+	// the swcha field is a copy of the SWCHA register as it was written by the
+	// CPU. it is not necessarily the value of SWCHA as written by the RIOT.
+	//
+	// we need this so that chancing the SWACNT (by the CPU) will cause the
+	// correct value to be written to be written to the SWCHA register.
+	//
+	// we can think of these as the input lines that are used in conjunction
+	// with the SWACNT bits to create the SWCHA register
+	swchaFromCPU uint8
+
+	// swchaMux is the value that has most recently been written to the SWCHA
+	// register by the RIOT
+	//
+	// the value has *not* been masked by the swacnt valuae
+	//
+	// we use it to mux the Player0 and Player 1 nibbles
+	// into the single register
+	swchaMux uint8
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type
 func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Ports, error) {
 	p := &Ports{
-		riot:   riotMem.(bus.InputDeviceBus),
-		tia:    tiaMem.(bus.InputDeviceBus),
-		swacnt: 0x00,
-		latch:  false,
+		riot:         riotMem,
+		tia:          tiaMem,
+		swchaFromCPU: 0x00,
+		swacnt:       0x00,
+		latch:        false,
 	}
 
 	p.Panel = NewPanel(p)
@@ -96,25 +126,29 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		p.latch = data.Value&0x40 == 0x40
 
 	case "SWCHA":
-		// SWCHA is filtered by SWACNT. this maybe should be done in the memory
-		// sub-system before it is propagated
-		//
-		// !!TODO: think about moving SWACNT filtering to the memory sub-system
-		data.Value &= p.swacnt
+		p.swchaFromCPU = data.Value
 
-		p.riot.InputDeviceWrite(addresses.SWCHA, data.Value, 0x00)
+		// mask value and set SWCHA register. some peripheral may call
+		// WriteSWCHx() which (if attached to player 0 or player 1 port) will
+		// write over this value. we should think of this write as the default
+		// case
+		p.riot.ChipWrite(addresses.SWCHA, (p.swacnt^0xff)|p.swchaFromCPU)
 
 	case "SWACNT":
 		p.swacnt = data.Value
-		p.riot.InputDeviceWrite(addresses.SWACNT, data.Value, 0x00)
+		p.riot.ChipWrite(addresses.SWACNT, p.swacnt)
 
-	default:
-		return true
+		// i/o bits have changed so change the data in the SWCHA register
+		v := (p.swacnt ^ 0xff) | p.swchaFromCPU
+		p.riot.ChipWrite(addresses.SWCHA, v)
 	}
 
+	// the usual "pattern" for the Update() function is to only call it if the
+	// ChipData hasn't already been serviced. we don't do that here because the
+	// register may be of interest to all peripherals
+	_ = p.Panel.Update(data)
 	_ = p.Player0.Update(data)
 	_ = p.Player1.Update(data)
-	_ = p.Panel.Update(data)
 
 	return false
 }
@@ -191,11 +225,17 @@ func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 func (p *Ports) WriteSWCHx(id PortID, data uint8) {
 	switch id {
 	case Player0ID:
-		p.riot.InputDeviceWrite(addresses.SWCHA, data&(p.swacnt^0xff), 0xf0)
+		data &= 0xf0              // keep only the bits for player 0
+		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
+		p.riot.ChipWrite(addresses.SWCHA, data&(p.swacnt^0xff))
+		p.swchaMux = data
 	case Player1ID:
-		p.riot.InputDeviceWrite(addresses.SWCHA, (data>>4)&(p.swacnt^0xff), 0x0f)
+		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
+		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
+		p.riot.ChipWrite(addresses.SWCHA, data&(p.swacnt^0xff))
+		p.swchaMux = data
 	case PanelID:
-		p.riot.InputDeviceWrite(addresses.SWCHB, data, 0xff)
+		p.riot.ChipWrite(addresses.SWCHB, data)
 	default:
 		return
 	}
@@ -206,6 +246,6 @@ func (p *Ports) WriteINPTx(inptx addresses.ChipRegister, data uint8) {
 	// write memory if button is pressed or it is not and the button latch
 	// is false
 	if data != 0x80 || !p.latch {
-		p.tia.InputDeviceWrite(inptx, data, 0x80)
+		p.tia.ChipWrite(inptx, data)
 	}
 }

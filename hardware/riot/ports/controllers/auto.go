@@ -24,7 +24,7 @@ import (
 // Auto handles the automatic switching between controller types
 type Auto struct {
 	id         ports.PortID
-	mem        ports.MemoryAccess
+	bus        ports.PeripheralBus
 	controller ports.Peripheral
 
 	paddleTouchLeft  int
@@ -34,10 +34,10 @@ type Auto struct {
 // NewAuto is the preferred method of initialisation for the Auto type.
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1()
-func NewAuto(id ports.PortID, mem ports.MemoryAccess) ports.Peripheral {
+func NewAuto(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	aut := &Auto{
 		id:  id,
-		mem: mem,
+		bus: bus,
 	}
 
 	aut.Reset()
@@ -49,9 +49,9 @@ func (aut *Auto) String() string {
 	return aut.controller.String()
 }
 
-// ID implements the ports.Peripheral interface
-func (aut *Auto) ID() string {
-	return aut.controller.ID()
+// Name implements the ports.Peripheral interface
+func (aut *Auto) Name() string {
+	return aut.controller.Name()
 }
 
 // HandleEvent implements the ports.Peripheral interface
@@ -127,23 +127,23 @@ func (aut *Auto) Step() {
 
 // Reset implements the ports.Peripheral interface
 func (aut *Auto) Reset() {
-	aut.controller = NewStick(aut.id, aut.mem)
+	aut.controller = NewStick(aut.id, aut.bus)
 }
 
 func (aut *Auto) toStick() {
 	if _, ok := aut.controller.(*Stick); !ok {
-		aut.controller = NewStick(aut.id, aut.mem)
+		aut.controller = NewStick(aut.id, aut.bus)
 	}
 }
 
 func (aut *Auto) toPaddle() {
 	if _, ok := aut.controller.(*Paddle); !ok {
-		aut.controller = NewPaddle(aut.id, aut.mem)
+		aut.controller = NewPaddle(aut.id, aut.bus)
 	}
 }
 
 func (aut *Auto) toKeyboard() {
 	if _, ok := aut.controller.(*Keyboard); !ok {
-		aut.controller = NewKeyboard(aut.id, aut.mem)
+		aut.controller = NewKeyboard(aut.id, aut.bus)
 	}
 }

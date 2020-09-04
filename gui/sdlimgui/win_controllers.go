@@ -94,7 +94,7 @@ func (win *winControllers) drawController(player int) {
 	}
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.ID(), imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.Name(), imgui.ComboFlagNoArrowButton) {
 		for _, s := range controllers.ControllerList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("CONTROLLER %d %s", player, s)
@@ -112,7 +112,7 @@ func (win *winControllers) drawController(player int) {
 		if auto {
 			termCmd = fmt.Sprintf("CONTROLLER %d AUTO", player)
 		} else {
-			termCmd = fmt.Sprintf("CONTROLLER %d %s", player, p.ID())
+			termCmd = fmt.Sprintf("CONTROLLER %d %s", player, p.Name())
 		}
 		win.img.term.pushCommand(termCmd)
 	}

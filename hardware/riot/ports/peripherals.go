@@ -34,10 +34,13 @@ const (
 // Peripheral represents a (input or output) device that can attached to the
 // VCS ports.
 type Peripheral interface {
+	// String should return information about the state of the peripheral
 	String() string
 
-	// ID is the name of the peripheral
-	ID() string
+	// Name should return the canonical name for the peripheral (eg. "Paddle"
+	// for the paddle peripheral). It shouldn't include information about which
+	// port the peripheral is attached to.
+	Name() string
 
 	// handle an incoming input event
 	HandleEvent(Event, EventData) error
@@ -55,10 +58,23 @@ type Peripheral interface {
 
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1()
-type NewPeripheral func(PortID, MemoryAccess) Peripheral
+type NewPeripheral func(PortID, PeripheralBus) Peripheral
 
-// MemoryAccess defines the memory operations required by peripherals
-type MemoryAccess interface {
-	WriteSWCHx(id PortID, data uint8)
+// PeripheralBus defines the memory operations required by peripherals
+type PeripheralBus interface {
 	WriteINPTx(inptx addresses.ChipRegister, data uint8)
+
+	// the SWCHA register is logically divided into two nibbles. player 0
+	// uses the upper nibble and player 1 uses the lower nibble. peripherals
+	// attached to either player port *must* only use the upper nibble. this
+	// write function will transparently shift the data into the lower nibble
+	// for peripherals attached to the player 1 port.
+	//
+	// also note that peripherals do not need to worry about preserving bits
+	// in the opposite nibble. the WriteSWCHx implementation will do that
+	// transparently according to which port the peripheral is attached
+	//
+	// Peripherals attached to the panel port can use the entire byte of the
+	// SWCHB register
+	WriteSWCHx(id PortID, data uint8)
 }

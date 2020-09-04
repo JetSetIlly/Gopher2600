@@ -34,7 +34,7 @@ const (
 // Paddle represents the VCS paddle controller type
 type Paddle struct {
 	id  ports.PortID
-	mem ports.MemoryAccess
+	bus ports.PeripheralBus
 
 	// register to write puck charge to
 	inptx addresses.ChipRegister
@@ -60,10 +60,10 @@ type Paddle struct {
 // NewPaddle is the preferred method of initialisation for the Paddle type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1()
-func NewPaddle(id ports.PortID, mem ports.MemoryAccess) ports.Peripheral {
+func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pdl := &Paddle{
 		id:          id,
-		mem:         mem,
+		bus:         bus,
 		sensitivity: paddleSensitivity,
 	}
 
@@ -85,8 +85,8 @@ func (pdl *Paddle) String() string {
 	return fmt.Sprintf("paddle: button=%02x charge=%v resistance=%.02f", pdl.fire, pdl.charge, pdl.resistance)
 }
 
-// ID implements the ports.Peripheral interface
-func (pdl *Paddle) ID() string {
+// Name implements the ports.Peripheral interface
+func (pdl *Paddle) Name() string {
 	return "Paddle"
 }
 
@@ -94,7 +94,7 @@ func (pdl *Paddle) ID() string {
 func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, pdl.ID(), event)
+		return errors.New(errors.UnhandledEvent, pdl.Name(), event)
 
 	case ports.NoEvent:
 
@@ -104,7 +104,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 		} else {
 			pdl.fire = paddleNoFire
 		}
-		pdl.mem.WriteSWCHx(pdl.id, pdl.fire)
+		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
 
 	case ports.PaddleSet:
 		pdl.resistance = 1.0 - data.(float32)
@@ -120,7 +120,7 @@ func (pdl *Paddle) Update(data bus.ChipData) bool {
 		if data.Value&0x80 == 0x80 {
 			// ground puck
 			pdl.charge = 0x00
-			pdl.mem.WriteINPTx(pdl.inptx, 0x00)
+			pdl.bus.WriteINPTx(pdl.inptx, 0x00)
 		}
 
 	default:
@@ -137,7 +137,7 @@ func (pdl *Paddle) Step() {
 		if pdl.ticks >= pdl.resistance {
 			pdl.ticks = 0.0
 			pdl.charge++
-			pdl.mem.WriteINPTx(pdl.inptx, pdl.charge)
+			pdl.bus.WriteINPTx(pdl.inptx, pdl.charge)
 		}
 	}
 }
