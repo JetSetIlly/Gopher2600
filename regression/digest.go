@@ -42,6 +42,7 @@ const (
 	digestFieldTVtype
 	digestFieldNumFrames
 	digestFieldState
+	digestFieldStateFile
 	digestFieldDigest
 	digestFieldNotes
 	numDigestFields
@@ -55,7 +56,7 @@ type DigestRegression struct {
 	CartLoad  cartridgeloader.Loader
 	TVtype    string
 	NumFrames int
-	State     bool
+	State     StateType
 	stateFile string
 	Notes     string
 	digest    string
@@ -95,9 +96,24 @@ func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, er
 	}
 
 	// handle state field
-	if fields[digestFieldState] != "" {
-		reg.State = true
-		reg.stateFile = fields[digestFieldState]
+	switch fields[digestFieldState] {
+	case "":
+		reg.State = StateNone
+	case "TV":
+		reg.State = StateTV
+	case "PORTS":
+		reg.State = StatePorts
+	default:
+		msg := fmt.Sprintf("invalid state field [%s]", fields[digestFieldState])
+		return nil, errors.New(errors.RegressionDigestError, msg)
+	}
+
+	// and state file field
+	if fields[digestFieldStateFile] != "" {
+		if reg.State == StateNone {
+			return nil, errors.New(errors.RegressionDigestError, "invalid state file field: no state type specifier")
+		}
+		reg.stateFile = fields[digestFieldStateFile]
 	}
 
 	return reg, nil
@@ -111,12 +127,20 @@ func (reg DigestRegression) ID() string {
 // String implements the database.Entry interface
 func (reg DigestRegression) String() string {
 	s := strings.Builder{}
-	stateFile := ""
-	if reg.State {
-		stateFile = "[with state]"
+
+	state := ""
+	switch reg.State {
+	case StateNone:
+		state = ""
+	case StateTV:
+		state = "[TV state]"
+	case StatePorts:
+		state = "[ports state]"
+	default:
+		state = "[with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s/%s] %s [%s] frames=%d %s", reg.ID(), reg.Mode, reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, stateFile))
+	s.WriteString(fmt.Sprintf("[%s/%s] %s [%s] frames=%d %s", reg.ID(), reg.Mode, reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -131,6 +155,7 @@ func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
 			reg.CartLoad.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
+			reg.State.String(),
 			reg.stateFile,
 			reg.digest,
 			reg.Notes,
@@ -198,8 +223,15 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	state := make([]string, 0, 1024)
 
 	// add the starting state of the tv
-	if reg.State {
+	switch reg.State {
+	case StateTV:
 		state = append(state, tv.String())
+	case StatePorts:
+		state = append(state, vcs.RIOT.Ports.String())
+	case StateTimer:
+		state = append(state, vcs.RIOT.Timer.String())
+	case StateCPU:
+		state = append(state, vcs.CPU.String())
 	}
 
 	// display ticker for progress meter
@@ -215,9 +247,18 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 		default:
 		}
 
-		// store tv state at every step
-		if reg.State {
+		// store state. StateTV stores every video cycle. other State types
+		// can (should?) choose to only store state if it is different to the
+		// previous entry
+		switch reg.State {
+		case StateTV:
 			state = append(state, tv.String())
+		case StatePorts:
+			state = append(state, vcs.RIOT.Ports.String())
+		case StateTimer:
+			state = append(state, vcs.RIOT.Timer.String())
+		case StateCPU:
+			state = append(state, vcs.CPU.String())
 		}
 
 		return true, nil
@@ -230,7 +271,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	if newRegression {
 		reg.digest = dig.Hash()
 
-		if reg.State {
+		if reg.State != StateNone {
 			// create a unique filename
 			reg.stateFile, err = uniqueFilename("state", reg.CartLoad)
 			if err != nil {
@@ -265,14 +306,14 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 			}
 		}
 
+		// this is a new regression entry so we don't need to do the comparison
+		// stage so we return early
 		return true, "", nil
 	}
 
-	// if we reach this point then this is a regression test (not adding a new
-	// test)
-
-	// compare new state tracking with recorded state tracking
-	if reg.State {
+	// only for replay of existing regression entries. compare new state
+	// tracking with recorded state tracking
+	if reg.State != StateNone {
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)

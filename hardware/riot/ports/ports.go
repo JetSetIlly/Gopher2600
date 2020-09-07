@@ -17,6 +17,7 @@ package ports
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -42,10 +43,20 @@ type Ports struct {
 	latch bool
 
 	// the swacnt field is the local copy of the SWACNT register. used to mask
-	// bits in the SWACHA register. a 1 bit indicates the corresponding SWACHA
+	// bits in the SWCHA register. a 1 bit indicates the corresponding SWCHA
 	// bit is used for output from the VCS, while a 0 bit indicates that it is
 	// used for input to the VCS.
 	swacnt uint8
+
+	// the swcha field is the local copy of SWCHA register. note that we use
+	// this only for reference purporses (particular the String() function).
+	// the two swcha* derived fields below are of more use to the emulation
+	// itself.
+	swcha uint8
+
+	// local copy of the SWCHB register. used exclusively for reference
+	// purposes
+	swchb uint8
 
 	// the swcha field is a copy of the SWCHA register as it was written by the
 	// CPU. it is not necessarily the value of SWCHA as written by the RIOT.
@@ -104,6 +115,15 @@ func (p *Ports) AttachPlayer(id PortID, c NewPeripheral) error {
 	return nil
 }
 
+func (p *Ports) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("SWACNT: %#02x", p.swacnt))
+	s.WriteString(fmt.Sprintf("  SWCHA: %#02x", p.swcha))
+	s.WriteString(fmt.Sprintf("  SWCHA (from CPU): %#02x", p.swchaFromCPU))
+	s.WriteString(fmt.Sprintf("  SWCHB: %#02x", p.swchb))
+	return s.String()
+}
+
 // Reset peripherals to an initial state
 func (p *Ports) Reset() {
 	if p.Player0 != nil {
@@ -128,19 +148,20 @@ func (p *Ports) Update(data bus.ChipData) bool {
 	case "SWCHA":
 		p.swchaFromCPU = data.Value
 
-		// mask value and set SWCHA register. some peripheral may call
-		// WriteSWCHx() which (if attached to player 0 or player 1 port) will
-		// write over this value. we should think of this write as the default
-		// case
-		p.riot.ChipWrite(addresses.SWCHA, (p.swacnt^0xff)|p.swchaFromCPU)
+		// mask value and set SWCHA register. some peripherals may call
+		// WriteSWCHx() which will write over this value (if attached to player
+		// 0 or player 1 ports). we should think of this write as the default
+		// event in the case of SWCHA being written to
+		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
+		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 
 	case "SWACNT":
 		p.swacnt = data.Value
 		p.riot.ChipWrite(addresses.SWACNT, p.swacnt)
 
 		// i/o bits have changed so change the data in the SWCHA register
-		v := (p.swacnt ^ 0xff) | p.swchaFromCPU
-		p.riot.ChipWrite(addresses.SWCHA, v)
+		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
+		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 	}
 
 	// the usual "pattern" for the Update() function is to only call it if the
@@ -227,15 +248,18 @@ func (p *Ports) WriteSWCHx(id PortID, data uint8) {
 	case Player0ID:
 		data &= 0xf0              // keep only the bits for player 0
 		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
-		p.riot.ChipWrite(addresses.SWCHA, data&(p.swacnt^0xff))
 		p.swchaMux = data
+		p.swcha = data & (p.swacnt ^ 0xff)
+		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 	case Player1ID:
 		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
 		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
-		p.riot.ChipWrite(addresses.SWCHA, data&(p.swacnt^0xff))
 		p.swchaMux = data
+		p.swcha = data & (p.swacnt ^ 0xff)
+		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 	case PanelID:
-		p.riot.ChipWrite(addresses.SWCHB, data)
+		p.swchb = data
+		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 	default:
 		return
 	}

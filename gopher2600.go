@@ -680,7 +680,7 @@ func regressAdd(md *modalflag.Modes) error {
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
 	numframes := md.AddInt("frames", 10, "number of frames to run [cartridge args only]")
-	state := md.AddBool("state", false, "record TV state at every CPU step [cartrdige args only]")
+	state := md.AddString("state", "none", "record emulator state at every CPU step [cartrdige args only]")
 	mode := md.AddString("mode", "video", "type of digest to create [cartridge args only]")
 	notes := md.AddString("notes", "", "annotation for the database")
 
@@ -718,12 +718,17 @@ func regressAdd(md *modalflag.Modes) error {
 				return fmt.Errorf("%v", err)
 			}
 
+			statetype, err := regression.NewStateType(*state)
+			if err != nil {
+				return err
+			}
+
 			rec = &regression.DigestRegression{
 				Mode:      m,
 				CartLoad:  cartload,
 				TVtype:    strings.ToUpper(*spec),
 				NumFrames: *numframes,
-				State:     *state,
+				State:     statetype,
 				Notes:     *notes,
 			}
 		}

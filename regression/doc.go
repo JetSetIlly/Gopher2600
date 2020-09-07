@@ -29,4 +29,16 @@
 // The two tests are useful for different ROMs. The digest type is useful if
 // the ROM does something immediately, say an image that is stressful on the
 // TIA. The playback type is more useful for real world ROMs (ie. games).
+//
+// The digest test also supports recording of machine state. State if recorded
+// every video cycle so probably isn't suitable for very long digest tests. The
+// resulting state script is very compressible but the regression package does
+// not yet support transparent compression/decompression.
+//
+// Two machine states are supported at the moment - TV state and RIOT/Ports
+// state. This is easily extendable to other areas of the emulation.
+//
+// Playback scripts and state scripts are stored in the "regressionScripts"
+// directory of the emulator's configuration directory. See the gopher2600
+// paths package for details about the configuration directory.
 package regression
