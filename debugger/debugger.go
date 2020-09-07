@@ -30,6 +30,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -140,7 +142,7 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) (*Debugger, error) {
+func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, useSavekey bool) (*Debugger, error) {
 	var err error
 
 	dbg := &Debugger{
@@ -156,6 +158,14 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal) 
 	dbg.VCS, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
+	}
+
+	// replace player 1 port with savekey
+	if useSavekey {
+		err = dbg.VCS.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
+		if err != nil {
+			return nil, errors.New(errors.DebuggerError, err)
+		}
 	}
 
 	// create a new disassembly instance

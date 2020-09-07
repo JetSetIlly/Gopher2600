@@ -31,6 +31,19 @@ const (
 	PanelID
 )
 
+func (id *PortID) String() string {
+	switch *id {
+	case Player0ID:
+		return "player 0"
+	case Player1ID:
+		return "player 1"
+	case PanelID:
+		return "panel"
+	}
+
+	return "not attached"
+}
+
 // Peripheral represents a (input or output) device that can attached to the
 // VCS ports.
 type Peripheral interface {

@@ -25,6 +25,8 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -45,7 +47,7 @@ type playmode struct {
 // contents of the file specified in Filename field of the Loader instance will
 // be checked. If it is a playback file then the playback codepath will be
 // used.
-func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool) error {
+func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool) error {
 	var recording string
 
 	// set OnLoaded function for specific cartridge formats
@@ -74,6 +76,14 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
+	}
+
+	// replace player 1 port with savekey
+	if useSavekey {
+		err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
+		if err != nil {
+			return errors.New(errors.PlayError, err)
+		}
 	}
 
 	// note that we attach the cartridge in three different branches below,

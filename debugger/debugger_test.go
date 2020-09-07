@@ -217,7 +217,7 @@ func (trm *mockTerm) testSequence() {
 func TestDebugger_withNonExistantInitScript(t *testing.T) {
 	trm := newMockTerm(t)
 
-	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm)
+	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm, false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -233,7 +233,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 func TestDebugger(t *testing.T) {
 	trm := newMockTerm(t)
 
-	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm)
+	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm, false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

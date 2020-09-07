@@ -241,6 +241,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
 	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
+	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -313,7 +314,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			}
 		}
 
-		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore)
+		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey)
 		if err != nil {
 			return err
 		}
@@ -348,6 +349,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
+	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -410,7 +412,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	sync.state <- reqNoIntSig
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(tv, scr, term)
+	dbg, err := debugger.NewDebugger(tv, scr, term, *useSavekey)
 	if err != nil {
 		return err
 	}

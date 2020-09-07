@@ -23,7 +23,7 @@ In addition to the debugger, `Gopher2600` can [record and playback gameplay sess
 
 The gameplay playback feature is also used in the inbuilt [regression database](#regression-database). This database allow for easy testing of the emulator's integrity and was of invaluable use during development of the emulator. This feature will also be of use perhaps when developing new ROMs for the Atari 2600 - a way of recording the ideal output of the ROM for future comparison.
 
-The Atari 2600 comes with a variety of [hand controllers](#hand-controllers) and `Gopher2600` does it's very best to automatically select the correct input device. This is an feature that will be expanded on greatly in the future but currently joysticks, paddles and keyboard are all supported.
+The Atari 2600 comes with a variety of [hand controllers](#hand-controllers) and `Gopher2600` does it's very best to automatically select the correct input device. `Gopher2600` also supports the [SaveKey](#savekey) peripheral.
 
 `Gopher2600` supports a variety of cartridge formats including [Supercharger](#supercharger-roms) from MP3 or WAV files. It supports `DPC+` format although there is no support for the ARM as yet. Most other formats are also supported.
 
@@ -280,6 +280,22 @@ A copy of the BIOS file must be present. The file should be named:
 The file can be placed in the current working directory or in the same
 directory as the supercharger ROM being loaded. Alternatively, it can be placed
 in the emulator's [configuration directory](#configuration-directory).
+
+## SaveKey
+
+`Gopher2600` has basic support for the `SaveKey` peripheral. This will be
+expanded on in the future.
+
+For now, the presence of the peripheral must be specified with the `-savekey`
+arugment. This is only available in `play` and `debug` mode. The simplest
+invocation to load a ROM with the `SaveKey` peripheral:
+
+	> gopher2600 -savekey roms/mgd.bin
+
+Note that the `SaveKey` will always be inserted in the second player port.
+
+Data saved to the `SaveKey` will be saved in the [configuration directory](#configuration-directory) to the
+binary file named simply, `savekey`.
 
 ## Recording Gameplay
 

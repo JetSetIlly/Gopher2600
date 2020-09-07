@@ -71,10 +71,10 @@ type Ports struct {
 	// swchaMux is the value that has most recently been written to the SWCHA
 	// register by the RIOT
 	//
-	// the value has *not* been masked by the swacnt valuae
+	// the value has *not* been masked by the swacnt value
 	//
-	// we use it to mux the Player0 and Player 1 nibbles
-	// into the single register
+	// we use it to mux the Player0 and Player 1 nibbles into the single
+	// register
 	swchaMux uint8
 }
 
@@ -145,15 +145,28 @@ func (p *Ports) Update(data bus.ChipData) bool {
 	case "VBLANK":
 		p.latch = data.Value&0x40 == 0x40
 
+		// peripheral update
+		_ = p.Player0.Update(data)
+		_ = p.Player1.Update(data)
+
 	case "SWCHA":
 		p.swchaFromCPU = data.Value
 
 		// mask value and set SWCHA register. some peripherals may call
-		// WriteSWCHx() which will write over this value (if attached to player
-		// 0 or player 1 ports). we should think of this write as the default
-		// event in the case of SWCHA being written to
+		// WriteSWCHx() as part of the Update() function which will write over
+		// this value.
+		//
+		// we should think of this write as the default event in case the
+		// peripheral chooses to do nothing with the new value
 		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
+
+		// mask value with SWACNT bits before passing to periperhal
+		data.Value &= p.swacnt
+
+		// peripheral update for SWCHA
+		_ = p.Player0.Update(data)
+		_ = p.Player1.Update(data)
 
 	case "SWACNT":
 		p.swacnt = data.Value
@@ -162,14 +175,26 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		// i/o bits have changed so change the data in the SWCHA register
 		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-	}
 
-	// the usual "pattern" for the Update() function is to only call it if the
-	// ChipData hasn't already been serviced. we don't do that here because the
-	// register may be of interest to all peripherals
-	_ = p.Panel.Update(data)
-	_ = p.Player0.Update(data)
-	_ = p.Player1.Update(data)
+		// peripheral update for SWACNT
+		_ = p.Player0.Update(data)
+		_ = p.Player1.Update(data)
+
+		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
+		// adjust SWCHA lines and update periperhal with new SWCHA data
+		data = bus.ChipData{
+			Name:  "SWCHA",
+			Value: p.swcha,
+		}
+		_ = p.Player0.Update(data)
+		_ = p.Player1.Update(data)
+
+	case "SWCHB":
+		fallthrough
+
+	case "SWBCNT":
+		_ = p.Panel.Update(data)
+	}
 
 	return false
 }

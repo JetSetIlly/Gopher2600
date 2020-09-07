@@ -73,6 +73,10 @@ func (l *logger) log(tag, detail string) {
 		e.Timestamp = time.Now()
 	}
 
+	if e.String() == "\n" {
+		panic("foo")
+	}
+
 	// mainain maximum length
 	if len(l.entries) > l.maxEntries {
 		l.entries = l.entries[len(l.entries)-maxCentral:]

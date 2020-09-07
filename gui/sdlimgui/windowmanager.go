@@ -66,9 +66,10 @@ type windowManager struct {
 
 // the window menus grouped by type. the types are:
 const (
-	windowMenuDebugger = "Debugger"
-	windowMenuVCS      = "VCS"
-	windowMenuCart     = "Cartridge"
+	windowMenuDebugger    = "Debugger"
+	windowMenuVCS         = "VCS"
+	windowMenuCart        = "Cartridge"
+	windowMenuPeripherals = "Peripherals"
 
 	// additional window menus are grouped by cartridge type
 )
@@ -163,6 +164,9 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 		return nil, err
 	}
 	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinSaveKey, false, windowMenuPeripherals); err != nil {
 		return nil, err
 	}
 
@@ -289,6 +293,15 @@ func (wm *windowManager) drawMenu() {
 		}
 	}
 
+	// add savekey specific menu
+	if wm.img.lz.SaveKey.SaveKeyActive {
+		if imgui.BeginMenu("SaveKey") {
+			wm.drawMenuWindowEntry(wm.windows[winSaveKeyTitle], winSaveKeyTitle)
+			imgui.EndMenu()
+		}
+	}
+
+	// filename in titlebar
 	imgui.SameLineV(imgui.WindowWidth()-imguiGetFrameDim(wm.img.lz.Cart.Filename).X-20.0, 0.0)
 	imgui.Text(wm.img.lz.Cart.Filename)
 

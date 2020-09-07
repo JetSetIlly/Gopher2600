@@ -69,7 +69,6 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	// !!TODO: allow user to specify what to attach to the ports
 	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)
 	if err != nil {
 		return nil, err

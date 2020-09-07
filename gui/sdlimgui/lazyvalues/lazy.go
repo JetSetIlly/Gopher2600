@@ -52,6 +52,7 @@ type Lazy struct {
 	Collisions    *LazyCollisions
 	ChipRegisters *LazyChipRegisters
 	Log           *LazyLog
+	SaveKey       *LazySaveKey
 
 	// \/\/\/ the following are updated on demand rather than through the update
 	// function, because they require more context
@@ -91,6 +92,7 @@ func NewValues() *Lazy {
 	val.Collisions = newLazyCollisions(val)
 	val.ChipRegisters = newLazyChipRegisters(val)
 	val.Log = newLazyLog(val)
+	val.SaveKey = newLazySaveKey(val)
 
 	// allocating enough space for every byte in cartridge space. not worrying
 	// about bank sizes or anything like that.
@@ -144,6 +146,7 @@ func (val *Lazy) Update() {
 	val.Collisions.update()
 	val.ChipRegisters.update()
 	val.Log.update()
+	val.SaveKey.update()
 }
 
 // HasBreak checks to see if disassembly entry has a break point
