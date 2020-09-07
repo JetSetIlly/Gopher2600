@@ -232,8 +232,8 @@ The rest of the section will give a brief run down of debugger features.
 	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
 	         PATCH          PEEK        PLAYER     PLAYFIELD          POKE
 	          PREF       QUANTUM          QUIT           RAM         RESET
-	           RUN        SCRIPT          STEP         STICK        SYMBOL
-	           TIA         TIMER         TRACE          TRAP            TV
+	          RIOT           RUN        SCRIPT          STEP         STICK
+	        SYMBOL           TIA         TRACE          TRAP            TV
 	         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.

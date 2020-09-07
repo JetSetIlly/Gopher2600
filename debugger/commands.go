@@ -896,11 +896,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdRAM:
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.RAM.String())
 
-	case cmdTimer:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Timer.String())
-
 	case cmdTIA:
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.String())
+
+	case cmdRIOT:
+		arg, _ := tokens.Get()
+		switch arg {
+		case "TIMER":
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Timer.String())
+		case "PORTS":
+			fallthrough
+		default:
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.String())
+		}
 
 	case cmdAudio:
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Audio.String())

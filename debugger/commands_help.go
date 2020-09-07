@@ -151,10 +151,7 @@ or numerically. Mulptiple data values will be poked into consecutive addresses.`
 	cmdRAM: `Display the current contents of RAM. The optional CART argument will display any
 additional RAM in the cartridge.`,
 
-	cmdTimer: "Display the current state of the RIOT Timer.",
-
-	cmdTIA: `Display current state of the TIA. Without an arugment the command will display
-video information:
+	cmdTIA: `Display current state of the TIA video signal:
 
         111011 (09) _.--*__.--._ 39 13.0
 
@@ -169,6 +166,9 @@ video information:
                cpu cycles -----------+
 
 Video and CPU cycles are counted from the beginning of the current scanline.`,
+
+	cmdRIOT: `Display current state of the RIOT. Without an argument the command will display
+information about the RIOT ports (SWCHA, etc.)`,
 
 	cmdAudio: `Display the current state of the audio subsystem.
 

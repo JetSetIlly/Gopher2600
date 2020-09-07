@@ -42,8 +42,8 @@ const (
 	cmdPeek        = "PEEK"
 	cmdPoke        = "POKE"
 	cmdRAM         = "RAM"
-	cmdTimer       = "TIMER"
 	cmdTIA         = "TIA"
+	cmdRIOT        = "RIOT"
 	cmdAudio       = "AUDIO"
 	cmdTV          = "TV"
 	cmdPlayer      = "PLAYER"
@@ -100,8 +100,8 @@ var commandTemplate = []string{
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
 	cmdRAM,
-	cmdTimer,
 	cmdTIA,
+	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
 	cmdTV + " (SPEC (PAL|NTSC|AUTO))",
 	cmdPlayer + " (0|1)",
