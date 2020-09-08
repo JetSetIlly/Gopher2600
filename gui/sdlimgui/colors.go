@@ -84,7 +84,10 @@ type imguiColors struct {
 	IdxPointer imgui.Vec4
 
 	// collision window
-	CollisionIndicator imgui.Vec4
+	CollisionBit imgui.Vec4
+
+	// chip registers window
+	RegisterBit imgui.Vec4
 
 	// terminal
 	TermBackground      imgui.Vec4
@@ -156,8 +159,9 @@ func newColors() *imguiColors {
 		// tia
 		IdxPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
-		// collision window
-		CollisionIndicator: imgui.Vec4{0.7, 0.2, 0.2, 1.0},
+		// deffering collision window CollisionBit
+
+		// deferring chip registers window RegisterBit
 
 		// terminal
 		TermBackground:      imgui.Vec4{0.1, 0.1, 0.2, 0.9},
@@ -171,12 +175,6 @@ func newColors() *imguiColors {
 		TermStyleLog:        imgui.Vec4{0.8, 0.7, 0.3, 1.0},
 	}
 
-	// we deferred setting of some colours. set them now.
-	cols.CapturedScreenTitle = cols.TitleBgActive
-	cols.CapturedScreenBorder = cols.TitleBgActive
-	cols.DisasmBreakAddress = cols.DisasmAddress
-	cols.DisasmBreakOther = cols.DisasmMnemonic
-
 	// set default colors
 	style := imgui.CurrentStyle()
 	style.SetColor(imgui.StyleColorMenuBarBg, cols.MenuBarBg)
@@ -184,6 +182,14 @@ func newColors() *imguiColors {
 	style.SetColor(imgui.StyleColorTitleBg, cols.TitleBg)
 	style.SetColor(imgui.StyleColorTitleBgActive, cols.TitleBgActive)
 	style.SetColor(imgui.StyleColorBorder, cols.Border)
+
+	// we deferred setting of some colours. set them now.
+	cols.CapturedScreenTitle = cols.TitleBgActive
+	cols.CapturedScreenBorder = cols.TitleBgActive
+	cols.DisasmBreakAddress = cols.DisasmAddress
+	cols.DisasmBreakOther = cols.DisasmMnemonic
+	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 
 	// convert 2600 colours to format usable by imgui
 

@@ -25,20 +25,18 @@ import (
 type LazyChipRegisters struct {
 	val *Lazy
 
-	atomicSWACHA atomic.Value // uint8
-	atomicSWACHB atomic.Value // uint8
+	atomicSWCHA  atomic.Value // uint8
+	atomicSWCHB  atomic.Value // uint8
 	atomicSWACNT atomic.Value // uint8
-	atomicSWBCNT atomic.Value // uint8
 	atomicINPT0  atomic.Value // uint8
 	atomicINPT1  atomic.Value // uint8
 	atomicINPT2  atomic.Value // uint8
 	atomicINPT3  atomic.Value // uint8
 	atomicINPT4  atomic.Value // uint8
 	atomicINPT5  atomic.Value // uint8
-	SWACHA       uint8
+	SWCHA        uint8
 	SWACNT       uint8
-	SWACHB       uint8
-	SWBCNT       uint8
+	SWCHB        uint8
 	INPT0        uint8
 	INPT1        uint8
 	INPT2        uint8
@@ -54,14 +52,12 @@ func newLazyChipRegisters(val *Lazy) *LazyChipRegisters {
 func (lz *LazyChipRegisters) update() {
 	lz.val.Dbg.PushRawEvent(func() {
 		v, _ := lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHA"])
-		lz.atomicSWACHA.Store(v)
+		lz.atomicSWCHA.Store(v)
 		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWACNT"])
 		lz.atomicSWACNT.Store(v)
 		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHB"])
-		lz.atomicSWACHB.Store(v)
+		lz.atomicSWCHB.Store(v)
 		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWBCNT"])
-		lz.atomicSWBCNT.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT0"])
 		lz.atomicINPT0.Store(v)
 		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT1"])
 		lz.atomicINPT1.Store(v)
@@ -74,10 +70,9 @@ func (lz *LazyChipRegisters) update() {
 		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT5"])
 		lz.atomicINPT5.Store(v)
 	})
-	lz.SWACHA, _ = lz.atomicSWACHA.Load().(uint8)
+	lz.SWCHA, _ = lz.atomicSWCHA.Load().(uint8)
 	lz.SWACNT, _ = lz.atomicSWACNT.Load().(uint8)
-	lz.SWACHB, _ = lz.atomicSWACHB.Load().(uint8)
-	lz.SWBCNT, _ = lz.atomicSWBCNT.Load().(uint8)
+	lz.SWCHB, _ = lz.atomicSWCHB.Load().(uint8)
 	lz.INPT0, _ = lz.atomicINPT0.Load().(uint8)
 	lz.INPT1, _ = lz.atomicINPT1.Load().(uint8)
 	lz.INPT2, _ = lz.atomicINPT2.Load().(uint8)

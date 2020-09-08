@@ -15,7 +15,9 @@
 
 package sdlimgui
 
-import "github.com/inkyblackness/imgui-go/v2"
+import (
+	"github.com/inkyblackness/imgui-go/v2"
+)
 
 // drawlistSequence provides a neat way of drawlist elements of a uniform size in
 // sequence
@@ -32,16 +34,20 @@ type drawlistSequence struct {
 
 	nextItemSameLine  bool
 	nextItemDepressed bool
+
+	// allign drawlist sequence in the same way as imgui.AlignFramePadding()
+	alignFramePadding bool
 }
 
 // create and start a new sequence. spacing is expressed as fraction of the
 // current FontSize()
-func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32) *drawlistSequence {
+func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32, alignFramePadding bool) *drawlistSequence {
 	seq := &drawlistSequence{
-		img:              img,
-		size:             size,
-		spacing:          imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
-		depressionAmount: 2.0,
+		img:               img,
+		size:              size,
+		spacing:           imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
+		depressionAmount:  2.0,
+		alignFramePadding: alignFramePadding,
 	}
 	_, seq.palette = img.imguiTVPalette()
 	seq.start()
@@ -54,7 +60,12 @@ func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32) *drawl
 // should be coupled with a call to end()
 func (seq *drawlistSequence) start() float32 {
 	seq.prevX = imgui.CursorScreenPos().X
-	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y - seq.spacing.Y
+	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y
+	if seq.alignFramePadding {
+		seq.prevY += imgui.CurrentStyle().FramePadding().Y / 2
+	} else {
+		seq.prevY -= seq.spacing.Y
+	}
 	seq.startX = seq.prevX
 	seq.nextItemSameLine = false
 	seq.nextItemDepressed = false

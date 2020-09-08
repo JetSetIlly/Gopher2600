@@ -30,6 +30,9 @@ type winChipRegisters struct {
 	widgetDimensions
 
 	img *SdlImgui
+
+	// ready flag colors
+	regBit imgui.PackedColor
 }
 
 func newWinChipRegisters(img *SdlImgui) (managedWindow, error) {
@@ -42,6 +45,7 @@ func newWinChipRegisters(img *SdlImgui) (managedWindow, error) {
 
 func (win *winChipRegisters) init() {
 	win.widgetDimensions.init()
+	win.regBit = imgui.PackedColorFromVec4(win.img.cols.RegisterBit)
 }
 
 func (win *winChipRegisters) destroy() {
@@ -59,13 +63,17 @@ func (win *winChipRegisters) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{653, 400}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winChipRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	win.drawChipRegister("SWACHA", win.img.lz.ChipRegisters.SWACHA)
-	imgui.SameLine()
 	win.drawChipRegister("SWACNT", win.img.lz.ChipRegisters.SWACNT)
-
-	win.drawChipRegister("SWACHB", win.img.lz.ChipRegisters.SWACHB)
 	imgui.SameLine()
-	win.drawChipRegister("SWBCNT", win.img.lz.ChipRegisters.SWBCNT)
+	win.drawChipRegisterBits(win.img.lz.ChipRegisters.SWACNT, "SWACNT")
+
+	win.drawChipRegister(" SWCHA", win.img.lz.ChipRegisters.SWCHA)
+	imgui.SameLine()
+	win.drawChipRegisterBits(win.img.lz.ChipRegisters.SWCHA, "SWCHA")
+
+	win.drawChipRegister(" SWCHB", win.img.lz.ChipRegisters.SWCHB)
+	imgui.SameLine()
+	win.drawChipRegisterBits(win.img.lz.ChipRegisters.SWCHB, "SWCHB")
 
 	imgui.Spacing()
 	imgui.Separator()
@@ -107,4 +115,24 @@ func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 		})
 	}
 	imgui.PopItemWidth()
+}
+
+func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, true)
+	for i := 0; i < 8; i++ {
+		if (read<<i)&0x80 != 0x80 {
+			seq.nextItemDepressed = true
+		}
+		if seq.rectFill(win.regBit) {
+			b := read ^ (0x80 >> i)
+			win.img.lz.Dbg.PushRawEvent(func() {
+				err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[reg], uint8(b))
+				if err != nil {
+					panic(err)
+				}
+			})
+		}
+		seq.sameLine()
+	}
+	seq.end()
 }

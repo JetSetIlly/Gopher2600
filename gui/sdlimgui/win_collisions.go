@@ -28,8 +28,7 @@ type winCollisions struct {
 
 	img *SdlImgui
 
-	// ready flag colors
-	colIndicator imgui.PackedColor
+	collisionBit imgui.PackedColor
 }
 
 func newWinCollisions(img *SdlImgui) (managedWindow, error) {
@@ -42,7 +41,7 @@ func newWinCollisions(img *SdlImgui) (managedWindow, error) {
 
 func (win *winCollisions) init() {
 	win.widgetDimensions.init()
-	win.colIndicator = imgui.PackedColorFromVec4(win.img.cols.CollisionIndicator)
+	win.collisionBit = imgui.PackedColorFromVec4(win.img.cols.CollisionBit)
 }
 
 func (win *winCollisions) destroy() {
@@ -92,6 +91,8 @@ func (win *winCollisions) draw() {
 	imgui.SameLine()
 	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
 
+	imgui.Spacing()
+
 	if imgui.Button("Clear Collisions") {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			win.img.lz.Dbg.VCS.TIA.Video.Collisions.Clear()
@@ -102,13 +103,13 @@ func (win *winCollisions) draw() {
 }
 
 func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, false)
 	for i := 0; i < 8; i++ {
 		if mask<<i&0x80 == 0x80 {
 			if (read<<i)&0x80 != 0x80 {
 				seq.nextItemDepressed = true
 			}
-			if seq.rectFill(win.colIndicator) {
+			if seq.rectFill(win.collisionBit) {
 				b := read ^ (0x80 >> i)
 				win.img.lz.Dbg.PushRawEvent(func() {
 					*write = b
@@ -116,7 +117,7 @@ func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
 			}
 		} else {
 			seq.nextItemDepressed = true
-			seq.rectEmpty(win.colIndicator)
+			seq.rectEmpty(win.collisionBit)
 		}
 		seq.sameLine()
 	}

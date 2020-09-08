@@ -98,7 +98,7 @@ func (win *winTIA) drawPlayer(num int) {
 
 	// graphics data - new
 	imguiText("New Gfx")
-	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
+	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1, false)
 	od := lz.GfxDataNew
 	for i := 0; i < 8; i++ {
 		var col uint8
@@ -122,7 +122,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// graphics data - old
 	imgui.SameLine()
 	imguiText("Old Gfx")
-	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
+	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1, false)
 	nd := lz.GfxDataOld
 	for i := 0; i < 8; i++ {
 		var col uint8

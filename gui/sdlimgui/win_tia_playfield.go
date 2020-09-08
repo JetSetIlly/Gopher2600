@@ -112,7 +112,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.BeginGroup()
 	imguiText("PF0")
 	imgui.SameLine()
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, 0.1, false)
 	pf0d := lz.PF0
 	for i := 0; i < 4; i++ {
 		var col uint8
@@ -179,7 +179,7 @@ func (win *winTIA) drawPlayfield() {
 	// playfield data as a sequence
 	imgui.BeginGroup()
 	imguiText("Sequence")
-	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1)
+	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, 0.1, false)
 
 	// first half of the playfield
 	for _, v := range lz.LeftData {
