@@ -66,9 +66,9 @@ type windowManager struct {
 
 // the window menus grouped by type. the types are:
 const (
-	windowMenuProject = "Project"
-	windowMenuMain    = "Windows"
-	windowMenuCart    = "Cartridge"
+	windowMenuDebugger = "Debugger"
+	windowMenuVCS      = "VCS"
+	windowMenuCart     = "Cartridge"
 
 	// additional window menus are grouped by cartridge type
 )
@@ -89,56 +89,57 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 
 		wm.windows[w.id()] = w
 		wm.windowMenu[group] = append(wm.windowMenu[group], w.id())
-		sort.Strings(wm.windowMenu[group])
-
 		w.setOpen(open)
 
 		return nil
 	}
 
 	// windows called from project menu
-	if err := addWindow(newFileSelector, false, windowMenuProject); err != nil {
+	if err := addWindow(newFileSelector, false, windowMenuDebugger); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinPrefs, false, windowMenuProject); err != nil {
+	if err := addWindow(newWinPrefs, false, windowMenuDebugger); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinTerm, false, windowMenuDebugger); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinLog, false, windowMenuDebugger); err != nil {
 		return nil, err
 	}
 
 	// windows that appear in the "windows" menu
-	if err := addWindow(newWinControl, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinControl, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCPU, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinCPU, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinRAM, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinRAM, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTIA, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinTIA, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTimer, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinTimer, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinDisasm, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinDisasm, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinAudio, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinAudio, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinDbgScr, true, windowMenuMain); err != nil {
+	if err := addWindow(newWinDbgScr, true, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinTerm, false, windowMenuMain); err != nil {
+	if err := addWindow(newWinControllers, false, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinControllers, false, windowMenuMain); err != nil {
+	if err := addWindow(newWinCollisions, false, windowMenuVCS); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCollisions, false, windowMenuMain); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinChipRegisters, false, windowMenuMain); err != nil {
+	if err := addWindow(newWinChipRegisters, false, windowMenuVCS); err != nil {
 		return nil, err
 	}
 
@@ -189,6 +190,9 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	}
 	wm.playScr = playWin.(*winPlayScr)
 
+	// sort vcs menu entries
+	sort.Strings(wm.windowMenu[windowMenuVCS])
+
 	return wm, nil
 }
 
@@ -233,25 +237,22 @@ func (wm *windowManager) drawMenu() {
 	// see commentary for screenPos in windowManager declaration
 	wm.screenPos = imgui.WindowPos()
 
-	if imgui.BeginMenu("Project") {
-		for _, id := range wm.windowMenu[windowMenuProject] {
-			w := wm.windows[id]
-
-			// decorate the menu entry with elipsis
-			if imgui.Selectable(fmt.Sprintf("%s...", id)) {
-				// windows in this menu will open on select
-				w.setOpen(true)
-			}
+	if imgui.BeginMenu(windowMenuDebugger) {
+		for _, id := range wm.windowMenu[windowMenuDebugger] {
+			wm.drawMenuWindowEntry(wm.windows[id], id)
 		}
-		if imgui.Selectable("Quit") {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		if imgui.Selectable("  Quit") {
 			wm.img.term.pushCommand("QUIT")
 		}
 		imgui.EndMenu()
 	}
 
 	// window menu
-	if imgui.BeginMenu(windowMenuMain) {
-		for _, id := range wm.windowMenu[windowMenuMain] {
+	if imgui.BeginMenu(windowMenuVCS) {
+		for _, id := range wm.windowMenu[windowMenuVCS] {
 			wm.drawMenuWindowEntry(wm.windows[id], id)
 		}
 

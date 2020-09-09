@@ -20,12 +20,15 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
+// Entry represents a single line/entry in the log
 type Entry struct {
-	tag      string
-	detail   string
-	repeated int
+	Timestamp time.Time
+	tag       string
+	detail    string
+	repeated  int
 }
 
 func (e *Entry) String() string {
@@ -38,70 +41,78 @@ func (e *Entry) String() string {
 	return s.String()
 }
 
+// not exposing logger to outside of the package. the package level functions
+// can be used to log to the central logger.
 type logger struct {
-	entries []Entry
-	echo    bool
+	maxEntries int
+	entries    []Entry
+	echo       bool
 }
 
-func newLogger() *logger {
+func newLogger(maxEntries int) *logger {
 	return &logger{
-		entries: make([]Entry, 0),
+		maxEntries: maxEntries,
+		entries:    make([]Entry, 0),
 	}
 }
 
-// only allowing one central log for the entire application. there's no need to
-// allow more than one log
-var central *logger
+func (l *logger) log(tag, detail string) {
+	e := &Entry{}
+	if len(l.entries) > 0 {
+		e = &l.entries[len(l.entries)-1]
+	}
 
-func init() {
-	central = newLogger()
-}
+	// remove all newline characters from tag and detail string
+	tag = strings.ReplaceAll(tag, "\n", "")
+	detail = strings.ReplaceAll(detail, "\n", "")
 
-// Log adds an entry to the central logger
-func Log(tag, detail string) {
-	e := Entry{tag: tag, detail: detail}
-	if central.echo {
+	if detail != e.detail || tag != e.tag {
+		l.entries = append(l.entries, Entry{Timestamp: time.Now(), tag: tag, detail: detail})
+	} else {
+		e.repeated++
+		e.Timestamp = time.Now()
+	}
+
+	// mainain maximum length
+	if len(l.entries) > l.maxEntries {
+		l.entries = l.entries[len(l.entries)-maxCentral:]
+	}
+
+	if l.echo {
 		io.WriteString(os.Stdout, e.String())
 	}
-
-	if len(central.entries) == 0 ||
-		(e.detail != central.entries[len(central.entries)-1].detail ||
-			e.tag != central.entries[len(central.entries)-1].tag) {
-		central.entries = append(central.entries, e)
-	} else {
-		central.entries[len(central.entries)-1].repeated++
-	}
 }
 
-// Clear all entries from central logger
-func Clear() {
-	central.entries = central.entries[:0]
+func (l *logger) clear() {
+	l.entries = l.entries[:0]
 }
 
-// Write contents of central logger to io.Writer
-func Write(output io.Writer) bool {
-	if len(central.entries) == 0 {
+func (l *logger) write(output io.Writer) bool {
+	if len(l.entries) == 0 {
 		return false
 	}
-	for _, e := range central.entries {
+	for _, e := range l.entries {
 		io.WriteString(output, e.String())
 	}
 	return true
 }
 
-// Write the last N entries to io.Writer
-func Tail(output io.Writer, number int) {
+func (l *logger) tail(output io.Writer, number int) {
 	// cap number to the number of entries
-	if number > len(central.entries) {
-		number = len(central.entries)
+	if number > len(l.entries) {
+		number = len(l.entries)
 	}
 
-	for _, e := range central.entries[len(central.entries)-number:] {
+	for _, e := range l.entries[len(l.entries)-number:] {
 		io.WriteString(output, e.String())
 	}
 }
 
-// SetEcho to print new entries to os.Stdout
-func SetEcho(echo bool) {
-	central.echo = echo
+func (l *logger) copy(ref time.Time) []Entry {
+	if ref != l.entries[len(l.entries)-1].Timestamp {
+		c := make([]Entry, len(l.entries))
+		copy(c, l.entries)
+		return c
+	}
+	return nil
 }

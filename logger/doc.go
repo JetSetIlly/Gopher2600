@@ -15,7 +15,7 @@
 
 // Package logger is the central log repository for gopher2600. There is a
 // single log for the entire application and can be accessed through the
-// package level functions, principally Log() and Write().
+// package level functions, principally Log().
 //
 // Log entries can be grouped together with the tag argument in the Log()
 // command.

@@ -100,6 +100,9 @@ type imguiColors struct {
 	TermStyleError      imgui.Vec4
 	TermStyleLog        imgui.Vec4
 
+	// log
+	LogBackground imgui.Vec4
+
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
 	packedPaletteAlt  packedPalette
@@ -173,6 +176,9 @@ func newColors() *imguiColors {
 		TermStyleInstrument: imgui.Vec4{0.1, 0.95, 0.9, 1.0},
 		TermStyleError:      imgui.Vec4{0.8, 0.3, 0.3, 1.0},
 		TermStyleLog:        imgui.Vec4{0.8, 0.7, 0.3, 1.0},
+
+		// log
+		LogBackground: imgui.Vec4{0.2, 0.2, 0.3, 0.9},
 	}
 
 	// set default colors

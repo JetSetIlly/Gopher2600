@@ -24,7 +24,7 @@ race:
 # to drop events on startup. this will result in more log messages than you would
 # normally see
 
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Homebrew/chaoticGrill-2019-08-18--NTSC.bin
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug -savekey save_key.bin
 
 build_assertions:
 	go build -gcflags $(compileFlags) -tags=assertions
