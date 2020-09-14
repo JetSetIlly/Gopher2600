@@ -37,19 +37,16 @@ func newLazyLog(val *Lazy) *LazyLog {
 }
 
 func (lz *LazyLog) update() {
-	lz.val.Dbg.PushRawEvent(func() {
+	// when making a copy of the log we only want to do it if the log has been
+	// dirtied. to do this we need to note the timestamp of the most recent log
+	// entry so we can pass it to the logger.Copy() function
+	timestamp := time.Unix(0, 0)
+	if len(lz.Log) > 0 {
+		timestamp = lz.Log[len(lz.Log)-1].Timestamp
+	}
 
-		// make a copy of the log. the logger.Copy() function requires a
-		// timestamp of the most recent log entry. the Copy() function uses
-		// this to decide whether a new copy is required. if the Copy()
-		// function return nil then we'll just coninue to use the old copy
-		var ref time.Time
-		if len(lz.Log) > 0 {
-			ref = lz.Log[len(lz.Log)-1].Timestamp
-		} else {
-			ref = time.Unix(0, 0)
-		}
-		if l := logger.Copy(ref); l != nil {
+	lz.val.Dbg.PushRawEvent(func() {
+		if l := logger.Copy(timestamp); l != nil {
 			lz.atomicLog.Store(l)
 			lz.atomicDirty.Store(true)
 		} else {

@@ -18,4 +18,4 @@ package controllers
 // ControllerList is the list of controllers. These are the values that can be
 // returned by the ID() function of the ports.Peripheral implementations in
 // this package
-var ControllerList = []string{"Auto", "Stick", "Paddle", "Keyboard"}
+var ControllerList = []string{"Stick", "Paddle", "Keyboard"}
