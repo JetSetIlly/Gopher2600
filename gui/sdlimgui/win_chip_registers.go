@@ -31,7 +31,7 @@ type winChipRegisters struct {
 
 	img *SdlImgui
 
-	// ready flag colors
+	// color of bit indicator
 	regBit imgui.PackedColor
 }
 

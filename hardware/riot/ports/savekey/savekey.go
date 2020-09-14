@@ -17,208 +17,181 @@ package savekey
 
 import (
 	"fmt"
-	"os"
+	"strings"
 	"unicode"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
 )
 
-const saveKeyPath = "savekey"
+// MessageState records how incoming signals to the SaveKey will be interpreted
+type MessageState int
 
-type messageState int
-
+// List of valid MessageState values
 const (
-	stopped messageState = iota
-	starting
-	addressHi
-	addressLo
-	data
+	Stopped MessageState = iota
+	Starting
+	AddressHi
+	AddressLo
+	Data
 )
 
-type ackState int
+// DataDirection indicates the direction of data flow between the VCS and the SaveKey
+type DataDirection int
 
+// Valid DataDirection values
 const (
-	none ackState = iota
-	ack
+	Reading DataDirection = iota
+	Writing
 )
 
-type directionState int
-
-const (
-	reading directionState = iota
-	writing
-)
-
+// SaveKey represents the SaveKey peripheral. It implements the Peripheral
+// interface.
 type SaveKey struct {
 	id  ports.PortID
 	bus ports.PeripheralBus
 
-	signal uint8
+	// the i2c protocol used by the SaveKey is transfered via the SWCHA
+	// register from the CPU. we keep a copy of the SWCHA value set in the
+	// Update() function, so we can reuse it in the Step() function
+	swcha uint8
 
+	// only two bits of the SWCHA value is of interest to the i2c protocol.
+	// from the perspective of the second player (in which port the SaveKey is
+	// usually inserted) pin 2 is the data signal (SDA) and pin 3 is the
+	// clock signal (SCL)
 	SDA trace
 	SCL trace
 
-	state messageState
-	ack   ackState
-	dir   directionState
+	// incoming data is interpreted depending on the state of the i2c protocl.
+	// we also need to know the direction of data flow at any given time and
+	// whether the next bit should be acknowledged (the Ack bool)
+	State MessageState
+	Dir   DataDirection
+	Ack   bool
 
-	bits   uint8
-	bitsCt int
+	// Data is sent by the VCS one bit at a time. see pushBits(), popBits() and
+	// resetBits() for
+	Bits   uint8
+	BitsCt int
 
-	address uint16
-
-	data []uint8
+	// the core of the SaveKey is an EEPROM.
+	EEPROM *EEPROM
 }
 
+// NewSaveKey is the preferred method of initalisation for the SaveKey type
 func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	sk := &SaveKey{
-		id:    id,
-		bus:   bus,
-		SDA:   newTrace(),
-		SCL:   newTrace(),
-		state: stopped,
-		data:  make([]uint8, 0x10000),
-	}
-
-	// initialise data with 0xff
-	for i := range sk.data {
-		sk.data[i] = 0xff
+		id:     id,
+		bus:    bus,
+		SDA:    newTrace(),
+		SCL:    newTrace(),
+		State:  Stopped,
+		EEPROM: newEeprom(),
 	}
 
 	sk.bus.WriteSWCHx(sk.id, 0xf0)
 	logger.Log("savekey", fmt.Sprintf("savekey attached [%s]", sk.id.String()))
 
-	sk.loadSaveKey()
-
 	return sk
 }
 
-func (sk *SaveKey) loadSaveKey() {
-	fn, err := paths.ResourcePath("", saveKeyPath)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
-		return
-	}
-
-	f, err := os.Open(fn)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
-		return
-	}
-	defer f.Close()
-
-	// get file info. not using Stat() on the file handle because the
-	// windows version (when running under wine) does not handle that
-	fs, err := os.Stat(fn)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
-		return
-	}
-	if fs.Size() != int64(len(sk.data)) {
-		logger.Log("savekey", fmt.Sprintf("savekey file is of incorrect length. %d should be 65536 ", fs.Size()))
-	}
-
-	_, err = f.Read(sk.data)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
-		return
-	}
-
-	logger.Log("savekey", fmt.Sprintf("savekey file loaded from %s", fn))
-}
-
-func (sk *SaveKey) writeSaveKey() {
-	fn, err := paths.ResourcePath("", saveKeyPath)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
-		return
-	}
-
-	f, err := os.Create(fn)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
-		return
-	}
-	defer f.Close()
-
-	n, err := f.Write(sk.data)
-	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
-		return
-	}
-
-	if n != len(sk.data) {
-		logger.Log("savekey", fmt.Sprintf("savekey file has not been truncated during write. %d should be 65536", n))
-		return
-	}
-
-	logger.Log("savekey", fmt.Sprintf("savekey file saved to %s", fn))
-}
-
 func (sk *SaveKey) String() string {
-	return "TODO: savekey info"
+	s := strings.Builder{}
+	s.WriteString("savekey: ")
+
+	switch sk.State {
+	case Stopped:
+		s.WriteString("stopped")
+	case Starting:
+		s.WriteString("starting")
+	case AddressHi:
+		fallthrough
+	case AddressLo:
+		s.WriteString("address")
+	case Data:
+		switch sk.Dir {
+		case Reading:
+			s.WriteString("reading ")
+		case Writing:
+			s.WriteString("writing ")
+		}
+		s.WriteString("data")
+	}
+
+	if sk.Ack {
+		s.WriteString(" [ACK]")
+	}
+
+	return s.String()
 }
 
+// Name implements the ports.Peripheral interface
 func (sk *SaveKey) Name() string {
 	return "SaveKey"
 }
 
+// Reset implements the ports.Peripheral interface
 func (sk *SaveKey) Reset() {
 }
 
-const maskSDA = 0b01000000
-const maskSCL = 0b10000000
+// the active bits in the SWCHA value
+const (
+	maskSDA = 0b01000000
+	maskSCL = 0b10000000
+)
 
-const writeSig = 0xa0
-const readSig = 0xa1
+// the bit sequence to indicate read/write data direction
+const (
+	writeSig = 0xa0
+	readSig  = 0xa1
+)
 
+// Update implements the ports.Peripheral interface
 func (sk *SaveKey) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
 		// mask and shift SWCHA value to the normlised value
 		switch sk.id {
 		case ports.Player0ID:
-			sk.signal = data.Value & 0xf0
+			sk.swcha = data.Value & 0xf0
 		case ports.Player1ID:
-			sk.signal = (data.Value & 0x0f) << 4
+			sk.swcha = (data.Value & 0x0f) << 4
 		}
 	}
 
 	return false
 }
 
-// pushBit will return true if bits field is full. the bits and bitsCt field
+// recvBit will return true if bits field is full. the bits and bitsCt field
 // will be reset on the next call.
-func (sk *SaveKey) pushBit(v bool) bool {
-	if sk.bitsCt >= 8 {
+func (sk *SaveKey) recvBit(v bool) bool {
+	if sk.BitsCt >= 8 {
 		sk.resetBits()
 	}
 
 	if v {
-		sk.bits |= 0x01 << (7 - sk.bitsCt)
+		sk.Bits |= 0x01 << (7 - sk.BitsCt)
 	}
-	sk.bitsCt++
+	sk.BitsCt++
 
-	return sk.bitsCt == 8
+	return sk.BitsCt == 8
 }
 
-func (sk *SaveKey) popBit() (uint8, bool) {
-	if sk.bitsCt >= 8 {
+func (sk *SaveKey) sendBit() (uint8, bool) {
+	if sk.BitsCt >= 8 {
 		sk.resetBits()
 	}
 
-	if sk.bitsCt == 0 {
-		sk.bits = sk.data[sk.address]
-		sk.nextAddress()
+	if sk.BitsCt == 0 {
+		sk.Bits = sk.EEPROM.get()
 	}
 
-	v := (sk.bits >> (7 - sk.bitsCt)) & 0x01
-	sk.bitsCt++
+	v := (sk.Bits >> (7 - sk.BitsCt)) & 0x01
+	sk.BitsCt++
 
-	if sk.bitsCt >= 8 {
+	if sk.BitsCt >= 8 {
 		return v, true
 	}
 
@@ -226,105 +199,95 @@ func (sk *SaveKey) popBit() (uint8, bool) {
 }
 
 func (sk *SaveKey) resetBits() {
-	sk.bits = 0
-	sk.bitsCt = 0
+	sk.Bits = 0
+	sk.BitsCt = 0
 }
 
-// nextAddress makes sure the address if kept on the same page, by looping back
-// to the start of the current page.
-func (sk *SaveKey) nextAddress() {
-	if sk.address&0x3f == 0x3f {
-		sk.address ^= 0x3f
-	} else {
-		sk.address++
-	}
-}
-
+// Step implements the ports.Peripheral interface
 func (sk *SaveKey) Step() {
 	// update i2c state
-	sk.SDA.tick(sk.signal&maskSDA == maskSDA)
-	sk.SCL.tick(sk.signal&maskSCL == maskSCL)
+	sk.SDA.tick(sk.swcha&maskSDA == maskSDA)
+	sk.SCL.tick(sk.swcha&maskSCL == maskSCL)
 
-	if sk.state > stopped && sk.SCL.hi() && sk.SDA.rising() {
+	// check for stop signal before anything else
+	if sk.State > Stopped && sk.SCL.hi() && sk.SDA.rising() {
 		logger.Log("savekey", "stopped message")
-		sk.state = stopped
-		sk.writeSaveKey()
+		sk.State = Stopped
+		sk.EEPROM.Write()
 		return
 	}
 
+	// if SCL is not changing to a hi state then we don't need to do anything
 	if !sk.SCL.rising() {
 		return
 	}
 
-	switch sk.ack {
-	case ack:
-		if sk.dir == reading && sk.SDA.falling() {
-			logger.Log("savekey", "nack")
+	// if the VCS is waiting for an ACK then handle that now
+	if sk.Ack {
+		if sk.Dir == Reading && sk.SDA.falling() {
 			sk.bus.WriteSWCHx(sk.id, maskSDA)
-			sk.ack = none
+			sk.Ack = false
 			return
 		}
-		logger.Log("savekey", "ack")
 		sk.bus.WriteSWCHx(sk.id, 0x00)
-		sk.ack = none
+		sk.Ack = false
 		return
 	}
 
-	switch sk.state {
-	case stopped:
+	// interpret i2c state depending on which state we are currently in
+	switch sk.State {
+	case Stopped:
 		if sk.SDA.lo() {
 			logger.Log("savekey", "starting message")
 			sk.resetBits()
-			sk.state = starting
+			sk.State = Starting
 		}
 
-	case starting:
-		if sk.pushBit(sk.SDA.falling()) {
-			switch sk.bits {
+	case Starting:
+		if sk.recvBit(sk.SDA.falling()) {
+			switch sk.Bits {
 			case readSig:
 				logger.Log("savekey", "reading message")
 				sk.resetBits()
-				sk.state = data
-				sk.dir = reading
-				sk.ack = ack
+				sk.State = Data
+				sk.Dir = Reading
+				sk.Ack = true
 			case writeSig:
 				logger.Log("savekey", "writing message")
-				sk.state = addressHi
-				sk.dir = writing
-				sk.ack = ack
+				sk.State = AddressHi
+				sk.Dir = Writing
+				sk.Ack = true
 			default:
 				logger.Log("savekey", "unrecognised message")
-				sk.state = stopped
+				sk.State = Stopped
 			}
 		}
 
-	case addressHi:
-		if sk.pushBit(sk.SDA.falling()) {
-			sk.address = uint16(sk.bits) << 8
-			sk.state = addressLo
-			sk.ack = ack
-			logger.Log("savekey", fmt.Sprintf("address hi %#02x", (sk.address>>8)))
+	case AddressHi:
+		if sk.recvBit(sk.SDA.falling()) {
+			sk.EEPROM.Address = uint16(sk.Bits) << 8
+			sk.State = AddressLo
+			sk.Ack = true
 		}
 
-	case addressLo:
-		if sk.pushBit(sk.SDA.falling()) {
-			sk.address |= uint16(sk.bits)
-			sk.state = data
-			sk.ack = ack
-			logger.Log("savekey", fmt.Sprintf("address lo %#02x", sk.address&0xff))
+	case AddressLo:
+		if sk.recvBit(sk.SDA.falling()) {
+			sk.EEPROM.Address |= uint16(sk.Bits)
+			sk.State = Data
+			sk.Ack = true
 
-			switch sk.dir {
-			case reading:
-				logger.Log("savekey", fmt.Sprintf("reading from address %#04x", sk.address))
-			case writing:
-				logger.Log("savekey", fmt.Sprintf("writing to address %#04x", sk.address))
+			switch sk.Dir {
+			case Reading:
+				logger.Log("savekey", fmt.Sprintf("reading from address %#04x", sk.EEPROM.Address))
+			case Writing:
+				logger.Log("savekey", fmt.Sprintf("writing to address %#04x", sk.EEPROM.Address))
 			}
 		}
 
-	case data:
-		switch sk.dir {
-		case reading:
-			v, ok := sk.popBit()
+	case Data:
+		switch sk.Dir {
+		case Reading:
+			v, ok := sk.sendBit()
 
 			if v == 0x00 {
 				sk.bus.WriteSWCHx(sk.id, 0x00)
@@ -333,29 +296,29 @@ func (sk *SaveKey) Step() {
 			}
 
 			if ok {
-				if unicode.IsPrint(rune(sk.bits)) {
-					logger.Log("savekey", fmt.Sprintf("read byte %#02x [%c]", sk.bits, sk.bits))
+				if unicode.IsPrint(rune(sk.Bits)) {
+					logger.Log("savekey", fmt.Sprintf("read byte %#02x [%c]", sk.Bits, sk.Bits))
 				} else {
-					logger.Log("savekey", fmt.Sprintf("read byte %#02x", sk.bits))
+					logger.Log("savekey", fmt.Sprintf("read byte %#02x", sk.Bits))
 				}
-				sk.ack = ack
+				sk.Ack = true
 			}
 
-		case writing:
-			if sk.pushBit(sk.SDA.falling()) {
-				if unicode.IsPrint(rune(sk.bits)) {
-					logger.Log("savekey", fmt.Sprintf("written byte %#02x [%c]", sk.bits, sk.bits))
+		case Writing:
+			if sk.recvBit(sk.SDA.falling()) {
+				if unicode.IsPrint(rune(sk.Bits)) {
+					logger.Log("savekey", fmt.Sprintf("written byte %#02x [%c]", sk.Bits, sk.Bits))
 				} else {
-					logger.Log("savekey", fmt.Sprintf("written byte %#02x", sk.bits))
+					logger.Log("savekey", fmt.Sprintf("written byte %#02x", sk.Bits))
 				}
-				sk.data[sk.address] = sk.bits
-				sk.nextAddress()
-				sk.ack = ack
+				sk.EEPROM.put(sk.Bits)
+				sk.Ack = true
 			}
 		}
 	}
 }
 
+// HandleEvent implements the ports.Peripheral interface
 func (sk *SaveKey) HandleEvent(_ ports.Event, _ ports.EventData) error {
 	return nil
 }

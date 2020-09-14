@@ -89,6 +89,13 @@ type imguiColors struct {
 	// chip registers window
 	RegisterBit imgui.Vec4
 
+	// savekey i2c/eeprom window
+	SaveKeyBit        imgui.Vec4
+	SaveKeyOscBG      imgui.Vec4
+	SaveKeyOscSCL     imgui.Vec4
+	SaveKeyOscSDA     imgui.Vec4
+	SaveKeyBitPointer imgui.Vec4
+
 	// terminal
 	TermBackground      imgui.Vec4
 	TermStyleEcho       imgui.Vec4
@@ -166,6 +173,13 @@ func newColors() *imguiColors {
 
 		// deferring chip registers window RegisterBit
 
+		// deferring savekey i2c/eeprom window RegisterBit
+
+		SaveKeyOscBG:      imgui.Vec4{0.21, 0.29, 0.23, 1.0},
+		SaveKeyOscSCL:     imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+		SaveKeyOscSDA:     imgui.Vec4{0.97, 0.10, 0.29, 1.0},
+		SaveKeyBitPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+
 		// terminal
 		TermBackground:      imgui.Vec4{0.1, 0.1, 0.2, 0.9},
 		TermStyleEcho:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
@@ -196,6 +210,7 @@ func newColors() *imguiColors {
 	cols.DisasmBreakOther = cols.DisasmMnemonic
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 
 	// convert 2600 colours to format usable by imgui
 

@@ -166,7 +166,10 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinSaveKey, false, windowMenuPeripherals); err != nil {
+	if err := addWindow(newWinSaveKeyI2C, false, windowMenuPeripherals); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinSaveKeyEEPROM, false, windowMenuPeripherals); err != nil {
 		return nil, err
 	}
 
@@ -296,7 +299,8 @@ func (wm *windowManager) drawMenu() {
 	// add savekey specific menu
 	if wm.img.lz.SaveKey.SaveKeyActive {
 		if imgui.BeginMenu("SaveKey") {
-			wm.drawMenuWindowEntry(wm.windows[winSaveKeyTitle], winSaveKeyTitle)
+			wm.drawMenuWindowEntry(wm.windows[winSaveKeyI2CTitle], menuSaveKeyI2CTitle)
+			wm.drawMenuWindowEntry(wm.windows[winSaveKeyEEPROMTitle], menuSaveKeyEEPROMTitle)
 			imgui.EndMenu()
 		}
 	}
