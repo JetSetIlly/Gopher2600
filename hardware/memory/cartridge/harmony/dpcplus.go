@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -58,7 +59,7 @@ type dpcPlus struct {
 }
 
 // NewDPCplus is the preferred method of initialisation for the harmony type
-func NewDPCplus(data []byte) (*dpcPlus, error) {
+func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	const armSize = 3072
 	const dataSize = 4096
 	const freqSize = 1024

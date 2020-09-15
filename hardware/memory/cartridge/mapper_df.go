@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -39,7 +40,7 @@ type df struct {
 	ram []uint8
 }
 
-func newDF(data []byte) (cartMapper, error) {
+func newDF(data []byte) (mapper.CartMapper, error) {
 	cart := &df{
 		mappingID:   "DF",
 		description: "128KB",
@@ -68,12 +69,12 @@ func (cart df) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart df) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *df) Initialise() {
 	cart.bank = 15
 
@@ -82,7 +83,7 @@ func (cart *df) Initialise() {
 	}
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
 	if addr >= 0x0080 && addr <= 0x00ff {
 		return cart.ram[addr-0x80], nil
@@ -93,7 +94,7 @@ func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.hotspot(addr, passive) {
 		return nil
@@ -191,19 +192,19 @@ func (cart *df) hotspot(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart df) NumBanks() int {
 	return 32
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart df) GetBank(addr uint16) banks.Details {
 	// df cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
 	return banks.Details{Number: cart.bank, IsRAM: addr <= 0x00ff}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *df) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -215,11 +216,11 @@ func (cart *df) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *df) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *df) Step() {
 }
 

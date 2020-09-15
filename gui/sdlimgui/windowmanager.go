@@ -160,12 +160,13 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
-		return nil, err
-	}
 	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCartPlusROM, false, windowMenuCart); err != nil {
+		return nil, err
+	}
+
 	if err := addWindow(newWinSaveKeyI2C, false, windowMenuPeripherals); err != nil {
 		return nil, err
 	}
@@ -269,8 +270,12 @@ func (wm *windowManager) drawMenu() {
 	// add cartridge specific menu if cartridge has a RAM bus or a debug bus.
 	// note that debug bus windows need to have been added to the window menu
 	// for the specific cartridge ID. see newWindowManager() function above
-	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasStaticBus
-	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok && wm.img.lz.Cart.HasRegistersBus {
+	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus ||
+		wm.img.lz.Cart.HasStaticBus ||
+		wm.img.lz.Cart.HasRegistersBus ||
+		wm.img.lz.Cart.IsPlusROM
+
+	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok {
 		cartSpecificMenu = true
 	}
 
@@ -290,6 +295,10 @@ func (wm *windowManager) drawMenu() {
 
 			if wm.img.lz.Cart.HasStaticBus {
 				wm.drawMenuWindowEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
+			}
+
+			if wm.img.lz.Cart.IsPlusROM {
+				wm.drawMenuWindowEntry(wm.windows[winCartPlusROMTitle], winCartPlusROMTitle)
 			}
 
 			imgui.EndMenu()

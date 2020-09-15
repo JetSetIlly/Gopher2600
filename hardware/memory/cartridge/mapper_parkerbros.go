@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -33,7 +34,7 @@ import (
 // for the third 1K.  The last 1K always points to the last 1K of the ROM image
 // so that the cart always starts up in the exact same place.
 
-// parkerBros implements the cartMapper interface.
+// parkerBros implements the mapper.CartMapper interface.
 //  o Montezuma's Revenge
 //  o Lord of the Rings
 //  o etc.
@@ -52,7 +53,7 @@ type parkerBros struct {
 	segment [4]int
 }
 
-func newParkerBros(data []byte) (cartMapper, error) {
+func newParkerBros(data []byte) (mapper.CartMapper, error) {
 	cart := &parkerBros{
 		mappingID:   "E0",
 		description: "parker bros",
@@ -80,12 +81,12 @@ func (cart parkerBros) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *parkerBros) Initialise() {
 	cart.segment[0] = cart.NumBanks() - 4
 	cart.segment[1] = cart.NumBanks() - 3
@@ -93,7 +94,7 @@ func (cart *parkerBros) Initialise() {
 	cart.segment[3] = cart.NumBanks() - 1
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -111,7 +112,7 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
@@ -199,12 +200,12 @@ func (cart *parkerBros) hotspot(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart parkerBros) NumBanks() int {
 	return 8
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart parkerBros) GetBank(addr uint16) banks.Details {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -220,7 +221,7 @@ func (cart parkerBros) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: cart.segment[seg], IsRAM: false, Segment: seg}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *parkerBros) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -232,11 +233,11 @@ func (cart *parkerBros) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *parkerBros) Step() {
 }
 

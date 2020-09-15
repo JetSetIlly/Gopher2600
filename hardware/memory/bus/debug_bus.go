@@ -110,8 +110,6 @@ type CartRAM struct {
 // CartStaticBus defines the operations required for a debugger to access the
 // static area of a cartridge.
 type CartStaticBus interface {
-	fmt.Stringer
-
 	// GetStatic returns a copy of the cartridge's static areas
 	GetStatic() []CartStatic
 	PutStatic(tag string, addr uint16, data uint8) error

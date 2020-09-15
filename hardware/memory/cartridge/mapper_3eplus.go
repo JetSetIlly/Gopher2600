@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -51,7 +52,7 @@ type m3ePlus struct {
 //
 //	- specifciation:
 //	https://atariage.com/forums/topic/300815-gopher2600-new-emulator/?do=findComment&comment=4562549
-func new3ePlus(data []byte) (cartMapper, error) {
+func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	const ramSize = 512
 
 	cart := &m3ePlus{
@@ -98,12 +99,12 @@ func (cart m3ePlus) String() string {
 	return s.String()
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart m3ePlus) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *m3ePlus) Initialise() {
 	// from spec:
 	//
@@ -117,7 +118,7 @@ func (cart *m3ePlus) Initialise() {
 	}
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 	var segment int
 
@@ -145,7 +146,7 @@ func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -174,12 +175,12 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return errors.New(errors.MemoryBusError, addr)
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart m3ePlus) NumBanks() int {
 	return len(cart.banks)
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -198,7 +199,7 @@ func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: cart.segment[seg], Segment: seg}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -210,7 +211,7 @@ func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
 	// mechanism
@@ -229,7 +230,7 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 	}
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *m3ePlus) Step() {
 }
 

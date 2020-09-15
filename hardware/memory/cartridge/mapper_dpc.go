@@ -23,10 +23,11 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// dpc implements the cartMapper interface.
+// dpc implements the mapper.CartMapper interface.
 //
 // column, line number & figure references to US patent 4,644,495 are used to
 // support coding decisions.
@@ -123,7 +124,7 @@ func (df *DPCdataFetcher) setFlag() {
 	}
 }
 
-func newDPC(data []byte) (cartMapper, error) {
+func newDPC(data []byte) (mapper.CartMapper, error) {
 	const staticSize = 2048
 
 	cart := &dpc{
@@ -156,17 +157,17 @@ func (cart dpc) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart dpc) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *dpc) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 
@@ -282,7 +283,7 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.hotspot(addr, passive) {
 		return nil
@@ -359,17 +360,17 @@ func (cart *dpc) hotspot(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart dpc) NumBanks() int {
 	return 2
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart dpc) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: cart.bank, IsRAM: false}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.Gfx) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -386,11 +387,11 @@ func (cart *dpc) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *dpc) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *dpc) Step() {
 	// clock music enabled data fetchers if oscClock is active [col 7, ln 25-27]
 

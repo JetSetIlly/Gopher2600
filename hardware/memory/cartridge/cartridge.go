@@ -17,15 +17,17 @@ package cartridge
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Cartridge defines the information and operations for a VCS cartridge
@@ -37,7 +39,7 @@ type Cartridge struct {
 
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
-	mapper cartMapper
+	mapper mapper.CartMapper
 
 	// when cartridge is in passive mode, cartridge hotspots do not work. We
 	// send the passive value to the Read() and Write() functions of the mapper
@@ -129,16 +131,22 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	// note name of cartridge
 	cart.Filename = cartload.Filename
 	cart.Hash = cartload.Hash
 	cart.mapper = newEjected()
 
-	cartload.Mapping = strings.ToUpper(cartload.Mapping)
-
+	// fingerprint cartridgeloader.Loader
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
-		return cart.fingerprint(cartload)
+		err := cart.fingerprint(cartload)
+		if err != nil {
+			return err
+		}
+		if cartload.PlusROM {
+			return cart.addPlusROM()
+		}
 	}
+
+	// a specific cartridge mapper was specified
 
 	addSuperchip := false
 
@@ -188,14 +196,20 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = harmony.NewDPCplus(cartload.Data)
 	}
 
+	if err != nil {
+		return errors.New(errors.CartridgeError, err)
+	}
+
 	if addSuperchip {
-		if superchip, ok := cart.mapper.(optionalSuperchip); ok {
-			if !superchip.addSuperchip() {
-				err = errors.New(errors.CartridgeError, "error adding superchip")
+		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
+			if !superchip.AddSuperchip() {
+				return errors.New(errors.CartridgeError, "error adding superchip")
 			}
-		} else {
-			err = errors.New(errors.CartridgeError, "error adding superchip")
 		}
+	}
+
+	if cartload.PlusROM {
+		return cart.addPlusROM()
 	}
 
 	return err
@@ -262,7 +276,7 @@ func (cart Cartridge) GetStaticBus() bus.CartStaticBus {
 	return nil
 }
 
-// GetRAMbus returns an array of bus.CartRAM or nil if catridge contains no RAM
+// GetRAMbus returns interface to ram busor  nil if catridge contains no RAM
 func (cart Cartridge) GetRAMbus() bus.CartRAMbus {
 	if bus, ok := cart.mapper.(bus.CartRAMbus); ok {
 		return bus
@@ -278,6 +292,15 @@ func (cart Cartridge) GetTapeBus() bus.CartTapeBus {
 	return nil
 }
 
+// GetContainer returns interface to cartridge container or nil if cartridge is
+// not in a container
+func (cart Cartridge) GetContainer() mapper.CartContainer {
+	if cc, ok := cart.mapper.(mapper.CartContainer); ok {
+		return cc
+	}
+	return nil
+}
+
 // IterateBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
 // banks.Content returned from the previous call. The end of the sequence is
@@ -289,4 +312,14 @@ func (cart Cartridge) IterateBanks(prev *banks.Content) (*banks.Content, error) 
 	}
 
 	return cart.mapper.IterateBanks(prev), nil
+}
+
+func (cart *Cartridge) addPlusROM() error {
+	var err error
+	cart.mapper, err = plusrom.NewPlusROM(cart.mapper)
+	if err != nil {
+		return errors.New(errors.CartridgeError, err)
+	}
+	logger.Log("cartridge", fmt.Sprintf("%s cartridge contained in PlusROM", cart.ID()))
+	return nil
 }

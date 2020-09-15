@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -51,13 +52,13 @@ type tigervision struct {
 	//  o the first segment can point to any of the other three
 	//
 	// the bank pointed to by the first segment is changed through the listen()
-	// function (part of the implementation of the cartMapper interface).
+	// function (part of the implementation of the mapper.CartMapper interface).
 	segment [2]int
 }
 
 // should work with any size cartridge that is a multiple of 2048
 //  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo)
-func newTigervision(data []byte) (cartMapper, error) {
+func newTigervision(data []byte) (mapper.CartMapper, error) {
 	cart := &tigervision{
 		mappingID:   "3F",
 		description: "tigervision",
@@ -86,12 +87,12 @@ func (cart tigervision) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1])
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart tigervision) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *tigervision) Initialise() {
 	cart.segment[0] = cart.NumBanks() - 2
 
@@ -99,7 +100,7 @@ func (cart *tigervision) Initialise() {
 	cart.segment[1] = cart.NumBanks() - 1
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -110,7 +111,7 @@ func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
@@ -122,12 +123,12 @@ func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error
 	return errors.New(errors.MemoryBusError, addr)
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart tigervision) NumBanks() int {
 	return len(cart.banks)
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart *tigervision) GetBank(addr uint16) banks.Details {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return banks.Details{Number: cart.segment[0], IsRAM: false, Segment: 0}
@@ -135,7 +136,7 @@ func (cart *tigervision) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *tigervision) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -147,7 +148,7 @@ func (cart *tigervision) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
@@ -174,7 +175,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision cartridges use mirror addresses to write to the TIA.
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *tigervision) Step() {
 }
 

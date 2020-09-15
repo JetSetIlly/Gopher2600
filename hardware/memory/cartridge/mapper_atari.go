@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -91,12 +92,12 @@ func (cart atari) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart atari) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *atari) Initialise() {
 	// which bank should be the start bank? this has gone back and forth but
 	// the current thinking (by me) is that it should be the last bank in the
@@ -113,7 +114,7 @@ func (cart *atari) Initialise() {
 	}
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart atari) GetBank(addr uint16) banks.Details {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
@@ -121,7 +122,7 @@ func (cart atari) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 	if cart.ram != nil {
 		if addr >= 0x80 && addr <= 0xff {
@@ -131,7 +132,7 @@ func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 	return 0, false
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.ram != nil {
 		if addr <= 0x7f {
@@ -177,7 +178,7 @@ func (cart *atari) addSuperchip() bool {
 	return true
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *atari) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -189,11 +190,11 @@ func (cart *atari) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *atari) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *atari) Step() {
 }
 
@@ -248,7 +249,7 @@ type atari4k struct {
 //  o Adventure
 //  o Yars Revenge
 //  o etc.
-func newAtari4k(data []byte) (cartMapper, error) {
+func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	cart := &atari4k{}
 	cart.bankSize = 4096
 	cart.mappingID = "4k"
@@ -267,12 +268,12 @@ func newAtari4k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart atari4k) NumBanks() int {
 	return 1
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -280,7 +281,7 @@ func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[0][addr], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -298,7 +299,7 @@ type atari2k struct {
 	atari
 }
 
-func newAtari2k(data []byte) (cartMapper, error) {
+func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	cart := &atari2k{}
 	cart.bankSize = 2048
 	cart.mappingID = "2k"
@@ -317,12 +318,12 @@ func newAtari2k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart atari2k) NumBanks() int {
 	return 1
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -330,7 +331,7 @@ func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[0][addr&0x07ff], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -346,7 +347,7 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(data []uint8) (cartMapper, error) {
+func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	cart := &atari8k{}
 	cart.bankSize = 4096
 	cart.mappingID = "F8"
@@ -368,12 +369,12 @@ func newAtari8k(data []uint8) (cartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart atari8k) NumBanks() int {
 	return 2
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -384,7 +385,7 @@ func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -422,7 +423,7 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(data []byte) (cartMapper, error) {
+func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	cart := &atari16k{}
 	cart.bankSize = 4096
 	cart.mappingID = "F6"
@@ -444,12 +445,12 @@ func newAtari16k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart atari16k) NumBanks() int {
 	return 4
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -460,7 +461,7 @@ func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -502,7 +503,7 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(data []byte) (cartMapper, error) {
+func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	cart := &atari32k{}
 	cart.bankSize = 4096
 	cart.mappingID = "F4"
@@ -524,12 +525,12 @@ func newAtari32k(data []byte) (cartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart atari32k) NumBanks() int {
 	return 8
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -540,7 +541,7 @@ func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil

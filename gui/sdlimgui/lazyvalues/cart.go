@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
 // LazyCart lazily accesses cartridge information from the emulator
@@ -44,6 +45,9 @@ type LazyCart struct {
 	atomicTapeBus   atomic.Value // bus.CartTapeBus
 	atomicTapeState atomic.Value // bus.CartTapeState
 
+	atomicPlusROM        atomic.Value // plusrom.PlusROM
+	atomicPlusROMNetwork atomic.Value // plusrom.PlusROMNetwork
+
 	ID       string
 	Summary  string
 	Filename string
@@ -65,6 +69,9 @@ type LazyCart struct {
 	HasTapeBus bool
 	TapeBus    bus.CartTapeBus
 	TapeState  bus.CartTapeState
+
+	IsPlusROM       bool
+	PlusROMAddrInfo plusrom.AddrInfo
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -88,28 +95,53 @@ func (lz *LazyCart) update() {
 		sb := lz.val.Dbg.VCS.Mem.Cart.GetStaticBus()
 		if sb != nil {
 			lz.atomicStaticBus.Store(sb)
-			lz.atomicStatic.Store(sb.GetStatic())
+
+			// make sure CartStaticBus implementation is meaningful
+			a := sb.GetStatic()
+			if a != nil {
+				lz.atomicStatic.Store(a)
+			}
 		}
 
 		rb := lz.val.Dbg.VCS.Mem.Cart.GetRegistersBus()
 		if rb != nil {
 			lz.atomicRegistersBus.Store(rb)
-			lz.atomicRegisters.Store(rb.GetRegisters())
+
+			// make sure CartRegistersBus implementation is meaningful
+			a := rb.GetRegisters()
+			if a != nil {
+				lz.atomicRegisters.Store(a)
+			}
 		}
 
 		r := lz.val.Dbg.VCS.Mem.Cart.GetRAMbus()
 		if r != nil {
 			lz.atomicRAMbus.Store(r)
-			lz.atomicRAM.Store(r.GetRAM())
+
+			// make sure CartRAMBus implementation is meaningful
+			a := r.GetRAM()
+			if a != nil {
+				lz.atomicRAM.Store(a)
+			}
 		}
 
 		t := lz.val.Dbg.VCS.Mem.Cart.GetTapeBus()
 		if t != nil {
-			// additional check to see if the tape bus is valid. check boolean
-			// result of GetTapeState()
+			// make sure CartTapeBus implementation is meaningful
 			if ok, s := t.GetTapeState(); ok {
 				lz.atomicTapeBus.Store(t)
 				lz.atomicTapeState.Store(s)
+			}
+		}
+
+		c := lz.val.Dbg.VCS.Mem.Cart.GetContainer()
+		if c != nil {
+			if pr, ok := c.(*plusrom.PlusROM); ok {
+				lz.atomicPlusROM.Store(pr)
+				lz.atomicPlusROMNetwork.Store(pr.GetNetwork())
+			} else {
+				lz.atomicPlusROM.Store(nil)
+				lz.atomicPlusROMNetwork.Store(nil)
 			}
 		}
 	})
@@ -123,6 +155,15 @@ func (lz *LazyCart) update() {
 	lz.StaticBus, lz.HasStaticBus = lz.atomicStaticBus.Load().(bus.CartStaticBus)
 	if lz.HasStaticBus {
 		lz.Static, _ = lz.atomicStatic.Load().([]bus.CartStatic)
+
+		// similarlaly for the RAMbus below, a cartridge can implement a
+		// static bus but not actually have a static area. this additional
+		// test checks for that
+		//
+		// * required for PlusROM cartridges
+		if lz.Static == nil {
+			lz.HasStaticBus = false
+		}
 	}
 
 	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(bus.CartRegistersBus)
@@ -137,6 +178,10 @@ func (lz *LazyCart) update() {
 		// as explained in the commentary for the CartRAMbus interface, a
 		// cartridge my implement the interface but not actually have any RAM.
 		// we check for this here and correct the HasRAMbus boolean accordingly
+		//
+		// * required for:
+		//		- atari cartridges without a superchip
+		//		- PlusROM cartridges
 		if lz.RAM == nil {
 			lz.HasRAMbus = false
 		}
@@ -145,5 +190,10 @@ func (lz *LazyCart) update() {
 	lz.TapeBus, lz.HasTapeBus = lz.atomicTapeBus.Load().(bus.CartTapeBus)
 	if lz.HasTapeBus {
 		lz.TapeState, _ = lz.atomicTapeState.Load().(bus.CartTapeState)
+	}
+
+	_, lz.IsPlusROM = lz.atomicPlusROM.Load().(*plusrom.PlusROM)
+	if lz.IsPlusROM {
+		lz.PlusROMAddrInfo, _ = lz.atomicPlusROMNetwork.Load().(plusrom.AddrInfo)
 	}
 }

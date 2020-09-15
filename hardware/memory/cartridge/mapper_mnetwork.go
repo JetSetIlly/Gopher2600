@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -96,7 +97,7 @@ type mnetwork struct {
 	use1kRAM bool
 }
 
-func newMnetwork(data []byte) (cartMapper, error) {
+func newMnetwork(data []byte) (mapper.CartMapper, error) {
 	cart := &mnetwork{
 		description: "mnetwork",
 		mappingID:   "E7",
@@ -138,12 +139,12 @@ func (cart mnetwork) String() string {
 	return s.String()
 }
 
-// ID implements the cartMapper interface
+// ID implements the mapper.CartMapper interface
 func (cart mnetwork) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the mapper.CartMapper interface
 func (cart *mnetwork) Initialise() {
 	cart.bank = 0
 	cart.ram256byteIdx = 0
@@ -159,7 +160,7 @@ func (cart *mnetwork) Initialise() {
 	}
 }
 
-// Read implements the cartMapper interface
+// Read implements the mapper.CartMapper interface
 func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 	if cart.hotspot(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
@@ -190,7 +191,7 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the mapper.CartMapper interface
 func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.hotspot(addr, passive) {
 		return nil
@@ -273,12 +274,12 @@ func (cart *mnetwork) hotspot(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the mapper.CartMapper interface
 func (cart mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the mapper.CartMapper interface
 func (cart *mnetwork) GetBank(addr uint16) banks.Details {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if cart.use1kRAM {
@@ -294,7 +295,7 @@ func (cart *mnetwork) GetBank(addr uint16) banks.Details {
 	return banks.Details{Number: 7, IsRAM: false, Segment: 1}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the mapper.CartMapper interface
 func (cart *mnetwork) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
@@ -306,11 +307,11 @@ func (cart *mnetwork) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the mapper.CartMapper interface
 func (cart *mnetwork) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the mapper.CartMapper interface
 func (cart *mnetwork) Step() {
 }
 

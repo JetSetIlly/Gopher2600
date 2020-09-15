@@ -232,6 +232,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+	plusrom := md.AddBool("plusrom", false, "load cartridge into a PlusROM container")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	scaling := md.AddFloat64("scale", 0.0, "television scaling")
 	crt := md.AddBool("crt", true, "apply CRT post-processing")
@@ -255,7 +256,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping, *plusrom)
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -345,6 +346,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+	plusrom := md.AddBool("plusrom", false, "load cartridge into a PlusROM container")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
@@ -424,7 +426,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		// set up a running function
 		dbgRun := func() error {
-			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping, *plusrom)
 
 			err := dbg.Start(*initScript, cartload)
 			if err != nil {
@@ -469,6 +471,7 @@ func disasm(md *modalflag.Modes) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+	plusrom := md.AddBool("plusrom", false, "load cartridge into a PlusROM container")
 	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
 	raw := md.AddBool("raw", false, "raw disassembly. show every byte with the disasm decision.")
 	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
@@ -487,7 +490,7 @@ func disasm(md *modalflag.Modes) error {
 			Raw:      *raw,
 		}
 
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping, *plusrom)
 
 		dsm, err := disassembly.FromCartridge(cartload)
 		if err != nil {
@@ -520,6 +523,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+	plusrom := md.AddBool("plusrom", false, "load cartridge into a PlusROM container")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	display := md.AddBool("display", false, "display TV output")
 	scaling := md.AddFloat64("scale", 0.0, "display scaling (only valid if -display=true")
@@ -536,7 +540,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping, *plusrom)
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -712,7 +716,9 @@ func regressAdd(md *modalflag.Modes) error {
 				Notes:  *notes,
 			}
 		} else {
-			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			// not sure if we should allow PlusROM to be used in conjunction
+			// with regression tests
+			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping, false)
 
 			// parse digest mode, failing if string is not recognised
 			m, err := regression.ParseDigestMode(*mode)

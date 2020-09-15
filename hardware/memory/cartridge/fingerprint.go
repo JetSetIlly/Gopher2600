@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -111,7 +112,7 @@ func fingerprintTigervision(b []byte) bool {
 	return false
 }
 
-func fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint8k(data []byte) func([]byte) (mapper.CartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -123,7 +124,7 @@ func fingerprint8k(data []byte) func([]byte) (cartMapper, error) {
 	return newAtari8k
 }
 
-func fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint16k(data []byte) func([]byte) (mapper.CartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -135,7 +136,7 @@ func fingerprint16k(data []byte) func([]byte) (cartMapper, error) {
 	return newAtari16k
 }
 
-func fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint32k(data []byte) func([]byte) (mapper.CartMapper, error) {
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
@@ -143,7 +144,7 @@ func fingerprint32k(data []byte) func([]byte) (cartMapper, error) {
 	return newAtari32k
 }
 
-func fingerprint128k(data []byte) func([]byte) (cartMapper, error) {
+func fingerprint128k(data []byte) func([]byte) (mapper.CartMapper, error) {
 	if fingerprintDF(data) {
 		return newDF
 	}
@@ -232,8 +233,8 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	// if cartridge mapper implements the optionalSuperChip interface then try
 	// to add the additional RAM
-	if superchip, ok := cart.mapper.(optionalSuperchip); ok {
-		superchip.addSuperchip()
+	if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
+		superchip.AddSuperchip()
 	}
 
 	return nil

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -58,7 +59,7 @@ type Supercharger struct {
 
 // NewSupercharger is the preferred method of initialisation for the
 // Supercharger type
-func NewSupercharger(cartload cartridgeloader.Loader) (*Supercharger, error) {
+func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
 		mappingID:   MappingID,
 		description: "supercharger",

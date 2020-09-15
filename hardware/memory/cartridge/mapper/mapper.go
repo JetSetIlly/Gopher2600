@@ -13,18 +13,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package cartridge
+// Package mapper contains the CartMapper interface. This interface abstracts
+// the functions required of any cartridge format.
+package mapper
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 )
 
-// cartMapper implementations hold the actual data from the loaded ROM and
+// CartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
 // convenience, functions with an address argument recieve that address
 // normalised to a range of 0x0000 to 0x0fff
-type cartMapper interface {
+type CartMapper interface {
 	Initialise()
+	String() string
 	ID() string
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error
@@ -52,8 +55,15 @@ type cartMapper interface {
 	IterateBanks(prev *banks.Content) *banks.Content
 }
 
-// optionalSuperchip are implemented by cartMappers that have an optional
+// OptionalSuperchip are implemented by cartMappers that have an optional
 // superchip
-type optionalSuperchip interface {
-	addSuperchip() bool
+type OptionalSuperchip interface {
+	AddSuperchip() bool
+}
+
+// CartContainer is a special CartMapper type that wraps another CartMapper.
+// For example, the PlusROM type
+type CartContainer interface {
+	CartMapper
+	ContainerID() string
 }
