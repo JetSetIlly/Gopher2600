@@ -150,9 +150,9 @@ func (win *winSaveKeyI2C) drawStatus() {
 	case savekey.Data:
 		switch win.img.lz.SaveKey.Dir {
 		case savekey.Reading:
-			imgui.Text("Reading ")
+			imgui.Text("Reading")
 		case savekey.Writing:
-			imgui.Text("Writing ")
+			imgui.Text("Writing")
 		}
 		imgui.SameLine()
 		imgui.Text("Data")

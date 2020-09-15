@@ -17,6 +17,9 @@
 // 32KB of non-volatile memory. Suitable for saving high scores, game settings,
 // etc.
 //
+// The SaveKey type implements the ports.Peripheral interface and can be
+// inserted into a VCS port like any other peripheral.
+//
 // SaveKey information taken from "AtariVox Programmer's Guide" (16/11/04) by Alex Herbert
 //
 // i2c information taken from https://learn.sparkfun.com/tutorials/i2c/all (13/09/2020)

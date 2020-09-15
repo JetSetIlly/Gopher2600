@@ -179,7 +179,10 @@ func (sk *SaveKey) recvBit(v bool) bool {
 	return sk.BitsCt == 8
 }
 
-func (sk *SaveKey) sendBit() (uint8, bool) {
+// return the next bit in the current byte. end is true if all bits in the
+// current byte has been exhausted. next call to sendBit() will use the next
+// byte in the EEPROM page
+func (sk *SaveKey) sendBit() (bit bool, end bool) {
 	if sk.BitsCt >= 8 {
 		sk.resetBits()
 	}
@@ -189,13 +192,14 @@ func (sk *SaveKey) sendBit() (uint8, bool) {
 	}
 
 	v := (sk.Bits >> (7 - sk.BitsCt)) & 0x01
+	bit = v == 0x01
 	sk.BitsCt++
 
 	if sk.BitsCt >= 8 {
-		return v, true
+		end = true
 	}
 
-	return v, false
+	return bit, end
 }
 
 func (sk *SaveKey) resetBits() {
@@ -287,15 +291,15 @@ func (sk *SaveKey) Step() {
 	case Data:
 		switch sk.Dir {
 		case Reading:
-			v, ok := sk.sendBit()
+			bit, end := sk.sendBit()
 
-			if v == 0x00 {
-				sk.bus.WriteSWCHx(sk.id, 0x00)
-			} else {
+			if bit {
 				sk.bus.WriteSWCHx(sk.id, maskSDA)
+			} else {
+				sk.bus.WriteSWCHx(sk.id, 0x00)
 			}
 
-			if ok {
+			if end {
 				if unicode.IsPrint(rune(sk.Bits)) {
 					logger.Log("savekey", fmt.Sprintf("read byte %#02x [%c]", sk.Bits, sk.Bits))
 				} else {
