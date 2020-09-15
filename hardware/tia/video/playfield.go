@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -269,15 +270,15 @@ func (pf *playfield) SetPF2(v uint8) {
 	pf.latchRegionData()
 }
 
-func (pf *playfield) setPF0(v interface{}) {
+func (pf *playfield) setPF0(v delay.Value) {
 	pf.SetPF0(v.(uint8))
 }
 
-func (pf *playfield) setPF1(v interface{}) {
+func (pf *playfield) setPF1(v delay.Value) {
 	pf.SetPF1(v.(uint8))
 }
 
-func (pf *playfield) setPF2(v interface{}) {
+func (pf *playfield) setPF2(v delay.Value) {
 	pf.SetPF2(v.(uint8))
 }
 

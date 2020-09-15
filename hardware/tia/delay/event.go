@@ -15,19 +15,22 @@
 
 package delay
 
-// Event represents an event that will occur in the future
+// Payload represents the argument use when calling a scheduled function
+type Value interface{}
+
+// Event represents something that will occur in the future
 type Event struct {
 	initial   int
 	remaining int
 	paused    bool
 	pushed    bool
-	payload   func(v interface{})
-	arg       interface{}
+	payload   func(Value)
+	arg       Value
 }
 
 // Schedule an event to occur in the future. The payload function will run
 // after delay number of cycles.
-func (e *Event) Schedule(delay int, payload func(interface{}), arg interface{}) {
+func (e *Event) Schedule(delay int, payload func(Value), arg Value) {
 	e.initial = delay + 1
 	e.remaining = delay + 1
 	e.paused = false

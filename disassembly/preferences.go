@@ -50,7 +50,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	p.dsk, err = prefs.NewDisk(pth)
 	p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
 
-	p.FxxxMirror.RegisterCallback(func(v interface{}) error {
+	p.FxxxMirror.RegisterCallback(func(v prefs.Value) error {
 		return dsm.setCartMirror(v.(bool))
 	})
 

@@ -153,7 +153,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	case "VBLANK":
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
-		tia.futureVblank.Schedule(1, func(v interface{}) {
+		tia.futureVblank.Schedule(1, func(v delay.Value) {
 			// actual vblank signal
 			tia.sig.VBlank = v.(uint8)&0x02 == 0x02
 		}, data.Value)
@@ -194,7 +194,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// * Test RSYNC - test rom by Omegamatrix
 
-		tia.futureRsyncAlign.Schedule(3, func(_ interface{}) {
+		tia.futureRsyncAlign.Schedule(3, func(_ delay.Value) {
 			tia.newScanline(nil)
 
 			// adjust video elements by the number of visible pixels that have
@@ -207,7 +207,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 			}
 		}, nil)
 
-		tia.futureRsyncReset.Schedule(7, func(_ interface{}) {
+		tia.futureRsyncReset.Schedule(7, func(_ delay.Value) {
 			tia.hsync.Reset()
 			tia.pclk.Reset()
 		}, nil)
@@ -227,26 +227,26 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		// [SEC] signal (at most 6 CLK depending on the time of STA HMOVE) and
 		// a further 4 CLK to set 'more movement required' latches."
 
-		var delay int
+		var delayDuration int
 
 		// not forgetting that we count from zero, the following delay
 		// values range from 3 to 6, as described in TIA_HW_Notes
 		switch tia.pclk.Count() {
 		case 0:
-			delay = 5
+			delayDuration = 5
 		case 1:
-			delay = 4
+			delayDuration = 4
 		case 2:
-			delay = 4
+			delayDuration = 4
 		case 3:
-			delay = 2
+			delayDuration = 2
 		}
 
-		tia.futureHmoveLatch.Schedule(delay, func(_ interface{}) {
+		tia.futureHmoveLatch.Schedule(delayDuration, func(_ delay.Value) {
 			tia.HmoveLatch = true
 		}, nil)
 
-		tia.FutureHmove.Schedule(delay+3, func(_ interface{}) {
+		tia.FutureHmove.Schedule(delayDuration+3, func(_ delay.Value) {
 			tia.Video.PrepareSpritesForHMOVE()
 			tia.HmoveCt = 15
 		}, nil)
@@ -272,7 +272,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	return true
 }
 
-func (tia *TIA) newScanline(_ interface{}) {
+func (tia *TIA) newScanline(_ delay.Value) {
 	// the CPU's WSYNC concludes at the beginning of a scanline
 	// from the TIA_1A document:
 	//
@@ -382,14 +382,14 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 8: // [RHS]
 			// reset HSYNC
-			tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+			tia.futureHsync.Schedule(hsyncDelay, func(_ delay.Value) {
 				tia.sig.HSync = false
 				tia.sig.CBurst = true
 			}, nil)
 
 		case 12: // [RCB]
 			// reset color burst
-			tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+			tia.futureHsync.Schedule(hsyncDelay, func(_ delay.Value) {
 				tia.sig.CBurst = false
 			}, nil)
 
@@ -413,7 +413,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.HmoveLatch {
-				tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+				tia.futureHsync.Schedule(hsyncDelay, func(_ delay.Value) {
 					tia.Hblank = false
 				}, nil)
 			}
@@ -423,7 +423,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 18:
 			// late HBLANK off if hmoveLatch is true
 			if tia.HmoveLatch {
-				tia.futureHsync.Schedule(hsyncDelay, func(_ interface{}) {
+				tia.futureHsync.Schedule(hsyncDelay, func(_ delay.Value) {
 					tia.Hblank = false
 				}, nil)
 			}

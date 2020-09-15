@@ -241,7 +241,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	return true
 }
 
-func (bs *ballSprite) _futureStartDrawingEvent(_ interface{}) {
+func (bs *ballSprite) _futureStartDrawingEvent(_ delay.Value) {
 	bs.Enclockifier.start()
 }
 
@@ -291,7 +291,7 @@ func (bs *ballSprite) resetPosition() {
 	bs.futureReset.Schedule(delay, bs._futureResetPosition, nil)
 }
 
-func (bs *ballSprite) _futureResetPosition(_ interface{}) {
+func (bs *ballSprite) _futureResetPosition(_ delay.Value) {
 	// end drawing of sprite in case it has started during the delay
 	// period. believe it or not, we can get rid of this and pixel output
 	// will still be correct (because of how the delayed END signal in the
@@ -411,7 +411,7 @@ func (bs *ballSprite) setColor(value uint8) {
 	bs.Color = value
 }
 
-func (bs *ballSprite) setHmoveValue(v interface{}) {
+func (bs *ballSprite) setHmoveValue(v delay.Value) {
 	bs.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 

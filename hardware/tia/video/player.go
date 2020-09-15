@@ -410,7 +410,7 @@ func (ps *playerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	return true
 }
 
-func (ps *playerSprite) _futureStartDrawingEvent(v interface{}) {
+func (ps *playerSprite) _futureStartDrawingEvent(v delay.Value) {
 	// it is useful for debugging to know which copy of the sprite is
 	// currently being drawn. we'll update this value in the switch
 	// below, taking great care to note the value of ms.copies at each
@@ -493,7 +493,7 @@ func (ps *playerSprite) resetPosition() {
 	ps.futureReset.Schedule(delay, ps._futureResetPosition, nil)
 }
 
-func (ps *playerSprite) _futureResetPosition(_ interface{}) {
+func (ps *playerSprite) _futureResetPosition(_ delay.Value) {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ps.ResetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
@@ -693,7 +693,7 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 	}
 }
 
-func (ps *playerSprite) _futureSetNUSIZ(v interface{}) {
+func (ps *playerSprite) _futureSetNUSIZ(v delay.Value) {
 	ps.SetNUSIZ(v.(uint8))
 }
 
@@ -737,7 +737,7 @@ func (ps *playerSprite) setColor(value uint8) {
 }
 
 // setHmoveValue normalises the nibbles from the NUSIZ register
-func (ps *playerSprite) setHmoveValue(v interface{}) {
+func (ps *playerSprite) setHmoveValue(v delay.Value) {
 	ps.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 

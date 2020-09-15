@@ -24,11 +24,14 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
+// targetValue represents the value that is to be monitored
+type targetValue interface{}
+
 type target struct {
 	label string
 
 	// must be a comparable type
-	currentValue interface{}
+	currentValue targetValue
 	format       string
 }
 
@@ -36,16 +39,16 @@ func (trg target) Label() string {
 	return trg.label
 }
 
-func (trg target) TargetValue() interface{} {
+func (trg target) TargetValue() targetValue {
 	switch v := trg.currentValue.(type) {
-	case func() interface{}:
+	case func() targetValue:
 		return v()
 	default:
 		return v
 	}
 }
 
-func (trg target) FormatValue(val interface{}) string {
+func (trg target) FormatValue(val targetValue) string {
 	if trg.format == "" {
 		return fmt.Sprintf("%v", val)
 	}
@@ -65,7 +68,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "PC":
 			trg = &target{
 				label: "PC",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					// for breakpoints it is important that the breakpoint
 					// value be normalised through mapAddress() too
 					ai := dbg.dbgmem.mapAddress(dbg.VCS.CPU.PC.Address(), true)
@@ -77,7 +80,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "A":
 			trg = &target{
 				label: "A",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					return int(dbg.VCS.CPU.A.Value())
 				},
 				format: "%#02x",
@@ -86,7 +89,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "X":
 			trg = &target{
 				label: "X",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					return int(dbg.VCS.CPU.X.Value())
 				},
 				format: "%#02x",
@@ -95,7 +98,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "Y":
 			trg = &target{
 				label: "Y",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					return int(dbg.VCS.CPU.Y.Value())
 				},
 				format: "%#02x",
@@ -104,7 +107,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "SP":
 			trg = &target{
 				label: "X",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					return int(dbg.VCS.CPU.Y.Value())
 				},
 				format: "%#02x",
@@ -114,7 +117,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "FRAMENUM", "FRAME", "FR":
 			trg = &target{
 				label: "Frame",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					fr, err := dbg.VCS.TV.GetState(television.ReqFramenum)
 					if err != nil {
 						return err
@@ -126,7 +129,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "SCANLINE", "SL":
 			trg = &target{
 				label: "Scanline",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					sl, err := dbg.VCS.TV.GetState(television.ReqScanline)
 					if err != nil {
 						return err
@@ -138,7 +141,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "HORIZPOS", "HP":
 			trg = &target{
 				label: "Horiz Pos",
-				currentValue: func() interface{} {
+				currentValue: func() targetValue {
 					hp, err := dbg.VCS.TV.GetState(television.ReqHorizPos)
 					if err != nil {
 						return err
@@ -161,7 +164,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "MNEMONIC", "MNE":
 					trg = &target{
 						label: "Mnemonic",
-						currentValue: func() interface{} {
+						currentValue: func() targetValue {
 							if !dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.LastResult.Defn == nil {
 								return ""
 							}
@@ -172,7 +175,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "ADDRESSMODE", "AM":
 					trg = &target{
 						label: "AddressMode",
-						currentValue: func() interface{} {
+						currentValue: func() targetValue {
 							if !dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.LastResult.Defn == nil {
 								return ""
 							}
@@ -183,7 +186,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "EFFECT", "EFF":
 					trg = &target{
 						label: "Instruction Effect",
-						currentValue: func() interface{} {
+						currentValue: func() targetValue {
 							if !dbg.VCS.CPU.LastResult.Final {
 								return -1
 							}
@@ -194,7 +197,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "PAGEFAULT", "PAGE":
 					trg = &target{
 						label: "PageFault",
-						currentValue: func() interface{} {
+						currentValue: func() targetValue {
 							return dbg.VCS.CPU.LastResult.PageFault
 						},
 					}
@@ -202,7 +205,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "BUG":
 					trg = &target{
 						label: "CPU Bug",
-						currentValue: func() interface{} {
+						currentValue: func() targetValue {
 							s := dbg.VCS.CPU.LastResult.CPUBug
 							if s == "" {
 								return "ok"
@@ -226,10 +229,12 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 	return trg, nil
 }
 
+// a bank target is generated automatically by the breakpoints system and also
+// explicitly in parseTarget()
 func bankTarget(dbg *Debugger) *target {
 	return &target{
 		label: "Bank",
-		currentValue: func() interface{} {
+		currentValue: func() targetValue {
 			return int(dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address()).Number)
 		},
 	}

@@ -343,7 +343,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	return true
 }
 
-func (ms *missileSprite) _futureStartDrawingEvent(v interface{}) {
+func (ms *missileSprite) _futureStartDrawingEvent(v delay.Value) {
 	ms.Enclockifier.Cpy = v.(int)
 	ms.Enclockifier.start()
 }
@@ -404,7 +404,7 @@ func (ms *missileSprite) resetPosition() {
 	ms.futureReset.Schedule(delay, ms._futureResetPosition, nil)
 }
 
-func (ms *missileSprite) _futureResetPosition(_ interface{}) {
+func (ms *missileSprite) _futureResetPosition(_ delay.Value) {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
@@ -491,7 +491,7 @@ func (ms *missileSprite) setColor(value uint8) {
 	ms.Color = value
 }
 
-func (ms *missileSprite) setHmoveValue(v interface{}) {
+func (ms *missileSprite) setHmoveValue(v delay.Value) {
 	ms.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 

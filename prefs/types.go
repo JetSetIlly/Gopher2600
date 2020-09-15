@@ -23,18 +23,21 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 )
 
+// Value represents the actual Go preference value
+type Value interface{}
+
 // types support by the prefs system must implement the pref interface
 type pref interface {
 	fmt.Stringer
-	Set(value interface{}) error
-	Get() interface{}
+	Set(value Value) error
+	Get() Value
 }
 
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
 	value    bool
-	callback func(value interface{}) error
+	callback func(value Value) error
 }
 
 func (p Bool) String() string {
@@ -44,7 +47,7 @@ func (p Bool) String() string {
 // Set new value to Bool type. New value must be of type bool or string. A
 // string value of anything other than "true" (case insensitive) will set the
 // value to false.
-func (p *Bool) Set(v interface{}) error {
+func (p *Bool) Set(v Value) error {
 	switch v := v.(type) {
 	case bool:
 		p.value = v
@@ -67,13 +70,13 @@ func (p *Bool) Set(v interface{}) error {
 }
 
 // Get returns the raw pref value
-func (p Bool) Get() interface{} {
+func (p Bool) Get() Value {
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
-func (p *Bool) RegisterCallback(f func(value interface{}) error) {
+func (p *Bool) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
 
@@ -81,7 +84,7 @@ func (p *Bool) RegisterCallback(f func(value interface{}) error) {
 type String struct {
 	pref
 	value    string
-	callback func(value interface{}) error
+	callback func(value Value) error
 }
 
 func (p String) String() string {
@@ -89,7 +92,7 @@ func (p String) String() string {
 }
 
 // Set new value to String type. New value must be of type string.
-func (p *String) Set(v interface{}) error {
+func (p *String) Set(v Value) error {
 	p.value = fmt.Sprintf("%s", v)
 
 	if p.callback != nil {
@@ -100,13 +103,13 @@ func (p *String) Set(v interface{}) error {
 }
 
 // Get returns the raw pref value
-func (p String) Get() interface{} {
+func (p String) Get() Value {
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
-func (p *String) RegisterCallback(f func(value interface{}) error) {
+func (p *String) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
 
@@ -114,7 +117,7 @@ func (p *String) RegisterCallback(f func(value interface{}) error) {
 type Int struct {
 	pref
 	value    int
-	callback func(value interface{}) error
+	callback func(value Value) error
 }
 
 func (p Int) String() string {
@@ -122,7 +125,7 @@ func (p Int) String() string {
 }
 
 // Set new value to Int type. New value can be an int or string.
-func (p *Int) Set(v interface{}) error {
+func (p *Int) Set(v Value) error {
 	switch v := v.(type) {
 	case int:
 		p.value = v
@@ -144,13 +147,13 @@ func (p *Int) Set(v interface{}) error {
 }
 
 // Get returns the raw pref value
-func (p Int) Get() interface{} {
+func (p Int) Get() Value {
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
-func (p *Int) RegisterCallback(f func(value interface{}) error) {
+func (p *Int) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
 
@@ -178,7 +181,7 @@ func (p Generic) String() string {
 }
 
 // Set triggers the set value procedure for the generic type
-func (p *Generic) Set(v interface{}) error {
+func (p *Generic) Set(v Value) error {
 	err := p.set(v.(string))
 	if err != nil {
 		return err
@@ -188,6 +191,6 @@ func (p *Generic) Set(v interface{}) error {
 }
 
 // Get triggers the get value procedure for the generic type.
-func (p Generic) Get() interface{} {
+func (p Generic) Get() Value {
 	return p.get()
 }

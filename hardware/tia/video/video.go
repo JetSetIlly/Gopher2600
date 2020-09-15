@@ -392,7 +392,7 @@ func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	case "HMBL":
 		vd.writing.Schedule(1, vd.Ball.setHmoveValue, data.Value&0xf0)
 	case "HMCLR":
-		vd.writing.Schedule(1, func(_ interface{}) {
+		vd.writing.Schedule(1, func(_ delay.Value) {
 			vd.Player0.clearHmoveValue()
 			vd.Player1.clearHmoveValue()
 			vd.Missile0.clearHmoveValue()

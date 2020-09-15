@@ -129,6 +129,8 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			ai.address = uint16(addr)
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 		}
+	default:
+		panic(fmt.Sprintf("unsupported address type (%T)", address))
 	}
 
 	ai.addressLabel = symbolTable[ai.mappedAddress]
