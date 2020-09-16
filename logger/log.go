@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -47,6 +48,9 @@ type logger struct {
 	maxEntries int
 	entries    []Entry
 	echo       bool
+
+	// timestamp of most recent log() event
+	atomicTimestamp atomic.Value // time.Time
 }
 
 func newLogger(maxEntries int) *logger {
@@ -73,9 +77,8 @@ func (l *logger) log(tag, detail string) {
 		e.Timestamp = time.Now()
 	}
 
-	if e.String() == "\n" {
-		panic("foo")
-	}
+	// store atomic timestamp
+	l.atomicTimestamp.Store(e.Timestamp)
 
 	// mainain maximum length
 	if len(l.entries) > l.maxEntries {
@@ -113,7 +116,7 @@ func (l *logger) tail(output io.Writer, number int) {
 }
 
 func (l *logger) copy(ref time.Time) []Entry {
-	if ref != l.entries[len(l.entries)-1].Timestamp {
+	if ref != l.atomicTimestamp.Load().(time.Time) {
 		c := make([]Entry, len(l.entries))
 		copy(c, l.entries)
 		return c
