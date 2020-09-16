@@ -37,9 +37,6 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
-	// whether to load cartidge into a PlusROM container
-	PlusROM bool
-
 	// expected hash of the loaded cartridge. empty string indicates that the
 	// hash is unknown and need not be validated. after a load operation the
 	// value will be the hash of the loaded data
@@ -77,11 +74,10 @@ type Loader struct {
 //
 // Alphabetic characters in file extensions can be in upper or lower case or a
 // mixture of both.
-func NewLoader(filename string, mapping string, plusrom bool) Loader {
+func NewLoader(filename string, mapping string) Loader {
 	cl := Loader{
 		Filename: filename,
 		Mapping:  "AUTO",
-		PlusROM:  plusrom,
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))

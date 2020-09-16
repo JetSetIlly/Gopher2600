@@ -141,9 +141,36 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		if err != nil {
 			return err
 		}
-		if cartload.PlusROM {
-			return cart.addPlusROM()
+
+		// in addition to the regular fingerprint we also check to see if this
+		// is PlusROM cartridge (which can be combined with a regular cartridge
+		// format)
+		if cart.fingerprintPlusROM(cartload) {
+
+			// try creating a NewPlusROM instance
+			pr, err := plusrom.NewPlusROM(cart.mapper)
+
+			if err != nil {
+				// if the error is a NotAPlusROM error then log the false
+				// positive and return a success, keeping the main cartridge
+				// mapper intact
+				if errors.Is(err, plusrom.NotAPlusROM) {
+					logger.Log("cartridge", err.Error())
+					return nil
+				}
+
+				return errors.New(errors.CartridgeError, err)
+			}
+
+			// we've wrapped the main cartridge mapper inside the PlusROM
+			// mapper and we need to point the mapper field to the the new
+			// PlusROM instance
+			cart.mapper = pr
+
+			// log that this is PlusROM cartridge
+			logger.Log("cartridge", fmt.Sprintf("%s cartridge contained in PlusROM", cart.ID()))
 		}
+		return nil
 	}
 
 	// a specific cartridge mapper was specified
@@ -208,11 +235,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		}
 	}
 
-	if cartload.PlusROM {
-		return cart.addPlusROM()
-	}
-
-	return err
+	return nil
 }
 
 // Initialise the cartridge
@@ -312,14 +335,4 @@ func (cart Cartridge) IterateBanks(prev *banks.Content) (*banks.Content, error) 
 	}
 
 	return cart.mapper.IterateBanks(prev), nil
-}
-
-func (cart *Cartridge) addPlusROM() error {
-	var err error
-	cart.mapper, err = plusrom.NewPlusROM(cart.mapper)
-	if err != nil {
-		return errors.New(errors.CartridgeError, err)
-	}
-	logger.Log("cartridge", fmt.Sprintf("%s cartridge contained in PlusROM", cart.ID()))
-	return nil
 }

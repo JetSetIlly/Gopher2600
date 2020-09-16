@@ -80,7 +80,7 @@ func (win *winCartPlusROM) draw() {
 			// also note that we've made another copy of the path string
 			// because the first copy is to be used in the othe call to
 			// InputText()
-			win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetNetwork(host, p)
+			win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetAddrInfo(host, p)
 		})
 	}
 
@@ -92,7 +92,7 @@ func (win *winCartPlusROM) draw() {
 			// see comment above. however note, that we *don't* need to make
 			// another copy of host because the first copy has already been
 			// used by this point so there is no chance of conflict (!)
-			win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetNetwork(host, path)
+			win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetAddrInfo(host, path)
 		})
 	}
 

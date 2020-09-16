@@ -138,7 +138,7 @@ func (lz *LazyCart) update() {
 		if c != nil {
 			if pr, ok := c.(*plusrom.PlusROM); ok {
 				lz.atomicPlusROM.Store(pr)
-				lz.atomicPlusROMNetwork.Store(pr.GetNetwork())
+				lz.atomicPlusROMNetwork.Store(pr.CopyAddrInfo())
 			} else {
 				lz.atomicPlusROM.Store(nil)
 				lz.atomicPlusROMNetwork.Store(nil)

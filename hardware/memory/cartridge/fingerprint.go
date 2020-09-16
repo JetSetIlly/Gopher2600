@@ -239,3 +239,21 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	return nil
 }
+
+// fingerprinting a PlusROM cartridge is slightly different to the main
+// fingerprint() function above. the fingerprintPlusROM() function below is the
+// first step. it checks for the byte sequence 8d f1 x1, which is the
+// equivalent to STA $xff1, a necessary instruction in a PlusROM cartridge
+//
+// if this sequence is found then the function returns true, whereupon
+// plusrom.NewPlusROM() can be called. the seoncd part of the fingerprinting
+// process occurs in that function. if that fails then we can say that the true
+// result from this function was a false positive.
+func (cart *Cartridge) fingerprintPlusROM(cartload cartridgeloader.Loader) bool {
+	for i := 0; i < len(cartload.Data)-2; i++ {
+		if cartload.Data[i] == 0x8d && cartload.Data[i+1] == 0xf1 && (cartload.Data[i+2]&0x10) == 0x10 {
+			return true
+		}
+	}
+	return false
+}

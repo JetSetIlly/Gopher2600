@@ -19,20 +19,25 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// PlusROMError denotes a specific error in the plusrom package
+const NotAPlusROM = "not a plus rom: %s"
+
 // PlusROM wraps another mapper.CartMapper inside a network aware format
 type PlusROM struct {
 	child mapper.CartMapper
-	net   network
+	net   *network
 }
 
 func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 	cart := &PlusROM{child: child}
+	cart.net = newNetwork()
 
 	bank := &banks.Content{Number: -1}
 	for i := 0; i < cart.NumBanks(); i++ {
@@ -46,10 +51,9 @@ func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 
 	// normalise address so it's suitable for indexing bank data
 	a &= 0x0fff
-	a++
 
 	// read path string
-	s := strings.Builder{}
+	path := strings.Builder{}
 	for {
 		if int(a) >= len(bank.Data) {
 			a = 0x0000
@@ -59,12 +63,11 @@ func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 		if c == 0x00 {
 			break // for loop
 		}
-		s.WriteRune(rune(c))
+		path.WriteRune(rune(c))
 	}
-	cart.net.addr.Path = s.String()
 
 	// read host string
-	s.Reset()
+	host := strings.Builder{}
 	for {
 		if int(a) >= len(bank.Data) {
 			a = 0x0000
@@ -74,12 +77,16 @@ func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 		if c == 0x00 {
 			break // for loop
 		}
-		s.WriteRune(rune(c))
+		host.WriteRune(rune(c))
 	}
-	cart.net.addr.Host = s.String()
+
+	hostValid, pathValid := cart.SetAddrInfo(host.String(), path.String())
+	if !hostValid || !pathValid {
+		return nil, errors.New(NotAPlusROM, "invalid host/path")
+	}
 
 	// log success
-	logger.Log("plusrom", fmt.Sprintf("%s/%s", cart.net.addr.Host, cart.net.addr.Path))
+	logger.Log("plusrom", fmt.Sprintf("will connect to %s", cart.net.ai.String()))
 
 	return cart, nil
 }
@@ -231,18 +238,4 @@ func (cart *PlusROM) GetTapeState() (bool, bus.CartTapeState) {
 		return sb.GetTapeState()
 	}
 	return false, bus.CartTapeState{}
-}
-
-// GetNetwork returns a new instance of PlusROMAddrInfo
-func (cart *PlusROM) GetNetwork() AddrInfo {
-	return AddrInfo{
-		Host: cart.net.addr.Host,
-		Path: cart.net.addr.Path,
-	}
-}
-
-// SetNetwork updates the host/path information int the PlusROM
-func (cart *PlusROM) SetNetwork(host string, path string) {
-	cart.net.addr.Host = host
-	cart.net.addr.Path = path
 }

@@ -22,18 +22,18 @@ import (
 )
 
 // calls imguiInput with the string of allowed hexadecimal characters.
-func imguiHexInput(label string, aggressiveUpdate bool, digits int, content *string) bool {
-	return imguiInput(label, aggressiveUpdate, digits, content, "abcdefABCDEF0123456789")
+func imguiHexInput(label string, aggressiveUpdate bool, length int, content *string) bool {
+	return imguiInput(label, aggressiveUpdate, length, content, "abcdefABCDEF0123456789")
 }
 
 // calls imguiInput with the string of numeric characters.
-func imguiDecimalInput(label string, aggressiveUpdate bool, digits int, content *string) bool {
-	return imguiInput(label, aggressiveUpdate, digits, content, "0123456789")
+func imguiDecimalInput(label string, aggressiveUpdate bool, length int, content *string) bool {
+	return imguiInput(label, aggressiveUpdate, length, content, "0123456789")
 }
 
-// input text that accepts a maximum number of hex digits. physical width of
+// input text that accepts a maximum number of characters. physical width of
 // InpuText should be controlled with PushItemWidth()/PopItemWidth() as normal.
-func imguiInput(label string, aggressiveUpdate bool, digits int, content *string, allowedChars string) bool {
+func imguiInput(label string, aggressiveUpdate bool, length int, content *string, allowedChars string) bool {
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		switch d.EventFlag() {
 		case imgui.InputTextFlagsCallbackCharFilter:
@@ -44,12 +44,10 @@ func imguiInput(label string, aggressiveUpdate bool, digits int, content *string
 		default:
 			b := string(d.Buffer())
 
-			// restrict length of input to two characters. note that restriction to
-			// hexadecimal characters is handled by imgui's CharsHexadecimal flag
-			// given to InputTextV()
-			if len(b) > digits {
+			// restrict length of input
+			if len(b) > length {
 				d.DeleteBytes(0, len(b))
-				b = b[:digits]
+				b = b[:length]
 				d.InsertBytes(0, []byte(b))
 				d.MarkBufferModified()
 			}
