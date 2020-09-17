@@ -250,7 +250,11 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	// set debugging log echo
-	logger.SetEcho(*log)
+	if *log {
+		logger.SetEcho(os.Stdout)
+	} else {
+		logger.SetEcho(nil)
+	}
 
 	switch len(md.RemainingArgs()) {
 	case 0:

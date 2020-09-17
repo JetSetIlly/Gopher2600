@@ -17,7 +17,6 @@ package lazyvalues
 
 import (
 	"sync/atomic"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -37,16 +36,8 @@ func newLazyLog(val *Lazy) *LazyLog {
 }
 
 func (lz *LazyLog) update() {
-	// when making a copy of the log we only want to do it if the log has been
-	// dirtied. to do this we need to note the timestamp of the most recent log
-	// entry so we can pass it to the logger.Copy() function
-	timestamp := time.Unix(0, 0)
-	if len(lz.Log) > 0 {
-		timestamp = lz.Log[len(lz.Log)-1].Timestamp
-	}
-
 	lz.val.Dbg.PushRawEvent(func() {
-		if l := logger.Copy(timestamp); l != nil {
+		if l := logger.Copy(); l != nil {
 			lz.atomicLog.Store(l)
 			lz.atomicDirty.Store(true)
 		} else {

@@ -17,7 +17,6 @@ package logger
 
 import (
 	"io"
-	"time"
 )
 
 // only allowing one central log for the entire application. there's no need to
@@ -42,8 +41,8 @@ func Clear() {
 }
 
 // Write contents of central logger to io.Writer
-func Write(output io.Writer) bool {
-	return central.write(output)
+func Write(output io.Writer) {
+	central.write(output)
 }
 
 // Tail writes the last N entries to io.Writer
@@ -54,14 +53,11 @@ func Tail(output io.Writer, number int) {
 // Slice returns a copy of the last n entries. the ref argument is the
 // timestamp of the last entry of the last copy. A new copy will only be made
 // if the timestamp of the current last entry is different to the ref value.
-//
-// The function will return nil if no new copy has been made. Callers should
-// continue to use a previous copy of the log
-func Copy(ref time.Time) []Entry {
-	return central.copy(ref)
+func Copy() []Entry {
+	return central.copy()
 }
 
 // SetEcho to print new entries to os.Stdout
-func SetEcho(echo bool) {
-	central.echo = echo
+func SetEcho(output io.Writer) {
+	central.setEcho(output)
 }

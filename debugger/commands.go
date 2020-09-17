@@ -1432,10 +1432,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 		} else {
 			s := &strings.Builder{}
-			if logger.Write(s) {
-				dbg.printLine(terminal.StyleLog, s.String())
-			} else {
+			logger.Write(s)
+			if s.Len() == 0 {
 				dbg.printLine(terminal.StyleFeedback, "log is empty")
+			} else {
+				dbg.printLine(terminal.StyleLog, s.String())
 			}
 		}
 	}

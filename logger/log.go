@@ -18,18 +18,14 @@ package logger
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
-	"sync/atomic"
-	"time"
 )
 
 // Entry represents a single line/entry in the log
 type Entry struct {
-	Timestamp time.Time
-	tag       string
-	detail    string
-	repeated  int
+	tag      string
+	detail   string
+	repeated int
 }
 
 func (e *Entry) String() string {
@@ -42,84 +38,110 @@ func (e *Entry) String() string {
 	return s.String()
 }
 
+const allEntries = -1
+
 // not exposing logger to outside of the package. the package level functions
 // can be used to log to the central logger.
 type logger struct {
-	maxEntries int
-	entries    []Entry
-	echo       bool
+	// add a new Entry
+	add chan Entry
 
-	// timestamp of most recent log() event
-	atomicTimestamp atomic.Value // time.Time
+	// get and del return the requested number of entries counting from the
+	// most recent. to specify all entries use the allEntries constant
+	get chan int
+	del chan int
+
+	// array of Entries from the service goroutine
+	entries chan []Entry
+
+	// if echo is not nil than write new entry to the io.Writer
+	echo io.Writer
 }
 
 func newLogger(maxEntries int) *logger {
-	return &logger{
-		maxEntries: maxEntries,
-		entries:    make([]Entry, 0),
+	l := &logger{
+		add:     make(chan Entry),
+		get:     make(chan int),
+		del:     make(chan int),
+		entries: make(chan []Entry),
 	}
+
+	// the loggger service gorountine is simple enough to inline and still
+	// retain clarity
+	go func() {
+		entries := make([]Entry, 0, maxEntries)
+
+		for {
+			select {
+			case e := <-l.add:
+				last := Entry{}
+				if len(entries) > 0 {
+					last = entries[len(entries)-1]
+				}
+
+				if last.tag == e.tag && last.detail == e.detail {
+					entries[len(entries)-1].repeated++
+				} else {
+					entries = append(entries, e)
+				}
+
+				if len(entries) > maxEntries {
+					entries = entries[len(entries)-maxEntries:]
+				}
+
+			case n := <-l.get:
+				if n < 0 || n > len(entries) {
+					n = len(entries)
+				}
+				l.entries <- entries[len(entries)-n:]
+
+			case n := <-l.del:
+				if n < 0 || n > len(entries) {
+					n = len(entries)
+				}
+				entries = entries[:len(entries)-n]
+			}
+		}
+	}()
+
+	return l
 }
 
 func (l *logger) log(tag, detail string) {
-	e := &Entry{}
-	if len(l.entries) > 0 {
-		e = &l.entries[len(l.entries)-1]
-	}
-
-	// remove all newline characters from tag and detail string
-	tag = strings.ReplaceAll(tag, "\n", "")
-	detail = strings.ReplaceAll(detail, "\n", "")
-
-	if detail != e.detail || tag != e.tag {
-		l.entries = append(l.entries, Entry{Timestamp: time.Now(), tag: tag, detail: detail})
-	} else {
-		e.repeated++
-		e.Timestamp = time.Now()
-	}
-
-	// store atomic timestamp
-	l.atomicTimestamp.Store(e.Timestamp)
-
-	// mainain maximum length
-	if len(l.entries) > l.maxEntries {
-		l.entries = l.entries[len(l.entries)-maxCentral:]
-	}
-
-	if l.echo {
-		io.WriteString(os.Stdout, e.String())
+	e := Entry{tag: tag, detail: detail}
+	l.add <- e
+	if l.echo != nil {
+		l.echo.Write([]byte(e.String()))
 	}
 }
 
 func (l *logger) clear() {
-	l.entries = l.entries[:0]
+	l.del <- allEntries
 }
 
-func (l *logger) write(output io.Writer) bool {
-	if len(l.entries) == 0 {
-		return false
-	}
-	for _, e := range l.entries {
+func (l *logger) write(output io.Writer) {
+	l.get <- allEntries
+	entries := <-l.entries
+
+	for _, e := range entries {
 		io.WriteString(output, e.String())
 	}
-	return true
 }
 
 func (l *logger) tail(output io.Writer, number int) {
-	// cap number to the number of entries
-	if number > len(l.entries) {
-		number = len(l.entries)
-	}
+	l.get <- number
+	entries := <-l.entries
 
-	for _, e := range l.entries[len(l.entries)-number:] {
+	for _, e := range entries {
 		io.WriteString(output, e.String())
 	}
 }
 
-func (l *logger) copy(ref time.Time) []Entry {
-	if ref != l.atomicTimestamp.Load().(time.Time) {
-		c := make([]Entry, len(l.entries))
-		copy(c, l.entries)
-		return c
-	}
-	return nil
+func (l *logger) copy() []Entry {
+	l.get <- allEntries
+	return <-l.entries
+}
+
+func (l *logger) setEcho(output io.Writer) {
+	l.echo = output
 }
