@@ -18,7 +18,6 @@ package plusrom
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"sync"
 
@@ -31,7 +30,8 @@ const (
 )
 
 type network struct {
-	ai AddrInfo
+	prefs *Preferences
+	ai    AddrInfo
 
 	// these buffers should only be accessed directly by the emulator goroutine
 	// (ie. not from the send() goroutine or by any UI goroutine come to that)
@@ -52,8 +52,9 @@ type network struct {
 	sendLock sync.Mutex
 }
 
-func newNetwork() *network {
+func newNetwork(prefs *Preferences) *network {
 	return &network{
+		prefs:    prefs,
 		respChan: make(chan *http.Response, 5),
 	}
 }
@@ -93,7 +94,7 @@ func (n *network) send(data uint8, send bool) {
 			// their request, that consists of a nickname given by the user and
 			// a generated uuid (starting with "WE") separated by a space
 			// character."
-			id := fmt.Sprintf("gopher2600 WE%d", rand.Int63())
+			id := fmt.Sprintf("%s WE%s", n.prefs.Nick, n.prefs.ID)
 			req.Header.Set("PlusStore-ID", id)
 
 			logger.Log("plusrom [net]", fmt.Sprintf("PlusStore-ID: %s", id))

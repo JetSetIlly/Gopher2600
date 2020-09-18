@@ -13,53 +13,65 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package hiscore
+package plusrom
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"fmt"
+	"math/rand"
+
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
+)
+
+const (
+	MaxNickLength = 10
+	MaxIDLength   = 22
 )
 
 type Preferences struct {
 	dsk *prefs.Disk
 
-	AuthToken prefs.String
-	Server    prefs.String
+	Nick prefs.String
+	ID   prefs.String
 }
 
-func (p Preferences) String() string {
-	return p.dsk.String()
-}
-
-// newPreferences is the preferred method of initialisation for the Preferences type
 func newPreferences() (*Preferences, error) {
 	p := &Preferences{}
+
+	p.Nick.SetMaxLen(MaxNickLength)
+	p.ID.SetMaxLen(MaxIDLength)
 
 	// save server using the prefs package
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, errors.New(errors.HiScore, err)
+		return nil, err
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
-	p.dsk.Add("hiscore.server", &p.Server)
-	p.dsk.Add("hiscore.authtoken", &p.AuthToken)
+	p.dsk.Add("plusrom.nick", &p.Nick)
+	p.dsk.Add("plusrom.id", &p.ID)
+
+	p.Nick.Set("gopher2600")
+	p.ID.Set(fmt.Sprintf("%d", rand.Int63()))
 
 	err = p.dsk.Load(true)
 	if err != nil {
-		return p, errors.New(errors.HiScore, err)
+		return p, err
 	}
 
 	return p, nil
 }
 
-// Load hiscore preferences from disk
+// Load disassembly preferences and apply to the current disassembly
 func (p *Preferences) Load() error {
-	return p.dsk.Load(false)
+	err := p.dsk.Load(false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// Save current hiscore preferences to disk
+// Save current disassembly preferences to disk
 func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

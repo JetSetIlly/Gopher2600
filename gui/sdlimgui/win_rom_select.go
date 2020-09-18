@@ -126,7 +126,8 @@ func (win *winSelectROM) draw() {
 		}
 
 		// ignore invalid file sizes
-		if !win.showAllFiles && strings.ToLower(filepath.Ext(fi.Name())) != ".bin" {
+		ext := strings.ToLower(filepath.Ext(fi.Name()))
+		if !win.showAllFiles && !(ext == ".bin" || ext == ".rom") {
 			continue
 		}
 

@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
@@ -151,7 +152,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		// help can be called during script recording but we don't want to
-		// include it
+
 		dbg.scriptScribe.Rollback()
 
 		return false, nil
@@ -1068,6 +1069,46 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, err
 		}
 
+	case cmdPlusROM:
+		plusrom, ok := dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM)
+		if !ok {
+			dbg.printLine(terminal.StyleError, "not a plusrom cartridge")
+			return false, nil
+		}
+
+		option, ok := tokens.Get()
+
+		switch option {
+		case "NICK":
+			nick, _ := tokens.Get()
+			plusrom.Prefs.Nick.Set(nick)
+			err := plusrom.Prefs.Save()
+			if err != nil {
+				dbg.printLine(terminal.StyleError, err.Error())
+			}
+		case "ID":
+			id, _ := tokens.Get()
+			plusrom.Prefs.ID.Set(id)
+			err := plusrom.Prefs.Save()
+			if err != nil {
+				dbg.printLine(terminal.StyleError, err.Error())
+			}
+		case "HOST":
+			ai := plusrom.CopyAddrInfo()
+			host, _ := tokens.Get()
+			plusrom.SetAddrInfo(host, ai.Path)
+		case "PATH":
+			ai := plusrom.CopyAddrInfo()
+			path, _ := tokens.Get()
+			plusrom.SetAddrInfo(ai.Host, path)
+		default:
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", plusrom.Prefs.Nick.String()))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", plusrom.Prefs.ID.String()))
+			ai := plusrom.CopyAddrInfo()
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Host: %s", ai.Host))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Path: %s", ai.Path))
+		}
+
 	case cmdController:
 		player, _ := tokens.Get()
 
@@ -1352,7 +1393,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			// already caught by command line ValidateTokens()
 		}
 
-	case cmdPref:
+	case cmdPrefs:
 		action, ok := tokens.Get()
 
 		if !ok {

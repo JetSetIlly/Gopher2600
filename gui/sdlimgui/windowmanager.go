@@ -66,10 +66,10 @@ type windowManager struct {
 
 // the window menus grouped by type. the types are:
 const (
-	windowMenuDebugger    = "Debugger"
-	windowMenuVCS         = "VCS"
-	windowMenuCart        = "Cartridge"
-	windowMenuPeripherals = "Peripherals"
+	windowMenuDebugger = "Debugger"
+	windowMenuVCS      = "VCS"
+	windowMenuCart     = "Cartridge"
+	windowMenuOther    = "..."
 
 	// additional window menus are grouped by cartridge type
 )
@@ -163,14 +163,20 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinCartPlusROM, false, windowMenuCart); err != nil {
+
+	// plusrom windows
+	if err := addWindow(newWinPlusROMNetwork, false, windowMenuOther); err != nil {
+		return nil, err
+	}
+	if err := addWindow(newWinPlusROMPrefs, false, windowMenuOther); err != nil {
 		return nil, err
 	}
 
-	if err := addWindow(newWinSaveKeyI2C, false, windowMenuPeripherals); err != nil {
+	// savekey windows
+	if err := addWindow(newWinSaveKeyI2C, false, windowMenuOther); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinSaveKeyEEPROM, false, windowMenuPeripherals); err != nil {
+	if err := addWindow(newWinSaveKeyEEPROM, false, windowMenuOther); err != nil {
 		return nil, err
 	}
 
@@ -272,15 +278,14 @@ func (wm *windowManager) drawMenu() {
 	// for the specific cartridge ID. see newWindowManager() function above
 	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus ||
 		wm.img.lz.Cart.HasStaticBus ||
-		wm.img.lz.Cart.HasRegistersBus ||
-		wm.img.lz.Cart.IsPlusROM
+		wm.img.lz.Cart.HasRegistersBus
 
 	if _, ok := wm.windowMenu[wm.img.lz.Cart.ID]; ok {
 		cartSpecificMenu = true
 	}
 
 	if cartSpecificMenu {
-		if imgui.BeginMenu(fmt.Sprintf("Cartridge [%s]", wm.img.lz.Cart.ID)) {
+		if imgui.BeginMenu(fmt.Sprintf("Cart [%s]", wm.img.lz.Cart.ID)) {
 			for _, id := range wm.windowMenu[wm.img.lz.Cart.ID] {
 				wm.drawMenuWindowEntry(wm.windows[id], id)
 			}
@@ -297,10 +302,15 @@ func (wm *windowManager) drawMenu() {
 				wm.drawMenuWindowEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
 			}
 
-			if wm.img.lz.Cart.IsPlusROM {
-				wm.drawMenuWindowEntry(wm.windows[winCartPlusROMTitle], winCartPlusROMTitle)
-			}
+			imgui.EndMenu()
+		}
+	}
 
+	// plusrom specific menus
+	if wm.img.lz.Cart.IsPlusROM {
+		if imgui.BeginMenu("PlusROM") {
+			wm.drawMenuWindowEntry(wm.windows[winPlusROMNetworkTitle], menuPlusROMNetworkTitle)
+			wm.drawMenuWindowEntry(wm.windows[winPlusROMPrefsTitle], menuPlusROMPrefsTitle)
 			imgui.EndMenu()
 		}
 	}

@@ -83,6 +83,7 @@ func (p *Bool) RegisterCallback(f func(value Value) error) {
 // String implements a string type in the prefs system.
 type String struct {
 	pref
+	maxLen   int
 	value    string
 	callback func(value Value) error
 }
@@ -91,9 +92,24 @@ func (p String) String() string {
 	return p.value
 }
 
+// SetMaxLen sets the maximum length for a string when it is set. To set no
+// limit use a value less than or equal to zero. Note that the existing string
+// will be cropped if necessary - cropped string information will be lost.
+func (p *String) SetMaxLen(max int) {
+	p.maxLen = max
+
+	// crop existing string if necessary
+	if p.maxLen > 0 && len(p.value) > p.maxLen {
+		p.value = p.value[:p.maxLen]
+	}
+}
+
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v Value) error {
 	p.value = fmt.Sprintf("%s", v)
+	if p.maxLen > 0 && len(p.value) > p.maxLen {
+		p.value = p.value[:p.maxLen]
+	}
 
 	if p.callback != nil {
 		return p.callback(p.value)

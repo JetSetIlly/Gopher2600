@@ -88,7 +88,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 	}
 
 	// load preferences from disk
-	err = img.prefs.Load()
+	err = img.prefs.Load(true)
 	if err != nil {
 		// ignore missing prefs file errors
 		if !errors.Is(err, errors.PrefsNoFile) {

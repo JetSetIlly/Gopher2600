@@ -32,12 +32,21 @@ const NotAPlusROM = "not a plus rom: %s"
 // PlusROM wraps another mapper.CartMapper inside a network aware format
 type PlusROM struct {
 	child mapper.CartMapper
+	Prefs *Preferences
 	net   *network
 }
 
 func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 	cart := &PlusROM{child: child}
-	cart.net = newNetwork()
+
+	var err error
+
+	cart.Prefs, err = newPreferences()
+	if err != nil {
+		return nil, errors.New("plusrom", err)
+	}
+
+	cart.net = newNetwork(cart.Prefs)
 
 	bank := &banks.Content{Number: -1}
 	for i := 0; i < cart.NumBanks(); i++ {
@@ -97,7 +106,6 @@ func (cart *PlusROM) Initialise() {
 }
 
 func (cart *PlusROM) String() string {
-	// add PlusROM indicator to String
 	return fmt.Sprintf("[%s] %s", cart.ContainerID(), cart.child.String())
 }
 

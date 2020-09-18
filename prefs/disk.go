@@ -97,7 +97,7 @@ func (dsk *Disk) Save() error {
 	entries := make(entryMap)
 
 	// load *all* existing entries to temporary entryMap
-	err := load(dsk.path, &entries, false)
+	_, err := load(dsk.path, &entries, false)
 	if err != nil {
 		if !errors.Is(err, errors.PrefsNoFile) {
 			return err
@@ -141,24 +141,45 @@ func (dsk *Disk) Save() error {
 	return nil
 }
 
-// Load preference values from disk
-func (dsk *Disk) Load() error {
-	return load(dsk.path, &dsk.entries, true)
+// Load preference values from disk. The saveonFirstUse argument is useful when
+// loading preferences on initialisation. It makes sure default preferences are
+// saved to disk if they are not present in the preferences file.
+func (dsk *Disk) Load(saveOnFirstUse bool) error {
+	numLoaded, err := load(dsk.path, &dsk.entries, true)
+	if err != nil {
+		return err
+	}
+
+	// if the number of entries loaded by the load() function is not equal to
+	// then number of entries in this Disk instance then we can say that a new
+	// preference value has been added since the last save to disk. if
+	// saveOnFirstUse is true then save immediately to make sure the default
+	// value is on disk.
+	if saveOnFirstUse && numLoaded != len(dsk.entries) {
+		return dsk.Save()
+	}
+
+	return nil
 }
 
 // underlying function to load preference value froms disk. the limit boolean
 // controls whether to load all valid preference values from the file or to
 // ignore those values not already in the entryMap. limit=false is used by the
 // save() function in order to avoid clobbering unknown entries.
-func load(path string, entries *entryMap, limit bool) error {
+//
+// it returns the number of entries loaded from disk. if limit is false then
+// the number returned is the total number of entries in the file.
+func load(path string, entries *entryMap, limit bool) (int, error) {
+	var numLoaded int
+
 	// open existing prefs file
 	f, err := os.Open(path)
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return errors.New(errors.PrefsNoFile, path)
+			return numLoaded, errors.New(errors.PrefsNoFile, path)
 		}
-		return errors.New(errors.Prefs, err)
+		return numLoaded, errors.New(errors.Prefs, err)
 	}
 	defer f.Close()
 
@@ -168,7 +189,7 @@ func load(path string, entries *entryMap, limit bool) error {
 	// check validity of file by checking the first line
 	scanner.Scan()
 	if scanner.Text() != WarningBoilerPlate {
-		return errors.New(errors.PrefsNotValid, path)
+		return 0, errors.New(errors.PrefsNotValid, path)
 	}
 
 	// key and value strings
@@ -192,18 +213,19 @@ func load(path string, entries *entryMap, limit bool) error {
 		if p, ok := (*entries)[k]; ok {
 			err = p.Set(v)
 			if err != nil {
-				return errors.New(errors.Prefs, err)
+				return numLoaded, errors.New(errors.Prefs, err)
 			}
+			numLoaded++
 		} else if !limit {
 			// if this an unlimited load() then store
 			var dummy String
 			err = dummy.Set(v)
 			if err != nil {
-				return errors.New(errors.Prefs, err)
+				return numLoaded, errors.New(errors.Prefs, err)
 			}
 			(*entries)[k] = &dummy
 		}
 	}
 
-	return nil
+	return numLoaded, nil
 }

@@ -352,6 +352,13 @@ The OVERLAY ON and OVERLAY OFF arguments toggle a debugging overlay. This
 overlay decorates the display with markers showing when during the drawing
 process key video events were triggered.`,
 
+	// peripherals (components that might not be present)
+	cmdPlusROM: `Controls the attached PlusROM. HOST and PATH can be changed on a per cartridge
+basis and only for the duration of the session (the ROM must be changed for it to be permanent).
+
+The NICK and ID can be changed for the session but also be saved to disk and be used across
+all PlusROM cartridges.`,
+
 	// user input
 	cmdController: `Change the current controller type for the specified player. The AUTO
 controller handles changes of controller according to user input and where possible what
@@ -492,7 +499,8 @@ about an address.`,
 	cmdDrop:  "Drop a specific BREAK, TRAP, WATCH or TRACE condition, using the number of the condition reported by LIST.",
 	cmdClear: "Clear all BREAKS, TRAPS, WATCHES and TRACES.",
 
-	cmdPref: "Set preferences for debugger.",
+	// meta
+	cmdPrefs: "Set preferences for debugger.",
 	cmdLog: `Print log to terminal. The LAST argument will cause the most recent log entry to be printed.
 
 Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will always print the last

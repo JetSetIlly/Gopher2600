@@ -54,7 +54,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		return dsm.setCartMirror(v.(bool))
 	})
 
-	err = p.dsk.Load()
+	err = p.dsk.Load(true)
 	if err != nil {
 		return p, err
 	}
@@ -64,7 +64,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 
 // Load disassembly preferences and apply to the current disassembly
 func (p *Preferences) Load() error {
-	err := p.dsk.Load()
+	err := p.dsk.Load(false)
 	if err != nil {
 		return err
 	}

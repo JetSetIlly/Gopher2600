@@ -223,7 +223,7 @@ func TestGeneric(t *testing.T) {
 	h = 0
 
 	// reload them from disk
-	err = dsk.Load()
+	err = dsk.Load(false)
 	if err != nil {
 		t.Errorf("error saving disk: %v", err)
 	}
@@ -277,4 +277,35 @@ func TestBoolAndString(t *testing.T) {
 	// compate file. the file should contain contents set by both disk
 	// instances
 	cmpTmpFile(t, fn, "foo :: bar\ntest :: true\n")
+}
+
+func TestMaxStringLength(t *testing.T) {
+	fn := getTmpPrefFile(t)
+	defer delTmpPrefFile(t, fn)
+
+	dsk, err := prefs.NewDisk(fn)
+	if err != nil {
+		t.Errorf("error preparing disk: %v", err)
+		return
+	}
+
+	var s prefs.String
+	dsk.Add("test", &s)
+	s.Set("123456789")
+	test.Equate(t, s.String(), "123456789")
+
+	// setting maximum length will crop the existing string
+	s.SetMaxLen(5)
+	test.Equate(t, s.String(), "12345")
+
+	// unsetting a maximum length (using value zero) will not result in
+	// cropped string infomration reappearing
+	s.SetMaxLen(0)
+	test.Equate(t, s.String(), "12345")
+
+	// set string after setting a maximum length will result in the set string
+	// being cropped
+	s.SetMaxLen(3)
+	s.Set("abcdefghi")
+	test.Equate(t, s.String(), "abc")
 }

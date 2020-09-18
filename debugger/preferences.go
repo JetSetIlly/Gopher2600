@@ -59,7 +59,7 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 	if err != nil {
 		return nil, errors.New(errors.DebuggerError, err)
 	}
-	err = p.dsk.Load()
+	err = p.dsk.Load(true)
 	if err != nil {
 		// ignore missing prefs file errors
 		if !errors.Is(err, errors.PrefsNoFile) {
@@ -71,7 +71,7 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 }
 
 func (p *Preferences) load() error {
-	return p.dsk.Load()
+	return p.dsk.Load(false)
 }
 
 func (p *Preferences) save() error {

@@ -45,8 +45,10 @@ type LazyCart struct {
 	atomicTapeBus   atomic.Value // bus.CartTapeBus
 	atomicTapeState atomic.Value // bus.CartTapeState
 
-	atomicPlusROM        atomic.Value // plusrom.PlusROM
-	atomicPlusROMNetwork atomic.Value // plusrom.PlusROMNetwork
+	atomicPlusROM         atomic.Value // plusrom.PlusROM
+	atomicPlusROMAddrInfo atomic.Value // plusrom.AddrInfo
+	atomicPlusROMNick     atomic.Value // string (from prefs.String.Get())
+	atomicPlusROMID       atomic.Value // string (from prefs.String.Get())
 
 	ID       string
 	Summary  string
@@ -72,6 +74,8 @@ type LazyCart struct {
 
 	IsPlusROM       bool
 	PlusROMAddrInfo plusrom.AddrInfo
+	PlusROMNick     string
+	PlusROMID       string
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -138,10 +142,11 @@ func (lz *LazyCart) update() {
 		if c != nil {
 			if pr, ok := c.(*plusrom.PlusROM); ok {
 				lz.atomicPlusROM.Store(pr)
-				lz.atomicPlusROMNetwork.Store(pr.CopyAddrInfo())
+				lz.atomicPlusROMAddrInfo.Store(pr.CopyAddrInfo())
+				lz.atomicPlusROMNick.Store(pr.Prefs.Nick.Get())
+				lz.atomicPlusROMID.Store(pr.Prefs.ID.Get())
 			} else {
 				lz.atomicPlusROM.Store(nil)
-				lz.atomicPlusROMNetwork.Store(nil)
 			}
 		}
 	})
@@ -156,9 +161,8 @@ func (lz *LazyCart) update() {
 	if lz.HasStaticBus {
 		lz.Static, _ = lz.atomicStatic.Load().([]bus.CartStatic)
 
-		// similarlaly for the RAMbus below, a cartridge can implement a
-		// static bus but not actually have a static area. this additional
-		// test checks for that
+		// a cartridge can implement a static bus but not actually have a
+		// static area. this additional test checks for that
 		//
 		// * required for PlusROM cartridges
 		if lz.Static == nil {
@@ -169,15 +173,23 @@ func (lz *LazyCart) update() {
 	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(bus.CartRegistersBus)
 	if lz.HasRegistersBus {
 		lz.Registers, _ = lz.atomicRegisters.Load().(bus.CartRegisters)
+
+		// a cartridge can implement a registers bus but not actually have any
+		// registers. this additional test checks for that
+		//
+		// * required for:
+		//		- PlusROM cartridges
+		if lz.Registers == nil {
+			lz.HasRegistersBus = false
+		}
 	}
 
 	lz.RAMbus, lz.HasRAMbus = lz.atomicRAMbus.Load().(bus.CartRAMbus)
 	if lz.HasRAMbus {
 		lz.RAM, _ = lz.atomicRAM.Load().([]bus.CartRAM)
 
-		// as explained in the commentary for the CartRAMbus interface, a
-		// cartridge my implement the interface but not actually have any RAM.
-		// we check for this here and correct the HasRAMbus boolean accordingly
+		// a cartridge can implement a ram bus but not actually have any ram.
+		// this additional test checks for that
 		//
 		// * required for:
 		//		- atari cartridges without a superchip
@@ -194,6 +206,8 @@ func (lz *LazyCart) update() {
 
 	_, lz.IsPlusROM = lz.atomicPlusROM.Load().(*plusrom.PlusROM)
 	if lz.IsPlusROM {
-		lz.PlusROMAddrInfo, _ = lz.atomicPlusROMNetwork.Load().(plusrom.AddrInfo)
+		lz.PlusROMAddrInfo, _ = lz.atomicPlusROMAddrInfo.Load().(plusrom.AddrInfo)
+		lz.PlusROMNick, _ = lz.atomicPlusROMNick.Load().(string)
+		lz.PlusROMID, _ = lz.atomicPlusROMID.Load().(string)
 	}
 }

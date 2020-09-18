@@ -27,6 +27,8 @@ type term struct {
 	inputChan chan string
 
 	// input from other gui elements (eg. the run button in the control window)
+	// only one command can be serviced at a time, which may be inconvenient
+	// !!TODO: allow sideChan commands to be queued
 	sideChan chan string
 
 	// last string sent to sideChan. we use this to suppress echoing of GUI

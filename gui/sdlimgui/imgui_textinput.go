@@ -22,35 +22,35 @@ import (
 )
 
 // calls imguiInput with the string of allowed hexadecimal characters.
-func imguiHexInput(label string, aggressiveUpdate bool, length int, content *string) bool {
-	return imguiInput(label, aggressiveUpdate, length, content, "abcdefABCDEF0123456789")
+func imguiHexInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEntryOnly, length, content, "abcdefABCDEF0123456789", true)
 }
 
 // calls imguiInput with the string of numeric characters.
-func imguiDecimalInput(label string, aggressiveUpdate bool, length int, content *string) bool {
-	return imguiInput(label, aggressiveUpdate, length, content, "0123456789")
+func imguiDecimalInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEntryOnly, length, content, "0123456789", true)
+}
+
+func imguiTextInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEntryOnly, length, content, "", false)
 }
 
 // input text that accepts a maximum number of characters. physical width of
 // InpuText should be controlled with PushItemWidth()/PopItemWidth() as normal.
-func imguiInput(label string, aggressiveUpdate bool, length int, content *string, allowedChars string) bool {
+//
+// if allowedChars is the empty string than all characters will be allowed.
+func imguiInput(label string, updateOnEntryOnly bool, length int, content *string, allowedChars string, selectAll bool) bool {
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		switch d.EventFlag() {
 		case imgui.InputTextFlagsCallbackCharFilter:
-			// filter characters that are not in the list of allowedChars
-			if !strings.ContainsAny(string(d.EventChar()), allowedChars) {
-				return -1
+			if allowedChars != "" {
+				// filter characters that are not in the list of allowedChars
+				if !strings.ContainsAny(string(d.EventChar()), allowedChars) {
+					return -1
+				}
 			}
 		default:
-			b := string(d.Buffer())
-
-			// restrict length of input
-			if len(b) > length {
-				d.DeleteBytes(0, len(b))
-				b = b[:length]
-				d.InsertBytes(0, []byte(b))
-				d.MarkBufferModified()
-			}
+			imguiLimitTextInput(d, length)
 		}
 
 		return 0
@@ -58,15 +58,30 @@ func imguiInput(label string, aggressiveUpdate bool, length int, content *string
 
 	// flags used with InputTextV(). not using InputTextFlagsCharsHexadecimal
 	// and preferring to filter manually for greated flexibility
-	flags := imgui.InputTextFlagsCallbackCharFilter |
-		imgui.InputTextFlagsCallbackAlways |
-		imgui.InputTextFlagsAutoSelectAll
+	flags := imgui.InputTextFlagsCallbackCharFilter | imgui.InputTextFlagsCallbackAlways
 
-	// with aggressiveUpdate the values entered will be given to the onEnter()
+	// if there are restrictions on allowedChars then add the select-all flag.
+	if selectAll {
+		flags |= imgui.InputTextFlagsAutoSelectAll
+	}
+
+	// with updateOnEntryOnly the values entered will be given to the onEnter()
 	// function immediately and not just when the enter key is pressed.
-	if aggressiveUpdate {
+	if updateOnEntryOnly {
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
 	return imgui.InputTextV(label, content, flags, cb)
+}
+
+func imguiLimitTextInput(d imgui.InputTextCallbackData, length int) {
+	b := string(d.Buffer())
+
+	// restrict length of input
+	if len(b) > length {
+		d.DeleteBytes(0, len(b))
+		b = b[:length]
+		d.InsertBytes(0, []byte(b))
+		d.MarkBufferModified()
+	}
 }

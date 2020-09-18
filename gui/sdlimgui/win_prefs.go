@@ -53,15 +53,15 @@ func (win *winPrefs) draw() {
 	imgui.BeginV(winPrefsTile, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	if imgui.Checkbox("Random State (on startup)", &win.img.lz.Prefs.RandomState) {
-		win.img.term.pushCommand("PREF TOGGLE RANDSTART")
+		win.img.term.pushCommand("PREFS TOGGLE RANDSTART")
 	}
 
 	if imgui.Checkbox("Random Pins", &win.img.lz.Prefs.RandomPins) {
-		win.img.term.pushCommand("PREF TOGGLE RANDPINS")
+		win.img.term.pushCommand("PREFS TOGGLE RANDPINS")
 	}
 
 	if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
-		win.img.term.pushCommand("PREF TOGGLE FXXXMIRROR")
+		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
 	}
 
 	termOnError := win.img.wm.term.openOnError.Get().(bool)
@@ -71,13 +71,13 @@ func (win *winPrefs) draw() {
 
 	if imgui.Button("Save") {
 		win.img.prefs.Save()
-		win.img.term.pushCommand("PREF SAVE")
+		win.img.term.pushCommand("PREFS SAVE")
 	}
 
 	imgui.SameLine()
 	if imgui.Button("Restore") {
-		win.img.prefs.Load()
-		win.img.term.pushCommand("PREF LOAD")
+		win.img.prefs.Load(false)
+		win.img.term.pushCommand("PREFS LOAD")
 	}
 
 	imgui.End()

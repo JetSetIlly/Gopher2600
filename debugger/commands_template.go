@@ -52,6 +52,8 @@ const (
 	cmdPlayfield   = "PLAYFIELD"
 	cmdDisplay     = "DISPLAY"
 
+	cmdPlusROM = "PLUSROM"
+
 	// user input
 	cmdController = "CONTROLLER"
 	cmdPanel      = "PANEL"
@@ -68,8 +70,8 @@ const (
 	cmdClear = "CLEAR"
 
 	// meta
-	cmdPref = "PREF"
-	cmdLog  = "LOG"
+	cmdPrefs = "PREFS"
+	cmdLog   = "LOG"
 )
 
 const cmdHelp = "HELP"
@@ -110,6 +112,9 @@ var commandTemplate = []string{
 	cmdPlayfield,
 	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|DEBUG (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 
+	// peripherals (components that might not be present)
+	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
+
 	// user input
 	cmdController + " [0|1] (AUTO|STICK|PADDLE|KEYBOARD)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
@@ -127,7 +132,7 @@ var commandTemplate = []string{
 	cmdClear + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 
 	// meta
-	cmdPref + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR])",
+	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR])",
 	cmdLog + " (LAST|CLEAR)",
 }
 
