@@ -117,7 +117,8 @@ var commandTemplate = []string{
 	cmdKeyboard + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
-	cmdBreak + " [%<target>S %<value>N|%<pc value>S] {& %<target>S %<value>S|& %<value>S}",
+	cmdBreak + " [%<pc value>S|%<target>S %<value>N] {& %<value>S|%<target>S %<value>S}",
+
 	cmdTrap + " [%<target>S] {%<targets>S}",
 	cmdWatch + " (READ|WRITE) (MIRRORS|ANY) [%<address>S] (%<value>S)",
 	cmdTrace + " (%<address>S)",

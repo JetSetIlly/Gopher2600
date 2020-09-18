@@ -70,10 +70,6 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 }
 
 func (n *node) validate(tokens *Tokens, speculative bool) error {
-	// make a note of the token queue before we proceed. we'll use this to
-	// decide whether to proceed with any repeat loops.
-	remainder := tokens.Remainder()
-
 	// get the next token in the token queue
 	//
 	// in the event of there being no more tokens, then we need to consider
@@ -135,8 +131,8 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// !!TODO introduce a special purpose "address" tag type?
 	if tok[0] == '$' {
 		tok = fmt.Sprintf("0x%s", tok[1:])
+		tokens.Update(tok)
 	}
-	tokens.Update(tok)
 
 	// check the current token against the node's tag, using placeholder
 	// matching if appropriate.
@@ -183,8 +179,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		// catch-all "unrecognised argument" message (see below).
 
 	case "%S":
-		tentativeMatch = true
-		match = n.branch == nil
+		match = true
 
 	case "%F":
 		// not checking for file existence
@@ -206,7 +201,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// if input doesn't match this node we need to check branches. we may well
 	// have a tentative match at this point but we need to put that to one side
 	// until we've checked all other options.
-	if !match && n.branch != nil {
+	if !match {
 		for bi := range n.branch {
 			tokens.Unget()
 
@@ -244,6 +239,8 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		//
 		// The Unget() function "pushes" the current token back onto the queue.
 		tokens.Unget()
+
+		return nil
 	}
 
 	// check nodes that follow on from the current node
@@ -257,7 +254,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// no more nodes in the next array. move to the repeat node if there is one
 	// and if the tokens queue has changed since the beginning of this
 	// function.
-	if n.repeat != nil && remainder != tokens.Remainder() {
+	if n.repeat != nil && tokens.Remaining() > 0 {
 		err := n.repeat.validate(tokens, false)
 		if err != nil {
 			return err

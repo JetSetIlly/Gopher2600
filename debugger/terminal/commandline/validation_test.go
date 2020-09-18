@@ -76,6 +76,21 @@ func TestValidation_optional(t *testing.T) {
 	}
 }
 
+func TestValidation_optional2(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%s]|bar)"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	err = cmds.Validate("TEST xxxxx")
+	if err == nil {
+		t.Errorf("matches but shouldn't")
+	}
+}
+
 func TestValidation_branchesAndNumeric(t *testing.T) {
 	var cmds *commandline.Commands
 	var err error
@@ -498,6 +513,20 @@ func TestValidation_optional_group(t *testing.T) {
 	}
 
 	err = cmds.Validate("pref set randstart")
+	if err != nil {
+		t.Errorf("doesn't match but should: %s", err)
+	}
+}
+
+func TestValidation_BREAK_style(t *testing.T) {
+	var cmds *commandline.Commands
+	var err error
+
+	cmds, err = commandline.ParseCommandTemplate([]string{"YYYYY [%s %n| %s] {& %s %n|& %s}"})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	err = cmds.Validate("YYYYY SL 100")
 	if err != nil {
 		t.Errorf("doesn't match but should: %s", err)
 	}
