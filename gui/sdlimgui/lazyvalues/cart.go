@@ -49,6 +49,8 @@ type LazyCart struct {
 	atomicPlusROMAddrInfo atomic.Value // plusrom.AddrInfo
 	atomicPlusROMNick     atomic.Value // string (from prefs.String.Get())
 	atomicPlusROMID       atomic.Value // string (from prefs.String.Get())
+	atomicPlusROMRecvBuff atomic.Value // []uint8
+	atomicPlusROMSendBuff atomic.Value // []uint8
 
 	ID       string
 	Summary  string
@@ -76,6 +78,8 @@ type LazyCart struct {
 	PlusROMAddrInfo plusrom.AddrInfo
 	PlusROMNick     string
 	PlusROMID       string
+	PlusROMRecvBuff []uint8
+	PlusROMSendBuff []uint8
 }
 
 func newLazyCart(val *Lazy) *LazyCart {
@@ -145,6 +149,8 @@ func (lz *LazyCart) update() {
 				lz.atomicPlusROMAddrInfo.Store(pr.CopyAddrInfo())
 				lz.atomicPlusROMNick.Store(pr.Prefs.Nick.Get())
 				lz.atomicPlusROMID.Store(pr.Prefs.ID.Get())
+				lz.atomicPlusROMRecvBuff.Store(pr.CopyRecvBuffer())
+				lz.atomicPlusROMSendBuff.Store(pr.CopySendBuffer())
 			} else {
 				lz.atomicPlusROM.Store(nil)
 			}
@@ -209,5 +215,7 @@ func (lz *LazyCart) update() {
 		lz.PlusROMAddrInfo, _ = lz.atomicPlusROMAddrInfo.Load().(plusrom.AddrInfo)
 		lz.PlusROMNick, _ = lz.atomicPlusROMNick.Load().(string)
 		lz.PlusROMID, _ = lz.atomicPlusROMID.Load().(string)
+		lz.PlusROMRecvBuff, _ = lz.atomicPlusROMRecvBuff.Load().([]uint8)
+		lz.PlusROMSendBuff, _ = lz.atomicPlusROMSendBuff.Load().([]uint8)
 	}
 }

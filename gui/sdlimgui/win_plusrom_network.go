@@ -17,8 +17,10 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
 const winPlusROMNetworkTitle = "PlusROM Network"
@@ -74,9 +76,69 @@ func (win *winPlusROMNetwork) draw() {
 	imgui.Text("    Path")
 	imgui.SameLine()
 	if imgui.InputText("##path", &path) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			win.img.term.pushCommand(fmt.Sprintf("PLUSROM PATH %s", path))
-		})
+		win.img.term.pushCommand(fmt.Sprintf("PLUSROM PATH %s", path))
+	}
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	const maxBufferToShow = 5
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Send: ")
+	n := len(win.img.lz.Cart.PlusROMSendBuff)
+	if n == 0 {
+		imgui.SameLine()
+		imgui.AlignTextToFramePadding()
+		imgui.Text("empty")
+	} else {
+		for i := 0; i < maxBufferToShow && i < n; i++ {
+			imgui.SameLine()
+			b := fmt.Sprintf("%02x", win.img.lz.Cart.PlusROMSendBuff[i])
+			if imguiHexInput(fmt.Sprintf("##send%d", i), true, 2, &b) {
+				j := i // copy of current index
+				if v, err := strconv.ParseUint(b, 16, 8); err == nil {
+					win.img.lz.Dbg.PushRawEvent(func() {
+						win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetSendBuffer(j, uint8(v))
+					})
+				}
+			}
+		}
+		if n >= maxBufferToShow {
+			imgui.SameLine()
+			imgui.Text("more")
+		}
+	}
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Recv: ")
+	n = len(win.img.lz.Cart.PlusROMRecvBuff)
+	if n == 0 {
+		imgui.SameLine()
+		imgui.AlignTextToFramePadding()
+		imgui.Text("empty")
+	} else {
+		for i := 0; i < maxBufferToShow && i < n; i++ {
+			imgui.SameLine()
+			b := fmt.Sprintf("%02x", win.img.lz.Cart.PlusROMRecvBuff[i])
+			if imguiHexInput(fmt.Sprintf("##recv%d", i), true, 2, &b) {
+				j := i // copy of current index
+				if v, err := strconv.ParseUint(b, 16, 8); err == nil {
+					win.img.lz.Dbg.PushRawEvent(func() {
+						win.img.lz.Dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetRecvBuffer(j, uint8(v))
+					})
+				}
+			}
+		}
+		if n >= maxBufferToShow {
+			imgui.SameLine()
+			imgui.Text("more")
+		}
 	}
 
 	imgui.End()

@@ -70,13 +70,14 @@ func (n *network) send(data uint8, send bool) {
 	n.sendBuffer.WriteByte(data)
 
 	if send {
+		n.sendBuffer = *bytes.NewBuffer([]byte{})
 		go func(send bytes.Buffer, addr AddrInfo) {
 			n.sendLock.Lock()
 			defer n.sendLock.Unlock()
 
 			logger.Log("plusrom [net]", fmt.Sprintf("sending to %s", addr.String()))
 
-			req, err := http.NewRequest("POST", addr.String(), &n.sendBuffer)
+			req, err := http.NewRequest("POST", addr.String(), &send)
 			if err != nil {
 				logger.Log("plusrom [net]", err.Error())
 				return
@@ -168,4 +169,30 @@ func (n *network) recv() uint8 {
 		logger.Log("plusrom", err.Error())
 	}
 	return b
+}
+
+// CopyRecvBuffer makes a copy of the bytes in the receive buffer
+func (cart *PlusROM) CopyRecvBuffer() []uint8 {
+	return cart.net.recvBuffer.Bytes()
+}
+
+// CopySendBuffer makes a copy of the bytes in the send buffer
+func (cart *PlusROM) CopySendBuffer() []uint8 {
+	return cart.net.sendBuffer.Bytes()
+}
+
+// SetRecvBuffer sets the entry that is idx places from the front with the
+// specified value
+func (cart *PlusROM) SetRecvBuffer(idx int, data uint8) {
+	c := cart.CopyRecvBuffer()
+	c[idx] = data
+	cart.net.recvBuffer = *bytes.NewBuffer(c)
+}
+
+// SetSendBuffer sets the entry that is idx places from the front with the
+// specified value
+func (cart *PlusROM) SetSendBuffer(idx int, data uint8) {
+	c := cart.CopySendBuffer()
+	c[idx] = data
+	cart.net.sendBuffer = *bytes.NewBuffer(c)
 }
