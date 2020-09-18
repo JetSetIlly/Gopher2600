@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"strings"
+
 	"github.com/inkyblackness/imgui-go/v2"
 )
 
@@ -43,6 +45,12 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 	w.X += imgui.CurrentStyle().FramePadding().X
 
 	return w
+}
+
+// returns the pixel width of a text string length characters wide. assumes all
+// characters are of the same width
+func imguiTextWidth(length int) float32 {
+	return imguiGetFrameDim(strings.Repeat("X", length)).X
 }
 
 // draw toggle button at current cursor position. returns true if toggle has

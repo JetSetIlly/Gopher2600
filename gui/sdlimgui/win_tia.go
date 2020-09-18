@@ -25,7 +25,6 @@ const winTIATitle = "TIA"
 
 type winTIA struct {
 	windowManagement
-	widgetDimensions
 
 	img          *SdlImgui
 	popupPalette *popupPalette
@@ -55,7 +54,6 @@ func newWinTIA(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winTIA) init() {
-	win.widgetDimensions.init()
 	win.hmoveSliderWidth = imgui.FontSize() * 16
 	win.ballSizeComboDim = imguiGetFrameDim("", video.BallSizes...)
 	win.playerSizeAndCopiesComboDim = imguiGetFrameDim("", video.PlayerSizes...)

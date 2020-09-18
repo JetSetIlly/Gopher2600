@@ -28,7 +28,6 @@ const winPlayScrTitle = "Atari VCS"
 
 type winPlayScr struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 	scr *screen
@@ -74,7 +73,6 @@ func newWinPlayScr(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winPlayScr) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winPlayScr) destroy() {

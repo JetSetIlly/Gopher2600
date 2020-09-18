@@ -71,6 +71,9 @@ func imguiInput(label string, updateOnEntryOnly bool, length int, content *strin
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
+	imgui.PushItemWidth(imguiTextWidth(length))
+	defer imgui.PopItemWidth()
+
 	return imgui.InputTextV(label, content, flags, cb)
 }
 

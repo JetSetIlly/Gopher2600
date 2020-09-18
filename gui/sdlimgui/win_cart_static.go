@@ -26,7 +26,6 @@ const winCartStaticTitle = "Static Areas"
 
 type winCartStatic struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
@@ -42,7 +41,6 @@ func newWinCartStatic(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCartStatic) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winCartStatic) destroy() {
@@ -89,13 +87,13 @@ func (win *winCartStatic) drawGrid(tag string, a []byte) {
 	headerDim := imgui.Vec2{X: win.xPos, Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.twoDigitDim.X
+		headerDim.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	// draw rows
-	imgui.PushItemWidth(win.twoDigitDim.X)
+	imgui.PushItemWidth(imguiTextWidth(2))
 	i := uint16(0)
 	for addr := 0; addr < len(a); addr++ {
 		// draw row header

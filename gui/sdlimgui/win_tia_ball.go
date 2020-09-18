@@ -65,14 +65,12 @@ func (win *winTIA) drawBall() {
 	imgui.BeginGroup()
 	imguiText("HMOVE")
 	imgui.SameLine()
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { bl.Hmove = uint8(v) })
 		}
 	}
-	imgui.PopItemWidth()
 
 	imgui.SameLine()
 	imgui.PushItemWidth(win.hmoveSliderWidth)
@@ -107,7 +105,6 @@ func (win *winTIA) drawBall() {
 	imgui.SameLine()
 	imguiText("CTRLPF")
 	imgui.SameLine()
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", !win.img.paused, 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
@@ -119,7 +116,6 @@ func (win *winTIA) drawBall() {
 			})
 		}
 	}
-	imgui.PopItemWidth()
 
 	s := strings.Builder{}
 	if lz.EncActive {

@@ -26,7 +26,6 @@ const winDPCplusRegistersTitle = "DPC+ Registers"
 
 type winDPCplusRegisters struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -40,7 +39,6 @@ func newWinDPCplusRegisters(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winDPCplusRegisters) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winDPCplusRegisters) destroy() {
@@ -67,14 +65,12 @@ func (win *winDPCplusRegisters) draw() {
 	// random number generator value
 	rng := fmt.Sprintf("%08x", r.RNG.Value)
 	imguiText("Random Number Generator")
-	imgui.PushItemWidth(win.eightDigitDim.X)
 	if imguiHexInput("##rng", !win.img.paused, 8, &rng) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("rng", rng)
 		})
 	}
-	imgui.PopItemWidth()
 
 	imgui.SameLineV(0, 20)
 	imguiText("Fast Fetch")
@@ -104,53 +100,45 @@ func (win *winDPCplusRegisters) draw() {
 		label := fmt.Sprintf("##d%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
 		imguiText("Low")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dhi", i)
 		hi := fmt.Sprintf("%02x", r.Fetcher[i].Hi)
 		imguiText("Hi")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dtop", i)
 		top := fmt.Sprintf("%02x", r.Fetcher[i].Top)
 		imguiText("Top")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dbottom", i)
 		bottom := fmt.Sprintf("%02x", r.Fetcher[i].Bottom)
 		imguiText("Bottom")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)
 			})
 		}
-		imgui.PopItemWidth()
 	}
 	imgui.EndGroup()
 
@@ -169,53 +157,45 @@ func (win *winDPCplusRegisters) draw() {
 		label := fmt.Sprintf("##f%dlow", i)
 		low := fmt.Sprintf("%02x", r.FracFetcher[i].Low)
 		imguiText("Low")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("frac::%d::low", f), low)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dhi", i)
 		hi := fmt.Sprintf("%02x", r.FracFetcher[i].Hi)
 		imguiText("Hi")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("frac::%d::hi", f), hi)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dincrement", i)
 		increment := fmt.Sprintf("%02x", r.FracFetcher[i].Increment)
 		imguiText("Increment")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &increment) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("frac::%d::increment", f), increment)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dcount", i)
 		count := fmt.Sprintf("%02x", r.FracFetcher[i].Count)
 		imguiText("Count")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &count) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("frac::%d::count", f), count)
 			})
 		}
-		imgui.PopItemWidth()
 	}
 	imgui.EndGroup()
 
@@ -237,40 +217,34 @@ func (win *winDPCplusRegisters) draw() {
 		label := fmt.Sprintf("##m%dwaveform", i)
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
 		imguiText("Waveform")
-		imgui.PushItemWidth(win.eightDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 8, &waveform) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::waveform", f), waveform)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dfeq", i)
 		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
 		imguiText("Freq")
-		imgui.PushItemWidth(win.eightDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 8, &freq) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::freq", f), freq)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dcount", i)
 		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
 		imguiText("Count")
-		imgui.PushItemWidth(win.eightDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 8, &count) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::count", f), count)
 			})
 		}
-		imgui.PopItemWidth()
 	}
 	imgui.EndGroup()
 

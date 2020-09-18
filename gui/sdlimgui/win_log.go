@@ -23,7 +23,6 @@ const winLogTitle = "Log"
 
 type winLog struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -37,7 +36,6 @@ func newWinLog(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winLog) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winLog) destroy() {

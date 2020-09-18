@@ -24,7 +24,6 @@ const winCollisionsTitle = "Collisions"
 
 type winCollisions struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
@@ -40,7 +39,6 @@ func newWinCollisions(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCollisions) init() {
-	win.widgetDimensions.init()
 	win.collisionBit = imgui.PackedColorFromVec4(win.img.cols.CollisionBit)
 }
 

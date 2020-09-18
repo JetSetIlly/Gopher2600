@@ -30,7 +30,6 @@ const winDbgScrTitle = "TV Screen"
 
 type winDbgScr struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 	scr *screen
@@ -113,7 +112,6 @@ func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winDbgScr) init() {
-	win.widgetDimensions.init()
 	win.overlayComboDim = imguiGetFrameDim("", reflection.OverlayList...)
 	win.specComboDim = imguiGetFrameDim("", television.SpecificationList...)
 }

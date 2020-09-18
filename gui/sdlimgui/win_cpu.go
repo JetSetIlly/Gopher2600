@@ -29,7 +29,6 @@ const winCPUTitle = "CPU"
 
 type winCPU struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
@@ -47,7 +46,6 @@ func newWinCPU(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCPU) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winCPU) destroy() {
@@ -152,13 +150,11 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 	content := win.img.lz.CPU.RegValue(reg)
 	bitwidth := win.img.lz.CPU.RegBitwidth(reg)
 
-	imgui.PushItemWidth(win.fourDigitDim.X)
 	if imguiHexInput(label, !win.img.paused, bitwidth/4, &content) {
 		if v, err := strconv.ParseUint(content, 16, bitwidth); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { reg.LoadFromUint64(v) })
 		}
 	}
-	imgui.PopItemWidth()
 }
 
 // draw most recent instruction in the CPU or as much as can be interpreted

@@ -33,6 +33,26 @@ type managedWindow interface {
 	setOpen(bool)
 }
 
+// this file contains some useful emeddable types for implementations of the
+// managedWindow interface
+
+// windowManagement can be embedded into a real window struct for
+// basic window management functionality. it partially implements the
+// managedWindow interface.
+type windowManagement struct {
+	// prefer use of isOpen()/setOpen() instead of accessing the open field
+	// directly
+	open bool
+}
+
+func (wm *windowManagement) isOpen() bool {
+	return wm.open
+}
+
+func (wm *windowManagement) setOpen(open bool) {
+	wm.open = open
+}
+
 // windowManager handles windows and menus in the system
 type windowManager struct {
 	img *SdlImgui

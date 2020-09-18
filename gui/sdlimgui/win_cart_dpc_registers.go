@@ -26,7 +26,6 @@ const winDPCregistersTitle = "DPC Registers"
 
 type winDPCregisters struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -40,7 +39,6 @@ func newWinDPCregisters(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winDPCregisters) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winDPCregisters) destroy() {
@@ -67,14 +65,12 @@ func (win *winDPCregisters) draw() {
 	// random number generator value
 	rng := fmt.Sprintf("%02x", r.RNG)
 	imguiText("Random Number Generator")
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	if imguiHexInput("##rng", !win.img.paused, 2, &rng) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("rng", rng)
 		})
 	}
-	imgui.PopItemWidth()
 
 	imgui.Spacing()
 	imgui.Separator()
@@ -91,53 +87,45 @@ func (win *winDPCregisters) draw() {
 		label := fmt.Sprintf("##%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
 		imguiText("Low")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dhi", i)
 		hi := fmt.Sprintf("%02x", r.Fetcher[i].Hi)
 		imguiText("Hi")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dtop", i)
 		top := fmt.Sprintf("%02x", r.Fetcher[i].Top)
 		imguiText("Top")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
 			})
 		}
-		imgui.PopItemWidth()
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dbottom", i)
 		bottom := fmt.Sprintf("%02x", r.Fetcher[i].Bottom)
 		imguiText("Bottom")
-		imgui.PushItemWidth(win.twoDigitDim.X)
 		if imguiHexInput(label, !win.img.paused, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)
 			})
 		}
-		imgui.PopItemWidth()
 
 		// data fetchers 4-7 can be set to "music mode"
 		if i >= 4 {

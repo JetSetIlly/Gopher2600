@@ -28,16 +28,11 @@ const menuSaveKeyEEPROMTitle = "EEPROM"
 
 type winSaveKeyEEPROM struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
 	// height of status line at bottom of window. valid after first frame
 	statusHeight float32
-
-	// the X position of the grid header. based on the width of the column
-	// headers (we know this value after the first pass)
-	xPos float32
 }
 
 func newWinSaveKeyEEPROM(img *SdlImgui) (managedWindow, error) {
@@ -46,7 +41,6 @@ func newWinSaveKeyEEPROM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winSaveKeyEEPROM) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winSaveKeyEEPROM) destroy() {
@@ -79,6 +73,8 @@ func (win *winSaveKeyEEPROM) drawStatusLine() {
 	statusHeight := imgui.CursorPosY()
 
 	imgui.Spacing()
+	imgui.Spacing()
+	imgui.Spacing()
 
 	if imgui.Button("Save to disk") {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -100,48 +96,42 @@ func (win *winSaveKeyEEPROM) drawStatusLine() {
 }
 
 func (win *winSaveKeyEEPROM) drawGrid(tag string, a []byte) {
-	const numberOfColumns = 16
-
-	height := imguiRemainingWinHeight() - win.statusHeight
-	imgui.BeginChildV(tag, imgui.Vec2{X: 0, Y: height}, false, 0)
-
-	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+	imgui.PushItemWidth(imguiTextWidth(2))
 
-	// draw headers for each column. this relies on win.xPos, which requires
-	// one frame before it is accurate.
-	headerDim := imgui.Vec2{X: win.xPos, Y: imgui.CursorPosY()}
-	for i := 0; i < numberOfColumns; i++ {
+	// draw headers for each column
+	headerDim := imgui.Vec2{X: imguiTextWidth(5), Y: imgui.CursorPosY()}
+	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.twoDigitDim.X
+		headerDim.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
+	height := imguiRemainingWinHeight() - win.statusHeight
+	imgui.BeginChildV(tag, imgui.Vec2{X: 0, Y: height}, false, 0)
+
 	// draw rows
 	var clipper imgui.ListClipper
-	clipper.Begin(len(a) / numberOfColumns)
+	clipper.Begin(len(a) / 16)
 	for clipper.Step() {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			offset := (i * numberOfColumns)
+			offset := (i * 16)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(fmt.Sprintf("%03x- ", i))
 			imgui.SameLine()
-			win.xPos = imgui.CursorPosX()
 
-			imgui.PushItemWidth(win.twoDigitDim.X)
-			for j := 0; j < numberOfColumns; j++ {
+			for j := 0; j < 16; j++ {
 				imgui.SameLine()
 				win.drawEditByte(tag, uint16(offset+j), a[offset+j])
 			}
-			imgui.PopItemWidth()
 		}
 	}
 
-	// finished with spacing setting
-	imgui.PopStyleVar()
-
 	imgui.EndChild()
+
+	imgui.PopItemWidth()
+	imgui.PopStyleVar()
 }
 
 func (win *winSaveKeyEEPROM) drawEditByte(tag string, address uint16, data byte) {

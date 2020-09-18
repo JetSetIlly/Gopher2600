@@ -27,7 +27,6 @@ const menuPlusROMPrefsTitle = "Preferences"
 
 type winPlusROMPrefs struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -41,7 +40,6 @@ func newWinPlusROMPrefs(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winPlusROMPrefs) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winPlusROMPrefs) destroy() {
@@ -70,11 +68,9 @@ func (win *winPlusROMPrefs) draw() {
 	imgui.Text("Nick")
 	imgui.SameLine()
 
-	imgui.PushItemWidth(win.tenDigitDim.X)
 	if imguiTextInput("##nick", true, plusrom.MaxNickLength, &nick) {
 		win.img.term.pushCommand(fmt.Sprintf("PLUSROM NICK %s", nick))
 	}
-	imgui.PopItemWidth()
 
 	imgui.SameLine()
 	imgui.AlignTextToFramePadding()

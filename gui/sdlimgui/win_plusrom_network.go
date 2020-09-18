@@ -26,7 +26,6 @@ const menuPlusROMNetworkTitle = "Network"
 
 type winPlusROMNetwork struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -40,7 +39,6 @@ func newWinPlusROMNetwork(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winPlusROMNetwork) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winPlusROMNetwork) destroy() {

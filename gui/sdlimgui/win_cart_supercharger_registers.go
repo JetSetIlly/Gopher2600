@@ -26,7 +26,6 @@ const winSuperchargerRegistersTitle = "AR Registers"
 
 type winSuperchargerRegisters struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -40,7 +39,6 @@ func newWinSuperchargerRegisters(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winSuperchargerRegisters) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winSuperchargerRegisters) destroy() {
@@ -71,14 +69,12 @@ func (win *winSuperchargerRegisters) draw() {
 
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiText("Value")
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	if imguiHexInput("##value", !win.img.paused, 2, &val) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("value", val)
 		})
 	}
-	imgui.PopItemWidth()
 
 	imgui.SameLine()
 

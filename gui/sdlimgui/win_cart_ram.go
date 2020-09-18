@@ -27,13 +27,8 @@ const winCartRAMTitle = "Cartridge RAM"
 
 type winCartRAM struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
-
-	// the X position of the grid header. based on the width of the column
-	// headers (we know this value after the first pass)
-	xPos float32
 
 	// height of status line at bottom of frame. valid after first frame of a
 	// tab (although it should be same for each tab)
@@ -53,7 +48,6 @@ func newWinCartRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCartRAM) init() {
-	win.widgetDimensions.init()
 	win.mappedIndicatorDim = imguiGetFrameDim(" mapped ", " unmapped ")
 }
 
@@ -77,9 +71,6 @@ func (win *winCartRAM) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 402, Y: 232}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winCartRAMTitle, &win.open, 0)
 
-	// no spacing between any of the drawEditByte() objects
-	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
-
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := 0; bank < len(win.img.lz.Cart.RAM); bank++ {
 		if imgui.BeginTabItem(win.img.lz.Cart.RAM[bank].Label) {
@@ -95,7 +86,6 @@ func (win *winCartRAM) draw() {
 			} else {
 				imguiBooleanButtonV(win.img.cols, false, " unmapped ", win.mappedIndicatorDim)
 			}
-			imgui.Spacing()
 			win.statusHeight = imgui.CursorPosY() - statusHeight
 
 			imgui.EndTabItem()
@@ -104,31 +94,24 @@ func (win *winCartRAM) draw() {
 	}
 	imgui.EndTabBar()
 
-	imgui.PopStyleVar()
 	imgui.End()
 }
 
 func (win *winCartRAM) drawBank(bank int) {
-	// draw headers for each column. this relies xPos, which requires one frame
-	// before it is accurate. we also need to add some padding because the xPos
-	// was calculated inside a child element.
-	x := win.xPos + imgui.CurrentStyle().FramePadding().X*2
+	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+	imgui.PushItemWidth(imguiTextWidth(2))
 
-	headerDim := imgui.Vec2{X: x, Y: imgui.CursorPosY()}
+	// draw headers for each column
+	headerDim := imgui.Vec2{X: imguiTextWidth(5), Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.twoDigitDim.X
+		headerDim.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
-	// put rest of window in a child element which will scroll, leaving the
-	// header static
 	height := imguiRemainingWinHeight() - win.statusHeight
 	imgui.BeginChildV(fmt.Sprintf("bank %d", bank), imgui.Vec2{X: 0, Y: height}, false, 0)
-
-	// draw rows
-	imgui.PushItemWidth(win.twoDigitDim.X)
 
 	// show cartridge origin for mapped RAM banks
 	origin := win.img.lz.Cart.RAM[bank].Origin
@@ -147,12 +130,8 @@ func (win *winCartRAM) drawBank(bank int) {
 			} else {
 				imgui.Text(fmt.Sprintf("x%02x- ", (i+int(origin&memorymap.CartridgeBits))/16))
 			}
-
-			imgui.SameLine()
-			win.xPos = imgui.CursorPosX()
-		} else {
-			imgui.SameLine()
 		}
+		imgui.SameLine()
 
 		// editable byte
 		b := fmt.Sprintf("%02x", win.img.lz.Cart.RAM[bank].Data[i])
@@ -166,7 +145,9 @@ func (win *winCartRAM) drawBank(bank int) {
 			}
 		}
 	}
-	imgui.PopItemWidth()
 
 	imgui.EndChild()
+
+	imgui.PopItemWidth()
+	imgui.PopStyleVar()
 }

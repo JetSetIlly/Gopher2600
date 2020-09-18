@@ -25,7 +25,6 @@ const winCartTapeTitle = "Cassette Tape"
 
 type winCartTape struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 }
@@ -39,7 +38,6 @@ func newWinCartTape(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winCartTape) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winCartTape) destroy() {
@@ -63,7 +61,6 @@ func (win *winCartTape) draw() {
 
 	// counter information
 	imguiText("Counter")
-	imgui.PushItemWidth(win.eightDigitDim.X)
 	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
 	if imguiDecimalInput("##counter", !win.img.paused, 8, &counter) {
 	}

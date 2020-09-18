@@ -27,7 +27,6 @@ const winChipRegistersTitle = "Chip Registers"
 
 type winChipRegisters struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
@@ -44,7 +43,6 @@ func newWinChipRegisters(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winChipRegisters) init() {
-	win.widgetDimensions.init()
 	win.regBit = imgui.PackedColorFromVec4(win.img.cols.RegisterBit)
 }
 
@@ -101,7 +99,6 @@ func (win *winChipRegisters) draw() {
 func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 	s := fmt.Sprintf("%02x", val)
 	imguiText(label)
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	if imguiHexInput(fmt.Sprintf("##%s", label), !win.img.paused, 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {

@@ -90,7 +90,6 @@ func (win *winTIA) drawPlayfield() {
 	imgui.SameLine()
 	imguiText("CTRLPF")
 	imgui.SameLine()
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", !win.img.paused, 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
@@ -102,7 +101,6 @@ func (win *winTIA) drawPlayfield() {
 			})
 		}
 	}
-	imgui.PopItemWidth()
 	imgui.EndGroup()
 
 	imgui.Spacing()

@@ -27,17 +27,8 @@ const winRAMTitle = "RAM"
 
 type winRAM struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
-
-	// the X position of the grid header. based on the width of the column
-	// headers (we know this value after the first pass)
-	xPos float32
-
-	// height required to display VCS RAM in its entirity (we know this value
-	// after the first pass)
-	gridHeight float32
 }
 
 func newWinRAM(img *SdlImgui) (managedWindow, error) {
@@ -46,7 +37,6 @@ func newWinRAM(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winRAM) init() {
-	win.widgetDimensions.init()
 }
 
 func (win *winRAM) destroy() {
@@ -64,21 +54,19 @@ func (win *winRAM) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{890, 29}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+	imgui.PushItemWidth(imguiTextWidth(2))
 
-	// draw headers for each column. this relies xPos, which requires
-	// one frame before it is accurate.
-	headerDim := imgui.Vec2{X: win.xPos, Y: imgui.CursorPosY()}
+	// draw headers for each column
+	headerDim := imgui.Vec2{X: imguiTextWidth(4), Y: imgui.CursorPosY()}
 	for i := 0; i < 16; i++ {
 		imgui.SetCursorPos(headerDim)
-		headerDim.X += win.twoDigitDim.X
+		headerDim.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	// draw rows
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	i := uint16(0)
 	for addr := memorymap.OriginRAM; addr <= memorymap.MemtopRAM; addr++ {
 		// draw row header
@@ -86,7 +74,6 @@ func (win *winRAM) draw() {
 			imgui.AlignTextToFramePadding()
 			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
 			imgui.SameLine()
-			win.xPos = imgui.CursorPosX()
 		} else {
 			imgui.SameLine()
 		}
@@ -104,8 +91,9 @@ func (win *winRAM) draw() {
 
 		i++
 	}
-	imgui.PopItemWidth()
 
+	imgui.PopItemWidth()
 	imgui.PopStyleVar()
+
 	imgui.End()
 }

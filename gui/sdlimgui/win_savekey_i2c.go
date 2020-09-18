@@ -28,7 +28,6 @@ const menuSaveKeyI2CTitle = "I2C"
 
 type winSaveKeyI2C struct {
 	windowManagement
-	widgetDimensions
 
 	img *SdlImgui
 
@@ -48,7 +47,6 @@ func newWinSaveKeyI2C(img *SdlImgui) (managedWindow, error) {
 }
 
 func (win *winSaveKeyI2C) init() {
-	win.widgetDimensions.init()
 	win.bit = imgui.PackedColorFromVec4(win.img.cols.SaveKeyBit)
 	win.bitPointer = imgui.PackedColorFromVec4(win.img.cols.SaveKeyBitPointer)
 	win.scl = imgui.PackedColorFromVec4(win.img.cols.SaveKeyOscSCL)
@@ -187,7 +185,6 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	s := fmt.Sprintf("%02x", bits)
 	imguiText(label)
-	imgui.PushItemWidth(win.twoDigitDim.X)
 	if imguiHexInput(fmt.Sprintf("##%s", label), !win.img.paused, 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {
@@ -199,7 +196,6 @@ func (win *winSaveKeyI2C) drawBits() {
 			}
 		})
 	}
-	imgui.PopItemWidth()
 
 	imgui.SameLine()
 
@@ -231,7 +227,6 @@ func (win *winSaveKeyI2C) drawAddress() {
 	label := "Address"
 	s := fmt.Sprintf("%04x", addr)
 	imguiText(label)
-	imgui.PushItemWidth(win.fourDigitDim.X)
 	if imguiHexInput(fmt.Sprintf("##%s", label), !win.img.paused, 4, &s) {
 		v, err := strconv.ParseUint(s, 16, 16)
 		if err != nil {
@@ -243,5 +238,4 @@ func (win *winSaveKeyI2C) drawAddress() {
 			}
 		})
 	}
-	imgui.PopItemWidth()
 }
