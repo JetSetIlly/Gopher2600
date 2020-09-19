@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -59,6 +60,10 @@ func newNetwork(prefs *Preferences) *network {
 	}
 }
 
+// set to true to log HTTP repsonses/requests. this will do have to do until we
+// implement logging levels.
+const httpLogging = false
+
 // add a single byte to the send buffer, capping the length of the buffer at
 // the sendBufferCap value. if the "send" flag is true then the buffer is sent
 // over the network. the function will not wait for the network activity
@@ -70,7 +75,6 @@ func (n *network) send(data uint8, send bool) {
 	n.sendBuffer.WriteByte(data)
 
 	if send {
-		n.sendBuffer = *bytes.NewBuffer([]byte{})
 		go func(send bytes.Buffer, addr AddrInfo) {
 			n.sendLock.Lock()
 			defer n.sendLock.Unlock()
@@ -82,6 +86,9 @@ func (n *network) send(data uint8, send bool) {
 				logger.Log("plusrom [net]", err.Error())
 				return
 			}
+
+			// content length HTTP header is the length of the send buffer
+			req.Header.Set("Content-Length", fmt.Sprintf("%d", send.Len()))
 
 			// from http://pluscart.firmaplus.de/pico/?PlusROM
 			//
@@ -100,15 +107,33 @@ func (n *network) send(data uint8, send bool) {
 
 			logger.Log("plusrom [net]", fmt.Sprintf("PlusStore-ID: %s", id))
 
+			// log of complete request
+			if httpLogging {
+				s, _ := httputil.DumpRequest(req, true)
+				logger.Log("plusrom [net]", fmt.Sprintf("request: %q", s))
+			}
+
+			// send response over network
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				logger.Log("plusrom [net]", err.Error())
 				return
 			}
 
+			// log of complete response
+			if httpLogging {
+				s, _ := httputil.DumpResponse(resp, true)
+				logger.Log("plusrom [net]", fmt.Sprintf("response: %q", s))
+			}
+
+			// pass response to main goroutine
 			n.respChan <- resp
 
 		}(n.sendBuffer, n.ai)
+
+		// a copy of the sendBuffer has been passed to the new goroutine so we
+		// can now clear the refernce buffer
+		n.sendBuffer = *bytes.NewBuffer([]byte{})
 	}
 }
 

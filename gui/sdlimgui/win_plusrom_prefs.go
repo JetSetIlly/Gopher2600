@@ -68,7 +68,7 @@ func (win *winPlusROMPrefs) draw() {
 	imgui.Text("Nick")
 	imgui.SameLine()
 
-	if imguiTextInput("##nick", true, plusrom.MaxNickLength, &nick) {
+	if imguiTextInput("##nick", true, plusrom.MaxNickLength, &nick, false) {
 		win.img.term.pushCommand(fmt.Sprintf("PLUSROM NICK %s", nick))
 	}
 

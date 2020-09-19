@@ -31,8 +31,8 @@ func imguiDecimalInput(label string, updateOnEnterOnly bool, length int, content
 	return imguiInput(label, updateOnEnterOnly, length, content, "0123456789", true)
 }
 
-func imguiTextInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEnterOnly, length, content, "", false)
+func imguiTextInput(label string, updateOnEnterOnly bool, length int, content *string, selectAll bool) bool {
+	return imguiInput(label, updateOnEnterOnly, length, content, "", selectAll)
 }
 
 // input text that accepts a maximum number of characters. physical width of
