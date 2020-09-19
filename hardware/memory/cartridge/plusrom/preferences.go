@@ -33,6 +33,9 @@ type Preferences struct {
 
 	Nick prefs.String
 	ID   prefs.String
+
+	// is true if the default nick/id are being used
+	NewInstallation bool
 }
 
 func newPreferences() (*Preferences, error) {
@@ -54,7 +57,12 @@ func newPreferences() (*Preferences, error) {
 	p.Nick.Set("gopher2600")
 	p.ID.Set(fmt.Sprintf("%d", rand.Int63()))
 
-	err = p.dsk.Load(true)
+	p.NewInstallation, err = p.dsk.HasEntry("plusrom.nick")
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Load(false)
 	if err != nil {
 		return p, err
 	}

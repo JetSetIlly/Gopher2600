@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // Loader is used to specify the cartridge to use when Attach()ing to
@@ -53,11 +54,10 @@ type Loader struct {
 	IsSoundData bool
 
 	// callback function when cartridge has been successfully inserted/loaded.
-	// not all cartridge formats support this. currently only supercharger
-	// supports/requires it.
+	// not all cartridge formats support this
 	//
 	// !!TODO: all cartridge formats to support OnLoaded() callback (for completeness)
-	OnLoaded func() error
+	OnLoaded func(cart mapper.CartMapper) error
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.

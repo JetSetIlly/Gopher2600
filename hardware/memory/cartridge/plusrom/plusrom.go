@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
@@ -36,7 +37,7 @@ type PlusROM struct {
 	net   *network
 }
 
-func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
+func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mapper.CartMapper, error) {
 	cart := &PlusROM{child: child}
 
 	var err error
@@ -96,6 +97,13 @@ func NewPlusROM(child mapper.CartMapper) (mapper.CartMapper, error) {
 
 	// log success
 	logger.Log("plusrom", fmt.Sprintf("will connect to %s", cart.net.ai.String()))
+
+	if cartload.OnLoaded != nil {
+		err := cartload.OnLoaded(cart)
+		if err != nil {
+			return nil, errors.New("plusrom", err)
+		}
+	}
 
 	return cart, nil
 }

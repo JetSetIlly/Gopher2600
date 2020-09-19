@@ -25,6 +25,9 @@ import (
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hiscore"
@@ -50,13 +53,6 @@ type playmode struct {
 func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool) error {
 	var recording string
 
-	// set OnLoaded function for specific cartridge formats
-	if cartload.Mapping == "AR" {
-		cartload.OnLoaded = func() error {
-			return tv.Reset()
-		}
-	}
-
 	// if supplied cartridge name is actually a playback file then set
 	// recording variable and dump cartridgeLoader information
 	if recorder.IsPlaybackFile(cartload.Filename) {
@@ -73,10 +69,29 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		cartload = cartridgeloader.Loader{}
 	}
 
+	// when allocation this channel will be used to halt emulation start until
+	// a nil error is received
+	var waitForEmulationStart chan error
+
+	// OnLoaded function for specific cartridge formats
+	cartload.OnLoaded = func(cart mapper.CartMapper) error {
+		if _, ok := cart.(*supercharger.Supercharger); ok {
+			return tv.Reset()
+		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
+			if pr.Prefs.NewInstallation {
+				waitForEmulationStart = make(chan error)
+				scr.ReqFeature(gui.ReqPlusROMFirstInstallation,
+					&gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr})
+			}
+		}
+		return nil
+	}
+
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
+	scr.ReqFeature(gui.ReqAddVCS, vcs)
 
 	// replace player 1 port with savekey
 	if useSavekey {
@@ -179,6 +194,19 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	if err != nil {
 		return errors.New(errors.PlayError, err)
 	}
+
+	// if a waitForEmulationStart channel has been created then halt the
+	// goroutine until we recieve a non-error signal
+	if waitForEmulationStart != nil {
+		if err := <-waitForEmulationStart; err != nil {
+			return errors.New(errors.PlayError, err)
+		}
+	}
+
+	// note that we are not setting the interrupt handler until
+	// waitForEmulationStart has passed. this is because the handler for
+	// os.Interrupt runs inside the emulation, which won't start until we've
+	// successfully waited
 
 	// we need to make sure we call the deferred function rec.End() even when
 	// ctrl-c is pressed. redirect interrupt signal to an os.Signal channel

@@ -229,3 +229,19 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 
 	return numLoaded, nil
 }
+
+// HasEntry returns false if there is no matching entry on disk and true if
+// there is.
+func (dsk *Disk) HasEntry(key string) (bool, error) {
+	var e entryMap
+	var s String
+	e = make(entryMap)
+	e[key] = &s
+
+	n, err := load(dsk.path, &e, true)
+	if err != nil {
+		return false, err
+	}
+
+	return n != 1, nil
+}

@@ -56,19 +56,21 @@ func (img *SdlImgui) Service() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
-				select {
-				case img.events <- gui.EventQuit{}:
-				default:
-					panic("quit event jammed: forcing quit (contact developer)")
+				if !img.hasModal {
+					select {
+					case img.events <- gui.EventQuit{}:
+					default:
+						panic("quit event jammed: forcing quit (contact developer)")
+					}
 				}
 
 			case *sdl.TextInputEvent:
-				if !img.isCaptured() {
+				if img.hasModal || !img.isCaptured() {
 					img.io.AddInputCharacters(string(ev.Text[:]))
 				}
 
 			case *sdl.KeyboardEvent:
-				if img.isPlaymode() || img.isCaptured() {
+				if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
 					mod := gui.KeyModNone
 
 					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
@@ -124,7 +126,7 @@ func (img *SdlImgui) Service() {
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
 					button = gui.MouseButtonLeft
-					if img.isHovered() {
+					if !img.hasModal && img.isHovered() {
 						img.setCapture(true)
 						err := sdl.CaptureMouse(true)
 						if err == nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 type featureRequest struct {
@@ -38,7 +39,7 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
 		if r := recover(); r != nil {
-			img.featureErr <- errors.New(errors.PanicError, "sdlImgui.serviceFeatureRequests()", r)
+			panic(r)
 		}
 	}()
 
@@ -87,8 +88,12 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSetPause:
 		img.pause(request.args[0].(bool))
 
+	case gui.ReqAddVCS:
+		img.vcs = request.args[0].(*hardware.VCS)
+
 	case gui.ReqAddDebugger:
 		img.lz.Dbg = request.args[0].(*debugger.Debugger)
+		img.vcs = img.lz.Dbg.VCS
 
 	case gui.ReqSetPlaymode:
 		err = img.setPlaymode(request.args[0].(bool))
@@ -100,6 +105,9 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		// a new cartridge requires us to reset the lazy system (see the
 		// lazyvalues.Reset() function commentary for why)
 		img.lz.Reset(request.args[0].(bool))
+
+	case gui.ReqPlusROMFirstInstallation:
+		img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
 
 	default:
 		err = errors.New(errors.UnsupportedGUIRequest, request.request)

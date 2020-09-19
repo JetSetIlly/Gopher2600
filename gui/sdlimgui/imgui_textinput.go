@@ -22,24 +22,24 @@ import (
 )
 
 // calls imguiInput with the string of allowed hexadecimal characters.
-func imguiHexInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEntryOnly, length, content, "abcdefABCDEF0123456789", true)
+func imguiHexInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEnterOnly, length, content, "abcdefABCDEF0123456789", true)
 }
 
 // calls imguiInput with the string of numeric characters.
-func imguiDecimalInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEntryOnly, length, content, "0123456789", true)
+func imguiDecimalInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEnterOnly, length, content, "0123456789", true)
 }
 
-func imguiTextInput(label string, updateOnEntryOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEntryOnly, length, content, "", false)
+func imguiTextInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
+	return imguiInput(label, updateOnEnterOnly, length, content, "", false)
 }
 
 // input text that accepts a maximum number of characters. physical width of
 // InpuText should be controlled with PushItemWidth()/PopItemWidth() as normal.
 //
 // if allowedChars is the empty string than all characters will be allowed.
-func imguiInput(label string, updateOnEntryOnly bool, length int, content *string, allowedChars string, selectAll bool) bool {
+func imguiInput(label string, updateOnEnterOnly bool, length int, content *string, allowedChars string, selectAll bool) bool {
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		switch d.EventFlag() {
 		case imgui.InputTextFlagsCallbackCharFilter:
@@ -65,9 +65,9 @@ func imguiInput(label string, updateOnEntryOnly bool, length int, content *strin
 		flags |= imgui.InputTextFlagsAutoSelectAll
 	}
 
-	// with updateOnEntryOnly the values entered will be given to the onEnter()
+	// with updateOnEnterOnly the values entered will be given to the onEnter()
 	// function immediately and not just when the enter key is pressed.
-	if updateOnEntryOnly {
+	if updateOnEnterOnly {
 		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 

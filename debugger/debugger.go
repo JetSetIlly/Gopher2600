@@ -30,6 +30,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -305,14 +308,20 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // especially important is the repointing of symtable in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	// set OnLoaded function for specific cartridge formats
-	if cartload.Mapping == "AR" {
-		cartload.OnLoaded = func() error {
+	cartload.OnLoaded = func(cart mapper.CartMapper) error {
+		if _, ok := cart.(*supercharger.Supercharger); ok {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
 			// nice to have.
 			dbg.Disasm.FromMemoryAgain()
 			return dbg.tv.Reset()
+		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
+			if pr.Prefs.NewInstallation {
+				dbg.scr.ReqFeature(gui.ReqPlusROMFirstInstallation,
+					&gui.PlusROMFirstInstallation{Finish: nil, Cart: pr})
+			}
 		}
+		return nil
 	}
 
 	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)

@@ -54,7 +54,7 @@ type Supercharger struct {
 	bios     []uint8
 	ram      [3][]uint8
 
-	onLoaded func() error
+	onLoaded func(cart mapper.CartMapper) error
 }
 
 // NewSupercharger is the preferred method of initialisation for the
@@ -91,7 +91,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 
 	// prepare onLoaded function
 	if cartload.OnLoaded == nil {
-		cart.onLoaded = func() error { return nil }
+		cart.onLoaded = func(cart mapper.CartMapper) error { return nil }
 	} else {
 		cart.onLoaded = cartload.OnLoaded
 	}
@@ -172,12 +172,12 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.registers.ROMpower {
-			// trigger onLoaded() function whenever BIOS address $fa1a (specifically)
-			// is touched. note that this method means that the onLoaded()
-			// function will called whatever the context the address is read
-			// and not just when the PC is at the address.
+			// trigger onLoaded() function whenever BIOS address $fa1a
+			// (specifically) is touched. note that this method means that the
+			// onLoaded() function will be called whatever the context the
+			// address is read and not just when the PC is at the address.
 			if fullAddr == 0xfa1a {
-				err := cart.onLoaded()
+				err := cart.onLoaded(cart)
 				if err != nil {
 					return 0, errors.New(errors.SuperchargerError, err)
 				}

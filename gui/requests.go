@@ -15,6 +15,8 @@
 
 package gui
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+
 // FeatureReq is used to request the setting of a gui attribute
 // eg. toggling the overlay
 type FeatureReq string
@@ -48,7 +50,12 @@ const (
 	// present information differently as necessary
 	ReqSetPause FeatureReq = "ReqSetPause" // bool
 
-	// The add debugger request must be made by the debugger if debug access to
+	// the add VCS request is used to associate the gui with an emulated VCS.
+	// a debugger does not need to send this request if it already sends a
+	// ReqAddDebugger request (which it should)
+	ReqAddVCS FeatureReq = "ReqAddVCS" // *hardware.VCS
+
+	// the add debugger request must be made by the debugger if debug access to
 	// the the machine is required by the GUI
 	ReqAddDebugger FeatureReq = "ReqAddDebugger" // *debugger.Debugger
 
@@ -70,7 +77,17 @@ const (
 	// triggered when cartridge is being change
 	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
 
+	// special request for PlusROM cartridges
+	ReqPlusROMFirstInstallation = "ReqPlusROMFirstInstallation" // ReqPlusROMFirstInstallation
+
 	// ------------------------------------------------------
 	// the following requests are deprecated
 	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
 )
+
+// PlusROMFirstInstallation is used to pass information to the GUI as part of
+// the request
+type PlusROMFirstInstallation struct {
+	Finish chan error
+	Cart   *plusrom.PlusROM
+}

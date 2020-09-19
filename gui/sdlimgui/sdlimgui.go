@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -45,8 +46,9 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// references to the emulation
-	lz *lazyvalues.Lazy
-	tv television.Television
+	lz  *lazyvalues.Lazy
+	tv  television.Television
+	vcs *hardware.VCS
 
 	// terminal interface to the debugger
 	term *term
@@ -84,6 +86,12 @@ type SdlImgui struct {
 
 	// the preferences we'll be saving to disk
 	prefs *prefs.Disk
+
+	// hasModal should be true for the duration of when a modal popup is on the screen
+	hasModal bool
+
+	// a request for the PlusROM first installation procedure has been received
+	plusROMFirstInstallation *gui.PlusROMFirstInstallation
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -181,6 +189,7 @@ func (img *SdlImgui) pause(set bool) {
 
 func (img *SdlImgui) draw() {
 	img.wm.draw()
+	img.drawPlusROMFirstInstallation()
 }
 
 // GetTerminal implements terminal.Broker interface
