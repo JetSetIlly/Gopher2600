@@ -231,16 +231,31 @@ func (p *Ports) GetPlayback() error {
 		return nil
 	}
 
-	id, ev, v, err := p.playback.GetPlayback()
-	if err != nil {
-		return err
+	// loop with GetPlayback() until we encounter a NoPortID or NoEvent
+	// condition. there might be more than one entry for a particular
+	// frame/scanline/horizpas state so we need to make sure we've processed
+	// them all.
+	//
+	// this happens in particular with recordings that were made of  ROMs with
+	// panel setup configurations (see setup package) - where the switches are
+	// set when the TV state is at fr=0 sl=0 hp=0
+	morePlayback := true
+	for morePlayback {
+		id, ev, v, err := p.playback.GetPlayback()
+		if err != nil {
+			return err
+		}
+
+		morePlayback = id != NoPortID && ev != NoEvent
+		if morePlayback {
+			err := p.HandleEvent(id, ev, v)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	if id == NoPortID || ev == NoEvent {
-		return nil
-	}
-
-	return p.HandleEvent(id, ev, v)
+	return nil
 }
 
 func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
