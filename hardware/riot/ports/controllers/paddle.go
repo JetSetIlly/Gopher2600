@@ -140,6 +140,12 @@ func (pdl *Paddle) Step() {
 			pdl.bus.WriteINPTx(pdl.inptx, pdl.charge)
 		}
 	}
+
+	// like with the stick we should make sure the fire button retains it's
+	// depressed state. see Stick.Step() function for commentary
+	if pdl.fire != paddleNoFire {
+		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
+	}
 }
 
 // Reset implements the ports.Peripheral interface

@@ -196,6 +196,9 @@ func (key *Keyboard) Update(data bus.ChipData) bool {
 
 // Step implements the ports.Peripheral interface
 func (key *Keyboard) Step() {
+	// keyboard does not write to SWCHx so unlike the Stick and Paddle
+	// controller types there is no need to ensure the SWCHx register retains
+	// its state if it is active
 }
 
 // Reset implements the ports.Peripheral interface

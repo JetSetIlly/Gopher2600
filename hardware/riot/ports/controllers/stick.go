@@ -149,6 +149,13 @@ func (stk *Stick) Update(data bus.ChipData) bool {
 
 // Step implements the ports.Peripheral interface
 func (stk *Stick) Step() {
+	// if axis is deflected from the centre then make sure the SWCHA is set
+	// correctly every cycle. this isn't necessary in all situations but ROMs
+	// in which SWACNT is changed, axis state can be "forgotten". for example,
+	// we can see this in the HeMan ROM.
+	if stk.axis != 0xf0 {
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
+	}
 }
 
 // Reset implements the ports.Peripheral interface
