@@ -47,38 +47,15 @@ type Audio struct {
 	id   sdl.AudioDeviceID
 	spec sdl.AudioSpec
 
-	// we keep two buffers which we swap after every flush. the other buffer
-	// can then be used to repeat and to fill in the gaps in the audio. see
-	// repeatAudio()
 	buffer   []uint8
 	bufferCt int
-	critCt   int
-
-	// some ROMs do not output 0 as the silence value. silence is technically
-	// caused by constant unchanging value so this shouldn't be a problem. the
-	// problem is caused when there is an audio buffer underflow and the sound
-	// device flips to the real silence value - this causes a audible click.
-	//
-	// to mitigate this we try to detect what the silence value is by counting
-	// the number of unchanging values
-	detectedSilenceValue uint8
-	lastAudioData        uint8
-	countAudioData       int
-
-	isBufferEmpty chan bool
 }
-
-// the number of consecutive cycles for an audio signal to be considered the
-// new silence value
-const audioDataSilenceThreshold = 10000
 
 // NewAudio is the preferred method of initialisatoin for the Audio Type
 func NewAudio() (*Audio, error) {
 	aud := &Audio{
-		isBufferEmpty: make(chan bool),
+		buffer: make([]uint8, bufferLength),
 	}
-
-	aud.buffer = make([]uint8, bufferLength)
 
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,
@@ -102,8 +79,6 @@ func NewAudio() (*Audio, error) {
 	logger.Log("sdl audio", fmt.Sprintf("channels: %d", aud.spec.Channels))
 	logger.Log("sdl audio", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
 
-	aud.detectedSilenceValue = aud.spec.Silence
-
 	// fill buffers with silence
 	for i, _ := range aud.buffer {
 		aud.buffer[i] = aud.spec.Silence
@@ -116,24 +91,7 @@ func NewAudio() (*Audio, error) {
 
 // SetAudio implements the television.AudioMixer interface
 func (aud *Audio) SetAudio(audioData uint8) error {
-	// silence detector
-	if audioData == aud.lastAudioData && aud.countAudioData <= audioDataSilenceThreshold {
-		aud.countAudioData++
-		if aud.countAudioData > audioDataSilenceThreshold {
-			aud.detectedSilenceValue = audioData
-		}
-	} else {
-		aud.lastAudioData = audioData
-		aud.countAudioData = 0
-	}
-
-	// never allow sound buffer to "output" silence - some sound devices take
-	// an appreciable amount of time to move from silence to non-silence
-	if audioData == aud.detectedSilenceValue {
-		aud.buffer[aud.bufferCt] = aud.spec.Silence
-	} else {
-		aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
-	}
+	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
 	aud.bufferCt++
 
 	if aud.bufferCt >= len(aud.buffer) {
