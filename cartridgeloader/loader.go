@@ -89,9 +89,10 @@ func NewLoader(filename string, mapping string) Loader {
 
 		case ".BIN":
 			fallthrough
+		case ".ROM":
+			fallthrough
 		case ".A26":
 			cl.Mapping = "AUTO"
-
 		case ".2k":
 			fallthrough
 		case ".4k":
@@ -128,10 +129,8 @@ func NewLoader(filename string, mapping string) Loader {
 			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
-
 		case ".DP+":
 			cl.Mapping = "DPC+"
-
 		case ".WAV":
 			fallthrough
 		case ".MP3":
@@ -142,6 +141,10 @@ func NewLoader(filename string, mapping string) Loader {
 
 	return cl
 }
+
+// FileExtensions is the list of file extensions that are recognised by the
+// cartridgeloader package
+var FileExtensions = [...]string{".BIN", ".ROM", ".A26", ".2k", ".4k", ".F8", ".F6", ".F4", ".2k+", ".4k+", ".F8+", ".F6+", ".F4+", ".FA", ".FE", ".E0", ".E7", ".3F", ".AR", ".DF", ".DPC", ".DP+", ".WAV", ".MP3"}
 
 // ShortName returns a shortened version of the CartridgeLoader filename
 func (cl Loader) ShortName() string {

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 )
 
 const winSelectROMTitle = "Select ROM"
@@ -125,10 +126,19 @@ func (win *winSelectROM) draw() {
 			continue
 		}
 
-		// ignore invalid file sizes
-		ext := strings.ToLower(filepath.Ext(fi.Name()))
-		if !win.showAllFiles && !(ext == ".bin" || ext == ".rom") {
-			continue
+		// ignore invalid file extensions unless showAllFiles flags is set
+		ext := strings.ToUpper(filepath.Ext(fi.Name()))
+		if !win.showAllFiles {
+			hasExt := false
+			for _, e := range cartridgeloader.FileExtensions {
+				if e == ext {
+					hasExt = true
+					break
+				}
+			}
+			if !hasExt {
+				continue // to next file
+			}
 		}
 
 		if fi.Mode().IsRegular() {
