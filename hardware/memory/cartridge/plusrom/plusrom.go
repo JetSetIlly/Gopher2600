@@ -49,20 +49,33 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 
 	cart.net = newNetwork(cart.Prefs)
 
+	// get reference to last bank
 	bank := &banks.Content{Number: -1}
 	for i := 0; i < cart.NumBanks(); i++ {
 		bank = child.IterateBanks(bank)
 	}
 
-	// host address is made up of address 0x1ffa (LSB) and 0x1ffb (MSB)
-	// making sure to index the data correctly
-	a := uint16(bank.Data[0x0ffa])
-	a |= (uint16(bank.Data[0x0ffb]) << 8)
+	// host/path information is found at address 0x1ffa. we've got a reference
+	// to the last bank above but we need to consider that the last bank might not
+	// take the entirity of the cartridge map.
+	addrMask := uint16(len(bank.Data) - 1)
 
-	// normalise address so it's suitable for indexing bank data
-	a &= 0x0fff
+	// host/path information are found at the address pointed to by the following
+	// 16bit address
+	const addrinfoMSB = 0x1ffb
+	const addrinfoLSB = 0x1ffa
 
-	// read path string
+	a := uint16(bank.Data[addrinfoLSB&addrMask])
+	a |= (uint16(bank.Data[addrinfoMSB&addrMask]) << 8)
+
+	// normalise indirect address so it's suitable for indexing bank data
+	a &= addrMask
+
+	// host/path information is in the first bank. get reference to the first bank
+	bank = &banks.Content{Number: -1}
+	bank = child.IterateBanks(bank)
+
+	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
 	for {
 		if int(a) >= len(bank.Data) {
@@ -76,7 +89,8 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 		path.WriteRune(rune(c))
 	}
 
-	// read host string
+	// read host string. this string continues on from the path string. the
+	// address pointer will be in the correct place.
 	host := strings.Builder{}
 	for {
 		if int(a) >= len(bank.Data) {
@@ -90,6 +104,7 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 		host.WriteRune(rune(c))
 	}
 
+	// fail if host or path is not valid
 	hostValid, pathValid := cart.SetAddrInfo(host.String(), path.String())
 	if !hostValid || !pathValid {
 		return nil, errors.New(NotAPlusROM, "invalid host/path")
@@ -98,6 +113,7 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 	// log success
 	logger.Log("plusrom", fmt.Sprintf("will connect to %s", cart.net.ai.String()))
 
+	// call onloaded function if one is available
 	if cartload.OnLoaded != nil {
 		err := cartload.OnLoaded(cart)
 		if err != nil {
