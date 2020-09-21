@@ -68,12 +68,17 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 	a := uint16(bank.Data[addrinfoLSB&addrMask])
 	a |= (uint16(bank.Data[addrinfoMSB&addrMask]) << 8)
 
+	// get bank to which the NMI vector points
+	b := (a & 0xf000) >> 12
+
 	// normalise indirect address so it's suitable for indexing bank data
 	a &= addrMask
 
 	// host/path information is in the first bank. get reference to the first bank
 	bank = &banks.Content{Number: -1}
-	bank = child.IterateBanks(bank)
+	for i := 0; i < int(b); i++ {
+		bank = child.IterateBanks(bank)
+	}
 
 	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
