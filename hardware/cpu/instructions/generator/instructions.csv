@@ -269,6 +269,7 @@
 0xb3, lax, 5, INDIRECT_INDEXED, True
 0xbf, lax, 4, ABSOLUTE_INDEXED_Y, True
 0xb7, lax, 4, ZEROPAGE_INDEXED_Y, False
+0xaf, lax, 4, ABSOLUTE, False
 0xab, lax, 2, IMMEDIATE, False
 0x8b, xaa, 2, IMMEDIATE, False
 

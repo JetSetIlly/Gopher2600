@@ -180,7 +180,7 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0xac, Mnemonic: "LDY", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xad, Mnemonic: "LDA", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xae, Mnemonic: "LDX", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
-		nil,
+		&Definition{OpCode: 0xaf, Mnemonic: "lax", Bytes: 3, Cycles: 4, AddressingMode: 3, PageSensitive: false, Effect: 0},
 		&Definition{OpCode: 0xb0, Mnemonic: "BCS", Bytes: 2, Cycles: 2, AddressingMode: 2, PageSensitive: true, Effect: 3},
 		&Definition{OpCode: 0xb1, Mnemonic: "LDA", Bytes: 2, Cycles: 5, AddressingMode: 7, PageSensitive: true, Effect: 0},
 		nil,
