@@ -18,9 +18,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger"
@@ -183,7 +185,7 @@ func launch(sync *mainSync) {
 
 	// we generate random numbers in some places. seed the generator with the
 	// current time
-	// rand.Seed(int64(time.Now().Second()))
+	rand.Seed(int64(time.Now().Nanosecond()))
 
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])

@@ -43,7 +43,7 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		imgui.Text("Nick")
 		imgui.SameLine()
 
-		if imguiTextInput("##nick", true, plusrom.MaxNickLength, &nick, true) {
+		if imguiTextInput("##nick", false, plusrom.MaxNickLength, &nick, true) {
 			img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
 			img.plusROMFirstInstallation.Cart.Prefs.Save()
 		}
