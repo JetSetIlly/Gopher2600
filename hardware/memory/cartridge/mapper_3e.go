@@ -26,46 +26,44 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-type m3ePlus struct {
+type m3e struct {
 	mappingID   string
 	description string
 
-	// 3e+ cartridge memory is segmented
 	bankSize int
 	banks    [][]uint8
 
-	// 64 is the maximum number of banks possible under the 3e+ scheme
-	ram [64][]uint8
+	// 32 is the maximum number of banks possible under the 3e scheme
+	ram [32][]uint8
 
-	// cartridge memory is segmented in the 3e+ format. the 3e+ documentation
-	// refers to these as slots. we prefer the segment terminology for
-	// consistency.
+	// 3e cartridges divide memory into two 2k segments
+	//  o the last segment always points to the last bank
+	//  o the first segment can point to any of the other three
 	//
-	// hotspots are provided by the Listen() function
-	segment      [4]int
-	segmentIsRam [4]bool
+	// the bank pointed to by the first segment is changed through the listen()
+	// function (part of the implementation of the mapper.CartMapper interface).
+	segment [2]int
+
+	// in the 3e format only the first segment can contain RAM but for
+	// simplicity we keep track of both segments
+	segmentIsRam [2]bool
 }
 
-// should work with any size cartridge that is a multiple of 1024
-//  - tested with chess3E+20200519_3PQ6_SQ.bin
-//	https://atariage.com/forums/topic/299157-chess/?do=findComment&comment=4541517
-//
-//	- specifciation:
-//	https://atariage.com/forums/topic/307914-3e-and-macros-are-your-friend/?tab=comments#comment-4561287
-func new3ePlus(data []byte) (mapper.CartMapper, error) {
-	cart := &m3ePlus{
-		mappingID:   "3E+",
-		description: "", // no description
-		bankSize:    1024,
+// should work with any size cartridge that is a multiple of 2048
+func new3e(data []byte) (mapper.CartMapper, error) {
+	cart := &m3e{
+		mappingID:   "3E",
+		description: "m3e",
+		bankSize:    2048,
 	}
 
 	// a ram bank is half the size of the available bank size. this is because
 	// of how ram is accessed - half the addresses are for reading and the
 	// other half are for writing
-	const ramSize = 512
+	const ramSize = 1024
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.mappingID))
+		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge data", cart.mappingID))
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -88,7 +86,7 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart m3ePlus) String() string {
+func (cart m3e) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
 	for i := range cart.segment {
@@ -103,46 +101,36 @@ func (cart m3ePlus) String() string {
 }
 
 // ID implements the mapper.CartMapper interface
-func (cart m3ePlus) ID() string {
+func (cart m3e) ID() string {
 	return cart.mappingID
 }
 
 // Initialise implements the mapper.CartMapper interface
-func (cart *m3ePlus) Initialise() {
-	// from spec:
-	//
-	// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
-	// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
-	// must be placed at the end of the first 1K in the ROM image.
+func (cart *m3e) Initialise() {
+	cart.segment[0] = cart.NumBanks() - 2
 
-	for i := range cart.segment {
-		cart.segment[i] = 0
-		cart.segmentIsRam[i] = false
-	}
+	// the last segment always points to the last bank
+	cart.segment[1] = cart.NumBanks() - 1
 }
 
 // Read implements the mapper.CartMapper interface
-func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr >= 0x0000 && addr <= 0x07ff {
 		segment = 0
-	} else if addr >= 0x0400 && addr <= 0x07ff {
+	} else if addr >= 0x0800 && addr <= 0x0fff {
 		segment = 1
-	} else if addr >= 0x0800 && addr <= 0x0bff {
-		segment = 2
-	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		segment = 3
 	}
 
 	var data uint8
 
 	if cart.segmentIsRam[segment] {
-		data = cart.ram[cart.segment[segment]][addr&0x01ff]
+		data = cart.ram[cart.segment[segment]][addr&0x03ff]
 	} else {
 		bank := cart.segment[segment]
 		if bank < len(cart.banks) {
-			data = cart.banks[bank][addr&0x03ff]
+			data = cart.banks[bank][addr&0x07ff]
 		}
 	}
 
@@ -150,28 +138,24 @@ func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface
-func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *m3e) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
 	}
 
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr >= 0x0000 && addr <= 0x07ff {
 		segment = 0
-	} else if addr >= 0x0400 && addr <= 0x07ff {
-		segment = 1
-	} else if addr >= 0x0800 && addr <= 0x0bff {
-		segment = 2
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
 		segment = 3
 	}
 
 	if cart.segmentIsRam[segment] {
-		cart.ram[cart.segment[segment]][addr&0x01ff] = data
+		cart.ram[cart.segment[segment]][addr&0x03ff] = data
 		return nil
 	} else if poke {
-		cart.banks[cart.segment[segment]][addr&0x03ff] = data
+		cart.banks[cart.segment[segment]][addr&0x07ff] = data
 		return nil
 	}
 
@@ -179,31 +163,20 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // NumBanks implements the mapper.CartMapper interface
-func (cart m3ePlus) NumBanks() int {
+func (cart m3e) NumBanks() int {
 	return len(cart.banks)
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
-	var seg int
-	if addr >= 0x0000 && addr <= 0x03ff {
-		seg = 0
-	} else if addr >= 0x0400 && addr <= 0x07ff {
-		seg = 1
-	} else if addr >= 0x0800 && addr <= 0x0bff {
-		seg = 2
-	} else { // remaining address is between 0x0c00 and 0x0fff
-		seg = 3
+func (cart *m3e) GetBank(addr uint16) banks.Details {
+	if addr >= 0x0000 && addr <= 0x07ff {
+		return banks.Details{Number: cart.segment[0], IsRAM: false, Segment: 0}
 	}
-
-	if cart.segmentIsRam[seg] {
-		return banks.Details{Number: cart.segment[seg], IsRAM: true, Segment: seg}
-	}
-	return banks.Details{Number: cart.segment[seg], Segment: seg}
+	return banks.Details{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface
-func (cart *m3ePlus) Patch(offset int, data uint8) error {
+func (cart *m3e) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return errors.New(errors.CartridgePatchOOB, offset)
 	}
@@ -215,8 +188,8 @@ func (cart *m3ePlus) Patch(offset int, data uint8) error {
 }
 
 // Listen implements the mapper.CartMapper interface
-func (cart *m3ePlus) Listen(addr uint16, data uint8) {
-	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
+func (cart *m3e) Listen(addr uint16, data uint8) {
+	// mapper 3e is a derivative of tigervision and so uses the same Listen()
 	// mechanism. see the tigervision commentary for details
 
 	// bankswitch on hotspot access
@@ -234,11 +207,11 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface
-func (cart *m3ePlus) Step() {
+func (cart *m3e) Step() {
 }
 
 // GetRAM implements the bus.CartRAMBus interface.
-func (cart m3ePlus) GetRAM() []bus.CartRAM {
+func (cart m3e) GetRAM() []bus.CartRAM {
 	r := make([]bus.CartRAM, len(cart.ram))
 
 	for i := range cart.ram {
@@ -252,11 +225,7 @@ func (cart m3ePlus) GetRAM() []bus.CartRAM {
 				case 0:
 					origin = uint16(0x1000)
 				case 1:
-					origin = uint16(0x1400)
-				case 2:
 					origin = uint16(0x1800)
-				case 3:
-					origin = uint16(0x1c00)
 				}
 				break // for loop
 			}
@@ -275,21 +244,27 @@ func (cart m3ePlus) GetRAM() []bus.CartRAM {
 }
 
 // PutRAM implements the bus.CartRAMBus interface
-func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
+func (cart *m3e) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
 }
 
 // IterateBank implemnts the disassemble interface
-func (cart m3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
+func (cart m3e) IterateBanks(prev *banks.Content) *banks.Content {
 	b := prev.Number + 1
-	if b < len(cart.banks) {
+	if b >= 0 && b < len(cart.banks)-1 {
 		return &banks.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
+			},
+		}
+	} else if b == len(cart.banks)-1 {
+		return &banks.Content{Number: b,
+			Data: cart.banks[b],
+			Origins: []uint16{
+				// cannot point to the first segment
 				memorymap.OriginCart + uint16(cart.bankSize),
-				memorymap.OriginCart + uint16(cart.bankSize)*2,
-				memorymap.OriginCart + uint16(cart.bankSize)*3},
+			},
 		}
 	}
 	return nil

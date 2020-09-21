@@ -26,26 +26,36 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-func fingerprint3ePlus(b []byte) bool {
-	// 3e is similar to tigervision, a key difference being that it uses 0x3e
-	// to switch ram, in addition to 0x3f for switching banks.
+func fingerprint3e(b []byte) bool {
+	// 3E cart bankswitching is triggered by storing the bank number in address
+	// 3E using 'STA $3E', commonly followed by an  immediate mode LDA
 	//
-	// postulating that the fingerprint method can be the same except for the
-	// write address.
+	// fingerprint method taken from:
+	//
+	// https://gitlab.com/firmaplus/atari-2600-pluscart/-/blob/master/source/STM32firmware/PlusCart/Src/cartridge_detection.c#L140
 
-	threshold3e := 5
-	threshold3f := 5
-	for i := range b {
-		if b[i] == 0x85 && b[i+1] == 0x3e {
-			threshold3e--
-		}
-		if b[i] == 0x85 && b[i+1] == 0x3f {
-			threshold3f--
-		}
-		if threshold3e <= 0 && threshold3f <= 0 {
+	for i := 0; i < len(b)-3; i++ {
+		if b[i] == 0x85 && b[i+1] == 0x3e && b[i+2] == 0xa9 && b[i+3] == 0x00 {
 			return true
 		}
 	}
+
+	return false
+}
+
+func fingerprint3ePlus(b []byte) bool {
+	// previous versions of this function worked similarly to the tigervision
+	// method but this is more accurate
+	//
+	// fingerprint method taken from:
+	//
+	// https://gitlab.com/firmaplus/atari-2600-pluscart/-/blob/master/source/STM32firmware/PlusCart/Src/cartridge_detection.c#L148
+	for i := 0; i < len(b)-3; i++ {
+		if b[i] == 'T' && b[i+1] == 'J' && b[i+2] == '3' && b[i+3] == 'E' {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -164,6 +174,11 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	if fingerprintSuperchargerFastLoad(cartload) {
 		cart.mapper, err = supercharger.NewSupercharger(cartload)
+		return err
+	}
+
+	if fingerprint3e(cartload.Data) {
+		cart.mapper, err = new3e(cartload.Data)
 		return err
 	}
 
