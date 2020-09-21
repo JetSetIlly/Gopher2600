@@ -25,7 +25,9 @@ The gameplay playback feature is also used in the inbuilt [regression database](
 
 The Atari 2600 comes with a variety of [hand controllers](#hand-controllers) and `Gopher2600` does it's very best to automatically select the correct input device. `Gopher2600` also supports the [SaveKey](#savekey) peripheral.
 
-`Gopher2600` supports a variety of cartridge formats including [Supercharger](#supercharger-roms) from MP3 or WAV files. It supports `DPC+` format although there is no support for the ARM as yet. Most other formats are also supported.
+`Gopher2600` supports a variety of cartridge formats including [Supercharger](#supercharger-roms) from MP3 or WAV files. It supports `DPC+` format although there is no support for the ARM as yet. Most other formats are also supported
+
+For network access `Gopher2600` supports [PlusROM](#plusrom) functionality.
 
 `Gopher2600` is in active development and feature requests are welcomed.
 
@@ -155,9 +157,9 @@ Joystick, paddle and keyboard inputs are supported. Currently, only joysticks an
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
 
 The paddle is available by operating the mouse. To activate the paddle, click
-in the play window and waggle the mouse to the extremes three times. Note that
-once the window has been clicked, the mouse will be captured and the pointer
-will disappear. To "release" the mouse, click the right-mouse button.
+in the play window and waggle the mouse a few times. Note that once the window
+has been clicked, the mouse will be captured and the pointer will disappear. To
+"release" the mouse, click the right-mouse button.
 
 #### Joystick (left player)
 
@@ -230,11 +232,11 @@ The rest of the section will give a brief run down of debugger features.
 	          GREP          HALT          HELP        INSERT      KEYBOARD
 	          LAST          LINT          LIST           LOG        MEMMAP
 	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
-	         PATCH          PEEK        PLAYER     PLAYFIELD          POKE
-	          PREF       QUANTUM          QUIT           RAM         RESET
-	          RIOT           RUN        SCRIPT          STEP         STICK
-	        SYMBOL           TIA         TRACE          TRAP            TV
-	         WATCH
+	         PATCH          PEEK        PLAYER     PLAYFIELD       PLUSROM
+	          POKE         PREFS       QUANTUM          QUIT           RAM
+	         RESET          RIOT           RUN        SCRIPT          STEP
+	         STICK        SYMBOL           TIA         TRACE          TRAP
+	            TV         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
@@ -262,7 +264,8 @@ is `.config/gopher2600`.
 
 For MacOS the directory for release executables is `~/Library/Application Support/gopher2600`
 
-For Window, files will be in the user's `Application Data/gopher2600` folder
+For Windows, a `gopher2600` will be placed somewhere in the user's `%AppData%`
+folder, either in the `Local` or `Roaming` sub-folder.
 
 In all instances, the directory, sub-directory and files will be created automatically
 as required.
@@ -296,6 +299,22 @@ Note that the `SaveKey` will always be inserted in the second player port.
 
 Data saved to the `SaveKey` will be saved in the [configuration directory](#configuration-directory) to the
 binary file named simply, `savekey`.
+
+## PlusROM
+
+The Atari2600 [Pluscart](http://pluscart.firmaplus.de/pico/) is a third-party
+peripheral that gives the Atari2600 internet connectivity. `Gopher2600` will
+automatically determine when a PlusROM enable ROM is loaded.
+
+The very first time you load a PlusROM cartridge you will be asked for a
+username. This username along with the automatically generated ID, will be used
+to identify you on the PlusROM server (different ROMs can have different
+servers.)
+
+<img src=".screenshots/plusrom_first_installation.png" height="200" alt="plusrom cartridges ask for a username"/>
+
+You can change your username through the debugger, either through the PlusROM
+preferences window or through the [terminal](#debugger-terminal) with the `PLUSROM` command.
 
 ## Recording Gameplay
 
