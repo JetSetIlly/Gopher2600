@@ -142,6 +142,8 @@ func (n *network) send(data uint8, send bool) {
 func (n *network) getResponse() {
 	select {
 	case r := <-n.respChan:
+		defer r.Body.Close()
+
 		var recvBuffer bytes.Buffer
 		recvBuffer.ReadFrom(r.Body)
 

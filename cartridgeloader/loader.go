@@ -18,6 +18,7 @@ package cartridgeloader
 import (
 	"crypto/sha1"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -178,16 +179,15 @@ func (cl *Loader) Load() error {
 
 	switch url.Scheme {
 	case "http":
+		fallthrough
+	case "https":
 		resp, err := http.Get(cl.Filename)
 		if err != nil {
 			return errors.New(errors.CartridgeLoader, err)
 		}
 		defer resp.Body.Close()
 
-		size := resp.ContentLength
-
-		cl.Data = make([]byte, size)
-		_, err = resp.Body.Read(cl.Data)
+		cl.Data, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return errors.New(errors.CartridgeLoader, err)
 		}

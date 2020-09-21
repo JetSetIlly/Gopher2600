@@ -111,7 +111,6 @@ func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 			}
 		})
 	}
-	imgui.PopItemWidth()
 }
 
 func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
