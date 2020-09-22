@@ -48,14 +48,18 @@ type logger struct {
 
 	// get and del return the requested number of entries counting from the
 	// most recent. to specify all entries use the allEntries constant
-	get chan int
-	del chan int
+	get    chan int
+	del    chan int
+	recent chan bool
 
 	// array of Entries from the service goroutine
 	entries chan []Entry
 
 	// if echo is not nil than write new entry to the io.Writer
 	echo io.Writer
+
+	// the index of the last entry sent over the recent channel
+	lastRecent int
 }
 
 func newLogger(maxEntries int) *logger {
@@ -63,6 +67,7 @@ func newLogger(maxEntries int) *logger {
 		add:     make(chan Entry),
 		get:     make(chan int),
 		del:     make(chan int),
+		recent:  make(chan bool),
 		entries: make(chan []Entry),
 	}
 
@@ -86,6 +91,10 @@ func newLogger(maxEntries int) *logger {
 				}
 
 				if len(entries) > maxEntries {
+					l.lastRecent -= maxEntries - len(entries)
+					if l.lastRecent < 0 {
+						l.lastRecent = 0
+					}
 					entries = entries[len(entries)-maxEntries:]
 				}
 
@@ -94,6 +103,12 @@ func newLogger(maxEntries int) *logger {
 					n = len(entries)
 				}
 				l.entries <- entries[len(entries)-n:]
+
+			case v := <-l.recent:
+				if v {
+					l.entries <- entries[l.lastRecent:]
+					l.lastRecent = len(entries)
+				}
 
 			case n := <-l.del:
 				if n < 0 || n > len(entries) {
@@ -121,6 +136,15 @@ func (l *logger) clear() {
 
 func (l *logger) write(output io.Writer) {
 	l.get <- allEntries
+	entries := <-l.entries
+
+	for _, e := range entries {
+		io.WriteString(output, e.String())
+	}
+}
+
+func (l *logger) writeRecent(output io.Writer) {
+	l.recent <- true
 	entries := <-l.entries
 
 	for _, e := range entries {

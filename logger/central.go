@@ -45,14 +45,17 @@ func Write(output io.Writer) {
 	central.write(output)
 }
 
+// WriteRecent returns only the entries added since the last call to CopyRecent
+func WriteRecent(output io.Writer) {
+	central.writeRecent(output)
+}
+
 // Tail writes the last N entries to io.Writer
 func Tail(output io.Writer, number int) {
 	central.tail(output, number)
 }
 
-// Slice returns a copy of the last n entries. the ref argument is the
-// timestamp of the last entry of the last copy. A new copy will only be made
-// if the timestamp of the current last entry is different to the ref value.
+// Slice returns a copy all log entries.
 func Copy() []Entry {
 	return central.copy()
 }
