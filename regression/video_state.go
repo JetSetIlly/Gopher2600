@@ -49,7 +49,7 @@ func NewStateType(state string) (StateType, error) {
 	case "CPU":
 		return StateCPU, nil
 	}
-	return StateNone, errors.New(errors.RegressionDigestError, fmt.Sprintf("unrecognised state type [%s]", state))
+	return StateNone, errors.New(errors.RegressionVideoError, fmt.Sprintf("unrecognised state type [%s]", state))
 }
 
 func (t StateType) String() string {

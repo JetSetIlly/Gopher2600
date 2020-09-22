@@ -33,99 +33,100 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-const digestEntryID = "digest"
+const videoEntryID = "video"
 
 const (
-	digestFieldMode int = iota
-	digestFieldCartName
-	digestFieldCartMapping
-	digestFieldTVtype
-	digestFieldNumFrames
-	digestFieldState
-	digestFieldStateFile
-	digestFieldDigest
-	digestFieldNotes
-	numDigestFields
+	videoFieldCartName int = iota
+	videoFieldCartMapping
+	videoFieldTVtype
+	videoFieldNumFrames
+	videoFieldState
+	videoFieldStateOptions
+	videoFieldStateFile
+	videoFieldDigest
+	videoFieldNotes
+	numVideoFields
 )
 
-// DigestRegression is the simplest regression type. it works by running the
-// emulation for N frames and the digest recorded at that point. Regression
-// passes if subsequenct runs produce the same digest value
-type DigestRegression struct {
-	Mode      DigestMode
-	CartLoad  cartridgeloader.Loader
-	TVtype    string
-	NumFrames int
-	State     StateType
-	stateFile string
-	Notes     string
-	digest    string
+// VideoRegression is the simplest regression type. it works by running the
+// emulation for N frames and the video recorded at that point. Regression
+// passes if subsequenct runs produce the same video value
+type VideoRegression struct {
+	CartLoad     cartridgeloader.Loader
+	TVtype       string
+	NumFrames    int
+	State        StateType
+	stateOptions string
+	stateFile    string
+	Notes        string
+	digest       string
 }
 
-func deserialiseDigestEntry(fields database.SerialisedEntry) (database.Entry, error) {
-	reg := &DigestRegression{}
+func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, error) {
+	reg := &VideoRegression{}
 
 	// basic sanity check
-	if len(fields) > numDigestFields {
-		return nil, errors.New(errors.RegressionDigestError, "too many fields")
+	if len(fields) > numVideoFields {
+		return nil, errors.New(errors.RegressionVideoError, "too many fields")
 	}
-	if len(fields) < numDigestFields {
-		return nil, errors.New(errors.RegressionDigestError, "too few fields")
+	if len(fields) < numVideoFields {
+		return nil, errors.New(errors.RegressionVideoError, "too few fields")
 	}
 
 	// string fields need no conversion
-	reg.CartLoad.Filename = fields[digestFieldCartName]
-	reg.CartLoad.Mapping = fields[digestFieldCartMapping]
-	reg.TVtype = fields[digestFieldTVtype]
-	reg.digest = fields[digestFieldDigest]
-	reg.Notes = fields[digestFieldNotes]
+	reg.CartLoad.Filename = fields[videoFieldCartName]
+	reg.CartLoad.Mapping = fields[videoFieldCartMapping]
+	reg.TVtype = fields[videoFieldTVtype]
+	reg.digest = fields[videoFieldDigest]
+	reg.Notes = fields[videoFieldNotes]
 
 	var err error
 
-	// parse mode field
-	reg.Mode, err = ParseDigestMode(fields[digestFieldMode])
-	if err != nil {
-		return nil, errors.New(errors.RegressionDigestError, err)
-	}
-
 	// convert number of frames field
-	reg.NumFrames, err = strconv.Atoi(fields[digestFieldNumFrames])
+	reg.NumFrames, err = strconv.Atoi(fields[videoFieldNumFrames])
 	if err != nil {
-		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[digestFieldNumFrames])
-		return nil, errors.New(errors.RegressionDigestError, msg)
+		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[videoFieldNumFrames])
+		return nil, errors.New(errors.RegressionVideoError, msg)
 	}
 
 	// handle state field
-	switch fields[digestFieldState] {
+	switch fields[videoFieldState] {
 	case "":
 		reg.State = StateNone
 	case "TV":
 		reg.State = StateTV
 	case "PORTS":
 		reg.State = StatePorts
+	case "TIMER":
+		reg.State = StateTimer
+	case "CPU":
+		reg.State = StateCPU
 	default:
-		msg := fmt.Sprintf("invalid state field [%s]", fields[digestFieldState])
-		return nil, errors.New(errors.RegressionDigestError, msg)
+		msg := fmt.Sprintf("invalid state field [%s]", fields[videoFieldState])
+		return nil, errors.New(errors.RegressionVideoError, msg)
 	}
 
+	// state options
+	reg.stateOptions = fields[videoFieldStateOptions]
+
 	// and state file field
-	if fields[digestFieldStateFile] != "" {
+	if fields[videoFieldStateFile] != "" {
 		if reg.State == StateNone {
-			return nil, errors.New(errors.RegressionDigestError, "invalid state file field: no state type specifier")
+			return nil, errors.New(errors.RegressionVideoError, "invalid state file field: no state type specifier")
 		}
-		reg.stateFile = fields[digestFieldStateFile]
+		reg.stateFile = fields[videoFieldStateFile]
 	}
 
 	return reg, nil
 }
 
 // ID implements the database.Entry interface
-func (reg DigestRegression) ID() string {
-	return digestEntryID
+func (reg VideoRegression) ID() string {
+	return videoEntryID
 }
 
 // String implements the database.Entry interface
-func (reg DigestRegression) String() string {
+func (reg VideoRegression) String() string {
 	s := strings.Builder{}
 
 	state := ""
@@ -136,11 +137,15 @@ func (reg DigestRegression) String() string {
 		state = "[TV state]"
 	case StatePorts:
 		state = "[ports state]"
+	case StateTimer:
+		state = "[timer state]"
+	case StateCPU:
+		state = "[cpu state]"
 	default:
 		state = "[with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s/%s] %s [%s] frames=%d %s", reg.ID(), reg.Mode, reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -148,14 +153,14 @@ func (reg DigestRegression) String() string {
 }
 
 // Serialise implements the database.Entry interface
-func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
+func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			reg.Mode.String(),
 			reg.CartLoad.Filename,
 			reg.CartLoad.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.State.String(),
+			reg.stateOptions,
 			reg.stateFile,
 			reg.digest,
 			reg.Notes,
@@ -164,7 +169,7 @@ func (reg *DigestRegression) Serialise() (database.SerialisedEntry, error) {
 }
 
 // CleanUp implements the database.Entry interface
-func (reg DigestRegression) CleanUp() error {
+func (reg VideoRegression) CleanUp() error {
 	err := os.Remove(reg.stateFile)
 	if _, ok := err.(*os.PathError); ok {
 		return nil
@@ -173,48 +178,30 @@ func (reg DigestRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
+func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
+		return false, "", errors.New(errors.RegressionVideoError, err)
 	}
 	defer tv.End()
 
-	// decide on digest mode and create appropriate digester
-	var dig digest.Digest
-
-	switch reg.Mode {
-	case DigestVideoOnly:
-		dig, err = digest.NewVideo(tv)
-		if err != nil {
-			return false, "", errors.New(errors.RegressionDigestError, err)
-		}
-
-	case DigestAudioOnly:
-		dig, err = digest.NewAudio(tv)
-		if err != nil {
-			return false, "", errors.New(errors.RegressionDigestError, err)
-		}
-
-	case DigestBoth:
-		return false, "", errors.New(errors.RegressionDigestError, "video/audio digest not yet implemented")
-
-	case DigestUndefined:
-		return false, "", errors.New(errors.RegressionDigestError, fmt.Sprintf("undefined digest mode"))
+	dig, err := digest.NewVideo(tv)
+	if err != nil {
+		return false, "", errors.New(errors.RegressionVideoError, err)
 	}
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
+		return false, "", errors.New(errors.RegressionVideoError, err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
+		return false, "", errors.New(errors.RegressionVideoError, err)
 	}
 
 	// list of state information. we'll either save this in the event of
@@ -265,7 +252,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 	})
 
 	if err != nil {
-		return false, "", errors.New(errors.RegressionDigestError, err)
+		return false, "", errors.New(errors.RegressionVideoError, err)
 	}
 
 	if newRegression {
@@ -275,7 +262,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 			// create a unique filename
 			reg.stateFile, err = uniqueFilename("state", reg.CartLoad)
 			if err != nil {
-				return false, "", errors.New(errors.RegressionDigestError, err)
+				return false, "", errors.New(errors.RegressionVideoError, err)
 			}
 
 			// check that the filename is unique
@@ -285,7 +272,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 			// need
 			if nf != nil {
 				msg := fmt.Sprintf("state recording file already exists (%s)", reg.stateFile)
-				return false, "", errors.New(errors.RegressionDigestError, msg)
+				return false, "", errors.New(errors.RegressionVideoError, msg)
 			}
 			nf.Close()
 
@@ -293,7 +280,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
 				msg := fmt.Sprintf("error creating state recording file: %s", err)
-				return false, "", errors.New(errors.RegressionDigestError, msg)
+				return false, "", errors.New(errors.RegressionVideoError, msg)
 			}
 			defer nf.Close()
 
@@ -301,7 +288,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
 					msg := fmt.Sprintf("error writing state recording file: %s", err)
-					return false, "", errors.New(errors.RegressionDigestError, msg)
+					return false, "", errors.New(errors.RegressionVideoError, msg)
 				}
 			}
 		}
@@ -317,7 +304,7 @@ func (reg *DigestRegression) regress(newRegression bool, output io.Writer, msg s
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
 			msg := fmt.Sprintf("old state recording file not present (%s)", reg.stateFile)
-			return false, "", errors.New(errors.RegressionDigestError, msg)
+			return false, "", errors.New(errors.RegressionVideoError, msg)
 		}
 		defer nf.Close()
 

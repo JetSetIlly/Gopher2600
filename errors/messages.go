@@ -69,8 +69,9 @@ const (
 
 	// regression
 	RegressionError         = "regression: %v"
-	RegressionDigestError   = "digest regression: %v"
+	RegressionVideoError    = "video regression: %v"
 	RegressionPlaybackError = "playback regression: %v"
+	RegressionLogError      = "log regression: %v"
 
 	// setup
 	SetupError           = "setup error: %v"

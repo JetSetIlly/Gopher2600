@@ -685,27 +685,69 @@ func regress(md *modalflag.Modes) error {
 func regressAdd(md *modalflag.Modes) error {
 	md.NewMode()
 
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [cartridge args only]")
-	numframes := md.AddInt("frames", 10, "number of frames to run [cartridge args only]")
-	state := md.AddString("state", "none", "record emulator state at every CPU step [cartrdige args only]")
-	mode := md.AddString("mode", "video", "type of digest to create [cartridge args only]")
-	notes := md.AddString("notes", "", "annotation for the database")
+	mode := md.AddString("mode", "", "type of regression entry")
+	notes := md.AddString("notes", "", "additional annotation for the database")
+	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping [non-playback]")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [non-playback]")
+	numframes := md.AddInt("frames", 10, "number of frames to run [non-playback]")
+	state := md.AddString("state", "", "record emulator state at every CPU step [non-playback]")
+	log := md.AddBool("log", false, "echo debugging log to stdout")
 
-	md.AdditionalHelp("The regression test to be added can be the path to a cartrige file or a previously recorded playback file. For playback files, the flags marked [cartridge args only] do not make sense and will be ignored.")
+	md.AdditionalHelp(
+		`The regression test to be added can be the path to a cartrige file or a previously
+recorded playback file. For playback files, the flags marked [non-playback] do not make
+sense and will be ignored.
+
+Available modes are VIDEO, PLAYBACK and LOG. If not mode is explicitely given then
+VIDEO will be used for ROM files and PLAYBACK will be used for playback recordings.
+
+The -log flag intructs the program to echo the log to the console. Do not confuse this
+with the LOG mode. Note that asking for log output will supress regression progress meters.`)
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
+	// set debugging log echo
+	if *log {
+		logger.SetEcho(os.Stdout)
+		md.Output = &nopWriter{}
+	} else {
+		logger.SetEcho(nil)
+	}
+
 	switch len(md.RemainingArgs()) {
 	case 0:
 		return fmt.Errorf("2600 cartridge or playback file required for %s mode", md)
 	case 1:
-		var rec regression.Regressor
+		var reg regression.Regressor
 
-		if recorder.IsPlaybackFile(md.GetArg(0)) {
+		if *mode == "" {
+			if recorder.IsPlaybackFile(md.GetArg(0)) {
+				*mode = "PLAYBACK"
+			} else {
+				*mode = "VIDEO"
+			}
+		}
+
+		switch strings.ToUpper(*mode) {
+		case "VIDEO":
+			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+
+			statetype, err := regression.NewStateType(*state)
+			if err != nil {
+				return err
+			}
+
+			reg = &regression.VideoRegression{
+				CartLoad:  cartload,
+				TVtype:    strings.ToUpper(*spec),
+				NumFrames: *numframes,
+				State:     statetype,
+				Notes:     *notes,
+			}
+		case "PLAYBACK":
 			// check and warn if unneeded arguments have been specified
 			md.Visit(func(flg string) {
 				if flg == "frames" {
@@ -713,35 +755,22 @@ func regressAdd(md *modalflag.Modes) error {
 				}
 			})
 
-			rec = &regression.PlaybackRegression{
+			reg = &regression.PlaybackRegression{
 				Script: md.GetArg(0),
 				Notes:  *notes,
 			}
-		} else {
+		case "LOG":
 			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
-			// parse digest mode, failing if string is not recognised
-			m, err := regression.ParseDigestMode(*mode)
-			if err != nil {
-				return fmt.Errorf("%v", err)
-			}
-
-			statetype, err := regression.NewStateType(*state)
-			if err != nil {
-				return err
-			}
-
-			rec = &regression.DigestRegression{
-				Mode:      m,
+			reg = &regression.LogRegression{
 				CartLoad:  cartload,
 				TVtype:    strings.ToUpper(*spec),
 				NumFrames: *numframes,
-				State:     statetype,
 				Notes:     *notes,
 			}
 		}
 
-		err := regression.RegressAdd(md.Output, rec)
+		err := regression.RegressAdd(md.Output, reg)
 		if err != nil {
 			// using carriage return (without newline) at beginning of error
 			// message because we want to overwrite the last output from
@@ -825,4 +854,11 @@ func hiscoreServer(md *modalflag.Modes) error {
 	}
 
 	return nil
+}
+
+// nopWriter is an empty writer
+type nopWriter struct{}
+
+func (*nopWriter) Write(p []byte) (n int, err error) {
+	return 0, nil
 }

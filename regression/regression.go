@@ -54,11 +54,15 @@ type Regressor interface {
 // when starting a database session we need to register what entries we will
 // find in the database
 func initDBSession(db *database.Session) error {
-	if err := db.RegisterEntryType(digestEntryID, deserialiseDigestEntry); err != nil {
+	if err := db.RegisterEntryType(videoEntryID, deserialiseVideoEntry); err != nil {
 		return err
 	}
 
 	if err := db.RegisterEntryType(playbackEntryID, deserialisePlaybackEntry); err != nil {
+		return err
+	}
+
+	if err := db.RegisterEntryType(logEntryID, deserialiseLogEntry); err != nil {
 		return err
 	}
 

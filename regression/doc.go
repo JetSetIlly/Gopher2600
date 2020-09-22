@@ -17,26 +17,24 @@
 // adding test results to a database, the tests can be rerun automatically and
 // checked for consistancy.
 //
-// Currently, two main types of test are supported. First the digest test. This
-// test runs a ROM for a set number of frames, saving the video or audio hash
-// to the test database.
+// Currently, two main types of test are supported. First the video test. This
+// test runs a ROM for a set number of frames. A hash of the final video output
+// is created a stored for future comparison.
 //
 // The second test is the Playback test. This is a slightly more complex test
 // that replays user input from a previously recorded session. Recorded
 // sessions take video hashes on every input trigger and so will succeed or
 // fail if something has changed. The regression test automates the process.
 //
-// The two tests are useful for different ROMs. The digest type is useful if
-// the ROM does something immediately, say an image that is stressful on the
-// TIA. The playback type is more useful for real world ROMs (ie. games).
+// The third test is the Log test. This takes a hash of the log after a set
+// number of frames. Test failure for the Log test means that something
+// (anything) in the log output has changed.
 //
-// The digest test also supports recording of machine state. State if recorded
-// every video cycle so probably isn't suitable for very long digest tests. The
-// resulting state script is very compressible but the regression package does
-// not yet support transparent compression/decompression.
-//
-// Two machine states are supported at the moment - TV state and RIOT/Ports
-// state. This is easily extendable to other areas of the emulation.
+// In addition to its basic function, the video test also supports recording of
+// machine state. Four machine states are supported at the moment - TV state,
+// RIOT/Ports state, RIOT/Timer and CPU. Aprt from the TV state this doesn't
+// fit well with the idea of the video digest and may be separated into a
+// completely separate test in the future.
 //
 // Playback scripts and state scripts are stored in the "regressionScripts"
 // directory of the emulator's configuration directory. See the gopher2600
