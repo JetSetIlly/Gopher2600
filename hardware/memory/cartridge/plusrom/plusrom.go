@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
@@ -37,14 +36,14 @@ type PlusROM struct {
 	net   *network
 }
 
-func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mapper.CartMapper, error) {
+func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) error) (mapper.CartMapper, error) {
 	cart := &PlusROM{child: child}
 
 	var err error
 
 	cart.Prefs, err = newPreferences()
 	if err != nil {
-		return nil, errors.New("plusrom", err)
+		return nil, errors.New("plusrom: %s", err)
 	}
 
 	cart.net = newNetwork(cart.Prefs)
@@ -69,12 +68,16 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 	a |= (uint16(bank.Data[addrinfoMSB&addrMask]) << 8)
 
 	// get bank to which the NMI vector points
-	b := (a & 0xf000) >> 12
+	b := int((a & 0xf000) >> 12)
+
+	if b == 0 || b > cart.NumBanks() {
+		return nil, errors.New(NotAPlusROM, "invlid NMI vector")
+	}
 
 	// normalise indirect address so it's suitable for indexing bank data
 	a &= addrMask
 
-	// host/path information is in the first bank. get reference to the first bank
+	// get the bank to whic the NMI vector points
 	bank = &banks.Content{Number: -1}
 	for i := 0; i < int(b); i++ {
 		bank = child.IterateBanks(bank)
@@ -119,10 +122,10 @@ func NewPlusROM(cartload cartridgeloader.Loader, child mapper.CartMapper) (mappe
 	logger.Log("plusrom", fmt.Sprintf("will connect to %s", cart.net.ai.String()))
 
 	// call onloaded function if one is available
-	if cartload.OnLoaded != nil {
-		err := cartload.OnLoaded(cart)
+	if onLoaded != nil {
+		err := onLoaded(cart)
 		if err != nil {
-			return nil, errors.New("plusrom", err)
+			return nil, errors.New("plusrom %s:", err)
 		}
 	}
 
