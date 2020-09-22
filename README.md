@@ -345,7 +345,7 @@ useful during further development. To quickly add a ROM to the database:
 
 	> gopher2600 regress add roms/Pitfall.bin
 
-By default, this adds a "screen digest" of the first 10 frames of the named ROM. We can alter the
+By default, this adds a "video digest" of the first 10 frames of the named ROM. We can alter the
 number of frames, and also other parameters with `regress add` mode flags. For example, to run for
 100 frames instead of 10:
 
@@ -357,23 +357,26 @@ file instead of a rom:
 
 	> gopher2600 regress add recording_Pitfall_20200201_093658
 
+Consult the output of `gopher2600 regress add -help` for other options.
+
 #### Listing
 
 To listing all previously add tests use the "list" sub-mode:
 
 	> gopher2600 regress list
-	> 000 [digest/video] player_switching [AUTO] frames=10  [NUSIZ]
-	> 001 [digest/video] NUSIZTest [AUTO] frames=10  [NUSIZ]
-	> 002 [digest/video] testSize2Copies_A [AUTO] frames=10  [NUSIZ]
-	> 003 [digest/video] testSize2Copies_B [AUTO] frames=10  [NUSIZ]
-	> 004 [digest/video] player8 [AUTO] frames=10  [NUSIZ]
-	> 005 [digest/video] player16 [AUTO] frames=10  [NUSIZ]
-	> 006 [digest/video] player32 [AUTO] frames=10  [NUSIZ]
-	> 007 [digest/video] barber [AUTO] frames=10  [NUSIZ]
-	> 008 [digest/video] test1.bas [AUTO] frames=10  [TIMER]
-	> 009 [digest/video] test2.bas [AUTO] frames=10  [TIMER]
-	> 010 [playback] playback_player_20200127_172838 [HMOVE/BAD THINGS]
-	> Total: 11
+	> 000 [video] player_switching [AUTO] frames=10  [NUSIZ]
+	> 001 [video] NUSIZTest [AUTO] frames=10  [NUSIZ]
+	> 002 [video] testSize2Copies_A [AUTO] frames=10  [NUSIZ]
+	> 003 [video] testSize2Copies_B [AUTO] frames=10  [NUSIZ]
+	> 004 [video] player8 [AUTO] frames=10  [NUSIZ]
+	> 005 [video] player16 [AUTO] frames=10  [NUSIZ]
+	> 006 [video] player32 [AUTO] frames=10  [NUSIZ]
+	> 007 [video] barber [AUTO] frames=10  [NUSIZ]
+	> 008 [video] test1.bas [AUTO] frames=10  [TIMER]
+	> 009 [video] test2.bas [AUTO] frames=10  [TIMER]
+	> 010 [video] test3.bas [AUTO] frames=10  [TIMER]
+	> 011 [video] test4.bas [AUTO] frames=10  [TIMER]
+	> Total: 12
 
 #### Running
 
@@ -398,6 +401,8 @@ The setup system is currently available only to those willing to edit the "datab
 The database is called `setupDB` and is located in the project's configuration directory. The format
 of the database is described in the setup package. Here is the direct link to the source
 level documentation: https://godoc.org/github.com/JetSetIlly/Gopher2600/setup
+
+This area of the emulation will be expanded upon in the future.
 
 ## Gopher2600 Tools
 
