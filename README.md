@@ -117,6 +117,11 @@ During development, programmers may find it more useful to use the go command
 directly
 
 	> go run gopher2600.go
+	
+### Minimum requirements
+
+`Gopher2600` makes use of SDL2. The SDL2 go binding used by the project requires a minimum
+SDL2 version of `2.0.10`.
 
 ## Cross-Compilation
 
