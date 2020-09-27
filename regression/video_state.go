@@ -16,7 +16,6 @@
 package regression
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
@@ -49,7 +48,7 @@ func NewStateType(state string) (StateType, error) {
 	case "CPU":
 		return StateCPU, nil
 	}
-	return StateNone, errors.New(errors.RegressionVideoError, fmt.Sprintf("unrecognised state type [%s]", state))
+	return StateNone, errors.Errorf("regression: video: unrecognised state type [%s]", state)
 }
 
 func (t StateType) String() string {

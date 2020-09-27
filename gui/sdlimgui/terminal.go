@@ -134,7 +134,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			ev()
 
 		case _ = <-events.IntEvents:
-			return 0, errors.New(errors.UserQuit)
+			return 0, errors.Errorf(terminal.UserAbort)
 		}
 	}
 }

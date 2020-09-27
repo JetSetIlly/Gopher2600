@@ -94,3 +94,9 @@ type TabCompletion interface {
 type Broker interface {
 	GetTerminal() Terminal
 }
+
+// Sentinal errors
+const (
+	UserInterrupt = "user interrupt"
+	UserAbort     = "user abort"
+)

@@ -52,10 +52,10 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 
 	// basic sanity check
 	if len(fields) > numPanelSetupFields {
-		return nil, errors.New(errors.SetupPanelError, "too many fields in panel entry")
+		return nil, errors.Errorf("panel: too many fields in panel entry")
 	}
 	if len(fields) < numPanelSetupFields {
-		return nil, errors.New(errors.SetupPanelError, "too few fields in panel entry")
+		return nil, errors.Errorf("panel: too few fields in panel entry")
 	}
 
 	var err error
@@ -63,15 +63,15 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 	set.cartHash = fields[panelSetupFieldCartHash]
 
 	if set.p0, err = strconv.ParseBool(fields[panelSetupFieldP0]); err != nil {
-		return nil, errors.New(errors.SetupPanelError, "invalid player 0 setting")
+		return nil, errors.Errorf("panel: invalid player 0 setting")
 	}
 
 	if set.p1, err = strconv.ParseBool(fields[panelSetupFieldP1]); err != nil {
-		return nil, errors.New(errors.SetupPanelError, "invalid player 1 setting")
+		return nil, errors.Errorf("panel: invalid player 1 setting")
 	}
 
 	if set.col, err = strconv.ParseBool(fields[panelSetupFieldCol]); err != nil {
-		return nil, errors.New(errors.SetupPanelError, "invalid color setting")
+		return nil, errors.Errorf("panel: invalid color setting")
 	}
 
 	set.notes = fields[panelSetupFieldNotes]

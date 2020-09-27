@@ -16,7 +16,6 @@
 package debugger
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -60,7 +59,7 @@ func (trc *traces) clear() {
 // drop a specific tracer by a position in the list
 func (trc *traces) drop(num int) error {
 	if len(trc.traces)-1 < num {
-		return errors.New(errors.CommandError, fmt.Sprintf("trace #%d is not defined", num))
+		return errors.Errorf("trace #%d is not defined", num)
 	}
 
 	h := trc.traces[:num]
@@ -133,7 +132,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	if ai == nil {
 		ai = trc.dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			return errors.New(errors.CommandError, fmt.Sprintf("invalid trace address: %s", a))
+			return errors.Errorf("invalid trace address: %s", a)
 		}
 	}
 
@@ -142,7 +141,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	// check to see if trace already exists
 	for _, t := range trc.traces {
 		if t.ai.address == nt.ai.address {
-			return errors.New(errors.CommandError, fmt.Sprintf("already being traced (%s)", t))
+			return errors.Errorf("already being traced (%s)", t)
 		}
 	}
 

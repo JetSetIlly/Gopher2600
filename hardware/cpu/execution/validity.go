@@ -16,8 +16,6 @@
 package execution
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/errors"
 )
 
@@ -25,52 +23,48 @@ import (
 // consistent with the instruction definition.
 func (result Result) IsValid() error {
 	if !result.Final {
-		return errors.New(errors.InvalidResult, "execution not finalised (bad opcode?)")
+		return errors.Errorf("cpu: execution not finalised (bad opcode?)")
 	}
 
 	// is PageFault valid given content of Defn
 	if !result.Defn.PageSensitive && result.PageFault {
-		return errors.New(errors.InvalidResult, "unexpected page fault")
+		return errors.Errorf("cpu: unexpected page fault")
 	}
 
 	// byte count
 	if result.ByteCount != result.Defn.Bytes {
-		return errors.New(errors.InvalidResult, fmt.Sprintf("unexpected number of bytes read during decode (%d instead of %d)",
-			result.ByteCount, result.Defn.Bytes))
+		return errors.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", result.ByteCount, result.Defn.Bytes)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.CPUBug == "" {
 		if result.Defn.IsBranch() {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
-				msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
+				return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					result.Defn.OpCode,
 					result.Defn.Mnemonic,
 					result.ActualCycles,
 					result.Defn.Cycles,
 					result.Defn.Cycles+1,
 					result.Defn.Cycles+2)
-				return errors.New(errors.InvalidResult, msg)
 			}
 		} else {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
-					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
+					return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,
 						result.Defn.Cycles,
 						result.Defn.Cycles+1)
-					return errors.New(errors.InvalidResult, msg)
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					msg := fmt.Sprintf("number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
+					return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,
 						result.Defn.Cycles)
-					return errors.New(errors.InvalidResult, msg)
 				}
 			}
 		}

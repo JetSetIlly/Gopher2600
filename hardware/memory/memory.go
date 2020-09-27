@@ -223,7 +223,7 @@ func (mem VCSMemory) Peek(address uint16) (uint8, error) {
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.Peek(ma)
 	}
-	return 0, errors.New(errors.UnpeekableAddress, address)
+	return 0, errors.Errorf(bus.AddressError, address)
 }
 
 // Poke implements the DebugBus interface
@@ -232,5 +232,5 @@ func (mem VCSMemory) Poke(address uint16, data uint8) error {
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.(bus.DebugBus).Poke(ma, data)
 	}
-	return errors.New(errors.UnpokeableAddress, address)
+	return errors.Errorf(bus.AddressError, address)
 }

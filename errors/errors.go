@@ -23,25 +23,28 @@ import (
 // Values is the type used to specify arguments for FormattedErrors
 type Values []interface{}
 
-// AtariError allows code to specify a predefined error and not worry too much about the
-// message behind that error and how the message will be formatted on output.
-type AtariError struct {
-	Message string
-	Values  Values
+// curated erorrs allow code to specify a predefined error and not worry too
+// much about the message behind that error and how the message will be
+// formatted on output.
+type curated struct {
+	message string
+	values  Values
 }
 
-// New is used to create a new instance of an AtariError.
-func New(message string, values ...interface{}) AtariError {
-	return AtariError{
-		Message: message,
-		Values:  values,
+// Errorf creates a new curated error
+func Errorf(message string, values ...interface{}) error {
+	return curated{
+		message: message,
+		values:  values,
 	}
 }
 
-// Error returns the normalised error message. Most usefully, it compresses
-// duplicate adjacent AtariError instances.
-func (er AtariError) Error() string {
-	s := fmt.Sprintf(er.Message, er.Values...)
+// Error returns the normalised error message. Normalisation being the removal
+// of duplicate adjacent error messsage parts.
+//
+// Implements the go language error interface.
+func (er curated) Error() string {
+	s := fmt.Errorf(er.message, er.values...).Error()
 
 	// de-duplicate error message parts
 	p := strings.SplitN(s, ": ", 3)
@@ -52,39 +55,60 @@ func (er AtariError) Error() string {
 	return strings.Join(p, ": ")
 }
 
-// Is checks if most recently wrapped error is an AtariError with a specific
-// head
-func Is(err error, head string) bool {
-	switch er := err.(type) {
-	case AtariError:
-		return er.Message == head
+// Head returns the leading part of the message.
+//
+// Similar to Is() but returns the string rather than a boolean. Useful for
+// switches.
+//
+// If err is a plain error then the return of Error() is returned
+func Head(err error) string {
+	if er, ok := err.(curated); ok {
+		return er.message
 	}
-	return false
+	return err.Error()
 }
 
-// IsAny checks if most recently wrapped error is an AtariError, with any head
+// IsAny checks if error is being curated by this package
 func IsAny(err error) bool {
-	switch err.(type) {
-	case AtariError:
-		return true
-	}
-	return false
-}
-
-// Has checks to see if the specified AtariError head appears somewhere in the
-// sequence of wrapped errors
-func Has(err error, head string) bool {
-	if Is(err, head) {
-		return true
-	}
-
-	if _, ok := err.(AtariError); !ok {
+	if err == nil {
 		return false
 	}
 
-	for i := range err.(AtariError).Values {
-		if e, ok := err.(AtariError).Values[i].(error); ok {
-			if Has(e, head) {
+	if _, ok := err.(curated); ok {
+		return true
+	}
+	return false
+}
+
+// Is checks if error has a specific head
+func Is(err error, head string) bool {
+	if err == nil {
+		return false
+	}
+
+	if er, ok := err.(curated); ok {
+		return er.message == head
+	}
+	return false
+}
+
+// Has checks if the message string appears somewhere in the error
+func Has(err error, msg string) bool {
+	if err == nil {
+		return false
+	}
+
+	if !IsAny(err) {
+		return false
+	}
+
+	if Is(err, msg) {
+		return true
+	}
+
+	for i := range err.(curated).values {
+		if e, ok := err.(curated).values[i].(curated); ok {
+			if Has(e, msg) {
 				return true
 			}
 		}

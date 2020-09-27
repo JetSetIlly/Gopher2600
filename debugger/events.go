@@ -31,7 +31,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	switch ev := ev.(type) {
 	case gui.EventQuit:
 		dbg.running = false
-		return errors.New(errors.UserInterrupt)
+		return errors.Errorf(terminal.UserInterrupt)
 
 	case gui.EventKeyboard:
 		var handled bool
@@ -88,11 +88,6 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	case gui.EventMouseMotion:
 		_, err := playmode.MouseMotionEventHandler(ev, dbg.VCS)
 		return err
-	}
-
-	// wrap error in GUIEventError
-	if err != nil {
-		err = errors.New(errors.GUIEventError, err)
 	}
 
 	return err

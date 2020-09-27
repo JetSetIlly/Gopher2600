@@ -131,6 +131,11 @@ func (pan *Panel) write() {
 	pan.bus.WriteSWCHx(PanelID, v)
 }
 
+// Sentinal error returned by Panel.HandleEvent() if power button is pressed
+const (
+	PowerOff = "emulated machine has been powered off"
+)
+
 // HandleEvent implements Peripheral interface
 func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	switch event {
@@ -160,7 +165,7 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 		pan.p1pro = !pan.p1pro
 
 	case PanelPowerOff:
-		return errors.New(errors.PowerOff)
+		return errors.Errorf(PowerOff)
 
 	}
 

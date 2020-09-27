@@ -74,3 +74,9 @@ type ChipBus interface {
 type UpdateBus interface {
 	Update(ChipData) bool
 }
+
+// Sentinal error returned by memory package functions. Note that the error
+// expects a numberic address, which will be formatted as four digit hex.
+const (
+	AddressError = "inaccessible address (%#04x)"
+)

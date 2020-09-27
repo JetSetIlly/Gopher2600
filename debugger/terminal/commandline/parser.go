@@ -75,12 +75,12 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
 		if err != nil {
-			return nil, errors.New(errors.ParserError, fmt.Sprintf("%s [line %d, col %d]", err, t, d))
+			return nil, errors.Errorf("parser: %v", fmt.Errorf("%s [line %d, col %d]", err, t, d))
 		}
 
 		// check that parsing was complete
 		if d < len(defn)-1 {
-			return nil, errors.New(errors.ParserError, fmt.Sprintf("outstanding characters in definition [line %d, col %d]", t, d))
+			return nil, errors.Errorf("parser: %v", fmt.Errorf("outstanding characters in definition [line %d, col %d]", t, d))
 		}
 
 		// add to list of commands (order doesn't matter at this stage)

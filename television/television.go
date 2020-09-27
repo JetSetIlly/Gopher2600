@@ -319,14 +319,14 @@ func (tv *television) newFrame(synced bool) error {
 // GetState implements the Television interface
 func (tv *television) GetState(request StateReq) (int, error) {
 	switch request {
-	default:
-		return 0, errors.New(errors.UnknownTVRequest, request)
 	case ReqFramenum:
 		return tv.frameNum, nil
 	case ReqScanline:
 		return tv.scanline, nil
 	case ReqHorizPos:
 		return tv.horizPos - HorizClksHBlank, nil
+	default:
+		return 0, errors.Errorf("television: unhandled tv state request (%v)", request)
 	}
 }
 
@@ -342,9 +342,8 @@ func (tv *television) SetSpec(spec string) error {
 	case "AUTO":
 		tv.spec = SpecNTSC
 		tv.auto = true
-
 	default:
-		return errors.New(errors.Television, fmt.Sprintf("unsupported tv specifcation (%s)", spec))
+		return errors.Errorf("television: unsupported spec (%s)", spec)
 	}
 
 	tv.top = tv.spec.ScanlineTop

@@ -74,7 +74,7 @@ func (plb Playback) String() string {
 func (plb Playback) EndFrame() (bool, error) {
 	currFrame, err := plb.digest.GetState(television.ReqFramenum)
 	if err != nil {
-		return false, errors.New(errors.RegressionPlaybackError, err)
+		return false, errors.Errorf("playback: %v", err)
 	}
 
 	if currFrame > plb.endFrame {
@@ -96,15 +96,15 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 	tf, err := os.Open(transcript)
 	if err != nil {
-		return nil, errors.New(errors.PlaybackError, err)
+		return nil, errors.Errorf("playback: %v", err)
 	}
 	buffer, err := ioutil.ReadAll(tf)
 	if err != nil {
-		return nil, errors.New(errors.PlaybackError, err)
+		return nil, errors.Errorf("playback: %v", err)
 	}
 	err = tf.Close()
 	if err != nil {
-		return nil, errors.New(errors.PlaybackError, err)
+		return nil, errors.Errorf("playback: %v", err)
 	}
 
 	// convert file contents to an array of lines
@@ -123,15 +123,13 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 		// ignore lines that don't have enough fields
 		if len(toks) != numFields {
-			msg := fmt.Sprintf("expected %d fields at line %d", numFields, i+1)
-			return nil, errors.New(errors.PlaybackError, msg)
+			return nil, errors.Errorf("playback: expected %d fields at line %d", numFields, i+1)
 		}
 
 		// add a new playbackSequence for the id if it doesn't exist
 		n, err := strconv.Atoi(toks[fieldID])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
-			return nil, errors.New(errors.PlaybackError, msg)
+			return nil, errors.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
 		}
 
 		// create a new entry and convert tokens accordingly
@@ -170,8 +168,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 		entry.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
-			return nil, errors.New(errors.PlaybackError, msg)
+			return nil, errors.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 		}
 
 		// assuming that frames are listed in order in the file. update
@@ -180,14 +177,12 @@ func NewPlayback(transcript string) (*Playback, error) {
 
 		entry.scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
-			return nil, errors.New(errors.PlaybackError, msg)
+			return nil, errors.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
 		entry.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
 		if err != nil {
-			msg := fmt.Sprintf("%s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
-			return nil, errors.New(errors.PlaybackError, msg)
+			return nil, errors.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
 		}
 
 		entry.hash = toks[fieldHash]
@@ -231,7 +226,7 @@ func parseEventData(value string) ports.EventData {
 func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return errors.New(errors.PlaybackError, "no playback hardware available")
+		return errors.Errorf("playback: no playback hardware available")
 	}
 	plb.vcs = vcs
 
@@ -239,16 +234,14 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
 	if plb.vcs.TV.SpecIDOnCreation() != plb.TVSpec {
-		return errors.New(errors.PlaybackError,
-			fmt.Sprintf("recording was made with the %s TV spec. trying to playback with a TV spec of %s.",
-				plb.TVSpec, vcs.TV.SpecIDOnCreation()))
+		return errors.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.SpecIDOnCreation())
 	}
 
 	var err error
 
 	plb.digest, err = digest.NewVideo(plb.vcs.TV)
 	if err != nil {
-		return errors.New(errors.RecordingError, err)
+		return errors.Errorf("playback: %v", err)
 	}
 
 	// attach playback to all vcs ports
@@ -256,6 +249,11 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 
 	return nil
 }
+
+// Sentinal error returned by GetPlayback if a hash error is encountered
+const (
+	PlaybackHashError = "playback: hash error [line %d]"
+)
 
 // GetPlayback returns an event and source portID for an event occuring at the
 // current TV frame/scanline/horizpos
@@ -268,15 +266,15 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	// get current state of the television
 	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.Errorf("playback: %v", err)
 	}
 	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
 	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.Errorf("playback: %v", err)
 	}
 	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
 	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackError, err)
+		return ports.NoPortID, ports.NoEvent, nil, errors.Errorf("playback: %v", err)
 	}
 
 	// compare current state with the recording
@@ -284,7 +282,7 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	if frame == entry.frame && scanline == entry.scanline && horizpos == entry.horizpos {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return ports.NoPortID, ports.NoEvent, nil, errors.New(errors.PlaybackHashError, fmt.Sprintf("line %d", entry.line))
+			return ports.NoPortID, ports.NoEvent, nil, errors.Errorf(PlaybackHashError, entry.line)
 		}
 		return entry.portID, entry.event, entry.value, nil
 	}

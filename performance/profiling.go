@@ -28,11 +28,11 @@ func ProfileCPU(outFile string, run func() error) error {
 	// write cpu profile
 	f, err := os.Create(outFile)
 	if err != nil {
-		return errors.New(errors.PerformanceError, err)
+		return errors.Errorf("performance; %v", err)
 	}
 	err = pprof.StartCPUProfile(f)
 	if err != nil {
-		return errors.New(errors.PerformanceError, err)
+		return errors.Errorf("performance; %v", err)
 	}
 	defer pprof.StopCPUProfile()
 
@@ -43,12 +43,12 @@ func ProfileCPU(outFile string, run func() error) error {
 func ProfileMem(outFile string) error {
 	f, err := os.Create(outFile)
 	if err != nil {
-		return errors.New(errors.PerformanceError, err)
+		return errors.Errorf("performance; %v", err)
 	}
 	runtime.GC()
 	err = pprof.WriteHeapProfile(f)
 	if err != nil {
-		return errors.New(errors.PerformanceError, err)
+		return errors.Errorf("performance; %v", err)
 	}
 	f.Close()
 

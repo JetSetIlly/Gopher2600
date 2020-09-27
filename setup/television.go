@@ -45,10 +45,10 @@ func deserialiseTelevisionEntry(fields database.SerialisedEntry) (database.Entry
 
 	// basic sanity check
 	if len(fields) > numtelevisionFields {
-		return nil, errors.New(errors.SetupTelevisionError, "too many fields in television entry")
+		return nil, errors.Errorf("television: too many fields in television entry")
 	}
 	if len(fields) < numtelevisionFields {
-		return nil, errors.New(errors.SetupTelevisionError, "too few fields in television entry")
+		return nil, errors.Errorf("television: too few fields in television entry")
 	}
 
 	set.cartHash = fields[televisionFieldCartHash]

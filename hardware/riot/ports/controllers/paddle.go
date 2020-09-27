@@ -94,7 +94,7 @@ func (pdl *Paddle) Name() string {
 func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, pdl.Name(), event)
+		return errors.Errorf(UnhandledEvent, pdl.Name(), event)
 
 	case ports.NoEvent:
 

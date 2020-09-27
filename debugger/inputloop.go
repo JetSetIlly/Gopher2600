@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/errors"
@@ -49,7 +50,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// to the FormatResult() call in the main dbg.running loop below.
 		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
 		if err != nil {
-			return errors.New(errors.DebuggerError, err)
+			return err
 		}
 
 		// update debugger the same way for video quantum as for cpu quantum
@@ -179,7 +180,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// pause tv when emulation has halted
 				err = dbg.scr.ReqFeature(gui.ReqSetPause, true)
 				if err != nil {
-					return errors.New(errors.DebuggerError, err)
+					return err
 				}
 			}
 
@@ -204,44 +205,38 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					switch err {
 					case io.EOF:
 						// treat EOF events the same as UserInterrupt events
-						err = errors.New(errors.UserInterrupt)
+						err = errors.Errorf(terminal.UserInterrupt)
 					default:
-						// the error is probably serious. exit input loop with
-						// err
-						return errors.New(errors.DebuggerError, err)
+						// the error is probably serious. exit input loop with err
+						return err
 					}
 				}
 
-				// we now know the we have an Atari Error so we can safely
-				// switch on the internal Errno
-				switch err.(errors.AtariError).Message {
+				// we now know the we have an project specific error
+				switch errors.Head(err) {
 
 				// user interrupts are triggered by the user (in a terminal
 				// environment, usually by pressing ctrl-c)
-				case errors.UserInterrupt:
+				case terminal.UserInterrupt:
 					dbg.handleInterrupt(inputter, inputLen)
 
 				// like UserInterrupt but with no confirmation stage
-				case errors.UserQuit:
+				case terminal.UserAbort:
 					dbg.running = false
 
 				// a script that is being run will usually end with a ScriptEnd
 				// error. in these instances we can say simply say so (using
 				// the error message) with a feedback style (not an error
 				// style)
-				case errors.ScriptEnd:
+				case script.ScriptEnd:
 					if !videoCycle {
 						dbg.printLine(terminal.StyleFeedback, err.Error())
 					}
 					return nil
 
-				// a GUI event has triggered an error
-				case errors.GUIEventError:
-					dbg.printLine(terminal.StyleError, err.Error())
-
 				// all other errors are passed upwards to the calling function
 				default:
-					return errors.New(errors.DebuggerError, err)
+					return err
 				}
 			}
 
@@ -269,7 +264,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if !checkTerm && dbg.runUntilHalt {
 				err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
 				if err != nil {
-					return errors.New(errors.DebuggerError, err)
+					return err
 				}
 			}
 		}
@@ -295,7 +290,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			case QuantumVideo:
 				stepErr = dbg.VCS.Step(vcsStepVideo)
 			default:
-				stepErr = errors.New(errors.DebuggerError, "unknown quantum mode")
+				stepErr = fmt.Errorf("unknown quantum mode")
 			}
 
 			// check step error. note that we format and store last CPU
@@ -307,7 +302,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// format last execution result even on error
 				dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
 				if err != nil {
-					return errors.New(errors.DebuggerError, err)
+					return err
 				}
 
 				// the supercharger ROM will eventually start execution from the PC
@@ -341,9 +336,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					}
 
 				} else {
-					// exit input loop only if error is not an AtariError...
+					// exit input loop if error is a plain error
 					if !errors.IsAny(stepErr) {
-						return errors.New(errors.DebuggerError, stepErr)
+						return stepErr
 					}
 
 					// ...set lastStepError instead and allow emulation to halt
@@ -366,7 +361,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// update entry and store result as last result
 				dbg.lastResult, err = dbg.Disasm.UpdateEntry(dbg.lastBank, dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
 				if err != nil {
-					return errors.New(errors.DebuggerError, err)
+					return err
 				}
 
 				// check validity of instruction result
@@ -375,7 +370,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult.Defn)
 						dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult)
-						return errors.New(errors.DebuggerError, err)
+						return err
 					}
 				}
 			}
@@ -422,7 +417,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
 		if err != nil {
 			// another UserInterrupt has occurred. we treat
 			// UserInterrupt as thought 'y' was pressed
-			if errors.Is(err, errors.UserInterrupt) {
+			if errors.Is(err, terminal.UserInterrupt) {
 				confirm[0] = 'y'
 			} else {
 				dbg.printLine(terminal.StyleError, err.Error())

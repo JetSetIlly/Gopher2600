@@ -91,7 +91,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 	err = img.prefs.Load(true)
 	if err != nil {
 		// ignore missing prefs file errors
-		if !errors.Is(err, errors.PrefsNoFile) {
+		if !errors.Is(err, prefs.NoPrefsFile) {
 			return err
 		}
 	}

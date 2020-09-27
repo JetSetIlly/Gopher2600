@@ -44,7 +44,7 @@ func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 // WriteBank writes the disassembly of the selected bank to io.Writer
 func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) error {
 	if bank < 0 || bank > len(dsm.disasm)-1 {
-		return errors.New(errors.DisasmError, fmt.Sprintf("no such bank (%d)", bank))
+		return errors.Errorf("disassembly: no such bank (%d)", bank)
 	}
 
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))

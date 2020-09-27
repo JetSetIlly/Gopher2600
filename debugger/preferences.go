@@ -45,24 +45,24 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 	// setup preferences and load from disk
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, err
 	}
 	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, err
 	}
 	err = p.dsk.Add("debugger.randstate", p.RandomState)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, err
 	}
 	err = p.dsk.Add("debugger.randpins", p.RandomPins)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, err
 	}
 	err = p.dsk.Load(true)
 	if err != nil {
 		// ignore missing prefs file errors
-		if !errors.Is(err, errors.PrefsNoFile) {
+		if !errors.Is(err, prefs.NoPrefsFile) {
 			return nil, err
 		}
 	}

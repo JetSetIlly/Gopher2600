@@ -48,6 +48,11 @@ type Cartridge struct {
 	Passive bool
 }
 
+// Sentinal error returned if operation is on the ejected cartridge type
+const (
+	Ejected = "cartridge ejected"
+)
+
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type
 func NewCartridge() *Cartridge {
@@ -139,7 +144,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
 		err := cart.fingerprint(cartload)
 		if err != nil {
-			return err
+			return errors.Errorf("cartridge: %v", err)
 		}
 
 		// in addition to the regular fingerprint we also check to see if this
@@ -159,7 +164,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 					return nil
 				}
 
-				return errors.New(errors.CartridgeError, err)
+				return errors.Errorf("cartridge: %v", err)
 			}
 
 			// we've wrapped the main cartridge mapper inside the PlusROM
@@ -229,13 +234,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	if err != nil {
-		return errors.New(errors.CartridgeError, err)
+		return errors.Errorf("cartridge: %v", err)
 	}
 
 	if addSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 			if !superchip.AddSuperchip() {
-				return errors.New(errors.CartridgeError, "error adding superchip")
+				return errors.Errorf("cartridge: error adding superchip")
 			}
 		}
 	}

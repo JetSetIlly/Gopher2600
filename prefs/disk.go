@@ -83,13 +83,18 @@ func NewDisk(path string) (*Disk, error) {
 func (dsk *Disk) Add(key string, p pref) error {
 	for _, r := range key {
 		if !(r == '.' || unicode.IsLetter(r)) {
-			return errors.New(errors.Prefs, fmt.Sprintf("illegal character [%c] in key string [%s]", r, key))
+			return errors.Errorf("prefs: %v", fmt.Errorf("illegal character [%c] in key string [%s]", r, key))
 		}
 	}
 
 	dsk.entries[key] = p
 	return nil
 }
+
+// Sentinal error returned if prefs file does not exist
+const (
+	NoPrefsFile = "prefs: file does not exist (%s)"
+)
 
 // Save current preference values to disk
 func (dsk *Disk) Save() error {
@@ -99,7 +104,7 @@ func (dsk *Disk) Save() error {
 	// load *all* existing entries to temporary entryMap
 	_, err := load(dsk.path, &entries, false)
 	if err != nil {
-		if !errors.Is(err, errors.PrefsNoFile) {
+		if !errors.Is(err, NoPrefsFile) {
 			return err
 		}
 	}
@@ -113,7 +118,7 @@ func (dsk *Disk) Save() error {
 	// create a new prefs file
 	f, err := os.Create(dsk.path)
 	if err != nil {
-		return errors.New(errors.Prefs, err)
+		return errors.Errorf("prefs: %v", err)
 	}
 	defer f.Close()
 
@@ -123,19 +128,19 @@ func (dsk *Disk) Save() error {
 	// add warning label
 	n, err = fmt.Fprintf(f, fmt.Sprintf("%s\n", WarningBoilerPlate))
 	if err != nil {
-		return errors.New(errors.Prefs, err)
+		return errors.Errorf("prefs: %v", err)
 	}
 	if n != len(WarningBoilerPlate)+1 {
-		return errors.New(errors.Prefs, "incorrect number of characters writtent to file")
+		return errors.Errorf("prefs: %v", "incorrect number of characters writtent to file")
 	}
 
 	// write entries (combination of old and live entries) to disk
 	n, err = fmt.Fprintf(f, entries.String())
 	if err != nil {
-		return errors.New(errors.Prefs, err)
+		return errors.Errorf("prefs: %v", err)
 	}
 	if n != len(entries.String()) {
-		return errors.New(errors.Prefs, "incorrect number of characters writtent to file")
+		return errors.Errorf("prefs: %v", "incorrect number of characters writtent to file")
 	}
 
 	return nil
@@ -177,9 +182,9 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return numLoaded, errors.New(errors.PrefsNoFile, path)
+			return numLoaded, errors.Errorf(NoPrefsFile, path)
 		}
-		return numLoaded, errors.New(errors.Prefs, err)
+		return numLoaded, errors.Errorf("prefs: %v", err)
 	}
 	defer f.Close()
 
@@ -189,7 +194,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	// check validity of file by checking the first line
 	scanner.Scan()
 	if scanner.Text() != WarningBoilerPlate {
-		return 0, errors.New(errors.PrefsNotValid, path)
+		return 0, errors.Errorf("prefs: %v", fmt.Errorf("not a valid prefs file (%s)", path))
 	}
 
 	// key and value strings
@@ -213,7 +218,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 		if p, ok := (*entries)[k]; ok {
 			err = p.Set(v)
 			if err != nil {
-				return numLoaded, errors.New(errors.Prefs, err)
+				return numLoaded, errors.Errorf("prefs: %v", err)
 			}
 			numLoaded++
 		} else if !limit {
@@ -221,7 +226,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 			var dummy String
 			err = dummy.Set(v)
 			if err != nil {
-				return numLoaded, errors.New(errors.Prefs, err)
+				return numLoaded, errors.Errorf("prefs: %v", err)
 			}
 			(*entries)[k] = &dummy
 		}

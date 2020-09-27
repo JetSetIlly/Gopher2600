@@ -110,12 +110,12 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
 
 	default:
-		err = errors.New(errors.UnsupportedGUIRequest, request.request)
+		err = errors.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
 
 	if err == nil {
 		img.featureErr <- nil
 	} else {
-		img.featureErr <- errors.New(errors.SDLImgui, err)
+		img.featureErr <- errors.Errorf("sdlimgui: %v", err)
 	}
 }

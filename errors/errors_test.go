@@ -20,19 +20,50 @@ import (
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
-func TestError(t *testing.T) {
-	e := errors.New(errors.SetupError, "foo")
-	if e.Error() != "setup error: foo" {
-		t.Errorf("unexpected error message")
-	}
+const testError = "test error: %s"
+const testErrorB = "test error B: %s"
+
+func TestDuplicateErrors(t *testing.T) {
+
+	e := errors.Errorf(testError, "foo")
+	test.Equate(t, e.Error(), "test error: foo")
 
 	// packing errors of the same type next to each other causes
 	// one of them to be dropped
-	f := errors.New(errors.SetupError, e)
-	fmt.Println(f.Error())
-	if f.Error() != "setup error: foo" {
-		t.Errorf("unexpected duplicate error message")
-	}
+	f := errors.Errorf(testError, e)
+	test.Equate(t, f.Error(), "test error: foo")
+}
+
+func TestIs(t *testing.T) {
+	e := errors.Errorf(testError, "foo")
+	test.ExpectedSuccess(t, errors.Is(e, testError))
+
+	// Has() should fail because we haven't included testErrorB anywhere in the error
+	test.ExpectedFailure(t, errors.Has(e, testErrorB))
+
+	// packing errors of the same type next to each other causes
+	// one of them to be dropped
+	f := errors.Errorf(testErrorB, e)
+	test.ExpectedFailure(t, errors.Is(f, testError))
+	test.ExpectedSuccess(t, errors.Is(f, testErrorB))
+	test.ExpectedSuccess(t, errors.Has(f, testError))
+	test.ExpectedSuccess(t, errors.Has(f, testErrorB))
+
+	// IsAny should return true for these errors also
+	test.ExpectedSuccess(t, errors.IsAny(e))
+	test.ExpectedSuccess(t, errors.IsAny(f))
+}
+
+func TestPlainErrors(t *testing.T) {
+	// test plain errors that haven't been formatted with our errors package
+
+	e := fmt.Errorf("plain test error")
+	test.ExpectedFailure(t, errors.IsAny(e))
+
+	const testError = "test error: %s"
+
+	test.ExpectedFailure(t, errors.Has(e, testError))
 }

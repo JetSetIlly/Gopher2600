@@ -43,7 +43,7 @@ func NewSession() (*Session, error) {
 
 	sess.Prefs, err = newPreferences()
 	if err != nil {
-		return nil, errors.New(errors.HiScore, err)
+		return nil, errors.Errorf("hiscore: %v", err)
 	}
 
 	return sess, nil
@@ -55,7 +55,7 @@ func (sess *Session) StartSession(name string, hash string) error {
 	jsonValue, _ := json.Marshal(values)
 	statusCode, response, err := sess.post("/HiScore/rest/game/", jsonValue)
 	if err != nil {
-		return errors.New(errors.HiScore, err)
+		return errors.Errorf("hiscore: %v", err)
 	}
 
 	switch statusCode {
@@ -65,12 +65,12 @@ func (sess *Session) StartSession(name string, hash string) error {
 		// game is new and has been added to the database
 	default:
 		err = fmt.Errorf("register game: unexpected response from HiScore server [%d: %s]", statusCode, response)
-		return errors.New(errors.HiScore, err)
+		return errors.Errorf("hiscore: %v", err)
 	}
 
 	err = json.Unmarshal(response, &sess.id)
 	if err != nil {
-		return errors.New(errors.HiScore, err)
+		return errors.Errorf("hiscore: %v", err)
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func (sess *Session) EndSession(playTime time.Duration) error {
 	jsonValue, _ := json.Marshal(values)
 	statusCode, response, err := sess.post("/HiScore/rest/play/", jsonValue)
 	if err != nil {
-		return errors.New(errors.HiScore, err)
+		return errors.Errorf("hiscore: %v", err)
 	}
 
 	switch statusCode {
@@ -91,7 +91,7 @@ func (sess *Session) EndSession(playTime time.Duration) error {
 		// hiscore has been posted
 	default:
 		err = fmt.Errorf("register hiscore: unexpected response from HiScore server [%d: %s]", statusCode, response)
-		return errors.New(errors.HiScore, err)
+		return errors.Errorf("hiscore: %v", err)
 	}
 
 	return nil

@@ -89,7 +89,7 @@ func (dig *Audio) flushAudio() error {
 	dig.digest = sha1.Sum(dig.buffer)
 	n := copy(dig.buffer, dig.digest[:])
 	if n != len(dig.digest) {
-		return errors.New(errors.AudioDigest, fmt.Sprintf("digest error while flushing audio stream"))
+		return errors.Errorf("digest: audio: %v", fmt.Sprintf("digest error while flushing audio stream"))
 	}
 	dig.bufferCt = audioBufferStart
 	return nil

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
@@ -490,10 +489,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
-		// allow out-of-spec errors for now. this should be optional
-		if !errors.Is(err, errors.TVOutOfSpec) {
-			return !tia.wsync, err
-		}
+		return !tia.wsync, err
 	}
 
 	return !tia.wsync, nil

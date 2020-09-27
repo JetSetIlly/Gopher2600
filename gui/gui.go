@@ -20,3 +20,8 @@ type GUI interface {
 	// send a request to set a gui feature
 	ReqFeature(request FeatureReq, args ...interface{}) error
 }
+
+// Sentinal error returned if GUI does no support requested feature
+const (
+	UnsupportedGuiFeature = "unsupported gui feature: %v"
+)

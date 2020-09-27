@@ -42,11 +42,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 			err := cmds.cmds[n].validate(tokens, false)
 			if err != nil {
-				// preserve FormattedError type
-				if _, ok := err.(errors.AtariError); ok {
-					return err
-				}
-				return errors.New(errors.ValidationError, err)
+				return err
 			}
 
 			// if we've reached this point and there are still oustanding
@@ -56,10 +52,10 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 				// special handling for help command
 				if cmd == cmds.helpCommand {
-					return errors.New(errors.ValidationError, fmt.Sprintf("no help for %s", strings.ToUpper(arg)))
+					return errors.Errorf("no help for %s", strings.ToUpper(arg))
 				}
 
-				return errors.New(errors.ValidationError, fmt.Sprintf("unrecognised argument (%s) for %s", arg, cmd))
+				return errors.Errorf("unrecognised argument (%s) for %s", arg, cmd)
 			}
 
 			return nil
@@ -80,7 +76,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	if !ok {
 		// we treat arguments in the root-group as though they are required
 		if n.typ == nodeRequired || n.typ == nodeRoot {
-			return fmt.Errorf("%s required", n.nodeVerbose())
+			return errors.Errorf("%s required", n.nodeVerbose())
 		}
 		return nil
 	}
@@ -95,7 +91,8 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	// many entries) is an illegal node and should not have been parsed
 	if n.tag == "" {
 		if n.next == nil {
-			return errors.New(errors.PanicError, "commandline validation", "illegal empty node")
+			// this shouldn't ever happen. return a plain error if it does
+			return fmt.Errorf("commandline validation: illegal empty node")
 		}
 
 		// speculatively validate the next node. don't do anything with any
@@ -216,7 +213,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	}
 
 	if !match {
-		err := fmt.Errorf("unrecognised argument (%s)", tok)
+		err := errors.Errorf("unrecognised argument (%s)", tok)
 
 		// there's still no match but the speculative flag means we were half
 		// expecting it. return error without further consideration

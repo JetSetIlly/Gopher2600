@@ -69,7 +69,7 @@ func (cmds Commands) String() string {
 func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error {
 	// if help command exists then there is nothing to do
 	if _, ok := cmds.Index[helpCommand]; ok {
-		return errors.New(errors.HelpError, fmt.Sprintf("%s: already defined", helpCommand))
+		return errors.Errorf("%s: already defined", helpCommand)
 	}
 
 	// keep reference to helps
@@ -109,7 +109,7 @@ func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error
 	// parse the constructed definition
 	p, d, err := parseDefinition(defn.String(), "")
 	if err != nil {
-		return errors.New(errors.HelpError, fmt.Sprintf("%s: %s (char %d)", helpCommand, err, d))
+		return errors.Errorf("%s: %s (char %d)", helpCommand, err, d)
 	}
 
 	// add parsed definition to list of commands

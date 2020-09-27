@@ -65,7 +65,7 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	const ramSize = 512
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number bytes in the cartridge file", cart.mappingID))
+		return nil, errors.Errorf("%s: wrong number bytes in the cartridge file", cart.mappingID)
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -175,7 +175,7 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	return errors.New(errors.MemoryBusError, addr)
+	return errors.Errorf(bus.AddressError, addr)
 }
 
 // NumBanks implements the mapper.CartMapper interface
@@ -205,7 +205,7 @@ func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
 // Patch implements the mapper.CartMapper interface
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return errors.New(errors.CartridgePatchOOB, offset)
+		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	bank := int(offset) / cart.bankSize

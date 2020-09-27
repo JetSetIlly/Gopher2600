@@ -261,7 +261,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				mc.PC.Load(address)
 				err := mc.ExecuteInstruction(nil)
 
-				unimplementedInstruction := errors.Is(err, errors.UnimplementedInstruction)
+				unimplementedInstruction := errors.Is(err, cpu.UnimplementedInstruction)
 
 				// filter out the predictable errors
 				if err != nil && !unimplementedInstruction {
@@ -297,12 +297,12 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 
 	// sanity checks
 	if bankCt != dsm.cart.NumBanks() {
-		return errors.New(errors.DisasmError, "number of banks in disassembly is different to NumBanks()")
+		return errors.Errorf("disassembly: number of banks in disassembly is different to NumBanks()")
 	}
 	for b := range dsm.disasm {
 		for _, a := range dsm.disasm[b] {
 			if a == nil {
-				return errors.New(errors.DisasmError, "not every address has been decoded")
+				return errors.Errorf("disassembly: not every address has been decoded")
 			}
 		}
 	}

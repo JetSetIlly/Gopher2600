@@ -57,7 +57,7 @@ func (tr *traps) clear() {
 // drop the numbered trap from the list
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
-		return errors.New(errors.CommandError, fmt.Sprintf("trap #%d is not defined", num))
+		return errors.Errorf("trap #%d is not defined", num)
 	}
 
 	h := tr.traps[:num]

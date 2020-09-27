@@ -94,7 +94,7 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// error to the debugging loop
 	select {
 	case <-events.IntEvents:
-		return 0, errors.New(errors.UserInterrupt)
+		return 0, errors.Errorf(terminal.UserInterrupt)
 	default:
 	}
 

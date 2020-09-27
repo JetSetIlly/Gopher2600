@@ -16,8 +16,6 @@
 package disassembly
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/errors"
 )
 
@@ -97,7 +95,7 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 	// banks than the current cartridge at the exact moment an illegal bank is
 	// being drawn by the sdlimgui disassembly window.
 	if bank >= len(dsm.disasm) {
-		return nil, 0, errors.New(errors.IterationError, fmt.Sprintf("no bank %d in disasm", bank))
+		return nil, 0, errors.Errorf("no bank %d in disasm", bank)
 	}
 
 	bitr := &IterateBank{
@@ -110,7 +108,7 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 	count := 0
 	for _, a := range dsm.disasm[bank] {
 		if a == nil {
-			return nil, 0, errors.New(errors.IterationError, "disassembly not complete")
+			return nil, 0, errors.Errorf("disassembly not complete")
 		}
 
 		if a.Level >= minLevel {

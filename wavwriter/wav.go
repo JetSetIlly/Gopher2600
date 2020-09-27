@@ -53,7 +53,7 @@ func (aw *WavWriter) SetAudio(audioData uint8) error {
 func (aw *WavWriter) EndMixing() error {
 	f, err := os.Create(aw.filename)
 	if err != nil {
-		return errors.New(errors.WavWriter, err)
+		return errors.Errorf("wavwriter: %v", err)
 	}
 	defer f.Close()
 
@@ -61,7 +61,7 @@ func (aw *WavWriter) EndMixing() error {
 
 	enc := wav.NewEncoder(f, tiaAudio.SampleFreq, 8, 1, 1)
 	if enc == nil {
-		return errors.New(errors.WavWriter, "bad parameters for wav encoding")
+		return errors.Errorf("wavwriter: %v", "bad parameters for wav encoding")
 	}
 	defer enc.Close()
 
@@ -77,7 +77,7 @@ func (aw *WavWriter) EndMixing() error {
 
 	err = enc.Write(buf.AsIntBuffer())
 	if err != nil {
-		return errors.New(errors.WavWriter, err)
+		return errors.Errorf("wavwriter: %v", err)
 	}
 
 	return nil

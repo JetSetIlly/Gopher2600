@@ -107,7 +107,7 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
 		if err == nil {
-			return nil, errors.New(errors.CommandError, fmt.Sprintf("'%s' is unsafe to use in scripts", tokens.String()))
+			return nil, errors.Errorf("'%s' is unsafe to use in scripts", tokens.String())
 		}
 
 		// record command if it auto is false (is not a result of an "auto" command
@@ -141,7 +141,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 	switch command {
 	default:
-		return false, errors.New(errors.CommandError, fmt.Sprintf("%s is not yet implemented", command))
+		return false, errors.Errorf("%s is not yet implemented", command)
 
 	case cmdHelp:
 		keyword, ok := tokens.Get()
@@ -202,7 +202,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			tokens.Unget()
 			err := dbg.stepTraps.parseCommand(tokens)
 			if err != nil {
-				return false, errors.New(errors.CommandError, fmt.Sprintf("unknown step mode (%s)", mode))
+				return false, errors.Errorf("unknown step mode (%s)", mode)
 			}
 			dbg.runUntilHalt = true
 		}
@@ -445,13 +445,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 		default:
 			symbol := tok
-			table, symbol, address, err := dbg.Disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
-			if err != nil {
-				if errors.Is(err, errors.SymbolUnknown) {
-					dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
-					return false, nil
-				}
-				return false, err
+			found, table, symbol, address := dbg.Disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
+			if !found {
+				dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
+				return false, nil
 			}
 
 			option, ok := tokens.Get()
@@ -866,7 +863,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		// mapAddress, even if it does seem redundant.
 		ai := dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			dbg.printLine(terminal.StyleError, errors.New(errors.UnpokeableAddress, a).Error())
+			dbg.printLine(terminal.StyleError, fmt.Sprintf(pokeError, a))
 			return false, nil
 		}
 		addr := ai.mappedAddress
@@ -1011,12 +1008,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "SCALE":
 			scl, ok := tokens.Get()
 			if !ok {
-				return false, errors.New(errors.CommandError, fmt.Sprintf("value required for %s %s", cmdDisplay, action))
+				return false, errors.Errorf("value required for %s %s", cmdDisplay, action)
 			}
 
 			scale, err := strconv.ParseFloat(scl, 32)
 			if err != nil {
-				return false, errors.New(errors.CommandError, fmt.Sprintf("%s %s value not valid (%s)", cmdDisplay, action, scl))
+				return false, errors.Errorf("%s %s value not valid (%s)", cmdDisplay, action, scl)
 			}
 
 			err = dbg.scr.ReqFeature(gui.ReqSetScale, float32(scale))
@@ -1063,8 +1060,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			if errors.Is(err, errors.UnsupportedGUIRequest) {
-				return false, errors.New(errors.CommandError, fmt.Sprintf("display does not support feature %s", action))
+			if errors.Is(err, gui.UnsupportedGuiFeature) {
+				return false, errors.Errorf("display does not support feature %s", action)
 			}
 			return false, err
 		}
@@ -1286,25 +1283,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdBreak:
 		err := dbg.breakpoints.parseCommand(tokens)
 		if err != nil {
-			return false, errors.New(errors.CommandError, err)
+			return false, errors.Errorf("%v", err)
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseCommand(tokens)
 		if err != nil {
-			return false, errors.New(errors.CommandError, err)
+			return false, errors.Errorf("%v", err)
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseCommand(tokens)
 		if err != nil {
-			return false, errors.New(errors.CommandError, err)
+			return false, errors.Errorf("%v", err)
 		}
 
 	case cmdTrace:
 		err := dbg.traces.parseCommand(tokens)
 		if err != nil {
-			return false, errors.New(errors.CommandError, err)
+			return false, errors.Errorf("%v", err)
 		}
 
 	case cmdList:
@@ -1334,7 +1331,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return false, errors.New(errors.CommandError, fmt.Sprintf("drop attribute must be a number (%s)", s))
+			return false, errors.Errorf("drop attribute must be a number (%s)", s)
 		}
 
 		drop = strings.ToUpper(drop)
@@ -1406,21 +1403,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "LOAD":
 			err := dbg.Prefs.load()
 			if err != nil {
-				return false, errors.New(errors.CommandError, err)
+				return false, errors.Errorf("%v", err)
 			}
 			err = dbg.Disasm.Prefs.Load()
 			if err != nil {
-				return false, errors.New(errors.CommandError, err)
+				return false, errors.Errorf("%v", err)
 			}
 
 		case "SAVE":
 			err := dbg.Prefs.save()
 			if err != nil {
-				return false, errors.New(errors.CommandError, err)
+				return false, errors.Errorf("%v", err)
 			}
 			err = dbg.Disasm.Prefs.Save()
 			if err != nil {
-				return false, errors.New(errors.CommandError, err)
+				return false, errors.Errorf("%v", err)
 			}
 		}
 

@@ -38,7 +38,7 @@ func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 		// create a new iteration for the bank
 		bitr, _, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
 		if err != nil {
-			return errors.New(errors.Linter, err)
+			return errors.Errorf("linter: %v", err)
 		}
 
 		// iterate through disassembled bank

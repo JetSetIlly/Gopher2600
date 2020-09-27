@@ -215,14 +215,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					}
 
 				default:
-					return nil, errors.New(errors.InvalidTarget, fmt.Sprintf("%s %s", keyword, subkey))
+					return nil, errors.Errorf("invalid target: %s %s", keyword, subkey)
 				}
 			} else {
-				return nil, errors.New(errors.InvalidTarget, keyword)
+				return nil, errors.Errorf("invalid target: %s", keyword)
 			}
 
 		default:
-			return nil, errors.New(errors.InvalidTarget, keyword)
+			return nil, errors.Errorf("invalid target: %s", keyword)
 		}
 	}
 

@@ -55,7 +55,7 @@ type ChipMemory struct {
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.New(errors.UnpeekableAddress, fmt.Sprintf("%#04x", address))
+		return 0, errors.Errorf(bus.AddressError, address)
 	}
 	return area.memory[address^area.origin], nil
 }
@@ -95,7 +95,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	// do not allow reads from memory that do not have symbol name
 	if _, ok := addresses.ReadSymbols[address]; !ok {
-		return 0, errors.New(errors.MemoryBusError, address)
+		return 0, errors.Errorf(bus.AddressError, address)
 	}
 
 	return area.memory[address^area.origin], nil
@@ -111,7 +111,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 	// do not allow writes to memory that do not have symbol name
 	if _, ok := addresses.WriteSymbols[address]; !ok {
-		return errors.New(errors.MemoryBusError, address)
+		return errors.Errorf(bus.AddressError, address)
 	}
 
 	// signal the chips that their chip memory has been written to

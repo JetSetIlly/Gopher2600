@@ -271,7 +271,7 @@ func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 	}
 
 	if err != nil {
-		return errors.New(errors.InputError, err)
+		return errors.Errorf("ports: %v", err)
 	}
 
 	// record event with the EventRecorder

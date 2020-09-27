@@ -82,7 +82,7 @@ func (stk *Stick) Name() string {
 func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, stk.Name(), event)
+		return errors.Errorf(UnhandledEvent, stk.Name(), event)
 
 	case ports.NoEvent:
 

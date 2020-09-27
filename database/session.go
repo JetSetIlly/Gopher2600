@@ -16,7 +16,6 @@
 package database
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -24,6 +23,11 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/errors"
+)
+
+// Sentinal error returned when requested database is not available
+const (
+	NotAvailable = "database: not available (%s)"
 )
 
 // Activity is used to specify the general activity of what will be occuring
@@ -77,9 +81,9 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return nil, errors.New(errors.DatabaseFileUnavailable, path)
+			return nil, errors.Errorf(NotAvailable, path)
 		}
-		return nil, errors.New(errors.DatabaseError, err)
+		return nil, errors.Errorf("databas: %v", err)
 	}
 
 	// closing of db.dbfile requires a call to endSession()
@@ -102,7 +106,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 	// write entries to database
 	if commitChanges {
 		if db.activity == ActivityReading {
-			return errors.New(errors.DatabaseError, "cannot commit to a read-only database")
+			return errors.Errorf("database: cannot commit to a read-only database")
 		}
 
 		err := db.dbfile.Truncate(0)
@@ -164,7 +168,7 @@ func (db *Session) readDBFile() error {
 
 	buffer, err := ioutil.ReadAll(db.dbfile)
 	if err != nil {
-		return errors.New(errors.DatabaseError, err)
+		return errors.Errorf("database: %v", err)
 	}
 
 	// split entries
@@ -181,26 +185,23 @@ func (db *Session) readDBFile() error {
 
 		key, err := strconv.Atoi(fields[leaderFieldKey])
 		if err != nil {
-			msg := fmt.Sprintf("invalid key (%s)", fields[leaderFieldKey])
-			return errors.New(errors.DatabaseReadError, msg, i+1)
+			return errors.Errorf("invalid key (%s) [line %d]", fields[leaderFieldKey], i+1)
 		}
 
 		if _, ok := db.entries[key]; ok {
-			msg := fmt.Sprintf("duplicate key (%v)", key)
-			return errors.New(errors.DatabaseReadError, msg, i+1)
+			return errors.Errorf("duplicate key (%s) [line %d]", key, i+1)
 		}
 
 		var ent Entry
 
 		deserialise, ok := db.entryTypes[fields[leaderFieldID]]
 		if !ok {
-			msg := fmt.Sprintf("unrecognised entry type [%s]", fields[leaderFieldID])
-			return errors.New(errors.DatabaseReadError, msg, i+1)
+			return errors.Errorf("unrecognised entry type (%s) [line %d]", fields[leaderFieldID], i+1)
 		}
 
 		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
 		if err != nil {
-			return errors.New(errors.DatabaseReadError, err, i+1)
+			return errors.Errorf("%v [line %d]", err, i+1)
 		}
 
 		db.entries[key] = ent

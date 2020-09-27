@@ -50,7 +50,7 @@ type Entry interface {
 func (db *Session) RegisterEntryType(id string, des Deserialiser) error {
 	if _, ok := db.entryTypes[id]; ok {
 		msg := fmt.Sprintf("trying to register a duplicate entry ID [%s]", id)
-		return errors.New(errors.DatabaseError, msg)
+		return errors.Errorf("database: %v", msg)
 	}
 	db.entryTypes[id] = des
 	return nil

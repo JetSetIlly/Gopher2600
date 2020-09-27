@@ -80,7 +80,7 @@ func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (E
 	}
 
 	if entry == nil {
-		return nil, errors.New(errors.DatabaseSelectEmpty)
+		return nil, errors.Errorf("database: select empty")
 	}
 
 	return entry, nil

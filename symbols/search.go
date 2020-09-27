@@ -17,8 +17,6 @@ package symbols
 
 import (
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/errors"
 )
 
 // TableType is used to select and identify a symbol table
@@ -51,26 +49,26 @@ const (
 // SearchSymbol return the address of the supplied symbol. Search is
 // case-insensitive and is conducted on the subtables in order: locations >
 // read > write.
-func (tbl *Table) SearchSymbol(symbol string, target TableType) (TableType, string, uint16, error) {
+func (tbl *Table) SearchSymbol(symbol string, target TableType) (bool, TableType, string, uint16) {
 	symbolUpper := strings.ToUpper(symbol)
 
 	if target == UnspecifiedSymTable || target == LocationSymTable {
 		if addr, ok := tbl.Locations.search(symbolUpper); ok {
-			return LocationSymTable, symbol, addr, nil
+			return true, LocationSymTable, symbol, addr
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == ReadSymTable {
 		if addr, ok := tbl.Read.search(symbolUpper); ok {
-			return ReadSymTable, symbol, addr, nil
+			return true, ReadSymTable, symbol, addr
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == WriteSymTable {
 		if addr, ok := tbl.Write.search(symbolUpper); ok {
-			return WriteSymTable, symbol, addr, nil
+			return true, WriteSymTable, symbol, addr
 		}
 	}
 
-	return UnspecifiedSymTable, symbol, 0, errors.New(errors.SymbolUnknown, symbol)
+	return false, UnspecifiedSymTable, symbol, 0
 }

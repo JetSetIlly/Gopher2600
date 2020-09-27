@@ -13,14 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package errors is a helper package for the error type. It defines the
-// AtariError type, an implementation of the error interface, that allows code
-// to wrap errors around other errors and to allow normalised formatted output
-// of error messages.
+// Package errors is a helper package for the plain Go language error type. We
+// think of these errors as curated errors. External to this package, curated
+// errors are referenced as plain errors (ie. they implement the error
+// interface).
 //
-// The most useful feature is deduplication of wrapped errors. This means that
-// code does not need to worry about the immediate context of the function
-// which creates the error. For instance:
+// Internally, errors are thought of as being composed of parts, as described
+// by The Go Programming Language (Donovan, Kernighan): "When the error is
+// ultimately handled by the program's main function, it should provide a clear
+// causal chain from the root of the problem to the overal failure".
+//
+// The Error() function implementation for curated errors ensures that this
+// chain is normalised. Specifically, that the chain does not contain duplicate
+// adjacent parts. The practical advantage of this is that it alleviates the
+// problem of when and how to wrap errors. For example:
 //
 //	func main() {
 //		err := A()
@@ -32,7 +38,7 @@
 //	func A() error {
 //		err := B()
 //		if err != nil {
-//			return errors.New(errors.DebuggerError, err)
+//			return errors.Errorf("debugger error: %v", err)
 //		}
 //		return nil
 //	}
@@ -40,30 +46,22 @@
 //	func B() error {
 //		err := C()
 //		if err != nil {
-//			return errors.New(errors.DebuggerError, rr)
+//			return errors.Errorf("debugger error: %v", err)
 //		}
 //		return nil
 //	}
 //
 //	func C() error {
-//		return errors.New(errors.PanicError, "C()", "not yet implemented")
+//		return errors.Errorf("not yet implemented")
 //	}
 //
-// If we follow the code from main() we can see that first error created is a
-// PanicError, wrapped in a DebuggerError, wrapped in another DebuggerError.
-// The message for the returned error to main() will be:
+// This will result in the main() function printing an error message. Using the
+// curated Error() function, the message will be:
 //
-//	error debugging vcs: panic: C(): not yet implemented
+//	debugger error: not yet implemented
 //
-// and not
+// and not:
 //
-//	error debugging vcs: error debugging vcs: panic: C(): not yet implemented
+//	debugger error: debugger error: not yet implemented
 //
-// The PanicError, used in the above example, is a special error that should be
-// used when something has happened such that the state of the emulation (or
-// the tool) can no longer be guaranteed.
-//
-// Actual panics should only be used when the error is so terrible that there
-// is nothing sensible to be done; useful for brute-enforcement of programming
-// constraints and in init() functions.
 package errors

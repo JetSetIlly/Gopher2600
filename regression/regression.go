@@ -69,7 +69,7 @@ func initDBSession(db *database.Session) error {
 	// make sure regression script directory exists
 	// if err := os.MkdirAll(paths.ResourcePath(regressionScripts), 0755); err != nil {
 	// 	msg := fmt.Sprintf("regression script directory: %s", err)
-	// 	return errors.New(errors.RegressionError, msg)
+	// 	return errors.Errorf("regression: %v", msg)
 	// }
 
 	return nil
@@ -78,12 +78,12 @@ func initDBSession(db *database.Session) error {
 // RegressList displays all entries in the database
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressList()", "io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.New(errors.RegressionError, err)
+		return errors.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
@@ -103,12 +103,12 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	defer rand.Seed(int64(time.Now().Second()))
 
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressAdd()", "io.Writer should not be nil (use nopWriter)")
+		return fmt.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.New(errors.RegressionError, err)
+		return errors.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
@@ -132,18 +132,17 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 // RegressDelete removes a cartridge from the regression db
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressDelete()", "io.Writer should not be nil (use nopWriter)")
+		return fmt.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	v, err := strconv.Atoi(key)
 	if err != nil {
-		msg := fmt.Sprintf("invalid key [%s]", key)
-		return errors.New(errors.RegressionError, msg)
+		return errors.Errorf("regression: invalid key [%s]", key)
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.New(errors.RegressionError, err)
+		return errors.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
@@ -154,13 +153,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
-		if !errors.Is(err, errors.DatabaseSelectEmpty) {
-			return err
-		}
-
-		// select returned no entries; create DatabaseKeyError and wrap it in a
-		// RegressionError
-		return errors.New(errors.RegressionError, errors.New(errors.DatabaseKeyError, v))
+		return errors.Errorf("regression: %v", err)
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
@@ -193,17 +186,17 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	defer rand.Seed(int64(time.Now().Second()))
 
 	if output == nil {
-		return errors.New(errors.PanicError, "RegressRunEntries()", "io.Writer should not be nil (use nopWriter)")
+		return fmt.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.New(errors.RegressionError, err)
+		return errors.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return errors.New(errors.RegressionError, err)
+		return errors.Errorf("regression: %v", err)
 	}
 	defer db.EndSession(false)
 
@@ -212,8 +205,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	for k := range filterKeys {
 		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
-			msg := fmt.Sprintf("invalid key [%s]", filterKeys[k])
-			return errors.New(errors.RegressionError, msg)
+			return errors.Errorf("regression: invalid key [%s]", filterKeys[k])
 		}
 		keysV = append(keysV, v)
 	}
@@ -238,7 +230,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		// datbase entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
-			return false, errors.New(errors.PanicError, "RegressRunTests()", "database entry does not satisfy Regressor interface")
+			return false, fmt.Errorf("regression: run: database entry does not satisfy Regressor interface")
 		}
 
 		// run regress() function with message. message does not have a

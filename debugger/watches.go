@@ -78,7 +78,7 @@ func (wtc *watches) clear() {
 // drop a specific watcher by a position in the list
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
-		return errors.New(errors.CommandError, fmt.Sprintf("watch #%d is not defined", num))
+		return errors.Errorf("watch #%d is not defined", num)
 	}
 
 	h := wtc.watches[:num]
@@ -216,7 +216,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 
 	// mapping of the address was unsucessful
 	if ai == nil {
-		return errors.New(errors.CommandError, fmt.Sprintf("invalid watch address: %s", a))
+		return errors.Errorf("invalid watch address: %s", a)
 	}
 
 	// get value if possible
@@ -226,7 +226,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	if useVal {
 		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			return errors.New(errors.CommandError, fmt.Sprintf("invalid watch value (%s)", a))
+			return errors.Errorf("invalid watch value (%s)", a)
 		}
 	}
 
@@ -252,7 +252,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 			w.ai.read == nw.ai.read &&
 			w.matchValue == nw.matchValue && w.value == nw.value {
 
-			return errors.New(errors.CommandError, fmt.Sprintf("already being watched (%s)", w))
+			return errors.Errorf("already being watched (%s)", w)
 		}
 	}
 

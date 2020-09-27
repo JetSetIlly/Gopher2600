@@ -30,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/plainterm"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/deprecated/sdldebug"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
@@ -197,7 +196,7 @@ func launch(sync *mainSync) {
 	case modalflag.ParseHelp:
 		os.Exit(0)
 	case modalflag.ParseError:
-		fmt.Printf("* %s\n", err)
+		fmt.Printf("* error: %v\n", err)
 		os.Exit(10)
 	}
 
@@ -225,7 +224,7 @@ func launch(sync *mainSync) {
 	}
 
 	if err != nil {
-		fmt.Printf("* %s\n", err)
+		fmt.Printf("* error in %s mode: %s\n", md.String(), err)
 		os.Exit(20)
 	}
 }
@@ -265,7 +264,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
-			return errors.New(errors.PlayError, err)
+			return err
 		}
 		defer tv.End()
 
@@ -276,7 +275,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		if *wav != "" {
 			aw, err := wavwriter.New(*wav)
 			if err != nil {
-				return errors.New(errors.PlayError, err)
+				return err
 			}
 			tv.AddAudioMixer(aw)
 		}
@@ -305,7 +304,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			}
 
 		case err := <-sync.creationError:
-			return errors.New(errors.PlayError, err)
+			return err
 		}
 
 		// turn off fallback ctrl-c handling. this so that the playmode can
@@ -347,7 +346,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	defInitScript, err := paths.ResourcePath("", defaultInitScript)
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return err
 	}
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
@@ -364,7 +363,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	tv, err := television.NewTelevision(*spec)
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return err
 	}
 	defer tv.End()
 
@@ -388,7 +387,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	case g := <-sync.creation:
 		scr = g.(gui.GUI)
 	case err := <-sync.creationError:
-		return errors.New(errors.DebuggerError, err)
+		return err
 	}
 
 	// if gui implements the terminal.Broker interface use that terminal
@@ -502,7 +501,7 @@ func disasm(md *modalflag.Modes) error {
 				// ignore any further errors
 				_ = dsm.Write(md.Output, attr)
 			}
-			return errors.New(errors.DisassemblyError, err)
+			return err
 		}
 
 		// output entire disassembly or just a specific bank
@@ -513,7 +512,7 @@ func disasm(md *modalflag.Modes) error {
 		}
 
 		if err != nil {
-			return errors.New(errors.DisassemblyError, err)
+			return err
 		}
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
@@ -546,7 +545,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
-			return errors.New(errors.PerformanceError, err)
+			return err
 		}
 		defer tv.End()
 
@@ -564,7 +563,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			case g := <-sync.creation:
 				scr = g.(gui.GUI)
 			case err := <-sync.creationError:
-				return errors.New(errors.PlayError, err)
+				return err
 			}
 
 			// set scaling value
@@ -581,7 +580,8 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		// no saving of gui preferences
+		// deliberately not saving gui preferences because we don't want any
+		// changes to the performance window impacting the play mode
 
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
@@ -672,7 +672,7 @@ func regress(md *modalflag.Modes) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("only one entry can be deleted at at time when using %s mode", md)
+			return fmt.Errorf("only one entry can be deleted at at time")
 		}
 
 	case "ADD":

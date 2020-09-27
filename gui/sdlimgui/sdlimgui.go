@@ -115,17 +115,17 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 
 	img.plt, err = newPlatform(img)
 	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
+		return nil, errors.Errorf("sdlimgui: %v", err)
 	}
 
 	img.glsl, err = newGlsl(img.io, img)
 	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
+		return nil, errors.Errorf("sdlimgui: %v", err)
 	}
 
 	iniPath, err := paths.ResourcePath("", imguiIniFile)
 	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
+		return nil, errors.Errorf("sdlimgui: %v", err)
 	}
 	img.io.SetIniFilename(iniPath)
 
@@ -138,7 +138,7 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 
 	img.wm, err = newWindowManager(img)
 	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
+		return nil, errors.Errorf("sdlimgui: %v", err)
 	}
 
 	// connect pixel renderer to television and texture renderer to pixel renderer
@@ -150,7 +150,7 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 	// implementation in winAudio which visualises the sound
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
-		return nil, errors.New(errors.SDLImgui, err)
+		return nil, errors.Errorf("sdlimgui: %v", err)
 	}
 	tv.AddAudioMixer(img.audio)
 

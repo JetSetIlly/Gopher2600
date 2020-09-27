@@ -146,14 +146,14 @@ func (mc CPU) HasReset() bool {
 // LoadPCIndirect loads the contents of indirectAddress into the PC
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return errors.New(errors.InvalidDuringExecution, "load PC")
+		return errors.Errorf("cpu: load PC indirect invalid mid-instruction")
 	}
 
 	// read 16 bit address from specified indirect address
 
 	lo, err := mc.mem.Read(indirectAddress)
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -161,7 +161,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	hi, err := mc.mem.Read(indirectAddress + 1)
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -175,7 +175,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 // LoadPC loads the contents of directAddress into the PC
 func (mc *CPU) LoadPC(directAddress uint16) error {
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return errors.New(errors.InvalidDuringExecution, "load PC")
+		return errors.Errorf("cpu: load PC invalid mid-instruction")
 	}
 
 	mc.PC.Load(directAddress)
@@ -191,7 +191,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -214,7 +214,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
 
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -238,7 +238,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	if err != nil {
 		// don't worry about unwritable addresses (unless strict addressing
 		// is on)
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -254,7 +254,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -268,7 +268,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -296,7 +296,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -339,7 +339,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -364,7 +364,7 @@ func (mc *CPU) read16BitPC() error {
 
 	hi, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !errors.Is(err, errors.MemoryBusError) {
+		if !errors.Is(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -469,6 +469,11 @@ func (mc *CPU) endCycle() error {
 	return mc.cycleCallback()
 }
 
+// Sentinal error returned by ExecuteInstruction if an unimplemented opcode is encountered
+const (
+	UnimplementedInstruction = "cpu: unimplemented instruction (%#02x) at (%#04x)"
+)
+
 // ExecuteInstruction steps CPU forward one instruction. The basic process when
 // executing an instruction is this:
 //
@@ -483,7 +488,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return errors.New(errors.InvalidDuringExecution, "a previous call to ExecuteInstruction() has not yet completed")
+		return errors.Errorf("cpu: starting a new instruction is invalid mid-instruction")
 	}
 
 	// reset Interrupted flag
@@ -519,7 +524,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// !!TODO: remove this once all opcodes are defined/implemented
 		if defn == nil {
-			return errors.New(errors.UnimplementedInstruction, val, mc.PC.Address()-1)
+			return errors.Errorf(UnimplementedInstruction, val, mc.PC.Address()-1)
 		}
 
 		mc.LastResult.Defn = defn
@@ -682,7 +687,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err = mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !errors.Is(err, errors.MemoryBusError) {
+				if !errors.Is(err, bus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -691,7 +696,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			// +1 cycle
 			err = mc.endCycle()
 			if err != nil {
-				if !errors.Is(err, errors.MemoryBusError) {
+				if !errors.Is(err, bus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()

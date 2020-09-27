@@ -69,7 +69,7 @@ func (key *Keyboard) Name() string {
 func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.New(errors.UnhandledEvent, key.Name(), event)
+		return errors.Errorf(UnhandledEvent, key.Name(), event)
 
 	case ports.NoEvent:
 
@@ -79,7 +79,7 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 			k != '4' && k != '5' && k != '6' &&
 			k != '7' && k != '8' && k != '9' &&
 			k != '*' && k != '0' && k != '#' {
-			return errors.New(errors.KeyboardError, fmt.Sprintf("unrecognised rune (%v)", k))
+			return errors.Errorf("keyboard: unrecognised rune (%v)", k)
 		}
 
 		// note key for use by readKeyboard()

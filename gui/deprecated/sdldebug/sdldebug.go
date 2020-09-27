@@ -115,7 +115,7 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	// set up sdl
 	err = sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, errors.New(errors.SDLDebug, err)
+		return nil, errors.Errorf("sdldebug: %v", err)
 	}
 
 	setupService()
@@ -126,14 +126,14 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 		0, 0,
 		uint32(sdl.WINDOW_HIDDEN))
 	if err != nil {
-		return nil, errors.New(errors.SDLDebug, err)
+		return nil, errors.Errorf("sdldebug: %v", err)
 	}
 
 	// sdl renderer. we set the scaling amount in the setWindow function later
 	// once we know what the tv specification is
 	scr.renderer, err = sdl.CreateRenderer(scr.window, -1, uint32(sdl.RENDERER_ACCELERATED))
 	if err != nil {
-		return nil, errors.New(errors.SDLDebug, err)
+		return nil, errors.Errorf("sdldebug: %v", err)
 	}
 
 	// register ourselves as a television.Renderer
@@ -143,13 +143,13 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	spec, _ := scr.GetSpec()
 	err = scr.resize(spec.ScanlineTop, spec.ScanlinesVisible)
 	if err != nil {
-		return nil, errors.New(errors.SDLDebug, err)
+		return nil, errors.Errorf("sdldebug: %v", err)
 	}
 
 	// set window scaling to default value
 	err = scr.setWindow(scale)
 	if err != nil {
-		return nil, errors.New(errors.SDLDebug, err)
+		return nil, errors.Errorf("sdldebug: %v", err)
 	}
 
 	// note that we've elected not to show the window on startup
@@ -260,12 +260,12 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 
 	scr.textures, err = newTextures(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
 	if err != nil {
-		return errors.New(errors.SDLDebug, err)
+		return errors.Errorf("sdldebug: %v", err)
 	}
 
 	scr.overlay, err = newOverlay(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
 	if err != nil {
-		return errors.New(errors.SDLDebug, err)
+		return errors.Errorf("sdldebug: %v", err)
 	}
 
 	// setWindow dimensions. see commentary for Resize() function in

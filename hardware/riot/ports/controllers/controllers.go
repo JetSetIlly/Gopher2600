@@ -19,3 +19,9 @@ package controllers
 // returned by the ID() function of the ports.Peripheral implementations in
 // this package
 var ControllerList = []string{"Stick", "Paddle", "Keyboard"}
+
+// Sentinal error returned if controller implementation does not understand
+// event sent to HandleEvent()
+const (
+	UnhandledEvent = "unhandled event: %s does not support event %v"
+)

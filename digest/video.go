@@ -99,7 +99,7 @@ func (dig *Video) NewFrame(frameNum int, _ bool) error {
 	// to the head of the video data
 	n := copy(dig.pixels, dig.digest[:])
 	if n != len(dig.digest) {
-		return errors.New(errors.VideoDigest, fmt.Sprintf("digest error during new frame"))
+		return errors.Errorf("digest: video: %v", fmt.Sprintf("digest error during new frame"))
 	}
 	dig.digest = sha1.Sum(dig.pixels)
 	dig.frameNum = frameNum

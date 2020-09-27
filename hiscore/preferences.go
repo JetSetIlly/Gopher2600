@@ -39,7 +39,7 @@ func newPreferences() (*Preferences, error) {
 	// save server using the prefs package
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, errors.New(errors.HiScore, err)
+		return nil, errors.Errorf("hiscore: %v", err)
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
@@ -48,7 +48,7 @@ func newPreferences() (*Preferences, error) {
 
 	err = p.dsk.Load(true)
 	if err != nil {
-		return p, errors.New(errors.HiScore, err)
+		return p, errors.Errorf("hiscore: %v", err)
 	}
 
 	return p, nil

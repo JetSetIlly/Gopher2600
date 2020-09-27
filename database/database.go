@@ -101,8 +101,7 @@ func (db *Session) Add(ent Entry) error {
 	}
 
 	if key == maxEntries {
-		msg := fmt.Sprintf("%d maximum entries exceeded", maxEntries)
-		return errors.New(errors.DatabaseError, msg)
+		return errors.Errorf("database: maximum entries exceeded (max %d)", maxEntries)
 	}
 
 	db.entries[key] = ent
@@ -115,11 +114,11 @@ func (db *Session) Add(ent Entry) error {
 func (db *Session) Delete(key int) error {
 	ent, ok := db.entries[key]
 	if !ok {
-		return errors.New(errors.DatabaseKeyError, key)
+		return errors.Errorf("database: key not available (%s)", key)
 	}
 
 	if err := ent.CleanUp(); err != nil {
-		return errors.New(errors.DatabaseError, err)
+		return errors.Errorf("database: %v", err)
 	}
 
 	delete(db.entries, key)

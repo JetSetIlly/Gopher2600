@@ -99,7 +99,7 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	err := aut.controller.HandleEvent(event, data)
 
 	// if error was because of an unhandled event then return without error
-	if err != nil && errors.Is(err, errors.UnhandledEvent) {
+	if err != nil && errors.Is(err, UnhandledEvent) {
 		return nil
 	}
 

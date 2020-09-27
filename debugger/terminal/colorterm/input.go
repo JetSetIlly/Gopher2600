@@ -103,7 +103,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 			// just return the UserInterrupt error and not worry about clearing
 			// the input line. see easyterm.KeyInterrupt for what happens
 			// normally.
-			return 0, errors.New(errors.UserInterrupt)
+			return 0, errors.Errorf(terminal.UserInterrupt)
 
 		case ev := <-events.GuiEvents:
 			// handle functions that are passsed on over interruptChannel. these can
@@ -136,7 +136,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				} else {
 					// there is no input so return UserInterrupt error
 					ct.EasyTerm.TermPrint("\r\n")
-					return 0, errors.New(errors.UserInterrupt)
+					return 0, errors.Errorf(terminal.UserInterrupt)
 				}
 
 			case easyterm.KeySuspend:

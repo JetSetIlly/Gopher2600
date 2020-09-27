@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -160,21 +161,21 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// create a new VCS instance
 	dbg.VCS, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, errors.Errorf("debugger: %v", err)
 	}
 
 	// replace player 1 port with savekey
 	if useSavekey {
 		err = dbg.VCS.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
 		if err != nil {
-			return nil, errors.New(errors.DebuggerError, err)
+			return nil, errors.Errorf("debugger: %v", err)
 		}
 	}
 
 	// create a new disassembly instance
 	dbg.Disasm, err = disassembly.NewDisassembly()
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, errors.Errorf("debugger: %v", err)
 	}
 
 	// set up debugging interface to memory. note that we're reaching deep into
@@ -198,7 +199,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, errors.Errorf("debugger: %v", err)
 	}
 	dbg.traps = newTraps(dbg)
 	dbg.watches = newWatches(dbg)
@@ -229,7 +230,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// connect gui
 	err = scr.ReqFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, errors.Errorf("debugger: %v", err)
 	}
 
 	// allocate memory for user input
@@ -244,7 +245,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// setup preferences and load from disk
 	dbg.Prefs, err = newPreferences(dbg)
 	if err != nil {
-		return nil, errors.New(errors.DebuggerError, err)
+		return nil, errors.Errorf("debugger: %v", err)
 	}
 
 	return dbg, nil
@@ -255,13 +256,13 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	// prepare user interface
 	err := dbg.term.Initialise()
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return errors.Errorf("debugger: %v", err)
 	}
 	defer dbg.term.CleanUp()
 
 	err = dbg.loadCartridge(cartload)
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return errors.Errorf("debugger: %v", err)
 	}
 
 	dbg.running = true
@@ -274,7 +275,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
 				dbg.term.Silence(false)
-				return errors.New(errors.DebuggerError, err)
+				return errors.Errorf("debugger: %v", err)
 			}
 
 			dbg.term.Silence(false)
@@ -292,7 +293,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	// debugging session is to be terminated
 	err = dbg.inputLoop(dbg.term, false)
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return errors.Errorf("debugger: %v", err)
 	}
 
 	return nil
@@ -326,12 +327,12 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 
 	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)
 	if err != nil {
-		return errors.New(errors.DebuggerError, err)
+		return errors.Errorf("debugger: %v", err)
 	}
 	defer dbg.scr.ReqFeature(gui.ReqChangingCartridge, false)
 
 	err = setup.AttachCartridge(dbg.VCS, cartload)
-	if err != nil && !errors.Has(err, errors.CartridgeEjected) {
+	if err != nil && !errors.Has(err, cartridge.Ejected) {
 		return err
 	}
 

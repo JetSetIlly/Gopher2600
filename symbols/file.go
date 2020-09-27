@@ -68,7 +68,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sf, err := os.Open(symFilename)
 	if err != nil {
-		return tbl, errors.New(errors.SymbolsFileUnavailable, cartridgeFilename)
+		return tbl, errors.Errorf("symbols: file not available (%s)", cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -76,7 +76,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sym, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return nil, errors.New(errors.SymbolsFileError, err)
+		return nil, errors.Errorf("symbols: processing error: %v", err)
 	}
 	lines := strings.Split(string(sym), "\n")
 

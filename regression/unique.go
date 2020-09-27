@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
@@ -33,7 +32,7 @@ func uniqueFilename(prepend string, cartload cartridgeloader.Loader) (string, er
 
 	scrPth, err := paths.ResourcePath(regressionScripts, newScript)
 	if err != nil {
-		return "", errors.New(errors.RegressionError, err)
+		return "", err
 	}
 
 	return scrPth, nil

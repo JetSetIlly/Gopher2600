@@ -42,16 +42,16 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 
 	p, err := paths.ResourcePath(patchPath, patchFile)
 	if err != nil {
-		return false, errors.New(errors.PatchError, err)
+		return false, errors.Errorf("patch: %v", err)
 	}
 
 	f, err := os.Open(p)
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return false, errors.New(errors.PatchError, fmt.Sprintf("patch file not found (%s)", p))
+			return false, errors.Errorf("patch: %v", fmt.Sprintf("patch file not found (%s)", p))
 		}
-		return false, errors.New(errors.PatchError, err)
+		return false, errors.Errorf("patch: %v", err)
 	}
 	defer f.Close()
 
@@ -118,7 +118,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 			// patch memory
 			err = mem.Patch(int(offset), uint8(v))
 			if err != nil {
-				return patched, errors.New(errors.PatchError, err)
+				return patched, errors.Errorf("patch: %v", err)
 			}
 			patched = true
 

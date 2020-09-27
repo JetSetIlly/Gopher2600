@@ -136,7 +136,7 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, errors.New(errors.CartridgeError, fmt.Sprintf("%s: wrong number of bytes in the cartridge data", cart.mappingID))
+		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -341,7 +341,7 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		return nil
 	}
 
-	return errors.New(errors.MemoryBusError, addr)
+	return errors.Errorf(bus.AddressError, addr)
 }
 
 // bank switch on hotspot access
@@ -373,7 +373,7 @@ func (cart dpc) GetBank(addr uint16) banks.Details {
 // Patch implements the mapper.CartMapper interface
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.Gfx) {
-		return errors.New(errors.CartridgePatchOOB, offset)
+		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	staticStart := cart.NumBanks() * cart.bankSize
@@ -495,11 +495,11 @@ func (cart dpc) GetStatic() []bus.CartStatic {
 func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	if label == "Gfx" {
 		if int(addr) >= len(cart.static.Gfx) {
-			return errors.New(errors.CartridgeStaticArea, fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+			return errors.Errorf("dpc: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
 		cart.static.Gfx[addr] = data
 	} else {
-		return errors.New(errors.CartridgeStaticArea, fmt.Errorf("unknown static area (%s)", label))
+		return errors.Errorf("dpc: static: %v", fmt.Errorf("unknown static area (%s)", label))
 	}
 
 	return nil

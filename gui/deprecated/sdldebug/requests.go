@@ -16,6 +16,8 @@
 package sdldebug
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 
@@ -39,8 +41,8 @@ func (scr *SdlDebug) ReqFeature(request gui.FeatureReq, args ...interface{}) (re
 func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 	// lazy (but clear) handling of type assertion errors
 	defer func() {
-		if r := recover(); r != nil {
-			scr.featureErr <- errors.New(errors.PanicError, "sdl.ReqFeature()", r)
+		if err := recover(); err != nil {
+			scr.featureErr <- fmt.Errorf("sdldebug: request feature: %v", err)
 		}
 	}()
 
@@ -115,7 +117,7 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 		// gui doesn't need to know when the cartridge is being changed
 
 	default:
-		err = errors.New(errors.UnsupportedGUIRequest, request.request)
+		err = errors.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
 
 	scr.featureErr <- err

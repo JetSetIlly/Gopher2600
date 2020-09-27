@@ -46,7 +46,7 @@ func (scr Scribe) IsActive() bool {
 // StartSession a new script
 func (scr *Scribe) StartSession(scriptfile string) error {
 	if scr.IsActive() {
-		return errors.New(errors.ScriptScribeError, "already active")
+		return errors.Errorf("script scribe already active")
 	}
 
 	scr.scriptfile = scriptfile
@@ -55,10 +55,10 @@ func (scr *Scribe) StartSession(scriptfile string) error {
 	if os.IsNotExist(err) {
 		scr.file, err = os.Create(scriptfile)
 		if err != nil {
-			return errors.New(errors.ScriptScribeError, "cannot create new script file")
+			return errors.Errorf("cannot create new script file")
 		}
 	} else {
-		return errors.New(errors.ScriptScribeError, "file already exists")
+		return errors.Errorf("file already exists")
 	}
 
 	return nil
@@ -84,9 +84,9 @@ func (scr *Scribe) EndSession() error {
 	// if commit() causes an error, continue with the Close() operation and
 	// return the commit() error if the close succeeds
 
-	errClose := scr.file.Close()
-	if errClose != nil {
-		return errors.New(errors.ScriptScribeError, errClose)
+	errb := scr.file.Close()
+	if errb != nil {
+		return errors.Errorf("script: scripe: %v", errb)
 	}
 
 	return err
@@ -146,20 +146,20 @@ func (scr *Scribe) Commit() error {
 	if scr.inputLine != "" {
 		n, err := io.WriteString(scr.file, scr.inputLine)
 		if err != nil {
-			return errors.New(errors.ScriptScribeError, err)
+			return errors.Errorf("script: scribe: %v", err)
 		}
 		if n != len(scr.inputLine) {
-			return errors.New(errors.ScriptScribeError, "output truncated")
+			return errors.Errorf("script: scribe output truncated")
 		}
 	}
 
 	if scr.outputLine != "" {
 		n, err := io.WriteString(scr.file, scr.outputLine)
 		if err != nil {
-			return errors.New(errors.ScriptScribeError, err)
+			return errors.Errorf("script: scribe: %v", err)
 		}
 		if n != len(scr.outputLine) {
-			return errors.New(errors.ScriptScribeError, "output truncated")
+			return errors.Errorf("script: scribe output truncated")
 		}
 	}
 

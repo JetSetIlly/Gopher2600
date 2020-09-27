@@ -45,7 +45,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// open script and defer closing
 	f, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, errors.New(errors.ScriptFileUnavailable, err)
+		return nil, errors.Errorf("script: file not available: %v", err)
 	}
 	defer func() {
 		_ = f.Close()
@@ -53,7 +53,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 
 	buffer, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, errors.New(errors.ScriptFileError, err)
+		return nil, errors.Errorf("script: %v", err)
 	}
 
 	scr := &Rescribe{scriptFile: scriptfile}
@@ -83,10 +83,15 @@ func (scr *Rescribe) IsInteractive() bool {
 	return false
 }
 
+// Sentinal error returned when Rescribe.TermRead() reaches the expected end of the script
+const (
+	ScriptEnd = "end of script (%s)"
+)
+
 // TermRead implements the terminal.Input interface
 func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
-		return -1, errors.New(errors.ScriptEnd, scr.scriptFile)
+		return -1, errors.Errorf(ScriptEnd, scr.scriptFile)
 	}
 
 	n := len(scr.lines[scr.lineCt]) + 1
