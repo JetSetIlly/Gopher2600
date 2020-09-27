@@ -123,6 +123,12 @@ func newLogger(maxEntries int) *logger {
 }
 
 func (l *logger) log(tag, detail string) {
+	// remove first part of the details string if it's the same as the tag
+	p := strings.SplitN(detail, ": ", 3)
+	if len(p) > 1 && p[0] == tag {
+		detail = strings.Join(p[1:], ": ")
+	}
+
 	e := Entry{tag: tag, detail: detail}
 	l.add <- e
 	if l.echo != nil {
