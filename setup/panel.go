@@ -20,7 +20,7 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
@@ -52,10 +52,10 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 
 	// basic sanity check
 	if len(fields) > numPanelSetupFields {
-		return nil, errors.Errorf("panel: too many fields in panel entry")
+		return nil, curated.Errorf("panel: too many fields in panel entry")
 	}
 	if len(fields) < numPanelSetupFields {
-		return nil, errors.Errorf("panel: too few fields in panel entry")
+		return nil, curated.Errorf("panel: too few fields in panel entry")
 	}
 
 	var err error
@@ -63,15 +63,15 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 	set.cartHash = fields[panelSetupFieldCartHash]
 
 	if set.p0, err = strconv.ParseBool(fields[panelSetupFieldP0]); err != nil {
-		return nil, errors.Errorf("panel: invalid player 0 setting")
+		return nil, curated.Errorf("panel: invalid player 0 setting")
 	}
 
 	if set.p1, err = strconv.ParseBool(fields[panelSetupFieldP1]); err != nil {
-		return nil, errors.Errorf("panel: invalid player 1 setting")
+		return nil, curated.Errorf("panel: invalid player 1 setting")
 	}
 
 	if set.col, err = strconv.ParseBool(fields[panelSetupFieldCol]); err != nil {
-		return nil, errors.Errorf("panel: invalid color setting")
+		return nil, curated.Errorf("panel: invalid color setting")
 	}
 
 	set.notes = fields[panelSetupFieldNotes]

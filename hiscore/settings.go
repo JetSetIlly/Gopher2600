@@ -24,7 +24,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // SetServer to use for hiscore storage
@@ -32,7 +32,7 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// server has not been provided so prompt for it
@@ -42,7 +42,7 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 		b = make([]byte, 255)
 		_, err := input.Read(b)
 		if err != nil {
-			return errors.Errorf("hiscore: %v", err)
+			return curated.Errorf("hiscore: %v", err)
 		}
 		server = string(b)
 	}
@@ -53,13 +53,13 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	// parse entered url
 	url, err := url.Parse(server)
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// error on path, but allow a single slash (by removing it)
 	if url.Path != "" {
 		if url.Path != "/" {
-			return errors.Errorf("hiscore: %v", "do not include path in server setting")
+			return curated.Errorf("hiscore: %v", "do not include path in server setting")
 		}
 	}
 
@@ -82,12 +82,12 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// we can't login unless highscore server has been specified
 	if prefs.Server.Get() == "" {
-		return errors.Errorf("hiscore: %v", "no highscore server available")
+		return curated.Errorf("hiscore: %v", "no highscore server available")
 	}
 
 	// prompt for username if it has not been supplied
@@ -97,7 +97,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 		b = make([]byte, 255)
 		_, err := input.Read(b)
 		if err != nil {
-			return errors.Errorf("hiscore: %v", err)
+			return curated.Errorf("hiscore: %v", err)
 		}
 		username = strings.Split(string(b), "\n")[0]
 	}
@@ -111,7 +111,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	b = make([]byte, 255)
 	_, err = input.Read(b)
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 	password := strings.Split(string(b), "\n")[0]
 
@@ -120,20 +120,20 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	data := url.Values{"username": {username}, "password": {password}}
 	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.Server), data)
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// get response
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// unmarshal response
 	var key map[string]string
 	err = json.Unmarshal(response, &key)
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// update authentication key and save changes
@@ -146,7 +146,7 @@ func Logoff() error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()
 	if err != nil {
-		return errors.Errorf("hiscore: %v", err)
+		return curated.Errorf("hiscore: %v", err)
 	}
 
 	// blank authentication key and save changes

@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 const (
@@ -74,12 +74,12 @@ func (rec *Recorder) writeHeader() error {
 
 	if err != nil {
 		rec.output.Close()
-		return errors.Errorf("recorder: %v", err)
+		return curated.Errorf("recorder: %v", err)
 	}
 
 	if n != len(line) {
 		rec.output.Close()
-		return errors.Errorf("recorder: output truncated")
+		return curated.Errorf("recorder: output truncated")
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (rec *Recorder) writeHeader() error {
 
 func (plb *Playback) readHeader(lines []string) error {
 	if lines[lineMagicString] != magicString {
-		return errors.Errorf("playback: not a valid transcript (%s)", plb.transcript)
+		return curated.Errorf("playback: not a valid transcript (%s)", plb.transcript)
 	}
 
 	// read header

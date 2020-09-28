@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Value represents the actual Go preference value
@@ -59,7 +59,7 @@ func (p *Bool) Set(v Value) error {
 			p.value = false
 		}
 	default:
-		return errors.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
+		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
 	}
 
 	if p.callback != nil {
@@ -149,10 +149,10 @@ func (p *Int) Set(v Value) error {
 		var err error
 		p.value, err = strconv.Atoi(v)
 		if err != nil {
-			return errors.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
+			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 		}
 	default:
-		return errors.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
+		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 	}
 
 	if p.callback != nil {

@@ -18,7 +18,7 @@ package sdldebug
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -117,7 +117,7 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 		// gui doesn't need to know when the cartridge is being changed
 
 	default:
-		err = errors.Errorf(gui.UnsupportedGuiFeature, request.request)
+		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
 
 	scr.featureErr <- err

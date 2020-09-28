@@ -18,7 +18,7 @@ package harmony
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -76,7 +76,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, errors.Errorf("cartridge", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
+		return nil, curated.Errorf("cartridge", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
 	}
 
 	// partition
@@ -152,7 +152,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	if addr > 0x0027 {
-		return 0, errors.Errorf(bus.AddressError, addr)
+		return 0, curated.Errorf(bus.AddressError, addr)
 	}
 
 	switch addr {
@@ -277,7 +277,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
-		return errors.Errorf(bus.AddressError, addr)
+		return curated.Errorf(bus.AddressError, addr)
 	}
 
 	switch addr {
@@ -554,7 +554,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	return errors.Errorf(bus.AddressError, addr)
+	return curated.Errorf(bus.AddressError, addr)
 }
 
 // bankswitch on hotspot access
@@ -591,7 +591,7 @@ func (cart dpcPlus) GetBank(addr uint16) banks.Details {
 
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	if offset >= cart.fileSize {
-		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	if offset >= cart.freqOffset {

@@ -18,7 +18,7 @@ package memory
 import (
 	"math/rand"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -223,7 +223,7 @@ func (mem VCSMemory) Peek(address uint16) (uint8, error) {
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.Peek(ma)
 	}
-	return 0, errors.Errorf(bus.AddressError, address)
+	return 0, curated.Errorf(bus.AddressError, address)
 }
 
 // Poke implements the DebugBus interface
@@ -232,5 +232,5 @@ func (mem VCSMemory) Poke(address uint16, data uint8) error {
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.(bus.DebugBus).Poke(ma, data)
 	}
-	return errors.Errorf(bus.AddressError, address)
+	return curated.Errorf(bus.AddressError, address)
 }

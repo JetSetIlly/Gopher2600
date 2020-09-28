@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -150,7 +150,7 @@ const (
 func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 	ai := dbgmem.mapAddress(address, true)
 	if ai == nil {
-		return nil, errors.Errorf(peekError, address)
+		return nil, curated.Errorf(peekError, address)
 	}
 
 	area := dbgmem.mem.GetArea(ai.area)
@@ -158,8 +158,8 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 	var err error
 	ai.data, err = area.Peek(ai.mappedAddress)
 	if err != nil {
-		if errors.Is(err, bus.AddressError) {
-			return nil, errors.Errorf(peekError, address)
+		if curated.Is(err, bus.AddressError) {
+			return nil, curated.Errorf(peekError, address)
 		}
 		return nil, err
 	}
@@ -174,15 +174,15 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, error) {
 	ai := dbgmem.mapAddress(address, false)
 	if ai == nil {
-		return nil, errors.Errorf(pokeError, address)
+		return nil, curated.Errorf(pokeError, address)
 	}
 
 	area := dbgmem.mem.GetArea(ai.area)
 
 	err := area.Poke(ai.mappedAddress, data)
 	if err != nil {
-		if errors.Is(err, bus.AddressError) {
-			return nil, errors.Errorf(pokeError, address)
+		if curated.Is(err, bus.AddressError) {
+			return nil, curated.Errorf(pokeError, address)
 		}
 		return nil, err
 	}

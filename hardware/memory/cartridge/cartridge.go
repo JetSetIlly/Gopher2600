@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
@@ -144,7 +144,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
 		err := cart.fingerprint(cartload)
 		if err != nil {
-			return errors.Errorf("cartridge: %v", err)
+			return curated.Errorf("cartridge: %v", err)
 		}
 
 		// in addition to the regular fingerprint we also check to see if this
@@ -159,12 +159,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 				// if the error is a NotAPlusROM error then log the false
 				// positive and return a success, keeping the main cartridge
 				// mapper intact
-				if errors.Is(err, plusrom.NotAPlusROM) {
+				if curated.Is(err, plusrom.NotAPlusROM) {
 					logger.Log("cartridge", err.Error())
 					return nil
 				}
 
-				return errors.Errorf("cartridge: %v", err)
+				return curated.Errorf("cartridge: %v", err)
 			}
 
 			// we've wrapped the main cartridge mapper inside the PlusROM
@@ -234,13 +234,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	if err != nil {
-		return errors.Errorf("cartridge: %v", err)
+		return curated.Errorf("cartridge: %v", err)
 	}
 
 	if addSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 			if !superchip.AddSuperchip() {
-				return errors.Errorf("cartridge: error adding superchip")
+				return curated.Errorf("cartridge: error adding superchip")
 			}
 		}
 	}

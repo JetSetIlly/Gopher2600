@@ -25,7 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -60,10 +60,10 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 
 	// basic sanity check
 	if len(fields) > numLogFields {
-		return nil, errors.Errorf("log: too many fields")
+		return nil, curated.Errorf("log: too many fields")
 	}
 	if len(fields) < numLogFields {
-		return nil, errors.Errorf("log: too few fields")
+		return nil, curated.Errorf("log: too few fields")
 	}
 
 	// string fields need no conversion
@@ -79,7 +79,7 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	reg.NumFrames, err = strconv.Atoi(fields[logFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[logFieldNumFrames])
-		return nil, errors.Errorf("log: %v", msg)
+		return nil, curated.Errorf("log: %v", msg)
 	}
 
 	return reg, nil
@@ -126,19 +126,19 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", errors.Errorf("log: %v", err)
+		return false, "", curated.Errorf("log: %v", err)
 	}
 	defer tv.End()
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, "", errors.Errorf("log: %v", err)
+		return false, "", curated.Errorf("log: %v", err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
-		return false, "", errors.Errorf("log: %v", err)
+		return false, "", curated.Errorf("log: %v", err)
 	}
 
 	// display ticker for progress meter
@@ -163,7 +163,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	})
 
 	if err != nil {
-		return false, "", errors.Errorf("log: %v", err)
+		return false, "", curated.Errorf("log: %v", err)
 	}
 
 	// get hash of log output

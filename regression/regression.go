@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
@@ -69,7 +69,7 @@ func initDBSession(db *database.Session) error {
 	// make sure regression script directory exists
 	// if err := os.MkdirAll(paths.ResourcePath(regressionScripts), 0755); err != nil {
 	// 	msg := fmt.Sprintf("regression script directory: %s", err)
-	// 	return errors.Errorf("regression: %v", msg)
+	// 	return curated.Errorf("regression: %v", msg)
 	// }
 
 	return nil
@@ -83,7 +83,7 @@ func RegressList(output io.Writer) error {
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
@@ -108,7 +108,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
@@ -137,12 +137,12 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 	v, err := strconv.Atoi(key)
 	if err != nil {
-		return errors.Errorf("regression: invalid key [%s]", key)
+		return curated.Errorf("regression: invalid key [%s]", key)
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
@@ -153,7 +153,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
@@ -191,12 +191,12 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return errors.Errorf("regression: %v", err)
+		return curated.Errorf("regression: %v", err)
 	}
 	defer db.EndSession(false)
 
@@ -205,7 +205,7 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	for k := range filterKeys {
 		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
-			return errors.Errorf("regression: invalid key [%s]", filterKeys[k])
+			return curated.Errorf("regression: invalid key [%s]", filterKeys[k])
 		}
 		keysV = append(keysV, v)
 	}

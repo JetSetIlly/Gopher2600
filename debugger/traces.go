@@ -20,7 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
@@ -59,7 +59,7 @@ func (trc *traces) clear() {
 // drop a specific tracer by a position in the list
 func (trc *traces) drop(num int) error {
 	if len(trc.traces)-1 < num {
-		return errors.Errorf("trace #%d is not defined", num)
+		return curated.Errorf("trace #%d is not defined", num)
 	}
 
 	h := trc.traces[:num]
@@ -132,7 +132,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	if ai == nil {
 		ai = trc.dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			return errors.Errorf("invalid trace address: %s", a)
+			return curated.Errorf("invalid trace address: %s", a)
 		}
 	}
 
@@ -141,7 +141,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	// check to see if trace already exists
 	for _, t := range trc.traces {
 		if t.ai.address == nt.ai.address {
-			return errors.Errorf("already being traced (%s)", t)
+			return curated.Errorf("already being traced (%s)", t)
 		}
 	}
 

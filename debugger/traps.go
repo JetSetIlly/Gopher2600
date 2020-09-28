@@ -25,7 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 type traps struct {
@@ -57,7 +57,7 @@ func (tr *traps) clear() {
 // drop the numbered trap from the list
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
-		return errors.Errorf("trap #%d is not defined", num)
+		return curated.Errorf("trap #%d is not defined", num)
 	}
 
 	h := tr.traps[:num]

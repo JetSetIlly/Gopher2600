@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -164,12 +164,12 @@ func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 
 	bp.checkPcBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("PC"))
 	if err != nil {
-		return nil, errors.Errorf("breakpoint: this should not have failed: %v", err)
+		return nil, curated.Errorf("breakpoint: this should not have failed: %v", err)
 	}
 
 	bp.checkBankBreak, err = parseTarget(bp.dbg, commandline.TokeniseInput("BANK"))
 	if err != nil {
-		return nil, errors.Errorf("breakpoint: this should not have failed: %v", err)
+		return nil, curated.Errorf("breakpoint: this should not have failed: %v", err)
 	}
 
 	return bp, err
@@ -183,7 +183,7 @@ func (bp *breakpoints) clear() {
 // drop a specific breakpoint by position in list
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
-		return errors.Errorf("breakpoint #%d is not defined", num)
+		return curated.Errorf("breakpoint #%d is not defined", num)
 	}
 
 	h := bp.breaks[:num]
@@ -253,7 +253,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	// something appropriate
 	tgt, err := parseTarget(bp.dbg, commandline.TokeniseInput("PC"))
 	if err != nil {
-		return errors.Errorf("breakpoint: this should not have failed: %v", err)
+		return curated.Errorf("breakpoint: this should not have failed: %v", err)
 	}
 
 	// resolvedTarget keeps track of whether we have specified a target but not
@@ -298,10 +298,10 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			case "false":
 				val = false
 			default:
-				err = errors.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label)
+				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label)
 			}
 		default:
-			return errors.Errorf("unsupported value type (%T) for target (%s)", tgt.TargetValue(), tgt.Label())
+			return curated.Errorf("unsupported value type (%T) for target (%s)", tgt.TargetValue(), tgt.Label())
 		}
 
 		if err == nil {
@@ -326,7 +326,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		} else {
 			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
-				return errors.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
 
 			// possibly switch composition mode
@@ -344,7 +344,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 				tokens.Unget()
 				tgt, err = parseTarget(bp.dbg, tokens)
 				if err != nil {
-					return errors.Errorf("%v", err)
+					return curated.Errorf("%v", err)
 				}
 				resolvedTarget = false
 
@@ -355,7 +355,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return errors.Errorf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label)
+		return curated.Errorf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label)
 	}
 
 	for _, nb := range newBreaks {
@@ -373,7 +373,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		}
 
 		if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
-			return errors.Errorf("already exists (%s)", bp.breaks[i])
+			return curated.Errorf("already exists (%s)", bp.breaks[i])
 		}
 		bp.breaks = append(bp.breaks, nb)
 	}

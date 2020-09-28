@@ -16,7 +16,7 @@
 package hiscore
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -39,7 +39,7 @@ func newPreferences() (*Preferences, error) {
 	// save server using the prefs package
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, errors.Errorf("hiscore: %v", err)
+		return nil, curated.Errorf("hiscore: %v", err)
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
@@ -48,7 +48,7 @@ func newPreferences() (*Preferences, error) {
 
 	err = p.dsk.Load(true)
 	if err != nil {
-		return p, errors.Errorf("hiscore: %v", err)
+		return p, curated.Errorf("hiscore: %v", err)
 	}
 
 	return p, nil

@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -146,7 +146,7 @@ func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error
 		return nil
 	}
 
-	return errors.Errorf(bus.AddressError, addr)
+	return curated.Errorf(bus.AddressError, addr)
 }
 
 func (cart *atari) addSuperchip() bool {
@@ -181,7 +181,7 @@ func (cart *atari) addSuperchip() bool {
 // Patch implements the mapper.CartMapper interface
 func (cart *atari) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	bank := int(offset) / cart.bankSize
@@ -257,7 +257,7 @@ func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -307,7 +307,7 @@ func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, 1)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -355,7 +355,7 @@ func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -431,7 +431,7 @@ func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -511,7 +511,7 @@ func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

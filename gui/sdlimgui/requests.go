@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 )
@@ -110,12 +110,12 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 		img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
 
 	default:
-		err = errors.Errorf(gui.UnsupportedGuiFeature, request.request)
+		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
 
 	if err == nil {
 		img.featureErr <- nil
 	} else {
-		img.featureErr <- errors.Errorf("sdlimgui: %v", err)
+		img.featureErr <- curated.Errorf("sdlimgui: %v", err)
 	}
 }

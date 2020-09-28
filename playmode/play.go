@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -59,7 +59,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 
 		// do not allow this if a new recording has been requested
 		if newRecording {
-			return errors.Errorf("playmode: %v", "cannot make a new recording using a playback file")
+			return curated.Errorf("playmode: %v", "cannot make a new recording using a playback file")
 		}
 
 		recording = cartload.Filename
@@ -89,7 +89,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return errors.Errorf("playmode: %v", err)
+		return curated.Errorf("playmode: %v", err)
 	}
 	scr.ReqFeature(gui.ReqAddVCS, vcs)
 
@@ -97,7 +97,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	if useSavekey {
 		err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 	}
 
@@ -116,7 +116,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		// prepare new recording
 		rec, err := recorder.NewRecorder(recording, vcs)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 		// making sure we end the recording gracefully when we leave the function
@@ -128,7 +128,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		// setup because we want to catch any setup events in the recording
 		err = setup.AttachCartridge(vcs, cartload)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 	} else if recording != "" {
@@ -145,7 +145,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		// will be applied that way
 		err = vcs.AttachCartridge(plb.CartLoad)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 		// the following will fail if the recording was made with different tv
@@ -154,7 +154,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		// another television implementation.
 		err = plb.AttachToVCS(vcs)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 	} else {
@@ -163,7 +163,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 
 		err = setup.AttachCartridge(vcs, cartload)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 		// apply patch if requested. note that this will be in addition to any
@@ -171,7 +171,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		if patchFile != "" {
 			_, err := patch.CartridgeMemory(vcs.Mem.Cart, patchFile)
 			if err != nil {
-				return errors.Errorf("playmode: %v", err)
+				return curated.Errorf("playmode: %v", err)
 			}
 		}
 	}
@@ -186,20 +186,20 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	// connect gui
 	err = scr.ReqFeature(gui.ReqSetEventChan, pl.guiChan)
 	if err != nil {
-		return errors.Errorf("playmode: %v", err)
+		return curated.Errorf("playmode: %v", err)
 	}
 
 	// request television visibility
 	err = scr.ReqFeature(gui.ReqSetVisibility, true)
 	if err != nil {
-		return errors.Errorf("playmode: %v", err)
+		return curated.Errorf("playmode: %v", err)
 	}
 
 	// if a waitForEmulationStart channel has been created then halt the
 	// goroutine until we recieve a non-error signal
 	if waitForEmulationStart != nil {
 		if err := <-waitForEmulationStart; err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 	}
 
@@ -217,12 +217,12 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	if hiscoreServer {
 		sess, err = hiscore.NewSession()
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 
 		err = sess.StartSession(cartload.ShortName(), vcs.Mem.Cart.Hash)
 		if err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 	}
 
@@ -238,17 +238,17 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	// send to high score server
 	if hiscoreServer {
 		if err := sess.EndSession(playTime); err != nil {
-			return errors.Errorf("playmode: %v", err)
+			return curated.Errorf("playmode: %v", err)
 		}
 	}
 
 	if err != nil {
-		if errors.Has(err, ports.PowerOff) {
+		if curated.Has(err, ports.PowerOff) {
 			// PowerOff is okay and is to be expected. swallow the error
 			// message and return as normal
 			return nil
 		}
-		return errors.Errorf("playmode: %v", err)
+		return curated.Errorf("playmode: %v", err)
 	}
 
 	return nil

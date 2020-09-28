@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // PlainTerminal is the default, most basic terminal interface. It keeps the
@@ -94,7 +94,7 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// error to the debugging loop
 	select {
 	case <-events.IntEvents:
-		return 0, errors.Errorf(terminal.UserInterrupt)
+		return 0, curated.Errorf(terminal.UserInterrupt)
 	default:
 	}
 

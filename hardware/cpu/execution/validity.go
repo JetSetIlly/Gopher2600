@@ -16,31 +16,31 @@
 package execution
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // IsValid checks whether the instance of Result contains information
 // consistent with the instruction definition.
 func (result Result) IsValid() error {
 	if !result.Final {
-		return errors.Errorf("cpu: execution not finalised (bad opcode?)")
+		return curated.Errorf("cpu: execution not finalised (bad opcode?)")
 	}
 
 	// is PageFault valid given content of Defn
 	if !result.Defn.PageSensitive && result.PageFault {
-		return errors.Errorf("cpu: unexpected page fault")
+		return curated.Errorf("cpu: unexpected page fault")
 	}
 
 	// byte count
 	if result.ByteCount != result.Defn.Bytes {
-		return errors.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", result.ByteCount, result.Defn.Bytes)
+		return curated.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", result.ByteCount, result.Defn.Bytes)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.CPUBug == "" {
 		if result.Defn.IsBranch() {
 			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
-				return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
+				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					result.Defn.OpCode,
 					result.Defn.Mnemonic,
 					result.ActualCycles,
@@ -51,7 +51,7 @@ func (result Result) IsValid() error {
 		} else {
 			if result.Defn.PageSensitive {
 				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
-					return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
+					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,
@@ -60,7 +60,7 @@ func (result Result) IsValid() error {
 				}
 			} else {
 				if result.ActualCycles != result.Defn.Cycles {
-					return errors.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
+					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
 						result.ActualCycles,

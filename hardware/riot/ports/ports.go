@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
@@ -271,7 +271,7 @@ func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 	}
 
 	if err != nil {
-		return errors.Errorf("ports: %v", err)
+		return curated.Errorf("ports: %v", err)
 	}
 
 	// record event with the EventRecorder

@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Sentinal error returned when requested database is not available
@@ -81,9 +81,9 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return nil, errors.Errorf(NotAvailable, path)
+			return nil, curated.Errorf(NotAvailable, path)
 		}
-		return nil, errors.Errorf("databas: %v", err)
+		return nil, curated.Errorf("databas: %v", err)
 	}
 
 	// closing of db.dbfile requires a call to endSession()
@@ -106,7 +106,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 	// write entries to database
 	if commitChanges {
 		if db.activity == ActivityReading {
-			return errors.Errorf("database: cannot commit to a read-only database")
+			return curated.Errorf("database: cannot commit to a read-only database")
 		}
 
 		err := db.dbfile.Truncate(0)
@@ -168,7 +168,7 @@ func (db *Session) readDBFile() error {
 
 	buffer, err := ioutil.ReadAll(db.dbfile)
 	if err != nil {
-		return errors.Errorf("database: %v", err)
+		return curated.Errorf("database: %v", err)
 	}
 
 	// split entries
@@ -185,23 +185,23 @@ func (db *Session) readDBFile() error {
 
 		key, err := strconv.Atoi(fields[leaderFieldKey])
 		if err != nil {
-			return errors.Errorf("invalid key (%s) [line %d]", fields[leaderFieldKey], i+1)
+			return curated.Errorf("invalid key (%s) [line %d]", fields[leaderFieldKey], i+1)
 		}
 
 		if _, ok := db.entries[key]; ok {
-			return errors.Errorf("duplicate key (%s) [line %d]", key, i+1)
+			return curated.Errorf("duplicate key (%s) [line %d]", key, i+1)
 		}
 
 		var ent Entry
 
 		deserialise, ok := db.entryTypes[fields[leaderFieldID]]
 		if !ok {
-			return errors.Errorf("unrecognised entry type (%s) [line %d]", fields[leaderFieldID], i+1)
+			return curated.Errorf("unrecognised entry type (%s) [line %d]", fields[leaderFieldID], i+1)
 		}
 
 		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
 		if err != nil {
-			return errors.Errorf("%v [line %d]", err, i+1)
+			return curated.Errorf("%v [line %d]", err, i+1)
 		}
 
 		db.entries[key] = ent

@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/television"
@@ -36,25 +36,25 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 	// create vcs using the tv created above
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// attach cartridge to te vcs
 	err = setup.AttachCartridge(vcs, cartload)
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// parse supplied duration
 	duration, err := time.ParseDuration(runTime)
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// get starting frame number (should be 0)
 	startFrame, err := tv.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// run for specified period of time
@@ -99,7 +99,7 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 			}
 		})
 		if err != nil {
-			return errors.Errorf("performance; %v", err)
+			return curated.Errorf("performance; %v", err)
 		}
 		return nil
 	}
@@ -112,13 +112,13 @@ func Check(output io.Writer, profile bool, tv television.Television, runTime str
 		err = runner()
 	}
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// get ending frame number
 	endFrame, err := vcs.TV.GetState(television.ReqFramenum)
 	if err != nil {
-		return errors.Errorf("performance; %v", err)
+		return curated.Errorf("performance; %v", err)
 	}
 
 	// calculate performance

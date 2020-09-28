@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package errors
+package curated
 
 import (
 	"fmt"
@@ -21,30 +21,36 @@ import (
 )
 
 // Values is the type used to specify arguments for FormattedErrors
-type Values []interface{}
+type values []interface{}
 
-// curated erorrs allow code to specify a predefined error and not worry too
-// much about the message behind that error and how the message will be
-// formatted on output.
+// curated is an implementation of the go language error interface
 type curated struct {
-	message string
-	values  Values
+	pattern string
+	values  values
 }
 
-// Errorf creates a new curated error
-func Errorf(message string, values ...interface{}) error {
+// Errorf creates a new curated error.
+//
+// Note that unlike the Errorf() function in the fmt package the first argument
+// is named "pattern" not "format". This is because we use the pattern string
+// in the Is() and Has() functions, in which 'pattern' seems a better name.
+func Errorf(pattern string, values ...interface{}) error {
+	// note that we're not actually formatting the error here, despite the
+	// function name. we instead store the arguments. formatting takes place in
+	// the Error() function
 	return curated{
-		message: message,
+		pattern: pattern,
 		values:  values,
 	}
 }
 
 // Error returns the normalised error message. Normalisation being the removal
-// of duplicate adjacent error messsage parts.
+// of duplicate adjacent error messsage parts in the error message chains. It
+// doesn't affect letter-case or white space.
 //
 // Implements the go language error interface.
 func (er curated) Error() string {
-	s := fmt.Errorf(er.message, er.values...).Error()
+	s := fmt.Errorf(er.pattern, er.values...).Error()
 
 	// de-duplicate error message parts
 	p := strings.SplitN(s, ": ", 3)
@@ -55,20 +61,7 @@ func (er curated) Error() string {
 	return strings.Join(p, ": ")
 }
 
-// Head returns the leading part of the message.
-//
-// Similar to Is() but returns the string rather than a boolean. Useful for
-// switches.
-//
-// If err is a plain error then the return of Error() is returned
-func Head(err error) string {
-	if er, ok := err.(curated); ok {
-		return er.message
-	}
-	return err.Error()
-}
-
-// IsAny checks if error is being curated by this package
+// IsAny checks if error is specifically of the curated type
 func IsAny(err error) bool {
 	if err == nil {
 		return false
@@ -77,23 +70,26 @@ func IsAny(err error) bool {
 	if _, ok := err.(curated); ok {
 		return true
 	}
+
 	return false
 }
 
-// Is checks if error has a specific head
-func Is(err error, head string) bool {
+// Is checks if error is a curated error with a specific pattern
+func Is(err error, pattern string) bool {
 	if err == nil {
 		return false
 	}
 
 	if er, ok := err.(curated); ok {
-		return er.message == head
+		return er.pattern == pattern
 	}
+
 	return false
 }
 
-// Has checks if the message string appears somewhere in the error
-func Has(err error, msg string) bool {
+// Is checks if error is a curated error with a specific pattern somewhere in
+// the chain
+func Has(err error, pattern string) bool {
 	if err == nil {
 		return false
 	}
@@ -102,13 +98,13 @@ func Has(err error, msg string) bool {
 		return false
 	}
 
-	if Is(err, msg) {
+	if Is(err, pattern) {
 		return true
 	}
 
 	for i := range err.(curated).values {
 		if e, ok := err.(curated).values[i].(curated); ok {
-			if Has(e, msg) {
+			if Has(e, pattern) {
 				return true
 			}
 		}

@@ -16,7 +16,7 @@
 package cartridge
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 )
 
@@ -53,12 +53,12 @@ func (cart *ejected) Initialise() {
 
 // Read implements the cartMapper interface
 func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
-	return 0, errors.Errorf(Ejected)
+	return 0, curated.Errorf(Ejected)
 }
 
 // Write implements the cartMapper interface
 func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
-	return errors.Errorf(Ejected)
+	return curated.Errorf(Ejected)
 }
 
 // NumBanks implements the cartMapper interface
@@ -73,7 +73,7 @@ func (cart ejected) GetBank(_ uint16) banks.Details {
 
 // Patch implements the cartMapper interface
 func (cart *ejected) Patch(_ int, _ uint8) error {
-	return errors.Errorf(Ejected)
+	return curated.Errorf(Ejected)
 }
 
 // Listen implements the cartMapper interface

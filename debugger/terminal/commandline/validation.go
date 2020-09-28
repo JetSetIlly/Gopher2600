@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Validate input string against command defintions
@@ -52,10 +52,10 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 				// special handling for help command
 				if cmd == cmds.helpCommand {
-					return errors.Errorf("no help for %s", strings.ToUpper(arg))
+					return curated.Errorf("no help for %s", strings.ToUpper(arg))
 				}
 
-				return errors.Errorf("unrecognised argument (%s) for %s", arg, cmd)
+				return curated.Errorf("unrecognised argument (%s) for %s", arg, cmd)
 			}
 
 			return nil
@@ -76,7 +76,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	if !ok {
 		// we treat arguments in the root-group as though they are required
 		if n.typ == nodeRequired || n.typ == nodeRoot {
-			return errors.Errorf("%s required", n.nodeVerbose())
+			return curated.Errorf("%s required", n.nodeVerbose())
 		}
 		return nil
 	}
@@ -213,7 +213,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	}
 
 	if !match {
-		err := errors.Errorf("unrecognised argument (%s)", tok)
+		err := curated.Errorf("unrecognised argument (%s)", tok)
 
 		// there's still no match but the speculative flag means we were half
 		// expecting it. return error without further consideration

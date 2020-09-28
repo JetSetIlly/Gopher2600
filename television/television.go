@@ -30,7 +30,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // the number of additional lines over the NTSC spec that is allowed before the
@@ -326,7 +326,7 @@ func (tv *television) GetState(request StateReq) (int, error) {
 	case ReqHorizPos:
 		return tv.horizPos - HorizClksHBlank, nil
 	default:
-		return 0, errors.Errorf("television: unhandled tv state request (%v)", request)
+		return 0, curated.Errorf("television: unhandled tv state request (%v)", request)
 	}
 }
 
@@ -343,7 +343,7 @@ func (tv *television) SetSpec(spec string) error {
 		tv.spec = SpecNTSC
 		tv.auto = true
 	default:
-		return errors.Errorf("television: unsupported spec (%s)", spec)
+		return curated.Errorf("television: unsupported spec (%s)", spec)
 	}
 
 	tv.top = tv.spec.ScanlineTop

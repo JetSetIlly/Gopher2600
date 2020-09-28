@@ -18,7 +18,7 @@ package polycounter
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Polycounter counts from 0 to Limit. can be used to index a polycounter
@@ -54,7 +54,7 @@ func New(numBits int) (*Polycounter, error) {
 
 	// sanity check that the table has looped correctly
 	if pcnt.table[len(pcnt.table)-1] != pcnt.table[0] {
-		return nil, errors.Errorf("polycounter: %v", fmt.Errorf("error creating %d bit polycounter", numBits))
+		return nil, curated.Errorf("polycounter: %v", fmt.Errorf("error creating %d bit polycounter", numBits))
 	}
 
 	// force the final value to be the invalid polycounter value. this is only
@@ -104,5 +104,5 @@ func (pcnt *Polycounter) Match(pattern string) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, errors.Errorf("polycounter: %v", fmt.Errorf("could not find pattern (%s) in %d bit lookup table", pattern, pcnt.numBits))
+	return 0, curated.Errorf("polycounter: %v", fmt.Errorf("could not find pattern (%s) in %d bit lookup table", pattern, pcnt.numBits))
 }

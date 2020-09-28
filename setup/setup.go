@@ -20,7 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/paths"
 )
@@ -70,16 +70,16 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 
 	dbPth, err := paths.ResourcePath("", setupDBFile)
 	if err != nil {
-		return errors.Errorf("setup: %v", err)
+		return curated.Errorf("setup: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		if errors.Is(err, database.NotAvailable) {
+		if curated.Is(err, database.NotAvailable) {
 			// silently ignore absence of setup database
 			return nil
 		}
-		return errors.Errorf("setup: %v", err)
+		return curated.Errorf("setup: %v", err)
 	}
 	defer db.EndSession(false)
 
@@ -102,7 +102,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 
 	_, err = db.SelectAll(onSelect)
 	if err != nil {
-		return errors.Errorf("setup: %v", err)
+		return curated.Errorf("setup: %v", err)
 	}
 
 	return nil

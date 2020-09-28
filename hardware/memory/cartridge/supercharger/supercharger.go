@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -75,7 +75,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		cart.tape, err = NewFastLoad(cart, cartload)
 	}
 	if err != nil {
-		return nil, errors.Errorf("supercharger: %v", err)
+		return nil, curated.Errorf("supercharger: %v", err)
 	}
 
 	// allocate ram
@@ -86,7 +86,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	// load bios and activate
 	cart.bios, err = loadBIOS(path.Dir(cartload.Filename))
 	if err != nil {
-		return nil, errors.Errorf("supercharger: %v", err)
+		return nil, curated.Errorf("supercharger: %v", err)
 	}
 
 	// prepare onLoaded function
@@ -179,14 +179,14 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			if fullAddr == 0xfa1a {
 				err := cart.onLoaded(cart)
 				if err != nil {
-					return 0, errors.Errorf("supercharger: %v", err)
+					return 0, curated.Errorf("supercharger: %v", err)
 				}
 			}
 
 			return cart.bios[addr&0x07ff], nil
 		}
 
-		return 0, errors.Errorf("supercharger: ROM is powered off")
+		return 0, curated.Errorf("supercharger: ROM is powered off")
 	}
 
 	if !passive && cart.registers.Delay == 1 {
@@ -266,7 +266,7 @@ func (cart Supercharger) GetBank(addr uint16) banks.Details {
 
 // Patch implements the cartMapper interface
 func (cart *Supercharger) Patch(_ int, _ uint8) error {
-	return errors.Errorf("%s: not patchable")
+	return curated.Errorf("%s: not patchable")
 }
 
 // Listen implements the cartMapper interface

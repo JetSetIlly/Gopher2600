@@ -18,7 +18,7 @@ package regression
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Indicates the State recording method to use
@@ -48,7 +48,7 @@ func NewStateType(state string) (StateType, error) {
 	case "CPU":
 		return StateCPU, nil
 	}
-	return StateNone, errors.Errorf("regression: video: unrecognised state type [%s]", state)
+	return StateNone, curated.Errorf("regression: video: unrecognised state type [%s]", state)
 }
 
 func (t StateType) String() string {

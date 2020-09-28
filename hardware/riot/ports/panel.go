@@ -18,7 +18,7 @@ package ports
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
@@ -165,7 +165,7 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 		pan.p1pro = !pan.p1pro
 
 	case PanelPowerOff:
-		return errors.Errorf(PowerOff)
+		return curated.Errorf(PowerOff)
 
 	}
 

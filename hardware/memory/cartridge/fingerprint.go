@@ -17,7 +17,7 @@ package cartridge
 
 import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -232,7 +232,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	case 65536:
-		return errors.Errorf("cartridge: 65536 bytes not yet supported")
+		return curated.Errorf("cartridge: 65536 bytes not yet supported")
 
 	case 131072:
 		cart.mapper, err = fingerprint128k(cartload.Data)(cartload.Data)
@@ -241,7 +241,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	default:
-		return errors.Errorf("cartridge: unrecognised size (%d bytes)", len(cartload.Data))
+		return curated.Errorf("cartridge: unrecognised size (%d bytes)", len(cartload.Data))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try

@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/errors"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -199,13 +199,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// following block interprets the error carefully and proceeds
 			// appropriately
 			if err != nil {
-				if !errors.IsAny(err) {
+				if !curated.IsAny(err) {
 					// if the error originated from outside of gopher2600 then
 					// it is probably serious or unexpected
 					switch err {
 					case io.EOF:
-						// treat EOF events the same as UserInterrupt events
-						err = errors.Errorf(terminal.UserInterrupt)
+						// treat EOF errors the same as terminal.UserAbort
+						err = curated.Errorf(terminal.UserAbort)
 					default:
 						// the error is probably serious. exit input loop with err
 						return err
@@ -213,29 +213,28 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 
 				// we now know the we have an project specific error
-				switch errors.Head(err) {
 
-				// user interrupts are triggered by the user (in a terminal
-				// environment, usually by pressing ctrl-c)
-				case terminal.UserInterrupt:
+				if curated.Is(err, terminal.UserInterrupt) {
+					// user interrupts are triggered by the user (in a terminal
+					// environment, usually by pressing ctrl-c)
 					dbg.handleInterrupt(inputter, inputLen)
 
-				// like UserInterrupt but with no confirmation stage
-				case terminal.UserAbort:
+				} else if curated.Is(err, terminal.UserAbort) {
+					// like UserInterrupt but with no confirmation stage
 					dbg.running = false
 
-				// a script that is being run will usually end with a ScriptEnd
-				// error. in these instances we can say simply say so (using
-				// the error message) with a feedback style (not an error
-				// style)
-				case script.ScriptEnd:
+				} else if curated.Is(err, script.ScriptEnd) {
+					// a script that is being run will usually end with a ScriptEnd
+					// error. in these instances we can say simply say so (using
+					// the error message) with a feedback style (not an error
+					// style)
 					if !videoCycle {
 						dbg.printLine(terminal.StyleFeedback, err.Error())
 					}
 					return nil
 
-				// all other errors are passed upwards to the calling function
-				default:
+				} else {
+					// all other errors are passed upwards to the calling function
 					return err
 				}
 			}
@@ -337,7 +336,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 				} else {
 					// exit input loop if error is a plain error
-					if !errors.IsAny(stepErr) {
+					if !curated.IsAny(stepErr) {
 						return stepErr
 					}
 
@@ -417,7 +416,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
 		if err != nil {
 			// another UserInterrupt has occurred. we treat
 			// UserInterrupt as thought 'y' was pressed
-			if errors.Is(err, terminal.UserInterrupt) {
+			if curated.Is(err, terminal.UserInterrupt) {
 				confirm[0] = 'y'
 			} else {
 				dbg.printLine(terminal.StyleError, err.Error())

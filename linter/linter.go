@@ -20,7 +20,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -38,7 +38,7 @@ func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 		// create a new iteration for the bank
 		bitr, _, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
 		if err != nil {
-			return errors.Errorf("linter: %v", err)
+			return curated.Errorf("linter: %v", err)
 		}
 
 		// iterate through disassembled bank

@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -71,8 +71,8 @@ func NewDisassembly() (*Disassembly, error) {
 
 	dsm.Prefs, err = newPreferences(dsm)
 	if err != nil {
-		if !errors.Is(err, prefs.NoPrefsFile) {
-			return nil, errors.Errorf("disassembly: %v", err)
+		if !curated.Is(err, prefs.NoPrefsFile) {
+			return nil, curated.Errorf("disassembly: %v", err)
 		}
 	}
 
@@ -96,12 +96,12 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	err = cart.Attach(cartload)
 	if err != nil {
-		return nil, errors.Errorf("disassembly: %v", err)
+		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	err = dsm.FromMemory(cart, symtable)
 	if err != nil {
-		return nil, errors.Errorf("disassembly: %v", err)
+		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	return dsm, nil
@@ -165,7 +165,7 @@ func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
 	if err != nil {
-		return errors.Errorf("disassembly: %v", err)
+		return curated.Errorf("disassembly: %v", err)
 	}
 	mc.NoFlowControl = true
 
@@ -178,7 +178,7 @@ func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	// disassemble cartridge binary
 	err = dsm.disassemble(mc, mem, startAddress...)
 	if err != nil {
-		return errors.Errorf("disassembly: %v", err)
+		return curated.Errorf("disassembly: %v", err)
 	}
 
 	return nil
@@ -229,7 +229,7 @@ func (dsm *Disassembly) UpdateEntry(bank banks.Details, result execution.Result,
 		var err error
 		dsm.disasm[bank.Number][idx], err = dsm.formatResult(bank, result, EntryLevelExecuted)
 		if err != nil {
-			return nil, errors.Errorf("disassembly: %v", err)
+			return nil, curated.Errorf("disassembly: %v", err)
 		}
 
 	} else if e.Level < EntryLevelExecuted || e.UpdateActualOnExecute {

@@ -16,7 +16,7 @@
 package debugger
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -62,7 +62,7 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 	err = p.dsk.Load(true)
 	if err != nil {
 		// ignore missing prefs file errors
-		if !errors.Is(err, prefs.NoPrefsFile) {
+		if !curated.Is(err, prefs.NoPrefsFile) {
 			return nil, err
 		}
 	}

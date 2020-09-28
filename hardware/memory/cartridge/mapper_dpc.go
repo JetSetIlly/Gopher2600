@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -136,7 +136,7 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, errors.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -341,7 +341,7 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		return nil
 	}
 
-	return errors.Errorf(bus.AddressError, addr)
+	return curated.Errorf(bus.AddressError, addr)
 }
 
 // bank switch on hotspot access
@@ -373,7 +373,7 @@ func (cart dpc) GetBank(addr uint16) banks.Details {
 // Patch implements the mapper.CartMapper interface
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.Gfx) {
-		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	staticStart := cart.NumBanks() * cart.bankSize
@@ -495,11 +495,11 @@ func (cart dpc) GetStatic() []bus.CartStatic {
 func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	if label == "Gfx" {
 		if int(addr) >= len(cart.static.Gfx) {
-			return errors.Errorf("dpc: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+			return curated.Errorf("dpc: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
 		cart.static.Gfx[addr] = data
 	} else {
-		return errors.Errorf("dpc: static: %v", fmt.Errorf("unknown static area (%s)", label))
+		return curated.Errorf("dpc: static: %v", fmt.Errorf("unknown static area (%s)", label))
 	}
 
 	return nil

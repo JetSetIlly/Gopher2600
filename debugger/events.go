@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/playmode"
@@ -31,7 +31,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	switch ev := ev.(type) {
 	case gui.EventQuit:
 		dbg.running = false
-		return errors.Errorf(terminal.UserInterrupt)
+		return curated.Errorf(terminal.UserInterrupt)
 
 	case gui.EventKeyboard:
 		var handled bool

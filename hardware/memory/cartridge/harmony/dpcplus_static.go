@@ -18,7 +18,7 @@ package harmony
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
@@ -53,24 +53,24 @@ func (cart *dpcPlus) PutStatic(label string, addr uint16, data uint8) error {
 	switch label {
 	case "ARM":
 		if int(addr) >= len(cart.static.Arm) {
-			return errors.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+			return curated.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
 		cart.static.Arm[addr] = data
 
 	case "Data":
 		if int(addr) >= len(cart.static.Data) {
-			return errors.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+			return curated.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
 		cart.static.Data[addr] = data
 
 	case "Freq":
 		if int(addr) >= len(cart.static.Freq) {
-			return errors.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+			return curated.Errorf("harmony: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
 		cart.static.Freq[addr] = data
 
 	default:
-		return errors.Errorf("harmony: static: %v", fmt.Errorf("unknown static area (%s)", label))
+		return curated.Errorf("harmony: static: %v", fmt.Errorf("unknown static area (%s)", label))
 	}
 
 	return nil

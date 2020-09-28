@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Commands is the root of the node tree
@@ -69,7 +69,7 @@ func (cmds Commands) String() string {
 func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error {
 	// if help command exists then there is nothing to do
 	if _, ok := cmds.Index[helpCommand]; ok {
-		return errors.Errorf("%s: already defined", helpCommand)
+		return curated.Errorf("%s: already defined", helpCommand)
 	}
 
 	// keep reference to helps
@@ -109,7 +109,7 @@ func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error
 	// parse the constructed definition
 	p, d, err := parseDefinition(defn.String(), "")
 	if err != nil {
-		return errors.Errorf("%s: %s (char %d)", helpCommand, err, d)
+		return curated.Errorf("%s: %s (char %d)", helpCommand, err, d)
 	}
 
 	// add parsed definition to list of commands

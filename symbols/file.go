@@ -24,7 +24,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // ReadSymbolsFile initialises a symbols table from the symbols file for the
@@ -68,7 +68,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sf, err := os.Open(symFilename)
 	if err != nil {
-		return tbl, errors.Errorf("symbols: file not available (%s)", cartridgeFilename)
+		return tbl, curated.Errorf("symbols: file not available (%s)", cartridgeFilename)
 	}
 	defer func() {
 		_ = sf.Close()
@@ -76,7 +76,7 @@ func ReadSymbolsFile(cartridgeFilename string) (*Table, error) {
 
 	sym, err := ioutil.ReadAll(sf)
 	if err != nil {
-		return nil, errors.Errorf("symbols: processing error: %v", err)
+		return nil, curated.Errorf("symbols: processing error: %v", err)
 	}
 	lines := strings.Split(string(sym), "\n")
 

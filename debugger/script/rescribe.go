@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 const commentLine = "#"
@@ -45,7 +45,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// open script and defer closing
 	f, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, errors.Errorf("script: file not available: %v", err)
+		return nil, curated.Errorf("script: file not available: %v", err)
 	}
 	defer func() {
 		_ = f.Close()
@@ -53,7 +53,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 
 	buffer, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, errors.Errorf("script: %v", err)
+		return nil, curated.Errorf("script: %v", err)
 	}
 
 	scr := &Rescribe{scriptFile: scriptfile}
@@ -91,7 +91,7 @@ const (
 // TermRead implements the terminal.Input interface
 func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
-		return -1, errors.Errorf(ScriptEnd, scr.scriptFile)
+		return -1, curated.Errorf(ScriptEnd, scr.scriptFile)
 	}
 
 	n := len(scr.lines[scr.lineCt]) + 1

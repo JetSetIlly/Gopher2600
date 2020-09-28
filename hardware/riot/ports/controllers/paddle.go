@@ -18,7 +18,7 @@ package controllers
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -94,7 +94,7 @@ func (pdl *Paddle) Name() string {
 func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.Errorf(UnhandledEvent, pdl.Name(), event)
+		return curated.Errorf(UnhandledEvent, pdl.Name(), event)
 
 	case ports.NoEvent:
 

@@ -25,7 +25,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -174,7 +174,7 @@ func (cl *Loader) Load() error {
 
 	url, err := url.Parse(cl.Filename)
 	if err != nil {
-		return errors.Errorf("cartridgeloader: %v", err)
+		return curated.Errorf("cartridgeloader: %v", err)
 	}
 
 	switch url.Scheme {
@@ -183,13 +183,13 @@ func (cl *Loader) Load() error {
 	case "https":
 		resp, err := http.Get(cl.Filename)
 		if err != nil {
-			return errors.Errorf("cartridgeloader: %v", err)
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
 		defer resp.Body.Close()
 
 		cl.Data, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return errors.Errorf("cartridgeloader: %v", err)
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
 
 	case "file":
@@ -198,7 +198,7 @@ func (cl *Loader) Load() error {
 	case "":
 		f, err := os.Open(cl.Filename)
 		if err != nil {
-			return errors.Errorf("cartridgeloader: %v", err)
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
 		defer f.Close()
 
@@ -206,18 +206,18 @@ func (cl *Loader) Load() error {
 		// windows version (when running under wine) does not handle that
 		cfi, err := os.Stat(cl.Filename)
 		if err != nil {
-			return errors.Errorf("cartridgeloader: %v", err)
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
 		size := cfi.Size()
 
 		cl.Data = make([]byte, size)
 		_, err = f.Read(cl.Data)
 		if err != nil {
-			return errors.Errorf("cartridgeloader: %v", err)
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
 
 	default:
-		return errors.Errorf("cartridgeloader: %v", fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
+		return curated.Errorf("cartridgeloader: %v", fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
 	}
 
 	// generate hash
@@ -225,7 +225,7 @@ func (cl *Loader) Load() error {
 
 	// check for hash consistency
 	if cl.Hash != "" && cl.Hash != hash {
-		return errors.Errorf("cartridgeloader: %v", "unexpected hash value")
+		return curated.Errorf("cartridgeloader: %v", "unexpected hash value")
 	}
 
 	// not generated hash

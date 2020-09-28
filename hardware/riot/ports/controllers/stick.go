@@ -18,7 +18,7 @@ package controllers
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -82,7 +82,7 @@ func (stk *Stick) Name() string {
 func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
-		return errors.Errorf(UnhandledEvent, stk.Name(), event)
+		return curated.Errorf(UnhandledEvent, stk.Name(), event)
 
 	case ports.NoEvent:
 

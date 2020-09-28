@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/digest"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/television"
@@ -67,10 +67,10 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 
 	// basic sanity check
 	if len(fields) > numVideoFields {
-		return nil, errors.Errorf("video: too many fields")
+		return nil, curated.Errorf("video: too many fields")
 	}
 	if len(fields) < numVideoFields {
-		return nil, errors.Errorf("video: too few fields")
+		return nil, curated.Errorf("video: too few fields")
 	}
 
 	// string fields need no conversion
@@ -85,7 +85,7 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	// convert number of frames field
 	reg.NumFrames, err = strconv.Atoi(fields[videoFieldNumFrames])
 	if err != nil {
-		return nil, errors.Errorf("video: invalid numFrames field [%s]", fields[videoFieldNumFrames])
+		return nil, curated.Errorf("video: invalid numFrames field [%s]", fields[videoFieldNumFrames])
 	}
 
 	// handle state field
@@ -101,7 +101,7 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	case "CPU":
 		reg.State = StateCPU
 	default:
-		return nil, errors.Errorf("video: invalid state field [%s]", fields[videoFieldState])
+		return nil, curated.Errorf("video: invalid state field [%s]", fields[videoFieldState])
 	}
 
 	// state options
@@ -110,7 +110,7 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	// and state file field
 	if fields[videoFieldStateFile] != "" {
 		if reg.State == StateNone {
-			return nil, errors.Errorf("video: invalid state file field: no state type specifier")
+			return nil, curated.Errorf("video: invalid state file field: no state type specifier")
 		}
 		reg.stateFile = fields[videoFieldStateFile]
 	}
@@ -182,24 +182,24 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", errors.Errorf("video: %v", err)
+		return false, "", curated.Errorf("video: %v", err)
 	}
 	defer tv.End()
 
 	dig, err := digest.NewVideo(tv)
 	if err != nil {
-		return false, "", errors.Errorf("video: %v", err)
+		return false, "", curated.Errorf("video: %v", err)
 	}
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, "", errors.Errorf("video: %v", err)
+		return false, "", curated.Errorf("video: %v", err)
 	}
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
-		return false, "", errors.Errorf("video: %v", err)
+		return false, "", curated.Errorf("video: %v", err)
 	}
 
 	// list of state information. we'll either save this in the event of
@@ -250,7 +250,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	})
 
 	if err != nil {
-		return false, "", errors.Errorf("video: %v", err)
+		return false, "", curated.Errorf("video: %v", err)
 	}
 
 	if newRegression {
@@ -260,7 +260,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			// create a unique filename
 			reg.stateFile, err = uniqueFilename("state", reg.CartLoad)
 			if err != nil {
-				return false, "", errors.Errorf("video: %v", err)
+				return false, "", curated.Errorf("video: %v", err)
 			}
 
 			// check that the filename is unique
@@ -269,21 +269,21 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			// no need to bother with returned error. nf tells us everything we
 			// need
 			if nf != nil {
-				return false, "", errors.Errorf("video: state recording file already exists (%s)", reg.stateFile)
+				return false, "", curated.Errorf("video: state recording file already exists (%s)", reg.stateFile)
 			}
 			nf.Close()
 
 			// create new file
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
-				return false, "", errors.Errorf("video: error creating state recording file: %v", err)
+				return false, "", curated.Errorf("video: error creating state recording file: %v", err)
 			}
 			defer nf.Close()
 
 			for i := range state {
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
-					return false, "", errors.Errorf("video: error writing state recording file: %v", err)
+					return false, "", curated.Errorf("video: error writing state recording file: %v", err)
 				}
 			}
 		}
@@ -298,7 +298,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	if reg.State != StateNone {
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
-			return false, "", errors.Errorf("video: old state recording file not present (%s)", reg.stateFile)
+			return false, "", curated.Errorf("video: old state recording file not present (%s)", reg.stateFile)
 		}
 		defer nf.Close()
 

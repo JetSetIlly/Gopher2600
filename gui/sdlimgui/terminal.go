@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 type term struct {
@@ -134,7 +134,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			ev()
 
 		case _ = <-events.IntEvents:
-			return 0, errors.Errorf(terminal.UserAbort)
+			return 0, curated.Errorf(terminal.UserAbort)
 		}
 	}
 }

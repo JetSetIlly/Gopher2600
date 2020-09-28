@@ -16,7 +16,7 @@
 package controllers
 
 import (
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
@@ -99,7 +99,7 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	err := aut.controller.HandleEvent(event, data)
 
 	// if error was because of an unhandled event then return without error
-	if err != nil && errors.Is(err, UnhandledEvent) {
+	if err != nil && curated.Is(err, UnhandledEvent) {
 		return nil
 	}
 

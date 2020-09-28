@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
@@ -215,14 +215,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					}
 
 				default:
-					return nil, errors.Errorf("invalid target: %s %s", keyword, subkey)
+					return nil, curated.Errorf("invalid target: %s %s", keyword, subkey)
 				}
 			} else {
-				return nil, errors.Errorf("invalid target: %s", keyword)
+				return nil, curated.Errorf("invalid target: %s", keyword)
 			}
 
 		default:
-			return nil, errors.Errorf("invalid target: %s", keyword)
+			return nil, curated.Errorf("invalid target: %s", keyword)
 		}
 	}
 

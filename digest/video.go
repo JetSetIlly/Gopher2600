@@ -19,7 +19,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
@@ -99,7 +99,7 @@ func (dig *Video) NewFrame(frameNum int, _ bool) error {
 	// to the head of the video data
 	n := copy(dig.pixels, dig.digest[:])
 	if n != len(dig.digest) {
-		return errors.Errorf("digest: video: %v", fmt.Sprintf("digest error during new frame"))
+		return curated.Errorf("digest: video: %v", fmt.Sprintf("digest error during new frame"))
 	}
 	dig.digest = sha1.Sum(dig.pixels)
 	dig.frameNum = frameNum

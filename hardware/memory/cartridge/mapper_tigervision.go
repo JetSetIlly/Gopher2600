@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -67,7 +67,7 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, errors.Errorf("%s: wrong number bytes in the cartridge data", cart.mappingID)
+		return nil, curated.Errorf("%s: wrong number bytes in the cartridge data", cart.mappingID)
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -121,7 +121,7 @@ func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error
 			cart.banks[cart.segment[1]][addr&0x07ff] = data
 		}
 	}
-	return errors.Errorf(bus.AddressError, addr)
+	return curated.Errorf(bus.AddressError, addr)
 }
 
 // NumBanks implements the mapper.CartMapper interface
@@ -140,7 +140,7 @@ func (cart *tigervision) GetBank(addr uint16) banks.Details {
 // Patch implements the mapper.CartMapper interface
 func (cart *tigervision) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return errors.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
 	bank := int(offset) / cart.bankSize

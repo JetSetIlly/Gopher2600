@@ -20,7 +20,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Scribe can be used again after a start()/end() cycle. isWriting()
@@ -46,7 +46,7 @@ func (scr Scribe) IsActive() bool {
 // StartSession a new script
 func (scr *Scribe) StartSession(scriptfile string) error {
 	if scr.IsActive() {
-		return errors.Errorf("script scribe already active")
+		return curated.Errorf("script scribe already active")
 	}
 
 	scr.scriptfile = scriptfile
@@ -55,10 +55,10 @@ func (scr *Scribe) StartSession(scriptfile string) error {
 	if os.IsNotExist(err) {
 		scr.file, err = os.Create(scriptfile)
 		if err != nil {
-			return errors.Errorf("cannot create new script file")
+			return curated.Errorf("cannot create new script file")
 		}
 	} else {
-		return errors.Errorf("file already exists")
+		return curated.Errorf("file already exists")
 	}
 
 	return nil
@@ -86,7 +86,7 @@ func (scr *Scribe) EndSession() error {
 
 	errb := scr.file.Close()
 	if errb != nil {
-		return errors.Errorf("script: scripe: %v", errb)
+		return curated.Errorf("script: scripe: %v", errb)
 	}
 
 	return err
@@ -146,20 +146,20 @@ func (scr *Scribe) Commit() error {
 	if scr.inputLine != "" {
 		n, err := io.WriteString(scr.file, scr.inputLine)
 		if err != nil {
-			return errors.Errorf("script: scribe: %v", err)
+			return curated.Errorf("script: scribe: %v", err)
 		}
 		if n != len(scr.inputLine) {
-			return errors.Errorf("script: scribe output truncated")
+			return curated.Errorf("script: scribe output truncated")
 		}
 	}
 
 	if scr.outputLine != "" {
 		n, err := io.WriteString(scr.file, scr.outputLine)
 		if err != nil {
-			return errors.Errorf("script: scribe: %v", err)
+			return curated.Errorf("script: scribe: %v", err)
 		}
 		if n != len(scr.outputLine) {
-			return errors.Errorf("script: scribe output truncated")
+			return curated.Errorf("script: scribe output truncated")
 		}
 	}
 

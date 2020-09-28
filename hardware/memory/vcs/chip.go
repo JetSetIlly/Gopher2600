@@ -18,7 +18,7 @@ package vcs
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
@@ -55,7 +55,7 @@ type ChipMemory struct {
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
-		return 0, errors.Errorf(bus.AddressError, address)
+		return 0, curated.Errorf(bus.AddressError, address)
 	}
 	return area.memory[address^area.origin], nil
 }
@@ -95,7 +95,7 @@ func (area *ChipMemory) Read(address uint16) (uint8, error) {
 
 	// do not allow reads from memory that do not have symbol name
 	if _, ok := addresses.ReadSymbols[address]; !ok {
-		return 0, errors.Errorf(bus.AddressError, address)
+		return 0, curated.Errorf(bus.AddressError, address)
 	}
 
 	return area.memory[address^area.origin], nil
@@ -111,7 +111,7 @@ func (area *ChipMemory) Write(address uint16, data uint8) error {
 
 	// do not allow writes to memory that do not have symbol name
 	if _, ok := addresses.WriteSymbols[address]; !ok {
-		return errors.Errorf(bus.AddressError, address)
+		return curated.Errorf(bus.AddressError, address)
 	}
 
 	// signal the chips that their chip memory has been written to

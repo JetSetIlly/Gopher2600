@@ -25,7 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/digest"
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -54,10 +54,10 @@ func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, 
 
 	// basic sanity check
 	if len(fields) > numPlaybackFields {
-		return nil, errors.Errorf("playback: too many fields")
+		return nil, curated.Errorf("playback: too many fields")
 	}
 	if len(fields) < numPlaybackFields {
-		return nil, errors.Errorf("playback: too few fields")
+		return nil, curated.Errorf("playback: too few fields")
 	}
 
 	// string fields need no conversion
@@ -106,28 +106,28 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 
 	tv, err := television.NewTelevision(plb.TVSpec)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 	defer tv.End()
 
 	_, err = digest.NewVideo(tv)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 
 	// not using setup.AttachCartridge. if the playback was recorded with setup
@@ -135,7 +135,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// will be applied that way
 	err = vcs.AttachCartridge(plb.CartLoad)
 	if err != nil {
-		return false, "", errors.Errorf("playback: %v", err)
+		return false, "", curated.Errorf("playback: %v", err)
 	}
 
 	// prepare ticker for progress meter
@@ -146,10 +146,10 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	err = vcs.Run(func() (bool, error) {
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
-			return false, errors.Errorf("playback: %v", err)
+			return false, curated.Errorf("playback: %v", err)
 		}
 		if hasEnded {
-			return false, errors.Errorf("playback: ended unexpectedly")
+			return false, curated.Errorf("playback: ended unexpectedly")
 		}
 
 		// display progress meter every 1 second
@@ -162,9 +162,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	})
 
 	if err != nil {
-		if errors.Has(err, ports.PowerOff) {
+		if curated.Has(err, ports.PowerOff) {
 			// PowerOff is okay and is to be expected
-		} else if errors.Has(err, recorder.PlaybackHashError) {
+		} else if curated.Has(err, recorder.PlaybackHashError) {
 			// PlaybackHashError means that a screen digest somewhere in the
 			// playback script did not work. filter error and return false to
 			// indicate failure
@@ -174,7 +174,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, hp=%d", err, fr, sl, hp)
 			return false, failm, nil
 		} else {
-			return false, "", errors.Errorf("playback: %v", err)
+			return false, "", curated.Errorf("playback: %v", err)
 		}
 	}
 
@@ -184,7 +184,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		// create a unique filename
 		newScript, err := uniqueFilename("playback", plb.CartLoad)
 		if err != nil {
-			return false, "", errors.Errorf("playback: %v", err)
+			return false, "", curated.Errorf("playback: %v", err)
 		}
 
 		// check that the filename is unique
@@ -192,28 +192,28 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		// no need to bother with returned error. nf tells us everything we
 		// need
 		if nf != nil {
-			return false, "", errors.Errorf("playback: script already exists (%s)", newScript)
+			return false, "", curated.Errorf("playback: script already exists (%s)", newScript)
 		}
 		nf.Close()
 
 		// create new file
 		nf, err = os.Create(newScript)
 		if err != nil {
-			return false, "", errors.Errorf("playback: while copying playback script: %v", err)
+			return false, "", curated.Errorf("playback: while copying playback script: %v", err)
 		}
 		defer nf.Close()
 
 		// open old file
 		of, err := os.Open(reg.Script)
 		if err != nil {
-			return false, "", errors.Errorf("playback: while copying playback script: %v", err)
+			return false, "", curated.Errorf("playback: while copying playback script: %v", err)
 		}
 		defer of.Close()
 
 		// copy old file to new file
 		_, err = io.Copy(nf, of)
 		if err != nil {
-			return false, "", errors.Errorf("playback: while copying playback script: %v", err)
+			return false, "", curated.Errorf("playback: while copying playback script: %v", err)
 		}
 
 		// update script name in regression type

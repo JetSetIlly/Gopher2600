@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/errors"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -43,7 +43,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 
 	cart.Prefs, err = newPreferences()
 	if err != nil {
-		return nil, errors.Errorf("plusrom: %s", err)
+		return nil, curated.Errorf("plusrom: %s", err)
 	}
 
 	cart.net = newNetwork(cart.Prefs)
@@ -71,7 +71,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	b := int((a & 0xf000) >> 12)
 
 	if b == 0 || b > cart.NumBanks() {
-		return nil, errors.Errorf(NotAPlusROM, "invlid NMI vector")
+		return nil, curated.Errorf(NotAPlusROM, "invlid NMI vector")
 	}
 
 	// normalise indirect address so it's suitable for indexing bank data
@@ -115,7 +115,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	// fail if host or path is not valid
 	hostValid, pathValid := cart.SetAddrInfo(host.String(), path.String())
 	if !hostValid || !pathValid {
-		return nil, errors.Errorf(NotAPlusROM, "invalid host/path")
+		return nil, curated.Errorf(NotAPlusROM, "invalid host/path")
 	}
 
 	// log success
@@ -125,7 +125,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	if onLoaded != nil {
 		err := onLoaded(cart)
 		if err != nil {
-			return nil, errors.Errorf("plusrom %s:", err)
+			return nil, curated.Errorf("plusrom %s:", err)
 		}
 	}
 
