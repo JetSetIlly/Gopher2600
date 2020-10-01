@@ -14,15 +14,15 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package curated is a helper package for the plain Go language error type.
-// Curated errors implement the error interface and external to the package are
-// stored as an instance of that interface.
+// Curated errors implement the error interface.
 //
 // Curated errors are created with the Errorf() function. This is similar to
-// the Errorf() function in the fmt package, it takes a formatting pattern and
+// the Errorf() function in the fmt package. It takes a formatting pattern,
 // placeholder values and returns an error.
 //
 // The Is() function can be used to check whether an error was created by the
-// (Errorf() function) with the specified pattern. For example:
+// (Errorf() function). The Errorf() pattern is used to differntiate curated
+// errors. For example:
 //
 //	a := 10
 //	e := curated.Errorf("error: value = %d", a)
@@ -32,8 +32,7 @@
 //	}
 //
 // The Has() function is similar but checks if a pattern occurs somewhere in
-// the error chain. The value of the variable 'a' in this example does not
-// matter.
+// the error chain.
 //
 //	a := 10
 //	e := curated.Errorf("error: value = %d", a)
@@ -48,14 +47,14 @@
 //	}
 //
 // Note that in this example, the call to Is() fails will not print 'true'
-// because error f does not match that pattern - it is wrapped inside the
+// because error f does not match that pattern - it is "wrapped" inside the
 // pattern "fatal: %v".
 //
-// The IsAny() function simply answers whether the error was created by
-// Errorf() or not. Or put another way, it returns true if the error is
-// 'curated' and false if the error is 'uncurated'. We could alternatively
-// think of the difference as being 'expected' and 'unexpected' depending on
-// how we choose to handle the result of the function call.
+// The IsAny() function answers whether the error was created by curated.Errorf().
+// Put another way, it returns true if the error is 'curated' and false if the
+// error is 'uncurated'. Alternatively, we can think of the difference as being
+// 'expected' and 'unexpected' depending on how we choose to handle the result
+// of the function call.
 //
 // The Error() function implementation for curated errors ensures that the
 // error chain is normalised. Specifically, that the chain does not contain
@@ -92,21 +91,20 @@
 // This will result in the main() function printing an error message. Using the
 // curated Error() function, the message will be:
 //
-//	debugger error: not yet implemented
+//	error: not yet implemented
 //
 // and not:
 //
 //	error: error: not yet implemented
 //
 // For the purposes of this package we think of chains as being composed of
-// parts separted by the sub-string ': ' as suggestedf on p239 of "The Go
+// parts separted by the sub-string ': ' as suggested on p239 of "The Go
 // Programming Language" (Donovan, Kernighan). For example:
 //
 //	part 1: part 2: part 3
 //
 // There is no special provision for sentinal errors in the curated package but
 // they are achievable in practice through the use of the Is() and Has()
-// functions. For clarity the sentinal pattern should be stored as a const
-// string, suitably named and commented. A Sentinal type may be introduced in
-// the future.
+// functions. Sentinal pattern should be stored as a const string, suitably
+// named and commented. A Sentinal type may be introduced in the future.
 package curated

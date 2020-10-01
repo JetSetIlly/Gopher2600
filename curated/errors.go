@@ -20,24 +20,22 @@ import (
 	"strings"
 )
 
-// Values is the type used to specify arguments for FormattedErrors
-type values []interface{}
-
 // curated is an implementation of the go language error interface
 type curated struct {
 	pattern string
-	values  values
+	values  []interface{}
 }
 
 // Errorf creates a new curated error.
 //
 // Note that unlike the Errorf() function in the fmt package the first argument
 // is named "pattern" not "format". This is because we use the pattern string
-// in the Is() and Has() functions, in which 'pattern' seems a better name.
+// in the Is() and Has() functions where 'pattern' seems to be more descriptive
+// name.
 func Errorf(pattern string, values ...interface{}) error {
 	// note that we're not actually formatting the error here, despite the
-	// function name. we instead store the arguments. formatting takes place in
-	// the Error() function
+	// function name. we instead only store the arguments. formatting takes
+	// place in the Error() function
 	return curated{
 		pattern: pattern,
 		values:  values,
@@ -61,7 +59,7 @@ func (er curated) Error() string {
 	return strings.Join(p, ": ")
 }
 
-// IsAny checks if error is specifically of the curated type
+// IsAny checks if the error is a curated error.
 func IsAny(err error) bool {
 	if err == nil {
 		return false
