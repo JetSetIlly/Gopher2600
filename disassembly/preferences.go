@@ -29,6 +29,10 @@ type Preferences struct {
 
 	// whether to apply the high mirror bits to the displayed address
 	FxxxMirror prefs.Bool
+
+	// the lowest value to use when formatting address values. changed by the
+	// preferences system
+	mirrorOrigin uint16
 }
 
 func (p Preferences) String() string {
@@ -38,7 +42,8 @@ func (p Preferences) String() string {
 // newPreferences is the preferred method of initialisation for the Preferences type
 func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	p := &Preferences{
-		dsm: dsm,
+		dsm:          dsm,
+		mirrorOrigin: memorymap.OriginCart,
 	}
 
 	// save server using the prefs package
@@ -51,7 +56,12 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
 
 	p.FxxxMirror.RegisterCallback(func(v prefs.Value) error {
-		return dsm.setCartMirror(v.(bool))
+		if v.(bool) {
+			p.mirrorOrigin = memorymap.OriginCartFxxxMirror
+		} else {
+			p.mirrorOrigin = memorymap.OriginCart
+		}
+		return dsm.setCartMirror()
 	})
 
 	err = p.dsk.Load(true)
@@ -78,21 +88,15 @@ func (p *Preferences) Save() error {
 
 // setCartMirror sets the mirror bits to the user's preference. called by the
 // FxxxMirror callback.
-func (dsm *Disassembly) setCartMirror(useFxxxMirror bool) error {
+func (dsm *Disassembly) setCartMirror() error {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	if useFxxxMirror {
-		dsm.mirrorOrigin = memorymap.OriginCartFxxxMirror
-	} else {
-		dsm.mirrorOrigin = memorymap.OriginCart
-	}
-
-	for b := range dsm.disasm {
-		for _, e := range dsm.disasm[b] {
+	for b := range dsm.entries {
+		for _, e := range dsm.entries[b] {
 			// mask off bits that indicate the cartridge/segment origin and reset
 			// them with the chosen origin
-			a := e.Result.Address&memorymap.CartridgeBits | dsm.mirrorOrigin
+			a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
 			e.Address = fmt.Sprintf("$%04x", a)
 
 			// branch instructions need special handling because for readability we
@@ -100,7 +104,7 @@ func (dsm *Disassembly) setCartMirror(useFxxxMirror bool) error {
 			if e.Result.Defn.IsBranch() {
 				// mask off bits that indicate the cartridge/segment origin and reset
 				// them with the chosen origin
-				a := e.Result.Address&memorymap.CartridgeBits | dsm.mirrorOrigin
+				a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
 				e.Operand = formatBranchOperand(a, e.Result.InstructionData, e.Result.ByteCount, dsm.Symtable)
 			}
 		}

@@ -25,6 +25,9 @@ import (
 )
 
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory, startAddress ...uint16) error {
+	// new disassembly pass so we initialise field width
+	dsm.fields.initialise()
+
 	// basic decoding pass
 	err := dsm.decode(mc, mem)
 	if err != nil {
@@ -54,7 +57,7 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory, startAddress
 	}
 
 	// convert addresses to preferred mirror
-	dsm.setCartMirror(dsm.Prefs.FxxxMirror.Get().(bool))
+	dsm.setCartMirror()
 
 	return nil
 }
@@ -94,8 +97,8 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, startAddress ...uint16) error {
 	}
 
 	// list of start points for every bank
-	blessings := make([][]uint16, len(dsm.disasm))
-	for b := range dsm.disasm {
+	blessings := make([][]uint16, len(dsm.entries))
+	for b := range dsm.entries {
 		blessings[b] = make([]uint16, 0)
 	}
 
@@ -105,14 +108,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, startAddress ...uint16) error {
 	// !!TODO: find blessing start point due to bank switch.
 	//	for example: HeMan bank 7 addr $fa03 jumps to $f7e8 jumping to bank 5
 	//	in the process
-	for b := range dsm.disasm {
+	for b := range dsm.entries {
+		for i := 0; i < len(dsm.entries[b]); i++ {
+			e := dsm.entries[b][i]
 
-		bitr, _, err := dsm.NewBankIteration(EntryLevelDecoded, b)
-		if err != nil {
-			return err
-		}
-
-		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
 			// if instruciton is a JMP or JSR then take the jump address to be a
 			// blessing and add it to the list
 			if e.Result.Defn.Mnemonic == "JMP" || e.Result.Defn.Mnemonic == "JSR" {
@@ -165,16 +164,16 @@ func (dsm *Disassembly) blessSequence(b int, a uint16) {
 	//  . if the end of cartridge has been reached
 	//		(execution could theoretically carry one but we don't allow it)
 	//
-	for a < uint16(len(dsm.disasm[b])) {
+	for a < uint16(len(dsm.entries[b])) {
 
 		// if mnemonic is unknown than end the sequence.
 		// !!TODO: remove this check once every opcode is defined/implemented
-		mnemonic := dsm.disasm[b][a].Result.Defn.Mnemonic
+		mnemonic := dsm.entries[b][a].Result.Defn.Mnemonic
 		if mnemonic == "??" {
 			return
 		}
 
-		next := a + uint16(dsm.disasm[b][a].Result.ByteCount)
+		next := a + uint16(dsm.entries[b][a].Result.ByteCount)
 
 		// break if address has looped around. while this is possible
 		// I'm not allowing it unless I can find an example of it being
@@ -186,13 +185,13 @@ func (dsm *Disassembly) blessSequence(b int, a uint16) {
 		// if an entry between this entry and the next has already been
 		// blessed then this track is probably not correct.
 		for i := a + 1; i < next; i++ {
-			if dsm.disasm[b][i].Level == EntryLevelBlessed {
+			if dsm.entries[b][i].Level == EntryLevelBlessed {
 				return
 			}
 		}
 
 		// promote the entry
-		dsm.disasm[b][a].Level = EntryLevelBlessed
+		dsm.entries[b][a].Level = EntryLevelBlessed
 
 		// not breaking on JSR because the sequence will continue if
 		// the jumped-to sequence has an RTS (which it probably will
@@ -243,7 +242,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 
 				// check that entry has not already been decoded. cartridge
 				// segments should not be able to overlap
-				e := dsm.disasm[bank.Number][address&memorymap.CartridgeBits]
+				e := dsm.entries[bank.Number][address&memorymap.CartridgeBits]
 				if e != nil && e.Level > EntryLevelUnused {
 					continue
 				}
@@ -284,7 +283,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 
 				// add entry to disassembly. we do this even if we've encountered a
 				// unimplemented instruction or some other error
-				dsm.disasm[bank.Number][address&memorymap.CartridgeBits] = ent
+				dsm.entries[bank.Number][address&memorymap.CartridgeBits] = ent
 			}
 		}
 
@@ -299,8 +298,8 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 	if bankCt != dsm.cart.NumBanks() {
 		return curated.Errorf("disassembly: number of banks in disassembly is different to NumBanks()")
 	}
-	for b := range dsm.disasm {
-		for _, a := range dsm.disasm[b] {
+	for b := range dsm.entries {
+		for _, a := range dsm.entries[b] {
 			if a == nil {
 				return curated.Errorf("disassembly: not every address has been decoded")
 			}

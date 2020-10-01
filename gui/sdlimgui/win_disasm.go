@@ -128,7 +128,7 @@ func (win *winDisasm) draw() {
 		currBank = win.img.lz.Debugger.LastResult.Bank
 	}
 
-	if win.img.lz.Cart.NumBanks == 1 {
+	if win.img.lz.Cart.NumBanks <= 1 {
 		// for cartridges with just one bank we don't bother with a TabBar
 		win.drawBank(pcaddr, 0, !currBank.NonCart, cpuStep)
 

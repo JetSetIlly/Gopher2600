@@ -33,7 +33,7 @@ func (dsm *Disassembly) NewCartIteration() (*IterateCart, int) {
 
 	citr := &IterateCart{dsm: dsm}
 
-	return citr, len(dsm.disasm)
+	return citr, len(dsm.entries)
 }
 
 // Start new iteration from the first bank
@@ -52,7 +52,7 @@ func (citr *IterateCart) Next() (int, bool) {
 }
 
 func (citr *IterateCart) next() (int, bool) {
-	if citr.bank+1 >= len(citr.dsm.disasm) {
+	if citr.bank+1 >= len(citr.dsm.entries) {
 		return -1, false
 	}
 	citr.bank++
@@ -87,14 +87,11 @@ type IterateBank struct {
 // The function returns an instance of Iterate, a count of the number of
 // entries the correspond to the minLevel (see above), and any error.
 func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*IterateBank, int, error) {
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
 	// silently reject iterations for non-existent banks. this may happen more
 	// often than you think. for example, loading a new cartridge with fewer
 	// banks than the current cartridge at the exact moment an illegal bank is
 	// being drawn by the sdlimgui disassembly window.
-	if bank >= len(dsm.disasm) {
+	if bank >= len(dsm.entries) {
 		return nil, 0, curated.Errorf("no bank %d in disasm", bank)
 	}
 
@@ -104,9 +101,12 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 		bank:     bank,
 	}
 
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
 	// count the number of entries with the minimum level
 	count := 0
-	for _, a := range dsm.disasm[bank] {
+	for _, a := range dsm.entries[bank] {
 		if a == nil {
 			return nil, 0, curated.Errorf("disassembly not complete")
 		}
@@ -121,35 +121,45 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 
 // Start new iteration from the first instance of the EntryLevel specified in NewBankIteration.
 func (bitr *IterateBank) Start() (int, *Entry) {
-	bitr.dsm.crit.Lock()
-	defer bitr.dsm.crit.Unlock()
 	bitr.idx = -1
 	return bitr.next()
 }
 
 // Next entry in the disassembly of the previously specified type. Returns nil if end of disassembly has been reached.
 func (bitr *IterateBank) Next() (int, *Entry) {
-	bitr.dsm.crit.Lock()
-	defer bitr.dsm.crit.Unlock()
 	return bitr.next()
 }
 
+// SkipNext n entries and return that Entry. An n value of < 0 returns the most
+// recent value in the iteration
+func (bitr *IterateBank) SkipNext(n int) (int, *Entry) {
+	e := bitr.lastEntry
+	for n > 0 {
+		_, e = bitr.next()
+		n--
+	}
+	return bitr.idx, e
+}
+
 func (bitr *IterateBank) next() (int, *Entry) {
-	if bitr.idx+1 >= len(bitr.dsm.disasm[bitr.bank]) {
+	bitr.dsm.crit.Lock()
+	defer bitr.dsm.crit.Unlock()
+
+	if bitr.idx+1 >= len(bitr.dsm.entries[bitr.bank]) {
 		return -1, nil
 	}
 
 	bitr.idx++
 
-	for bitr.idx < len(bitr.dsm.disasm[bitr.bank]) && bitr.dsm.disasm[bitr.bank][bitr.idx].Level < bitr.minLevel {
+	for bitr.idx < len(bitr.dsm.entries[bitr.bank]) && bitr.dsm.entries[bitr.bank][bitr.idx].Level < bitr.minLevel {
 		bitr.idx++
 	}
 
-	if bitr.idx >= len(bitr.dsm.disasm[bitr.bank]) {
+	if bitr.idx >= len(bitr.dsm.entries[bitr.bank]) {
 		return -1, nil
 	}
 
-	bitr.lastEntry = bitr.dsm.disasm[bitr.bank][bitr.idx]
+	bitr.lastEntry = bitr.dsm.entries[bitr.bank][bitr.idx]
 
 	return bitr.idx, makeCopyofEntry(*bitr.lastEntry)
 }
@@ -159,20 +169,4 @@ func (bitr *IterateBank) next() (int, *Entry) {
 // we're dealing with the iteration.
 func makeCopyofEntry(e Entry) *Entry {
 	return &e
-}
-
-// SkipNext n entries and return that Entry. An n value of < 0 returns the most
-// recent value in the iteration
-func (bitr *IterateBank) SkipNext(n int) (int, *Entry) {
-	bitr.dsm.crit.Lock()
-	defer bitr.dsm.crit.Unlock()
-
-	e := bitr.lastEntry
-
-	for n > 0 {
-		_, e = bitr.next()
-		n--
-	}
-
-	return bitr.idx, e
 }

@@ -102,15 +102,10 @@ type Entry struct {
 	DefnCycles string
 	DefnNotes  string
 
-	// actual cycles and notes are the cycles and notes actually seen in
-	// the computation
+	// actual cycles and notes are the cycles and notes actually seen during
+	// the last execution of this entry
 	ActualCycles string
 	ActualNotes  string
-
-	// does the entry represent an instruction that might have different
-	// "actual" strings depending on the specifics of execution. practically,
-	// this means branch and page-sensitive instructions
-	UpdateActualOnExecute bool
 }
 
 // String returns a very basic representation of an Entry. Provided for
@@ -280,9 +275,6 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 	if level == EntryLevelExecuted {
 		e.updateActual()
 	}
-
-	// note instructions that required active updating on execution
-	e.UpdateActualOnExecute = result.Defn.IsBranch() || result.Defn.PageSensitive
 
 	return e, nil
 }

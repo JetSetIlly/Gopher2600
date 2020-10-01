@@ -33,110 +33,113 @@ const (
 	FldDefnNotes
 	FldActualCycles
 	FldActualNotes
+	numFields
 )
 
-type widths struct {
-	location     int
-	bytecode     int
-	address      int
-	mnemonic     int
-	operand      int
-	defnCycles   int
-	defnNotes    int
-	actualCycles int
-	actualNotes  int
-}
-
-// formatting strings to be applied to the values in the entries. the
-// formatting string is of the form (for example), "%Ns" where N is the
-// corresponding width value from the widths struct
-type format struct {
-	location     string
-	bytecode     string
-	address      string
-	mnemonic     string
-	operand      string
-	defnCycles   string
-	defnNotes    string
-	actualCycles string
-	actualNotes  string
-}
-
 type fields struct {
-	widths widths
-	fmt    format
+	widths [numFields]int
+	fmt    [numFields]string
 }
 
-// Update width and formatting information for entry fields
-func (fld *fields) updateWidths(d *Entry) {
-	if len(d.Location) > fld.widths.location {
-		fld.widths.location = len(d.Location)
-	}
-	if len(d.Bytecode) > fld.widths.bytecode {
-		fld.widths.bytecode = len(d.Bytecode)
-	}
-	if len(d.Address) > fld.widths.address {
-		fld.widths.address = len(d.Address)
-	}
-	if len(d.Mnemonic) > fld.widths.mnemonic {
-		fld.widths.mnemonic = len(d.Mnemonic)
-	}
-	if len(d.Operand) > fld.widths.operand {
-		fld.widths.operand = len(d.Operand)
-	}
-	if len(d.DefnCycles) > fld.widths.defnCycles {
-		fld.widths.defnCycles = len(d.DefnCycles)
-	}
-	if len(d.DefnNotes) > fld.widths.defnNotes {
-		fld.widths.defnNotes = len(d.DefnNotes)
-	}
-	if len(d.ActualCycles) > fld.widths.actualCycles {
-		fld.widths.actualCycles = len(d.ActualCycles)
-	}
-	if len(d.ActualNotes) > fld.widths.actualNotes {
-		fld.widths.actualNotes = len(d.ActualNotes)
-	}
+// initialise with the minimum viable formatting string
+func (fld *fields) initialise() {
+	fld.widths[FldLocation] = 1
+	fld.fmt[FldLocation] = fmt.Sprintf("%%%ds", fld.widths[FldLocation])
+	fld.widths[FldBytecode] = 1
+	fld.fmt[FldBytecode] = fmt.Sprintf("%%%ds", fld.widths[FldBytecode])
+	fld.widths[FldAddress] = 1
+	fld.fmt[FldAddress] = fmt.Sprintf("%%%ds", fld.widths[FldAddress])
+	fld.widths[FldMnemonic] = 1
+	fld.fmt[FldMnemonic] = fmt.Sprintf("%%%ds", fld.widths[FldMnemonic])
+	fld.widths[FldOperand] = 1
+	fld.fmt[FldOperand] = fmt.Sprintf("%%%ds", fld.widths[FldOperand])
+	fld.widths[FldDefnCycles] = 1
+	fld.fmt[FldDefnCycles] = fmt.Sprintf("%%%ds", fld.widths[FldDefnCycles])
+	fld.widths[FldDefnNotes] = 1
+	fld.fmt[FldDefnNotes] = fmt.Sprintf("%%%ds", fld.widths[FldDefnNotes])
+	fld.widths[FldActualCycles] = 1
+	fld.fmt[FldActualCycles] = fmt.Sprintf("%%%ds", fld.widths[FldActualCycles])
+	fld.widths[FldActualNotes] = 1
+	fld.fmt[FldActualNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldActualNotes])
+}
 
-	fld.fmt.location = fmt.Sprintf("%%%ds", fld.widths.location)
-	fld.fmt.bytecode = fmt.Sprintf("%%%ds", fld.widths.bytecode)
-	fld.fmt.address = fmt.Sprintf("%%%ds", fld.widths.address)
-	fld.fmt.mnemonic = fmt.Sprintf("%%%ds", fld.widths.mnemonic)
-	fld.fmt.operand = fmt.Sprintf("%%%ds", fld.widths.operand)
-	fld.fmt.defnCycles = fmt.Sprintf("%%%ds", fld.widths.defnCycles)
-	fld.fmt.defnNotes = fmt.Sprintf("%%%ds", fld.widths.defnNotes)
-	fld.fmt.actualCycles = fmt.Sprintf("%%%ds", fld.widths.actualCycles)
-	fld.fmt.actualNotes = fmt.Sprintf("%%%ds", fld.widths.actualNotes)
+// update width and formatting information for entry fields. note that this
+// doesn't update ActualCycles or ActualNotes
+func (fld *fields) updateWidths(d *Entry) {
+	if len(d.Location) > fld.widths[FldLocation] {
+		fld.widths[FldLocation] = len(d.Location)
+		fld.fmt[FldLocation] = fmt.Sprintf("%%%ds", fld.widths[FldLocation])
+	}
+	if len(d.Bytecode) > fld.widths[FldBytecode] {
+		fld.widths[FldBytecode] = len(d.Bytecode)
+		fld.fmt[FldBytecode] = fmt.Sprintf("%%%ds", fld.widths[FldBytecode])
+	}
+	if len(d.Address) > fld.widths[FldAddress] {
+		fld.widths[FldAddress] = len(d.Address)
+		fld.fmt[FldAddress] = fmt.Sprintf("%%%ds", fld.widths[FldAddress])
+	}
+	if len(d.Mnemonic) > fld.widths[FldMnemonic] {
+		fld.widths[FldMnemonic] = len(d.Mnemonic)
+		fld.fmt[FldMnemonic] = fmt.Sprintf("%%%ds", fld.widths[FldMnemonic])
+	}
+	if len(d.Operand) > fld.widths[FldOperand] {
+		fld.widths[FldOperand] = len(d.Operand)
+		fld.fmt[FldOperand] = fmt.Sprintf("%%%ds", fld.widths[FldOperand])
+	}
+	if len(d.DefnCycles) > fld.widths[FldDefnCycles] {
+		fld.widths[FldDefnCycles] = len(d.DefnCycles)
+		fld.fmt[FldDefnCycles] = fmt.Sprintf("%%%ds", fld.widths[FldDefnCycles])
+	}
+	if len(d.DefnNotes) > fld.widths[FldDefnNotes] {
+		fld.widths[FldDefnNotes] = len(d.DefnNotes)
+		fld.fmt[FldDefnNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldDefnNotes])
+	}
+}
+
+// update field widths for "actual" cycles and "actual" notes.
+func (fld *fields) updateActual(d *Entry) {
+	if len(d.ActualCycles) > fld.widths[FldActualCycles] {
+		fld.widths[FldActualCycles] = len(d.ActualCycles)
+		fld.fmt[FldActualCycles] = fmt.Sprintf("%%%ds", fld.widths[FldActualCycles])
+	}
+	if len(d.ActualNotes) > fld.widths[FldActualNotes] {
+		fld.widths[FldActualNotes] = len(d.ActualNotes)
+		fld.fmt[FldActualNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldActualNotes])
+	}
 }
 
 // GetField returns the formatted field from the speficied Entry
 func (dsm *Disassembly) GetField(field Field, e *Entry) string {
+	var s string
+
 	switch field {
 	case FldLocation:
-		return fmt.Sprintf(dsm.fields.fmt.location, e.Location)
+		s = e.Location
 
 	case FldBytecode:
-		return fmt.Sprintf(dsm.fields.fmt.bytecode, e.Bytecode)
+		s = e.Bytecode
 
 	case FldAddress:
-		return fmt.Sprintf(dsm.fields.fmt.address, e.Address)
+		s = e.Address
 
 	case FldMnemonic:
-		return fmt.Sprintf(dsm.fields.fmt.mnemonic, e.Mnemonic)
+		s = e.Mnemonic
 
 	case FldOperand:
-		return fmt.Sprintf(dsm.fields.fmt.operand, e.Operand)
+		s = e.Operand
 
 	case FldDefnCycles:
-		return fmt.Sprintf(dsm.fields.fmt.defnCycles, e.DefnCycles)
+		s = e.DefnCycles
 
 	case FldDefnNotes:
-		return fmt.Sprintf(dsm.fields.fmt.defnNotes, e.DefnNotes)
+		s = e.DefnNotes
 
 	case FldActualCycles:
-		return fmt.Sprintf(dsm.fields.fmt.actualCycles, e.ActualCycles)
+		s = e.ActualCycles
 
 	case FldActualNotes:
-		return fmt.Sprintf(dsm.fields.fmt.actualNotes, e.ActualNotes)
+		s = e.ActualNotes
 	}
-	return ""
+
+	return fmt.Sprintf(dsm.fields.fmt[field], s)
 }

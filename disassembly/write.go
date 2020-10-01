@@ -31,7 +31,7 @@ type WriteAttr struct {
 // Write the entire disassembly to io.Writer
 func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	var err error
-	for b := 0; b < len(dsm.disasm); b++ {
+	for b := 0; b < len(dsm.entries); b++ {
 		err = dsm.WriteBank(output, attr, b)
 		if err != nil {
 			return err
@@ -43,14 +43,14 @@ func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 
 // WriteBank writes the disassembly of the selected bank to io.Writer
 func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) error {
-	if bank < 0 || bank > len(dsm.disasm)-1 {
+	if bank < 0 || bank > len(dsm.entries)-1 {
 		return curated.Errorf("disassembly: no such bank (%d)", bank)
 	}
 
 	output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", bank)))
 
-	for i := range dsm.disasm[bank] {
-		dsm.WriteEntry(output, attr, dsm.disasm[bank][i])
+	for i := range dsm.entries[bank] {
+		dsm.WriteEntry(output, attr, dsm.entries[bank][i])
 	}
 
 	return nil

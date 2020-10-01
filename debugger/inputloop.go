@@ -295,7 +295,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// check step error. note that we format and store last CPU
 			// execution result whether there was an error or not. in the case
 			// of an error the resul a fresh formatting. if there was no error
-			// the formatted result is returned by the UpdateEntry function.
+			// the formatted result is returned by the ExecuteEntry() function.
 
 			if stepErr != nil {
 				// format last execution result even on error
@@ -358,7 +358,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 			} else {
 				// update entry and store result as last result
-				dbg.lastResult, err = dbg.Disasm.UpdateEntry(dbg.lastBank, dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
+				dbg.lastResult, err = dbg.Disasm.ExecuteEntry(dbg.lastBank, dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
 				if err != nil {
 					return err
 				}
