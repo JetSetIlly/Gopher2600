@@ -24,23 +24,20 @@ import "github.com/jetsetilly/gopher2600/curated"
 //
 // Returns last matched entry in selection or an error with the last entry
 // matched before the error occurred.
-func (db Session) SelectAll(onSelect func(Entry) (bool, error)) (Entry, error) {
+func (db Session) SelectAll(onSelect func(Entry) error) (Entry, error) {
 	var entry Entry
 
 	if onSelect == nil {
-		onSelect = func(_ Entry) (bool, error) { return true, nil }
+		onSelect = func(_ Entry) error { return nil }
 	}
 
 	keyList := db.SortedKeyList()
 
 	for k := range keyList {
 		entry := db.entries[keyList[k]]
-		cont, err := onSelect(entry)
+		err := onSelect(entry)
 		if err != nil {
 			return entry, err
-		}
-		if !cont {
-			break // for loop
 		}
 	}
 
@@ -51,16 +48,16 @@ func (db Session) SelectAll(onSelect func(Entry) (bool, error)) (Entry, error) {
 // if list of keys is empty then all keys are matched (SelectAll() maybe more
 // appropriate in that case). onSelect can be nil.
 //
-// onSelect() should return true if select process is to continue. Continue
-// flag is ignored if error is not nil.
+// onSelect() should return true if select process is to continue. If error is
+// not nil then not continuing the select process is implied.
 //
 // Returns last matched entry in selection or an error with the last entry
 // matched before the error occurred.
-func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (Entry, error) {
+func (db Session) SelectKeys(onSelect func(Entry) error, keys ...int) (Entry, error) {
 	var entry Entry
 
 	if onSelect == nil {
-		onSelect = func(_ Entry) (bool, error) { return true, nil }
+		onSelect = func(_ Entry) error { return nil }
 	}
 
 	keyList := keys
@@ -70,12 +67,9 @@ func (db Session) SelectKeys(onSelect func(Entry) (bool, error), keys ...int) (E
 
 	for i := range keyList {
 		entry = db.entries[keyList[i]]
-		cont, err := onSelect(entry)
+		err := onSelect(entry)
 		if err != nil {
 			return entry, err
-		}
-		if !cont {
-			break // for loop
 		}
 	}
 

@@ -115,6 +115,7 @@ func newLogger(maxEntries int) *logger {
 					n = len(entries)
 				}
 				entries = entries[:len(entries)-n]
+				l.lastRecent = 0
 			}
 		}
 	}()

@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/digest"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -101,7 +101,7 @@ func (reg PlaybackRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	plb, err := recorder.NewPlayback(reg.Script)
@@ -144,6 +144,10 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	// run emulation
 	err = vcs.Run(func() (bool, error) {
+		if skipCheck() {
+			return false, curated.Errorf(regressionSkipped)
+		}
+
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
 			return false, curated.Errorf("playback: %v", err)

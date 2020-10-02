@@ -217,7 +217,7 @@ func launch(sync *mainSync) {
 		err = perform(md, sync)
 
 	case "REGRESS":
-		err = regress(md)
+		err = regress(md, sync)
 
 	case "HISCORE":
 		err = hiscoreServer(md)
@@ -597,7 +597,7 @@ func (*yesReader) Read(p []byte) (n int, err error) {
 	return 1, nil
 }
 
-func regress(md *modalflag.Modes) error {
+func regress(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 	md.AddSubModes("RUN", "LIST", "DELETE", "ADD")
 
@@ -612,14 +612,16 @@ func regress(md *modalflag.Modes) error {
 
 		// no additional arguments
 		verbose := md.AddBool("verbose", false, "output more detail (eg. error messages)")
-		failOnError := md.AddBool("fail", false, "fail on error")
 
 		p, err := md.Parse()
 		if err != nil || p != modalflag.ParseContinue {
 			return err
 		}
 
-		err = regression.RegressRunTests(md.Output, *verbose, *failOnError, md.RemainingArgs())
+		// turn off default sigint handling
+		sync.state <- reqNoIntSig
+
+		err = regression.RegressRun(md.Output, *verbose, md.RemainingArgs())
 		if err != nil {
 			return err
 		}

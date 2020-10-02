@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/digest"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/television"
@@ -132,18 +132,18 @@ func (reg VideoRegression) String() string {
 	case StateNone:
 		state = ""
 	case StateTV:
-		state = "[TV state]"
+		state = " [TV state]"
 	case StatePorts:
-		state = "[ports state]"
+		state = " [ports state]"
 	case StateTimer:
-		state = "[timer state]"
+		state = " [timer state]"
 	case StateCPU:
-		state = "[cpu state]"
+		state = " [cpu state]"
 	default:
-		state = "[with state]"
+		state = " [with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d %s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -176,7 +176,7 @@ func (reg VideoRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface
-func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
+func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
@@ -225,10 +225,14 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
+		if skipCheck() {
+			return false, curated.Errorf(regressionSkipped)
+		}
+
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
-			output.Write([]byte(fmt.Sprintf("\r%s[%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			output.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
 

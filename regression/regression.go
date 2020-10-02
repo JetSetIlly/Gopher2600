@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
@@ -35,6 +37,12 @@ const ansiClearLine = "\033[2K"
 // scripts. these should be wrapped by paths.ResourcePath()
 const regressionDBFile = "regressionDB"
 const regressionScripts = "regressionScripts"
+
+// Sentinal errors to indicate skip and quite events during the RegressRun() function
+const (
+	regressionSkipped   = "regression skipped"
+	regressionQuitEarly = "regression quit early"
+)
 
 // Regressor is the generic entry type in the regressionDB
 type Regressor interface {
@@ -48,7 +56,7 @@ type Regressor interface {
 	//
 	// returns: success boolean; any failure message (not always appropriate;
 	// and error state
-	regress(newRegression bool, output io.Writer, message string) (bool, string, error)
+	regress(newRegression bool, output io.Writer, message string, continueCheck func() bool) (bool, string, error)
 }
 
 // when starting a database session we need to register what entries we will
@@ -118,7 +126,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
-	_, _, err = reg.regress(true, output, msg)
+	_, _, err = reg.regress(true, output, msg, func() bool { return false })
 	if err != nil {
 		return err
 	}
@@ -176,10 +184,10 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	return nil
 }
 
-// RegressRunTests runs all the tests in the regression database. filterKeys
+// RegressRun runs all the tests in the regression database. filterKeys
 // list specified which entries to test. an empty keys list means that every
 // entry should be tested
-func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKeys []string) error {
+func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	// tests must be determinate so we set math.rand seed to something we know.
 	// reseed with clock on completion
 	rand.Seed(1)
@@ -214,10 +222,9 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 	numSucceed := 0
 	numFail := 0
 	numError := 0
+	numSkipped := 0
 
 	defer func() {
-		numSkipped := db.NumEntries() - numSucceed - numFail - numError
-
 		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail, %d skipped", numSucceed, numFail, numSkipped)))
 
 		if numError > 0 {
@@ -226,17 +233,48 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 		output.Write([]byte("\n"))
 	}()
 
-	onSelect := func(ent database.Entry) (bool, error) {
+	// quitEarly will be set if an interrupt signal is received twice within a
+	// quarter of a second. this will cause the onSelect function to return the
+	// regressionQuitEarly error
+	quitEarly := false
+
+	// check for interrupt signal. a single interrupt signal skips the current
+	// regression entry. a second interrupt signal within a quarter of a second
+	// quits the entire regression test
+	intChan := make(chan os.Signal, 1)
+	signal.Notify(intChan, os.Interrupt)
+	skipCheck := func() bool {
+		select {
+		case <-intChan:
+			select {
+			case <-intChan:
+				quitEarly = true
+			case <-time.After(250 * time.Millisecond):
+				return true
+			}
+		default:
+		}
+		return false
+	}
+
+	// selectKeys() calls this onSelect function for every key entry
+	onSelect := func(ent database.Entry) error {
+		// if the quitEarly flag has been set then return the
+		// regressionQuitEarly error
+		if quitEarly {
+			return curated.Errorf(regressionQuitEarly)
+		}
+
 		// datbase entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
-			return false, fmt.Errorf("regression: run: database entry does not satisfy Regressor interface")
+			return curated.Errorf("regression: run: database entry does not satisfy Regressor interface")
 		}
 
 		// run regress() function with message. message does not have a
 		// trailing newline
 		msg := fmt.Sprintf("running: %s", reg)
-		ok, failm, err := reg.regress(false, output, msg)
+		ok, failm, err := reg.regress(false, output, msg, skipCheck)
 
 		// once regress() has completed we clear the line ready for the
 		// completion message
@@ -244,17 +282,19 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 
 		// print completion message depending on result of regress()
 		if err != nil {
-			numError++
-			output.Write([]byte(fmt.Sprintf("\rerror: %s\n", reg)))
+			if curated.Has(err, regressionSkipped) {
+				numSkipped++
+				output.Write([]byte(fmt.Sprintf("\rskipped: %s\n", reg)))
+			} else {
+				numError++
+				output.Write([]byte(fmt.Sprintf("\rerror: %s\n", reg)))
 
-			// output any error message on following line
-			if verbose {
-				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
+				// output any error message on following line
+				if verbose {
+					output.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
+				}
 			}
 
-			if failOnError {
-				return false, nil
-			}
 		} else if !ok {
 			numFail++
 			output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
@@ -267,10 +307,15 @@ func RegressRunTests(output io.Writer, verbose bool, failOnError bool, filterKey
 			output.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
 		}
 
-		return true, nil
+		return nil
 	}
 
-	db.SelectKeys(onSelect, keysV...)
+	_, err = db.SelectKeys(onSelect, keysV...)
+
+	// filter out regressionQuitEarly errors
+	if err != nil && !curated.Is(err, regressionQuitEarly) {
+		return curated.Errorf("regression: %v", err)
+	}
 
 	return nil
 }

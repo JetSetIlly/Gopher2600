@@ -16,11 +16,9 @@
 package setup
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/paths"
 )
@@ -83,21 +81,21 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 	}
 	defer db.EndSession(false)
 
-	onSelect := func(ent database.Entry) (bool, error) {
+	onSelect := func(ent database.Entry) error {
 		// database entry should also satisfy setupEntry interface
 		set, ok := ent.(setupEntry)
 		if !ok {
-			return false, fmt.Errorf("setup: attach cartridge: database entry does not satisfy setupEntry interface")
+			return curated.Errorf("setup: attach cartridge: database entry does not satisfy setupEntry interface")
 		}
 
 		if set.matchCartHash(vcs.Mem.Cart.Hash) {
 			err := set.apply(vcs)
 			if err != nil {
-				return false, err
+				return err
 			}
 		}
 
-		return true, nil
+		return nil
 	}
 
 	_, err = db.SelectAll(onSelect)

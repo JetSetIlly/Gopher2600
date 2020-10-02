@@ -393,6 +393,9 @@ To run specific tests, list the test numbers (as seen in the list command result
 on the command line. For example:
 
 	> gopher2600 regress run 1 3 5
+	
+An interrupt signal (ctrl-c) will skip the current test. Two interrupt signals
+within a quarter of a second will stop the regression run completely.
 
 #### Deleting
 
