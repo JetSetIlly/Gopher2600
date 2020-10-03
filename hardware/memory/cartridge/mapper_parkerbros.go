@@ -108,7 +108,7 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 		data = cart.banks[cart.segment[3]][addr&0x03ff]
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return data, nil
 }
@@ -127,13 +127,13 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 		}
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return curated.Errorf(bus.AddressError, addr)
 }
 
 // bankswitch on hotspot access
-func (cart *parkerBros) hotspot(addr uint16, passive bool) bool {
+func (cart *parkerBros) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0xfe0 && addr <= 0xff7 {
 		if passive {
 			return true

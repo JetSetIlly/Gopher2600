@@ -123,7 +123,7 @@ func (cart *dpcPlus) Initialise() {
 }
 
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
 	}
@@ -272,7 +272,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -558,7 +558,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // bankswitch on hotspot access
-func (cart *dpcPlus) hotspot(addr uint16, passive bool) bool {
+func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ffb {
 		if passive {
 			return true

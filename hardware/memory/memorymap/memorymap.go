@@ -50,14 +50,16 @@ const (
 // down into the the range of an array. This can be done by with elegantly with
 // (address^origin) rather than subtraction.
 const (
-	OriginTIA  = uint16(0x0000)
-	MemtopTIA  = uint16(0x003f)
-	OriginRAM  = uint16(0x0080)
-	MemtopRAM  = uint16(0x00ff)
-	OriginRIOT = uint16(0x0280)
-	MemtopRIOT = uint16(0x0297)
-	OriginCart = uint16(0x1000)
-	MemtopCart = uint16(0x1fff)
+	OriginTIA      = uint16(0x0000)
+	MemtopTIA      = uint16(0x003f)
+	OriginRAM      = uint16(0x0080)
+	MemtopRAM      = uint16(0x00ff)
+	OriginRIOT     = uint16(0x0280)
+	MemtopRIOT     = uint16(0x0297)
+	OriginCart     = uint16(0x1000)
+	MemtopCart     = uint16(0x1fff)
+	OriginAbsolute = uint16(0x0000)
+	MemtopAbsolute = uint16(0xffff)
 )
 
 // Cartridge memory is mirrored in a number of places in the address space. The

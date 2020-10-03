@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -31,40 +31,40 @@ import (
 func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 
 	// look at every bank in the disassembly
-	citr, _ := dsm.NewCartIteration()
+	citr := dsm.NewCartIteration()
 	citr.Start()
 	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 
 		// create a new iteration for the bank
-		bitr, _, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
+		bitr, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
 		if err != nil {
 			return curated.Errorf("linter: %v", err)
 		}
 
 		// iterate through disassembled bank
-		for _, d := bitr.Start(); d != nil; _, d = bitr.Next() {
+		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
 
 			// if instruction has a read opcode, and the addressing mode seems
 			// to be reading from non-read addresses in TIA or RIOT space then
 			// create a lint warning
 
-			if d.Result.Defn.Effect == instructions.Read {
-				if d.Result.Defn.AddressingMode == instructions.Absolute ||
-					d.Result.Defn.AddressingMode == instructions.ZeroPage {
-					ma, area := memorymap.MapAddress(d.Result.InstructionData, true)
+			if e.Result.Defn.Effect == instructions.Read {
+				if e.Result.Defn.AddressingMode == instructions.Absolute ||
+					e.Result.Defn.AddressingMode == instructions.ZeroPage {
+					ma, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					switch area {
 					case memorymap.TIA:
 						_, isRead := addresses.TIAReadSymbols[ma]
 						if !isRead {
-							s := fmt.Sprintf("%#04x\tread TIA address [%#04x (%#04x)]\n", d.Result.Address, d.Result.InstructionData, ma)
+							s := fmt.Sprintf("%#04x\tread TIA address [%#04x (%#04x)]\n", e.Result.Address, e.Result.InstructionData, ma)
 							output.Write([]byte(s))
 						}
 
 					case memorymap.RIOT:
 						_, isRead := addresses.RIOTReadSymbols[ma]
 						if !isRead {
-							s := fmt.Sprintf("%#04x\tread RIOT address [%#04x (%#04x)]\n", d.Result.Address, d.Result.InstructionData, ma)
+							s := fmt.Sprintf("%#04x\tread RIOT address [%#04x (%#04x)]\n", e.Result.Address, e.Result.InstructionData, ma)
 							output.Write([]byte(s))
 						}
 					}

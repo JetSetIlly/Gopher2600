@@ -40,12 +40,12 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	citr, _ := dsm.NewCartIteration()
+	citr := dsm.NewCartIteration()
 	citr.Start()
 	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 		bankHeader := false
 
-		bitr, _, err := dsm.NewBankIteration(EntryLevelBlessed, b)
+		bitr, err := dsm.NewBankIteration(EntryLevelBlessed, b)
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 			case GrepMnemonic:
 				s = e.Mnemonic
 			case GrepOperand:
-				s = e.Operand
+				s = e.String()
 			case GrepAll:
 				s = line.String()
 			}

@@ -25,7 +25,6 @@ import (
 // WriteAttr controls what is printed by the Write*() functions
 type WriteAttr struct {
 	ByteCode bool
-	Raw      bool
 }
 
 // Write the entire disassembly to io.Writer
@@ -62,33 +61,27 @@ func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 		return
 	}
 
-	if !attr.Raw && e.Level < EntryLevelBlessed {
+	if e.Level < EntryLevelBlessed {
 		return
 	}
 
-	if e.Location != "" {
-		output.Write([]byte(dsm.GetField(FldLocation, e)))
+	if e.Label.String() != "" {
+		output.Write([]byte(e.GetField(FldLabel)))
 		output.Write([]byte("\n"))
 	}
 
-	if attr.Raw {
-		output.Write([]byte(fmt.Sprintf("%s  ", e.Level)))
-	}
-
 	if attr.ByteCode {
-		output.Write([]byte(dsm.GetField(FldBytecode, e)))
+		output.Write([]byte(e.GetField(FldBytecode)))
 		output.Write([]byte(" "))
 	}
 
-	output.Write([]byte(dsm.GetField(FldAddress, e)))
+	output.Write([]byte(e.GetField(FldAddress)))
 	output.Write([]byte(" "))
-	output.Write([]byte(dsm.GetField(FldMnemonic, e)))
+	output.Write([]byte(e.GetField(FldMnemonic)))
 	output.Write([]byte(" "))
-	output.Write([]byte(dsm.GetField(FldOperand, e)))
+	output.Write([]byte(e.GetField(FldOperand)))
 	output.Write([]byte(" "))
-	output.Write([]byte(dsm.GetField(FldDefnCycles, e)))
-	output.Write([]byte(" "))
-	output.Write([]byte(dsm.GetField(FldDefnNotes, e)))
+	output.Write([]byte(e.GetField(FldDefnCycles)))
 
 	output.Write([]byte("\n"))
 }

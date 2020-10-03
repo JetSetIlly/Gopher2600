@@ -334,6 +334,15 @@ func (cart Cartridge) GetContainer() mapper.CartContainer {
 	return nil
 }
 
+// GetCartHotspots returns interface to hotspots bus or nil if cartridge has no
+// hotspots it wants to report
+func (cart Cartridge) GetCartHotspots() bus.CartHotspots {
+	if cc, ok := cart.mapper.(bus.CartHotspots); ok {
+		return cc
+	}
+	return nil
+}
+
 // IterateBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
 // banks.Content returned from the previous call. The end of the sequence is

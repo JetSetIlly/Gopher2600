@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -160,7 +161,9 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 // draw most recent instruction in the CPU or as much as can be interpreted
 // currently
 func (win *winCPU) drawLastResult() {
-	if win.img.lz.CPU.HasReset {
+	e := win.img.lz.Debugger.LastResult
+
+	if e.Level == disassembly.EntryLevelUnused {
 		imgui.Text("")
 		imgui.Text("")
 		imgui.Text("")
@@ -168,12 +171,10 @@ func (win *winCPU) drawLastResult() {
 		return
 	}
 
-	e := win.img.lz.Debugger.LastResult
-
 	if e.Result.Final {
 		imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 		imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
-		imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
+		imgui.Text(fmt.Sprintf("%s cyc", e.Cycles))
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
@@ -188,7 +189,7 @@ func (win *winCPU) drawLastResult() {
 	imgui.Text(fmt.Sprintf("%s", e.Bytecode))
 	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
 	if e.Result.Defn != nil {
-		imgui.Text(fmt.Sprintf("%s of %s cyc", e.ActualCycles, e.DefnCycles))
+		imgui.Text(fmt.Sprintf("%s of %s cyc", e.Cycles, e.DefnCycles))
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {

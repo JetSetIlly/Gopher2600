@@ -24,11 +24,11 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -424,28 +424,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		tok, _ := tokens.Get()
 		switch strings.ToUpper(tok) {
 		case "LIST":
+			fmt.Println(tokens.Remainder())
 			option, ok := tokens.Get()
 			if ok {
 				switch strings.ToUpper(option) {
 				default:
 					// already caught by command line ValidateTokens()
 
-				case "LOCATIONS":
-					dbg.Disasm.Symtable.ListLocations(dbg.printStyle(terminal.StyleFeedback))
+				case "LABELS":
+					dbg.Disasm.Symbols.ListLabels(dbg.printStyle(terminal.StyleFeedback))
 
 				case "READ":
-					dbg.Disasm.Symtable.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.Disasm.Symbols.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
 
 				case "WRITE":
-					dbg.Disasm.Symtable.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.Disasm.Symbols.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
 				}
 			} else {
-				dbg.Disasm.Symtable.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
+				dbg.Disasm.Symbols.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
 			}
 
 		default:
 			symbol := tok
-			found, table, symbol, address := dbg.Disasm.Symtable.SearchSymbol(symbol, symbols.UnspecifiedSymTable)
+			found, table, symbol, address := dbg.Disasm.Symbols.Search(symbol, symbols.UnspecifiedSymTable)
 			if !found {
 				dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
 				return false, nil
@@ -458,15 +459,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					// already caught by command line ValidateTokens()
 
 				case "ALL", "MIRRORS":
-					dbg.printLine(terminal.StyleFeedback, "%s -> %#04x", symbol, address)
-
-					// find all instances of symbol address in memory space
-					// assumption: the address returned by SearchSymbol is the
-					// first address in the complete list
-					for m := address + 1; m < memorymap.OriginCart; m++ {
+					for m := memorymap.OriginAbsolute; m < memorymap.MemtopAbsolute; m++ {
 						ai := dbg.dbgmem.mapAddress(m, table == symbols.ReadSymTable)
 						if ai.mappedAddress == address {
-							dbg.printLine(terminal.StyleFeedback, "%s (%s) -> %#04x", symbol, table, m)
+							dbg.printLine(terminal.StyleFeedback, "%s -> %#04x", symbol, m)
 						}
 					}
 				}
@@ -709,22 +705,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		if dbg.VCS.Mem.Cart.NumBanks() > 1 {
 			s.WriteString(fmt.Sprintf("[%s] ", dbg.lastResult.Bank))
 		}
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldAddress, dbg.lastResult))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldAddress))
 		s.WriteString(" ")
 		if bytecode {
-			s.WriteString(dbg.Disasm.GetField(disassembly.FldBytecode, dbg.lastResult))
+			s.WriteString(dbg.lastResult.GetField(disassembly.FldBytecode))
 			s.WriteString(" ")
 		}
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldMnemonic, dbg.lastResult))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldMnemonic))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldOperand, dbg.lastResult))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperand))
 		s.WriteString(" ")
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualCycles, dbg.lastResult))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldActualCycles))
 		s.WriteString(" ")
 		if !dbg.lastResult.Result.Final {
 			s.WriteString(fmt.Sprintf("(of %d) ", dbg.lastResult.Result.Defn.Cycles))
 		}
-		s.WriteString(dbg.Disasm.GetField(disassembly.FldActualNotes, dbg.lastResult))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldActualNotes))
 
 		// change terminal output style depending on condition of last CPU result
 		if dbg.lastResult.Result.Final {

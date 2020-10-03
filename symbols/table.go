@@ -19,114 +19,66 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
-// Table is the master symbols table for the loaded programme
+// Table maps a symbol to an address. it also keeps track of the widest symbol
+// in the Table.
 type Table struct {
-	// the master table is made up of three sub-tables
-	Locations *symTable
-	Read      *symTable
-	Write     *symTable
+	// indexed by address. addresses should be mapped before indexing takes place
+	Entries map[uint16]string
 
-	// use max width values to help with formatting
-	MaxLocationWidth int
-	MaxSymbolWidth   int
-}
+	// index of keys in Entries. sortable through the sort.Interface
+	idx []uint16
 
-// NewTable is the preferred method of initialisation for the Table type. In
-// many instances however, ReadSymbolsFile() might be more appropriate. Naked
-// initalisation of the Table type (ie. &Table{}) will rarely be useful.
-func NewTable() *Table {
-	tbl := &Table{}
-	tbl.canoniseTable(true)
-	return tbl
-}
-
-// put canonical symbols into table. prefer flag should be true if canonical
-// names are to supercede any existing symbol.
-func (tbl *Table) canoniseTable(prefer bool) {
-	// loop through the array of canonical names.
-	//
-	// note that because Read and Write in the addresses package are sparse
-	// arrays we need to filter out the empty entries. (the Read and Write
-	// structures used to be maps and we didn't need to do this)
-	for k, v := range addresses.ReadSymbols {
-		tbl.Read.add(uint16(k), v, prefer)
-	}
-	for k, v := range addresses.WriteSymbols {
-		tbl.Write.add(uint16(k), v, prefer)
-	}
-
-	tbl.polishTable()
-}
-
-// polishTable() should be called whenever any of the sub-tables have been dirtied
-func (tbl *Table) polishTable() {
-	sort.Sort(tbl.Locations)
-	sort.Sort(tbl.Read)
-	sort.Sort(tbl.Write)
-
-	// find max symbol width
-	tbl.MaxLocationWidth = tbl.Locations.maxWidth
-	if tbl.Read.maxWidth > tbl.Write.maxWidth {
-		tbl.MaxSymbolWidth = tbl.Read.maxWidth
-	} else {
-		tbl.MaxSymbolWidth = tbl.Write.maxWidth
-	}
-}
-
-type symTable struct {
-	Symbols  map[uint16]string
-	idx      []uint16
+	// the longest symbol in the Entries map
 	maxWidth int
 }
 
-func newTable() *symTable {
-	sym := &symTable{
-		Symbols: make(map[uint16]string),
+// newTable is the preferred method of initialisation for the table type
+func newTable() *Table {
+	t := &Table{
+		Entries: make(map[uint16]string),
 		idx:     make([]uint16, 0),
 	}
-	return sym
+	return t
 }
 
-func (sym symTable) String() string {
+func (t Table) String() string {
 	s := strings.Builder{}
-	for i := range sym.idx {
-		s.WriteString(fmt.Sprintf("%#04x -> %s\n", sym.idx[i], sym.Symbols[sym.idx[i]]))
+	for i := range t.idx {
+		s.WriteString(fmt.Sprintf("%#04x -> %s\n", t.idx[i], t.Entries[t.idx[i]]))
 	}
 	return s.String()
 }
 
-func (sym *symTable) add(addr uint16, symbol string, prefer bool) {
+func (t *Table) add(addr uint16, symbol string, prefer bool) {
 	// end add procedure with check for max symbol width
 	defer func() {
-		for _, s := range sym.Symbols {
-			if len(s) > sym.maxWidth {
-				sym.maxWidth = len(s)
+		for _, s := range t.Entries {
+			if len(s) > t.maxWidth {
+				t.maxWidth = len(s)
 			}
 		}
 	}()
 
 	// check for duplicates
-	for i := range sym.idx {
-		if sym.idx[i] == addr {
+	for i := range t.idx {
+		if t.idx[i] == addr {
 			// overwrite existing symbol with preferred symbol
 			if prefer {
-				sym.Symbols[addr] = symbol
+				t.Entries[addr] = symbol
 			}
 			return
 		}
 	}
 
-	sym.Symbols[addr] = symbol
-	sym.idx = append(sym.idx, addr)
-	sort.Sort(sym)
+	t.Entries[addr] = symbol
+	t.idx = append(t.idx, addr)
+	sort.Sort(t)
 }
 
-func (sym symTable) search(symbol string) (uint16, bool) {
-	for k, v := range sym.Symbols {
+func (t Table) search(symbol string) (uint16, bool) {
+	for k, v := range t.Entries {
 		if strings.ToUpper(v) == symbol {
 			return k, true
 		}
@@ -135,16 +87,16 @@ func (sym symTable) search(symbol string) (uint16, bool) {
 }
 
 // Len implements the sort.Interface
-func (sym symTable) Len() int {
-	return len(sym.idx)
+func (t Table) Len() int {
+	return len(t.idx)
 }
 
 // Less implements the sort.Interface
-func (sym symTable) Less(i, j int) bool {
-	return sym.idx[i] < sym.idx[j]
+func (t Table) Less(i, j int) bool {
+	return t.idx[i] < t.idx[j]
 }
 
 // Swap implements the sort.Interface
-func (sym symTable) Swap(i, j int) {
-	sym.idx[i], sym.idx[j] = sym.idx[j], sym.idx[i]
+func (t Table) Swap(i, j int) {
+	t.idx[i], t.idx[j] = t.idx[j], t.idx[i]
 }

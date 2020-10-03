@@ -54,7 +54,7 @@ type Result struct {
 	// the actual number of cycles taken by the instruction - usually the same
 	// as Defn.Cycles but in the case of PageFaults and branches, this value
 	// may be different
-	ActualCycles int
+	Cycles int
 
 	// whether an extra cycle was required because of 8 bit adder overflow
 	PageFault bool
@@ -80,7 +80,7 @@ func (r *Result) Reset() {
 	r.ByteCount = 0
 	r.Address = 0
 	r.InstructionData = 0
-	r.ActualCycles = 0
+	r.Cycles = 0
 	r.PageFault = false
 	r.CPUBug = ""
 	r.Error = ""

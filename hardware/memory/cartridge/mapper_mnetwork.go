@@ -162,7 +162,7 @@ func (cart *mnetwork) Initialise() {
 
 // Read implements the mapper.CartMapper interface
 func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
 	}
@@ -193,7 +193,7 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the mapper.CartMapper interface
 func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -216,7 +216,7 @@ func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) er
 }
 
 // bankswitch on hotspot access
-func (cart *mnetwork) hotspot(addr uint16, passive bool) bool {
+func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 	if (addr >= 0xfe0 && addr <= 0xfe7) || (addr >= 0xff8 && addr <= 0x0ffb) {
 		if passive {
 			return true

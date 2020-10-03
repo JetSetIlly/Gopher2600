@@ -37,13 +37,10 @@ type Disassembly struct {
 	cart *cartridge.Cartridge
 
 	// symbols used to format disassembly output
-	Symtable *symbols.Table
+	Symbols *symbols.Symbols
 
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	entries [][]*Entry
-
-	// formatting information for all entries in the disassembly
-	fields fields
 
 	// critical sectioning. the iteration functions in particular may be called
 	// from a different goroutine. entries in the (disasm array) will likely be
@@ -83,10 +80,6 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, err
 	}
 
-	// ignore errors caused by loading of symbols table - we always get a
-	// standard symbols table even in the event of an error
-	symtable, _ := symbols.ReadSymbolsFile(cartload.Filename)
-
 	cart := cartridge.NewCartridge()
 
 	err = cart.Attach(cartload)
@@ -94,7 +87,11 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	err = dsm.FromMemory(cart, symtable)
+	// ignore errors caused by loading of symbols table - we always get a
+	// standard symbols table even in the event of an error
+	symbols, _ := symbols.ReadSymbolsFile(cart)
+
+	err = dsm.FromMemory(cart, symbols)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
@@ -126,10 +123,10 @@ func (dsm *Disassembly) FromMemoryAgain(startAddress ...uint16) error {
 // requires an existing instance of Disassembly
 //
 // cartridge will finish in its initialised state
-func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symtable *symbols.Table) error {
+func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
 	dsm.cart = cart
 
-	dsm.Symtable = symtable
+	dsm.Symbols = symbols
 
 	// allocate memory for disassembly. the GUI may find itself trying to
 	// iterate through disassembly at the same time as we're doing this.
@@ -193,11 +190,14 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	return dsm.entries[bank.Number][address&memorymap.CartridgeBits]
 }
 
-// ExecuteEntry to more closely resemble the most recent execution.Result.
+// ExecutedEntry creates an Entry from a cpu result that has actually been
+// executed. The newly created Entry replaces the previous equivalent entry in
+// the disassembly.
 //
-// If the result is transient (ie. executed from RAM) then nothing is updated
-// but a formatted result is returned.
-func (dsm *Disassembly) ExecuteEntry(bank banks.Details, result execution.Result, nextAddr uint16) (*Entry, error) {
+// If the execution.Result was from an instruction in RAM (cartridge RAM or VCS
+// RAM) then the newly created entry is returned but not stored anywhere in the
+// Disassembly.
+func (dsm *Disassembly) ExecutedEntry(bank banks.Details, result execution.Result, nextAddr uint16) (*Entry, error) {
 	// not touching any result which is not in cartridge space. we are noting
 	// execution results from cartridge RAM. the banks.Details field in the
 	// disassembly entry notes whether execution was from RAM
@@ -222,19 +222,13 @@ func (dsm *Disassembly) ExecuteEntry(bank banks.Details, result execution.Result
 
 	if e == nil || e.Result.Defn.OpCode != result.Defn.OpCode {
 		var err error
-		dsm.entries[bank.Number][idx], err = dsm.formatResult(bank, result, EntryLevelExecuted)
+		dsm.entries[bank.Number][idx], err = dsm.FormatResult(bank, result, EntryLevelExecuted)
 		if err != nil {
 			return nil, curated.Errorf("disassembly: %v", err)
 		}
 
 	} else if e.Level < EntryLevelExecuted {
-		// indicate that entry has been executed
-		e.Level = EntryLevelExecuted
-		e.Result = result
-
-		// update "actual" information for the entry and update field widths
-		e.updateActual()
-		dsm.fields.updateActual(e)
+		e.updateExecutionEntry(result)
 	}
 
 	// bless next entry in case it was missed by the original decoding. there's

@@ -462,7 +462,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 // CPU.cycleCallback() is called from this function for additional
 // functionality
 func (mc *CPU) endCycle() error {
-	mc.LastResult.ActualCycles++
+	mc.LastResult.Cycles++
 	if mc.cycleCallback == nil {
 		return nil
 	}

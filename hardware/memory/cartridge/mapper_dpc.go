@@ -176,7 +176,7 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	cart.registers.RNG <<= 1
 
 	// bankswitch on hotspot access
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
 	}
@@ -285,7 +285,7 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the mapper.CartMapper interface
 func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -345,7 +345,7 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bank switch on hotspot access
-func (cart *dpc) hotspot(addr uint16, passive bool) bool {
+func (cart *dpc) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
 		if passive {
 			return true

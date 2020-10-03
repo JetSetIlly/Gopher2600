@@ -49,7 +49,8 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		// this is the ideal path. the address is in the disassembly and we've
 		// decoded it already
 		content.WriteString(fmt.Sprintf("%s %s", e.Address, e.Mnemonic))
-		if e.Operand != "" {
+
+		if e.Operand.String() != "" {
 			content.WriteString(fmt.Sprintf(" %s", e.Operand))
 		}
 	}

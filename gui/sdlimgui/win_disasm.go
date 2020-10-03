@@ -137,7 +137,7 @@ func (win *winDisasm) draw() {
 		// adding a page for each one
 		imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 
-		citr, _ := win.img.lz.Dbg.Disasm.NewCartIteration()
+		citr := win.img.lz.Dbg.Disasm.NewCartIteration()
 		citr.Start()
 		for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 			// set tab flags. select the tab that represents the
@@ -207,7 +207,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
 	}
-	bitr, count, err := win.img.lz.Dbg.Disasm.NewBankIteration(lvl, b)
+	bitr, err := win.img.lz.Dbg.Disasm.NewBankIteration(lvl, b)
 
 	// check that NewBankIteration has succeeded. if it hasn't it probably
 	// means the cart has changed in the middle of the draw routine. but that's
@@ -221,10 +221,10 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
-	clipper.Begin(count)
+	clipper.Begin(bitr.EntryCount + bitr.LabelCount)
 	for clipper.Step() {
 		_, e := bitr.Start()
-		_, e = bitr.SkipNext(clipper.DisplayStart)
+		_, e = bitr.SkipNext(clipper.DisplayStart, true)
 
 		// note address of top entry in the list. we use this to help
 		// list alignment
@@ -235,6 +235,15 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 		win.addressTopList = e.Result.Address
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			// try to draw address labely. if successful then advance clipper
+			// counter and check for end of display
+			if win.drawLabel(e) {
+				i++
+				if i >= clipper.DisplayEnd {
+					break // clipper.DisplayStart loop
+				}
+			}
+
 			// if address value of current disasm entry and current PC value
 			// match then highlight the entry
 			win.drawEntry(e, pcaddr, selected, cpuStep)
@@ -281,6 +290,12 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 				hlEntry = i
 				break // for loop
 			}
+
+			// make sure to count labels
+			if e.Label.String() != "" {
+				i++
+			}
+
 			i++
 		}
 
@@ -295,6 +310,15 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	}
 
 	imgui.EndChild()
+}
+
+func (win *winDisasm) drawLabel(e *disassembly.Entry) bool {
+	s := e.GetField(disassembly.FldLabel)
+	if s == "" {
+		return false
+	}
+	imgui.Text(s)
+	return true
 }
 
 // drawEntry() is called many times from drawBank(), once for each entry in the list
@@ -334,30 +358,30 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	s := win.img.lz.Dbg.Disasm.GetField(disassembly.FldAddress, e)
+	s := e.GetField(disassembly.FldAddress)
 	imgui.Text(s)
 
 	if win.showByteCode {
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode.Plus(adj))
-		s := win.img.lz.Dbg.Disasm.GetField(disassembly.FldBytecode, e)
+		s := e.GetField(disassembly.FldBytecode)
 		imgui.Text(s)
 		imgui.PopStyleColorV(1)
 	}
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
-	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldMnemonic, e)
+	s = e.GetField(disassembly.FldMnemonic)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand.Plus(adj))
-	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldOperand, e)
+	s = e.GetField(disassembly.FldOperand)
 	imgui.Text(s)
 
 	imgui.SameLine()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles.Plus(adj))
-	s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldDefnCycles, e)
+	s = e.GetField(disassembly.FldDefnCycles)
 	imgui.Text(s)
 
 	imgui.PopStyleColorV(4)
@@ -365,7 +389,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 	if e.Level == disassembly.EntryLevelExecuted {
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-		s = win.img.lz.Dbg.Disasm.GetField(disassembly.FldActualNotes, e)
+		s = e.GetField(disassembly.FldActualNotes)
 		imgui.Text(s)
 		imgui.PopStyleColor()
 	}

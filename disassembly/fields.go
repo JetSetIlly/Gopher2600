@@ -24,122 +24,85 @@ type Field int
 
 // List of valid fields
 const (
-	FldLocation Field = iota
+	FldLabel Field = iota
 	FldBytecode
 	FldAddress
 	FldMnemonic
 	FldOperand
 	FldDefnCycles
-	FldDefnNotes
 	FldActualCycles
 	FldActualNotes
 	numFields
 )
 
-type fields struct {
-	widths [numFields]int
-	fmt    [numFields]string
-}
+// required widths (in characters) of the various disassembly fields.
+const (
+	widthBytecode     = 9
+	widthAddress      = 6
+	widthMnemonic     = 3
+	widthDefnCycles   = 3
+	widthActualCycles = 1
 
-// initialise with the minimum viable formatting string
-func (fld *fields) initialise() {
-	fld.widths[FldLocation] = 1
-	fld.fmt[FldLocation] = fmt.Sprintf("%%%ds", fld.widths[FldLocation])
-	fld.widths[FldBytecode] = 1
-	fld.fmt[FldBytecode] = fmt.Sprintf("%%%ds", fld.widths[FldBytecode])
-	fld.widths[FldAddress] = 1
-	fld.fmt[FldAddress] = fmt.Sprintf("%%%ds", fld.widths[FldAddress])
-	fld.widths[FldMnemonic] = 1
-	fld.fmt[FldMnemonic] = fmt.Sprintf("%%%ds", fld.widths[FldMnemonic])
-	fld.widths[FldOperand] = 1
-	fld.fmt[FldOperand] = fmt.Sprintf("%%%ds", fld.widths[FldOperand])
-	fld.widths[FldDefnCycles] = 1
-	fld.fmt[FldDefnCycles] = fmt.Sprintf("%%%ds", fld.widths[FldDefnCycles])
-	fld.widths[FldDefnNotes] = 1
-	fld.fmt[FldDefnNotes] = fmt.Sprintf("%%%ds", fld.widths[FldDefnNotes])
-	fld.widths[FldActualCycles] = 1
-	fld.fmt[FldActualCycles] = fmt.Sprintf("%%%ds", fld.widths[FldActualCycles])
-	fld.widths[FldActualNotes] = 1
-	fld.fmt[FldActualNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldActualNotes])
-}
+	widthNoLabel = 0
 
-// update width and formatting information for entry fields. note that this
-// doesn't update ActualCycles or ActualNotes
-func (fld *fields) updateWidths(d *Entry) {
-	if len(d.Location) > fld.widths[FldLocation] {
-		fld.widths[FldLocation] = len(d.Location)
-		fld.fmt[FldLocation] = fmt.Sprintf("%%%ds", fld.widths[FldLocation])
-	}
-	if len(d.Bytecode) > fld.widths[FldBytecode] {
-		fld.widths[FldBytecode] = len(d.Bytecode)
-		fld.fmt[FldBytecode] = fmt.Sprintf("%%%ds", fld.widths[FldBytecode])
-	}
-	if len(d.Address) > fld.widths[FldAddress] {
-		fld.widths[FldAddress] = len(d.Address)
-		fld.fmt[FldAddress] = fmt.Sprintf("%%%ds", fld.widths[FldAddress])
-	}
-	if len(d.Mnemonic) > fld.widths[FldMnemonic] {
-		fld.widths[FldMnemonic] = len(d.Mnemonic)
-		fld.fmt[FldMnemonic] = fmt.Sprintf("%%%ds", fld.widths[FldMnemonic])
-	}
-	if len(d.Operand) > fld.widths[FldOperand] {
-		fld.widths[FldOperand] = len(d.Operand)
-		fld.fmt[FldOperand] = fmt.Sprintf("%%%ds", fld.widths[FldOperand])
-	}
-	if len(d.DefnCycles) > fld.widths[FldDefnCycles] {
-		fld.widths[FldDefnCycles] = len(d.DefnCycles)
-		fld.fmt[FldDefnCycles] = fmt.Sprintf("%%%ds", fld.widths[FldDefnCycles])
-	}
-	if len(d.DefnNotes) > fld.widths[FldDefnNotes] {
-		fld.widths[FldDefnNotes] = len(d.DefnNotes)
-		fld.fmt[FldDefnNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldDefnNotes])
-	}
-}
+	// the operand field can be numeric or symbolic. in the case of
+	// non-symbolic the following value is used
+	widthNonSymbolicOperand = 3
 
-// update field widths for "actual" cycles and "actual" notes.
-func (fld *fields) updateActual(d *Entry) {
-	if len(d.ActualCycles) > fld.widths[FldActualCycles] {
-		fld.widths[FldActualCycles] = len(d.ActualCycles)
-		fld.fmt[FldActualCycles] = fmt.Sprintf("%%%ds", fld.widths[FldActualCycles])
-	}
-	if len(d.ActualNotes) > fld.widths[FldActualNotes] {
-		fld.widths[FldActualNotes] = len(d.ActualNotes)
-		fld.fmt[FldActualNotes] = fmt.Sprintf("%%-%ds", fld.widths[FldActualNotes])
-	}
-}
+	// the operand field is decorated according to the addressing mode of the
+	// entry. the following value is added to the width value of both symbolic
+	// and non-symbolic operand values, to give the minimum required width
+	widthAddressingModeDecoration = 4
+
+	// the width of the notes field is not recorded
+)
 
 // GetField returns the formatted field from the speficied Entry
-func (dsm *Disassembly) GetField(field Field, e *Entry) string {
+func (e *Entry) GetField(field Field) string {
 	var s string
+	var w int
 
 	switch field {
-	case FldLocation:
-		s = e.Location
+	case FldLabel:
+		o, ok := e.Label.checkString()
+		w = widthNoLabel
+		if ok {
+			w = e.dsm.Symbols.LabelWidth()
+		}
+		return fmt.Sprintf(fmt.Sprintf("%%-%ds", w), o)
 
 	case FldBytecode:
+		w = widthBytecode
 		s = e.Bytecode
 
 	case FldAddress:
+		w = widthAddress
 		s = e.Address
 
 	case FldMnemonic:
+		w = widthMnemonic
 		s = e.Mnemonic
 
 	case FldOperand:
-		s = e.Operand
+		o, ok := e.Operand.checkString()
+		w = widthNonSymbolicOperand
+		if ok && e.dsm.Symbols.SymbolWidth() > w {
+			w = e.dsm.Symbols.SymbolWidth()
+		}
+		w += widthAddressingModeDecoration
+		s = o
 
 	case FldDefnCycles:
+		w = widthDefnCycles
 		s = e.DefnCycles
 
-	case FldDefnNotes:
-		s = e.DefnNotes
-
 	case FldActualCycles:
-		s = e.ActualCycles
+		w = widthActualCycles
+		s = e.Cycles
 
 	case FldActualNotes:
-		s = e.ActualNotes
+		return e.ExecutionNotes
 	}
 
-	return fmt.Sprintf(dsm.fields.fmt[field], s)
+	return fmt.Sprintf(fmt.Sprintf("%%%ds", w), s)
 }

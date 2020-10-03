@@ -21,26 +21,26 @@ import (
 )
 
 // ListSymbols outputs every symbol used in the current ROM
-func (tbl *Table) ListSymbols(output io.Writer) {
-	tbl.ListLocations(output)
-	tbl.ListReadSymbols(output)
-	tbl.ListWriteSymbols(output)
+func (sym *Symbols) ListSymbols(output io.Writer) {
+	sym.ListLabels(output)
+	sym.ListReadSymbols(output)
+	sym.ListWriteSymbols(output)
 }
 
-// ListLocations outputs every location symbol used in the current ROM
-func (tbl *Table) ListLocations(output io.Writer) {
-	output.Write([]byte(fmt.Sprintf("Locations\n---------\n")))
-	output.Write([]byte(tbl.Locations.String()))
+// ListLabels outputs every label used in the current ROM
+func (sym *Symbols) ListLabels(output io.Writer) {
+	output.Write([]byte(fmt.Sprintf("Labels\n---------\n")))
+	output.Write([]byte(sym.Label.String()))
 }
 
 // ListReadSymbols outputs every read symbol used in the current ROM
-func (tbl *Table) ListReadSymbols(output io.Writer) {
+func (sym *Symbols) ListReadSymbols(output io.Writer) {
 	output.Write([]byte(fmt.Sprintf("\nRead Symbols\n-----------\n")))
-	output.Write([]byte(tbl.Read.String()))
+	output.Write([]byte(sym.Read.String()))
 }
 
 // ListWriteSymbols outputs every write symbol used in the current ROM
-func (tbl *Table) ListWriteSymbols(output io.Writer) {
+func (sym *Symbols) ListWriteSymbols(output io.Writer) {
 	output.Write([]byte(fmt.Sprintf("\nWrite Symbols\n------------\n")))
-	output.Write([]byte(tbl.Write.String()))
+	output.Write([]byte(sym.Write.String()))
 }

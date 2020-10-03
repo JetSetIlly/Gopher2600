@@ -380,7 +380,7 @@ func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 		return data, nil
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return cart.banks[cart.bank][addr], nil
 }
@@ -391,7 +391,7 @@ func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -399,7 +399,7 @@ func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // bankswitch on hotspot access
-func (cart *atari8k) hotspot(addr uint16, passive bool) bool {
+func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
 		if passive {
 			return true
@@ -412,6 +412,17 @@ func (cart *atari8k) hotspot(addr uint16, passive bool) bool {
 		return true
 	}
 	return false
+}
+
+func (cart *atari8k) ReadHotspots() map[uint16]bus.CartHotspotInfo {
+	return map[uint16]bus.CartHotspotInfo{
+		0x1ff8: bus.CartHotspotInfo{Symbol: "BANK0", Action: bus.HotspotBankSwitch},
+		0x1ff9: bus.CartHotspotInfo{Symbol: "BANK1", Action: bus.HotspotBankSwitch},
+	}
+}
+
+func (cart *atari8k) WriteHotspots() map[uint16]bus.CartHotspotInfo {
+	return cart.ReadHotspots()
 }
 
 // atari16k (F6)
@@ -456,7 +467,7 @@ func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 		return data, nil
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return cart.banks[cart.bank][addr], nil
 }
@@ -467,7 +478,7 @@ func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) er
 		return nil
 	}
 
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -475,7 +486,7 @@ func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) er
 }
 
 // bankswitch on hotspot access
-func (cart *atari16k) hotspot(addr uint16, passive bool) bool {
+func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ff9 {
 		if passive {
 			return true
@@ -492,6 +503,19 @@ func (cart *atari16k) hotspot(addr uint16, passive bool) bool {
 		return true
 	}
 	return false
+}
+
+func (cart *atari16k) ReadHotspots() map[uint16]bus.CartHotspotInfo {
+	return map[uint16]bus.CartHotspotInfo{
+		0x1ff6: bus.CartHotspotInfo{Symbol: "BANK0", Action: bus.HotspotBankSwitch},
+		0x1ff7: bus.CartHotspotInfo{Symbol: "BANK1", Action: bus.HotspotBankSwitch},
+		0x1ff8: bus.CartHotspotInfo{Symbol: "BANK2", Action: bus.HotspotBankSwitch},
+		0x1ff9: bus.CartHotspotInfo{Symbol: "BANK3", Action: bus.HotspotBankSwitch},
+	}
+}
+
+func (cart *atari16k) WriteHotspots() map[uint16]bus.CartHotspotInfo {
+	return cart.ReadHotspots()
 }
 
 // atari32k (F8)
@@ -536,7 +560,7 @@ func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 		return data, nil
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return cart.banks[cart.bank][addr], nil
 }
@@ -547,7 +571,7 @@ func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) er
 		return nil
 	}
 
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -555,7 +579,7 @@ func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) er
 }
 
 // bankswitch on hotspot access
-func (cart *atari32k) hotspot(addr uint16, passive bool) bool {
+func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff4 && addr <= 0xffb {
 		if passive {
 			return true
@@ -580,4 +604,20 @@ func (cart *atari32k) hotspot(addr uint16, passive bool) bool {
 		return true
 	}
 	return false
+}
+
+func (cart *atari32k) ReadHotspots() map[uint16]bus.CartHotspotInfo {
+	return map[uint16]bus.CartHotspotInfo{
+		0x1ff5: bus.CartHotspotInfo{Symbol: "BANK0", Action: bus.HotspotBankSwitch},
+		0x1ff6: bus.CartHotspotInfo{Symbol: "BANK1", Action: bus.HotspotBankSwitch},
+		0x1ff7: bus.CartHotspotInfo{Symbol: "BANK2", Action: bus.HotspotBankSwitch},
+		0x1ff8: bus.CartHotspotInfo{Symbol: "BANK3", Action: bus.HotspotBankSwitch},
+		0x1ff9: bus.CartHotspotInfo{Symbol: "BANK4", Action: bus.HotspotBankSwitch},
+		0x1ffa: bus.CartHotspotInfo{Symbol: "BANK5", Action: bus.HotspotBankSwitch},
+		0x1ffb: bus.CartHotspotInfo{Symbol: "BANK6", Action: bus.HotspotBankSwitch},
+	}
+}
+
+func (cart *atari32k) WriteHotspots() map[uint16]bus.CartHotspotInfo {
+	return cart.ReadHotspots()
 }

@@ -25,9 +25,6 @@ import (
 )
 
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory, startAddress ...uint16) error {
-	// new disassembly pass so we initialise field width
-	dsm.fields.initialise()
-
 	// basic decoding pass
 	err := dsm.decode(mc, mem)
 	if err != nil {
@@ -268,7 +265,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				}
 
 				// create a new disassembly entry using last result
-				ent, err := dsm.formatResult(banks.Details{Number: bank.Number}, mc.LastResult, entryLevel)
+				ent, err := dsm.FormatResult(banks.Details{Number: bank.Number}, mc.LastResult, entryLevel)
 				if err != nil {
 					return err
 				}
@@ -278,7 +275,6 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 					if err = mc.LastResult.IsValid(); err != nil {
 						return err
 					}
-					dsm.fields.updateWidths(ent)
 				}
 
 				// add entry to disassembly. we do this even if we've encountered a

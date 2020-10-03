@@ -24,7 +24,8 @@ race:
 # to drop events on startup. this will result in more log messages than you would
 # normally see
 
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Pitfall.bin
+	#go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Pitfall.bin
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug ~/Source/2600/src/flappy/flappy.bin
 
 build_assertions:
 	go build -gcflags $(compileFlags) -tags=assertions

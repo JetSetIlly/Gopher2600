@@ -29,6 +29,7 @@ type Preferences struct {
 
 	// whether to apply the high mirror bits to the displayed address
 	FxxxMirror prefs.Bool
+	Symbols    prefs.Bool
 
 	// the lowest value to use when formatting address values. changed by the
 	// preferences system
@@ -54,6 +55,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 
 	p.dsk, err = prefs.NewDisk(pth)
 	p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
+	p.dsk.Add("disassembly.symbols", &p.Symbols)
 
 	p.FxxxMirror.RegisterCallback(func(v prefs.Value) error {
 		if v.(bool) {
@@ -105,7 +107,7 @@ func (dsm *Disassembly) setCartMirror() error {
 				// mask off bits that indicate the cartridge/segment origin and reset
 				// them with the chosen origin
 				a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
-				e.Operand = formatBranchOperand(a, e.Result.InstructionData, e.Result.ByteCount, dsm.Symtable)
+				e.Operand.nonSymbolic = fmt.Sprintf("$%04x", absoluteBranchDestination(a, e.Result.InstructionData))
 			}
 		}
 	}

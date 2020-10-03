@@ -89,14 +89,14 @@ func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
 		return cart.ram[addr-0x80], nil
 	}
 
-	cart.hotspot(addr, passive)
+	cart.bankswitch(addr, passive)
 
 	return cart.banks[cart.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface
 func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.hotspot(addr, passive) {
+	if cart.bankswitch(addr, passive) {
 		return nil
 	}
 
@@ -114,7 +114,7 @@ func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bankswitch on hotspot access
-func (cart *df) hotspot(addr uint16, passive bool) bool {
+func (cart *df) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0fc0 && addr <= 0xfdf {
 		if passive {
 			return true

@@ -360,8 +360,8 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		return
 	}
 
-	fmtRes, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
-	if fmtRes.Address == "" {
+	e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	if e.Address == "" {
 		return
 	}
 
@@ -393,20 +393,20 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	// instruction information
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 	if win.img.lz.Cart.NumBanks > 1 {
-		imgui.Text(fmt.Sprintf("%s [bank %s]", fmtRes.Address, ref.Bank))
+		imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
 	} else {
-		imgui.Text(fmtRes.Address)
+		imgui.Text(e.Address)
 	}
 	imgui.PopStyleColor()
 
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic)
-	imgui.Text(fmtRes.Mnemonic)
+	imgui.Text(e.Mnemonic)
 	imgui.PopStyleColor()
 
-	if fmtRes.Operand != "" {
+	if e.Operand.String() != "" {
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-		imgui.Text(fmtRes.Operand)
+		imgui.Text(e.Operand.String())
 		imgui.PopStyleColor()
 	}
 }

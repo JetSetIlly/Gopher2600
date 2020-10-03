@@ -23,17 +23,23 @@ import (
 type IterateCart struct {
 	dsm  *Disassembly
 	bank int
+
+	// number of banks in cart iteration
+	BankCount int
 }
 
 // NewCartIteration is the preferred method of initialisation for the
 // IterateCart type
-func (dsm *Disassembly) NewCartIteration() (*IterateCart, int) {
+func (dsm *Disassembly) NewCartIteration() *IterateCart {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	citr := &IterateCart{dsm: dsm}
+	citr := &IterateCart{
+		BankCount: len(dsm.entries),
+		dsm:       dsm,
+	}
 
-	return citr, len(dsm.entries)
+	return citr
 }
 
 // Start new iteration from the first bank
@@ -52,7 +58,7 @@ func (citr *IterateCart) Next() (int, bool) {
 }
 
 func (citr *IterateCart) next() (int, bool) {
-	if citr.bank+1 >= len(citr.dsm.entries) {
+	if citr.bank+1 >= citr.BankCount {
 		return -1, false
 	}
 	citr.bank++
@@ -71,6 +77,12 @@ type IterateBank struct {
 	bank      int
 	idx       int
 	lastEntry *Entry
+
+	// total number of entries in iteration with the specified minimum level
+	EntryCount int
+
+	// the number of those entries with a label
+	LabelCount int
 }
 
 // NewBankIteration initialises a new iteration of a dissasembly bank. The minLevel
@@ -83,16 +95,16 @@ type IterateBank struct {
 // EntryLevelDecode. A minLevel of EntryLevelNaive on the other hand, will
 // iterate through entries of EntryLevelNaive *and* EntryLevelDecode. A
 // minLevel of EntryLevelDead will iterate through *all* Entries.
-//
-// The function returns an instance of Iterate, a count of the number of
-// entries the correspond to the minLevel (see above), and any error.
-func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*IterateBank, int, error) {
+func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*IterateBank, error) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
 	// silently reject iterations for non-existent banks. this may happen more
 	// often than you think. for example, loading a new cartridge with fewer
 	// banks than the current cartridge at the exact moment an illegal bank is
 	// being drawn by the sdlimgui disassembly window.
 	if bank >= len(dsm.entries) {
-		return nil, 0, curated.Errorf("no bank %d in disasm", bank)
+		return nil, curated.Errorf("no bank %d in disasm", bank)
 	}
 
 	bitr := &IterateBank{
@@ -101,22 +113,24 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 		bank:     bank,
 	}
 
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
-	// count the number of entries with the minimum level
-	count := 0
+	// count entries
 	for _, a := range dsm.entries[bank] {
 		if a == nil {
-			return nil, 0, curated.Errorf("disassembly not complete")
+			return nil, curated.Errorf("disassembly not complete")
 		}
 
+		// count the number of entries of the minimum level
 		if a.Level >= minLevel {
-			count++
+			bitr.EntryCount++
+
+			// count entries (of the minimum level) with a label
+			if a.Label.String() != "" {
+				bitr.LabelCount++
+			}
 		}
 	}
 
-	return bitr, count, nil
+	return bitr, nil
 }
 
 // Start new iteration from the first instance of the EntryLevel specified in NewBankIteration.
@@ -132,11 +146,20 @@ func (bitr *IterateBank) Next() (int, *Entry) {
 
 // SkipNext n entries and return that Entry. An n value of < 0 returns the most
 // recent value in the iteration
-func (bitr *IterateBank) SkipNext(n int) (int, *Entry) {
+//
+// The skipLabels argument indicates that an entry with a label should count as
+// two entries. This is useful for the sdlimgui disassembly window's list
+// clipper (and maybe nothing else).
+func (bitr *IterateBank) SkipNext(n int, skipLabels bool) (int, *Entry) {
 	e := bitr.lastEntry
 	for n > 0 {
-		_, e = bitr.next()
 		n--
+
+		if e.Label.String() != "" {
+			n--
+		}
+
+		_, e = bitr.next()
 	}
 	return bitr.idx, e
 }

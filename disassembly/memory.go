@@ -34,8 +34,8 @@ type disasmMemory struct {
 func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 
 	// map address
-	if address&memorymap.OriginCart == memorymap.OriginCart {
-
+	address, area := memorymap.MapAddress(address, true)
+	if area == memorymap.Cartridge {
 		// the bank field is not set so we forward the read request to the
 		// cartridge in the normal way
 		if dismem.bank == nil {

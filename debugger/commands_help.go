@@ -110,10 +110,11 @@ mirrored. You can quickly see this with the MIRRORS or ALL argument.
 The above example will return every address that mirrors the primary address.
 
 The second mode of operation allows you to view all the symbols in each symbol
-table. There are three symbol tables: READ, WRITE and LOCATION.
+table. There are three symbol tables: READ, WRITE and LABEL.
 
 Note that a cartridge without an accompanying symbols file will only have the
-canonical Atari VCS symbols defined.`,
+canonical Atari VCS symbols defined and possibly symbols associated with a
+particular cartridge type.`,
 
 	cmdOnHalt: `Define commands to run whenever emulation is halted. A halt is
 caused by a BREAK, a TRAP, a WATCH or a manual interrupt. Specify multiple

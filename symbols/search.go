@@ -27,8 +27,8 @@ func (t TableType) String() string {
 	switch t {
 	case UnspecifiedSymTable:
 		return "unspecified"
-	case LocationSymTable:
-		return "location"
+	case LabelTable:
+		return "label"
 	case ReadSymTable:
 		return "read"
 	case WriteSymTable:
@@ -41,7 +41,7 @@ func (t TableType) String() string {
 // List of valid symbol table identifiers
 const (
 	UnspecifiedSymTable TableType = iota
-	LocationSymTable
+	LabelTable
 	ReadSymTable
 	WriteSymTable
 )
@@ -49,23 +49,23 @@ const (
 // SearchSymbol return the address of the supplied symbol. Search is
 // case-insensitive and is conducted on the subtables in order: locations >
 // read > write.
-func (tbl *Table) SearchSymbol(symbol string, target TableType) (bool, TableType, string, uint16) {
+func (sym *Symbols) Search(symbol string, target TableType) (bool, TableType, string, uint16) {
 	symbolUpper := strings.ToUpper(symbol)
 
-	if target == UnspecifiedSymTable || target == LocationSymTable {
-		if addr, ok := tbl.Locations.search(symbolUpper); ok {
-			return true, LocationSymTable, symbol, addr
+	if target == UnspecifiedSymTable || target == LabelTable {
+		if addr, ok := sym.Label.search(symbolUpper); ok {
+			return true, LabelTable, symbol, addr
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == ReadSymTable {
-		if addr, ok := tbl.Read.search(symbolUpper); ok {
+		if addr, ok := sym.Read.search(symbolUpper); ok {
 			return true, ReadSymTable, symbol, addr
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == WriteSymTable {
-		if addr, ok := tbl.Write.search(symbolUpper); ok {
+		if addr, ok := sym.Write.search(symbolUpper); ok {
 			return true, WriteSymTable, symbol, addr
 		}
 	}

@@ -482,7 +482,7 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// number of cycles should be 4 instead of 2
 	//  +1 for failed branch test (causing PC to jump)
 	//  +1 for page fault
-	if mc.LastResult.ActualCycles != 4 {
+	if mc.LastResult.Cycles != 4 {
 		t.Errorf("expected pagefault on branch")
 	}
 }

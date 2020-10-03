@@ -92,7 +92,7 @@ var commandTemplate = []string{
 	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
 	cmdLint,
 	cmdGrep + " (MNEMONIC|OPERAND) %<search>S",
-	cmdSymbol + " [%<symbol>S (ALL|MIRRORS)|LIST (LOCATIONS|READ|WRITE)]",
+	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S (ALL|MIRRORS)]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnTrace + " (OFF|ON|%<command>S {%<commands>S})",

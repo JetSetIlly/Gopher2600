@@ -30,8 +30,8 @@ import (
 // memoryDebug is a front-end to the real VCS memory. it allows addressing by
 // symbol name and uses the addressInfo type for easier presentation
 type memoryDebug struct {
-	mem      *memory.VCSMemory
-	symtable *symbols.Table
+	mem     *memory.VCSMemory
+	symbols *symbols.Symbols
 }
 
 // memoryDebug functions all return an instance of addressInfo. this struct
@@ -82,9 +82,9 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	var symbolTable map[uint16]string
 
 	if read {
-		symbolTable = (dbgmem.symtable).Read.Symbols
+		symbolTable = (dbgmem.symbols).Read.Entries
 	} else {
-		symbolTable = (dbgmem.symtable).Write.Symbols
+		symbolTable = (dbgmem.symbols).Write.Entries
 	}
 
 	switch address := address.(type) {

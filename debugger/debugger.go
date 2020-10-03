@@ -21,11 +21,11 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -183,7 +183,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// is dangerous if we don't care to reset the symtable when disasm changes.
 	// As it is, we only change the disasm poointer in the loadCartridge()
 	// function.
-	dbg.dbgmem = &memoryDebug{mem: dbg.VCS.Mem, symtable: dbg.Disasm.Symtable}
+	dbg.dbgmem = &memoryDebug{mem: dbg.VCS.Mem, symbols: dbg.Disasm.Symbols}
 
 	// set up frame limiter
 	dbg.lmtr = newLimiter(tv, func() error {
@@ -306,7 +306,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // this function
 //
 // this is the glue that hold the cartridge and disassembly packages together.
-// especially important is the repointing of symtable in the instance of dbgmem
+// especially important is the repointing of the symbols table in the instance of dbgmem
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	// set OnLoaded function for specific cartridge formats
 	cartload.OnLoaded = func(cart mapper.CartMapper) error {
@@ -336,18 +336,18 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	symtable, err := symbols.ReadSymbolsFile(cartload.Filename)
+	symbols, err := symbols.ReadSymbolsFile(dbg.VCS.Mem.Cart)
 	if err != nil {
 		logger.Log("symbols", err.Error())
 	}
 
-	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symtable)
+	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symbols)
 	if err != nil {
 		return err
 	}
 
 	// repoint debug memory's symbol table
-	dbg.dbgmem.symtable = dbg.Disasm.Symtable
+	dbg.dbgmem.symbols = dbg.Disasm.Symbols
 
 	return nil
 }

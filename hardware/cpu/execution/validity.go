@@ -39,31 +39,31 @@ func (result Result) IsValid() error {
 	// if a bug has been triggered, don't perform the number of cycles check
 	if result.CPUBug == "" {
 		if result.Defn.IsBranch() {
-			if result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 && result.ActualCycles != result.Defn.Cycles+2 {
+			if result.Cycles != result.Defn.Cycles && result.Cycles != result.Defn.Cycles+1 && result.Cycles != result.Defn.Cycles+2 {
 				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					result.Defn.OpCode,
 					result.Defn.Mnemonic,
-					result.ActualCycles,
+					result.Cycles,
 					result.Defn.Cycles,
 					result.Defn.Cycles+1,
 					result.Defn.Cycles+2)
 			}
 		} else {
 			if result.Defn.PageSensitive {
-				if result.PageFault && result.ActualCycles != result.Defn.Cycles && result.ActualCycles != result.Defn.Cycles+1 {
+				if result.PageFault && result.Cycles != result.Defn.Cycles && result.Cycles != result.Defn.Cycles+1 {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
-						result.ActualCycles,
+						result.Cycles,
 						result.Defn.Cycles,
 						result.Defn.Cycles+1)
 				}
 			} else {
-				if result.ActualCycles != result.Defn.Cycles {
+				if result.Cycles != result.Defn.Cycles {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						result.Defn.OpCode,
 						result.Defn.Mnemonic,
-						result.ActualCycles,
+						result.Cycles,
 						result.Defn.Cycles)
 				}
 			}

@@ -475,7 +475,6 @@ func disasm(md *modalflag.Modes) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
-	raw := md.AddBool("raw", false, "raw disassembly. show every byte with the disasm decision.")
 	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
 
 	p, err := md.Parse()
@@ -489,7 +488,6 @@ func disasm(md *modalflag.Modes) error {
 	case 1:
 		attr := disassembly.WriteAttr{
 			ByteCode: *bytecode,
-			Raw:      *raw,
 		}
 
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)

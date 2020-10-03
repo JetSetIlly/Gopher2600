@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // EntryLevel describes the level of the Entry
@@ -53,26 +52,11 @@ const (
 	EntryLevelExecuted
 )
 
-func (t EntryLevel) String() string {
-	// adding space to short strings so that they line up (we're only using
-	// this in a single place for a specific purpose so this is okay)
-	switch t {
-	case EntryLevelUnused:
-		return "unused "
-	case EntryLevelDecoded:
-		return "decoded "
-	case EntryLevelBlessed:
-		return "blessed "
-	case EntryLevelExecuted:
-		return "executed "
-	}
-
-	return ""
-}
-
 // Entry is a disassambled instruction. The constituent parts of the
 // disassembly. It is a represenation of execution.Instruction
 type Entry struct {
+	dsm *Disassembly
+
 	// the level of reliability of the information in the Entry
 	Level EntryLevel
 
@@ -81,37 +65,36 @@ type Entry struct {
 	// possible.
 	Bank banks.Details
 
-	// /\/\ the fields above are not set by newEntry() they should be set
-	// manually when newEntry() returns
+	// the entries below are not defined if Level == EntryLevelUnused
 
-	// \/\/ the entries below are not defined if Level == EntryLevelUnused
-
-	// copy of the CPU execution
+	// copy of the CPU execution. must not be updated except through
+	// updateExecutionEntry() function
 	Result execution.Result
 
-	// the remaining fields are not valid for dead entries
-
-	// formatted strings representations of information in execution.Result
-	Location string
+	// string representations of information in execution.Result. GetField()
+	// will apply white-space padding and should be preferred in most
+	// instances.
+	Label    Label
 	Bytecode string
 	Address  string
 	Mnemonic string
-	Operand  string
+	Operand  Operand
 
-	// formatted cycles and notes information from instructions.Defintion
+	// formatted cycles information from instructions.Defintion
 	DefnCycles string
-	DefnNotes  string
+	Cycles     string
 
-	// actual cycles and notes are the cycles and notes actually seen during
-	// the last execution of this entry
-	ActualCycles string
-	ActualNotes  string
+	// information about the most recent execution of the entry
+	//
+	// should be empty if EntryLevel != EntryLevelExecuted
+	ExecutionNotes string
 }
 
 // String returns a very basic representation of an Entry. Provided for
 // convenience. Probably not of any use except for the simplest of tools.
 func (e *Entry) String() string {
-	return fmt.Sprintf("%s %s %s", e.Address, e.Mnemonic, e.Operand)
+	operand, _ := e.Operand.checkString()
+	return fmt.Sprintf("%s %s %s", e.Address, e.Mnemonic, operand)
 }
 
 // FormatResult It is the preferred method of initialising for the Entry type.
@@ -124,25 +107,17 @@ func (dsm *Disassembly) FormatResult(bank banks.Details, result execution.Result
 		return &Entry{}, nil
 	}
 
-	return dsm.formatResult(bank, result, level)
-}
-
-// the guts of FormatResult(). we use this within the disassembly package when
-// we're sure we don't need the additional special condition handling
-func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result, level EntryLevel) (*Entry, error) {
 	e := &Entry{
-		Result: result,
-		Level:  level,
-		Bank:   bank,
+		dsm:     dsm,
+		Result:  result,
+		Level:   level,
+		Bank:    bank,
+		Label:   Label{dsm: dsm, result: result},
+		Operand: Operand{dsm: dsm, result: result},
 	}
 
 	// address of instruction
 	e.Address = fmt.Sprintf("$%04x", result.Address)
-
-	// look up address in symbol table
-	if v, ok := dsm.Symtable.Locations.Symbols[result.Address]; ok {
-		e.Location = v
-	}
 
 	// mnemonic is just a string anyway
 	e.Mnemonic = result.Defn.Mnemonic
@@ -155,22 +130,19 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 	// validation is active then the panic situations will have been caught
 	// then. if validation is not running then the code could theoretically
 	// panic but that's okay, they should have been caught in testing.
-	var operand uint16
-	var operandDecoded bool
 	switch result.Defn.Bytes {
 	case 3:
 		switch result.ByteCount {
 		case 3:
-			operandDecoded = true
-			operand = result.InstructionData
-			e.Operand = fmt.Sprintf("$%04x", operand)
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$%04x", operand)
 			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
 		case 2:
-			operand = result.InstructionData
-			e.Operand = fmt.Sprintf("$??%02x", result.InstructionData)
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$??%02x", result.InstructionData)
 			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			e.Operand = "$????"
+			e.Operand.nonSymbolic = "$????"
 			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
@@ -180,12 +152,11 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 	case 2:
 		switch result.ByteCount {
 		case 2:
-			operandDecoded = true
-			operand = result.InstructionData
-			e.Operand = fmt.Sprintf("$%02x", operand)
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$%02x", operand)
 			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			e.Operand = "$??"
+			e.Operand.nonSymbolic = "$??"
 			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
@@ -208,61 +179,13 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 	}
 	e.Bytecode = strings.TrimSpace(e.Bytecode)
 
-	// use symbol for the operand if available/appropriate. we should only do
-	// this if operand has been decoded
-	if operandDecoded {
-		if e.Operand == "" || e.Operand[0] != '?' {
-			if result.Defn.AddressingMode != instructions.Immediate {
-
-				switch result.Defn.Effect {
-				case instructions.Flow:
-					if result.Defn.IsBranch() {
-						e.Operand = formatBranchOperand(e.Result.Address, operand, e.Result.ByteCount, dsm.Symtable)
-					} else {
-						if v, ok := dsm.Symtable.Locations.Symbols[operand]; ok {
-							e.Operand = v
-						}
-					}
-				case instructions.Read:
-					mappedOperand, _ := memorymap.MapAddress(operand, true)
-					if v, ok := dsm.Symtable.Read.Symbols[mappedOperand]; ok {
-						e.Operand = v
-					}
-				case instructions.Write:
-					fallthrough
-				case instructions.RMW:
-					mappedOperand, _ := memorymap.MapAddress(operand, false)
-					if v, ok := dsm.Symtable.Write.Symbols[mappedOperand]; ok {
-						e.Operand = v
-					}
-				}
-			}
-		}
-	}
-
-	// decorate operand with addressing mode indicators
-	switch result.Defn.AddressingMode {
-	case instructions.Implied:
-	case instructions.Immediate:
-		e.Operand = fmt.Sprintf("#%s", e.Operand)
-	case instructions.Relative:
-	case instructions.Absolute:
-	case instructions.ZeroPage:
-	case instructions.Indirect:
-		e.Operand = fmt.Sprintf("(%s)", e.Operand)
-	case instructions.IndexedIndirect:
-		e.Operand = fmt.Sprintf("(%s,X)", e.Operand)
-	case instructions.IndirectIndexed:
-		e.Operand = fmt.Sprintf("(%s),Y", e.Operand)
-	case instructions.AbsoluteIndexedX:
-		e.Operand = fmt.Sprintf("%s,X", e.Operand)
-	case instructions.AbsoluteIndexedY:
-		e.Operand = fmt.Sprintf("%s,Y", e.Operand)
-	case instructions.ZeroPageIndexedX:
-		e.Operand = fmt.Sprintf("%s,X", e.Operand)
-	case instructions.ZeroPageIndexedY:
-		e.Operand = fmt.Sprintf("%s,Y", e.Operand)
-	default:
+	// decorate operand with addressing mode indicators. this decorates the
+	// non-symbolic operand. we also call the decorate function from the
+	// Operand() function when a symbol has been found
+	if e.Result.Defn.IsBranch() {
+		e.Operand.nonSymbolic = fmt.Sprintf("$%04x", absoluteBranchDestination(e.Result.Address, e.Result.InstructionData))
+	} else {
+		e.Operand.nonSymbolic = addrModeDecoration(e.Operand.nonSymbolic, e.Result.Defn.AddressingMode)
 	}
 
 	// definintion cycles
@@ -273,18 +196,25 @@ func (dsm *Disassembly) formatResult(bank banks.Details, result execution.Result
 	}
 
 	if level == EntryLevelExecuted {
-		e.updateActual()
+		e.updateExecutionEntry(result)
 	}
 
 	return e, nil
 }
 
-// build entry fields that are really dependent on accurate, actual execution,
-// rather than a fake disassembly execution. these fields will likely be
-// updated frequently during the course of a real execution
-func (e *Entry) updateActual() {
+// some fields in the disassembly entry are updated on every execution
+func (e *Entry) updateExecutionEntry(result execution.Result) {
+	e.Result = result
+
+	// update result instance in Label and Operand fields
+	e.Label.result = result
+	e.Operand.result = result
+
+	// indicate that entry has been executed
+	e.Level = EntryLevelExecuted
+
 	// actual cycles
-	e.ActualCycles = fmt.Sprintf("%d", e.Result.ActualCycles)
+	e.Cycles = fmt.Sprintf("%d", e.Result.Cycles)
 
 	// actual notes
 	s := strings.Builder{}
@@ -306,39 +236,153 @@ func (e *Entry) updateActual() {
 		s.WriteString(" ")
 	}
 
-	e.ActualNotes = strings.TrimSpace(s.String())
+	e.ExecutionNotes = strings.TrimSpace(s.String())
 }
 
-// format and return a formatted  branch operand. if a symbol is available for
-// the target address then that will be used, otherwise use the target address
-// rather than the offset value.
-func formatBranchOperand(addr uint16, operand uint16, bytes int, symtable *symbols.Table) string {
-	// relative labels. to get the correct label we have to
-	// simulate what a successful branch instruction would do:
+// add decoration to operand according to the addressing mode of the entry.
+// operand taken as an argument because it is called from two different contexts.
+func addrModeDecoration(operand string, mode instructions.AddressingMode) string {
+	s := operand
 
+	switch mode {
+	case instructions.Implied:
+	case instructions.Immediate:
+		s = fmt.Sprintf("#%s", operand)
+	case instructions.Relative:
+	case instructions.Absolute:
+	case instructions.ZeroPage:
+	case instructions.Indirect:
+		s = fmt.Sprintf("(%s)", operand)
+	case instructions.IndexedIndirect:
+		s = fmt.Sprintf("(%s,X)", operand)
+	case instructions.IndirectIndexed:
+		s = fmt.Sprintf("(%s),Y", operand)
+	case instructions.AbsoluteIndexedX:
+		s = fmt.Sprintf("%s,X", operand)
+	case instructions.AbsoluteIndexedY:
+		s = fmt.Sprintf("%s,Y", operand)
+	case instructions.ZeroPageIndexedX:
+		s = fmt.Sprintf("%s,X", operand)
+	case instructions.ZeroPageIndexedY:
+		s = fmt.Sprintf("%s,Y", operand)
+	}
+
+	return s
+}
+
+// absolute branch destination returns the branch operand as the address of the
+// branched PC, rather than an offset value
+func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 	// create a mock register with the instruction's address as the initial value
 	pc := registers.NewProgramCounter(addr)
 
-	// add the number of instruction bytes to get the PC as
-	// it would be at the end of the instruction
-	pc.Add(uint16(bytes))
+	// all 6502 branch instructions are 2 bytes in length
+	pc.Add(2)
 
-	// because we're doing 16 bit arithmetic with an 8bit
-	// value, we need to make sure the sign bit has been
-	// propogated to the more-significant bits
+	// because we're doing 16 bit arithmetic with an 8bit value, we need to
+	// make sure the sign bit has been propogated to the more-significant bits
 	if operand&0x0080 == 0x0080 {
 		operand |= 0xff00
 	}
 
-	// add the 2s-complement value to the mock program
-	// counter
+	// add the 2s-complement value to the mock program counter
 	pc.Add(operand)
 
-	// look up mock program counter value in symbol table
-	if v, ok := symtable.Locations.Symbols[pc.Address()]; ok {
-		return v
+	return pc.Address()
+}
+
+// Label implements the Stringer interface. The String() implementation
+// returns any address label for the entry. Use GetField() function for
+// a white-space padded label
+type Label struct {
+	dsm    *Disassembly
+	result execution.Result
+}
+
+func (l Label) String() string {
+	s, _ := l.checkString()
+	return s
+}
+
+// checkString returns the address label as a symbol (if a symbol is available)
+// if a symbol is not available then the the bool return value will be false
+func (l Label) checkString() (string, bool) {
+	if l.dsm.Prefs.Symbols.Get().(bool) {
+		ma, _ := memorymap.MapAddress(l.result.Address, true)
+		if v, ok := l.dsm.Symbols.Label.Entries[ma]; ok {
+			return v, true
+		}
 	}
 
-	return fmt.Sprintf("$%04x", pc.Address())
+	return "", false
+}
 
+// Operand implements the Stringer interface. The String() implementation
+// returns the operand (with symbols if appropriate). Use GetField function for
+// white-space padded operand string
+type Operand struct {
+	nonSymbolic string
+	dsm         *Disassembly
+	result      execution.Result
+}
+
+func (l Operand) String() string {
+	s, _ := l.checkString()
+	return s
+}
+
+// checkString returns the operand as a symbol (if a symbol is available) if
+// a symbol is not available then the the bool return value will be false
+func (o Operand) checkString() (string, bool) {
+	if !o.dsm.Prefs.Symbols.Get().(bool) {
+		return o.nonSymbolic, false
+	}
+
+	s := o.nonSymbolic
+
+	// use symbol for the operand if available/appropriate. we should only do
+	// this if operand has been decoded
+	if o.result.Final {
+		if o.result.Defn.AddressingMode == instructions.Immediate {
+			// TODO: immediate symbols
+
+		} else if o.result.ByteCount > 1 {
+			// instruction data is only valid if bytecount is 2 or more
+
+			operand := o.result.InstructionData
+
+			switch o.result.Defn.Effect {
+			case instructions.Flow:
+				if o.result.Defn.IsBranch() {
+					operand = absoluteBranchDestination(o.result.Address, operand)
+
+					// look up mock program counter value in symbol table
+					if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
+						s = v
+					}
+
+				} else {
+					if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
+						s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+					}
+				}
+			case instructions.Read:
+				mappedOperand, _ := memorymap.MapAddress(operand, true)
+				if v, ok := o.dsm.Symbols.Read.Entries[mappedOperand]; ok {
+					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+				}
+
+			case instructions.Write:
+				fallthrough
+
+			case instructions.RMW:
+				mappedOperand, _ := memorymap.MapAddress(operand, false)
+				if v, ok := o.dsm.Symbols.Write.Entries[mappedOperand]; ok {
+					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+				}
+			}
+		}
+	}
+
+	return s, true
 }

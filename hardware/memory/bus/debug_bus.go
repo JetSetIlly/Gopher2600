@@ -147,3 +147,31 @@ type CartTapeBus interface {
 	// true is state is valid
 	GetTapeState() (bool, CartTapeState)
 }
+
+// CartHotspotAction defines the action of a hotspot address
+type CartHotspotAction int
+
+// List of valid CartHotspotActions
+const (
+	HotspotBankSwitch CartHotspotAction = iota
+	HotspotRegister
+	HotspotFunction
+)
+
+// HotspotInfo details the name and purpose of hotspot address
+type CartHotspotInfo struct {
+	Symbol string
+	Action CartHotspotAction
+}
+
+// CartHotspots will be implemented for cartridge mappers that want to report
+// details of any special addresses. We'll call these hotspots for all types of
+// special addresses, not just bank switches.
+//
+// The index to the returned maps, must be addresses in the cartridge address
+// range. For normality, this should be in the primary cartridge mirror (ie.
+// 0x1000 to 0x1fff)
+type CartHotspots interface {
+	ReadHotspots() map[uint16]CartHotspotInfo
+	WriteHotspots() map[uint16]CartHotspotInfo
+}
