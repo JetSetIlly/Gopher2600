@@ -26,10 +26,12 @@ type LazyPrefs struct {
 	atomicRandomState atomic.Value // bool (from prefs.Bool.Get())
 	atomicRandomPins  atomic.Value // bool (from prefs.Bool.Get())
 	atomicFxxxMirror  atomic.Value // bool (from prefs.Bool.Get())
+	atomicSymbols     atomic.Value // bool (from prefs.Bool.Get())
 
 	RandomState bool
 	RandomPins  bool
 	FxxxMirror  bool
+	Symbols     bool
 }
 
 func newLazyPrefs(val *Lazy) *LazyPrefs {
@@ -42,8 +44,10 @@ func (lz *LazyPrefs) update() {
 		lz.atomicRandomState.Store(lz.val.Dbg.Prefs.RandomState.Get())
 		lz.atomicRandomPins.Store(lz.val.Dbg.Prefs.RandomPins.Get())
 		lz.atomicFxxxMirror.Store(lz.val.Dbg.Disasm.Prefs.FxxxMirror.Get())
+		lz.atomicSymbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
 	})
 	lz.RandomState, _ = lz.atomicRandomState.Load().(bool)
 	lz.RandomPins, _ = lz.atomicRandomPins.Load().(bool)
 	lz.FxxxMirror, _ = lz.atomicFxxxMirror.Load().(bool)
+	lz.Symbols, _ = lz.atomicSymbols.Load().(bool)
 }

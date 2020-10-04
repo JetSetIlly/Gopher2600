@@ -1451,6 +1451,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				v := dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
 				dbg.Disasm.Prefs.FxxxMirror.Set(!v)
 			}
+		case "SYMBOLS":
+			switch action {
+			case "SET":
+				dbg.Disasm.Prefs.Symbols.Set(true)
+			case "UNSET":
+				dbg.Disasm.Prefs.Symbols.Set(false)
+			case "TOGGLE":
+				v := dbg.Disasm.Prefs.Symbols.Get().(bool)
+				dbg.Disasm.Prefs.Symbols.Set(!v)
+			}
 		}
 
 	case cmdLog:

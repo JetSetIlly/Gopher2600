@@ -64,6 +64,10 @@ func (win *winPrefs) draw() {
 		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
 	}
 
+	if imgui.Checkbox("Use Symbols", &win.img.lz.Prefs.Symbols) {
+		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
+	}
+
 	termOnError := win.img.wm.term.openOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
 		win.img.wm.term.openOnError.Set(termOnError)

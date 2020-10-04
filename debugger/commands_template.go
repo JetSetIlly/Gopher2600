@@ -132,7 +132,7 @@ var commandTemplate = []string{
 	cmdClear + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 
 	// meta
-	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR])",
+	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR|SYMBOLS])",
 	cmdLog + " (LAST|RECENT|CLEAR)",
 }
 
