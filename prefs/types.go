@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jetsetilly/gopher2600/curated"
 )
@@ -36,11 +37,15 @@ type pref interface {
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
+	crit     sync.Mutex
 	value    bool
 	callback func(value Value) error
 }
 
 func (p Bool) String() string {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return fmt.Sprintf("%v", p.value)
 }
 
@@ -48,6 +53,9 @@ func (p Bool) String() string {
 // string value of anything other than "true" (case insensitive) will set the
 // value to false.
 func (p *Bool) Set(v Value) error {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	switch v := v.(type) {
 	case bool:
 		p.value = v
@@ -70,25 +78,35 @@ func (p *Bool) Set(v Value) error {
 }
 
 // Get returns the raw pref value
-func (p Bool) Get() Value {
+func (p *Bool) Get() Value {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Bool) RegisterCallback(f func(value Value) error) {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	p.callback = f
 }
 
 // String implements a string type in the prefs system.
 type String struct {
 	pref
+	crit     sync.Mutex
 	maxLen   int
 	value    string
 	callback func(value Value) error
 }
 
 func (p String) String() string {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.value
 }
 
@@ -96,6 +114,9 @@ func (p String) String() string {
 // limit use a value less than or equal to zero. Note that the existing string
 // will be cropped if necessary - cropped string information will be lost.
 func (p *String) SetMaxLen(max int) {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	p.maxLen = max
 
 	// crop existing string if necessary
@@ -106,6 +127,9 @@ func (p *String) SetMaxLen(max int) {
 
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v Value) error {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	p.value = fmt.Sprintf("%s", v)
 	if p.maxLen > 0 && len(p.value) > p.maxLen {
 		p.value = p.value[:p.maxLen]
@@ -119,29 +143,42 @@ func (p *String) Set(v Value) error {
 }
 
 // Get returns the raw pref value
-func (p String) Get() Value {
+func (p *String) Get() Value {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *String) RegisterCallback(f func(value Value) error) {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	p.callback = f
 }
 
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
+	crit     sync.Mutex
 	value    int
 	callback func(value Value) error
 }
 
 func (p Int) String() string {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return fmt.Sprintf("%d", p.value)
 }
 
 // Set new value to Int type. New value can be an int or string.
 func (p *Int) Set(v Value) error {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	switch v := v.(type) {
 	case int:
 		p.value = v
@@ -163,13 +200,19 @@ func (p *Int) Set(v Value) error {
 }
 
 // Get returns the raw pref value
-func (p Int) Get() Value {
+func (p *Int) Get() Value {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.value
 }
 
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Int) RegisterCallback(f func(value Value) error) {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	p.callback = f
 }
 
@@ -180,8 +223,9 @@ func (p *Int) RegisterCallback(f func(value Value) error) {
 // The Generic prefs type does not have a way of registering a callback function.
 type Generic struct {
 	pref
-	set func(string) error
-	get func() string
+	crit sync.Mutex
+	set  func(string) error
+	get  func() string
 }
 
 // NewGeneric is the preferred method of initialisation for the Generic type.
@@ -193,11 +237,17 @@ func NewGeneric(set func(string) error, get func() string) *Generic {
 }
 
 func (p Generic) String() string {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.get()
 }
 
 // Set triggers the set value procedure for the generic type
 func (p *Generic) Set(v Value) error {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	err := p.set(v.(string))
 	if err != nil {
 		return err
@@ -207,6 +257,9 @@ func (p *Generic) Set(v Value) error {
 }
 
 // Get triggers the get value procedure for the generic type.
-func (p Generic) Get() Value {
+func (p *Generic) Get() Value {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
 	return p.get()
 }
