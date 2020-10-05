@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -136,10 +135,10 @@ func (cart cbs) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart cbs) GetBank(addr uint16) banks.Details {
+func (cart cbs) GetBank(addr uint16) mapper.BankInfo {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return banks.Details{Number: cart.bank, IsRAM: addr <= 0x00ff}
+	return mapper.BankInfo{Number: cart.bank, IsRAM: addr <= 0x00ff}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -162,10 +161,10 @@ func (cart *cbs) Listen(_ uint16, _ uint8) {
 func (cart *cbs) Step() {
 }
 
-// GetRAM implements the bus.CartRAMBus interface
-func (cart cbs) GetRAM() []bus.CartRAM {
-	r := make([]bus.CartRAM, 1)
-	r[0] = bus.CartRAM{
+// GetRAM implements the mapper.CartRAMBus interface
+func (cart cbs) GetRAM() []mapper.CartRAM {
+	r := make([]mapper.CartRAM, 1)
+	r[0] = mapper.CartRAM{
 		Label:  "CBS+RAM",
 		Origin: 0x1080,
 		Data:   make([]uint8, len(cart.ram)),
@@ -175,21 +174,19 @@ func (cart cbs) GetRAM() []bus.CartRAM {
 	return r
 }
 
-// PutRAM implements the bus.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface
 func (cart *cbs) PutRAM(_ int, idx int, data uint8) {
 	cart.ram[idx] = data
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart cbs) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b < len(cart.banks) {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-			},
+// IterateBank implements the mapper.CartMapper interface
+func (cart cbs) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+	for b := 0; b < len(cart.banks); b++ {
+		c[b] = mapper.BankContent{Number: b,
+			Data:    cart.banks[b],
+			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
-	return nil
+	return c
 }

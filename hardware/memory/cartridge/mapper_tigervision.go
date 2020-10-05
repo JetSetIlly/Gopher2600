@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -130,11 +129,11 @@ func (cart tigervision) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *tigervision) GetBank(addr uint16) banks.Details {
+func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return banks.Details{Number: cart.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.segment[0], IsRAM: false, Segment: 0}
 	}
-	return banks.Details{Number: cart.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -180,12 +179,13 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 func (cart *tigervision) Step() {
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart tigervision) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b >= 0 && b < len(cart.banks)-1 {
-		// banks 0 to 6 can occupy any of the three segments
-		return &banks.Content{Number: b,
+// IterateBank implements the mapper.CartMapper interface
+func (cart tigervision) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+
+	// banks 0 to len-1 can occupy any of the first three segments
+	for b := 0; b < len(cart.banks)-1; b++ {
+		c[b] = mapper.BankContent{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -193,16 +193,17 @@ func (cart tigervision) IterateBanks(prev *banks.Content) *banks.Content {
 				memorymap.OriginCart + uint16(cart.bankSize)*2,
 			},
 		}
-	} else if b == len(cart.banks)-1 {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				// cannot point to the first segment
-				memorymap.OriginCart + uint16(cart.bankSize),
-				memorymap.OriginCart + uint16(cart.bankSize)*2,
-				memorymap.OriginCart + uint16(cart.bankSize)*3,
-			},
-		}
 	}
-	return nil
+
+	// last bank cannot point to the first segment
+	b := len(cart.banks) - 1
+	c[b] = mapper.BankContent{Number: b,
+		Data: cart.banks[b],
+		Origins: []uint16{
+			memorymap.OriginCart + uint16(cart.bankSize),
+			memorymap.OriginCart + uint16(cart.bankSize)*2,
+			memorymap.OriginCart + uint16(cart.bankSize)*3,
+		},
+	}
+	return c
 }

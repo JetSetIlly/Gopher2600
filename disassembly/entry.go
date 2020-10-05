@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -46,7 +46,7 @@ type EntryLevel int
 // bank is not able to be referenced from the Entry address. See M-Network for
 // an example of this, where Bank 7 cannot be mapped to the lower segment.
 const (
-	EntryLevelUnused EntryLevel = iota
+	EntryLevelUnmappable EntryLevel = iota
 	EntryLevelDecoded
 	EntryLevelBlessed
 	EntryLevelExecuted
@@ -63,7 +63,7 @@ type Entry struct {
 	// execution.Result does not specify which bank the instruction is from
 	// because that information isn't available to the CPU. we note it here if
 	// possible.
-	Bank banks.Details
+	Bank mapper.BankInfo
 
 	// the entries below are not defined if Level == EntryLevelUnused
 
@@ -99,7 +99,7 @@ func (e *Entry) String() string {
 
 // FormatResult It is the preferred method of initialising for the Entry type.
 // It creates a disassembly.Entry based on the bank and result information.
-func (dsm *Disassembly) FormatResult(bank banks.Details, result execution.Result, level EntryLevel) (*Entry, error) {
+func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) (*Entry, error) {
 	// protect against empty definitions. we shouldn't hit this condition from
 	// the disassembly package itself, but it is possible to get it from ad-hoc
 	// formatting from GUI interfaces (see CPU window in sdlimgui)

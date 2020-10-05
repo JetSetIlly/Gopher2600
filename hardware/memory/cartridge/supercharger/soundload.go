@@ -20,7 +20,7 @@ import (
 	"math"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -155,7 +155,7 @@ func (tap *SoundLoad) skipLeader() {
 	logger.Log(soundloadLogTag, "tape leader skipped")
 }
 
-// Rewind implements the bus.CartTapeBus interface
+// Rewind implements the mapper.CartTapeBus interface
 func (tap *SoundLoad) Rewind() bool {
 	// rewinding happens instantaneously
 	tap.idx = 0
@@ -166,8 +166,8 @@ func (tap *SoundLoad) Rewind() bool {
 // the number of samples to copy and return from GetTapeState()
 const numStateSamples = 100
 
-func (tap *SoundLoad) GetTapeState() (bool, bus.CartTapeState) {
-	state := bus.CartTapeState{
+func (tap *SoundLoad) GetTapeState() (bool, mapper.CartTapeState) {
+	state := mapper.CartTapeState{
 		Counter:    tap.idx,
 		MaxCounter: len(tap.samples),
 		Time:       float64(tap.idx) / tap.sampleRate,

@@ -18,10 +18,6 @@
 // RIOT) access memory differently to the CPU. By restricting access to memory
 // from the chip to the ChipBus interface, we can prevent
 //
-// The DebugBus is for the exclusive use of debuggers. In addtion, the various
-// cartridge busses (eg. the CartRAMbus) are also only of use to debuggers -
-// they are not used by the main emulation.
-//
-// Also note there is a PeripheralBus defined in the ports package which is
-// only used for attaching peripherals to VCS ports.
+// The DebugBus is for the exclusive use of debuggers and exposes a Peek() and
+// Poke() function.
 package bus

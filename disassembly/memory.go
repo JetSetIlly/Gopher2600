@@ -16,18 +16,15 @@
 package disassembly
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // disasmMemory is a simplified memory model that allows the emulated CPU to
-// read cartridge memory.
+// read cartridge memory without touching the actual cartridge.
 type disasmMemory struct {
-	cart *cartridge.Cartridge
-
 	// if bank is not nil then the bank is read directly
-	bank   *banks.Content
+	bank   *mapper.BankContent
 	origin uint16
 }
 
@@ -36,13 +33,6 @@ func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 	// map address
 	address, area := memorymap.MapAddress(address, true)
 	if area == memorymap.Cartridge {
-		// the bank field is not set so we forward the read request to the
-		// cartridge in the normal way
-		if dismem.bank == nil {
-			address = address & memorymap.MemtopCart
-			return dismem.cart.Read(address)
-		}
-
 		// bank field is set so we bypass the cartridge mapper's usual read
 		// logic and access the bank directly
 		address = (address - dismem.origin) & memorymap.CartridgeBits
@@ -52,7 +42,7 @@ func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 		return dismem.bank.Data[address], nil
 	}
 
-	// address outside of cartidge range return nothing
+	// address outside of cartridge range return nothing
 	return 0, nil
 
 }

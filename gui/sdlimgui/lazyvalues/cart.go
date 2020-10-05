@@ -18,8 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
@@ -33,17 +32,17 @@ type LazyCart struct {
 	atomicNumBanks atomic.Value // int
 	atomicCurrBank atomic.Value // int
 
-	atomicStaticBus atomic.Value // bus.CartStaticBus
-	atomicStatic    atomic.Value // bus.CartStatic
+	atomicStaticBus atomic.Value // mapper.CartStaticBus
+	atomicStatic    atomic.Value // mapper.CartStatic
 
-	atomicRegistersBus atomic.Value // bus.CartRegistersBus
-	atomicRegisters    atomic.Value // bus.CartRegisters
+	atomicRegistersBus atomic.Value // mapper.CartRegistersBus
+	atomicRegisters    atomic.Value // mapper.CartRegisters
 
-	atomicRAMbus atomic.Value // bus.CartRAMbus
-	atomicRAM    atomic.Value // []bus.CartRAM
+	atomicRAMbus atomic.Value // mapper.CartRAMbus
+	atomicRAM    atomic.Value // []mapper.CartRAM
 
-	atomicTapeBus   atomic.Value // bus.CartTapeBus
-	atomicTapeState atomic.Value // bus.CartTapeState
+	atomicTapeBus   atomic.Value // mapper.CartTapeBus
+	atomicTapeState atomic.Value // mapper.CartTapeState
 
 	atomicPlusROM         atomic.Value // plusrom.PlusROM
 	atomicPlusROMAddrInfo atomic.Value // plusrom.AddrInfo
@@ -56,23 +55,23 @@ type LazyCart struct {
 	Summary  string
 	Filename string
 	NumBanks int
-	CurrBank banks.Details
+	CurrBank mapper.BankInfo
 
 	HasStaticBus bool
-	StaticBus    bus.CartStaticBus
-	Static       []bus.CartStatic
+	StaticBus    mapper.CartStaticBus
+	Static       []mapper.CartStatic
 
 	HasRegistersBus bool
-	RegistersBus    bus.CartRegistersBus
-	Registers       bus.CartRegisters
+	RegistersBus    mapper.CartRegistersBus
+	Registers       mapper.CartRegisters
 
 	HasRAMbus bool
-	RAMbus    bus.CartRAMbus
-	RAM       []bus.CartRAM
+	RAMbus    mapper.CartRAMbus
+	RAM       []mapper.CartRAM
 
 	HasTapeBus bool
-	TapeBus    bus.CartTapeBus
-	TapeState  bus.CartTapeState
+	TapeBus    mapper.CartTapeBus
+	TapeState  mapper.CartTapeState
 
 	IsPlusROM       bool
 	PlusROMAddrInfo plusrom.AddrInfo
@@ -161,11 +160,11 @@ func (lz *LazyCart) update() {
 	lz.Summary, _ = lz.atomicSummary.Load().(string)
 	lz.Filename, _ = lz.atomicFilename.Load().(string)
 	lz.NumBanks, _ = lz.atomicNumBanks.Load().(int)
-	lz.CurrBank, _ = lz.atomicCurrBank.Load().(banks.Details)
+	lz.CurrBank, _ = lz.atomicCurrBank.Load().(mapper.BankInfo)
 
-	lz.StaticBus, lz.HasStaticBus = lz.atomicStaticBus.Load().(bus.CartStaticBus)
+	lz.StaticBus, lz.HasStaticBus = lz.atomicStaticBus.Load().(mapper.CartStaticBus)
 	if lz.HasStaticBus {
-		lz.Static, _ = lz.atomicStatic.Load().([]bus.CartStatic)
+		lz.Static, _ = lz.atomicStatic.Load().([]mapper.CartStatic)
 
 		// a cartridge can implement a static bus but not actually have a
 		// static area. this additional test checks for that
@@ -176,9 +175,9 @@ func (lz *LazyCart) update() {
 		}
 	}
 
-	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(bus.CartRegistersBus)
+	lz.RegistersBus, lz.HasRegistersBus = lz.atomicRegistersBus.Load().(mapper.CartRegistersBus)
 	if lz.HasRegistersBus {
-		lz.Registers, _ = lz.atomicRegisters.Load().(bus.CartRegisters)
+		lz.Registers, _ = lz.atomicRegisters.Load().(mapper.CartRegisters)
 
 		// a cartridge can implement a registers bus but not actually have any
 		// registers. this additional test checks for that
@@ -190,9 +189,9 @@ func (lz *LazyCart) update() {
 		}
 	}
 
-	lz.RAMbus, lz.HasRAMbus = lz.atomicRAMbus.Load().(bus.CartRAMbus)
+	lz.RAMbus, lz.HasRAMbus = lz.atomicRAMbus.Load().(mapper.CartRAMbus)
 	if lz.HasRAMbus {
-		lz.RAM, _ = lz.atomicRAM.Load().([]bus.CartRAM)
+		lz.RAM, _ = lz.atomicRAM.Load().([]mapper.CartRAM)
 
 		// a cartridge can implement a ram bus but not actually have any ram.
 		// this additional test checks for that
@@ -205,9 +204,9 @@ func (lz *LazyCart) update() {
 		}
 	}
 
-	lz.TapeBus, lz.HasTapeBus = lz.atomicTapeBus.Load().(bus.CartTapeBus)
+	lz.TapeBus, lz.HasTapeBus = lz.atomicTapeBus.Load().(mapper.CartTapeBus)
 	if lz.HasTapeBus {
-		lz.TapeState, _ = lz.atomicTapeState.Load().(bus.CartTapeState)
+		lz.TapeState, _ = lz.atomicTapeState.Load().(mapper.CartTapeState)
 	}
 
 	_, lz.IsPlusROM = lz.atomicPlusROM.Load().(*plusrom.PlusROM)

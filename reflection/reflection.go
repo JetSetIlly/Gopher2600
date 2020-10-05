@@ -17,7 +17,7 @@ package reflection
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/television"
 )
@@ -42,7 +42,7 @@ type Broker interface {
 type LastResult struct {
 	CPU          execution.Result
 	WSYNC        bool
-	Bank         banks.Details
+	Bank         mapper.BankInfo
 	IsRam        bool
 	VideoElement video.Element
 	TV           television.SignalAttributes

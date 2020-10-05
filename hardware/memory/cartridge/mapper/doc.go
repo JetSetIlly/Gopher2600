@@ -13,6 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package banks contains types that are used by the cartridge package to
-// communicate information about catridge banks to the debugger.
-package banks
+// Package mapper contains the CartMapper interface. This interface abstracts
+// the functions required of any cartridge format.
+//
+// In addition it defines other interfaces that a cartridge mapper may
+// optionally implement for additional functionality for the rest of the
+// emulation. For example, the CartHotspotBus interface can be used to reveal
+// information about the special/hotspot addresses for a cartridge format.
+//
+// In addition to the interfaces, any additional types are defined. For
+// instance, the CartHotspotInfo type the symbol name and action type for a
+// every hotspot in the cartridge.
+package mapper

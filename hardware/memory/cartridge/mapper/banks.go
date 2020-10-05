@@ -13,13 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package banks
+package mapper
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// Content contains data and ID of a cartridge bank. Used by IterateBanks()
+// BankContent contains data and ID of a cartridge bank. Used by CopyBanks()
 // and helps the disassembly process.
-type Content struct {
+type BankContent struct {
 	Number int
 
 	// copy of the bank data
@@ -38,17 +40,20 @@ type Content struct {
 	//	idx := Origins[0] & memorymap.CartridgeBits
 	//	v := Data[idx]
 	//
+	// address values are supplied by the mapper implementation and must be
+	// cartridge addresses and should in the primary cartridge mirror range
+	// (ie. 0x1000 to 0x1fff)j
 	Origins []uint16
 }
 
-// Details is used to identify a cartridge bank. In some contexts bank is
-// represented by an integer only. The Bank type is used when more information
-// about a bank is required.
-type Details struct {
+// BankInfo is used to identify a cartridge bank. In some instance a bank can
+// be identified by it's bank number only. In other contexts more detail is
+// required and so BankInfo is used isntead
+type BankInfo struct {
 	Number  int
 	Segment int
 
-	// is cartridge bank is writable
+	// is cartridge bank writable
 	IsRAM bool
 
 	// if the address used to generate the Details is not a cartridge address.
@@ -57,7 +62,7 @@ type Details struct {
 	NonCart bool
 }
 
-func (b Details) String() string {
+func (b BankInfo) String() string {
 	if b.NonCart {
 		return "-"
 	}

@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -131,7 +130,7 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 func (cart mnetwork) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
-	s.WriteString(fmt.Sprintf(" Bank: %d ", cart.bank))
+	s.WriteString(fmt.Sprintf(" Bank: %d [%d] ", cart.bank, len(cart.banks)-1))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
 	if cart.use1kRAM {
 		s.WriteString(" [+1k RAM]")
@@ -280,19 +279,19 @@ func (cart mnetwork) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *mnetwork) GetBank(addr uint16) banks.Details {
+func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if cart.use1kRAM {
-			return banks.Details{Number: cart.bank, IsRAM: true, Segment: 0}
+			return mapper.BankInfo{Number: cart.bank, IsRAM: true, Segment: 0}
 		}
-		return banks.Details{Number: cart.bank, IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.bank, IsRAM: false, Segment: 0}
 	}
 
 	if addr >= 0x0800 && addr <= 0x08ff {
-		return banks.Details{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
+		return mapper.BankInfo{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
 	}
 
-	return banks.Details{Number: 7, IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: 7, IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -315,11 +314,11 @@ func (cart *mnetwork) Listen(_ uint16, _ uint8) {
 func (cart *mnetwork) Step() {
 }
 
-// GetRAM implements the bus.CartRAMBus interface
-func (cart mnetwork) GetRAM() []bus.CartRAM {
-	r := make([]bus.CartRAM, num256ByteRAMbanks+1)
+// GetRAM implements the mapper.CartRAMBus interface
+func (cart mnetwork) GetRAM() []mapper.CartRAM {
+	r := make([]mapper.CartRAM, num256ByteRAMbanks+1)
 
-	r[0] = bus.CartRAM{
+	r[0] = mapper.CartRAM{
 		Label:  "1k",
 		Origin: 0x1000,
 		Data:   make([]uint8, len(cart.ram1k)),
@@ -328,7 +327,7 @@ func (cart mnetwork) GetRAM() []bus.CartRAM {
 	copy(r[0].Data, cart.ram1k)
 
 	for i := 0; i < num256ByteRAMbanks; i++ {
-		r[i+1] = bus.CartRAM{
+		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
 			Data:   make([]uint8, len(cart.ram256byte[i])),
@@ -340,7 +339,7 @@ func (cart mnetwork) GetRAM() []bus.CartRAM {
 	return r
 }
 
-// PutRAM implements the bus.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface
 func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 	if bank == 0 {
 		cart.ram1k[idx] = data
@@ -349,25 +348,22 @@ func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 	cart.ram256byte[bank-1][idx] = data
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart mnetwork) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b >= 0 && b <= 6 {
-		// includes 1k ram section
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-			},
-		}
-	} else if b == 7 {
-		// includes 256B ram section
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart + uint16(cart.bankSize),
-			},
+// IterateBank implements the mapper.CartMapper interface
+func (cart mnetwork) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+
+	for b := 0; b < len(cart.banks)-1; b++ {
+		c[b] = mapper.BankContent{Number: b,
+			Data:    cart.banks[b],
+			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
-	return nil
+
+	// always points to the last segment
+	b := len(cart.banks) - 1
+	c[b] = mapper.BankContent{Number: b,
+		Data:    cart.banks[b],
+		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
+	}
+	return c
 }

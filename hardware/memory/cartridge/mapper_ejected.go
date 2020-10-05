@@ -17,7 +17,7 @@ package cartridge
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 const ejectedName = "ejected"
@@ -67,8 +67,8 @@ func (cart ejected) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart ejected) GetBank(_ uint16) banks.Details {
-	return banks.Details{Number: 0, IsRAM: false}
+func (cart ejected) GetBank(_ uint16) mapper.BankInfo {
+	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
 // Patch implements the cartMapper interface
@@ -84,7 +84,7 @@ func (cart *ejected) Listen(_ uint16, _ uint8) {
 func (cart *ejected) Step() {
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart ejected) IterateBanks(prev *banks.Content) *banks.Content {
+// IterateBank implements the mapper.CartMapper interface
+func (cart ejected) CopyBanks() []mapper.BankContent {
 	return nil
 }

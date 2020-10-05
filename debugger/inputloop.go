@@ -329,10 +329,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					}
 
 					// (re)disassemble memory on TapeLoaded error signal
-					err = dbg.Disasm.FromMemoryAgain(dbg.VCS.CPU.PC.Address())
-					if err != nil {
-						return err
-					}
+					dbg.Disasm.FromMemory(nil, nil)
 
 				} else {
 					// exit input loop if error is a plain error

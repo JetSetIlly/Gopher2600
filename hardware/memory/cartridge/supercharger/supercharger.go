@@ -22,8 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -211,55 +209,55 @@ func (cart Supercharger) NumBanks() int {
 }
 
 // GetBank implements the cartMapper interface
-func (cart Supercharger) GetBank(addr uint16) banks.Details {
+func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	switch cart.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 1:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 3:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 4:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 5:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 6:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
 
 	case 7:
 		if addr >= 0x0800 {
-			return banks.Details{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
 		}
-		return banks.Details{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
 	}
 	panic("unknown banking method")
 }
@@ -279,32 +277,34 @@ func (cart *Supercharger) Step() {
 	cart.tape.step()
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart Supercharger) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b == 0 {
-		return &banks.Content{Number: b,
-			Data: cart.bios,
-			Origins: []uint16{
-				memorymap.OriginCart,
-				memorymap.OriginCart + uint16(cart.bankSize),
-			},
-		}
-	} else if b >= 1 && b <= 3 {
-		return &banks.Content{Number: b,
-			Data: cart.ram[b-1],
+// IterateBank implements the mapper.CartMapper interface
+func (cart Supercharger) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.ram)+1)
+
+	c[0] = mapper.BankContent{Number: 0,
+		Data: cart.bios,
+		Origins: []uint16{
+			memorymap.OriginCart,
+			memorymap.OriginCart + uint16(cart.bankSize),
+		},
+	}
+
+	for b := 0; b < len(cart.ram); b++ {
+		c[b+1] = mapper.BankContent{Number: b + 1,
+			Data: cart.ram[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
 				memorymap.OriginCart + uint16(cart.bankSize),
 			},
 		}
 	}
-	return nil
+
+	return c
 }
 
-// GetRAM implements the bus.CartRAMBus interface
-func (cart Supercharger) GetRAM() []bus.CartRAM {
-	r := make([]bus.CartRAM, len(cart.ram))
+// GetRAM implements the mapper.CartRAMBus interface
+func (cart Supercharger) GetRAM() []mapper.CartRAM {
+	r := make([]mapper.CartRAM, len(cart.ram))
 
 	for i := 0; i < len(cart.ram); i++ {
 		mapped := false
@@ -362,7 +362,7 @@ func (cart Supercharger) GetRAM() []bus.CartRAM {
 			}
 		}
 
-		r[i] = bus.CartRAM{
+		r[i] = mapper.CartRAM{
 			Label:  fmt.Sprintf("2048k [%d]", bank),
 			Origin: origin,
 			Data:   make([]uint8, len(cart.ram[i])),
@@ -374,7 +374,7 @@ func (cart Supercharger) GetRAM() []bus.CartRAM {
 	return r
 }
 
-// PutRAM implements the bus.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface
 func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 	if bank < len(cart.ram) {
 		cart.ram[bank][idx] = data
@@ -382,24 +382,24 @@ func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 	}
 }
 
-// Rewind implements the bus.CartTapeBus interface
+// Rewind implements the mapper.CartTapeBus interface
 //
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
 func (cart *Supercharger) Rewind() bool {
-	if tape, ok := cart.tape.(bus.CartTapeBus); ok {
+	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
 		return tape.Rewind()
 	}
 	return false
 }
 
-// GetTapeState implements the bus.CartTapeBus interface
+// GetTapeState implements the mapper.CartTapeBus interface
 //
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
-func (cart *Supercharger) GetTapeState() (bool, bus.CartTapeState) {
-	if tape, ok := cart.tape.(bus.CartTapeBus); ok {
+func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
+	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
 		return tape.GetTapeState()
 	}
-	return false, bus.CartTapeState{}
+	return false, mapper.CartTapeState{}
 }

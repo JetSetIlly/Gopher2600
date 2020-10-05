@@ -20,8 +20,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -49,10 +47,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	cart.net = newNetwork(cart.Prefs)
 
 	// get reference to last bank
-	bank := &banks.Content{Number: -1}
-	for i := 0; i < cart.NumBanks(); i++ {
-		bank = child.IterateBanks(bank)
-	}
+	bank := child.CopyBanks()[cart.NumBanks()-1]
 
 	// host/path information is found at address 0x1ffa. we've got a reference
 	// to the last bank above but we need to consider that the last bank might not
@@ -78,10 +73,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	a &= addrMask
 
 	// get the bank to whic the NMI vector points
-	bank = &banks.Content{Number: -1}
-	for i := 0; i < int(b); i++ {
-		bank = child.IterateBanks(bank)
-	}
+	bank = child.CopyBanks()[b-1]
 
 	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
@@ -194,7 +186,7 @@ func (cart *PlusROM) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *PlusROM) GetBank(addr uint16) banks.Details {
+func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
 	return cart.child.GetBank(addr)
 }
 
@@ -213,69 +205,69 @@ func (cart *PlusROM) Step() {
 	cart.child.Step()
 }
 
-// IterateBanks implements the mapper.CartMapper interface
-func (cart *PlusROM) IterateBanks(prev *banks.Content) *banks.Content {
-	return cart.child.IterateBanks(prev)
+// CopyBanks implements the mapper.CartMapper interface
+func (cart *PlusROM) CopyBanks() []mapper.BankContent {
+	return cart.child.CopyBanks()
 }
 
-// GetGetRegisters implements the bus.CartRegistersBus interface
-func (cart *PlusROM) GetRegisters() bus.CartRegisters {
-	if rb, ok := cart.child.(bus.CartRegistersBus); ok {
+// GetGetRegisters implements the mapper.CartRegistersBus interface
+func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
+	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
 		return rb.GetRegisters()
 	}
 	return nil
 }
 
-// PutRegister implements the bus.CartRegistersBus interface
+// PutRegister implements the mapper.CartRegistersBus interface
 func (cart *PlusROM) PutRegister(register string, data string) {
-	if rb, ok := cart.child.(bus.CartRegistersBus); ok {
+	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
 		rb.PutRegister(register, data)
 	}
 }
 
-// GetRAM implements the bus.CartRAMbus interface
-func (cart *PlusROM) GetRAM() []bus.CartRAM {
-	if rb, ok := cart.child.(bus.CartRAMbus); ok {
+// GetRAM implements the mapper.CartRAMbus interface
+func (cart *PlusROM) GetRAM() []mapper.CartRAM {
+	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
 		return rb.GetRAM()
 	}
 	return nil
 }
 
-// PutRAM implements the bus.CartRAMbus interface
+// PutRAM implements the mapper.CartRAMbus interface
 func (cart *PlusROM) PutRAM(bank int, idx int, data uint8) {
-	if rb, ok := cart.child.(bus.CartRAMbus); ok {
+	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
 		rb.PutRAM(bank, idx, data)
 	}
 }
 
-// GetStatic implements the bus.CartStaticBus interface
-func (cart *PlusROM) GetStatic() []bus.CartStatic {
-	if sb, ok := cart.child.(bus.CartStaticBus); ok {
+// GetStatic implements the mapper.CartStaticBus interface
+func (cart *PlusROM) GetStatic() []mapper.CartStatic {
+	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
 		return sb.GetStatic()
 	}
 	return nil
 }
 
-// PutStatic implements the bus.CartStaticBus interface
+// PutStatic implements the mapper.CartStaticBus interface
 func (cart *PlusROM) PutStatic(tag string, addr uint16, data uint8) error {
-	if sb, ok := cart.child.(bus.CartStaticBus); ok {
+	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
 		return sb.PutStatic(tag, addr, data)
 	}
 	return nil
 }
 
-// Rewind implements the bus.CartTapeBus interface
+// Rewind implements the mapper.CartTapeBus interface
 func (cart *PlusROM) Rewind() bool {
-	if sb, ok := cart.child.(bus.CartTapeBus); ok {
+	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
 		return sb.Rewind()
 	}
 	return false
 }
 
-// GetTapeState implements the bus.CartTapeBus interface
-func (cart *PlusROM) GetTapeState() (bool, bus.CartTapeState) {
-	if sb, ok := cart.child.(bus.CartTapeBus); ok {
+// GetTapeState implements the mapper.CartTapeBus interface
+func (cart *PlusROM) GetTapeState() (bool, mapper.CartTapeState) {
+	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
 		return sb.GetTapeState()
 	}
-	return false, bus.CartTapeState{}
+	return false, mapper.CartTapeState{}
 }

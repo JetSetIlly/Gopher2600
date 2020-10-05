@@ -43,7 +43,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	// disassembly entry. starting with the condition of no disassembly at all
 	if e == nil {
 		content.WriteString(fmt.Sprintf("$%04x", dbg.VCS.CPU.PC.Address()))
-	} else if e.Level == disassembly.EntryLevelUnused {
+	} else if e.Level == disassembly.EntryLevelUnmappable {
 		content.WriteString(fmt.Sprintf("%s", e.Address))
 	} else {
 		// this is the ideal path. the address is in the disassembly and we've

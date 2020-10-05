@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/symbols"
@@ -99,34 +99,18 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	return dsm, nil
 }
 
-// FromMemoryAgain repeats the disassembly using the existing structures
-func (dsm *Disassembly) FromMemoryAgain(startAddress ...uint16) error {
-	// demote any entry level lower then "executed" to "unused
-	dsm.crit.Lock()
-	for b := 0; b < len(dsm.entries); b++ {
-		for _, a := range dsm.entries[b] {
-			if a.Level < EntryLevelExecuted {
-				a.Level = EntryLevelUnused
-			}
-		}
-	}
-	dsm.crit.Unlock()
-
-	// it's important that we don't initiliase the cartridge during the
-	// fromMemory() process
-
-	return dsm.fromMemory(startAddress...)
-}
-
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
 // requires an existing instance of Disassembly
 //
 // cartridge will finish in its initialised state
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
-	dsm.cart = cart
-
-	dsm.Symbols = symbols
+	if cart != nil {
+		dsm.cart = cart
+	}
+	if symbols != nil {
+		dsm.Symbols = symbols
+	}
 
 	// allocate memory for disassembly. the GUI may find itself trying to
 	// iterate through disassembly at the same time as we're doing this.
@@ -142,17 +126,8 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 		return nil
 	}
 
-	// begin and start with the cartridge in its initialised state.
-	dsm.cart.Initialise()
-	defer dsm.cart.Initialise()
-
-	return dsm.fromMemory()
-}
-
-// fromMemory is the underlying function for both FromMemory() and FromMemoryAgain()
-func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	// create new memory
-	mem := &disasmMemory{cart: dsm.cart}
+	mem := &disasmMemory{}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc, err := cpu.NewCPU(mem)
@@ -161,19 +136,29 @@ func (dsm *Disassembly) fromMemory(startAddress ...uint16) error {
 	}
 	mc.NoFlowControl = true
 
-	// some cartridge types react when certain registers are read/written. for
-	// disassembly purposes we don't want that so we turn on the Passive flag
-	// for the duration
-	dsm.cart.Passive = true
-	defer func() { dsm.cart.Passive = false }()
-
 	// disassemble cartridge binary
-	err = dsm.disassemble(mc, mem, startAddress...)
+	err = dsm.disassemble(mc, mem)
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}
 
 	return nil
+}
+
+// Bless disassembly sequence from the specified bank/address. Will do nothing
+// if bank is not a cartridge ROM bank
+func (dsm *Disassembly) Bless(bank mapper.BankInfo, startAddress uint16) {
+	// we don't actually use this because we would rather the static
+	// disassembly process catches all the errors. if we can't do that then we
+	// should call Bless() from the debugging loop
+
+	if bank.NonCart {
+		return
+	}
+
+	if dsm.blessSequence(bank.Number, startAddress, false) {
+		dsm.blessSequence(bank.Number, startAddress, true)
+	}
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified
@@ -197,7 +182,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 // If the execution.Result was from an instruction in RAM (cartridge RAM or VCS
 // RAM) then the newly created entry is returned but not stored anywhere in the
 // Disassembly.
-func (dsm *Disassembly) ExecutedEntry(bank banks.Details, result execution.Result, nextAddr uint16) (*Entry, error) {
+func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, nextAddr uint16) (*Entry, error) {
 	// not touching any result which is not in cartridge space. we are noting
 	// execution results from cartridge RAM. the banks.Details field in the
 	// disassembly entry notes whether execution was from RAM

@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -585,8 +584,8 @@ func (cart dpcPlus) NumBanks() int {
 	return len(cart.banks)
 }
 
-func (cart dpcPlus) GetBank(addr uint16) banks.Details {
-	return banks.Details{Number: cart.bank, IsRAM: false}
+func (cart dpcPlus) GetBank(addr uint16) mapper.BankInfo {
+	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
 }
 
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
@@ -633,16 +632,14 @@ func (cart *dpcPlus) Step() {
 	}
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart dpcPlus) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b < len(cart.banks) {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-			},
+// IterateBank implements the mapper.CartMapper interface
+func (cart dpcPlus) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+	for b := 0; b < len(cart.banks); b++ {
+		c[b] = mapper.BankContent{Number: b,
+			Data:    cart.banks[b],
+			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
-	return nil
+	return c
 }

@@ -73,7 +73,9 @@ type Peripheral interface {
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1()
 type NewPeripheral func(PortID, PeripheralBus) Peripheral
 
-// PeripheralBus defines the memory operations required by peripherals
+// PeripheralBus defines the memory operations required by peripherals. We keep
+// this bus definition here rather than the Bus package because it is very
+// specific to this package and sub-packages.
 type PeripheralBus interface {
 	WriteINPTx(inptx addresses.ChipRegister, data uint8)
 

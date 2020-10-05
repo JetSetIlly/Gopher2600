@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // DPCplusStatic implements the bus.CartStatic interface
@@ -30,8 +30,8 @@ type DPCplusStatic struct {
 }
 
 // GetStatic implements the bus.CartDebugBus interface
-func (cart dpcPlus) GetStatic() []bus.CartStatic {
-	s := make([]bus.CartStatic, 3)
+func (cart dpcPlus) GetStatic() []mapper.CartStatic {
+	s := make([]mapper.CartStatic, 3)
 
 	s[0].Label = "ARM"
 	s[1].Label = "Data"

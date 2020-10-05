@@ -30,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -57,7 +56,7 @@ type Debugger struct {
 	Disasm *disassembly.Disassembly
 
 	// the bank and the formatted result of the last step (cpu or video)
-	lastBank   banks.Details
+	lastBank   mapper.BankInfo
 	lastResult *disassembly.Entry
 
 	// gui, tv and terminal
@@ -314,7 +313,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
 			// nice to have.
-			dbg.Disasm.FromMemoryAgain()
+			dbg.Disasm.FromMemory(nil, nil)
 			return dbg.tv.Reset()
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			if pr.Prefs.NewInstallation {

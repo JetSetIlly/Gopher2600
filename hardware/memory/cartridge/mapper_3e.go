@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -168,11 +167,11 @@ func (cart m3e) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *m3e) GetBank(addr uint16) banks.Details {
+func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return banks.Details{Number: cart.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.segment[0], IsRAM: false, Segment: 0}
 	}
-	return banks.Details{Number: cart.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -210,9 +209,9 @@ func (cart *m3e) Listen(addr uint16, data uint8) {
 func (cart *m3e) Step() {
 }
 
-// GetRAM implements the bus.CartRAMBus interface.
-func (cart m3e) GetRAM() []bus.CartRAM {
-	r := make([]bus.CartRAM, len(cart.ram))
+// GetRAM implements the mapper.CartRAMBus interface.
+func (cart m3e) GetRAM() []mapper.CartRAM {
+	r := make([]mapper.CartRAM, len(cart.ram))
 
 	for i := range cart.ram {
 		mapped := false
@@ -231,7 +230,7 @@ func (cart m3e) GetRAM() []bus.CartRAM {
 			}
 		}
 
-		r[i] = bus.CartRAM{
+		r[i] = mapper.CartRAM{
 			Label:  fmt.Sprintf("%d", i),
 			Origin: origin,
 			Data:   make([]uint8, len(cart.ram[i])),
@@ -243,29 +242,27 @@ func (cart m3e) GetRAM() []bus.CartRAM {
 	return r
 }
 
-// PutRAM implements the bus.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface
 func (cart *m3e) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart m3e) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b >= 0 && b < len(cart.banks)-1 {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-			},
-		}
-	} else if b == len(cart.banks)-1 {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				// cannot point to the first segment
-				memorymap.OriginCart + uint16(cart.bankSize),
-			},
+// IterateBank implements the mapper.CartMapper interface
+func (cart m3e) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+
+	for b := 0; b < len(cart.banks)-1; b++ {
+		c[b] = mapper.BankContent{Number: b,
+			Data:    cart.banks[b],
+			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
-	return nil
+
+	// always points to the last segment
+	b := len(cart.banks) - 1
+	c[b] = mapper.BankContent{Number: b,
+		Data:    cart.banks[b],
+		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
+	}
+	return c
 }

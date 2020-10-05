@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // DPCplusRegisters implements the bus.CartRegisters interface
@@ -162,7 +162,7 @@ func (rng *randomNumberFetcher) prev() {
 }
 
 // GetRegisters implements the bus.CartDebugBus interface
-func (cart dpcPlus) GetRegisters() bus.CartRegisters {
+func (cart dpcPlus) GetRegisters() mapper.CartRegisters {
 	return cart.registers
 }
 

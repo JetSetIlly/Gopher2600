@@ -163,7 +163,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 func (win *winCPU) drawLastResult() {
 	e := win.img.lz.Debugger.LastResult
 
-	if e.Level == disassembly.EntryLevelUnused {
+	if e.Level == disassembly.EntryLevelUnmappable {
 		imgui.Text("")
 		imgui.Text("")
 		imgui.Text("")

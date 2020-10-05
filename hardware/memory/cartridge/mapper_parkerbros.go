@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -207,7 +206,7 @@ func (cart parkerBros) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart parkerBros) GetBank(addr uint16) banks.Details {
+func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -219,7 +218,7 @@ func (cart parkerBros) GetBank(addr uint16) banks.Details {
 		seg = 3
 	}
 
-	return banks.Details{Number: cart.segment[seg], IsRAM: false, Segment: seg}
+	return mapper.BankInfo{Number: cart.segment[seg], IsRAM: false, Segment: seg}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -242,32 +241,34 @@ func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 func (cart *parkerBros) Step() {
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart parkerBros) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b >= 0 && b <= 6 {
-		// banks 0 to 6 can occupy any of the three segments
-		return &banks.Content{Number: b,
+// IterateBank implements the mapper.CartMapper interface
+func (cart parkerBros) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+
+	// banks 0 to len-1 can occupy any of the three segments
+	for b := 0; b < len(cart.banks)-1; b++ {
+		c[b] = mapper.BankContent{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
 				memorymap.OriginCart + uint16(cart.bankSize),
 				memorymap.OriginCart + uint16(cart.bankSize)*2,
-			},
-		}
-	} else if b == 7 {
-		// bank 7 can occupy any of the four segments (the last segment always
-		// points to bank 7 but bank 7 can also be in another segment at the
-		// same time)
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-				memorymap.OriginCart + uint16(cart.bankSize),
-				memorymap.OriginCart + uint16(cart.bankSize)*2,
-				memorymap.OriginCart + uint16(cart.bankSize)*3,
 			},
 		}
 	}
-	return nil
+
+	// last bank can occupy any of the four segments (the last segment always
+	// points to bank 7 but bank 7 can also be in another segment at the
+	// same time)
+	b := len(cart.banks) - 1
+	c[b] = mapper.BankContent{Number: b,
+		Data: cart.banks[b],
+		Origins: []uint16{
+			memorymap.OriginCart,
+			memorymap.OriginCart + uint16(cart.bankSize),
+			memorymap.OriginCart + uint16(cart.bankSize)*2,
+			memorymap.OriginCart + uint16(cart.bankSize)*3,
+		},
+	}
+	return c
 }

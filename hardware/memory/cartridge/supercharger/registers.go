@@ -20,10 +20,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// Registers implements the bus.CartRegisters interface
+// Registers implements the mapper.CartRegisters interface
 type Registers struct {
 	Value uint8
 	Delay int // 0=off, 1=trigger
@@ -127,12 +127,12 @@ func (r *Registers) transitionCount(addr uint16) {
 	}
 }
 
-// GetRegisters implements the bus.CartDebugBus interface
-func (cart Supercharger) GetRegisters() bus.CartRegisters {
+// GetRegisters implements the mapper.CartDebugBus interface
+func (cart Supercharger) GetRegisters() mapper.CartRegisters {
 	return cart.registers
 }
 
-// PutRegister implements the bus.CartDebugBus interface
+// PutRegister implements the mapper.CartDebugBus interface
 //
 // Register specification is divided with the "::" string. The following table
 // describes what the valid register strings and, after the = sign, the type to

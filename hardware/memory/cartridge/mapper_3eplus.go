@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -184,7 +183,7 @@ func (cart m3ePlus) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
+func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -197,9 +196,9 @@ func (cart *m3ePlus) GetBank(addr uint16) banks.Details {
 	}
 
 	if cart.segmentIsRam[seg] {
-		return banks.Details{Number: cart.segment[seg], IsRAM: true, Segment: seg}
+		return mapper.BankInfo{Number: cart.segment[seg], IsRAM: true, Segment: seg}
 	}
-	return banks.Details{Number: cart.segment[seg], Segment: seg}
+	return mapper.BankInfo{Number: cart.segment[seg], Segment: seg}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -237,9 +236,9 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 func (cart *m3ePlus) Step() {
 }
 
-// GetRAM implements the bus.CartRAMBus interface.
-func (cart m3ePlus) GetRAM() []bus.CartRAM {
-	r := make([]bus.CartRAM, len(cart.ram))
+// GetRAM implements the mapper.CartRAMBus interface.
+func (cart m3ePlus) GetRAM() []mapper.CartRAM {
+	r := make([]mapper.CartRAM, len(cart.ram))
 
 	for i := range cart.ram {
 		mapped := false
@@ -262,7 +261,7 @@ func (cart m3ePlus) GetRAM() []bus.CartRAM {
 			}
 		}
 
-		r[i] = bus.CartRAM{
+		r[i] = mapper.CartRAM{
 			Label:  fmt.Sprintf("%d", i),
 			Origin: origin,
 			Data:   make([]uint8, len(cart.ram[i])),
@@ -274,16 +273,16 @@ func (cart m3ePlus) GetRAM() []bus.CartRAM {
 	return r
 }
 
-// PutRAM implements the bus.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface
 func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart m3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b < len(cart.banks) {
-		return &banks.Content{Number: b,
+// IterateBank implements the mapper.CartMapper interface
+func (cart m3ePlus) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+	for b := 0; b < len(cart.banks); b++ {
+		c[b] = mapper.BankContent{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -292,5 +291,5 @@ func (cart m3ePlus) IterateBanks(prev *banks.Content) *banks.Content {
 				memorymap.OriginCart + uint16(cart.bankSize)*3},
 		}
 	}
-	return nil
+	return c
 }

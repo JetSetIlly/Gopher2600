@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -57,12 +56,12 @@ type dpc struct {
 	beats int
 }
 
-// DPCstatic implements the bus.CartStatic interface
+// DPCstatic implements the mapper.CartStatic interface
 type DPCstatic struct {
 	Gfx []byte
 }
 
-// DPCregisters implements the bus.CartRegisters interface
+// DPCregisters implements the mapper.CartRegisters interface
 type DPCregisters struct {
 	Fetcher [8]DPCdataFetcher
 
@@ -366,8 +365,8 @@ func (cart dpc) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface
-func (cart dpc) GetBank(addr uint16) banks.Details {
-	return banks.Details{Number: cart.bank, IsRAM: false}
+func (cart dpc) GetBank(addr uint16) mapper.BankInfo {
+	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
 }
 
 // Patch implements the mapper.CartMapper interface
@@ -422,12 +421,12 @@ func (cart *dpc) Step() {
 	}
 }
 
-// GetRegisters implements the bus.CartDebugBus interface
-func (cart dpc) GetRegisters() bus.CartRegisters {
-	return bus.CartRegisters(cart.registers)
+// GetRegisters implements the mapper.CartRegisters interface
+func (cart dpc) GetRegisters() mapper.CartRegisters {
+	return mapper.CartRegisters(cart.registers)
 }
 
-// PutRegister implements the bus.CartDebugBus interface
+// PutRegister implements the mapper.CartRegister interface
 //
 // Register specification is divided with the "::" string. The following table
 // describes what the valid register strings and, after the = sign, the type to
@@ -482,16 +481,16 @@ func (cart *dpc) PutRegister(register string, data string) {
 	}
 }
 
-// GetStatic implements the bus.CartDebugBus interface
-func (cart dpc) GetStatic() []bus.CartStatic {
-	s := make([]bus.CartStatic, 1)
+// GetStatic implements the mapper.CartDebugBus interface
+func (cart dpc) GetStatic() []mapper.CartStatic {
+	s := make([]mapper.CartStatic, 1)
 	s[0].Label = "Gfx"
 	s[0].Data = make([]byte, len(cart.static.Gfx))
 	copy(s[0].Data, cart.static.Gfx)
 	return s
 }
 
-// PutStatic implements the bus.CartDebugBus interface
+// PutStatic implements the mapper.CartDebugBus interface
 func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	if label == "Gfx" {
 		if int(addr) >= len(cart.static.Gfx) {
@@ -505,16 +504,14 @@ func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	return nil
 }
 
-// IterateBank implemnts the disassemble interface
-func (cart dpc) IterateBanks(prev *banks.Content) *banks.Content {
-	b := prev.Number + 1
-	if b < len(cart.banks) {
-		return &banks.Content{Number: b,
-			Data: cart.banks[b],
-			Origins: []uint16{
-				memorymap.OriginCart,
-			},
+// IterateBank implements the mapper.CartMapper interface
+func (cart dpc) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, len(cart.banks))
+	for b := 0; b < len(cart.banks); b++ {
+		c[b] = mapper.BankContent{Number: b,
+			Data:    cart.banks[b],
+			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
-	return nil
+	return c
 }

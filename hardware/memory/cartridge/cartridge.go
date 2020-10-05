@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/banks"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -40,12 +39,6 @@ type Cartridge struct {
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
 	mapper mapper.CartMapper
-
-	// when cartridge is in passive mode, cartridge hotspots do not work. We
-	// send the passive value to the Read() and Write() functions of the mapper
-	// and we also use it to prevent the Listen() function from triggering.
-	// Useful for disassembly when we don't want the cartridge to react.
-	Passive bool
 }
 
 // Sentinal error returned if operation is on the ejected cartridge type
@@ -95,18 +88,18 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 // normalised.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
 	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
-		return cart.mapper.Read(addr, cart.Passive)
+		return cart.mapper.Read(addr, false)
 	}
-	return cart.mapper.Read(addr&memorymap.CartridgeBits, cart.Passive)
+	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
 }
 
 // Write is an implementation of memory.CPUBus. Address should not be
 // normalised.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
 	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
-		return cart.mapper.Write(addr, data, cart.Passive, false)
+		return cart.mapper.Write(addr, data, false, false)
 	}
-	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, cart.Passive, false)
+	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, false, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -260,9 +253,9 @@ func (cart Cartridge) NumBanks() int {
 
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
-func (cart Cartridge) GetBank(addr uint16) banks.Details {
+func (cart Cartridge) GetBank(addr uint16) mapper.BankInfo {
 	if addr&memorymap.OriginCart != memorymap.OriginCart {
-		return banks.Details{NonCart: true}
+		return mapper.BankInfo{NonCart: true}
 	}
 
 	return cart.mapper.GetBank(addr & memorymap.CartridgeBits)
@@ -280,9 +273,7 @@ func (cart Cartridge) GetBank(addr uint16) banks.Details {
 // address space. When this address is triggered, the tigervision cartridge
 // will use whatever is on the data bus to switch banks.
 func (cart Cartridge) Listen(addr uint16, data uint8) {
-	if !cart.Passive {
-		cart.mapper.Listen(addr, data)
-	}
+	cart.mapper.Listen(addr, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
@@ -293,8 +284,8 @@ func (cart Cartridge) Step() {
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
 // if cartridge has no registers
-func (cart Cartridge) GetRegistersBus() bus.CartRegistersBus {
-	if bus, ok := cart.mapper.(bus.CartRegistersBus); ok {
+func (cart Cartridge) GetRegistersBus() mapper.CartRegistersBus {
+	if bus, ok := cart.mapper.(mapper.CartRegistersBus); ok {
 		return bus
 	}
 	return nil
@@ -302,24 +293,24 @@ func (cart Cartridge) GetRegistersBus() bus.CartRegistersBus {
 
 // GetStaticBus returns interface to the static area of the cartridge or nil if
 // cartridge has no static area
-func (cart Cartridge) GetStaticBus() bus.CartStaticBus {
-	if bus, ok := cart.mapper.(bus.CartStaticBus); ok {
+func (cart Cartridge) GetStaticBus() mapper.CartStaticBus {
+	if bus, ok := cart.mapper.(mapper.CartStaticBus); ok {
 		return bus
 	}
 	return nil
 }
 
 // GetRAMbus returns interface to ram busor  nil if catridge contains no RAM
-func (cart Cartridge) GetRAMbus() bus.CartRAMbus {
-	if bus, ok := cart.mapper.(bus.CartRAMbus); ok {
+func (cart Cartridge) GetRAMbus() mapper.CartRAMbus {
+	if bus, ok := cart.mapper.(mapper.CartRAMbus); ok {
 		return bus
 	}
 	return nil
 }
 
 // GetTapeBus returns interface to a tape bus or nil if catridge has no tape
-func (cart Cartridge) GetTapeBus() bus.CartTapeBus {
-	if bus, ok := cart.mapper.(bus.CartTapeBus); ok {
+func (cart Cartridge) GetTapeBus() mapper.CartTapeBus {
+	if bus, ok := cart.mapper.(mapper.CartTapeBus); ok {
 		return bus
 	}
 	return nil
@@ -336,22 +327,17 @@ func (cart Cartridge) GetContainer() mapper.CartContainer {
 
 // GetCartHotspots returns interface to hotspots bus or nil if cartridge has no
 // hotspots it wants to report
-func (cart Cartridge) GetCartHotspots() bus.CartHotspots {
-	if cc, ok := cart.mapper.(bus.CartHotspots); ok {
+func (cart Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
+	if cc, ok := cart.mapper.(mapper.CartHotspotsBus); ok {
 		return cc
 	}
 	return nil
 }
 
-// IterateBanks returns the sequence of banks in a cartridge. To return the
+// CopyBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
-// banks.Content returned from the previous call. The end of the sequence is
+// mapper.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
-func (cart Cartridge) IterateBanks(prev *banks.Content) (*banks.Content, error) {
-	// to keep the mappers as neat as possible, handle the nil special condition here
-	if prev == nil {
-		prev = &banks.Content{Number: -1}
-	}
-
-	return cart.mapper.IterateBanks(prev), nil
+func (cart Cartridge) CopyBanks() ([]mapper.BankContent, error) {
+	return cart.mapper.CopyBanks(), nil
 }
