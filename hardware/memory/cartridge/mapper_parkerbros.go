@@ -272,3 +272,43 @@ func (cart parkerBros) CopyBanks() []mapper.BankContent {
 	}
 	return c
 }
+
+// ReadHotspots implements the mapper.CartHotspotsBus interface
+func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+	return map[uint16]mapper.CartHotspotInfo{
+		// segment 0
+		0x0fe0: mapper.CartHotspotInfo{Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
+		0x0fe1: mapper.CartHotspotInfo{Symbol: "B1S0", Action: mapper.HotspotBankSwitch},
+		0x0fe2: mapper.CartHotspotInfo{Symbol: "B2S0", Action: mapper.HotspotBankSwitch},
+		0x0fe3: mapper.CartHotspotInfo{Symbol: "B3S0", Action: mapper.HotspotBankSwitch},
+		0x0fe4: mapper.CartHotspotInfo{Symbol: "B4S0", Action: mapper.HotspotBankSwitch},
+		0x0fe5: mapper.CartHotspotInfo{Symbol: "B5S0", Action: mapper.HotspotBankSwitch},
+		0x0fe6: mapper.CartHotspotInfo{Symbol: "B6S0", Action: mapper.HotspotBankSwitch},
+		0x0fe7: mapper.CartHotspotInfo{Symbol: "B7S0", Action: mapper.HotspotBankSwitch},
+
+		// segment 1
+		0x0fe8: mapper.CartHotspotInfo{Symbol: "B0S1", Action: mapper.HotspotBankSwitch},
+		0x0fe9: mapper.CartHotspotInfo{Symbol: "B1S1", Action: mapper.HotspotBankSwitch},
+		0x0fea: mapper.CartHotspotInfo{Symbol: "B2S1", Action: mapper.HotspotBankSwitch},
+		0x0feb: mapper.CartHotspotInfo{Symbol: "B3S1", Action: mapper.HotspotBankSwitch},
+		0x0fec: mapper.CartHotspotInfo{Symbol: "B4S1", Action: mapper.HotspotBankSwitch},
+		0x0fed: mapper.CartHotspotInfo{Symbol: "B5S1", Action: mapper.HotspotBankSwitch},
+		0x0fee: mapper.CartHotspotInfo{Symbol: "B6S1", Action: mapper.HotspotBankSwitch},
+		0x0fef: mapper.CartHotspotInfo{Symbol: "B7S1", Action: mapper.HotspotBankSwitch},
+
+		// segment 2
+		0x0ff0: mapper.CartHotspotInfo{Symbol: "B0S2", Action: mapper.HotspotBankSwitch},
+		0x0ff1: mapper.CartHotspotInfo{Symbol: "B1S2", Action: mapper.HotspotBankSwitch},
+		0x0ff2: mapper.CartHotspotInfo{Symbol: "B2S2", Action: mapper.HotspotBankSwitch},
+		0x0ff3: mapper.CartHotspotInfo{Symbol: "B3S2", Action: mapper.HotspotBankSwitch},
+		0x0ff4: mapper.CartHotspotInfo{Symbol: "B4S2", Action: mapper.HotspotBankSwitch},
+		0x0ff5: mapper.CartHotspotInfo{Symbol: "B5S2", Action: mapper.HotspotBankSwitch},
+		0x0ff6: mapper.CartHotspotInfo{Symbol: "B6S2", Action: mapper.HotspotBankSwitch},
+		0x0ff7: mapper.CartHotspotInfo{Symbol: "B7S2", Action: mapper.HotspotBankSwitch},
+	}
+}
+
+// WriteHotspots implements the mapper.CartHotspotsBus interface
+func (cart parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+	return cart.ReadHotspots()
+}

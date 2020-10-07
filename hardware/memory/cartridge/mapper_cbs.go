@@ -190,3 +190,17 @@ func (cart cbs) CopyBanks() []mapper.BankContent {
 	}
 	return c
 }
+
+// ReadHotspots implements the mapper.CartHotspotsBus interface
+func (cart cbs) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+	return map[uint16]mapper.CartHotspotInfo{
+		0x1ff8: mapper.CartHotspotInfo{Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1ff9: mapper.CartHotspotInfo{Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1ffa: mapper.CartHotspotInfo{Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
+	}
+}
+
+// WriteHotspots implements the mapper.CartHotspotsBus interface
+func (cart cbs) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+	return cart.ReadHotspots()
+}
