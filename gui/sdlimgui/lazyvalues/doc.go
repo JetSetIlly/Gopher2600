@@ -13,54 +13,107 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package lazyvalues is the method used by sdlimgui (and possibly other GUI
-// implementations) when access emulator data from the GUI thread. Accessing
-// emulator values will cause race errors in almost every circumstance so it is
-// important that this lazyvalue mechanism be used whenevert emulator
+// Package lazyvalues is the method used by sdlimgui to read emulator data
+// from the GUI thread. Reading emulator values (which are handled by the
+// emulator thread) will cause race errors in almost every circumstance so it
+// is important that this lazyvalue mechanism be used whenever emulator
 // information is required.
 //
 // Note that this system is used in addition to the other systems which hand
 // off information to the GUI. The PixelRenderer and AudioMixer interfaces from
-// the television packages should be used in the normal way. The terminal
-// interface is also available and should be used to send and recieve responses
-// from the underlying debugger. The lazyvalues system is for information that
-// is not available through either of those systems or which would be too slow
-// to retrieve through the terminal.
+// the television packages should be used in the normal way.
 //
-// Reading values from the emulator can be done through the Lazy types and/or
-// through one of the sub-types. For example, retrieving the foreground color
-// of the playfield:
+// For writing data back to the emulation thread the terminal interface can be
+// used for many things. Alternatively the debugger.PushRawEvent() function can
+// be used. There is currently no way of pushing events onto the emulator
+// unless the debugging loop is in use.
 //
-//  fgCol := lazyval.Playfield.ForegroundColor
 //
-// Note that some values require additional context and are wrapped as
-// functions. For example, reading RAM is done through the ReadRAM() function.
+// Example
+// -------
 //
-// When writing values directly to the emulator, the GUI thread must do so
-// through the debugger's RawEvent queue. For example:
-//
-//	lazyval.Dbg.PushRawEvent(func() { lazyval.VCS.TIA.Video.Playfield.ForegroundColor = fgCol })
-//
-// Note that the Debugger and VCS instances are exposed by the Lazy type in
-// this package but these *must not* be used except through PushRawEvent.
-//
-// Because of the nature of the lazyvalues system, variable scope needs to be
-// considered. As a rule, if a value retrieved from the lazy system is to be
-// altered, then make a copy of that value before doing so. If it is only for
-// presentation purposes, then a copy probably does not need to be made.
-//
-// By the same token, you should be careful about variable reuse. Do not be
-// tempted by the following pattern
+// Retrieving the foreground color of the playfield:
 //
 //  col := lazyval.Playfield.ForegroundColor
 //
-//  <update foreground color with PushRawEvent()>
 //
-//  col = lazyval.Playfield.BackgroundColor
+// Writing the playfield values is done throught debugger's "raw event" system:
 //
-//  <update background color with PushRawEvent()>
+//	lazyval.Dbg.PushRawEvent(func() {
+//		lazyval.VCS.TIA.Video.Playfield.ForegroundColor = col
+//	})
 //
-// Because PushRawEvent will update the values "lazily", by the time the first
-// PushRawEvent() has ran the color variable will have been updated with the
-// background color value.
+//
+// Implementation
+// --------------
+//
+// The main goal of the lazyvalues system is to prevent the GUI loop from
+// locking up while waiting for a response from the emulator thread. Given that
+// we must use a thred-sage a communication channel between the GUI and
+// emulator threads to avoid race conditions this is important - a unresponsive
+// GUI can needlessly damage the user experience.
+//
+// This section outlines the principles of the internals of the lazyvalues
+// package. Users of the package need not understand these points.
+//
+// The principle of the lazyvalues system is to use whatever values are available
+// immediately and to update those values "lazily". In a GUI context this means
+// that the values seen on screen may be several frames behind the emulation
+// but at normal GUI refresh rates this isn't noticeable. Cartainly, when the
+// emulation is paused, the values seen in the GUI will be accurate.
+//
+// Lazy values are updated with the Refresh() function. In turn, this function
+// will call the push() and update() functions of each component in the
+// lazyvalues package.
+//
+// The pseudocode below shows how the Refresh() updates the values in every
+// type in the lazyvalues system, at the same time as requesting new values.
+//
+//	func Refresh() {                        .------------------.
+//		debugger.PushRawEvent()   ----->	| CPU.push()       |
+//											| RAM.push()       |
+//      CPU.update()						| Playfield.push() |
+//		RAM.update()						|   .              |
+//			.								|   .              |
+//			.								|   .              |
+//			.								| Log.push()       |
+//		Log.update()						 ------------------
+//	}
+//
+// The update() and push() functions (not visible from outside the lazyvalues
+// package) of each type handle the retreiving and updating of emulation
+// values. In most instances, this is achieved with the atomic.Value type, from
+// the atomic package in the Go standard library.
+//
+// In the instance of the LazyController type, we cannot use the atomic.Value.
+// This is because of the limitation on atomic.Values only being able to store
+// consistently typed values. In the case of the LazyController type we need to
+// store the ports.Peripheral interface, which by definition may have differing
+// underlying types.
+//
+// For this reason, the LazyController type uses channels to communicate
+// between the push() function (ie. the emulation thread) and the update()
+// function, rather than atomic values. We could of course, use channels for
+// all types and do away with atomic values but it is felt that in most cases
+// the atomic solution is clearer.
+//
+// As a final point about atomic values, note that arrays of atomic values
+// require that the array itself be an atomic value, as well as the elements of
+// the array. For example, the RAM package has code equivalent to this; an
+// array of atomic.Value stored as an atomic value:
+//
+//	 var ram atomic.Value
+//   ram.Store(make([]atomic.Value, size)
+//
+// The exception to all the rules is the LazyBreakpoints type. Like LazyRAM it
+// employs an array of atomic.Values storied as an atomic Value but unlike
+// everythin else it is not refreshed with update() and push(). Instead, the
+// unique funciton HasBreak() is used, which is called by the Disassembly
+// window for every cartridge entry that is visible.
+//
+// The reason for this function is so that we can pass an instance of
+// disassembly.Entry and probe the debugger's breakpoints with that. There may
+// be other ways of achieving the same effect, but whatever way we do it the
+// additional context provided by the disassembly.Entry is required.
+//
 package lazyvalues

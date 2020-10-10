@@ -32,8 +32,8 @@ type StatusRegister struct {
 
 // NewStatusRegister is the preferred method of initialisation for the status
 // register
-func NewStatusRegister() *StatusRegister {
-	return &StatusRegister{}
+func NewStatusRegister() StatusRegister {
+	return StatusRegister{}
 }
 
 // Label returns the canonical name for the status register

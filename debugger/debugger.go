@@ -407,8 +407,6 @@ func (dbg *Debugger) SetFPS(fps float32) {
 // GetReqFPS returens the requested number of frames per second. The limiter
 // type has no GetActualFPS() function. Use the equivalent function from the
 // television implementation.
-//
-// *Use this in preference to SetFPS() from the television implementation*
 func (dbg *Debugger) GetReqFPS() float32 {
 	return dbg.lmtr.getReqFPS()
 }

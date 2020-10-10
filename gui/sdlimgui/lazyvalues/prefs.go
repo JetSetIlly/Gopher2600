@@ -21,12 +21,12 @@ import (
 
 // LazyPrefs lazily accesses the debugger/emulator's preference states
 type LazyPrefs struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicRandomState atomic.Value // bool (from prefs.Bool.Get())
-	atomicRandomPins  atomic.Value // bool (from prefs.Bool.Get())
-	atomicFxxxMirror  atomic.Value // bool (from prefs.Bool.Get())
-	atomicSymbols     atomic.Value // bool (from prefs.Bool.Get())
+	randomState atomic.Value // bool (from prefs.Bool.Get())
+	randomPins  atomic.Value // bool (from prefs.Bool.Get())
+	fxxxMirror  atomic.Value // bool (from prefs.Bool.Get())
+	symbols     atomic.Value // bool (from prefs.Bool.Get())
 
 	RandomState bool
 	RandomPins  bool
@@ -34,20 +34,20 @@ type LazyPrefs struct {
 	Symbols     bool
 }
 
-func newLazyPrefs(val *Lazy) *LazyPrefs {
+func newLazyPrefs(val *LazyValues) *LazyPrefs {
 	lz := &LazyPrefs{val: val}
 	return lz
 }
 
+func (lz *LazyPrefs) push() {
+	lz.randomState.Store(lz.val.Dbg.Prefs.RandomState.Get())
+	lz.randomPins.Store(lz.val.Dbg.Prefs.RandomPins.Get())
+	lz.fxxxMirror.Store(lz.val.Dbg.Disasm.Prefs.FxxxMirror.Get())
+	lz.symbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
+}
 func (lz *LazyPrefs) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicRandomState.Store(lz.val.Dbg.Prefs.RandomState.Get())
-		lz.atomicRandomPins.Store(lz.val.Dbg.Prefs.RandomPins.Get())
-		lz.atomicFxxxMirror.Store(lz.val.Dbg.Disasm.Prefs.FxxxMirror.Get())
-		lz.atomicSymbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
-	})
-	lz.RandomState, _ = lz.atomicRandomState.Load().(bool)
-	lz.RandomPins, _ = lz.atomicRandomPins.Load().(bool)
-	lz.FxxxMirror, _ = lz.atomicFxxxMirror.Load().(bool)
-	lz.Symbols, _ = lz.atomicSymbols.Load().(bool)
+	lz.RandomState, _ = lz.randomState.Load().(bool)
+	lz.RandomPins, _ = lz.randomPins.Load().(bool)
+	lz.FxxxMirror, _ = lz.fxxxMirror.Load().(bool)
+	lz.Symbols, _ = lz.symbols.Load().(bool)
 }

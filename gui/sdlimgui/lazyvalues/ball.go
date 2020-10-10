@@ -19,18 +19,18 @@ import "sync/atomic"
 
 // LazyBall lazily accesses ball information from the emulator
 type LazyBall struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicResetPixel    atomic.Value // int
-	atomicHmovedPixel   atomic.Value // int
-	atomicColor         atomic.Value // uint8
-	atomicVerticalDelay atomic.Value // bool
-	atomicEnabledDelay  atomic.Value // bool
-	atomicEnabled       atomic.Value // bool
-	atomicCtrlpf        atomic.Value // uint8
-	atomicSize          atomic.Value // uint8
-	atomicHmove         atomic.Value // uint8
-	atomicMoreHmove     atomic.Value // bool
+	resetPixel    atomic.Value // int
+	hmovedPixel   atomic.Value // int
+	color         atomic.Value // uint8
+	verticalDelay atomic.Value // bool
+	enabledDelay  atomic.Value // bool
+	enabled       atomic.Value // bool
+	ctrlpf        atomic.Value // uint8
+	size          atomic.Value // uint8
+	hmove         atomic.Value // uint8
+	moreHmove     atomic.Value // bool
 
 	ResetPixel    int
 	HmovedPixel   int
@@ -43,10 +43,10 @@ type LazyBall struct {
 	Hmove         uint8
 	MoreHmove     bool
 
-	atomicEncActive     atomic.Value // bool
-	atomicEncSecondHalf atomic.Value // bool
-	atomicEncCpy        atomic.Value // int
-	atomicEncTicks      atomic.Value // int
+	encActive     atomic.Value // bool
+	encSecondHalf atomic.Value // bool
+	encCpy        atomic.Value // int
+	encTicks      atomic.Value // int
 
 	EncActive     bool
 	EncSecondHalf bool
@@ -54,39 +54,40 @@ type LazyBall struct {
 	EncTicks      int
 }
 
-func newLazyBall(val *Lazy) *LazyBall {
+func newLazyBall(val *LazyValues) *LazyBall {
 	return &LazyBall{val: val}
 }
 
+func (lz *LazyBall) push() {
+	lz.resetPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.ResetPixel)
+	lz.hmovedPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.HmovedPixel)
+	lz.color.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Color)
+	lz.verticalDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.VerticalDelay)
+	lz.enabledDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.EnabledDelay)
+	lz.enabled.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enabled)
+	lz.ctrlpf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Ctrlpf)
+	lz.size.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Size)
+	lz.hmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Hmove)
+	lz.moreHmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.MoreHMOVE)
+	lz.encActive.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Active)
+	lz.encSecondHalf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.SecondHalf)
+	lz.encCpy.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Cpy)
+	lz.encTicks.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Ticks)
+}
+
 func (lz *LazyBall) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicResetPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.ResetPixel)
-		lz.atomicHmovedPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.HmovedPixel)
-		lz.atomicColor.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Color)
-		lz.atomicVerticalDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.VerticalDelay)
-		lz.atomicEnabledDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.EnabledDelay)
-		lz.atomicEnabled.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enabled)
-		lz.atomicCtrlpf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Ctrlpf)
-		lz.atomicSize.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Size)
-		lz.atomicHmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Hmove)
-		lz.atomicMoreHmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.MoreHMOVE)
-		lz.atomicEncActive.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Active)
-		lz.atomicEncSecondHalf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.SecondHalf)
-		lz.atomicEncCpy.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Cpy)
-		lz.atomicEncTicks.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Ticks)
-	})
-	lz.ResetPixel, _ = lz.atomicResetPixel.Load().(int)
-	lz.HmovedPixel, _ = lz.atomicHmovedPixel.Load().(int)
-	lz.Color, _ = lz.atomicColor.Load().(uint8)
-	lz.VerticalDelay, _ = lz.atomicVerticalDelay.Load().(bool)
-	lz.EnabledDelay, _ = lz.atomicEnabledDelay.Load().(bool)
-	lz.Enabled, _ = lz.atomicEnabled.Load().(bool)
-	lz.Ctrlpf, _ = lz.atomicCtrlpf.Load().(uint8)
-	lz.Size, _ = lz.atomicSize.Load().(uint8)
-	lz.Hmove, _ = lz.atomicHmove.Load().(uint8)
-	lz.MoreHmove, _ = lz.atomicMoreHmove.Load().(bool)
-	lz.EncActive, _ = lz.atomicEncActive.Load().(bool)
-	lz.EncSecondHalf, _ = lz.atomicEncSecondHalf.Load().(bool)
-	lz.EncCpy, _ = lz.atomicEncCpy.Load().(int)
-	lz.EncTicks, _ = lz.atomicEncTicks.Load().(int)
+	lz.ResetPixel, _ = lz.resetPixel.Load().(int)
+	lz.HmovedPixel, _ = lz.hmovedPixel.Load().(int)
+	lz.Color, _ = lz.color.Load().(uint8)
+	lz.VerticalDelay, _ = lz.verticalDelay.Load().(bool)
+	lz.EnabledDelay, _ = lz.enabledDelay.Load().(bool)
+	lz.Enabled, _ = lz.enabled.Load().(bool)
+	lz.Ctrlpf, _ = lz.ctrlpf.Load().(uint8)
+	lz.Size, _ = lz.size.Load().(uint8)
+	lz.Hmove, _ = lz.hmove.Load().(uint8)
+	lz.MoreHmove, _ = lz.moreHmove.Load().(bool)
+	lz.EncActive, _ = lz.encActive.Load().(bool)
+	lz.EncSecondHalf, _ = lz.encSecondHalf.Load().(bool)
+	lz.EncCpy, _ = lz.encCpy.Load().(int)
+	lz.EncTicks, _ = lz.encTicks.Load().(int)
 }

@@ -23,8 +23,8 @@ type ProgramCounter struct {
 }
 
 // NewProgramCounter is the preferred method of initialisation for ProgramCounter
-func NewProgramCounter(val uint16) *ProgramCounter {
-	return &ProgramCounter{value: val}
+func NewProgramCounter(val uint16) ProgramCounter {
+	return ProgramCounter{value: val}
 }
 
 // Label returns the program counter label (or ID)
@@ -49,12 +49,6 @@ func (pc ProgramCounter) BitWidth() int {
 // Address returns the current value of the PC as a a value of type uint16
 func (pc *ProgramCounter) Address() uint16 {
 	return pc.value
-}
-
-// LoadFromUint64 loads a value into the PC but using an int type as the value.
-// It is the responsibility of the caller to keep the value sensible.
-func (pc *ProgramCounter) LoadFromUint64(val uint64) {
-	pc.value = uint16(val)
 }
 
 // Load a value into the PC

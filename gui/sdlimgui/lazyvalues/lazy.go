@@ -16,21 +16,17 @@
 package lazyvalues
 
 import (
-	"sync/atomic"
-
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Lazy contains all values required by a debugger running in a different
+// LazyValues contains all values required by a debugger running in a different
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
-type Lazy struct {
-	active atomic.Value
+type LazyValues struct {
+	active bool
 
-	// these fields are racy, they should not be accessed except through the
-	// lazy evaluation system
+	// the debugger is racy. it should not be accessed directly except through
+	// the lazy system or directly with Debugger.PushRawEvent()
 	Dbg *debugger.Debugger
 
 	// pointers to these instances. non-pointer instances trigger the race
@@ -54,26 +50,13 @@ type Lazy struct {
 	Log           *LazyLog
 	SaveKey       *LazySaveKey
 
-	// \/\/\/ the following are updated on demand rather than through the update
-	// function, because they require more context
-	//
-	// there are no corresponding, non-atomic values for these slices. instead
-	// use the corresponding functions function to update and retrieve on
-	// demand \/\/\/
-
-	// note that we use atomicRAM for both internal VCS ram and any additional
-	// cartridge ram. as it is, internal RAM and each cartridge RAM bank are
-	// never on screen at the same time so for display purposes we don't need
-	// to distinguish between the different areas.
-	atomicRAM []atomic.Value // []uint8
-
-	// breakpoints
-	atomicBrk []atomic.Value // debugger.BreakGroup
+	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
+	Breakpoints *LazyBreakpoints
 }
 
-// NewValues is the preferred method of initialisation for the Values type
-func NewValues() *Lazy {
-	val := &Lazy{}
+// NewLazyValues is the preferred method of initialisation for the Values type
+func NewLazyValues() *LazyValues {
+	val := &LazyValues{active: true}
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -93,41 +76,46 @@ func NewValues() *Lazy {
 	val.ChipRegisters = newLazyChipRegisters(val)
 	val.Log = newLazyLog(val)
 	val.SaveKey = newLazySaveKey(val)
-
-	// allocating enough space for every byte in cartridge space. not worrying
-	// about bank sizes or anything like that.
-	val.atomicBrk = make([]atomic.Value, memorymap.MemtopCart-memorymap.OriginCart+1)
-
-	val.active.Store(true)
+	val.Breakpoints = newLazyBreakpoints(val)
 
 	return val
 }
 
-// Reset lazy values instance. The lynchpin of the lazy system is the
-// atomic.Value mechanism. Some atomic.Value instances accept interfaces, the
-// underlying type of which may change when something changes in the system.
-// For example, the underlying type of bus.CartRegisters interface may change.
-//
-// The thing is, we can't assign a different type to an atomic.Value once a
-// type has been assigned to it, so this reset step is required.
-func (val *Lazy) Reset(changingCart bool) {
-	active := !changingCart
-	if !active {
-		val.active.Store(false)
-	}
-
+// Reset lazy values instance
+func (val *LazyValues) Reset(changingCart bool) {
+	val.active = !changingCart
 	val.Cart = newLazyCart(val)
-
-	if active {
-		val.active.Store(true)
-	}
+	val.active = true
 }
 
-// Update lazy values, with the exception of RAM and break information.
-func (val *Lazy) Update() {
-	if !val.active.Load().(bool) || val.Dbg == nil {
+// Refresh lazy values
+func (val *LazyValues) Refresh() {
+	if !val.active || val.Dbg == nil {
 		return
 	}
+
+	val.Dbg.PushRawEvent(func() {
+		val.Debugger.push()
+		val.CPU.push()
+		val.RAM.push()
+		val.Timer.push()
+		val.Playfield.push()
+		val.Player0.push()
+		val.Player1.push()
+		val.Missile0.push()
+		val.Missile1.push()
+		val.Ball.push()
+		val.TV.push()
+		val.Cart.push()
+		val.Controllers.push()
+		val.Prefs.push()
+		val.Collisions.push()
+		val.ChipRegisters.push()
+		val.Log.push()
+		val.SaveKey.push()
+
+		// no push() function for breakpoints type
+	})
 
 	val.Debugger.update()
 	val.CPU.update()
@@ -147,23 +135,6 @@ func (val *Lazy) Update() {
 	val.ChipRegisters.update()
 	val.Log.update()
 	val.SaveKey.update()
-}
 
-// HasBreak checks to see if disassembly entry has a break point
-func (val *Lazy) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
-	if !val.active.Load().(bool) || val.Dbg == nil {
-		return debugger.BrkNone
-	}
-
-	addr := e.Result.Address & memorymap.CartridgeBits
-
-	val.Dbg.PushRawEvent(func() {
-		val.atomicBrk[addr].Store(val.Dbg.HasBreak(e))
-	})
-
-	if b, ok := val.atomicBrk[addr].Load().(debugger.BreakGroup); ok {
-		return b
-	}
-
-	return debugger.BrkNone
+	// no update() function for breakpoints type
 }

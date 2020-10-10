@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -65,11 +64,11 @@ func (win *winCPU) draw() {
 	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
-	win.drawRegister(win.img.lz.Dbg.VCS.CPU.PC)
-	win.drawRegister(win.img.lz.Dbg.VCS.CPU.A)
-	win.drawRegister(win.img.lz.Dbg.VCS.CPU.X)
-	win.drawRegister(win.img.lz.Dbg.VCS.CPU.Y)
-	win.drawRegister(win.img.lz.Dbg.VCS.CPU.SP)
+	win.drawRegister(win.img.lz.CPU.PC)
+	win.drawRegister(win.img.lz.CPU.A)
+	win.drawRegister(win.img.lz.CPU.X)
+	win.drawRegister(win.img.lz.CPU.Y)
+	win.drawRegister(win.img.lz.CPU.SP)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -142,19 +141,20 @@ func (win *winCPU) drawStatusRegisterBit(bit bool, label string) bool {
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {
-	regLabel := win.img.lz.CPU.RegLabel(reg)
+	if reg == nil {
+		return
+	}
 
-	imguiText(fmt.Sprintf("% 2s", regLabel))
+	label := reg.Label()
+
+	imguiText(fmt.Sprintf("% 2s", label))
 	imgui.SameLine()
 
-	label := fmt.Sprintf("##%s", regLabel)
-	content := win.img.lz.CPU.RegValue(reg)
-	bitwidth := win.img.lz.CPU.RegBitwidth(reg)
+	content := reg.String()
+	bitwidth := reg.BitWidth()
 
-	if imguiHexInput(label, !win.img.paused, bitwidth/4, &content) {
-		if v, err := strconv.ParseUint(content, 16, bitwidth); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() { reg.LoadFromUint64(v) })
-		}
+	if imguiHexInput(fmt.Sprintf("##%s", label), !win.img.paused, bitwidth/4, &content) {
+		win.img.term.pushCommand(fmt.Sprintf("CPU SET %s %s", reg.Label(), content))
 	}
 }
 

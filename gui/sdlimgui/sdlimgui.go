@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"io"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
@@ -46,7 +46,7 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// references to the emulation
-	lz  *lazyvalues.Lazy
+	lz  *lazyvalues.LazyValues
 	tv  television.Television
 	vcs *hardware.VCS
 
@@ -129,10 +129,7 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
-	// we don't have access to the Debugger, Disassembly or the VCS yet. those
-	// fields in the lazy instance will be set when the requests come in
-	img.lz = lazyvalues.NewValues()
-
+	img.lz = lazyvalues.NewLazyValues()
 	img.screen = newScreen(img)
 	img.term = newTerm()
 

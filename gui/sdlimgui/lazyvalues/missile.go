@@ -19,19 +19,19 @@ import "sync/atomic"
 
 // LazyMissile lazily accesses missile information from the emulator
 type LazyMissile struct {
-	val *Lazy
+	val *LazyValues
 	id  int
 
-	atomicResetPixel    atomic.Value // int
-	atomicHmovedPixel   atomic.Value // int
-	atomicColor         atomic.Value // uint8
-	atomicEnabled       atomic.Value // bool
-	atomicNusiz         atomic.Value // uint8
-	atomicSize          atomic.Value // uint8
-	atomicCopies        atomic.Value // uint8
-	atomicHmove         atomic.Value // uint8
-	atomicMoreHmove     atomic.Value // bool
-	atomicResetToPlayer atomic.Value // bool
+	resetPixel    atomic.Value // int
+	hmovedPixel   atomic.Value // int
+	color         atomic.Value // uint8
+	enabled       atomic.Value // bool
+	nusiz         atomic.Value // uint8
+	size          atomic.Value // uint8
+	copies        atomic.Value // uint8
+	hmove         atomic.Value // uint8
+	moreHmove     atomic.Value // bool
+	resetToPlayer atomic.Value // bool
 
 	ResetPixel    int
 	HmovedPixel   int
@@ -44,10 +44,10 @@ type LazyMissile struct {
 	MoreHmove     bool
 	ResetToPlayer bool
 
-	atomicEncActive     atomic.Value // bool
-	atomicEncSecondHalf atomic.Value // bool
-	atomicEncCpy        atomic.Value // int
-	atomicEncTicks      atomic.Value // int
+	encActive     atomic.Value // bool
+	encSecondHalf atomic.Value // bool
+	encCpy        atomic.Value // int
+	encTicks      atomic.Value // int
 
 	EncActive     bool
 	EncSecondHalf bool
@@ -55,43 +55,44 @@ type LazyMissile struct {
 	EncTicks      int
 }
 
-func newLazyMissile(val *Lazy, id int) *LazyMissile {
+func newLazyMissile(val *LazyValues, id int) *LazyMissile {
 	return &LazyMissile{val: val, id: id}
 }
 
-func (lz *LazyMissile) update() {
+func (lz *LazyMissile) push() {
 	ms := lz.val.Dbg.VCS.TIA.Video.Missile0
 	if lz.id != 0 {
 		ms = lz.val.Dbg.VCS.TIA.Video.Missile1
 	}
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicResetPixel.Store(ms.ResetPixel)
-		lz.atomicHmovedPixel.Store(ms.HmovedPixel)
-		lz.atomicColor.Store(ms.Color)
-		lz.atomicEnabled.Store(ms.Enabled)
-		lz.atomicNusiz.Store(ms.Nusiz)
-		lz.atomicSize.Store(ms.Size)
-		lz.atomicCopies.Store(ms.Copies)
-		lz.atomicHmove.Store(ms.Hmove)
-		lz.atomicMoreHmove.Store(ms.MoreHMOVE)
-		lz.atomicResetToPlayer.Store(ms.ResetToPlayer)
-		lz.atomicEncActive.Store(ms.Enclockifier.Active)
-		lz.atomicEncSecondHalf.Store(ms.Enclockifier.SecondHalf)
-		lz.atomicEncCpy.Store(ms.Enclockifier.Cpy)
-		lz.atomicEncTicks.Store(ms.Enclockifier.Ticks)
-	})
-	lz.ResetPixel, _ = lz.atomicResetPixel.Load().(int)
-	lz.HmovedPixel, _ = lz.atomicHmovedPixel.Load().(int)
-	lz.Color, _ = lz.atomicColor.Load().(uint8)
-	lz.Enabled, _ = lz.atomicEnabled.Load().(bool)
-	lz.Nusiz, _ = lz.atomicNusiz.Load().(uint8)
-	lz.Size, _ = lz.atomicSize.Load().(uint8)
-	lz.Copies, _ = lz.atomicCopies.Load().(uint8)
-	lz.Hmove, _ = lz.atomicHmove.Load().(uint8)
-	lz.MoreHmove, _ = lz.atomicMoreHmove.Load().(bool)
-	lz.ResetToPlayer, _ = lz.atomicResetToPlayer.Load().(bool)
-	lz.EncActive, _ = lz.atomicEncActive.Load().(bool)
-	lz.EncSecondHalf, _ = lz.atomicEncSecondHalf.Load().(bool)
-	lz.EncCpy, _ = lz.atomicEncCpy.Load().(int)
-	lz.EncTicks, _ = lz.atomicEncTicks.Load().(int)
+	lz.resetPixel.Store(ms.ResetPixel)
+	lz.hmovedPixel.Store(ms.HmovedPixel)
+	lz.color.Store(ms.Color)
+	lz.enabled.Store(ms.Enabled)
+	lz.nusiz.Store(ms.Nusiz)
+	lz.size.Store(ms.Size)
+	lz.copies.Store(ms.Copies)
+	lz.hmove.Store(ms.Hmove)
+	lz.moreHmove.Store(ms.MoreHMOVE)
+	lz.resetToPlayer.Store(ms.ResetToPlayer)
+	lz.encActive.Store(ms.Enclockifier.Active)
+	lz.encSecondHalf.Store(ms.Enclockifier.SecondHalf)
+	lz.encCpy.Store(ms.Enclockifier.Cpy)
+	lz.encTicks.Store(ms.Enclockifier.Ticks)
+}
+
+func (lz *LazyMissile) update() {
+	lz.ResetPixel, _ = lz.resetPixel.Load().(int)
+	lz.HmovedPixel, _ = lz.hmovedPixel.Load().(int)
+	lz.Color, _ = lz.color.Load().(uint8)
+	lz.Enabled, _ = lz.enabled.Load().(bool)
+	lz.Nusiz, _ = lz.nusiz.Load().(uint8)
+	lz.Size, _ = lz.size.Load().(uint8)
+	lz.Copies, _ = lz.copies.Load().(uint8)
+	lz.Hmove, _ = lz.hmove.Load().(uint8)
+	lz.MoreHmove, _ = lz.moreHmove.Load().(bool)
+	lz.ResetToPlayer, _ = lz.resetToPlayer.Load().(bool)
+	lz.EncActive, _ = lz.encActive.Load().(bool)
+	lz.EncSecondHalf, _ = lz.encSecondHalf.Load().(bool)
+	lz.EncCpy, _ = lz.encCpy.Load().(int)
+	lz.EncTicks, _ = lz.encTicks.Load().(int)
 }

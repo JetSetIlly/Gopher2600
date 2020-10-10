@@ -31,16 +31,16 @@ import (
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
-	PC     *registers.ProgramCounter
-	A      *registers.Register
-	X      *registers.Register
-	Y      *registers.Register
-	SP     *registers.Register
-	Status *registers.StatusRegister
+	PC     registers.ProgramCounter
+	A      registers.Register
+	X      registers.Register
+	Y      registers.Register
+	SP     registers.Register
+	Status registers.StatusRegister
 
 	// some operations only need an accumulator
-	acc8  *registers.Register
-	acc16 *registers.ProgramCounter
+	acc8  registers.Register
+	acc16 registers.ProgramCounter
 
 	mem          bus.CPUBus
 	instructions []*instructions.Definition
@@ -1166,10 +1166,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "ASL":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
-			r = mc.acc8
+			r = &mc.acc8
 			r.Load(value)
 		} else {
-			r = mc.A
+			r = &mc.A
 		}
 		mc.Status.Carry = r.ASL()
 		mc.Status.Zero = r.IsZero()
@@ -1179,10 +1179,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "LSR":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
-			r = mc.acc8
+			r = &mc.acc8
 			r.Load(value)
 		} else {
-			r = mc.A
+			r = &mc.A
 		}
 		mc.Status.Carry = r.LSR()
 		mc.Status.Zero = r.IsZero()
@@ -1216,10 +1216,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "ROR":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
-			r = mc.acc8
+			r = &mc.acc8
 			r.Load(value)
 		} else {
-			r = mc.A
+			r = &mc.A
 		}
 		mc.Status.Carry = r.ROR(mc.Status.Carry)
 		mc.Status.Zero = r.IsZero()
@@ -1229,10 +1229,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "ROL":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
-			r = mc.acc8
+			r = &mc.acc8
 			r.Load(value)
 		} else {
-			r = mc.A
+			r = &mc.A
 		}
 		mc.Status.Carry = r.ROL(mc.Status.Carry)
 		mc.Status.Zero = r.IsZero()

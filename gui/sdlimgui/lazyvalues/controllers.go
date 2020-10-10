@@ -21,42 +21,38 @@ import (
 
 // LazyControllers lazily accesses controller information from the emulator
 type LazyControllers struct {
-	val *Lazy
+	val *LazyValues
 
-	// we can't use atomic values here because the underlying type of the
-	// ports.Periperhal interface might change.
+	// unlike the other lazy types we can't use atomic values here because the
+	// underlying type of the ports.Periperhal interface might change and
+	// atomic.Value can only store consistently typed values
+	player0 chan ports.Peripheral
+	player1 chan ports.Peripheral
 
-	chanPlayer0 chan ports.Peripheral
-	chanPlayer1 chan ports.Peripheral
-	Player0     ports.Peripheral
-	Player1     ports.Peripheral
+	Player0 ports.Peripheral
+	Player1 ports.Peripheral
 }
 
-func newLazyControllers(val *Lazy) *LazyControllers {
+func newLazyControllers(val *LazyValues) *LazyControllers {
 	return &LazyControllers{
-		val:         val,
-		chanPlayer0: make(chan ports.Peripheral, 1),
-		chanPlayer1: make(chan ports.Peripheral, 1),
+		val:     val,
+		player0: make(chan ports.Peripheral, 1),
+		player1: make(chan ports.Peripheral, 1),
+	}
+}
+
+func (lz *LazyControllers) push() {
+	select {
+	case lz.player0 <- lz.val.Dbg.VCS.RIOT.Ports.Player0:
+	case lz.player1 <- lz.val.Dbg.VCS.RIOT.Ports.Player1:
+	default:
 	}
 }
 
 func (lz *LazyControllers) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		select {
-		case lz.chanPlayer0 <- lz.val.Dbg.VCS.RIOT.Ports.Player0:
-		default:
-		}
-		select {
-		case lz.chanPlayer1 <- lz.val.Dbg.VCS.RIOT.Ports.Player1:
-		default:
-		}
-	})
 	select {
-	case lz.Player0 = <-lz.chanPlayer0:
-	default:
-	}
-	select {
-	case lz.Player1 = <-lz.chanPlayer1:
+	case lz.Player0 = <-lz.player0:
+	case lz.Player1 = <-lz.player1:
 	default:
 	}
 }

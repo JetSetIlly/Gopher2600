@@ -79,7 +79,7 @@ func (win *winRAM) draw() {
 		}
 
 		// editable byte
-		b := fmt.Sprintf("%02x", win.img.lz.RAM.Read(addr))
+		b := fmt.Sprintf("%02x", win.img.lz.RAM.RAM[addr-memorymap.OriginRAM])
 		if imguiHexInput(fmt.Sprintf("##%d", addr), !win.img.paused, 2, &b) {
 			if v, err := strconv.ParseUint(b, 16, 8); err == nil {
 				a := addr // we have to make a copy of the address

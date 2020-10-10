@@ -119,7 +119,7 @@ func (win *winDisasm) draw() {
 	var pcaddr uint16
 	cpuStep := win.img.lz.Debugger.LastResult.Result.Final
 	if cpuStep {
-		pcaddr = win.img.lz.CPU.PCaddr
+		pcaddr = win.img.lz.CPU.PC.Address()
 	} else {
 		// note that we're using LastResult straight from the CPU not the
 		// copy in debugger.LastDisasmEntry. the latter gets updated too
@@ -413,7 +413,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
-	switch win.img.lz.HasBreak(e) {
+	switch win.img.lz.Breakpoints.HasBreak(e) {
 	case debugger.BrkPCAddress:
 		win.drawGutter(gutterSolid, win.colBreakAddress)
 	case debugger.BrkOther:

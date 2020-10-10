@@ -22,5 +22,4 @@ type Generic interface {
 	Label() string
 	String() string
 	BitWidth() int
-	LoadFromUint64(v uint64)
 }

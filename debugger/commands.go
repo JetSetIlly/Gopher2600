@@ -794,30 +794,30 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 				target = strings.ToUpper(target)
 				if target == "PC" {
-					// program counter can be a 16 bit number
-					v, err := strconv.ParseUint(value, 0, 16)
+					// program counter is a 16 bit number
+					v, err := strconv.ParseUint(value, 16, 16)
 					if err != nil {
-						dbg.printLine(terminal.StyleError, "value must be a positive 16 number")
+						dbg.printLine(terminal.StyleError, "value must be a positive 16 bit number")
 					}
 
 					dbg.VCS.CPU.PC.Load(uint16(v))
 				} else {
 					// 6507 registers are 8 bit
-					v, err := strconv.ParseUint(value, 0, 8)
+					v, err := strconv.ParseUint(value, 16, 8)
 					if err != nil {
-						dbg.printLine(terminal.StyleError, "value must be a positive 8 number")
+						dbg.printLine(terminal.StyleError, "value must be a positive 8 bit number")
 					}
 
 					var reg *registers.Register
 					switch strings.ToUpper(target) {
 					case "A":
-						reg = dbg.VCS.CPU.A
+						reg = &dbg.VCS.CPU.A
 					case "X":
-						reg = dbg.VCS.CPU.X
+						reg = &dbg.VCS.CPU.X
 					case "Y":
-						reg = dbg.VCS.CPU.Y
+						reg = &dbg.VCS.CPU.Y
 					case "SP":
-						reg = dbg.VCS.CPU.SP
+						reg = &dbg.VCS.CPU.SP
 					}
 
 					reg.Load(uint8(v))

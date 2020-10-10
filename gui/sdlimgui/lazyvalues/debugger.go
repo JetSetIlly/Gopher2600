@@ -24,30 +24,28 @@ import (
 
 // LazyDebugger lazily accesses Debugger information
 type LazyDebugger struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicQuantum    atomic.Value // debugger.QuantumMode
-	atomicLastResult atomic.Value // disassembly.Entry
-	Quantum          debugger.QuantumMode
+	quantum    atomic.Value // debugger.QuantumMode
+	lastResult atomic.Value // disassembly.Entry
 
-	// a LastResult value is also part of the reflection structure but it's
-	// more convenient to get it direcetly, in addition to reflection.
+	Quantum    debugger.QuantumMode
 	LastResult disassembly.Entry
 }
 
-func newLazyDebugger(val *Lazy) *LazyDebugger {
+func newLazyDebugger(val *LazyValues) *LazyDebugger {
 	lz := &LazyDebugger{val: val}
 	return lz
 }
 
-func (lz *LazyDebugger) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicQuantum.Store(lz.val.Dbg.GetQuantum())
-		lz.atomicLastResult.Store(lz.val.Dbg.GetLastResult())
-	})
-	lz.Quantum, _ = lz.atomicQuantum.Load().(debugger.QuantumMode)
+func (lz *LazyDebugger) push() {
+	lz.quantum.Store(lz.val.Dbg.GetQuantum())
+	lz.lastResult.Store(lz.val.Dbg.GetLastResult())
+}
 
-	if lz.atomicLastResult.Load() != nil {
-		lz.LastResult = lz.atomicLastResult.Load().(disassembly.Entry)
+func (lz *LazyDebugger) update() {
+	lz.Quantum, _ = lz.quantum.Load().(debugger.QuantumMode)
+	if lz.lastResult.Load() != nil {
+		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
 	}
 }

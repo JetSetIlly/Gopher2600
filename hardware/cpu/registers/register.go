@@ -27,15 +27,15 @@ type Register struct {
 
 // NewRegister creates a new register of a givel size and name, and initialises
 // the value.
-func NewRegister(val uint8, label string) *Register {
-	return &Register{
+func NewRegister(val uint8, label string) Register {
+	return Register{
 		value: val,
 		label: label,
 	}
 }
 
 // NewAnonRegister initialises a new register without a name.
-func NewAnonRegister(val uint8) *Register {
+func NewAnonRegister(val uint8) Register {
 	return NewRegister(val, "")
 }
 
@@ -81,12 +81,6 @@ func (r Register) IsZero() bool {
 // IsBitV returns the state of the second MSB
 func (r Register) IsBitV() bool {
 	return r.value&0x40 == 0x40
-}
-
-// LoadFromUint64 loads a value into the register but using an int type as the
-// value. It is the responsibility of the caller to keep the value sensible.
-func (r *Register) LoadFromUint64(val uint64) {
-	r.value = uint8(val)
 }
 
 // Load value into register

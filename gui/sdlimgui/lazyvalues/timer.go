@@ -19,28 +19,29 @@ import "sync/atomic"
 
 // LazyTimer lazily accesses RIOT timer information from the emulator
 type LazyTimer struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicDivider        atomic.Value // string
-	atomicINTIMvalue     atomic.Value // uint8
-	atomicTicksRemaining atomic.Value // int
+	divider        atomic.Value // string
+	intim          atomic.Value // uint8
+	ticksRemaining atomic.Value // int
 
 	Divider        string
 	INTIMvalue     uint8
 	TicksRemaining int
 }
 
-func newLazyTimer(val *Lazy) *LazyTimer {
+func newLazyTimer(val *LazyValues) *LazyTimer {
 	return &LazyTimer{val: val}
 }
 
+func (lz *LazyTimer) push() {
+	lz.divider.Store(lz.val.Dbg.VCS.RIOT.Timer.Divider.String())
+	lz.intim.Store(lz.val.Dbg.VCS.RIOT.Timer.INTIMvalue)
+	lz.ticksRemaining.Store(lz.val.Dbg.VCS.RIOT.Timer.TicksRemaining)
+}
+
 func (lz *LazyTimer) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicDivider.Store(lz.val.Dbg.VCS.RIOT.Timer.Divider.String())
-		lz.atomicINTIMvalue.Store(lz.val.Dbg.VCS.RIOT.Timer.INTIMvalue)
-		lz.atomicTicksRemaining.Store(lz.val.Dbg.VCS.RIOT.Timer.TicksRemaining)
-	})
-	lz.Divider, _ = lz.atomicDivider.Load().(string)
-	lz.INTIMvalue, _ = lz.atomicINTIMvalue.Load().(uint8)
-	lz.TicksRemaining, _ = lz.atomicTicksRemaining.Load().(int)
+	lz.Divider, _ = lz.divider.Load().(string)
+	lz.INTIMvalue, _ = lz.intim.Load().(uint8)
+	lz.TicksRemaining, _ = lz.ticksRemaining.Load().(int)
 }

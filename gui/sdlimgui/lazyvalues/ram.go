@@ -23,34 +23,36 @@ import (
 
 // LazyRAM lazily accesses the RAM area of VCS memory
 type LazyRAM struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicRAM []atomic.Value // []uint8
+	ram atomic.Value // []atomic.Value -> uint8
+	RAM []uint8
 }
 
-func newLazyRAM(val *Lazy) *LazyRAM {
-	return &LazyRAM{
-		val:       val,
-		atomicRAM: make([]atomic.Value, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+func newLazyRAM(val *LazyValues) *LazyRAM {
+	lz := &LazyRAM{
+		val: val,
+		RAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 	}
+	lz.ram.Store(make([]atomic.Value, memorymap.MemtopRAM-memorymap.OriginRAM+1))
+	return lz
+}
+
+func (lz *LazyRAM) push() {
+	ram := lz.ram.Load().([]atomic.Value)
+	for i := range ram {
+		d, _ := lz.val.Dbg.VCS.Mem.Peek(memorymap.OriginRAM + uint16(i))
+		ram[i].Store(d)
+	}
+	lz.ram.Store(ram)
 }
 
 func (lz *LazyRAM) update() {
-	// does not update
-}
-
-// Read returns the data at read address
-func (lz *LazyRAM) Read(addr uint16) uint8 {
-	if !lz.val.active.Load().(bool) || lz.val.Dbg == nil {
-		return 0
+	if ram, ok := lz.ram.Load().([]atomic.Value); ok {
+		for i, _ := range ram {
+			if v, ok := ram[i].Load().(uint8); ok {
+				lz.RAM[i] = v
+			}
+		}
 	}
-
-	lz.val.Dbg.PushRawEvent(func() {
-		d, _ := lz.val.Dbg.VCS.Mem.Peek(addr)
-		lz.atomicRAM[addr^memorymap.OriginRAM].Store(d)
-	})
-
-	d, _ := lz.atomicRAM[addr^memorymap.OriginRAM].Load().(uint8)
-
-	return d
 }

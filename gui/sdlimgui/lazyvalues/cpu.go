@@ -16,7 +16,6 @@
 package lazyvalues
 
 import (
-	"sync"
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
@@ -24,126 +23,49 @@ import (
 
 // LazyCPU lazily accesses CPU information from the emulator
 type LazyCPU struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicHasReset  atomic.Value // bool
-	atomicRdy       atomic.Value // bool
-	atomicPCAddr    atomic.Value // uint16
-	atomicStatusReg atomic.Value // registers.StatusRegister
+	hasReset  atomic.Value // bool
+	rdy       atomic.Value // bool
+	pc        atomic.Value // registers.ProgramCounter
+	a         atomic.Value // registers.Register
+	x         atomic.Value // registers.Register
+	y         atomic.Value // registers.Register
+	sp        atomic.Value // registers.Register
+	statusReg atomic.Value // registers.StatusRegister
 
 	HasReset  bool
 	RdyFlg    bool
-	PCaddr    uint16
+	PC        registers.ProgramCounter
+	A         registers.Register
+	X         registers.Register
+	Y         registers.Register
+	SP        registers.Register
 	StatusReg registers.StatusRegister
-
-	// register labels/value require a generic register. note use of mutex for
-	// map access
-	atomicRegLabelsCrit   sync.RWMutex
-	atomicRegValuesCrit   sync.RWMutex
-	atomicRegBitwidthCrit sync.RWMutex
-
-	atomicRegLabels   map[registers.Generic]atomic.Value // string
-	atomicRegValues   map[registers.Generic]atomic.Value // string
-	atomicRegBitwidth map[registers.Generic]atomic.Value // int
 }
 
-func newLazyCPU(val *Lazy) *LazyCPU {
-	lz := &LazyCPU{val: val}
-	lz.atomicRegLabels = make(map[registers.Generic]atomic.Value)
-	lz.atomicRegValues = make(map[registers.Generic]atomic.Value)
-	lz.atomicRegBitwidth = make(map[registers.Generic]atomic.Value)
-	return lz
+func newLazyCPU(val *LazyValues) *LazyCPU {
+	return &LazyCPU{val: val}
+}
+
+func (lz *LazyCPU) push() {
+	lz.hasReset.Store(lz.val.Dbg.VCS.CPU.HasReset())
+	lz.rdy.Store(lz.val.Dbg.VCS.CPU.RdyFlg)
+	lz.pc.Store(lz.val.Dbg.VCS.CPU.PC)
+	lz.a.Store(lz.val.Dbg.VCS.CPU.A)
+	lz.x.Store(lz.val.Dbg.VCS.CPU.X)
+	lz.y.Store(lz.val.Dbg.VCS.CPU.Y)
+	lz.sp.Store(lz.val.Dbg.VCS.CPU.SP)
+	lz.statusReg.Store(lz.val.Dbg.VCS.CPU.Status)
 }
 
 func (lz *LazyCPU) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicHasReset.Store(lz.val.Dbg.VCS.CPU.HasReset())
-		lz.atomicRdy.Store(lz.val.Dbg.VCS.CPU.RdyFlg)
-		lz.atomicPCAddr.Store(lz.val.Dbg.VCS.CPU.PC.Address())
-		lz.atomicStatusReg.Store(*lz.val.Dbg.VCS.CPU.Status)
-	})
-	lz.HasReset, _ = lz.atomicHasReset.Load().(bool)
-	lz.RdyFlg, _ = lz.atomicRdy.Load().(bool)
-	lz.PCaddr, _ = lz.atomicPCAddr.Load().(uint16)
-	lz.StatusReg, _ = lz.atomicStatusReg.Load().(registers.StatusRegister)
-}
-
-// RegLabel returns the label for the queried register
-func (lz *LazyCPU) RegLabel(reg registers.Generic) string {
-	if lz.val.Dbg == nil {
-		return ""
-	}
-
-	// label of register will neved change to if value is in atomicRegLabels
-	// map we don't need to read it again
-
-	lz.atomicRegLabelsCrit.RLock()
-	defer lz.atomicRegLabelsCrit.RUnlock()
-	if v, ok := lz.atomicRegLabels[reg]; ok {
-		return v.Load().(string)
-	}
-
-	lz.val.Dbg.PushRawEvent(func() {
-		var a atomic.Value
-		a.Store(reg.Label())
-		lz.atomicRegLabelsCrit.Lock()
-		lz.atomicRegLabels[reg] = a
-		lz.atomicRegLabelsCrit.Unlock()
-	})
-
-	return ""
-}
-
-// RegBitwidth returns the bitwidth of the queried register
-func (lz *LazyCPU) RegBitwidth(reg registers.Generic) int {
-	if lz.val.Dbg == nil {
-		return 0
-	}
-
-	// label of register will neved change to if value is in atomicRegBitwidth
-	// map we don't need to read it again
-
-	lz.atomicRegBitwidthCrit.RLock()
-	defer lz.atomicRegBitwidthCrit.RUnlock()
-	if v, ok := lz.atomicRegBitwidth[reg]; ok {
-		return v.Load().(int)
-	}
-
-	lz.val.Dbg.PushRawEvent(func() {
-		var a atomic.Value
-		a.Store(reg.BitWidth())
-		lz.atomicRegBitwidthCrit.Lock()
-		lz.atomicRegBitwidth[reg] = a
-		lz.atomicRegBitwidthCrit.Unlock()
-	})
-
-	return 0
-}
-
-// RegValue returns the value for the queried register in hexadecimal
-// string format. Note that a numeric representation of the PC register can be
-// accessed through PCaddr
-func (lz *LazyCPU) RegValue(reg registers.Generic) string {
-	if lz.val.Dbg == nil {
-		return ""
-	}
-
-	// value of register can change so we push a read event every instance.
-	// this is unlike the RegLabel() and RegBitwidth() functions
-
-	lz.val.Dbg.PushRawEvent(func() {
-		var a atomic.Value
-		a.Store(reg.String())
-		lz.atomicRegValuesCrit.Lock()
-		lz.atomicRegValues[reg] = a
-		lz.atomicRegValuesCrit.Unlock()
-	})
-
-	lz.atomicRegValuesCrit.RLock()
-	defer lz.atomicRegValuesCrit.RUnlock()
-	if v, ok := lz.atomicRegValues[reg]; ok {
-		return v.Load().(string)
-	}
-
-	return ""
+	lz.HasReset, _ = lz.hasReset.Load().(bool)
+	lz.RdyFlg, _ = lz.rdy.Load().(bool)
+	lz.PC, _ = lz.pc.Load().(registers.ProgramCounter)
+	lz.A, _ = lz.a.Load().(registers.Register)
+	lz.X, _ = lz.x.Load().(registers.Register)
+	lz.Y, _ = lz.y.Load().(registers.Register)
+	lz.SP, _ = lz.sp.Load().(registers.Register)
+	lz.StatusReg, _ = lz.statusReg.Load().(registers.StatusRegister)
 }

@@ -21,16 +21,16 @@ import (
 
 // LazyTimer lazily accesses RIOT timer information from the emulator
 type LazyCollisions struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicCXM0P  atomic.Value // uint8
-	atomicCXM1P  atomic.Value // uint8
-	atomicCXP0FB atomic.Value // uint8
-	atomicCXP1FB atomic.Value // uint8
-	atomicCXM0FB atomic.Value // uint8
-	atomicCXM1FB atomic.Value // uint8
-	atomicCXBLPF atomic.Value // uint8
-	atomicCXPPMM atomic.Value // uint8
+	cxm0p  atomic.Value // uint8
+	cxm1p  atomic.Value // uint8
+	cxp0fb atomic.Value // uint8
+	cxp1fb atomic.Value // uint8
+	cxm0fb atomic.Value // uint8
+	cxm1fb atomic.Value // uint8
+	cxblpf atomic.Value // uint8
+	cxppmm atomic.Value // uint8
 
 	CXM0P  uint8
 	CXM1P  uint8
@@ -42,27 +42,28 @@ type LazyCollisions struct {
 	CXPPMM uint8
 }
 
-func newLazyCollisions(val *Lazy) *LazyCollisions {
+func newLazyCollisions(val *LazyValues) *LazyCollisions {
 	return &LazyCollisions{val: val}
 }
 
+func (lz *LazyCollisions) push() {
+	lz.cxm0p.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0P)
+	lz.cxm1p.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1P)
+	lz.cxp0fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP0FB)
+	lz.cxp1fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP1FB)
+	lz.cxm0fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0FB)
+	lz.cxm1fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1FB)
+	lz.cxblpf.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXBLPF)
+	lz.cxppmm.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXPPMM)
+}
+
 func (lz *LazyCollisions) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.atomicCXM0P.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0P)
-		lz.atomicCXM1P.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1P)
-		lz.atomicCXP0FB.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP0FB)
-		lz.atomicCXP1FB.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP1FB)
-		lz.atomicCXM0FB.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0FB)
-		lz.atomicCXM1FB.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1FB)
-		lz.atomicCXBLPF.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXBLPF)
-		lz.atomicCXPPMM.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXPPMM)
-	})
-	lz.CXM0P, _ = lz.atomicCXM0P.Load().(uint8)
-	lz.CXM1P, _ = lz.atomicCXM1P.Load().(uint8)
-	lz.CXP0FB, _ = lz.atomicCXP0FB.Load().(uint8)
-	lz.CXP1FB, _ = lz.atomicCXP1FB.Load().(uint8)
-	lz.CXM0FB, _ = lz.atomicCXM0FB.Load().(uint8)
-	lz.CXM1FB, _ = lz.atomicCXM1FB.Load().(uint8)
-	lz.CXBLPF, _ = lz.atomicCXBLPF.Load().(uint8)
-	lz.CXPPMM, _ = lz.atomicCXPPMM.Load().(uint8)
+	lz.CXM0P, _ = lz.cxm0p.Load().(uint8)
+	lz.CXM1P, _ = lz.cxm1p.Load().(uint8)
+	lz.CXP0FB, _ = lz.cxp0fb.Load().(uint8)
+	lz.CXP1FB, _ = lz.cxp1fb.Load().(uint8)
+	lz.CXM0FB, _ = lz.cxm0fb.Load().(uint8)
+	lz.CXM1FB, _ = lz.cxm1fb.Load().(uint8)
+	lz.CXBLPF, _ = lz.cxblpf.Load().(uint8)
+	lz.CXPPMM, _ = lz.cxppmm.Load().(uint8)
 }

@@ -205,9 +205,9 @@ func (img *SdlImgui) Service() {
 		}
 	}
 
-	// update late values
+	// refresh lazy values
 	if !img.isPlaymode() {
-		img.lz.Update()
+		img.lz.Refresh()
 	}
 
 	// Signal start of a new frame

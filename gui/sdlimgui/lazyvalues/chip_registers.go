@@ -23,60 +23,62 @@ import (
 
 // LazyChipRegisters lazily accesses chip registere information from the emulator
 type LazyChipRegisters struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicSWCHA  atomic.Value // uint8
-	atomicSWCHB  atomic.Value // uint8
-	atomicSWACNT atomic.Value // uint8
-	atomicINPT0  atomic.Value // uint8
-	atomicINPT1  atomic.Value // uint8
-	atomicINPT2  atomic.Value // uint8
-	atomicINPT3  atomic.Value // uint8
-	atomicINPT4  atomic.Value // uint8
-	atomicINPT5  atomic.Value // uint8
-	SWCHA        uint8
-	SWACNT       uint8
-	SWCHB        uint8
-	INPT0        uint8
-	INPT1        uint8
-	INPT2        uint8
-	INPT3        uint8
-	INPT4        uint8
-	INPT5        uint8
+	swcha  atomic.Value // uint8
+	swchb  atomic.Value // uint8
+	swacnt atomic.Value // uint8
+	inpt0  atomic.Value // uint8
+	inpt1  atomic.Value // uint8
+	inpt2  atomic.Value // uint8
+	inpt3  atomic.Value // uint8
+	inpt4  atomic.Value // uint8
+	inpt5  atomic.Value // uint8
+
+	SWCHA  uint8
+	SWACNT uint8
+	SWCHB  uint8
+	INPT0  uint8
+	INPT1  uint8
+	INPT2  uint8
+	INPT3  uint8
+	INPT4  uint8
+	INPT5  uint8
 }
 
-func newLazyChipRegisters(val *Lazy) *LazyChipRegisters {
+func newLazyChipRegisters(val *LazyValues) *LazyChipRegisters {
 	return &LazyChipRegisters{val: val}
 }
 
+func (lz *LazyChipRegisters) push() {
+	v, _ := lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHA"])
+	lz.swcha.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWACNT"])
+	lz.swacnt.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHB"])
+	lz.swchb.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWBCNT"])
+	lz.inpt0.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT1"])
+	lz.inpt1.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT2"])
+	lz.inpt2.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT3"])
+	lz.inpt3.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT4"])
+	lz.inpt4.Store(v)
+	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT5"])
+	lz.inpt5.Store(v)
+}
+
 func (lz *LazyChipRegisters) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		v, _ := lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHA"])
-		lz.atomicSWCHA.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWACNT"])
-		lz.atomicSWACNT.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHB"])
-		lz.atomicSWCHB.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWBCNT"])
-		lz.atomicINPT0.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT1"])
-		lz.atomicINPT1.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT2"])
-		lz.atomicINPT2.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT3"])
-		lz.atomicINPT3.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT4"])
-		lz.atomicINPT4.Store(v)
-		v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT5"])
-		lz.atomicINPT5.Store(v)
-	})
-	lz.SWCHA, _ = lz.atomicSWCHA.Load().(uint8)
-	lz.SWACNT, _ = lz.atomicSWACNT.Load().(uint8)
-	lz.SWCHB, _ = lz.atomicSWCHB.Load().(uint8)
-	lz.INPT0, _ = lz.atomicINPT0.Load().(uint8)
-	lz.INPT1, _ = lz.atomicINPT1.Load().(uint8)
-	lz.INPT2, _ = lz.atomicINPT2.Load().(uint8)
-	lz.INPT3, _ = lz.atomicINPT3.Load().(uint8)
-	lz.INPT4, _ = lz.atomicINPT4.Load().(uint8)
-	lz.INPT5, _ = lz.atomicINPT5.Load().(uint8)
+	lz.SWCHA, _ = lz.swcha.Load().(uint8)
+	lz.SWACNT, _ = lz.swacnt.Load().(uint8)
+	lz.SWCHB, _ = lz.swchb.Load().(uint8)
+	lz.INPT0, _ = lz.inpt0.Load().(uint8)
+	lz.INPT1, _ = lz.inpt1.Load().(uint8)
+	lz.INPT2, _ = lz.inpt2.Load().(uint8)
+	lz.INPT3, _ = lz.inpt3.Load().(uint8)
+	lz.INPT4, _ = lz.inpt4.Load().(uint8)
+	lz.INPT5, _ = lz.inpt5.Load().(uint8)
 }

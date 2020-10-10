@@ -23,31 +23,31 @@ import (
 
 // LazyLog lazily accesses chip registere information from the emulator
 type LazyLog struct {
-	val *Lazy
+	val *LazyValues
 
-	atomicLog   atomic.Value // []logger.Entry
-	atomicDirty atomic.Value // bool
-	Log         []logger.Entry
-	Dirty       bool
+	log   atomic.Value // []logger.Entry
+	dirty atomic.Value // bool
+	Log   []logger.Entry
+	Dirty bool
 }
 
-func newLazyLog(val *Lazy) *LazyLog {
+func newLazyLog(val *LazyValues) *LazyLog {
 	return &LazyLog{val: val}
 }
 
-func (lz *LazyLog) update() {
-	lz.val.Dbg.PushRawEvent(func() {
-		if l := logger.Copy(); l != nil {
-			lz.atomicLog.Store(l)
-			lz.atomicDirty.Store(true)
-		} else {
-			lz.atomicDirty.Store(false)
-		}
-	})
+func (lz *LazyLog) push() {
+	if l := logger.Copy(); l != nil {
+		lz.log.Store(l)
+		lz.dirty.Store(true)
+	} else {
+		lz.dirty.Store(false)
+	}
+}
 
-	if l, ok := lz.atomicLog.Load().([]logger.Entry); ok {
+func (lz *LazyLog) update() {
+	if l, ok := lz.log.Load().([]logger.Entry); ok {
 		lz.Log = l
-		if lz.atomicDirty.Load().(bool) {
+		if lz.dirty.Load().(bool) {
 			lz.Dirty = true
 		}
 	}
