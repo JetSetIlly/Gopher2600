@@ -25,26 +25,35 @@ import (
 type LazyRAM struct {
 	val *LazyValues
 
-	ram atomic.Value // []atomic.Value -> uint8
-	RAM []uint8
+	ram         atomic.Value // []atomic.Value -> uint8
+	snapshotRAM atomic.Value // []atomic.Value -> uint8
+	RAM         []uint8
+	SnapshotRAM []uint8
 }
 
 func newLazyRAM(val *LazyValues) *LazyRAM {
 	lz := &LazyRAM{
-		val: val,
-		RAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+		val:         val,
+		RAM:         make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+		SnapshotRAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 	}
 	lz.ram.Store(make([]atomic.Value, memorymap.MemtopRAM-memorymap.OriginRAM+1))
+	lz.snapshotRAM.Store(make([]atomic.Value, memorymap.MemtopRAM-memorymap.OriginRAM+1))
 	return lz
 }
 
 func (lz *LazyRAM) push() {
 	ram := lz.ram.Load().([]atomic.Value)
 	for i := range ram {
-		d, _ := lz.val.Dbg.VCS.Mem.Peek(memorymap.OriginRAM + uint16(i))
-		ram[i].Store(d)
+		ram[i].Store(lz.val.Dbg.VCS.Mem.RAM.RAM[i])
 	}
 	lz.ram.Store(ram)
+
+	snapshotRAM := lz.snapshotRAM.Load().([]atomic.Value)
+	for i := range snapshotRAM {
+		snapshotRAM[i].Store(lz.val.Dbg.VCS.Mem.RAM.SnapshotRAM[i])
+	}
+	lz.snapshotRAM.Store(snapshotRAM)
 }
 
 func (lz *LazyRAM) update() {
@@ -52,6 +61,14 @@ func (lz *LazyRAM) update() {
 		for i, _ := range ram {
 			if v, ok := ram[i].Load().(uint8); ok {
 				lz.RAM[i] = v
+			}
+		}
+	}
+
+	if snapshotRAM, ok := lz.snapshotRAM.Load().([]atomic.Value); ok {
+		for i, _ := range snapshotRAM {
+			if v, ok := snapshotRAM[i].Load().(uint8); ok {
+				lz.SnapshotRAM[i] = v
 			}
 		}
 	}

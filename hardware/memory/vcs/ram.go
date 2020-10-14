@@ -27,17 +27,16 @@ import (
 type RAM struct {
 	bus.DebugBus
 	bus.CPUBus
-	RAM []uint8
+	RAM         []uint8
+	SnapshotRAM []uint8
 }
 
 // NewRAM is the preferred method of initialisation for the RAM memory area
 func NewRAM() *RAM {
-	ram := &RAM{}
-
-	// allocate the mininmal amount of memory
-	ram.RAM = make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1)
-
-	return ram
+	return &RAM{
+		RAM:         make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+		SnapshotRAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+	}
 }
 
 func (ram RAM) String() string {
@@ -65,4 +64,9 @@ func (ram RAM) Read(address uint16) (uint8, error) {
 func (ram *RAM) Write(address uint16, data uint8) error {
 	ram.RAM[address^memorymap.OriginRAM] = data
 	return nil
+}
+
+// Snapshot a copy of RAM for future comparison
+func (ram *RAM) Snapshot() {
+	copy(ram.SnapshotRAM, ram.RAM)
 }

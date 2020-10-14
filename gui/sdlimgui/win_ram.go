@@ -67,8 +67,9 @@ func (win *winRAM) draw() {
 	}
 
 	// draw rows
-	i := uint16(0)
-	for addr := memorymap.OriginRAM; addr <= memorymap.MemtopRAM; addr++ {
+	for i := 0; i < len(win.img.lz.RAM.RAM); i++ {
+		addr := memorymap.OriginRAM + uint16(i)
+
 		// draw row header
 		if i%16 == 0 {
 			imgui.AlignTextToFramePadding()
@@ -79,7 +80,16 @@ func (win *winRAM) draw() {
 		}
 
 		// editable byte
-		b := fmt.Sprintf("%02x", win.img.lz.RAM.RAM[addr-memorymap.OriginRAM])
+		d := win.img.lz.RAM.RAM[i]
+
+		// compare current RAM value with value in RAM snapshot
+		e := win.img.lz.RAM.SnapshotRAM[i]
+		if d != e {
+			// change color of entry if it is different
+			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.RAMDiff)
+		}
+
+		b := fmt.Sprintf("%02x", d)
 		if imguiHexInput(fmt.Sprintf("##%d", addr), !win.img.paused, 2, &b) {
 			if v, err := strconv.ParseUint(b, 16, 8); err == nil {
 				a := addr // we have to make a copy of the address
@@ -89,11 +99,23 @@ func (win *winRAM) draw() {
 			}
 		}
 
-		i++
+		// undo any color changes
+		if d != e {
+			if imgui.IsItemHovered() {
+				win.drawSnapshotInfo(d, e)
+			}
+			imgui.PopStyleColor()
+		}
 	}
 
 	imgui.PopItemWidth()
 	imgui.PopStyleVar()
 
 	imgui.End()
+}
+
+func (win *winRAM) drawSnapshotInfo(current, snapshot uint8) {
+	imgui.BeginTooltip()
+	imgui.Text(fmt.Sprintf("%02x -> %02x", snapshot, current))
+	imgui.EndTooltip()
 }

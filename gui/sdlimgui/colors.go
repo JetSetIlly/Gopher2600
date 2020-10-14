@@ -54,6 +54,9 @@ type imguiColors struct {
 	CPUStatusOn  imgui.Vec4
 	CPUStatusOff imgui.Vec4
 
+	// RAM window
+	RAMDiff imgui.Vec4
+
 	// control window buttons
 	ControlRun         imgui.Vec4
 	ControlRunHovered  imgui.Vec4
@@ -141,6 +144,9 @@ func newColors() *imguiColors {
 		// CPU status register buttons
 		CPUStatusOn:  imgui.Vec4{0.8, 0.6, 0.2, 1.0},
 		CPUStatusOff: imgui.Vec4{0.7, 0.5, 0.1, 1.0},
+
+		// RAM window
+		RAMDiff: imgui.Vec4{0.3, 0.2, 0.5, 1.0},
 
 		// control window buttons
 		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},
