@@ -62,7 +62,7 @@ type node struct {
 // Use this only for testing/validation purposes. HelpString() is more useful
 // to the end user.
 func (n node) String() string {
-	return n.outerString(false)
+	return n.string(false, false)
 }
 
 // HelpString returns the string representation of the node (and it's children)
@@ -70,32 +70,10 @@ func (n node) String() string {
 //
 // So called because it's better to use when displaying help
 func (n node) usageString() string {
-	return n.outerString(true)
+	return n.string(true, false)
 }
 
-func (n node) outerString(preferLabels bool) string {
-	s := strings.Builder{}
-
-	if n.repeatStart {
-		s.WriteString("{")
-	} else if n.typ == nodeOptional {
-		s.WriteString("(")
-		defer func() {
-			s.WriteString(")")
-		}()
-	}
-	if n.typ == nodeRequired {
-		s.WriteString("[")
-		defer func() {
-			s.WriteString("]")
-		}()
-	}
-
-	s.WriteString(n.innerString(preferLabels))
-	return s.String()
-}
-
-// innerString() outputs the node, and any children, as best as it can. when called
+// string() outputs the node, and any children, as best as it can. when called
 // upon the first node in a command it has the effect of recreating the
 // original input to each template entry parsed by ParseCommandTemplate()
 //
@@ -113,16 +91,16 @@ func (n node) outerString(preferLabels bool) string {
 //
 //		TEST [1 2 3 4 5]
 //
-// note: innerString should not be called directly except as a recursive call
-// or as an initial call from String()
+// note: string should not be called directly except as a recursive call
+// or as an initial call from String() and usageString()
 //
-func (n node) innerString(preferLabels bool) string {
+func (n node) string(useLabels bool, fromBranch bool) string {
 	s := strings.Builder{}
 
 	if n.isPlaceholder() && n.placeholderLabel != "" {
 		// placeholder labels come without angle brackets
 		label := fmt.Sprintf("<%s>", n.placeholderLabel)
-		if preferLabels {
+		if useLabels {
 			s.WriteString(label)
 		} else {
 			s.WriteString(fmt.Sprintf("%%%s%c", label, n.tag[1]))
@@ -134,8 +112,21 @@ func (n node) innerString(preferLabels bool) string {
 	if n.next != nil {
 		for i := range n.next {
 			prefix := " "
+
+			// this is a bit of a special condition to catch the case of an
+			// optional group followed by a required node. there may be a more
+			// general case
+			if n.typ == nodeOptional && n.tag == "" && !n.repeatStart && !fromBranch {
+				if i == 0 && n.next[i].typ == nodeRequired {
+					s.WriteString(prefix)
+					s.WriteString("(")
+					prefix = ""
+				}
+			}
+
 			if n.next[i].repeatStart {
-				s.WriteString(" {")
+				s.WriteString(prefix)
+				s.WriteString("{")
 				prefix = ""
 			}
 
@@ -153,7 +144,7 @@ func (n node) innerString(preferLabels bool) string {
 				s.WriteString(prefix)
 			}
 
-			s.WriteString(n.next[i].innerString(preferLabels))
+			s.WriteString(n.next[i].string(useLabels, false))
 
 			if n.next[i].typ == nodeRequired && (n.typ != nodeRequired || n.next[i].branch != nil) {
 				s.WriteString("]")
@@ -169,7 +160,7 @@ func (n node) innerString(preferLabels bool) string {
 
 	if n.branch != nil {
 		for i := range n.branch {
-			s.WriteString(fmt.Sprintf("|%s", n.branch[i].innerString(preferLabels)))
+			s.WriteString(fmt.Sprintf("|%s", n.branch[i].string(useLabels, true)))
 		}
 	}
 
@@ -178,6 +169,12 @@ func (n node) innerString(preferLabels bool) string {
 	// delimiter for every open delimiter.
 	if n.repeatStart {
 		s.WriteString("}")
+	}
+
+	// close an optional group that was opened because of a special condition
+	// (described above)
+	if n.typ == nodeOptional && n.tag == "" && !n.repeatStart && !fromBranch {
+		s.WriteString(")")
 	}
 
 	return strings.TrimSpace(s.String())

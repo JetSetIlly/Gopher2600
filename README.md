@@ -438,7 +438,7 @@ own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
 
 ## Other Software / Libraries
 
-The following projects are used in the `Gopher2600` project.
+The following projects are used in the `Gopher2600` project:
 
 * https://github.com/ocornut/imgui
 * https://github.com/inkyblackness/imgui-go
@@ -448,3 +448,9 @@ The following projects are used in the `Gopher2600` project.
 * https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
+
+For testing instrumenation:
+
+* github.com/bradleyjkemp/memviz v0.2.3
+
+

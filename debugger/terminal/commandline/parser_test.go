@@ -16,9 +16,11 @@
 package commandline_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/bradleyjkemp/memviz"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/test"
 )
@@ -33,8 +35,14 @@ import (
 // represented.
 func expectEquality(t *testing.T, template []string, cmds *commandline.Commands) bool {
 	t.Helper()
-	if strings.ToUpper(strings.Join(template, "\n")) != strings.ToUpper(cmds.String()) {
-		t.Errorf("parsed commands do not match template")
+
+	s := strings.ToUpper(strings.Join(template, "\n"))
+	if s != strings.ToUpper(cmds.String()) {
+		if len(template) == 1 {
+			t.Errorf("parsed commands do not match template: %s -> %s", s, cmds)
+		} else {
+			t.Errorf("parsed commands do not match template")
+		}
 		return false
 	}
 	return true
@@ -298,6 +306,30 @@ func TestParser_placeholderLabels(t *testing.T) {
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
+	if test.ExpectedSuccess(t, err) {
+		expectEquivalency(t, cmds)
+		expectEquality(t, template, cmds)
+	}
+}
+
+func TestParser_optional(t *testing.T) {
+	var template []string
+	var cmds *commandline.Commands
+	var err error
+
+	template = []string{
+		"FOO (BAR ([BAZ|QUX] [A|B]))",
+	}
+
+	cmds, err = commandline.ParseCommandTemplate(template)
+
+	f, err := os.Create("memviz.dot")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	memviz.Map(f, cmds)
+
 	if test.ExpectedSuccess(t, err) {
 		expectEquivalency(t, cmds)
 		expectEquality(t, template, cmds)

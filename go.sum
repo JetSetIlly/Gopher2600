@@ -4,7 +4,11 @@ github.com/JetSetIlly/imgui-go/v2 v2.5.1-0.20200908212545-256edfd69d7e h1:FTmFTQ
 github.com/JetSetIlly/imgui-go/v2 v2.5.1-0.20200908212545-256edfd69d7e/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
 github.com/JetSetIlly/imgui-go/v2 v2.5.1-0.20200908214833-6825511d393c h1:WW9VyAIlvaO4/EkmjzJZu0KPt7s+fmLPaSWP5K5AVDA=
 github.com/JetSetIlly/imgui-go/v2 v2.5.1-0.20200908214833-6825511d393c/go.mod h1:cwQKd6U2onyuT5qwSC3DKCRsUE1SQ58TSVVpLoW/pDs=
+github.com/bradleyjkemp/cupaloy/v2 v2.5.0/go.mod h1:TD5UU0rdYTbu/TtuwFuWrtiRARuN7mtRipvs/bsShSE=
+github.com/bradleyjkemp/memviz v0.2.3 h1:8fqKnV1xQz4NQkDy5Gklhm9fGtUK+R3oW0z1unBDFGY=
+github.com/bradleyjkemp/memviz v0.2.3/go.mod h1:meU694rvawW7NqtNLtlg+TEU+UqAjrbJayEPZQUSOBs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-audio/audio v1.0.0 h1:zS9vebldgbQqktK4H0lUqWrG8P0NxCJVqcj7ZpNnwd4=
 github.com/go-audio/audio v1.0.0/go.mod h1:6uAu0+H2lHkwdGsAY+j2wHPNPpPoeg5AaEFh9FlA+Zs=
 github.com/go-audio/riff v1.0.0 h1:d8iCGbDvox9BfLagY94fBynxSPHO80LmZCaOsmKxokA=
@@ -30,6 +34,8 @@ github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 h1:A7GG7zcGjl3jqAqGPmcNjd
 github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/veandco/go-sdl2 v0.4.1 h1:HmSBvVmKWI8LAOeCfTTM8R33rMyPcs6U3o8n325c9Qg=
 github.com/veandco/go-sdl2 v0.4.1/go.mod h1:FB+kTpX9YTE+urhYiClnRzpOXbiWgaU3+5F2AB78DPg=
