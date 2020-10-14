@@ -91,31 +91,31 @@ func (win *winCPU) drawStatusRegister() {
 	sr := win.img.lz.CPU.StatusReg
 
 	if win.drawStatusRegisterBit(sr.Sign, "S") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Sign = !sr.Sign })
+		win.img.term.pushCommand("CPU STATUS TOGGLE S")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Overflow, "O") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Overflow = !sr.Overflow })
+		win.img.term.pushCommand("CPU STATUS TOGGLE O")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Break, "B") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Break = !sr.Break })
+		win.img.term.pushCommand("CPU STATUS TOGGLE B")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.DecimalMode, "D") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.DecimalMode = !sr.DecimalMode })
+		win.img.term.pushCommand("CPU STATUS TOGGLE D")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.InterruptDisable, "I") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.InterruptDisable = !sr.InterruptDisable })
+		win.img.term.pushCommand("CPU STATUS TOGGLE I")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Zero, "Z") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Zero = !sr.Zero })
+		win.img.term.pushCommand("CPU STATUS TOGGLE Z")
 	}
 	imgui.SameLine()
 	if win.drawStatusRegisterBit(sr.Carry, "C") {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.CPU.Status.Carry = !sr.Carry })
+		win.img.term.pushCommand("CPU STATUS TOGGLE C")
 	}
 
 	imgui.SameLine()

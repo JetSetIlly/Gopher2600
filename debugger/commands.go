@@ -788,6 +788,41 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		action, ok := tokens.Get()
 		if ok {
 			switch strings.ToUpper(action) {
+			case "STATUS":
+				action, ok = tokens.Get()
+				if ok {
+					target, _ := tokens.Get()
+					var targetVal *bool
+					switch target {
+					case "S":
+						targetVal = &dbg.VCS.CPU.Status.Sign
+					case "O":
+						targetVal = &dbg.VCS.CPU.Status.Overflow
+					case "B":
+						targetVal = &dbg.VCS.CPU.Status.Break
+					case "D":
+						targetVal = &dbg.VCS.CPU.Status.DecimalMode
+					case "I":
+						targetVal = &dbg.VCS.CPU.Status.InterruptDisable
+					case "Z":
+						targetVal = &dbg.VCS.CPU.Status.Zero
+					case "C":
+						targetVal = &dbg.VCS.CPU.Status.Carry
+					}
+
+					switch action {
+					case "SET":
+						*targetVal = true
+					case "UNSET":
+						*targetVal = false
+					case "TOGGLE":
+						*targetVal = !*targetVal
+					}
+
+				} else {
+					dbg.printLine(terminal.StyleInstrument, dbg.VCS.CPU.Status.String())
+				}
+
 			case "SET":
 				target, _ := tokens.Get()
 				value, _ := tokens.Get()
