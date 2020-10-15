@@ -18,8 +18,8 @@ tidy:
 generate:
 	@go generate ./...
 
-test:
-	go test -tags=testing ./...
+lint:
+	golangci-lint run -D govet -D errcheck -D ineffassign -D staticcheck -E bodyclose
 
 vet: 
 # filter out expected warnings that we are not worried about: 
@@ -36,41 +36,44 @@ grep -v "gui/sdlimgui/glsl.go.*possible misuse of unsafe.Pointer" | \
 grep -v "\# github.com/jetsetilly/gopher2600/gui/sdlimgui" | \
 awk 'END{exit NR}'
 
-race: generate test vet
+test:
+	go test -tags=testing ./...
+
+race: generate lint vet test
 # disable checkptr because the opengl implementation will trigger it and cause
 # a lot of output noise
 	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Pitfall.bin
 
-profile: generate test vet
+profile: generate lint vet test
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
 
-profile_display: generate test vet
+profile_display: generate lint vet test
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --display --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
 
-build_assertions: generate test vet
+build_assertions: generate lint vet test
 	go build -gcflags $(compileFlags) -tags=assertions
 
-build: generate test vet
+build: generate lint vet test
 	go build -gcflags $(compileFlags)
 
-release: generate test vet
+release: generate lint vet test
 	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
 
 check_upx:
 	@which upx > /dev/null
 
-release_upx: check_upx generate test vet
+release_upx: check_upx generate lint vet test
 	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
 	upx -o gopher2600.upx gopher2600
 	cp gopher2600.upx gopher2600
 	rm gopher2600.upx
 
-cross_windows: generate test vet
+cross_windows: generate lint vet test
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -ldflags="-s -w" .
 
-cross_windows_static: generate test vet
+cross_windows_static: generate lint vet test
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" go build -tags "static release" -ldflags "-s -w" .
