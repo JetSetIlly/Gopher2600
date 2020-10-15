@@ -29,16 +29,12 @@ import (
 	"github.com/pkg/term/termios"
 )
 
-// TermGeometry contains the dimensions of a terminal (usually the output
-// terminal)
-type TermGeometry struct {
-	// characters
-	rows uint16
-	cols uint16
-
-	// pixels
-	x uint16
-	y uint16
+// termGeometry contains the dimensions of a terminal (usually the output terminal)
+type termGeometry struct {
+	rows uint16 // nolint
+	cols uint16 // nolint
+	x    uint16 // nolint
+	y    uint16 // nolint
 }
 
 // EasyTerm is the main container for posix terminals. usually embedded in
@@ -47,7 +43,7 @@ type EasyTerm struct {
 	input  *os.File
 	output *os.File
 
-	Geometry TermGeometry
+	geometry termGeometry
 
 	canAttr    syscall.Termios
 	rawAttr    syscall.Termios
@@ -122,7 +118,7 @@ func (et *EasyTerm) UpdateGeometry() error {
 
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, et.output.Fd(),
 		uintptr(syscall.TIOCGWINSZ),
-		uintptr(unsafe.Pointer(&et.Geometry)))
+		uintptr(unsafe.Pointer(&et.geometry)))
 
 	if errno != 0 {
 		return fmt.Errorf("error updating terminal geometry information (%d)", errno)

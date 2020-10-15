@@ -29,12 +29,7 @@ const winCPUTitle = "CPU"
 
 type winCPU struct {
 	windowManagement
-
 	img *SdlImgui
-
-	// ready flag colors
-	colFlgReadyOn  imgui.PackedColor
-	colFlgReadyOff imgui.PackedColor
 }
 
 func newWinCPU(img *SdlImgui) (managedWindow, error) {

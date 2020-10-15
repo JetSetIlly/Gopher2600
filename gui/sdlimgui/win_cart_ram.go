@@ -34,10 +34,6 @@ type winCartRAM struct {
 	// tab (although it should be same for each tab)
 	statusHeight float32
 
-	// height required to display VCS RAM in its entirity (we know this value
-	// after the first pass)
-	gridHeight float32
-
 	// width of mapped/unmapped indicator
 	mappedIndicatorDim imgui.Vec2
 }

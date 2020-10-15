@@ -99,9 +99,6 @@ type television struct {
 	// framerate limiter
 	lmtr limiter
 
-	// whether to use the FPS value given in the TV specification
-	lmtrSpec bool
-
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
 

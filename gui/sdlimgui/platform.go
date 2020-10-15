@@ -27,12 +27,9 @@ import (
 const windowTitle = "Gopher2600"
 
 type platform struct {
-	img *SdlImgui
-
-	window     *sdl.Window
-	shouldStop bool
-
-	time uint64
+	img    *SdlImgui
+	window *sdl.Window
+	time   uint64
 }
 
 // newPlatform is the preferred method of initialisation for the platform type

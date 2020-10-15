@@ -45,7 +45,6 @@ type resizer interface {
 // simpleResizer is the simplest functional and non-trivial implementation of
 // the resizer interface
 type simpleResizer struct {
-	top    int
 	bottom int
 }
 
