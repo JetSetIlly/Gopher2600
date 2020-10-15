@@ -42,17 +42,6 @@ type resizer interface {
 	prepare(tv *television)
 }
 
-// nullResizer is the null implemnentation of the resizer interface
-type nullResizer struct{}
-
-func (_ nullResizer) id() FrameResizeID { return FrameResizerNone }
-
-func (_ *nullResizer) examine(_ *television, _ SignalAttributes) {}
-
-func (_ *nullResizer) commit(_ *television) error { return nil }
-
-func (_ *nullResizer) prepare(_ *television) {}
-
 // simpleResizer is the simplest functional and non-trivial implementation of
 // the resizer interface
 type simpleResizer struct {

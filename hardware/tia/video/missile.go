@@ -45,26 +45,6 @@ var MissileSizes = []string{
 	"doub-quad width",
 }
 
-// missileCopiesBrief maps missile copies values to brief descriptions of those values
-var missileCopiesBrief = []string{
-	"",
-	"2 [close]",
-	"2 [med]",
-	"3 [close]",
-	"2 [wide]",
-	"",
-	"three copies [med]",
-	"",
-}
-
-// missileSizesBrief maps missile sizes values to brief descriptions of those values
-var missileSizesBrief = []string{
-	"",
-	"2x",
-	"4x",
-	"8x",
-}
-
 type missileSprite struct {
 	// see player sprite for detailed commentary on struct attributes
 

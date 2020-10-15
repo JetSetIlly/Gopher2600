@@ -42,10 +42,6 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-const defaultOnHalt = "CPU; TV"
-const defaultOnStep = "LAST"
-const onEmptyInput = "STEP"
-
 // Debugger is the basic debugging frontend for the emulation. In order to be
 // kind to code that accesses the debugger from a different goroutine (ie. a
 // GUI), we try not to reinitialise anything once it has been initialised. For

@@ -79,8 +79,7 @@ type atari struct {
 	bank int
 
 	// some atari ROMs support aditional RAM. this is sometimes referred to as
-	// the superchip. ram is only added when it is detected (see addSuperchip()
-	// function)
+	// the superchip. ram is only added when it is detected
 	ram []uint8
 }
 
@@ -146,35 +145,6 @@ func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error
 	}
 
 	return curated.Errorf(bus.AddressError, addr)
-}
-
-func (cart *atari) addSuperchip() bool {
-	// check for cartridge memory:
-	//  - this method of detection simply checks whether the first 256 of each
-	// bank are empty
-	//  - I've guessed that this is a good method. if there's another one I
-	// don't know about it.
-	nullChar := cart.banks[0][0]
-	for k := 0; k < len(cart.banks); k++ {
-		for a := 0; a < 256; a++ {
-			if cart.banks[k][a] != nullChar {
-				return false
-			}
-		}
-	}
-
-	// allocate RAM
-	cart.ram = make([]uint8, 128)
-
-	// clear memory
-	for i := range cart.ram {
-		cart.ram[i] = 0x00
-	}
-
-	// update method string
-	cart.description = fmt.Sprintf("%s +RAM", cart.description)
-
-	return true
 }
 
 // Patch implements the mapper.CartMapper interface

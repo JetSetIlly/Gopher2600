@@ -24,10 +24,6 @@ import (
 // the 30Khz reference frequency desribed in the Stella Programmer's Guide.
 const SampleFreq = 31403
 
-// the Atari 2600 has two independent sound generators. these will be mixed
-// into one value by the Mix() function
-const numChannels = 2
-
 // Audio is the implementation of the TIA audio sub-system, using Ron Fries'
 // method. Reference source code here:
 //

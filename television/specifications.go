@@ -99,10 +99,6 @@ const (
 	HorizClksScanline = 228
 )
 
-// maxNTSCscanlines is the absolute maximum number of scanlines an NTSC TV can
-// show. after this, we must assume that it is a PAL signal
-const maxNTSCscanlines = 276
-
 // SpecNTSC is the specification for NTSC television types
 var SpecNTSC *Specification
 

@@ -81,9 +81,9 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
-	// if there are no tokens in the input then continue with onEmptyInput
+	// if there are no tokens in the input then continue with a default action
 	if tokens.Remaining() == 0 {
-		return dbg.tokeniseCommand(onEmptyInput, true, false)
+		return dbg.tokeniseCommand("STEP", true, false)
 	}
 
 	// check validity of tokenised input

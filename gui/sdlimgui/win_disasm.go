@@ -223,8 +223,8 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	var clipper imgui.ListClipper
 	clipper.Begin(bitr.EntryCount + bitr.LabelCount)
 	for clipper.Step() {
-		_, e := bitr.Start()
-		_, e = bitr.SkipNext(clipper.DisplayStart, true)
+		_, _ = bitr.Start()
+		_, e := bitr.SkipNext(clipper.DisplayStart, true)
 
 		// note address of top entry in the list. we use this to help
 		// list alignment
@@ -443,8 +443,4 @@ func (win *winDisasm) drawGutter(fill gutterType, col imgui.PackedColor) {
 	case gutterSolid:
 		dl.AddCircleFilled(p, r, col)
 	}
-}
-
-func (win *winDisasm) drawPopupMenu(e *disassembly.Entry) {
-	// !!TODO: popup menu on right mouse click over disasm entry
 }

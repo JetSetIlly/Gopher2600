@@ -20,12 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-const ejectedName = "ejected"
-const ejectedHash = "nohash"
-const ejectedMethod = "ejected"
-
 // ejected implements the cartMapper interface.
-
 type ejected struct {
 	description string
 }

@@ -82,11 +82,6 @@ func (tr *trace) tick(v bool) {
 	tr.activity = tr.activity[1:]
 }
 
-func (tr *trace) retick() {
-	tr.activity = append(tr.activity, tr.activity[len(tr.activity)-1])
-	tr.activity = tr.activity[1:]
-}
-
 // Copy makes a copy of the activity trace
 func (tr *trace) Copy() []float32 {
 	c := make([]float32, len(tr.activity))

@@ -176,13 +176,6 @@ func (trm *mockTerm) rcvOutput() {
 	}
 }
 
-func (trm *mockTerm) prtOutput() {
-	trm.rcvOutput()
-	for i := range trm.output {
-		fmt.Println(trm.output[i])
-	}
-}
-
 // cmpOutput compares the string argument with the *last line* of the most
 // recent output. it can easily be adapted to compare the whole output if
 // necessary.

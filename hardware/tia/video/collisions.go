@@ -180,7 +180,7 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 // this is a naive implementation of the collision registers checking. the
 // version above is "optimised" but the reference implementation below is maybe
 // easier to understand.
-func (col *Collisions) tick_reference(p0, p1, m0, m1, bl, pf bool) {
+func (col *Collisions) tick_reference(p0, p1, m0, m1, bl, pf bool) { // nolint
 	col.Activity.Reset()
 
 	if m0 && p1 {

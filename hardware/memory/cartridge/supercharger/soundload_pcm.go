@@ -33,7 +33,6 @@ import (
 // bytes."
 const mp3NumChannels = 2
 const mp3SourceBitDepth = 16
-const mp3NumBytesPerSample = 4
 
 // getPCM() tries to interprets the data in the cartridgeloader as sound data,
 // first as WAV data and then as MP3 data. returns an error if data doesn't

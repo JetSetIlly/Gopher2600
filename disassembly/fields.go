@@ -32,7 +32,6 @@ const (
 	FldDefnCycles
 	FldActualCycles
 	FldActualNotes
-	numFields
 )
 
 // required widths (in characters) of the various disassembly fields.

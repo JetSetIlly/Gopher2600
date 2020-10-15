@@ -101,11 +101,6 @@ func (plt *platform) destroy() error {
 	return nil
 }
 
-// setDisplaySize resizes the window
-func (plt *platform) setDisplaySize(w, h int) {
-	plt.window.SetSize(int32(w), int32(h))
-}
-
 // displaySize returns the dimension of the display.
 func (plt *platform) displaySize() [2]float32 {
 	w, h := plt.window.GetSize()
@@ -163,25 +158,4 @@ func (plt *platform) newFrame() {
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
 	plt.window.GLSwap()
-}
-
-// show the main window (or not)
-//
-// MUST NOT be called from the #mainthread
-func (plt *platform) showWindow(show bool) {
-	plt.img.service <- func() {
-		if show {
-			plt.window.Show()
-		} else {
-			plt.window.Hide()
-		}
-	}
-}
-
-func (plt *platform) showWindow_main(show bool) {
-	if show {
-		plt.window.Show()
-	} else {
-		plt.window.Hide()
-	}
 }

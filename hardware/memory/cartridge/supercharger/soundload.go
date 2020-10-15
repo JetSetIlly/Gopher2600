@@ -142,19 +142,6 @@ func (tap *SoundLoad) step() {
 
 }
 
-// skipLeader finds the first non-zero sample
-func (tap *SoundLoad) skipLeader() {
-	// skip leader tape, ignoring very small changes in amplitude
-	for tap.idx < len(tap.samples) {
-		if tap.samples[tap.idx] != 0 {
-			break // for loop
-		}
-		tap.idx++
-	}
-	tap.idx--
-	logger.Log(soundloadLogTag, "tape leader skipped")
-}
-
 // Rewind implements the mapper.CartTapeBus interface
 func (tap *SoundLoad) Rewind() bool {
 	// rewinding happens instantaneously
