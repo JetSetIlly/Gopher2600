@@ -90,7 +90,7 @@ func (lz *LazyCart) push() {
 	lz.filename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
 	lz.summary.Store(lz.val.Dbg.VCS.Mem.Cart.MappingSummary())
 	lz.numBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
-	lz.currBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(lz.val.CPU.PC.Address()))
+	lz.currBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(lz.val.Dbg.VCS.CPU.PC.Address()))
 
 	sb := lz.val.Dbg.VCS.Mem.Cart.GetStaticBus()
 	if sb != nil {
