@@ -80,7 +80,7 @@ func NewAudio() (*Audio, error) {
 	logger.Log("sdl audio", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
 
 	// fill buffers with silence
-	for i, _ := range aud.buffer {
+	for i := range aud.buffer {
 		aud.buffer[i] = aud.spec.Silence
 	}
 

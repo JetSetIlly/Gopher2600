@@ -681,7 +681,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// handle indirect addressing JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
-			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug (JMP bug)")
+			mc.LastResult.CPUBug = "indirect addressing bug (JMP bug)"
 
 			var lo, hi uint8
 
@@ -755,7 +755,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of indirect addressig bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug")
+			mc.LastResult.CPUBug = "indirect addressing bug"
 		}
 
 		// +2 cycles
@@ -790,7 +790,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		if defn.PageSensitive && (address&0xff00 == 0x0100) {
-			mc.LastResult.CPUBug = fmt.Sprintf("indirect addressing bug")
+			mc.LastResult.CPUBug = "indirect addressing bug"
 			mc.LastResult.PageFault = true
 		}
 
@@ -882,7 +882,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
+			mc.LastResult.CPUBug = "zero page index bug"
 		}
 
 		// +1 cycle
@@ -912,7 +912,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = fmt.Sprintf("zero page index bug")
+			mc.LastResult.CPUBug = "zero page index bug"
 		}
 
 		// +1 cycle

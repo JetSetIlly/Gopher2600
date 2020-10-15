@@ -57,7 +57,7 @@ func (cmds Commands) Swap(i int, j int) {
 func (cmds Commands) String() string {
 	s := strings.Builder{}
 	for c := range cmds.cmds {
-		s.WriteString(fmt.Sprintf("%s", cmds.cmds[c]))
+		s.WriteString(cmds.cmds[c].String())
 		s.WriteString("\n")
 	}
 	return strings.TrimRight(s.String(), "\n")

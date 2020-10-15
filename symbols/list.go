@@ -16,7 +16,6 @@
 package symbols
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -29,18 +28,18 @@ func (sym *Symbols) ListSymbols(output io.Writer) {
 
 // ListLabels outputs every label used in the current ROM
 func (sym *Symbols) ListLabels(output io.Writer) {
-	output.Write([]byte(fmt.Sprintf("Labels\n---------\n")))
+	output.Write([]byte("Labels\n---------\n"))
 	output.Write([]byte(sym.Label.String()))
 }
 
 // ListReadSymbols outputs every read symbol used in the current ROM
 func (sym *Symbols) ListReadSymbols(output io.Writer) {
-	output.Write([]byte(fmt.Sprintf("\nRead Symbols\n-----------\n")))
+	output.Write([]byte("\nRead Symbols\n-----------\n"))
 	output.Write([]byte(sym.Read.String()))
 }
 
 // ListWriteSymbols outputs every write symbol used in the current ROM
 func (sym *Symbols) ListWriteSymbols(output io.Writer) {
-	output.Write([]byte(fmt.Sprintf("\nWrite Symbols\n------------\n")))
+	output.Write([]byte("\nWrite Symbols\n------------\n"))
 	output.Write([]byte(sym.Write.String()))
 }

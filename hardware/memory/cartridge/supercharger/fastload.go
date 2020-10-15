@@ -60,7 +60,7 @@ type FastLoad struct {
 type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
 
 func (er FastLoaded) Error() string {
-	return fmt.Sprintf("supercharger tape loaded, preparing VCS")
+	return "supercharger tape loaded, preparing VCS"
 }
 
 // NewFastLoad is the preferred method of initialisation for the FastLoad type

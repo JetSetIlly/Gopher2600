@@ -36,7 +36,7 @@ type WavWriter struct {
 func New(filename string) (*WavWriter, error) {
 	aw := &WavWriter{
 		filename: filename,
-		buffer:   make([]int8, 0, 0),
+		buffer:   make([]int8, 0),
 	}
 
 	return aw, nil

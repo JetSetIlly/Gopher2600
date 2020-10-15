@@ -38,8 +38,7 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	// server has not been provided so prompt for it
 	if server == "" {
 		output.Write([]byte("Enter server: "))
-		var b []byte
-		b = make([]byte, 255)
+		b := make([]byte, 255)
 		_, err := input.Read(b)
 		if err != nil {
 			return curated.Errorf("hiscore: %v", err)
@@ -93,8 +92,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	// prompt for username if it has not been supplied
 	if strings.TrimSpace(username) == "" {
 		output.Write([]byte("Enter username: "))
-		var b []byte
-		b = make([]byte, 255)
+		b := make([]byte, 255)
 		_, err := input.Read(b)
 		if err != nil {
 			return curated.Errorf("hiscore: %v", err)
@@ -107,8 +105,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	// !!TODO: noecho hiscore server password
 	output.Write([]byte("(WARNING: password will be visible)\n"))
 	output.Write([]byte("Enter password: "))
-	var b []byte
-	b = make([]byte, 255)
+	b := make([]byte, 255)
 	_, err = input.Read(b)
 	if err != nil {
 		return curated.Errorf("hiscore: %v", err)

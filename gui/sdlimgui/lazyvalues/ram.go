@@ -58,7 +58,7 @@ func (lz *LazyRAM) push() {
 
 func (lz *LazyRAM) update() {
 	if ram, ok := lz.ram.Load().([]atomic.Value); ok {
-		for i, _ := range ram {
+		for i := range ram {
 			if v, ok := ram[i].Load().(uint8); ok {
 				lz.RAM[i] = v
 			}
@@ -66,7 +66,7 @@ func (lz *LazyRAM) update() {
 	}
 
 	if snapshotRAM, ok := lz.snapshotRAM.Load().([]atomic.Value); ok {
-		for i, _ := range snapshotRAM {
+		for i := range snapshotRAM {
 			if v, ok := snapshotRAM[i].Load().(uint8); ok {
 				lz.SnapshotRAM[i] = v
 			}

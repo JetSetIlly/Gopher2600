@@ -283,7 +283,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "BANK":
 				dbg.printLine(
 					terminal.StyleInstrument,
-					fmt.Sprintf("%s", dbg.VCS.Mem.Cart.MappingSummary()),
+					dbg.VCS.Mem.Cart.MappingSummary(),
 				)
 
 			case "STATIC":

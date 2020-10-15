@@ -100,9 +100,6 @@ func TestTokeniser_quotes(t *testing.T) {
 }
 
 func TestTokeniser_singleCharArgs(t *testing.T) {
-	var toks *commandline.Tokens
-	// var s string
-
-	toks = commandline.TokeniseInput("FOO & BAR")
+	toks := commandline.TokeniseInput("FOO & BAR")
 	test.Equate(t, toks.Len(), 3)
 }

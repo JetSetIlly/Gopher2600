@@ -233,7 +233,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	err = vcs.Run(pl.eventHandler)
 
 	// figure out amount of time played
-	playTime := time.Now().Sub(startTime)
+	playTime := time.Since(startTime)
 
 	// send to high score server
 	if hiscoreServer {

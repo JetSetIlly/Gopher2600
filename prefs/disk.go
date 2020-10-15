@@ -41,7 +41,7 @@ type entryMap map[string]pref
 func (e entryMap) String() string {
 	// we want to work with sorted keys. this makes it easier to test.
 	sorted := make([]string, 0, len(e))
-	for k, _ := range e {
+	for k := range e {
 		sorted = append(sorted, k)
 	}
 	sort.Strings(sorted)

@@ -44,7 +44,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	if e == nil {
 		content.WriteString(fmt.Sprintf("$%04x", dbg.VCS.CPU.PC.Address()))
 	} else if e.Level == disassembly.EntryLevelUnmappable {
-		content.WriteString(fmt.Sprintf("%s", e.Address))
+		content.WriteString(e.Address)
 	} else {
 		// this is the ideal path. the address is in the disassembly and we've
 		// decoded it already

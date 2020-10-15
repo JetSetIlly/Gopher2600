@@ -133,7 +133,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 		case ev := <-events.RawEvents:
 			ev()
 
-		case _ = <-events.IntEvents:
+		case <-events.IntEvents:
 			return 0, curated.Errorf(terminal.UserAbort)
 		}
 	}

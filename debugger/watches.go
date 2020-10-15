@@ -120,8 +120,8 @@ func (wtc *watches) check(previousResult string) string {
 		}
 
 		// match watch event to the type of memory access
-		if (wtc.watches[i].ai.read == false && wtc.vcsmem.LastAccessWrite) ||
-			(wtc.watches[i].ai.read == true && !wtc.vcsmem.LastAccessWrite) {
+		if (!wtc.watches[i].ai.read && wtc.vcsmem.LastAccessWrite) ||
+			(wtc.watches[i].ai.read && !wtc.vcsmem.LastAccessWrite) {
 
 			// match watched-for value to the value that was read/written to the
 			// watched address

@@ -98,7 +98,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	wm := &windowManager{
 		img:        img,
 		windows:    make(map[string]managedWindow),
-		windowMenu: make(map[string][]string, 0),
+		windowMenu: make(map[string][]string),
 	}
 
 	// creation function for all managed windows
@@ -264,7 +264,7 @@ func (wm *windowManager) draw() {
 }
 
 func (wm *windowManager) drawMenu() {
-	if imgui.BeginMainMenuBar() == false {
+	if !imgui.BeginMainMenuBar() {
 		return
 	}
 

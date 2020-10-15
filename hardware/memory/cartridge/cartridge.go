@@ -60,7 +60,7 @@ func (cart Cartridge) String() string {
 
 // MappingSummary returns a current string summary of the mapper
 func (cart Cartridge) MappingSummary() string {
-	return fmt.Sprintf("%s", cart.mapper)
+	return cart.mapper.String()
 }
 
 // ID returns the cartridge mapping ID

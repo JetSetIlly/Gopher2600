@@ -95,7 +95,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 		// wait for an event and respond
 		select {
-		case _ = <-events.IntEvents:
+		case <-events.IntEvents:
 			// terminal is in raw mode so we won't recieve these from the
 			// terminal itself but I suppose it's possible to receive them
 			// from somewhere else
