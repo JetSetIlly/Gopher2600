@@ -119,6 +119,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	if err != nil {
 		return curated.Errorf("hiscore: %v", err)
 	}
+	defer resp.Body.Close()
 
 	// get response
 	response, err := ioutil.ReadAll(resp.Body)

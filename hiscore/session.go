@@ -117,6 +117,7 @@ func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	if err != nil {
 		return 0, []byte{}, err
 	}
+	defer resp.Body.Close()
 
 	// get response
 	response, err := ioutil.ReadAll(resp.Body)

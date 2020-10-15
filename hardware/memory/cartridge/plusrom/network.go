@@ -40,7 +40,7 @@ type network struct {
 	recvBuffer bytes.Buffer
 
 	// shared between emulator goroutine and send() goroutine
-	respChan chan *http.Response
+	respChan chan bytes.Buffer
 
 	// to keep things simple we're insisting that one send() goroutine
 	// concludes before starting another one
@@ -56,7 +56,7 @@ type network struct {
 func newNetwork(prefs *Preferences) *network {
 	return &network{
 		prefs:    prefs,
-		respChan: make(chan *http.Response, 5),
+		respChan: make(chan bytes.Buffer, 5),
 	}
 }
 
@@ -119,6 +119,7 @@ func (n *network) send(data uint8, send bool) {
 				logger.Log("plusrom [net]", err.Error())
 				return
 			}
+			defer resp.Body.Close()
 
 			// log of complete response
 			if httpLogging {
@@ -127,7 +128,9 @@ func (n *network) send(data uint8, send bool) {
 			}
 
 			// pass response to main goroutine
-			n.respChan <- resp
+			var r bytes.Buffer
+			r.ReadFrom(resp.Body)
+			n.respChan <- r
 
 		}(n.sendBuffer, n.ai)
 
@@ -142,20 +145,15 @@ func (n *network) send(data uint8, send bool) {
 func (n *network) getResponse() {
 	select {
 	case r := <-n.respChan:
-		defer r.Body.Close()
+		logger.Log("plusrom [net]", fmt.Sprintf("received %d bytes", r.Len()))
 
-		var recvBuffer bytes.Buffer
-		recvBuffer.ReadFrom(r.Body)
-
-		logger.Log("plusrom [net]", fmt.Sprintf("received %d bytes", recvBuffer.Len()))
-
-		l, err := recvBuffer.ReadByte()
+		l, err := r.ReadByte()
 		if err != nil {
 			logger.Log("plusrom", err.Error())
 			return
 		}
 
-		if int(l) != recvBuffer.Len() {
+		if int(l) != r.Len() {
 			logger.Log("plusrom [net]", "unexpected length received")
 		}
 
@@ -167,7 +165,7 @@ func (n *network) getResponse() {
 		// "Content-Length" is payload + 1 byte. This is a workaround, because we don't
 		// have enough time in the emulator routine to analyse the "Content-Length"
 		// header of the response.
-		n.recvBuffer.ReadFrom(&recvBuffer)
+		n.recvBuffer.ReadFrom(&r)
 		if n.sendBuffer.Len() > recvBufferCap {
 			logger.Log("plusrom", "receive buffer is full")
 			n.sendBuffer.Truncate(recvBufferCap)
