@@ -28,7 +28,7 @@ type CartContainer interface {
 
 // CartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
-// convenience, functions with an address argument recieve that address
+// convenience, functions with an address argument receive that address
 // normalised to a range of 0x0000 to 0x0fff
 type CartMapper interface {
 	Initialise()
@@ -43,7 +43,7 @@ type CartMapper interface {
 	// an explanation for what this does
 	Listen(addr uint16, data uint8)
 
-	// some cartridge mappings have indpendent clocks that tick and change
+	// some cartridge mappings have independent clocks that tick and change
 	// internal cartridge state. the step() function is called every cpu cycle
 	// at a rate of 1.19MHz. cartridges with slower clocks need to handle the
 	// rate change.
@@ -208,7 +208,7 @@ const (
 	// the bank/segment is switched when the address is read/write
 	HotspotBankSwitch CartHotspotAction = iota
 
-	// some cartrdige mappers have additional registers
+	// some cartridge mappers have additional registers
 	HotspotRegister
 
 	// a function is a catch all category that describes any hotspot address

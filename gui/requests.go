@@ -26,7 +26,7 @@ type FeatureReq string
 // probably crash.
 //
 // Note that, like the name suggests, these are requests, they may or may not
-// be satisifed depending other conditions in the GUI.
+// be satisfied depending other conditions in the GUI.
 const (
 	// visibility can be interpreted by the gui implementation in different
 	// ways. at it's simplest it should set the visibility of the TV screen

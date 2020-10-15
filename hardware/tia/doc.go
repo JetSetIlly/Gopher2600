@@ -58,7 +58,7 @@
 // defer to the code and commentary for the fuller description of what is
 // happening, but it is  sufficient to say here that some side effects must
 // take place before others. The various Update*() functions in the tia package
-// and sub-packages help achive this.
+// and sub-packages help achieve this.
 //
 // At the end of every Step() function (the end of the video cycle) the TV
 // signal is compiled and sent to the attached television.

@@ -131,7 +131,7 @@ type Debugger struct {
 	runUntilHalt bool
 
 	// continue the emulation. this is seemingly only used in the inputLoop but
-	// because we nest calls to inputLoop on occassion it is better to keep
+	// because we nest calls to inputLoop on occasion it is better to keep
 	// here in the debugger type
 	continueEmulation bool
 

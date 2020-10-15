@@ -22,7 +22,7 @@ type ChipRegister int
 
 // TIA registers
 //
-// These value are used by the emulator to specifiy known addresses. For
+// These value are used by the emulator to specify known addresses. For
 // example, when writing collision information we know we need the CXM0P
 // register. these named values make the code more readable
 //
@@ -47,7 +47,7 @@ const (
 
 // RIOT registers
 //
-// These value are used by the emulator to specifiy known addresses. For
+// These value are used by the emulator to specify known addresses. For
 // example, the timer updates itself every cycle and stores time remaining
 // value in the INTIM register.
 //

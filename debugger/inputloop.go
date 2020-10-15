@@ -348,7 +348,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					dbg.lastStepError = true
 					dbg.printLine(terminal.StyleError, "%s", stepErr)
 
-					// if this is not a video cycle loop and the error has occured in the middle of
+					// if this is not a video cycle loop and the error has occurred in the middle of
 					// a CPU cycle (ie. CPU result is not final) then issue an additional warning
 					// and update CPU interrupt state
 					//

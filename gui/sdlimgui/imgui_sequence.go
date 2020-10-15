@@ -35,7 +35,7 @@ type drawlistSequence struct {
 	nextItemSameLine  bool
 	nextItemDepressed bool
 
-	// allign drawlist sequence in the same way as imgui.AlignFramePadding()
+	// align drawlist sequence in the same way as imgui.AlignFramePadding()
 	alignFramePadding bool
 }
 

@@ -110,7 +110,7 @@ func (win *winControl) draw() {
 	}
 	imgui.PopItemWidth()
 
-	// reset to specifcation rate on right mouse click
+	// reset to specification rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.SetFPS(-1) })
 	}

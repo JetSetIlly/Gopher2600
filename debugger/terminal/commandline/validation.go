@@ -45,7 +45,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 				return err
 			}
 
-			// if we've reached this point and there are still oustanding
+			// if we've reached this point and there are still outstanding
 			// tokens in the queue then something has gone wrong.
 			if tokens.Remaining() > 0 {
 				arg, _ := tokens.Get()

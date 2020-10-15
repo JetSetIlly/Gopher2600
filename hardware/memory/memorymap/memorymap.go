@@ -79,7 +79,7 @@ const (
 // cartridge memtop.
 const Memtop = uint16(0x1fff)
 
-// CartridgeBits identifies the bits in an address that are relevent to the
+// CartridgeBits identifies the bits in an address that are relevant to the
 // cartridge address. Useful for discounting those bits that determine the
 // cartridge mirror. For example, the following will be true:
 //

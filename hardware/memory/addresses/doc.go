@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package addresses countains all information about VCS addresses and
+// Package addresses contains all information about VCS addresses and
 // registers, including canonical symbols for read and write addresses and
 // registers. These symbols are used by the symbols package to create the
 // symbol table for an inserted cartridge.  They will be supplemented by

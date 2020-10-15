@@ -34,7 +34,7 @@ type imguiColors struct {
 	TitleBgActive imgui.Vec4
 	Border        imgui.Vec4
 
-	// addtional general colors
+	// additional general colors
 	True  imgui.Vec4
 	False imgui.Vec4
 

@@ -30,7 +30,7 @@ func SuspendProcess() {
 	if err != nil {
 		panic("debugger doesn't seem to have a parent process")
 	} else {
-		// send TSTP signal to parent proces
+		// send TSTP signal to parent process
 		p.Signal(syscall.SIGTSTP)
 	}
 }

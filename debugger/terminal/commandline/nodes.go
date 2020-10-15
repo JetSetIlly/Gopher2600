@@ -40,7 +40,7 @@ const (
 	nodeOptional
 )
 
-// nodes are chained together throught the next and branch arrays.
+// nodes are chained together thought the next and branch arrays.
 type node struct {
 	// tag should be non-empty - except in the case of some nested groups
 	tag string

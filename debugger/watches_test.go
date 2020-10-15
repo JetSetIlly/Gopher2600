@@ -44,7 +44,7 @@ func (trm *mockTerm) testWatches() {
 	trm.sndInput("CLEAR WATCHES")
 	trm.cmpOutput("watches cleared")
 
-	// no watches after succesful clear
+	// no watches after successful clear
 	trm.sndInput("LIST WATCHES")
 	trm.cmpOutput("no watches")
 

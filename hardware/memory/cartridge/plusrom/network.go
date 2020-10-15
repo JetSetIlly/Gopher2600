@@ -135,7 +135,7 @@ func (n *network) send(data uint8, send bool) {
 		}(n.sendBuffer, n.ai)
 
 		// a copy of the sendBuffer has been passed to the new goroutine so we
-		// can now clear the refernce buffer
+		// can now clear the references buffer
 		n.sendBuffer = *bytes.NewBuffer([]byte{})
 	}
 }

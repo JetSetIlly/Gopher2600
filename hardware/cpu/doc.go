@@ -25,7 +25,7 @@
 // operations required by the CPU. See the bus package for details.
 //
 // The bread-and-butter of the CPU type is the ExecuteInstruction() function.
-// Its sole argument is a callback function to be called at every cycle boundry
+// Its sole argument is a callback function to be called at every cycle boundary
 // of the instruction.
 //
 // Let's assume mem is an instance of the CPUBus interface loaded 6507

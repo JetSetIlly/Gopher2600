@@ -35,7 +35,7 @@ type Result struct {
 	// a reference to the instruction definition
 	Defn *instructions.Definition
 
-	// the number of bytes read during instruciton decode. if this value is
+	// the number of bytes read during instruction decode. if this value is
 	// less than Defn.Bytes then the instruction has not yet been fully decoded
 	ByteCount int
 
@@ -66,7 +66,7 @@ type Result struct {
 	Error string
 
 	// whether branch instruction test passed (ie. branched) or not. testing of
-	// this field should be used in conjuction with Defn.IsBranch()
+	// this field should be used in conjunction with Defn.IsBranch()
 	BranchSuccess bool
 
 	// whether this data has been finalised - some fields in this struct will

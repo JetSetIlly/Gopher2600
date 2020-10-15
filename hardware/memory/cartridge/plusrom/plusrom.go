@@ -66,13 +66,13 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	b := int((a & 0xf000) >> 12)
 
 	if b == 0 || b > cart.NumBanks() {
-		return nil, curated.Errorf(NotAPlusROM, "invlid NMI vector")
+		return nil, curated.Errorf(NotAPlusROM, "invalid NMI vector")
 	}
 
 	// normalise indirect address so it's suitable for indexing bank data
 	a &= addrMask
 
-	// get the bank to whic the NMI vector points
+	// get the bank to which the NMI vector points
 	bank = child.CopyBanks()[b-1]
 
 	// read path string from the first bank using the indirect address retrieved above

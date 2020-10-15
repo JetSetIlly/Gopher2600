@@ -37,7 +37,7 @@ type Broker interface {
 // includes the CPU execution result, the bank from which the instruction
 // originate, the video element that produced the last video pixel on
 // screen; and the raw television signal most recently sent (a PixelRenderer
-// only recieves distilled information from the television implementation so
+// only receives distilled information from the television implementation so
 // this is not redundant information).
 type LastResult struct {
 	CPU          execution.Result

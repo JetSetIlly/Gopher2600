@@ -102,7 +102,7 @@ Will return:
 	CXM1P (read) -> 0x0001
 
 This tells us that the cxm0p symbol is recognised, is a symbol for a read
-address and referes to adress 0x0001. Many symbols point to addresses that are
+address and referes to address 0x0001. Many symbols point to addresses that are
 mirrored. You can quickly see this with the MIRRORS or ALL argument.
 
 	SYMBOL CXM1P MIRRORS
@@ -118,13 +118,13 @@ particular cartridge type.`,
 
 	cmdOnHalt: `Define commands to run whenever emulation is halted. A halt is
 caused by a BREAK, a TRAP, a WATCH or a manual interrupt. Specify multiple
-commands by seperating with a comma.
+commands by separating with a comma.
 
 THE OFF argument can be used to toggle the ONHALT commands temporarily. Use the
 ON argument to resume ONSTEP reporting.`,
 
 	cmdOnStep: `Define commands to run whenever emulation moves forward one step. A step
-is defined by the QUANTUM command. Specify multiple commands by seperating with
+is defined by the QUANTUM command. Specify multiple commands by separating with
 a comma.
 
 THE OFF argument can be used to toggle the ONSTEP commands temporarily. Use the
@@ -441,7 +441,7 @@ access of specific address address. Addresses can be specified numerically or
 by symbol.
 
 By default, watching a numeric address will specifically watch for read
-events. This can be changed by specifiying WRITE as the first argument. For
+events. This can be changed by specifying WRITE as the first argument. For
 example:
  
 	WATCH 0x80

@@ -583,7 +583,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// in the instruction, not the address).
 	//
 	// we also take the opportunity to set the InstructionData value for the
-	// StepResult and whether a page fault has occured. note that we don't do
+	// StepResult and whether a page fault has occurred. note that we don't do
 	// this in the case of JSR
 	switch defn.AddressingMode {
 	case instructions.Implied:

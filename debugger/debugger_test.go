@@ -217,7 +217,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.Start("non_existant_script", cartridgeloader.Loader{})
+	err = dbg.Start("non_existent_script", cartridgeloader.Loader{})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

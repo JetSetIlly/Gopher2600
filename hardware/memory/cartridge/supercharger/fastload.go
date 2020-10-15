@@ -106,7 +106,7 @@ func (tap *FastLoad) load() (uint8, error) {
 	logger.Log("supercharger: fastload", fmt.Sprintf("multiload: %#02x", multiload))
 	logger.Log("supercharger: fastload", fmt.Sprintf("progress speed: %#02x", progressSpeed))
 
-	// data is loaded accoring to page table
+	// data is loaded according to page table
 	pageTable := tap.data[0x2010:0x2028]
 	logger.Log("supercharger: fastload", fmt.Sprintf("page-table: %v", pageTable))
 
@@ -138,7 +138,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		// however, by injecting the binary data into supercharger RAM
 		// directly, the necessary code will not be run.
 
-		// RAM address 0x80 contains the intial configbyte
+		// RAM address 0x80 contains the initial configbyte
 		ram.Poke(0x80, configByte)
 
 		// CMP $fff8
@@ -151,7 +151,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		ram.Poke(0xfe, uint8(startAddress))
 		ram.Poke(0xff, uint8(startAddress>>8))
 
-		// reset timer. in refernce to real tape loading, the number of ticks
+		// reset timer. in references to real tape loading, the number of ticks
 		// is the value at the moment the PC reaches address 0x00fa
 		tmr.SetInterval("TIM64T")
 		tmr.SetValue(0x0a)

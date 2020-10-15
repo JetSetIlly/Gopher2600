@@ -77,7 +77,7 @@ type television struct {
 	//   * whether specification changes should still occur
 	syncedFrameNum int
 
-	// is current frame as a result of a VSYNC flyback or not (a "natrual"
+	// is current frame as a result of a VSYNC flyback or not (a "natural"
 	// flyback). we use this in the context of newFrame() so we should probably
 	// think of this as the previous frame.
 	syncedFrame bool

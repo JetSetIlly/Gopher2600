@@ -45,7 +45,7 @@ type VCSMemory struct {
 	//  . a note of the last (unmapped) memory address to be accessed
 	//  . as above but the mapped address
 	//  . the value that was written/read from the last address accessed
-	//  . whether the last addres accessed was written or read
+	//  . whether the last address accessed was written or read
 	//  . the ID of the last memory access (currently a timestamp)
 	LastAccessAddress       uint16
 	LastAccessAddressMapped uint16

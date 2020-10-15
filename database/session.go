@@ -30,7 +30,7 @@ const (
 	NotAvailable = "database: not available (%s)"
 )
 
-// Activity is used to specify the general activity of what will be occuring
+// Activity is used to specify the general activity of what will be occurring
 // during the database session
 type Activity int
 
@@ -58,7 +58,7 @@ type Session struct {
 }
 
 // StartSession starts/initialises a new DB session. argument is the function
-// to call when database has been succesfully opened. this function should be
+// to call when database has been successfully opened. this function should be
 // used to add information about the different entries that are to be used in
 // the database (see AddEntryType() function)
 func StartSession(path string, activity Activity, init func(*Session) error) (*Session, error) {

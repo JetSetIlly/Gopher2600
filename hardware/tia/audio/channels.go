@@ -41,7 +41,7 @@ type channel struct {
 	poly5ct int
 	poly9ct int
 
-	// the different musical notes available to the 2600 are achived with a
+	// the different musical notes available to the 2600 are achieved with a
 	// frequency clock. the easiest way to think of this is to think of a
 	// filter to the 30Khz clock signal.
 	freqClk uint8

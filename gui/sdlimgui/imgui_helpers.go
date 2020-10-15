@@ -119,8 +119,8 @@ func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.V
 	return b
 }
 
-// calls Text but preceeds it with AlignTextToFramePadding() and follows it
-// with SameLine(). a common enought pattern to warrent a function call
+// calls Text but precedes it with AlignTextToFramePadding() and follows it
+// with SameLine(). a common enought pattern to warrant a function call
 func imguiText(text string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(text)

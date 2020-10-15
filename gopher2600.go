@@ -59,7 +59,7 @@ const (
 	reqNoIntSig
 )
 
-// GuiCreator facilitates the creation, servicing and desctruction of GUIs
+// GuiCreator facilitates the creation, servicing and destruction of GUIs
 // that need to be run in the main thread.
 //
 // Note that there is no Create() function because we need the freedom to
@@ -694,15 +694,15 @@ func regressAdd(md *modalflag.Modes) error {
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 
 	md.AdditionalHelp(
-		`The regression test to be added can be the path to a cartrige file or a previously
+		`The regression test to be added can be the path to a cartridge file or a previously
 recorded playback file. For playback files, the flags marked [non-playback] do not make
 sense and will be ignored.
 
-Available modes are VIDEO, PLAYBACK and LOG. If not mode is explicitely given then
+Available modes are VIDEO, PLAYBACK and LOG. If not mode is explicitly given then
 VIDEO will be used for ROM files and PLAYBACK will be used for playback recordings.
 
 The -log flag intructs the program to echo the log to the console. Do not confuse this
-with the LOG mode. Note that asking for log output will supress regression progress meters.`)
+with the LOG mode. Note that asking for log output will suppress regression progress meters.`)
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {

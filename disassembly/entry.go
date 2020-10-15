@@ -32,7 +32,7 @@ type EntryLevel int
 // List of valid EntryL in increasing reliability.
 //
 // Decoded entries have been decoded as though every byte point is a valid
-// instruction. Blessed entries meanwhile take into consideration the preceeding
+// instruction. Blessed entries meanwhile take into consideration the preceding
 // instruction and the number of bytes it would have consumed.
 //
 // Decoded entries are useful in the event of the CPU landing on an address that
@@ -53,7 +53,7 @@ const (
 )
 
 // Entry is a disassambled instruction. The constituent parts of the
-// disassembly. It is a represenation of execution.Instruction
+// disassembly. It is a representation of execution.Instruction
 type Entry struct {
 	dsm *Disassembly
 

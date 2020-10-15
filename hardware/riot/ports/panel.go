@@ -96,7 +96,7 @@ func (pan *Panel) Name() string {
 func (pan *Panel) Reset() {
 	// does nothing. this isn't the same as pressing the Reset panel switch
 	//
-	// !!TODO: reset panel switches to either a default or to the relevent "setup" preference
+	// !!TODO: reset panel switches to either a default or to the relevant "setup" preference
 }
 
 func (pan *Panel) write() {

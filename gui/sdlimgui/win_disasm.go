@@ -300,7 +300,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 		}
 
 		// calculate the pixel value of the current entry. the adjustment of 4
-		// is to ensure that some preceeding entries are displayed before the
+		// is to ensure that some preceding entries are displayed before the
 		// current entry
 		h := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
 		h = (hlEntry - scrollMargin) * h

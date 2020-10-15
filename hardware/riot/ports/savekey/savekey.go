@@ -52,7 +52,7 @@ type SaveKey struct {
 	id  ports.PortID
 	bus ports.PeripheralBus
 
-	// the i2c protocol used by the SaveKey is transfered via the SWCHA
+	// the i2c protocol used by the SaveKey is transferred via the SWCHA
 	// register from the CPU. we keep a copy of the SWCHA value set in the
 	// Update() function, so we can reuse it in the Step() function
 	swcha uint8
@@ -64,7 +64,7 @@ type SaveKey struct {
 	SDA trace
 	SCL trace
 
-	// incoming data is interpreted depending on the state of the i2c protocl.
+	// incoming data is interpreted depending on the state of the i2c protocol.
 	// we also need to know the direction of data flow at any given time and
 	// whether the next bit should be acknowledged (the Ack bool)
 	State MessageState
@@ -80,7 +80,7 @@ type SaveKey struct {
 	EEPROM *EEPROM
 }
 
-// NewSaveKey is the preferred method of initalisation for the SaveKey type
+// NewSaveKey is the preferred method of initialisation for the SaveKey type
 func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	sk := &SaveKey{
 		id:     id,

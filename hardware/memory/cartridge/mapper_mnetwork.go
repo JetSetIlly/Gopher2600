@@ -61,7 +61,7 @@ import (
 // Similar to other schemes, 1800-18FF is write while 1900-19FF is read.
 // Low RAM uses 1000-13FF for write and 1400-17FF for read.
 //
-// Note that the 256-byte banks and the large 1K bank are seperate entities.
+// Note that the 256-byte banks and the large 1K bank are separate entities.
 // The M-Network carts are about as complex as it gets.
 
 const num256ByteRAMbanks = 4

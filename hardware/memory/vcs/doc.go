@@ -15,5 +15,5 @@
 
 // Package vcs represents the areas of memory that are internal to the VCS
 // hardware. Compare with the cartridge package which represents memory (ROM
-// and sometimes RAM) periperhal to the VCS.
+// and sometimes RAM) peripheral to the VCS.
 package vcs

@@ -255,7 +255,7 @@ const (
 	PlaybackHashError = "playback: hash error [line %d]"
 )
 
-// GetPlayback returns an event and source portID for an event occuring at the
+// GetPlayback returns an event and source portID for an event occurring at the
 // current TV frame/scanline/horizpos
 func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id

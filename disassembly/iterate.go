@@ -86,7 +86,7 @@ type IterateBank struct {
 }
 
 // NewBankIteration initialises a new iteration of a dissasembly bank. The minLevel
-// argument specifies the minumum entry level which should be returned in the
+// argument specifies the minimum entry level which should be returned in the
 // iteration. So, using the following as a guide:
 //
 //	dead < decoded < blessed

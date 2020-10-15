@@ -171,7 +171,7 @@ func (tmr *Timer) Step() {
 		// "Clearing of the PA7 Interrupt Flag occurs when the microprocessor
 		// reads the Interrupt Flag Register."
 		//
-		// and from the Rockwell 6532 documenation:
+		// and from the Rockwell 6532 documentation:
 		//
 		// "To clear PA7 interrupt flag, simply read the Interrupt Flag
 		// Register"

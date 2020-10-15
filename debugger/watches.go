@@ -214,7 +214,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		ai = wtc.dbg.dbgmem.mapAddress(a, false)
 	}
 
-	// mapping of the address was unsucessful
+	// mapping of the address was unsuccessful
 	if ai == nil {
 		return curated.Errorf("invalid watch address: %s", a)
 	}

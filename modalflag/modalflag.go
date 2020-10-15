@@ -115,7 +115,7 @@ const (
 	// Continue with command line processing. How this result should be
 	// interpreted depends on the context, which the caller of the Parse()
 	// function knows best. However, generally we can say that if sub-modes
-	// were specified in the preceeding call to NewMode() then the Mode field
+	// were specified in the preceding call to NewMode() then the Mode field
 	// of the Modes struct should be checked.
 	ParseContinue ParseResult = iota
 

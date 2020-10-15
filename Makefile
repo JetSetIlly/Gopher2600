@@ -20,7 +20,7 @@ generate:
 
 lint:
 	golangci-lint run -D govet -D errcheck -D ineffassign -D staticcheck \
-		-E bodyclose -E unconvert
+		-E bodyclose -E unconvert -E misspell
 
 vet: 
 # filter out expected warnings that we are not worried about: 

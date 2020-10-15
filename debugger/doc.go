@@ -33,7 +33,7 @@
 //	dbg, _ := debugger.NewDebugger(television, gui, term)
 //
 // The tv, gui and term arguments must be instances of types that satisfy the
-// repsective interfaces. This gives the debugger great flexibility and should
+// respective interfaces. This gives the debugger great flexibility and should
 // allow easy porting to new platforms
 //
 // Interaction with the debugger is primarily through a terminal. The Terminal

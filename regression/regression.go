@@ -265,7 +265,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 			return curated.Errorf(regressionQuitEarly)
 		}
 
-		// datbase entry should also satisfy Regressor interface
+		// database entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
 			return curated.Errorf("regression: run: database entry does not satisfy Regressor interface")

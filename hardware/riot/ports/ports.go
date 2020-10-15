@@ -161,7 +161,7 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 
-		// mask value with SWACNT bits before passing to periperhal
+		// mask value with SWACNT bits before passing to peripheral
 		data.Value &= p.swacnt
 
 		// peripheral update for SWCHA
@@ -181,7 +181,7 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		_ = p.Player1.Update(data)
 
 		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
-		// adjust SWCHA lines and update periperhal with new SWCHA data
+		// adjust SWCHA lines and update peripheral with new SWCHA data
 		data = bus.ChipData{
 			Name:  "SWCHA",
 			Value: p.swcha,

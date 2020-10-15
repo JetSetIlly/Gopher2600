@@ -93,7 +93,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	// do not strings of input style if it is the same as the last string sent
 	// to the sideChan
 	//
-	// this will not supress echoing of sideChan messages that are not suitably
+	// this will not suppress echoing of sideChan messages that are not suitably
 	// normalised, but that's okay because it will serve as a visual indicator
 	// that the sideChan command is not ideal.
 	if style == terminal.StyleEcho && s == trm.lastSideChan {

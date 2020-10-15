@@ -37,7 +37,7 @@ func (img *SdlImgui) Service() {
 	// do not check for events if no event channel has been set
 	if img.events != nil {
 
-		// loop until there are no more events to retreive. this loop is
+		// loop until there are no more events to retrieve. this loop is
 		// intimately connected with the framelimiter below. what we don't want
 		// to loop for too long servicing events. however:
 		//

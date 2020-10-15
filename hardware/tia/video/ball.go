@@ -362,7 +362,7 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	// pixel() function for details
 	earlyStart := bs.lastTickFromHmove && bs.futureStart.AboutToEnd()
 
-	// the LatePhi1() condition has been added to accomodate a artefact in
+	// the LatePhi1() condition has been added to accommodate a artefact in
 	// (on?) "Spike's Peak". On the first screen, there is a break in the path
 	// at the base of the mountain (which is correct) but without the
 	// LatePhi1() condition there is also a second break later on the path

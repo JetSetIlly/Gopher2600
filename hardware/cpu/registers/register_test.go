@@ -37,7 +37,7 @@ func TestRegister(t *testing.T) {
 	r8.Add(2, false)
 	rtest.EquateRegisters(t, r8, 129)
 
-	// addtion boundary
+	// addition boundary
 	r8.Load(255)
 	test.Equate(t, r8.IsNegative(), true)
 	carry, overflow = r8.Add(1, false)

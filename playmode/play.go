@@ -196,7 +196,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	}
 
 	// if a waitForEmulationStart channel has been created then halt the
-	// goroutine until we recieve a non-error signal
+	// goroutine until we receive a non-error signal
 	if waitForEmulationStart != nil {
 		if err := <-waitForEmulationStart; err != nil {
 			return curated.Errorf("playmode: %v", err)

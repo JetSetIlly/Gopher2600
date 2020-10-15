@@ -335,7 +335,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			} else if tok == "|" {
 				andBreaks = false
 			} else {
-				// if PC target has not been explicitely specified then add
+				// if PC target has not been explicitly specified then add
 				// bank condition
 				addBankCondition = addBankCondition && strings.ToUpper(tok) != "PC"
 

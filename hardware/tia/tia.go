@@ -254,7 +254,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// "Also of note, the HMOVE latch used to extend the HBlank time is
 		// cleared when the HSync Counter wraps around. This fact is
-		// exploited by the trick that invloves hitting HMOVE on the 74th
+		// exploited by the trick that involves hitting HMOVE on the 74th
 		// CPU cycle of the scanline; the CLK stuffing will still take
 		// place during the HBlank and the HSYNC latch will be set just
 		// before the counter wraps around. It will then be cleared again
@@ -331,7 +331,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	// the H@2 clock)."
 	//
 	// the context of this passage is the Horizontal Sync Counter. It is
-	// explicitely saying that the HSYNC counter ticks forward on the rising
+	// explicitly saying that the HSYNC counter ticks forward on the rising
 	// edge of Phi2.
 	if tia.pclk.Phi2() {
 		tia.hsync.Tick()
@@ -358,7 +358,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			//
 			// "Also of note, the HMOVE latch used to extend the HBlank time
 			// is cleared when the HSync Counter wraps around. This fact is
-			// exploited by the trick that invloves hitting HMOVE on the 74th
+			// exploited by the trick that involves hitting HMOVE on the 74th
 			// CPU cycle of the scanline; the CLK stuffing will still take
 			// place during the HBlank and the HSYNC latch will be set just
 			// before the counter wraps around."
@@ -429,7 +429,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		}
 	}
 
-	// alter state of video subsystem. occuring after ticking of TIA clock
+	// alter state of video subsystem. occurring after ticking of TIA clock
 	// because some the side effects of some registers require that. in
 	// particular, the RESxx registers need to have correct information about
 	// the state of HBLANK and the HMOVE latch.

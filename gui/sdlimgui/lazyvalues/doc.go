@@ -37,7 +37,7 @@
 //  col := lazyval.Playfield.ForegroundColor
 //
 //
-// Writing the playfield values is done throught debugger's "raw event" system:
+// Writing the playfield values is done thought debugger's "raw event" system:
 //
 //	lazyval.Dbg.PushRawEvent(func() {
 //		lazyval.VCS.TIA.Video.Playfield.ForegroundColor = col
@@ -108,7 +108,7 @@
 // The exception to all the rules is the LazyBreakpoints type. Like LazyRAM it
 // employs an array of atomic.Values storied as an atomic Value but unlike
 // everythin else it is not refreshed with update() and push(). Instead, the
-// unique funciton HasBreak() is used, which is called by the Disassembly
+// unique function HasBreak() is used, which is called by the Disassembly
 // window for every cartridge entry that is visible.
 //
 // The reason for this function is so that we can pass an instance of

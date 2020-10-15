@@ -134,7 +134,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	if addr > 0x007f {
 		data = cart.banks[cart.bank][addr]
 
-		// if FastFetch mode is on and the preceeding data value was 0xa9 (the
+		// if FastFetch mode is on and the preceding data value was 0xa9 (the
 		// opcode for LDA <immediate>) then the data we've just read this cycle
 		// should be interpreted as an address to read from. we can do this by
 		// recursing into the Read() function (there is no worry about deep

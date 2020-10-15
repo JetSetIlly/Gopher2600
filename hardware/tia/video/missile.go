@@ -42,7 +42,7 @@ var MissileSizes = []string{
 	"single width",
 	"double width",
 	"quadruple width",
-	"doub-quad width",
+	"doubt-quad width",
 }
 
 type missileSprite struct {
@@ -374,7 +374,7 @@ func (ms *missileSprite) resetPosition() {
 	// but it is possible when using a very quick instruction on the reset register,
 	// like a zero page INC, for requests to overlap
 	//
-	// in the case of the missile sprite, we can see such an occurance in the
+	// in the case of the missile sprite, we can see such an occurrence in the
 	// test.bin test ROM
 	if ms.futureReset.IsActive() {
 		ms.futureReset.Push()
