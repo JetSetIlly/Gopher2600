@@ -2,7 +2,7 @@
 
 package shaders
 
-const Vertex="#version 150" + `
+const Vertex = "#version 150" + `
 uniform mat4 ProjMtx;
 in vec2 Position;
 in vec2 UV;
@@ -18,7 +18,7 @@ void main()
 }
 `
 
-const Fragment="#version 150" + `
+const Fragment = "#version 150" + `
 // bending and colour splitting in fragment shader cribbed from shadertoy
 // project: https://www.shadertoy.com/view/4sf3Dr
 

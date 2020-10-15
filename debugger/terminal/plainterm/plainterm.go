@@ -22,8 +22,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
 // PlainTerminal is the default, most basic terminal interface. It keeps the

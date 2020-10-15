@@ -32,10 +32,6 @@ type VCSMemory struct {
 	bus.DebugBus
 	bus.CPUBus
 
-	// memmap is a hash for every address in the VCS address space, returning
-	// one of the four memory areas
-	Memmap []bus.DebugBus
-
 	// the four memory areas
 	RIOT *vcs.ChipMemory
 	TIA  *vcs.ChipMemory
@@ -76,30 +72,10 @@ type VCSMemory struct {
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := &VCSMemory{}
 
-	mem.Memmap = make([]bus.DebugBus, memorymap.Memtop+1)
-
 	mem.RIOT = vcs.NewRIOT()
 	mem.TIA = vcs.NewTIA()
 	mem.RAM = vcs.NewRAM()
 	mem.Cart = cartridge.NewCartridge()
-
-	// create the memory map by associating all addresses in each memory area
-	// with that area
-	for i := memorymap.OriginTIA; i <= memorymap.MemtopTIA; i++ {
-		mem.Memmap[i] = mem.TIA
-	}
-
-	for i := memorymap.OriginRAM; i <= memorymap.MemtopRAM; i++ {
-		mem.Memmap[i] = mem.RAM
-	}
-
-	for i := memorymap.OriginRIOT; i <= memorymap.MemtopRIOT; i++ {
-		mem.Memmap[i] = mem.RIOT
-	}
-
-	for i := memorymap.OriginCart; i <= memorymap.MemtopCart; i++ {
-		mem.Memmap[i] = mem.Cart
-	}
 
 	return mem, nil
 }
@@ -218,7 +194,7 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 }
 
 // Peek implements the DebugBus interface
-func (mem VCSMemory) Peek(address uint16) (uint8, error) {
+func (mem *VCSMemory) Peek(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.Peek(ma)
@@ -227,7 +203,7 @@ func (mem VCSMemory) Peek(address uint16) (uint8, error) {
 }
 
 // Poke implements the DebugBus interface
-func (mem VCSMemory) Poke(address uint16, data uint8) error {
+func (mem *VCSMemory) Poke(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.(bus.DebugBus).Poke(ma, data)

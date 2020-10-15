@@ -47,7 +47,7 @@ func (pc ProgramCounter) BitWidth() int {
 }
 
 // Address returns the current value of the PC as a a value of type uint16
-func (pc *ProgramCounter) Address() uint16 {
+func (pc ProgramCounter) Address() uint16 {
 	return pc.value
 }
 

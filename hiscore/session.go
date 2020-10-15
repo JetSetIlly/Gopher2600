@@ -100,7 +100,7 @@ func (sess *Session) EndSession(playTime time.Duration) error {
 // url should not contain the session server, it will be added automatically
 func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	// add server information to url
-	url = fmt.Sprintf("%s%s", sess.Prefs.Server, url)
+	url = fmt.Sprintf("%s%s", sess.Prefs.Server.String(), url)
 
 	// prepare POST request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
@@ -109,7 +109,7 @@ func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	}
 
 	// add authorization head
-	req.Header.Add("Authorization", fmt.Sprintf("Token %s", sess.Prefs.AuthToken))
+	req.Header.Add("Authorization", fmt.Sprintf("Token %s", sess.Prefs.AuthToken.String()))
 
 	// Send req using http Client
 	client := &http.Client{}

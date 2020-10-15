@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
 type term struct {

@@ -66,9 +66,7 @@ func ReadSymbolsFile(cart *cartridge.Cartridge) (*Symbols, error) {
 	if err != nil {
 		return sym, curated.Errorf("symbols: file not available (%s)", cart.Filename)
 	}
-	defer func() {
-		_ = sf.Close()
-	}()
+	defer sf.Close()
 
 	data, err := ioutil.ReadAll(sf)
 	if err != nil {

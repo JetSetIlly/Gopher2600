@@ -20,8 +20,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/television"

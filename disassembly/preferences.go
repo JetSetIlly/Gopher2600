@@ -36,7 +36,7 @@ type Preferences struct {
 	mirrorOrigin uint16
 }
 
-func (p Preferences) String() string {
+func (p *Preferences) String() string {
 	return p.dsk.String()
 }
 

@@ -102,7 +102,7 @@ func (n *network) send(data uint8, send bool) {
 			// their request, that consists of a nickname given by the user and
 			// a generated uuid (starting with "WE") separated by a space
 			// character."
-			id := fmt.Sprintf("%s WE%s", n.prefs.Nick, n.prefs.ID)
+			id := fmt.Sprintf("%s WE%s", n.prefs.Nick.String(), n.prefs.ID.String())
 			req.Header.Set("PlusStore-ID", id)
 
 			logger.Log("plusrom [net]", fmt.Sprintf("PlusStore-ID: %s", id))

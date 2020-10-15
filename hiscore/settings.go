@@ -118,7 +118,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	// send login request to server
 	var cl http.Client
 	data := url.Values{"username": {username}, "password": {password}}
-	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.Server), data)
+	resp, err := cl.PostForm(fmt.Sprintf("%s/rest-auth/login/", prefs.Server.String()), data)
 	if err != nil {
 		return curated.Errorf("hiscore: %v", err)
 	}

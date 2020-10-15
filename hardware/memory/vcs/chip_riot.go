@@ -26,12 +26,12 @@ func NewRIOT() *ChipMemory {
 		memtop: memorymap.MemtopRIOT,
 	}
 
-	// allocation the minimal amount of memory
+	// allocate the minimal amount of memory
 	area.memory = make([]uint8, area.memtop-area.origin+1)
 
 	// SWCHA should be set when a peripheral is attached
 
-	// SWCHB is set on panel attachement
+	// SWCHB is set in panel attachement
 
 	return area
 }

@@ -229,14 +229,14 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 	// make copy rectangled
 	if scr.cropped {
 		scr.cpyRect = &sdl.Rect{
-			television.HorizClksHBlank, int32(scr.topScanline),
-			television.HorizClksVisible, scr.scanlines,
+			X: television.HorizClksHBlank, Y: int32(scr.topScanline),
+			W: television.HorizClksVisible, H: scr.scanlines,
 		}
 	} else {
 		spec, _ := scr.GetSpec()
 		scr.cpyRect = &sdl.Rect{
-			0, 0,
-			television.HorizClksScanline, int32(spec.ScanlinesTotal),
+			X: 0, Y: 0,
+			W: television.HorizClksScanline, H: int32(spec.ScanlinesTotal),
 		}
 	}
 
@@ -314,22 +314,22 @@ func (scr *SdlDebug) update() error {
 	if !scr.cropped {
 		scr.renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 		scr.renderer.SetDrawColor(100, 100, 100, 50)
-		r := &sdl.Rect{0, 0,
-			int32(television.HorizClksHBlank), int32(spec.ScanlinesTotal)}
+		r := &sdl.Rect{X: 0, Y: 0,
+			W: int32(television.HorizClksHBlank), H: int32(spec.ScanlinesTotal)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err
 		}
 
-		r = &sdl.Rect{0, 0,
-			int32(television.HorizClksScanline), int32(spec.ScanlineTop)}
+		r = &sdl.Rect{X: 0, Y: 0,
+			W: int32(television.HorizClksScanline), H: int32(spec.ScanlineTop)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err
 		}
 
-		r = &sdl.Rect{0, int32(spec.ScanlineBottom),
-			int32(television.HorizClksScanline), int32(spec.ScanlinesOverscan)}
+		r = &sdl.Rect{X: 0, Y: int32(spec.ScanlineBottom),
+			W: int32(television.HorizClksScanline), H: int32(spec.ScanlinesOverscan)}
 		err = scr.renderer.FillRect(r)
 		if err != nil {
 			return err

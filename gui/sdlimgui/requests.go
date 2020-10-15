@@ -16,8 +16,8 @@
 package sdlimgui
 
 import (
-	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 )

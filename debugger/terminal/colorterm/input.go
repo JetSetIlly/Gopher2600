@@ -21,10 +21,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // #cursor #keys #tab #completion

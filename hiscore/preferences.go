@@ -28,7 +28,7 @@ type Preferences struct {
 	Server    prefs.String
 }
 
-func (p Preferences) String() string {
+func (p *Preferences) String() string {
 	return p.dsk.String()
 }
 

@@ -42,7 +42,7 @@ type Bool struct {
 	callback func(value Value) error
 }
 
-func (p Bool) String() string {
+func (p *Bool) String() string {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 
@@ -103,7 +103,7 @@ type String struct {
 	callback func(value Value) error
 }
 
-func (p String) String() string {
+func (p *String) String() string {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 
@@ -167,7 +167,7 @@ type Int struct {
 	callback func(value Value) error
 }
 
-func (p Int) String() string {
+func (p *Int) String() string {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 
@@ -236,7 +236,7 @@ func NewGeneric(set func(string) error, get func() string) *Generic {
 	}
 }
 
-func (p Generic) String() string {
+func (p *Generic) String() string {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 

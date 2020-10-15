@@ -20,8 +20,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
 const commentLine = "#"
@@ -47,9 +47,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	if err != nil {
 		return nil, curated.Errorf("script: file not available: %v", err)
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
 
 	buffer, err := ioutil.ReadAll(f)
 	if err != nil {

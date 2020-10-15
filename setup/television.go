@@ -18,8 +18,8 @@ package setup
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
 )
 

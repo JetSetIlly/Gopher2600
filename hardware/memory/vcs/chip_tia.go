@@ -27,7 +27,7 @@ func NewTIA() *ChipMemory {
 		memtop: memorymap.MemtopTIA,
 	}
 
-	// allocation the minimal amount of memory
+	// allocate the minimal amount of memory
 	area.memory = make([]uint8, area.memtop-area.origin+1)
 
 	// initial values
