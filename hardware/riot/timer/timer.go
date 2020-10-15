@@ -142,7 +142,7 @@ func (tmr *Timer) Update(data bus.ChipData) bool {
 	tmr.TicksRemaining = 0
 
 	// write value to INTIM straight-away
-	tmr.mem.ChipWrite(addresses.INTIM, uint8(tmr.INTIMvalue))
+	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 
 	return false
 }

@@ -199,7 +199,7 @@ func (win *winPlayScr) setScaleFromWindow(sz imgui.Vec2) {
 
 func (win *winPlayScr) getScaling(horiz bool) float32 {
 	if horiz {
-		return float32(pixelWidth * win.scr.aspectBias * win.scaling)
+		return pixelWidth * win.scr.aspectBias * win.scaling
 	}
 	return win.scaling
 }

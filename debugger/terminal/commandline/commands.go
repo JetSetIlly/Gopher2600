@@ -120,7 +120,7 @@ func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error
 
 	// record sizing information for help subsystem
 	cmds.helpCommand = helpCommand
-	cmds.helpCols = int(80 / (longest + 3))
+	cmds.helpCols = 80 / (longest + 3)
 	cmds.helpColFmt = fmt.Sprintf("%%%ds", longest+3)
 
 	return nil

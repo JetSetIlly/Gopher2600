@@ -100,7 +100,7 @@ func (lmtr *limiter) setFPS(fps float32) {
 	if fps < colorClkGranThresh {
 		// very low frame rates requires colorclock granularity
 		lmtr.throt = throtColClock
-		dur = time.Duration(float32(279000 * fps))
+		dur = time.Duration(279000 * fps)
 	} else if fps < scanlineGranThresh {
 		// low frame rates and we move to scanline granularity
 		rate := float32(1.0) / (fps * float32(spec.ScanlinesTotal))

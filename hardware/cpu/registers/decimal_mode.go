@@ -41,12 +41,12 @@ func (r *Register) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	var ucarry, tcarry bool
 
 	// binary addition of units and tens
-	runits := uint8(r.value) & 0x0f
-	vunits := uint8(val) & 0x0f
+	runits := r.value & 0x0f
+	vunits := val & 0x0f
 	runits, ucarry = addDecimal(runits, vunits, carry)
 
-	rtens := (uint8(r.value) & 0xf0) >> 4
-	vtens := (uint8(val) & 0xf0) >> 4
+	rtens := (r.value & 0xf0) >> 4
+	vtens := (val & 0xf0) >> 4
 	rtens, tcarry = addDecimal(rtens, vtens, ucarry)
 
 	// from the Cwik document:

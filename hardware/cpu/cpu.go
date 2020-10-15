@@ -779,7 +779,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +2 cycles
 		var indexedAddress uint16
-		indexedAddress, err = mc.read16Bit(uint16(indirectAddress))
+		indexedAddress, err = mc.read16Bit(indirectAddress)
 		if err != nil {
 			return err
 		}
@@ -1387,7 +1387,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// perform jump
 		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = (uint16(val) << 8) | uint16(mc.LastResult.InstructionData)
+			mc.LastResult.InstructionData = (uint16(val) << 8) | mc.LastResult.InstructionData
 			return nil
 		})
 		if err != nil {

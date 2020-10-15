@@ -270,7 +270,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				clipRect := cmd.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
-				gl.BindTexture(gl.TEXTURE_2D, uint32(textureID))
+				gl.BindTexture(gl.TEXTURE_2D, textureID)
 				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)

@@ -379,7 +379,7 @@ func (cart *dpc) Patch(offset int, data uint8) error {
 	if staticStart >= staticStart {
 		cart.static.Gfx[offset] = data
 	} else {
-		bank := int(offset) / cart.bankSize
+		bank := offset / cart.bankSize
 		offset = offset % cart.bankSize
 		cart.banks[bank][offset] = data
 	}

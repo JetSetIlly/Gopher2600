@@ -247,7 +247,7 @@ func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
 	// the opposite of pixelY() and also the scalining applied
 	// by the SDL renderer
 	if scr.cropped {
-		sl = int(float32(ev.Y)/sy) + int(scr.topScanline)
+		sl = int(float32(ev.Y)/sy) + scr.topScanline
 	} else {
 		sl = int(float32(ev.Y) / sy)
 	}

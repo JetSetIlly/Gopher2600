@@ -19,7 +19,8 @@ generate:
 	@go generate ./...
 
 lint:
-	golangci-lint run -D govet -D errcheck -D ineffassign -D staticcheck -E bodyclose
+	golangci-lint run -D govet -D errcheck -D ineffassign -D staticcheck \
+		-E bodyclose -E unconvert
 
 vet: 
 # filter out expected warnings that we are not worried about: 

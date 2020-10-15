@@ -67,10 +67,10 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	// arrays we need to filter out the empty entries. (the Read and Write
 	// structures used to be maps and we didn't need to do this)
 	for k, v := range addresses.ReadSymbols {
-		sym.Read.add(uint16(k), v, true)
+		sym.Read.add(k, v, true)
 	}
 	for k, v := range addresses.WriteSymbols {
-		sym.Write.add(uint16(k), v, true)
+		sym.Write.add(k, v, true)
 	}
 
 	// add cartridge canonical symbols from cartridge hotspot information

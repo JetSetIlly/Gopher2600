@@ -122,7 +122,7 @@ func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
 		if seq.rectFill(win.regBit) {
 			b := read ^ (0x80 >> i)
 			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[reg], uint8(b))
+				err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[reg], b)
 				if err != nil {
 					panic(err)
 				}

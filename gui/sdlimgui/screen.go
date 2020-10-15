@@ -226,7 +226,7 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 		blue = 0
 	}
 
-	rgb := color.RGBA{uint8(red), uint8(green), uint8(blue), uint8(255)}
+	rgb := color.RGBA{red, green, blue, 255}
 
 	scr.crit.lastX = x
 	scr.crit.lastY = y

@@ -598,7 +598,7 @@ func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	} else if offset >= cart.dataOffset {
 		cart.static.Data[offset-cart.dataOffset] = data
 	} else if offset >= cart.banksOffset {
-		bank := int(offset) / cart.bankSize
+		bank := offset / cart.bankSize
 		offset = offset % cart.bankSize
 		cart.banks[bank][offset] = data
 	} else {

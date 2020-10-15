@@ -300,7 +300,7 @@ func (cart *mnetwork) Patch(offset int, data uint8) error {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
 	}
 
-	bank := int(offset) / cart.bankSize
+	bank := offset / cart.bankSize
 	offset = offset % cart.bankSize
 	cart.banks[bank][offset] = data
 	return nil

@@ -72,7 +72,7 @@ func (win *winAudio) draw() {
 		select {
 		case d := <-win.newData:
 			ct++
-			win.displayBuffer = append(win.displayBuffer, float32(d))
+			win.displayBuffer = append(win.displayBuffer, d)
 		default:
 			done = true
 			win.displayBuffer = win.displayBuffer[ct:]
