@@ -24,10 +24,10 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// PlusROMError denotes a specific error in the plusrom package
+// PlusROMError denotes a specific error in the plusrom package.
 const NotAPlusROM = "not a plus rom: %s"
 
-// PlusROM wraps another mapper.CartMapper inside a network aware format
+// PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
 	child mapper.CartMapper
 	Prefs *Preferences
@@ -124,7 +124,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	return cart, nil
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *PlusROM) Initialise() {
 	cart.child.Initialise()
 }
@@ -133,18 +133,18 @@ func (cart *PlusROM) String() string {
 	return fmt.Sprintf("[%s] %s", cart.ContainerID(), cart.child.String())
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart *PlusROM) ID() string {
 	// not altering the underlying cartmapper's ID
 	return cart.child.ID()
 }
 
-// ID implements the mapper.CartContainer interface
+// ID implements the mapper.CartContainer interface.
 func (cart *PlusROM) ContainerID() string {
 	return "PlusROM"
 }
 
-// READ implements the mapper.CartMapper interface
+// READ implements the mapper.CartMapper interface.
 func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
 	switch addr {
 	case 0x0ff2:
@@ -162,7 +162,7 @@ func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
 	return cart.child.Read(addr, active)
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) error {
 	switch addr {
 	case 0x0ff0:
@@ -180,37 +180,37 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 	return cart.child.Write(addr, data, active, poke)
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart *PlusROM) NumBanks() int {
 	return cart.child.NumBanks()
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
 	return cart.child.GetBank(addr)
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *PlusROM) Patch(offset int, data uint8) error {
 	return cart.child.Patch(offset, data)
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *PlusROM) Listen(addr uint16, data uint8) {
 	cart.child.Listen(addr, data)
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *PlusROM) Step() {
 	cart.child.Step()
 }
 
-// CopyBanks implements the mapper.CartMapper interface
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *PlusROM) CopyBanks() []mapper.BankContent {
 	return cart.child.CopyBanks()
 }
 
-// GetGetRegisters implements the mapper.CartRegistersBus interface
+// GetGetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
 	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
 		return rb.GetRegisters()
@@ -218,14 +218,14 @@ func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
 	return nil
 }
 
-// PutRegister implements the mapper.CartRegistersBus interface
+// PutRegister implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) PutRegister(register string, data string) {
 	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
 		rb.PutRegister(register, data)
 	}
 }
 
-// GetRAM implements the mapper.CartRAMbus interface
+// GetRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) GetRAM() []mapper.CartRAM {
 	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
 		return rb.GetRAM()
@@ -233,14 +233,14 @@ func (cart *PlusROM) GetRAM() []mapper.CartRAM {
 	return nil
 }
 
-// PutRAM implements the mapper.CartRAMbus interface
+// PutRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) PutRAM(bank int, idx int, data uint8) {
 	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
 		rb.PutRAM(bank, idx, data)
 	}
 }
 
-// GetStatic implements the mapper.CartStaticBus interface
+// GetStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) GetStatic() []mapper.CartStatic {
 	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
 		return sb.GetStatic()
@@ -248,7 +248,7 @@ func (cart *PlusROM) GetStatic() []mapper.CartStatic {
 	return nil
 }
 
-// PutStatic implements the mapper.CartStaticBus interface
+// PutStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) PutStatic(tag string, addr uint16, data uint8) error {
 	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
 		return sb.PutStatic(tag, addr, data)
@@ -256,7 +256,7 @@ func (cart *PlusROM) PutStatic(tag string, addr uint16, data uint8) error {
 	return nil
 }
 
-// Rewind implements the mapper.CartTapeBus interface
+// Rewind implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) Rewind() bool {
 	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
 		return sb.Rewind()
@@ -264,7 +264,7 @@ func (cart *PlusROM) Rewind() bool {
 	return false
 }
 
-// GetTapeState implements the mapper.CartTapeBus interface
+// GetTapeState implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) GetTapeState() (bool, mapper.CartTapeState) {
 	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
 		return sb.GetTapeState()

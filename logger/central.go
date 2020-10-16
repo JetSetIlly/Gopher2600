@@ -20,37 +20,37 @@ import (
 )
 
 // only allowing one central log for the entire application. there's no need to
-// allow more than one log
+// allow more than one log.
 var central *logger
 
-// maximum number of entries in the central logger
+// maximum number of entries in the central logger.
 const maxCentral = 256
 
 func init() {
 	central = newLogger(maxCentral)
 }
 
-// Log adds an entry to the central logger
+// Log adds an entry to the central logger.
 func Log(tag, detail string) {
 	central.log(tag, detail)
 }
 
-// Clear all entries from central logger
+// Clear all entries from central logger.
 func Clear() {
 	central.clear()
 }
 
-// Write contents of central logger to io.Writer
+// Write contents of central logger to io.Writer.
 func Write(output io.Writer) {
 	central.write(output)
 }
 
-// WriteRecent returns only the entries added since the last call to CopyRecent
+// WriteRecent returns only the entries added since the last call to CopyRecent.
 func WriteRecent(output io.Writer) {
 	central.writeRecent(output)
 }
 
-// Tail writes the last N entries to io.Writer
+// Tail writes the last N entries to io.Writer.
 func Tail(output io.Writer, number int) {
 	central.tail(output, number)
 }
@@ -60,7 +60,7 @@ func Copy() []Entry {
 	return central.copy()
 }
 
-// SetEcho to print new entries to os.Stdout
+// SetEcho to print new entries to os.Stdout.
 func SetEcho(output io.Writer) {
 	central.setEcho(output)
 }

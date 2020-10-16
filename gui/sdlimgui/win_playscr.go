@@ -121,7 +121,7 @@ func (win *winPlayScr) resize() {
 	win.createTextures = true
 }
 
-// render is called by service loop
+// render is called by service loop.
 func (win *winPlayScr) render() {
 	if !win.open {
 		return

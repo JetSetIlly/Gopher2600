@@ -66,7 +66,7 @@ const httpLogging = false
 
 // add a single byte to the send buffer, capping the length of the buffer at
 // the sendBufferCap value. if the "send" flag is true then the buffer is sent
-// over the network. the function will not wait for the network activity
+// over the network. the function will not wait for the network activity.
 func (n *network) send(data uint8, send bool) {
 	if n.sendBuffer.Len() >= sendBufferCap {
 		logger.Log("plusrom", "send buffer is full")
@@ -140,7 +140,7 @@ func (n *network) send(data uint8, send bool) {
 }
 
 // getResponse is called whenever recv() and recvRemaining() is called. it
-// checks for a new HTTP responses and adds the response to the receive buffer
+// checks for a new HTTP responses and adds the response to the receive buffer.
 func (n *network) getResponse() {
 	select {
 	case r := <-n.respChan:
@@ -174,13 +174,13 @@ func (n *network) getResponse() {
 	}
 }
 
-// the number of bytes in the receive buffer. checks for network response
+// the number of bytes in the receive buffer. checks for network response.
 func (n *network) recvRemaining() int {
 	n.getResponse()
 	return n.recvBuffer.Len()
 }
 
-// return the next byte in the receive buffer. returns 0 if buffer is empty
+// return the next byte in the receive buffer. returns 0 if buffer is empty.
 func (n *network) recv() uint8 {
 	n.getResponse()
 
@@ -195,18 +195,18 @@ func (n *network) recv() uint8 {
 	return b
 }
 
-// CopyRecvBuffer makes a copy of the bytes in the receive buffer
+// CopyRecvBuffer makes a copy of the bytes in the receive buffer.
 func (cart *PlusROM) CopyRecvBuffer() []uint8 {
 	return cart.net.recvBuffer.Bytes()
 }
 
-// CopySendBuffer makes a copy of the bytes in the send buffer
+// CopySendBuffer makes a copy of the bytes in the send buffer.
 func (cart *PlusROM) CopySendBuffer() []uint8 {
 	return cart.net.sendBuffer.Bytes()
 }
 
 // SetRecvBuffer sets the entry that is idx places from the front with the
-// specified value
+// specified value.
 func (cart *PlusROM) SetRecvBuffer(idx int, data uint8) {
 	c := cart.CopyRecvBuffer()
 	c[idx] = data
@@ -214,7 +214,7 @@ func (cart *PlusROM) SetRecvBuffer(idx int, data uint8) {
 }
 
 // SetSendBuffer sets the entry that is idx places from the front with the
-// specified value
+// specified value.
 func (cart *PlusROM) SetSendBuffer(idx int, data uint8) {
 	c := cart.CopySendBuffer()
 	c[idx] = data

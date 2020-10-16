@@ -19,10 +19,10 @@ import (
 	"fmt"
 )
 
-// Field identifies which part of the disassmbly entry is of interest
+// Field identifies which part of the disassmbly entry is of interest.
 type Field int
 
-// List of valid fields
+// List of valid fields.
 const (
 	FldLabel Field = iota
 	FldBytecode
@@ -45,18 +45,18 @@ const (
 	widthNoLabel = 0
 
 	// the operand field can be numeric or symbolic. in the case of
-	// non-symbolic the following value is used
+	// non-symbolic the following value is used.
 	widthNonSymbolicOperand = 3
 
 	// the operand field is decorated according to the addressing mode of the
 	// entry. the following value is added to the width value of both symbolic
-	// and non-symbolic operand values, to give the minimum required width
+	// and non-symbolic operand values, to give the minimum required width.
 	widthAddressingModeDecoration = 4
 
-	// the width of the notes field is not recorded
+	// the width of the notes field is not recorded.
 )
 
-// GetField returns the formatted field from the speficied Entry
+// GetField returns the formatted field from the speficied Entry.
 func (e *Entry) GetField(field Field) string {
 	var s string
 	var w int

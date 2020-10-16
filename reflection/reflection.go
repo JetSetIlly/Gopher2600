@@ -23,12 +23,12 @@ import (
 )
 
 // Renderer implementations accepts ReflectPixel values and associates it in
-// some way with the moste recent television signal
+// some way with the moste recent television signal.
 type Renderer interface {
 	Reflect(LastResult) error
 }
 
-// Broker implementations can identify a reflection.Renderer
+// Broker implementations can identify a reflection.Renderer.
 type Broker interface {
 	GetReflectionRenderer() Renderer
 }

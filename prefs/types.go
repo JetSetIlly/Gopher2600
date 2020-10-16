@@ -24,10 +24,10 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Value represents the actual Go preference value
+// Value represents the actual Go preference value.
 type Value interface{}
 
-// types support by the prefs system must implement the pref interface
+// types support by the prefs system must implement the pref interface.
 type pref interface {
 	fmt.Stringer
 	Set(value Value) error
@@ -77,7 +77,7 @@ func (p *Bool) Set(v Value) error {
 	return nil
 }
 
-// Get returns the raw pref value
+// Get returns the raw pref value.
 func (p *Bool) Get() Value {
 	p.crit.Lock()
 	defer p.crit.Unlock()
@@ -142,7 +142,7 @@ func (p *String) Set(v Value) error {
 	return nil
 }
 
-// Get returns the raw pref value
+// Get returns the raw pref value.
 func (p *String) Get() Value {
 	p.crit.Lock()
 	defer p.crit.Unlock()
@@ -199,7 +199,7 @@ func (p *Int) Set(v Value) error {
 	return nil
 }
 
-// Get returns the raw pref value
+// Get returns the raw pref value.
 func (p *Int) Get() Value {
 	p.crit.Lock()
 	defer p.crit.Unlock()
@@ -243,7 +243,7 @@ func (p *Generic) String() string {
 	return p.get()
 }
 
-// Set triggers the set value procedure for the generic type
+// Set triggers the set value procedure for the generic type.
 func (p *Generic) Set(v Value) error {
 	p.crit.Lock()
 	defer p.crit.Unlock()

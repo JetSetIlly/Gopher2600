@@ -28,7 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// VCS struct is the main container for the emulated components of the VCS
+// VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
 	CPU  *cpu.CPU
 	Mem  *memory.VCSMemory
@@ -43,7 +43,7 @@ type VCS struct {
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play
-// !!TODO: option for random state on VCS creation
+// !!TODO: option for random state on VCS creation.
 func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
@@ -103,7 +103,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	return nil
 }
 
-// Reset emulates the reset switch on the console panel
+// Reset emulates the reset switch on the console panel.
 func (vcs *VCS) Reset() error {
 	vcs.Mem.Cart.Initialise()
 

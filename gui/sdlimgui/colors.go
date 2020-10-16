@@ -25,7 +25,7 @@ import (
 // the colors in the colors package need to be converted for use with imgui.
 type packedPalette []imgui.PackedColor
 
-// imguiColors defines all the colors used by the GUI
+// imguiColors defines all the colors used by the GUI.
 type imguiColors struct {
 	// default colors
 	MenuBarBg     imgui.Vec4

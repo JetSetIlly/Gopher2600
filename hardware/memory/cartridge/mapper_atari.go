@@ -90,12 +90,12 @@ func (cart atari) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart atari) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *atari) Initialise() {
 	// which bank should be the start bank? this has gone back and forth but
 	// the current thinking (by me) is that it should be the last bank in the
@@ -112,7 +112,7 @@ func (cart *atari) Initialise() {
 	}
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart atari) GetBank(addr uint16) mapper.BankInfo {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
@@ -120,7 +120,7 @@ func (cart atari) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 	if cart.ram != nil {
 		if addr >= 0x80 && addr <= 0xff {
@@ -130,7 +130,7 @@ func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 	return 0, false
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.ram != nil {
 		if addr <= 0x7f {
@@ -147,7 +147,7 @@ func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *atari) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -159,15 +159,15 @@ func (cart *atari) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *atari) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *atari) Step() {
 }
 
-// GetRAM implements the mapper.CartRAMBus interface
+// GetRAM implements the mapper.CartRAMBus interface.
 func (cart atari) GetRAM() []mapper.CartRAM {
 	if cart.ram == nil {
 		return nil
@@ -185,12 +185,12 @@ func (cart atari) GetRAM() []mapper.CartRAM {
 	return r
 }
 
-// PutRAM implements the mapper.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface.
 func (cart *atari) PutRAM(_ int, idx int, data uint8) {
 	cart.ram[idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart atari) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -235,12 +235,12 @@ func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart atari4k) NumBanks() int {
 	return 1
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -248,7 +248,7 @@ func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[0][addr], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -285,12 +285,12 @@ func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart atari2k) NumBanks() int {
 	return 1
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -298,7 +298,7 @@ func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[0][addr&0x07ff], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -336,12 +336,12 @@ func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart atari8k) NumBanks() int {
 	return 2
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -352,7 +352,7 @@ func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -365,7 +365,7 @@ func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return cart.atari.Write(addr, data, passive, poke)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
 		if passive {
@@ -381,7 +381,7 @@ func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari8k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -389,7 +389,7 @@ func (cart atari8k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
@@ -425,12 +425,12 @@ func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart atari16k) NumBanks() int {
 	return 4
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -441,7 +441,7 @@ func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -454,7 +454,7 @@ func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) er
 	return cart.atari.Write(addr, data, passive, poke)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ff9 {
 		if passive {
@@ -474,7 +474,7 @@ func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari16k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -484,7 +484,7 @@ func (cart atari16k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari16k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
@@ -520,12 +520,12 @@ func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart atari32k) NumBanks() int {
 	return 8
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
@@ -536,7 +536,7 @@ func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -549,7 +549,7 @@ func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) er
 	return cart.atari.Write(addr, data, passive, poke)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff4 && addr <= 0xffb {
 		if passive {
@@ -577,7 +577,7 @@ func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -590,7 +590,7 @@ func (cart atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari32k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }

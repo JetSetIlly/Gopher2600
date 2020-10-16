@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// MissileCopies maps missile copies values to descriptions of those values
+// MissileCopies maps missile copies values to descriptions of those values.
 var MissileCopies = []string{
 	"one copy",
 	"two copies [close]",
@@ -37,7 +37,7 @@ var MissileCopies = []string{
 	"one copy",
 }
 
-// MissileSizes maps missile sizes values to descriptions of those values
+// MissileSizes maps missile sizes values to descriptions of those values.
 var MissileSizes = []string{
 	"single width",
 	"double width",
@@ -116,7 +116,7 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 	return &ms, nil
 }
 
-// Label returns the label for the sprite
+// Label returns the label for the sprite.
 func (ms missileSprite) Label() string {
 	return ms.label
 }

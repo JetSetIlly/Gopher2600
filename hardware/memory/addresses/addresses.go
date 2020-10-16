@@ -16,13 +16,13 @@
 package addresses
 
 // Reset is the address where the reset address is stored
-// - used by VCS.Reset() and Disassembly module
+// - used by VCS.Reset() and Disassembly module.
 const Reset = uint16(0xfffc)
 
-// IRQ is the address where the interrupt address is stored
+// IRQ is the address where the interrupt address is stored.
 const IRQ = uint16(0xfffe)
 
-// TIAReadSymbols indexes all TIA read symbols by normalised address
+// TIAReadSymbols indexes all TIA read symbols by normalised address.
 var TIAReadSymbols = map[uint16]string{
 	// TIA
 	0x00: "CXM0P",
@@ -41,7 +41,7 @@ var TIAReadSymbols = map[uint16]string{
 	0x0d: "INPT5",
 }
 
-// RIOTReadSymbols indexes all RIOT read symbols by normalised address
+// RIOTReadSymbols indexes all RIOT read symbols by normalised address.
 var RIOTReadSymbols = map[uint16]string{
 	// RIOT
 	0x0280: "SWCHA",
@@ -52,7 +52,7 @@ var RIOTReadSymbols = map[uint16]string{
 	0x0285: "TIMINT",
 }
 
-// TIAWriteSymbols indexes all TIA write symbols by normalised address
+// TIAWriteSymbols indexes all TIA write symbols by normalised address.
 var TIAWriteSymbols = map[uint16]string{
 	0x00: "VSYNC",
 	0x01: "VBLANK",
@@ -101,7 +101,7 @@ var TIAWriteSymbols = map[uint16]string{
 	0x2C: "CXCLR",
 }
 
-// RIOTWriteSymbols indexes all RIOT write symbols by normalised address
+// RIOTWriteSymbols indexes all RIOT write symbols by normalised address.
 var RIOTWriteSymbols = map[uint16]string{
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
@@ -111,30 +111,30 @@ var RIOTWriteSymbols = map[uint16]string{
 	0x0297: "T1024T",
 }
 
-// ReadSymbols indexes all VCS read symbols by normalised address
+// ReadSymbols indexes all VCS read symbols by normalised address.
 var ReadSymbols = map[uint16]string{}
 
-// WriteSymbols indexes all VCS write symbols by normalised address
+// WriteSymbols indexes all VCS write symbols by normalised address.
 var WriteSymbols = map[uint16]string{}
 
 // ReadAddress indexes all VCS read addresses by canonical symbol.
 var ReadAddress = map[string]uint16{}
 
-// WriteAddress indexes all VCS write addresses by canonical symbol
+// WriteAddress indexes all VCS write addresses by canonical symbol.
 var WriteAddress = map[string]uint16{}
 
 // Read is a sparse array containing the canonical labels for VCS read
 // addresses. If the address indexes as empty string then the address is not
-// reabable
+// reabable.
 var Read []string
 
 // Write is a sparse array containing the canonical labels for VCS write
 // addresses. If the address indexes an empty string then the address is not
-// writable
+// writable.
 var Write []string
 
 // this init() function create the Read/Write arrays using the read/write maps
-// as a source
+// as a source.
 func init() {
 	// build ReadSymbols out of the TIA and RIOT canonical read maps
 	for k, v := range TIAReadSymbols {

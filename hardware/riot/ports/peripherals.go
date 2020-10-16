@@ -20,10 +20,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
-// PortID differentiates the different ports peripherals can be attached to
+// PortID differentiates the different ports peripherals can be attached to.
 type PortID int
 
-// List of defined IDs
+// List of defined IDs.
 const (
 	NoPortID  PortID = -1
 	Player0ID PortID = iota
@@ -70,7 +70,7 @@ type Peripheral interface {
 }
 
 // NewPeripheral defines the function signature for a creating a new
-// peripheral, suitable for use with AttachPloyer0() and AttachPlayer1()
+// peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
 type NewPeripheral func(PortID, PeripheralBus) Peripheral
 
 // PeripheralBus defines the memory operations required by peripherals. We keep

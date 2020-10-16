@@ -22,10 +22,10 @@ import (
 	"strings"
 )
 
-// GrepScope limits the scope of the search
+// GrepScope limits the scope of the search.
 type GrepScope int
 
-// List of available scopes
+// List of available scopes.
 const (
 	GrepMnemonic GrepScope = iota
 	GrepOperand

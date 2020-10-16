@@ -25,10 +25,10 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// MessageState records how incoming signals to the SaveKey will be interpreted
+// MessageState records how incoming signals to the SaveKey will be interpreted.
 type MessageState int
 
-// List of valid MessageState values
+// List of valid MessageState values.
 const (
 	Stopped MessageState = iota
 	Starting
@@ -37,10 +37,10 @@ const (
 	Data
 )
 
-// DataDirection indicates the direction of data flow between the VCS and the SaveKey
+// DataDirection indicates the direction of data flow between the VCS and the SaveKey.
 type DataDirection int
 
-// Valid DataDirection values
+// Valid DataDirection values.
 const (
 	Reading DataDirection = iota
 	Writing
@@ -80,7 +80,7 @@ type SaveKey struct {
 	EEPROM *EEPROM
 }
 
-// NewSaveKey is the preferred method of initialisation for the SaveKey type
+// NewSaveKey is the preferred method of initialisation for the SaveKey type.
 func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	sk := &SaveKey{
 		id:     id,
@@ -127,28 +127,28 @@ func (sk *SaveKey) String() string {
 	return s.String()
 }
 
-// Name implements the ports.Peripheral interface
+// Name implements the ports.Peripheral interface.
 func (sk *SaveKey) Name() string {
 	return "SaveKey"
 }
 
-// Reset implements the ports.Peripheral interface
+// Reset implements the ports.Peripheral interface.
 func (sk *SaveKey) Reset() {
 }
 
-// the active bits in the SWCHA value
+// the active bits in the SWCHA value.
 const (
 	maskSDA = 0b01000000
 	maskSCL = 0b10000000
 )
 
-// the bit sequence to indicate read/write data direction
+// the bit sequence to indicate read/write data direction.
 const (
 	writeSig = 0xa0
 	readSig  = 0xa1
 )
 
-// Update implements the ports.Peripheral interface
+// Update implements the ports.Peripheral interface.
 func (sk *SaveKey) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
@@ -181,7 +181,7 @@ func (sk *SaveKey) recvBit(v bool) bool {
 
 // return the next bit in the current byte. end is true if all bits in the
 // current byte has been exhausted. next call to sendBit() will use the next
-// byte in the EEPROM page
+// byte in the EEPROM page.
 func (sk *SaveKey) sendBit() (bit bool, end bool) {
 	if sk.BitsCt >= 8 {
 		sk.resetBits()
@@ -207,7 +207,7 @@ func (sk *SaveKey) resetBits() {
 	sk.BitsCt = 0
 }
 
-// Step implements the ports.Peripheral interface
+// Step implements the ports.Peripheral interface.
 func (sk *SaveKey) Step() {
 	// update i2c state
 	sk.SDA.tick(sk.swcha&maskSDA == maskSDA)
@@ -322,7 +322,7 @@ func (sk *SaveKey) Step() {
 	}
 }
 
-// HandleEvent implements the ports.Peripheral interface
+// HandleEvent implements the ports.Peripheral interface.
 func (sk *SaveKey) HandleEvent(_ ports.Event, _ ports.EventData) error {
 	return nil
 }

@@ -22,7 +22,7 @@ import (
 )
 
 // Polycounter counts from 0 to Limit. can be used to index a polycounter
-// table
+// table.
 type Polycounter struct {
 	numBits int
 	table   []string
@@ -30,7 +30,7 @@ type Polycounter struct {
 	max     int
 }
 
-// New is the preferred method of initialisation for the Polycounter type
+// New is the preferred method of initialisation for the Polycounter type.
 func New(numBits int) (*Polycounter, error) {
 	pcnt := &Polycounter{
 		numBits: numBits,
@@ -69,13 +69,13 @@ func (pcnt Polycounter) String() string {
 	return fmt.Sprintf("%s (%02d)", pcnt.ToBinary(), pcnt.count)
 }
 
-// Reset is a convenience function to reset count value to 0
+// Reset is a convenience function to reset count value to 0.
 func (pcnt *Polycounter) Reset() {
 	pcnt.count = 0
 }
 
 // Tick advances the Polycounter and resets when it reaches the limit.
-// returns true if counter has reset
+// returns true if counter has reset.
 func (pcnt *Polycounter) Tick() bool {
 	pcnt.count++
 	if pcnt.count >= pcnt.max {
@@ -92,12 +92,12 @@ func (pcnt *Polycounter) Count() int {
 	return pcnt.count
 }
 
-// ToBinary returns the bit pattern of the current polycounter value
+// ToBinary returns the bit pattern of the current polycounter value.
 func (pcnt *Polycounter) ToBinary() string {
 	return pcnt.table[pcnt.count]
 }
 
-// Match returns the index of the specified pattern
+// Match returns the index of the specified pattern.
 func (pcnt *Polycounter) Match(pattern string) (int, error) {
 	for i := 0; i < len(pcnt.table); i++ {
 		if pcnt.table[i] == pattern {

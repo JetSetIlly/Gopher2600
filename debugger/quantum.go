@@ -15,10 +15,10 @@
 
 package debugger
 
-// QuantumMode specifies the step granularity of the emulator
+// QuantumMode specifies the step granularity of the emulator.
 type QuantumMode int
 
-// List of valid QuantumModes
+// List of valid QuantumModes.
 const (
 	QuantumCPU QuantumMode = iota
 	QuantumVideo

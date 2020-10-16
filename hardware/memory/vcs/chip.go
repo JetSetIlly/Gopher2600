@@ -24,7 +24,7 @@ import (
 )
 
 // ChipMemory defines the information for and operations allowed for those
-// memory areas accessed by the VCS chips as well as the CPU
+// memory areas accessed by the VCS chips as well as the CPU.
 type ChipMemory struct {
 	bus.DebugBus
 	bus.ChipBus
@@ -66,7 +66,7 @@ func (area ChipMemory) Poke(address uint16, value uint8) error {
 	return nil
 }
 
-// ChipRead is an implementation of memory.ChipBus
+// ChipRead is an implementation of memory.ChipBus.
 func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
@@ -76,12 +76,12 @@ func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 	return false, bus.ChipData{}
 }
 
-// ChipWrite is an implementation of memory.ChipBus
+// ChipWrite is an implementation of memory.ChipBus.
 func (area *ChipMemory) ChipWrite(reg addresses.ChipRegister, data uint8) {
 	area.memory[reg] = data
 }
 
-// LastReadRegister is an implementation of memory.ChipBus
+// LastReadRegister is an implementation of memory.ChipBus.
 func (area *ChipMemory) LastReadRegister() string {
 	r := area.readRegister
 	area.readRegister = ""

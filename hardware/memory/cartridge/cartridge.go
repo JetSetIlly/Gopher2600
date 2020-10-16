@@ -29,7 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// Cartridge defines the information and operations for a VCS cartridge
+// Cartridge defines the information and operations for a VCS cartridge.
 type Cartridge struct {
 	bus.DebugBus
 	bus.CPUBus
@@ -41,13 +41,13 @@ type Cartridge struct {
 	mapper mapper.CartMapper
 }
 
-// Sentinal error returned if operation is on the ejected cartridge type
+// Sentinal error returned if operation is on the ejected cartridge type.
 const (
 	Ejected = "cartridge ejected"
 )
 
 // NewCartridge is the preferred method of initialisation for the cartridge
-// type
+// type.
 func NewCartridge() *Cartridge {
 	cart := &Cartridge{}
 	cart.Eject()
@@ -58,12 +58,12 @@ func (cart Cartridge) String() string {
 	return cart.Filename
 }
 
-// MappingSummary returns a current string summary of the mapper
+// MappingSummary returns a current string summary of the mapper.
 func (cart Cartridge) MappingSummary() string {
 	return cart.mapper.String()
 }
 
-// ID returns the cartridge mapping ID
+// ID returns the cartridge mapping ID.
 func (cart Cartridge) ID() string {
 	return cart.mapper.ID()
 }
@@ -79,7 +79,7 @@ func (cart *Cartridge) Poke(addr uint16, data uint8) error {
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
-// cartridge memory. It differs from Poke in that respect
+// cartridge memory. It differs from Poke in that respect.
 func (cart *Cartridge) Patch(offset int, data uint8) error {
 	return cart.mapper.Patch(offset, data)
 }
@@ -103,14 +103,14 @@ func (cart *Cartridge) Write(addr uint16, data uint8) error {
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
-// attaches a bank of empty memory - for convenience of the debugger
+// attaches a bank of empty memory - for convenience of the debugger.
 func (cart *Cartridge) Eject() {
 	cart.Filename = "ejected"
 	cart.Hash = ""
 	cart.mapper = newEjected()
 }
 
-// IsEjected returns true if no cartridge is attached
+// IsEjected returns true if no cartridge is attached.
 func (cart *Cartridge) IsEjected() bool {
 	_, ok := cart.mapper.(*ejected)
 	return ok
@@ -240,12 +240,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	return nil
 }
 
-// Initialise the cartridge
+// Initialise the cartridge.
 func (cart *Cartridge) Initialise() {
 	cart.mapper.Initialise()
 }
 
-// NumBanks returns the number of banks in the catridge
+// NumBanks returns the number of banks in the catridge.
 func (cart Cartridge) NumBanks() int {
 	return cart.mapper.NumBanks()
 }
@@ -282,7 +282,7 @@ func (cart Cartridge) Step() {
 }
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
-// if cartridge has no registers
+// if cartridge has no registers.
 func (cart Cartridge) GetRegistersBus() mapper.CartRegistersBus {
 	if bus, ok := cart.mapper.(mapper.CartRegistersBus); ok {
 		return bus
@@ -291,7 +291,7 @@ func (cart Cartridge) GetRegistersBus() mapper.CartRegistersBus {
 }
 
 // GetStaticBus returns interface to the static area of the cartridge or nil if
-// cartridge has no static area
+// cartridge has no static area.
 func (cart Cartridge) GetStaticBus() mapper.CartStaticBus {
 	if bus, ok := cart.mapper.(mapper.CartStaticBus); ok {
 		return bus
@@ -299,7 +299,7 @@ func (cart Cartridge) GetStaticBus() mapper.CartStaticBus {
 	return nil
 }
 
-// GetRAMbus returns interface to ram busor  nil if catridge contains no RAM
+// GetRAMbus returns interface to ram busor  nil if catridge contains no RAM.
 func (cart Cartridge) GetRAMbus() mapper.CartRAMbus {
 	if bus, ok := cart.mapper.(mapper.CartRAMbus); ok {
 		return bus
@@ -307,7 +307,7 @@ func (cart Cartridge) GetRAMbus() mapper.CartRAMbus {
 	return nil
 }
 
-// GetTapeBus returns interface to a tape bus or nil if catridge has no tape
+// GetTapeBus returns interface to a tape bus or nil if catridge has no tape.
 func (cart Cartridge) GetTapeBus() mapper.CartTapeBus {
 	if bus, ok := cart.mapper.(mapper.CartTapeBus); ok {
 		return bus
@@ -316,7 +316,7 @@ func (cart Cartridge) GetTapeBus() mapper.CartTapeBus {
 }
 
 // GetContainer returns interface to cartridge container or nil if cartridge is
-// not in a container
+// not in a container.
 func (cart Cartridge) GetContainer() mapper.CartContainer {
 	if cc, ok := cart.mapper.(mapper.CartContainer); ok {
 		return cc
@@ -325,7 +325,7 @@ func (cart Cartridge) GetContainer() mapper.CartContainer {
 }
 
 // GetCartHotspots returns interface to hotspots bus or nil if cartridge has no
-// hotspots it wants to report
+// hotspots it wants to report.
 func (cart Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 	if cc, ok := cart.mapper.(mapper.CartHotspotsBus); ok {
 		return cc

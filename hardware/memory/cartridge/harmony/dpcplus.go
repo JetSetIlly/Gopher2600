@@ -58,7 +58,7 @@ type dpcPlus struct {
 	fileSize    int
 }
 
-// NewDPCplus is the preferred method of initialisation for the harmony type
+// NewDPCplus is the preferred method of initialisation for the harmony type.
 func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	const armSize = 3072
 	const dataSize = 4096
@@ -556,7 +556,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ffb {
 		if passive {
@@ -632,7 +632,7 @@ func (cart *dpcPlus) Step() {
 	}
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart dpcPlus) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -644,7 +644,7 @@ func (cart dpcPlus) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart dpcPlus) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -696,7 +696,7 @@ func (cart dpcPlus) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},

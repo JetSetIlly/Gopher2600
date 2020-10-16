@@ -50,7 +50,7 @@ const (
 
 // VideoRegression is the simplest regression type. it works by running the
 // emulation for N frames and the video recorded at that point. Regression
-// passes if subsequenct runs produce the same video value
+// passes if subsequenct runs produce the same video value.
 type VideoRegression struct {
 	CartLoad     cartridgeloader.Loader
 	TVtype       string
@@ -118,12 +118,12 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	return reg, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (reg VideoRegression) ID() string {
 	return videoEntryID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (reg VideoRegression) String() string {
 	s := strings.Builder{}
 
@@ -150,7 +150,7 @@ func (reg VideoRegression) String() string {
 	return s.String()
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.CartLoad.Filename,
@@ -166,7 +166,7 @@ func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (reg VideoRegression) CleanUp() error {
 	err := os.Remove(reg.stateFile)
 	if _, ok := err.(*os.PathError); ok {
@@ -175,7 +175,7 @@ func (reg VideoRegression) CleanUp() error {
 	return err
 }
 
-// regress implements the regression.Regressor interface
+// regress implements the regression.Regressor interface.
 func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
 	output.Write([]byte(msg))
 

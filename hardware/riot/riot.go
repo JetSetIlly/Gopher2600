@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
-// RIOT represents the PIA 6532 found in the VCS
+// RIOT represents the PIA 6532 found in the VCS.
 type RIOT struct {
 	mem bus.ChipBus
 
@@ -31,7 +31,7 @@ type RIOT struct {
 	Ports *ports.Ports
 }
 
-// NewRIOT is the preferred method of initialisation for the RIOT type
+// NewRIOT is the preferred method of initialisation for the RIOT type.
 func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) (*RIOT, error) {
 	riot := &RIOT{
 		mem: mem,
@@ -55,7 +55,7 @@ func (riot RIOT) String() string {
 }
 
 // UpdateRIOT checks for the most recent write by the CPU to the RIOT memory
-// registers
+// registers.
 func (riot *RIOT) UpdateRIOT() {
 	ok, data := riot.mem.ChipRead()
 	if !ok {
@@ -70,7 +70,7 @@ func (riot *RIOT) UpdateRIOT() {
 	_ = riot.Ports.Update(data)
 }
 
-// Step moves the state of the RIOT forward one video cycle
+// Step moves the state of the RIOT forward one video cycle.
 func (riot *RIOT) Step() {
 	riot.UpdateRIOT()
 	riot.Timer.Step()

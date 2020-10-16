@@ -292,7 +292,7 @@ func (win *winDbgScr) draw() {
 	imgui.End()
 }
 
-// called from within a win.scr.crit.section Lock()
+// called from within a win.scr.crit.section Lock().
 func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	// get mouse position and transform
 	mp := imgui.MousePos().Minus(mouseOrigin)
@@ -420,7 +420,7 @@ func (win *winDbgScr) resize() {
 	win.createTextures = true
 }
 
-// render is called by service loop
+// render is called by service loop.
 func (win *winDbgScr) render() {
 	var pixels *image.RGBA
 	var overlayPixels *image.RGBA

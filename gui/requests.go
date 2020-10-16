@@ -18,7 +18,7 @@ package gui
 import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 
 // FeatureReq is used to request the setting of a gui attribute
-// eg. toggling the overlay
+// eg. toggling the overlay.
 type FeatureReq string
 
 // List of valid feature requests. argument must be of the type specified or
@@ -29,12 +29,12 @@ type FeatureReq string
 // be satisfied depending other conditions in the GUI.
 const (
 	// visibility can be interpreted by the gui implementation in different
-	// ways. at it's simplest it should set the visibility of the TV screen
+	// ways. at it's simplest it should set the visibility of the TV screen.
 	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
 	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
 
 	// the following requests should set or toggle visual elements of the
-	// debugger
+	// debugger.
 	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
 	ReqToggleDbgColors FeatureReq = "ReqToggleDbgColors" // none
 	ReqSetCropping     FeatureReq = "ReqSetCropping"     // bool
@@ -47,16 +47,16 @@ const (
 	ReqDecScale        FeatureReq = "ReqDecScale"        // none
 
 	// pause is set when the debugger has paused it's loop. the gui can then
-	// present information differently as necessary
+	// present information differently as necessary.
 	ReqSetPause FeatureReq = "ReqSetPause" // bool
 
 	// the add VCS request is used to associate the gui with an emulated VCS.
 	// a debugger does not need to send this request if it already sends a
-	// ReqAddDebugger request (which it should)
+	// ReqAddDebugger request (which it should).
 	ReqAddVCS FeatureReq = "ReqAddVCS" // *hardware.VCS
 
 	// the add debugger request must be made by the debugger if debug access to
-	// the the machine is required by the GUI
+	// the the machine is required by the GUI.
 	ReqAddDebugger FeatureReq = "ReqAddDebugger" // *debugger.Debugger
 
 	// the event channel is used to by the GUI implementation to send
@@ -67,26 +67,26 @@ const (
 
 	// playmode is called whenever the play/debugger looper is changed. like
 	// all other requests this may not do anything, depending on the GUI
-	// specifics
+	// specifics.
 	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
 
 	// trigger a save preferences event. usually performed before gui is
-	// destroyed or before some other destructive action
+	// destroyed or before some other destructive action.
 	ReqSavePrefs FeatureReq = "ReqSavePrefs" // none
 
-	// triggered when cartridge is being change
+	// triggered when cartridge is being change.
 	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
 
-	// special request for PlusROM cartridges
+	// special request for PlusROM cartridges.
 	ReqPlusROMFirstInstallation = "ReqPlusROMFirstInstallation" // ReqPlusROMFirstInstallation
 
 	// ------------------------------------------------------
-	// the following requests are deprecated
+	// the following requests are deprecated.
 	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
 )
 
 // PlusROMFirstInstallation is used to pass information to the GUI as part of
-// the request
+// the request.
 type PlusROMFirstInstallation struct {
 	Finish chan error
 	Cart   *plusrom.PlusROM

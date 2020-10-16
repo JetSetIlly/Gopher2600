@@ -24,13 +24,13 @@ import (
 )
 
 // the length of the buffer we're using isn't really important. that said, it
-// needs to be at least sha1.Size bytes in length
+// needs to be at least sha1.Size bytes in length.
 const audioBufferLength = 1024 + sha1.Size
 
 // to allow us to create digests on audio streams longer than
 // audioBufferLength, we'll stuff the previous digest value into the first part
 // of the buffer array and make sure we include it when we create the next
-// digest value
+// digest value.
 const audioBufferStart = sha1.Size
 
 // Audio is an implementation of the television.AudioMixer interface with an
@@ -46,7 +46,7 @@ type Audio struct {
 	bufferCt int
 }
 
-// NewAudio is the preferred method of initialisation for the Audio2Wav type
+// NewAudio is the preferred method of initialisation for the Audio2Wav type.
 func NewAudio(tv television.Television) (*Audio, error) {
 	dig := &Audio{Television: tv}
 
@@ -60,19 +60,19 @@ func NewAudio(tv television.Television) (*Audio, error) {
 	return dig, nil
 }
 
-// Hash implements digest.Digest interface
+// Hash implements digest.Digest interface.
 func (dig Audio) Hash() string {
 	return fmt.Sprintf("%x", dig.digest)
 }
 
-// ResetDigest implements digest.Digest interface
+// ResetDigest implements digest.Digest interface.
 func (dig *Audio) ResetDigest() {
 	for i := range dig.digest {
 		dig.digest[i] = 0
 	}
 }
 
-// SetAudio implements the television.AudioMixer interface
+// SetAudio implements the television.AudioMixer interface.
 func (dig *Audio) SetAudio(audioData uint8) error {
 	dig.buffer[dig.bufferCt] = audioData
 
@@ -95,7 +95,7 @@ func (dig *Audio) flushAudio() error {
 	return nil
 }
 
-// EndMixing implements the television.AudioMixer interface
+// EndMixing implements the television.AudioMixer interface.
 func (dig *Audio) EndMixing() error {
 	return nil
 }

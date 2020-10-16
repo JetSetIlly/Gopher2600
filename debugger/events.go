@@ -93,7 +93,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	return err
 }
 
-// returns true if the terminal needs reading
+// returns true if the terminal needs reading.
 func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 	var err error
 

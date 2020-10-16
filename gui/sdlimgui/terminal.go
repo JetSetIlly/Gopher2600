@@ -65,26 +65,26 @@ func newTerm() *term {
 	}
 }
 
-// Initialise implements the terminal.Terminal interface
+// Initialise implements the terminal.Terminal interface.
 func (trm *term) Initialise() error {
 	return nil
 }
 
-// CleanUp implements the terminal.Terminal interface
+// CleanUp implements the terminal.Terminal interface.
 func (trm *term) CleanUp() {
 }
 
-// RegisterTabCompletion implements the terminal.Terminal interface
+// RegisterTabCompletion implements the terminal.Terminal interface.
 func (trm *term) RegisterTabCompletion(tc terminal.TabCompletion) {
 	trm.tabCompletion = tc
 }
 
-// Silence implements the terminal.Terminal interface
+// Silence implements the terminal.Terminal interface.
 func (trm *term) Silence(silenced bool) {
 	trm.silenced = silenced
 }
 
-// TermPrintLine implements the terminal.Output interface
+// TermPrintLine implements the terminal.Output interface.
 func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	if trm.silenced && style != terminal.StyleError {
 		return
@@ -104,7 +104,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	trm.outputChan <- terminalOutput{style: style, text: s}
 }
 
-// TermRead implements the terminal.Input interface
+// TermRead implements the terminal.Input interface.
 func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	trm.promptChan <- prompt
 
@@ -139,14 +139,14 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 	}
 }
 
-// TermRead implements the terminal.Input interface
+// TermRead implements the terminal.Input interface.
 func (trm *term) TermReadCheck() bool {
 	// report on the number of pending items in inputChan and sideChan. if
 	// either of these have events waiting then that counts as true
 	return len(trm.inputChan) > 0 || len(trm.sideChan) > 0
 }
 
-// IsInteractive implements the terminal.Input interface
+// IsInteractive implements the terminal.Input interface.
 func (trm *term) IsInteractive() bool {
 	return true
 }
@@ -157,7 +157,7 @@ func (trm *term) IsInteractive() bool {
 //
 // to achieve this functionality, the terminal has a side-channel to which a
 // complete string is pushed (without a newline character please). the
-// pushCommand() is a conveniently placed function to do this
+// pushCommand() is a conveniently placed function to do this.
 func (trm *term) pushCommand(input string) {
 	// there shouldn't be a problem with channel blocking even though we're
 	// issuing and consuming on the same thread. if there is however, we can

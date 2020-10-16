@@ -168,13 +168,13 @@ type AudioMixer interface {
 	EndMixing() error
 }
 
-// ColorSignal represents the signal that is sent from the VCS to the
+// ColorSignal represents the signal that is sent from the VCS to the.
 type ColorSignal int
 
-// VideoBlack is the PixelSignal value that indicates no VCS pixel is to be shown
+// VideoBlack is the PixelSignal value that indicates no VCS pixel is to be shown.
 const VideoBlack ColorSignal = -1
 
-// SignalAttributes represents the data sent to the television
+// SignalAttributes represents the data sent to the television.
 type SignalAttributes struct {
 	VSync     bool
 	VBlank    bool
@@ -205,10 +205,10 @@ func (a SignalAttributes) String() string {
 }
 
 // StateReq is used to identify which television attribute is being asked
-// with the GetState() function
+// with the GetState() function.
 type StateReq int
 
-// List of valid state requests
+// List of valid state requests.
 const (
 	ReqFramenum StateReq = iota
 	ReqScanline

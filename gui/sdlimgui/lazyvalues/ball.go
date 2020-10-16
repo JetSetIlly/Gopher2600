@@ -17,7 +17,7 @@ package lazyvalues
 
 import "sync/atomic"
 
-// LazyBall lazily accesses ball information from the emulator
+// LazyBall lazily accesses ball information from the emulator.
 type LazyBall struct {
 	val *LazyValues
 

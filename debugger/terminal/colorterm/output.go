@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
 )
 
-// TermPrintLine implements the terminal.Output interface
+// TermPrintLine implements the terminal.Output interface.
 func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	if ct.silenced && style != terminal.StyleError {
 		return

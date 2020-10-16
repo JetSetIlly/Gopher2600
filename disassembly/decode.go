@@ -127,7 +127,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 }
 
 // jmpTargets returns a list of banks that a JMP or JSR target address may
-// feasibly be in
+// feasibly be in.
 func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
 	l := make([]int, 0, len(copiedBanks))
 

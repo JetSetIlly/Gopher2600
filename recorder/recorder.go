@@ -101,7 +101,7 @@ func (rec *Recorder) End() error {
 	return nil
 }
 
-// RecordEvent implements the ports.EventRecorder interface
+// RecordEvent implements the ports.EventRecorder interface.
 func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports.EventData) error {
 	var err error
 

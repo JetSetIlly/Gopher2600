@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// Table is the master symbols table for the loaded programme
+// Table is the master symbols table for the loaded programme.
 type Symbols struct {
 	// the master table is made up of three sub-tables
 	Label *Table
@@ -100,7 +100,7 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	}
 }
 
-// reSort() should be called whenever any of the sub-tables have been updated
+// reSort() should be called whenever any of the sub-tables have been updated.
 func (sym *Symbols) reSort() {
 	sort.Sort(sym.Label)
 	sort.Sort(sym.Read)

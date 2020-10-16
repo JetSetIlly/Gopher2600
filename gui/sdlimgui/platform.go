@@ -32,7 +32,7 @@ type platform struct {
 	time   uint64
 }
 
-// newPlatform is the preferred method of initialisation for the platform type
+// newPlatform is the preferred method of initialisation for the platform type.
 func newPlatform(img *SdlImgui) (*platform, error) {
 	runtime.LockOSThread()
 

@@ -26,7 +26,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// SdlDebug is a simple SDL implementation of the television.PixelRenderer interfac
+// SdlDebug is a simple SDL implementation of the television.PixelRenderer interfac.
 type SdlDebug struct {
 	television.Television
 
@@ -161,7 +161,7 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	return scr, nil
 }
 
-// Destroy implements GuiCreator interface
+// Destroy implements GuiCreator interface.
 func (scr *SdlDebug) Destroy(output io.Writer) {
 	scr.overlay.destroy(output)
 	scr.textures.destroy(output)
@@ -177,7 +177,7 @@ func (scr *SdlDebug) Destroy(output io.Writer) {
 	}
 }
 
-// show or hide window
+// show or hide window.
 func (scr SdlDebug) showWindow(show bool) {
 	if show {
 		scr.window.Show()
@@ -187,7 +187,7 @@ func (scr SdlDebug) showWindow(show bool) {
 }
 
 // the desired window width is different depending on whether the frame is
-// cropped or uncropped
+// cropped or uncropped.
 func (scr SdlDebug) windowWidth() (int32, float32) {
 	spec, _ := scr.GetSpec()
 	scale := scr.pixelScale * pixelWidth * spec.AspectBias
@@ -200,7 +200,7 @@ func (scr SdlDebug) windowWidth() (int32, float32) {
 }
 
 // the desired window height is different depending on whether the frame is
-// cropped or uncropped
+// cropped or uncropped.
 func (scr SdlDebug) windowHeight() (int32, float32) {
 	if scr.cropped {
 		return int32(float32(scr.scanlines) * scr.pixelScale), scr.pixelScale
@@ -210,7 +210,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 	return int32(float32(spec.ScanlinesTotal) * scr.pixelScale), scr.pixelScale
 }
 
-// use scale of -1 to reapply existing scale value
+// use scale of -1 to reapply existing scale value.
 func (scr *SdlDebug) setWindow(scale float32) error {
 	if scale >= 0 {
 		scr.pixelScale = scale
@@ -243,7 +243,7 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 	return nil
 }
 
-// resize is the non-service-wrapped resize function
+// resize is the non-service-wrapped resize function.
 func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// new screen limits
 	scr.topScanline = topScanline
@@ -279,7 +279,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 
 // Resize implements television.PixelRenderer interface
 //
-// MUST NOT be called from #mainthread
+// MUST NOT be called from #mainthread.
 func (scr *SdlDebug) Resize(_ *television.Specification, topScanline, numScanlines int) error {
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
@@ -387,7 +387,7 @@ func (scr *SdlDebug) update() error {
 	return nil
 }
 
-// NewFrame implements television.PixelRenderer interface
+// NewFrame implements television.PixelRenderer interface.
 func (scr *SdlDebug) NewFrame(frameNum int, _ bool) error {
 	// the sdlplay version of this function does not wait for the error signal
 	// before continuing. we do so here (in the update() function) because if
@@ -406,7 +406,7 @@ func (scr *SdlDebug) NewFrame(frameNum int, _ bool) error {
 	return scr.textures.flip()
 }
 
-// SetPixel implements television.PixelRenderer interface
+// SetPixel implements television.PixelRenderer interface.
 func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// handle VBLANK by setting pixels to black
 	if vblank {
@@ -430,12 +430,12 @@ func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) erro
 	return nil
 }
 
-// GetReflectionRenderer implements the relfection.Broker interface
+// GetReflectionRenderer implements the relfection.Broker interface.
 func (scr *SdlDebug) GetReflectionRenderer() reflection.Renderer {
 	return scr
 }
 
-// Reflect implements the relfection.Renderer interface
+// Reflect implements the relfection.Renderer interface.
 func (scr *SdlDebug) Reflect(result reflection.LastResult) error {
 	col := reflection.PaletteElements[result.VideoElement]
 
@@ -463,14 +463,14 @@ func (scr *SdlDebug) Reflect(result reflection.LastResult) error {
 
 // NewScanline implements television.PixelRenderer interface
 //
-// UNUSED
+// UNUSED.
 func (scr *SdlDebug) NewScanline(scanline int) error {
 	return nil
 }
 
 // EndRendering implements television.PixelRenderer interface
 //
-// UNUSED
+// UNUSED.
 func (scr *SdlDebug) EndRendering() error {
 	return nil
 }

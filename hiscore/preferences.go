@@ -32,7 +32,7 @@ func (p *Preferences) String() string {
 	return p.dsk.String()
 }
 
-// newPreferences is the preferred method of initialisation for the Preferences type
+// newPreferences is the preferred method of initialisation for the Preferences type.
 func newPreferences() (*Preferences, error) {
 	p := &Preferences{}
 
@@ -58,12 +58,12 @@ func newPreferences() (*Preferences, error) {
 	return p, nil
 }
 
-// Load hiscore preferences from disk
+// Load hiscore preferences from disk.
 func (p *Preferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current hiscore preferences to disk
+// Save current hiscore preferences to disk.
 func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

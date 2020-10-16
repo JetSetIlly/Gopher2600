@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// targetValue represents the value that is to be monitored
+// targetValue represents the value that is to be monitored.
 type targetValue interface{}
 
 type target struct {
@@ -230,7 +230,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 }
 
 // a bank target is generated automatically by the breakpoints system and also
-// explicitly in parseTarget()
+// explicitly in parseTarget().
 func bankTarget(dbg *Debugger) *target {
 	return &target{
 		label: "Bank",

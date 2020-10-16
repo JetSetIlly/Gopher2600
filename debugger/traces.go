@@ -32,7 +32,7 @@ func (t tracer) String() string {
 	return t.ai.String()
 }
 
-// the list of currently defined traces in the system
+// the list of currently defined traces in the system.
 type traces struct {
 	dbg    *Debugger
 	vcsmem *memory.VCSMemory
@@ -41,7 +41,7 @@ type traces struct {
 	lastAddressAccessed uint16
 }
 
-// newTraces is the preferred method of initialisation for the traces type
+// newTraces is the preferred method of initialisation for the traces type.
 func newTraces(dbg *Debugger) *traces {
 	trc := &traces{
 		dbg:    dbg,
@@ -51,12 +51,12 @@ func newTraces(dbg *Debugger) *traces {
 	return trc
 }
 
-// clear all traces
+// clear all traces.
 func (trc *traces) clear() {
 	trc.traces = make([]tracer, 0, 10)
 }
 
-// drop a specific tracer by a position in the list
+// drop a specific tracer by a position in the list.
 func (trc *traces) drop(num int) error {
 	if len(trc.traces)-1 < num {
 		return curated.Errorf("trace #%d is not defined", num)
@@ -108,7 +108,7 @@ func (trc *traces) check() string {
 	return s.String()
 }
 
-// list currently defined traces
+// list currently defined traces.
 func (trc *traces) list() {
 	if len(trc.traces) == 0 {
 		trc.dbg.printLine(terminal.StyleFeedback, "no traces")

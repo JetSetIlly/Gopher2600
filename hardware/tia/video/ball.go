@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// BallSizes maps ball size values to descriptions of those sizes
+// BallSizes maps ball size values to descriptions of those sizes.
 var BallSizes = []string{
 	"single size",
 	"double size",
@@ -33,7 +33,7 @@ var BallSizes = []string{
 	"double-quad size",
 }
 
-// ballSizesBrief maps ball size values to brief descriptions of those sizes
+// ballSizesBrief maps ball size values to brief descriptions of those sizes.
 var ballSizesBrief = []string{
 	"",
 	"2x",
@@ -113,7 +113,7 @@ func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *b
 	return &bs, nil
 }
 
-// Label returns the label for the sprite
+// Label returns the label for the sprite.
 func (bs ballSprite) Label() string {
 	return bs.label
 }
@@ -389,7 +389,7 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 }
 
 // the delayed enable bit is copied from the first when the gfx register for
-// player 1 is updated with playerSprite.setGfxData()
+// player 1 is updated with playerSprite.setGfxData().
 func (bs *ballSprite) setEnableDelay() {
 	bs.EnabledDelay = bs.Enabled
 }

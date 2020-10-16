@@ -48,7 +48,7 @@ const (
 	colorClkGranThresh float32 = 1.0
 )
 
-// keeping track of the current throttle level
+// keeping track of the current throttle level.
 type throttleLevel int
 
 const (
@@ -129,18 +129,18 @@ func (lmtr *limiter) setFPS(fps float32) {
 // type has no GetActualFPS() function. Use the equivalent function from the
 // television implementation.
 //
-// *Use this in preference to SetFPS() from the television implementation*
+// *Use this in preference to SetFPS() from the television implementation*.
 func (lmtr *limiter) getReqFPS() float32 {
 	return lmtr.reqFrames
 }
 
-// Resize implements television.PixelRenderer
+// Resize implements television.PixelRenderer.
 func (lmtr *limiter) Resize(_ *television.Specification, topScanline int, visibleScanlines int) error {
 	lmtr.setFPS(-1)
 	return nil
 }
 
-// NewFrame implements television.PixelRenderer
+// NewFrame implements television.PixelRenderer.
 func (lmtr *limiter) NewFrame(_ int, _ bool) error {
 	if lmtr.throt != throtFrame {
 		return nil
@@ -148,7 +148,7 @@ func (lmtr *limiter) NewFrame(_ int, _ bool) error {
 	return lmtr.limit()
 }
 
-// NewScanline implements television.PixelRenderer
+// NewScanline implements television.PixelRenderer.
 func (lmtr *limiter) NewScanline(_ int) error {
 	if lmtr.throt != throtScanline {
 		return nil
@@ -156,7 +156,7 @@ func (lmtr *limiter) NewScanline(_ int) error {
 	return lmtr.limit()
 }
 
-// SetPixel implements television.PixelRenderer
+// SetPixel implements television.PixelRenderer.
 func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) error {
 	if lmtr.throt != throtColClock {
 		return nil
@@ -164,7 +164,7 @@ func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) erro
 	return lmtr.limit()
 }
 
-// EndRendering implements television.PixelRenderer
+// EndRendering implements television.PixelRenderer.
 func (lmtr *limiter) EndRendering() error {
 	lmtr.lmtr.Stop()
 	return nil

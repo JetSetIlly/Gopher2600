@@ -17,10 +17,10 @@ package instructions
 
 import "fmt"
 
-// AddressingMode describes the method data for the instruction should be received
+// AddressingMode describes the method data for the instruction should be received.
 type AddressingMode int
 
-// List of supported addressing modes
+// List of supported addressing modes.
 const (
 	Implied AddressingMode = iota
 	Immediate
@@ -40,27 +40,27 @@ const (
 	ZeroPageIndexedY // zpg,Y
 )
 
-// EffectCategory categorises an instruction by the effect it has
+// EffectCategory categorises an instruction by the effect it has.
 type EffectCategory int
 
-// List of effect categories
+// List of effect categories.
 const (
 	Read EffectCategory = iota
 	Write
 	RMW
 
 	// the following three effects have a variable effect on the program
-	// counter, depending on the instruction's precise operand
+	// counter, depending on the instruction's precise operand.
 
 	// flow consists of the Branch and JMP instructions. Branch instructions
-	// specifically can be distinguished by the AddressingMode
+	// specifically can be distinguished by the AddressingMode.
 	Flow
 
 	Subroutine
 	Interrupt
 )
 
-// Definition defines each instruction in the instruction set; one per instruction
+// Definition defines each instruction in the instruction set; one per instruction.
 type Definition struct {
 	OpCode         uint8
 	Mnemonic       string
@@ -79,7 +79,7 @@ func (defn Definition) String() string {
 	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }
 
-// IsBranch returns true if instruction is a branch instruction
+// IsBranch returns true if instruction is a branch instruction.
 func (defn Definition) IsBranch() bool {
 	return defn.AddressingMode == Relative && defn.Effect == Flow
 }

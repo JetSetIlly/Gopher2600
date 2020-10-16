@@ -25,7 +25,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// Service implements GuiCreator interface
+// Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
 	// run any outstanding feature requests
 	select {

@@ -19,7 +19,7 @@ import (
 	"fmt"
 )
 
-// Register is an array of of type bit, used for register representation
+// Register is an array of of type bit, used for register representation.
 type Register struct {
 	label string
 	value uint8
@@ -39,22 +39,22 @@ func NewAnonRegister(val uint8) Register {
 	return NewRegister(val, "")
 }
 
-// Label returns the registers label (or ID)
+// Label returns the registers label (or ID).
 func (r Register) Label() string {
 	return r.label
 }
 
-// returns value as a string in hexadecimal notation
+// returns value as a string in hexadecimal notation.
 func (r Register) String() string {
 	return fmt.Sprintf("%02x", r.value)
 }
 
-// Value returns the current value of the register
+// Value returns the current value of the register.
 func (r Register) Value() uint8 {
 	return r.value
 }
 
-// BitWidth returns the number of bits used to store the register value
+// BitWidth returns the number of bits used to store the register value.
 func (r Register) BitWidth() int {
 	return 8
 }
@@ -63,32 +63,32 @@ func (r Register) BitWidth() int {
 // useful when you want to use the register value in an address context.
 //
 // for example, the stack pointer stores page zero addresses - which can be
-// stored in just 8bits but which are always interpreted as 16bit value
+// stored in just 8bits but which are always interpreted as 16bit value.
 func (r Register) Address() uint16 {
 	return uint16(r.value)
 }
 
-// IsNegative checks the sign bit of the register
+// IsNegative checks the sign bit of the register.
 func (r Register) IsNegative() bool {
 	return r.value&0x80 == 0x80
 }
 
-// IsZero checks if register is zero
+// IsZero checks if register is zero.
 func (r Register) IsZero() bool {
 	return r.value == 0
 }
 
-// IsBitV returns the state of the second MSB
+// IsBitV returns the state of the second MSB.
 func (r Register) IsBitV() bool {
 	return r.value&0x40 == 0x40
 }
 
-// Load value into register
+// Load value into register.
 func (r *Register) Load(val uint8) {
 	r.value = val
 }
 
-// Add value to register. Returns carry and overflow states
+// Add value to register. Returns carry and overflow states.
 func (r *Register) Add(val uint8, carry bool) (rcarry bool, overflow bool) {
 	// note value of register before we change it
 	v := r.value
@@ -112,12 +112,12 @@ func (r *Register) Add(val uint8, carry bool) (rcarry bool, overflow bool) {
 	return rcarry, overflow
 }
 
-// Subtract value from register. Returns carry and overflow states
+// Subtract value from register. Returns carry and overflow states.
 func (r *Register) Subtract(val uint8, carry bool) (rcarry bool, overflow bool) {
 	return r.Add(^val, carry)
 }
 
-// AND value with register
+// AND value with register.
 func (r *Register) AND(val uint8) {
 	r.value &= val
 }
@@ -131,7 +131,7 @@ func (r *Register) ASL() bool {
 	return carry
 }
 
-// EOR (exclusive or) value with register
+// EOR (exclusive or) value with register.
 func (r *Register) EOR(val uint8) {
 	r.value ^= val
 }
@@ -145,7 +145,7 @@ func (r *Register) LSR() bool {
 	return carry
 }
 
-// ORA (non-exclusive or) value with register
+// ORA (non-exclusive or) value with register.
 func (r *Register) ORA(val uint8) {
 	r.value |= val
 }

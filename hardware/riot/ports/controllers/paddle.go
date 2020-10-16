@@ -24,14 +24,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// paddle values
+// paddle values.
 const (
 	paddleFire        = 0x00
 	paddleNoFire      = 0xf0
 	paddleSensitivity = 0.0075
 )
 
-// Paddle represents the VCS paddle controller type
+// Paddle represents the VCS paddle controller type.
 type Paddle struct {
 	id  ports.PortID
 	bus ports.PeripheralBus
@@ -59,7 +59,7 @@ type Paddle struct {
 
 // NewPaddle is the preferred method of initialisation for the Paddle type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
-// to ports.AttachPlayer0() and ports.AttachPlayer1()
+// to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pdl := &Paddle{
 		id:          id,
@@ -80,17 +80,17 @@ func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return pdl
 }
 
-// String implements the ports.Peripheral interface
+// String implements the ports.Peripheral interface.
 func (pdl *Paddle) String() string {
 	return fmt.Sprintf("paddle: button=%02x charge=%v resistance=%.02f", pdl.fire, pdl.charge, pdl.resistance)
 }
 
-// Name implements the ports.Peripheral interface
+// Name implements the ports.Peripheral interface.
 func (pdl *Paddle) Name() string {
 	return "Paddle"
 }
 
-// HandleEvent implements the ports.Peripheral interface
+// HandleEvent implements the ports.Peripheral interface.
 func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
@@ -113,7 +113,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	return nil
 }
 
-// Update implements the ports.Peripheral interface
+// Update implements the ports.Peripheral interface.
 func (pdl *Paddle) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "VBLANK":
@@ -130,7 +130,7 @@ func (pdl *Paddle) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step implements the ports.Peripheral interface
+// Step implements the ports.Peripheral interface.
 func (pdl *Paddle) Step() {
 	if pdl.charge < 255 {
 		pdl.ticks += pdl.sensitivity
@@ -148,7 +148,7 @@ func (pdl *Paddle) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface
+// Reset implements the ports.Peripheral interface.
 func (pdl *Paddle) Reset() {
 	pdl.charge = 0
 	pdl.ticks = 0.0

@@ -54,7 +54,7 @@ func (mem mockMem) assert(t *testing.T, address uint16, value uint8) {
 	}
 }
 
-// Clear sets all bytes in memory to zero
+// Clear sets all bytes in memory to zero.
 func (mem *mockMem) Clear() {
 	for i := 0; i < len(mem.internal); i++ {
 		mem.internal[i] = 0

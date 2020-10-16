@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
-// LazyDebugger lazily accesses Debugger information
+// LazyDebugger lazily accesses Debugger information.
 type LazyDebugger struct {
 	val *LazyValues
 

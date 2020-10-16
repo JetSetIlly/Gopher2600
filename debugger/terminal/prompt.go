@@ -29,10 +29,10 @@ type Prompt struct {
 	Recording bool
 }
 
-// PromptType identifies the type of information in the prompt
+// PromptType identifies the type of information in the prompt.
 type PromptType int
 
-// List of prompt types
+// List of prompt types.
 const (
 	PromptTypeCPUStep PromptType = iota
 	PromptTypeVideoStep

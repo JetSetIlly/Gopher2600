@@ -388,7 +388,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 //
 // - if script recording is active then recording is ended
 // - for non-interactive input set running flag to false immediately
-// - otherwise, prompt use for confirmation that the debugger should quit
+// - otherwise, prompt use for confirmation that the debugger should quit.
 func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// if script input is being capture by a scriptScribe then
 	// we the user interrupt event as a SCRIPT END

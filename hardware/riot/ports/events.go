@@ -19,26 +19,26 @@ package ports
 // either the panel or one of the two player ports.
 type Event string
 
-// List of defined events
+// List of defined events.
 const (
 	NoEvent Event = "NoEvent" // nil
 
-	// joystick
+	// joystick.
 	Fire  Event = "Fire"  // bool
 	Up    Event = "Up"    // bool
 	Down  Event = "Down"  // bool
 	Left  Event = "Left"  // bool
 	Right Event = "Right" // bool
 
-	// paddles
+	// paddles.
 	PaddleFire Event = "PaddleFire" // bool
 	PaddleSet  Event = "PaddleSet"  // float64
 
-	// keyboard
+	// keyboard.
 	KeyboardDown Event = "KeyboardDown" // rune
 	KeyboardUp   Event = "KeyboardUp"   // nil
 
-	// panel
+	// panel.
 	PanelSelect Event = "PanelSelect" // bool
 	PanelReset  Event = "PanelReset"  // bool
 

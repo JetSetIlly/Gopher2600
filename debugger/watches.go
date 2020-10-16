@@ -51,7 +51,7 @@ func (w watcher) String() string {
 	return fmt.Sprintf("%s %s%s", w.ai, event, val)
 }
 
-// the list of currently defined watches in the system
+// the list of currently defined watches in the system.
 type watches struct {
 	dbg    *Debugger
 	vcsmem *memory.VCSMemory
@@ -60,7 +60,7 @@ type watches struct {
 	lastAddressAccessed uint16
 }
 
-// newWatches is the preferred method of initialisation for the watches type
+// newWatches is the preferred method of initialisation for the watches type.
 func newWatches(dbg *Debugger) *watches {
 	wtc := &watches{
 		dbg:    dbg,
@@ -70,12 +70,12 @@ func newWatches(dbg *Debugger) *watches {
 	return wtc
 }
 
-// clear all watches
+// clear all watches.
 func (wtc *watches) clear() {
 	wtc.watches = make([]watcher, 0, 10)
 }
 
-// drop a specific watcher by a position in the list
+// drop a specific watcher by a position in the list.
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
 		return curated.Errorf("watch #%d is not defined", num)
@@ -92,7 +92,7 @@ func (wtc *watches) drop(num int) error {
 
 // check compares the current state of the emulation with every watch
 // condition. returns a string listing every condition that matches (separated
-// by \n)
+// by \n).
 func (wtc *watches) check(previousResult string) string {
 	if len(wtc.watches) == 0 {
 		return previousResult
@@ -147,7 +147,7 @@ func (wtc *watches) check(previousResult string) string {
 	return checkString.String()
 }
 
-// list currently defined watches
+// list currently defined watches.
 func (wtc *watches) list() {
 	if len(wtc.watches) == 0 {
 		wtc.dbg.printLine(terminal.StyleFeedback, "no watches")

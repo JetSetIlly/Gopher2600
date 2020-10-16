@@ -29,7 +29,7 @@ type IterateCart struct {
 }
 
 // NewCartIteration is the preferred method of initialisation for the
-// IterateCart type
+// IterateCart type.
 func (dsm *Disassembly) NewCartIteration() *IterateCart {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
@@ -42,7 +42,7 @@ func (dsm *Disassembly) NewCartIteration() *IterateCart {
 	return citr
 }
 
-// Start new iteration from the first bank
+// Start new iteration from the first bank.
 func (citr *IterateCart) Start() (int, bool) {
 	citr.dsm.crit.Lock()
 	defer citr.dsm.crit.Unlock()

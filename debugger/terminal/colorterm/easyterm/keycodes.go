@@ -15,7 +15,7 @@
 
 package easyterm
 
-// list of ASCII codes for non-alphanumeric characters
+// list of ASCII codes for non-alphanumeric characters.
 const (
 	KeyInterrupt      = 3  // end-of-text character
 	KeySuspend        = 26 // substitute character
@@ -26,7 +26,7 @@ const (
 	KeyCtrlH          = 8
 )
 
-// list of ASCII code for characters that can follow KeyEsc
+// list of ASCII code for characters that can follow KeyEsc.
 const (
 	EscDelete = 51
 	EscCursor = 91
@@ -34,7 +34,7 @@ const (
 	EscEnd    = 70
 )
 
-// list of ASCII code for characters that can follow EscCursor
+// list of ASCII code for characters that can follow EscCursor.
 const (
 	CursorUp       = 'A'
 	CursorDown     = 'B'

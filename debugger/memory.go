@@ -28,7 +28,7 @@ import (
 )
 
 // memoryDebug is a front-end to the real VCS memory. it allows addressing by
-// symbol name and uses the addressInfo type for easier presentation
+// symbol name and uses the addressInfo type for easier presentation.
 type memoryDebug struct {
 	mem     *memory.VCSMemory
 	symbols *symbols.Symbols
@@ -37,7 +37,7 @@ type memoryDebug struct {
 // memoryDebug functions all return an instance of addressInfo. this struct
 // contains everything you could possibly usefully know about an address. most
 // usefully perhaps, the String() function provides a normalised presentation
-// of information
+// of information.
 type addressInfo struct {
 	address       uint16
 	mappedAddress uint16
@@ -75,7 +75,7 @@ func (ai addressInfo) String() string {
 	return s.String()
 }
 
-// mapAddress allows addressing by symbols in addition to numerically
+// mapAddress allows addressing by symbols in addition to numerically.
 func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInfo {
 	ai := &addressInfo{read: read}
 
@@ -139,7 +139,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	return ai
 }
 
-// poke/peek error formatting, for consistency
+// poke/peek error formatting, for consistency.
 const (
 	pokeError = "cannot poke address (%v)"
 	peekError = "cannot peek address (%v)"

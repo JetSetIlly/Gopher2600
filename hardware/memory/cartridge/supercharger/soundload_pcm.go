@@ -30,7 +30,7 @@ import (
 //
 // "The stream is always formatted as 16bit (little endian) 2 channels even if
 // the source is single channel MP3. Thus, a sample always consists of 4
-// bytes."
+// bytes.".
 const mp3NumChannels = 2
 const mp3SourceBitDepth = 16
 
@@ -38,7 +38,7 @@ const mp3SourceBitDepth = 16
 // first as WAV data and then as MP3 data. returns an error if data doesn't
 // apepar to either.
 //
-// !!TODO: handle multiple mp3/wav files to create one single multiload tape
+// !!TODO: handle multiple mp3/wav files to create one single multiload tape.
 func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 	// try interpreting data as a WAV file
 	wavDec := wav.NewDecoder(&pcmDecoder{data: cl.Data})
@@ -100,13 +100,13 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 // pcmDecoder is an implementation of io.ReadSeeker.
 //
 // this is used by wav.NewDecoder() and mp3.NewDecoder() to load data from the
-// cartridgeloader data
+// cartridgeloader data.
 type pcmDecoder struct {
 	data   []uint8
 	offset int
 }
 
-// Read is an implementation of io.ReadSeeker
+// Read is an implementation of io.ReadSeeker.
 func (d *pcmDecoder) Read(p []byte) (int, error) {
 	// return EOF error if no more bytes to copy
 	if d.offset >= len(d.data) {
@@ -135,7 +135,7 @@ func (d *pcmDecoder) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-// Seek is an implementation of io.ReadSeeker
+// Seek is an implementation of io.ReadSeeker.
 func (d *pcmDecoder) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	case io.SeekStart:

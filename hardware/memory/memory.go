@@ -68,7 +68,7 @@ type VCSMemory struct {
 	RandomPins prefs.Bool
 }
 
-// NewVCSMemory is the preferred method of initialisation for VCSMemory
+// NewVCSMemory is the preferred method of initialisation for VCSMemory.
 func NewVCSMemory() (*VCSMemory, error) {
 	mem := &VCSMemory{}
 
@@ -80,7 +80,7 @@ func NewVCSMemory() (*VCSMemory, error) {
 	return mem, nil
 }
 
-// GetArea returns the actual memory of the specified area type
+// GetArea returns the actual memory of the specified area type.
 func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebugBus {
 	switch area {
 	case memorymap.TIA:
@@ -193,7 +193,7 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 	return area.(bus.CPUBus).Write(ma, data)
 }
 
-// Peek implements the DebugBus interface
+// Peek implements the DebugBus interface.
 func (mem *VCSMemory) Peek(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
@@ -202,7 +202,7 @@ func (mem *VCSMemory) Peek(address uint16) (uint8, error) {
 	return 0, curated.Errorf(bus.AddressError, address)
 }
 
-// Poke implements the DebugBus interface
+// Poke implements the DebugBus interface.
 func (mem *VCSMemory) Poke(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {

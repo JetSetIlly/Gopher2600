@@ -67,12 +67,12 @@ func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, 
 	return reg, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (reg PlaybackRegression) ID() string {
 	return playbackEntryID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (reg PlaybackRegression) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("[%s] %s", reg.ID(), path.Base(reg.Script)))
@@ -82,7 +82,7 @@ func (reg PlaybackRegression) String() string {
 	return s.String()
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (reg *PlaybackRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.Script,
@@ -91,7 +91,7 @@ func (reg *PlaybackRegression) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (reg PlaybackRegression) CleanUp() error {
 	err := os.Remove(reg.Script)
 	if _, ok := err.(*os.PathError); ok {
@@ -100,7 +100,7 @@ func (reg PlaybackRegression) CleanUp() error {
 	return err
 }
 
-// regress implements the regression.Regressor interface
+// regress implements the regression.Regressor interface.
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
 	output.Write([]byte(msg))
 

@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// Keyboard represents the VCS keyboard (or keypad) type
+// Keyboard represents the VCS keyboard (or keypad) type.
 type Keyboard struct {
 	id     ports.PortID
 	bus    ports.PeripheralBus
@@ -32,12 +32,12 @@ type Keyboard struct {
 	key    rune
 }
 
-// the value of keyboard.key when nothing is being pressed
+// the value of keyboard.key when nothing is being pressed.
 const noKey = ' '
 
 // NewKeyboard is the preferred method of initialisation for the Keyboard type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
-// to ports.AttachPlayer0() and ports.AttachPlayer1()
+// to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewKeyboard(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	key := &Keyboard{
 		id:  id,
@@ -55,17 +55,17 @@ func NewKeyboard(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return key
 }
 
-// String implements the ports.Peripheral interface
+// String implements the ports.Peripheral interface.
 func (key *Keyboard) String() string {
 	return fmt.Sprintf("keyboard: key=%v", key.key)
 }
 
-// Name implements the ports.Peripheral interface
+// Name implements the ports.Peripheral interface.
 func (key *Keyboard) Name() string {
 	return "Keyboard"
 }
 
-// HandleEvent implements the ports.Peripheral interface
+// HandleEvent implements the ports.Peripheral interface.
 func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
@@ -92,7 +92,7 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 	return nil
 }
 
-// Update implements the ports.Peripheral interface
+// Update implements the ports.Peripheral interface.
 func (key *Keyboard) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
@@ -194,14 +194,14 @@ func (key *Keyboard) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step implements the ports.Peripheral interface
+// Step implements the ports.Peripheral interface.
 func (key *Keyboard) Step() {
 	// keyboard does not write to SWCHx so unlike the Stick and Paddle
 	// controller types there is no need to ensure the SWCHx register retains
 	// its state if it is active
 }
 
-// Reset implements the ports.Peripheral interface
+// Reset implements the ports.Peripheral interface.
 func (key *Keyboard) Reset() {
 	key.key = noKey
 }

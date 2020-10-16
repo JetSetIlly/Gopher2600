@@ -21,13 +21,13 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Deserialiser extracts/converts fields from a SerialisedEntry
+// Deserialiser extracts/converts fields from a SerialisedEntry.
 type Deserialiser func(fields SerialisedEntry) (Entry, error)
 
-// SerialisedEntry is the Entry data represented as an array of strings
+// SerialisedEntry is the Entry data represented as an array of strings.
 type SerialisedEntry []string
 
-// Entry represents the generic entry in the database
+// Entry represents the generic entry in the database.
 type Entry interface {
 	// ID returns the string that is used to identify the entry type in
 	// the database

@@ -29,7 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// Check is a very rough and ready calculation of the emulator's performance
+// Check is a very rough and ready calculation of the emulator's performance.
 func Check(output io.Writer, profile bool, tv television.Television, runTime string, cartload cartridgeloader.Loader) error {
 	var err error
 

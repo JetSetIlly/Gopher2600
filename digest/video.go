@@ -61,12 +61,12 @@ func NewVideo(tv television.Television) (*Video, error) {
 	return dig, nil
 }
 
-// Hash implements digest.Digest interface
+// Hash implements digest.Digest interface.
 func (dig Video) Hash() string {
 	return fmt.Sprintf("%x", dig.digest)
 }
 
-// ResetDigest implements digest.Digest interface
+// ResetDigest implements digest.Digest interface.
 func (dig *Video) ResetDigest() {
 	for i := range dig.digest {
 		dig.digest[i] = 0
@@ -93,7 +93,7 @@ func (dig *Video) Resize(spec *television.Specification, _, _ int) error {
 	return nil
 }
 
-// NewFrame implements television.PixelRenderer interface
+// NewFrame implements television.PixelRenderer interface.
 func (dig *Video) NewFrame(frameNum int, _ bool) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the video data
@@ -106,12 +106,12 @@ func (dig *Video) NewFrame(frameNum int, _ bool) error {
 	return nil
 }
 
-// NewScanline implements television.PixelRenderer interface
+// NewScanline implements television.PixelRenderer interface.
 func (dig *Video) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements television.PixelRenderer interface
+// SetPixel implements television.PixelRenderer interface.
 func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
@@ -128,7 +128,7 @@ func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	return nil
 }
 
-// EndRendering implements television.PixelRenderer interface
+// EndRendering implements television.PixelRenderer interface.
 func (dig *Video) EndRendering() error {
 	return nil
 }

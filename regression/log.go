@@ -85,12 +85,12 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	return reg, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (reg LogRegression) ID() string {
 	return logEntryID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (reg LogRegression) String() string {
 	s := strings.Builder{}
 
@@ -101,7 +101,7 @@ func (reg LogRegression) String() string {
 	return s.String()
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (reg *LogRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.CartLoad.Filename,
@@ -114,12 +114,12 @@ func (reg *LogRegression) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (reg LogRegression) CleanUp() error {
 	return nil
 }
 
-// regress implements the regression.Regressor interface
+// regress implements the regression.Regressor interface.
 func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
 	// make sure logger is clear
 	logger.Clear()

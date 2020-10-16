@@ -17,10 +17,10 @@
 
 package test
 
-// AssertMainThread is a stub for when "assertions" build tag is missing
+// AssertMainThread is a stub for when "assertions" build tag is missing.
 func AssertMainThread() {
 }
 
-// AssertNonMainThread is a stub for when "assertions" build tag is missing
+// AssertNonMainThread is a stub for when "assertions" build tag is missing.
 func AssertNonMainThread() {
 }

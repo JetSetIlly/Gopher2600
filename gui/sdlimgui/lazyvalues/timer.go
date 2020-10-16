@@ -17,7 +17,7 @@ package lazyvalues
 
 import "sync/atomic"
 
-// LazyTimer lazily accesses RIOT timer information from the emulator
+// LazyTimer lazily accesses RIOT timer information from the emulator.
 type LazyTimer struct {
 	val *LazyValues
 

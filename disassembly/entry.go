@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// EntryLevel describes the level of the Entry
+// EntryLevel describes the level of the Entry.
 type EntryLevel int
 
 // List of valid EntryL in increasing reliability.
@@ -53,7 +53,7 @@ const (
 )
 
 // Entry is a disassambled instruction. The constituent parts of the
-// disassembly. It is a representation of execution.Instruction
+// disassembly. It is a representation of execution.Instruction.
 type Entry struct {
 	dsm *Disassembly
 
@@ -202,7 +202,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	return e, nil
 }
 
-// some fields in the disassembly entry are updated on every execution
+// some fields in the disassembly entry are updated on every execution.
 func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Result = result
 
@@ -271,7 +271,7 @@ func addrModeDecoration(operand string, mode instructions.AddressingMode) string
 }
 
 // absolute branch destination returns the branch operand as the address of the
-// branched PC, rather than an offset value
+// branched PC, rather than an offset value.
 func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 	// create a mock register with the instruction's address as the initial value
 	pc := registers.NewProgramCounter(addr)
@@ -293,7 +293,7 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 
 // Label implements the Stringer interface. The String() implementation
 // returns any address label for the entry. Use GetField() function for
-// a white-space padded label
+// a white-space padded label.
 type Label struct {
 	dsm    *Disassembly
 	result execution.Result
@@ -305,7 +305,7 @@ func (l Label) String() string {
 }
 
 // checkString returns the address label as a symbol (if a symbol is available)
-// if a symbol is not available then the the bool return value will be false
+// if a symbol is not available then the the bool return value will be false.
 func (l Label) checkString() (string, bool) {
 	if l.dsm.Prefs.Symbols.Get().(bool) {
 		ma, _ := memorymap.MapAddress(l.result.Address, true)
@@ -319,7 +319,7 @@ func (l Label) checkString() (string, bool) {
 
 // Operand implements the Stringer interface. The String() implementation
 // returns the operand (with symbols if appropriate). Use GetField function for
-// white-space padded operand string
+// white-space padded operand string.
 type Operand struct {
 	nonSymbolic string
 	dsm         *Disassembly
@@ -332,7 +332,7 @@ func (l Operand) String() string {
 }
 
 // checkString returns the operand as a symbol (if a symbol is available) if
-// a symbol is not available then the the bool return value will be false
+// a symbol is not available then the the bool return value will be false.
 func (l Operand) checkString() (string, bool) {
 	if !l.dsm.Prefs.Symbols.Get().(bool) {
 		return l.nonSymbolic, false

@@ -81,12 +81,12 @@ func (cart parkerBros) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *parkerBros) Initialise() {
 	cart.segment[0] = cart.NumBanks() - 4
 	cart.segment[1] = cart.NumBanks() - 3
@@ -94,7 +94,7 @@ func (cart *parkerBros) Initialise() {
 	cart.segment[3] = cart.NumBanks() - 1
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -112,7 +112,7 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
@@ -131,7 +131,7 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 	if addr >= 0xfe0 && addr <= 0xff7 {
 		if passive {
@@ -196,12 +196,12 @@ func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 	}
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart parkerBros) NumBanks() int {
 	return 8
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -217,7 +217,7 @@ func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.segment[seg], IsRAM: false, Segment: seg}
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *parkerBros) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -229,15 +229,15 @@ func (cart *parkerBros) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *parkerBros) Step() {
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart parkerBros) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 
@@ -269,7 +269,7 @@ func (cart parkerBros) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		// segment 0
@@ -304,7 +304,7 @@ func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }

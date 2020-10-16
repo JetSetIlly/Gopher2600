@@ -32,7 +32,7 @@ import (
 //			is read by the CPU
 type Interval int
 
-// List of valid Interval values
+// List of valid Interval values.
 const (
 	TIM1T  Interval = 1
 	TIM8T  Interval = 8
@@ -40,7 +40,7 @@ const (
 	T1024T Interval = 1024
 )
 
-// IntervalList is a list of all possible string representations of the Interval type
+// IntervalList is a list of all possible string representations of the Interval type.
 var IntervalList = []string{"TIM1T", "TIM8T", "TIM64T", "T1024T"}
 
 func (in Interval) String() string {
@@ -57,7 +57,7 @@ func (in Interval) String() string {
 	panic("unknown timer interval")
 }
 
-// Timer implements the timer part of the PIA 6532 (the T in RIOT)
+// Timer implements the timer part of the PIA 6532 (the T in RIOT).
 type Timer struct {
 	mem bus.ChipBus
 
@@ -83,7 +83,7 @@ type Timer struct {
 	TicksRemaining int
 }
 
-// NewTimer is the preferred method of initialisation of the Timer type
+// NewTimer is the preferred method of initialisation of the Timer type.
 func NewTimer(mem bus.ChipBus) *Timer {
 	tmr := &Timer{
 		mem:            mem,
@@ -147,7 +147,7 @@ func (tmr *Timer) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step timer forward one cycle
+// Step timer forward one cycle.
 func (tmr *Timer) Step() {
 	switch tmr.mem.LastReadRegister() {
 	case "INTIM":
@@ -197,13 +197,13 @@ func (tmr *Timer) Step() {
 	}
 }
 
-// SetValue sets the timer value. Prefer this to setting INTIMvalue directly
+// SetValue sets the timer value. Prefer this to setting INTIMvalue directly.
 func (tmr *Timer) SetValue(value uint8) {
 	tmr.INTIMvalue = value
 	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 }
 
-// SetInterval sets the timer interval based on timer register name
+// SetInterval sets the timer interval based on timer register name.
 func (tmr *Timer) SetInterval(interval string) bool {
 	switch interval {
 	case "TIM1T":
@@ -221,7 +221,7 @@ func (tmr *Timer) SetInterval(interval string) bool {
 	return false
 }
 
-// SetTicks sets the number of remaining ticks
+// SetTicks sets the number of remaining ticks.
 func (tmr *Timer) SetTicks(ticks int) {
 	tmr.TicksRemaining = ticks
 }

@@ -29,7 +29,7 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// ReqFeature implements the GUI interface
+// ReqFeature implements the GUI interface.
 func (scr *SdlDebug) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	scr.featureReq <- featureRequest{request: request, args: args}
 	err := <-scr.featureErr

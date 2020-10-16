@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// LazyRAM lazily accesses the RAM area of VCS memory
+// LazyRAM lazily accesses the RAM area of VCS memory.
 type LazyRAM struct {
 	val *LazyValues
 

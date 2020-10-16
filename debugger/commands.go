@@ -68,7 +68,7 @@ func init() {
 	sort.Stable(scriptUnsafeCommands)
 }
 
-// parseCommand tokenises the input and processes the tokens
+// parseCommand tokenises the input and processes the tokens.
 func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, error) {
 	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
 	if err != nil {
@@ -119,7 +119,7 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	return tokens, nil
 }
 
-// processTokenGroup call processTokens for each entry in the array of tokens
+// processTokenGroup call processTokens for each entry in the array of tokens.
 func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
 	var err error
 

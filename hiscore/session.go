@@ -97,7 +97,7 @@ func (sess *Session) EndSession(playTime time.Duration) error {
 	return nil
 }
 
-// url should not contain the session server, it will be added automatically
+// url should not contain the session server, it will be added automatically.
 func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	// add server information to url
 	url = fmt.Sprintf("%s%s", sess.Prefs.Server.String(), url)

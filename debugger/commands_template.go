@@ -15,7 +15,7 @@
 
 package debugger
 
-// debugger keywords
+// debugger keywords.
 const (
 	cmdReset = "RESET"
 	cmdQuit  = "QUIT"
@@ -54,13 +54,13 @@ const (
 
 	cmdPlusROM = "PLUSROM"
 
-	// user input
+	// user input.
 	cmdController = "CONTROLLER"
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
 	cmdKeyboard   = "KEYBOARD"
 
-	// halt conditions
+	// halt conditions.
 	cmdBreak = "BREAK"
 	cmdTrap  = "TRAP"
 	cmdWatch = "WATCH"
@@ -69,7 +69,7 @@ const (
 	cmdDrop  = "DROP"
 	cmdClear = "CLEAR"
 
-	// meta
+	// meta.
 	cmdPrefs = "PREFS"
 	cmdLog   = "LOG"
 )
@@ -136,7 +136,7 @@ var commandTemplate = []string{
 	cmdLog + " (LAST|RECENT|CLEAR)",
 }
 
-// list of commands that should not be executed when recording/playing scripts
+// list of commands that should not be executed when recording/playing scripts.
 var scriptUnsafeTemplate = []string{
 	cmdScript + " [RECORD %S]",
 	cmdRun,

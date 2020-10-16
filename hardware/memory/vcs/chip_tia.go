@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// NewTIA is the preferred method of initialisation for the TIA memory area
+// NewTIA is the preferred method of initialisation for the TIA memory area.
 func NewTIA() *ChipMemory {
 	area := &ChipMemory{
 		origin: memorymap.OriginTIA,

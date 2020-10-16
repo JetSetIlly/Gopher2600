@@ -68,7 +68,7 @@ func (n node) String() string {
 // HelpString returns the string representation of the node (and it's children)
 // without extraneous placeholder directives (if placeholderLabel is available)
 //
-// So called because it's better to use when displaying help
+// So called because it's better to use when displaying help.
 func (n node) usageString() string {
 	return n.string(true, false)
 }
@@ -180,7 +180,7 @@ func (n node) string(useLabels bool, fromBranch bool) string {
 }
 
 // nodeVerbose returns a readable representation of the node, listing branches
-// if necessary
+// if necessary.
 func (n node) nodeVerbose() string {
 	s := strings.Builder{}
 	s.WriteString(n.tagVerbose())
@@ -194,7 +194,7 @@ func (n node) nodeVerbose() string {
 }
 
 // tagVerbose returns a readable versions of the tag field, using labels if
-// possible
+// possible.
 func (n node) tagVerbose() string {
 	if n.isPlaceholder() {
 		if n.placeholderLabel != "" {
@@ -218,7 +218,7 @@ func (n node) tagVerbose() string {
 }
 
 // isPlaceholder checks tag to see if it is a placeholder. does not check to
-// see if placeholder is valid
+// see if placeholder is valid.
 func (n node) isPlaceholder() bool {
 	return len(n.tag) == 2 && n.tag[0] == '%'
 }

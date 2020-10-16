@@ -30,21 +30,21 @@ import (
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
-// ansi code for clear line
+// ansi code for clear line.
 const ansiClearLine = "\033[2K"
 
 // the location of the regressionDB file and the location of any regression
-// scripts. these should be wrapped by paths.ResourcePath()
+// scripts. these should be wrapped by paths.ResourcePath().
 const regressionDBFile = "regressionDB"
 const regressionScripts = "regressionScripts"
 
-// Sentinal errors to indicate skip and quite events during the RegressRun() function
+// Sentinal errors to indicate skip and quite events during the RegressRun() function.
 const (
 	regressionSkipped   = "regression skipped"
 	regressionQuitEarly = "regression quit early"
 )
 
-// Regressor is the generic entry type in the regressionDB
+// Regressor is the generic entry type in the regressionDB.
 type Regressor interface {
 	database.Entry
 
@@ -60,7 +60,7 @@ type Regressor interface {
 }
 
 // when starting a database session we need to register what entries we will
-// find in the database
+// find in the database.
 func initDBSession(db *database.Session) error {
 	if err := db.RegisterEntryType(videoEntryID, deserialiseVideoEntry); err != nil {
 		return err
@@ -83,7 +83,7 @@ func initDBSession(db *database.Session) error {
 	return nil
 }
 
-// RegressList displays all entries in the database
+// RegressList displays all entries in the database.
 func RegressList(output io.Writer) error {
 	if output == nil {
 		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
@@ -103,7 +103,7 @@ func RegressList(output io.Writer) error {
 	return db.List(output)
 }
 
-// RegressAdd adds a new regression handler to the database
+// RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
 	// tests must be determinate so we set math.rand seed to something we know.
 	// reseed with clock on completion
@@ -137,7 +137,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	return db.Add(reg)
 }
 
-// RegressDelete removes a cartridge from the regression db
+// RegressDelete removes a cartridge from the regression db.
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
 		return fmt.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
@@ -186,7 +186,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 // RegressRun runs all the tests in the regression database. filterKeys
 // list specified which entries to test. an empty keys list means that every
-// entry should be tested
+// entry should be tested.
 func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	// tests must be determinate so we set math.rand seed to something we know.
 	// reseed with clock on completion

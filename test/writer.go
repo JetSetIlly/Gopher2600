@@ -26,12 +26,12 @@ func (tw *Writer) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// clear string empties the buffer
+// clear string empties the buffer.
 func (tw *Writer) Clear() {
 	tw.buffer = tw.buffer[:0]
 }
 
-// Compare buffered output with predefined/example string
+// Compare buffered output with predefined/example string.
 func (tw *Writer) Compare(s string) bool {
 	return s == string(tw.buffer)
 }

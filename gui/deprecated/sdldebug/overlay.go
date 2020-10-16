@@ -21,7 +21,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// overlay type stored and renders additional information for the current tv frame
+// overlay type stored and renders additional information for the current tv frame.
 type overlay struct {
 	renderer *sdl.Renderer
 	pixels   []byte

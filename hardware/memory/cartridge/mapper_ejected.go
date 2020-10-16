@@ -37,49 +37,49 @@ func (cart ejected) String() string {
 	return cart.description
 }
 
-// ID implements the cartMapper interface
+// ID implements the cartMapper interface.
 func (cart ejected) ID() string {
 	return "-"
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the cartMapper interface.
 func (cart *ejected) Initialise() {
 }
 
-// Read implements the cartMapper interface
+// Read implements the cartMapper interface.
 func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
 	return 0, curated.Errorf(Ejected)
 }
 
-// Write implements the cartMapper interface
+// Write implements the cartMapper interface.
 func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
 	return curated.Errorf(Ejected)
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the cartMapper interface.
 func (cart ejected) NumBanks() int {
 	return 0
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the cartMapper interface.
 func (cart ejected) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the cartMapper interface.
 func (cart *ejected) Patch(_ int, _ uint8) error {
 	return curated.Errorf(Ejected)
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the cartMapper interface.
 func (cart *ejected) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface
+// Step implements the cartMapper interface.
 func (cart *ejected) Step() {
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart ejected) CopyBanks() []mapper.BankContent {
 	return nil
 }

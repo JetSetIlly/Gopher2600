@@ -50,7 +50,7 @@ const defaultInitScript = "debuggerInit"
 type stateReq int
 
 const (
-	// main thread should end as soon as possible
+	// main thread should end as soon as possible.
 	reqQuit stateReq = iota
 
 	// reset interrupt signal handling. used when an alternative
@@ -80,7 +80,7 @@ type GuiCreator interface {
 
 // communication between the main() function and the launch() function. this is
 // required because many gui solutions (notably SDL) require window event
-// handling (including creation) to occur on the main thread
+// handling (including creation) to occur on the main thread.
 type mainSync struct {
 	state   chan stateReq
 	creator chan func() (GuiCreator, error)
@@ -176,7 +176,7 @@ func main() {
 }
 
 // launch is called from main() as a goroutine. uses mainSync instance to
-// indicate gui creation and to quit
+// indicate gui creation and to quit.
 func launch(sync *mainSync) {
 	defer func() {
 		sync.state <- reqQuit
@@ -856,7 +856,7 @@ func hiscoreServer(md *modalflag.Modes) error {
 	return nil
 }
 
-// nopWriter is an empty writer
+// nopWriter is an empty writer.
 type nopWriter struct{}
 
 func (*nopWriter) Write(p []byte) (n int, err error) {

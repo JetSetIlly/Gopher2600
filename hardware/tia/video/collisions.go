@@ -23,7 +23,7 @@ import (
 )
 
 // Collisions registers do not use all their bits only the top two bits, or in
-// the case of CXBLPF the top bit only
+// the case of CXBLPF the top bit only.
 const (
 	CollisionMask       uint8 = 0xc0
 	CollisionCXBLPFMask uint8 = 0x80
@@ -52,7 +52,7 @@ func newCollisions(mem bus.ChipBus) *Collisions {
 	return col
 }
 
-// Clear all bits in the collision registers
+// Clear all bits in the collision registers.
 func (col *Collisions) Clear() {
 	col.CXM0P = 0
 	col.CXM1P = 0
@@ -180,7 +180,7 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 // this is a naive implementation of the collision registers checking. the
 // version above is "optimised" but the reference implementation below is maybe
 // easier to understand.
-func (col *Collisions) tick_reference(p0, p1, m0, m1, bl, pf bool) { // nolint
+func (col *Collisions) tickReference(p0, p1, m0, m1, bl, pf bool) { // nolint: unused
 	col.Activity.Reset()
 
 	if m0 && p1 {

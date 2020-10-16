@@ -35,7 +35,7 @@ import (
 //
 // Subject: Re: [stella] Supercharger BIN format
 // From: Eckhard Stolberg
-// Date: Fri, 08 Jan 1999
+// Date: Fri, 08 Jan 1999.
 type FastLoad struct {
 	cart *Supercharger
 	data []byte
@@ -63,7 +63,7 @@ func (er FastLoaded) Error() string {
 	return "supercharger tape loaded, preparing VCS"
 }
 
-// newFastLoad is the preferred method of initialisation for the FastLoad type
+// newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &FastLoad{
 		cart: cart,
@@ -78,7 +78,7 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 	return tap, nil
 }
 
-// load implements the tape interface
+// load implements the tape interface.
 func (tap *FastLoad) load() (uint8, error) {
 	gameData := tap.data[0:0x1eff]
 
@@ -171,6 +171,6 @@ func (tap *FastLoad) load() (uint8, error) {
 	})
 }
 
-// step implements the Tape interface
+// step implements the Tape interface.
 func (tap *FastLoad) step() {
 }

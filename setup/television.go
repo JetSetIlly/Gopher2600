@@ -33,7 +33,7 @@ const (
 )
 
 // television is used to television cartridge memory after cartridge has been
-// attached/loaded
+// attached/loaded.
 type television struct {
 	cartHash string
 	spec     string
@@ -58,17 +58,17 @@ func deserialiseTelevisionEntry(fields database.SerialisedEntry) (database.Entry
 	return set, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (set television) ID() string {
 	return televisionID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (set television) String() string {
 	return fmt.Sprintf("%s, %s", set.cartHash, set.spec)
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (set *television) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			set.cartHash,
@@ -78,18 +78,18 @@ func (set *television) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (set television) CleanUp() error {
 	// no cleanup necessary
 	return nil
 }
 
-// matchCartHash implements setupEntry interface
+// matchCartHash implements setupEntry interface.
 func (set television) matchCartHash(hash string) bool {
 	return set.cartHash == hash
 }
 
-// apply implements setupEntry interface
+// apply implements setupEntry interface.
 func (set television) apply(vcs *hardware.VCS) error {
 	return vcs.TV.SetSpec(set.spec)
 }

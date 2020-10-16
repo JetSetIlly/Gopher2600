@@ -22,14 +22,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// DPCplusStatic implements the bus.CartStatic interface
+// DPCplusStatic implements the bus.CartStatic interface.
 type DPCplusStatic struct {
 	Arm  []byte
 	Data []byte
 	Freq []byte
 }
 
-// GetStatic implements the bus.CartDebugBus interface
+// GetStatic implements the bus.CartDebugBus interface.
 func (cart dpcPlus) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 3)
 
@@ -48,7 +48,7 @@ func (cart dpcPlus) GetStatic() []mapper.CartStatic {
 	return s
 }
 
-// StaticWrite implements the bus.CartDebugBus interface
+// StaticWrite implements the bus.CartDebugBus interface.
 func (cart *dpcPlus) PutStatic(label string, addr uint16, data uint8) error {
 	switch label {
 	case "ARM":

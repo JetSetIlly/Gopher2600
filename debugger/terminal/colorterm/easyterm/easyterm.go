@@ -29,16 +29,16 @@ import (
 	"github.com/pkg/term/termios"
 )
 
-// termGeometry contains the dimensions of a terminal (usually the output terminal)
+// termGeometry contains the dimensions of a terminal (usually the output terminal).
 type termGeometry struct {
-	rows uint16 // nolint
-	cols uint16 // nolint
-	x    uint16 // nolint
-	y    uint16 // nolint
+	rows uint16 // nolint: structcheck
+	cols uint16 // nolint: structcheck
+	x    uint16 // nolint: structcheck
+	y    uint16 // nolint: structcheck
 }
 
 // EasyTerm is the main container for posix terminals. usually embedded in
-// other struct types
+// other struct types.
 type EasyTerm struct {
 	input  *os.File
 	output *os.File
@@ -57,7 +57,7 @@ type EasyTerm struct {
 	crit sync.Mutex
 }
 
-// Initialise the fields in the Terminal struct
+// Initialise the fields in the Terminal struct.
 func (et *EasyTerm) Initialise(inputFile, outputFile *os.File) error {
 	// not which files we're using for input and output
 	if inputFile == nil {
@@ -101,7 +101,7 @@ func (et *EasyTerm) Initialise(inputFile, outputFile *os.File) error {
 	return nil
 }
 
-// CleanUp closes resources created in the Initialise() function
+// CleanUp closes resources created in the Initialise() function.
 func (et *EasyTerm) CleanUp() {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -111,7 +111,7 @@ func (et *EasyTerm) CleanUp() {
 }
 
 // UpdateGeometry gets the current dimensions (in characters and pixels) of the
-// output terminal
+// output terminal.
 func (et *EasyTerm) UpdateGeometry() error {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -126,7 +126,7 @@ func (et *EasyTerm) UpdateGeometry() error {
 	return nil
 }
 
-// CanonicalMode puts terminal into normal, everyday canonical mode
+// CanonicalMode puts terminal into normal, everyday canonical mode.
 func (et *EasyTerm) CanonicalMode() {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -134,7 +134,7 @@ func (et *EasyTerm) CanonicalMode() {
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.canAttr)
 }
 
-// RawMode puts terminal into raw mode
+// RawMode puts terminal into raw mode.
 func (et *EasyTerm) RawMode() {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -142,7 +142,7 @@ func (et *EasyTerm) RawMode() {
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.rawAttr)
 }
 
-// CBreakMode puts terminal into cbreak mode
+// CBreakMode puts terminal into cbreak mode.
 func (et *EasyTerm) CBreakMode() {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -150,7 +150,7 @@ func (et *EasyTerm) CBreakMode() {
 	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.cbreakAttr)
 }
 
-// Flush makes sure the terminal's input/output buffers are empty
+// Flush makes sure the terminal's input/output buffers are empty.
 func (et *EasyTerm) Flush() error {
 	et.crit.Lock()
 	defer et.crit.Unlock()
@@ -164,7 +164,7 @@ func (et *EasyTerm) Flush() error {
 	return nil
 }
 
-// TermPrint writes string to the output file
+// TermPrint writes string to the output file.
 func (et *EasyTerm) TermPrint(s string) {
 	// no need to take hold of the mutex
 	et.output.WriteString(s)

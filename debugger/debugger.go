@@ -301,7 +301,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 // this function
 //
 // this is the glue that hold the cartridge and disassembly packages together.
-// especially important is the repointing of the symbols table in the instance of dbgmem
+// especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	// set OnLoaded function for specific cartridge formats
 	cartload.OnLoaded = func(cart mapper.CartMapper) error {
@@ -358,7 +358,7 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 // ONSTEP
 //
 // returns a boolean stating whether the emulation should continue with the
-// next step
+// next step.
 func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
 	var err error
 	var continueEmulation bool
@@ -395,7 +395,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 // Note that this is only a request, the emulation may not be able to
 // achieve that rate.
 //
-// *Use this in preference to SetFPS() from the television implementation*
+// *Use this in preference to SetFPS() from the television implementation*.
 func (dbg *Debugger) SetFPS(fps float32) {
 	dbg.lmtr.setFPS(fps)
 }

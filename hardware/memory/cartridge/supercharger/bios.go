@@ -24,14 +24,14 @@ import (
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
-// list of allowed filenames for the supercharger BIOS
+// list of allowed filenames for the supercharger BIOS.
 var biosFile = [...]string{
 	"Supercharger BIOS.bin",
 	"Supercharger.BIOS.bin",
 	"Supercharger_BIOS.bin",
 }
 
-// tag string used in called to Log()
+// tag string used in called to Log().
 const biosLogTag = "supercharger: bios"
 
 // loadBIOS attempts to load BIOS from (in order of priority):

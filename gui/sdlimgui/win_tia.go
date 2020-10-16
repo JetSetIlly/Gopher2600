@@ -69,7 +69,7 @@ func (win *winTIA) id() string {
 	return winTIATitle
 }
 
-// draw is called by service loop
+// draw is called by service loop.
 func (win *winTIA) draw() {
 	if !win.open {
 		return

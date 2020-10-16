@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// tag string used in called to Log()
+// tag string used in called to Log().
 const soundloadLogTag = "supercharger: soundload"
 
 // SoundLoad implements the Tape interface. It loads data from a sound file.
@@ -57,7 +57,7 @@ type SoundLoad struct {
 	regulatorCt int
 }
 
-// newSoundLoad is the preferred method of initialisation for the SoundLoad type
+// newSoundLoad is the preferred method of initialisation for the SoundLoad type.
 func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &SoundLoad{
 		cart: cart,
@@ -104,7 +104,7 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	return tap, nil
 }
 
-// load implements the Tape interface
+// load implements the Tape interface.
 func (tap *SoundLoad) load() (uint8, error) {
 	if !tap.playing {
 		if tap.playDelay < 30000 {
@@ -121,7 +121,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 	return 0x00, nil
 }
 
-// step implements the Tape interface
+// step implements the Tape interface.
 func (tap *SoundLoad) step() {
 	if !tap.playing {
 		return
@@ -141,7 +141,7 @@ func (tap *SoundLoad) step() {
 	tap.idx++
 }
 
-// Rewind implements the mapper.CartTapeBus interface
+// Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() bool {
 	// rewinding happens instantaneously
 	tap.idx = 0
@@ -149,7 +149,7 @@ func (tap *SoundLoad) Rewind() bool {
 	return true
 }
 
-// SetTapeCounter implements the mapper.CartTapeBus interface
+// SetTapeCounter implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) SetTapeCounter(c int) {
 	if c >= len(tap.samples) {
 		c = len(tap.samples)
@@ -157,7 +157,7 @@ func (tap *SoundLoad) SetTapeCounter(c int) {
 	tap.idx = c
 }
 
-// the number of samples to copy and return from GetTapeState()
+// the number of samples to copy and return from GetTapeState().
 const numStateSamples = 100
 
 func (tap *SoundLoad) GetTapeState() (bool, mapper.CartTapeState) {

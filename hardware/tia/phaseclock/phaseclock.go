@@ -51,11 +51,11 @@ const (
 	fallingPhi2
 )
 
-// NumStates is the number of phases the clock can be in
+// NumStates is the number of phases the clock can be in.
 const NumStates = 4
 
 // String creates a single line ASCII representation of the current state of
-// the PhaseClock
+// the PhaseClock.
 func (clk PhaseClock) String() string {
 	s := strings.Builder{}
 	switch clk {
@@ -71,7 +71,7 @@ func (clk PhaseClock) String() string {
 	return s.String()
 }
 
-// Sync two clocks to the same phase
+// Sync two clocks to the same phase.
 func (clk *PhaseClock) Sync(oclk PhaseClock) {
 	switch oclk {
 	case risingPhi1:
@@ -85,17 +85,17 @@ func (clk *PhaseClock) Sync(oclk PhaseClock) {
 	}
 }
 
-// Align the phaseclock with the master clock by resetting to the rise of Phi1
+// Align the phaseclock with the master clock by resetting to the rise of Phi1.
 func (clk *PhaseClock) Align() {
 	*clk = risingPhi1
 }
 
-// Reset the phaseclock to the rise of Phi2
+// Reset the phaseclock to the rise of Phi2.
 func (clk *PhaseClock) Reset() {
 	*clk = risingPhi2
 }
 
-// Tick moves PhaseClock to next state
+// Tick moves PhaseClock to next state.
 func (clk *PhaseClock) Tick() {
 	switch *clk {
 	case risingPhi1:
@@ -109,27 +109,27 @@ func (clk *PhaseClock) Tick() {
 	}
 }
 
-// Count returns the current clock state as an integer
+// Count returns the current clock state as an integer.
 func (clk PhaseClock) Count() int {
 	return int(clk)
 }
 
-// Phi1 returns true if the Phi1 clock is on its rising edge
+// Phi1 returns true if the Phi1 clock is on its rising edge.
 func (clk PhaseClock) Phi1() bool {
 	return clk == risingPhi1
 }
 
-// Phi2 returns true if the Phi2 clock is on its rising edge
+// Phi2 returns true if the Phi2 clock is on its rising edge.
 func (clk PhaseClock) Phi2() bool {
 	return clk == risingPhi2
 }
 
-// LatePhi1 returns true if the Phi1 clock is on its falling edge
+// LatePhi1 returns true if the Phi1 clock is on its falling edge.
 func (clk PhaseClock) LatePhi1() bool {
 	return clk == fallingPhi1
 }
 
-// LatePhi2 returns true if the Phi2 clock is on its falling edge
+// LatePhi2 returns true if the Phi2 clock is on its falling edge.
 func (clk PhaseClock) LatePhi2() bool {
 	return clk == fallingPhi2
 }

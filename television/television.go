@@ -34,13 +34,13 @@ import (
 )
 
 // the number of additional lines over the NTSC spec that is allowed before the
-// TV flips to the PAL specification
+// TV flips to the PAL specification.
 const excessScanlinesNTSC = 40
 
-// the number of synced frames where we can expect things to be in flux
+// the number of synced frames where we can expect things to be in flux.
 const leadingFrames = 5
 
-// the number of synced frames required before the tv frame is considered to "stable"
+// the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
 
 // television is a reference implementation of the Television interface. In all
@@ -136,12 +136,12 @@ func (tv television) String() string {
 	return s.String()
 }
 
-// AddPixelRenderer implements the Television interface
+// AddPixelRenderer implements the Television interface.
 func (tv *television) AddPixelRenderer(r PixelRenderer) {
 	tv.renderers = append(tv.renderers, r)
 }
 
-// AddAudioMixer implements the Television interface
+// AddAudioMixer implements the Television interface.
 func (tv *television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
 }
@@ -166,7 +166,7 @@ func (tv *television) Reset() error {
 	return nil
 }
 
-// Signal implements the Television interface
+// Signal implements the Television interface.
 func (tv *television) Signal(sig SignalAttributes) error {
 	// mix audio before we do anything else
 	if sig.AudioUpdate {
@@ -310,7 +310,7 @@ func (tv *television) newFrame(synced bool) error {
 	return nil
 }
 
-// GetState implements the Television interface
+// GetState implements the Television interface.
 func (tv *television) GetState(request StateReq) (int, error) {
 	switch request {
 	case ReqFramenum:
@@ -324,7 +324,7 @@ func (tv *television) GetState(request StateReq) (int, error) {
 	}
 }
 
-// SetSpec implements the Television interface
+// SetSpec implements the Television interface.
 func (tv *television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
@@ -354,22 +354,22 @@ func (tv *television) SetSpec(spec string) error {
 	return nil
 }
 
-// SpecIDOnCreation implements the Television interface
+// SpecIDOnCreation implements the Television interface.
 func (tv *television) SpecIDOnCreation() string {
 	return tv.specIDOnCreation
 }
 
-// GetSpec implements the Television interface
+// GetSpec implements the Television interface.
 func (tv television) GetSpec() (*Specification, bool) {
 	return tv.spec, tv.auto
 }
 
-// IsStable implements the Television interface
+// IsStable implements the Television interface.
 func (tv television) IsStable() bool {
 	return tv.syncedFrameNum >= stabilityThreshold
 }
 
-// End implements the Television interface
+// End implements the Television interface.
 func (tv television) End() error {
 	var err error
 
@@ -404,7 +404,7 @@ func (tv *television) SetFPS(fps float32) {
 	tv.lmtr.setRate(fps, tv.spec.ScanlinesTotal)
 }
 
-// GetReqFPS implements the Television interface
+// GetReqFPS implements the Television interface.
 func (tv *television) GetReqFPS() float32 {
 	return tv.lmtr.requested
 }
@@ -415,7 +415,7 @@ func (tv *television) GetActualFPS() float32 {
 	return tv.lmtr.actual
 }
 
-// GetLastSignal implements the Television interface
+// GetLastSignal implements the Television interface.
 func (tv *television) GetLastSignal() SignalAttributes {
 	return tv.lastSignal
 }

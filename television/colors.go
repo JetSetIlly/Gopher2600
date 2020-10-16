@@ -17,14 +17,14 @@ package television
 
 import "image/color"
 
-// PaletteNTSC is the collection of NTSC colours
+// PaletteNTSC is the collection of NTSC colours.
 var PaletteNTSC = []color.RGBA{}
 
-// PalettePAL is the collection of PAL colours
+// PalettePAL is the collection of PAL colours.
 var PalettePAL = []color.RGBA{}
 
 // VideoBlack is the color produced by a television in the absence of a color
-// signal
+// signal.
 var videoBlack = color.RGBA{0, 0, 0, 255}
 
 // the raw color values are the component RGB values expressed as a single 32
@@ -69,7 +69,7 @@ var pal32bit = []uint32{
 	0x000000, 0x282828, 0x505050, 0x747474, 0x949494, 0xb4b4b4, 0xd0d0d0, 0xececec,
 }
 
-// convert the "raw" color values to the RGB components
+// convert the "raw" color values to the RGB components.
 func init() {
 	for _, col := range ntsc32bit {
 		red, green, blue := byte((col&0xff0000)>>16), byte((col&0xff00)>>8), byte(col&0xff)

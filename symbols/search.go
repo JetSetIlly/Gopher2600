@@ -20,7 +20,7 @@ import (
 )
 
 // TableType is used to select and identify a symbol table
-// when searching
+// when searching.
 type TableType int
 
 func (t TableType) String() string {
@@ -38,7 +38,7 @@ func (t TableType) String() string {
 	return ""
 }
 
-// List of valid symbol table identifiers
+// List of valid symbol table identifiers.
 const (
 	UnspecifiedSymTable TableType = iota
 	LabelTable

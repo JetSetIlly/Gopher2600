@@ -25,7 +25,7 @@ import (
 //
 // once a player sprite has reached a START signal during its polycounter
 // cycle, the scanCounter is started and is ticked forward every cycle (subject
-// to MOTCK, HMOVE and NUSIZ rules)
+// to MOTCK, HMOVE and NUSIZ rules).
 type scanCounter struct {
 	sizeAndCopies *uint8
 	pclk          *phaseclock.PhaseClock
@@ -62,19 +62,19 @@ func (sc *scanCounter) start() {
 	}
 }
 
-// IsActive returns true is scan counter is currently outputting pixels
+// IsActive returns true is scan counter is currently outputting pixels.
 func (sc scanCounter) IsActive() bool {
 	return sc.Pixel != -1
 }
 
 // IsLatching returns true if scan counter is about to commence outputting
-// pixels
+// pixels.
 func (sc scanCounter) IsLatching() bool {
 	return sc.latch > 0
 }
 
 // isMissileMiddle is used by missile sprite as part of the reset-to-player
-// implementation
+// implementation.
 func (sc scanCounter) isMissileMiddle() bool {
 	switch *sc.sizeAndCopies {
 	case 0x05:

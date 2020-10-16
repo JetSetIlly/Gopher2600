@@ -20,7 +20,7 @@ import (
 )
 
 // drawlistSequence provides a neat way of drawlist elements of a uniform size in
-// sequence
+// sequence.
 type drawlistSequence struct {
 	img              *SdlImgui
 	palette          packedPalette
@@ -40,7 +40,7 @@ type drawlistSequence struct {
 }
 
 // create and start a new sequence. spacing is expressed as fraction of the
-// current FontSize()
+// current FontSize().
 func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, alignFramePadding bool) *drawlistSequence {
 	const spacing = 0.1
 
@@ -58,7 +58,7 @@ func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, alignFramePadding bool)
 
 // start resets the reference position. convenient to use if size/spacing is not changing.
 //
-// should be coupled with a call to end()
+// should be coupled with a call to end().
 func (seq *drawlistSequence) start() {
 	seq.prevX = imgui.CursorScreenPos().X
 	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y
@@ -73,7 +73,7 @@ func (seq *drawlistSequence) start() {
 	imgui.BeginGroup()
 }
 
-// every call to start() should be coupled with a call to end()
+// every call to start() should be coupled with a call to end().
 func (seq *drawlistSequence) end() {
 	imgui.EndGroup()
 }
@@ -85,7 +85,7 @@ func (seq *drawlistSequence) sameLine() {
 	seq.nextItemSameLine = true
 }
 
-// returns the X value that is in the middle of the n'th element
+// returns the X value that is in the middle of the n'th element.
 func (seq *drawlistSequence) offsetX(n int) float32 {
 	return seq.startX + float32(n)*(seq.size.X+seq.spacing.X) + seq.size.X*0.5
 }

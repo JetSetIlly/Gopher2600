@@ -74,7 +74,7 @@ type Result struct {
 	Final bool
 }
 
-// Reset nullifies all members of the Result instance
+// Reset nullifies all members of the Result instance.
 func (r *Result) Reset() {
 	r.Defn = nil
 	r.ByteCount = 0

@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// arbitrary maximum number of entries
+// arbitrary maximum number of entries.
 const maxEntries = 1000
 
 const fieldSep = ","
@@ -39,12 +39,12 @@ func recordHeader(key int, id string) string {
 	return fmt.Sprintf("%03d%s%s", key, fieldSep, id)
 }
 
-// NumEntries returns the number of entries in the database
+// NumEntries returns the number of entries in the database.
 func (db Session) NumEntries() int {
 	return len(db.entries)
 }
 
-// SortedKeyList returns a sorted list of database keys
+// SortedKeyList returns a sorted list of database keys.
 func (db Session) SortedKeyList() []int {
 	// sort entries into key order
 	keyList := make([]int, 0, len(db.entries))
@@ -55,7 +55,7 @@ func (db Session) SortedKeyList() []int {
 	return keyList
 }
 
-// List the enties in key order
+// List the enties in key order.
 func (db Session) List(output io.Writer) error {
 	if db.NumEntries() == 0 {
 		if _, err := output.Write([]byte("database is empty\n")); err != nil {
@@ -89,7 +89,7 @@ func (db Session) List(output io.Writer) error {
 	return nil
 }
 
-// Add an entry to the db
+// Add an entry to the db.
 func (db *Session) Add(ent Entry) error {
 	var key int
 
@@ -110,7 +110,7 @@ func (db *Session) Add(ent Entry) error {
 }
 
 // Delete deletes an entry with the specified key. returns DatabaseKeyError
-// if not such entry exists
+// if not such entry exists.
 func (db *Session) Delete(key int) error {
 	ent, ok := db.entries[key]
 	if !ok {

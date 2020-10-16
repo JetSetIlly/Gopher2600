@@ -26,7 +26,7 @@ import (
 )
 
 // PlayerSizes maps player size and copies values to descriptions of those
-// values
+// values.
 var PlayerSizes = []string{
 	"one copy",
 	"two copies [close]",
@@ -39,7 +39,7 @@ var PlayerSizes = []string{
 }
 
 // playerSizesBrief maps player size and copies values to brief descriptions of
-// those values
+// those values.
 var playerSizesBrief = []string{
 	"",
 	"2 [close]",
@@ -182,7 +182,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	return &ps, nil
 }
 
-// Label returns the label for the sprite
+// Label returns the label for the sprite.
 func (ps playerSprite) Label() string {
 	return ps.label
 }
@@ -635,7 +635,7 @@ func (ps *playerSprite) setReflection(value bool) {
 }
 
 // !!TODO: the setNUSIZ() function needs untangling. I reckon with a bit of
-// reordering we can simplify it quite a bit
+// reordering we can simplify it quite a bit.
 func (ps *playerSprite) setNUSIZ(value uint8) {
 	// from TIA_HW_Notes.txt:
 	//
@@ -733,7 +733,7 @@ func (ps *playerSprite) setColor(value uint8) {
 	ps.Color = value
 }
 
-// setHmoveValue normalises the nibbles from the NUSIZ register
+// setHmoveValue normalises the nibbles from the NUSIZ register.
 func (ps *playerSprite) setHmoveValue(v delay.Value) {
 	ps.Hmove = (v.(uint8) ^ 0x80) >> 4
 }

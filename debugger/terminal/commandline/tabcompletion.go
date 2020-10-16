@@ -35,7 +35,7 @@ type TabCompletion struct {
 }
 
 // NewTabCompletion initialises a new TabCompletion instance. Completion works
-// best if Commands has been sorted
+// best if Commands has been sorted.
 func NewTabCompletion(cmds *Commands) *TabCompletion {
 	tc := &TabCompletion{cmds: cmds}
 	tc.Reset()
@@ -45,7 +45,7 @@ func NewTabCompletion(cmds *Commands) *TabCompletion {
 // Complete transforms the input such that the last word in the input is
 // expanded to meet the closest match allowed by the template.  Subsequent
 // calls to Complete() without an intervening call to Reset() will cycle
-// through the original available options
+// through the original available options.
 func (tc *TabCompletion) Complete(input string) string {
 	// split input tokens -- it's easier to work with tokens
 	tokens := TokeniseInput(input)

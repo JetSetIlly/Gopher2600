@@ -68,12 +68,12 @@ func (cart cbs) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart cbs) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *cbs) Initialise() {
 	cart.bank = len(cart.banks) - 1
 	for i := range cart.ram {
@@ -81,7 +81,7 @@ func (cart *cbs) Initialise() {
 	}
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
 	if addr >= 0x0100 && addr <= 0x01ff {
 		return cart.ram[addr-0x100], nil
@@ -92,7 +92,7 @@ func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[cart.bank][addr], nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.bankswitch(addr, passive) {
 		return nil
@@ -111,7 +111,7 @@ func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// bankswitch on hotspot access
+// bankswitch on hotspot access.
 func (cart *cbs) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff8 && addr <= 0xffa {
 		if passive {
@@ -129,19 +129,19 @@ func (cart *cbs) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart cbs) NumBanks() int {
 	return 3
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart cbs) GetBank(addr uint16) mapper.BankInfo {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
 	return mapper.BankInfo{Number: cart.bank, IsRAM: addr <= 0x00ff}
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *cbs) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -153,15 +153,15 @@ func (cart *cbs) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *cbs) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *cbs) Step() {
 }
 
-// GetRAM implements the mapper.CartRAMBus interface
+// GetRAM implements the mapper.CartRAMBus interface.
 func (cart cbs) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
@@ -174,12 +174,12 @@ func (cart cbs) GetRAM() []mapper.CartRAM {
 	return r
 }
 
-// PutRAM implements the mapper.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface.
 func (cart *cbs) PutRAM(_ int, idx int, data uint8) {
 	cart.ram[idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart cbs) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -191,7 +191,7 @@ func (cart cbs) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart cbs) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -200,7 +200,7 @@ func (cart cbs) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart cbs) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }

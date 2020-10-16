@@ -26,13 +26,13 @@ import (
 	"github.com/go-audio/wav"
 )
 
-// WavWriter implements the television.AudioMixer interface
+// WavWriter implements the television.AudioMixer interface.
 type WavWriter struct {
 	filename string
 	buffer   []int8
 }
 
-// New is the preferred method of initialisation for the Audio2Wav type
+// New is the preferred method of initialisation for the Audio2Wav type.
 func New(filename string) (*WavWriter, error) {
 	aw := &WavWriter{
 		filename: filename,
@@ -42,14 +42,14 @@ func New(filename string) (*WavWriter, error) {
 	return aw, nil
 }
 
-// SetAudio implements the television.AudioMixer interface
+// SetAudio implements the television.AudioMixer interface.
 func (aw *WavWriter) SetAudio(audioData uint8) error {
 	// bring audioData into the correct range
 	aw.buffer = append(aw.buffer, int8(int16(audioData)-127))
 	return nil
 }
 
-// EndMixing implements the television.AudioMixer interface
+// EndMixing implements the television.AudioMixer interface.
 func (aw *WavWriter) EndMixing() error {
 	f, err := os.Create(aw.filename)
 	if err != nil {

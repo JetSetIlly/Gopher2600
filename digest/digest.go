@@ -25,7 +25,7 @@
 package digest
 
 // Digest implementations compute a mathematical hash, retreivable with the
-// Hash() function
+// Hash() function.
 type Digest interface {
 	Hash() string
 	ResetDigest()

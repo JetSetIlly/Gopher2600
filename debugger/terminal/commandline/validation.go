@@ -23,13 +23,13 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Validate input string against command defintions
+// Validate input string against command defintions.
 func (cmds Commands) Validate(input string) error {
 	return cmds.ValidateTokens(TokeniseInput(input))
 }
 
 // ValidateTokens like Validate, but works on tokens rather than an input
-// string
+// string.
 func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 	cmd, ok := tokens.Peek()
 	if !ok {

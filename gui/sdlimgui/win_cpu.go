@@ -154,7 +154,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 }
 
 // draw most recent instruction in the CPU or as much as can be interpreted
-// currently
+// currently.
 func (win *winCPU) drawLastResult() {
 	e := win.img.lz.Debugger.LastResult
 

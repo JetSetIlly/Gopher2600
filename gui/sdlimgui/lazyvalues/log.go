@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// LazyLog lazily accesses chip registere information from the emulator
+// LazyLog lazily accesses chip registere information from the emulator.
 type LazyLog struct {
 	val *LazyValues
 

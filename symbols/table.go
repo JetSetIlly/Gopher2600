@@ -34,7 +34,7 @@ type Table struct {
 	maxWidth int
 }
 
-// newTable is the preferred method of initialisation for the table type
+// newTable is the preferred method of initialisation for the table type.
 func newTable() *Table {
 	t := &Table{
 		Entries: make(map[uint16]string),
@@ -86,17 +86,17 @@ func (t Table) search(symbol string) (uint16, bool) {
 	return 0, false
 }
 
-// Len implements the sort.Interface
+// Len implements the sort.Interface.
 func (t Table) Len() int {
 	return len(t.idx)
 }
 
-// Less implements the sort.Interface
+// Less implements the sort.Interface.
 func (t Table) Less(i, j int) bool {
 	return t.idx[i] < t.idx[j]
 }
 
-// Swap implements the sort.Interface
+// Swap implements the sort.Interface.
 func (t Table) Swap(i, j int) {
 	t.idx[i], t.idx[j] = t.idx[j], t.idx[i]
 }

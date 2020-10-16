@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// ansi color
+// ansi color.
 const (
 	colBlack   = 0
 	colRed     = 1
@@ -34,7 +34,7 @@ const (
 	colDefault = 9
 )
 
-// ansi target
+// ansi target.
 const (
 	targetPen         = 3
 	targetPaper       = 4
@@ -42,7 +42,7 @@ const (
 	targetBrightPaper = 10
 )
 
-// ansi attribute
+// ansi attribute.
 const (
 	attrBold      = 1
 	attrUnderline = 4
@@ -50,16 +50,16 @@ const (
 	attrStrike    = 8
 )
 
-// Pens is the table of colors to be used for text
+// Pens is the table of colors to be used for text.
 var Pens map[string]string
 
-// DimPens is the table of pastel colors to be used for text
+// DimPens is the table of pastel colors to be used for text.
 var DimPens map[string]string
 
-// PenStyles is the table of styles to be used for text
+// PenStyles is the table of styles to be used for text.
 var PenStyles map[string]string
 
-// NormalPen is the CSI sequence for regular text
+// NormalPen is the CSI sequence for regular text.
 var NormalPen string
 
 func init() {
@@ -143,7 +143,7 @@ func init() {
 }
 
 // ColorBuild creates the ANSI sequence to create the pen with the correct
-// foreground/background color and attribute
+// foreground/background color and attribute.
 func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (string, error) {
 	s := strings.Builder{}
 	s.Grow(32)
@@ -242,26 +242,26 @@ func ColorBuild(pen, paper, attribute string, brightPen, brightPaper bool) (stri
 	return s.String(), nil
 }
 
-// ClearLine is the CSI sequence to clear the entire of the current line
+// ClearLine is the CSI sequence to clear the entire of the current line.
 const ClearLine = "\033[2K"
 
-// CursorStore if the CSI sequence to store the current cursor position
+// CursorStore if the CSI sequence to store the current cursor position.
 const CursorStore = "\033[s"
 
 // CursorRestore if the CSI sequence to restore the cursor position to a
-// previous store
+// previous store.
 const CursorRestore = "\033[u"
 
 // CursorForwardOne is the CSI sequence to move the cursor forward (to the right
-// for latin fonts) one character
+// for latin fonts) one character.
 const CursorForwardOne = "\033[1C"
 
 // CursorBackwardOne is the CSI sequence to move the cursor backward (to the left
-// for latin fonts) one character
+// for latin fonts) one character.
 const CursorBackwardOne = "\033[1D"
 
 // CursorMove is the CSI sequence to move the cursor n characters forward
-// (positive numbers) or n characters backwards (negative numbers)
+// (positive numbers) or n characters backwards (negative numbers).
 func CursorMove(n int) string {
 	if n < 0 {
 		return fmt.Sprintf("\033[%dD", -n)

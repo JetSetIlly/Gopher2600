@@ -101,12 +101,12 @@ func (cart m3ePlus) String() string {
 	return s.String()
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart m3ePlus) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Initialise() {
 	// from spec:
 	//
@@ -120,7 +120,7 @@ func (cart *m3ePlus) Initialise() {
 	}
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 	var segment int
 
@@ -148,7 +148,7 @@ func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
@@ -177,12 +177,12 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart m3ePlus) NumBanks() int {
 	return len(cart.banks)
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -201,7 +201,7 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.segment[seg], Segment: seg}
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -213,7 +213,7 @@ func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
 	// mechanism. see the tigervision commentary for details
@@ -232,7 +232,7 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 	}
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Step() {
 }
 
@@ -273,12 +273,12 @@ func (cart m3ePlus) GetRAM() []mapper.CartRAM {
 	return r
 }
 
-// PutRAM implements the mapper.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface.
 func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 	cart.ram[bank][idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart m3ePlus) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {

@@ -29,7 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
-// Disassembly represents the annotated disassembly of a 6507 binary
+// Disassembly represents the annotated disassembly of a 6507 binary.
 type Disassembly struct {
 	Prefs *Preferences
 
@@ -103,7 +103,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 // cpu with no flow control. Unlike the FromCartridge() function this function
 // requires an existing instance of Disassembly
 //
-// cartridge will finish in its initialised state
+// cartridge will finish in its initialised state.
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
 	if cart != nil {
 		dsm.cart = cart
@@ -146,7 +146,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 }
 
 // Bless disassembly sequence from the specified bank/address. Will do nothing
-// if bank is not a cartridge ROM bank
+// if bank is not a cartridge ROM bank.
 func (dsm *Disassembly) Bless(bank mapper.BankInfo, startAddress uint16) {
 	// we don't actually use this because we would rather the static
 	// disassembly process catches all the errors. if we can't do that then we
@@ -163,7 +163,7 @@ func (dsm *Disassembly) Bless(bank mapper.BankInfo, startAddress uint16) {
 
 // GetEntryByAddress returns the disassembly entry at the specified
 // bank/address. a returned value of nil indicates the entry is not in the
-// cartridge; this will usually mean the address is in main VCS RAM
+// cartridge; this will usually mean the address is in main VCS RAM.
 func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	bank := dsm.cart.GetBank(address)
 

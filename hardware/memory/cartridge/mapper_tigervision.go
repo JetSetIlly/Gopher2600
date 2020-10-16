@@ -87,12 +87,12 @@ func (cart tigervision) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1])
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart tigervision) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *tigervision) Initialise() {
 	cart.segment[0] = cart.NumBanks() - 2
 
@@ -100,7 +100,7 @@ func (cart *tigervision) Initialise() {
 	cart.segment[1] = cart.NumBanks() - 1
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -111,7 +111,7 @@ func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
@@ -123,12 +123,12 @@ func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart tigervision) NumBanks() int {
 	return len(cart.banks)
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		return mapper.BankInfo{Number: cart.segment[0], IsRAM: false, Segment: 0}
@@ -136,7 +136,7 @@ func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.segment[1], IsRAM: false, Segment: 1}
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *tigervision) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -148,7 +148,7 @@ func (cart *tigervision) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
@@ -175,11 +175,11 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// tigervision cartridges use mirror addresses to write to the TIA.
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *tigervision) Step() {
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart tigervision) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 

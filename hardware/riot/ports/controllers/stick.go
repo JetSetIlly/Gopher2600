@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// stick values
+// stick values.
 const (
 	stickFire   = 0x00
 	stickNoFire = 0x80
@@ -35,7 +35,7 @@ const (
 	axisCenter  = 0xf0
 )
 
-// Stick represents the VCS digital joystick controller
+// Stick represents the VCS digital joystick controller.
 type Stick struct {
 	id  ports.PortID
 	bus ports.PeripheralBus
@@ -48,7 +48,7 @@ type Stick struct {
 
 // NewStick is the preferred method of initialisation for the Stick type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
-// to ports.AttachPlayer0() and ports.AttachPlayer1()
+// to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewStick(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	stk := &Stick{
 		id:     id,
@@ -68,17 +68,17 @@ func NewStick(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return stk
 }
 
-// String implements the ports.Peripheral interface
+// String implements the ports.Peripheral interface.
 func (stk *Stick) String() string {
 	return fmt.Sprintf("stick: axis=%02x fire=%02x", stk.axis, stk.button)
 }
 
-// Name implements the ports.Peripheral interface
+// Name implements the ports.Peripheral interface.
 func (stk *Stick) Name() string {
 	return "Stick"
 }
 
-// HandleEvent implements the ports.Peripheral interface
+// HandleEvent implements the ports.Peripheral interface.
 func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	default:
@@ -130,7 +130,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	return nil
 }
 
-// Update implements the ports.Peripheral interface
+// Update implements the ports.Peripheral interface.
 func (stk *Stick) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "VBLANK":
@@ -147,7 +147,7 @@ func (stk *Stick) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step implements the ports.Peripheral interface
+// Step implements the ports.Peripheral interface.
 func (stk *Stick) Step() {
 	// if axis is deflected from the centre then make sure the SWCHA is set
 	// correctly every cycle. this isn't necessary in all situations but ROMs
@@ -158,7 +158,7 @@ func (stk *Stick) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface
+// Reset implements the ports.Peripheral interface.
 func (stk *Stick) Reset() {
 	stk.bus.WriteSWCHx(stk.id, stk.axis)
 	stk.bus.WriteINPTx(stk.inptx, stk.button)

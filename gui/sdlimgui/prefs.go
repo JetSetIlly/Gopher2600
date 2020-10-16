@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-// the acceptable preferencegroups provided to initPrefs()
+// the acceptable preferencegroups provided to initPrefs().
 type prefGroup string
 
 const (
@@ -30,7 +30,7 @@ const (
 	prefsGrpPlaymode prefGroup = "sdlimgui.playmode"
 )
 
-// preferences change subtly when switching between debugger and play modes
+// preferences change subtly when switching between debugger and play modes.
 func (img *SdlImgui) initPrefs(group prefGroup) error {
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)

@@ -75,7 +75,7 @@ func newTextures(renderer *sdl.Renderer, w, h int) (*textures, error) {
 	return txt, err
 }
 
-// destroy texture resources
+// destroy texture resources.
 func (txt *textures) destroy(output io.Writer) {
 	err := txt.a.Destroy()
 	if err != nil {
@@ -89,7 +89,7 @@ func (txt *textures) destroy(output io.Writer) {
 }
 
 // swap textures and set/reset alpha modifiers depending on if the texture is
-// now the "front" or "back" texture
+// now the "front" or "back" texture.
 func (txt *textures) flip() error {
 	if txt.front == txt.a {
 		txt.front = txt.b
@@ -112,7 +112,7 @@ func (txt *textures) flip() error {
 	return nil
 }
 
-// update texture with pixels and render
+// update texture with pixels and render.
 func (txt *textures) render(cpyRect *sdl.Rect, pixels []byte, pitch int) error {
 	// draw "back" texture to screen
 	err := txt.renderer.Copy(txt.back, cpyRect, nil)

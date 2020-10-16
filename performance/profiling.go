@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// ProfileCPU runs supplied function "through" the pprof CPU profiler
+// ProfileCPU runs supplied function "through" the pprof CPU profiler.
 func ProfileCPU(outFile string, run func() error) error {
 	// write cpu profile
 	f, err := os.Create(outFile)
@@ -39,7 +39,7 @@ func ProfileCPU(outFile string, run func() error) error {
 	return run()
 }
 
-// ProfileMem takes a snapshot of memory and writes to outFile
+// ProfileMem takes a snapshot of memory and writes to outFile.
 func ProfileMem(outFile string) error {
 	f, err := os.Create(outFile)
 	if err != nil {

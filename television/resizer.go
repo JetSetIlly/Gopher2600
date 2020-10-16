@@ -15,10 +15,10 @@
 
 package television
 
-// FrameResizeID identifies the resizing method
+// FrameResizeID identifies the resizing method.
 type FrameResizeID string
 
-// List of valid values for FrameResizeID
+// List of valid values for FrameResizeID.
 const (
 	FrameResizerNone   FrameResizeID = "FrameResizerNone"
 	FrameResizerSimple FrameResizeID = "FrameResizerSimple"
@@ -27,7 +27,7 @@ const (
 // !!TODO: more sophisticated resizer implementations
 
 // the resizer interfaces specifies the operations required by a mechanism that
-// will alter the visible frame of the television
+// will alter the visible frame of the television.
 type resizer interface {
 	// the id of the resizer implementation
 	id() FrameResizeID
@@ -43,7 +43,7 @@ type resizer interface {
 }
 
 // simpleResizer is the simplest functional and non-trivial implementation of
-// the resizer interface
+// the resizer interface.
 type simpleResizer struct {
 	bottom int
 }

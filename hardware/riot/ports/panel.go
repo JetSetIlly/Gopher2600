@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
-// Panel represents the console's front control panel
+// Panel represents the console's front control panel.
 type Panel struct {
 	bus PeripheralBus
 
@@ -33,7 +33,7 @@ type Panel struct {
 	resetPressed  bool
 }
 
-// NewPanel is the preferred method of initialisation for the Panel type
+// NewPanel is the preferred method of initialisation for the Panel type.
 func NewPanel(bus PeripheralBus) Peripheral {
 	pan := &Panel{
 		bus:   bus,
@@ -44,7 +44,7 @@ func NewPanel(bus PeripheralBus) Peripheral {
 	return pan
 }
 
-// String implements the Peripheral interface
+// String implements the Peripheral interface.
 func (pan *Panel) String() string {
 	s := strings.Builder{}
 
@@ -87,12 +87,12 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
-// Name implements the Peripheral interface
+// Name implements the Peripheral interface.
 func (pan *Panel) Name() string {
 	return "Panel"
 }
 
-// Reset implements the Peripheral interface
+// Reset implements the Peripheral interface.
 func (pan *Panel) Reset() {
 	// does nothing. this isn't the same as pressing the Reset panel switch
 	//
@@ -131,12 +131,12 @@ func (pan *Panel) write() {
 	pan.bus.WriteSWCHx(PanelID, v)
 }
 
-// Sentinal error returned by Panel.HandleEvent() if power button is pressed
+// Sentinal error returned by Panel.HandleEvent() if power button is pressed.
 const (
 	PowerOff = "emulated machine has been powered off"
 )
 
-// HandleEvent implements Peripheral interface
+// HandleEvent implements Peripheral interface.
 func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	switch event {
 	case PanelSelect:
@@ -172,11 +172,11 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	return nil
 }
 
-// Update implements the Peripheral interface
+// Update implements the Peripheral interface.
 func (pan *Panel) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step implements the Peripheral interface
+// Step implements the Peripheral interface.
 func (pan *Panel) Step() {
 }

@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Commands is the root of the node tree
+// Commands is the root of the node tree.
 type Commands struct {
 	Index map[string]*node
 
@@ -34,17 +34,17 @@ type Commands struct {
 	helps       map[string]string
 }
 
-// Len implements Sort package interface
+// Len implements Sort package interface.
 func (cmds Commands) Len() int {
 	return len(cmds.cmds)
 }
 
-// Less implements Sort package interface
+// Less implements Sort package interface.
 func (cmds Commands) Less(i int, j int) bool {
 	return cmds.cmds[i].tag < cmds.cmds[j].tag
 }
 
-// Swap implements Sort package interface
+// Swap implements Sort package interface.
 func (cmds Commands) Swap(i int, j int) {
 	cmds.cmds[i], cmds.cmds[j] = cmds.cmds[j], cmds.cmds[i]
 }
@@ -63,7 +63,7 @@ func (cmds Commands) String() string {
 
 // AddHelp adds a "help" command to an already prepared Commands type. it uses
 // the top-level nodes of the Commands instance as arguments for the specified
-// helpCommand
+// helpCommand.
 func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error {
 	// if help command exists then there is nothing to do
 	if _, ok := cmds.Index[helpCommand]; ok {
@@ -124,7 +124,7 @@ func (cmds *Commands) AddHelp(helpCommand string, helps map[string]string) error
 	return nil
 }
 
-// HelpOverview returns a columnised list of all help entries
+// HelpOverview returns a columnised list of all help entries.
 func (cmds Commands) HelpOverview() string {
 	s := strings.Builder{}
 	for c := range cmds.cmds {
@@ -136,7 +136,7 @@ func (cmds Commands) HelpOverview() string {
 	return strings.TrimRight(s.String(), "\n")
 }
 
-// Help returns the help (and usage for the command)
+// Help returns the help (and usage for the command).
 func (cmds Commands) Help(keyword string) string {
 	keyword = strings.ToUpper(keyword)
 

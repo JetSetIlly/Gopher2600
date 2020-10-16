@@ -34,7 +34,7 @@ const (
 )
 
 // Patch is used to patch cartridge memory after cartridge has been
-// attached/loaded
+// attached/loaded.
 type Patch struct {
 	cartHash  string
 	patchFile string
@@ -59,17 +59,17 @@ func deserialisePatchEntry(fields database.SerialisedEntry) (database.Entry, err
 	return set, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (set Patch) ID() string {
 	return patchID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (set Patch) String() string {
 	return fmt.Sprintf("%s, %s", set.cartHash, set.patchFile)
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (set *Patch) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			set.cartHash,
@@ -79,18 +79,18 @@ func (set *Patch) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (set Patch) CleanUp() error {
 	// no cleanup necessary
 	return nil
 }
 
-// matchCartHash implements setupEntry interface
+// matchCartHash implements setupEntry interface.
 func (set Patch) matchCartHash(hash string) bool {
 	return set.cartHash == hash
 }
 
-// apply implements setupEntry interface
+// apply implements setupEntry interface.
 func (set Patch) apply(vcs *hardware.VCS) error {
 	_, err := patch.CartridgeMemory(vcs.Mem.Cart, set.patchFile)
 	if err != nil {

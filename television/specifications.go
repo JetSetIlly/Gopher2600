@@ -17,10 +17,10 @@ package television
 
 import "image/color"
 
-// SpecificationList is the list of specifications that the television may adopt
+// SpecificationList is the list of specifications that the television may adopt.
 var SpecificationList = []string{"NTSC", "PAL"}
 
-// Specification is used to define the two television specifications
+// Specification is used to define the two television specifications.
 type Specification struct {
 	ID     string
 	Colors []color.RGBA
@@ -72,7 +72,7 @@ type Specification struct {
 	FramesPerSecond float32
 }
 
-// getColor translates a signals to the color type
+// getColor translates a signals to the color type.
 func (spec *Specification) getColor(col ColorSignal) color.RGBA {
 	// we're usng the ColorSignal to index an array so we need to be extra
 	// careful to make sure the value is valid. if it's not a valid index then
@@ -99,10 +99,10 @@ const (
 	HorizClksScanline = 228
 )
 
-// SpecNTSC is the specification for NTSC television types
+// SpecNTSC is the specification for NTSC television types.
 var SpecNTSC *Specification
 
-// SpecPAL is the specification for PAL television types
+// SpecPAL is the specification for PAL television types.
 var SpecPAL *Specification
 
 func init() {

@@ -42,19 +42,19 @@ func (tr trapper) String() string {
 	return tr.target.Label()
 }
 
-// newTraps is the preferred method of initialisation for the traps type
+// newTraps is the preferred method of initialisation for the traps type.
 func newTraps(dbg *Debugger) *traps {
 	tr := &traps{dbg: dbg}
 	tr.clear()
 	return tr
 }
 
-// clear all traps
+// clear all traps.
 func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
-// drop the numbered trap from the list
+// drop the numbered trap from the list.
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
 		return curated.Errorf("trap #%d is not defined", num)
@@ -70,7 +70,7 @@ func (tr *traps) drop(num int) error {
 }
 
 // check compares the current state of the emulation with every trap condition.
-// returns a string listing every condition that matches (separated by \n)
+// returns a string listing every condition that matches (separated by \n).
 func (tr *traps) check(previousResult string) string {
 	if len(tr.traps) == 0 {
 		return previousResult
@@ -89,7 +89,7 @@ func (tr *traps) check(previousResult string) string {
 	return checkString.String()
 }
 
-// list currently defined traps
+// list currently defined traps.
 func (tr traps) list() {
 	if len(tr.traps) == 0 {
 		tr.dbg.printLine(terminal.StyleFeedback, "no traps")
@@ -101,7 +101,7 @@ func (tr traps) list() {
 	}
 }
 
-// parse tokens and add new trap
+// parse tokens and add new trap.
 func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 	_, present := tokens.Peek()
 	for present {

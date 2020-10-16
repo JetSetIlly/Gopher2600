@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
 
-// LazyChipRegisters lazily accesses chip registere information from the emulator
+// LazyChipRegisters lazily accesses chip registere information from the emulator.
 type LazySaveKey struct {
 	val *LazyValues
 

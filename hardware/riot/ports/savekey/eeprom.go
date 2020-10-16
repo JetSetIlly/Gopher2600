@@ -27,7 +27,7 @@ const saveKeyPath = "savekey"
 
 const eepromSize = 65536
 
-// EEPROM represents the non-volatile memory in the SaveKey peripheral
+// EEPROM represents the non-volatile memory in the SaveKey peripheral.
 type EEPROM struct {
 	// the next address an i2c read/write operation will access
 	Address uint16
@@ -58,7 +58,7 @@ func newEeprom() *EEPROM {
 	return ee
 }
 
-// Read EEPROM data from disk
+// Read EEPROM data from disk.
 func (ee *EEPROM) Read() {
 	fn, err := paths.ResourcePath("", saveKeyPath)
 	if err != nil {
@@ -96,7 +96,7 @@ func (ee *EEPROM) Read() {
 	ee.Dirty = false
 }
 
-// Write EEPROM data to disk
+// Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
 	fn, err := paths.ResourcePath("", saveKeyPath)
 	if err != nil {
@@ -128,7 +128,7 @@ func (ee *EEPROM) Write() {
 	ee.Dirty = false
 }
 
-// Poke a value into EEPROM
+// Poke a value into EEPROM.
 func (ee *EEPROM) Poke(address uint16, data uint8) {
 	ee.data[address] = data
 	ee.Dirty = true
@@ -155,7 +155,7 @@ func (ee *EEPROM) nextAddress() {
 	}
 }
 
-// Copy EEPROM data to a new array
+// Copy EEPROM data to a new array.
 func (ee *EEPROM) Copy() []uint8 {
 	d := make([]uint8, len(ee.data))
 	copy(d, ee.data)

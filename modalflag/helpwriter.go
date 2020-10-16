@@ -21,13 +21,13 @@ import (
 	"strings"
 )
 
-// helpWriter is used to amend the default output from the flag package
+// helpWriter is used to amend the default output from the flag package.
 type helpWriter struct {
 	// the last []byte sent to the Write() function
 	buffer []byte
 }
 
-// Clear contents of output buffer
+// Clear contents of output buffer.
 func (hw *helpWriter) Clear() {
 	hw.buffer = []byte{}
 }
@@ -80,7 +80,7 @@ func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string, a
 	}
 }
 
-// Write buffers all output
+// Write buffers all output.
 func (hw *helpWriter) Write(p []byte) (n int, err error) {
 	hw.buffer = append(hw.buffer, p...)
 	return len(p), nil

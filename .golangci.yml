@@ -12,6 +12,16 @@ linters:
     - golint
     - stylecheck
     - gofmt
+    - goimports
+    - nakedret
+    - prealloc
+    - goprintffuncname
+    - godot
+    - testpackage
+    - exportloopref
+    - nolintlint
+    - asciicheck
+    - godox
   fast: false
 
 linters-settings:
@@ -31,6 +41,10 @@ linters-settings:
       - color
       - colors
       - coloring
+
+  godox: 
+    keywords:
+      - FIXME
 
 issues:
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.

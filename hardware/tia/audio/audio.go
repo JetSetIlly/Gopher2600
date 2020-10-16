@@ -61,7 +61,7 @@ func (au *Audio) String() string {
 	return s.String()
 }
 
-// NewAudio is the preferred method of initialisation for the Video structure
+// NewAudio is the preferred method of initialisation for the Video structure.
 func NewAudio() *Audio {
 	au := &Audio{}
 	au.channel0.au = au
@@ -98,7 +98,7 @@ func NewAudio() *Audio {
 }
 
 // Mix the two VCS audio channels, returning a boolean indicating whether the
-// sound has been updated and a single value representing the mixed volume
+// sound has been updated and a single value representing the mixed volume.
 func (au *Audio) Mix() (bool, uint8) {
 	// the reference frequency for all sound produced by the TIA is 30Khz. this
 	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see

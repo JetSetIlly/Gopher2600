@@ -74,7 +74,7 @@ func newPreferences() (*Preferences, error) {
 	return p, nil
 }
 
-// Load disassembly preferences and apply to the current disassembly
+// Load disassembly preferences and apply to the current disassembly.
 func (p *Preferences) Load() error {
 	err := p.dsk.Load(false)
 	if err != nil {
@@ -83,7 +83,7 @@ func (p *Preferences) Load() error {
 	return nil
 }
 
-// Save current disassembly preferences to disk
+// Save current disassembly preferences to disk.
 func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

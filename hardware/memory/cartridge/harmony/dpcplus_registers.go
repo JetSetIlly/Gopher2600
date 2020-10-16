@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// DPCplusRegisters implements the bus.CartRegisters interface
+// DPCplusRegisters implements the bus.CartRegisters interface.
 type DPCplusRegisters struct {
 	Fetcher      [8]dataFetcher
 	FracFetcher  [8]fractionalDataFetcher
@@ -161,7 +161,7 @@ func (rng *randomNumberFetcher) prev() {
 	}
 }
 
-// GetRegisters implements the bus.CartDebugBus interface
+// GetRegisters implements the bus.CartDebugBus interface.
 func (cart dpcPlus) GetRegisters() mapper.CartRegisters {
 	return cart.registers
 }

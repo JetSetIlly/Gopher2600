@@ -48,7 +48,7 @@ type BankContent struct {
 
 // BankInfo is used to identify a cartridge bank. In some instance a bank can
 // be identified by it's bank number only. In other contexts more detail is
-// required and so BankInfo is used isntead
+// required and so BankInfo is used isntead.
 type BankInfo struct {
 	Number  int
 	Segment int

@@ -19,7 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// LazyControllers lazily accesses controller information from the emulator
+// LazyControllers lazily accesses controller information from the emulator.
 type LazyControllers struct {
 	val *LazyValues
 

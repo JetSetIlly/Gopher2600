@@ -34,10 +34,10 @@ import (
 
 // imguiIniFile is where imgui will store the coordinates of the imgui windows
 // !!TODO: duplicate imgui.SetIniFilename so that is uses prefs package. we
-// should be able to do this a smart implementation of io.Reader and io.Writer
+// should be able to do this a smart implementation of io.Reader and io.Writer.
 const imguiIniFile = "debugger_imgui.ini"
 
-// SdlImgui is an sdl based visualiser using imgui
+// SdlImgui is an sdl based visualiser using imgui.
 type SdlImgui struct {
 	// the mechanical requirements for the gui
 	io      imgui.IO
@@ -96,7 +96,7 @@ type SdlImgui struct {
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
-// MUST ONLY be called from the #mainthread
+// MUST ONLY be called from the #mainthread.
 func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context:    imgui.CreateContext(nil),
@@ -166,7 +166,7 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 
 // Destroy implements GuiCreator interface
 //
-// MUST ONLY be called from the #mainthread
+// MUST ONLY be called from the #mainthread.
 func (img *SdlImgui) Destroy(output io.Writer) {
 	img.wm.destroy()
 	img.audio.EndMixing()
@@ -189,12 +189,12 @@ func (img *SdlImgui) draw() {
 	img.drawPlusROMFirstInstallation()
 }
 
-// GetTerminal implements terminal.Broker interface
+// GetTerminal implements terminal.Broker interface.
 func (img *SdlImgui) GetTerminal() terminal.Terminal {
 	return img.term
 }
 
-// GetReflectionRendere implements reflection.Broker interface
+// GetReflectionRendere implements reflection.Broker interface.
 func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 	return img.screen
 }
@@ -210,7 +210,7 @@ func (img *SdlImgui) isPlaymode() bool {
 }
 
 // set playmode and handle the changeover gracefully. this includes the saving
-// and loading of preference groups
+// and loading of preference groups.
 func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
 		if !img.isPlaymode() {

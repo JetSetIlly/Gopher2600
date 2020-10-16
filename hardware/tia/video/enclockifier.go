@@ -31,7 +31,7 @@ import (
 // Just to reiterate, ball width is given by combining clock signals
 // of different widths based on the state of the two size bits (the
 // gates form an AND -> OR -> AND -> OR -> out arrangement, with a
-// hanger-on AND gate)."
+// hanger-on AND gate).".
 type enclockifier struct {
 	Active     bool
 	SecondHalf bool
@@ -63,13 +63,13 @@ func (en *enclockifier) String() string {
 	return s.String()
 }
 
-// the ball sprite drops enclockifier events during position resets
+// the ball sprite drops enclockifier events during position resets.
 func (en *enclockifier) drop() {
 	en.Active = false
 }
 
 // the ball sprite forces conclusion (or continuation in the case of 8x width)
-// of enclockifier events during position resets
+// of enclockifier events during position resets.
 func (en *enclockifier) force() {
 	en.Paused = false
 	if *en.size == 0x03 && en.Active && !en.SecondHalf {

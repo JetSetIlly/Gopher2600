@@ -27,7 +27,7 @@ type ChipRegister int
 // register. these named values make the code more readable
 //
 // Values are enumerated from 0; value is added to the origin address of the
-// TIA in ChipBus.ChipWrite implementation
+// TIA in ChipBus.ChipWrite implementation.
 const (
 	CXM0P ChipRegister = iota
 	CXM1P
@@ -52,7 +52,7 @@ const (
 // value in the INTIM register.
 //
 // Values are enumerated from 0; value is added to the origin address of the
-// TIA in ChipBus.ChipWrite implementation
+// TIA in ChipBus.ChipWrite implementation.
 const (
 	SWCHA ChipRegister = iota
 	SWACNT

@@ -31,7 +31,7 @@ func (ai AddrInfo) String() string {
 	return fmt.Sprintf("http://%s/%s", ai.Host, ai.Path)
 }
 
-// CopyAddrInfo returns a new instance of AddrInfo
+// CopyAddrInfo returns a new instance of AddrInfo.
 func (cart *PlusROM) CopyAddrInfo() AddrInfo {
 	return AddrInfo{
 		Host: cart.net.ai.Host,
@@ -39,7 +39,7 @@ func (cart *PlusROM) CopyAddrInfo() AddrInfo {
 	}
 }
 
-// SetAddrInfo updates the host/path information int the PlusROM
+// SetAddrInfo updates the host/path information int the PlusROM.
 func (cart *PlusROM) SetAddrInfo(host string, path string) (hostValid bool, pathValid bool) {
 	if isHostValid(host) {
 		cart.net.ai.Host = host

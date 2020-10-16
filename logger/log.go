@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// Entry represents a single line/entry in the log
+// Entry represents a single line/entry in the log.
 type Entry struct {
 	tag      string
 	detail   string

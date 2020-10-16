@@ -15,7 +15,7 @@
 
 package memorymap
 
-// Area represents the different areas of memory
+// Area represents the different areas of memory.
 type Area int
 
 func (a Area) String() string {
@@ -33,7 +33,7 @@ func (a Area) String() string {
 	return "undefined"
 }
 
-// The different memory areas in the VCS
+// The different memory areas in the VCS.
 const (
 	Undefined Area = iota
 	TIA
@@ -138,7 +138,7 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 	return address & MaskWriteTIA, TIA
 }
 
-// IsArea returns true if the address is in the specificied area
+// IsArea returns true if the address is in the specificied area.
 func IsArea(address uint16, area Area) bool {
 	_, a := MapAddress(address, true)
 	return area == a

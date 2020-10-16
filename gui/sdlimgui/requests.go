@@ -27,7 +27,7 @@ type featureRequest struct {
 	args    []interface{}
 }
 
-// ReqFeature implements gui.GUI interface
+// ReqFeature implements gui.GUI interface.
 func (img *SdlImgui) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
 	img.featureReq <- featureRequest{request: request, args: args}
 	return <-img.featureErr

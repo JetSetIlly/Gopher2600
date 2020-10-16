@@ -24,10 +24,10 @@ import (
 )
 
 // Element is used to record from which video sub-system the pixel
-// was generated, taking video priority into account
+// was generated, taking video priority into account.
 type Element int
 
-// List of valid Element Signals
+// List of valid Element Signals.
 const (
 	ElementBackground Element = iota
 	ElementBall
@@ -58,7 +58,7 @@ func (e Element) String() string {
 	panic("unknown video element")
 }
 
-// Video contains all the components of the video sub-system of the VCS TIA chip
+// Video contains all the components of the video sub-system of the VCS TIA chip.
 type Video struct {
 	// collision matrix
 	Collisions *Collisions
@@ -151,7 +151,7 @@ func NewVideo(mem bus.ChipBus,
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
-// triggered
+// triggered.
 func (vd *Video) RSYNC(adjustment int) {
 	vd.Player0.rsync(adjustment)
 	vd.Player1.rsync(adjustment)
@@ -172,7 +172,7 @@ func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 	vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
 }
 
-// PrepareSpritesForHMOVE should be called whenever HMOVE is triggered
+// PrepareSpritesForHMOVE should be called whenever HMOVE is triggered.
 func (vd *Video) PrepareSpritesForHMOVE() {
 	vd.Player0.prepareForHMOVE()
 	vd.Player1.prepareForHMOVE()

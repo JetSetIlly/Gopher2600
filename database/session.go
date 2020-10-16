@@ -25,13 +25,13 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Sentinal error returned when requested database is not available
+// Sentinal error returned when requested database is not available.
 const (
 	NotAvailable = "database: not available (%s)"
 )
 
 // Activity is used to specify the general activity of what will be occurring
-// during the database session
+// during the database session.
 type Activity int
 
 // Valid activities: the "higher level" activities inherit the activity
@@ -39,14 +39,14 @@ type Activity int
 const (
 	ActivityReading Activity = iota
 
-	// Modifying implies Reading
+	// Modifying implies Reading.
 	ActivityModifying
 
-	// Creating implies Modifying (which in turn implies Reading)
+	// Creating implies Modifying (which in turn implies Reading).
 	ActivityCreating
 )
 
-// Session keeps track of a database session
+// Session keeps track of a database session.
 type Session struct {
 	dbfile   *os.File
 	activity Activity
@@ -60,7 +60,7 @@ type Session struct {
 // StartSession starts/initialises a new DB session. argument is the function
 // to call when database has been successfully opened. this function should be
 // used to add information about the different entries that are to be used in
-// the database (see AddEntryType() function)
+// the database (see AddEntryType() function).
 func StartSession(path string, activity Activity, init func(*Session) error) (*Session, error) {
 	var err error
 
@@ -101,7 +101,7 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 	return db, nil
 }
 
-// EndSession closes the database
+// EndSession closes the database.
 func (db *Session) EndSession(commitChanges bool) error {
 	// write entries to database
 	if commitChanges {

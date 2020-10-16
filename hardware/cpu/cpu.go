@@ -107,7 +107,7 @@ func (mc *CPU) String() string {
 		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status)
 }
 
-// Reset reinitialises all registers
+// Reset reinitialises all registers.
 func (mc *CPU) Reset(randomState bool) error {
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
@@ -138,12 +138,12 @@ func (mc *CPU) Reset(randomState bool) error {
 	return nil
 }
 
-// HasReset checks whether the CPU has recently been reset
+// HasReset checks whether the CPU has recently been reset.
 func (mc CPU) HasReset() bool {
 	return mc.LastResult.Address == 0 && mc.LastResult.Defn == nil
 }
 
-// LoadPCIndirect loads the contents of indirectAddress into the PC
+// LoadPCIndirect loads the contents of indirectAddress into the PC.
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	if !mc.LastResult.Final && !mc.Interrupted {
 		return curated.Errorf("cpu: load PC indirect invalid mid-instruction")
@@ -172,7 +172,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	return nil
 }
 
-// LoadPC loads the contents of directAddress into the PC
+// LoadPC loads the contents of directAddress into the PC.
 func (mc *CPU) LoadPC(directAddress uint16) error {
 	if !mc.LastResult.Final && !mc.Interrupted {
 		return curated.Errorf("cpu: load PC invalid mid-instruction")
@@ -231,7 +231,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 
 // write8Bit writes 8 bits to the specified address. there are no side effects
 // on the state of the CPU which means that *endCycle must be called by the
-// calling function as appropriate*
+// calling function as appropriate*.
 func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	err := mc.mem.Write(address, value)
 
@@ -454,7 +454,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 // endCycle() at that point.
 //
 // CPU.cycleCallback() is called from this function for additional
-// functionality
+// functionality.
 func (mc *CPU) endCycle() error {
 	mc.LastResult.Cycles++
 	if mc.cycleCallback == nil {
@@ -463,7 +463,7 @@ func (mc *CPU) endCycle() error {
 	return mc.cycleCallback()
 }
 
-// Sentinal error returned by ExecuteInstruction if an unimplemented opcode is encountered
+// Sentinal error returned by ExecuteInstruction if an unimplemented opcode is encountered.
 const (
 	UnimplementedInstruction = "cpu: unimplemented instruction (%#02x) at (%#04x)"
 )

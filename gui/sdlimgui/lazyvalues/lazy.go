@@ -54,7 +54,7 @@ type LazyValues struct {
 	Breakpoints *LazyBreakpoints
 }
 
-// NewLazyValues is the preferred method of initialisation for the Values type
+// NewLazyValues is the preferred method of initialisation for the Values type.
 func NewLazyValues() *LazyValues {
 	val := &LazyValues{active: true}
 
@@ -81,14 +81,14 @@ func NewLazyValues() *LazyValues {
 	return val
 }
 
-// Reset lazy values instance
+// Reset lazy values instance.
 func (val *LazyValues) Reset(changingCart bool) {
 	val.active = !changingCart
 	val.Cart = newLazyCart(val)
 	val.active = true
 }
 
-// Refresh lazy values
+// Refresh lazy values.
 func (val *LazyValues) Refresh() {
 	if !val.active || val.Dbg == nil {
 		return

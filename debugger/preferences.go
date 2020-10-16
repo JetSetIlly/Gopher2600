@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-// Preferences defines and collates all the preference values used by the debugger
+// Preferences defines and collates all the preference values used by the debugger.
 type Preferences struct {
 	dbg *Debugger
 	dsk *prefs.Disk
@@ -34,7 +34,7 @@ func (p Preferences) String() string {
 	return p.dsk.String()
 }
 
-// newPreferences is the preferred method of initialisation for the Preferences type
+// newPreferences is the preferred method of initialisation for the Preferences type.
 func newPreferences(dbg *Debugger) (*Preferences, error) {
 	p := &Preferences{
 		dbg:         dbg,

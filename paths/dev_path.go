@@ -26,7 +26,7 @@ const gopherConfigDir = ".gopher2600"
 
 // the non-release version of getBasePath looks for and if necessary creates
 // the gopherConfigDir (and child directories) in the current working
-// directory
+// directory.
 func getBasePath(subPth string) (string, error) {
 	pth := path.Join(gopherConfigDir, subPth)
 

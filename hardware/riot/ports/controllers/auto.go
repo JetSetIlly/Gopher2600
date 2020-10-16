@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
-// Auto handles the automatic switching between controller types
+// Auto handles the automatic switching between controller types.
 type Auto struct {
 	id         ports.PortID
 	bus        ports.PeripheralBus
@@ -33,7 +33,7 @@ type Auto struct {
 
 // NewAuto is the preferred method of initialisation for the Auto type.
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
-// to ports.AttachPlayer0() and ports.AttachPlayer1()
+// to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewAuto(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	aut := &Auto{
 		id:  id,
@@ -44,17 +44,17 @@ func NewAuto(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return aut
 }
 
-// String implements the ports.Peripheral interface
+// String implements the ports.Peripheral interface.
 func (aut *Auto) String() string {
 	return aut.controller.String()
 }
 
-// Name implements the ports.Peripheral interface
+// Name implements the ports.Peripheral interface.
 func (aut *Auto) Name() string {
 	return aut.controller.Name()
 }
 
-// HandleEvent implements the ports.Peripheral interface
+// HandleEvent implements the ports.Peripheral interface.
 func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	case ports.Left:
@@ -105,7 +105,7 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	return err
 }
 
-// Update implements the ports.Peripheral interface
+// Update implements the ports.Peripheral interface.
 func (aut *Auto) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWACNT":
@@ -119,12 +119,12 @@ func (aut *Auto) Update(data bus.ChipData) bool {
 	return aut.controller.Update(data)
 }
 
-// Step implements the ports.Peripheral interface
+// Step implements the ports.Peripheral interface.
 func (aut *Auto) Step() {
 	aut.controller.Step()
 }
 
-// Reset implements the ports.Peripheral interface
+// Reset implements the ports.Peripheral interface.
 func (aut *Auto) Reset() {
 	aut.controller = NewStick(aut.id, aut.bus)
 }

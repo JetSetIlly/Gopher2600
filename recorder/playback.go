@@ -249,13 +249,13 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	return nil
 }
 
-// Sentinal error returned by GetPlayback if a hash error is encountered
+// Sentinal error returned by GetPlayback if a hash error is encountered.
 const (
 	PlaybackHashError = "playback: hash error [line %d]"
 )
 
 // GetPlayback returns an event and source portID for an event occurring at the
-// current TV frame/scanline/horizpos
+// current TV frame/scanline/horizpos.
 func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id
 	if plb.seqCt >= len(plb.sequence) {

@@ -205,7 +205,7 @@ func (win *winSelectROM) setPath(path string) error {
 	return err
 }
 
-// overriding managedWindow implementation
+// overriding managedWindow implementation.
 func (win *winSelectROM) setOpen(open bool) {
 	if open {
 		win.open = true

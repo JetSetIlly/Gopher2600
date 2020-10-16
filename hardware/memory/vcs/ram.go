@@ -31,7 +31,7 @@ type RAM struct {
 	SnapshotRAM []uint8
 }
 
-// NewRAM is the preferred method of initialisation for the RAM memory area
+// NewRAM is the preferred method of initialisation for the RAM memory area.
 func NewRAM() *RAM {
 	return &RAM{
 		RAM:         make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
@@ -66,7 +66,7 @@ func (ram *RAM) Write(address uint16, data uint8) error {
 	return nil
 }
 
-// Snapshot a copy of RAM for future comparison
+// Snapshot a copy of RAM for future comparison.
 func (ram *RAM) Snapshot() {
 	copy(ram.SnapshotRAM, ram.RAM)
 }

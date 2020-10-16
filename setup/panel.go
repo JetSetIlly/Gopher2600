@@ -36,7 +36,7 @@ const (
 	numPanelSetupFields
 )
 
-// PanelSetup is used to adjust the VCS's front panel
+// PanelSetup is used to adjust the VCS's front panel.
 type PanelSetup struct {
 	cartHash string
 
@@ -79,17 +79,17 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 	return set, nil
 }
 
-// ID implements the database.Entry interface
+// ID implements the database.Entry interface.
 func (set PanelSetup) ID() string {
 	return panelSetupID
 }
 
-// String implements the database.Entry interface
+// String implements the database.Entry interface.
 func (set PanelSetup) String() string {
 	return fmt.Sprintf("%s, p0=%v, p1=%v, col=%v\n", set.cartHash, set.p0, set.p1, set.col)
 }
 
-// Serialise implements the database.Entry interface
+// Serialise implements the database.Entry interface.
 func (set *PanelSetup) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			set.cartHash,
@@ -101,18 +101,18 @@ func (set *PanelSetup) Serialise() (database.SerialisedEntry, error) {
 		nil
 }
 
-// CleanUp implements the database.Entry interface
+// CleanUp implements the database.Entry interface.
 func (set PanelSetup) CleanUp() error {
 	// no cleanup necessary
 	return nil
 }
 
-// matchCartHash implements setupEntry interface
+// matchCartHash implements setupEntry interface.
 func (set PanelSetup) matchCartHash(hash string) bool {
 	return set.cartHash == hash
 }
 
-// apply implements setupEntry interface
+// apply implements setupEntry interface.
 func (set PanelSetup) apply(vcs *hardware.VCS) error {
 	if set.p0 {
 		if err := vcs.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, true); err != nil {

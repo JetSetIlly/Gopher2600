@@ -371,7 +371,7 @@ func (rnd *glsl) setup() {
 }
 
 // getShaderCompileError returns the most recent error generated
-// by the shader compiler
+// by the shader compiler.
 func getShaderCompileError(shader uint32) string {
 	var isCompiled int32
 	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &isCompiled)
@@ -388,7 +388,7 @@ func getShaderCompileError(shader uint32) string {
 	return ""
 }
 
-// glState stores GL state with the intention of restoration after a short period
+// glState stores GL state with the intention of restoration after a short period.
 type glState struct {
 	lastActiveTexture      int32
 	lastProgram            int32
@@ -412,7 +412,7 @@ type glState struct {
 	lastEnableScissorTest  bool
 }
 
-// storeGLState is the best way of initialising an instance of glState
+// storeGLState is the best way of initialising an instance of glState.
 func storeGLState() *glState {
 	st := &glState{}
 	gl.GetIntegerv(gl.ACTIVE_TEXTURE, &st.lastActiveTexture)
@@ -438,7 +438,7 @@ func storeGLState() *glState {
 	return st
 }
 
-// restore previously store glState
+// restore previously store glState.
 func (st *glState) restore() {
 	gl.UseProgram(uint32(st.lastProgram))
 	gl.BindTexture(gl.TEXTURE_2D, uint32(st.lastTexture))

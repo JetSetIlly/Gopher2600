@@ -23,10 +23,10 @@ import (
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
-// the location of the setupDB file
+// the location of the setupDB file.
 const setupDBFile = "setupDB"
 
-// setupEntry is the generic entry type in the setupDB
+// setupEntry is the generic entry type in the setupDB.
 type setupEntry interface {
 	database.Entry
 
@@ -38,7 +38,7 @@ type setupEntry interface {
 }
 
 // when starting a database session we must add the details of the entry types
-// that will be found in the database
+// that will be found in the database.
 func initDBSession(db *database.Session) error {
 	// add entry types
 	if err := db.RegisterEntryType(panelSetupID, deserialisePanelSetupEntry); err != nil {

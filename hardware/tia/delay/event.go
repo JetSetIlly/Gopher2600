@@ -15,10 +15,10 @@
 
 package delay
 
-// Payload represents the argument use when calling a scheduled function
+// Payload represents the argument use when calling a scheduled function.
 type Value interface{}
 
-// Event represents something that will occur in the future
+// Event represents something that will occur in the future.
 type Event struct {
 	initial   int
 	remaining int
@@ -52,21 +52,21 @@ func (e *Event) Tick() {
 	}
 }
 
-// The number of remaining cycles
+// The number of remaining cycles.
 func (e *Event) Remaining() int {
 	return e.remaining - 1
 }
 
 // Pause the ticking of the event. Tick() will have no effect. There is no
 // Resume() function because it is not needed. However, a paused event can be
-// Forced() (missile and player sprites) or Dropped() (ball and player sprites)
+// Forced() (missile and player sprites) or Dropped() (ball and player sprites).
 func (e *Event) Pause() {
 	e.paused = true
 }
 
 // Push event so that it starts again. Same as dropping and rescheduling
 // although JustStarted() will not return true for a pushed event. Used
-// by player, missile and ball sprites
+// by player, missile and ball sprites.
 func (e *Event) Push() {
 	e.remaining = e.initial
 	e.pushed = true
@@ -91,7 +91,7 @@ func (e *Event) JustStarted() bool {
 }
 
 // AboutToEnd returns true if the event concludes (and the payload run) on the
-// next call to Tikc()
+// next call to Tikc().
 func (e *Event) AboutToEnd() bool {
 	return e.remaining == 1
 }

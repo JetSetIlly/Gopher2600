@@ -19,7 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// NewRIOT is the preferred method of initialisation for the RIOT memory area
+// NewRIOT is the preferred method of initialisation for the RIOT memory area.
 func NewRIOT() *ChipMemory {
 	area := &ChipMemory{
 		origin: memorymap.OriginRIOT,

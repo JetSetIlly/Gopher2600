@@ -56,12 +56,12 @@ type dpc struct {
 	beats int
 }
 
-// DPCstatic implements the mapper.CartStatic interface
+// DPCstatic implements the mapper.CartStatic interface.
 type DPCstatic struct {
 	Gfx []byte
 }
 
-// DPCregisters implements the mapper.CartRegisters interface
+// DPCregisters implements the mapper.CartRegisters interface.
 type DPCregisters struct {
 	Fetcher [8]DPCdataFetcher
 
@@ -85,7 +85,7 @@ func (r DPCregisters) String() string {
 	return s.String()
 }
 
-// DPCdataFetcher represents a single DPC data fetcher
+// DPCdataFetcher represents a single DPC data fetcher.
 type DPCdataFetcher struct {
 	Low    byte
 	Hi     byte
@@ -156,17 +156,17 @@ func (cart dpc) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
-// ID implements the mapper.CartMapper interface
+// ID implements the mapper.CartMapper interface.
 func (cart dpc) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface
+// Initialise implements the mapper.CartMapper interface.
 func (cart *dpc) Initialise() {
 	cart.bank = len(cart.banks) - 1
 }
 
-// Read implements the mapper.CartMapper interface
+// Read implements the mapper.CartMapper interface.
 func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 
@@ -276,7 +276,7 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
-// Write implements the mapper.CartMapper interface
+// Write implements the mapper.CartMapper interface.
 func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.bankswitch(addr, passive) {
 		return nil
@@ -331,7 +331,7 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	return curated.Errorf(bus.AddressError, addr)
 }
 
-// bank switch on hotspot access
+// bank switch on hotspot access.
 func (cart *dpc) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
 		if passive {
@@ -347,17 +347,17 @@ func (cart *dpc) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
-// NumBanks implements the mapper.CartMapper interface
+// NumBanks implements the mapper.CartMapper interface.
 func (cart dpc) NumBanks() int {
 	return 2
 }
 
-// GetBank implements the mapper.CartMapper interface
+// GetBank implements the mapper.CartMapper interface.
 func (cart dpc) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface
+// Patch implements the mapper.CartMapper interface.
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.Gfx) {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -374,11 +374,11 @@ func (cart *dpc) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface
+// Listen implements the mapper.CartMapper interface.
 func (cart *dpc) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the mapper.CartMapper interface
+// Step implements the mapper.CartMapper interface.
 func (cart *dpc) Step() {
 	// clock music enabled data fetchers if oscClock is active [col 7, ln 25-27]
 
@@ -409,7 +409,7 @@ func (cart *dpc) Step() {
 	}
 }
 
-// GetRegisters implements the mapper.CartRegisters interface
+// GetRegisters implements the mapper.CartRegisters interface.
 func (cart dpc) GetRegisters() mapper.CartRegisters {
 	return mapper.CartRegisters(cart.registers)
 }
@@ -469,7 +469,7 @@ func (cart *dpc) PutRegister(register string, data string) {
 	}
 }
 
-// GetStatic implements the mapper.CartDebugBus interface
+// GetStatic implements the mapper.CartDebugBus interface.
 func (cart dpc) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 1)
 	s[0].Label = "Gfx"
@@ -478,7 +478,7 @@ func (cart dpc) GetStatic() []mapper.CartStatic {
 	return s
 }
 
-// PutStatic implements the mapper.CartDebugBus interface
+// PutStatic implements the mapper.CartDebugBus interface.
 func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	if label == "Gfx" {
 		if int(addr) >= len(cart.static.Gfx) {
@@ -492,7 +492,7 @@ func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 	return nil
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart dpc) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -504,7 +504,7 @@ func (cart dpc) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart dpc) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
@@ -576,7 +576,7 @@ func (cart dpc) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart dpc) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},

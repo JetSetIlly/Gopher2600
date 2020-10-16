@@ -42,7 +42,7 @@ func newLazyBreakpoints(val *LazyValues) *LazyBreakpoints {
 	}
 }
 
-// HasBreak checks to see if disassembly entry has a breakpoint
+// HasBreak checks to see if disassembly entry has a breakpoint.
 func (lz *LazyBreakpoints) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
 	i := e.Result.Address & memorymap.CartridgeBits
 

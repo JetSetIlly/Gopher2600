@@ -24,7 +24,7 @@ import (
 )
 
 // create a unique filename from a CatridgeLoader instance. used when saving
-// scripts into regressionScripts directory
+// scripts into regressionScripts directory.
 func uniqueFilename(prepend string, cartload cartridgeloader.Loader) (string, error) {
 	n := time.Now()
 	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())

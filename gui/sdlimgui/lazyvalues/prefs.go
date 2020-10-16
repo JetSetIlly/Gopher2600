@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 )
 
-// LazyPrefs lazily accesses the debugger/emulator's preference states
+// LazyPrefs lazily accesses the debugger/emulator's preference states.
 type LazyPrefs struct {
 	val *LazyValues
 

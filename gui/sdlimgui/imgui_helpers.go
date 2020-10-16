@@ -30,7 +30,7 @@ func imguiRemainingWinHeight() float32 {
 }
 
 // requires the minimum Vec2{} required to fit any of the string values
-// listed in the arguments
+// listed in the arguments.
 func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 	w := imgui.CalcTextSize(s, false, 0)
 	for i := range t {
@@ -48,7 +48,7 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 }
 
 // returns the pixel width of a text string length characters wide. assumes all
-// characters are of the same width
+// characters are of the same width.
 func imguiTextWidth(length int) float32 {
 	return imguiGetFrameDim(strings.Repeat("X", length)).X
 }
@@ -103,7 +103,7 @@ func imguiBooleanButton(cols *imguiColors, state bool, text string) bool {
 	return imguiBooleanButtonV(cols, state, text, imgui.Vec2{})
 }
 
-// imguiBooleanButton with dimension argument
+// imguiBooleanButton with dimension argument.
 func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.Vec2) bool {
 	if state {
 		imgui.PushStyleColor(imgui.StyleColorButton, cols.True)
@@ -120,7 +120,7 @@ func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.V
 }
 
 // calls Text but precedes it with AlignTextToFramePadding() and follows it
-// with SameLine(). a common enought pattern to warrant a function call
+// with SameLine(). a common enought pattern to warrant a function call.
 func imguiText(text string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(text)
@@ -149,7 +149,7 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 	return q
 }
 
-// use appropriate palette for television spec
+// use appropriate palette for television spec.
 func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 	switch img.lz.TV.Spec.ID {
 	case "PAL":
@@ -165,7 +165,7 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 // open up an instance of popupPalette.
 //
 // size argument should be expressed as a fraction the fraction will be applied
-// to imgui.FontSize() to obtain the radius of the swatch
+// to imgui.FontSize() to obtain the radius of the swatch.
 func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	_, pal := img.imguiTVPalette()
 	c := pal[col]

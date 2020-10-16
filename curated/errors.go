@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-// curated is an implementation of the go language error interface
+// curated is an implementation of the go language error interface.
 type curated struct {
 	pattern string
 	values  []interface{}
@@ -72,7 +72,7 @@ func IsAny(err error) bool {
 	return false
 }
 
-// Is checks if error is a curated error with a specific pattern
+// Is checks if error is a curated error with a specific pattern.
 func Is(err error, pattern string) bool {
 	if err == nil {
 		return false
@@ -86,7 +86,7 @@ func Is(err error, pattern string) bool {
 }
 
 // Is checks if error is a curated error with a specific pattern somewhere in
-// the chain
+// the chain.
 func Has(err error, pattern string) bool {
 	if err == nil {
 		return false

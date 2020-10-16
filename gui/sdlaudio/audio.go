@@ -28,21 +28,21 @@ import (
 // special way (that I know of) that can tells us what the ideal value is
 //
 // the bufferLegnth value is the maximum size of the buffer. once the buffer is
-// full the audio will be queued
+// full the audio will be queued.
 const bufferLength = 1024
 
 // if the audio queue is ever less than minQueueLength then the buffer
-// will be pushed to the queue immediately
+// will be pushed to the queue immediately.
 const minQueueLength = 256
 
 // if audio queue is ever less than critQueueLength the the buffer is pushed to
-// the queue but the buffer is not reset
+// the queue but the buffer is not reset.
 const critQueueLength = 64
 
-// if queued audio ever exceeds this value then clip the audio
+// if queued audio ever exceeds this value then clip the audio.
 const maxQueueLength = 8192
 
-// Audio outputs sound using SDL
+// Audio outputs sound using SDL.
 type Audio struct {
 	id   sdl.AudioDeviceID
 	spec sdl.AudioSpec
@@ -51,7 +51,7 @@ type Audio struct {
 	bufferCt int
 }
 
-// NewAudio is the preferred method of initialisatoin for the Audio Type
+// NewAudio is the preferred method of initialisatoin for the Audio Type.
 func NewAudio() (*Audio, error) {
 	aud := &Audio{
 		buffer: make([]uint8, bufferLength),
@@ -89,7 +89,7 @@ func NewAudio() (*Audio, error) {
 	return aud, nil
 }
 
-// SetAudio implements the television.AudioMixer interface
+// SetAudio implements the television.AudioMixer interface.
 func (aud *Audio) SetAudio(audioData uint8) error {
 	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
 	aud.bufferCt++
@@ -143,7 +143,7 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// EndMixing implements the television.AudioMixer interface
+// EndMixing implements the television.AudioMixer interface.
 func (aud *Audio) EndMixing() error {
 	sdl.CloseAudioDevice(aud.id)
 	return nil

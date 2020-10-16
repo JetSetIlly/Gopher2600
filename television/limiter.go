@@ -85,7 +85,7 @@ func (lmtr *limiter) init() {
 	}()
 }
 
-// set target rate and the number of scanlines considered to be a frame
+// set target rate and the number of scanlines considered to be a frame.
 func (lmtr *limiter) setRate(fps float32, scanlinesPerFrame int) {
 	if fps < 0 {
 		return

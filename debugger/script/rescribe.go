@@ -26,7 +26,7 @@ import (
 
 const commentLine = "#"
 
-// check if line is prepended with commentLine (ignoring leading spaces)
+// check if line is prepended with commentLine (ignoring leading spaces).
 func isComment(line string) bool {
 	return strings.HasPrefix(strings.TrimSpace(line), commentLine)
 }
@@ -40,7 +40,7 @@ type Rescribe struct {
 }
 
 // RescribeScript is the preferred method of initialisation for the Rescribe
-// type
+// type.
 func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// open script and defer closing
 	f, err := os.Open(scriptfile)
@@ -76,17 +76,17 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	return scr, nil
 }
 
-// IsInteractive implements the terminal.Input interface
+// IsInteractive implements the terminal.Input interface.
 func (scr *Rescribe) IsInteractive() bool {
 	return false
 }
 
-// Sentinal error returned when Rescribe.TermRead() reaches the expected end of the script
+// Sentinal error returned when Rescribe.TermRead() reaches the expected end of the script.
 const (
 	ScriptEnd = "end of script (%s)"
 )
 
-// TermRead implements the terminal.Input interface
+// TermRead implements the terminal.Input interface.
 func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
 		return -1, curated.Errorf(ScriptEnd, scr.scriptFile)
@@ -99,7 +99,7 @@ func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.Read
 	return n, nil
 }
 
-// TermReadCheck implements the terminal.Input interface
+// TermReadCheck implements the terminal.Input interface.
 func (scr *Rescribe) TermReadCheck() bool {
 	return false
 }

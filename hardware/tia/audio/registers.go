@@ -45,7 +45,7 @@ func (au *Audio) UpdateRegisters(data bus.ChipData) bool {
 	return false
 }
 
-// changing the value of an AUDx registers causes some side effect
+// changing the value of an AUDx registers causes some side effect.
 func (ch *channel) reactAUDCx() {
 	freqClk := uint8(0)
 

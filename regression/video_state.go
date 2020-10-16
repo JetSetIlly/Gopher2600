@@ -21,10 +21,10 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// Indicates the State recording method to use
+// Indicates the State recording method to use.
 type StateType string
 
-// List of valid StateType values
+// List of valid StateType values.
 const (
 	StateNone  StateType = ""
 	StateTV    StateType = "TV"

@@ -20,7 +20,7 @@ import (
 )
 
 // CartContainer is a special CartMapper type that wraps another CartMapper.
-// For example, the PlusROM type
+// For example, the PlusROM type.
 type CartContainer interface {
 	CartMapper
 	ContainerID() string
@@ -29,7 +29,7 @@ type CartContainer interface {
 // CartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
 // convenience, functions with an address argument receive that address
-// normalised to a range of 0x0000 to 0x0fff
+// normalised to a range of 0x0000 to 0x0fff.
 type CartMapper interface {
 	Initialise()
 	String() string
@@ -111,7 +111,7 @@ type CartRegistersBus interface {
 }
 
 // CartRegisters conceptualises the cartridge specific registers that are
-// inaccessible through normal addressing
+// inaccessible through normal addressing.
 type CartRegisters interface {
 	fmt.Stringer
 }
@@ -124,7 +124,7 @@ type CartRegisters interface {
 // nil.
 //
 // The test for whether a specific cartridge has additional RAM should include
-// a interface type asserstion as well as checking GetRAM() == nil
+// a interface type asserstion as well as checking GetRAM() == nil.
 type CartRAMbus interface {
 	GetRAM() []CartRAM
 	PutRAM(bank int, idx int, data uint8)
@@ -138,7 +138,7 @@ type CartRAMbus interface {
 // field is a copy of the actual bytes in the cartidge RAM. Because Cartidge is
 // addressable, it is also possible to update cartridge RAM through the normal
 // memory buses; although in the context of a debugger it is probably more
-// convience to use PutRAM() in the CartRAMbus interface
+// convience to use PutRAM() in the CartRAMbus interface.
 type CartRAM struct {
 	Label  string
 	Origin uint16
@@ -167,7 +167,7 @@ type CartStatic struct {
 	Data  []uint8
 }
 
-// CartTapeBus defines additional debugging functions for cartridge types that use tapes
+// CartTapeBus defines additional debugging functions for cartridge types that use tapes.
 type CartTapeBus interface {
 	// Move tape loading to the specified mark. returns true if rewind was
 	// effective
@@ -181,7 +181,7 @@ type CartTapeBus interface {
 	GetTapeState() (bool, CartTapeState)
 }
 
-// CartTapeState is the current state of the tape
+// CartTapeState is the current state of the tape.
 type CartTapeState struct {
 	Counter    int
 	MaxCounter int
@@ -196,36 +196,36 @@ type CartTapeState struct {
 //
 // The index to the returned maps, must be addresses in the cartridge address
 // range. For normality, this should be in the primary cartridge mirror (ie.
-// 0x1000 to 0x1fff)
+// 0x1000 to 0x1fff).
 type CartHotspotsBus interface {
 	ReadHotspots() map[uint16]CartHotspotInfo
 	WriteHotspots() map[uint16]CartHotspotInfo
 }
 
-// CartHotspotAction defines the action of a hotspot address
+// CartHotspotAction defines the action of a hotspot address.
 type CartHotspotAction int
 
-// List of valid CartHotspotActions
+// List of valid CartHotspotActions.
 const (
 	// the most common type of hotspot is the bankswitch. for these hotspots
-	// the bank/segment is switched when the address is read/write
+	// the bank/segment is switched when the address is read/write.
 	HotspotBankSwitch CartHotspotAction = iota
 
-	// some cartridge mappers have additional registers
+	// some cartridge mappers have additional registers.
 	HotspotRegister
 
 	// a function is a catch all category that describes any hotspot address
 	// that has some other than or more complex than just bank switching. for
 	// example, the Supercharger CONFIG address causes bank-switching to take
-	// place but is none-the-less defined as a HotspotFunction
+	// place but is none-the-less defined as a HotspotFunction.
 	HotspotFunction
 
 	// some hotspots will be defined but be unused or reserved by the
-	// cartridge
+	// cartridge.
 	HotspotReserved
 )
 
-// HotspotInfo details the name and purpose of hotspot address
+// HotspotInfo details the name and purpose of hotspot address.
 type CartHotspotInfo struct {
 	Symbol string
 	Action CartHotspotAction

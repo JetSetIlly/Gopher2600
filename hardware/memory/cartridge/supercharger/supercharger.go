@@ -28,7 +28,7 @@ import (
 
 const MappingID = "AR"
 
-// supercharger has 6k of RAM in total
+// supercharger has 6k of RAM in total.
 const numRAMBanks = 4
 const bankSize = 2048
 
@@ -40,7 +40,7 @@ type tape interface {
 	step()
 }
 
-// Supercharger represents a supercharger cartridge
+// Supercharger represents a supercharger cartridge.
 type Supercharger struct {
 	mappingID   string
 	description string
@@ -56,7 +56,7 @@ type Supercharger struct {
 }
 
 // NewSupercharger is the preferred method of initialisation for the
-// Supercharger type
+// Supercharger type.
 func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
 		mappingID:   MappingID,
@@ -106,12 +106,12 @@ func (cart Supercharger) String() string {
 	return s.String()
 }
 
-// ID implements the cartMapper interface
+// ID implements the cartMapper interface.
 func (cart Supercharger) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface
+// Initialise implements the cartMapper interface.
 func (cart *Supercharger) Initialise() {
 	cart.registers.WriteDelay = 0
 	cart.registers.BankingMode = 0
@@ -119,7 +119,7 @@ func (cart *Supercharger) Initialise() {
 	cart.registers.RAMwrite = true
 }
 
-// Read implements the cartMapper interface
+// Read implements the cartMapper interface.
 func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	addr := fullAddr & memorymap.CartridgeBits
 
@@ -198,17 +198,17 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	return cart.ram[bank][addr&0x07ff], nil
 }
 
-// Write implements the cartMapper interface
+// Write implements the cartMapper interface.
 func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	return nil
 }
 
-// NumBanks implements the cartMapper interface
+// NumBanks implements the cartMapper interface.
 func (cart Supercharger) NumBanks() int {
 	return numRAMBanks
 }
 
-// GetBank implements the cartMapper interface
+// GetBank implements the cartMapper interface.
 func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	switch cart.registers.BankingMode {
 	case 0:
@@ -262,22 +262,22 @@ func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	panic("unknown banking method")
 }
 
-// Patch implements the cartMapper interface
+// Patch implements the cartMapper interface.
 func (cart *Supercharger) Patch(_ int, _ uint8) error {
 	return curated.Errorf("%s: not patchable")
 }
 
-// Listen implements the cartMapper interface
+// Listen implements the cartMapper interface.
 func (cart *Supercharger) Listen(addr uint16, _ uint8) {
 	cart.registers.transitionCount(addr)
 }
 
-// Step implements the cartMapper interface
+// Step implements the cartMapper interface.
 func (cart *Supercharger) Step() {
 	cart.tape.step()
 }
 
-// IterateBank implements the mapper.CartMapper interface
+// IterateBank implements the mapper.CartMapper interface.
 func (cart Supercharger) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.ram)+1)
 
@@ -302,7 +302,7 @@ func (cart Supercharger) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// GetRAM implements the mapper.CartRAMBus interface
+// GetRAM implements the mapper.CartRAMBus interface.
 func (cart Supercharger) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, len(cart.ram))
 
@@ -374,7 +374,7 @@ func (cart Supercharger) GetRAM() []mapper.CartRAM {
 	return r
 }
 
-// PutRAM implements the mapper.CartRAMBus interface
+// PutRAM implements the mapper.CartRAMBus interface.
 func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 	if bank < len(cart.ram) {
 		cart.ram[bank][idx] = data
@@ -414,7 +414,7 @@ func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
 	return false, mapper.CartTapeState{}
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface
+// ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "CONFIG", Action: mapper.HotspotFunction},
@@ -422,7 +422,7 @@ func (cart Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface
+// WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return nil
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 )
 
-// Input implements the input/output part of the RIOT (the IO in RIOT)
+// Input implements the input/output part of the RIOT (the IO in RIOT).
 type Ports struct {
 	riot bus.ChipBus
 	tia  bus.ChipBus
@@ -78,7 +78,7 @@ type Ports struct {
 	swchaMux uint8
 }
 
-// NewPorts is the preferred method of initialisation of the Ports type
+// NewPorts is the preferred method of initialisation of the Ports type.
 func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Ports, error) {
 	p := &Ports{
 		riot:         riotMem,
@@ -96,7 +96,7 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Ports, error) {
 	return p, nil
 }
 
-// AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port
+// AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port.
 func (p *Ports) AttachPlayer(id PortID, c NewPeripheral) error {
 	switch id {
 	case Player0ID:
@@ -124,7 +124,7 @@ func (p *Ports) String() string {
 	return s.String()
 }
 
-// Reset peripherals to an initial state
+// Reset peripherals to an initial state.
 func (p *Ports) Reset() {
 	if p.Player0 != nil {
 		p.Player0.Reset()
@@ -199,7 +199,7 @@ func (p *Ports) Update(data bus.ChipData) bool {
 	return false
 }
 
-// Step input state forward one cycle
+// Step input state forward one cycle.
 func (p *Ports) Step() {
 	// not much to do here because most input operations happen on demand.
 	// recharging of the paddle capacitors however happens (a little bit) every
@@ -214,18 +214,18 @@ func (p *Ports) Step() {
 }
 
 // AttachPlayback attaches an EventPlayback implementation to all ports that
-// implement RecordablePort
+// implement RecordablePort.
 func (p *Ports) AttachPlayback(b EventPlayback) {
 	p.playback = b
 }
 
 // AttachEventRecorder attaches an EventRecorder implementation to all ports
-// that implement RecordablePort
+// that implement RecordablePort.
 func (p *Ports) AttachEventRecorder(r EventRecorder) {
 	p.recorder = r
 }
 
-// GetPlayback requests playback events from all attached and eligible peripherals
+// GetPlayback requests playback events from all attached and eligible peripherals.
 func (p *Ports) GetPlayback() error {
 	if p.playback == nil {
 		return nil
@@ -282,7 +282,7 @@ func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 	return nil
 }
 
-// WriteSWCHx implements the MemoryAccess interface
+// WriteSWCHx implements the MemoryAccess interface.
 func (p *Ports) WriteSWCHx(id PortID, data uint8) {
 	switch id {
 	case Player0ID:
@@ -305,7 +305,7 @@ func (p *Ports) WriteSWCHx(id PortID, data uint8) {
 	}
 }
 
-// WriteINPTx implements the MemoryAccess interface
+// WriteINPTx implements the MemoryAccess interface.
 func (p *Ports) WriteINPTx(inptx addresses.ChipRegister, data uint8) {
 	// write memory if button is pressed or it is not and the button latch
 	// is false

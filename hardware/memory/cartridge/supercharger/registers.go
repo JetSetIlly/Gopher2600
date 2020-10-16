@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// Registers implements the mapper.CartRegisters interface
+// Registers implements the mapper.CartRegisters interface.
 type Registers struct {
 	Value uint8
 	Delay int // 0=off, 1=trigger
@@ -73,7 +73,7 @@ func (r Registers) String() string {
 }
 
 // BankString is like string but just the bank information. we use this when
-// building the mapper summary, the String() function is too verbose for that
+// building the mapper summary, the String() function is too verbose for that.
 func (r Registers) BankString() string {
 	s := strings.Builder{}
 
@@ -127,7 +127,7 @@ func (r *Registers) transitionCount(addr uint16) {
 	}
 }
 
-// GetRegisters implements the mapper.CartDebugBus interface
+// GetRegisters implements the mapper.CartDebugBus interface.
 func (cart Supercharger) GetRegisters() mapper.CartRegisters {
 	return cart.registers
 }

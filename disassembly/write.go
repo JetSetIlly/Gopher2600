@@ -22,12 +22,12 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// WriteAttr controls what is printed by the Write*() functions
+// WriteAttr controls what is printed by the Write*() functions.
 type WriteAttr struct {
 	ByteCode bool
 }
 
-// Write the entire disassembly to io.Writer
+// Write the entire disassembly to io.Writer.
 func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	var err error
 	for b := 0; b < len(dsm.entries); b++ {
@@ -40,7 +40,7 @@ func (dsm *Disassembly) Write(output io.Writer, attr WriteAttr) error {
 	return nil
 }
 
-// WriteBank writes the disassembly of the selected bank to io.Writer
+// WriteBank writes the disassembly of the selected bank to io.Writer.
 func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) error {
 	if bank < 0 || bank > len(dsm.entries)-1 {
 		return curated.Errorf("disassembly: no such bank (%d)", bank)
@@ -55,7 +55,7 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr WriteAttr, bank int) er
 	return nil
 }
 
-// WriteEntry writes a single Instruction to io.Writer
+// WriteEntry writes a single Instruction to io.Writer.
 func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 	if e == nil {
 		return

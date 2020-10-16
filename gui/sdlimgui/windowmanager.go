@@ -23,7 +23,7 @@ import (
 )
 
 // managedWindow conceptualises the functions required by a window such that
-// it can be managed by the windowManager
+// it can be managed by the windowManager.
 type managedWindow interface {
 	init()
 	id() string
@@ -53,7 +53,7 @@ func (wm *windowManagement) setOpen(open bool) {
 	wm.open = open
 }
 
-// windowManager handles windows and menus in the system
+// windowManager handles windows and menus in the system.
 type windowManager struct {
 	img *SdlImgui
 
@@ -84,14 +84,14 @@ type windowManager struct {
 	screenPos imgui.Vec2
 }
 
-// the window menus grouped by type. the types are:
+// the window menus grouped by type. the types are:.
 const (
 	windowMenuDebugger = "Debugger"
 	windowMenuVCS      = "VCS"
 	windowMenuCart     = "Cartridge"
 	windowMenuOther    = "..."
 
-	// additional window menus are grouped by cartridge type
+	// additional window menus are grouped by cartridge type.
 )
 
 func newWindowManager(img *SdlImgui) (*windowManager, error) {

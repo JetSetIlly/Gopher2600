@@ -199,7 +199,7 @@ func (win *winDisasm) draw() {
 }
 
 // draw a bank for each tabitem in the tab bar. if there is only one bank then
-// drawBank() is called once
+// drawBank() is called once.
 func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool) {
 	lvl := disassembly.EntryLevelBlessed
 	if win.showAllEntries {
@@ -319,7 +319,7 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry) bool {
 	return true
 }
 
-// drawEntry() is called many times from drawBank(), once for each entry in the list
+// drawEntry() is called many times from drawBank(), once for each entry in the list.
 func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bool, cpuStep bool) {
 	imgui.BeginGroup()
 	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}

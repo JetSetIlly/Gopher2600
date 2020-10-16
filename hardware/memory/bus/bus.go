@@ -27,7 +27,7 @@ import (
 //
 // Addresses should be mapped to their primary mirror when accesses the RIOT,
 // TIA or RAM; and should be unmapped when accessing cartridge memory (some
-// cartridge mappers are sensitive to which cartridge mirror is being used)
+// cartridge mappers are sensitive to which cartridge mirror is being used).
 type CPUBus interface {
 	Read(address uint16) (uint8, error)
 	Write(address uint16, data uint8) error
@@ -70,7 +70,7 @@ type ChipBus interface {
 // UpdateBus is a bus internal to the emulation. It exposes the Update()
 // function of one sub-system to another sub-system. Currently used to connect
 // the RIOT input sub-system to the TIA VBLANK (by calling Update() on the
-// input sub-system from the TIA)
+// input sub-system from the TIA).
 type UpdateBus interface {
 	Update(ChipData) bool
 }

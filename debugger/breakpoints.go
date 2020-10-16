@@ -31,7 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// breakpoints keeps track of all the currently defined breakers
+// breakpoints keeps track of all the currently defined breakers.
 type breakpoints struct {
 	dbg *Debugger
 
@@ -44,7 +44,7 @@ type breakpoints struct {
 	checkBankBreak *target
 }
 
-// breaker defines a specific break condition
+// breaker defines a specific break condition.
 type breaker struct {
 	target *target
 
@@ -122,7 +122,7 @@ const (
 )
 
 // check checks the specific break condition with the current value of
-// the break target
+// the break target.
 func (bk *breaker) check() checkResult {
 	currVal := bk.target.TargetValue()
 	m := currVal == bk.value
@@ -146,7 +146,7 @@ func (bk *breaker) check() checkResult {
 	return checkMatch
 }
 
-// add a new breaker by linking it to the end of an existing breaker
+// add a new breaker by linking it to the end of an existing breaker.
 func (bk *breaker) add(nbk *breaker) {
 	n := bk
 	for n.next != nil {
@@ -155,7 +155,7 @@ func (bk *breaker) add(nbk *breaker) {
 	n.next = nbk
 }
 
-// newBreakpoints is the preferred method of initialisation for breakpoints
+// newBreakpoints is the preferred method of initialisation for breakpoints.
 func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 	bp := &breakpoints{dbg: dbg}
 	bp.clear()
@@ -175,12 +175,12 @@ func newBreakpoints(dbg *Debugger) (*breakpoints, error) {
 	return bp, err
 }
 
-// clear all breakpoints
+// clear all breakpoints.
 func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
-// drop a specific breakpoint by position in list
+// drop a specific breakpoint by position in list.
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
 		return curated.Errorf("breakpoint #%d is not defined", num)
@@ -197,7 +197,7 @@ func (bp *breakpoints) drop(num int) error {
 
 // check compares the current state of the emulation with every breakpoint
 // condition. returns a string listing every condition that matches (separated
-// by \n)
+// by \n).
 func (bp *breakpoints) check(previousResult string) string {
 	if len(bp.breaks) == 0 {
 		return previousResult
@@ -214,7 +214,7 @@ func (bp *breakpoints) check(previousResult string) string {
 	return checkString.String()
 }
 
-// list currently defined breakpoints
+// list currently defined breakpoints.
 func (bp breakpoints) list() {
 	if len(bp.breaks) == 0 {
 		bp.dbg.printLine(terminal.StyleFeedback, "no breakpoints")
@@ -243,7 +243,7 @@ func (bp breakpoints) list() {
 //
 //	& SL 100 HP 0 X 10
 //
-// !!TODO: simplify breakpoints parser to match help description
+// !!TODO: simplify breakpoints parser to match help description.
 func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	andBreaks := false
 
@@ -382,7 +382,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 const noBreakEqualivalent = -1
 
 // checkBreaker returns the index number of the matching breakpoint. returns
-// noBreakEquivalent if no match is found
+// noBreakEquivalent if no match is found.
 func (bp *breakpoints) checkBreaker(nb breaker) int {
 	for n, ob := range bp.breaks {
 		if nb.cmp(ob) {
@@ -393,17 +393,17 @@ func (bp *breakpoints) checkBreaker(nb breaker) int {
 	return noBreakEqualivalent
 }
 
-// BreakGroup indicates the broad category of breakpoint an address has
+// BreakGroup indicates the broad category of breakpoint an address has.
 type BreakGroup int
 
-// List of valid BreakGroup values
+// List of valid BreakGroup values.
 const (
 	BrkNone BreakGroup = iota
 
-	// a breakpoint
+	// a breakpoint.
 	BrkPCAddress
 
-	// a breakpoint on something other than the program counter / address
+	// a breakpoint on something other than the program counter / address.
 	BrkOther
 )
 

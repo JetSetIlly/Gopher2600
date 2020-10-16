@@ -28,7 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/television"
 )
 
-// TIA contains all the sub-components of the VCS TIA sub-system
+// TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
 	tv  television.Television
 	mem bus.ChipBus
@@ -90,7 +90,7 @@ type TIA struct {
 	futureHsync      delay.Event
 }
 
-// Label returns an identifying label for the TIA
+// Label returns an identifying label for the TIA.
 func (tia TIA) Label() string {
 	return "TIA"
 }
@@ -109,7 +109,7 @@ func (tia TIA) String() string {
 	return s.String()
 }
 
-// NewTIA creates a TIA, to be used in a VCS emulation
+// NewTIA creates a TIA, to be used in a VCS emulation.
 func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) (*TIA, error) {
 	tia := TIA{
 		tv:     tv,

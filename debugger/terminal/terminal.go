@@ -47,7 +47,7 @@ type Input interface {
 }
 
 // ReadEvents encapsulates the event channels that need to be monitored during
-// a TermRead
+// a TermRead.
 type ReadEvents struct {
 	GuiEvents       chan gui.Event
 	GuiEventHandler func(gui.Event) error
@@ -90,12 +90,12 @@ type TabCompletion interface {
 	Reset()
 }
 
-// Broker implementations can identify a terminal
+// Broker implementations can identify a terminal.
 type Broker interface {
 	GetTerminal() Terminal
 }
 
-// Sentinal errors
+// Sentinal errors.
 const (
 	UserInterrupt = "user interrupt"
 	UserAbort     = "user abort"

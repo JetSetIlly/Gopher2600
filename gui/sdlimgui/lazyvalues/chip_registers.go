@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
-// LazyChipRegisters lazily accesses chip registere information from the emulator
+// LazyChipRegisters lazily accesses chip registere information from the emulator.
 type LazyChipRegisters struct {
 	val *LazyValues
 

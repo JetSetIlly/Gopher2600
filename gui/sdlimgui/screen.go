@@ -25,16 +25,16 @@ import (
 )
 
 // textureRenderers should consider that the timing of the VCS produces
-// "pixels" of two pixels across
+// "pixels" of two pixels across.
 const pixelWidth = 2
 
-// textureRenderers can share the underlying pixels of the screen type instance
+// textureRenderers can share the underlying pixels of the screen type instance.
 type textureRenderers interface {
 	render()
 	resize()
 }
 
-// screen implements television.PixelRenderer
+// screen implements television.PixelRenderer.
 type screen struct {
 	img  *SdlImgui
 	crit screenCrit
@@ -48,7 +48,7 @@ type screen struct {
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
-// their own subtype
+// their own subtype.
 type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
@@ -109,7 +109,7 @@ func newScreen(img *SdlImgui) *screen {
 	return scr
 }
 
-// resize() is called by Resize() or resizeThread() depending on thread context
+// resize() is called by Resize() or resizeThread() depending on thread context.
 func (scr *screen) resize(spec *television.Specification, topScanline int, visibleScanlines int) {
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
@@ -178,7 +178,7 @@ func (scr *screen) resize(spec *television.Specification, topScanline int, visib
 
 // Resize implements the television.PixelRenderer interface
 //
-// MUST NOT be called from the #mainthread
+// MUST NOT be called from the #mainthread.
 func (scr *screen) Resize(spec *television.Specification, topScanline int, visibleScanlines int) error {
 	scr.img.service <- func() {
 		scr.resize(spec, topScanline, visibleScanlines)
@@ -189,7 +189,7 @@ func (scr *screen) Resize(spec *television.Specification, topScanline int, visib
 
 // NewFrame implements the television.PixelRenderer interface
 //
-// MUST NOT be called from the #mainthread
+// MUST NOT be called from the #mainthread.
 func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -208,12 +208,12 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	return nil
 }
 
-// NewScanline implements the television.PixelRenderer interface
+// NewScanline implements the television.PixelRenderer interface.
 func (scr *screen) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements the television.PixelRenderer interface
+// SetPixel implements the television.PixelRenderer interface.
 func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -234,12 +234,12 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 	return nil
 }
 
-// EndRendering implements the television.PixelRenderer interface
+// EndRendering implements the television.PixelRenderer interface.
 func (scr *screen) EndRendering() error {
 	return nil
 }
 
-// Reflect implements reflection.Renderer interface
+// Reflect implements reflection.Renderer interface.
 func (scr *screen) Reflect(ref reflection.LastResult) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -259,7 +259,7 @@ func (scr *screen) Reflect(ref reflection.LastResult) error {
 	return nil
 }
 
-// replotOverlay should be called from within a scr.crit.section Lock()
+// replotOverlay should be called from within a scr.crit.section Lock().
 func (scr *screen) replotOverlay() {
 	for y := 0; y < scr.crit.overlayPixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.overlayPixels.Bounds().Size().X; x++ {
@@ -268,7 +268,7 @@ func (scr *screen) replotOverlay() {
 	}
 }
 
-// plotOverlay should be called from within a scr.crit.section Lock()
+// plotOverlay should be called from within a scr.crit.section Lock().
 func (scr *screen) plotOverlay(x, y int, ref reflection.LastResult) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
@@ -298,7 +298,7 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.LastResult) {
 	}
 }
 
-// texture renderers can share the underlying pixels in the screen instance
+// texture renderers can share the underlying pixels in the screen instance.
 func (scr *screen) addTextureRenderer(r textureRenderers) {
 	scr.renderers = append(scr.renderers, r)
 }

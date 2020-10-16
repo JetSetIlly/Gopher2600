@@ -19,26 +19,26 @@ import (
 	"io"
 )
 
-// ListSymbols outputs every symbol used in the current ROM
+// ListSymbols outputs every symbol used in the current ROM.
 func (sym *Symbols) ListSymbols(output io.Writer) {
 	sym.ListLabels(output)
 	sym.ListReadSymbols(output)
 	sym.ListWriteSymbols(output)
 }
 
-// ListLabels outputs every label used in the current ROM
+// ListLabels outputs every label used in the current ROM.
 func (sym *Symbols) ListLabels(output io.Writer) {
 	output.Write([]byte("Labels\n---------\n"))
 	output.Write([]byte(sym.Label.String()))
 }
 
-// ListReadSymbols outputs every read symbol used in the current ROM
+// ListReadSymbols outputs every read symbol used in the current ROM.
 func (sym *Symbols) ListReadSymbols(output io.Writer) {
 	output.Write([]byte("\nRead Symbols\n-----------\n"))
 	output.Write([]byte(sym.Read.String()))
 }
 
-// ListWriteSymbols outputs every write symbol used in the current ROM
+// ListWriteSymbols outputs every write symbol used in the current ROM.
 func (sym *Symbols) ListWriteSymbols(output io.Writer) {
 	output.Write([]byte("\nWrite Symbols\n------------\n"))
 	output.Write([]byte(sym.Write.String()))

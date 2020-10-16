@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// SetServer to use for hiscore storage
+// SetServer to use for hiscore storage.
 func SetServer(input io.Reader, output io.Writer, server string) error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()
@@ -76,7 +76,7 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	return prefs.Save()
 }
 
-// Login prepares the authentication token for the hiscore server
+// Login prepares the authentication token for the hiscore server.
 func Login(input io.Reader, output io.Writer, username string) error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()
@@ -139,7 +139,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	return prefs.Save()
 }
 
-// Logoff forgets the authentication token for the hiscore server
+// Logoff forgets the authentication token for the hiscore server.
 func Logoff() error {
 	// get reference to hiscore preferences
 	prefs, err := newPreferences()

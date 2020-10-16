@@ -24,17 +24,17 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
 
-// ScreenRegion notes which part of the screen is currently being drawn
+// ScreenRegion notes which part of the screen is currently being drawn.
 type ScreenRegion int
 
-// List of valid ScreenRegions
+// List of valid ScreenRegions.
 const (
 	RegionOffScreen ScreenRegion = iota
 	RegionLeft
 	RegionRight
 )
 
-// the number of color clocks (playfield pixels) per left/right region
+// the number of color clocks (playfield pixels) per left/right region.
 const RegionWidth = 20
 
 type playfield struct {
@@ -196,7 +196,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 	return false, pf.BackgroundColor
 }
 
-// called whenever playfield bits change or the screen region changes
+// called whenever playfield bits change or the screen region changes.
 func (pf *playfield) latchRegionData() {
 	pf.LeftData = &pf.RegularData
 	if !pf.Reflected {
@@ -212,7 +212,7 @@ func (pf *playfield) latchRegionData() {
 	}
 }
 
-// SetPF0 sets the playfield PF0 bits
+// SetPF0 sets the playfield PF0 bits.
 func (pf *playfield) SetPF0(v uint8) {
 	pf.PF0 = v & 0xf0
 	pf.RegularData[0] = pf.PF0&0x10 == 0x10
@@ -226,7 +226,7 @@ func (pf *playfield) SetPF0(v uint8) {
 	pf.latchRegionData()
 }
 
-// SetPF1 sets the playfield PF1 bits
+// SetPF1 sets the playfield PF1 bits.
 func (pf *playfield) SetPF1(v uint8) {
 	pf.PF1 = v
 	pf.RegularData[4] = pf.PF1&0x80 == 0x80
@@ -248,7 +248,7 @@ func (pf *playfield) SetPF1(v uint8) {
 	pf.latchRegionData()
 }
 
-// SetPF2 sets the playfield PF2 bits
+// SetPF2 sets the playfield PF2 bits.
 func (pf *playfield) SetPF2(v uint8) {
 	pf.PF2 = v
 	pf.RegularData[12] = pf.PF2&0x01 == 0x01
