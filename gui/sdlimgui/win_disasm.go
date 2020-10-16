@@ -404,7 +404,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 	}
 
 	// single click toggles a PC breakpoint on the entries address
-	//if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseClicked(0) {
 	if imgui.IsItemClicked() {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.TogglePCBreak(e) })
 	}

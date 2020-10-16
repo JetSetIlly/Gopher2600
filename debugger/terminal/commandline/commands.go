@@ -46,9 +46,7 @@ func (cmds Commands) Less(i int, j int) bool {
 
 // Swap implements Sort package interface
 func (cmds Commands) Swap(i int, j int) {
-	swp := cmds.cmds[i]
-	cmds.cmds[i] = cmds.cmds[j]
-	cmds.cmds[j] = swp
+	cmds.cmds[i], cmds.cmds[j] = cmds.cmds[j], cmds.cmds[i]
 }
 
 // String returns the verbose representation of the command tree. Use this only

@@ -360,10 +360,8 @@ func (o Operand) checkString() (string, bool) {
 					if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
 						s = v
 					}
-				} else {
-					if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
-						s = addrModeDecoration(v, o.result.Defn.AddressingMode)
-					}
+				} else if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
+					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
 				}
 			case instructions.Read:
 				mappedOperand, _ := memorymap.MapAddress(operand, true)

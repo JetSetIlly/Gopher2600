@@ -136,7 +136,7 @@ func (trm *mockTerm) Silence(silenced bool) {
 
 func (trm *mockTerm) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	s := <-trm.inp
-	copy(buffer, []byte(s))
+	copy(buffer, s)
 	return len(s) + 1, nil
 }
 

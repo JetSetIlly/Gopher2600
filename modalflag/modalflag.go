@@ -172,26 +172,24 @@ func (md *Modes) Parse() (ParseResult, error) {
 		} else {
 			return ParseError, err
 		}
-	} else {
-		if len(md.subModes) > 0 {
-			arg := strings.ToUpper(md.flags.Arg(0))
+	} else if len(md.subModes) > 0 {
+		arg := strings.ToUpper(md.flags.Arg(0))
 
-			// check to see if the single argument is in the list of modes,
-			// starting off assuming it isn't
-			mode := md.subModes[0]
-			for i := range md.subModes {
-				if md.subModes[i] == arg {
-					// found matching sub-mode
-					mode = arg
-					md.argsIdx++
-					break // for loop
-				}
+		// check to see if the single argument is in the list of modes,
+		// starting off assuming it isn't
+		mode := md.subModes[0]
+		for i := range md.subModes {
+			if md.subModes[i] == arg {
+				// found matching sub-mode
+				mode = arg
+				md.argsIdx++
+				break // for loop
 			}
-
-			// add mode (either one we've found or the default) and add it to
-			// the path
-			md.path = append(md.path, mode)
 		}
+
+		// add mode (either one we've found or the default) and add it to
+		// the path
+		md.path = append(md.path, mode)
 	}
 
 	return ParseContinue, nil

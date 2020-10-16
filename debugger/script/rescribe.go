@@ -93,7 +93,7 @@ func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.Read
 	}
 
 	n := len(scr.lines[scr.lineCt]) + 1
-	copy(buffer, []byte(scr.lines[scr.lineCt]))
+	copy(buffer, scr.lines[scr.lineCt])
 	scr.lineCt++
 
 	return n, nil

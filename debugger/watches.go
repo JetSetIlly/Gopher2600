@@ -126,16 +126,16 @@ func (wtc *watches) check(previousResult string) string {
 			if !wtc.watches[i].matchValue {
 				// prepare string according to event
 				if wtc.vcsmem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
+					checkString.WriteString(fmt.Sprintf("watch (write) at %s\n", wtc.watches[i]))
 				} else {
-					checkString.WriteString(fmt.Sprintf("watch at %s\n", wtc.watches[i]))
+					checkString.WriteString(fmt.Sprintf("watch (read) at %s\n", wtc.watches[i]))
 				}
 			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAccessValue) {
 				// prepare string according to event
 				if wtc.vcsmem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
+					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
 				} else {
-					checkString.WriteString(fmt.Sprintf("watch at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
+					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
 				}
 			}
 		}

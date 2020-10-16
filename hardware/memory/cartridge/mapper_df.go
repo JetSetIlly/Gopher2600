@@ -210,7 +210,7 @@ func (cart *df) Patch(offset int, data uint8) error {
 	}
 
 	bank := offset / cart.bankSize
-	offset = offset % cart.bankSize
+	offset %= cart.bankSize
 	cart.banks[bank][offset] = data
 	return nil
 }

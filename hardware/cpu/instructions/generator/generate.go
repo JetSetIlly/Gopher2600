@@ -240,7 +240,7 @@ func main() {
 
 	// we'll be putting the contents of deftable into the definition package so
 	// we need to remove the expicit references to that package
-	output = strings.Replace(output, "instructions.", "", -1)
+	output = strings.ReplaceAll(output, "instructions.", "")
 
 	// add boiler-plate to output
 	output = fmt.Sprintf("%s%s%s", leadingBoilerPlate, output, trailingBoilerPlate)

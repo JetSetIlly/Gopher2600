@@ -197,7 +197,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	case 0x0f:
 		f := addr & 0x0007
 		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
-		dataAddr = dataAddr & 0x0fff
+		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
 		cart.registers.Fetcher[f].inc()
 
@@ -219,7 +219,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	case 0x17:
 		f := addr & 0x0007
 		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
-		dataAddr = dataAddr & 0x0fff
+		dataAddr &= 0x0fff
 		if cart.registers.Fetcher[f].isWindow() {
 			data = cart.static.Data[dataAddr]
 		}
@@ -243,7 +243,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	case 0x1f:
 		f := addr & 0x0007
 		dataAddr := uint16(cart.registers.FracFetcher[f].Hi)<<8 | uint16(cart.registers.FracFetcher[f].Low)
-		dataAddr = dataAddr & 0x0fff
+		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
 		cart.registers.FracFetcher[f].inc()
 
@@ -599,7 +599,7 @@ func (cart *dpcPlus) Patch(offset int, data uint8) error {
 		cart.static.Data[offset-cart.dataOffset] = data
 	} else if offset >= cart.banksOffset {
 		bank := offset / cart.bankSize
-		offset = offset % cart.bankSize
+		offset %= cart.bankSize
 		cart.banks[bank][offset] = data
 	} else {
 		cart.static.Arm[offset-cart.banksOffset] = data

@@ -124,7 +124,7 @@ func (d *pcmDecoder) Read(p []byte) (int, error) {
 	copy(p, d.data[d.offset:n])
 
 	// how many bytes were read
-	n = n - d.offset
+	n -= d.offset
 
 	// advance offset
 	d.offset += n

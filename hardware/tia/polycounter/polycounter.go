@@ -48,7 +48,7 @@ func New(numBits int) (*Polycounter, error) {
 
 	for i := 1; i < len(pcnt.table); i++ {
 		p = ((p & (mask - 1)) >> 1) | (((p&1)^((p>>1)&1))^mask)<<shift
-		p = p & mask
+		p &= mask
 		pcnt.table[i] = fmt.Sprintf(format, p)
 	}
 

@@ -156,7 +156,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 						// append everything after the cursor to the new string and copy
 						// into input array
 						s += string(input[cursorPos:])
-						copy(input, []byte(s))
+						copy(input, s)
 
 						// advance character to end of completed word
 						ct.EasyTerm.TermPrint(ansi.CursorMove(d))

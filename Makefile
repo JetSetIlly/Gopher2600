@@ -19,9 +19,8 @@ generate:
 	@go generate ./...
 
 lint:
-	golangci-lint run -D govet -D errcheck -D ineffassign -D staticcheck \
-		-E bodyclose -E unconvert -E misspell -E whitespace -E unparam \
-		-E scopelint
+# uses .golangci.yml configuration file
+	golangci-lint run
 
 vet: 
 # filter out expected warnings that we are not worried about: 
