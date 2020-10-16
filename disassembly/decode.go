@@ -230,7 +230,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 
 	for _, bank := range copiedBanks {
 		// point memory implementation to iterated bank
-		mem.bank = &bank
+		mem.bank = bank
 
 		// try each bank in each possible segment - banks that are smaller than
 		// the cartridge addressing range can often be mapped into different

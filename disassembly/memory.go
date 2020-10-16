@@ -24,7 +24,7 @@ import (
 // read cartridge memory without touching the actual cartridge.
 type disasmMemory struct {
 	// if bank is not nil then the bank is read directly
-	bank   *mapper.BankContent
+	bank   mapper.BankContent
 	origin uint16
 }
 
