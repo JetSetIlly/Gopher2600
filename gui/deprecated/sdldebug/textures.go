@@ -119,9 +119,6 @@ func (txt *textures) render(cpyRect *sdl.Rect, pixels []byte, pitch int) error {
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 
 	// update "front" texture
 	err = txt.front.Update(nil, pixels, pitch)

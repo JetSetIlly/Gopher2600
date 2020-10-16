@@ -36,54 +36,54 @@ import (
 func Equate(t *testing.T, value, expectedValue interface{}) {
 	t.Helper()
 
-	switch value := value.(type) {
+	switch v := expectedValue.(type) {
 	default:
-		t.Fatalf("unhandled type for Equate() function (%T))", value)
+		t.Fatalf("unhandled type for Equate() function (%T))", v)
 
 	case nil:
 		if value != nil {
-			t.Errorf("equation of type %T failed (%d  - wanted nil)", value, value)
+			t.Errorf("equation of type %T failed (%d  - wanted nil)", v, v)
 		}
 
 	case int:
-		if reflect.TypeOf(value) != reflect.TypeOf(expectedValue) {
-			t.Fatalf("values for Equate() are not the same type (%T and %T)", value, expectedValue)
+		if reflect.TypeOf(v) != reflect.TypeOf(expectedValue) {
+			t.Fatalf("values for Equate() are not the same type (%T and %T)", v, expectedValue)
 		}
 
-		if value != expectedValue.(int) {
-			t.Errorf("equation of type %T failed (%d  - wanted %d)", value, value, expectedValue.(int))
+		if v != expectedValue.(int) {
+			t.Errorf("equation of type %T failed (%d  - wanted %d)", v, v, expectedValue.(int))
 		}
 
 	case uint16:
 		switch expectedValue := expectedValue.(type) {
 		case int:
-			if value != uint16(expectedValue) {
-				t.Errorf("equation of type %T failed (%d  - wanted %d)", value, value, expectedValue)
+			if v != uint16(expectedValue) {
+				t.Errorf("equation of type %T failed (%d  - wanted %d)", v, v, expectedValue)
 			}
 		case uint16:
-			if value != expectedValue {
-				t.Errorf("equation of type %T failed (%d  - wanted %d)", value, value, expectedValue)
+			if v != expectedValue {
+				t.Errorf("equation of type %T failed (%d  - wanted %d)", v, v, expectedValue)
 			}
 		default:
-			t.Fatalf("values for Equate() are not the same compatible (%T and %T)", value, expectedValue)
+			t.Fatalf("values for Equate() are not the same compatible (%T and %T)", v, expectedValue)
 		}
 
 	case string:
-		if reflect.TypeOf(value) != reflect.TypeOf(expectedValue) {
-			t.Fatalf("values for Equate() are not the same type (%T and %T)", value, expectedValue)
+		if reflect.TypeOf(v) != reflect.TypeOf(expectedValue) {
+			t.Fatalf("values for Equate() are not the same type (%T and %T)", v, expectedValue)
 		}
 
-		if value != expectedValue.(string) {
-			t.Errorf("equation of type %T failed (%s  - wanted %s)", value, value, expectedValue.(string))
+		if v != expectedValue.(string) {
+			t.Errorf("equation of type %T failed (%s  - wanted %s)", v, v, expectedValue.(string))
 		}
 
 	case bool:
-		if reflect.TypeOf(value) != reflect.TypeOf(expectedValue) {
-			t.Fatalf("values for Equate() are not the same type (%T and %T)", value, expectedValue)
+		if reflect.TypeOf(v) != reflect.TypeOf(expectedValue) {
+			t.Fatalf("values for Equate() are not the same type (%T and %T)", v, expectedValue)
 		}
 
-		if value != expectedValue.(bool) {
-			t.Errorf("equation of type %T failed (%v  - wanted %v", value, value, expectedValue.(bool))
+		if v != expectedValue.(bool) {
+			t.Errorf("equation of type %T failed (%v  - wanted %v", v, v, expectedValue.(bool))
 		}
 	}
 }

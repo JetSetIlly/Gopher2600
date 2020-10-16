@@ -26,8 +26,10 @@ linters:
 
 linters-settings:
   govet:
+    enable-all: true
     disable:
       - composites
+      - shadow
 
   gocritic:
     disabled-checks:

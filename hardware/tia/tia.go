@@ -133,9 +133,6 @@ func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) (*TI
 	}
 
 	tia.Audio = audio.NewAudio()
-	if err != nil {
-		return nil, err
-	}
 
 	return &tia, nil
 }
