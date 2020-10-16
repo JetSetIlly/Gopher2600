@@ -41,7 +41,9 @@ type drawlistSequence struct {
 
 // create and start a new sequence. spacing is expressed as fraction of the
 // current FontSize()
-func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32, alignFramePadding bool) *drawlistSequence {
+func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, alignFramePadding bool) *drawlistSequence {
+	const spacing = 0.1
+
 	seq := &drawlistSequence{
 		img:               img,
 		size:              size,
@@ -55,10 +57,9 @@ func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, spacing float32, alignF
 }
 
 // start resets the reference position. convenient to use if size/spacing is not changing.
-// returns starting X position for future reference, if required
 //
 // should be coupled with a call to end()
-func (seq *drawlistSequence) start() float32 {
+func (seq *drawlistSequence) start() {
 	seq.prevX = imgui.CursorScreenPos().X
 	seq.prevY = imgui.CursorScreenPos().Y - seq.size.Y
 	if seq.alignFramePadding {
@@ -70,7 +71,6 @@ func (seq *drawlistSequence) start() float32 {
 	seq.nextItemSameLine = false
 	seq.nextItemDepressed = false
 	imgui.BeginGroup()
-	return seq.startX
 }
 
 // every call to start() should be coupled with a call to end()

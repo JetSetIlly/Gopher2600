@@ -179,25 +179,24 @@ func (trm *mockTerm) rcvOutput() {
 // cmpOutput compares the string argument with the *last line* of the most
 // recent output. it can easily be adapted to compare the whole output if
 // necessary.
-func (trm *mockTerm) cmpOutput(s string) bool {
+func (trm *mockTerm) cmpOutput(s string) {
 	trm.rcvOutput()
 
 	if len(trm.output) == 0 {
 		if len(s) != 0 {
 			trm.t.Errorf(fmt.Sprintf("unexpected debugger output (nothing) should be (%s)", s))
-			return false
+			return
 		}
-		return true
+		return
 	}
 
 	l := len(trm.output) - 1
 
 	if trm.output[l] == s {
-		return true
+		return
 	}
 
 	trm.t.Errorf(fmt.Sprintf("unexpected debugger output (%s) should be (%s)", trm.output[l], s))
-	return false
 }
 
 func (trm *mockTerm) testSequence() {

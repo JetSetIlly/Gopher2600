@@ -132,10 +132,10 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 }
 
 // bankswitch on hotspot access
-func (cart *parkerBros) bankswitch(addr uint16, passive bool) bool {
+func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 	if addr >= 0xfe0 && addr <= 0xff7 {
 		if passive {
-			return true
+			return
 		}
 
 		switch addr {
@@ -193,11 +193,7 @@ func (cart *parkerBros) bankswitch(addr uint16, passive bool) bool {
 		case 0x0ff7:
 			cart.segment[2] = 7
 		}
-
-		return true
 	}
-
-	return false
 }
 
 // NumBanks implements the mapper.CartMapper interface

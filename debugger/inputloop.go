@@ -59,7 +59,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// for video quantums we need to run any OnStep commands before
 		// starting a new inputLoop
 		if dbg.commandOnStep != nil {
-			_, err := dbg.processTokenGroup(dbg.commandOnStep)
+			err := dbg.processTokenGroup(dbg.commandOnStep)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
@@ -112,7 +112,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		trace := dbg.traces.check()
 		if trace != "" {
 			if dbg.commandOnTrace != nil {
-				_, err := dbg.processTokenGroup(dbg.commandOnTrace)
+				err := dbg.processTokenGroup(dbg.commandOnTrace)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -169,7 +169,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 				// input has halted. print on halt command if it is defined
 				if dbg.commandOnHalt != nil {
-					_, err := dbg.processTokenGroup(dbg.commandOnHalt)
+					err := dbg.processTokenGroup(dbg.commandOnHalt)
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "%s", err)
 					}
@@ -215,7 +215,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				if curated.Is(err, terminal.UserInterrupt) {
 					// user interrupts are triggered by the user (in a terminal
 					// environment, usually by pressing ctrl-c)
-					dbg.handleInterrupt(inputter, inputLen)
+					dbg.handleInterrupt(inputter)
 				} else if curated.Is(err, terminal.UserAbort) {
 					// like UserInterrupt but with no confirmation stage
 					dbg.running = false
@@ -372,7 +372,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			}
 
 			if dbg.commandOnStep != nil {
-				_, err := dbg.processTokenGroup(dbg.commandOnStep)
+				err := dbg.processTokenGroup(dbg.commandOnStep)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -389,13 +389,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 // - if script recording is active then recording is ended
 // - for non-interactive input set running flag to false immediately
 // - otherwise, prompt use for confirmation that the debugger should quit
-func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
+func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// if script input is being capture by a scriptScribe then
 	// we the user interrupt event as a SCRIPT END
 	// command.
 	if dbg.scriptScribe.IsActive() {
 		dbg.input = []byte("SCRIPT END")
-		inputLen = 11
 	} else if !inputter.IsInteractive() {
 		dbg.running = false
 	} else {

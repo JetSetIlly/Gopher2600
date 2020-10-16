@@ -120,14 +120,14 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	// key to oscilloscope
 	imgui.Spacing()
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, false)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
 	seq.rectFill(win.scl)
 	seq.end()
 	imgui.SameLine()
 	imgui.Text("SCL")
 
 	imgui.SameLine()
-	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, false)
+	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
 	seq.rectFill(win.sda)
 	seq.end()
 	imgui.SameLine()
@@ -199,7 +199,7 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	imgui.SameLine()
 
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, true)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
 	for i := 0; i < 8; i++ {
 		if (bits<<i)&0x80 != 0x80 {
 			seq.nextItemDepressed = true

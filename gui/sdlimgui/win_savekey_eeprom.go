@@ -63,7 +63,7 @@ func (win *winSaveKeyEEPROM) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winSaveKeyEEPROMTitle, &win.open, 0)
 
-	win.drawGrid(winSaveKeyEEPROMTitle, win.img.lz.SaveKey.EEPROMdata)
+	win.drawGrid(win.img.lz.SaveKey.EEPROMdata)
 	win.drawStatusLine()
 
 	imgui.End()
@@ -95,7 +95,7 @@ func (win *winSaveKeyEEPROM) drawStatusLine() {
 	win.statusHeight = imgui.CursorPosY() - statusHeight
 }
 
-func (win *winSaveKeyEEPROM) drawGrid(tag string, a []byte) {
+func (win *winSaveKeyEEPROM) drawGrid(a []byte) {
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 	imgui.PushItemWidth(imguiTextWidth(2))
 
@@ -109,7 +109,7 @@ func (win *winSaveKeyEEPROM) drawGrid(tag string, a []byte) {
 	}
 
 	height := imguiRemainingWinHeight() - win.statusHeight
-	imgui.BeginChildV(tag, imgui.Vec2{X: 0, Y: height}, false, 0)
+	imgui.BeginChildV("eeprom", imgui.Vec2{X: 0, Y: height}, false, 0)
 
 	// draw rows
 	var clipper imgui.ListClipper
@@ -123,7 +123,7 @@ func (win *winSaveKeyEEPROM) drawGrid(tag string, a []byte) {
 
 			for j := 0; j < 16; j++ {
 				imgui.SameLine()
-				win.drawEditByte(tag, uint16(offset+j), a[offset+j])
+				win.drawEditByte(uint16(offset+j), a[offset+j])
 			}
 		}
 	}
@@ -134,7 +134,7 @@ func (win *winSaveKeyEEPROM) drawGrid(tag string, a []byte) {
 	imgui.PopStyleVar()
 }
 
-func (win *winSaveKeyEEPROM) drawEditByte(tag string, address uint16, data byte) {
+func (win *winSaveKeyEEPROM) drawEditByte(address uint16, data byte) {
 	l := fmt.Sprintf("##%d", address)
 	content := fmt.Sprintf("%02x", data)
 

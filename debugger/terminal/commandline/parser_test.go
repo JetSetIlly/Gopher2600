@@ -33,7 +33,7 @@ import (
 // a newline character and also converted to uppercase. this is okay because
 // we're only really interested in how the groupings and branching is
 // represented.
-func expectEquality(t *testing.T, template []string, cmds *commandline.Commands) bool {
+func expectEquality(t *testing.T, template []string, cmds *commandline.Commands) {
 	t.Helper()
 
 	s := strings.ToUpper(strings.Join(template, "\n"))
@@ -43,9 +43,7 @@ func expectEquality(t *testing.T, template []string, cmds *commandline.Commands)
 		} else {
 			t.Errorf("parsed commands do not match template")
 		}
-		return false
 	}
-	return true
 }
 
 // dur to the parsing method it's not always possible to recreate the original
@@ -57,7 +55,7 @@ func expectEquality(t *testing.T, template []string, cmds *commandline.Commands)
 // the parsed Commands back through itself. if the results of the second pass
 // are the same as the first then we've successfully parsed the original
 // template.
-func expectEquivalency(t *testing.T, cmds *commandline.Commands) bool {
+func expectEquivalency(t *testing.T, cmds *commandline.Commands) {
 	t.Helper()
 
 	var err error
@@ -65,10 +63,8 @@ func expectEquivalency(t *testing.T, cmds *commandline.Commands) bool {
 	template := strings.Split(cmds.String(), "\n")
 	cmds, err = commandline.ParseCommandTemplate(template)
 	if test.ExpectedSuccess(t, err) {
-		return expectEquality(t, template, cmds)
+		expectEquality(t, template, cmds)
 	}
-
-	return false
 }
 
 func TestParser_optimised(t *testing.T) {

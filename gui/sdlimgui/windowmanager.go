@@ -218,10 +218,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 
 	// create play window. this is a very special window that never appears
 	// directly in an any menu
-	playWin, err := newWinPlayScr(img)
-	if err != nil {
-		return nil, err
-	}
+	playWin := newWinPlayScr(img)
 	wm.playScr = playWin.(*winPlayScr)
 
 	// sort vcs menu entries

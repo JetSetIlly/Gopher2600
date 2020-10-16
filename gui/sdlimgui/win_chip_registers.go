@@ -114,7 +114,7 @@ func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 }
 
 func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, true)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
 	for i := 0; i < 8; i++ {
 		if (read<<i)&0x80 != 0x80 {
 			seq.nextItemDepressed = true

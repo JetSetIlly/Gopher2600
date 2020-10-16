@@ -55,7 +55,7 @@ type winPlayScr struct {
 	scaling float32
 }
 
-func newWinPlayScr(img *SdlImgui) (managedWindow, error) {
+func newWinPlayScr(img *SdlImgui) managedWindow {
 	win := &winPlayScr{
 		img:     img,
 		scr:     img.screen,
@@ -69,7 +69,7 @@ func newWinPlayScr(img *SdlImgui) (managedWindow, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	return win, nil
+	return win
 }
 
 func (win *winPlayScr) init() {

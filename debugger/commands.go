@@ -120,17 +120,16 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 }
 
 // processTokenGroup call processTokens for each entry in the array of tokens
-func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) (bool, error) {
+func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
 	var err error
-	var ok bool
 
 	for _, t := range tokenGrp {
-		ok, err = dbg.processTokens(t)
+		_, err = dbg.processTokens(t)
 		if err != nil {
-			return false, err
+			return err
 		}
 	}
-	return ok, nil
+	return nil
 }
 
 func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {

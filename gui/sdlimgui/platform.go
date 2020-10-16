@@ -90,7 +90,10 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
 	if plt.window != nil {
-		_ = plt.window.Destroy()
+		err := plt.window.Destroy()
+		if err != nil {
+			return err
+		}
 		plt.window = nil
 	}
 	sdl.Quit()

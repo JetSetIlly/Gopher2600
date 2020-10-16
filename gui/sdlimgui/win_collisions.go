@@ -101,7 +101,7 @@ func (win *winCollisions) draw() {
 }
 
 func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, 0.1, false)
+	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
 	for i := 0; i < 8; i++ {
 		if mask<<i&0x80 == 0x80 {
 			if (read<<i)&0x80 != 0x80 {
