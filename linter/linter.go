@@ -29,12 +29,10 @@ import (
 // Lint the disassembly of the load ROM. Currently, the function looks for read
 // instructions that target non-addressible TIA and RIOT addresses.
 func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
-
 	// look at every bank in the disassembly
 	citr := dsm.NewCartIteration()
 	citr.Start()
 	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
-
 		// create a new iteration for the bank
 		bitr, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
 		if err != nil {
@@ -43,7 +41,6 @@ func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
 
 		// iterate through disassembled bank
 		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
-
 			// if instruction has a read opcode, and the addressing mode seems
 			// to be reading from non-read addresses in TIA or RIOT space then
 			// create a lint warning

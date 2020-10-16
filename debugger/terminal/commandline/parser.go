@@ -375,7 +375,6 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 		default:
 			wn.tag += string(defn[i])
 		}
-
 	}
 
 	// make sure we've added working node to the sequence

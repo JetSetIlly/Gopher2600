@@ -91,7 +91,6 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	}
 
 	return err
-
 }
 
 // returns true if the terminal needs reading
@@ -116,7 +115,6 @@ func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 				// halt at the next manual-break point. if there is no manual break
 				// point then stop immediately (or end of current frame might be
 				// better)
-
 			} else {
 				// runUntilHalt is false which means that the emulation is
 				// not running. at this point, an input loop is probably

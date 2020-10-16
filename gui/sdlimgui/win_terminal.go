@@ -183,7 +183,6 @@ func (win *winTerm) draw() {
 	if imgui.InputTextV("", &win.input,
 		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
 		win.tabCompleteAndHistory) {
-
 		win.input = strings.TrimSpace(win.input)
 
 		// send input to inputChan even if it is the empty string because

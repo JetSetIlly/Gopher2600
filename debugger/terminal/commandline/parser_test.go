@@ -127,7 +127,6 @@ func TestParser_goodGroupings(t *testing.T) {
 	if test.ExpectedSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
-
 }
 
 func TestParser_nestedGroupings(t *testing.T) {

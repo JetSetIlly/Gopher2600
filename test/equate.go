@@ -37,7 +37,6 @@ func Equate(t *testing.T, value, expectedValue interface{}) {
 	t.Helper()
 
 	switch value := value.(type) {
-
 	default:
 		t.Fatalf("unhandled type for Equate() function (%T))", value)
 

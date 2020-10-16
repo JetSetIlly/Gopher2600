@@ -114,7 +114,6 @@ func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch
 	ms.position.Reset()
 
 	return &ms, nil
-
 }
 
 // Label returns the label for the sprite

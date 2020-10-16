@@ -101,9 +101,7 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 			return err
 		}
 		aud.bufferCt = 0
-
 	} else {
-
 		remaining := int(sdl.GetQueuedAudioSize(aud.id))
 
 		if remaining < critQueueLength {
@@ -115,7 +113,6 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 			if err != nil {
 				return err
 			}
-
 		} else if remaining < minQueueLength && aud.bufferCt > 10 {
 			// if we're running short of bits in the queue the queue what we have
 			// in the buffer.
@@ -130,7 +127,6 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 				return err
 			}
 			aud.bufferCt = 0
-
 		} else if remaining > maxQueueLength {
 			// if length of SDL audio queue is getting too long then clear it
 			//

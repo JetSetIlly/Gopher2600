@@ -144,7 +144,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// is PlusROM cartridge (which can be combined with a regular cartridge
 		// format)
 		if cart.fingerprintPlusROM(cartload) {
-
 			// try creating a NewPlusROM instance
 			pr, err := plusrom.NewPlusROM(cart.mapper, cartload.OnLoaded)
 

@@ -69,7 +69,6 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	// walk through lines
 	lines := strings.Split(string(buffer), "\n")
 	for i := 0; i < len(lines); i++ {
-
 		// ignore empty lines
 		if len(lines[i]) == 0 {
 			continue // for loop
@@ -100,7 +99,6 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 		// split values into parts
 		values := strings.Split(pokeLine[1], " ")
 		for j := 0; j < len(values); j++ {
-
 			// trim space around each value
 			values[j] = strings.TrimSpace(values[j])
 

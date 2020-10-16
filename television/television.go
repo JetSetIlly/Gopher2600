@@ -148,7 +148,6 @@ func (tv *television) AddAudioMixer(m AudioMixer) {
 
 // Reset implements the Television interface.
 func (tv *television) Reset() error {
-
 	// we definitely do not call this on television initialisation because the
 	// rest of the system may not be yet be in a suitable state
 
@@ -169,7 +168,6 @@ func (tv *television) Reset() error {
 
 // Signal implements the Television interface
 func (tv *television) Signal(sig SignalAttributes) error {
-
 	// mix audio before we do anything else
 	if sig.AudioUpdate {
 		for f := range tv.mixers {
@@ -220,7 +218,6 @@ func (tv *television) Signal(sig SignalAttributes) error {
 	// !!TODO: replace VSYNC signal with extended HSYNC signal
 	if sig.VSync && !tv.lastSignal.VSync {
 		tv.vsyncCount = 0
-
 	} else if !sig.VSync && tv.lastSignal.VSync {
 		if tv.vsyncCount > 0 {
 			err := tv.newFrame(true)

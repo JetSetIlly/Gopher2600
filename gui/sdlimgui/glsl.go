@@ -197,7 +197,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
-
 				vertScaling := rnd.img.wm.dbgScr.getScaling(false)
 				horizScaling := rnd.img.wm.dbgScr.getScaling(true)
 

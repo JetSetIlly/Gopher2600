@@ -27,7 +27,6 @@ func EquateRegisters(t *testing.T, value, expectedValue interface{}) {
 	t.Helper()
 
 	switch value := value.(type) {
-
 	default:
 		t.Fatalf("not a register type (%T)", value)
 

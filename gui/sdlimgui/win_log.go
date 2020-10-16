@@ -63,7 +63,6 @@ func (win *winLog) draw() {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
 			imgui.Text(win.img.lz.Log.Log[i].String())
 		}
-
 	}
 
 	// scroll to end if log has been dirtied (ie. a new entry)

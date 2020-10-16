@@ -43,7 +43,6 @@ func (scr *SdlDebug) Service() {
 
 	// do not check for events if no event channel has been set
 	if scr.events != nil {
-
 		// loop until there are no more events to retrieve. this loop is
 		// intimately connected with the framelimiter below. what we don't want
 		// to loop for too long servicing events. however:
@@ -59,9 +58,7 @@ func (scr *SdlDebug) Service() {
 		//
 		// best solution is the poll loop
 		for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
-
 			switch ev := ev.(type) {
-
 			// close window
 			case *sdl.QuitEvent:
 				scr.showWindow(false)
@@ -186,7 +183,6 @@ func (scr *SdlDebug) Service() {
 						}
 					}
 				}
-
 			}
 		}
 
@@ -238,7 +234,6 @@ func (scr *SdlDebug) convertMouseCoords(ev *sdl.MouseButtonEvent) (int, int) {
 	// by the SDL renderer
 	if scr.cropped {
 		hp = int(float32(ev.X) / sx)
-
 	} else {
 		hp = int(float32(ev.X)/sx) - television.HorizClksHBlank
 	}

@@ -322,7 +322,6 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 				newBreaks = append(newBreaks, breaker{target: tgt, value: val})
 				resolvedTarget = true
 			}
-
 		} else {
 			// make sure we've not left a previous target dangling without a value
 			if !resolvedTarget {
@@ -347,7 +346,6 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 					return curated.Errorf("%v", err)
 				}
 				resolvedTarget = false
-
 			}
 		}
 

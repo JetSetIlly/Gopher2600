@@ -150,7 +150,6 @@ func (lz *LazyCart) push() {
 }
 
 func (lz *LazyCart) update() {
-
 	lz.ID, _ = lz.id.Load().(string)
 	lz.Summary, _ = lz.summary.Load().(string)
 	lz.Filename, _ = lz.filename.Load().(string)

@@ -40,7 +40,6 @@ const mp3SourceBitDepth = 16
 //
 // !!TODO: handle multiple mp3/wav files to create one single multiload tape
 func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
-
 	// try interpreting data as a WAV file
 	wavDec := wav.NewDecoder(&pcmDecoder{data: cl.Data})
 	if wavDec.IsValidFile() {
@@ -96,7 +95,6 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 
 	logger.Log(soundloadLogTag, "loading from mp3 file")
 	return b.AsFloat32Buffer(), nil
-
 }
 
 // pcmDecoder is an implementation of io.ReadSeeker.

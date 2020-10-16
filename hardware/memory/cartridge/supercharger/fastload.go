@@ -127,7 +127,6 @@ func (tap *FastLoad) load() (uint8, error) {
 	// a function disguised as an error type. The VCS knows how to interpret
 	// this error and will call the function
 	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-
 		// initialise VCS RAM with zeros
 		for a := uint16(0x80); a <= 0xff; a++ {
 			ram.Poke(a, 0x00)

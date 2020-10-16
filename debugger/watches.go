@@ -102,7 +102,6 @@ func (wtc *watches) check(previousResult string) string {
 	checkString.WriteString(previousResult)
 
 	for i := range wtc.watches {
-
 		// continue loop if we're not matching last address accessed
 		if wtc.watches[i].mirrors {
 			if wtc.watches[i].ai.mappedAddress != wtc.vcsmem.LastAccessAddressMapped {
@@ -122,7 +121,6 @@ func (wtc *watches) check(previousResult string) string {
 		// match watch event to the type of memory access
 		if (!wtc.watches[i].ai.read && wtc.vcsmem.LastAccessWrite) ||
 			(wtc.watches[i].ai.read && !wtc.vcsmem.LastAccessWrite) {
-
 			// match watched-for value to the value that was read/written to the
 			// watched address
 			if !wtc.watches[i].matchValue {
@@ -239,7 +237,6 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 
 	// check to see if watch already exists
 	for _, w := range wtc.watches {
-
 		// the conditions for a watch matching are very specific: both must
 		// have the same address, be the same /type/ of address (read or
 		// write), and the same watch value (if applicable)
@@ -251,7 +248,6 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		if w.ai.address == nw.ai.address &&
 			w.ai.read == nw.ai.read &&
 			w.matchValue == nw.matchValue && w.value == nw.value {
-
 			return curated.Errorf("already being watched (%s)", w)
 		}
 	}

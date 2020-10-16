@@ -119,7 +119,6 @@ func IsPlaybackFile(filename string) bool {
 	}
 	if string(b) != magicString+"\n" {
 		return false
-
 	}
 
 	// version number verification

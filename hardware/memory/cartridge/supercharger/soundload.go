@@ -139,7 +139,6 @@ func (tap *SoundLoad) step() {
 		return
 	}
 	tap.idx++
-
 }
 
 // Rewind implements the mapper.CartTapeBus interface

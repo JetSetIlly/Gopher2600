@@ -86,7 +86,6 @@ func (win *winCartRAM) draw() {
 
 			imgui.EndTabItem()
 		}
-
 	}
 	imgui.EndTabBar()
 

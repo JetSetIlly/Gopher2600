@@ -87,7 +87,6 @@ func NewLoader(filename string, mapping string) Loader {
 	} else {
 		ext := strings.ToUpper(path.Ext(filename))
 		switch ext {
-
 		case ".BIN":
 			fallthrough
 		case ".ROM":

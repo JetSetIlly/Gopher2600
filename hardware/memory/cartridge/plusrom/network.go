@@ -131,7 +131,6 @@ func (n *network) send(data uint8, send bool) {
 			var r bytes.Buffer
 			r.ReadFrom(resp.Body)
 			n.respChan <- r
-
 		}(n.sendBuffer, n.ai)
 
 		// a copy of the sendBuffer has been passed to the new goroutine so we

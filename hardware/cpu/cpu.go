@@ -719,7 +719,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if err != nil {
 				return err
 			}
-
 		} else {
 			// normal, non-buggy behaviour
 

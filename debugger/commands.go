@@ -732,7 +732,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 	case cmdMemMap:
 		address, ok := tokens.Get()
 		if ok {
-
 			// if an address argument has been specified then map the address
 			// in a read and write context and display the information
 
@@ -778,7 +777,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			} else {
 				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%v is not a mappable address", address))
 			}
-
 		} else {
 			// without an address argument print the memorymap summary table
 			dbg.printLine(terminal.StyleInstrument, "%v", memorymap.Summary())
@@ -818,7 +816,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					case "TOGGLE":
 						*targetVal = !*targetVal
 					}
-
 				} else {
 					dbg.printLine(terminal.StyleInstrument, dbg.VCS.CPU.Status.String())
 				}

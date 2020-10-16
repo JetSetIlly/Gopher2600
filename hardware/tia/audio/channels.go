@@ -67,7 +67,6 @@ func (ch *channel) String() string {
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
 func (ch *channel) tick() {
-
 	// the following resets the volume if the control register is zero. this
 	// condition was originally added to solve the problem of the silence value
 	// emitted by Pitfall not being zero (which is a problem if the machine
@@ -114,7 +113,6 @@ func (ch *channel) tick() {
 		((ch.regControl&0x01 == 0x0) && ch.au.div31[ch.poly5ct] != 0) ||
 		((ch.regControl&0x01 == 0x1) && ch.au.poly5bit[ch.poly5ct] != 0) ||
 		((ch.regControl&0x0f == 0xf) && ch.au.poly5bit[ch.poly5ct] != prevBit5) {
-
 		if ch.regControl&0x04 == 0x04 {
 			// use pure clock
 
@@ -141,7 +139,6 @@ func (ch *channel) tick() {
 					ch.actualVol = ch.regVolume
 				}
 			}
-
 		} else if ch.regControl&0x08 == 0x08 {
 			// use poly poly5/poly9
 

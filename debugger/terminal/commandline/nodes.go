@@ -154,7 +154,6 @@ func (n node) string(useLabels bool, fromBranch bool) string {
 					s.WriteString(")")
 				}
 			}
-
 		}
 	}
 

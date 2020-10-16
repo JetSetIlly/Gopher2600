@@ -73,7 +73,6 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 			}
 
 			if strings.Contains(m, search) {
-
 				// if we've not yet printed head for the current bank then
 				// print it now
 				if !bankHeader {

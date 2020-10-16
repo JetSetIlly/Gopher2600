@@ -84,7 +84,6 @@ func fingerprintParkerBros(b []byte) bool {
 			(b[i] == 0xad && b[i+1] == 0xf3 && b[i+2] == 0xbf) {
 			return true
 		}
-
 	}
 
 	return false

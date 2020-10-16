@@ -39,7 +39,6 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 	for n := range cmds.cmds {
 		if cmd == cmds.cmds[n].tag {
-
 			err := cmds.cmds[n].validate(tokens, false)
 			if err != nil {
 				return err

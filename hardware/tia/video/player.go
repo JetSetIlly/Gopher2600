@@ -247,7 +247,6 @@ func (ps playerSprite) String() string {
 
 		s.WriteString(")")
 		notes = true
-
 	} else if ps.ScanCounter.IsLatching() {
 		if notes {
 			s.WriteString(",")
@@ -259,7 +258,6 @@ func (ps playerSprite) String() string {
 	// value
 	if (ps.ScanCounter.IsActive() || ps.ScanCounter.IsLatching()) &&
 		ps.SizeAndCopies != 0x0 && ps.SizeAndCopies != 0x5 && ps.SizeAndCopies != 0x07 {
-
 		switch ps.ScanCounter.Cpy {
 		case 0:
 		case 1:
@@ -661,7 +659,6 @@ func (ps *playerSprite) setNUSIZ(value uint8) {
 		} else if ps.futureStart.Remaining() >= 2 &&
 			ps.SizeAndCopies != value && ps.SizeAndCopies != 0x00 &&
 			(value == 0x05 || value == 0x07) {
-
 			// this branch applies when a sprite is changing from a single
 			// width sprite to a double/quadruple width sprite. in that
 			// instance we drop the drawing event if it has only recently

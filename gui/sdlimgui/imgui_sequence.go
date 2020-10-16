@@ -76,7 +76,6 @@ func (seq *drawlistSequence) start() float32 {
 // every call to start() should be coupled with a call to end()
 func (seq *drawlistSequence) end() {
 	imgui.EndGroup()
-
 }
 
 // calling sameLine() before a call to element may not have the effect you

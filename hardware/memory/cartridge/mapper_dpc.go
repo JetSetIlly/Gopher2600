@@ -194,7 +194,6 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	if addr >= 0x0000 && addr <= 0x0003 {
 		// RNG value
 		return cart.registers.RNG, nil
-
 	} else if addr >= 0x0004 && addr <= 0x0007 {
 		// music value. mix music data-fetchers:
 
@@ -238,18 +237,15 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
 		// when in music mode return top register [col 7, ln 6-9]
 		data = cart.registers.Fetcher[f].Top
-
 	} else {
 		if addr >= 0x0008 && addr <= 0x000f {
 			// display data
 			data = cart.static.Gfx[gfxAddr]
-
 		} else if addr >= 0x0010 && addr <= 0x0017 {
 			// display data AND w/flag
 			if cart.registers.Fetcher[f].Flag {
 				data = cart.static.Gfx[gfxAddr]
 			}
-
 		} else if addr >= 0x0018 && addr <= 0x001f {
 			// display data AND w/flag, nibbles swapped
 
@@ -261,13 +257,11 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 			if cart.registers.Fetcher[f].Flag {
 				data = cart.static.Gfx[gfxAddr] >> 1
 			}
-
 		} else if addr >= 0x0030 && addr <= 0x0037 {
 			// display data AND w/flag, ROL
 			if cart.registers.Fetcher[f].Flag {
 				data = cart.static.Gfx[gfxAddr] << 1
 			}
-
 		} else if addr >= 0x0038 && addr <= 0x003f {
 			// DFx flag
 			if f >= 0x5 && cart.registers.Fetcher[f].Flag {
@@ -297,11 +291,9 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		// set top register
 		cart.registers.Fetcher[f].Top = data
 		cart.registers.Fetcher[f].Flag = false
-
 	} else if addr >= 0x0048 && addr <= 0x004f {
 		// set bottom register
 		cart.registers.Fetcher[f].Bottom = data
-
 	} else if addr >= 0x0050 && addr <= 0x0057 {
 		// set low register
 
@@ -309,12 +301,9 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		if f >= 0x5 && cart.registers.Fetcher[f].MusicMode {
 			// low is loaded with top value on low function [col 7, ln 12-14]
 			cart.registers.Fetcher[f].Low = cart.registers.Fetcher[f].Top
-
 		} else {
 			cart.registers.Fetcher[f].Low = data
-
 		}
-
 	} else if addr >= 0x0058 && addr <= 0x005f {
 		// set high register
 		cart.registers.Fetcher[f].Hi = data
@@ -327,7 +316,6 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// set osc clock [col 7, ln 20-22]
 			cart.registers.Fetcher[f].OSCclock = data&0x20 == 0x20
 		}
-
 	} else if addr >= 0x0070 && addr <= 0x0077 {
 		// reset random number generator
 		cart.registers.RNG = 0xff

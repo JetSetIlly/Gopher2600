@@ -64,7 +64,6 @@ func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string, a
 
 	// add sub-mode information
 	if len(subModes) > 0 {
-
 		// add an additional new line if we've already printed flag information
 		if len(helpLines) > 2 {
 			output.Write([]byte("\n"))

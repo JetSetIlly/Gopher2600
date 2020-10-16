@@ -132,7 +132,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Flow &&
 				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Subroutine &&
 				dbg.VCS.CPU.LastResult.Defn.Effect != instructions.Interrupt) {
-
 			dbg.breakMessages = dbg.breakpoints.check(dbg.breakMessages)
 			dbg.trapMessages = dbg.traps.check(dbg.trapMessages)
 			dbg.watchMessages = dbg.watches.check(dbg.watchMessages)
@@ -154,7 +153,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 		// if emulation is to be halted or if we need to check the terminal
 		if haltEmulation || checkTerm {
-
 			// always clear steptraps. if the emulation has halted for any
 			// reason then any existing step trap is stale.
 			dbg.stepTraps.clear()
@@ -218,11 +216,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					// user interrupts are triggered by the user (in a terminal
 					// environment, usually by pressing ctrl-c)
 					dbg.handleInterrupt(inputter, inputLen)
-
 				} else if curated.Is(err, terminal.UserAbort) {
 					// like UserInterrupt but with no confirmation stage
 					dbg.running = false
-
 				} else if curated.Is(err, script.ScriptEnd) {
 					// a script that is being run will usually end with a ScriptEnd
 					// error. in these instances we can say simply say so (using
@@ -232,7 +228,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 						dbg.printLine(terminal.StyleFeedback, err.Error())
 					}
 					return nil
-
 				} else {
 					// all other errors are passed upwards to the calling function
 					return err
@@ -316,7 +311,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// supercharger bin files however, we need a way of doing this without
 				// the ROM. the TapeLoaded error allows us to do this.
 				if onTapeLoaded, ok := stepErr.(supercharger.FastLoaded); ok {
-
 					// CPU execution has been interrupted. update state of CPU
 					dbg.VCS.CPU.Interrupted = true
 
@@ -337,7 +331,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 					// (re)disassemble memory on TapeLoaded error signal
 					dbg.Disasm.FromMemory(nil, nil)
-
 				} else {
 					// exit input loop if error is a plain error
 					if !curated.IsAny(stepErr) {
@@ -403,10 +396,8 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input, inputLen int) {
 	if dbg.scriptScribe.IsActive() {
 		dbg.input = []byte("SCRIPT END")
 		inputLen = 11
-
 	} else if !inputter.IsInteractive() {
 		dbg.running = false
-
 	} else {
 		// a scriptScribe is not active nor is this a script
 		// input loop. ask the user if they really want to quit

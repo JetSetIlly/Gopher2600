@@ -85,7 +85,6 @@ func (win *winDisasm) init() {
 	win.colVideoStep = imgui.PackedColorFromVec4(win.img.cols.DisasmVideoStep)
 	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
 	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
-
 }
 
 func (win *winDisasm) destroy() {
@@ -131,7 +130,6 @@ func (win *winDisasm) draw() {
 	if win.img.lz.Cart.NumBanks <= 1 {
 		// for cartridges with just one bank we don't bother with a TabBar
 		win.drawBank(pcaddr, 0, !currBank.NonCart, cpuStep)
-
 	} else {
 		// create a new TabBar and iterate through the cartridge banks,
 		// adding a page for each one

@@ -313,7 +313,6 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 			default:
 				if unicode.IsDigit(readRune.r) || unicode.IsLetter(readRune.r) || unicode.IsSpace(readRune.r) || unicode.IsPunct(readRune.r) || unicode.IsSymbol(readRune.r) {
-
 					l := utf8.EncodeRune(er, readRune.r)
 
 					// make sure we don't overflow the input buffer

@@ -27,7 +27,6 @@ const testError = "test error: %s"
 const testErrorB = "test error B: %s"
 
 func TestDuplicateErrors(t *testing.T) {
-
 	e := curated.Errorf(testError, "foo")
 	test.Equate(t, e.Error(), "test error: foo")
 

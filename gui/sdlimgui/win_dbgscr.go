@@ -466,7 +466,6 @@ func (win *winDbgScr) render() {
 			gl.Ptr(overlayPixels.Pix))
 
 		win.createTextures = false
-
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,

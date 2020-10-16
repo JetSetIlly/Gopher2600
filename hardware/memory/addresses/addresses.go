@@ -136,7 +136,6 @@ var Write []string
 // this init() function create the Read/Write arrays using the read/write maps
 // as a source
 func init() {
-
 	// build ReadSymbols out of the TIA and RIOT canonical read maps
 	for k, v := range TIAReadSymbols {
 		ReadSymbols[k] = v

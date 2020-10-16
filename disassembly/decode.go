@@ -236,7 +236,6 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 		// the cartridge addressing range can often be mapped into different
 		// "segments" of cartridge memory
 		for _, origin := range bank.Origins {
-
 			// make sure origin address is rooted correctly. we'll convert all
 			// addresses to the preferred mirror at the end of the disassembly
 			mem.origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCart
@@ -252,7 +251,6 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 			// later if we put a valid entry at every index. entries outside of
 			// the bank space will have level == EntryLevelUnused
 			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
-
 				// continue if entry has already been decoded
 				e := dsm.entries[bank.Number][address&memorymap.CartridgeBits]
 				if e != nil && e.Level > EntryLevelUnmappable {

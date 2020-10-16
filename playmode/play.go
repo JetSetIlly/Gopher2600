@@ -56,7 +56,6 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	// if supplied cartridge name is actually a playback file then set
 	// recording variable and dump cartridgeLoader information
 	if recorder.IsPlaybackFile(cartload.Filename) {
-
 		// do not allow this if a new recording has been requested
 		if newRecording {
 			return curated.Errorf("playmode: %v", "cannot make a new recording using a playback file")
@@ -130,7 +129,6 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)
 		}
-
 	} else if recording != "" {
 		// not a new recording but a recording has been supplied. this is a
 		// playback request
@@ -156,7 +154,6 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)
 		}
-
 	} else {
 		// no new recording requested and no recording given. this is a 'normal'
 		// launch of the emalator for regular play

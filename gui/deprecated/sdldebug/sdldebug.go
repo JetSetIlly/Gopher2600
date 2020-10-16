@@ -445,7 +445,6 @@ func (scr *SdlDebug) Reflect(result reflection.LastResult) error {
 		scr.pixels.dbg[i+1] = col.G
 		scr.pixels.dbg[i+2] = col.B
 		scr.pixels.dbg[i+3] = col.A
-
 	}
 
 	if result.WSYNC {

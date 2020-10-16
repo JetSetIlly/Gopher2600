@@ -93,7 +93,6 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 		aut.toKeyboard()
 	case ports.KeyboardUp:
 		aut.toKeyboard()
-
 	}
 
 	err := aut.controller.HandleEvent(event, data)

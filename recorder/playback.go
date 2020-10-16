@@ -82,7 +82,6 @@ func (plb Playback) EndFrame() (bool, error) {
 	}
 
 	return false, nil
-
 }
 
 // NewPlayback is the preferred method of implementation for the Playback type.

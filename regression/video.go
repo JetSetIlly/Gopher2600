@@ -329,7 +329,6 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			failm := "unexpected end of state. entries remaining in recorded state file"
 			return false, failm, nil
 		}
-
 	}
 
 	if dig.Hash() != reg.digest {

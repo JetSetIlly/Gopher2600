@@ -106,7 +106,6 @@ type Video struct {
 func NewVideo(mem bus.ChipBus,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	tv television.Television, hblank, hmoveLatch *bool) (*Video, error) {
-
 	vd := &Video{
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
@@ -311,7 +310,6 @@ func (vd *Video) Pixel() uint8 {
 				element = ElementBackground
 			}
 		}
-
 	}
 
 	vd.LastElement = element

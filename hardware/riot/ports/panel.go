@@ -139,7 +139,6 @@ const (
 // HandleEvent implements Peripheral interface
 func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	switch event {
-
 	case PanelSelect:
 		pan.selectPressed = value.(bool)
 
@@ -166,7 +165,6 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 
 	case PanelPowerOff:
 		return curated.Errorf(PowerOff)
-
 	}
 
 	pan.write()

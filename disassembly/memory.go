@@ -29,7 +29,6 @@ type disasmMemory struct {
 }
 
 func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
-
 	// map address
 	address, area := memorymap.MapAddress(address, true)
 	if area == memorymap.Cartridge {
@@ -44,7 +43,6 @@ func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 
 	// address outside of cartridge range return nothing
 	return 0, nil
-
 }
 
 func (dismem *disasmMemory) ReadZeroPage(address uint8) (uint8, error) {
