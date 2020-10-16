@@ -1,6 +1,5 @@
 linters:
   disable:
-    - govet
     - errcheck
     - ineffassign
     - staticcheck
@@ -15,6 +14,10 @@ linters:
   fast: false
 
 linters-settings:
+  govet:
+    disable:
+      - composites
+
   gocritic:
     disabled-checks:
       - ifElseChain

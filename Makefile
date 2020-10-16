@@ -22,21 +22,6 @@ lint:
 # uses .golangci.yml configuration file
 	golangci-lint run
 
-vet: 
-# filter out expected warnings that we are not worried about: 
-# . unkeyed fields when creating imgui.Vec4{} and imgui.Vec2{}
-# . "misuse" of unsafe.Pointer is required by opengl implementation
-# . the files in which we expect the errors to appear
-#
-# the awk command returns the number of filtered lines as an exit code. this
-# will be returned as an exit code by the make command
-
-	@go vet ./... 2>&1 | \
-grep -v "github.com/inkyblackness/imgui-go/v2.Vec[2,4] composite literal uses unkeyed fields" | \
-grep -v "gui/sdlimgui/glsl.go.*possible misuse of unsafe.Pointer" | \
-grep -v "\# github.com/jetsetilly/gopher2600/gui/sdlimgui" | \
-awk 'END{exit NR}'
-
 test:
 	go test -tags=testing ./...
 
