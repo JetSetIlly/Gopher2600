@@ -23,22 +23,22 @@ import (
 // debugger's "debug colors" mode. The default colors are the same as the the
 // debug colors found in the Stella emulator.
 var PaletteElements = []color.RGBA{
-	color.RGBA{R: 17, G: 17, B: 17, A: 255},
-	color.RGBA{R: 132, G: 200, B: 252, A: 255},
-	color.RGBA{R: 146, G: 70, B: 192, A: 255},
-	color.RGBA{R: 144, G: 28, B: 0, A: 255},
-	color.RGBA{R: 232, G: 232, B: 74, A: 255},
-	color.RGBA{R: 213, G: 130, B: 74, A: 255},
-	color.RGBA{R: 50, G: 132, B: 50, A: 255},
+	{R: 17, G: 17, B: 17, A: 255},
+	{R: 132, G: 200, B: 252, A: 255},
+	{R: 146, G: 70, B: 192, A: 255},
+	{R: 144, G: 28, B: 0, A: 255},
+	{R: 232, G: 232, B: 74, A: 255},
+	{R: 213, G: 130, B: 74, A: 255},
+	{R: 50, G: 132, B: 50, A: 255},
 }
 
 // PaletteEvents lists the colors to be used for reflected events. For example,
 // when WSYNC is active the PaletteEvent["WSYNC"] entry should be used.
 var PaletteEvents = map[string]color.RGBA{
-	"WSYNC":         color.RGBA{R: 50, G: 50, B: 255, A: 100},
-	"Collisions":    color.RGBA{R: 255, G: 25, B: 25, A: 200},
-	"HMOVE delay":   color.RGBA{R: 150, G: 50, B: 50, A: 150},
-	"HMOVE":         color.RGBA{R: 50, G: 150, B: 50, A: 150},
-	"HMOVE latched": color.RGBA{R: 50, G: 50, B: 150, A: 150},
-	"Unchanged":     color.RGBA{R: 255, G: 100, B: 25, A: 150},
+	"WSYNC":         {R: 50, G: 50, B: 255, A: 100},
+	"Collisions":    {R: 255, G: 25, B: 25, A: 200},
+	"HMOVE delay":   {R: 150, G: 50, B: 50, A: 150},
+	"HMOVE":         {R: 50, G: 150, B: 50, A: 150},
+	"HMOVE latched": {R: 50, G: 50, B: 150, A: 150},
+	"Unchanged":     {R: 255, G: 100, B: 25, A: 150},
 }

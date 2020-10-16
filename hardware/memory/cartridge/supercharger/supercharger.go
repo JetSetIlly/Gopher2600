@@ -417,8 +417,8 @@ func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
 // ReadHotspots implements the mapper.CartHotspotsBus interface
 func (cart Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff8: mapper.CartHotspotInfo{Symbol: "CONFIG", Action: mapper.HotspotFunction},
-		0x1ff9: mapper.CartHotspotInfo{Symbol: "TAPE", Action: mapper.HotspotFunction},
+		0x1ff8: {Symbol: "CONFIG", Action: mapper.HotspotFunction},
+		0x1ff9: {Symbol: "TAPE", Action: mapper.HotspotFunction},
 	}
 }
 

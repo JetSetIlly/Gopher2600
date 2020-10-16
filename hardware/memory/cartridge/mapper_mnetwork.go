@@ -371,18 +371,18 @@ func (cart mnetwork) CopyBanks() []mapper.BankContent {
 // ReadHotspots implements the mapper.CartHotspotsBus interface
 func (cart mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
-		0x1fe0: mapper.CartHotspotInfo{Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1fe1: mapper.CartHotspotInfo{Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1fe2: mapper.CartHotspotInfo{Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1fe3: mapper.CartHotspotInfo{Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
-		0x1fe4: mapper.CartHotspotInfo{Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
-		0x1fe5: mapper.CartHotspotInfo{Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
-		0x1fe6: mapper.CartHotspotInfo{Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
-		0x1fe7: mapper.CartHotspotInfo{Symbol: "1kRAM", Action: mapper.HotspotFunction},
-		0x1fe8: mapper.CartHotspotInfo{Symbol: "RAM0", Action: mapper.HotspotBankSwitch},
-		0x1fe9: mapper.CartHotspotInfo{Symbol: "RAM1", Action: mapper.HotspotBankSwitch},
-		0x1fea: mapper.CartHotspotInfo{Symbol: "RAM2", Action: mapper.HotspotBankSwitch},
-		0x1feb: mapper.CartHotspotInfo{Symbol: "RAM3", Action: mapper.HotspotBankSwitch},
+		0x1fe0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1fe1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1fe2: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
+		0x1fe3: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
+		0x1fe4: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
+		0x1fe5: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
+		0x1fe6: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
+		0x1fe7: {Symbol: "1kRAM", Action: mapper.HotspotFunction},
+		0x1fe8: {Symbol: "RAM0", Action: mapper.HotspotBankSwitch},
+		0x1fe9: {Symbol: "RAM1", Action: mapper.HotspotBankSwitch},
+		0x1fea: {Symbol: "RAM2", Action: mapper.HotspotBankSwitch},
+		0x1feb: {Symbol: "RAM3", Action: mapper.HotspotBankSwitch},
 	}
 }
 

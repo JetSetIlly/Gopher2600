@@ -384,8 +384,8 @@ func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
 // ReadHotspots implements the mapper.CartHotspotsBus interface
 func (cart atari8k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff8: mapper.CartHotspotInfo{Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff9: mapper.CartHotspotInfo{Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1ff9: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 	}
 }
 
@@ -477,10 +477,10 @@ func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
 // ReadHotspots implements the mapper.CartHotspotsBus interface
 func (cart atari16k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff6: mapper.CartHotspotInfo{Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff7: mapper.CartHotspotInfo{Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1ff8: mapper.CartHotspotInfo{Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1ff9: mapper.CartHotspotInfo{Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
+		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1ff8: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
+		0x1ff9: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
 	}
 }
 
@@ -580,13 +580,13 @@ func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
 // ReadHotspots implements the mapper.CartHotspotsBus interface
 func (cart atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff5: mapper.CartHotspotInfo{Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff6: mapper.CartHotspotInfo{Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1ff7: mapper.CartHotspotInfo{Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1ff8: mapper.CartHotspotInfo{Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
-		0x1ff9: mapper.CartHotspotInfo{Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
-		0x1ffa: mapper.CartHotspotInfo{Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
-		0x1ffb: mapper.CartHotspotInfo{Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
+		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1ff7: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
+		0x1ff8: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
+		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
+		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
+		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
 }
 
