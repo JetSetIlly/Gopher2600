@@ -317,6 +317,9 @@ func TestParser_optional(t *testing.T) {
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
+	if err != nil {
+		t.Errorf("does not parse: %s", err)
+	}
 
 	f, err := os.Create("memviz.dot")
 	if err != nil {

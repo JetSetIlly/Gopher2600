@@ -20,7 +20,7 @@ generate:
 
 lint:
 # uses .golangci.yml configuration file
-	golangci-lint run
+	golangci-lint run --sort-results
 
 test:
 	go test -tags=testing ./...

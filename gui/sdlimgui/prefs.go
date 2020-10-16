@@ -38,6 +38,9 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		return err
 	}
 	img.prefs, err = prefs.NewDisk(pth)
+	if err != nil {
+		return err
+	}
 
 	err = img.prefs.Add(fmt.Sprintf("%s.windowsize", group), prefs.NewGeneric(
 		func(s string) error {

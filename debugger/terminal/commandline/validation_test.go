@@ -261,6 +261,9 @@ func TestValidation_singluarOption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
+	if err != nil {
+		t.Errorf("does not parse: %s", err)
+	}
 
 	err = cmds.Validate("SCRIPT foo")
 	if err != nil {
@@ -501,6 +504,9 @@ func TestValidation_optional_group(t *testing.T) {
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"PREF ([SET|NO|TOGGLE] [RANDSTART|RANDPINS])",
 	})
+	if err != nil {
+		t.Errorf("does not parse: %s", err)
+	}
 
 	err = cmds.Validate("pref")
 	if err != nil {

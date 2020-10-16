@@ -152,7 +152,7 @@ func (cart *Supercharger) PutRegister(register string, data string) {
 
 	case "delay":
 		v, _ := strconv.ParseUint(data, 16, 8)
-		if v < 0 || v > 6 {
+		if v > 6 {
 			panic("delay value out of range")
 		}
 		cart.registers.Delay = int(v)
@@ -178,7 +178,7 @@ func (cart *Supercharger) PutRegister(register string, data string) {
 
 	case "bankingmode":
 		v, _ := strconv.ParseUint(data, 16, 8)
-		if v < 0 || v > 7 {
+		if v > 7 {
 			panic("bankingmode value out of range")
 		}
 		cart.registers.BankingMode = int(v)

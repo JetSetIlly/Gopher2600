@@ -54,6 +54,10 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
 	p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
 	p.dsk.Add("disassembly.symbols", &p.Symbols)
 
@@ -68,7 +72,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 
 	err = p.dsk.Load(true)
 	if err != nil {
-		return p, err
+		return nil, err
 	}
 
 	return p, nil

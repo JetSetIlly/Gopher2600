@@ -57,10 +57,13 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 
 	// make sure we're at the beginning of the file
 	if _, err = f.Seek(0, io.SeekStart); err != nil {
-		return false, err
+		return false, curated.Errorf("patch: %v", err)
 	}
 
 	buffer, err := ioutil.ReadAll(f)
+	if err != nil {
+		return false, curated.Errorf("patch: %v", err)
+	}
 
 	// once a patch has been made then we'll flip patched to true and return it
 	// to the calling function

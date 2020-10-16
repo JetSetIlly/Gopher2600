@@ -134,11 +134,9 @@ func (win *winControl) drawQuantumToggle() {
 	if toggle {
 		stepLabel = videoCycleLabel
 		if videoStep != toggle {
-			videoStep = toggle
 			win.img.term.pushCommand("QUANTUM VIDEO")
 		}
 	} else if videoStep != toggle {
-		videoStep = toggle
 		win.img.term.pushCommand("QUANTUM CPU")
 	}
 

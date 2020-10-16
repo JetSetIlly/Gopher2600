@@ -149,6 +149,14 @@ func (tap *SoundLoad) Rewind() bool {
 	return true
 }
 
+// SetTapeCounter implements the mapper.CartTapeBus interface
+func (tap *SoundLoad) SetTapeCounter(c int) {
+	if c >= len(tap.samples) {
+		c = len(tap.samples)
+	}
+	tap.idx = c
+}
+
 // the number of samples to copy and return from GetTapeState()
 const numStateSamples = 100
 

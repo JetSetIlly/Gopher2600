@@ -173,6 +173,9 @@ type CartTapeBus interface {
 	// effective
 	Rewind() bool
 
+	// Set tape counter to specified value
+	SetTapeCounter(c int)
+
 	// GetTapeState retrieves a copy of the current state of the tape. returns
 	// true is state is valid
 	GetTapeState() (bool, CartTapeState)

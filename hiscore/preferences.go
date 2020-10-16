@@ -43,6 +43,10 @@ func newPreferences() (*Preferences, error) {
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return p, curated.Errorf("hiscore: %v", err)
+	}
+
 	p.dsk.Add("hiscore.server", &p.Server)
 	p.dsk.Add("hiscore.authtoken", &p.AuthToken)
 

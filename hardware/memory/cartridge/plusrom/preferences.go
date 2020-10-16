@@ -51,6 +51,10 @@ func newPreferences() (*Preferences, error) {
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
 	p.dsk.Add("plusrom.nick", &p.Nick)
 	p.dsk.Add("plusrom.id", &p.ID)
 

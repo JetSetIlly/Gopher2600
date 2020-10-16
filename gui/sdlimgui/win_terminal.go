@@ -219,7 +219,6 @@ func (win *winTerm) saveOutput() {
 		n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second()))
 
 	f, err := os.Create(fn)
-	defer f.Close()
 	if err != nil {
 		win.output = append(win.output, terminalOutput{
 			style: terminal.StyleError,
@@ -228,6 +227,7 @@ func (win *winTerm) saveOutput() {
 		})
 		return
 	}
+	defer f.Close()
 
 	for _, o := range win.output {
 		f.Write([]byte(o.text))

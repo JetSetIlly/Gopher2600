@@ -2,7 +2,6 @@ linters:
   disable:
     - errcheck
     - ineffassign
-    - staticcheck
   enable:
     - bodyclose
     - unconvert

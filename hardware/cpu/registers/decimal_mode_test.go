@@ -42,21 +42,21 @@ func TestDecimalModeCarry(t *testing.T) {
 	// subtraction with carry (subtract value)
 	r8.Load(9)
 	rtest.EquateRegisters(t, r8, 0x09)
-	rcarry, _, _, _ = r8.SubtractDecimal(1, true)
+	r8.SubtractDecimal(1, true)
 	rtest.EquateRegisters(t, r8, 0x08)
 
 	// subtraction without carry (subtract value and another 1)
-	rcarry, _, _, _ = r8.SubtractDecimal(1, false)
+	r8.SubtractDecimal(1, false)
 	rtest.EquateRegisters(t, r8, 0x06)
 
 	// addition on tens boundary
 	r8.Load(9)
 	rtest.EquateRegisters(t, r8, 0x09)
-	rcarry, _, _, _ = r8.AddDecimal(1, false)
+	r8.AddDecimal(1, false)
 	rtest.EquateRegisters(t, r8, 0x10)
 
 	// subtraction on tens boundary
-	rcarry, _, _, _ = r8.SubtractDecimal(1, true)
+	r8.SubtractDecimal(1, true)
 	rtest.EquateRegisters(t, r8, 0x09)
 
 	// addition on hundreds boundary
@@ -67,7 +67,7 @@ func TestDecimalModeCarry(t *testing.T) {
 	test.Equate(t, rcarry, true)
 
 	// subtraction on hundreds boundary
-	rcarry, _, _, _ = r8.SubtractDecimal(1, true)
+	r8.SubtractDecimal(1, true)
 	rtest.EquateRegisters(t, r8, 0x99)
 }
 

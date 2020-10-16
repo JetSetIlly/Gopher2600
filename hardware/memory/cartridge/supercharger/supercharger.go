@@ -393,6 +393,16 @@ func (cart *Supercharger) Rewind() bool {
 	return false
 }
 
+// SetTapeCounter implements the mapper.CartTapeBus interface
+//
+// Whether this does anything meaningful depends on the interal implementation
+// of the 'tape' interface.
+func (cart *Supercharger) SetTapeCounter(c int) {
+	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
+		tape.SetTapeCounter(c)
+	}
+}
+
 // GetTapeState implements the mapper.CartTapeBus interface
 //
 // Whether this does anything meaningful depends on the interal implementation

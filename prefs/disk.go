@@ -126,7 +126,7 @@ func (dsk *Disk) Save() error {
 	var n int
 
 	// add warning label
-	n, err = fmt.Fprintf(f, fmt.Sprintf("%s\n", WarningBoilerPlate))
+	n, err = fmt.Fprintf(f, "%s\n", WarningBoilerPlate)
 	if err != nil {
 		return curated.Errorf("prefs: %v", err)
 	}
@@ -135,7 +135,7 @@ func (dsk *Disk) Save() error {
 	}
 
 	// write entries (combination of old and live entries) to disk
-	n, err = fmt.Fprintf(f, entries.String())
+	n, err = fmt.Fprint(f, entries.String())
 	if err != nil {
 		return curated.Errorf("prefs: %v", err)
 	}

@@ -269,6 +269,10 @@ func TestTabCompletion_nestedGroups(t *testing.T) {
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"PREF ([SET|NO|TOGGLE] [RANDSTART|RANDPINS])",
 	})
+	if err != nil {
+		t.Errorf("does not parse: %s", err)
+	}
+
 	tc = commandline.NewTabCompletion(cmds)
 	completion = "P"
 	expected = "PREF "

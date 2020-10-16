@@ -1038,7 +1038,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				return false, curated.Errorf("value required for %s %s", cmdDisplay, action)
 			}
 
-			scale, err := strconv.ParseFloat(scl, 32)
+			var scale float64
+			scale, err = strconv.ParseFloat(scl, 32)
 			if err != nil {
 				return false, curated.Errorf("%s %s value not valid (%s)", cmdDisplay, action, scl)
 			}
@@ -1100,7 +1101,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, nil
 		}
 
-		option, ok := tokens.Get()
+		option, _ := tokens.Get()
 
 		switch option {
 		case "NICK":

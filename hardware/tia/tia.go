@@ -481,7 +481,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		readMemory = tia.Video.UpdateSpritePixels(memoryData)
 	}
 	if readMemory {
-		readMemory = tia.Audio.UpdateRegisters(memoryData)
+		_ = tia.Audio.UpdateRegisters(memoryData)
 	}
 
 	// copy audio to television signal
