@@ -230,12 +230,12 @@ func printSummary(deftable map[uint8]instructions.Definition) {
 	fmt.Printf("cpu instructions generated (%d missing, %02.0f%% defined)\n", len(missing), float32(100*(256-len(missing))/256))
 }
 
-func main() {
+func generate() bool {
 	// parse definitions files
 	output, err := parseCSV()
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
-		os.Exit(10)
+		return false
 	}
 
 	// we'll be putting the contents of deftable into the definition package so
@@ -249,7 +249,7 @@ func main() {
 	formattedOutput, err := format.Source([]byte(output))
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
-		os.Exit(10)
+		return false
 	}
 	output = string(formattedOutput)
 
@@ -257,13 +257,21 @@ func main() {
 	f, err := os.Create(generatedGoFile)
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
-		os.Exit(10)
+		return false
 	}
 	defer f.Close()
 
 	_, err = f.WriteString(output)
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
+		return false
+	}
+
+	return true
+}
+
+func main() {
+	if !generate() {
 		os.Exit(10)
 	}
 }

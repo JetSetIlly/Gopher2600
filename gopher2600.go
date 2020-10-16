@@ -47,17 +47,26 @@ import (
 
 const defaultInitScript = "debuggerInit"
 
-type stateReq int
+type stateReq = string
 
 const (
 	// main thread should end as soon as possible.
-	reqQuit stateReq = iota
+	//
+	// takes optional int argument, indicating the status code.
+	reqQuit stateReq = "QUIT"
 
 	// reset interrupt signal handling. used when an alternative
 	// handler is more appropriate. for example, the playMode and Debugger
 	// package provide a mode specific handler.
-	reqNoIntSig
+	//
+	// takes no arguments.
+	reqNoIntSig stateReq = "NOINTSIG"
 )
+
+type stateRequest struct {
+	req  stateReq
+	args interface{}
+}
 
 // GuiCreator facilitates the creation, servicing and destruction of GUIs
 // that need to be run in the main thread.
@@ -82,7 +91,7 @@ type GuiCreator interface {
 // required because many gui solutions (notably SDL) require window event
 // handling (including creation) to occur on the main thread.
 type mainSync struct {
-	state   chan stateReq
+	state   chan stateRequest
 	creator chan func() (GuiCreator, error)
 
 	// the result of creator will be returned on either of these two channels.
@@ -93,11 +102,15 @@ type mainSync struct {
 // #mainthread
 func main() {
 	sync := &mainSync{
-		state:         make(chan stateReq),
+		state:         make(chan stateRequest),
 		creator:       make(chan func() (GuiCreator, error)),
 		creation:      make(chan GuiCreator),
 		creationError: make(chan error),
 	}
+
+	// the value to use with os.Exit(). can be changed with reqQuit
+	// stateRequest
+	exitVal := 0
 
 	// #ctrlc default handler. can be turned off with reqNoIntSig request
 	intChan := make(chan os.Signal, 1)
@@ -152,15 +165,26 @@ func main() {
 			}
 
 		case state := <-sync.state:
-			switch state {
+			switch state.req {
 			case reqQuit:
 				done = true
 				if gui != nil {
 					gui.Destroy(os.Stderr)
 				}
 
+				if state.args != nil {
+					if v, ok := state.args.(int); ok {
+						exitVal = v
+					} else {
+						panic(fmt.Sprintf("cannot convert %s arguments into int", reqQuit))
+					}
+				}
+
 			case reqNoIntSig:
 				signal.Reset(os.Interrupt)
+				if state.args != nil {
+					panic(fmt.Sprintf("%s does not accept any arguments", reqNoIntSig))
+				}
 			}
 
 		default:
@@ -173,15 +197,12 @@ func main() {
 	}
 
 	fmt.Print("\r")
+	os.Exit(exitVal)
 }
 
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync) {
-	defer func() {
-		sync.state <- reqQuit
-	}()
-
 	// we generate random numbers in some places. seed the generator with the
 	// current time
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -194,10 +215,14 @@ func launch(sync *mainSync) {
 	p, err := md.Parse()
 	switch p {
 	case modalflag.ParseHelp:
-		os.Exit(0)
+		sync.state <- stateRequest{req: reqQuit}
+		return
+
 	case modalflag.ParseError:
 		fmt.Printf("* error: %v\n", err)
-		os.Exit(10)
+		// 10
+		sync.state <- stateRequest{req: reqQuit, args: 10}
+		return
 	}
 
 	switch md.Mode() {
@@ -225,8 +250,11 @@ func launch(sync *mainSync) {
 
 	if err != nil {
 		fmt.Printf("* error in %s mode: %s\n", md.String(), err)
-		os.Exit(20)
+		sync.state <- stateRequest{req: reqQuit, args: 20}
+		return
 	}
+
+	sync.state <- stateRequest{req: reqQuit}
 }
 
 func play(md *modalflag.Modes, sync *mainSync) error {
@@ -309,7 +337,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		// turn off fallback ctrl-c handling. this so that the playmode can
 		// end playback recordings gracefully
-		sync.state <- reqNoIntSig
+		sync.state <- stateRequest{req: reqNoIntSig}
 
 		// set scaling value
 		if *scaling > 0.0 {
@@ -414,7 +442,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	// quit events with a confirmation request. it also allows the debugger to
 	// use ctrl-c events to interrupt execution of the emulation without
 	// quitting the debugger itself
-	sync.state <- reqNoIntSig
+	sync.state <- stateRequest{req: reqNoIntSig}
 
 	// prepare new debugger instance
 	dbg, err := debugger.NewDebugger(tv, scr, term, *useSavekey)
@@ -617,7 +645,7 @@ func regress(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// turn off default sigint handling
-		sync.state <- reqNoIntSig
+		sync.state <- stateRequest{req: reqNoIntSig}
 
 		err = regression.RegressRun(md.Output, *verbose, md.RemainingArgs())
 		if err != nil {

@@ -44,25 +44,25 @@ func read(filename string) (string, error) {
 	return string(s), nil
 }
 
-func main() {
+func generate() bool {
 	// open file
 	vs, err := read(vertexShader)
 	if err != nil {
 		fmt.Printf("error opening vertex shader (%s)", err)
-		os.Exit(10)
+		return false
 	}
 
 	fs, err := read(fragmentShader)
 	if err != nil {
 		fmt.Printf("error opening vertex shader (%s)", err)
-		os.Exit(10)
+		return false
 	}
 
 	// create output file (over-writing) if it already exists
 	f, err := os.Create(generatedGoFile)
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
-		os.Exit(10)
+		return false
 	}
 	defer f.Close()
 
@@ -75,8 +75,16 @@ func main() {
 	_, err = f.WriteString(output.String())
 	if err != nil {
 		fmt.Printf("error during instruction table generation: %s\n", err)
-		os.Exit(10)
+		return false
 	}
 
 	fmt.Println("vertex and fragment shaders generated")
+
+	return true
+}
+
+func main() {
+	if !generate() {
+		os.Exit(10)
+	}
 }

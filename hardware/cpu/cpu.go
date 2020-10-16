@@ -17,7 +17,6 @@ package cpu
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -915,7 +914,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	default:
-		log.Fatalf("unknown addressing mode for %s", defn.Mnemonic)
+		return curated.Errorf("cpu: unknown addressing mode for %s", defn.Mnemonic)
 	}
 
 	// read value from memory using address found in AddressingMode switch above only when:
@@ -1630,8 +1629,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Carry = value&0x80 == 0x80
 
 	default:
-		// this should never, ever happen
-		log.Fatalf("WTF! unknown mnemonic! (%s)", defn.Mnemonic)
+		return curated.Errorf("cpu: unknown mnemonic (%s)", defn.Mnemonic)
 	}
 
 	// for RMW instructions: write altered value back to memory
