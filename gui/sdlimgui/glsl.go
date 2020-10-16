@@ -76,7 +76,7 @@ type glsl struct {
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
 	err := gl.Init()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize OpenGL: %v", err)
+		return nil, fmt.Errorf("failed to initialise OpenGL: %v", err)
 	}
 
 	rnd := &glsl{
@@ -123,7 +123,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	st := storeGLState()
 	defer st.restore()
 
-	// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+	// Avoid rendering when minimised, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
 	displayWidth, displayHeight := displaySize[0], displaySize[1]
 	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
 	if (fbWidth <= 0) || (fbHeight <= 0) {

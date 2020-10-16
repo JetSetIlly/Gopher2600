@@ -275,7 +275,7 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 			addr = pcaddr
 			scrollMargin = 4
 
-			// we have centered on the PC. the alignOnPC will be unset next
+			// we have centred on the PC. the alignOnPC will be unset next
 			// frame (so long as the the CPU hasn't moved on)
 			win.hasAlignedOnPC = true
 		}
@@ -398,7 +398,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 
 	// on right mouse button, set interactive to false. if emulation is not
 	// running, it will be true for only one (imgui) frame but that is enough
-	// to cause the scroller to center on the current entry.
+	// to cause the scroller to centre on the current entry.
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
 		win.alignOnPC = true
 	}

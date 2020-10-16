@@ -41,10 +41,10 @@ type winPlayScr struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
-	// additional padding for the image so that it is centered in its content space
+	// additional padding for the image so that it is centred in its content space
 	imagePadding imgui.Vec2
 
-	// size of window and content area in which to center the image
+	// size of window and content area in which to centre the image
 	winDim     imgui.Vec2
 	contentDim imgui.Vec2
 

@@ -63,10 +63,10 @@ type winDbgScr struct {
 	// height of tool bar at bottom of window. valid after first frame.
 	toolBarHeight float32
 
-	// additional padding for the image so that it is centered in its content space
+	// additional padding for the image so that it is centred in its content space
 	imagePadding imgui.Vec2
 
-	// size of window and content area in which to center the image. we need
+	// size of window and content area in which to centre the image. we need
 	// both depending on how we set the scaling from the screen. when resizing
 	// the window, we use contentDim (the area inside the window) to figure out
 	// the scaling value. when resizing numerically (with the getScale()

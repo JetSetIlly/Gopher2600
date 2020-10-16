@@ -104,7 +104,7 @@ func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
 
 func fingerprintTigervision(b []byte) bool {
 	// tigervision cartridges change banks by writing to memory address 0x3f. we
-	// can hypothesize that these types of cartridges will have that instruction
+	// can hypothesise that these types of cartridges will have that instruction
 	// sequence "85 3f" many times in a ROM whereas other cartridge types will not
 
 	threshold := 5

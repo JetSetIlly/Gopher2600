@@ -53,7 +53,7 @@ type LastResult struct {
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
-// to distill into a single variable.
+// to distil into a single variable.
 type Hmove struct {
 	Delay    bool
 	DelayCt  int
