@@ -29,7 +29,7 @@ import (
 const MappingID = "AR"
 
 // supercharger has 6k of RAM in total
-const numRamBanks = 4
+const numRAMBanks = 4
 const bankSize = 2048
 
 // tape defines the operations required by the $fff9 tape loader. With this
@@ -68,9 +68,9 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 
 	// set up tape
 	if cartload.IsSoundData {
-		cart.tape, err = NewSoundLoad(cart, cartload)
+		cart.tape, err = newSoundLoad(cart, cartload)
 	} else {
-		cart.tape, err = NewFastLoad(cart, cartload)
+		cart.tape, err = newFastLoad(cart, cartload)
 	}
 	if err != nil {
 		return nil, curated.Errorf("supercharger: %v", err)
@@ -205,7 +205,7 @@ func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool
 
 // NumBanks implements the cartMapper interface
 func (cart Supercharger) NumBanks() int {
-	return numRamBanks
+	return numRAMBanks
 }
 
 // GetBank implements the cartMapper interface

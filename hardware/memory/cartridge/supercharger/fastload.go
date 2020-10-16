@@ -63,8 +63,8 @@ func (er FastLoaded) Error() string {
 	return "supercharger tape loaded, preparing VCS"
 }
 
-// NewFastLoad is the preferred method of initialisation for the FastLoad type
-func NewFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
+// newFastLoad is the preferred method of initialisation for the FastLoad type
+func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &FastLoad{
 		cart: cart,
 		data: loader.Data,

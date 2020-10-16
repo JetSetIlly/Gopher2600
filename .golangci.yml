@@ -1,7 +1,6 @@
 linters:
   disable:
     - errcheck
-    - ineffassign
   enable:
     - bodyclose
     - unconvert
@@ -10,6 +9,8 @@ linters:
     - unparam
     - scopelint
     - gocritic
+    - golint
+    - stylecheck
   fast: false
 
 linters-settings:

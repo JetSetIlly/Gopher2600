@@ -144,10 +144,10 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		if cart.registers.FastFetch && cart.lda && data < 0x28 {
 			cart.lda = false
 			return cart.Read(uint16(data), passive)
-		} else {
-			cart.lda = cart.registers.FastFetch && data == 0xa9
-			return data, nil
 		}
+
+		cart.lda = cart.registers.FastFetch && data == 0xa9
+		return data, nil
 	}
 
 	if addr > 0x0027 {

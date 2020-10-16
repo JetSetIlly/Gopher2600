@@ -333,40 +333,40 @@ func (l Operand) String() string {
 
 // checkString returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false
-func (o Operand) checkString() (string, bool) {
-	if !o.dsm.Prefs.Symbols.Get().(bool) {
-		return o.nonSymbolic, false
+func (l Operand) checkString() (string, bool) {
+	if !l.dsm.Prefs.Symbols.Get().(bool) {
+		return l.nonSymbolic, false
 	}
 
-	s := o.nonSymbolic
+	s := l.nonSymbolic
 
 	// use symbol for the operand if available/appropriate. we should only do
 	// this if operand has been decoded
-	if o.result.Final {
-		if o.result.Defn.AddressingMode == instructions.Immediate {
+	if l.result.Final {
+		if l.result.Defn.AddressingMode == instructions.Immediate {
 			// TODO: immediate symbols
 
-		} else if o.result.ByteCount > 1 {
+		} else if l.result.ByteCount > 1 {
 			// instruction data is only valid if bytecount is 2 or more
 
-			operand := o.result.InstructionData
+			operand := l.result.InstructionData
 
-			switch o.result.Defn.Effect {
+			switch l.result.Defn.Effect {
 			case instructions.Flow:
-				if o.result.Defn.IsBranch() {
-					operand = absoluteBranchDestination(o.result.Address, operand)
+				if l.result.Defn.IsBranch() {
+					operand = absoluteBranchDestination(l.result.Address, operand)
 
 					// look up mock program counter value in symbol table
-					if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
+					if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
 						s = v
 					}
-				} else if v, ok := o.dsm.Symbols.Label.Entries[operand]; ok {
-					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+				} else if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
+					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 				}
 			case instructions.Read:
 				mappedOperand, _ := memorymap.MapAddress(operand, true)
-				if v, ok := o.dsm.Symbols.Read.Entries[mappedOperand]; ok {
-					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+				if v, ok := l.dsm.Symbols.Read.Entries[mappedOperand]; ok {
+					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 				}
 
 			case instructions.Write:
@@ -374,8 +374,8 @@ func (o Operand) checkString() (string, bool) {
 
 			case instructions.RMW:
 				mappedOperand, _ := memorymap.MapAddress(operand, false)
-				if v, ok := o.dsm.Symbols.Write.Entries[mappedOperand]; ok {
-					s = addrModeDecoration(v, o.result.Defn.AddressingMode)
+				if v, ok := l.dsm.Symbols.Write.Entries[mappedOperand]; ok {
+					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 				}
 			}
 		}

@@ -43,7 +43,7 @@ type LastResult struct {
 	CPU          execution.Result
 	WSYNC        bool
 	Bank         mapper.BankInfo
-	IsRam        bool
+	IsRAM        bool
 	VideoElement video.Element
 	TV           television.SignalAttributes
 	Hblank       bool

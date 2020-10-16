@@ -57,8 +57,8 @@ type SoundLoad struct {
 	regulatorCt int
 }
 
-// NewSoundLoad is the preferred method of initialisation for the SoundLoad type
-func NewSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
+// newSoundLoad is the preferred method of initialisation for the SoundLoad type
+func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &SoundLoad{
 		cart: cart,
 	}

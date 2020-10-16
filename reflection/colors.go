@@ -32,7 +32,8 @@ var PaletteElements = []color.RGBA{
 	color.RGBA{R: 50, G: 132, B: 50, A: 255},
 }
 
-// PaletteEvents
+// PaletteEvents lists the colors to be used for reflected events. For example,
+// when WSYNC is active the PaletteEvent["WSYNC"] entry should be used.
 var PaletteEvents = map[string]color.RGBA{
 	"WSYNC":         color.RGBA{R: 50, G: 50, B: 255, A: 100},
 	"Collisions":    color.RGBA{R: 255, G: 25, B: 25, A: 200},

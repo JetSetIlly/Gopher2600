@@ -45,7 +45,7 @@ type m3e struct {
 
 	// in the 3e format only the first segment can contain RAM but for
 	// simplicity we keep track of both segments
-	segmentIsRam [2]bool
+	segmentIsRAM [2]bool
 }
 
 // should work with any size cartridge that is a multiple of 2048
@@ -90,7 +90,7 @@ func (cart m3e) String() string {
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
 	for i := range cart.segment {
 		s.WriteString(fmt.Sprintf("%d", cart.segment[i]))
-		if cart.segmentIsRam[i] {
+		if cart.segmentIsRAM[i] {
 			s.WriteString("R ")
 		} else {
 			s.WriteString(" ")
@@ -124,7 +124,7 @@ func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
 
 	var data uint8
 
-	if cart.segmentIsRam[segment] {
+	if cart.segmentIsRAM[segment] {
 		data = cart.ram[cart.segment[segment]][addr&0x03ff]
 	} else {
 		bank := cart.segment[segment]
@@ -150,7 +150,7 @@ func (cart *m3e) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		segment = 3
 	}
 
-	if cart.segmentIsRam[segment] {
+	if cart.segmentIsRAM[segment] {
 		cart.ram[cart.segment[segment]][addr&0x03ff] = data
 		return nil
 	} else if poke {
@@ -196,12 +196,12 @@ func (cart *m3e) Listen(addr uint16, data uint8) {
 		segment := data >> 6
 		bank := data & 0x3f
 		cart.segment[segment] = int(bank)
-		cart.segmentIsRam[segment] = false
+		cart.segmentIsRAM[segment] = false
 	} else if addr == 0x3e {
 		segment := data >> 6
 		bank := data & 0x3f
 		cart.segment[segment] = int(bank)
-		cart.segmentIsRam[segment] = true
+		cart.segmentIsRAM[segment] = true
 	}
 }
 
@@ -218,7 +218,7 @@ func (cart m3e) GetRAM() []mapper.CartRAM {
 		origin := uint16(0x0000)
 
 		for s := range cart.segment {
-			mapped = cart.segment[s] == i && cart.segmentIsRam[s]
+			mapped = cart.segment[s] == i && cart.segmentIsRAM[s]
 			if mapped {
 				switch s {
 				case 0:

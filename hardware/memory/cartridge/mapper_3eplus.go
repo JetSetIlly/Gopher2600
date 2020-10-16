@@ -42,7 +42,7 @@ type m3ePlus struct {
 	//
 	// hotspots are provided by the Listen() function
 	segment      [4]int
-	segmentIsRam [4]bool
+	segmentIsRAM [4]bool
 }
 
 // should work with any size cartridge that is a multiple of 1024
@@ -92,7 +92,7 @@ func (cart m3ePlus) String() string {
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
 	for i := range cart.segment {
 		s.WriteString(fmt.Sprintf("%d", cart.segment[i]))
-		if cart.segmentIsRam[i] {
+		if cart.segmentIsRAM[i] {
 			s.WriteString("R ")
 		} else {
 			s.WriteString(" ")
@@ -116,7 +116,7 @@ func (cart *m3ePlus) Initialise() {
 
 	for i := range cart.segment {
 		cart.segment[i] = 0
-		cart.segmentIsRam[i] = false
+		cart.segmentIsRAM[i] = false
 	}
 }
 
@@ -136,7 +136,7 @@ func (cart *m3ePlus) Read(addr uint16, passive bool) (uint8, error) {
 
 	var data uint8
 
-	if cart.segmentIsRam[segment] {
+	if cart.segmentIsRAM[segment] {
 		data = cart.ram[cart.segment[segment]][addr&0x01ff]
 	} else {
 		bank := cart.segment[segment]
@@ -166,7 +166,7 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		segment = 3
 	}
 
-	if cart.segmentIsRam[segment] {
+	if cart.segmentIsRAM[segment] {
 		cart.ram[cart.segment[segment]][addr&0x01ff] = data
 		return nil
 	} else if poke {
@@ -195,7 +195,7 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 		seg = 3
 	}
 
-	if cart.segmentIsRam[seg] {
+	if cart.segmentIsRAM[seg] {
 		return mapper.BankInfo{Number: cart.segment[seg], IsRAM: true, Segment: seg}
 	}
 	return mapper.BankInfo{Number: cart.segment[seg], Segment: seg}
@@ -223,12 +223,12 @@ func (cart *m3ePlus) Listen(addr uint16, data uint8) {
 		segment := data >> 6
 		bank := data & 0x3f
 		cart.segment[segment] = int(bank)
-		cart.segmentIsRam[segment] = false
+		cart.segmentIsRAM[segment] = false
 	} else if addr == 0x3e {
 		segment := data >> 6
 		bank := data & 0x3f
 		cart.segment[segment] = int(bank)
-		cart.segmentIsRam[segment] = true
+		cart.segmentIsRAM[segment] = true
 	}
 }
 
@@ -245,7 +245,7 @@ func (cart m3ePlus) GetRAM() []mapper.CartRAM {
 		origin := uint16(0x0000)
 
 		for s := range cart.segment {
-			mapped = cart.segment[s] == i && cart.segmentIsRam[s]
+			mapped = cart.segment[s] == i && cart.segmentIsRAM[s]
 			if mapped {
 				switch s {
 				case 0:

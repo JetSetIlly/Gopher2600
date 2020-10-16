@@ -21,50 +21,50 @@ import (
 
 // IsValid checks whether the instance of Result contains information
 // consistent with the instruction definition.
-func (result Result) IsValid() error {
-	if !result.Final {
+func (r Result) IsValid() error {
+	if !r.Final {
 		return curated.Errorf("cpu: execution not finalised (bad opcode?)")
 	}
 
 	// is PageFault valid given content of Defn
-	if !result.Defn.PageSensitive && result.PageFault {
+	if !r.Defn.PageSensitive && r.PageFault {
 		return curated.Errorf("cpu: unexpected page fault")
 	}
 
 	// byte count
-	if result.ByteCount != result.Defn.Bytes {
-		return curated.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", result.ByteCount, result.Defn.Bytes)
+	if r.ByteCount != r.Defn.Bytes {
+		return curated.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", r.ByteCount, r.Defn.Bytes)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
-	if result.CPUBug == "" {
-		if result.Defn.IsBranch() {
-			if result.Cycles != result.Defn.Cycles && result.Cycles != result.Defn.Cycles+1 && result.Cycles != result.Defn.Cycles+2 {
+	if r.CPUBug == "" {
+		if r.Defn.IsBranch() {
+			if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
 				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
-					result.Defn.OpCode,
-					result.Defn.Mnemonic,
-					result.Cycles,
-					result.Defn.Cycles,
-					result.Defn.Cycles+1,
-					result.Defn.Cycles+2)
+					r.Defn.OpCode,
+					r.Defn.Mnemonic,
+					r.Cycles,
+					r.Defn.Cycles,
+					r.Defn.Cycles+1,
+					r.Defn.Cycles+2)
 			}
 		} else {
-			if result.Defn.PageSensitive {
-				if result.PageFault && result.Cycles != result.Defn.Cycles && result.Cycles != result.Defn.Cycles+1 {
+			if r.Defn.PageSensitive {
+				if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
-						result.Defn.OpCode,
-						result.Defn.Mnemonic,
-						result.Cycles,
-						result.Defn.Cycles,
-						result.Defn.Cycles+1)
+						r.Defn.OpCode,
+						r.Defn.Mnemonic,
+						r.Cycles,
+						r.Defn.Cycles,
+						r.Defn.Cycles+1)
 				}
 			} else {
-				if result.Cycles != result.Defn.Cycles {
+				if r.Cycles != r.Defn.Cycles {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
-						result.Defn.OpCode,
-						result.Defn.Mnemonic,
-						result.Cycles,
-						result.Defn.Cycles)
+						r.Defn.OpCode,
+						r.Defn.Mnemonic,
+						r.Cycles,
+						r.Defn.Cycles)
 				}
 			}
 		}
