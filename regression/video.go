@@ -176,7 +176,7 @@ func (reg VideoRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface.
-func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
+func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
@@ -282,7 +282,12 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			if err != nil {
 				return false, "", curated.Errorf("video: error creating state recording file: %v", err)
 			}
-			defer nf.Close()
+			defer func() {
+				err := nf.Close()
+				if err != nil {
+					rerr = curated.Errorf("video: error creating state recording file: %v", err)
+				}
+			}()
 
 			for i := range state {
 				s := fmt.Sprintf("%s\n", state[i])

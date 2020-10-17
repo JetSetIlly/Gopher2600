@@ -285,13 +285,16 @@ func (tv *television) newFrame(synced bool) error {
 		if tv.auto && !tv.syncedFrame && tv.scanline > excessScanlinesNTSC {
 			// flip from NTSC to PAL
 			if tv.spec == SpecNTSC {
-				tv.SetSpec("PAL")
+				_ = tv.SetSpec("PAL")
 			}
 		}
 	}
 
 	// commit any resizing that maybe pending
-	tv.resizer.commit(tv)
+	err := tv.resizer.commit(tv)
+	if err != nil {
+		return err
+	}
 
 	// prepare for next frame
 	tv.frameNum++
@@ -301,7 +304,7 @@ func (tv *television) newFrame(synced bool) error {
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
-		err := tv.renderers[f].NewFrame(tv.frameNum, tv.IsStable())
+		err = tv.renderers[f].NewFrame(tv.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}

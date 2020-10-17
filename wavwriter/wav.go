@@ -50,12 +50,17 @@ func (aw *WavWriter) SetAudio(audioData uint8) error {
 }
 
 // EndMixing implements the television.AudioMixer interface.
-func (aw *WavWriter) EndMixing() error {
+func (aw *WavWriter) EndMixing() (rerr error) {
 	f, err := os.Create(aw.filename)
 	if err != nil {
 		return curated.Errorf("wavwriter: %v", err)
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			rerr = curated.Errorf("wavwriter: %v", err)
+		}
+	}()
 
 	// see audio commentary in sdlplay package for thinking around sample rates
 
@@ -63,7 +68,12 @@ func (aw *WavWriter) EndMixing() error {
 	if enc == nil {
 		return curated.Errorf("wavwriter: %v", "bad parameters for wav encoding")
 	}
-	defer enc.Close()
+	defer func() {
+		err := enc.Close()
+		if err != nil {
+			rerr = curated.Errorf("wavwriter: %v", err)
+		}
+	}()
 
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{

@@ -230,7 +230,7 @@ func printSummary(deftable map[uint8]instructions.Definition) {
 	fmt.Printf("cpu instructions generated (%d missing, %02.0f%% defined)\n", len(missing), float32(100*(256-len(missing))/256))
 }
 
-func generate() bool {
+func generate() (rb bool) {
 	// parse definitions files
 	output, err := parseCSV()
 	if err != nil {
@@ -259,7 +259,13 @@ func generate() bool {
 		fmt.Printf("error during instruction table generation: %s\n", err)
 		return false
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			fmt.Printf("error during file close: %s\n", err)
+			rb = false
+		}
+	}()
 
 	_, err = f.WriteString(output)
 	if err != nil {

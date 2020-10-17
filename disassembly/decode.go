@@ -244,7 +244,10 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 			memtop := origin + uint16(len(bank.Data)) - 1
 
 			// reset CPU for each bank/origin
-			mc.Reset(false)
+			err := mc.Reset(false)
+			if err != nil {
+				return curated.Errorf("decode: %v", err)
+			}
 
 			// loop over entire address space for cartridge. even then bank
 			// sizes are smaller than the address space it makes things easier
@@ -297,9 +300,9 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 			if a == nil {
 				return curated.Errorf("decode: not every address has been decoded")
 			}
-			if a.Level > EntryLevelUnmappable {
+			if a.Level == EntryLevelUnmappable {
 				if a.Result.Defn.OpCode != 0x00 {
-					curated.Errorf("decode: an unmappable bank address [%#04x bank %d] has a non 0x00 opcode", a, b)
+					return curated.Errorf("decode: an unmappable bank address [%#04x bank %d] has a non 0x00 opcode", a.Result.Address, b)
 				}
 			}
 		}

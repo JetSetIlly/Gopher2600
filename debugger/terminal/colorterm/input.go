@@ -42,7 +42,10 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	// we need to put terminal into raw mode so that we can monkey with it.
 	// not that this means that we need to handle control codes manually,
 	// easyterm.KeyInterrupt and easyterm.KeySuspend in particular.
-	ct.RawMode()
+	err := ct.RawMode()
+	if err != nil {
+		return 0, curated.Errorf("colorterm", err)
+	}
 	defer ct.CanonicalMode()
 
 	// er is used to store encoded runes (length of 4 should be enough)
@@ -140,9 +143,15 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				}
 
 			case easyterm.KeySuspend:
-				ct.CanonicalMode()
+				err := ct.CanonicalMode()
+				if err != nil {
+					return 0, curated.Errorf("colorterm", err)
+				}
 				easyterm.SuspendProcess()
-				ct.RawMode()
+				err = ct.RawMode()
+				if err != nil {
+					return 0, curated.Errorf("colorterm", err)
+				}
 
 			case easyterm.KeyTab:
 				if ct.tabCompletion != nil {

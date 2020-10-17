@@ -323,9 +323,14 @@ func TestParser_optional(t *testing.T) {
 
 	f, err := os.Create("memviz.dot")
 	if err != nil {
-		panic(err)
+		t.Fatalf(err.Error())
 	}
-	defer f.Close()
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}()
 	memviz.Map(f, cmds)
 
 	if test.ExpectedSuccess(t, err) {

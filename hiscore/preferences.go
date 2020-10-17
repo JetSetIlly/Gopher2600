@@ -47,8 +47,14 @@ func newPreferences() (*Preferences, error) {
 		return p, curated.Errorf("hiscore: %v", err)
 	}
 
-	p.dsk.Add("hiscore.server", &p.Server)
-	p.dsk.Add("hiscore.authtoken", &p.AuthToken)
+	err = p.dsk.Add("hiscore.server", &p.Server)
+	if err != nil {
+		return nil, curated.Errorf("hiscore: %v", err)
+	}
+	err = p.dsk.Add("hiscore.authtoken", &p.AuthToken)
+	if err != nil {
+		return nil, curated.Errorf("hiscore: %v", err)
+	}
 
 	err = p.dsk.Load(true)
 	if err != nil {

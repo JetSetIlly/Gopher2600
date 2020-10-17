@@ -129,7 +129,7 @@ func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
 					// unlike in the equivalent code in the QUIT command, there's
 					// no need to call Rollback() here because the ctrl-c event
 					// will not be recorded to the script
-					dbg.scriptScribe.EndSession()
+					err = dbg.scriptScribe.EndSession()
 				} else {
 					dbg.running = false
 				}

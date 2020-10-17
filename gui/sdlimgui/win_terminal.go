@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -227,7 +228,12 @@ func (win *winTerm) saveOutput() {
 		})
 		return
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("error saving terminal contents: %v", err))
+		}
+	}()
 
 	for _, o := range win.output {
 		f.Write([]byte(o.text))

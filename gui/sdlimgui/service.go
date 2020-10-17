@@ -129,7 +129,10 @@ func (img *SdlImgui) Service() {
 						err := sdl.CaptureMouse(true)
 						if err == nil {
 							img.plt.window.SetGrab(true)
-							sdl.ShowCursor(sdl.DISABLE)
+							_, err = sdl.ShowCursor(sdl.DISABLE)
+							if err != nil {
+								logger.Log("sdlimgui", err.Error())
+							}
 						}
 					}
 
@@ -142,7 +145,10 @@ func (img *SdlImgui) Service() {
 						err := sdl.CaptureMouse(false)
 						if err == nil {
 							img.plt.window.SetGrab(false)
-							sdl.ShowCursor(sdl.ENABLE)
+							_, err = sdl.ShowCursor(sdl.ENABLE)
+							if err != nil {
+								logger.Log("sdlimgui", err.Error())
+							}
 						}
 					}
 				}

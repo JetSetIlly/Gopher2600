@@ -72,7 +72,11 @@ func SetServer(input io.Reader, output io.Writer, server string) error {
 	url.User = nil
 
 	// update server setting and save changes
-	prefs.Server.Set(url.String())
+	err = prefs.Server.Set(url.String())
+	if err != nil {
+		return curated.Errorf("hiscore: %v", err)
+	}
+
 	return prefs.Save()
 }
 
@@ -135,7 +139,11 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	}
 
 	// update authentication key and save changes
-	prefs.AuthToken.Set(key["key"])
+	err = prefs.AuthToken.Set(key["key"])
+	if err != nil {
+		return curated.Errorf("hiscore: %v", err)
+	}
+
 	return prefs.Save()
 }
 
@@ -148,6 +156,10 @@ func Logoff() error {
 	}
 
 	// blank authentication key and save changes
-	prefs.AuthToken.Set("")
+	err = prefs.AuthToken.Set("")
+	if err != nil {
+		return curated.Errorf("hiscore: %v", err)
+	}
+
 	return prefs.Save()
 }

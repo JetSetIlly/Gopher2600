@@ -16,7 +16,10 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 const winPrefsTile = "Preferences"
@@ -70,17 +73,26 @@ func (win *winPrefs) draw() {
 
 	termOnError := win.img.wm.term.openOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
-		win.img.wm.term.openOnError.Set(termOnError)
+		err := win.img.wm.term.openOnError.Set(termOnError)
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
+		}
 	}
 
 	if imgui.Button("Save") {
-		win.img.prefs.Save()
+		err := win.img.prefs.Save()
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("could not save preferences: %v", err))
+		}
 		win.img.term.pushCommand("PREFS SAVE")
 	}
 
 	imgui.SameLine()
 	if imgui.Button("Restore") {
-		win.img.prefs.Load(false)
+		err := win.img.prefs.Load(false)
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("could not restore preferences: %v", err))
+		}
 		win.img.term.pushCommand("PREFS LOAD")
 	}
 

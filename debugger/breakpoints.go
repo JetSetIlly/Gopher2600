@@ -455,7 +455,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 	g, i := bp.hasBreak(e)
 
 	if i != noBreakEqualivalent && g == BrkPCAddress {
-		bp.drop(i)
+		_ = bp.drop(i) // ignoring errors
 		return
 	}
 

@@ -153,10 +153,16 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 
 	// initialise debugger preferences. in the event of playmode being set this
 	// will immediately be replaced but frankly doing it this way is cleaner
-	img.initPrefs(prefsGrpDebugger)
+	err = img.initPrefs(prefsGrpDebugger)
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
 
 	// set playmode according to the playmode argument
-	img.setPlaymode(playmode)
+	err = img.setPlaymode(playmode)
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
 
 	// open container window
 	img.plt.window.Show()
@@ -169,10 +175,13 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 // MUST ONLY be called from the #mainthread.
 func (img *SdlImgui) Destroy(output io.Writer) {
 	img.wm.destroy()
-	img.audio.EndMixing()
+	err := img.audio.EndMixing()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
 	img.glsl.destroy()
 
-	err := img.plt.destroy()
+	err = img.plt.destroy()
 	if err != nil {
 		output.Write([]byte(err.Error()))
 	}
@@ -215,11 +224,16 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
 		if !img.isPlaymode() {
 			if img.prefs != nil {
-				if err := img.prefs.Save(); err != nil {
+				err := img.prefs.Save()
+				if err != nil {
 					return err
 				}
 			}
-			img.initPrefs(prefsGrpPlaymode)
+			err := img.initPrefs(prefsGrpPlaymode)
+			if err != nil {
+				return err
+			}
+
 			img.wm.playScr.setOpen(true)
 		}
 	} else {
@@ -229,7 +243,10 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 					return err
 				}
 			}
-			img.initPrefs(prefsGrpDebugger)
+			err := img.initPrefs(prefsGrpDebugger)
+			if err != nil {
+				return err
+			}
 			img.wm.playScr.setOpen(false)
 		}
 	}

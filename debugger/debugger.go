@@ -235,7 +235,10 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
 	// try to add debugger (self) to gui context
-	dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
+	err = dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
 
 	// setup preferences and load from disk
 	dbg.Prefs, err = newPreferences(dbg)
@@ -309,12 +312,18 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
 			// nice to have.
-			dbg.Disasm.FromMemory(nil, nil)
+			err := dbg.Disasm.FromMemory(nil, nil)
+			if err != nil {
+				return err
+			}
 			return dbg.tv.Reset()
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			if pr.Prefs.NewInstallation {
-				dbg.scr.ReqFeature(gui.ReqPlusROMFirstInstallation,
-					&gui.PlusROMFirstInstallation{Finish: nil, Cart: pr})
+				fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
+				err := dbg.scr.ReqFeature(gui.ReqPlusROMFirstInstallation, &fi)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -324,7 +333,11 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
-	defer dbg.scr.ReqFeature(gui.ReqChangingCartridge, false)
+	defer func() {
+		// we know the gui supports ReqChangingCartridge feature because we've
+		// just used it
+		_ = dbg.scr.ReqFeature(gui.ReqChangingCartridge, false)
+	}()
 
 	err = setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {

@@ -71,7 +71,11 @@ func (et *EasyTerm) Initialise(inputFile, outputFile *os.File) error {
 	et.output = outputFile
 
 	// prepare the attributes for the different terminal modes we'll be using
-	termios.Tcgetattr(et.input.Fd(), &et.canAttr)
+	err := termios.Tcgetattr(et.input.Fd(), &et.canAttr)
+	if err != nil {
+		return err
+	}
+
 	termios.Cfmakecbreak(&et.cbreakAttr)
 	termios.Cfmakeraw(&et.rawAttr)
 
@@ -123,31 +127,32 @@ func (et *EasyTerm) UpdateGeometry() error {
 	if errno != 0 {
 		return fmt.Errorf("error updating terminal geometry information (%d)", errno)
 	}
+
 	return nil
 }
 
 // CanonicalMode puts terminal into normal, everyday canonical mode.
-func (et *EasyTerm) CanonicalMode() {
+func (et *EasyTerm) CanonicalMode() error {
 	et.crit.Lock()
 	defer et.crit.Unlock()
 
-	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.canAttr)
+	return termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.canAttr)
 }
 
 // RawMode puts terminal into raw mode.
-func (et *EasyTerm) RawMode() {
+func (et *EasyTerm) RawMode() error {
 	et.crit.Lock()
 	defer et.crit.Unlock()
 
-	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.rawAttr)
+	return termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.rawAttr)
 }
 
 // CBreakMode puts terminal into cbreak mode.
-func (et *EasyTerm) CBreakMode() {
+func (et *EasyTerm) CBreakMode() error {
 	et.crit.Lock()
 	defer et.crit.Unlock()
 
-	termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.cbreakAttr)
+	return termios.Tcsetattr(et.input.Fd(), termios.TCIFLUSH, &et.cbreakAttr)
 }
 
 // Flush makes sure the terminal's input/output buffers are empty.

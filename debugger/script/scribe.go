@@ -65,7 +65,7 @@ func (scr *Scribe) StartSession(scriptfile string) error {
 }
 
 // EndSession the current scribe session.
-func (scr *Scribe) EndSession() error {
+func (scr *Scribe) EndSession() (rerr error) {
 	if !scr.IsActive() {
 		return nil
 	}
@@ -78,36 +78,47 @@ func (scr *Scribe) EndSession() error {
 		scr.outputLine = ""
 	}()
 
+	defer func() {
+		err := scr.file.Close()
+		if err != nil {
+			rerr = curated.Errorf("script: scripe: %v", err)
+		}
+	}()
+
 	// make sure everything has been written to the output file
-	err := scr.Commit()
-
-	// if commit() causes an error, continue with the Close() operation and
-	// return the commit() error if the close succeeds
-
-	errb := scr.file.Close()
-	if errb != nil {
-		return curated.Errorf("script: scripe: %v", errb)
-	}
-
-	return err
+	return scr.Commit()
 }
 
 // StartPlayback indicates that a replayed script has begun.
-func (scr *Scribe) StartPlayback() {
+func (scr *Scribe) StartPlayback() error {
 	if !scr.IsActive() {
-		return
+		return nil
 	}
-	scr.Commit()
+
+	err := scr.Commit()
+	if err != nil {
+		return err
+	}
+
 	scr.playbackDepth++
+
+	return nil
 }
 
 // EndPlayback indicates that a replayed script has finished.
-func (scr *Scribe) EndPlayback() {
+func (scr *Scribe) EndPlayback() error {
 	if !scr.IsActive() {
-		return
+		return nil
 	}
-	scr.Commit()
+
+	err := scr.Commit()
+	if err != nil {
+		return err
+	}
+
 	scr.playbackDepth--
+
+	return nil
 }
 
 // Rollback undoes calls to WriteInput() and WriteOutput since last Commit().
@@ -121,18 +132,24 @@ func (scr *Scribe) Rollback() {
 }
 
 // WriteInput writes user-input to the open script file.
-func (scr *Scribe) WriteInput(command string) {
+func (scr *Scribe) WriteInput(command string) error {
 	if !scr.IsActive() || scr.playbackDepth > 0 {
-		return
+		return nil
 	}
 
-	scr.Commit()
+	err := scr.Commit()
+	if err != nil {
+		return err
+	}
+
 	if command != "" {
 		scr.inputLine = fmt.Sprintf("%s\n", command)
 	}
+
+	return nil
 }
 
-// Commit most scrent calls to WriteInput() and WriteOutput().
+// Commit most recent calls to WriteInput() and WriteOutput().
 func (scr *Scribe) Commit() error {
 	if !scr.IsActive() {
 		return nil

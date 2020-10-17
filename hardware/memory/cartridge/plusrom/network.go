@@ -129,7 +129,10 @@ func (n *network) send(data uint8, send bool) {
 
 			// pass response to main goroutine
 			var r bytes.Buffer
-			r.ReadFrom(resp.Body)
+			_, err = r.ReadFrom(resp.Body)
+			if err != nil {
+				logger.Log("plusrom [net]", fmt.Sprintf("response: %v", err))
+			}
 			n.respChan <- r
 		}(n.sendBuffer, n.ai)
 
@@ -164,10 +167,15 @@ func (n *network) getResponse() {
 		// "Content-Length" is payload + 1 byte. This is a workaround, because we don't
 		// have enough time in the emulator routine to analyse the "Content-Length"
 		// header of the response.
-		n.recvBuffer.ReadFrom(&r)
-		if n.sendBuffer.Len() > recvBufferCap {
+		_, err = n.recvBuffer.ReadFrom(&r)
+		if err != nil {
+			logger.Log("plusrom", err.Error())
+			return
+		}
+
+		if n.recvBuffer.Len() > recvBufferCap {
 			logger.Log("plusrom", "receive buffer is full")
-			n.sendBuffer.Truncate(recvBufferCap)
+			n.recvBuffer.Truncate(recvBufferCap)
 		}
 
 	default:

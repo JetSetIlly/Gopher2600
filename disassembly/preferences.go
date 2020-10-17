@@ -58,8 +58,14 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		return nil, err
 	}
 
-	p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
-	p.dsk.Add("disassembly.symbols", &p.Symbols)
+	err = p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("disassembly.symbols", &p.Symbols)
+	if err != nil {
+		return nil, err
+	}
 
 	p.FxxxMirror.RegisterCallback(func(v prefs.Value) error {
 		if v.(bool) {
@@ -67,7 +73,8 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		} else {
 			p.mirrorOrigin = memorymap.OriginCart
 		}
-		return dsm.setCartMirror()
+		dsm.setCartMirror()
+		return nil
 	})
 
 	err = p.dsk.Load(true)
@@ -94,7 +101,7 @@ func (p *Preferences) Save() error {
 
 // setCartMirror sets the mirror bits to the user's preference. called by the
 // FxxxMirror callback.
-func (dsm *Disassembly) setCartMirror() error {
+func (dsm *Disassembly) setCartMirror() {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -115,6 +122,4 @@ func (dsm *Disassembly) setCartMirror() error {
 			}
 		}
 	}
-
-	return nil
 }

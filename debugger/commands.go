@@ -165,7 +165,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			// we don't want the QUIT command to appear in the script so
 			// rollback last entry before we commit it in EndSession()
 			dbg.scriptScribe.Rollback()
-			dbg.scriptScribe.EndSession()
+			err := dbg.scriptScribe.EndSession()
+			if err != nil {
+				return false, err
+			}
 		} else {
 			dbg.running = false
 		}
@@ -254,11 +257,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				// command to the new script file but indicate that we'll be
 				// entering a new script and so don't want to repeat the
 				// commands from that script
-				dbg.scriptScribe.StartPlayback()
+				err := dbg.scriptScribe.StartPlayback()
+				if err != nil {
+					return false, err
+				}
 
-				defer func() {
-					dbg.scriptScribe.EndPlayback()
-				}()
+				defer dbg.scriptScribe.EndPlayback()
 			}
 
 			err = dbg.inputLoop(scr, false)
@@ -1106,17 +1110,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		switch option {
 		case "NICK":
 			nick, _ := tokens.Get()
-			plusrom.Prefs.Nick.Set(nick)
-			err := plusrom.Prefs.Save()
+			err := plusrom.Prefs.Nick.Set(nick)
 			if err != nil {
-				dbg.printLine(terminal.StyleError, err.Error())
+				return false, err
+			}
+			err = plusrom.Prefs.Save()
+			if err != nil {
+				return false, err
 			}
 		case "ID":
 			id, _ := tokens.Get()
-			plusrom.Prefs.ID.Set(id)
-			err := plusrom.Prefs.Save()
+			err := plusrom.Prefs.ID.Set(id)
 			if err != nil {
-				dbg.printLine(terminal.StyleError, err.Error())
+				return false, err
+			}
+			err = plusrom.Prefs.Save()
+			if err != nil {
+				return false, err
 			}
 		case "HOST":
 			ai := plusrom.CopyAddrInfo()
@@ -1145,18 +1155,24 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			id = ports.Player1ID
 		}
 
+		var err error
+
 		controller, ok := tokens.Get()
 		if ok {
 			switch strings.ToLower(controller) {
 			case "auto":
-				dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewAuto)
+				err = dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewAuto)
 			case "stick":
-				dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewStick)
+				err = dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewStick)
 			case "paddle":
-				dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewPaddle)
+				err = dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewPaddle)
 			case "keyboard":
-				dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewKeyboard)
+				err = dbg.VCS.RIOT.Ports.AttachPlayer(id, controllers.NewKeyboard)
 			}
+		}
+
+		if err != nil {
+			return false, curated.Errorf("%v", err)
 		}
 
 		var p ports.Peripheral
@@ -1181,50 +1197,57 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			return false, nil
 		}
 
+		var err error
+
 		switch strings.ToUpper(mode) {
 		case "TOGGLE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelTogglePlayer0Pro, nil)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelTogglePlayer0Pro, nil)
 			case "P1":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelTogglePlayer1Pro, nil)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelTogglePlayer1Pro, nil)
 			case "COL":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelToggleColor, nil)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelToggleColor, nil)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, true)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, true)
 			case "P1PRO":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, true)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, true)
 			case "P0AM":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, false)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer0Pro, false)
 			case "P1AM":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, false)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetPlayer1Pro, false)
 			case "COL":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, true)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, true)
 			case "BW":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, false)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSetColor, false)
 			}
 		case "HOLD":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSelect, true)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSelect, true)
 			case "RESET":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelReset, true)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelReset, true)
 			}
 		case "RELEASE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSelect, false)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelSelect, false)
 			case "RESET":
-				dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelReset, false)
+				err = dbg.VCS.RIOT.Ports.HandleEvent(ports.PanelID, ports.PanelReset, false)
 			}
 		}
+
+		if err != nil {
+			return false, curated.Errorf("%v", err)
+		}
+
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
 
 	case cmdStick:
@@ -1449,50 +1472,55 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 		}
 
-		option, _ := tokens.Get()
+		var err error
 
+		option, _ := tokens.Get()
 		option = strings.ToUpper(option)
 		switch option {
 		case "RANDSTART":
 			switch action {
 			case "SET":
-				dbg.Prefs.RandomState.Set(true)
+				err = dbg.Prefs.RandomState.Set(true)
 			case "UNSET":
-				dbg.Prefs.RandomState.Set(false)
+				err = dbg.Prefs.RandomState.Set(false)
 			case "TOGGLE":
 				v := dbg.Prefs.RandomState.Get().(bool)
-				dbg.Prefs.RandomState.Set(!v)
+				err = dbg.Prefs.RandomState.Set(!v)
 			}
 		case "RANDPINS":
 			switch action {
 			case "SET":
-				dbg.Prefs.RandomPins.Set(true)
+				err = dbg.Prefs.RandomPins.Set(true)
 			case "UNSET":
-				dbg.Prefs.RandomPins.Set(false)
+				err = dbg.Prefs.RandomPins.Set(false)
 			case "TOGGLE":
 				v := dbg.Prefs.RandomPins.Get().(bool)
-				dbg.Prefs.RandomPins.Set(!v)
+				err = dbg.Prefs.RandomPins.Set(!v)
 			}
 		case "FXXXMIRROR":
 			switch action {
 			case "SET":
-				dbg.Disasm.Prefs.FxxxMirror.Set(true)
+				err = dbg.Disasm.Prefs.FxxxMirror.Set(true)
 			case "UNSET":
-				dbg.Disasm.Prefs.FxxxMirror.Set(false)
+				err = dbg.Disasm.Prefs.FxxxMirror.Set(false)
 			case "TOGGLE":
 				v := dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
-				dbg.Disasm.Prefs.FxxxMirror.Set(!v)
+				err = dbg.Disasm.Prefs.FxxxMirror.Set(!v)
 			}
 		case "SYMBOLS":
 			switch action {
 			case "SET":
-				dbg.Disasm.Prefs.Symbols.Set(true)
+				err = dbg.Disasm.Prefs.Symbols.Set(true)
 			case "UNSET":
-				dbg.Disasm.Prefs.Symbols.Set(false)
+				err = dbg.Disasm.Prefs.Symbols.Set(false)
 			case "TOGGLE":
 				v := dbg.Disasm.Prefs.Symbols.Get().(bool)
-				dbg.Disasm.Prefs.Symbols.Set(!v)
+				err = dbg.Disasm.Prefs.Symbols.Set(!v)
 			}
+		}
+
+		if err != nil {
+			return false, curated.Errorf("%v", err)
 		}
 
 	case cmdLog:

@@ -101,7 +101,7 @@ func (reg PlaybackRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface.
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
 	plb, err := recorder.NewPlayback(reg.Script)
@@ -205,7 +205,12 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		if err != nil {
 			return false, "", curated.Errorf("playback: while copying playback script: %v", err)
 		}
-		defer nf.Close()
+		defer func() {
+			err := nf.Close()
+			if err != nil {
+				rerr = curated.Errorf("playback: while copying playback script: %v", err)
+			}
+		}()
 
 		// open old file
 		of, err := os.Open(reg.Script)

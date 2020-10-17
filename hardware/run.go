@@ -26,8 +26,6 @@ import (
 func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	var err error
 
-	continueCheck()
-
 	if continueCheck == nil {
 		continueCheck = func() (bool, error) { return true, nil }
 	}

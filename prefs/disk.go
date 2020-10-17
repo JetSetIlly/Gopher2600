@@ -97,7 +97,7 @@ const (
 )
 
 // Save current preference values to disk.
-func (dsk *Disk) Save() error {
+func (dsk *Disk) Save() (rerr error) {
 	// load entirity of currently saved prefs file to a temporary entryMap
 	entries := make(entryMap)
 
@@ -105,7 +105,7 @@ func (dsk *Disk) Save() error {
 	_, err := load(dsk.path, &entries, false)
 	if err != nil {
 		if !curated.Is(err, NoPrefsFile) {
-			return err
+			return curated.Errorf("prefs: %v", err)
 		}
 	}
 
@@ -120,7 +120,12 @@ func (dsk *Disk) Save() error {
 	if err != nil {
 		return curated.Errorf("prefs: %v", err)
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			rerr = curated.Errorf("prefs: %v", err)
+		}
+	}()
 
 	// number of characters written
 	var n int

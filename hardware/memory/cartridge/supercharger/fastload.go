@@ -129,7 +129,7 @@ func (tap *FastLoad) load() (uint8, error) {
 	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		// initialise VCS RAM with zeros
 		for a := uint16(0x80); a <= 0xff; a++ {
-			ram.Poke(a, 0x00)
+			_ = ram.Poke(a, 0x00)
 		}
 
 		// poke values into RAM. these values would be the by-product of the
@@ -138,17 +138,17 @@ func (tap *FastLoad) load() (uint8, error) {
 		// directly, the necessary code will not be run.
 
 		// RAM address 0x80 contains the initial configbyte
-		ram.Poke(0x80, configByte)
+		_ = ram.Poke(0x80, configByte)
 
 		// CMP $fff8
-		ram.Poke(0xfa, 0xcd)
-		ram.Poke(0xfb, 0xf8)
-		ram.Poke(0xfc, 0xff)
+		_ = ram.Poke(0xfa, 0xcd)
+		_ = ram.Poke(0xfb, 0xf8)
+		_ = ram.Poke(0xfc, 0xff)
 
 		// JMP <absolute address>
-		ram.Poke(0xfd, 0x4c)
-		ram.Poke(0xfe, uint8(startAddress))
-		ram.Poke(0xff, uint8(startAddress>>8))
+		_ = ram.Poke(0xfd, 0x4c)
+		_ = ram.Poke(0xfe, uint8(startAddress))
+		_ = ram.Poke(0xff, uint8(startAddress>>8))
 
 		// reset timer. in references to real tape loading, the number of ticks
 		// is the value at the moment the PC reaches address 0x00fa

@@ -55,11 +55,25 @@ func newPreferences() (*Preferences, error) {
 		return nil, err
 	}
 
-	p.dsk.Add("plusrom.nick", &p.Nick)
-	p.dsk.Add("plusrom.id", &p.ID)
+	err = p.dsk.Add("plusrom.nick", &p.Nick)
+	if err != nil {
+		return nil, err
+	}
 
-	p.Nick.Set("gopher2600")
-	p.ID.Set(fmt.Sprintf("%d", rand.Int63()))
+	err = p.dsk.Add("plusrom.id", &p.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.Nick.Set("gopher2600")
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.ID.Set(fmt.Sprintf("%d", rand.Int63()))
+	if err != nil {
+		return nil, err
+	}
 
 	p.NewInstallation, err = p.dsk.HasEntry("plusrom.nick")
 	if err != nil {

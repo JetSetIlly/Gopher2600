@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 const winCartStaticTitle = "Static Areas"
@@ -124,7 +125,10 @@ func (win *winCartStatic) drawEditByte(tag string, addr uint16, b byte) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
-				b.PutStatic(tag, addr, uint8(v))
+				err := b.PutStatic(tag, addr, uint8(v))
+				if err != nil {
+					logger.Log("sdlimgui", err.Error())
+				}
 			})
 		}
 	}

@@ -114,7 +114,10 @@ func (vcs *VCS) Reset() error {
 
 	vcs.RIOT.Ports.Reset()
 
-	vcs.CPU.Reset(vcs.RandomState.Get().(bool))
+	err = vcs.CPU.Reset(vcs.RandomState.Get().(bool))
+	if err != nil {
+		return err
+	}
 
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
 	if err != nil {

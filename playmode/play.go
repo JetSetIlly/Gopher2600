@@ -79,8 +79,12 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			if pr.Prefs.NewInstallation {
 				waitForEmulationStart = make(chan error)
-				scr.ReqFeature(gui.ReqPlusROMFirstInstallation,
-					&gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr})
+
+				fi := gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr}
+				err := scr.ReqFeature(gui.ReqPlusROMFirstInstallation, &fi)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -90,7 +94,11 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
-	scr.ReqFeature(gui.ReqAddVCS, vcs)
+
+	err = scr.ReqFeature(gui.ReqAddVCS, vcs)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
+	}
 
 	// replace player 1 port with savekey
 	if useSavekey {
@@ -119,9 +127,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 		}
 
 		// making sure we end the recording gracefully when we leave the function
-		defer func() {
-			rec.End()
-		}()
+		defer rec.End()
 
 		// attach cartridge after recorder and transcribers have been
 		// setup because we want to catch any setup events in the recording

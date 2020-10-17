@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 type mockMem struct {
@@ -445,7 +446,8 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	_ = mc.Reset(false)
 
 	origin = 0x20
-	mc.LoadPC(0x20)
+	err := mc.LoadPC(0x20)
+	test.ExpectedSuccess(t, err)
 
 	// BPL backwards
 	_ = mem.putInstructions(origin, 0x10, 0xfd)
@@ -454,7 +456,8 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	// BVS backwards
 	origin = 0x20
-	mc.LoadPC(0x20)
+	err = mc.LoadPC(0x20)
+	test.ExpectedSuccess(t, err)
 	mc.Status.Overflow = true
 	_ = mem.putInstructions(origin, 0x70, 0xfd)
 	step(t, mc) // BVS $FF
@@ -468,7 +471,8 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	// BNE backwards - with PC wrap (causing a page fault)
 	origin = 0x20
-	mc.LoadPC(0x20)
+	err := mc.LoadPC(0x20)
+	test.ExpectedSuccess(t, err)
 	mc.Status.Zero = false
 	_ = mem.putInstructions(origin, 0xd0, 0x80)
 	step(t, mc) // BNE $F0

@@ -54,7 +54,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		}
 
 		// update debugger the same way for video quantum as for cpu quantum
-		vcsStep()
+		err = vcsStep()
+		if err != nil {
+			return err
+		}
 
 		// for video quantums we need to run any OnStep commands before
 		// starting a new inputLoop
@@ -330,7 +333,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					}
 
 					// (re)disassemble memory on TapeLoaded error signal
-					dbg.Disasm.FromMemory(nil, nil)
+					err = dbg.Disasm.FromMemory(nil, nil)
+					if err != nil {
+						return err
+					}
 				} else {
 					// exit input loop if error is a plain error
 					if !curated.IsAny(stepErr) {

@@ -109,7 +109,12 @@ func (ee *EEPROM) Write() {
 		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
 		return
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Log("savekey", fmt.Sprintf("could not close savekey file (%s)", err))
+		}
+	}()
 
 	n, err := f.Write(ee.data)
 	if err != nil {

@@ -24,6 +24,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 const winSelectROMTitle = "Select ROM"
@@ -53,7 +54,11 @@ func newFileSelector(img *SdlImgui) (managedWindow, error) {
 
 	path, err := os.Getwd()
 	win.err = err
-	win.setPath(path)
+
+	err = win.setPath(path)
+	if err != nil {
+		return nil, err
+	}
 
 	return win, nil
 }
@@ -79,7 +84,11 @@ func (win *winSelectROM) draw() {
 	imgui.BeginV(winSelectROMTitle, &win.open, 0)
 
 	if imgui.Button("Parent") {
-		win.setPath(filepath.Dir(win.currPath))
+		d := filepath.Dir(win.currPath)
+		err := win.setPath(d)
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+		}
 	}
 
 	imgui.SameLine()
@@ -107,7 +116,11 @@ func (win *winSelectROM) draw() {
 			s.WriteString(" [dir]")
 
 			if imgui.Selectable(s.String()) {
-				win.setPath(filepath.Join(win.currPath, f.Name()))
+				d := filepath.Join(win.currPath, f.Name())
+				err = win.setPath(d)
+				if err != nil {
+					logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+				}
 			}
 		}
 	}
@@ -215,12 +228,16 @@ func (win *winSelectROM) setOpen(open bool) {
 		if err != nil {
 			f = win.img.lz.Cart.Filename
 		}
-		win.setPath(filepath.Dir(f))
+
+		d := filepath.Dir(f)
+		err = win.setPath(d)
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+		}
 		win.selectedFile = win.img.lz.Cart.Filename
 
 		return
 	}
 
 	win.open = false
-	win.setPath("")
 }
