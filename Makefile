@@ -18,7 +18,12 @@ tidy:
 generate:
 	@go generate ./...
 
-lint:
+check_lint:
+ifeq (, $(shell which golangci-lint))
+	$(error not golanci-lint not installed)
+endif
+
+lint: check_lint
 # uses .golangci.yml configuration file
 	golangci-lint run --sort-results
 
@@ -50,7 +55,9 @@ release: generate lint vet test
 	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
 
 check_upx:
-	@which upx > /dev/null
+ifeq (, $(shell which upx))
+	$(error upx not installed")
+endif
 
 release_upx: check_upx generate lint vet test
 	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
