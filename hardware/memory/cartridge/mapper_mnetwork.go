@@ -161,11 +161,6 @@ func (cart *mnetwork) Initialise() {
 
 // Read implements the mapper.CartMapper interface.
 func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
-	if cart.bankswitch(addr, passive) {
-		// always return zero on hotspot - unlike the Atari multi-bank carts for example
-		return 0, nil
-	}
-
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -186,6 +181,8 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 	} else {
 		return 0, curated.Errorf(bus.AddressError, addr)
 	}
+
+	cart.bankswitch(addr, passive)
 
 	return data, nil
 }
@@ -216,7 +213,7 @@ func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) er
 
 // bankswitch on hotspot access.
 func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
-	if (addr >= 0xfe0 && addr <= 0xfe7) || (addr >= 0xff8 && addr <= 0x0ffb) {
+	if addr >= 0xfe0 && addr <= 0xfeb {
 		if passive {
 			return true
 		}
@@ -257,13 +254,13 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 			//
 			// "here" refers to the read range 0x0900 to 0x09ff and the write range
 			// 0x0800 to 0x08ff
-		case 0x0ff8:
+		case 0x0fe8:
 			cart.ram256byteIdx = 0
-		case 0x0ff9:
+		case 0x0fe9:
 			cart.ram256byteIdx = 1
-		case 0x0ffa:
+		case 0x0fea:
 			cart.ram256byteIdx = 2
-		case 0x0ffb:
+		case 0x0feb:
 			cart.ram256byteIdx = 3
 		}
 

@@ -58,9 +58,19 @@ func fingerprint3ePlus(b []byte) bool {
 }
 
 func fingerprintMnetwork(b []byte) bool {
-	threshold := 2
+	// Bump 'n' Jump is the fussiest mnetwork cartridge I've found. Matching
+	// hotspots:
+	//
+	//	$fdd5 LDA      BANK5
+	//	$fde3 LDA      BANK6
+	//	$fe0e LDA      BANK5
+	//	$fe16 LDA      BANK4
+	//
+	// This also catches modern games not created by mnetwork, eg Pitkat
+
+	threshold := 4
 	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 0x7e && b[i+1] == 0x66 && b[i+2] == 0x66 && b[i+3] == 0x66 {
+		if b[i] == 0xad && b[i+2] == 0xff && (b[i+1] == 0xe4 || b[i+1] == 0xe5 || b[i+1] == 0xe6) {
 			threshold--
 		}
 		if threshold == 0 {

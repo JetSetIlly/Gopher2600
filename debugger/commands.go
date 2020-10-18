@@ -415,7 +415,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		output := &strings.Builder{}
 		err := dbg.Disasm.Grep(output, scope, search, false)
 		if err != nil {
-			return false, nil
+			return false, err
 		}
 		if output.Len() == 0 {
 			dbg.printLine(terminal.StyleError, "%s not found in disassembly", search)

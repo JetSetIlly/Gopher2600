@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // GrepScope limits the scope of the search.
@@ -27,9 +29,9 @@ type GrepScope int
 
 // List of available scopes.
 const (
-	GrepMnemonic GrepScope = iota
+	GrepAll GrepScope = iota
+	GrepMnemonic
 	GrepOperand
-	GrepAll
 )
 
 // Grep searches the disassembly for the specified search string.
@@ -40,6 +42,8 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
+	hasOutput := false
+
 	citr := dsm.NewCartIteration()
 	citr.Start()
 	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
@@ -47,14 +51,13 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 
 		bitr, err := dsm.NewBankIteration(EntryLevelBlessed, b)
 		if err != nil {
-			return err
+			return curated.Errorf("grep: %v", err)
 		}
 
 		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
-			// line representation of Instruction. we'll print this
-			// in case of a match
-			line := &bytes.Buffer{}
-			dsm.WriteEntry(line, WriteAttr{}, e)
+			// string representation of disasm entry
+			l := &bytes.Buffer{}
+			dsm.WriteEntry(l, WriteAttr{}, e)
 
 			// limit scope of grep to the correct Instruction field
 			switch scope {
@@ -63,7 +66,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 			case GrepOperand:
 				s = e.String()
 			case GrepAll:
-				s = line.String()
+				s = l.String()
 			}
 
 			if !caseSensitive {
@@ -76,16 +79,17 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 				// if we've not yet printed head for the current bank then
 				// print it now
 				if !bankHeader {
-					if b > 0 {
+					if hasOutput {
 						output.Write([]byte("\n"))
 					}
 
 					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", b)))
 					bankHeader = true
+					hasOutput = true
 				}
 
-				// we've matched so print entire line
-				output.Write(line.Bytes())
+				// we've matched so print entire l
+				output.Write(l.Bytes())
 			}
 		}
 	}
