@@ -152,10 +152,7 @@ func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload car
 			return curated.Errorf("playmode: %v", err)
 		}
 
-		// the following will fail if the recording was made with different tv
-		// parameters. currently, the only parameter is the tv spec (ie. AUTO,
-		// NTSC or PAL) but we may need to worry about this if we ever add
-		// another television implementation.
+		// attach playback to VCS
 		err = plb.AttachToVCS(vcs)
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)

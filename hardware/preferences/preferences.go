@@ -71,7 +71,12 @@ func NewPreferences() (*Preferences, error) {
 	return p, nil
 }
 
-// Load hardware preferences and apply to the current VCS.
+// Reset all hardware preferences to the default values.
+func (p *Preferences) Reset() error {
+	return p.dsk.Reset()
+}
+
+// Load current hardware preference from disk.
 func (p *Preferences) Load() error {
 	return p.dsk.Load(false)
 }

@@ -125,6 +125,11 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", curated.Errorf("playback: %v", err)
 	}
 
+	// for playback regression to work correctly we want the VCS to be a known
+	// starting state. this will be handled in the playback.AttachToVCS
+	// function according to the current features of the recorder package and
+	// the saved script
+
 	err = plb.AttachToVCS(vcs)
 	if err != nil {
 		return false, "", curated.Errorf("playback: %v", err)

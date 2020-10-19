@@ -139,6 +139,13 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 		return false, "", curated.Errorf("log: %v", err)
 	}
 
+	// we want the machine in a known state. the easiest way to do this is to
+	// reset the hardware preferences
+	err = vcs.Prefs.Reset()
+	if err != nil {
+		return false, "", curated.Errorf("log: %v", err)
+	}
+
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
 		return false, "", curated.Errorf("log: %v", err)

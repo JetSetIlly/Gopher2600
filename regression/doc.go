@@ -39,4 +39,9 @@
 // Playback scripts and state scripts are stored in the "regressionScripts"
 // directory of the emulator's configuration directory. See the gopher2600
 // paths package for details about the configuration directory.
+//
+// To keep things simple regression runs will be performed in relation to the
+// VCS hardware in its default state, in particular no randomisation. The state
+// of the VCS in relation to playback regression entries is governed by the
+// recorder package.
 package regression

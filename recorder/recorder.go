@@ -43,6 +43,8 @@ type Recorder struct {
 // NewRecorder is the preferred method of implementation for the FileRecorder
 // type. Note that attaching of the Recorder to all the ports of the VCS
 // (including the panel) is implicit in this function call.
+//
+// Note that this will reset the VCS.
 func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	var err error
 
@@ -51,7 +53,21 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 		return nil, curated.Errorf("recorder: hardware is not suitable for recording")
 	}
 
-	rec := &Recorder{vcs: vcs}
+	rec := &Recorder{
+		vcs: vcs,
+	}
+
+	// we want the machine in a known state. the easiest way to do this is to
+	// reset the hardware preferences
+	err = vcs.Prefs.Reset()
+	if err != nil {
+		return nil, curated.Errorf("recorder: %v", err)
+	}
+
+	err = rec.vcs.Reset()
+	if err != nil {
+		return nil, curated.Errorf("recorder: %v", err)
+	}
 
 	// attach recorder to vcs peripherals, including the panel
 	vcs.RIOT.Ports.AttachEventRecorder(rec)

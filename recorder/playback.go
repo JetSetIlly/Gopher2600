@@ -222,6 +222,8 @@ func parseEventData(value string) ports.EventData {
 
 // AttachToVCS attaches the playback instance (an implementation of the
 // playback interface) to all the ports of the VCS, including the panel.
+//
+// Note that this will reset the VCS.
 func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
@@ -229,14 +231,21 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	}
 	plb.vcs = vcs
 
+	var err error
+
+	// we want the machine in a known state. the easiest way to do this is to
+	// reset the hardware preferences
+	err = vcs.Prefs.Reset()
+	if err != nil {
+		return curated.Errorf("playback: %v", err)
+	}
+
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
 	if plb.vcs.TV.SpecIDOnCreation() != plb.TVSpec {
 		return curated.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.SpecIDOnCreation())
 	}
-
-	var err error
 
 	plb.digest, err = digest.NewVideo(plb.vcs.TV)
 	if err != nil {

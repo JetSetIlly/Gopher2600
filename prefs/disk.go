@@ -91,6 +91,19 @@ func (dsk *Disk) Add(key string, p pref) error {
 	return nil
 }
 
+// Reset all preferences to the default values. In other words, the value they
+// would have on first use before being set.
+func (dsk *Disk) Reset() error {
+	for _, v := range dsk.entries {
+		err := v.Reset()
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
+	}
+
+	return nil
+}
+
 // Sentinal error returned if prefs file does not exist.
 const (
 	NoPrefsFile = "prefs: file does not exist (%s)"

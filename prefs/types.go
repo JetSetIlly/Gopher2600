@@ -32,6 +32,7 @@ type pref interface {
 	fmt.Stringer
 	Set(value Value) error
 	Get() Value
+	Reset() error
 }
 
 // Bool implements a boolean type in the prefs system.
@@ -83,6 +84,11 @@ func (p *Bool) Get() Value {
 	defer p.crit.Unlock()
 
 	return p.value
+}
+
+// Reset sets the boolean value to false.
+func (p *Bool) Reset() error {
+	return p.Set(false)
 }
 
 // RegisterCallback sets the callback function to be called when the value has
@@ -150,6 +156,11 @@ func (p *String) Get() Value {
 	return p.value
 }
 
+// Reset sets the string value to the empty string.
+func (p *String) Reset() error {
+	return p.Set("")
+}
+
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *String) RegisterCallback(f func(value Value) error) {
@@ -207,6 +218,11 @@ func (p *Int) Get() Value {
 	return p.value
 }
 
+// Reset sets the int value to zero.
+func (p *Int) Reset() error {
+	return p.Set(0)
+}
+
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Int) RegisterCallback(f func(value Value) error) {
@@ -262,4 +278,9 @@ func (p *Generic) Get() Value {
 	defer p.crit.Unlock()
 
 	return p.get()
+}
+
+// Reset sets the generic value to the empty string.
+func (p *Generic) Reset() error {
+	return p.Set("")
 }

@@ -197,6 +197,13 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, "", curated.Errorf("video: %v", err)
 	}
 
+	// we want the machine in a known state. the easiest way to do this is to
+	// reset the hardware preferences
+	err = vcs.Prefs.Reset()
+	if err != nil {
+		return false, "", curated.Errorf("video: %v", err)
+	}
+
 	err = setup.AttachCartridge(vcs, reg.CartLoad)
 	if err != nil {
 		return false, "", curated.Errorf("video: %v", err)
