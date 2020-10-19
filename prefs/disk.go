@@ -227,13 +227,16 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 			}
 			numLoaded++
 		} else if !limit {
-			// if this an unlimited load() then store
-			var dummy String
-			err = dummy.Set(v)
-			if err != nil {
-				return numLoaded, curated.Errorf("prefs: %v", err)
+			// if this an unlimited load() and preference key is not in list of
+			// dufunct values then store in entryMap
+			if !isDefunct(k) {
+				var dummy String
+				err = dummy.Set(v)
+				if err != nil {
+					return numLoaded, curated.Errorf("prefs: %v", err)
+				}
+				(*entries)[k] = &dummy
 			}
-			(*entries)[k] = &dummy
 		}
 	}
 
