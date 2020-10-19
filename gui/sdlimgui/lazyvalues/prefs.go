@@ -40,8 +40,8 @@ func newLazyPrefs(val *LazyValues) *LazyPrefs {
 }
 
 func (lz *LazyPrefs) push() {
-	lz.randomState.Store(lz.val.Dbg.Prefs.RandomState.Get())
-	lz.randomPins.Store(lz.val.Dbg.Prefs.RandomPins.Get())
+	lz.randomState.Store(lz.val.Dbg.VCS.Prefs.RandomState.Get())
+	lz.randomPins.Store(lz.val.Dbg.VCS.Prefs.RandomPins.Get())
 	lz.fxxxMirror.Store(lz.val.Dbg.Disasm.Prefs.FxxxMirror.Get())
 	lz.symbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
 }

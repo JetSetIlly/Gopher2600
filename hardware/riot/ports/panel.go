@@ -94,9 +94,8 @@ func (pan *Panel) Name() string {
 
 // Reset implements the Peripheral interface.
 func (pan *Panel) Reset() {
-	// does nothing. this isn't the same as pressing the Reset panel switch
-	//
-	// !!TODO: reset panel switches to either a default or to the relevant "setup" preference
+	// write current panel settings
+	pan.write()
 }
 
 func (pan *Panel) write() {

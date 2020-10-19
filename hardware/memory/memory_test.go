@@ -44,7 +44,7 @@ func readDataZeroPage(t *testing.T, mem *memory.VCSMemory, address uint8, expect
 }
 
 func TestDataMask(t *testing.T) {
-	mem, err := memory.NewVCSMemory()
+	mem, err := memory.NewVCSMemory(nil)
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}

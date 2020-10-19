@@ -20,25 +20,24 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
-	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/television"
 )
 
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
+	Prefs *preferences.Preferences
+
 	CPU  *cpu.CPU
 	Mem  *memory.VCSMemory
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
 
 	TV television.Television
-
-	// randomise state on startup
-	RandomState prefs.Bool
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -49,12 +48,19 @@ func NewVCS(tv television.Television) (*VCS, error) {
 
 	vcs := &VCS{TV: tv}
 
-	vcs.Mem, err = memory.NewVCSMemory()
+	// set up preferences
+	vcs.Prefs, err = preferences.NewPreferences()
 	if err != nil {
 		return nil, err
 	}
 
-	vcs.CPU, err = cpu.NewCPU(vcs.Mem)
+	// set up hardware
+	vcs.Mem, err = memory.NewVCSMemory(vcs.Prefs)
+	if err != nil {
+		return nil, err
+	}
+
+	vcs.CPU, err = cpu.NewCPU(vcs.Prefs, vcs.Mem)
 	if err != nil {
 		return nil, err
 	}
@@ -112,9 +118,9 @@ func (vcs *VCS) Reset() error {
 		return err
 	}
 
-	vcs.RIOT.Ports.Reset()
+	vcs.Mem.Reset()
 
-	err = vcs.CPU.Reset(vcs.RandomState.Get().(bool))
+	err = vcs.CPU.Reset()
 	if err != nil {
 		return err
 	}
@@ -123,6 +129,10 @@ func (vcs *VCS) Reset() error {
 	if err != nil {
 		return err
 	}
+
+	// reset of ports must happen after reset of memory because ports will
+	// update memory to the current state of the peripherals
+	vcs.RIOT.Ports.Reset()
 
 	return nil
 }

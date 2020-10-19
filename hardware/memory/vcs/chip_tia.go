@@ -18,11 +18,13 @@ package vcs
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // NewTIA is the preferred method of initialisation for the TIA memory area.
-func NewTIA() *ChipMemory {
+func NewTIA(prefs *preferences.Preferences) *ChipMemory {
 	area := &ChipMemory{
+		prefs:  prefs,
 		origin: memorymap.OriginTIA,
 		memtop: memorymap.MemtopTIA,
 	}

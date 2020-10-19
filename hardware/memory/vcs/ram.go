@@ -17,9 +17,11 @@ package vcs
 
 import (
 	"encoding/hex"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
@@ -27,16 +29,33 @@ import (
 type RAM struct {
 	bus.DebugBus
 	bus.CPUBus
+
+	prefs *preferences.Preferences
+
 	RAM         []uint8
 	SnapshotRAM []uint8
 }
 
 // NewRAM is the preferred method of initialisation for the RAM memory area.
-func NewRAM() *RAM {
-	return &RAM{
+func NewRAM(prefs *preferences.Preferences) *RAM {
+	ram := &RAM{
+		prefs:       prefs,
 		RAM:         make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 		SnapshotRAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 	}
+	return ram
+}
+
+// Reset contents of RAM.
+func (ram *RAM) Reset() {
+	for i := range ram.RAM {
+		if ram.prefs != nil && ram.prefs.RandomState.Get().(bool) {
+			ram.RAM[i] = uint8(rand.Intn(0xff))
+		} else {
+			ram.RAM[i] = 0
+		}
+	}
+	copy(ram.SnapshotRAM, ram.RAM)
 }
 
 func (ram RAM) String() string {

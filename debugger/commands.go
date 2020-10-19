@@ -1445,14 +1445,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		action, ok := tokens.Get()
 
 		if !ok {
-			dbg.printLine(terminal.StyleFeedback, dbg.Prefs.String())
+			dbg.printLine(terminal.StyleFeedback, dbg.VCS.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Disasm.Prefs.String())
 			return false, nil
 		}
 
 		switch action {
 		case "LOAD":
-			err := dbg.Prefs.load()
+			err := dbg.VCS.Prefs.Load()
 			if err != nil {
 				return false, curated.Errorf("%v", err)
 			}
@@ -1462,7 +1462,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 
 		case "SAVE":
-			err := dbg.Prefs.save()
+			err := dbg.VCS.Prefs.Save()
 			if err != nil {
 				return false, curated.Errorf("%v", err)
 			}
@@ -1480,22 +1480,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "RANDSTART":
 			switch action {
 			case "SET":
-				err = dbg.Prefs.RandomState.Set(true)
+				err = dbg.VCS.Prefs.RandomState.Set(true)
 			case "UNSET":
-				err = dbg.Prefs.RandomState.Set(false)
+				err = dbg.VCS.Prefs.RandomState.Set(false)
 			case "TOGGLE":
-				v := dbg.Prefs.RandomState.Get().(bool)
-				err = dbg.Prefs.RandomState.Set(!v)
+				v := dbg.VCS.Prefs.RandomState.Get().(bool)
+				err = dbg.VCS.Prefs.RandomState.Set(!v)
 			}
 		case "RANDPINS":
 			switch action {
 			case "SET":
-				err = dbg.Prefs.RandomPins.Set(true)
+				err = dbg.VCS.Prefs.RandomPins.Set(true)
 			case "UNSET":
-				err = dbg.Prefs.RandomPins.Set(false)
+				err = dbg.VCS.Prefs.RandomPins.Set(false)
 			case "TOGGLE":
-				v := dbg.Prefs.RandomPins.Get().(bool)
-				err = dbg.Prefs.RandomPins.Set(!v)
+				v := dbg.VCS.Prefs.RandomPins.Get().(bool)
+				err = dbg.VCS.Prefs.RandomPins.Set(!v)
 			}
 		case "FXXXMIRROR":
 			switch action {

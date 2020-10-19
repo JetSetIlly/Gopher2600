@@ -17,10 +17,12 @@ package vcs
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // ChipMemory defines the information for and operations allowed for those
@@ -29,6 +31,8 @@ type ChipMemory struct {
 	bus.DebugBus
 	bus.ChipBus
 	bus.CPUBus
+
+	prefs *preferences.Preferences
 
 	// because we're servicing two different memory areas with this type, we
 	// need to store the origin and memtop values here, rather than using the
@@ -58,6 +62,17 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 		return 0, curated.Errorf(bus.AddressError, address)
 	}
 	return area.memory[address^area.origin], nil
+}
+
+// Reset contents of ChipMemory.
+func (area *ChipMemory) Reset() {
+	for i := range area.memory {
+		if area.prefs != nil && area.prefs.RandomState.Get().(bool) {
+			area.memory[i] = uint8(rand.Intn(0xff))
+		} else {
+			area.memory[i] = 0
+		}
+	}
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.

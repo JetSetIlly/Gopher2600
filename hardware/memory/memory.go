@@ -24,13 +24,15 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
-	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // VCSMemory is the monolithic representation of the memory in 2600.
 type VCSMemory struct {
 	bus.DebugBus
 	bus.CPUBus
+
+	prefs *preferences.Preferences
 
 	// the four memory areas
 	RIOT *vcs.ChipMemory
@@ -60,24 +62,29 @@ type VCSMemory struct {
 	// for practical purposes, the cycle period of type int is sufficiently
 	// large as to allow us to consider LastAccessID to be unique.
 	accessCount int
-
-	// unused pins when reading TIA/RIOT registers take the value of the last
-	// value on the bus. if RandomPins is true then the values of the unusued
-	// pins are randomised. this is the equivalent of the Stella option "drive
-	// unused pins randomly on a read/peek"
-	RandomPins prefs.Bool
 }
 
 // NewVCSMemory is the preferred method of initialisation for VCSMemory.
-func NewVCSMemory() (*VCSMemory, error) {
-	mem := &VCSMemory{}
+func NewVCSMemory(prefs *preferences.Preferences) (*VCSMemory, error) {
+	mem := &VCSMemory{
+		prefs: prefs,
+	}
 
-	mem.RIOT = vcs.NewRIOT()
-	mem.TIA = vcs.NewTIA()
-	mem.RAM = vcs.NewRAM()
+	mem.RIOT = vcs.NewRIOT(prefs)
+	mem.TIA = vcs.NewTIA(prefs)
+	mem.RAM = vcs.NewRAM(prefs)
 	mem.Cart = cartridge.NewCartridge()
 
+	mem.Reset()
+
 	return mem, nil
+}
+
+// Reset contents of memory.
+func (mem *VCSMemory) Reset() {
+	mem.RIOT.Reset()
+	mem.TIA.Reset()
+	mem.RAM.Reset()
 }
 
 // GetArea returns the actual memory of the specified area type.
@@ -131,14 +138,14 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 	if ma < uint16(len(addresses.DataMasks)) {
 		if !zeroPage {
 			data &= addresses.DataMasks[ma]
-			if mem.RandomPins.Get().(bool) {
+			if mem.prefs != nil && mem.prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		} else {
 			data &= addresses.DataMasks[ma]
-			if mem.RandomPins.Get().(bool) {
+			if mem.prefs != nil && mem.prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)

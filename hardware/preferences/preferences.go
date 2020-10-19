@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package debugger
+package preferences
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
@@ -23,24 +23,25 @@ import (
 
 // Preferences defines and collates all the preference values used by the debugger.
 type Preferences struct {
-	dbg *Debugger
 	dsk *prefs.Disk
 
-	RandomState *prefs.Bool
-	RandomPins  *prefs.Bool
+	// initialise hardware to unknown state after reset
+	RandomState prefs.Bool
+
+	// unused pins when reading TIA/RIOT registers take the value of the last
+	// value on the bus. if RandomPins is true then the values of the unusued
+	// pins are randomised. this is the equivalent of the Stella option "drive
+	// unused pins randomly on a read/peek"
+	RandomPins prefs.Bool
 }
 
-func (p Preferences) String() string {
+func (p *Preferences) String() string {
 	return p.dsk.String()
 }
 
-// newPreferences is the preferred method of initialisation for the Preferences type.
-func newPreferences(dbg *Debugger) (*Preferences, error) {
-	p := &Preferences{
-		dbg:         dbg,
-		RandomState: &dbg.VCS.RandomState,
-		RandomPins:  &dbg.VCS.Mem.RandomPins,
-	}
+// NewPreferences is the preferred method of initialisation for the Preferences type.
+func NewPreferences() (*Preferences, error) {
+	p := &Preferences{}
 
 	// setup preferences and load from disk
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -51,11 +52,11 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("debugger.randstate", p.RandomState)
+	err = p.dsk.Add("hardware.randstate", &p.RandomState)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("debugger.randpins", p.RandomPins)
+	err = p.dsk.Add("hardware.randpins", &p.RandomPins)
 	if err != nil {
 		return nil, err
 	}
@@ -70,10 +71,12 @@ func newPreferences(dbg *Debugger) (*Preferences, error) {
 	return p, nil
 }
 
-func (p *Preferences) load() error {
+// Load hardware preferences and apply to the current VCS.
+func (p *Preferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-func (p *Preferences) save() error {
+// Save current hardware preferences to disk.
+func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

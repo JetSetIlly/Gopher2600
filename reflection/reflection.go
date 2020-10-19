@@ -23,7 +23,7 @@ import (
 )
 
 // Renderer implementations accepts ReflectPixel values and associates it in
-// some way with the moste recent television signal.
+// some way with the most recent television signal.
 type Renderer interface {
 	Reflect(LastResult) error
 }

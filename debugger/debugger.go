@@ -106,9 +106,6 @@ type Debugger struct {
 	// record user input to a script file
 	scriptScribe script.Scribe
 
-	// preferences
-	Prefs *Preferences
-
 	// \/\/\/ inputLoop \/\/\/
 
 	// buffer for user input
@@ -236,12 +233,6 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 
 	// try to add debugger (self) to gui context
 	err = dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
-	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
-	}
-
-	// setup preferences and load from disk
-	dbg.Prefs, err = newPreferences(dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}

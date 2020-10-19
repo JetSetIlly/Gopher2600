@@ -25,11 +25,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
+	prefs *preferences.Preferences
+
 	PC     registers.ProgramCounter
 	A      registers.Register
 	X      registers.Register
@@ -76,8 +79,11 @@ type CPU struct {
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(mem bus.CPUBus) (*CPU, error) {
-	mc := &CPU{mem: mem}
+func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) (*CPU, error) {
+	mc := &CPU{
+		prefs: prefs,
+		mem:   mem,
+	}
 
 	mc.PC = registers.NewProgramCounter(0)
 	mc.A = registers.NewRegister(0, "A")
@@ -96,7 +102,7 @@ func NewCPU(mem bus.CPUBus) (*CPU, error) {
 		return nil, err
 	}
 
-	return mc, mc.Reset(true)
+	return mc, mc.Reset()
 }
 
 func (mc *CPU) String() string {
@@ -107,11 +113,11 @@ func (mc *CPU) String() string {
 }
 
 // Reset reinitialises all registers.
-func (mc *CPU) Reset(randomState bool) error {
+func (mc *CPU) Reset() error {
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
 
-	if randomState {
+	if mc.prefs != nil && mc.prefs.RandomState.Get().(bool) {
 		mc.PC.Load(uint16(rand.Intn(0xffff)))
 		mc.A.Load(uint8(rand.Intn(0xff)))
 		mc.X.Load(uint8(rand.Intn(0xff)))
@@ -235,8 +241,6 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
-		// don't worry about unwritable addresses (unless strict addressing
-		// is on)
 		if !curated.Is(err, bus.AddressError) {
 			return err
 		}
