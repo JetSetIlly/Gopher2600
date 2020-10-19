@@ -78,8 +78,6 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -92,8 +90,8 @@ func (cart tigervision) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *tigervision) Initialise() {
+// Reset implements the mapper.CartMapper interface.
+func (cart *tigervision) Reset(randomise bool) {
 	cart.segment[0] = cart.NumBanks() - 2
 
 	// the last segment always points to the last bank

@@ -124,11 +124,6 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	return cart, nil
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *PlusROM) Initialise() {
-	cart.child.Initialise()
-}
-
 func (cart *PlusROM) String() string {
 	return fmt.Sprintf("[%s] %s", cart.ContainerID(), cart.child.String())
 }
@@ -142,6 +137,11 @@ func (cart *PlusROM) ID() string {
 // ID implements the mapper.CartContainer interface.
 func (cart *PlusROM) ContainerID() string {
 	return "PlusROM"
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *PlusROM) Reset(randomise bool) {
+	cart.child.Reset(randomise)
 }
 
 // READ implements the mapper.CartMapper interface.

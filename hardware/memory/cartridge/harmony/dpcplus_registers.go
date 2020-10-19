@@ -17,6 +17,7 @@ package harmony
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -78,6 +79,54 @@ func (r DPCplusRegisters) String() string {
 	}
 
 	return s.String()
+}
+
+func (r *DPCplusRegisters) reset(randomise bool) {
+	for i := range r.Fetcher {
+		if randomise {
+			r.Fetcher[i].Low = byte(rand.Intn(0xff))
+			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
+			r.Fetcher[i].Top = byte(rand.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
+		} else {
+			r.Fetcher[i].Low = 0
+			r.Fetcher[i].Hi = 0
+			r.Fetcher[i].Top = 0
+			r.Fetcher[i].Bottom = 0
+		}
+	}
+
+	for i := range r.FracFetcher {
+		if randomise {
+			r.FracFetcher[i].Low = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Hi = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Increment = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Count = byte(rand.Intn(0xff))
+		} else {
+			r.FracFetcher[i].Low = 0
+			r.FracFetcher[i].Hi = 0
+			r.FracFetcher[i].Increment = 0
+			r.FracFetcher[i].Count = 0
+		}
+	}
+
+	for i := range r.MusicFetcher {
+		if randomise {
+			r.MusicFetcher[i].Waveform = uint32(rand.Intn(0xffffffff))
+			r.MusicFetcher[i].Freq = uint32(rand.Intn(0xffffffff))
+			r.MusicFetcher[i].Count = uint32(rand.Intn(0xffffffff))
+		} else {
+			r.MusicFetcher[i].Waveform = 0
+			r.MusicFetcher[i].Freq = 0
+			r.MusicFetcher[i].Count = 0
+		}
+	}
+
+	if randomise {
+		r.RNG.Value = uint32(rand.Intn(0xffffffff))
+	} else {
+		r.RNG.Value = 0
+	}
 }
 
 type dataFetcher struct {

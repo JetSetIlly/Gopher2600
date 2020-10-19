@@ -73,7 +73,7 @@ func NewVCSMemory(prefs *preferences.Preferences) (*VCSMemory, error) {
 	mem.RIOT = vcs.NewRIOT(prefs)
 	mem.TIA = vcs.NewTIA(prefs)
 	mem.RAM = vcs.NewRAM(prefs)
-	mem.Cart = cartridge.NewCartridge()
+	mem.Cart = cartridge.NewCartridge(prefs)
 
 	mem.Reset()
 
@@ -85,6 +85,7 @@ func (mem *VCSMemory) Reset() {
 	mem.RIOT.Reset()
 	mem.TIA.Reset()
 	mem.RAM.Reset()
+	mem.Cart.Reset()
 }
 
 // GetArea returns the actual memory of the specified area type.

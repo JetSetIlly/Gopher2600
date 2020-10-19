@@ -31,9 +31,14 @@ type CartContainer interface {
 // convenience, functions with an address argument receive that address
 // normalised to a range of 0x0000 to 0x0fff.
 type CartMapper interface {
-	Initialise()
 	String() string
 	ID() string
+
+	// reset volatile areas of the cartridge. for many cartridge mappers this
+	// will do nothing but those with registers or ram should perform an
+	// explicit reset (possibly with randomisation)
+	Reset(randomise bool)
+
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error
 	NumBanks() int
@@ -65,7 +70,7 @@ type CartMapper interface {
 // superchip. This shouldn't be used to decide if a cartridge has additional
 // RAM or not. Use the CartRAMbus interface for that.
 type OptionalSuperchip interface {
-	AddSuperchip() bool
+	AddSuperchip()
 }
 
 // CartRegistersBus defines the operations required for a debugger to access the

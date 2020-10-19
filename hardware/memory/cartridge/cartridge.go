@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -33,6 +34,9 @@ import (
 type Cartridge struct {
 	bus.DebugBus
 	bus.CPUBus
+
+	prefs *preferences.Preferences
+
 	Filename string
 	Hash     string
 
@@ -48,10 +52,19 @@ const (
 
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type.
-func NewCartridge() *Cartridge {
-	cart := &Cartridge{}
+func NewCartridge(prefs *preferences.Preferences) *Cartridge {
+	cart := &Cartridge{prefs: prefs}
 	cart.Eject()
 	return cart
+}
+
+// Reset volative contents of Cartridge.
+func (cart *Cartridge) Reset() {
+	if cart.prefs != nil {
+		cart.mapper.Reset(cart.prefs.RandomState.Get().(bool))
+	} else {
+		cart.mapper.Reset(false)
+	}
 }
 
 func (cart Cartridge) String() string {
@@ -231,18 +244,11 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	if addSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			if !superchip.AddSuperchip() {
-				return curated.Errorf("cartridge: error adding superchip")
-			}
+			superchip.AddSuperchip()
 		}
 	}
 
 	return nil
-}
-
-// Initialise the cartridge.
-func (cart *Cartridge) Initialise() {
-	cart.mapper.Initialise()
 }
 
 // NumBanks returns the number of banks in the catridge.

@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -82,8 +83,6 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 		cart.ram[k] = make([]uint8, ramSize)
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -106,14 +105,21 @@ func (cart m3ePlus) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Initialise() {
-	// from spec:
-	//
+// Reset implements the mapper.CartMapper interface.
+func (cart *m3ePlus) Reset(randomise bool) {
+	for b := range cart.ram {
+		for i := range cart.ram[b] {
+			if randomise {
+				cart.ram[b][i] = uint8(rand.Intn(0xff))
+			} else {
+				cart.ram[b][i] = 0
+			}
+		}
+	}
+
 	// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
 	// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
 	// must be placed at the end of the first 1K in the ROM image.
-
 	for i := range cart.segment {
 		cart.segment[i] = 0
 		cart.segmentIsRAM[i] = false

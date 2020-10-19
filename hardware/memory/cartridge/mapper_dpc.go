@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -85,6 +86,33 @@ func (r DPCregisters) String() string {
 	return s.String()
 }
 
+func (r *DPCregisters) reset(randomise bool) {
+	for i := range r.Fetcher {
+		if randomise {
+			r.Fetcher[i].Low = byte(rand.Intn(0xff))
+			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
+			r.Fetcher[i].Top = byte(rand.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
+		} else {
+			r.Fetcher[i].Low = 0
+			r.Fetcher[i].Hi = 0
+			r.Fetcher[i].Top = 0
+			r.Fetcher[i].Bottom = 0
+		}
+
+		// not randomising state of the following
+		r.Fetcher[i].Flag = false
+		r.Fetcher[i].MusicMode = false
+		r.Fetcher[i].OSCclock = false
+	}
+
+	if randomise {
+		r.RNG = uint8(rand.Intn(0xff))
+	} else {
+		r.RNG = 0
+	}
+}
+
 // DPCdataFetcher represents a single DPC data fetcher.
 type DPCdataFetcher struct {
 	Low    byte
@@ -147,8 +175,6 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	staticStart := cart.NumBanks() * cart.bankSize
 	cart.static.Gfx = data[staticStart : staticStart+staticSize]
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -161,8 +187,9 @@ func (cart dpc) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *dpc) Initialise() {
+// Reset implements the mapper.CartMapper interface.
+func (cart *dpc) Reset(randomise bool) {
+	cart.registers.reset(randomise)
 	cart.bank = len(cart.banks) - 1
 }
 

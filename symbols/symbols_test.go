@@ -37,7 +37,7 @@ func TestDefaultSymbols(t *testing.T) {
 func TestFlappySymbols(t *testing.T) {
 	// make a dummy cartridge with the minimum amount of information required
 	// for ReadSymbolsFile() to work
-	cart := cartridge.NewCartridge()
+	cart := cartridge.NewCartridge(nil)
 	cart.Filename = "testdata/flappy.bin"
 
 	syms, err := symbols.ReadSymbolsFile(cart)

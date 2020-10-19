@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -122,8 +123,6 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 		cart.ram256byte[i] = make([]uint8, 256)
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -143,20 +142,28 @@ func (cart mnetwork) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *mnetwork) Initialise() {
-	cart.bank = 0
-	cart.ram256byteIdx = 0
-
-	for i := range cart.ram1k {
-		cart.ram1k[i] = 0x00
-	}
-
-	for i := range cart.ram256byte {
-		for j := range cart.ram256byte[i] {
-			cart.ram256byte[i][j] = 0x00
+// Reset implements the mapper.CartMapper interface.
+func (cart *mnetwork) Reset(randomise bool) {
+	for b := range cart.ram256byte {
+		for i := range cart.ram256byte[b] {
+			if randomise {
+				cart.ram256byte[b][i] = uint8(rand.Intn(0xff))
+			} else {
+				cart.ram256byte[b][i] = 0
+			}
 		}
 	}
+
+	for i := range cart.ram1k {
+		if randomise {
+			cart.ram1k[i] = uint8(rand.Intn(0xff))
+		} else {
+			cart.ram1k[i] = 0
+		}
+	}
+
+	cart.bank = 0
+	cart.ram256byteIdx = 0
 }
 
 // Read implements the mapper.CartMapper interface.

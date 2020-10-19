@@ -80,7 +80,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, err
 	}
 
-	cart := cartridge.NewCartridge()
+	cart := cartridge.NewCartridge(nil)
 
 	err = cart.Attach(cartload)
 	if err != nil {

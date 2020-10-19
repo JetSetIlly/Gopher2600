@@ -72,8 +72,6 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -86,8 +84,8 @@ func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *parkerBros) Initialise() {
+// Reset implements the mapper.CartMapper interface.
+func (cart *parkerBros) Reset(randomise bool) {
 	cart.segment[0] = cart.NumBanks() - 4
 	cart.segment[1] = cart.NumBanks() - 3
 	cart.segment[2] = cart.NumBanks() - 2

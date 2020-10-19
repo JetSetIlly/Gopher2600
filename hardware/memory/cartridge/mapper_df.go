@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -59,8 +60,6 @@ func newDF(data []byte) (mapper.CartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -73,13 +72,17 @@ func (cart df) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *df) Initialise() {
-	cart.bank = 15
-
+// Reset implements the mapper.CartMapper interface.
+func (cart *df) Reset(randomise bool) {
 	for i := range cart.ram {
-		cart.ram[i] = 0x00
+		if randomise {
+			cart.ram[i] = uint8(rand.Intn(0xff))
+		} else {
+			cart.ram[i] = 0
+		}
 	}
+
+	cart.bank = 15
 }
 
 // Read implements the mapper.CartMapper interface.

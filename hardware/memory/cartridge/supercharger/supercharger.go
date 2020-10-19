@@ -17,6 +17,7 @@ package supercharger
 
 import (
 	"fmt"
+	"math/rand"
 	"path"
 	"strings"
 
@@ -94,8 +95,6 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		cart.onLoaded = cartload.OnLoaded
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -111,8 +110,18 @@ func (cart Supercharger) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the cartMapper interface.
-func (cart *Supercharger) Initialise() {
+// Reset implements the mapper.CartMapper interface.
+func (cart *Supercharger) Reset(randomise bool) {
+	for b := range cart.ram {
+		for i := range cart.ram[b] {
+			if randomise {
+				cart.ram[b][i] = uint8(rand.Intn(0xff))
+			} else {
+				cart.ram[b][i] = 0
+			}
+		}
+	}
+
 	cart.registers.WriteDelay = 0
 	cart.registers.BankingMode = 0
 	cart.registers.ROMpower = true

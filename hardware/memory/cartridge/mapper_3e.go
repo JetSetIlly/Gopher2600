@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -80,8 +81,6 @@ func new3e(data []byte) (mapper.CartMapper, error) {
 		cart.ram[k] = make([]uint8, ramSize)
 	}
 
-	cart.Initialise()
-
 	return cart, nil
 }
 
@@ -104,11 +103,20 @@ func (cart m3e) ID() string {
 	return cart.mappingID
 }
 
-// Initialise implements the mapper.CartMapper interface.
-func (cart *m3e) Initialise() {
-	cart.segment[0] = cart.NumBanks() - 2
+// Reset implements the mapper.CartMapper interface.
+func (cart *m3e) Reset(randomise bool) {
+	for b := range cart.ram {
+		for i := range cart.ram[b] {
+			if randomise {
+				cart.ram[b][i] = uint8(rand.Intn(0xff))
+			} else {
+				cart.ram[b][i] = 0
+			}
+		}
+	}
 
 	// the last segment always points to the last bank
+	cart.segment[0] = cart.NumBanks() - 2
 	cart.segment[1] = cart.NumBanks() - 1
 }
 

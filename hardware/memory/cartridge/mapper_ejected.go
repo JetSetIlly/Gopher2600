@@ -22,19 +22,14 @@ import (
 
 // ejected implements the cartMapper interface.
 type ejected struct {
-	description string
 }
 
 func newEjected() *ejected {
-	cart := &ejected{
-		description: "ejected",
-	}
-	cart.Initialise()
-	return cart
+	return &ejected{}
 }
 
 func (cart ejected) String() string {
-	return cart.description
+	return "ejected"
 }
 
 // ID implements the cartMapper interface.
@@ -42,8 +37,8 @@ func (cart ejected) ID() string {
 	return "-"
 }
 
-// Initialise implements the cartMapper interface.
-func (cart *ejected) Initialise() {
+// Reset implements the cartMapper interface.
+func (cart *ejected) Reset(randomise bool) {
 }
 
 // Read implements the cartMapper interface.

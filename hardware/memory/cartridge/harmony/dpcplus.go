@@ -97,9 +97,6 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	cart.static.Data = data[dataOffset : dataOffset+dataSize]
 	cart.static.Freq = data[dataOffset+dataSize:]
 
-	// initialise cartridge before returning success
-	cart.Initialise()
-
 	// patch offsets
 	cart.banksOffset = armSize
 	cart.dataOffset = dataOffset
@@ -113,14 +110,18 @@ func (cart dpcPlus) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
+// ID implements the mapper.CartMapper interface.
 func (cart dpcPlus) ID() string {
 	return cart.mappingID
 }
 
-func (cart *dpcPlus) Initialise() {
+// Reset implements the mapper.CartMapper interface.
+func (cart *dpcPlus) Reset(randomise bool) {
+	cart.registers.reset(randomise)
 	cart.bank = len(cart.banks) - 1
 }
 
+// Read implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
@@ -270,6 +271,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	return data, nil
 }
 
+// Write implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.bankswitch(addr, passive) {
 		return nil
@@ -580,14 +582,17 @@ func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
 	return false
 }
 
+// NumBanks implements the mapper.CartMapper interface.
 func (cart dpcPlus) NumBanks() int {
 	return len(cart.banks)
 }
 
+// GetBank implements the mapper.CartMapper interface.
 func (cart dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
 }
 
+// Patch implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	if offset >= cart.fileSize {
 		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
@@ -608,9 +613,11 @@ func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	return nil
 }
 
+// Listen implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Listen(addr uint16, data uint8) {
 }
 
+// Step implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Step() {
 	// sample rate of 20KHz.
 	//
