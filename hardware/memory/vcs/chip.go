@@ -17,7 +17,6 @@ package vcs
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -68,7 +67,7 @@ func (area ChipMemory) Peek(address uint16) (uint8, error) {
 func (area *ChipMemory) Reset() {
 	for i := range area.memory {
 		if area.prefs != nil && area.prefs.RandomState.Get().(bool) {
-			area.memory[i] = uint8(rand.Intn(0xff))
+			area.memory[i] = uint8(area.prefs.RandSrc.Intn(0xff))
 		} else {
 			area.memory[i] = 0
 		}

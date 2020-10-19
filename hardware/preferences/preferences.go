@@ -16,6 +16,9 @@
 package preferences
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -33,6 +36,13 @@ type Preferences struct {
 	// pins are randomised. this is the equivalent of the Stella option "drive
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
+
+	// random values generated in the hardware package should use the following
+	// number source
+	RandSrc *rand.Rand
+
+	// the number used to seed RandSrc
+	RandSeed int64
 }
 
 func (p *Preferences) String() string {
@@ -42,6 +52,9 @@ func (p *Preferences) String() string {
 // NewPreferences is the preferred method of initialisation for the Preferences type.
 func NewPreferences() (*Preferences, error) {
 	p := &Preferences{}
+
+	// initialise random number generator
+	p.Reseed(0)
 
 	// setup preferences and load from disk
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -69,6 +82,17 @@ func NewPreferences() (*Preferences, error) {
 	}
 
 	return p, nil
+}
+
+// Reseed initialises the random number generator. Use a seed value of 0 to
+// initialise with the current time.
+func (p *Preferences) Reseed(seed int64) {
+	if seed == 0 {
+		p.RandSeed = int64(time.Now().Nanosecond())
+	} else {
+		p.RandSeed = seed
+	}
+	p.RandSrc = rand.New(rand.NewSource(p.RandSeed))
 }
 
 // Reset all hardware preferences to the default values.

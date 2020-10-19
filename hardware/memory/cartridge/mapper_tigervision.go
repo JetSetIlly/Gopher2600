@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -91,7 +92,7 @@ func (cart tigervision) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *tigervision) Reset(randomise bool) {
+func (cart *tigervision) Reset(randSrc *rand.Rand) {
 	cart.segment[0] = cart.NumBanks() - 2
 
 	// the last segment always points to the last bank

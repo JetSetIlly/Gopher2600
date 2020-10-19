@@ -17,6 +17,7 @@ package plusrom
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -140,8 +141,8 @@ func (cart *PlusROM) ContainerID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *PlusROM) Reset(randomise bool) {
-	cart.child.Reset(randomise)
+func (cart *PlusROM) Reset(randSrc *rand.Rand) {
+	cart.child.Reset(randSrc)
 }
 
 // READ implements the mapper.CartMapper interface.

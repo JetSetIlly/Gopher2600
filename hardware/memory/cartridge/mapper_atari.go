@@ -113,10 +113,10 @@ func (cart atari) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari) Reset(randomise bool) {
+func (cart *atari) Reset(randSrc *rand.Rand) {
 	for i := range cart.ram {
-		if randomise {
-			cart.ram[i] = uint8(rand.Intn(0xff))
+		if randSrc != nil {
+			cart.ram[i] = uint8(randSrc.Intn(0xff))
 		} else {
 			cart.ram[i] = 0
 		}

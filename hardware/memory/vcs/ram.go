@@ -17,7 +17,6 @@ package vcs
 
 import (
 	"encoding/hex"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -50,7 +49,7 @@ func NewRAM(prefs *preferences.Preferences) *RAM {
 func (ram *RAM) Reset() {
 	for i := range ram.RAM {
 		if ram.prefs != nil && ram.prefs.RandomState.Get().(bool) {
-			ram.RAM[i] = uint8(rand.Intn(0xff))
+			ram.RAM[i] = uint8(ram.prefs.RandSrc.Intn(0xff))
 		} else {
 			ram.RAM[i] = 0
 		}

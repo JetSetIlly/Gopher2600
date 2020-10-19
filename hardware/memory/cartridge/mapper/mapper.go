@@ -17,6 +17,7 @@ package mapper
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 // CartContainer is a special CartMapper type that wraps another CartMapper.
@@ -37,7 +38,7 @@ type CartMapper interface {
 	// reset volatile areas of the cartridge. for many cartridge mappers this
 	// will do nothing but those with registers or ram should perform an
 	// explicit reset (possibly with randomisation)
-	Reset(randomise bool)
+	Reset(randSrc *rand.Rand)
 
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error

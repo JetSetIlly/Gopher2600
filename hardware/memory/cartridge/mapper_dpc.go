@@ -86,13 +86,13 @@ func (r DPCregisters) String() string {
 	return s.String()
 }
 
-func (r *DPCregisters) reset(randomise bool) {
+func (r *DPCregisters) reset(randSrc *rand.Rand) {
 	for i := range r.Fetcher {
-		if randomise {
-			r.Fetcher[i].Low = byte(rand.Intn(0xff))
-			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
-			r.Fetcher[i].Top = byte(rand.Intn(0xff))
-			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
+		if randSrc != nil {
+			r.Fetcher[i].Low = byte(randSrc.Intn(0xff))
+			r.Fetcher[i].Hi = byte(randSrc.Intn(0xff))
+			r.Fetcher[i].Top = byte(randSrc.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(randSrc.Intn(0xff))
 		} else {
 			r.Fetcher[i].Low = 0
 			r.Fetcher[i].Hi = 0
@@ -106,8 +106,8 @@ func (r *DPCregisters) reset(randomise bool) {
 		r.Fetcher[i].OSCclock = false
 	}
 
-	if randomise {
-		r.RNG = uint8(rand.Intn(0xff))
+	if randSrc != nil {
+		r.RNG = uint8(randSrc.Intn(0xff))
 	} else {
 		r.RNG = 0
 	}
@@ -188,8 +188,8 @@ func (cart dpc) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpc) Reset(randomise bool) {
-	cart.registers.reset(randomise)
+func (cart *dpc) Reset(randSrc *rand.Rand) {
+	cart.registers.reset(randSrc)
 	cart.bank = len(cart.banks) - 1
 }
 

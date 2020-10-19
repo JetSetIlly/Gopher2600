@@ -111,11 +111,11 @@ func (cart Supercharger) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Supercharger) Reset(randomise bool) {
+func (cart *Supercharger) Reset(randSrc *rand.Rand) {
 	for b := range cart.ram {
 		for i := range cart.ram[b] {
-			if randomise {
-				cart.ram[b][i] = uint8(rand.Intn(0xff))
+			if randSrc != nil {
+				cart.ram[b][i] = uint8(randSrc.Intn(0xff))
 			} else {
 				cart.ram[b][i] = 0
 			}

@@ -17,6 +17,7 @@ package harmony
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -116,8 +117,8 @@ func (cart dpcPlus) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Reset(randomise bool) {
-	cart.registers.reset(randomise)
+func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
+	cart.registers.reset(randSrc)
 	cart.bank = len(cart.banks) - 1
 }
 

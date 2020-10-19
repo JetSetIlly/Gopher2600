@@ -16,6 +16,8 @@
 package cartridge
 
 import (
+	"math/rand"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
@@ -38,7 +40,7 @@ func (cart ejected) ID() string {
 }
 
 // Reset implements the cartMapper interface.
-func (cart *ejected) Reset(randomise bool) {
+func (cart *ejected) Reset(_ *rand.Rand) {
 }
 
 // Read implements the cartMapper interface.

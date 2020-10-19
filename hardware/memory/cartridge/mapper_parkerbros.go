@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -85,7 +86,7 @@ func (cart parkerBros) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *parkerBros) Reset(randomise bool) {
+func (cart *parkerBros) Reset(randSrc *rand.Rand) {
 	cart.segment[0] = cart.NumBanks() - 4
 	cart.segment[1] = cart.NumBanks() - 3
 	cart.segment[2] = cart.NumBanks() - 2

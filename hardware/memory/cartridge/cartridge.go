@@ -60,10 +60,10 @@ func NewCartridge(prefs *preferences.Preferences) *Cartridge {
 
 // Reset volative contents of Cartridge.
 func (cart *Cartridge) Reset() {
-	if cart.prefs != nil {
-		cart.mapper.Reset(cart.prefs.RandomState.Get().(bool))
+	if cart.prefs != nil && cart.prefs.RandomState.Get().(bool) {
+		cart.mapper.Reset(cart.prefs.RandSrc)
 	} else {
-		cart.mapper.Reset(false)
+		cart.mapper.Reset(nil)
 	}
 }
 

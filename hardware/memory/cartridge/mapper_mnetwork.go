@@ -143,11 +143,11 @@ func (cart mnetwork) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *mnetwork) Reset(randomise bool) {
+func (cart *mnetwork) Reset(randSrc *rand.Rand) {
 	for b := range cart.ram256byte {
 		for i := range cart.ram256byte[b] {
-			if randomise {
-				cart.ram256byte[b][i] = uint8(rand.Intn(0xff))
+			if randSrc != nil {
+				cart.ram256byte[b][i] = uint8(randSrc.Intn(0xff))
 			} else {
 				cart.ram256byte[b][i] = 0
 			}
@@ -155,8 +155,8 @@ func (cart *mnetwork) Reset(randomise bool) {
 	}
 
 	for i := range cart.ram1k {
-		if randomise {
-			cart.ram1k[i] = uint8(rand.Intn(0xff))
+		if randSrc != nil {
+			cart.ram1k[i] = uint8(randSrc.Intn(0xff))
 		} else {
 			cart.ram1k[i] = 0
 		}

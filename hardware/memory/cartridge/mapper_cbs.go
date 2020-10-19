@@ -73,10 +73,10 @@ func (cart cbs) ID() string {
 }
 
 // Reset implements the cartMapper interface.
-func (cart *cbs) Reset(randomise bool) {
+func (cart *cbs) Reset(randSrc *rand.Rand) {
 	for i := range cart.ram {
-		if randomise {
-			cart.ram[i] = uint8(rand.Intn(0xff))
+		if randSrc != nil {
+			cart.ram[i] = uint8(randSrc.Intn(0xff))
 		} else {
 			cart.ram[i] = 0
 		}

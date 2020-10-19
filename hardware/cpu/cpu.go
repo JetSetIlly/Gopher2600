@@ -17,7 +17,6 @@ package cpu
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -118,12 +117,12 @@ func (mc *CPU) Reset() error {
 	mc.LastResult.Final = true
 
 	if mc.prefs != nil && mc.prefs.RandomState.Get().(bool) {
-		mc.PC.Load(uint16(rand.Intn(0xffff)))
-		mc.A.Load(uint8(rand.Intn(0xff)))
-		mc.X.Load(uint8(rand.Intn(0xff)))
-		mc.Y.Load(uint8(rand.Intn(0xff)))
-		mc.SP.Load(uint8(rand.Intn(0xff)))
-		mc.Status.FromValue(uint8(rand.Intn(0xff)))
+		mc.PC.Load(uint16(mc.prefs.RandSrc.Intn(0xffff)))
+		mc.A.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
+		mc.X.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
+		mc.Y.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
+		mc.SP.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
+		mc.Status.FromValue(uint8(mc.prefs.RandSrc.Intn(0xff)))
 	} else {
 		mc.PC.Load(0)
 		mc.A.Load(0)

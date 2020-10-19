@@ -43,8 +43,7 @@ type VCS struct {
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
-// used for all aspects of emulation: debugging sessions, and regular play
-// !!TODO: option for random state on VCS creation.
+// used for all aspects of emulation: debugging sessions, and regular play.
 func NewVCS(tv television.Television) (*VCS, error) {
 	var err error
 
@@ -90,9 +89,8 @@ func NewVCS(tv television.Television) (*VCS, error) {
 	return vcs, nil
 }
 
-// AttachCartridge loads a cartridge (given by filename) into the emulators
-// memory. While this function can be called directly it is advised that the
-// setup package be used in most circumstances.
+// AttachCartridge to this VCS. While this function can be called directly it
+// is advised that the setup package be used in most circumstances.
 func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	if cartload.Filename == "" {
 		vcs.Mem.Cart.Eject()
