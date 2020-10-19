@@ -244,10 +244,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []map
 			memtop := origin + uint16(len(bank.Data)) - 1
 
 			// reset CPU for each bank/origin
-			err := mc.Reset()
-			if err != nil {
-				return curated.Errorf("decode: %v", err)
-			}
+			mc.Reset()
 
 			// loop over entire address space for cartridge. even then bank
 			// sizes are smaller than the address space it makes things easier

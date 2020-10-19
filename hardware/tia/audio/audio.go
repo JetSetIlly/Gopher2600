@@ -16,7 +16,6 @@
 package audio
 
 import (
-	"math/rand"
 	"strings"
 )
 
@@ -39,11 +38,6 @@ type Audio struct {
 	// see the Mix() function to see how it is used
 	clock114 int
 
-	poly4bit [15]uint8
-	poly5bit [31]uint8
-	poly9bit [511]uint16
-	div31    [31]uint8
-
 	// From the "Stella Programmer's Guide":
 	//
 	// "There are two audio circuits for generating sound. They are identical but
@@ -59,42 +53,6 @@ func (au *Audio) String() string {
 	s.WriteString("  ch1: ")
 	s.WriteString(au.channel1.String())
 	return s.String()
-}
-
-// NewAudio is the preferred method of initialisation for the Video structure.
-func NewAudio() *Audio {
-	au := &Audio{}
-	au.channel0.au = au
-	au.channel1.au = au
-
-	// from TIASound.c:
-	//
-	// "Initialze the bit patterns for the polynomials.  The 4bit and 5bit patterns
-	// are the identical ones used in the tia chip.  Though the patterns could be
-	// packed with 8 bits per byte, using only a single bit per byte keeps the math
-	// simple, which is important for efficient processing."
-	au.poly4bit = [15]uint8{1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0}
-	au.poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
-		0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
-
-	// from TIASound.c (referring to 9 bit polynomial table):
-	//
-	// "Rather than have a table with 511 entries, I use a random number
-	// generator."
-	for i := 0; i < len(au.poly9bit); i++ {
-		au.poly9bit[i] = uint16(rand.Int() & 0x01)
-	}
-
-	// from TIASound.c:
-	//
-	// "I've treated the 'Div by 31' counter as another polynomial because of the
-	// way it operates.  It does not have a 50% duty cycle, but instead has a 13:18
-	// ratio (of course, 13+18 = 31).  This could also be implemented by using
-	// counters."
-	au.div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
-	return au
 }
 
 // Mix the two VCS audio channels, returning a boolean indicating whether the
@@ -120,7 +78,8 @@ func (au *Audio) Mix() (bool, uint8) {
 	// mix channels: deciding the combined output volume for the two channels
 	// is not as straight-forward and is it first seems. what we have here is
 	// the naive implementation, simply adding the two volume values together
-	// (we're not even taking an average).
+	// (we're not even taking an average). the shift of 2 increases the volume
+	// output without causing clipping.
 	//
 	// because the 2600 sound generator is an analogue circuit however, there
 	// are some subtleties that we have not accounted for. people have worked
@@ -130,5 +89,5 @@ func (au *Audio) Mix() (bool, uint8) {
 	// https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 	//
 	// !!TODO: simulate analogue sound generation
-	return true, au.channel0.actualVol + au.channel1.actualVol
+	return true, (au.channel0.actualVol + au.channel1.actualVol) << 2
 }

@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/symbols"
@@ -30,7 +30,7 @@ import (
 // memoryDebug is a front-end to the real VCS memory. it allows addressing by
 // symbol name and uses the addressInfo type for easier presentation.
 type memoryDebug struct {
-	mem     *memory.VCSMemory
+	vcs     *hardware.VCS
 	symbols *symbols.Symbols
 }
 
@@ -153,7 +153,7 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 		return nil, curated.Errorf(peekError, address)
 	}
 
-	area := dbgmem.mem.GetArea(ai.area)
+	area := dbgmem.vcs.Mem.GetArea(ai.area)
 
 	var err error
 	ai.data, err = area.Peek(ai.mappedAddress)
@@ -177,7 +177,7 @@ func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, e
 		return nil, curated.Errorf(pokeError, address)
 	}
 
-	area := dbgmem.mem.GetArea(ai.area)
+	area := dbgmem.vcs.Mem.GetArea(ai.area)
 
 	err := area.Poke(ai.mappedAddress, data)
 	if err != nil {

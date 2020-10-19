@@ -47,8 +47,8 @@ type TIA struct {
 	sig television.SignalAttributes
 
 	// for clarity we think of tia video and audio as sub-systems
-	Video *video.Video
-	Audio *audio.Audio
+	Video video.Video
+	Audio audio.Audio
 
 	// horizontal blank controls whether to send colour information to the
 	// television. it is turned on at the end of the visible screen and turned
@@ -78,7 +78,7 @@ type TIA struct {
 	// before wrapping around, a period of 57 counts at 1/4 CLK (57*4=228 CLK).
 	// The counter decodes shown below provide all the horizontal timing for
 	// the control lines used to construct a valid TV signal."
-	hsync *polycounter.Polycounter
+	hsync polycounter.Polycounter
 	pclk  phaseclock.PhaseClock
 
 	// some events are delayed
@@ -110,31 +110,19 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) (*TIA, error) {
-	tia := TIA{
-		tv:     tv,
-		mem:    mem,
-		input:  input,
-		Hblank: true}
-
-	var err error
-
-	tia.hsync, err = polycounter.New(6)
-	if err != nil {
-		return nil, err
+func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) *TIA {
+	tia := &TIA{
+		tv:      tv,
+		mem:     mem,
+		input:   input,
+		Hblank:  true,
+		HmoveCt: 0xff,
 	}
 
+	tia.Video = video.NewVideo(mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.HmoveLatch)
 	tia.pclk.Reset()
-	tia.HmoveCt = 0xff
 
-	tia.Video, err = video.NewVideo(mem, &tia.pclk, tia.hsync, tv, &tia.Hblank, &tia.HmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-
-	tia.Audio = audio.NewAudio()
-
-	return &tia, nil
+	return tia
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.

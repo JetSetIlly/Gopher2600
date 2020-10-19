@@ -33,48 +33,35 @@ import (
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
 	Prefs *preferences.Preferences
+	TV    television.Television
 
+	// references to the different components of the VCS. do not take copies of
+	// these pointer values because the rewind feature will change them.
 	CPU  *cpu.CPU
-	Mem  *memory.VCSMemory
+	Mem  *memory.Memory
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
-
-	TV television.Television
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
 func NewVCS(tv television.Television) (*VCS, error) {
-	var err error
-
-	vcs := &VCS{TV: tv}
-
 	// set up preferences
-	vcs.Prefs, err = preferences.NewPreferences()
+	prefs, err := preferences.NewPreferences()
 	if err != nil {
 		return nil, err
 	}
 
 	// set up hardware
-	vcs.Mem, err = memory.NewVCSMemory(vcs.Prefs)
-	if err != nil {
-		return nil, err
+	vcs := &VCS{
+		Prefs: prefs,
+		TV:    tv,
 	}
 
-	vcs.CPU, err = cpu.NewCPU(vcs.Prefs, vcs.Mem)
-	if err != nil {
-		return nil, err
-	}
-
-	vcs.RIOT, err = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
-	if err != nil {
-		return nil, err
-	}
-
-	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
-	if err != nil {
-		return nil, err
-	}
+	vcs.Mem = memory.NewMemory(vcs.Prefs)
+	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)
+	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
 
 	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)
 	if err != nil {
@@ -117,11 +104,11 @@ func (vcs *VCS) Reset() error {
 	}
 
 	vcs.Mem.Reset()
+	vcs.CPU.Reset()
 
-	err = vcs.CPU.Reset()
-	if err != nil {
-		return err
-	}
+	// reset of ports must happen after reset of memory because ports will
+	// update memory to the current state of the peripherals
+	vcs.RIOT.Ports.Reset()
 
 	// reset PC using reset address in cartridge memory
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
@@ -130,10 +117,6 @@ func (vcs *VCS) Reset() error {
 			return err
 		}
 	}
-
-	// reset of ports must happen after reset of memory because ports will
-	// update memory to the current state of the peripherals
-	vcs.RIOT.Ports.Reset()
 
 	return nil
 }

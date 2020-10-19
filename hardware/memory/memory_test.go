@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
-func readData(t *testing.T, mem *memory.VCSMemory, address uint16, expectedData uint8) {
+func readData(t *testing.T, mem *memory.Memory, address uint16, expectedData uint8) {
 	t.Helper()
 	d, err := mem.Read(address)
 	if err != nil {
@@ -32,7 +32,7 @@ func readData(t *testing.T, mem *memory.VCSMemory, address uint16, expectedData 
 	}
 }
 
-func readDataZeroPage(t *testing.T, mem *memory.VCSMemory, address uint8, expectedData uint8) {
+func readDataZeroPage(t *testing.T, mem *memory.Memory, address uint8, expectedData uint8) {
 	t.Helper()
 	d, err := mem.ReadZeroPage(address)
 	if err != nil {
@@ -44,10 +44,7 @@ func readDataZeroPage(t *testing.T, mem *memory.VCSMemory, address uint8, expect
 }
 
 func TestDataMask(t *testing.T) {
-	mem, err := memory.NewVCSMemory(nil)
-	if err != nil {
-		t.Errorf("unexpected error (%s)", err)
-	}
+	mem := memory.NewMemory(nil)
 
 	// no data in register
 	readDataZeroPage(t, mem, 0x00, 0x00)

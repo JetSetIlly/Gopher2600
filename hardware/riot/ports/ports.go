@@ -79,7 +79,7 @@ type Ports struct {
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
-func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Ports, error) {
+func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	p := &Ports{
 		riot:         riotMem,
 		tia:          tiaMem,
@@ -87,13 +87,8 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) (*Ports, error) {
 		swacnt:       0x00,
 		latch:        false,
 	}
-
 	p.Panel = NewPanel(p)
-	if p.Panel == nil {
-		return nil, fmt.Errorf("can't create control panel")
-	}
-
-	return p, nil
+	return p
 }
 
 // AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port.

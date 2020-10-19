@@ -27,8 +27,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
-// VCSMemory is the monolithic representation of the memory in 2600.
-type VCSMemory struct {
+// Memory is the monolithic representation of the memory in 2600.
+type Memory struct {
 	bus.DebugBus
 	bus.CPUBus
 
@@ -64,24 +64,21 @@ type VCSMemory struct {
 	accessCount int
 }
 
-// NewVCSMemory is the preferred method of initialisation for VCSMemory.
-func NewVCSMemory(prefs *preferences.Preferences) (*VCSMemory, error) {
-	mem := &VCSMemory{
+// NewMemory is the preferred method of initialisation for Memory.
+func NewMemory(prefs *preferences.Preferences) *Memory {
+	mem := &Memory{
 		prefs: prefs,
+		RIOT:  vcs.NewRIOT(prefs),
+		TIA:   vcs.NewTIA(prefs),
+		RAM:   vcs.NewRAM(prefs),
+		Cart:  cartridge.NewCartridge(prefs),
 	}
-
-	mem.RIOT = vcs.NewRIOT(prefs)
-	mem.TIA = vcs.NewTIA(prefs)
-	mem.RAM = vcs.NewRAM(prefs)
-	mem.Cart = cartridge.NewCartridge(prefs)
-
 	mem.Reset()
-
-	return mem, nil
+	return mem
 }
 
 // Reset contents of memory.
-func (mem *VCSMemory) Reset() {
+func (mem *Memory) Reset() {
 	mem.RIOT.Reset()
 	mem.TIA.Reset()
 	mem.RAM.Reset()
@@ -89,7 +86,7 @@ func (mem *VCSMemory) Reset() {
 }
 
 // GetArea returns the actual memory of the specified area type.
-func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebugBus {
+func (mem *Memory) GetArea(area memorymap.Area) bus.DebugBus {
 	switch area {
 	case memorymap.TIA:
 		return mem.TIA
@@ -105,8 +102,8 @@ func (mem *VCSMemory) GetArea(area memorymap.Area) bus.DebugBus {
 }
 
 // read maps an address to the normalised for all memory areas.
-func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
-	// optimisation: called a lot. pointer to VCSMemory to prevent duffcopy
+func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
+	// optimisation: called a lot. pointer to Memory to prevent duffcopy
 
 	ma, ar := memorymap.MapAddress(address, true)
 	area := mem.GetArea(ar)
@@ -170,19 +167,19 @@ func (mem *VCSMemory) read(address uint16, zeroPage bool) (uint8, error) {
 
 // Read is an implementation of CPUBus. Address will be normalised and
 // processed by the correct memory area.
-func (mem *VCSMemory) Read(address uint16) (uint8, error) {
+func (mem *Memory) Read(address uint16) (uint8, error) {
 	return mem.read(address, false)
 }
 
 // ReadZeroPage is an implementation of CPUBus. Address will be normalised and
 // processed by the correct memory areas.
-func (mem *VCSMemory) ReadZeroPage(address uint8) (uint8, error) {
+func (mem *Memory) ReadZeroPage(address uint8) (uint8, error) {
 	return mem.read(uint16(address), true)
 }
 
 // Write is an implementation of CPUBus Address will be normalised and
 // processed by the correct memory areas.
-func (mem *VCSMemory) Write(address uint16, data uint8) error {
+func (mem *Memory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
 
@@ -202,7 +199,7 @@ func (mem *VCSMemory) Write(address uint16, data uint8) error {
 }
 
 // Peek implements the DebugBus interface.
-func (mem *VCSMemory) Peek(address uint16) (uint8, error) {
+func (mem *Memory) Peek(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.Peek(ma)
@@ -211,7 +208,7 @@ func (mem *VCSMemory) Peek(address uint16) (uint8, error) {
 }
 
 // Poke implements the DebugBus interface.
-func (mem *VCSMemory) Poke(address uint16, data uint8) error {
+func (mem *Memory) Poke(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
 		return area.(bus.DebugBus).Poke(ma, data)

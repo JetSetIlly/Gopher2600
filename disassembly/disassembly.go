@@ -130,14 +130,11 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	mem := &disasmMemory{}
 
 	// create a new NoFlowControl CPU to help disassemble memory
-	mc, err := cpu.NewCPU(nil, mem)
-	if err != nil {
-		return curated.Errorf("disassembly: %v", err)
-	}
+	mc := cpu.NewCPU(nil, mem)
 	mc.NoFlowControl = true
 
 	// disassemble cartridge binary
-	err = dsm.disassemble(mc, mem)
+	err := dsm.disassemble(mc, mem)
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}

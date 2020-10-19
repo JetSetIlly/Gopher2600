@@ -97,7 +97,7 @@ func step(t *testing.T, mc *cpu.CPU) {
 func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
@@ -136,7 +136,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// LDA immediate; ADC immediate
 	origin = mem.putInstructions(origin, 0xa9, 1, 0x69, 10)
@@ -154,7 +154,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// ORA immediate; EOR immediate; AND immediate
 	origin = mem.putInstructions(origin, 0x09, 0xff, 0x49, 0xf0, 0x29, 0x01)
@@ -197,7 +197,7 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// LDX immediate; INX; DEX
 	origin = mem.putInstructions(origin, 0xa2, 5, 0xe8, 0xca)
@@ -249,7 +249,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	mem.putInstructions(0x0100, 123, 43)
 	mem.putInstructions(0x01a2, 47)
@@ -324,7 +324,7 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	mem.putInstructions(0xee00, 0x01, 0x02, 0x03)
 
@@ -341,7 +341,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// LDA immediate; STA absolute
 	origin = mem.putInstructions(origin, 0xa9, 0x54, 0x8d, 0x00, 0x01)
@@ -375,32 +375,32 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0x10, 0x10)
 	step(t, mc) // BPL $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0x50, 0x10)
 	step(t, mc) // BVC $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0x90, 0x10)
 	step(t, mc) // BCC $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0x38, 0xb0, 0x10)
 	step(t, mc) // SEC
 	step(t, mc) // BCS $10
@@ -408,7 +408,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0xe8, 0xd0, 0x10)
 	step(t, mc) // INX
 	step(t, mc) // BNE $10
@@ -416,7 +416,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	_ = mem.putInstructions(origin, 0xca, 0x30, 0x10)
 	step(t, mc) // DEX
 	step(t, mc) // BMI $10
@@ -429,7 +429,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 	// fudging overflow test
 	mc.Status.Overflow = true
 	_ = mem.putInstructions(origin, 0x70, 0x10)
@@ -440,10 +440,10 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	origin = 0x20
 	err := mc.LoadPC(0x20)
@@ -467,7 +467,7 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// BNE backwards - with PC wrap (causing a page fault)
 	origin = 0x20
@@ -494,7 +494,7 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// JMP absolute
 	_ = mem.putInstructions(origin, 0x4c, 0x00, 0x01)
@@ -504,7 +504,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// JMP indirect
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	mem.putInstructions(0x0050, 0x49, 0x01)
 	_ = mem.putInstructions(origin, 0x6c, 0x50, 0x00)
@@ -514,7 +514,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// JMP indirect (bug)
 	origin = 0
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	mem.putInstructions(0x01FF, 0x03)
 	mem.putInstructions(0x0100, 0x00)
@@ -526,7 +526,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
@@ -571,7 +571,7 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	// JSR absolute
 	_ = mem.putInstructions(origin, 0x20, 0x00, 0x01)
@@ -592,7 +592,7 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	_ = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
 	step(t, mc) // SED
@@ -605,7 +605,7 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	var origin uint16
 	mem.Clear()
-	_ = mc.Reset()
+	mc.Reset()
 
 	_ = mem.putInstructions(origin, 0x00, 0x00, 0x00)
 	step(t, mc) // SED
@@ -613,10 +613,7 @@ func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 func TestCPU(t *testing.T) {
 	mem := newMockMem()
-	mc, err := cpu.NewCPU(nil, mem)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	mc := cpu.NewCPU(nil, mem)
 
 	testStatusInstructions(t, mc, mem)
 	testRegsiterArithmetic(t, mc, mem)

@@ -74,7 +74,7 @@ type playerSprite struct {
 	// position of the sprite as a polycounter value - the basic principle
 	// behind VCS sprites is to begin drawing the sprite when position
 	// circulates to zero
-	position *polycounter.Polycounter
+	position polycounter.Polycounter
 
 	// "Beside each counter there is a two-phase clock generator..."
 	pclk phaseclock.PhaseClock
@@ -122,18 +122,6 @@ type playerSprite struct {
 	Nusiz         uint8 // the raw value from the NUSIZ register
 	SizeAndCopies uint8 // just the three left-most bits
 
-	// we need access to the other player sprite. when we write new gfxData, it
-	// triggers the other player's gfxDataPrev value to equal the existing
-	// gfxData of this player.
-	//
-	// this wasn't clear to me originally but was crystal clear after reading
-	// Erik Mooney's post, "48-pixel highres routine explained!"
-	otherPlayer *playerSprite
-
-	// reference to ball sprite. only required by player1 sprite. see
-	// setGfxData() function below
-	ball *ballSprite
-
 	// position reset and enclockifier start events are both delayed by a small
 	// number of cycles
 	futureReset delay.Event
@@ -156,21 +144,14 @@ type playerSprite struct {
 	ScanCounter scanCounter
 }
 
-func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*playerSprite, error) {
-	ps := playerSprite{
+func newPlayerSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *playerSprite {
+	ps := &playerSprite{
 		label:      label,
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 	}
 	ps.ScanCounter.Pixel = -1
-
-	var err error
-
-	ps.position, err = polycounter.New(6)
-	if err != nil {
-		return nil, err
-	}
 
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
@@ -179,7 +160,7 @@ func newPlayerSprite(label string, tv television.Television, hblank, hmoveLatch 
 	// initialise gfxData pointer
 	ps.gfxData = &ps.GfxDataNew
 
-	return &ps, nil
+	return ps
 }
 
 // Label returns the label for the sprite.
@@ -585,21 +566,22 @@ func (ps *playerSprite) pixel() (active bool, color uint8, collision bool) {
 }
 
 func (ps *playerSprite) setGfxData(data uint8) {
-	// from TIA_HW_Notes.txt:
-	//
-	// "Writes to GRP0 always modify the "new" P0 value, and the contents of
-	// the "new" P0 are copied into "old" P0 whenever GRP1 is written.
-	// (Likewise, writes to GRP1 always modify the "new" P1 value, and the
-	// contents of the "new" P1 are copied into "old" P1 whenever GRP0 is
-	// written). It is safe to modify GRPn at any time, with immediate effect."
-	ps.otherPlayer.GfxDataOld = ps.otherPlayer.GfxDataNew
 	ps.GfxDataNew = data
+}
 
-	// if player sprite is connected to the ball sprite then update the delayed
-	// output for the ball. only used by player1 sprite.
-	if ps.ball != nil {
-		ps.ball.setEnableDelay()
-	}
+// from TIA_HW_Notes.txt:
+//
+// "Writes to GRP0 always modify the "new" P0 value, and the contents of
+// the "new" P0 are copied into "old" P0 whenever GRP1 is written.
+// (Likewise, writes to GRP1 always modify the "new" P1 value, and the
+// contents of the "new" P1 are copied into "old" P1 whenever GRP0 is
+// written). It is safe to modify GRPn at any time, with immediate effect."
+//
+// the significance of this wasn't clear to me originally but was
+// crystal clear after reading Erik Mooney's post, "48-pixel highres
+// routine explained".
+func (ps *playerSprite) setOldGfxData() {
+	ps.GfxDataOld = ps.GfxDataNew
 }
 
 // SetVerticalDelay bit also alters which gfx registers is being used.
@@ -740,4 +722,30 @@ func (ps *playerSprite) setHmoveValue(v delay.Value) {
 
 func (ps *playerSprite) clearHmoveValue() {
 	ps.Hmove = 0x08
+}
+
+// reset missile to player position. from TIA_HW_Notes.txt:
+//
+// "The Missile-to-player reset is implemented by resetting the M0 counter
+// when the P0 graphics scan counter is at %100 (in the middle of drawing
+// the player graphics) AND the main copy of P0 is being drawn (ie the
+// missile counter will not be reset when a subsequent copy is drawn, if
+// any). This second condition is generated from a latch outputting [FSTOB]
+// that is reset when the P0 counter wraps around, and set when the START
+// signal is decoded for a 'close', 'medium' or 'far' copy of P0."
+//
+// note: the FSTOB output is the primary flag in the parent player's
+// scancounter.
+func (ps *playerSprite) triggerMissileReset() bool {
+	if ps.ScanCounter.Cpy != 0 {
+		return false
+	}
+
+	switch *ps.ScanCounter.sizeAndCopies {
+	case 0x05:
+		return ps.ScanCounter.Pixel == 3 && ps.ScanCounter.count == 0
+	case 0x07:
+		return ps.ScanCounter.Pixel == 5 && ps.ScanCounter.count == 3
+	}
+	return ps.ScanCounter.Pixel == 2
 }

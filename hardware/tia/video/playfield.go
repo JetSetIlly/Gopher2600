@@ -93,7 +93,7 @@ type playfield struct {
 }
 
 func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *playfield {
-	pf := playfield{
+	pf := &playfield{
 		pclk:          pclk,
 		hsync:         hsync,
 		RegularData:   make([]bool, RegionWidth),
@@ -101,7 +101,33 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 	}
 	pf.LeftData = &pf.RegularData
 	pf.RightData = &pf.RegularData
-	return &pf
+	return pf
+}
+
+func (pf *playfield) Copy() playfield {
+	n := *pf
+
+	n.RegularData = make([]bool, len(pf.RegularData))
+	n.ReflectedData = make([]bool, len(pf.ReflectedData))
+
+	copy(n.RegularData, pf.RegularData)
+	copy(n.ReflectedData, pf.ReflectedData)
+
+	if pf.Data == &pf.ReflectedData {
+		n.Data = &n.ReflectedData
+	} else {
+		n.Data = &n.RegularData
+	}
+
+	n.LeftData = &n.RegularData
+
+	if pf.RightData == &pf.ReflectedData {
+		n.RightData = &n.ReflectedData
+	} else {
+		n.RightData = &n.RegularData
+	}
+
+	return n
 }
 
 func (pf playfield) Label() string {

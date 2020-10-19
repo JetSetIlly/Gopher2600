@@ -73,18 +73,6 @@ func (sc scanCounter) IsLatching() bool {
 	return sc.latch > 0
 }
 
-// isMissileMiddle is used by missile sprite as part of the reset-to-player
-// implementation.
-func (sc scanCounter) isMissileMiddle() bool {
-	switch *sc.sizeAndCopies {
-	case 0x05:
-		return sc.Pixel == 3 && sc.count == 0
-	case 0x07:
-		return sc.Pixel == 5 && sc.count == 3
-	}
-	return sc.Pixel == 2
-}
-
 func (sc *scanCounter) tick() {
 	// handle the additional latching
 	if sc.latch > 0 {

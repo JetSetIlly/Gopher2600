@@ -98,56 +98,21 @@ type Video struct {
 //
 // The sprites meanwhile require access to the television. This is for
 // generating information about the sprites reset position - a debugging only
-// requirement but of minimal performance related consequeunce.
+// requirement but of no performance related consequeunce.
 //
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus,
-	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
-	tv television.Television, hblank, hmoveLatch *bool) (*Video, error) {
-	vd := &Video{
+func NewVideo(mem bus.ChipBus, tv television.Television, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) Video {
+	return Video{
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
+		Player0:    newPlayerSprite("Player 0", tv, hblank, hmoveLatch),
+		Player1:    newPlayerSprite("Player 1", tv, hblank, hmoveLatch),
+		Missile0:   newMissileSprite("Missile 0", tv, hblank, hmoveLatch),
+		Missile1:   newMissileSprite("Missile 1", tv, hblank, hmoveLatch),
+		Ball:       newBallSprite("Ball", tv, hblank, hmoveLatch),
 	}
-
-	var err error
-
-	// sprite objects
-	vd.Player0, err = newPlayerSprite("Player 0", tv, hblank, hmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-	vd.Player1, err = newPlayerSprite("Player 1", tv, hblank, hmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-	vd.Missile0, err = newMissileSprite("Missile 0", tv, hblank, hmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-	vd.Missile1, err = newMissileSprite("Missile 1", tv, hblank, hmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-	vd.Ball, err = newBallSprite("Ball", tv, hblank, hmoveLatch)
-	if err != nil {
-		return nil, err
-	}
-
-	// connect player 0 and player 1 to each other
-	vd.Player0.otherPlayer = vd.Player1
-	vd.Player1.otherPlayer = vd.Player0
-
-	// connect ball to player 1 only - ball sprite's delayed enable set when
-	// gfx register of player 1 is written
-	vd.Player1.ball = vd.Ball
-
-	// connect missile sprite to its parent player sprite
-	vd.Missile0.parentPlayer = vd.Player0
-	vd.Missile1.parentPlayer = vd.Player1
-
-	return vd, nil
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
@@ -166,8 +131,8 @@ func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 	vd.writing.Tick()
 	p0 := vd.Player0.tick(visible, hmove, hmoveCt)
 	p1 := vd.Player1.tick(visible, hmove, hmoveCt)
-	m0 := vd.Missile0.tick(visible, hmove, hmoveCt)
-	m1 := vd.Missile1.tick(visible, hmove, hmoveCt)
+	m0 := vd.Missile0.tick(visible, hmove, hmoveCt, vd.Player0.triggerMissileReset())
+	m1 := vd.Missile1.tick(visible, hmove, hmoveCt, vd.Player1.triggerMissileReset())
 	bl := vd.Ball.tick(visible, hmove, hmoveCt)
 	vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
 }
@@ -465,8 +430,13 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 	switch data.Name {
 	case "GRP0":
 		vd.Player0.setGfxData(data.Value)
+		vd.Player1.setOldGfxData()
+
 	case "GRP1":
 		vd.Player1.setGfxData(data.Value)
+		vd.Player0.setOldGfxData()
+		vd.Ball.setEnableDelay()
+
 	case "ENAM0":
 		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
 	case "ENAM1":

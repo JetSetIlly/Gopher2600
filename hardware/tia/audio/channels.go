@@ -21,8 +21,6 @@ import (
 )
 
 type channel struct {
-	au *Audio
-
 	// each channel has three registers that control its output. from the
 	// "Stella Programmer's Guide":
 	//
@@ -100,25 +98,25 @@ func (ch *channel) tick() {
 
 	// the 5-bit polynomial clock toggles volume on change of bit. note the
 	// current bit so we can compare
-	var prevBit5 = ch.au.poly5bit[ch.poly5ct]
+	var prevBit5 = poly5bit[ch.poly5ct]
 
 	// advance 5-bit polynomial clock
 	ch.poly5ct++
-	if ch.poly5ct >= len(ch.au.poly5bit) {
+	if ch.poly5ct >= len(poly5bit) {
 		ch.poly5ct = 0
 	}
 
 	// check for clock tick
 	if (ch.regControl&0x02 == 0x0) ||
-		((ch.regControl&0x01 == 0x0) && ch.au.div31[ch.poly5ct] != 0) ||
-		((ch.regControl&0x01 == 0x1) && ch.au.poly5bit[ch.poly5ct] != 0) ||
-		((ch.regControl&0x0f == 0xf) && ch.au.poly5bit[ch.poly5ct] != prevBit5) {
+		((ch.regControl&0x01 == 0x0) && div31[ch.poly5ct] != 0) ||
+		((ch.regControl&0x01 == 0x1) && poly5bit[ch.poly5ct] != 0) ||
+		((ch.regControl&0x0f == 0xf) && poly5bit[ch.poly5ct] != prevBit5) {
 		if ch.regControl&0x04 == 0x04 {
 			// use pure clock
 
 			if ch.regControl&0x0f == 0x0f {
 				// use poly5/div3
-				if ch.au.poly5bit[ch.poly5ct] != prevBit5 {
+				if poly5bit[ch.poly5ct] != prevBit5 {
 					ch.div3ct++
 					if ch.div3ct == 3 {
 						ch.div3ct = 0
@@ -145,12 +143,12 @@ func (ch *channel) tick() {
 			if ch.regControl == 0x08 {
 				// use poly9
 				ch.poly9ct++
-				if ch.poly9ct >= len(ch.au.poly9bit) {
+				if ch.poly9ct >= len(poly9bit) {
 					ch.poly9ct = 0
 				}
 
 				// toggle volume
-				if ch.au.poly9bit[ch.poly9ct] != 0 {
+				if poly9bit[ch.poly9ct] != 0 {
 					ch.actualVol = ch.regVolume
 				} else {
 					ch.actualVol = 0
@@ -165,7 +163,7 @@ func (ch *channel) tick() {
 				// use poly5. we've already bumped poly5 counter forward
 
 				// toggle volume
-				if ch.au.poly5bit[ch.poly5ct] == 1 {
+				if poly5bit[ch.poly5ct] == 1 {
 					ch.actualVol = ch.regVolume
 				} else {
 					ch.actualVol = 0
@@ -174,11 +172,11 @@ func (ch *channel) tick() {
 		} else {
 			// use poly 4
 			ch.poly4ct++
-			if ch.poly4ct >= len(ch.au.poly4bit) {
+			if ch.poly4ct >= len(poly4bit) {
 				ch.poly4ct = 0
 			}
 
-			if ch.au.poly4bit[ch.poly4ct] == 1 {
+			if poly4bit[ch.poly4ct] == 1 {
 				ch.actualVol = ch.regVolume
 			} else {
 				ch.actualVol = 0

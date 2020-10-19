@@ -175,7 +175,7 @@ func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, 
 	// is dangerous if we don't care to reset the symtable when disasm changes.
 	// As it is, we only change the disasm poointer in the loadCartridge()
 	// function.
-	dbg.dbgmem = &memoryDebug{mem: dbg.VCS.Mem, symbols: dbg.Disasm.Symbols}
+	dbg.dbgmem = &memoryDebug{vcs: dbg.VCS, symbols: dbg.Disasm.Symbols}
 
 	// set up frame limiter
 	dbg.lmtr = newLimiter(tv, func() error {

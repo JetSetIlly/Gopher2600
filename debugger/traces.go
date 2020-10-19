@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
 type tracer struct {
@@ -34,9 +33,7 @@ func (t tracer) String() string {
 
 // the list of currently defined traces in the system.
 type traces struct {
-	dbg    *Debugger
-	vcsmem *memory.VCSMemory
-
+	dbg                 *Debugger
 	traces              []tracer
 	lastAddressAccessed uint16
 }
@@ -44,8 +41,7 @@ type traces struct {
 // newTraces is the preferred method of initialisation for the traces type.
 func newTraces(dbg *Debugger) *traces {
 	trc := &traces{
-		dbg:    dbg,
-		vcsmem: dbg.VCS.Mem,
+		dbg: dbg,
 	}
 	trc.clear()
 	return trc
@@ -83,16 +79,16 @@ func (trc *traces) check() string {
 
 	for i := range trc.traces {
 		// continue loop if we're not matching last address accessed
-		if trc.traces[i].ai.address != trc.vcsmem.LastAccessAddress {
+		if trc.traces[i].ai.address != trc.dbg.VCS.Mem.LastAccessAddress {
 			continue
 		}
 
 		// continue if this is a repeat of the last address accessed
-		if trc.lastAddressAccessed == trc.vcsmem.LastAccessAddress {
+		if trc.lastAddressAccessed == trc.dbg.VCS.Mem.LastAccessAddress {
 			continue
 		}
 
-		if trc.vcsmem.LastAccessWrite {
+		if trc.dbg.VCS.Mem.LastAccessWrite {
 			s.WriteString("write ")
 		} else {
 			s.WriteString("read ")
@@ -103,7 +99,7 @@ func (trc *traces) check() string {
 	}
 
 	// note what the last address accessed was
-	trc.lastAddressAccessed = trc.vcsmem.LastAccessAddress
+	trc.lastAddressAccessed = trc.dbg.VCS.Mem.LastAccessAddress
 
 	return s.String()
 }

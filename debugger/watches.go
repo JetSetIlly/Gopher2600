@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/hardware/memory"
 )
 
 type watcher struct {
@@ -53,9 +52,7 @@ func (w watcher) String() string {
 
 // the list of currently defined watches in the system.
 type watches struct {
-	dbg    *Debugger
-	vcsmem *memory.VCSMemory
-
+	dbg                 *Debugger
 	watches             []watcher
 	lastAddressAccessed uint16
 }
@@ -63,8 +60,7 @@ type watches struct {
 // newWatches is the preferred method of initialisation for the watches type.
 func newWatches(dbg *Debugger) *watches {
 	wtc := &watches{
-		dbg:    dbg,
-		vcsmem: dbg.VCS.Mem,
+		dbg: dbg,
 	}
 	wtc.clear()
 	return wtc
@@ -104,45 +100,45 @@ func (wtc *watches) check(previousResult string) string {
 	for i := range wtc.watches {
 		// continue loop if we're not matching last address accessed
 		if wtc.watches[i].mirrors {
-			if wtc.watches[i].ai.mappedAddress != wtc.vcsmem.LastAccessAddressMapped {
+			if wtc.watches[i].ai.mappedAddress != wtc.dbg.VCS.Mem.LastAccessAddressMapped {
 				continue
 			}
 		} else {
-			if wtc.watches[i].ai.address != wtc.vcsmem.LastAccessAddress {
+			if wtc.watches[i].ai.address != wtc.dbg.VCS.Mem.LastAccessAddress {
 				continue
 			}
 		}
 
 		// continue if this is a repeat of the last address accessed
-		if wtc.lastAddressAccessed == wtc.vcsmem.LastAccessAddress {
+		if wtc.lastAddressAccessed == wtc.dbg.VCS.Mem.LastAccessAddress {
 			continue
 		}
 
 		// match watch event to the type of memory access
-		if (!wtc.watches[i].ai.read && wtc.vcsmem.LastAccessWrite) ||
-			(wtc.watches[i].ai.read && !wtc.vcsmem.LastAccessWrite) {
+		if (!wtc.watches[i].ai.read && wtc.dbg.VCS.Mem.LastAccessWrite) ||
+			(wtc.watches[i].ai.read && !wtc.dbg.VCS.Mem.LastAccessWrite) {
 			// match watched-for value to the value that was read/written to the
 			// watched address
 			if !wtc.watches[i].matchValue {
 				// prepare string according to event
-				if wtc.vcsmem.LastAccessWrite {
+				if wtc.dbg.VCS.Mem.LastAccessWrite {
 					checkString.WriteString(fmt.Sprintf("watch (write) at %s\n", wtc.watches[i]))
 				} else {
 					checkString.WriteString(fmt.Sprintf("watch (read) at %s\n", wtc.watches[i]))
 				}
-			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.vcsmem.LastAccessValue) {
+			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.dbg.VCS.Mem.LastAccessValue) {
 				// prepare string according to event
-				if wtc.vcsmem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
+				if wtc.dbg.VCS.Mem.LastAccessWrite {
+					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.dbg.VCS.Mem.LastAccessValue))
 				} else {
-					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.vcsmem.LastAccessValue))
+					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.dbg.VCS.Mem.LastAccessValue))
 				}
 			}
 		}
 	}
 
 	// note what the last address accessed was
-	wtc.lastAddressAccessed = wtc.vcsmem.LastAccessAddress
+	wtc.lastAddressAccessed = wtc.dbg.VCS.Mem.LastAccessAddress
 
 	return checkString.String()
 }

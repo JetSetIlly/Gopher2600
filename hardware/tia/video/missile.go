@@ -46,15 +46,13 @@ var MissileSizes = []string{
 }
 
 type missileSprite struct {
-	// see player sprite for detailed commentary on struct attributes
-
 	tv         television.Television
 	hblank     *bool
 	hmoveLatch *bool
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position    *polycounter.Polycounter
+	position    polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	MoreHMOVE   bool
 	Hmove       uint8
@@ -81,10 +79,6 @@ type missileSprite struct {
 	Size   uint8
 	Copies uint8
 
-	// the player sprite which the missile is "connected" to. used in
-	// conjunction with the ResetToPlayer field
-	parentPlayer *playerSprite
-
 	// position reset and enclockifier start events are both delayed by a small
 	// number of cycles
 	futureReset delay.Event
@@ -95,25 +89,18 @@ type missileSprite struct {
 	Enclockifier enclockifier
 }
 
-func newMissileSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*missileSprite, error) {
-	ms := missileSprite{
+func newMissileSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *missileSprite {
+	ms := &missileSprite{
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 		label:      label,
 	}
 
-	var err error
-
-	ms.position, err = polycounter.New(6)
-	if err != nil {
-		return nil, err
-	}
-
 	ms.Enclockifier.size = &ms.Size
 	ms.position.Reset()
 
-	return &ms, nil
+	return ms
 }
 
 // Label returns the label for the sprite.
@@ -221,7 +208,7 @@ func (ms *missileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
+func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
@@ -234,25 +221,13 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 		return false
 	}
 
-	// reset missile to player position. from TIA_HW_Notes.txt:
-	//
-	// "The Missile-to-player reset is implemented by resetting the M0 counter
-	// when the P0 graphics scan counter is at %100 (in the middle of drawing
-	// the player graphics) AND the main copy of P0 is being drawn (ie the
-	// missile counter will not be reset when a subsequent copy is drawn, if
-	// any). This second condition is generated from a latch outputting [FSTOB]
-	// that is reset when the P0 counter wraps around, and set when the START
-	// signal is decoded for a 'close', 'medium' or 'far' copy of P0."
-	//
-	// note: the FSTOB output is the primary flag in the parent player's
-	// scancounter
-	//
-	// placement note: we don't do the missile-to-player reset unless we're
-	// hmoving or ticking. if we place this block before the "early return if
-	// nothing to do" block above, then it will produce incorrect results. we
-	// can see this (occasionally) in Supercharger Frogger - the top row of
-	// trucks will sometimes extend by a pixel as they drive off screen.
-	if ms.ResetToPlayer && ms.parentPlayer.ScanCounter.Cpy == 0 && ms.parentPlayer.ScanCounter.isMissileMiddle() {
+	// reset-to-player placement note: we don't do the missile-to-player reset
+	// unless we're hmoving or ticking. if we place this block before the
+	// "early return if nothing to do" block above, then it will produce
+	// incorrect results. we can see this (occasionally) in Supercharger
+	// Frogger - the top row of trucks will sometimes extend by a pixel as they
+	// drive off screen.
+	if ms.ResetToPlayer && resetToPlayer {
 		ms.position.Reset()
 		ms.pclk.Reset()
 

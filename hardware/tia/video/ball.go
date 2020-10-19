@@ -50,7 +50,7 @@ type ballSprite struct {
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position    *polycounter.Polycounter
+	position    polycounter.Polycounter
 	pclk        phaseclock.PhaseClock
 	MoreHMOVE   bool
 	Hmove       uint8
@@ -92,25 +92,18 @@ type ballSprite struct {
 	Enclockifier enclockifier
 }
 
-func newBallSprite(label string, tv television.Television, hblank, hmoveLatch *bool) (*ballSprite, error) {
-	bs := ballSprite{
+func newBallSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *ballSprite {
+	bs := &ballSprite{
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
 		label:      label,
 	}
 
-	var err error
-
-	bs.position, err = polycounter.New(6)
-	if err != nil {
-		return nil, err
-	}
-
 	bs.Enclockifier.size = &bs.Size
 	bs.position.Reset()
 
-	return &bs, nil
+	return bs
 }
 
 // Label returns the label for the sprite.
@@ -388,8 +381,7 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 	return px, bs.Color, px || (*bs.hblank && bs.Enabled && bs.futureStart.AboutToEnd())
 }
 
-// the delayed enable bit is copied from the first when the gfx register for
-// player 1 is updated with playerSprite.setGfxData().
+// the delayed enable bit is set when the gfx register for player 1 is updated.
 func (bs *ballSprite) setEnableDelay() {
 	bs.EnabledDelay = bs.Enabled
 }

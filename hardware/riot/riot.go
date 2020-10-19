@@ -32,20 +32,12 @@ type RIOT struct {
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT type.
-func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) (*RIOT, error) {
-	riot := &RIOT{
-		mem: mem,
+func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
+	return &RIOT{
+		mem:   mem,
+		Timer: timer.NewTimer(mem),
+		Ports: ports.NewPorts(mem, tiaMem),
 	}
-
-	riot.Timer = timer.NewTimer(mem)
-
-	var err error
-	riot.Ports, err = ports.NewPorts(mem, tiaMem)
-	if err != nil {
-		return nil, err
-	}
-
-	return riot, nil
 }
 
 func (riot RIOT) String() string {

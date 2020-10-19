@@ -78,30 +78,20 @@ type CPU struct {
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) (*CPU, error) {
-	mc := &CPU{
-		prefs: prefs,
-		mem:   mem,
+func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) *CPU {
+	return &CPU{
+		prefs:        prefs,
+		mem:          mem,
+		PC:           registers.NewProgramCounter(0),
+		A:            registers.NewRegister(0, "A"),
+		X:            registers.NewRegister(0, "X"),
+		Y:            registers.NewRegister(0, "Y"),
+		SP:           registers.NewRegister(0, "SP"),
+		Status:       registers.NewStatusRegister(),
+		acc8:         registers.NewRegister(0, "accumulator"),
+		acc16:        registers.NewProgramCounter(0),
+		instructions: instructions.GetDefinitions(),
 	}
-
-	mc.PC = registers.NewProgramCounter(0)
-	mc.A = registers.NewRegister(0, "A")
-	mc.X = registers.NewRegister(0, "X")
-	mc.Y = registers.NewRegister(0, "Y")
-	mc.SP = registers.NewRegister(0, "SP")
-	mc.Status = registers.NewStatusRegister()
-
-	mc.acc8 = registers.NewRegister(0, "accumulator")
-	mc.acc16 = registers.NewProgramCounter(0)
-
-	var err error
-
-	mc.instructions, err = instructions.GetDefinitions()
-	if err != nil {
-		return nil, err
-	}
-
-	return mc, mc.Reset()
 }
 
 func (mc *CPU) String() string {
@@ -112,7 +102,7 @@ func (mc *CPU) String() string {
 }
 
 // Reset reinitialises all registers.
-func (mc *CPU) Reset() error {
+func (mc *CPU) Reset() {
 	mc.LastResult.Reset()
 	mc.LastResult.Final = true
 
@@ -138,8 +128,6 @@ func (mc *CPU) Reset() error {
 	mc.cycleCallback = nil
 
 	// not touching NoFlowControl
-
-	return nil
 }
 
 // HasReset checks whether the CPU has recently been reset.

@@ -3,7 +3,7 @@
 package instructions
 
 // GetDefinitions returns the table of instruction definitions for the 6507
-func GetDefinitions() ([]*Definition, error) {
+func GetDefinitions() []*Definition {
 	return []*Definition{
 		&Definition{OpCode: 0x0, Mnemonic: "BRK", Bytes: 1, Cycles: 7, AddressingMode: 0, PageSensitive: false, Effect: 5},
 		&Definition{OpCode: 0x1, Mnemonic: "ORA", Bytes: 2, Cycles: 6, AddressingMode: 6, PageSensitive: false, Effect: 0},
@@ -260,5 +260,5 @@ func GetDefinitions() ([]*Definition, error) {
 		&Definition{OpCode: 0xfc, Mnemonic: "skw", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},
 		&Definition{OpCode: 0xfd, Mnemonic: "SBC", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0},
 		&Definition{OpCode: 0xfe, Mnemonic: "INC", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2},
-		&Definition{OpCode: 0xff, Mnemonic: "isc", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2}}, nil
+		&Definition{OpCode: 0xff, Mnemonic: "isc", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2}}
 }
