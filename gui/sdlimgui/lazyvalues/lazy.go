@@ -49,6 +49,7 @@ type LazyValues struct {
 	ChipRegisters *LazyChipRegisters
 	Log           *LazyLog
 	SaveKey       *LazySaveKey
+	Rewind        *LazyRewind
 
 	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
 	Breakpoints *LazyBreakpoints
@@ -77,6 +78,7 @@ func NewLazyValues() *LazyValues {
 	val.Log = newLazyLog(val)
 	val.SaveKey = newLazySaveKey(val)
 	val.Breakpoints = newLazyBreakpoints(val)
+	val.Rewind = newLazyRewind(val)
 
 	return val
 }
@@ -113,6 +115,7 @@ func (val *LazyValues) Refresh() {
 		val.ChipRegisters.push()
 		val.Log.push()
 		val.SaveKey.push()
+		val.Rewind.push()
 
 		// no push() function for breakpoints type
 	})
@@ -135,6 +138,7 @@ func (val *LazyValues) Refresh() {
 	val.ChipRegisters.update()
 	val.Log.update()
 	val.SaveKey.update()
+	val.Rewind.update()
 
 	// no update() function for breakpoints type
 }

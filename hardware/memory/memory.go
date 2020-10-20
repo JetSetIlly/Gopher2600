@@ -77,6 +77,14 @@ func NewMemory(prefs *preferences.Preferences) *Memory {
 	return mem
 }
 
+func (mem *Memory) Copy() *Memory {
+	n := *mem
+	n.RIOT = mem.RIOT.Copy()
+	n.TIA = mem.TIA.Copy()
+	n.RAM = mem.RAM.Copy()
+	return &n
+}
+
 // Reset contents of memory.
 func (mem *Memory) Reset() {
 	mem.RIOT.Reset()

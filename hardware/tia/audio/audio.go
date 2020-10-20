@@ -46,6 +46,17 @@ type Audio struct {
 	channel1 channel
 }
 
+// NewAudio is the preferred method of initialisation for the Audio sub-system.
+func NewAudio() *Audio {
+	return &Audio{}
+}
+
+// Copy creates a new instance of the TIA Audio sub-system.
+func (au *Audio) Copy() *Audio {
+	n := *au
+	return &n
+}
+
 func (au *Audio) String() string {
 	s := strings.Builder{}
 	s.WriteString("ch0: ")

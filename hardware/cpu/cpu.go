@@ -94,6 +94,12 @@ func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) *CPU {
 	}
 }
 
+// Copy creates a new instance of the CPU.
+func (mc *CPU) Copy() *CPU {
+	n := *mc
+	return &n
+}
+
 func (mc *CPU) String() string {
 	return fmt.Sprintf("%s=%s %s=%s %s=%s %s=%s %s=%s %s=%s",
 		mc.PC.Label(), mc.PC, mc.A.Label(), mc.A,

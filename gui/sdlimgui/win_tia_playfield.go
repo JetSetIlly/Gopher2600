@@ -26,8 +26,8 @@ import (
 
 func (win *winTIA) drawPlayfield() {
 	lz := win.img.lz.Playfield
-	pf := win.img.lz.Dbg.VCS.TIA.Video.Playfield
-	bl := win.img.lz.Dbg.VCS.TIA.Video.Ball
+	pf := win.img.lz.Playfield.Pf
+	bs := win.img.lz.Ball.Bs
 
 	imgui.Spacing()
 
@@ -41,7 +41,7 @@ func (win *winTIA) drawPlayfield() {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.lz.Dbg.PushRawEvent(func() { pf.ForegroundColor = fgCol })
 			// update ball color too
-			win.img.lz.Dbg.PushRawEvent(func() { bl.Color = fgCol })
+			win.img.lz.Dbg.PushRawEvent(func() { bs.Color = fgCol })
 		})
 	}
 
@@ -97,7 +97,7 @@ func (win *winTIA) drawPlayfield() {
 				pf.SetCTRLPF(uint8(v))
 
 				// update ball copy of CTRLPF too
-				bl.SetCTRLPF(uint8(v))
+				bs.SetCTRLPF(uint8(v))
 			})
 		}
 	}

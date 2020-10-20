@@ -54,6 +54,14 @@ type ChipMemory struct {
 	readRegister string
 }
 
+// Copy creates a new instance of ChipMemory.
+func (area *ChipMemory) Copy() *ChipMemory {
+	n := *area
+	n.memory = make([]uint8, len(area.memory))
+	copy(n.memory, area.memory)
+	return &n
+}
+
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (area ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]

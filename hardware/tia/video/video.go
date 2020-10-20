@@ -64,14 +64,14 @@ type Video struct {
 	Collisions *Collisions
 
 	// playfield
-	Playfield *playfield
+	Playfield *Playfield
 
 	// sprite objects
-	Player0  *playerSprite
-	Player1  *playerSprite
-	Missile0 *missileSprite
-	Missile1 *missileSprite
-	Ball     *ballSprite
+	Player0  *PlayerSprite
+	Player1  *PlayerSprite
+	Missile0 *MissileSprite
+	Missile1 *MissileSprite
+	Ball     *BallSprite
 
 	// LastElement records from which TIA video sub-system the most recent
 	// pixel was generated, taking priority into account. see Pixel() function
@@ -90,7 +90,7 @@ type Video struct {
 	writing delay.Event
 }
 
-// NewVideo is the preferred method of initialisation for the Video structure.
+// NewVideo is the preferred method of initialisation for the Video sub-system.
 //
 // The playfield type requires access access to the TIA's phaseclock and
 // polyucounter and is used to decide which part of the playfield is to be
@@ -103,8 +103,8 @@ type Video struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus, tv television.Television, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) Video {
-	return Video{
+func NewVideo(mem bus.ChipBus, tv television.Television, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+	return &Video{
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
 		Player0:    newPlayerSprite("Player 0", tv, hblank, hmoveLatch),
@@ -113,6 +113,19 @@ func NewVideo(mem bus.ChipBus, tv television.Television, pclk *phaseclock.PhaseC
 		Missile1:   newMissileSprite("Missile 1", tv, hblank, hmoveLatch),
 		Ball:       newBallSprite("Ball", tv, hblank, hmoveLatch),
 	}
+}
+
+// Copy creates a new instance of the Video sub-system.
+func (vd *Video) Copy(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+	n := *vd
+	n.Collisions = vd.Collisions.Copy()
+	n.Playfield = vd.Playfield.Copy(pclk, hsync)
+	n.Player0 = vd.Player0.Copy(hblank, hmoveLatch)
+	n.Player1 = vd.Player1.Copy(hblank, hmoveLatch)
+	n.Missile0 = vd.Missile0.Copy(hblank, hmoveLatch)
+	n.Missile1 = vd.Missile1.Copy(hblank, hmoveLatch)
+	n.Ball = vd.Ball.Copy(hblank, hmoveLatch)
+	return &n
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
@@ -128,7 +141,34 @@ func (vd *Video) RSYNC(adjustment int) {
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
-	vd.writing.Tick()
+	if v, ok := vd.writing.Tick(); ok {
+		d := v.([2]delay.Value)
+		switch d[0] {
+		case "PF0":
+			vd.Playfield.setPF0(d[1])
+		case "PF1":
+			vd.Playfield.setPF1(d[1])
+		case "PF2":
+			vd.Playfield.setPF2(d[1])
+		case "HMP0":
+			vd.Player0.setHmoveValue(d[1])
+		case "HMP1":
+			vd.Player1.setHmoveValue(d[1])
+		case "HMM0":
+			vd.Missile0.setHmoveValue(d[1])
+		case "HMM1":
+			vd.Missile1.setHmoveValue(d[1])
+		case "HMBL":
+			vd.Ball.setHmoveValue(d[1])
+		case "HMCLR":
+			vd.Player0.clearHmoveValue()
+			vd.Player1.clearHmoveValue()
+			vd.Missile0.clearHmoveValue()
+			vd.Missile1.clearHmoveValue()
+			vd.Ball.clearHmoveValue()
+		}
+	}
+
 	p0 := vd.Player0.tick(visible, hmove, hmoveCt)
 	p1 := vd.Player1.tick(visible, hmove, hmoveCt)
 	m0 := vd.Missile0.tick(visible, hmove, hmoveCt, vd.Player0.triggerMissileReset())
@@ -293,11 +333,11 @@ func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
 	// to write new playfield data
 	switch data.Name {
 	case "PF0":
-		vd.writing.Schedule(2, vd.Playfield.setPF0, data.Value)
+		vd.writing.Schedule(2, [2]delay.Value{"PF0", data.Value})
 	case "PF1":
-		vd.writing.Schedule(2, vd.Playfield.setPF1, data.Value)
+		vd.writing.Schedule(2, [2]delay.Value{"PF1", data.Value})
 	case "PF2":
-		vd.writing.Schedule(2, vd.Playfield.setPF2, data.Value)
+		vd.writing.Schedule(2, [2]delay.Value{"PF2", data.Value})
 	case "VDELBL":
 		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
@@ -345,23 +385,17 @@ func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	// the only common value that satisfies all test cases is 1, which equates
 	// to a delay of two cycles
 	case "HMP0":
-		vd.writing.Schedule(1, vd.Player0.setHmoveValue, data.Value&0xf0)
+		vd.writing.Schedule(1, [2]delay.Value{"HMP0", data.Value & 0xf0})
 	case "HMP1":
-		vd.writing.Schedule(1, vd.Player1.setHmoveValue, data.Value&0xf0)
+		vd.writing.Schedule(1, [2]delay.Value{"HMP1", data.Value & 0xf0})
 	case "HMM0":
-		vd.writing.Schedule(1, vd.Missile0.setHmoveValue, data.Value&0xf0)
+		vd.writing.Schedule(1, [2]delay.Value{"HMM0", data.Value & 0xf0})
 	case "HMM1":
-		vd.writing.Schedule(1, vd.Missile1.setHmoveValue, data.Value&0xf0)
+		vd.writing.Schedule(1, [2]delay.Value{"HMM1", data.Value & 0xf0})
 	case "HMBL":
-		vd.writing.Schedule(1, vd.Ball.setHmoveValue, data.Value&0xf0)
+		vd.writing.Schedule(1, [2]delay.Value{"HMBL", data.Value & 0xf0})
 	case "HMCLR":
-		vd.writing.Schedule(1, func(_ delay.Value) {
-			vd.Player0.clearHmoveValue()
-			vd.Player1.clearHmoveValue()
-			vd.Missile0.clearHmoveValue()
-			vd.Missile1.clearHmoveValue()
-			vd.Ball.clearHmoveValue()
-		}, nil)
+		vd.writing.Schedule(1, [2]delay.Value{"HMCLR", nil})
 
 	default:
 		return true

@@ -15,7 +15,7 @@
 
 package delay
 
-// Payload represents the argument use when calling a scheduled function.
+// Value represents the argument use when calling a scheduled function.
 type Value interface{}
 
 // Event represents something that will occur in the future.
@@ -24,32 +24,36 @@ type Event struct {
 	remaining int
 	paused    bool
 	pushed    bool
-	payload   func(Value)
-	arg       Value
+	value     Value
 }
 
-// Schedule an event to occur in the future. The payload function will run
-// after delay number of cycles.
-func (e *Event) Schedule(delay int, payload func(Value), arg Value) {
+// Schedule an event to occur in the future. Multiple values can be passed
+// with somthing like:
+//
+//	[2]delay.Value{"FOO", 123}
+//
+// And interpreted accordingly when returned by Tick() or Force().
+func (e *Event) Schedule(delay int, value Value) {
 	e.initial = delay + 1
 	e.remaining = delay + 1
 	e.paused = false
 	e.pushed = false
-	e.payload = payload
-	e.arg = arg
+	e.value = value
 }
 
 // Tick the event forward one cycle. Should be called once per color clock from
 // the TIA or TIA controlled subsystem (eg. the player sprite).
-func (e *Event) Tick() {
+func (e *Event) Tick() (Value, bool) {
 	if e.remaining == 0 || e.paused {
-		return
+		return nil, false
 	}
 
 	e.remaining--
 	if e.remaining == 0 {
-		e.payload(e.arg)
+		return e.value, true
 	}
+
+	return nil, false
 }
 
 // The number of remaining cycles.
@@ -72,15 +76,13 @@ func (e *Event) Push() {
 	e.pushed = true
 }
 
-// Force an event to run the payload now. Cancels the future event. Used by
-// missile and player sprites.
-func (e *Event) Force() {
+// Force an event to end now, returning the value. Used by missile and player sprites.
+func (e *Event) Force() Value {
 	e.remaining = 0
-	e.payload(e.arg)
+	return e.value
 }
 
-// Drop will cancel a event. Payload will not be run. Used by ball and player
-// sprites.
+// Drop or cancel an event. Used by ball and player sprites.
 func (e *Event) Drop() {
 	e.remaining = 0
 }
@@ -90,14 +92,13 @@ func (e *Event) JustStarted() bool {
 	return e.initial == e.remaining && !e.pushed
 }
 
-// AboutToEnd returns true if the event concludes (and the payload run) on the
-// next call to Tikc().
+// AboutToEnd returns true if the event expires on the next call to Tick().
 func (e *Event) AboutToEnd() bool {
 	return e.remaining == 1
 }
 
-// IsActive returns true if the event is "running" (is yet to drop the
-// payload). Note that paused event will still report as being active.
+// IsActive returns true if the event is still active. Paused event will still
+// report as being active.
 func (e *Event) IsActive() bool {
 	return e.remaining > 0
 }

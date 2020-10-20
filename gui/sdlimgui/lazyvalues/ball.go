@@ -15,12 +15,17 @@
 
 package lazyvalues
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+)
 
 // LazyBall lazily accesses ball information from the emulator.
 type LazyBall struct {
 	val *LazyValues
 
+	bs            atomic.Value // *video.BallSprite
 	resetPixel    atomic.Value // int
 	hmovedPixel   atomic.Value // int
 	color         atomic.Value // uint8
@@ -31,6 +36,11 @@ type LazyBall struct {
 	size          atomic.Value // uint8
 	hmove         atomic.Value // uint8
 	moreHmove     atomic.Value // bool
+
+	// Bs is a pointer to the "live" data in the other thread. Do not access
+	// the fields in this struct directly. It can be used in PushRawEvent()
+	// call
+	Bs *video.BallSprite
 
 	ResetPixel    int
 	HmovedPixel   int
@@ -59,6 +69,7 @@ func newLazyBall(val *LazyValues) *LazyBall {
 }
 
 func (lz *LazyBall) push() {
+	lz.bs.Store(lz.val.Dbg.VCS.TIA.Video.Ball)
 	lz.resetPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.ResetPixel)
 	lz.hmovedPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.HmovedPixel)
 	lz.color.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Color)
@@ -76,6 +87,7 @@ func (lz *LazyBall) push() {
 }
 
 func (lz *LazyBall) update() {
+	lz.Bs, _ = lz.bs.Load().(*video.BallSprite)
 	lz.ResetPixel, _ = lz.resetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.hmovedPixel.Load().(int)
 	lz.Color, _ = lz.color.Load().(uint8)

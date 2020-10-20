@@ -91,6 +91,12 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	return p
 }
 
+// Copy returns a new instance of the RIOT Ports.
+func (p *Ports) Copy() *Ports {
+	n := *p
+	return &n
+}
+
 // AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port.
 func (p *Ports) AttachPlayer(id PortID, c NewPeripheral) error {
 	switch id {

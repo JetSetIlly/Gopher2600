@@ -45,6 +45,16 @@ func NewRAM(prefs *preferences.Preferences) *RAM {
 	return ram
 }
 
+// Copy creates a new instance of RAM.
+func (ram *RAM) Copy() *RAM {
+	n := *ram
+	n.RAM = make([]uint8, len(ram.RAM))
+	n.SnapshotRAM = make([]uint8, len(ram.SnapshotRAM))
+	copy(n.RAM, ram.RAM)
+	copy(n.SnapshotRAM, ram.SnapshotRAM)
+	return &n
+}
+
 // Reset contents of RAM.
 func (ram *RAM) Reset() {
 	for i := range ram.RAM {

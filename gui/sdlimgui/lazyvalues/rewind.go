@@ -13,27 +13,32 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package vcs
+package lazyvalues
 
-import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
-)
+import "sync/atomic"
 
-// NewRIOT is the preferred method of initialisation for the RIOT memory area.
-func NewRIOT(prefs *preferences.Preferences) *ChipMemory {
-	chip := &ChipMemory{
-		prefs:  prefs,
-		origin: memorymap.OriginRIOT,
-		memtop: memorymap.MemtopRIOT,
-	}
+// LazyRewind lazily accesses VCS rewind information.
+type LazyRewind struct {
+	val *LazyValues
 
-	// allocate the minimal amount of memory
-	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
+	numStates atomic.Value // int
+	currState atomic.Value // int
 
-	// SWCHA should be set when a peripheral is attached
+	NumStates int
+	CurrState int
+}
 
-	// SWCHB is set in panel attachement
+func newLazyRewind(val *LazyValues) *LazyRewind {
+	return &LazyRewind{val: val}
+}
 
-	return chip
+func (lz *LazyRewind) push() {
+	n, c := lz.val.Dbg.VCS.Rewind.State()
+	lz.numStates.Store(n)
+	lz.currState.Store(c)
+}
+
+func (lz *LazyRewind) update() {
+	lz.NumStates, _ = lz.numStates.Load().(int)
+	lz.CurrState, _ = lz.currState.Load().(int)
 }

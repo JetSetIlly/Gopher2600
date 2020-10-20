@@ -21,23 +21,23 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
-// NewTIA is the preferred method of initialisation for the TIA memory area.
+// NewTIA is the preferred method of initialisation for the TIA memory chip.
 func NewTIA(prefs *preferences.Preferences) *ChipMemory {
-	area := &ChipMemory{
+	chip := &ChipMemory{
 		prefs:  prefs,
 		origin: memorymap.OriginTIA,
 		memtop: memorymap.MemtopTIA,
 	}
 
 	// allocate the minimal amount of memory
-	area.memory = make([]uint8, area.memtop-area.origin+1)
+	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
 
 	// initial values
-	area.memory[addresses.INPT1] = 0x00
-	area.memory[addresses.INPT2] = 0x00
-	area.memory[addresses.INPT3] = 0x00
-	area.memory[addresses.INPT4] = 0x80
-	area.memory[addresses.INPT5] = 0x80
+	chip.memory[addresses.INPT1] = 0x00
+	chip.memory[addresses.INPT2] = 0x00
+	chip.memory[addresses.INPT3] = 0x00
+	chip.memory[addresses.INPT4] = 0x80
+	chip.memory[addresses.INPT5] = 0x80
 
-	return area
+	return chip
 }

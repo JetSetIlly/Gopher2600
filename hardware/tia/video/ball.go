@@ -41,9 +41,8 @@ var ballSizesBrief = []string{
 	"8x",
 }
 
-type ballSprite struct {
-	// see player sprite for detailed commentary on struct attributes
-
+// BallSprite represents the moveable ball sprite in the VCS graphical display.
+type BallSprite struct {
 	tv         television.Television
 	hblank     *bool
 	hmoveLatch *bool
@@ -92,8 +91,8 @@ type ballSprite struct {
 	Enclockifier enclockifier
 }
 
-func newBallSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *ballSprite {
-	bs := &ballSprite{
+func newBallSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *BallSprite {
+	bs := &BallSprite{
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
@@ -106,12 +105,21 @@ func newBallSprite(label string, tv television.Television, hblank *bool, hmoveLa
 	return bs
 }
 
+// Copy creates a new instance of the Video Ball sprite.
+func (bs *BallSprite) Copy(hblank *bool, hmoveLatch *bool) *BallSprite {
+	n := *bs
+	n.hblank = hblank
+	n.hmoveLatch = hmoveLatch
+	n.Enclockifier.size = &n.Size
+	return &n
+}
+
 // Label returns the label for the sprite.
-func (bs ballSprite) Label() string {
+func (bs BallSprite) Label() string {
 	return bs.label
 }
 
-func (bs ballSprite) String() string {
+func (bs BallSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
 	normalisedHmove := int(bs.Hmove) - 8
@@ -174,7 +182,7 @@ func (bs ballSprite) String() string {
 	return s.String()
 }
 
-func (bs *ballSprite) rsync(adjustment int) {
+func (bs *BallSprite) rsync(adjustment int) {
 	bs.ResetPixel -= adjustment
 	bs.HmovedPixel -= adjustment
 	if bs.ResetPixel < 0 {
@@ -185,7 +193,7 @@ func (bs *ballSprite) rsync(adjustment int) {
 	}
 }
 
-func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
+func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(hmoveCt, bs.Hmove)
@@ -219,7 +227,7 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		switch bs.position.Count() {
 		case 39:
-			bs.futureStart.Schedule(4, bs._futureStartDrawingEvent, nil)
+			bs.futureStart.Schedule(4, nil)
 		case 40:
 			bs.position.Reset()
 		}
@@ -228,17 +236,21 @@ func (bs *ballSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	bs.Enclockifier.tick()
 
 	// tick delayed events
-	bs.futureReset.Tick()
-	bs.futureStart.Tick()
+	if _, ok := bs.futureReset.Tick(); ok {
+		bs._futureResetPosition()
+	}
+	if _, ok := bs.futureStart.Tick(); ok {
+		bs._futureStartDrawingEvent()
+	}
 
 	return true
 }
 
-func (bs *ballSprite) _futureStartDrawingEvent(_ delay.Value) {
+func (bs *BallSprite) _futureStartDrawingEvent() {
 	bs.Enclockifier.start()
 }
 
-func (bs *ballSprite) prepareForHMOVE() {
+func (bs *BallSprite) prepareForHMOVE() {
 	bs.MoreHMOVE = true
 
 	if *bs.hblank {
@@ -254,7 +266,7 @@ func (bs *ballSprite) prepareForHMOVE() {
 	}
 }
 
-func (bs *ballSprite) resetPosition() {
+func (bs *BallSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *bs.hblank {
@@ -281,10 +293,10 @@ func (bs *ballSprite) resetPosition() {
 		return
 	}
 
-	bs.futureReset.Schedule(delay, bs._futureResetPosition, nil)
+	bs.futureReset.Schedule(delay, nil)
 }
 
-func (bs *ballSprite) _futureResetPosition(_ delay.Value) {
+func (bs *BallSprite) _futureResetPosition() {
 	// end drawing of sprite in case it has started during the delay
 	// period. believe it or not, we can get rid of this and pixel output
 	// will still be correct (because of how the delayed END signal in the
@@ -346,7 +358,7 @@ func (bs *ballSprite) _futureResetPosition(_ delay.Value) {
 	bs.Enclockifier.start()
 }
 
-func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
+func (bs *BallSprite) pixel() (active bool, color uint8, collision bool) {
 	if !bs.Enabled || (bs.VerticalDelay && !bs.EnabledDelay) {
 		return false, bs.Color, false
 	}
@@ -382,31 +394,31 @@ func (bs *ballSprite) pixel() (active bool, color uint8, collision bool) {
 }
 
 // the delayed enable bit is set when the gfx register for player 1 is updated.
-func (bs *ballSprite) setEnableDelay() {
+func (bs *BallSprite) setEnableDelay() {
 	bs.EnabledDelay = bs.Enabled
 }
 
-func (bs *ballSprite) setEnable(enable bool) {
+func (bs *BallSprite) setEnable(enable bool) {
 	bs.Enabled = enable
 }
 
-func (bs *ballSprite) setVerticalDelay(vdelay bool) {
+func (bs *BallSprite) setVerticalDelay(vdelay bool) {
 	bs.VerticalDelay = vdelay
 }
 
-func (bs *ballSprite) SetCTRLPF(value uint8) {
+func (bs *BallSprite) SetCTRLPF(value uint8) {
 	bs.Ctrlpf = value
 	bs.Size = (value & 0x30) >> 4
 }
 
-func (bs *ballSprite) setColor(value uint8) {
+func (bs *BallSprite) setColor(value uint8) {
 	bs.Color = value
 }
 
-func (bs *ballSprite) setHmoveValue(v delay.Value) {
+func (bs *BallSprite) setHmoveValue(v delay.Value) {
 	bs.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
-func (bs *ballSprite) clearHmoveValue() {
+func (bs *BallSprite) clearHmoveValue() {
 	bs.Hmove = 0x08
 }

@@ -45,7 +45,9 @@ var MissileSizes = []string{
 	"doubt-quad width",
 }
 
-type missileSprite struct {
+// MissileSprite represents a moveable missile sprite in the VCS graphical display.
+// The VCS has two missile sprites.
+type MissileSprite struct {
 	tv         television.Television
 	hblank     *bool
 	hmoveLatch *bool
@@ -89,8 +91,8 @@ type missileSprite struct {
 	Enclockifier enclockifier
 }
 
-func newMissileSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *missileSprite {
-	ms := &missileSprite{
+func newMissileSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *MissileSprite {
+	ms := &MissileSprite{
 		tv:         tv,
 		hblank:     hblank,
 		hmoveLatch: hmoveLatch,
@@ -103,12 +105,21 @@ func newMissileSprite(label string, tv television.Television, hblank *bool, hmov
 	return ms
 }
 
+// Copy creates a new instance of a Video Missile sprite.
+func (ms *MissileSprite) Copy(hblank *bool, hmoveLatch *bool) *MissileSprite {
+	n := *ms
+	n.hblank = hblank
+	n.hmoveLatch = hmoveLatch
+	n.Enclockifier.size = &n.Size
+	return &n
+}
+
 // Label returns the label for the sprite.
-func (ms missileSprite) Label() string {
+func (ms MissileSprite) Label() string {
 	return ms.label
 }
 
-func (ms missileSprite) String() string {
+func (ms MissileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
 	normalisedHmove := int(ms.Hmove) - 8
@@ -197,7 +208,7 @@ func (ms missileSprite) String() string {
 	return s.String()
 }
 
-func (ms *missileSprite) rsync(adjustment int) {
+func (ms *MissileSprite) rsync(adjustment int) {
 	ms.ResetPixel -= adjustment
 	ms.HmovedPixel -= adjustment
 	if ms.ResetPixel < 0 {
@@ -208,7 +219,7 @@ func (ms *missileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
+func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
@@ -262,7 +273,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 			switch ms.position.Count() {
 			case 3:
 				if ms.Copies == 0x01 || ms.Copies == 0x03 {
-					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, 1)
+					ms.futureStart.Schedule(4, 1)
 				}
 			case 7:
 				if ms.Copies == 0x03 || ms.Copies == 0x02 || ms.Copies == 0x06 {
@@ -270,7 +281,7 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 					if ms.Copies == 0x03 {
 						cpy = 2
 					}
-					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, cpy)
+					ms.futureStart.Schedule(4, cpy)
 				}
 			case 15:
 				if ms.Copies == 0x04 || ms.Copies == 0x06 {
@@ -278,10 +289,10 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 					if ms.Copies == 0x06 {
 						cpy = 2
 					}
-					ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, cpy)
+					ms.futureStart.Schedule(4, cpy)
 				}
 			case 39:
-				ms.futureStart.Schedule(4, ms._futureStartDrawingEvent, 0)
+				ms.futureStart.Schedule(4, 0)
 			case 40:
 				ms.position.Reset()
 			}
@@ -291,18 +302,22 @@ func (ms *missileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 	ms.Enclockifier.tick()
 
 	// tick delayed events. note that the order of these ticks is important.
-	ms.futureReset.Tick()
-	ms.futureStart.Tick()
+	if _, ok := ms.futureReset.Tick(); ok {
+		ms._futureResetPosition()
+	}
+	if v, ok := ms.futureStart.Tick(); ok {
+		ms._futureStartDrawingEvent(v)
+	}
 
 	return true
 }
 
-func (ms *missileSprite) _futureStartDrawingEvent(v delay.Value) {
+func (ms *MissileSprite) _futureStartDrawingEvent(v delay.Value) {
 	ms.Enclockifier.Cpy = v.(int)
 	ms.Enclockifier.start()
 }
 
-func (ms *missileSprite) prepareForHMOVE() {
+func (ms *MissileSprite) prepareForHMOVE() {
 	ms.MoreHMOVE = true
 
 	if *ms.hblank {
@@ -318,7 +333,7 @@ func (ms *missileSprite) prepareForHMOVE() {
 	}
 }
 
-func (ms *missileSprite) resetPosition() {
+func (ms *MissileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.hblank {
@@ -355,10 +370,10 @@ func (ms *missileSprite) resetPosition() {
 		return
 	}
 
-	ms.futureReset.Schedule(delay, ms._futureResetPosition, nil)
+	ms.futureReset.Schedule(delay, nil)
 }
 
-func (ms *missileSprite) _futureResetPosition(_ delay.Value) {
+func (ms *MissileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ms.ResetPixel, _ = ms.tv.GetState(television.ReqHorizPos)
@@ -390,15 +405,16 @@ func (ms *missileSprite) _futureResetPosition(_ delay.Value) {
 
 	ms.Enclockifier.force()
 	if ms.futureStart.IsActive() {
-		ms.futureStart.Force()
+		v := ms.futureStart.Force()
+		ms._futureStartDrawingEvent(v)
 	}
 }
 
-func (ms *missileSprite) setResetToPlayer(on bool) {
+func (ms *MissileSprite) setResetToPlayer(on bool) {
 	ms.ResetToPlayer = on
 }
 
-func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
+func (ms *MissileSprite) pixel() (active bool, color uint8, collision bool) {
 	if !ms.Enabled {
 		return false, ms.Color, *ms.hblank && ms.Enabled
 	}
@@ -425,13 +441,13 @@ func (ms *missileSprite) pixel() (active bool, color uint8, collision bool) {
 	return px, ms.Color, px || (*ms.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
 }
 
-func (ms *missileSprite) setEnable(enable bool) {
+func (ms *MissileSprite) setEnable(enable bool) {
 	ms.Enabled = enable
 }
 
 // SetNUSIZ is called when the NUSIZ register changes. It should also be used
 // to set the NUSIZ value from a debugger for immediate effect.
-func (ms *missileSprite) SetNUSIZ(value uint8) {
+func (ms *MissileSprite) SetNUSIZ(value uint8) {
 	// note raw NUSIZ value
 	ms.Nusiz = value
 
@@ -441,14 +457,14 @@ func (ms *missileSprite) SetNUSIZ(value uint8) {
 	ms.Copies = value & 0x07
 }
 
-func (ms *missileSprite) setColor(value uint8) {
+func (ms *MissileSprite) setColor(value uint8) {
 	ms.Color = value
 }
 
-func (ms *missileSprite) setHmoveValue(v delay.Value) {
+func (ms *MissileSprite) setHmoveValue(v delay.Value) {
 	ms.Hmove = (v.(uint8) ^ 0x80) >> 4
 }
 
-func (ms *missileSprite) clearHmoveValue() {
+func (ms *MissileSprite) clearHmoveValue() {
 	ms.Hmove = 0x08
 }

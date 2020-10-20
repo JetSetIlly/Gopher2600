@@ -27,12 +27,12 @@ import (
 
 func (win *winTIA) drawMissile(missile int) {
 	lz := win.img.lz.Missile0
-	ps := win.img.lz.Dbg.VCS.TIA.Video.Player0
-	ms := win.img.lz.Dbg.VCS.TIA.Video.Missile0
+	ms := win.img.lz.Missile0.Ms
+	ps := win.img.lz.Player0.Ps
 	if missile != 0 {
 		lz = win.img.lz.Missile1
-		ps = win.img.lz.Dbg.VCS.TIA.Video.Player1
-		ms = win.img.lz.Dbg.VCS.TIA.Video.Missile1
+		ms = win.img.lz.Missile1.Ms
+		ps = win.img.lz.Player1.Ps
 	}
 
 	imgui.Spacing()

@@ -15,13 +15,18 @@
 
 package lazyvalues
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+)
 
 // LazyPlayer lazily accesses player information from the emulator.
 type LazyPlayer struct {
 	val *LazyValues
 	id  int
 
+	ps            atomic.Value // *video.PlayerSprite
 	resetPixel    atomic.Value // int
 	hmovedPixel   atomic.Value // int
 	color         atomic.Value // uint8
@@ -33,6 +38,11 @@ type LazyPlayer struct {
 	moreHmove     atomic.Value // bool
 	gfxDataNew    atomic.Value // uint8
 	gfxDataOld    atomic.Value // uint8
+
+	// P is a pointer to the "live" data in the other thread. Do not access
+	// the fields in this struct directly. It can be used in PushRawEvent()
+	// call
+	Ps *video.PlayerSprite
 
 	ResetPixel    int
 	HmovedPixel   int
@@ -64,29 +74,31 @@ func newLazyPlayer(val *LazyValues, id int) *LazyPlayer {
 }
 
 func (lz *LazyPlayer) push() {
-	ps := lz.val.Dbg.VCS.TIA.Video.Player0
+	pl := lz.val.Dbg.VCS.TIA.Video.Player0
 	if lz.id != 0 {
-		ps = lz.val.Dbg.VCS.TIA.Video.Player1
+		pl = lz.val.Dbg.VCS.TIA.Video.Player1
 	}
-	lz.resetPixel.Store(ps.ResetPixel)
-	lz.hmovedPixel.Store(ps.HmovedPixel)
-	lz.color.Store(ps.Color)
-	lz.nusiz.Store(ps.Nusiz)
-	lz.sizeAndCopies.Store(ps.SizeAndCopies)
-	lz.reflected.Store(ps.Reflected)
-	lz.verticalDelay.Store(ps.VerticalDelay)
-	lz.hmove.Store(ps.Hmove)
-	lz.moreHmove.Store(ps.MoreHMOVE)
-	lz.gfxDataNew.Store(ps.GfxDataNew)
-	lz.gfxDataOld.Store(ps.GfxDataOld)
-	lz.scanIsActive.Store(ps.ScanCounter.IsActive())
-	lz.scanIsLatching.Store(ps.ScanCounter.IsLatching())
-	lz.scanPixel.Store(ps.ScanCounter.Pixel)
-	lz.scanCpy.Store(ps.ScanCounter.Cpy)
-	lz.scanLatchedSizeAndCopies.Store(ps.ScanCounter.LatchedSizeAndCopies)
+	lz.ps.Store(pl)
+	lz.resetPixel.Store(pl.ResetPixel)
+	lz.hmovedPixel.Store(pl.HmovedPixel)
+	lz.color.Store(pl.Color)
+	lz.nusiz.Store(pl.Nusiz)
+	lz.sizeAndCopies.Store(pl.SizeAndCopies)
+	lz.reflected.Store(pl.Reflected)
+	lz.verticalDelay.Store(pl.VerticalDelay)
+	lz.hmove.Store(pl.Hmove)
+	lz.moreHmove.Store(pl.MoreHMOVE)
+	lz.gfxDataNew.Store(pl.GfxDataNew)
+	lz.gfxDataOld.Store(pl.GfxDataOld)
+	lz.scanIsActive.Store(pl.ScanCounter.IsActive())
+	lz.scanIsLatching.Store(pl.ScanCounter.IsLatching())
+	lz.scanPixel.Store(pl.ScanCounter.Pixel)
+	lz.scanCpy.Store(pl.ScanCounter.Cpy)
+	lz.scanLatchedSizeAndCopies.Store(pl.ScanCounter.LatchedSizeAndCopies)
 }
 
 func (lz *LazyPlayer) update() {
+	lz.Ps, _ = lz.ps.Load().(*video.PlayerSprite)
 	lz.ResetPixel, _ = lz.resetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.hmovedPixel.Load().(int)
 	lz.Color, _ = lz.color.Load().(uint8)

@@ -25,6 +25,7 @@ import (
 type LazyPlayfield struct {
 	val *LazyValues
 
+	pf              atomic.Value // *video.Playfield
 	ctrlpf          atomic.Value // uint8
 	foregroundColor atomic.Value // uint8
 	backgroundColor atomic.Value // uint8
@@ -38,6 +39,11 @@ type LazyPlayfield struct {
 	idx             atomic.Value // int
 	leftData        atomic.Value // []bool
 	rightData       atomic.Value // []bool
+
+	// Pf is a pointer to the "live" data in the other thread. Do not access
+	// the fields in this struct directly. It can be used in PushRawEvent()
+	// call
+	Pf *video.Playfield
 
 	Ctrlpf          uint8
 	ForegroundColor uint8
@@ -59,6 +65,7 @@ func newLazyPlayfield(val *LazyValues) *LazyPlayfield {
 }
 
 func (lz *LazyPlayfield) push() {
+	lz.pf.Store(lz.val.Dbg.VCS.TIA.Video.Playfield)
 	lz.ctrlpf.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.Ctrlpf)
 	lz.foregroundColor.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.ForegroundColor)
 	lz.backgroundColor.Store(lz.val.Dbg.VCS.TIA.Video.Playfield.BackgroundColor)
@@ -80,6 +87,7 @@ func (lz *LazyPlayfield) push() {
 }
 
 func (lz *LazyPlayfield) update() {
+	lz.Pf, _ = lz.pf.Load().(*video.Playfield)
 	lz.Ctrlpf, _ = lz.ctrlpf.Load().(uint8)
 	lz.ForegroundColor, _ = lz.foregroundColor.Load().(uint8)
 	lz.BackgroundColor, _ = lz.backgroundColor.Load().(uint8)

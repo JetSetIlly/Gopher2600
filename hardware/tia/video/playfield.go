@@ -37,7 +37,9 @@ const (
 // the number of color clocks (playfield pixels) per left/right region.
 const RegionWidth = 20
 
-type playfield struct {
+// Playfield represnets the static playfield and background, the non-sprite
+// areas of the graphical display.
+type Playfield struct {
 	pclk  *phaseclock.PhaseClock
 	hsync *polycounter.Polycounter
 
@@ -92,8 +94,8 @@ type playfield struct {
 	Idx int
 }
 
-func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *playfield {
-	pf := &playfield{
+func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
+	pf := &Playfield{
 		pclk:          pclk,
 		hsync:         hsync,
 		RegularData:   make([]bool, RegionWidth),
@@ -104,8 +106,11 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 	return pf
 }
 
-func (pf *playfield) Copy() playfield {
+// Copy creates a new instance of the Video Playfield.
+func (pf *Playfield) Copy(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
 	n := *pf
+	n.pclk = pclk
+	n.hsync = hsync
 
 	n.RegularData = make([]bool, len(pf.RegularData))
 	n.ReflectedData = make([]bool, len(pf.ReflectedData))
@@ -127,14 +132,14 @@ func (pf *playfield) Copy() playfield {
 		n.RightData = &n.RegularData
 	}
 
-	return n
+	return &n
 }
 
-func (pf playfield) Label() string {
+func (pf Playfield) Label() string {
 	return "Playfield"
 }
 
-func (pf playfield) String() string {
+func (pf Playfield) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%04b", pf.PF0>>4))
 	s.WriteString(fmt.Sprintf(" %08b", pf.PF1))
@@ -167,7 +172,7 @@ func (pf playfield) String() string {
 // there is no tick() function because the playfield is closely intertwined
 // with the HSYNC ticker. therefore ticking of the playfield is implicit.
 
-func (pf *playfield) pixel() (bool, uint8) {
+func (pf *Playfield) pixel() (bool, uint8) {
 	newPixel := false
 
 	if pf.pclk.Phi2() {
@@ -223,7 +228,7 @@ func (pf *playfield) pixel() (bool, uint8) {
 }
 
 // called whenever playfield bits change or the screen region changes.
-func (pf *playfield) latchRegionData() {
+func (pf *Playfield) latchRegionData() {
 	pf.LeftData = &pf.RegularData
 	if !pf.Reflected {
 		pf.RightData = &pf.RegularData
@@ -239,7 +244,7 @@ func (pf *playfield) latchRegionData() {
 }
 
 // SetPF0 sets the playfield PF0 bits.
-func (pf *playfield) SetPF0(v uint8) {
+func (pf *Playfield) SetPF0(v uint8) {
 	pf.PF0 = v & 0xf0
 	pf.RegularData[0] = pf.PF0&0x10 == 0x10
 	pf.RegularData[1] = pf.PF0&0x20 == 0x20
@@ -253,7 +258,7 @@ func (pf *playfield) SetPF0(v uint8) {
 }
 
 // SetPF1 sets the playfield PF1 bits.
-func (pf *playfield) SetPF1(v uint8) {
+func (pf *Playfield) SetPF1(v uint8) {
 	pf.PF1 = v
 	pf.RegularData[4] = pf.PF1&0x80 == 0x80
 	pf.RegularData[5] = pf.PF1&0x40 == 0x40
@@ -275,7 +280,7 @@ func (pf *playfield) SetPF1(v uint8) {
 }
 
 // SetPF2 sets the playfield PF2 bits.
-func (pf *playfield) SetPF2(v uint8) {
+func (pf *Playfield) SetPF2(v uint8) {
 	pf.PF2 = v
 	pf.RegularData[12] = pf.PF2&0x01 == 0x01
 	pf.RegularData[13] = pf.PF2&0x02 == 0x02
@@ -296,29 +301,29 @@ func (pf *playfield) SetPF2(v uint8) {
 	pf.latchRegionData()
 }
 
-func (pf *playfield) setPF0(v delay.Value) {
+func (pf *Playfield) setPF0(v delay.Value) {
 	pf.SetPF0(v.(uint8))
 }
 
-func (pf *playfield) setPF1(v delay.Value) {
+func (pf *Playfield) setPF1(v delay.Value) {
 	pf.SetPF1(v.(uint8))
 }
 
-func (pf *playfield) setPF2(v delay.Value) {
+func (pf *Playfield) setPF2(v delay.Value) {
 	pf.SetPF2(v.(uint8))
 }
 
-func (pf *playfield) SetCTRLPF(value uint8) {
+func (pf *Playfield) SetCTRLPF(value uint8) {
 	pf.Ctrlpf = value
 	pf.Scoremode = value&0x02 == 0x02
 	pf.Priority = value&0x04 == 0x04
 	pf.Reflected = value&0x01 == 0x01
 }
 
-func (pf *playfield) setColor(col uint8) {
+func (pf *Playfield) setColor(col uint8) {
 	pf.ForegroundColor = col
 }
 
-func (pf *playfield) setBackground(col uint8) {
+func (pf *Playfield) setBackground(col uint8) {
 	pf.BackgroundColor = col
 }

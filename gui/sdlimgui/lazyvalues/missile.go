@@ -15,13 +15,18 @@
 
 package lazyvalues
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+)
 
 // LazyMissile lazily accesses missile information from the emulator.
 type LazyMissile struct {
 	val *LazyValues
 	id  int
 
+	ms            atomic.Value // *video.MissileSprite
 	resetPixel    atomic.Value // int
 	hmovedPixel   atomic.Value // int
 	color         atomic.Value // uint8
@@ -33,6 +38,7 @@ type LazyMissile struct {
 	moreHmove     atomic.Value // bool
 	resetToPlayer atomic.Value // bool
 
+	Ms            *video.MissileSprite
 	ResetPixel    int
 	HmovedPixel   int
 	Color         uint8
@@ -64,6 +70,7 @@ func (lz *LazyMissile) push() {
 	if lz.id != 0 {
 		ms = lz.val.Dbg.VCS.TIA.Video.Missile1
 	}
+	lz.ms.Store(ms)
 	lz.resetPixel.Store(ms.ResetPixel)
 	lz.hmovedPixel.Store(ms.HmovedPixel)
 	lz.color.Store(ms.Color)
@@ -81,6 +88,7 @@ func (lz *LazyMissile) push() {
 }
 
 func (lz *LazyMissile) update() {
+	lz.Ms, _ = lz.ms.Load().(*video.MissileSprite)
 	lz.ResetPixel, _ = lz.resetPixel.Load().(int)
 	lz.HmovedPixel, _ = lz.hmovedPixel.Load().(int)
 	lz.Color, _ = lz.color.Load().(uint8)

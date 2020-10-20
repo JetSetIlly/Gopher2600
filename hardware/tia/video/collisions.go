@@ -52,6 +52,12 @@ func newCollisions(mem bus.ChipBus) *Collisions {
 	return col
 }
 
+// Copy creates a new instance of the Collisions sub-system.
+func (col *Collisions) Copy() *Collisions {
+	n := *col
+	return &n
+}
+
 // Clear all bits in the collision registers.
 func (col *Collisions) Clear() {
 	col.CXM0P = 0

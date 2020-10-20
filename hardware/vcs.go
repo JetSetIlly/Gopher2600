@@ -41,6 +41,8 @@ type VCS struct {
 	Mem  *memory.Memory
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
+
+	Rewind rewind
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -57,6 +59,8 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		Prefs: prefs,
 		TV:    tv,
 	}
+
+	vcs.Rewind = newRewind(vcs)
 
 	vcs.Mem = memory.NewMemory(vcs.Prefs)
 	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)

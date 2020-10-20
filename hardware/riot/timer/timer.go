@@ -99,6 +99,12 @@ func NewTimer(mem bus.ChipBus) *Timer {
 	return tmr
 }
 
+// Copy creates a new instance of the RIOT Timer.
+func (tmr *Timer) Copy() *Timer {
+	n := *tmr
+	return &n
+}
+
 func (tmr Timer) String() string {
 	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%s TIMINT=%v",
 		tmr.INTIMvalue,

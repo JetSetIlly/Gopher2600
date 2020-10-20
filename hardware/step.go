@@ -113,5 +113,7 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 		_ = videoCycle()
 	}
 
+	vcs.Rewind.Append()
+
 	return nil
 }

@@ -27,8 +27,8 @@ import (
 
 func (win *winTIA) drawBall() {
 	lz := win.img.lz.Ball
-	bl := win.img.lz.Dbg.VCS.TIA.Video.Ball
-	pf := win.img.lz.Dbg.VCS.TIA.Video.Playfield
+	bs := win.img.lz.Ball.Bs
+	pf := win.img.lz.Playfield.Pf
 
 	imgui.Spacing()
 
@@ -37,7 +37,7 @@ func (win *winTIA) drawBall() {
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
-			win.img.lz.Dbg.PushRawEvent(func() { bl.Color = col })
+			win.img.lz.Dbg.PushRawEvent(func() { bs.Color = col })
 
 			// update playfield color too
 			win.img.lz.Dbg.PushRawEvent(func() { pf.ForegroundColor = col })
@@ -47,14 +47,14 @@ func (win *winTIA) drawBall() {
 	imguiText("Enabled")
 	enb := lz.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
-		win.img.lz.Dbg.PushRawEvent(func() { bl.Enabled = enb })
+		win.img.lz.Dbg.PushRawEvent(func() { bs.Enabled = enb })
 	}
 
 	imgui.SameLine()
 	imguiText("Enabled Del.")
 	enbd := lz.EnabledDelay
 	if imgui.Checkbox("##enableddelay", &enbd) {
-		win.img.lz.Dbg.PushRawEvent(func() { bl.EnabledDelay = enbd })
+		win.img.lz.Dbg.PushRawEvent(func() { bs.EnabledDelay = enbd })
 	}
 	imgui.EndGroup()
 
@@ -68,7 +68,7 @@ func (win *winTIA) drawBall() {
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() { bl.Hmove = uint8(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { bs.Hmove = uint8(v) })
 		}
 	}
 
@@ -76,7 +76,7 @@ func (win *winTIA) drawBall() {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d") {
-		win.img.lz.Dbg.PushRawEvent(func() { bl.Hmove = uint8(hmoveSlider + 8) })
+		win.img.lz.Dbg.PushRawEvent(func() { bs.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 	imgui.EndGroup()
@@ -92,7 +92,7 @@ func (win *winTIA) drawBall() {
 			if imgui.Selectable(video.BallSizes[k]) {
 				v := uint8(k) // being careful about scope
 				win.img.lz.Dbg.PushRawEvent(func() {
-					bl.Size = v
+					bs.Size = v
 					win.img.lz.Dbg.VCS.TIA.Video.UpdateCTRLPF()
 				})
 			}
@@ -109,7 +109,7 @@ func (win *winTIA) drawBall() {
 	if imguiHexInput("##ctrlpf", !win.img.paused, 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				bl.SetCTRLPF(uint8(v))
+				bs.SetCTRLPF(uint8(v))
 
 				// update playfield CTRLPF too
 				pf.SetCTRLPF(uint8(v))

@@ -40,6 +40,14 @@ func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
 	}
 }
 
+// Copy creates a new instance of the RIOT.
+func (riot *RIOT) Copy() *RIOT {
+	n := *riot
+	n.Timer = riot.Timer.Copy()
+	n.Ports = riot.Ports.Copy()
+	return &n
+}
+
 func (riot RIOT) String() string {
 	s := strings.Builder{}
 	s.WriteString(riot.Timer.String())

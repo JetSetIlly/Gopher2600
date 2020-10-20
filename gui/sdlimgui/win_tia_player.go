@@ -31,12 +31,12 @@ func (win *winTIA) drawPlayer(num int) {
 	dl := imgui.WindowDrawList()
 
 	lz := win.img.lz.Player0
-	ps := win.img.lz.Dbg.VCS.TIA.Video.Player0
-	ms := win.img.lz.Dbg.VCS.TIA.Video.Missile0
+	ps := win.img.lz.Player0.Ps
+	ms := win.img.lz.Missile0.Ms
 	if num != 0 {
 		lz = win.img.lz.Player1
-		ps = win.img.lz.Dbg.VCS.TIA.Video.Player1
-		ms = win.img.lz.Dbg.VCS.TIA.Video.Missile1
+		ps = win.img.lz.Player1.Ps
+		ms = win.img.lz.Missile1.Ms
 	}
 
 	imgui.Spacing()
