@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // Video is an implementation of the television.PixelRenderer interface with an

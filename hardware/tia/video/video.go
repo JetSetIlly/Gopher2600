@@ -17,10 +17,10 @@ package video
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Element is used to record from which video sub-system the pixel

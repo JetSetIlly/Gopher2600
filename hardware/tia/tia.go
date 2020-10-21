@@ -20,12 +20,12 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // TIA contains all the sub-components of the VCS TIA sub-system.

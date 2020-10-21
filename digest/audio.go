@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // the length of the buffer we're using isn't really important. that said, it

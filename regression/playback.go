@@ -28,8 +28,8 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/recorder"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 const playbackEntryID = "playback"

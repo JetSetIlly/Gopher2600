@@ -15,7 +15,7 @@
 
 package performance
 
-import "github.com/jetsetilly/gopher2600/television"
+import "github.com/jetsetilly/gopher2600/hardware/television"
 
 // CalcFPS takes the the number of frames and duration (in seconds) and returns
 // the frames-per-second and the accuracy of that value as a percentage.

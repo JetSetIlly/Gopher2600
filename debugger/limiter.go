@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // a specialised frame-rate limiter for use by the debugger. this

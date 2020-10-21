@@ -20,8 +20,8 @@ import (
 	"image/color"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/reflection"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // textureRenderers should consider that the timing of the VCS produces

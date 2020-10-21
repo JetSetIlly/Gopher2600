@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // MissileCopies maps missile copies values to descriptions of those values.

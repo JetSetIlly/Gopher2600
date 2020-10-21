@@ -18,8 +18,8 @@ package reflection
 import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Renderer implementations accepts ReflectPixel values and associates it in

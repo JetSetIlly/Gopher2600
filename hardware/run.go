@@ -17,7 +17,7 @@ package hardware
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
-	"github.com/jetsetilly/gopher2600/television"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // Run sets the emulation running as quickly as possible. continuteCheck()

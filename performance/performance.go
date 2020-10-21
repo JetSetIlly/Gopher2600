@@ -25,8 +25,8 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // Check is a very rough and ready calculation of the emulator's performance.

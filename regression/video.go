@@ -29,8 +29,8 @@ import (
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 const videoEntryID = "video"

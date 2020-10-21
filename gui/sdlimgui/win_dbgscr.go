@@ -22,8 +22,8 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/reflection"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 const winDbgScrTitle = "TV Screen"

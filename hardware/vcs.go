@@ -26,8 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
-	"github.com/jetsetilly/gopher2600/television"
 )
 
 // VCS struct is the main container for the emulated components of the VCS.

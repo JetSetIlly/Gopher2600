@@ -20,8 +20,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/reflection"
-	"github.com/jetsetilly/gopher2600/television"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
