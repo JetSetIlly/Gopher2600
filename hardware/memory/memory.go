@@ -77,11 +77,12 @@ func NewMemory(prefs *preferences.Preferences) *Memory {
 	return mem
 }
 
-func (mem *Memory) Copy() *Memory {
+// Snapshot creates a copy of the current memory state.
+func (mem *Memory) Snapshot() *Memory {
 	n := *mem
-	n.RIOT = mem.RIOT.Copy()
-	n.TIA = mem.TIA.Copy()
-	n.RAM = mem.RAM.Copy()
+	n.RIOT = mem.RIOT.Snapshot()
+	n.TIA = mem.TIA.Snapshot()
+	n.RAM = mem.RAM.Snapshot()
 	return &n
 }
 

@@ -26,8 +26,6 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 		videoCycleCallback = nullVideoCycleCallback
 	}
 
-	var err error
-
 	// the videoCycle function defines the order of operation for the rest of
 	// the VCS for every CPU cycle. the function block represents the ϕ0 cycle
 	//
@@ -60,7 +58,8 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	// or not) rely on the details of the CPU-TIA relationship.
 	videoCycle := func() error {
 		// probe for playback events
-		if err := vcs.RIOT.Ports.GetPlayback(); err != nil {
+		err := vcs.RIOT.Ports.GetPlayback()
+		if err != nil {
 			return err
 		}
 
@@ -102,7 +101,7 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 		return nil
 	}
 
-	err = vcs.CPU.ExecuteInstruction(videoCycle)
+	err := vcs.CPU.ExecuteInstruction(videoCycle)
 	if err != nil {
 		return err
 	}

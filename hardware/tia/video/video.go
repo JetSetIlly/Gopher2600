@@ -115,16 +115,16 @@ func NewVideo(mem bus.ChipBus, tv television.TelevisionSprite, pclk *phaseclock.
 	}
 }
 
-// Copy creates a new instance of the Video sub-system.
-func (vd *Video) Copy(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+// Snapshot creates a copy of the Video sub-system in its current state.
+func (vd *Video) Snapshot(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
 	n := *vd
-	n.Collisions = vd.Collisions.Copy()
-	n.Playfield = vd.Playfield.Copy(pclk, hsync)
-	n.Player0 = vd.Player0.Copy(hblank, hmoveLatch)
-	n.Player1 = vd.Player1.Copy(hblank, hmoveLatch)
-	n.Missile0 = vd.Missile0.Copy(hblank, hmoveLatch)
-	n.Missile1 = vd.Missile1.Copy(hblank, hmoveLatch)
-	n.Ball = vd.Ball.Copy(hblank, hmoveLatch)
+	n.Collisions = vd.Collisions.Snapshot()
+	n.Playfield = vd.Playfield.Snapshot(pclk, hsync)
+	n.Player0 = vd.Player0.Snapshot(hblank, hmoveLatch)
+	n.Player1 = vd.Player1.Snapshot(hblank, hmoveLatch)
+	n.Missile0 = vd.Missile0.Snapshot(hblank, hmoveLatch)
+	n.Missile1 = vd.Missile1.Snapshot(hblank, hmoveLatch)
+	n.Ball = vd.Ball.Snapshot(hblank, hmoveLatch)
 	return &n
 }
 

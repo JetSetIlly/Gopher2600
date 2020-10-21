@@ -51,8 +51,8 @@ func NewAudio() *Audio {
 	return &Audio{}
 }
 
-// Copy creates a new instance of the TIA Audio sub-system.
-func (au *Audio) Copy() *Audio {
+// Snapshot creates a copy of the TIA Audio sub-system in its current state.
+func (au *Audio) Snapshot() *Audio {
 	n := *au
 	return &n
 }

@@ -43,17 +43,9 @@ const leadingFrames = 5
 // the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
 
-// reference is a reference implementation of the Television interface. In all
-// honesty, it's most likely the only implementation required.
-type reference struct {
+type state struct {
 	// television specification (NTSC or PAL)
 	spec Spec
-
-	// spec on creation ID is the string that was to ID the television
-	// type/spec on creation. because the actual spec can change, the ID field
-	// of the Spec type can not be used for things like regression
-	// test recreation etc.
-	reqSpecID string
 
 	// auto flag indicates that the tv type/specification should switch if it
 	// appears to be outside of the current spec.
@@ -93,6 +85,29 @@ type reference struct {
 	top    int
 	bottom int
 
+	// list of signals sent to pixel renderers since the beginning of the
+	// current frame
+	signalHistory []signalHistoryEntry
+
+	// the index to write the next signal
+	signalHistoryIdx int
+}
+
+type signalHistoryEntry struct {
+	x   int
+	y   int
+	sig SignalAttributes
+}
+
+// reference is a reference implementation of the Television interface. In all
+// honesty, it's most likely the only implementation required.
+type reference struct {
+	// spec on creation ID is the string that was to ID the television
+	// type/spec on creation. because the actual spec can change, the ID field
+	// of the Spec type can not be used for things like regression
+	// test recreation etc.
+	reqSpecID string
+
 	// frame resizer
 	resizer resizer
 
@@ -104,6 +119,8 @@ type reference struct {
 
 	// list of audio mixers to consult
 	mixers []AudioMixer
+
+	state *state
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -112,6 +129,7 @@ func NewReference(spec string) (Television, error) {
 	tv := &reference{
 		resizer:   &simpleResizer{},
 		reqSpecID: strings.ToUpper(spec),
+		state:     &state{},
 	}
 
 	// set specification
@@ -132,8 +150,40 @@ func NewReference(spec string) (Television, error) {
 
 func (tv reference) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.frameNum, tv.scanline, tv.horizPos-HorizClksHBlank))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
 	return s.String()
+}
+
+// Snapshot implements the Television interface.
+func (tv *reference) Snapshot() TelevisionState {
+	n := *tv.state
+	n.signalHistory = make([]signalHistoryEntry, len(tv.state.signalHistory))
+	copy(n.signalHistory, tv.state.signalHistory)
+	return &n
+}
+
+// RestoreSnapshot implements the Television interface.
+func (tv *reference) RestoreSnapshot(s TelevisionState) {
+	if s == nil {
+		return
+	}
+
+	tv.state = s.(*state)
+
+	for _, r := range tv.renderers {
+		r.Refresh(false)
+	}
+
+	for _, e := range tv.state.signalHistory {
+		col := tv.state.spec.getColor(e.sig.Pixel)
+		for _, r := range tv.renderers {
+			r.SetPixel(e.x, e.y, col.R, col.G, col.B, e.sig.VBlank, true)
+		}
+	}
+
+	for _, r := range tv.renderers {
+		r.Refresh(true)
+	}
 }
 
 // AddPixelRenderer implements the Television interface.
@@ -156,12 +206,12 @@ func (tv *reference) Reset() error {
 		return err
 	}
 
-	tv.horizPos = 0
-	tv.frameNum = 0
-	tv.scanline = 0
-	tv.syncedFrameNum = 0
-	tv.vsyncCount = 0
-	tv.lastSignal = SignalAttributes{}
+	tv.state.horizPos = 0
+	tv.state.frameNum = 0
+	tv.state.scanline = 0
+	tv.state.syncedFrameNum = 0
+	tv.state.vsyncCount = 0
+	tv.state.lastSignal = SignalAttributes{}
 
 	return nil
 }
@@ -199,21 +249,21 @@ func (tv *reference) Signal(sig SignalAttributes) error {
 	tv.resizer.examine(tv, sig)
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
-	tv.horizPos++
+	tv.state.horizPos++
 
 	// once we reach the scanline's back-porch we'll reset the horizPos counter
 	// and wait for the HSYNC signal. we do this so that the front-porch and
 	// back-porch are 'together' at the beginning of the scanline. this isn't
 	// strictly technically correct but it's convenient to think about
 	// scanlines in this way (rather than having a split front and back porch)
-	if tv.horizPos >= HorizClksScanline {
-		tv.horizPos = 0
+	if tv.state.horizPos >= HorizClksScanline {
+		tv.state.horizPos = 0
 
 		// bump scanline counter
-		tv.scanline++
+		tv.state.scanline++
 
 		// reached end of screen without synchronisation. fly-back naturally.
-		if tv.scanline > tv.spec.ScanlinesTotal {
+		if tv.state.scanline > tv.state.spec.ScanlinesTotal {
 			err := tv.newFrame(false)
 			if err != nil {
 				return err
@@ -233,10 +283,10 @@ func (tv *reference) Signal(sig SignalAttributes) error {
 	// check vsync signal at the time of the flyback
 	//
 	// !!TODO: replace VSYNC signal with extended HSYNC signal
-	if sig.VSync && !tv.lastSignal.VSync {
-		tv.vsyncCount = 0
-	} else if !sig.VSync && tv.lastSignal.VSync {
-		if tv.vsyncCount > 0 {
+	if sig.VSync && !tv.state.lastSignal.VSync {
+		tv.state.vsyncCount = 0
+	} else if !sig.VSync && tv.state.lastSignal.VSync {
+		if tv.state.vsyncCount > 0 {
 			err := tv.newFrame(true)
 			if err != nil {
 				return err
@@ -249,33 +299,46 @@ func (tv *reference) Signal(sig SignalAttributes) error {
 	// making sure we're at the correct horizPos value.  if horizPos doesn't
 	// equal 16 at the front of the HSYNC or 36 at then back of the HSYNC, then
 	// it indicates that the RSYNC register was used last scanline.
-	if sig.HSync && !tv.lastSignal.HSync {
-		tv.horizPos = 16
+	if sig.HSync && !tv.state.lastSignal.HSync {
+		tv.state.horizPos = 16
 
 		// count vsync lines at start of hsync
-		if sig.VSync || tv.lastSignal.VSync {
-			tv.vsyncCount++
+		if sig.VSync || tv.state.lastSignal.VSync {
+			tv.state.vsyncCount++
 		}
 	}
-	if !sig.HSync && tv.lastSignal.HSync {
-		tv.horizPos = 36
+	if !sig.HSync && tv.state.lastSignal.HSync {
+		tv.state.horizPos = 36
 	}
 
 	// doing nothing with CBURST signal
 
 	// decode color using the regular color signal
-	col := tv.spec.getColor(sig.Pixel)
+	col := tv.state.spec.getColor(sig.Pixel)
 	for f := range tv.renderers {
-		err := tv.renderers[f].SetPixel(tv.horizPos, tv.scanline,
+		err := tv.renderers[f].SetPixel(tv.state.horizPos, tv.state.scanline,
 			col.R, col.G, col.B,
-			sig.VBlank)
+			sig.VBlank, false)
 		if err != nil {
 			return err
 		}
 	}
 
 	// record the current signal settings so they can be used for reference
-	tv.lastSignal = sig
+	tv.state.lastSignal = sig
+
+	e := signalHistoryEntry{
+		x:   tv.state.horizPos,
+		y:   tv.state.scanline,
+		sig: sig,
+	}
+
+	if tv.state.signalHistoryIdx >= len(tv.state.signalHistory) {
+		tv.state.signalHistory = append(tv.state.signalHistory, e)
+	} else {
+		tv.state.signalHistory[tv.state.signalHistoryIdx] = e
+	}
+	tv.state.signalHistoryIdx++
 
 	return nil
 }
@@ -283,7 +346,7 @@ func (tv *reference) Signal(sig SignalAttributes) error {
 func (tv *reference) newScanline() error {
 	// notify renderers of new scanline
 	for f := range tv.renderers {
-		err := tv.renderers[f].NewScanline(tv.scanline)
+		err := tv.renderers[f].NewScanline(tv.state.scanline)
 		if err != nil {
 			return err
 		}
@@ -293,15 +356,15 @@ func (tv *reference) newScanline() error {
 
 func (tv *reference) newFrame(synced bool) error {
 	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
-	if tv.syncedFrame {
-		tv.syncedFrameNum++
+	if tv.state.syncedFrame {
+		tv.state.syncedFrameNum++
 	}
 
 	// specification change
-	if tv.syncedFrameNum > leadingFrames && tv.syncedFrameNum < stabilityThreshold {
-		if tv.auto && !tv.syncedFrame && tv.scanline > excessScanlinesNTSC {
+	if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
+		if tv.state.auto && !tv.state.syncedFrame && tv.state.scanline > excessScanlinesNTSC {
 			// flip from NTSC to PAL
-			if tv.spec.ID == SpecNTSC.ID {
+			if tv.state.spec.ID == SpecNTSC.ID {
 				_ = tv.SetSpec("PAL")
 			}
 		}
@@ -314,41 +377,44 @@ func (tv *reference) newFrame(synced bool) error {
 	}
 
 	// prepare for next frame
-	tv.frameNum++
-	tv.scanline = 0
+	tv.state.frameNum++
+	tv.state.scanline = 0
 	tv.resizer.prepare(tv)
-	tv.syncedFrame = synced
+	tv.state.syncedFrame = synced
 
 	// call new frame for all renderers
 	for f := range tv.renderers {
-		err = tv.renderers[f].NewFrame(tv.frameNum, tv.IsStable())
+		err = tv.renderers[f].NewFrame(tv.state.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}
 	}
+
+	// reset signal history for next frame
+	tv.state.signalHistoryIdx = 0
 
 	return nil
 }
 
 // IsStable implements the Television interface.
 func (tv reference) IsStable() bool {
-	return tv.syncedFrameNum >= stabilityThreshold
+	return tv.state.syncedFrameNum >= stabilityThreshold
 }
 
 // GetLastSignal implements the Television interface.
 func (tv *reference) GetLastSignal() SignalAttributes {
-	return tv.lastSignal
+	return tv.state.lastSignal
 }
 
 // GetState implements the Television interface.
 func (tv *reference) GetState(request StateReq) (int, error) {
 	switch request {
 	case ReqFramenum:
-		return tv.frameNum, nil
+		return tv.state.frameNum, nil
 	case ReqScanline:
-		return tv.scanline, nil
+		return tv.state.scanline, nil
 	case ReqHorizPos:
-		return tv.horizPos - HorizClksHBlank, nil
+		return tv.state.horizPos - HorizClksHBlank, nil
 	default:
 		return 0, curated.Errorf("television: unhandled tv state request (%v)", request)
 	}
@@ -358,28 +424,33 @@ func (tv *reference) GetState(request StateReq) (int, error) {
 func (tv *reference) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
-		tv.spec = SpecNTSC
-		tv.auto = false
+		tv.state.spec = SpecNTSC
+		tv.state.auto = false
 	case "PAL":
-		tv.spec = SpecPAL
-		tv.auto = false
+		tv.state.spec = SpecPAL
+		tv.state.auto = false
 	case "AUTO":
-		tv.spec = SpecNTSC
-		tv.auto = true
+		tv.state.spec = SpecNTSC
+		tv.state.auto = true
 	default:
 		return curated.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	tv.top = tv.spec.ScanlineTop
-	tv.bottom = tv.spec.ScanlineBottom
+	tv.state.top = tv.state.spec.ScanlineTop
+	tv.state.bottom = tv.state.spec.ScanlineBottom
 	tv.resizer.prepare(tv)
 
 	for f := range tv.renderers {
-		err := tv.renderers[f].Resize(tv.spec, tv.top, tv.bottom-tv.top)
+		err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
 		if err != nil {
 			return err
 		}
 	}
+
+	// allocate enough memory for a TV screen that stays within the limits of
+	// the specification
+	tv.state.signalHistory = make([]signalHistoryEntry, HorizClksScanline*(tv.state.bottom-tv.state.top))
+	tv.state.signalHistoryIdx = 0
 
 	return nil
 }
@@ -391,7 +462,7 @@ func (tv *reference) GetReqSpecID() string {
 
 // GetSpec implements the Television interface.
 func (tv reference) GetSpec() Spec {
-	return tv.spec
+	return tv.state.spec
 }
 
 // SetFPSCap implements the Television interface. Reasons for turning the cap
@@ -407,9 +478,9 @@ func (tv *reference) SetFPSCap(limit bool) {
 // to the specification's ideal value.
 func (tv *reference) SetFPS(fps float32) {
 	if fps == -1 {
-		fps = tv.spec.FramesPerSecond
+		fps = tv.state.spec.FramesPerSecond
 	}
-	tv.lmtr.setRate(fps, tv.spec.ScanlinesTotal)
+	tv.lmtr.setRate(fps, tv.state.spec.ScanlinesTotal)
 }
 
 // GetReqFPS implements the Television interface.

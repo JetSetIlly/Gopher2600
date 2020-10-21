@@ -126,12 +126,17 @@ func NewTIA(tv television.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *
 	return tia
 }
 
-// Copy creates a new instance of the TIA.
-func (tia *TIA) Copy() *TIA {
+// Snapshot creates a copy of the TIA in its current state.
+func (tia *TIA) Snapshot() *TIA {
 	n := *tia
-	n.Audio = tia.Audio.Copy()
-	n.Video = tia.Video.Copy(&n.pclk, &n.hsync, &n.Hblank, &n.HmoveLatch)
+	n.Audio = tia.Audio.Snapshot()
+	n.Video = tia.Video.Snapshot(&n.pclk, &n.hsync, &n.Hblank, &n.HmoveLatch)
 	return &n
+}
+
+// Plumb the a new ChipBus into the TIA.
+func (tia *TIA) Plumb(mem bus.ChipBus) {
+	tia.mem = mem
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.

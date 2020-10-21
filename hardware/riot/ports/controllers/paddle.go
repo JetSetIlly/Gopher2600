@@ -80,6 +80,11 @@ func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return pdl
 }
 
+// Plumb implements the ports.Peripheral interface.
+func (pdl *Paddle) Plumb(bus ports.PeripheralBus) {
+	pdl.bus = bus
+}
+
 // String implements the ports.Peripheral interface.
 func (pdl *Paddle) String() string {
 	return fmt.Sprintf("paddle: button=%02x charge=%v resistance=%.02f", pdl.fire, pdl.charge, pdl.resistance)

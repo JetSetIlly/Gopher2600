@@ -40,12 +40,19 @@ func NewRIOT(mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
 	}
 }
 
-// Copy creates a new instance of the RIOT.
-func (riot *RIOT) Copy() *RIOT {
+// Snapshot creates a copy of the RIOT in its current state.
+func (riot *RIOT) Snapshot() *RIOT {
 	n := *riot
-	n.Timer = riot.Timer.Copy()
-	n.Ports = riot.Ports.Copy()
+	n.Timer = riot.Timer.Snapshot()
+	n.Ports = riot.Ports.Snapshot()
 	return &n
+}
+
+// Plumb new ChipBusses into the RIOT.
+func (riot *RIOT) Plumb(mem bus.ChipBus, tiaMem bus.ChipBus) {
+	riot.mem = mem
+	riot.Timer.Plumb(mem)
+	riot.Ports.Plumb(mem, tiaMem)
 }
 
 func (riot RIOT) String() string {

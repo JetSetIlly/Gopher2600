@@ -269,7 +269,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// when the emulation is setting running 'until halt'. in other
 				// words, a snapshot will not be taken if the emulation is only
 				// single-stepped
-				dbg.VCS.Mem.RAM.Snapshot()
+				dbg.VCS.Mem.RAM.LittleSnapshot()
 			}
 		}
 

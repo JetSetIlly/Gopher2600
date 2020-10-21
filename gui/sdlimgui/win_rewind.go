@@ -60,7 +60,7 @@ func (win *winRewind) draw() {
 	imgui.BeginV(winRewindTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	pos := int32(win.img.lz.Rewind.CurrState)
-	if imgui.SliderInt("State", &pos, 0, int32(win.img.lz.Rewind.NumStates)-1) {
+	if imgui.SliderInt("Frame", &pos, 0, int32(win.img.lz.Rewind.NumStates)-1) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			win.img.lz.Dbg.VCS.Rewind.SetPosition(int(pos))
 		})

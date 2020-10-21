@@ -157,8 +157,8 @@ func newPlayerSprite(label string, tv television.TelevisionSprite, hblank *bool,
 	return ps
 }
 
-// Copy creates a new instance of a Video Player sprite.
-func (ps *PlayerSprite) Copy(hblank *bool, hmoveLatch *bool) *PlayerSprite {
+// Snapshot creates a copy of the player sprite in its current state.
+func (ps *PlayerSprite) Snapshot(hblank *bool, hmoveLatch *bool) *PlayerSprite {
 	n := *ps
 	n.hblank = hblank
 	n.hmoveLatch = hmoveLatch

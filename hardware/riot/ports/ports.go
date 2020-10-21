@@ -91,10 +91,25 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	return p
 }
 
-// Copy returns a new instance of the RIOT Ports.
-func (p *Ports) Copy() *Ports {
+// Snapshot returns a copy of the RIOT Ports sub-system in its current state.
+func (p *Ports) Snapshot() *Ports {
 	n := *p
 	return &n
+}
+
+// Plumb new ChipBusses into the Ports sub-system.
+func (p *Ports) Plumb(riotMem bus.ChipBus, tiaMem bus.ChipBus) {
+	p.riot = riotMem
+	p.tia = tiaMem
+	if p.Panel != nil {
+		p.Panel.Plumb(p)
+	}
+	if p.Player0 != nil {
+		p.Player0.Plumb(p)
+	}
+	if p.Player1 != nil {
+		p.Player1.Plumb(p)
+	}
 }
 
 // AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port.

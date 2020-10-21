@@ -106,8 +106,8 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 	return pf
 }
 
-// Copy creates a new instance of the Video Playfield.
-func (pf *Playfield) Copy(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
+// Snapshot creates a copy of the Video Playfield in its current state.
+func (pf *Playfield) Snapshot(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
 	n := *pf
 	n.pclk = pclk
 	n.hsync = hsync

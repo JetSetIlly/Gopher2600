@@ -55,6 +55,11 @@ func NewKeyboard(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return key
 }
 
+// Plumb implements the ports.Peripheral interface.
+func (key *Keyboard) Plumb(bus ports.PeripheralBus) {
+	key.bus = bus
+}
+
 // String implements the ports.Peripheral interface.
 func (key *Keyboard) String() string {
 	return fmt.Sprintf("keyboard: key=%v", key.key)

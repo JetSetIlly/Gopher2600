@@ -50,6 +50,9 @@ type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
+	// Plumb a new PeripheralBus into the Peripheral
+	Plumb(PeripheralBus)
+
 	// Name should return the canonical name for the peripheral (eg. "Paddle"
 	// for the paddle peripheral). It shouldn't include information about which
 	// port the peripheral is attached to.

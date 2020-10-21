@@ -24,6 +24,12 @@ import "strings"
 type Television interface {
 	String() string
 
+	// Make a copy of the television state
+	Snapshot() TelevisionState
+
+	// Copy back television state
+	RestoreSnapshot(TelevisionState)
+
 	// AddPixelRenderer registers an (additional) implementation of PixelRenderer
 	AddPixelRenderer(PixelRenderer)
 
@@ -95,6 +101,11 @@ type TelevisionSprite interface {
 	GetState(StateReq) (int, error)
 }
 
+// TelevisionState is a blank type returned by Copy() and used by CopyBack() in
+// the Television interface. The state itself can consist of anything necessary
+// to the Television implementation.
+type TelevisionState interface{}
+
 // PixelRenderer implementations displays, or otherwise works with, visual
 // information from a television. For example digest.Video.
 //
@@ -153,12 +164,14 @@ type PixelRenderer interface {
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
 	//
-	SetPixel(x, y int, red, green, blue byte, vblank bool) error
+	SetPixel(x, y int, red, green, blue byte, vblank bool, refreshing bool) error
 
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
 	// EndRendering() has been called
 	EndRendering() error
+
+	Refresh(end bool)
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An

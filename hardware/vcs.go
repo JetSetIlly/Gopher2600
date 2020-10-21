@@ -42,7 +42,7 @@ type VCS struct {
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
 
-	Rewind rewind
+	Rewind *rewind
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -60,8 +60,6 @@ func NewVCS(tv television.Television) (*VCS, error) {
 		TV:    tv,
 	}
 
-	vcs.Rewind = newRewind(vcs)
-
 	vcs.Mem = memory.NewMemory(vcs.Prefs)
 	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
@@ -76,6 +74,8 @@ func NewVCS(tv television.Television) (*VCS, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	vcs.Rewind = newRewind(vcs)
 
 	return vcs, nil
 }
@@ -96,6 +96,8 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	if err != nil {
 		return err
 	}
+
+	vcs.Rewind.Append()
 
 	return nil
 }

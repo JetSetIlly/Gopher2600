@@ -52,8 +52,8 @@ func newCollisions(mem bus.ChipBus) *Collisions {
 	return col
 }
 
-// Copy creates a new instance of the Collisions sub-system.
-func (col *Collisions) Copy() *Collisions {
+// Snapshot creates a copy of the Collisions sub-system in its current state.
+func (col *Collisions) Snapshot() *Collisions {
 	n := *col
 	return &n
 }

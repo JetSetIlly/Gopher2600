@@ -19,47 +19,70 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
-type quantum struct {
+type snapshot struct {
 	CPU  *cpu.CPU
 	Mem  *memory.Memory
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
+	TV   television.TelevisionState
 }
 
 type rewind struct {
 	vcs      *VCS
-	steps    []quantum
+	steps    []snapshot
 	position int
+
+	appendNewFrame bool
 }
 
-func newRewind(vcs *VCS) rewind {
-	return rewind{
+const maxSteps = 300
+
+func newRewind(vcs *VCS) *rewind {
+	r := &rewind{
 		vcs:   vcs,
-		steps: make([]quantum, 10000),
+		steps: make([]snapshot, 0, maxSteps),
 	}
+	r.vcs.TV.AddPixelRenderer(r)
+	r.appendNewFrame = true
+	return r
 }
 
+// Append should only be called on a CPU instruction boundary. If we call it
+// every CPU instruction then we can control when we save almost entirely
+// within this function.
+//
+// Currently, the policy is to create a snapshot every frame. The NewFrame()
+// function (implements television.PixelRenderer) sets the appendNewFrame flag
+// which is checked on the next instruction boundary. We do this because
+// NewFrame() can be called mid-instruction.
 func (r *rewind) Append() {
-	q := quantum{
-		CPU:  r.vcs.CPU.Copy(),
-		Mem:  r.vcs.Mem.Copy(),
-		TIA:  r.vcs.TIA.Copy(),
-		RIOT: r.vcs.RIOT.Copy(),
+	if !r.appendNewFrame {
+		return
+	}
+	r.appendNewFrame = false
+
+	s := snapshot{
+		CPU:  r.vcs.CPU.Snapshot(),
+		Mem:  r.vcs.Mem.Snapshot(),
+		TIA:  r.vcs.TIA.Snapshot(),
+		RIOT: r.vcs.RIOT.Snapshot(),
+		TV:   r.vcs.TV.Snapshot(),
 	}
 
-	if r.position >= 10000 {
-		r.steps = append(r.steps[1:], q)
+	if r.position >= maxSteps {
+		r.steps = append(r.steps[1:], s)
 	} else {
-		r.steps = append(r.steps[:r.position+1], q)
+		r.steps = append(r.steps[:r.position], s)
 	}
-	r.position = len(r.steps) - 1
+	r.position = len(r.steps)
 }
 
 func (r rewind) State() (int, int) {
-	return len(r.steps), r.position
+	return len(r.steps), r.position - 1
 }
 
 func (r *rewind) SetPosition(pos int) {
@@ -67,9 +90,39 @@ func (r *rewind) SetPosition(pos int) {
 		pos = len(r.steps) - 1
 	}
 	r.position = pos
-	q := r.steps[r.position]
-	r.vcs.CPU = q.CPU
-	r.vcs.Mem = q.Mem
-	r.vcs.TIA = q.TIA
-	r.vcs.RIOT = q.RIOT
+
+	s := r.steps[r.position]
+	r.vcs.CPU = s.CPU
+	r.vcs.Mem = s.Mem
+	r.vcs.TIA = s.TIA
+	r.vcs.RIOT = s.RIOT
+
+	r.vcs.TV.RestoreSnapshot(s.TV)
+	r.vcs.CPU.Plumb(r.vcs.Mem)
+	r.vcs.TIA.Plumb(r.vcs.Mem.TIA)
+	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
+}
+
+func (r *rewind) Resize(spec television.Spec, topScanline int, visibleScanlines int) error {
+	return nil
+}
+
+func (r *rewind) NewFrame(frameNum int, isStable bool) error {
+	r.appendNewFrame = true
+	return nil
+}
+
+func (r *rewind) NewScanline(scanline int) error {
+	return nil
+}
+
+func (r *rewind) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool, _ bool) error {
+	return nil
+}
+
+func (r *rewind) EndRendering() error {
+	return nil
+}
+
+func (r *rewind) Refresh(_ bool) {
 }

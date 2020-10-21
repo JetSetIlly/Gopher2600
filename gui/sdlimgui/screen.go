@@ -208,15 +208,27 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	return nil
 }
 
+// Refresh implements the television.PixelRenderer interface.
+func (scr *screen) Refresh(end bool) {
+	if !end {
+		scr.crit.section.Lock()
+	} else {
+		scr.crit.backingPixelsUpdate = true
+		scr.crit.section.Unlock()
+	}
+}
+
 // NewScanline implements the television.PixelRenderer interface.
 func (scr *screen) NewScanline(scanline int) error {
 	return nil
 }
 
 // SetPixel implements the television.PixelRenderer interface.
-func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
+func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool, refreshing bool) error {
+	if !refreshing {
+		scr.crit.section.Lock()
+		defer scr.crit.section.Unlock()
+	}
 
 	// handle VBLANK by setting pixels to black
 	if vblank {

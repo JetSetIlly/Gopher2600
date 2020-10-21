@@ -94,10 +94,15 @@ func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) *CPU {
 	}
 }
 
-// Copy creates a new instance of the CPU.
-func (mc *CPU) Copy() *CPU {
+// Snapshot creates a copy of the CPU in its current state.
+func (mc *CPU) Snapshot() *CPU {
 	n := *mc
 	return &n
+}
+
+// Plumb a new CPUBus into the CPU.
+func (mc *CPU) Plumb(mem bus.CPUBus) {
+	mc.mem = mem
 }
 
 func (mc *CPU) String() string {

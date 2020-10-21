@@ -45,8 +45,8 @@ func NewRAM(prefs *preferences.Preferences) *RAM {
 	return ram
 }
 
-// Copy creates a new instance of RAM.
-func (ram *RAM) Copy() *RAM {
+// Snapshot creates a copy of RAM in its current state.
+func (ram *RAM) Snapshot() *RAM {
 	n := *ram
 	n.RAM = make([]uint8, len(ram.RAM))
 	n.SnapshotRAM = make([]uint8, len(ram.SnapshotRAM))
@@ -95,6 +95,6 @@ func (ram *RAM) Write(address uint16, data uint8) error {
 }
 
 // Snapshot a copy of RAM for future comparison.
-func (ram *RAM) Snapshot() {
+func (ram *RAM) LittleSnapshot() {
 	copy(ram.SnapshotRAM, ram.RAM)
 }

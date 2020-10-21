@@ -99,10 +99,15 @@ func NewTimer(mem bus.ChipBus) *Timer {
 	return tmr
 }
 
-// Copy creates a new instance of the RIOT Timer.
-func (tmr *Timer) Copy() *Timer {
+// Snapshot creates a copy of the RIOT Timer in its current state.
+func (tmr *Timer) Snapshot() *Timer {
 	n := *tmr
 	return &n
+}
+
+// Plumb a new ChipBus into the Timer.
+func (tmr *Timer) Plumb(mem bus.ChipBus) {
+	tmr.mem = mem
 }
 
 func (tmr Timer) String() string {

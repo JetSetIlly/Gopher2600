@@ -44,6 +44,11 @@ func NewPanel(bus PeripheralBus) Peripheral {
 	return pan
 }
 
+// Plumb implements the Peripheral interface.
+func (pan *Panel) Plumb(bus PeripheralBus) {
+	pan.bus = bus
+}
+
 // String implements the Peripheral interface.
 func (pan *Panel) String() string {
 	s := strings.Builder{}

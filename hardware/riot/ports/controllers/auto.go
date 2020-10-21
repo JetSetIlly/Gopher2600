@@ -44,6 +44,12 @@ func NewAuto(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return aut
 }
 
+// Plumb implements the Peripheral interface.
+func (aut *Auto) Plumb(bus ports.PeripheralBus) {
+	aut.bus = bus
+	aut.controller.Plumb(bus)
+}
+
 // String implements the ports.Peripheral interface.
 func (aut *Auto) String() string {
 	return aut.controller.String()

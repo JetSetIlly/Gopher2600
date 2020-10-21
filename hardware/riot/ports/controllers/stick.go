@@ -68,6 +68,11 @@ func NewStick(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return stk
 }
 
+// Plumb implements the ports.Peripheral interface.
+func (stk *Stick) Plumb(bus ports.PeripheralBus) {
+	stk.bus = bus
+}
+
 // String implements the ports.Peripheral interface.
 func (stk *Stick) String() string {
 	return fmt.Sprintf("stick: axis=%02x fire=%02x", stk.axis, stk.button)

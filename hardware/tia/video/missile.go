@@ -105,8 +105,8 @@ func newMissileSprite(label string, tv television.TelevisionSprite, hblank *bool
 	return ms
 }
 
-// Copy creates a new instance of a Video Missile sprite.
-func (ms *MissileSprite) Copy(hblank *bool, hmoveLatch *bool) *MissileSprite {
+// Snapshot creates a copy of the missile in its current state.
+func (ms *MissileSprite) Snapshot(hblank *bool, hmoveLatch *bool) *MissileSprite {
 	n := *ms
 	n.hblank = hblank
 	n.hmoveLatch = hmoveLatch

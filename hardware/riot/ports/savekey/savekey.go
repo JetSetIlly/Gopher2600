@@ -97,6 +97,11 @@ func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return sk
 }
 
+// Plumb implements the ports.Peripheral interface.
+func (sk *SaveKey) Plumb(bus ports.PeripheralBus) {
+	sk.bus = bus
+}
+
 func (sk *SaveKey) String() string {
 	s := strings.Builder{}
 	s.WriteString("savekey: ")

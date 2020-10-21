@@ -68,33 +68,33 @@ func (sr *simpleResizer) examine(tv *reference, sig SignalAttributes) {
 	// N number of frames before we resize). Earlier versions of this file did
 	// do that but we removed it due to no evidence that it was required.
 	if !sig.VBlank {
-		if tv.scanline > sr.bottom {
-			sr.bottom = tv.scanline
+		if tv.state.scanline > sr.bottom {
+			sr.bottom = tv.state.scanline
 		}
 	}
 }
 
 func (sr *simpleResizer) commit(tv *reference) error {
 	// always perform resize operation
-	if tv.syncedFrameNum <= leadingFrames || sr.bottom == tv.bottom {
+	if tv.state.syncedFrameNum <= leadingFrames || sr.bottom == tv.state.bottom {
 		return nil
 	}
 
-	diff := sr.bottom - tv.bottom
+	diff := sr.bottom - tv.state.bottom
 
 	// reduce top by same amount as bottom
-	tv.top -= diff
-	if tv.top < 0 {
-		tv.top = 0
+	tv.state.top -= diff
+	if tv.state.top < 0 {
+		tv.state.top = 0
 	}
 
 	// new bottom value is what we detected
-	tv.bottom = sr.bottom
+	tv.state.bottom = sr.bottom
 
 	// call Resize() for all attached pixel rendered
-	if tv.top < tv.bottom {
+	if tv.state.top < tv.state.bottom {
 		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.spec, tv.top, tv.bottom-tv.top)
+			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
 			if err != nil {
 				return err
 			}
@@ -105,5 +105,5 @@ func (sr *simpleResizer) commit(tv *reference) error {
 }
 
 func (sr *simpleResizer) prepare(tv *reference) {
-	sr.bottom = tv.bottom
+	sr.bottom = tv.state.bottom
 }

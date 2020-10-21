@@ -105,8 +105,8 @@ func newBallSprite(label string, tv television.TelevisionSprite, hblank *bool, h
 	return bs
 }
 
-// Copy creates a new instance of the Video Ball sprite.
-func (bs *BallSprite) Copy(hblank *bool, hmoveLatch *bool) *BallSprite {
+// Snapshot creates a copy of the ball in its current state.
+func (bs *BallSprite) Snapshot(hblank *bool, hmoveLatch *bool) *BallSprite {
 	n := *bs
 	n.hblank = hblank
 	n.hmoveLatch = hmoveLatch

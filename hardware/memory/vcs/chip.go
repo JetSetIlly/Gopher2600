@@ -54,8 +54,8 @@ type ChipMemory struct {
 	readRegister string
 }
 
-// Copy creates a new instance of ChipMemory.
-func (area *ChipMemory) Copy() *ChipMemory {
+// Snapshot creates a copy of ChipMemory in its current state.
+func (area *ChipMemory) Snapshot() *ChipMemory {
 	n := *area
 	n.memory = make([]uint8, len(area.memory))
 	copy(n.memory, area.memory)
