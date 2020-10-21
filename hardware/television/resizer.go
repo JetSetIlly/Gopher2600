@@ -33,13 +33,13 @@ type resizer interface {
 	id() FrameResizeID
 
 	// examine signal for resizing possibility. called on every Signal()
-	examine(tv *television, sig SignalAttributes)
+	examine(tv *reference, sig SignalAttributes)
 
 	// commit resizing possiblity. called on every newFrame()
-	commit(tv *television) error
+	commit(tv *reference) error
 
 	// preapare for next frame
-	prepare(tv *television)
+	prepare(tv *reference)
 }
 
 // simpleResizer is the simplest functional and non-trivial implementation of
@@ -52,7 +52,7 @@ func (sr simpleResizer) id() FrameResizeID {
 	return FrameResizerSimple
 }
 
-func (sr *simpleResizer) examine(tv *television, sig SignalAttributes) {
+func (sr *simpleResizer) examine(tv *reference, sig SignalAttributes) {
 	// if vblank is off at any point of then extend the bottom of the screen.
 	// we'll commit the resize procedure in the newFrame() function
 	//
@@ -74,7 +74,7 @@ func (sr *simpleResizer) examine(tv *television, sig SignalAttributes) {
 	}
 }
 
-func (sr *simpleResizer) commit(tv *television) error {
+func (sr *simpleResizer) commit(tv *reference) error {
 	// always perform resize operation
 	if tv.syncedFrameNum <= leadingFrames || sr.bottom == tv.bottom {
 		return nil
@@ -104,6 +104,6 @@ func (sr *simpleResizer) commit(tv *television) error {
 	return nil
 }
 
-func (sr *simpleResizer) prepare(tv *television) {
+func (sr *simpleResizer) prepare(tv *reference) {
 	sr.bottom = tv.bottom
 }

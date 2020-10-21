@@ -48,7 +48,7 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tv         television.Television
+	tv         television.TelevisionSprite
 	hblank     *bool
 	hmoveLatch *bool
 
@@ -91,7 +91,7 @@ type MissileSprite struct {
 	Enclockifier enclockifier
 }
 
-func newMissileSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *MissileSprite {
+func newMissileSprite(label string, tv television.TelevisionSprite, hblank *bool, hmoveLatch *bool) *MissileSprite {
 	ms := &MissileSprite{
 		tv:         tv,
 		hblank:     hblank,

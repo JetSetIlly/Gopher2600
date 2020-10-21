@@ -290,7 +290,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
-		tv, err := television.NewTelevision(*spec)
+		tv, err := television.NewReference(*spec)
 		if err != nil {
 			return err
 		}
@@ -389,7 +389,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return err
 	}
 
-	tv, err := television.NewTelevision(*spec)
+	tv, err := television.NewReference(*spec)
 	if err != nil {
 		return err
 	}
@@ -569,7 +569,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	case 1:
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
-		tv, err := television.NewTelevision(*spec)
+		tv, err := television.NewReference(*spec)
 		if err != nil {
 			return err
 		}

@@ -88,7 +88,7 @@ func newLimiter(tv television.Television, checkEvents func() error) *limiter {
 }
 
 func (lmtr *limiter) setFPS(fps float32) {
-	spec, _ := lmtr.tv.GetSpec()
+	spec := lmtr.tv.GetSpec()
 	if fps < 0 {
 		fps = spec.FramesPerSecond
 	}
@@ -135,7 +135,7 @@ func (lmtr *limiter) getReqFPS() float32 {
 }
 
 // Resize implements television.PixelRenderer.
-func (lmtr *limiter) Resize(_ *television.Specification, topScanline int, visibleScanlines int) error {
+func (lmtr *limiter) Resize(_ television.Spec, topScanline int, visibleScanlines int) error {
 	lmtr.setFPS(-1)
 	return nil
 }

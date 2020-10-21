@@ -110,7 +110,7 @@ func newScreen(img *SdlImgui) *screen {
 }
 
 // resize() is called by Resize() or resizeThread() depending on thread context.
-func (scr *screen) resize(spec *television.Specification, topScanline int, visibleScanlines int) {
+func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanlines int) {
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
 
@@ -179,7 +179,7 @@ func (scr *screen) resize(spec *television.Specification, topScanline int, visib
 // Resize implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread.
-func (scr *screen) Resize(spec *television.Specification, topScanline int, visibleScanlines int) error {
+func (scr *screen) Resize(spec television.Spec, topScanline int, visibleScanlines int) error {
 	scr.img.service <- func() {
 		scr.resize(spec, topScanline, visibleScanlines)
 		scr.img.serviceErr <- nil

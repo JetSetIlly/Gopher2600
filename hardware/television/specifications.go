@@ -17,11 +17,11 @@ package television
 
 import "image/color"
 
-// SpecificationList is the list of specifications that the television may adopt.
-var SpecificationList = []string{"NTSC", "PAL"}
+// SpecList is the list of specifications that the television may adopt.
+var SpecList = []string{"NTSC", "PAL"}
 
-// Specification is used to define the two television specifications.
-type Specification struct {
+// Spec is used to define the two television specifications.
+type Spec struct {
 	ID     string
 	Colors []color.RGBA
 
@@ -73,7 +73,7 @@ type Specification struct {
 }
 
 // getColor translates a signals to the color type.
-func (spec *Specification) getColor(col ColorSignal) color.RGBA {
+func (spec *Spec) getColor(col ColorSignal) color.RGBA {
 	// we're usng the ColorSignal to index an array so we need to be extra
 	// careful to make sure the value is valid. if it's not a valid index then
 	// assume the intention was video black
@@ -100,13 +100,13 @@ const (
 )
 
 // SpecNTSC is the specification for NTSC television types.
-var SpecNTSC *Specification
+var SpecNTSC Spec
 
 // SpecPAL is the specification for PAL television types.
-var SpecPAL *Specification
+var SpecPAL Spec
 
 func init() {
-	SpecNTSC = &Specification{
+	SpecNTSC = Spec{
 		ID:                "NTSC",
 		Colors:            PaletteNTSC,
 		ScanlinesVSync:    3,
@@ -121,7 +121,7 @@ func init() {
 	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
 	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 
-	SpecPAL = &Specification{
+	SpecPAL = Spec{
 		ID:                "PAL",
 		Colors:            PalettePAL,
 		ScanlinesVSync:    3,

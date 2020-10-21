@@ -30,7 +30,7 @@ import (
 
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
-	tv  television.Television
+	tv  television.TelevisionTIA
 	mem bus.ChipBus
 
 	// the VBLANK register also affects the input sub-system
@@ -110,7 +110,7 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv television.Television, mem bus.ChipBus, input bus.UpdateBus) *TIA {
+func NewTIA(tv television.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *TIA {
 	tia := &TIA{
 		tv:      tv,
 		mem:     mem,

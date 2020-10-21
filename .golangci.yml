@@ -70,3 +70,7 @@ issues:
       - errcheck
       text: "Error return value of `.*.Write.*` is not checked"
 
+    - linters:
+      - golint
+      text: "stutters"
+

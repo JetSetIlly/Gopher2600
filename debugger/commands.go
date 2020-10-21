@@ -957,12 +957,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					}
 				}
 
-				spec, auto := dbg.tv.GetSpec()
+				spec := dbg.tv.GetSpec()
 				s := strings.Builder{}
 				s.WriteString(spec.ID)
-				if auto {
-					s.WriteString(" (auto)")
-				}
 				dbg.printLine(terminal.StyleInstrument, s.String())
 			default:
 				// already caught by command line ValidateTokens()

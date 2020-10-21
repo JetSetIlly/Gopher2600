@@ -113,7 +113,7 @@ func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 
 func (win *winDbgScr) init() {
 	win.overlayComboDim = imguiGetFrameDim("", reflection.OverlayList...)
-	win.specComboDim = imguiGetFrameDim("", television.SpecificationList...)
+	win.specComboDim = imguiGetFrameDim("", television.SpecList...)
 }
 
 func (win *winDbgScr) destroy() {
@@ -225,7 +225,7 @@ func (win *winDbgScr) draw() {
 	// tv status line
 	imgui.PushItemWidth(win.specComboDim.X)
 	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
-		for _, s := range television.SpecificationList {
+		for _, s := range television.SpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 			}

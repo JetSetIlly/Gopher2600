@@ -56,15 +56,7 @@ var playerSizesBrief = []string{
 type PlayerSprite struct {
 	// we need a reference to the attached television so that we can note the
 	// reset position of the sprite
-	//
-	// should we rely on the television implementation to report this
-	// information? I think so. the purpose of noting the reset position at all
-	// is so that we can debug (both the emulator and any games we're
-	// developing) more easily. if we calculate the reset position another way,
-	// using only information from the TIA, there's a risk that the debugging
-	// information from the TV and from the sprite will differ - to the point
-	// of confusion.
-	tv television.Television
+	tv television.TelevisionSprite
 
 	// references to some fundamental TIA properties. various combinations of
 	// these affect the latching delay when resetting the sprite
@@ -146,7 +138,7 @@ type PlayerSprite struct {
 	ScanCounter scanCounter
 }
 
-func newPlayerSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *PlayerSprite {
+func newPlayerSprite(label string, tv television.TelevisionSprite, hblank *bool, hmoveLatch *bool) *PlayerSprite {
 	ps := &PlayerSprite{
 		label:      label,
 		tv:         tv,

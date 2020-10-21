@@ -31,7 +31,7 @@ import (
 // a cryptographic task.
 type Video struct {
 	television.Television
-	spec     *television.Specification
+	spec     television.Spec
 	digest   [sha1.Size]byte
 	pixels   []byte
 	frameNum int
@@ -54,7 +54,7 @@ func NewVideo(tv television.Television) (*Video, error) {
 	l := len(dig.digest)
 
 	// allocate enough pixels for entire frame
-	dig.spec, _ = dig.GetSpec()
+	dig.spec = dig.GetSpec()
 	l += ((television.HorizClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
@@ -79,8 +79,8 @@ func (dig *Video) ResetDigest() {
 // digest is immune from changes to the frame resizing method used by the
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
-func (dig *Video) Resize(spec *television.Specification, _, _ int) error {
-	if spec == dig.spec {
+func (dig *Video) Resize(spec television.Spec, _, _ int) error {
+	if spec.ID == dig.spec.ID {
 		return nil
 	}
 

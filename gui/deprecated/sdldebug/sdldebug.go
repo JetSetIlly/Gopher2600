@@ -140,7 +140,7 @@ func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
 	scr.AddPixelRenderer(scr)
 
 	// resize window
-	spec, _ := scr.GetSpec()
+	spec := scr.GetSpec()
 	err = scr.resize(spec.ScanlineTop, spec.ScanlinesVisible)
 	if err != nil {
 		return nil, curated.Errorf("sdldebug: %v", err)
@@ -189,7 +189,7 @@ func (scr SdlDebug) showWindow(show bool) {
 // the desired window width is different depending on whether the frame is
 // cropped or uncropped.
 func (scr SdlDebug) windowWidth() (int32, float32) {
-	spec, _ := scr.GetSpec()
+	spec := scr.GetSpec()
 	scale := scr.pixelScale * pixelWidth * spec.AspectBias
 
 	if scr.cropped {
@@ -206,7 +206,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 		return int32(float32(scr.scanlines) * scr.pixelScale), scr.pixelScale
 	}
 
-	spec, _ := scr.GetSpec()
+	spec := scr.GetSpec()
 	return int32(float32(spec.ScanlinesTotal) * scr.pixelScale), scr.pixelScale
 }
 
@@ -233,7 +233,7 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 			W: television.HorizClksVisible, H: scr.scanlines,
 		}
 	} else {
-		spec, _ := scr.GetSpec()
+		spec := scr.GetSpec()
 		scr.cpyRect = &sdl.Rect{
 			X: 0, Y: 0,
 			W: television.HorizClksScanline, H: int32(spec.ScanlinesTotal),
@@ -255,7 +255,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// maximum size allowed by the specification. we need to remake them here
 	// because the specification may have changed as part of the resize() event
 
-	spec, _ := scr.GetSpec()
+	spec := scr.GetSpec()
 	scr.pixels = newPixels(television.HorizClksScanline, spec.ScanlinesTotal)
 
 	scr.textures, err = newTextures(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
@@ -280,7 +280,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 // Resize implements television.PixelRenderer interface
 //
 // MUST NOT be called from #mainthread.
-func (scr *SdlDebug) Resize(_ *television.Specification, topScanline, numScanlines int) error {
+func (scr *SdlDebug) Resize(_ television.Spec, topScanline, numScanlines int) error {
 	scr.service <- func() {
 		scr.serviceErr <- scr.resize(topScanline, numScanlines)
 	}
@@ -308,7 +308,7 @@ func (scr *SdlDebug) update() error {
 		return err
 	}
 
-	spec, _ := scr.GetSpec()
+	spec := scr.GetSpec()
 
 	// render screen guides
 	if !scr.cropped {

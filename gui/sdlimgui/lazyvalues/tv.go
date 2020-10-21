@@ -25,8 +25,7 @@ import (
 type LazyTV struct {
 	val *LazyValues
 
-	spec       atomic.Value // television.Specification
-	autoSpec   atomic.Value // bool
+	spec       atomic.Value // television.Spec
 	tvStr      atomic.Value // string
 	lastSignal atomic.Value // television.SignalAttributes
 	frame      atomic.Value // int
@@ -36,8 +35,7 @@ type LazyTV struct {
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
 
-	Spec       television.Specification
-	AutoSpec   bool
+	Spec       television.Spec
 	TVstr      string
 	LastSignal television.SignalAttributes
 	Frame      int
@@ -53,9 +51,7 @@ func newLazyTV(val *LazyValues) *LazyTV {
 }
 
 func (lz *LazyTV) push() {
-	spec, auto := lz.val.Dbg.VCS.TV.GetSpec()
-	lz.spec.Store(*spec)
-	lz.autoSpec.Store(auto)
+	lz.spec.Store(lz.val.Dbg.VCS.TV.GetSpec())
 	lz.tvStr.Store(lz.val.Dbg.VCS.TV.String())
 	lz.lastSignal.Store(lz.val.Dbg.VCS.TV.GetLastSignal())
 
@@ -76,8 +72,7 @@ func (lz *LazyTV) push() {
 }
 
 func (lz *LazyTV) update() {
-	lz.Spec, _ = lz.spec.Load().(television.Specification)
-	lz.AutoSpec, _ = lz.autoSpec.Load().(bool)
+	lz.Spec, _ = lz.spec.Load().(television.Spec)
 	lz.TVstr, _ = lz.tvStr.Load().(string)
 	lz.LastSignal, _ = lz.lastSignal.Load().(television.SignalAttributes)
 	lz.Frame, _ = lz.frame.Load().(int)

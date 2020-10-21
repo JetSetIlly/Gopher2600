@@ -43,7 +43,7 @@ var ballSizesBrief = []string{
 
 // BallSprite represents the moveable ball sprite in the VCS graphical display.
 type BallSprite struct {
-	tv         television.Television
+	tv         television.TelevisionSprite
 	hblank     *bool
 	hmoveLatch *bool
 
@@ -91,7 +91,7 @@ type BallSprite struct {
 	Enclockifier enclockifier
 }
 
-func newBallSprite(label string, tv television.Television, hblank *bool, hmoveLatch *bool) *BallSprite {
+func newBallSprite(label string, tv television.TelevisionSprite, hblank *bool, hmoveLatch *bool) *BallSprite {
 	bs := &BallSprite{
 		tv:         tv,
 		hblank:     hblank,

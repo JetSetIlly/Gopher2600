@@ -17,7 +17,6 @@ package debugger_test
 
 import (
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -29,14 +28,9 @@ import (
 )
 
 type mockTV struct{}
-type mockGUI struct{}
 
 func (t *mockTV) String() string {
 	return ""
-}
-
-func (t *mockTV) Reset() error {
-	return nil
 }
 
 func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {
@@ -45,8 +39,24 @@ func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {
 func (t *mockTV) AddAudioMixer(_ television.AudioMixer) {
 }
 
+func (t *mockTV) Reset() error {
+	return nil
+}
+
+func (t *mockTV) End() error {
+	return nil
+}
+
 func (t *mockTV) Signal(_ television.SignalAttributes) error {
 	return nil
+}
+
+func (t *mockTV) IsStable() bool {
+	return true
+}
+
+func (t *mockTV) GetLastSignal() television.SignalAttributes {
+	return television.SignalAttributes{}
 }
 
 func (t *mockTV) GetState(_ television.StateReq) (int, error) {
@@ -57,20 +67,12 @@ func (t *mockTV) SetSpec(_ string) error {
 	return nil
 }
 
-func (t *mockTV) GetSpec() (*television.Specification, bool) {
-	return television.SpecNTSC, false
-}
-
-func (t *mockTV) IsStable() bool {
-	return true
-}
-
-func (t *mockTV) End() error {
-	return nil
-}
-
-func (t *mockTV) SpecIDOnCreation() string {
+func (t *mockTV) GetReqSpecID() string {
 	return ""
+}
+
+func (t *mockTV) GetSpec() television.Spec {
+	return television.SpecNTSC
 }
 
 func (t *mockTV) SetFPSCap(set bool) {
@@ -87,22 +89,10 @@ func (t *mockTV) GetActualFPS() float32 {
 	return 0.0
 }
 
-func (t *mockTV) GetLastSignal() television.SignalAttributes {
-	return television.SignalAttributes{}
-}
-
-func (g *mockGUI) Destroy(_ io.Writer) {
-}
-
-func (g *mockGUI) IsVisible() bool {
-	return false
-}
+type mockGUI struct{}
 
 func (g *mockGUI) ReqFeature(request gui.FeatureReq, args ...interface{}) error {
 	return nil
-}
-
-func (g *mockGUI) Service() {
 }
 
 type mockTerm struct {
