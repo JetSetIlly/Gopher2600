@@ -33,6 +33,9 @@ type Television interface {
 	// AddPixelRenderer registers an (additional) implementation of PixelRenderer
 	AddPixelRenderer(PixelRenderer)
 
+	// AddFrameTrigger registers an (additional) implementation of FrameTrigger
+	AddFrameTrigger(FrameTrigger)
+
 	// AddAudioMixer registers an (additional) implementation of AudioMixer
 	AddAudioMixer(AudioMixer)
 
@@ -101,9 +104,9 @@ type TelevisionSprite interface {
 	GetState(StateReq) (int, error)
 }
 
-// TelevisionState is a blank type returned by Copy() and used by CopyBack() in
-// the Television interface. The state itself can consist of anything necessary
-// to the Television implementation.
+// TelevisionState is a deliberately opaque type returned by Snapshot() and
+// used by RestoreSnapshot() in the Television interface. The state itself can
+// consist of anything necessary to the Television implementation.
 type TelevisionState interface{}
 
 // PixelRenderer implementations displays, or otherwise works with, visual
@@ -164,6 +167,8 @@ type PixelRenderer interface {
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
 	//
+	// Set refreshing flag to true when called between Refresh(true) and
+	// Refresh(false)
 	SetPixel(x, y int, red, green, blue byte, vblank bool, refreshing bool) error
 
 	// some renderers may need to conclude and/or dispose of resources gently.
@@ -171,7 +176,17 @@ type PixelRenderer interface {
 	// EndRendering() has been called
 	EndRendering() error
 
-	Refresh(end bool)
+	// Mark the start and end of a refresh event from the television. These
+	// events occur when the television wants to dump many pixels at once.
+	// Use SetPixel() with a refreshing flag of true between calls to
+	// Refresh(true) and Refresh(false)
+	Refresh(refreshing bool)
+}
+
+// FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
+// subset of PixelRenderer.
+type FrameTrigger interface {
+	NewFrame(frameNum int, isStable bool) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An

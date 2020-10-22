@@ -117,6 +117,9 @@ type reference struct {
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
 
+	// list of frametrigger implementations to consult
+	frameTriggers []FrameTrigger
+
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
@@ -171,7 +174,7 @@ func (tv *reference) RestoreSnapshot(s TelevisionState) {
 	tv.state = s.(*state)
 
 	for _, r := range tv.renderers {
-		r.Refresh(false)
+		r.Refresh(true)
 	}
 
 	for _, e := range tv.state.signalHistory {
@@ -182,13 +185,19 @@ func (tv *reference) RestoreSnapshot(s TelevisionState) {
 	}
 
 	for _, r := range tv.renderers {
-		r.Refresh(true)
+		r.Refresh(false)
 	}
 }
 
 // AddPixelRenderer implements the Television interface.
 func (tv *reference) AddPixelRenderer(r PixelRenderer) {
 	tv.renderers = append(tv.renderers, r)
+	tv.frameTriggers = append(tv.frameTriggers, r)
+}
+
+// AddFrameTrigger registers an (additional) implementation of FrameTrigger.
+func (tv *reference) AddFrameTrigger(f FrameTrigger) {
+	tv.frameTriggers = append(tv.frameTriggers, f)
 }
 
 // AddAudioMixer implements the Television interface.
@@ -382,9 +391,9 @@ func (tv *reference) newFrame(synced bool) error {
 	tv.resizer.prepare(tv)
 	tv.state.syncedFrame = synced
 
-	// call new frame for all renderers
-	for f := range tv.renderers {
-		err = tv.renderers[f].NewFrame(tv.state.frameNum, tv.IsStable())
+	// process all FrameTriggers
+	for f := range tv.frameTriggers {
+		err = tv.frameTriggers[f].NewFrame(tv.state.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}

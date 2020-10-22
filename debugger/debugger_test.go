@@ -43,6 +43,9 @@ func (t *mockTV) RestoreSnapshot(_ television.TelevisionState) {
 func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {
 }
 
+func (t *mockTV) AddFrameTrigger(_ television.FrameTrigger) {
+}
+
 func (t *mockTV) AddAudioMixer(_ television.AudioMixer) {
 }
 

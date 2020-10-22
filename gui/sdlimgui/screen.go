@@ -209,8 +209,8 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 }
 
 // Refresh implements the television.PixelRenderer interface.
-func (scr *screen) Refresh(end bool) {
-	if !end {
+func (scr *screen) Refresh(refreshing bool) {
+	if refreshing {
 		scr.crit.section.Lock()
 	} else {
 		scr.crit.backingPixelsUpdate = true

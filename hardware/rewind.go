@@ -46,7 +46,7 @@ func newRewind(vcs *VCS) *rewind {
 		vcs:   vcs,
 		steps: make([]snapshot, 0, maxSteps),
 	}
-	r.vcs.TV.AddPixelRenderer(r)
+	r.vcs.TV.AddFrameTrigger(r)
 	r.appendNewFrame = true
 	return r
 }
@@ -81,10 +81,13 @@ func (r *rewind) Append() {
 	r.position = len(r.steps)
 }
 
+// Returns current state of the rewind. First return value is total number of
+// states and the second value is the current position.
 func (r rewind) State() (int, int) {
 	return len(r.steps), r.position - 1
 }
 
+// Move timeline to to specified position.
 func (r *rewind) SetPosition(pos int) {
 	if pos >= len(r.steps) {
 		pos = len(r.steps) - 1
@@ -103,26 +106,8 @@ func (r *rewind) SetPosition(pos int) {
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 }
 
-func (r *rewind) Resize(spec television.Spec, topScanline int, visibleScanlines int) error {
-	return nil
-}
-
+// NewFrame is in an implementation of television.FrameTrigger.
 func (r *rewind) NewFrame(frameNum int, isStable bool) error {
 	r.appendNewFrame = true
 	return nil
-}
-
-func (r *rewind) NewScanline(scanline int) error {
-	return nil
-}
-
-func (r *rewind) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool, _ bool) error {
-	return nil
-}
-
-func (r *rewind) EndRendering() error {
-	return nil
-}
-
-func (r *rewind) Refresh(_ bool) {
 }
