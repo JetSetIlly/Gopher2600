@@ -162,6 +162,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// some things we don't want to if this is only a momentary halt
 			if haltEmulation {
+				// take note of current machine state
+				if inputter.IsInteractive() {
+					dbg.VCS.Rewind.Append(true)
+				}
+
 				// print and reset accumulated break/trap/watch messages
 				dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
 				dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
@@ -270,6 +275,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// words, a snapshot will not be taken if the emulation is only
 				// single-stepped
 				dbg.VCS.Mem.RAM.LittleSnapshot()
+			}
+
+			// tidy up rewind stack if necessary
+			if dbg.continueEmulation && inputter.IsInteractive() {
+				dbg.VCS.Rewind.TrimNonFrame()
 			}
 		}
 

@@ -29,6 +29,10 @@ type snapshot struct {
 	TIA  *tia.TIA
 	RIOT *riot.RIOT
 	TV   television.TelevisionState
+
+	// is the snapshot a result of a frame snapshot request. See NewFrame()
+	// function
+	frame bool
 }
 
 type rewind struct {
@@ -36,7 +40,8 @@ type rewind struct {
 	steps    []snapshot
 	position int
 
-	appendNewFrame bool
+	newFrame               bool
+	lastAppendFromNewFrame bool
 }
 
 const maxSteps = 300
@@ -47,7 +52,7 @@ func newRewind(vcs *VCS) *rewind {
 		steps: make([]snapshot, 0, maxSteps),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
-	r.appendNewFrame = true
+	r.newFrame = true
 	return r
 }
 
@@ -56,29 +61,53 @@ func newRewind(vcs *VCS) *rewind {
 // within this function.
 //
 // Currently, the policy is to create a snapshot every frame. The NewFrame()
-// function (implements television.PixelRenderer) sets the appendNewFrame flag
+// function (implements television.PixelRenderer) sets the newFrame flag
 // which is checked on the next instruction boundary. We do this because
 // NewFrame() can be called mid-instruction.
-func (r *rewind) Append() {
-	if !r.appendNewFrame {
+//
+// The force flag appends a snapshot regardless of the newFrame flag.
+func (r *rewind) Append(force bool) {
+	if !force && !r.newFrame {
+		r.lastAppendFromNewFrame = false
 		return
 	}
-	r.appendNewFrame = false
+
+	if force && r.lastAppendFromNewFrame {
+		return
+	}
 
 	s := snapshot{
-		CPU:  r.vcs.CPU.Snapshot(),
-		Mem:  r.vcs.Mem.Snapshot(),
-		TIA:  r.vcs.TIA.Snapshot(),
-		RIOT: r.vcs.RIOT.Snapshot(),
-		TV:   r.vcs.TV.Snapshot(),
+		CPU:   r.vcs.CPU.Snapshot(),
+		Mem:   r.vcs.Mem.Snapshot(),
+		TIA:   r.vcs.TIA.Snapshot(),
+		RIOT:  r.vcs.RIOT.Snapshot(),
+		TV:    r.vcs.TV.Snapshot(),
+		frame: r.newFrame,
 	}
+
+	r.lastAppendFromNewFrame = r.newFrame
+	r.newFrame = false
 
 	if r.position >= maxSteps {
 		r.steps = append(r.steps[1:], s)
+	} else if len(r.steps) == 0 {
+		r.steps = append(r.steps, s)
 	} else {
 		r.steps = append(r.steps[:r.position], s)
 	}
 	r.position = len(r.steps)
+}
+
+// Trim the snapshot at the current position if it is not a snapshot at a frame boundary.
+func (r *rewind) TrimNonFrame() {
+	if len(r.steps) == 0 {
+		return
+	}
+
+	if !r.steps[r.position-1].frame {
+		r.steps = r.steps[:r.position-1]
+		r.position--
+	}
 }
 
 // Returns current state of the rewind. First return value is total number of
@@ -92,9 +121,8 @@ func (r *rewind) SetPosition(pos int) {
 	if pos >= len(r.steps) {
 		pos = len(r.steps) - 1
 	}
-	r.position = pos
 
-	s := r.steps[r.position]
+	s := r.steps[pos]
 	r.vcs.CPU = s.CPU
 	r.vcs.Mem = s.Mem
 	r.vcs.TIA = s.TIA
@@ -104,10 +132,12 @@ func (r *rewind) SetPosition(pos int) {
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
+
+	r.position = pos + 1
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
 func (r *rewind) NewFrame(frameNum int, isStable bool) error {
-	r.appendNewFrame = true
+	r.newFrame = true
 	return nil
 }

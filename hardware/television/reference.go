@@ -117,6 +117,9 @@ type reference struct {
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
 
+	// list of refresher implementations to consult
+	refreshers []PixelRefresher
+
 	// list of frametrigger implementations to consult
 	frameTriggers []FrameTrigger
 
@@ -173,18 +176,18 @@ func (tv *reference) RestoreSnapshot(s TelevisionState) {
 
 	tv.state = s.(*state)
 
-	for _, r := range tv.renderers {
+	for _, r := range tv.refreshers {
 		r.Refresh(true)
 	}
 
-	for _, e := range tv.state.signalHistory {
+	for i, e := range tv.state.signalHistory {
 		col := tv.state.spec.getColor(e.sig.Pixel)
-		for _, r := range tv.renderers {
-			r.SetPixel(e.x, e.y, col.R, col.G, col.B, e.sig.VBlank, true)
+		for _, r := range tv.refreshers {
+			r.RefreshPixel(e.x, e.y, col.R, col.G, col.B, e.sig.VBlank, i >= tv.state.signalHistoryIdx)
 		}
 	}
 
-	for _, r := range tv.renderers {
+	for _, r := range tv.refreshers {
 		r.Refresh(false)
 	}
 }
@@ -195,7 +198,12 @@ func (tv *reference) AddPixelRenderer(r PixelRenderer) {
 	tv.frameTriggers = append(tv.frameTriggers, r)
 }
 
-// AddFrameTrigger registers an (additional) implementation of FrameTrigger.
+// AddPixelRefresher implements the Television interface.
+func (tv *reference) AddPixelRefresher(r PixelRefresher) {
+	tv.refreshers = append(tv.refreshers, r)
+}
+
+// AddFrameTrigger implements the Television interface.
 func (tv *reference) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
 }
@@ -326,8 +334,7 @@ func (tv *reference) Signal(sig SignalAttributes) error {
 	col := tv.state.spec.getColor(sig.Pixel)
 	for f := range tv.renderers {
 		err := tv.renderers[f].SetPixel(tv.state.horizPos, tv.state.scanline,
-			col.R, col.G, col.B,
-			sig.VBlank, false)
+			col.R, col.G, col.B, sig.VBlank)
 		if err != nil {
 			return err
 		}

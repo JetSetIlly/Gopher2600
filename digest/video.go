@@ -112,7 +112,7 @@ func (dig *Video) NewScanline(scanline int) error {
 }
 
 // SetPixel implements television.PixelRenderer interface.
-func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool, _ bool) error {
+func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
 	i += television.HorizClksScanline * y * pixelDepth

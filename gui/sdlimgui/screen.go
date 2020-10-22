@@ -197,18 +197,30 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	scr.crit.isStable = isStable
 
 	scr.crit.backingPixelsUpdate = true
-	if scr.crit.backingPixelsCurrent < len(scr.crit.backingPixels)-1 {
-		copy(scr.crit.backingPixels[scr.crit.backingPixelsCurrent+1].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
-		scr.crit.backingPixelsCurrent++
-	} else {
+	if scr.crit.backingPixelsCurrent >= len(scr.crit.backingPixels)-1 {
 		copy(scr.crit.backingPixels[0].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
 		scr.crit.backingPixelsCurrent = 0
+	} else {
+		copy(scr.crit.backingPixels[scr.crit.backingPixelsCurrent+1].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
+		scr.crit.backingPixelsCurrent++
 	}
 
 	return nil
 }
 
-// Refresh implements the television.PixelRenderer interface.
+// NewScanline implements the television.PixelRenderer interface.
+func (scr *screen) NewScanline(scanline int) error {
+	return nil
+}
+
+// SetPixel implements the television.PixelRenderer interface.
+func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+	return scr.RefreshPixel(x, y, red, green, blue, vblank, false)
+}
+
+// Refresh implements the television.PixelRefresh interface.
 func (scr *screen) Refresh(refreshing bool) {
 	if refreshing {
 		scr.crit.section.Lock()
@@ -218,18 +230,8 @@ func (scr *screen) Refresh(refreshing bool) {
 	}
 }
 
-// NewScanline implements the television.PixelRenderer interface.
-func (scr *screen) NewScanline(scanline int) error {
-	return nil
-}
-
-// SetPixel implements the television.PixelRenderer interface.
-func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool, refreshing bool) error {
-	if !refreshing {
-		scr.crit.section.Lock()
-		defer scr.crit.section.Unlock()
-	}
-
+// RefreshPixel implements the television.PixelRefresh interface.
+func (scr *screen) RefreshPixel(x int, y int, red byte, green byte, blue byte, vblank bool, old bool) error {
 	// handle VBLANK by setting pixels to black
 	if vblank {
 		red = 0
@@ -239,8 +241,10 @@ func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblan
 
 	rgb := color.RGBA{red, green, blue, 255}
 
-	scr.crit.lastX = x
-	scr.crit.lastY = y
+	if !old {
+		scr.crit.lastX = x
+		scr.crit.lastY = y
+	}
 	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(x, y, rgb)
 
 	return nil

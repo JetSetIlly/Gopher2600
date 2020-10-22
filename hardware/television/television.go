@@ -30,13 +30,20 @@ type Television interface {
 	// Copy back television state
 	RestoreSnapshot(TelevisionState)
 
-	// AddPixelRenderer registers an (additional) implementation of PixelRenderer
+	// AddPixelRenderer registers an implementation of PixelRenderer. Multiple
+	// implemntations can be added
 	AddPixelRenderer(PixelRenderer)
 
-	// AddFrameTrigger registers an (additional) implementation of FrameTrigger
+	// AddPixelRefresh registers an implementation of PixelRefresher. Multiple
+	// implemntations can be added
+	AddPixelRefresher(PixelRefresher)
+
+	// AddFrameTrigger registers an implementation of FrameTrigger. Multiple
+	// implemntations can be added
 	AddFrameTrigger(FrameTrigger)
 
-	// AddAudioMixer registers an (additional) implementation of AudioMixer
+	// AddAudioMixer registers an implementation of AudioMixer. Multiple
+	// implemntations can be added
 	AddAudioMixer(AudioMixer)
 
 	// Reset the television to an initial state
@@ -169,18 +176,26 @@ type PixelRenderer interface {
 	//
 	// Set refreshing flag to true when called between Refresh(true) and
 	// Refresh(false)
-	SetPixel(x, y int, red, green, blue byte, vblank bool, refreshing bool) error
+	SetPixel(x, y int, red, green, blue byte, vblank bool) error
 
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
 	// EndRendering() has been called
 	EndRendering() error
+}
 
+// PixelRefresher implementations are prepared to accept pixels outside of the
+// normal PixelRenderer sequence.
+type PixelRefresher interface {
 	// Mark the start and end of a refresh event from the television. These
 	// events occur when the television wants to dump many pixels at once.
 	// Use SetPixel() with a refreshing flag of true between calls to
 	// Refresh(true) and Refresh(false)
 	Refresh(refreshing bool)
+
+	// RefreshPixel should only be called between two call of Refresh() as
+	// described above
+	RefreshPixel(x, y int, red, green, blue byte, vblank bool, stale bool) error
 }
 
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a

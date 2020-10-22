@@ -407,7 +407,7 @@ func (scr *SdlDebug) NewFrame(frameNum int, _ bool) error {
 }
 
 // SetPixel implements television.PixelRenderer interface.
-func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool, _ bool) error {
+func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
 	// handle VBLANK by setting pixels to black
 	if vblank {
 		red = 0

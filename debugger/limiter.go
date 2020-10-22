@@ -157,7 +157,7 @@ func (lmtr *limiter) NewScanline(_ int) error {
 }
 
 // SetPixel implements television.PixelRenderer.
-func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool, _ bool) error {
+func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) error {
 	if lmtr.throt != throtColClock {
 		return nil
 	}

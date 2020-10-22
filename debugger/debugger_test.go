@@ -43,6 +43,9 @@ func (t *mockTV) RestoreSnapshot(_ television.TelevisionState) {
 func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {
 }
 
+func (t *mockTV) AddPixelRefresher(_ television.PixelRefresher) {
+}
+
 func (t *mockTV) AddFrameTrigger(_ television.FrameTrigger) {
 }
 

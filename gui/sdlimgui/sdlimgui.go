@@ -138,8 +138,10 @@ func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	// connect pixel renderer to television and texture renderer to pixel renderer
+	// connect pixel renderer/referesher to television and texture renderer to
+	// pixel renderer
 	tv.AddPixelRenderer(img.screen)
+	tv.AddPixelRefresher(img.screen)
 	img.screen.addTextureRenderer(img.wm.dbgScr)
 	img.screen.addTextureRenderer(img.wm.playScr)
 

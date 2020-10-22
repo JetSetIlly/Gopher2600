@@ -97,7 +97,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	vcs.Rewind.Append()
+	vcs.Rewind.Append(true)
 
 	return nil
 }
