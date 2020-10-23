@@ -151,6 +151,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		// expand halt to include step-once/many flag
 		haltEmulation = haltEmulation || !dbg.runUntilHalt
 
+		// take note of current machine state if the emulation was in a running
+		// state and is halting just now
+		if haltEmulation && dbg.continueEmulation {
+			// but not for scripts
+			if inputter.IsInteractive() {
+				dbg.VCS.Rewind.CurrentState()
+			}
+		}
+
 		// reset last step error
 		dbg.lastStepError = false
 
@@ -162,11 +171,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// some things we don't want to if this is only a momentary halt
 			if haltEmulation {
-				// take note of current machine state
-				if inputter.IsInteractive() {
-					dbg.VCS.Rewind.CurrentState()
-				}
-
 				// print and reset accumulated break/trap/watch messages
 				dbg.printLine(terminal.StyleFeedback, dbg.breakMessages)
 				dbg.printLine(terminal.StyleFeedback, dbg.trapMessages)
@@ -264,9 +268,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// *wasn't* a checkTerm pause. we don't want to send an unpause
 			// request if we only entered HELP in the terminal, for example.
 			if !checkTerm && dbg.runUntilHalt {
-				err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
-				if err != nil {
-					return err
+				// unpause GUI if there are no step traps. unpausing a GUI when
+				// stepping by scanline, for example, looks ugly
+				if dbg.stepTraps.isEmpty() {
+					err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
+					if err != nil {
+						return err
+					}
 				}
 
 				// snapshot elements of the vcs for comparison purposes. note

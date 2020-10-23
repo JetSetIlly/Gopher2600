@@ -54,6 +54,11 @@ func (tr *traps) clear() {
 	tr.traps = make([]trapper, 0, 10)
 }
 
+// isEmpty returns true if there are no currently defined traps.
+func (tr *traps) isEmpty() bool {
+	return len(tr.traps) == 0
+}
+
 // drop the numbered trap from the list.
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
