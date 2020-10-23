@@ -115,6 +115,24 @@ func (win *winControl) draw() {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.SetFPS(-1) })
 	}
 
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	imgui.Text("Rewind")
+
+	n := int32(win.img.lz.Rewind.NumStates) - 1
+	if n < 0 {
+		n = 0
+	}
+	pos := int32(win.img.lz.Rewind.CurrState)
+
+	if imgui.SliderIntV("##timeline", &pos, 0, n, "") {
+		win.img.lz.Dbg.PushRawEvent(func() {
+			win.img.lz.Dbg.VCS.Rewind.SetPosition(int(pos))
+		})
+	}
+
 	imgui.End()
 }
 

@@ -122,9 +122,6 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	if err := addWindow(newWinPrefs, false, windowMenuDebugger); err != nil {
 		return nil, err
 	}
-	if err := addWindow(newWinRewind, true, windowMenuDebugger); err != nil {
-		return nil, err
-	}
 	if err := addWindow(newWinTerm, false, windowMenuDebugger); err != nil {
 		return nil, err
 	}
