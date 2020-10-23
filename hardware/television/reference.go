@@ -168,8 +168,8 @@ func (tv *reference) Snapshot() TelevisionState {
 	return &n
 }
 
-// RestoreSnapshot implements the Television interface.
-func (tv *reference) RestoreSnapshot(s TelevisionState) {
+// Plumb implements the Television interface.
+func (tv *reference) Plumb(s TelevisionState) {
 	if s == nil {
 		return
 	}

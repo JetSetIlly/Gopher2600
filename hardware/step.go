@@ -112,7 +112,9 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 		_ = videoCycle()
 	}
 
-	vcs.Rewind.Append(false)
+	// update rewing state if the last CPU instruction took place during a new
+	// frame event
+	vcs.Rewind.ResolveNewFrame()
 
 	return nil
 }

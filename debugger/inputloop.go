@@ -164,7 +164,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if haltEmulation {
 				// take note of current machine state
 				if inputter.IsInteractive() {
-					dbg.VCS.Rewind.Append(true)
+					dbg.VCS.Rewind.CurrentState()
 				}
 
 				// print and reset accumulated break/trap/watch messages
@@ -279,7 +279,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// tidy up rewind stack if necessary
 			if dbg.continueEmulation && inputter.IsInteractive() {
-				dbg.VCS.Rewind.TrimNonFrame()
+				dbg.VCS.Rewind.TrimCurrent()
 			}
 		}
 

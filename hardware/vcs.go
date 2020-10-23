@@ -39,8 +39,8 @@ type VCS struct {
 	// these pointer values because the rewind feature will change them.
 	CPU  *cpu.CPU
 	Mem  *memory.Memory
-	TIA  *tia.TIA
 	RIOT *riot.RIOT
+	TIA  *tia.TIA
 
 	Rewind *rewind
 }
@@ -96,8 +96,6 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	if err != nil {
 		return err
 	}
-
-	vcs.Rewind.Append(true)
 
 	return nil
 }

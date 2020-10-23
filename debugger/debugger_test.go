@@ -37,7 +37,7 @@ func (t *mockTV) Snapshot() television.TelevisionState {
 	return nil
 }
 
-func (t *mockTV) RestoreSnapshot(_ television.TelevisionState) {
+func (t *mockTV) Plumb(_ television.TelevisionState) {
 }
 
 func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {

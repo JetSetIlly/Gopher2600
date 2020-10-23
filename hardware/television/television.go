@@ -28,7 +28,7 @@ type Television interface {
 	Snapshot() TelevisionState
 
 	// Copy back television state
-	RestoreSnapshot(TelevisionState)
+	Plumb(TelevisionState)
 
 	// AddPixelRenderer registers an implementation of PixelRenderer. Multiple
 	// implemntations can be added

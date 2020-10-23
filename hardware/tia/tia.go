@@ -87,7 +87,12 @@ type TIA struct {
 	futureRsyncReset delay.Event
 	futureHmoveLatch delay.Event
 	FutureHmove      delay.Event
+
+	// hsync is a bit different because the semantics can change. hysnc events
+	// never overlap so one delay.Event instance is sufficient. the
+	// futureHsyncEvent field is used to differentiate.
 	futureHsync      delay.Event
+	futureHsyncEvent string
 }
 
 // Label returns an identifying label for the TIA.
@@ -130,13 +135,15 @@ func NewTIA(tv television.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *
 func (tia *TIA) Snapshot() *TIA {
 	n := *tia
 	n.Audio = tia.Audio.Snapshot()
-	n.Video = tia.Video.Snapshot(&n.pclk, &n.hsync, &n.Hblank, &n.HmoveLatch)
+	n.Video = tia.Video.Snapshot()
 	return &n
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(mem bus.ChipBus) {
+func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus) {
 	tia.mem = mem
+	tia.input = input
+	tia.Video.Plumb(tia.mem, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.HmoveLatch)
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.
@@ -189,8 +196,8 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// * Test RSYNC - test rom by Omegamatrix
 
-		tia.futureRsyncAlign.Schedule(3, nil)
-		tia.futureRsyncReset.Schedule(7, nil)
+		tia.futureRsyncAlign.Schedule(3, 0)
+		tia.futureRsyncReset.Schedule(7, 0)
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
@@ -222,8 +229,8 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 			delayDuration = 2
 		}
 
-		tia.futureHmoveLatch.Schedule(delayDuration, nil)
-		tia.FutureHmove.Schedule(delayDuration+3, nil)
+		tia.futureHmoveLatch.Schedule(delayDuration, 0)
+		tia.FutureHmove.Schedule(delayDuration+3, 0)
 
 		// from TIA_HW_Notes:
 		//
@@ -269,7 +276,7 @@ func (tia *TIA) newScanline() {
 func (tia *TIA) resolveDelayedEvents() {
 	if v, ok := tia.futureVblank.Tick(); ok {
 		// actual vblank signal
-		tia.sig.VBlank = v.(uint8)&0x02 == 0x02
+		tia.sig.VBlank = v&0x02 == 0x02
 	}
 
 	if _, ok := tia.futureRsyncAlign.Tick(); ok {
@@ -299,8 +306,8 @@ func (tia *TIA) resolveDelayedEvents() {
 		tia.HmoveCt = 15
 	}
 
-	if v, ok := tia.futureHsync.Tick(); ok {
-		switch v {
+	if _, ok := tia.futureHsync.Tick(); ok {
+		switch tia.futureHsyncEvent {
 		case "SHB":
 			tia.newScanline()
 		case "RHS":
@@ -388,7 +395,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 			// allow a new scanline event to occur naturally only when an RSYNC
 			// has not been scheduled
 			if !tia.futureRsyncAlign.IsActive() {
-				tia.futureHsync.Schedule(hsyncDelay, "SHB")
+				tia.futureHsyncEvent = "SHB"
+				tia.futureHsync.Schedule(hsyncDelay, 0)
 			}
 
 		case 4: // [SHS]
@@ -401,11 +409,13 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 
 		case 8: // [RHS]
 			// reset HSYNC
-			tia.futureHsync.Schedule(hsyncDelay, "RHS")
+			tia.futureHsyncEvent = "RHS"
+			tia.futureHsync.Schedule(hsyncDelay, 0)
 
 		case 12: // [RCB]
 			// reset color burst
-			tia.futureHsync.Schedule(hsyncDelay, "RCB")
+			tia.futureHsyncEvent = "RCB"
+			tia.futureHsync.Schedule(hsyncDelay, 0)
 
 		// the two cases below handle the turning off of the hblank flag. from
 		// TIA_HW_Notes.txt:
@@ -427,7 +437,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.HmoveLatch {
-				tia.futureHsync.Schedule(hsyncDelay, "RHB")
+				tia.futureHsyncEvent = "RHB"
+				tia.futureHsync.Schedule(hsyncDelay, 0)
 			}
 
 		// ... and "two counts of the HSync Counter" later ...
@@ -435,7 +446,8 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		case 18: // [LRHB]
 			// late HBLANK off if hmoveLatch is true
 			if tia.HmoveLatch {
-				tia.futureHsync.Schedule(hsyncDelay, "LRHB")
+				tia.futureHsyncEvent = "LRHB"
+				tia.futureHsync.Schedule(hsyncDelay, 0)
 			}
 		}
 	}

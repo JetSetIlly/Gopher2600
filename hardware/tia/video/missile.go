@@ -106,12 +106,15 @@ func newMissileSprite(label string, tv television.TelevisionSprite, hblank *bool
 }
 
 // Snapshot creates a copy of the missile in its current state.
-func (ms *MissileSprite) Snapshot(hblank *bool, hmoveLatch *bool) *MissileSprite {
+func (ms *MissileSprite) Snapshot() *MissileSprite {
 	n := *ms
-	n.hblank = hblank
-	n.hmoveLatch = hmoveLatch
-	n.Enclockifier.size = &n.Size
 	return &n
+}
+
+func (ms *MissileSprite) Plumb(hblank *bool, hmoveLatch *bool) {
+	ms.hblank = hblank
+	ms.hmoveLatch = hmoveLatch
+	ms.Enclockifier.size = &ms.Size
 }
 
 // Label returns the label for the sprite.
@@ -281,7 +284,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 					if ms.Copies == 0x03 {
 						cpy = 2
 					}
-					ms.futureStart.Schedule(4, cpy)
+					ms.futureStart.Schedule(4, uint8(cpy))
 				}
 			case 15:
 				if ms.Copies == 0x04 || ms.Copies == 0x06 {
@@ -289,7 +292,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 					if ms.Copies == 0x06 {
 						cpy = 2
 					}
-					ms.futureStart.Schedule(4, cpy)
+					ms.futureStart.Schedule(4, uint8(cpy))
 				}
 			case 39:
 				ms.futureStart.Schedule(4, 0)
@@ -312,8 +315,8 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 	return true
 }
 
-func (ms *MissileSprite) _futureStartDrawingEvent(v delay.Value) {
-	ms.Enclockifier.Cpy = v.(int)
+func (ms *MissileSprite) _futureStartDrawingEvent(v uint8) {
+	ms.Enclockifier.Cpy = int(v)
 	ms.Enclockifier.start()
 }
 
@@ -370,7 +373,7 @@ func (ms *MissileSprite) resetPosition() {
 		return
 	}
 
-	ms.futureReset.Schedule(delay, nil)
+	ms.futureReset.Schedule(delay, 0)
 }
 
 func (ms *MissileSprite) _futureResetPosition() {
@@ -461,8 +464,8 @@ func (ms *MissileSprite) setColor(value uint8) {
 	ms.Color = value
 }
 
-func (ms *MissileSprite) setHmoveValue(v delay.Value) {
-	ms.Hmove = (v.(uint8) ^ 0x80) >> 4
+func (ms *MissileSprite) setHmoveValue(v uint8) {
+	ms.Hmove = (v ^ 0x80) >> 4
 }
 
 func (ms *MissileSprite) clearHmoveValue() {

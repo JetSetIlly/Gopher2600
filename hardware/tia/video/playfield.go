@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -107,10 +106,8 @@ func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *
 }
 
 // Snapshot creates a copy of the Video Playfield in its current state.
-func (pf *Playfield) Snapshot(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
+func (pf *Playfield) Snapshot() *Playfield {
 	n := *pf
-	n.pclk = pclk
-	n.hsync = hsync
 
 	n.RegularData = make([]bool, len(pf.RegularData))
 	n.ReflectedData = make([]bool, len(pf.ReflectedData))
@@ -133,6 +130,11 @@ func (pf *Playfield) Snapshot(pclk *phaseclock.PhaseClock, hsync *polycounter.Po
 	}
 
 	return &n
+}
+
+func (pf *Playfield) Plumb(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) {
+	pf.pclk = pclk
+	pf.hsync = hsync
 }
 
 func (pf Playfield) Label() string {
@@ -301,16 +303,16 @@ func (pf *Playfield) SetPF2(v uint8) {
 	pf.latchRegionData()
 }
 
-func (pf *Playfield) setPF0(v delay.Value) {
-	pf.SetPF0(v.(uint8))
+func (pf *Playfield) setPF0(v uint8) {
+	pf.SetPF0(v)
 }
 
-func (pf *Playfield) setPF1(v delay.Value) {
-	pf.SetPF1(v.(uint8))
+func (pf *Playfield) setPF1(v uint8) {
+	pf.SetPF1(v)
 }
 
-func (pf *Playfield) setPF2(v delay.Value) {
-	pf.SetPF2(v.(uint8))
+func (pf *Playfield) setPF2(v uint8) {
+	pf.SetPF2(v)
 }
 
 func (pf *Playfield) SetCTRLPF(value uint8) {

@@ -104,12 +104,11 @@ type PlayerSprite struct {
 	Color         uint8 // equal to missile color
 	Reflected     bool
 	VerticalDelay bool
-	GfxDataNew    uint8
-	GfxDataOld    uint8
 
-	// pointer to which gfx data we're using (gfxDataOld or gfxDataNew).
-	// controlled by value of verticalDelay
-	gfxData *uint8
+	// which gfx register we use depends on the value of vertical delay
+	GfxDataNew uint8
+	GfxDataOld uint8
+	gfxData    *uint8
 
 	// for convenience we store the raw NUSIZ value and the significant size
 	// and copy bits
@@ -149,22 +148,30 @@ func newPlayerSprite(label string, tv television.TelevisionSprite, hblank *bool,
 
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
-	ps.position.Reset()
-
-	// initialise gfxData pointer
 	ps.gfxData = &ps.GfxDataNew
+
+	ps.position.Reset()
 
 	return ps
 }
 
 // Snapshot creates a copy of the player sprite in its current state.
-func (ps *PlayerSprite) Snapshot(hblank *bool, hmoveLatch *bool) *PlayerSprite {
+func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 	n := *ps
-	n.hblank = hblank
-	n.hmoveLatch = hmoveLatch
-	n.ScanCounter.sizeAndCopies = &n.SizeAndCopies
-	n.ScanCounter.pclk = &n.pclk
 	return &n
+}
+
+func (ps *PlayerSprite) Plumb(hblank *bool, hmoveLatch *bool) {
+	ps.hblank = hblank
+	ps.hmoveLatch = hmoveLatch
+	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
+	ps.ScanCounter.pclk = &ps.pclk
+
+	if ps.VerticalDelay {
+		ps.gfxData = &ps.GfxDataOld
+	} else {
+		ps.gfxData = &ps.GfxDataNew
+	}
 }
 
 // Label returns the label for the sprite.
@@ -366,7 +373,7 @@ func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 					if ps.SizeAndCopies == 0x03 {
 						cpy = 2
 					}
-					ps.futureStart.Schedule(4, cpy)
+					ps.futureStart.Schedule(4, uint8(cpy))
 				}
 			case 15:
 				if ps.SizeAndCopies == 0x04 || ps.SizeAndCopies == 0x06 {
@@ -374,7 +381,7 @@ func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 					if ps.SizeAndCopies == 0x06 {
 						cpy = 2
 					}
-					ps.futureStart.Schedule(4, cpy)
+					ps.futureStart.Schedule(4, uint8(cpy))
 				}
 			case 39:
 				ps.futureStart.Schedule(4, 0)
@@ -399,7 +406,7 @@ func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	return true
 }
 
-func (ps *PlayerSprite) _futureStartDrawingEvent(v delay.Value) {
+func (ps *PlayerSprite) _futureStartDrawingEvent(v uint8) {
 	// it is useful for debugging to know which copy of the sprite is
 	// currently being drawn. we'll update this value in the switch
 	// below, taking great care to note the value of ms.copies at each
@@ -407,7 +414,7 @@ func (ps *PlayerSprite) _futureStartDrawingEvent(v delay.Value) {
 	//
 	// this is used by the missile sprites when in reset-to-player
 	// mode
-	ps.ScanCounter.Cpy = v.(int)
+	ps.ScanCounter.Cpy = int(v)
 	ps.ScanCounter.start()
 }
 
@@ -479,7 +486,7 @@ func (ps *PlayerSprite) resetPosition() {
 		return
 	}
 
-	ps.futureReset.Schedule(delay, nil)
+	ps.futureReset.Schedule(delay, 0)
 }
 
 func (ps *PlayerSprite) _futureResetPosition() {
@@ -683,8 +690,8 @@ func (ps *PlayerSprite) setNUSIZ(value uint8) {
 	}
 }
 
-func (ps *PlayerSprite) _futureSetNUSIZ(v delay.Value) {
-	ps.SetNUSIZ(v.(uint8))
+func (ps *PlayerSprite) _futureSetNUSIZ(v uint8) {
+	ps.SetNUSIZ(v)
 }
 
 // SetNUSIZ is called when the NUSIZ register changes, after a delay. It should
@@ -727,8 +734,8 @@ func (ps *PlayerSprite) setColor(value uint8) {
 }
 
 // setHmoveValue normalises the nibbles from the NUSIZ register.
-func (ps *PlayerSprite) setHmoveValue(v delay.Value) {
-	ps.Hmove = (v.(uint8) ^ 0x80) >> 4
+func (ps *PlayerSprite) setHmoveValue(v uint8) {
+	ps.Hmove = (v ^ 0x80) >> 4
 }
 
 func (ps *PlayerSprite) clearHmoveValue() {

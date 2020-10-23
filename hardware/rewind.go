@@ -24,15 +24,15 @@ import (
 )
 
 type snapshot struct {
-	CPU  *cpu.CPU
-	Mem  *memory.Memory
-	TIA  *tia.TIA
-	RIOT *riot.RIOT
-	TV   television.TelevisionState
+	cpu  *cpu.CPU
+	mem  *memory.Memory
+	riot *riot.RIOT
+	tia  *tia.TIA
+	tv   television.TelevisionState
 
 	// is the snapshot a result of a frame snapshot request. See NewFrame()
 	// function
-	frame bool
+	isCurrent bool
 }
 
 type rewind struct {
@@ -40,8 +40,13 @@ type rewind struct {
 	steps    []snapshot
 	position int
 
-	newFrame               bool
-	lastAppendFromNewFrame bool
+	// a new frame has been triggerd. resolve as soon as possible.
+	newFrame bool
+
+	// the last call to append() was a successful ResolveNewFrame(). under
+	// normal circumstances this field will be true one CPU instruction before
+	// being reset.
+	justAddedFrame bool
 }
 
 const maxSteps = 300
@@ -52,42 +57,57 @@ func newRewind(vcs *VCS) *rewind {
 		steps: make([]snapshot, 0, maxSteps),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
-	r.newFrame = true
+
+	r.append(snapshot{
+		cpu:       r.vcs.CPU.Snapshot(),
+		mem:       r.vcs.Mem.Snapshot(),
+		riot:      r.vcs.RIOT.Snapshot(),
+		tia:       r.vcs.TIA.Snapshot(),
+		tv:        r.vcs.TV.Snapshot(),
+		isCurrent: false,
+	})
+	r.justAddedFrame = true
+
 	return r
 }
 
-// Append should only be called on a CPU instruction boundary. If we call it
-// every CPU instruction then we can control when we save almost entirely
-// within this function.
-//
-// Currently, the policy is to create a snapshot every frame. The NewFrame()
-// function (implements television.PixelRenderer) sets the newFrame flag
-// which is checked on the next instruction boundary. We do this because
-// NewFrame() can be called mid-instruction.
-//
-// The force flag appends a snapshot regardless of the newFrame flag.
-func (r *rewind) Append(force bool) {
-	if !force && !r.newFrame {
-		r.lastAppendFromNewFrame = false
+// ResolveNewFrame is called after every CPU instruction to check whether
+// a new frame has been triggered since the last call.
+func (r *rewind) ResolveNewFrame() {
+	if !r.newFrame {
+		r.justAddedFrame = false
 		return
 	}
 
-	if force && r.lastAppendFromNewFrame {
-		return
-	}
-
-	s := snapshot{
-		CPU:   r.vcs.CPU.Snapshot(),
-		Mem:   r.vcs.Mem.Snapshot(),
-		TIA:   r.vcs.TIA.Snapshot(),
-		RIOT:  r.vcs.RIOT.Snapshot(),
-		TV:    r.vcs.TV.Snapshot(),
-		frame: r.newFrame,
-	}
-
-	r.lastAppendFromNewFrame = r.newFrame
+	r.justAddedFrame = true
 	r.newFrame = false
 
+	r.append(snapshot{
+		cpu:       r.vcs.CPU.Snapshot(),
+		mem:       r.vcs.Mem.Snapshot(),
+		riot:      r.vcs.RIOT.Snapshot(),
+		tia:       r.vcs.TIA.Snapshot(),
+		tv:        r.vcs.TV.Snapshot(),
+		isCurrent: false,
+	})
+}
+
+func (r *rewind) CurrentState() {
+	if r.justAddedFrame {
+		return
+	}
+
+	r.append(snapshot{
+		cpu:       r.vcs.CPU.Snapshot(),
+		mem:       r.vcs.Mem.Snapshot(),
+		riot:      r.vcs.RIOT.Snapshot(),
+		tia:       r.vcs.TIA.Snapshot(),
+		tv:        r.vcs.TV.Snapshot(),
+		isCurrent: true,
+	})
+}
+
+func (r *rewind) append(s snapshot) {
 	if r.position >= maxSteps {
 		r.steps = append(r.steps[1:], s)
 	} else if len(r.steps) == 0 {
@@ -98,13 +118,13 @@ func (r *rewind) Append(force bool) {
 	r.position = len(r.steps)
 }
 
-// Trim the snapshot at the current position if it is not a snapshot at a frame boundary.
-func (r *rewind) TrimNonFrame() {
+// TrimCurrent the snapshot at the current position if it is not a snapshot at a frame boundary.
+func (r *rewind) TrimCurrent() {
 	if len(r.steps) == 0 {
 		return
 	}
 
-	if !r.steps[r.position-1].frame {
+	if r.steps[r.position-1].isCurrent {
 		r.steps = r.steps[:r.position-1]
 		r.position--
 	}
@@ -123,15 +143,15 @@ func (r *rewind) SetPosition(pos int) {
 	}
 
 	s := r.steps[pos]
-	r.vcs.CPU = s.CPU
-	r.vcs.Mem = s.Mem
-	r.vcs.TIA = s.TIA
-	r.vcs.RIOT = s.RIOT
+	r.vcs.CPU = s.cpu
+	r.vcs.Mem = s.mem
+	r.vcs.RIOT = s.riot
+	r.vcs.TIA = s.tia
 
-	r.vcs.TV.RestoreSnapshot(s.TV)
+	r.vcs.TV.Plumb(s.tv)
 	r.vcs.CPU.Plumb(r.vcs.Mem)
-	r.vcs.TIA.Plumb(r.vcs.Mem.TIA)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
+	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
 
 	r.position = pos + 1
 }

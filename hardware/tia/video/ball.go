@@ -106,12 +106,15 @@ func newBallSprite(label string, tv television.TelevisionSprite, hblank *bool, h
 }
 
 // Snapshot creates a copy of the ball in its current state.
-func (bs *BallSprite) Snapshot(hblank *bool, hmoveLatch *bool) *BallSprite {
+func (bs *BallSprite) Snapshot() *BallSprite {
 	n := *bs
-	n.hblank = hblank
-	n.hmoveLatch = hmoveLatch
-	n.Enclockifier.size = &n.Size
 	return &n
+}
+
+func (bs *BallSprite) Plumb(hblank *bool, hmoveLatch *bool) {
+	bs.hblank = hblank
+	bs.hmoveLatch = hmoveLatch
+	bs.Enclockifier.size = &bs.Size
 }
 
 // Label returns the label for the sprite.
@@ -227,7 +230,7 @@ func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		switch bs.position.Count() {
 		case 39:
-			bs.futureStart.Schedule(4, nil)
+			bs.futureStart.Schedule(4, 0)
 		case 40:
 			bs.position.Reset()
 		}
@@ -293,7 +296,7 @@ func (bs *BallSprite) resetPosition() {
 		return
 	}
 
-	bs.futureReset.Schedule(delay, nil)
+	bs.futureReset.Schedule(delay, 0)
 }
 
 func (bs *BallSprite) _futureResetPosition() {
@@ -415,8 +418,8 @@ func (bs *BallSprite) setColor(value uint8) {
 	bs.Color = value
 }
 
-func (bs *BallSprite) setHmoveValue(v delay.Value) {
-	bs.Hmove = (v.(uint8) ^ 0x80) >> 4
+func (bs *BallSprite) setHmoveValue(v uint8) {
+	bs.Hmove = (v ^ 0x80) >> 4
 }
 
 func (bs *BallSprite) clearHmoveValue() {

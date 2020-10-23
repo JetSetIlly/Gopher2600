@@ -58,6 +58,10 @@ func (col *Collisions) Snapshot() *Collisions {
 	return &n
 }
 
+func (col *Collisions) Plumb(mem bus.ChipBus) {
+	col.mem = mem
+}
+
 // Clear all bits in the collision registers.
 func (col *Collisions) Clear() {
 	col.CXM0P = 0

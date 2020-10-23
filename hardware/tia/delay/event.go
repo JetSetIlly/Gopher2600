@@ -15,25 +15,19 @@
 
 package delay
 
-// Value represents the argument use when calling a scheduled function.
-type Value interface{}
-
 // Event represents something that will occur in the future.
 type Event struct {
 	initial   int
 	remaining int
 	paused    bool
 	pushed    bool
-	value     Value
+	value     uint8
 }
 
-// Schedule an event to occur in the future. Multiple values can be passed
-// with somthing like:
-//
-//	[2]delay.Value{"FOO", 123}
-//
-// And interpreted accordingly when returned by Tick() or Force().
-func (e *Event) Schedule(delay int, value Value) {
+// Schedule an event to occur in the future. To keep things simple and easily
+// copyable (essential for the rewind system) only one value of type uint8 can
+// be stored in an Event.
+func (e *Event) Schedule(delay int, value uint8) {
 	e.initial = delay + 1
 	e.remaining = delay + 1
 	e.paused = false
@@ -43,9 +37,9 @@ func (e *Event) Schedule(delay int, value Value) {
 
 // Tick the event forward one cycle. Should be called once per color clock from
 // the TIA or TIA controlled subsystem (eg. the player sprite).
-func (e *Event) Tick() (Value, bool) {
+func (e *Event) Tick() (uint8, bool) {
 	if e.remaining == 0 || e.paused {
-		return nil, false
+		return 0, false
 	}
 
 	e.remaining--
@@ -53,7 +47,7 @@ func (e *Event) Tick() (Value, bool) {
 		return e.value, true
 	}
 
-	return nil, false
+	return 0, false
 }
 
 // The number of remaining cycles.
@@ -77,7 +71,7 @@ func (e *Event) Push() {
 }
 
 // Force an event to end now, returning the value. Used by missile and player sprites.
-func (e *Event) Force() Value {
+func (e *Event) Force() uint8 {
 	e.remaining = 0
 	return e.value
 }

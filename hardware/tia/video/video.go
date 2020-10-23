@@ -87,7 +87,8 @@ type Video struct {
 
 	// some register writes require a small latching delay. they never overlap
 	// so one event is sufficient
-	writing delay.Event
+	writing         delay.Event
+	writingRegister string
 }
 
 // NewVideo is the preferred method of initialisation for the Video sub-system.
@@ -116,16 +117,26 @@ func NewVideo(mem bus.ChipBus, tv television.TelevisionSprite, pclk *phaseclock.
 }
 
 // Snapshot creates a copy of the Video sub-system in its current state.
-func (vd *Video) Snapshot(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+func (vd *Video) Snapshot() *Video {
 	n := *vd
 	n.Collisions = vd.Collisions.Snapshot()
-	n.Playfield = vd.Playfield.Snapshot(pclk, hsync)
-	n.Player0 = vd.Player0.Snapshot(hblank, hmoveLatch)
-	n.Player1 = vd.Player1.Snapshot(hblank, hmoveLatch)
-	n.Missile0 = vd.Missile0.Snapshot(hblank, hmoveLatch)
-	n.Missile1 = vd.Missile1.Snapshot(hblank, hmoveLatch)
-	n.Ball = vd.Ball.Snapshot(hblank, hmoveLatch)
+	n.Playfield = vd.Playfield.Snapshot()
+	n.Player0 = vd.Player0.Snapshot()
+	n.Player1 = vd.Player1.Snapshot()
+	n.Missile0 = vd.Missile0.Snapshot()
+	n.Missile1 = vd.Missile1.Snapshot()
+	n.Ball = vd.Ball.Snapshot()
 	return &n
+}
+
+func (vd *Video) Plumb(mem bus.ChipBus, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) {
+	vd.Collisions.Plumb(mem)
+	vd.Playfield.Plumb(pclk, hsync)
+	vd.Player0.Plumb(hblank, hmoveLatch)
+	vd.Player1.Plumb(hblank, hmoveLatch)
+	vd.Missile0.Plumb(hblank, hmoveLatch)
+	vd.Missile1.Plumb(hblank, hmoveLatch)
+	vd.Ball.Plumb(hblank, hmoveLatch)
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
@@ -142,24 +153,23 @@ func (vd *Video) RSYNC(adjustment int) {
 // conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 	if v, ok := vd.writing.Tick(); ok {
-		d := v.([2]delay.Value)
-		switch d[0] {
+		switch vd.writingRegister {
 		case "PF0":
-			vd.Playfield.setPF0(d[1])
+			vd.Playfield.setPF0(v)
 		case "PF1":
-			vd.Playfield.setPF1(d[1])
+			vd.Playfield.setPF1(v)
 		case "PF2":
-			vd.Playfield.setPF2(d[1])
+			vd.Playfield.setPF2(v)
 		case "HMP0":
-			vd.Player0.setHmoveValue(d[1])
+			vd.Player0.setHmoveValue(v)
 		case "HMP1":
-			vd.Player1.setHmoveValue(d[1])
+			vd.Player1.setHmoveValue(v)
 		case "HMM0":
-			vd.Missile0.setHmoveValue(d[1])
+			vd.Missile0.setHmoveValue(v)
 		case "HMM1":
-			vd.Missile1.setHmoveValue(d[1])
+			vd.Missile1.setHmoveValue(v)
 		case "HMBL":
-			vd.Ball.setHmoveValue(d[1])
+			vd.Ball.setHmoveValue(v)
 		case "HMCLR":
 			vd.Player0.clearHmoveValue()
 			vd.Player1.clearHmoveValue()
@@ -333,11 +343,14 @@ func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
 	// to write new playfield data
 	switch data.Name {
 	case "PF0":
-		vd.writing.Schedule(2, [2]delay.Value{"PF0", data.Value})
+		vd.writingRegister = "PF0"
+		vd.writing.Schedule(2, data.Value)
 	case "PF1":
-		vd.writing.Schedule(2, [2]delay.Value{"PF1", data.Value})
+		vd.writingRegister = "PF1"
+		vd.writing.Schedule(2, data.Value)
 	case "PF2":
-		vd.writing.Schedule(2, [2]delay.Value{"PF2", data.Value})
+		vd.writingRegister = "PF2"
+		vd.writing.Schedule(2, data.Value)
 	case "VDELBL":
 		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
@@ -385,17 +398,23 @@ func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	// the only common value that satisfies all test cases is 1, which equates
 	// to a delay of two cycles
 	case "HMP0":
-		vd.writing.Schedule(1, [2]delay.Value{"HMP0", data.Value & 0xf0})
+		vd.writingRegister = "HMP0"
+		vd.writing.Schedule(1, data.Value&0xf0)
 	case "HMP1":
-		vd.writing.Schedule(1, [2]delay.Value{"HMP1", data.Value & 0xf0})
+		vd.writingRegister = "HMP1"
+		vd.writing.Schedule(1, data.Value&0xf0)
 	case "HMM0":
-		vd.writing.Schedule(1, [2]delay.Value{"HMM0", data.Value & 0xf0})
+		vd.writingRegister = "HMM0"
+		vd.writing.Schedule(1, data.Value&0xf0)
 	case "HMM1":
-		vd.writing.Schedule(1, [2]delay.Value{"HMM1", data.Value & 0xf0})
+		vd.writingRegister = "HMM1"
+		vd.writing.Schedule(1, data.Value&0xf0)
 	case "HMBL":
-		vd.writing.Schedule(1, [2]delay.Value{"HMBL", data.Value & 0xf0})
+		vd.writingRegister = "HMBL"
+		vd.writing.Schedule(1, data.Value&0xf0)
 	case "HMCLR":
-		vd.writing.Schedule(1, [2]delay.Value{"HMCLR", nil})
+		vd.writingRegister = "HMCLR"
+		vd.writing.Schedule(1, 0)
 
 	default:
 		return true
