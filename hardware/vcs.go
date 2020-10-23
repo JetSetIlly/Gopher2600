@@ -122,5 +122,8 @@ func (vcs *VCS) Reset() error {
 		}
 	}
 
+	// for simplicit we're not allowing the rewind state to surive a reset
+	vcs.Rewind.Reset()
+
 	return nil
 }

@@ -58,6 +58,12 @@ func newRewind(vcs *VCS) *rewind {
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
+	return r
+}
+
+// Reset rewind system to zero, taking a snapshot of the current state.
+func (r *rewind) Reset() {
+	r.steps = r.steps[:0]
 	r.append(snapshot{
 		cpu:       r.vcs.CPU.Snapshot(),
 		mem:       r.vcs.Mem.Snapshot(),
@@ -67,8 +73,7 @@ func newRewind(vcs *VCS) *rewind {
 		isCurrent: false,
 	})
 	r.justAddedFrame = true
-
-	return r
+	r.newFrame = false
 }
 
 // ResolveNewFrame is called after every CPU instruction to check whether
