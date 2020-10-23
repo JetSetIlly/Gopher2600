@@ -18,6 +18,7 @@ package hardware
 import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
@@ -28,7 +29,8 @@ type snapshot struct {
 	mem  *memory.Memory
 	riot *riot.RIOT
 	tia  *tia.TIA
-	tv   television.TelevisionState
+	tv   television.TelevisionSnapshot
+	cart mapper.CartSnapshot
 
 	// is the snapshot a result of a frame snapshot request. See NewFrame()
 	// function
@@ -70,6 +72,7 @@ func (r *rewind) Reset() {
 		riot:      r.vcs.RIOT.Snapshot(),
 		tia:       r.vcs.TIA.Snapshot(),
 		tv:        r.vcs.TV.Snapshot(),
+		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
 	})
 	r.justAddedFrame = true
@@ -93,6 +96,7 @@ func (r *rewind) ResolveNewFrame() {
 		riot:      r.vcs.RIOT.Snapshot(),
 		tia:       r.vcs.TIA.Snapshot(),
 		tv:        r.vcs.TV.Snapshot(),
+		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
 	})
 }
@@ -108,6 +112,7 @@ func (r *rewind) CurrentState() {
 		riot:      r.vcs.RIOT.Snapshot(),
 		tia:       r.vcs.TIA.Snapshot(),
 		tv:        r.vcs.TV.Snapshot(),
+		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: true,
 	})
 }
@@ -152,11 +157,11 @@ func (r *rewind) SetPosition(pos int) {
 	r.vcs.Mem = s.mem
 	r.vcs.RIOT = s.riot
 	r.vcs.TIA = s.tia
-
-	r.vcs.TV.Plumb(s.tv)
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
+	r.vcs.TV.Plumb(s.tv)
+	r.vcs.Mem.Cart.Plumb(s.cart)
 
 	r.position = pos + 1
 }

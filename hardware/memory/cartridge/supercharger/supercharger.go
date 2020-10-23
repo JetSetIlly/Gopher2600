@@ -110,6 +110,15 @@ func (cart Supercharger) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *Supercharger) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *Supercharger) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *Supercharger) Reset(randSrc *rand.Rand) {
 	for b := range cart.ram {

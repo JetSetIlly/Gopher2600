@@ -116,6 +116,15 @@ func (cart dpcPlus) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *dpcPlus) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
 	cart.registers.reset(randSrc)

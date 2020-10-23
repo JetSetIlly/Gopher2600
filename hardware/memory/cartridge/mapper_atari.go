@@ -112,6 +112,31 @@ func (cart atari) ID() string {
 	return cart.mappingID
 }
 
+type atariSnapshot struct {
+	bank int
+	ram  []uint8
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari) Snapshot() mapper.CartSnapshot {
+	n := &atariSnapshot{
+		bank: cart.bank,
+		ram:  make([]uint8, len(cart.ram)),
+	}
+	copy(n.ram, cart.ram)
+	return n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari) Plumb(s mapper.CartSnapshot) {
+	if n, ok := s.(*atariSnapshot); ok {
+		cart.bank = n.bank
+
+		// making the assumption that ram size hasn't changed
+		copy(cart.ram, n.ram)
+	}
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari) Reset(randSrc *rand.Rand) {
 	for i := range cart.ram {

@@ -58,6 +58,14 @@ func NewCartridge(prefs *preferences.Preferences) *Cartridge {
 	return cart
 }
 
+func (cart *Cartridge) Snapshot() mapper.CartSnapshot {
+	return cart.mapper.Snapshot()
+}
+
+func (cart *Cartridge) Plumb(s mapper.CartSnapshot) {
+	cart.mapper.Plumb(s)
+}
+
 // Reset volative contents of Cartridge.
 func (cart *Cartridge) Reset() {
 	if cart.prefs != nil && cart.prefs.RandomState.Get().(bool) {

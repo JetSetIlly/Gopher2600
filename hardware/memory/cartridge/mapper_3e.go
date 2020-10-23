@@ -103,6 +103,15 @@ func (cart m3e) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *m3e) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *m3e) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *m3e) Reset(randSrc *rand.Rand) {
 	for b := range cart.ram {

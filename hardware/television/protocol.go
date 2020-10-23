@@ -28,10 +28,9 @@ type TelevisionSprite interface {
 	GetState(StateReq) (int, error)
 }
 
-// TelevisionState is a deliberately opaque type returned by Snapshot() and
-// used by RestoreSnapshot() in the Television interface. The state itself can
-// consist of anything necessary to the Television implementation.
-type TelevisionState interface{}
+// TelevisionSnapshot represents the saved data from the television as a result
+// of a Snapshot Operation.
+type TelevisionSnapshot interface{}
 
 // PixelRenderer implementations displays, or otherwise works with, visual
 // information from a television. For example digest.Video.

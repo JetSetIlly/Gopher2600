@@ -91,6 +91,15 @@ func (cart tigervision) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *tigervision) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *tigervision) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *tigervision) Reset(randSrc *rand.Rand) {
 	cart.segment[0] = cart.NumBanks() - 2

@@ -142,6 +142,15 @@ func (cart mnetwork) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *mnetwork) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *mnetwork) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *mnetwork) Reset(randSrc *rand.Rand) {
 	for b := range cart.ram256byte {

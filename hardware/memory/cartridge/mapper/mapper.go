@@ -35,6 +35,9 @@ type CartMapper interface {
 	String() string
 	ID() string
 
+	Snapshot() CartSnapshot
+	Plumb(CartSnapshot)
+
 	// reset volatile areas of the cartridge. for many cartridge mappers this
 	// will do nothing but those with registers or ram should perform an
 	// explicit reset (possibly with randomisation)
@@ -236,3 +239,7 @@ type CartHotspotInfo struct {
 	Symbol string
 	Action CartHotspotAction
 }
+
+// CartSnapshot represents saved data from the cartridge as a result of a
+// Snapshot() operation.
+type CartSnapshot interface{}

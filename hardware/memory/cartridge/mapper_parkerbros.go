@@ -85,6 +85,15 @@ func (cart parkerBros) ID() string {
 	return cart.mappingID
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *parkerBros) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *parkerBros) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *parkerBros) Reset(randSrc *rand.Rand) {
 	cart.segment[0] = cart.NumBanks() - 4

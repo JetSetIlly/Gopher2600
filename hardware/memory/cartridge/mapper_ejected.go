@@ -39,6 +39,15 @@ func (cart ejected) ID() string {
 	return "-"
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *ejected) Snapshot() mapper.CartSnapshot {
+	return nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *ejected) Plumb(s mapper.CartSnapshot) {
+}
+
 // Reset implements the cartMapper interface.
 func (cart *ejected) Reset(_ *rand.Rand) {
 }

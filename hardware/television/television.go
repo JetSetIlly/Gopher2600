@@ -161,7 +161,7 @@ func (tv Television) String() string {
 }
 
 // Snapshot makes a copy of the television state.
-func (tv *Television) Snapshot() TelevisionState {
+func (tv *Television) Snapshot() TelevisionSnapshot {
 	n := *tv.state
 	n.signalHistory = make([]signalHistoryEntry, len(tv.state.signalHistory))
 	copy(n.signalHistory, tv.state.signalHistory)
@@ -169,7 +169,7 @@ func (tv *Television) Snapshot() TelevisionState {
 }
 
 // Plumb in an existing television state.
-func (tv *Television) Plumb(s TelevisionState) {
+func (tv *Television) Plumb(s TelevisionSnapshot) {
 	if s == nil {
 		return
 	}

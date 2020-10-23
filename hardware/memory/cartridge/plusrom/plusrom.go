@@ -135,6 +135,16 @@ func (cart *PlusROM) ID() string {
 	return cart.child.ID()
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *PlusROM) Snapshot() mapper.CartSnapshot {
+	return cart.child.Snapshot()
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *PlusROM) Plumb(s mapper.CartSnapshot) {
+	cart.child.Plumb(s)
+}
+
 // ID implements the mapper.CartContainer interface.
 func (cart *PlusROM) ContainerID() string {
 	return "PlusROM"
