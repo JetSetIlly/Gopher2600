@@ -47,7 +47,7 @@ type SdlImgui struct {
 
 	// references to the emulation
 	lz  *lazyvalues.LazyValues
-	tv  television.Television
+	tv  *television.Television
 	vcs *hardware.VCS
 
 	// terminal interface to the debugger
@@ -97,7 +97,7 @@ type SdlImgui struct {
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
 // MUST ONLY be called from the #mainthread.
-func NewSdlImgui(tv television.Television, playmode bool) (*SdlImgui, error) {
+func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context:    imgui.CreateContext(nil),
 		io:         imgui.CurrentIO(),

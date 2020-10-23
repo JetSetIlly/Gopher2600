@@ -28,7 +28,7 @@ import (
 
 // SdlDebug is a simple SDL implementation of the television.PixelRenderer interfac.
 type SdlDebug struct {
-	television.Television
+	*television.Television
 
 	// functions that need to be performed in the main thread should be queued
 	// for service
@@ -98,7 +98,7 @@ const windowTitle = "Gopher2600"
 const windowTitleCaptured = "Gopher2600 [captured]"
 
 // NewSdlDebug is the preferred method of initialisation for SdlDebug.
-func NewSdlDebug(tv television.Television, scale float32) (*SdlDebug, error) {
+func NewSdlDebug(tv *television.Television, scale float32) (*SdlDebug, error) {
 	scr := &SdlDebug{
 		Television: tv,
 		service:    make(chan func(), 1),

@@ -58,7 +58,7 @@ const (
 )
 
 type limiter struct {
-	tv        television.Television
+	tv        *television.Television
 	lmtr      *time.Ticker
 	throt     throttleLevel
 	reqFrames float32
@@ -70,7 +70,7 @@ type limiter struct {
 	checkEvents func() error
 }
 
-func newLimiter(tv television.Television, checkEvents func() error) *limiter {
+func newLimiter(tv *television.Television, checkEvents func() error) *limiter {
 	tv.SetFPSCap(false)
 
 	lmtr := &limiter{

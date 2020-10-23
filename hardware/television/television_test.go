@@ -22,25 +22,22 @@ import (
 )
 
 func TestNewTelevision(t *testing.T) {
-	var tv television.Television
-	var err error
-
-	tv, err = television.NewReference("PAL")
+	tv, err := television.NewTelevision("PAL")
 	if tv == nil || err != nil {
 		t.Errorf("PAL spec creation failed")
 	}
 
-	tv, err = television.NewReference("NTSC")
+	tv, err = television.NewTelevision("NTSC")
 	if tv == nil || err != nil {
 		t.Errorf("NTSC spec creation failed")
 	}
 
-	tv, err = television.NewReference("AUTO")
+	tv, err = television.NewTelevision("AUTO")
 	if tv == nil || err != nil {
 		t.Errorf("AUTO spec creation failed")
 	}
 
-	tv, err = television.NewReference("FOO")
+	tv, err = television.NewTelevision("FOO")
 	if tv != nil || err == nil {
 		t.Errorf("'FOO' spec creation unexpectedly succeeded")
 	}

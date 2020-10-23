@@ -50,7 +50,7 @@ type playmode struct {
 // contents of the file specified in Filename field of the Loader instance will
 // be checked. If it is a playback file then the playback codepath will be
 // used.
-func Play(tv television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool) error {
+func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool) error {
 	var recording string
 
 	// if supplied cartridge name is actually a playback file then set

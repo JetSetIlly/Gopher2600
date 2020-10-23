@@ -56,7 +56,7 @@ type Debugger struct {
 	lastResult *disassembly.Entry
 
 	// gui, tv and terminal
-	tv   television.Television
+	tv   *television.Television
 	scr  gui.GUI
 	term terminal.Terminal
 
@@ -138,7 +138,7 @@ type Debugger struct {
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session. Use the Start() method to actually begin the session.
-func NewDebugger(tv television.Television, scr gui.GUI, term terminal.Terminal, useSavekey bool) (*Debugger, error) {
+func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal, useSavekey bool) (*Debugger, error) {
 	var err error
 
 	dbg := &Debugger{

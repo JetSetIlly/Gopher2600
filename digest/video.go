@@ -30,7 +30,7 @@ import (
 // Note that the use of SHA-1 is fine for this application because this is not
 // a cryptographic task.
 type Video struct {
-	television.Television
+	*television.Television
 	spec     television.Spec
 	digest   [sha1.Size]byte
 	pixels   []byte
@@ -42,7 +42,7 @@ const pixelDepth = 3
 // NewVideo initialises a new instance of DigestTV. For convenience, the
 // television argument can be nil, in which case an instance of
 // StellaTelevision will be created.
-func NewVideo(tv television.Television) (*Video, error) {
+func NewVideo(tv *television.Television) (*Video, error) {
 	// set up digest tv
 	dig := &Video{Television: tv}
 

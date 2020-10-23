@@ -33,7 +33,7 @@ import (
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
 	Prefs *preferences.Preferences
-	TV    television.Television
+	TV    *television.Television
 
 	// references to the different components of the VCS. do not take copies of
 	// these pointer values because the rewind feature will change them.
@@ -47,7 +47,7 @@ type VCS struct {
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
-func NewVCS(tv television.Television) (*VCS, error) {
+func NewVCS(tv *television.Television) (*VCS, error) {
 	// set up preferences
 	prefs, err := preferences.NewPreferences()
 	if err != nil {

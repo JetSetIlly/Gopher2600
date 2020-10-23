@@ -27,81 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
-type mockTV struct{}
-
-func (t *mockTV) String() string {
-	return ""
-}
-
-func (t *mockTV) Snapshot() television.TelevisionState {
-	return nil
-}
-
-func (t *mockTV) Plumb(_ television.TelevisionState) {
-}
-
-func (t *mockTV) AddPixelRenderer(_ television.PixelRenderer) {
-}
-
-func (t *mockTV) AddPixelRefresher(_ television.PixelRefresher) {
-}
-
-func (t *mockTV) AddFrameTrigger(_ television.FrameTrigger) {
-}
-
-func (t *mockTV) AddAudioMixer(_ television.AudioMixer) {
-}
-
-func (t *mockTV) Reset() error {
-	return nil
-}
-
-func (t *mockTV) End() error {
-	return nil
-}
-
-func (t *mockTV) Signal(_ television.SignalAttributes) error {
-	return nil
-}
-
-func (t *mockTV) IsStable() bool {
-	return true
-}
-
-func (t *mockTV) GetLastSignal() television.SignalAttributes {
-	return television.SignalAttributes{}
-}
-
-func (t *mockTV) GetState(_ television.StateReq) (int, error) {
-	return 0, nil
-}
-
-func (t *mockTV) SetSpec(_ string) error {
-	return nil
-}
-
-func (t *mockTV) GetReqSpecID() string {
-	return ""
-}
-
-func (t *mockTV) GetSpec() television.Spec {
-	return television.SpecNTSC
-}
-
-func (t *mockTV) SetFPSCap(set bool) {
-}
-
-func (t *mockTV) SetFPS(fps float32) {
-}
-
-func (t *mockTV) GetReqFPS() float32 {
-	return 0.0
-}
-
-func (t *mockTV) GetActualFPS() float32 {
-	return 0.0
-}
-
 type mockGUI struct{}
 
 func (g *mockGUI) ReqFeature(request gui.FeatureReq, args ...interface{}) error {
@@ -212,7 +137,12 @@ func (trm *mockTerm) testSequence() {
 func TestDebugger_withNonExistantInitScript(t *testing.T) {
 	trm := newMockTerm(t)
 
-	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm, false)
+	tv, err := television.NewTelevision("NTSC")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	dbg, err := debugger.NewDebugger(tv, &mockGUI{}, trm, false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -227,8 +157,12 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 func TestDebugger(t *testing.T) {
 	trm := newMockTerm(t)
+	tv, err := television.NewTelevision("NTSC")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 
-	dbg, err := debugger.NewDebugger(&mockTV{}, &mockGUI{}, trm, false)
+	dbg, err := debugger.NewDebugger(tv, &mockGUI{}, trm, false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
