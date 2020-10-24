@@ -285,10 +285,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				dbg.VCS.Mem.RAM.LittleSnapshot()
 			}
 
-			// tidy up rewind stack if necessary
-			if dbg.continueEmulation && inputter.IsInteractive() {
-				dbg.VCS.Rewind.TrimCurrent()
-			}
+			// trimming of rewind state happens a the next frame boundary or
+			// when the current state is taken again
 		}
 
 		if dbg.continueEmulation {

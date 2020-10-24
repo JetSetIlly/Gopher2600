@@ -72,6 +72,8 @@ exit.
 When manually writing a script in text editor it is sometimes useful to write
 comments.  Comments are line oriented and are indicated by the # character.`,
 
+	cmdTimeline: `Move timeline to the numbered frame or to CURRENT.`,
+
 	cmdInsert: `Insert cartridge into emulation. Cartridge names (with paths) beginning with
 http:// will loaded via the http protocol. If no such protocol is present, the
 cartridge will be loaded from disk.`,

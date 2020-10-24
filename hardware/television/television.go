@@ -43,7 +43,7 @@ const leadingFrames = 5
 // the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
 
-type state struct {
+type State struct {
 	// television specification (NTSC or PAL)
 	spec Spec
 
@@ -60,7 +60,7 @@ type state struct {
 	//  correct time.
 	horizPos int
 	//	- the current frame
-	frameNum int
+	FrameNum int
 	//	- the current scanline number
 	scanline int
 	//  - the current synced frame number. a synced frame is one which was
@@ -91,6 +91,13 @@ type state struct {
 
 	// the index to write the next signal
 	signalHistoryIdx int
+}
+
+func (s *State) Snapshot() *State {
+	n := *s
+	n.signalHistory = make([]signalHistoryEntry, len(s.signalHistory))
+	copy(n.signalHistory, s.signalHistory)
+	return &n
 }
 
 type signalHistoryEntry struct {
@@ -126,7 +133,7 @@ type Television struct {
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
-	state *state
+	state *State
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -135,7 +142,7 @@ func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
 		resizer:   &simpleResizer{},
 		reqSpecID: strings.ToUpper(spec),
-		state:     &state{},
+		state:     &State{},
 	}
 
 	// set specification
@@ -156,25 +163,22 @@ func NewTelevision(spec string) (*Television, error) {
 
 func (tv Television) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.FrameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
 	return s.String()
 }
 
 // Snapshot makes a copy of the television state.
-func (tv *Television) Snapshot() TelevisionSnapshot {
-	n := *tv.state
-	n.signalHistory = make([]signalHistoryEntry, len(tv.state.signalHistory))
-	copy(n.signalHistory, tv.state.signalHistory)
-	return &n
+func (tv *Television) Snapshot() *State {
+	return tv.state.Snapshot()
 }
 
 // Plumb in an existing television state.
-func (tv *Television) Plumb(s TelevisionSnapshot) {
+func (tv *Television) Plumb(s *State) {
 	if s == nil {
 		return
 	}
 
-	tv.state = s.(*state)
+	tv.state = s
 
 	for _, r := range tv.refreshers {
 		r.Refresh(true)
@@ -228,7 +232,7 @@ func (tv *Television) Reset() error {
 	}
 
 	tv.state.horizPos = 0
-	tv.state.frameNum = 0
+	tv.state.FrameNum = 0
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
 	tv.state.vsyncCount = 0
@@ -402,14 +406,14 @@ func (tv *Television) newFrame(synced bool) error {
 	}
 
 	// prepare for next frame
-	tv.state.frameNum++
+	tv.state.FrameNum++
 	tv.state.scanline = 0
 	tv.resizer.prepare(tv)
 	tv.state.syncedFrame = synced
 
 	// process all FrameTriggers
 	for f := range tv.frameTriggers {
-		err = tv.frameTriggers[f].NewFrame(tv.state.frameNum, tv.IsStable())
+		err = tv.frameTriggers[f].NewFrame(tv.state.FrameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}
@@ -436,7 +440,7 @@ func (tv *Television) GetLastSignal() SignalAttributes {
 func (tv *Television) GetState(request StateReq) (int, error) {
 	switch request {
 	case ReqFramenum:
-		return tv.state.frameNum, nil
+		return tv.state.FrameNum, nil
 	case ReqScanline:
 		return tv.state.scanline, nil
 	case ReqHorizPos:

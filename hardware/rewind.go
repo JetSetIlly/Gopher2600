@@ -16,6 +16,8 @@
 package hardware
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -29,12 +31,19 @@ type snapshot struct {
 	mem  *memory.Memory
 	riot *riot.RIOT
 	tia  *tia.TIA
-	tv   television.TelevisionSnapshot
+	tv   *television.State
 	cart mapper.CartSnapshot
 
 	// is the snapshot a result of a frame snapshot request. See NewFrame()
 	// function
 	isCurrent bool
+}
+
+func (s snapshot) String() string {
+	if s.isCurrent {
+		return "c"
+	}
+	return fmt.Sprintf("%d", s.tv.FrameNum)
 }
 
 type rewind struct {
@@ -51,6 +60,8 @@ type rewind struct {
 	justAddedFrame bool
 }
 
+// the maximum number of steps to store before the earliest steps are
+// forgotten.
 const maxSteps = 300
 
 func newRewind(vcs *VCS) *rewind {
@@ -118,25 +129,29 @@ func (r *rewind) CurrentState() {
 }
 
 func (r *rewind) append(s snapshot) {
-	if r.position >= maxSteps {
-		r.steps = append(r.steps[1:], s)
-	} else if len(r.steps) == 0 {
+	if r.position == len(r.steps) {
+		r.trim()
 		r.steps = append(r.steps, s)
 	} else {
 		r.steps = append(r.steps[:r.position], s)
 	}
+
+	// maintain maximum length
+	if len(r.steps) > maxSteps {
+		r.steps = r.steps[1:]
+	}
+
 	r.position = len(r.steps)
 }
 
-// TrimCurrent the snapshot at the current position if it is not a snapshot at a frame boundary.
-func (r *rewind) TrimCurrent() {
-	if len(r.steps) == 0 {
+func (r *rewind) trim() {
+	if len(r.steps) < 1 {
 		return
 	}
 
-	if r.steps[r.position-1].isCurrent {
-		r.steps = r.steps[:r.position-1]
-		r.position--
+	if r.steps[len(r.steps)-1].isCurrent {
+		r.steps = r.steps[:len(r.steps)-1]
+		r.position = len(r.steps)
 	}
 }
 
@@ -153,17 +168,52 @@ func (r *rewind) SetPosition(pos int) {
 	}
 
 	s := r.steps[pos]
-	r.vcs.CPU = s.cpu
-	r.vcs.Mem = s.mem
-	r.vcs.RIOT = s.riot
-	r.vcs.TIA = s.tia
+
+	// plumb in snapshots of stored states. we don't want the machine to change
+	// what we have stored in our state array (we learned that lesson the hard
+	// way :-)
+	r.vcs.CPU = s.cpu.Snapshot()
+	r.vcs.Mem = s.mem.Snapshot()
+	r.vcs.RIOT = s.riot.Snapshot()
+	r.vcs.TIA = s.tia.Snapshot()
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
-	r.vcs.TV.Plumb(s.tv)
-	r.vcs.Mem.Cart.Plumb(s.cart)
+	r.vcs.TV.Plumb(s.tv.Snapshot())
+	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
 
 	r.position = pos + 1
+}
+
+// GotoCurrent sets the position to the last in the timeline.
+func (r *rewind) GotoCurrent() {
+	r.SetPosition(len(r.steps))
+}
+
+// GotoFrame searches the timeline for the frame number. Goes to nearest frame
+// if frame number is not present. Returns true if exact frame number was found
+// and false if not.
+func (r *rewind) GotoFrame(frame int) bool {
+	// binary search for frame number
+	b := 0
+	t := len(r.steps) - 1
+	for b <= t {
+		m := (t + b) / 2
+
+		if r.steps[m].tv.FrameNum == frame {
+			r.SetPosition(m)
+			return true
+		}
+
+		if r.steps[m].tv.FrameNum < frame {
+			b = m + 1
+		} else if r.steps[m].tv.FrameNum > frame {
+			t = m - 1
+		}
+	}
+
+	r.SetPosition(b)
+	return false
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.

@@ -28,10 +28,6 @@ type TelevisionSprite interface {
 	GetState(StateReq) (int, error)
 }
 
-// TelevisionSnapshot represents the saved data from the television as a result
-// of a Snapshot Operation.
-type TelevisionSnapshot interface{}
-
 // PixelRenderer implementations displays, or otherwise works with, visual
 // information from a television. For example digest.Video.
 //

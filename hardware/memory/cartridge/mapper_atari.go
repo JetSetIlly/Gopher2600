@@ -117,14 +117,20 @@ type atariSnapshot struct {
 	ram  []uint8
 }
 
+func (s *atariSnapshot) Snapshot() mapper.CartSnapshot {
+	n := *s
+	n.ram = make([]uint8, len(s.ram))
+	copy(n.ram, s.ram)
+	return &n
+}
+
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *atari) Snapshot() mapper.CartSnapshot {
-	n := &atariSnapshot{
+	n := atariSnapshot{
 		bank: cart.bank,
-		ram:  make([]uint8, len(cart.ram)),
+		ram:  cart.ram,
 	}
-	copy(n.ram, cart.ram)
-	return n
+	return n.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.

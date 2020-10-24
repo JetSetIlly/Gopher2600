@@ -242,4 +242,7 @@ type CartHotspotInfo struct {
 
 // CartSnapshot represents saved data from the cartridge as a result of a
 // Snapshot() operation.
-type CartSnapshot interface{}
+type CartSnapshot interface {
+	// make another copy of the snapshot
+	Snapshot() CartSnapshot
+}
