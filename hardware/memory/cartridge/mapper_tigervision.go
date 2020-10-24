@@ -38,7 +38,11 @@ import (
 // $7F instead! :-)  $3F does not have a corresponding TIA register, so writing
 // here has no effect other than switching banks.  Very clever; especially
 // since you can implement this with only one chip! (a 74LS173)
-
+//
+//
+// cartridges:
+//	- Miner2049
+//	- River Patrol
 type tigervision struct {
 	mappingID   string
 	description string
@@ -48,13 +52,8 @@ type tigervision struct {
 	bankSize int
 	banks    [][]uint8
 
-	// tigervision cartridges divide memory into two 2k segments
-	//  o the last segment always points to the last bank
-	//  o the first segment can point to any of the other three
-	//
-	// the bank pointed to by the first segment is changed through the listen()
-	// function (part of the implementation of the mapper.CartMapper interface).
-	segment [2]int
+	// rewindable state
+	state *tigervisionState
 }
 
 // should work with any size cartridge that is a multiple of 2048
@@ -64,6 +63,7 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 		mappingID:   "3F",
 		description: "tigervision",
 		bankSize:    2048,
+		state:       newTigervisionState(),
 	}
 
 	if len(data)%cart.bankSize != 0 {
@@ -83,7 +83,7 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 }
 
 func (cart tigervision) String() string {
-	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.state.segment[0], cart.state.segment[1])
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -93,28 +93,29 @@ func (cart tigervision) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *tigervision) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *tigervision) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*tigervisionState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *tigervision) Reset(randSrc *rand.Rand) {
-	cart.segment[0] = cart.NumBanks() - 2
+	cart.state.segment[0] = cart.NumBanks() - 2
 
 	// the last segment always points to the last bank
-	cart.segment[1] = cart.NumBanks() - 1
+	cart.state.segment[1] = cart.NumBanks() - 1
 }
 
 // Read implements the mapper.CartMapper interface.
 func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
-		data = cart.banks[cart.segment[0]][addr&0x07ff]
+		data = cart.banks[cart.state.segment[0]][addr&0x07ff]
 	} else if addr >= 0x0800 && addr <= 0x0fff {
-		data = cart.banks[cart.segment[1]][addr&0x07ff]
+		data = cart.banks[cart.state.segment[1]][addr&0x07ff]
 	}
 	return data, nil
 }
@@ -123,9 +124,9 @@ func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
-			cart.banks[cart.segment[0]][addr&0x07ff] = data
+			cart.banks[cart.state.segment[0]][addr&0x07ff] = data
 		} else if addr >= 0x0800 && addr <= 0x0fff {
-			cart.banks[cart.segment[1]][addr&0x07ff] = data
+			cart.banks[cart.state.segment[1]][addr&0x07ff] = data
 		}
 	}
 	return curated.Errorf(bus.AddressError, addr)
@@ -139,9 +140,9 @@ func (cart tigervision) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -175,7 +176,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 
 	// bankswitch on hotspot access
 	if addr < 0x40 {
-		cart.segment[0] = int(data & uint8(cart.NumBanks()-1))
+		cart.state.segment[0] = int(data & uint8(cart.NumBanks()-1))
 	}
 
 	// this bank switching method causes a problem when the CPU wants to write
@@ -214,4 +215,25 @@ func (cart tigervision) CopyBanks() []mapper.BankContent {
 		},
 	}
 	return c
+}
+
+// rewindable state for the tigervision cartridges.
+type tigervisionState struct {
+	// tigervision cartridges divide memory into two 2k segments
+	//  o the last segment always points to the last bank
+	//  o the first segment can point to any of the other three
+	//
+	// the bank pointed to by the first segment is changed through the listen()
+	// function (part of the implementation of the mapper.CartMapper interface).
+	segment [2]int
+}
+
+func newTigervisionState() *tigervisionState {
+	return &tigervisionState{}
+}
+
+// Snapshot implements the mapper.CartSnapshot interface.
+func (s *tigervisionState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	return &n
 }

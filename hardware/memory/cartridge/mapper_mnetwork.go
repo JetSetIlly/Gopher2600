@@ -64,6 +64,11 @@ import (
 //
 // Note that the 256-byte banks and the large 1K bank are separate entities.
 // The M-Network carts are about as complex as it gets.
+//
+//
+// cartridges:
+//	- He Man
+//	- Pitkat
 
 const num256ByteRAMbanks = 4
 
@@ -75,26 +80,7 @@ type mnetwork struct {
 	bankSize int
 	banks    [][]uint8
 
-	// identifies the currently selected bank
-	bank int
-
-	ram256byte    [num256ByteRAMbanks][]uint8
-	ram256byteIdx int
-
-	//  o ram1k is read through addresses 0x1000 to 0x13ff and written
-	//  through addresses 0x1400 to 0x17ff * when use1kRAM is true
-	//
-	//  o ram256byte is read through addresses 0x1900 to 0x19fd and written
-	//  through address 0x1800 to 0x18ff in all cases
-	//
-	// (addresses quoted above are of course masked so that they fall into the
-	// allocation range)
-	ram1k []uint8
-
-	// use1kRAM is set to true when hotspot 0x0fe7 has been triggered. it's not
-	// clear when, if ever, the flag should be set to false. we have taken the
-	// view that is is when any of hotspots 0x0fe0 to 0x0fe6 are triggered
-	use1kRAM bool
+	state *mnetworkState
 }
 
 func newMnetwork(data []byte) (mapper.CartMapper, error) {
@@ -102,6 +88,7 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 		description: "mnetwork",
 		mappingID:   "E7",
 		bankSize:    2048,
+		state:       newMnetworkState(),
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -116,22 +103,15 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	// not all m-network cartridges have any RAM but we'll allocate it for all
-	// instances because there's no way of detecting if it does or not.
-	cart.ram1k = make([]uint8, 1024)
-	for i := range cart.ram256byte {
-		cart.ram256byte[i] = make([]uint8, 256)
-	}
-
 	return cart, nil
 }
 
 func (cart mnetwork) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
-	s.WriteString(fmt.Sprintf(" Bank: %d [%d] ", cart.bank, len(cart.banks)-1))
-	s.WriteString(fmt.Sprintf(" RAM: %d", cart.ram256byteIdx))
-	if cart.use1kRAM {
+	s.WriteString(fmt.Sprintf(" Bank: %d [%d] ", cart.state.bank, len(cart.banks)-1))
+	s.WriteString(fmt.Sprintf(" RAM: %d", cart.state.ram256byteIdx))
+	if cart.state.use1kRAM {
 		s.WriteString(" [+1k RAM]")
 	}
 	return s.String()
@@ -144,35 +124,36 @@ func (cart mnetwork) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *mnetwork) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *mnetwork) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*mnetworkState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *mnetwork) Reset(randSrc *rand.Rand) {
-	for b := range cart.ram256byte {
-		for i := range cart.ram256byte[b] {
+	for b := range cart.state.ram256byte {
+		for i := range cart.state.ram256byte[b] {
 			if randSrc != nil {
-				cart.ram256byte[b][i] = uint8(randSrc.Intn(0xff))
+				cart.state.ram256byte[b][i] = uint8(randSrc.Intn(0xff))
 			} else {
-				cart.ram256byte[b][i] = 0
+				cart.state.ram256byte[b][i] = 0
 			}
 		}
 	}
 
-	for i := range cart.ram1k {
+	for i := range cart.state.ram1k {
 		if randSrc != nil {
-			cart.ram1k[i] = uint8(randSrc.Intn(0xff))
+			cart.state.ram1k[i] = uint8(randSrc.Intn(0xff))
 		} else {
-			cart.ram1k[i] = 0
+			cart.state.ram1k[i] = 0
 		}
 	}
 
-	cart.bank = 0
-	cart.ram256byteIdx = 0
+	cart.state.bank = 0
+	cart.state.ram256byteIdx = 0
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -180,16 +161,16 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
-		if cart.use1kRAM && addr >= 0x0400 {
-			data = cart.ram1k[addr&0x03ff]
+		if cart.state.use1kRAM && addr >= 0x0400 {
+			data = cart.state.ram1k[addr&0x03ff]
 		} else {
-			data = cart.banks[cart.bank][addr&0x07ff]
+			data = cart.banks[cart.state.bank][addr&0x07ff]
 		}
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		if addr >= 0x0900 && addr <= 0x09ff {
 			// access upper 1k of ram if cart.segment is pointing to ram and
 			// the address is in the write range
-			data = cart.ram256byte[cart.ram256byteIdx][addr&0x00ff]
+			data = cart.state.ram256byte[cart.state.ram256byteIdx][addr&0x00ff]
 		} else {
 			// if address is not in ram space then read from the last rom bank
 			data = cart.banks[cart.NumBanks()-1][addr&0x07ff]
@@ -210,17 +191,17 @@ func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) er
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
-		if addr <= 0x03ff && cart.use1kRAM {
-			cart.ram1k[addr&0x03ff] = data
+		if addr <= 0x03ff && cart.state.use1kRAM {
+			cart.state.ram1k[addr&0x03ff] = data
 			return nil
 		}
 	} else if addr >= 0x0800 && addr <= 0x08ff {
-		cart.ram256byte[cart.ram256byteIdx][addr&0x00ff] = data
+		cart.state.ram256byte[cart.state.ram256byteIdx][addr&0x00ff] = data
 		return nil
 	}
 
 	if poke {
-		cart.banks[cart.bank][addr] = data
+		cart.banks[cart.state.bank][addr] = data
 		return nil
 	}
 
@@ -236,26 +217,26 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 
 		switch addr {
 		case 0x0fe0:
-			cart.bank = 0
-			cart.use1kRAM = false
+			cart.state.bank = 0
+			cart.state.use1kRAM = false
 		case 0x0fe1:
-			cart.bank = 1
-			cart.use1kRAM = false
+			cart.state.bank = 1
+			cart.state.use1kRAM = false
 		case 0x0fe2:
-			cart.bank = 2
-			cart.use1kRAM = false
+			cart.state.bank = 2
+			cart.state.use1kRAM = false
 		case 0x0fe3:
-			cart.bank = 3
-			cart.use1kRAM = false
+			cart.state.bank = 3
+			cart.state.use1kRAM = false
 		case 0x0fe4:
-			cart.bank = 4
-			cart.use1kRAM = false
+			cart.state.bank = 4
+			cart.state.use1kRAM = false
 		case 0x0fe5:
-			cart.bank = 5
-			cart.use1kRAM = false
+			cart.state.bank = 5
+			cart.state.use1kRAM = false
 		case 0x0fe6:
-			cart.bank = 6
-			cart.use1kRAM = false
+			cart.state.bank = 6
+			cart.state.use1kRAM = false
 
 			// from bankswitch_sizes.txt: "Note that you cannot select the last 2K
 			// of the ROM image into the lower 2K of the cart!  Accessing 1FE7
@@ -263,7 +244,7 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 			//
 			// we're using bank number -1 to indicate the use of RAM
 		case 0x0fe7:
-			cart.use1kRAM = true
+			cart.state.use1kRAM = true
 
 			// from bankswitch_sizes.txt: "You select which 256 byte block appears
 			// here by accessing 1FF8 to 1FFB."
@@ -271,13 +252,13 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 			// "here" refers to the read range 0x0900 to 0x09ff and the write range
 			// 0x0800 to 0x08ff
 		case 0x0fe8:
-			cart.ram256byteIdx = 0
+			cart.state.ram256byteIdx = 0
 		case 0x0fe9:
-			cart.ram256byteIdx = 1
+			cart.state.ram256byteIdx = 1
 		case 0x0fea:
-			cart.ram256byteIdx = 2
+			cart.state.ram256byteIdx = 2
 		case 0x0feb:
-			cart.ram256byteIdx = 3
+			cart.state.ram256byteIdx = 3
 		}
 
 		return true
@@ -294,14 +275,14 @@ func (cart mnetwork) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		if cart.use1kRAM {
-			return mapper.BankInfo{Number: cart.bank, IsRAM: true, Segment: 0}
+		if cart.state.use1kRAM {
+			return mapper.BankInfo{Number: cart.state.bank, IsRAM: true, Segment: 0}
 		}
-		return mapper.BankInfo{Number: cart.bank, IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.bank, IsRAM: false, Segment: 0}
 	}
 
 	if addr >= 0x0800 && addr <= 0x08ff {
-		return mapper.BankInfo{Number: cart.ram256byteIdx, IsRAM: true, Segment: 1}
+		return mapper.BankInfo{Number: cart.state.ram256byteIdx, IsRAM: true, Segment: 1}
 	}
 
 	return mapper.BankInfo{Number: 7, IsRAM: false, Segment: 1}
@@ -334,19 +315,19 @@ func (cart mnetwork) GetRAM() []mapper.CartRAM {
 	r[0] = mapper.CartRAM{
 		Label:  "1k",
 		Origin: 0x1000,
-		Data:   make([]uint8, len(cart.ram1k)),
-		Mapped: cart.use1kRAM,
+		Data:   make([]uint8, len(cart.state.ram1k)),
+		Mapped: cart.state.use1kRAM,
 	}
-	copy(r[0].Data, cart.ram1k)
+	copy(r[0].Data, cart.state.ram1k)
 
 	for i := 0; i < num256ByteRAMbanks; i++ {
 		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
-			Data:   make([]uint8, len(cart.ram256byte[i])),
-			Mapped: cart.ram256byteIdx == i,
+			Data:   make([]uint8, len(cart.state.ram256byte[i])),
+			Mapped: cart.state.ram256byteIdx == i,
 		}
-		copy(r[i+1].Data, cart.ram256byte[i])
+		copy(r[i+1].Data, cart.state.ram256byte[i])
 	}
 
 	return r
@@ -355,10 +336,10 @@ func (cart mnetwork) GetRAM() []mapper.CartRAM {
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 	if bank == 0 {
-		cart.ram1k[idx] = data
+		cart.state.ram1k[idx] = data
 		return
 	}
-	cart.ram256byte[bank-1][idx] = data
+	cart.state.ram256byte[bank-1][idx] = data
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -402,4 +383,53 @@ func (cart mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart mnetwork) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
+}
+
+type mnetworkState struct {
+	// identifies the currently selected bank
+	bank int
+
+	ram256byte    [num256ByteRAMbanks][]uint8
+	ram256byteIdx int
+
+	//  o ram1k is read through addresses 0x1000 to 0x13ff and written
+	//  through addresses 0x1400 to 0x17ff * when use1kRAM is true
+	//
+	//  o ram256byte is read through addresses 0x1900 to 0x19fd and written
+	//  through address 0x1800 to 0x18ff in all cases
+	//
+	// (addresses quoted above are of course masked so that they fall into the
+	// allocation range)
+	ram1k []uint8
+
+	// use1kRAM is set to true when hotspot 0x0fe7 has been triggered. it's not
+	// clear when, if ever, the flag should be set to false. we have taken the
+	// view that is is when any of hotspots 0x0fe0 to 0x0fe6 are triggered
+	use1kRAM bool
+}
+
+func newMnetworkState() *mnetworkState {
+	s := &mnetworkState{}
+
+	// not all m-network cartridges have RAM but we'll allocate it for all
+	// instances because there's no way of detecting if it does or not.
+	for i := range s.ram256byte {
+		s.ram256byte[i] = make([]uint8, 256)
+	}
+
+	s.ram1k = make([]uint8, 1024)
+
+	return s
+}
+
+// Snapshot implements the mapper.CartSnapshot interface.
+func (s *mnetworkState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	for i := range s.ram256byte {
+		n.ram256byte[i] = make([]uint8, len(s.ram256byte[i]))
+		copy(n.ram256byte[i], s.ram256byte[i])
+	}
+	n.ram1k = make([]uint8, len(s.ram1k))
+	copy(n.ram1k, s.ram1k)
+	return &n
 }

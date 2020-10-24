@@ -37,6 +37,7 @@ const bankSize = 2048
 // interface, the Supercharger implementation supports both fast-loading
 // from a Stella bin file, and "slow" loading from a sound file.
 type tape interface {
+	snapshot() tape
 	load() (uint8, error)
 	step()
 }
@@ -46,14 +47,13 @@ type Supercharger struct {
 	mappingID   string
 	description string
 
-	tape      tape
-	registers Registers
-
 	bankSize int
 	bios     []uint8
-	ram      [3][]uint8
 
 	onLoaded func(cart mapper.CartMapper) error
+
+	// rewindable state
+	state *state
 }
 
 // NewSupercharger is the preferred method of initialisation for the
@@ -63,23 +63,19 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		mappingID:   MappingID,
 		description: "supercharger",
 		bankSize:    2048,
+		state:       newState(),
 	}
 
 	var err error
 
 	// set up tape
 	if cartload.IsSoundData {
-		cart.tape, err = newSoundLoad(cart, cartload)
+		cart.state.tape, err = newSoundLoad(cart, cartload)
 	} else {
-		cart.tape, err = newFastLoad(cart, cartload)
+		cart.state.tape, err = newFastLoad(cart, cartload)
 	}
 	if err != nil {
 		return nil, curated.Errorf("supercharger: %v", err)
-	}
-
-	// allocate ram
-	for i := range cart.ram {
-		cart.ram[i] = make([]uint8, bankSize)
 	}
 
 	// load bios and activate
@@ -101,7 +97,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 func (cart Supercharger) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s [%s] ", cart.mappingID, cart.description))
-	s.WriteString(cart.registers.BankString())
+	s.WriteString(cart.state.registers.BankString())
 	return s.String()
 }
 
@@ -112,29 +108,30 @@ func (cart Supercharger) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Supercharger) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Supercharger) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*state)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Supercharger) Reset(randSrc *rand.Rand) {
-	for b := range cart.ram {
-		for i := range cart.ram[b] {
+	for b := range cart.state.ram {
+		for i := range cart.state.ram[b] {
 			if randSrc != nil {
-				cart.ram[b][i] = uint8(randSrc.Intn(0xff))
+				cart.state.ram[b][i] = uint8(randSrc.Intn(0xff))
 			} else {
-				cart.ram[b][i] = 0
+				cart.state.ram[b][i] = 0
 			}
 		}
 	}
 
-	cart.registers.WriteDelay = 0
-	cart.registers.BankingMode = 0
-	cart.registers.ROMpower = true
-	cart.registers.RAMwrite = true
+	cart.state.registers.WriteDelay = 0
+	cart.state.registers.BankingMode = 0
+	cart.state.registers.ROMpower = true
+	cart.state.registers.RAMwrite = true
 }
 
 // Read implements the cartMapper interface.
@@ -158,10 +155,10 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	// address before the bank switch. I think this is correct but I'm not
 	// sure.
 	if addr == 0x0ff8 {
-		b := cart.ram[bank][addr&0x07ff]
+		b := cart.state.ram[bank][addr&0x07ff]
 		if !passive {
-			cart.registers.setConfigByte(cart.registers.Value)
-			cart.registers.Delay = 0
+			cart.state.registers.setConfigByte(cart.state.registers.Value)
+			cart.state.registers.Delay = 0
 		}
 		return b, nil
 	}
@@ -169,25 +166,25 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	if addr == 0x0ff9 {
 		// call load() whenever address is touched, although do not allow
 		// it if RAMwrite is false
-		if passive || !cart.registers.RAMwrite {
+		if passive || !cart.state.registers.RAMwrite {
 			return 0, nil
 		}
 
-		return cart.tape.load()
+		return cart.state.tape.load()
 	}
 
 	// note address to be used as the next value in the control register
 	if !passive {
 		if fullAddr&0xf000 == 0xf000 && fullAddr <= 0xf0ff {
-			if cart.registers.Delay == 0 {
-				cart.registers.Value = uint8(fullAddr & 0x00ff)
-				cart.registers.Delay = 6
+			if cart.state.registers.Delay == 0 {
+				cart.state.registers.Value = uint8(fullAddr & 0x00ff)
+				cart.state.registers.Delay = 6
 			}
 		}
 	}
 
 	if bios {
-		if cart.registers.ROMpower {
+		if cart.state.registers.ROMpower {
 			// trigger onLoaded() function whenever BIOS address $fa1a
 			// (specifically) is touched. note that this method means that the
 			// onLoaded() function will be called whatever the context the
@@ -205,15 +202,15 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 		return 0, curated.Errorf("supercharger: ROM is powered off")
 	}
 
-	if !passive && cart.registers.Delay == 1 {
-		if cart.registers.RAMwrite {
-			cart.ram[bank][addr&0x07ff] = cart.registers.Value
-			cart.registers.LastWriteAddress = fullAddr
-			cart.registers.LastWriteValue = cart.registers.Value
+	if !passive && cart.state.registers.Delay == 1 {
+		if cart.state.registers.RAMwrite {
+			cart.state.ram[bank][addr&0x07ff] = cart.state.registers.Value
+			cart.state.registers.LastWriteAddress = fullAddr
+			cart.state.registers.LastWriteValue = cart.state.registers.Value
 		}
 	}
 
-	return cart.ram[bank][addr&0x07ff], nil
+	return cart.state.ram[bank][addr&0x07ff], nil
 }
 
 // Write implements the cartMapper interface.
@@ -228,54 +225,54 @@ func (cart Supercharger) NumBanks() int {
 
 // GetBank implements the cartMapper interface.
 func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
-	switch cart.registers.BankingMode {
+	switch cart.state.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
 			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 1:
 		if addr >= 0x0800 {
 			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 3:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 4:
 		if addr >= 0x0800 {
 			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 5:
 		if addr >= 0x0800 {
 			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 6:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 
 	case 7:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
 	}
 	panic("unknown banking method")
 }
@@ -287,17 +284,17 @@ func (cart *Supercharger) Patch(_ int, _ uint8) error {
 
 // Listen implements the cartMapper interface.
 func (cart *Supercharger) Listen(addr uint16, _ uint8) {
-	cart.registers.transitionCount(addr)
+	cart.state.registers.transitionCount(addr)
 }
 
 // Step implements the cartMapper interface.
 func (cart *Supercharger) Step() {
-	cart.tape.step()
+	cart.state.tape.step()
 }
 
 // IterateBank implements the mapper.CartMapper interface.
 func (cart Supercharger) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.ram)+1)
+	c := make([]mapper.BankContent, len(cart.state.ram)+1)
 
 	c[0] = mapper.BankContent{Number: 0,
 		Data: cart.bios,
@@ -307,9 +304,9 @@ func (cart Supercharger) CopyBanks() []mapper.BankContent {
 		},
 	}
 
-	for b := 0; b < len(cart.ram); b++ {
+	for b := 0; b < len(cart.state.ram); b++ {
 		c[b+1] = mapper.BankContent{Number: b + 1,
-			Data: cart.ram[b],
+			Data: cart.state.ram[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
 				memorymap.OriginCart + uint16(cart.bankSize),
@@ -322,9 +319,9 @@ func (cart Supercharger) CopyBanks() []mapper.BankContent {
 
 // GetRAM implements the mapper.CartRAMBus interface.
 func (cart Supercharger) GetRAM() []mapper.CartRAM {
-	r := make([]mapper.CartRAM, len(cart.ram))
+	r := make([]mapper.CartRAM, len(cart.state.ram))
 
-	for i := 0; i < len(cart.ram); i++ {
+	for i := 0; i < len(cart.state.ram); i++ {
 		mapped := false
 		origin := uint16(0x1000)
 
@@ -334,7 +331,7 @@ func (cart Supercharger) GetRAM() []mapper.CartRAM {
 		// documentation is clearer
 		bank := i + 1
 
-		switch cart.registers.BankingMode {
+		switch cart.state.registers.BankingMode {
 		case 0:
 			mapped = bank == 3
 
@@ -383,10 +380,10 @@ func (cart Supercharger) GetRAM() []mapper.CartRAM {
 		r[i] = mapper.CartRAM{
 			Label:  fmt.Sprintf("2048k [%d]", bank),
 			Origin: origin,
-			Data:   make([]uint8, len(cart.ram[i])),
+			Data:   make([]uint8, len(cart.state.ram[i])),
 			Mapped: mapped,
 		}
-		copy(r[i].Data, cart.ram[i])
+		copy(r[i].Data, cart.state.ram[i])
 	}
 
 	return r
@@ -394,8 +391,8 @@ func (cart Supercharger) GetRAM() []mapper.CartRAM {
 
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
-	if bank < len(cart.ram) {
-		cart.ram[bank][idx] = data
+	if bank < len(cart.state.ram) {
+		cart.state.ram[bank][idx] = data
 		return
 	}
 }
@@ -405,7 +402,7 @@ func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
 func (cart *Supercharger) Rewind() bool {
-	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
+	if tape, ok := cart.state.tape.(mapper.CartTapeBus); ok {
 		return tape.Rewind()
 	}
 	return false
@@ -416,7 +413,7 @@ func (cart *Supercharger) Rewind() bool {
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
 func (cart *Supercharger) SetTapeCounter(c int) {
-	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
+	if tape, ok := cart.state.tape.(mapper.CartTapeBus); ok {
 		tape.SetTapeCounter(c)
 	}
 }
@@ -426,7 +423,7 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
 func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
-	if tape, ok := cart.tape.(mapper.CartTapeBus); ok {
+	if tape, ok := cart.state.tape.(mapper.CartTapeBus); ok {
 		return tape.GetTapeState()
 	}
 	return false, mapper.CartTapeState{}

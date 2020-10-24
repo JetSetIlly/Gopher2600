@@ -34,6 +34,7 @@ race: generate lint vet test
 # disable checkptr because the opengl implementation will trigger it and cause
 # a lot of output noise
 	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Pitfall.bin
+#go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 
 profile: generate lint vet test
 	go build -gcflags $(compileFlags)

@@ -33,34 +33,19 @@ type m3e struct {
 	bankSize int
 	banks    [][]uint8
 
-	// 32 is the maximum number of banks possible under the 3e scheme
-	ram [32][]uint8
-
-	// 3e cartridges divide memory into two 2k segments
-	//  o the last segment always points to the last bank
-	//  o the first segment can point to any of the other three
-	//
-	// the bank pointed to by the first segment is changed through the listen()
-	// function (part of the implementation of the mapper.CartMapper interface).
-	segment [2]int
-
-	// in the 3e format only the first segment can contain RAM but for
-	// simplicity we keep track of both segments
-	segmentIsRAM [2]bool
+	// rewindable state
+	state *m3eState
 }
 
-// should work with any size cartridge that is a multiple of 2048.
+// cartridges:
+//	- Sokoboo
 func new3e(data []byte) (mapper.CartMapper, error) {
 	cart := &m3e{
 		mappingID:   "3E",
 		description: "m3e",
 		bankSize:    2048,
+		state:       newM3eState(),
 	}
-
-	// a ram bank is half the size of the available bank size. this is because
-	// of how ram is accessed - half the addresses are for reading and the
-	// other half are for writing
-	const ramSize = 1024
 
 	if len(data)%cart.bankSize != 0 {
 		return nil, curated.Errorf("%s: wrong number bytes in the cartridge data", cart.mappingID)
@@ -76,20 +61,15 @@ func new3e(data []byte) (mapper.CartMapper, error) {
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	// allocate ram
-	for k := 0; k < len(cart.ram); k++ {
-		cart.ram[k] = make([]uint8, ramSize)
-	}
-
 	return cart, nil
 }
 
 func (cart m3e) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
-	for i := range cart.segment {
-		s.WriteString(fmt.Sprintf("%d", cart.segment[i]))
-		if cart.segmentIsRAM[i] {
+	for i := range cart.state.segment {
+		s.WriteString(fmt.Sprintf("%d", cart.state.segment[i]))
+		if cart.state.segmentIsRAM[i] {
 			s.WriteString("R ")
 		} else {
 			s.WriteString(" ")
@@ -105,28 +85,29 @@ func (cart m3e) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *m3e) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *m3e) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*m3eState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *m3e) Reset(randSrc *rand.Rand) {
-	for b := range cart.ram {
-		for i := range cart.ram[b] {
+	for b := range cart.state.ram {
+		for i := range cart.state.ram[b] {
 			if randSrc != nil {
-				cart.ram[b][i] = uint8(randSrc.Intn(0xff))
+				cart.state.ram[b][i] = uint8(randSrc.Intn(0xff))
 			} else {
-				cart.ram[b][i] = 0
+				cart.state.ram[b][i] = 0
 			}
 		}
 	}
 
 	// the last segment always points to the last bank
-	cart.segment[0] = cart.NumBanks() - 2
-	cart.segment[1] = cart.NumBanks() - 1
+	cart.state.segment[0] = cart.NumBanks() - 2
+	cart.state.segment[1] = cart.NumBanks() - 1
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -141,10 +122,10 @@ func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
 
 	var data uint8
 
-	if cart.segmentIsRAM[segment] {
-		data = cart.ram[cart.segment[segment]][addr&0x03ff]
+	if cart.state.segmentIsRAM[segment] {
+		data = cart.state.ram[cart.state.segment[segment]][addr&0x03ff]
 	} else {
-		bank := cart.segment[segment]
+		bank := cart.state.segment[segment]
 		if bank < len(cart.banks) {
 			data = cart.banks[bank][addr&0x07ff]
 		}
@@ -167,11 +148,11 @@ func (cart *m3e) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		segment = 3
 	}
 
-	if cart.segmentIsRAM[segment] {
-		cart.ram[cart.segment[segment]][addr&0x03ff] = data
+	if cart.state.segmentIsRAM[segment] {
+		cart.state.ram[cart.state.segment[segment]][addr&0x03ff] = data
 		return nil
 	} else if poke {
-		cart.banks[cart.segment[segment]][addr&0x07ff] = data
+		cart.banks[cart.state.segment[segment]][addr&0x07ff] = data
 		return nil
 	}
 
@@ -186,9 +167,9 @@ func (cart m3e) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -212,13 +193,13 @@ func (cart *m3e) Listen(addr uint16, data uint8) {
 	if addr == 0x3f {
 		segment := data >> 6
 		bank := data & 0x3f
-		cart.segment[segment] = int(bank)
-		cart.segmentIsRAM[segment] = false
+		cart.state.segment[segment] = int(bank)
+		cart.state.segmentIsRAM[segment] = false
 	} else if addr == 0x3e {
 		segment := data >> 6
 		bank := data & 0x3f
-		cart.segment[segment] = int(bank)
-		cart.segmentIsRAM[segment] = true
+		cart.state.segment[segment] = int(bank)
+		cart.state.segmentIsRAM[segment] = true
 	}
 }
 
@@ -228,14 +209,14 @@ func (cart *m3e) Step() {
 
 // GetRAM implements the mapper.CartRAMBus interface.
 func (cart m3e) GetRAM() []mapper.CartRAM {
-	r := make([]mapper.CartRAM, len(cart.ram))
+	r := make([]mapper.CartRAM, len(cart.state.ram))
 
-	for i := range cart.ram {
+	for i := range cart.state.ram {
 		mapped := false
 		origin := uint16(0x0000)
 
-		for s := range cart.segment {
-			mapped = cart.segment[s] == i && cart.segmentIsRAM[s]
+		for s := range cart.state.segment {
+			mapped = cart.state.segment[s] == i && cart.state.segmentIsRAM[s]
 			if mapped {
 				switch s {
 				case 0:
@@ -250,10 +231,10 @@ func (cart m3e) GetRAM() []mapper.CartRAM {
 		r[i] = mapper.CartRAM{
 			Label:  fmt.Sprintf("%d", i),
 			Origin: origin,
-			Data:   make([]uint8, len(cart.ram[i])),
+			Data:   make([]uint8, len(cart.state.ram[i])),
 			Mapped: mapped,
 		}
-		copy(r[i].Data, cart.ram[i])
+		copy(r[i].Data, cart.state.ram[i])
 	}
 
 	return r
@@ -261,7 +242,7 @@ func (cart m3e) GetRAM() []mapper.CartRAM {
 
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *m3e) PutRAM(bank int, idx int, data uint8) {
-	cart.ram[bank][idx] = data
+	cart.state.ram[bank][idx] = data
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -282,4 +263,50 @@ func (cart m3e) CopyBanks() []mapper.BankContent {
 		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
 	}
 	return c
+}
+
+// rewindable state for the 3e cartridge.
+type m3eState struct {
+	// 32 is the maximum number of banks possible under the 3e scheme
+	ram [32][]uint8
+
+	// 3e cartridges divide memory into two 2k segments
+	//  o the last segment always points to the last bank
+	//  o the first segment can point to any of the other three
+	//
+	// the bank pointed to by the first segment is changed through the listen()
+	// function (part of the implementation of the mapper.CartMapper interface).
+	segment [2]int
+
+	// in the 3e format only the first segment can contain RAM but for
+	// simplicity we keep track of both segments
+	segmentIsRAM [2]bool
+}
+
+func newM3eState() *m3eState {
+	s := &m3eState{}
+
+	// a ram bank is half the size of the available bank size. this is because
+	// of how ram is accessed - half the addresses are for reading and the
+	// other half are for writing.
+	const ramSize = 1024
+
+	// allocate ram
+	for k := 0; k < len(s.ram); k++ {
+		s.ram[k] = make([]uint8, ramSize)
+	}
+
+	return s
+}
+
+// Snapshot implements the mapper.CartSnapshot interface.
+func (s *m3eState) Snapshot() mapper.CartSnapshot {
+	n := *s
+
+	for k := 0; k < len(s.ram); k++ {
+		n.ram[k] = make([]uint8, len(s.ram[k]))
+		copy(n.ram[k], s.ram[k])
+	}
+
+	return &n
 }

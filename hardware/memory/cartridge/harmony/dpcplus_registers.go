@@ -212,7 +212,7 @@ func (rng *randomNumberFetcher) prev() {
 
 // GetRegisters implements the bus.CartDebugBus interface.
 func (cart dpcPlus) GetRegisters() mapper.CartRegisters {
-	return cart.registers
+	return cart.state.registers
 }
 
 // PutRegister implements the bus.CartDebugBus interface
@@ -245,61 +245,61 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 	switch r[0] {
 	case "fetcher":
 		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.Fetcher) {
+		if err != nil || f > len(cart.state.registers.Fetcher) {
 			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
 		}
 		switch r[2] {
 		case "hi":
-			cart.registers.Fetcher[f].Hi = uint8(d)
+			cart.state.registers.Fetcher[f].Hi = uint8(d)
 		case "low":
-			cart.registers.Fetcher[f].Low = uint8(d)
+			cart.state.registers.Fetcher[f].Low = uint8(d)
 		case "top":
-			cart.registers.Fetcher[f].Top = uint8(d)
+			cart.state.registers.Fetcher[f].Top = uint8(d)
 		case "bottom":
-			cart.registers.Fetcher[f].Bottom = uint8(d)
+			cart.state.registers.Fetcher[f].Bottom = uint8(d)
 		default:
 			panic(fmt.Sprintf("unrecognised variable [%s]", register))
 		}
 	case "frac":
 		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.FracFetcher) {
+		if err != nil || f > len(cart.state.registers.FracFetcher) {
 			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
 		}
 		switch r[2] {
 		case "hi":
-			cart.registers.FracFetcher[f].Hi = uint8(d)
+			cart.state.registers.FracFetcher[f].Hi = uint8(d)
 		case "low":
-			cart.registers.FracFetcher[f].Low = uint8(d)
+			cart.state.registers.FracFetcher[f].Low = uint8(d)
 		case "increment":
-			cart.registers.FracFetcher[f].Increment = uint8(d)
+			cart.state.registers.FracFetcher[f].Increment = uint8(d)
 		case "count":
-			cart.registers.FracFetcher[f].Count = uint8(d)
+			cart.state.registers.FracFetcher[f].Count = uint8(d)
 		default:
 			panic(fmt.Sprintf("unrecognised variable [%s]", register))
 		}
 	case "music":
 		f, err := strconv.Atoi(r[1])
-		if err != nil || f > len(cart.registers.MusicFetcher) {
+		if err != nil || f > len(cart.state.registers.MusicFetcher) {
 			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
 		}
 		switch r[2] {
 		case "waveform":
-			cart.registers.MusicFetcher[f].Waveform = uint32(d)
+			cart.state.registers.MusicFetcher[f].Waveform = uint32(d)
 		case "freq":
-			cart.registers.MusicFetcher[f].Freq = uint32(d)
+			cart.state.registers.MusicFetcher[f].Freq = uint32(d)
 		case "increment":
-			cart.registers.MusicFetcher[f].Count = uint32(d)
+			cart.state.registers.MusicFetcher[f].Count = uint32(d)
 		default:
 			panic(fmt.Sprintf("unrecognised variable [%s]", register))
 		}
 	case "rng":
-		cart.registers.RNG.Value = uint32(d)
+		cart.state.registers.RNG.Value = uint32(d)
 	case "fastfetch":
 		switch data {
 		case "true":
-			cart.registers.FastFetch = true
+			cart.state.registers.FastFetch = true
 		case "false":
-			cart.registers.FastFetch = false
+			cart.state.registers.FastFetch = false
 		default:
 			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
 		}

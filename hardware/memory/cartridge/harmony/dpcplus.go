@@ -37,15 +37,12 @@ type dpcPlus struct {
 	banks    [][]byte
 	bank     int
 
-	registers DPCplusRegisters
-	static    DPCplusStatic
+	// static area of the cartridge. accessible outside of the cartridge
+	// through GetStatic() and PutStatic()
+	static DPCplusStatic
 
-	// was the last instruction read the opcode for "lda <immediate>"
-	lda bool
-
-	// music fetchers are clocked at a fixed (slower) rate than the reference
-	// to the VCS's clock. see Step() function.
-	beats int
+	// rewindable state
+	state *dpcPlusState
 
 	// patch help. offsets in the original data file for the different areas
 	// in the cartridge
@@ -69,6 +66,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 		mappingID:   "DPC+",
 		description: "harmony",
 		bankSize:    4096,
+		state:       newDPCPlusState(),
 	}
 
 	// amount of data used for cartridges
@@ -118,16 +116,17 @@ func (cart dpcPlus) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*dpcPlusState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
-	cart.registers.reset(randSrc)
+	cart.state.registers.reset(randSrc)
 	cart.bank = len(cart.banks) - 1
 }
 
@@ -152,12 +151,12 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		// recursions because we reset the lda flag before recursing and the
 		// lda flag being set is a prerequisite for the recursion to take
 		// place)
-		if cart.registers.FastFetch && cart.lda && data < 0x28 {
-			cart.lda = false
+		if cart.state.registers.FastFetch && cart.state.lda && data < 0x28 {
+			cart.state.lda = false
 			return cart.Read(uint16(data), passive)
 		}
 
-		cart.lda = cart.registers.FastFetch && data == 0xa9
+		cart.state.lda = cart.state.registers.FastFetch && data == 0xa9
 		return data, nil
 	}
 
@@ -168,23 +167,23 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	switch addr {
 	// random number generator
 	case 0x00:
-		cart.registers.RNG.next()
-		data = uint8(cart.registers.RNG.Value)
+		cart.state.registers.RNG.next()
+		data = uint8(cart.state.registers.RNG.Value)
 	case 0x01:
-		cart.registers.RNG.prev()
-		data = uint8(cart.registers.RNG.Value)
+		cart.state.registers.RNG.prev()
+		data = uint8(cart.state.registers.RNG.Value)
 	case 0x02:
-		data = uint8(cart.registers.RNG.Value >> 8)
+		data = uint8(cart.state.registers.RNG.Value >> 8)
 	case 0x03:
-		data = uint8(cart.registers.RNG.Value >> 16)
+		data = uint8(cart.state.registers.RNG.Value >> 16)
 	case 0x04:
-		data = uint8(cart.registers.RNG.Value >> 24)
+		data = uint8(cart.state.registers.RNG.Value >> 24)
 
 	// music fetcher
 	case 0x05:
-		data = cart.static.Data[(cart.registers.MusicFetcher[0].Waveform<<5)+(cart.registers.MusicFetcher[0].Count>>27)]
-		data += cart.static.Data[(cart.registers.MusicFetcher[1].Waveform<<5)+(cart.registers.MusicFetcher[1].Count>>27)]
-		data += cart.static.Data[(cart.registers.MusicFetcher[2].Waveform<<5)+(cart.registers.MusicFetcher[2].Count>>27)]
+		data = cart.static.Data[(cart.state.registers.MusicFetcher[0].Waveform<<5)+(cart.state.registers.MusicFetcher[0].Count>>27)]
+		data += cart.static.Data[(cart.state.registers.MusicFetcher[1].Waveform<<5)+(cart.state.registers.MusicFetcher[1].Count>>27)]
+		data += cart.static.Data[(cart.state.registers.MusicFetcher[2].Waveform<<5)+(cart.state.registers.MusicFetcher[2].Count>>27)]
 
 	// reserved
 	case 0x06:
@@ -207,10 +206,10 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		fallthrough
 	case 0x0f:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
+		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
-		cart.registers.Fetcher[f].inc()
+		cart.state.registers.Fetcher[f].inc()
 
 	// data fetcher (windowed)
 	case 0x10:
@@ -229,12 +228,12 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		fallthrough
 	case 0x17:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
+		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		if cart.registers.Fetcher[f].isWindow() {
+		if cart.state.registers.Fetcher[f].isWindow() {
 			data = cart.static.Data[dataAddr]
 		}
-		cart.registers.Fetcher[f].inc()
+		cart.state.registers.Fetcher[f].inc()
 
 	// fractional data fetcher
 	case 0x18:
@@ -253,10 +252,10 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		fallthrough
 	case 0x1f:
 		f := addr & 0x0007
-		dataAddr := uint16(cart.registers.FracFetcher[f].Hi)<<8 | uint16(cart.registers.FracFetcher[f].Low)
+		dataAddr := uint16(cart.state.registers.FracFetcher[f].Hi)<<8 | uint16(cart.state.registers.FracFetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
-		cart.registers.FracFetcher[f].inc()
+		cart.state.registers.FracFetcher[f].inc()
 
 	// data fetcher window flag
 	case 0x20:
@@ -267,7 +266,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		fallthrough
 	case 0x23:
 		f := addr & 0x0007
-		if cart.registers.Fetcher[f].isWindow() {
+		if cart.state.registers.Fetcher[f].isWindow() {
 			data = 0xff
 		}
 
@@ -309,8 +308,8 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x2f:
 		f := addr & 0x0007
-		cart.registers.FracFetcher[f].Low = data
-		cart.registers.FracFetcher[f].Count = 0
+		cart.state.registers.FracFetcher[f].Low = data
+		cart.state.registers.FracFetcher[f].Count = 0
 
 	// fractional data fetcher, high
 	case 0x30:
@@ -329,8 +328,8 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x37:
 		f := addr & 0x0007
-		cart.registers.FracFetcher[f].Hi = data
-		cart.registers.FracFetcher[f].Count = 0
+		cart.state.registers.FracFetcher[f].Hi = data
+		cart.state.registers.FracFetcher[f].Count = 0
 
 	// fractional data fetcher, incrememnt
 	case 0x38:
@@ -349,8 +348,8 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x3f:
 		f := addr & 0x0007
-		cart.registers.FracFetcher[f].Increment = data
-		cart.registers.FracFetcher[f].Count = 0
+		cart.state.registers.FracFetcher[f].Increment = data
+		cart.state.registers.FracFetcher[f].Count = 0
 
 	// data fetcher, window top
 	case 0x40:
@@ -369,7 +368,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x47:
 		f := addr & 0x0007
-		cart.registers.Fetcher[f].Top = data
+		cart.state.registers.Fetcher[f].Top = data
 
 	// data fetcher, window bottom
 	case 0x48:
@@ -388,7 +387,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x4f:
 		f := addr & 0x0007
-		cart.registers.Fetcher[f].Bottom = data
+		cart.state.registers.Fetcher[f].Bottom = data
 
 	// data fetcher, low pointer
 	case 0x50:
@@ -407,7 +406,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x57:
 		f := addr & 0x0007
-		cart.registers.Fetcher[f].Low = data
+		cart.state.registers.Fetcher[f].Low = data
 
 	// fast fetch mode
 	case 0x58:
@@ -418,7 +417,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		//  reads use LDA Absolute addressing (LDA DF0DATA) which takes 4 cycles to
 		//  process.  Fast Fetch Mode intercepts LDA Immediate addressing (LDA #<DF0DATA)
 		//  which takes only 2 cycles!  Only immediate values < $28 are intercepted
-		cart.registers.FastFetch = data == 0
+		cart.state.registers.FastFetch = data == 0
 
 	// function support - parameter
 	case 0x59:
@@ -432,9 +431,9 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 
 	// waveforms
 	case 0x5d:
-		cart.registers.MusicFetcher[0].Waveform = uint32(data & 0x7f)
+		cart.state.registers.MusicFetcher[0].Waveform = uint32(data & 0x7f)
 	case 0x5e:
-		cart.registers.MusicFetcher[1].Waveform = uint32(data & 0x7f)
+		cart.state.registers.MusicFetcher[1].Waveform = uint32(data & 0x7f)
 	case 0x5f:
 		// ----------------------------------------
 		//  Waveforms
@@ -447,7 +446,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		//
 		//  Valid values are 0-127 and point to the 4K Display Data bank.  The formula
 		//  (* & $1fff)/32 as shown below will calculate the value for you
-		cart.registers.MusicFetcher[2].Waveform = uint32(data & 0x7f)
+		cart.state.registers.MusicFetcher[2].Waveform = uint32(data & 0x7f)
 
 	// data fetcher, push stack
 	case 0x60:
@@ -473,8 +472,8 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		//  then Push to it.  The Data Fetcher's pointer will be decremented BEFORE
 		//  the data is written.
 		f := addr & 0x0007
-		cart.registers.Fetcher[f].dec()
-		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
+		cart.state.registers.Fetcher[f].dec()
+		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		cart.static.Data[dataAddr] = data
 
@@ -495,40 +494,40 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		fallthrough
 	case 0x6f:
 		f := addr & 0x0007
-		cart.registers.Fetcher[f].Hi = data
+		cart.state.registers.Fetcher[f].Hi = data
 
 	// random number initialisation
 	case 0x70:
-		cart.registers.RNG.Value = 0x2b435044
+		cart.state.registers.RNG.Value = 0x2b435044
 	case 0x71:
-		cart.registers.RNG.Value &= 0xffffff00
-		cart.registers.RNG.Value |= uint32(data)
+		cart.state.registers.RNG.Value &= 0xffffff00
+		cart.state.registers.RNG.Value |= uint32(data)
 	case 0x72:
-		cart.registers.RNG.Value &= 0xffff00ff
-		cart.registers.RNG.Value |= uint32(data) << 8
+		cart.state.registers.RNG.Value &= 0xffff00ff
+		cart.state.registers.RNG.Value |= uint32(data) << 8
 	case 0x73:
-		cart.registers.RNG.Value &= 0xff00ffff
-		cart.registers.RNG.Value |= uint32(data) << 16
+		cart.state.registers.RNG.Value &= 0xff00ffff
+		cart.state.registers.RNG.Value |= uint32(data) << 16
 	case 0x74:
-		cart.registers.RNG.Value &= 0x00ffffff
-		cart.registers.RNG.Value |= uint32(data) << 24
+		cart.state.registers.RNG.Value &= 0x00ffffff
+		cart.state.registers.RNG.Value |= uint32(data) << 24
 
 	// musical notes
 	case 0x75:
-		cart.registers.MusicFetcher[0].Freq = uint32(cart.static.Freq[data<<2])
-		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
-		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
-		cart.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[0].Freq = uint32(cart.static.Freq[data<<2])
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 	case 0x76:
-		cart.registers.MusicFetcher[1].Freq = uint32(cart.static.Freq[data<<2])
-		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
-		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
-		cart.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[1].Freq = uint32(cart.static.Freq[data<<2])
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 	case 0x77:
-		cart.registers.MusicFetcher[2].Freq = uint32(cart.static.Freq[data<<2])
-		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
-		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
-		cart.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[2].Freq = uint32(cart.static.Freq[data<<2])
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.Freq[(data<<2)+3]) << 24
 
 	// data fetcher, queue
 	case 0x78:
@@ -554,10 +553,10 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		//  then Write to it  The Data Fetcher's pointer will be incremented AFTER
 		//  the data is written.
 		f := addr & 0x0007
-		dataAddr := uint16(cart.registers.Fetcher[f].Hi)<<8 | uint16(cart.registers.Fetcher[f].Low)
+		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		cart.static.Data[dataAddr] = data
-		cart.registers.Fetcher[f].inc()
+		cart.state.registers.Fetcher[f].inc()
 	}
 
 	if poke {
@@ -640,12 +639,12 @@ func (cart *dpcPlus) Step() {
 	//
 	// the 20Khz is the same as the DPC format (see mapper_dpc for commentary).
 
-	cart.beats++
-	if cart.beats%59 == 0 {
-		cart.beats = 0
-		cart.registers.MusicFetcher[0].Count += cart.registers.MusicFetcher[0].Freq
-		cart.registers.MusicFetcher[1].Count += cart.registers.MusicFetcher[1].Freq
-		cart.registers.MusicFetcher[2].Count += cart.registers.MusicFetcher[2].Freq
+	cart.state.beats++
+	if cart.state.beats%59 == 0 {
+		cart.state.beats = 0
+		cart.state.registers.MusicFetcher[0].Count += cart.state.registers.MusicFetcher[0].Freq
+		cart.state.registers.MusicFetcher[1].Count += cart.state.registers.MusicFetcher[1].Freq
+		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 }
 

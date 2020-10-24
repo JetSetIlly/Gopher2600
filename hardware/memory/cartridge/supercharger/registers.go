@@ -129,7 +129,7 @@ func (r *Registers) transitionCount(addr uint16) {
 
 // GetRegisters implements the mapper.CartDebugBus interface.
 func (cart Supercharger) GetRegisters() mapper.CartRegisters {
-	return cart.registers
+	return cart.state.registers
 }
 
 // PutRegister implements the mapper.CartDebugBus interface
@@ -148,30 +148,30 @@ func (cart *Supercharger) PutRegister(register string, data string) {
 	switch register {
 	case "value":
 		v, _ := strconv.ParseUint(data, 16, 8)
-		cart.registers.Value = uint8(v)
+		cart.state.registers.Value = uint8(v)
 
 	case "delay":
 		v, _ := strconv.ParseUint(data, 16, 8)
 		if v > 6 {
 			panic("delay value out of range")
 		}
-		cart.registers.Delay = int(v)
+		cart.state.registers.Delay = int(v)
 
 	case "ramwrite":
 		switch data {
 		case "true":
-			cart.registers.RAMwrite = true
+			cart.state.registers.RAMwrite = true
 		case "false":
-			cart.registers.RAMwrite = false
+			cart.state.registers.RAMwrite = false
 		default:
 			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
 		}
 	case "rompower":
 		switch data {
 		case "true":
-			cart.registers.ROMpower = true
+			cart.state.registers.ROMpower = true
 		case "false":
-			cart.registers.ROMpower = false
+			cart.state.registers.ROMpower = false
 		default:
 			panic(fmt.Sprintf("unrecognised boolean state [%s]", data))
 		}
@@ -181,7 +181,7 @@ func (cart *Supercharger) PutRegister(register string, data string) {
 		if v > 7 {
 			panic("bankingmode value out of range")
 		}
-		cart.registers.BankingMode = int(v)
+		cart.state.registers.BankingMode = int(v)
 
 	default:
 		panic(fmt.Sprintf("unrecognised variable [%s]", register))

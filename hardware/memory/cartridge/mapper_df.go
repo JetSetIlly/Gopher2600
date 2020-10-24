@@ -33,11 +33,8 @@ type df struct {
 	bankSize int
 	banks    [][]uint8
 
-	// identifies the currently selected bank
-	bank int
-
-	// df cartridges always have a RAM area
-	ram []uint8
+	// rewindable state
+	state *dfState
 }
 
 func newDF(data []byte) (mapper.CartMapper, error) {
@@ -45,7 +42,7 @@ func newDF(data []byte) (mapper.CartMapper, error) {
 		mappingID:   "DF",
 		description: "128KB",
 		bankSize:    4096,
-		ram:         make([]uint8, 256),
+		state:       newDfState(),
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -64,7 +61,7 @@ func newDF(data []byte) (mapper.CartMapper, error) {
 }
 
 func (cart df) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -74,35 +71,36 @@ func (cart df) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *df) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *df) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*dfState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *df) Reset(randSrc *rand.Rand) {
-	for i := range cart.ram {
+	for i := range cart.state.ram {
 		if randSrc != nil {
-			cart.ram[i] = uint8(randSrc.Intn(0xff))
+			cart.state.ram[i] = uint8(randSrc.Intn(0xff))
 		} else {
-			cart.ram[i] = 0
+			cart.state.ram[i] = 0
 		}
 	}
 
-	cart.bank = 15
+	cart.state.bank = 15
 }
 
 // Read implements the mapper.CartMapper interface.
 func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
 	if addr >= 0x0080 && addr <= 0x00ff {
-		return cart.ram[addr-0x80], nil
+		return cart.state.ram[addr-0x80], nil
 	}
 
 	cart.bankswitch(addr, passive)
 
-	return cart.banks[cart.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -112,12 +110,12 @@ func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	}
 
 	if addr <= 0x007f {
-		cart.ram[addr] = data
+		cart.state.ram[addr] = data
 		return nil
 	}
 
 	if poke {
-		cart.banks[cart.bank][addr] = data
+		cart.banks[cart.state.bank][addr] = data
 		return nil
 	}
 
@@ -134,69 +132,69 @@ func (cart *df) bankswitch(addr uint16, passive bool) bool {
 		// looking at this switch, I'm now thinking hotspots could be done
 		// programmatically. for now though, we'll keep it like this.
 		if addr == 0x0fc0 {
-			cart.bank = 0
+			cart.state.bank = 0
 		} else if addr == 0x0fc1 {
-			cart.bank = 1
+			cart.state.bank = 1
 		} else if addr == 0x0fc2 {
-			cart.bank = 2
+			cart.state.bank = 2
 		} else if addr == 0x0fc3 {
-			cart.bank = 3
+			cart.state.bank = 3
 		} else if addr == 0x0fc4 {
-			cart.bank = 4
+			cart.state.bank = 4
 		} else if addr == 0x0fc5 {
-			cart.bank = 5
+			cart.state.bank = 5
 		} else if addr == 0x0fc6 {
-			cart.bank = 6
+			cart.state.bank = 6
 		} else if addr == 0x0fc7 {
-			cart.bank = 7
+			cart.state.bank = 7
 		} else if addr == 0x0fc8 {
-			cart.bank = 8
+			cart.state.bank = 8
 		} else if addr == 0x0fc9 {
-			cart.bank = 9
+			cart.state.bank = 9
 		} else if addr == 0x0fca {
-			cart.bank = 10
+			cart.state.bank = 10
 		} else if addr == 0x0fcb {
-			cart.bank = 11
+			cart.state.bank = 11
 		} else if addr == 0x0fcc {
-			cart.bank = 12
+			cart.state.bank = 12
 		} else if addr == 0x0fcd {
-			cart.bank = 13
+			cart.state.bank = 13
 		} else if addr == 0x0fce {
-			cart.bank = 14
+			cart.state.bank = 14
 		} else if addr == 0x0fcf {
-			cart.bank = 15
+			cart.state.bank = 15
 		} else if addr == 0x0fd0 {
-			cart.bank = 16
+			cart.state.bank = 16
 		} else if addr == 0x0fd1 {
-			cart.bank = 17
+			cart.state.bank = 17
 		} else if addr == 0x0fd2 {
-			cart.bank = 18
+			cart.state.bank = 18
 		} else if addr == 0x0fd3 {
-			cart.bank = 19
+			cart.state.bank = 19
 		} else if addr == 0x0fd4 {
-			cart.bank = 20
+			cart.state.bank = 20
 		} else if addr == 0x0fd5 {
-			cart.bank = 21
+			cart.state.bank = 21
 		} else if addr == 0x0fd6 {
-			cart.bank = 22
+			cart.state.bank = 22
 		} else if addr == 0x0fd7 {
-			cart.bank = 23
+			cart.state.bank = 23
 		} else if addr == 0x0fd8 {
-			cart.bank = 24
+			cart.state.bank = 24
 		} else if addr == 0x0fd9 {
-			cart.bank = 25
+			cart.state.bank = 25
 		} else if addr == 0x0fda {
-			cart.bank = 26
+			cart.state.bank = 26
 		} else if addr == 0x0fdb {
-			cart.bank = 27
+			cart.state.bank = 27
 		} else if addr == 0x0fdc {
-			cart.bank = 28
+			cart.state.bank = 28
 		} else if addr == 0x0fdd {
-			cart.bank = 29
+			cart.state.bank = 29
 		} else if addr == 0x0fde {
-			cart.bank = 30
+			cart.state.bank = 30
 		} else if addr == 0x0fdf {
-			cart.bank = 31
+			cart.state.bank = 31
 		}
 		return true
 	}
@@ -212,7 +210,7 @@ func (cart df) NumBanks() int {
 func (cart df) GetBank(addr uint16) mapper.BankInfo {
 	// df cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return mapper.BankInfo{Number: cart.bank, IsRAM: addr <= 0x00ff}
+	return mapper.BankInfo{Number: cart.state.bank, IsRAM: addr <= 0x00ff}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -241,16 +239,16 @@ func (cart df) GetRAM() []mapper.CartRAM {
 	r[0] = mapper.CartRAM{
 		Label:  "df+RAM",
 		Origin: 0x1080,
-		Data:   make([]uint8, len(cart.ram)),
+		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
-	copy(r[0].Data, cart.ram)
+	copy(r[0].Data, cart.state.ram)
 	return r
 }
 
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *df) PutRAM(_ int, idx int, data uint8) {
-	cart.ram[idx] = data
+	cart.state.ram[idx] = data
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -306,4 +304,28 @@ func (cart df) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart df) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
+}
+
+// rewindable state for the cartridge type.
+type dfState struct {
+	// identifies the currently selected bank
+	bank int
+
+	// df cartridges always have a RAM area
+	ram []uint8
+}
+
+func newDfState() *dfState {
+	const dfRAMsize = 256
+
+	return &dfState{
+		ram: make([]uint8, dfRAMsize),
+	}
+}
+
+func (s *dfState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	n.ram = make([]uint8, len(s.ram))
+	copy(n.ram, s.ram)
+	return &n
 }

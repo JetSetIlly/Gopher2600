@@ -34,11 +34,12 @@ import (
 // 1FEF selects the slice for the second 1K, and 1FF0 to 1FF8 selects the slice
 // for the third 1K.  The last 1K always points to the last 1K of the ROM image
 // so that the cart always starts up in the exact same place.
-
-// parkerBros implements the mapper.CartMapper interface.
-//  o Montezuma's Revenge
-//  o Lord of the Rings
-//  o etc.
+//
+//
+// cartridges:
+//  - Montezuma's Revenge
+//  - Lord of the Rings
+//  - etc.
 type parkerBros struct {
 	mappingID   string
 	description string
@@ -47,11 +48,8 @@ type parkerBros struct {
 	bankSize int
 	banks    [][]uint8
 
-	// parkerBros cartridges divide memory into 4 segments
-	//  o the last segment always points to the last bank
-	//  o the other segments can point to any one of the eight banks in the ROM
-	//		(including the last bank)
-	segment [4]int
+	// rewindable state
+	state *parkerBrosState
 }
 
 func newParkerBros(data []byte) (mapper.CartMapper, error) {
@@ -59,6 +57,7 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 		mappingID:   "E0",
 		description: "parker bros",
 		bankSize:    1024,
+		state:       newParkerBrosState(),
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -77,7 +76,7 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 }
 
 func (cart parkerBros) String() string {
-	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.segment[0], cart.segment[1], cart.segment[2], cart.segment[3])
+	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.state.segment[0], cart.state.segment[1], cart.state.segment[2], cart.state.segment[3])
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -87,32 +86,33 @@ func (cart parkerBros) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *parkerBros) Snapshot() mapper.CartSnapshot {
-	return nil
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *parkerBros) Plumb(s mapper.CartSnapshot) {
+	cart.state = s.(*parkerBrosState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *parkerBros) Reset(randSrc *rand.Rand) {
-	cart.segment[0] = cart.NumBanks() - 4
-	cart.segment[1] = cart.NumBanks() - 3
-	cart.segment[2] = cart.NumBanks() - 2
-	cart.segment[3] = cart.NumBanks() - 1
+	cart.state.segment[0] = cart.NumBanks() - 4
+	cart.state.segment[1] = cart.NumBanks() - 3
+	cart.state.segment[2] = cart.NumBanks() - 2
+	cart.state.segment[3] = cart.NumBanks() - 1
 }
 
 // Read implements the mapper.CartMapper interface.
 func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
-		data = cart.banks[cart.segment[0]][addr&0x03ff]
+		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
-		data = cart.banks[cart.segment[1]][addr&0x03ff]
+		data = cart.banks[cart.state.segment[1]][addr&0x03ff]
 	} else if addr >= 0x0800 && addr <= 0x0bff {
-		data = cart.banks[cart.segment[2]][addr&0x03ff]
+		data = cart.banks[cart.state.segment[2]][addr&0x03ff]
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		data = cart.banks[cart.segment[3]][addr&0x03ff]
+		data = cart.banks[cart.state.segment[3]][addr&0x03ff]
 	}
 
 	cart.bankswitch(addr, passive)
@@ -124,13 +124,13 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
-			cart.banks[cart.segment[0]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[0]][addr&0x3dd] = data
 		} else if addr >= 0x0400 && addr <= 0x07ff {
-			cart.banks[cart.segment[1]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[1]][addr&0x3dd] = data
 		} else if addr >= 0x0800 && addr <= 0x0bff {
-			cart.banks[cart.segment[2]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[2]][addr&0x3dd] = data
 		} else if addr >= 0x0c00 && addr <= 0x0fff {
-			cart.banks[cart.segment[3]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[3]][addr&0x3dd] = data
 		}
 	}
 
@@ -149,57 +149,57 @@ func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 		switch addr {
 		// segment 0
 		case 0x0fe0:
-			cart.segment[0] = 0
+			cart.state.segment[0] = 0
 		case 0x0fe1:
-			cart.segment[0] = 1
+			cart.state.segment[0] = 1
 		case 0x0fe2:
-			cart.segment[0] = 2
+			cart.state.segment[0] = 2
 		case 0x0fe3:
-			cart.segment[0] = 3
+			cart.state.segment[0] = 3
 		case 0x0fe4:
-			cart.segment[0] = 4
+			cart.state.segment[0] = 4
 		case 0x0fe5:
-			cart.segment[0] = 5
+			cart.state.segment[0] = 5
 		case 0x0fe6:
-			cart.segment[0] = 6
+			cart.state.segment[0] = 6
 		case 0x0fe7:
-			cart.segment[0] = 7
+			cart.state.segment[0] = 7
 
 		// segment 1
 		case 0x0fe8:
-			cart.segment[1] = 0
+			cart.state.segment[1] = 0
 		case 0x0fe9:
-			cart.segment[1] = 1
+			cart.state.segment[1] = 1
 		case 0x0fea:
-			cart.segment[1] = 2
+			cart.state.segment[1] = 2
 		case 0x0feb:
-			cart.segment[1] = 3
+			cart.state.segment[1] = 3
 		case 0x0fec:
-			cart.segment[1] = 4
+			cart.state.segment[1] = 4
 		case 0x0fed:
-			cart.segment[1] = 5
+			cart.state.segment[1] = 5
 		case 0x0fee:
-			cart.segment[1] = 6
+			cart.state.segment[1] = 6
 		case 0x0fef:
-			cart.segment[1] = 7
+			cart.state.segment[1] = 7
 
 		// segment 2
 		case 0x0ff0:
-			cart.segment[2] = 0
+			cart.state.segment[2] = 0
 		case 0x0ff1:
-			cart.segment[2] = 1
+			cart.state.segment[2] = 1
 		case 0x0ff2:
-			cart.segment[2] = 2
+			cart.state.segment[2] = 2
 		case 0x0ff3:
-			cart.segment[2] = 3
+			cart.state.segment[2] = 3
 		case 0x0ff4:
-			cart.segment[2] = 4
+			cart.state.segment[2] = 4
 		case 0x0ff5:
-			cart.segment[2] = 5
+			cart.state.segment[2] = 5
 		case 0x0ff6:
-			cart.segment[2] = 6
+			cart.state.segment[2] = 6
 		case 0x0ff7:
-			cart.segment[2] = 7
+			cart.state.segment[2] = 7
 		}
 	}
 }
@@ -222,7 +222,7 @@ func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
 		seg = 3
 	}
 
-	return mapper.BankInfo{Number: cart.segment[seg], IsRAM: false, Segment: seg}
+	return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: false, Segment: seg}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -315,4 +315,23 @@ func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
+}
+
+// rewindable state for the parker bros. cartridges.
+type parkerBrosState struct {
+	// parkerBros cartridges divide memory into 4 segments
+	//  o the last segment always points to the last bank
+	//  o the other segments can point to any one of the eight banks in the ROM
+	//		(including the last bank)
+	segment [4]int
+}
+
+func newParkerBrosState() *parkerBrosState {
+	return &parkerBrosState{}
+}
+
+// Snapshot implements the mapper.CartSnapshot interface.
+func (s *parkerBrosState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	return &n
 }

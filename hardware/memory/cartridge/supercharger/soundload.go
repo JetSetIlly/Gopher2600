@@ -104,6 +104,13 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	return tap, nil
 }
 
+// snapshot implements the tape interface.
+func (tap *SoundLoad) snapshot() tape {
+	// not copying samples. each snapshot will point to the original array
+	n := *tap
+	return &n
+}
+
 // load implements the Tape interface.
 func (tap *SoundLoad) load() (uint8, error) {
 	if !tap.playing {

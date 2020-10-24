@@ -76,16 +76,12 @@ type atari struct {
 	bankSize int
 	banks    [][]uint8
 
-	// identifies the currently selected bank
-	bank int
-
-	// some atari ROMs support aditional RAM. this is sometimes referred to as
-	// the superchip. ram is only added when it is detected
-	ram []uint8
-
 	// binrary file has empty area(s). we use this to decide whether
 	// AddSuperchip() should allocate ram field
 	binaryHasEmptyArea bool
+
+	// rewindable state
+	state *atariState
 }
 
 const superchipRAMsize = 128
@@ -104,7 +100,7 @@ func (cart atari) String() string {
 	if len(cart.banks) == 1 {
 		return fmt.Sprintf("%s [%s]", cart.mappingID, cart.description)
 	}
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -112,44 +108,23 @@ func (cart atari) ID() string {
 	return cart.mappingID
 }
 
-type atariSnapshot struct {
-	bank int
-	ram  []uint8
-}
-
-func (s *atariSnapshot) Snapshot() mapper.CartSnapshot {
-	n := *s
-	n.ram = make([]uint8, len(s.ram))
-	copy(n.ram, s.ram)
-	return &n
-}
-
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *atari) Snapshot() mapper.CartSnapshot {
-	n := atariSnapshot{
-		bank: cart.bank,
-		ram:  cart.ram,
-	}
-	return n.Snapshot()
+	return cart.state.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *atari) Plumb(s mapper.CartSnapshot) {
-	if n, ok := s.(*atariSnapshot); ok {
-		cart.bank = n.bank
-
-		// making the assumption that ram size hasn't changed
-		copy(cart.ram, n.ram)
-	}
+	cart.state = s.(*atariState)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari) Reset(randSrc *rand.Rand) {
-	for i := range cart.ram {
+	for i := range cart.state.ram {
 		if randSrc != nil {
-			cart.ram[i] = uint8(randSrc.Intn(0xff))
+			cart.state.ram[i] = uint8(randSrc.Intn(0xff))
 		} else {
-			cart.ram[i] = 0
+			cart.state.ram[i] = 0
 		}
 	}
 
@@ -162,9 +137,9 @@ func (cart *atari) Reset(randSrc *rand.Rand) {
 	// 29/05/20 - change to the second bank being the default when number of
 	// banks exceeds 1. bank 0 doesn't work for Stay Frosty
 	if len(cart.banks) == 1 {
-		cart.bank = 0
+		cart.state.bank = 0
 	} else {
-		cart.bank = 1
+		cart.state.bank = 1
 	}
 }
 
@@ -173,14 +148,14 @@ func (cart atari) GetBank(addr uint16) mapper.BankInfo {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
-	return mapper.BankInfo{Number: cart.bank, IsRAM: cart.ram != nil && addr >= 0x80 && addr <= 0xff}
+	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
 // Read implements the mapper.CartMapper interface.
 func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
-	if cart.ram != nil {
+	if cart.state.ram != nil {
 		if addr >= 0x80 && addr <= 0xff {
-			return cart.ram[addr-superchipRAMsize], true
+			return cart.state.ram[addr-superchipRAMsize], true
 		}
 	}
 	return 0, false
@@ -188,15 +163,15 @@ func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 
 // Write implements the mapper.CartMapper interface.
 func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.ram != nil {
+	if cart.state.ram != nil {
 		if addr <= 0x7f {
-			cart.ram[addr] = data
+			cart.state.ram[addr] = data
 			return nil
 		}
 	}
 
 	if poke {
-		cart.banks[cart.bank][addr] = data
+		cart.banks[cart.state.bank][addr] = data
 		return nil
 	}
 
@@ -225,7 +200,7 @@ func (cart *atari) Step() {
 
 // GetRAM implements the mapper.CartRAMBus interface.
 func (cart atari) GetRAM() []mapper.CartRAM {
-	if cart.ram == nil {
+	if cart.state.ram == nil {
 		return nil
 	}
 
@@ -233,17 +208,17 @@ func (cart atari) GetRAM() []mapper.CartRAM {
 	r[0] = mapper.CartRAM{
 		Label:  "Superchip",
 		Origin: 0x1080,
-		Data:   make([]uint8, len(cart.ram)),
+		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
 
-	copy(r[0].Data, cart.ram)
+	copy(r[0].Data, cart.state.ram)
 	return r
 }
 
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *atari) PutRAM(_ int, idx int, data uint8) {
-	cart.ram[idx] = data
+	cart.state.ram[idx] = data
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -261,24 +236,19 @@ func (cart atari) CopyBanks() []mapper.BankContent {
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
 func (cart *atari) AddSuperchip() {
 	if cart.binaryHasEmptyArea {
-		cart.ram = make([]uint8, superchipRAMsize)
+		cart.state.ram = make([]uint8, superchipRAMsize)
 	}
 }
 
 // atari4k is the original and most straightforward format
-//  o Pitfall
-//  o River Raid
-//  o Barnstormer
-//  o etc.
+//  - Pitfall
+//  - River Raid
+//  - Barnstormer
+//  - etc.
 type atari4k struct {
 	atari
 }
 
-// this is a regular cartridge of 4096 bytes
-//  o Pitfall
-//  o Adventure
-//  o Yars Revenge
-//  o etc.
 func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	cart := &atari4k{}
 	cart.bankSize = 4096
@@ -286,6 +256,7 @@ func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	cart.description = "atari 4k"
 	cart.banks = make([][]uint8, 1)
 	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
@@ -319,11 +290,11 @@ func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // atari2k is the half-size cartridge of 2048 bytes
-//	o Combat
-//  o Dragster
-//  o Outlaw
-//	o Surround
-//  o early cartridges
+//	- Combat
+//  - Dragster
+//  - Outlaw
+//	- Surround
+//  - early cartridges
 type atari2k struct {
 	atari
 }
@@ -335,6 +306,7 @@ func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	cart.description = "atari 2k"
 	cart.banks = make([][]uint8, 1)
 	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
@@ -368,9 +340,9 @@ func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // atari8k (F8)
-//	o ET
-//  o Krull
-//  o etc.
+//	- ET
+//  - Krull
+//  - etc.
 type atari8k struct {
 	atari
 }
@@ -382,6 +354,7 @@ func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	cart.description = "atari 8k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
@@ -409,7 +382,7 @@ func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
 
 	cart.bankswitch(addr, passive)
 
-	return cart.banks[cart.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -432,9 +405,9 @@ func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
 			return true
 		}
 		if addr == 0x0ff8 {
-			cart.bank = 0
+			cart.state.bank = 0
 		} else if addr == 0x0ff9 {
-			cart.bank = 1
+			cart.state.bank = 1
 		}
 		return true
 	}
@@ -455,10 +428,10 @@ func (cart atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // atari16k (F6)
-//	o Crystal Castle
-//	o RS Boxing
-//  o Midnite Magic
-//  o etc.
+//	- Crystal Castle
+//	- RS Boxing
+//  - Midnite Magic
+//  - etc.
 type atari16k struct {
 	atari
 }
@@ -470,6 +443,7 @@ func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	cart.description = "atari 16k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
@@ -497,7 +471,7 @@ func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
 
 	cart.bankswitch(addr, passive)
 
-	return cart.banks[cart.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -520,13 +494,13 @@ func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
 			return true
 		}
 		if addr == 0x0ff6 {
-			cart.bank = 0
+			cart.state.bank = 0
 		} else if addr == 0x0ff7 {
-			cart.bank = 1
+			cart.state.bank = 1
 		} else if addr == 0x0ff8 {
-			cart.bank = 2
+			cart.state.bank = 2
 		} else if addr == 0x0ff9 {
-			cart.bank = 3
+			cart.state.bank = 3
 		}
 		return true
 	}
@@ -549,10 +523,10 @@ func (cart atari16k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // atari32k (F8)
-// o Fatal Run
-// o Super Mario Bros.
-// o Donkey Kong (homebrew)
-// o etc.
+// - Fatal Run
+// - Super Mario Bros.
+// - Donkey Kong (homebrew)
+// - etc.
 type atari32k struct {
 	atari
 }
@@ -564,6 +538,7 @@ func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	cart.description = "atari 32k"
 	cart.banks = make([][]uint8, cart.NumBanks())
 	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge file", cart.mappingID)
@@ -591,7 +566,7 @@ func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
 
 	cart.bankswitch(addr, passive)
 
-	return cart.banks[cart.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -614,21 +589,21 @@ func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
 			return true
 		}
 		if addr == 0x0ff4 {
-			cart.bank = 0
+			cart.state.bank = 0
 		} else if addr == 0x0ff5 {
-			cart.bank = 1
+			cart.state.bank = 1
 		} else if addr == 0x0ff6 {
-			cart.bank = 2
+			cart.state.bank = 2
 		} else if addr == 0x0ff7 {
-			cart.bank = 3
+			cart.state.bank = 3
 		} else if addr == 0x0ff8 {
-			cart.bank = 4
+			cart.state.bank = 4
 		} else if addr == 0x0ff9 {
-			cart.bank = 5
+			cart.state.bank = 5
 		} else if addr == 0x0ffa {
-			cart.bank = 6
+			cart.state.bank = 6
 		} else if addr == 0x0ffb {
-			cart.bank = 7
+			cart.state.bank = 7
 		}
 		return true
 	}
@@ -651,4 +626,30 @@ func (cart atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart atari32k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
+}
+
+// rewindable state for all atari cartridges.
+type atariState struct {
+	// identifies the currently selected bank
+	bank int
+
+	// some atari ROMs support aditional RAM. this is sometimes referred to as
+	// the superchip. ram is only added when it is detected
+	ram []uint8
+}
+
+func newAtariState() *atariState {
+	// not allocating memory for RAM because some atari carts don't have it.
+	// memory allocated in addSuperChip() if required
+	return &atariState{}
+}
+
+// Snapshot implements the mapper.CartSnapshot interface.
+func (s *atariState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	if s.ram != nil {
+		n.ram = make([]uint8, len(s.ram))
+		copy(n.ram, s.ram)
+	}
+	return &n
 }

@@ -78,6 +78,13 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 	return tap, nil
 }
 
+// snapshot implements the tape interface.
+func (tap *FastLoad) snapshot() tape {
+	// this function doesn't copy anything. data array in each snapshot will
+	// point to the same data array
+	return tap
+}
+
 // load implements the tape interface.
 func (tap *FastLoad) load() (uint8, error) {
 	gameData := tap.data[0:0x1eff]
@@ -118,7 +125,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		binOffset := i * 0x100
 
 		data := gameData[binOffset : binOffset+0x100]
-		copy(tap.cart.ram[bank][bankOffset:bankOffset+0x100], data)
+		copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data)
 
 		logger.Log("supercharger: fastload", fmt.Sprintf("copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset))
 	}
@@ -164,8 +171,8 @@ func (tap *FastLoad) load() (uint8, error) {
 		}
 
 		// set the value to be used in the first instruction of the bootstrap program
-		tap.cart.registers.Value = configByte
-		tap.cart.registers.Delay = 0
+		tap.cart.state.registers.Value = configByte
+		tap.cart.state.registers.Delay = 0
 
 		return nil
 	})
