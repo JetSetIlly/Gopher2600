@@ -277,16 +277,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					}
 				}
 
-				// snapshot elements of the vcs for comparison purposes. note
-				// that placing this here ensures that the snapshot only occurs
-				// when the emulation is setting running 'until halt'. in other
-				// words, a snapshot will not be taken if the emulation is only
-				// single-stepped
-				dbg.VCS.Mem.RAM.LittleSnapshot()
+				// update comparison point before execution continues
+				dbg.VCS.Rewind.SetComparison()
 			}
-
-			// trimming of rewind state happens a the next frame boundary or
-			// when the current state is taken again
 		}
 
 		if dbg.continueEmulation {

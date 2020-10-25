@@ -31,16 +31,14 @@ type RAM struct {
 
 	prefs *preferences.Preferences
 
-	RAM         []uint8
-	SnapshotRAM []uint8
+	RAM []uint8
 }
 
 // NewRAM is the preferred method of initialisation for the RAM memory area.
 func NewRAM(prefs *preferences.Preferences) *RAM {
 	ram := &RAM{
-		prefs:       prefs,
-		RAM:         make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
-		SnapshotRAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+		prefs: prefs,
+		RAM:   make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 	}
 	return ram
 }
@@ -49,9 +47,7 @@ func NewRAM(prefs *preferences.Preferences) *RAM {
 func (ram *RAM) Snapshot() *RAM {
 	n := *ram
 	n.RAM = make([]uint8, len(ram.RAM))
-	n.SnapshotRAM = make([]uint8, len(ram.SnapshotRAM))
 	copy(n.RAM, ram.RAM)
-	copy(n.SnapshotRAM, ram.SnapshotRAM)
 	return &n
 }
 
@@ -64,7 +60,6 @@ func (ram *RAM) Reset() {
 			ram.RAM[i] = 0
 		}
 	}
-	copy(ram.SnapshotRAM, ram.RAM)
 }
 
 func (ram RAM) String() string {
@@ -92,9 +87,4 @@ func (ram RAM) Read(address uint16) (uint8, error) {
 func (ram *RAM) Write(address uint16, data uint8) error {
 	ram.RAM[address^memorymap.OriginRAM] = data
 	return nil
-}
-
-// Snapshot a copy of RAM for future comparison.
-func (ram *RAM) LittleSnapshot() {
-	copy(ram.SnapshotRAM, ram.RAM)
 }

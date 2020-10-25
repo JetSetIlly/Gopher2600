@@ -26,12 +26,18 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
-type snapshot struct {
-	cpu  *cpu.CPU
-	mem  *memory.Memory
-	riot *riot.RIOT
-	tia  *tia.TIA
-	tv   *television.State
+// Snapshot contains pointers to areas of the VCS emulation. They can be read
+// for reference.
+type Snapshot struct {
+	CPU  *cpu.CPU
+	Mem  *memory.Memory
+	RIOT *riot.RIOT
+	TIA  *tia.TIA
+	TV   *television.State
+
+	// as a consequence of how cartridge mappers have been implemented, it is
+	// not possible to offer anything more than an interface to snapshotted
+	// cartridge data
 	cart mapper.CartSnapshot
 
 	// is the snapshot a result of a frame snapshot request. See NewFrame()
@@ -39,17 +45,20 @@ type snapshot struct {
 	isCurrent bool
 }
 
-func (s snapshot) String() string {
+func (s Snapshot) String() string {
 	if s.isCurrent {
 		return "c"
 	}
-	return fmt.Sprintf("%d", s.tv.FrameNum)
+	return fmt.Sprintf("%d", s.TV.FrameNum)
 }
 
 type rewind struct {
 	vcs      *VCS
-	steps    []snapshot
+	steps    []Snapshot
 	position int
+
+	// pointer to the comparison point
+	comparison *Snapshot
 
 	// a new frame has been triggerd. resolve as soon as possible.
 	newFrame bool
@@ -62,12 +71,12 @@ type rewind struct {
 
 // the maximum number of steps to store before the earliest steps are
 // forgotten.
-const maxSteps = 300
+const maxRewindSteps = 100
 
 func newRewind(vcs *VCS) *rewind {
 	r := &rewind{
 		vcs:   vcs,
-		steps: make([]snapshot, 0, maxSteps),
+		steps: make([]Snapshot, 0, maxRewindSteps),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
@@ -77,17 +86,20 @@ func newRewind(vcs *VCS) *rewind {
 // Reset rewind system to zero, taking a snapshot of the current state.
 func (r *rewind) Reset() {
 	r.steps = r.steps[:0]
-	r.append(snapshot{
-		cpu:       r.vcs.CPU.Snapshot(),
-		mem:       r.vcs.Mem.Snapshot(),
-		riot:      r.vcs.RIOT.Snapshot(),
-		tia:       r.vcs.TIA.Snapshot(),
-		tv:        r.vcs.TV.Snapshot(),
+	r.append(Snapshot{
+		CPU:       r.vcs.CPU.Snapshot(),
+		Mem:       r.vcs.Mem.Snapshot(),
+		RIOT:      r.vcs.RIOT.Snapshot(),
+		TIA:       r.vcs.TIA.Snapshot(),
+		TV:        r.vcs.TV.Snapshot(),
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
 	})
 	r.justAddedFrame = true
 	r.newFrame = false
+
+	// first comparison is to the snapshot of the reset machine
+	r.comparison = &r.steps[0]
 }
 
 // ResolveNewFrame is called after every CPU instruction to check whether
@@ -101,12 +113,12 @@ func (r *rewind) ResolveNewFrame() {
 	r.justAddedFrame = true
 	r.newFrame = false
 
-	r.append(snapshot{
-		cpu:       r.vcs.CPU.Snapshot(),
-		mem:       r.vcs.Mem.Snapshot(),
-		riot:      r.vcs.RIOT.Snapshot(),
-		tia:       r.vcs.TIA.Snapshot(),
-		tv:        r.vcs.TV.Snapshot(),
+	r.append(Snapshot{
+		CPU:       r.vcs.CPU.Snapshot(),
+		Mem:       r.vcs.Mem.Snapshot(),
+		RIOT:      r.vcs.RIOT.Snapshot(),
+		TIA:       r.vcs.TIA.Snapshot(),
+		TV:        r.vcs.TV.Snapshot(),
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
 	})
@@ -117,18 +129,18 @@ func (r *rewind) CurrentState() {
 		return
 	}
 
-	r.append(snapshot{
-		cpu:       r.vcs.CPU.Snapshot(),
-		mem:       r.vcs.Mem.Snapshot(),
-		riot:      r.vcs.RIOT.Snapshot(),
-		tia:       r.vcs.TIA.Snapshot(),
-		tv:        r.vcs.TV.Snapshot(),
+	r.append(Snapshot{
+		CPU:       r.vcs.CPU.Snapshot(),
+		Mem:       r.vcs.Mem.Snapshot(),
+		RIOT:      r.vcs.RIOT.Snapshot(),
+		TIA:       r.vcs.TIA.Snapshot(),
+		TV:        r.vcs.TV.Snapshot(),
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: true,
 	})
 }
 
-func (r *rewind) append(s snapshot) {
+func (r *rewind) append(s Snapshot) {
 	if r.position == len(r.steps) {
 		r.trim()
 		r.steps = append(r.steps, s)
@@ -137,7 +149,7 @@ func (r *rewind) append(s snapshot) {
 	}
 
 	// maintain maximum length
-	if len(r.steps) > maxSteps {
+	if len(r.steps) > maxRewindSteps {
 		r.steps = r.steps[1:]
 	}
 
@@ -172,14 +184,14 @@ func (r *rewind) SetPosition(pos int) {
 	// plumb in snapshots of stored states. we don't want the machine to change
 	// what we have stored in our state array (we learned that lesson the hard
 	// way :-)
-	r.vcs.CPU = s.cpu.Snapshot()
-	r.vcs.Mem = s.mem.Snapshot()
-	r.vcs.RIOT = s.riot.Snapshot()
-	r.vcs.TIA = s.tia.Snapshot()
+	r.vcs.CPU = s.CPU.Snapshot()
+	r.vcs.Mem = s.Mem.Snapshot()
+	r.vcs.RIOT = s.RIOT.Snapshot()
+	r.vcs.TIA = s.TIA.Snapshot()
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
-	r.vcs.TV.Plumb(s.tv.Snapshot())
+	r.vcs.TV.Plumb(s.TV.Snapshot())
 	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
 
 	r.position = pos + 1
@@ -200,20 +212,30 @@ func (r *rewind) GotoFrame(frame int) bool {
 	for b <= t {
 		m := (t + b) / 2
 
-		if r.steps[m].tv.FrameNum == frame {
+		if r.steps[m].TV.FrameNum == frame {
 			r.SetPosition(m)
 			return true
 		}
 
-		if r.steps[m].tv.FrameNum < frame {
+		if r.steps[m].TV.FrameNum < frame {
 			b = m + 1
-		} else if r.steps[m].tv.FrameNum > frame {
+		} else if r.steps[m].TV.FrameNum > frame {
 			t = m - 1
 		}
 	}
 
 	r.SetPosition(b)
 	return false
+}
+
+// SetComparison points comparison to the most recent rewound entry.
+func (r *rewind) SetComparison() {
+	r.comparison = &r.steps[len(r.steps)-1]
+}
+
+// GetComparison gets a reference to current comparison point.
+func (r *rewind) GetComparison() *Snapshot {
+	return r.comparison
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.

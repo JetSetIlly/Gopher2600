@@ -82,10 +82,13 @@ func (win *winRAM) draw() {
 		// editable byte
 		d := win.img.lz.RAM.RAM[i]
 
-		// compare current RAM value with value in RAM snapshot
-		e := win.img.lz.RAM.SnapshotRAM[i]
+		// compare current RAM value with value in comparison snapshot and use
+		// highlight color if it is different
+		e := d
+		if win.img.lz.Rewind.Comparison != nil {
+			e = win.img.lz.Rewind.Comparison.Mem.RAM.RAM[i]
+		}
 		if d != e {
-			// change color of entry if it is different
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.RAMDiff)
 		}
 
@@ -100,10 +103,11 @@ func (win *winRAM) draw() {
 		}
 
 		// undo any color changes
+		if imgui.IsItemHovered() {
+			win.drawSnapshotInfo(d, e)
+		}
+
 		if d != e {
-			if imgui.IsItemHovered() {
-				win.drawSnapshotInfo(d, e)
-			}
 			imgui.PopStyleColor()
 		}
 	}

@@ -15,17 +15,23 @@
 
 package lazyvalues
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware"
+)
 
 // LazyRewind lazily accesses VCS rewind information.
 type LazyRewind struct {
 	val *LazyValues
 
-	numStates atomic.Value // int
-	currState atomic.Value // int
+	numStates  atomic.Value // int
+	currState  atomic.Value // int
+	comparison atomic.Value // *hardware.Snapshot
 
-	NumStates int
-	CurrState int
+	NumStates  int
+	CurrState  int
+	Comparison *hardware.Snapshot
 }
 
 func newLazyRewind(val *LazyValues) *LazyRewind {
@@ -36,9 +42,11 @@ func (lz *LazyRewind) push() {
 	n, c := lz.val.Dbg.VCS.Rewind.State()
 	lz.numStates.Store(n)
 	lz.currState.Store(c)
+	lz.comparison.Store(lz.val.Dbg.VCS.Rewind.GetComparison())
 }
 
 func (lz *LazyRewind) update() {
 	lz.NumStates, _ = lz.numStates.Load().(int)
 	lz.CurrState, _ = lz.currState.Load().(int)
+	lz.Comparison, _ = lz.comparison.Load().(*hardware.Snapshot)
 }
