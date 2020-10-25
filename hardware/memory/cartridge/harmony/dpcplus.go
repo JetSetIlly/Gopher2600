@@ -74,7 +74,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, curated.Errorf("cartridge", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
+		return nil, curated.Errorf("DPC+: %v", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
 	}
 
 	// partition
@@ -161,7 +161,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	if addr > 0x0027 {
-		return 0, curated.Errorf(bus.AddressError, addr)
+		return 0, curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
 	}
 
 	switch addr {
@@ -287,7 +287,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
-		return curated.Errorf(bus.AddressError, addr)
+		return curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
 	}
 
 	switch addr {
@@ -564,7 +564,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	return curated.Errorf(bus.AddressError, addr)
+	return curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
 }
 
 // bankswitch on hotspot access.
@@ -604,7 +604,7 @@ func (cart dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	if offset >= cart.fileSize {
-		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("DPC+: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	if offset >= cart.freqOffset {

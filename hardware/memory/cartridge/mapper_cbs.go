@@ -59,7 +59,7 @@ func newCBS(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
+		return nil, curated.Errorf("FA: %v", "wrong number bytes in the cartridge data")
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -132,7 +132,7 @@ func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf(bus.AddressError, addr)
+	return curated.Errorf("FA: %v", curated.Errorf(bus.AddressError, addr))
 }
 
 // bankswitch on hotspot access.
@@ -168,7 +168,7 @@ func (cart cbs) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *cbs) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("FA: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	bank := offset / cart.bankSize

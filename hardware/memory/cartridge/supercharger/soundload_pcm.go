@@ -45,7 +45,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 	if wavDec.IsValidFile() {
 		b, err := wavDec.FullPCMBuffer()
 		if err != nil {
-			return nil, fmt.Errorf("soundload: wav file: %s", err)
+			return nil, fmt.Errorf("soundload: wav file: %v", err)
 		}
 
 		logger.Log(soundloadLogTag, "loading from wav file")
@@ -55,7 +55,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 	// try interpreting data as an MP3 file
 	mp3Dec, err := mp3.NewDecoder(&pcmDecoder{data: cl.Data})
 	if err != nil {
-		return nil, fmt.Errorf("soundload: mp3 file: %s", err)
+		return nil, fmt.Errorf("soundload: mp3 file: %v", err)
 	}
 
 	b := &audio.IntBuffer{
@@ -75,7 +75,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("soundload: mp3 file: %s", err)
+			return nil, fmt.Errorf("soundload: mp3 file: %v", err)
 		}
 
 		// two bytes per sample per channel

@@ -42,7 +42,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 
 	cart.Prefs, err = newPreferences()
 	if err != nil {
-		return nil, curated.Errorf("plusrom: %s", err)
+		return nil, curated.Errorf("plusrom: %v", err)
 	}
 
 	cart.net = newNetwork(cart.Prefs)
@@ -118,7 +118,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	if onLoaded != nil {
 		err := onLoaded(cart)
 		if err != nil {
-			return nil, curated.Errorf("plusrom %s:", err)
+			return nil, curated.Errorf("plusrom %v:", err)
 		}
 	}
 

@@ -57,7 +57,7 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, curated.Errorf("%s: wrong number bytes in the cartridge file", cart.mappingID)
+		return nil, curated.Errorf("3E+: %v", "wrong number bytes in the cartridge file")
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -177,7 +177,7 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	return curated.Errorf(bus.AddressError, addr)
+	return curated.Errorf("3E+: %v", curated.Errorf(bus.AddressError, addr))
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -207,7 +207,7 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("3E+: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	bank := offset / cart.bankSize

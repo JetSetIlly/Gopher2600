@@ -171,12 +171,14 @@ func (cl *Loader) Load() error {
 		return nil
 	}
 
+	scheme := "file"
+
 	url, err := url.Parse(cl.Filename)
-	if err != nil {
-		return curated.Errorf("cartridgeloader: %v", err)
+	if err == nil {
+		scheme = url.Scheme
 	}
 
-	switch url.Scheme {
+	switch scheme {
 	case "http":
 		fallthrough
 	case "https":
@@ -216,7 +218,7 @@ func (cl *Loader) Load() error {
 		}
 
 	default:
-		return curated.Errorf("cartridgeloader: %v", fmt.Sprintf("unsupported URL scheme (%s)", url.Scheme))
+		return curated.Errorf("cartridgeloader: %v", fmt.Sprintf("unsupported URL scheme (%s)", scheme))
 	}
 
 	// generate hash

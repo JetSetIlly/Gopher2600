@@ -60,7 +60,7 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
+		return nil, curated.Errorf("DPC: %v", "wrong number bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -263,7 +263,7 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf(bus.AddressError, addr)
+	return curated.Errorf("DPC: %v", curated.Errorf(bus.AddressError, addr))
 }
 
 // bank switch on hotspot access.
@@ -295,7 +295,7 @@ func (cart dpc) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static) {
-		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("DPC: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	staticStart := cart.NumBanks() * cart.bankSize

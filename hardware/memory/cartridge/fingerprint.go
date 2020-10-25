@@ -100,10 +100,16 @@ func fingerprintParkerBros(b []byte) bool {
 }
 
 func fingerprintDF(b []byte) bool {
+	if len(b) < 0xffb {
+		return false
+	}
 	return b[0xff8] == 'D' && b[0xff9] == 'F' && b[0xffa] == 'S' && b[0xffb] == 'C'
 }
 
 func fingerprintHarmony(b []byte) bool {
+	if len(b) < 0x23 {
+		return false
+	}
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
 }
 
@@ -241,7 +247,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	case 65536:
-		return curated.Errorf("cartridge: 65536 bytes not yet supported")
+		return curated.Errorf("65536 bytes not yet supported")
 
 	case 131072:
 		cart.mapper, err = fingerprint128k(cartload.Data)(cartload.Data)
@@ -250,7 +256,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	default:
-		return curated.Errorf("cartridge: unrecognised size (%d bytes)", len(cartload.Data))
+		return curated.Errorf("unrecognised size (%d bytes)", len(cartload.Data))
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try

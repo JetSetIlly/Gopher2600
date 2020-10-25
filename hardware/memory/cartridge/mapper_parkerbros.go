@@ -63,7 +63,7 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
+		return nil, curated.Errorf("E0: %v", "wrong number bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -136,7 +136,7 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 
 	cart.bankswitch(addr, passive)
 
-	return curated.Errorf(bus.AddressError, addr)
+	return curated.Errorf("E0: %v", curated.Errorf(bus.AddressError, addr))
 }
 
 // bankswitch on hotspot access.
@@ -228,7 +228,7 @@ func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *parkerBros) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("%s: patch offset too high (%v)", cart.ID(), offset)
+		return curated.Errorf("E0: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	bank := offset / cart.bankSize

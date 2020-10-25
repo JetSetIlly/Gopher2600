@@ -156,7 +156,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	lo, err := mc.mem.Read(indirectAddress)
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -164,7 +164,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	hi, err := mc.mem.Read(indirectAddress + 1)
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -194,7 +194,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -217,7 +217,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
 
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -239,7 +239,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -255,7 +255,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -269,7 +269,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -297,7 +297,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -338,7 +338,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -361,7 +361,7 @@ func (mc *CPU) read16BitPC() error {
 
 	hi, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Is(err, bus.AddressError) {
+		if !curated.Has(err, bus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -682,7 +682,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err = mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !curated.Is(err, bus.AddressError) {
+				if !curated.Has(err, bus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -691,7 +691,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			// +1 cycle
 			err = mc.endCycle()
 			if err != nil {
-				if !curated.Is(err, bus.AddressError) {
+				if !curated.Has(err, bus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()

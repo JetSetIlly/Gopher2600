@@ -199,7 +199,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			return cart.bios[addr&0x07ff], nil
 		}
 
-		return 0, curated.Errorf("supercharger: ROM is powered off")
+		return 0, curated.Errorf("supercharger: %v", "ROM is powered off")
 	}
 
 	if !passive && cart.state.registers.Delay == 1 {
@@ -279,7 +279,7 @@ func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the cartMapper interface.
 func (cart *Supercharger) Patch(_ int, _ uint8) error {
-	return curated.Errorf("%s: not patchable")
+	return curated.Errorf("supercharger: %v", "not patchable")
 }
 
 // Listen implements the cartMapper interface.
