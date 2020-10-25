@@ -62,21 +62,14 @@ type Playback struct {
 }
 
 func (plb Playback) String() string {
-	currFrame, err := plb.digest.GetState(television.ReqFramenum)
-	if err != nil {
-		currFrame = plb.endFrame
-	}
+	currFrame := plb.digest.GetState(television.ReqFramenum)
 	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
 }
 
 // EndFrame returns true if emulation has gone past the last frame of the
 // playback.
 func (plb Playback) EndFrame() (bool, error) {
-	currFrame, err := plb.digest.GetState(television.ReqFramenum)
-	if err != nil {
-		return false, curated.Errorf("playback: %v", err)
-	}
-
+	currFrame := plb.digest.GetState(television.ReqFramenum)
 	if currFrame > plb.endFrame {
 		return true, nil
 	}
@@ -272,18 +265,9 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	}
 
 	// get current state of the television
-	frame, err := plb.vcs.TV.GetState(television.ReqFramenum)
-	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, curated.Errorf("playback: %v", err)
-	}
-	scanline, err := plb.vcs.TV.GetState(television.ReqScanline)
-	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, curated.Errorf("playback: %v", err)
-	}
-	horizpos, err := plb.vcs.TV.GetState(television.ReqHorizPos)
-	if err != nil {
-		return ports.NoPortID, ports.NoEvent, nil, curated.Errorf("playback: %v", err)
-	}
+	frame := plb.vcs.TV.GetState(television.ReqFramenum)
+	scanline := plb.vcs.TV.GetState(television.ReqScanline)
+	horizpos := plb.vcs.TV.GetState(television.ReqHorizPos)
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]

@@ -20,12 +20,12 @@ import "strings"
 // TelevisionTIA exposes only the functions required by the TIA.
 type TelevisionTIA interface {
 	Signal(SignalAttributes) error
-	GetState(StateReq) (int, error)
+	GetState(StateReq) int
 }
 
 // TelevisionSprite exposes only the functions required by the video sprites.
 type TelevisionSprite interface {
-	GetState(StateReq) (int, error)
+	GetState(StateReq) int
 }
 
 // PixelRenderer implementations displays, or otherwise works with, visual

@@ -55,13 +55,13 @@ func (lz *LazyTV) push() {
 	lz.tvStr.Store(lz.val.Dbg.VCS.TV.String())
 	lz.lastSignal.Store(lz.val.Dbg.VCS.TV.GetLastSignal())
 
-	frame, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqFramenum)
+	frame := lz.val.Dbg.VCS.TV.GetState(television.ReqFramenum)
 	lz.frame.Store(frame)
 
-	scanline, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqScanline)
+	scanline := lz.val.Dbg.VCS.TV.GetState(television.ReqScanline)
 	lz.scanline.Store(scanline)
 
-	hp, _ := lz.val.Dbg.VCS.TV.GetState(television.ReqHorizPos)
+	hp := lz.val.Dbg.VCS.TV.GetState(television.ReqHorizPos)
 	lz.hP.Store(hp)
 
 	lz.isStable.Store(lz.val.Dbg.VCS.TV.IsStable())

@@ -60,7 +60,7 @@ type State struct {
 	//  correct time.
 	horizPos int
 	//	- the current frame
-	FrameNum int
+	frameNum int
 	//	- the current scanline number
 	scanline int
 	//  - the current synced frame number. a synced frame is one which was
@@ -98,6 +98,19 @@ func (s *State) Snapshot() *State {
 	n.signalHistory = make([]signalHistoryEntry, len(s.signalHistory))
 	copy(n.signalHistory, s.signalHistory)
 	return &n
+}
+
+// Returns state information.
+func (s *State) GetState(request StateReq) int {
+	switch request {
+	case ReqFramenum:
+		return s.frameNum
+	case ReqScanline:
+		return s.scanline
+	case ReqHorizPos:
+		return s.horizPos - HorizClksHBlank
+	}
+	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
 }
 
 type signalHistoryEntry struct {
@@ -163,7 +176,7 @@ func NewTelevision(spec string) (*Television, error) {
 
 func (tv Television) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.FrameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
 	return s.String()
 }
 
@@ -232,7 +245,7 @@ func (tv *Television) Reset() error {
 	}
 
 	tv.state.horizPos = 0
-	tv.state.FrameNum = 0
+	tv.state.frameNum = 0
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
 	tv.state.vsyncCount = 0
@@ -406,14 +419,14 @@ func (tv *Television) newFrame(synced bool) error {
 	}
 
 	// prepare for next frame
-	tv.state.FrameNum++
+	tv.state.frameNum++
 	tv.state.scanline = 0
 	tv.resizer.prepare(tv)
 	tv.state.syncedFrame = synced
 
 	// process all FrameTriggers
 	for f := range tv.frameTriggers {
-		err = tv.frameTriggers[f].NewFrame(tv.state.FrameNum, tv.IsStable())
+		err = tv.frameTriggers[f].NewFrame(tv.state.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}
@@ -437,17 +450,8 @@ func (tv *Television) GetLastSignal() SignalAttributes {
 }
 
 // Returns state information.
-func (tv *Television) GetState(request StateReq) (int, error) {
-	switch request {
-	case ReqFramenum:
-		return tv.state.FrameNum, nil
-	case ReqScanline:
-		return tv.state.scanline, nil
-	case ReqHorizPos:
-		return tv.state.horizPos - HorizClksHBlank, nil
-	default:
-		return 0, curated.Errorf("television: unhandled tv state request (%v)", request)
-	}
+func (tv *Television) GetState(request StateReq) int {
+	return tv.state.GetState(request)
 }
 
 // Set the television's specification.

@@ -89,25 +89,19 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (b
 		continueCheck = func(frame int) (bool, error) { return true, nil }
 	}
 
-	fn, err := vcs.TV.GetState(television.ReqFramenum)
-	if err != nil {
-		return err
-	}
-
-	targetFrame := fn + numFrames
+	frameNum := vcs.TV.GetState(television.ReqFramenum)
+	targetFrame := frameNum + numFrames
 
 	cont := true
-	for fn != targetFrame && cont {
-		err = vcs.Step(nil)
-		if err != nil {
-			return err
-		}
-		fn, err = vcs.TV.GetState(television.ReqFramenum)
+	for frameNum != targetFrame && cont {
+		err := vcs.Step(nil)
 		if err != nil {
 			return err
 		}
 
-		cont, err = continueCheck(fn)
+		frameNum = vcs.TV.GetState(television.ReqFramenum)
+
+		cont, err = continueCheck(frameNum)
 		if err != nil {
 			return err
 		}

@@ -49,7 +49,7 @@ func (s Snapshot) String() string {
 	if s.isCurrent {
 		return "c"
 	}
-	return fmt.Sprintf("%d", s.TV.FrameNum)
+	return fmt.Sprintf("%d", s.TV.GetState(television.ReqFramenum))
 }
 
 type rewind struct {
@@ -212,14 +212,14 @@ func (r *rewind) GotoFrame(frame int) bool {
 	for b <= t {
 		m := (t + b) / 2
 
-		if r.steps[m].TV.FrameNum == frame {
+		if r.steps[m].TV.GetState(television.ReqFramenum) == frame {
 			r.SetPosition(m)
 			return true
 		}
 
-		if r.steps[m].TV.FrameNum < frame {
+		if r.steps[m].TV.GetState(television.ReqFramenum) < frame {
 			b = m + 1
-		} else if r.steps[m].TV.FrameNum > frame {
+		} else if r.steps[m].TV.GetState(television.ReqFramenum) > frame {
 			t = m - 1
 		}
 	}

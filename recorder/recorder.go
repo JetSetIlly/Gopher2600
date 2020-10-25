@@ -145,18 +145,9 @@ func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports
 	}
 
 	// create line and write to file
-	frame, err := rec.vcs.TV.GetState(television.ReqFramenum)
-	if err != nil {
-		return err
-	}
-	scanline, err := rec.vcs.TV.GetState(television.ReqScanline)
-	if err != nil {
-		return err
-	}
-	horizpos, err := rec.vcs.TV.GetState(television.ReqHorizPos)
-	if err != nil {
-		return err
-	}
+	frame := rec.vcs.TV.GetState(television.ReqFramenum)
+	scanline := rec.vcs.TV.GetState(television.ReqScanline)
+	horizpos := rec.vcs.TV.GetState(television.ReqHorizPos)
 
 	// convert value of nil type to the empty string
 	if value == nil {

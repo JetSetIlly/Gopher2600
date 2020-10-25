@@ -118,11 +118,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Frame",
 				currentValue: func() targetValue {
-					fr, err := dbg.VCS.TV.GetState(television.ReqFramenum)
-					if err != nil {
-						return err
-					}
-					return fr
+					return dbg.VCS.TV.GetState(television.ReqFramenum)
 				},
 			}
 
@@ -130,11 +126,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Scanline",
 				currentValue: func() targetValue {
-					sl, err := dbg.VCS.TV.GetState(television.ReqScanline)
-					if err != nil {
-						return err
-					}
-					return sl
+					return dbg.VCS.TV.GetState(television.ReqScanline)
 				},
 			}
 
@@ -142,11 +134,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Horiz Pos",
 				currentValue: func() targetValue {
-					hp, err := dbg.VCS.TV.GetState(television.ReqHorizPos)
-					if err != nil {
-						return err
-					}
-					return hp
+					return dbg.VCS.TV.GetState(television.ReqHorizPos)
 				},
 			}
 

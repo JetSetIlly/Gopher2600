@@ -312,7 +312,7 @@ func (bs *BallSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel, _ = bs.tv.GetState(television.ReqHorizPos)
+	bs.ResetPixel = bs.tv.GetState(television.ReqHorizPos)
 
 	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct

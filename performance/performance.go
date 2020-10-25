@@ -52,10 +52,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 	}
 
 	// get starting frame number (should be 0)
-	startFrame, err := tv.GetState(television.ReqFramenum)
-	if err != nil {
-		return curated.Errorf("performance; %v", err)
-	}
+	startFrame := tv.GetState(television.ReqFramenum)
 
 	// run for specified period of time
 	runner := func() error {
@@ -92,7 +89,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 
 					// timerChan has returned false so start measurement of
 					// performance by noting the current television frame
-					startFrame, _ = tv.GetState(television.ReqFramenum)
+					startFrame = tv.GetState(television.ReqFramenum)
 				default:
 					return true, nil
 				}
@@ -116,10 +113,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 	}
 
 	// get ending frame number
-	endFrame, err := vcs.TV.GetState(television.ReqFramenum)
-	if err != nil {
-		return curated.Errorf("performance; %v", err)
-	}
+	endFrame := vcs.TV.GetState(television.ReqFramenum)
 
 	// calculate performance
 	numFrames := endFrame - startFrame

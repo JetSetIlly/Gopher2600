@@ -177,9 +177,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			// PlaybackHashError means that a screen digest somewhere in the
 			// playback script did not work. filter error and return false to
 			// indicate failure
-			fr, _ := tv.GetState(television.ReqFramenum)
-			sl, _ := tv.GetState(television.ReqScanline)
-			hp, _ := tv.GetState(television.ReqHorizPos)
+			fr := tv.GetState(television.ReqFramenum)
+			sl := tv.GetState(television.ReqScanline)
+			hp := tv.GetState(television.ReqHorizPos)
 			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, hp=%d", err, fr, sl, hp)
 			return false, failm, nil
 		} else {

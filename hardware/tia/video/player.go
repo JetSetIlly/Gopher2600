@@ -492,7 +492,7 @@ func (ps *PlayerSprite) resetPosition() {
 func (ps *PlayerSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ps.ResetPixel, _ = ps.tv.GetState(television.ReqHorizPos)
+	ps.ResetPixel = ps.tv.GetState(television.ReqHorizPos)
 
 	if ps.ResetPixel >= 0 {
 		// resetPixel adjusted by +1 because the tv is not yet in the correct.

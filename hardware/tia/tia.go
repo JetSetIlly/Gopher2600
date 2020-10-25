@@ -285,8 +285,7 @@ func (tia *TIA) resolveDelayedEvents() {
 		// adjust video elements by the number of visible pixels that have
 		// been consumed. adding one to the value because the tv pixel we
 		// want to hit has not been reached just yet
-		adj, _ := tia.tv.GetState(television.ReqHorizPos)
-		adj++
+		adj := tia.tv.GetState(television.ReqHorizPos) + 1
 		if adj > 0 {
 			tia.Video.RSYNC(adj)
 		}
