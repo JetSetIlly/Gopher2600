@@ -87,15 +87,19 @@ type State struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signalHistory []signalHistoryEntry
+	signalHistory []SignalAttributes
 
 	// the index to write the next signal
 	signalHistoryIdx int
+
+	// the value of signalHistoryIdx before it was reset. used to limit extend
+	// of copy in State.Snapshot()
+	signalHistoryLastLen int
 }
 
 func (s *State) Snapshot() *State {
 	n := *s
-	n.signalHistory = make([]signalHistoryEntry, len(s.signalHistory))
+	n.signalHistory = make([]SignalAttributes, n.signalHistoryLastLen)
 	copy(n.signalHistory, s.signalHistory)
 	return &n
 }
@@ -111,12 +115,6 @@ func (s *State) GetState(request StateReq) int {
 		return s.horizPos - HorizClksHBlank
 	}
 	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
-}
-
-type signalHistoryEntry struct {
-	x   int
-	y   int
-	sig SignalAttributes
 }
 
 // Television is a Television implementation of the Television interface. In all
@@ -198,9 +196,9 @@ func (tv *Television) Plumb(s *State) {
 	}
 
 	for i, e := range tv.state.signalHistory {
-		col := tv.state.spec.getColor(e.sig.Pixel)
+		col := tv.state.spec.getColor(e.Pixel)
 		for _, r := range tv.refreshers {
-			r.RefreshPixel(e.x, e.y, col.R, col.G, col.B, e.sig.VBlank, i >= tv.state.signalHistoryIdx)
+			r.RefreshPixel(e.horizPos, e.scanline, col.R, col.G, col.B, e.VBlank, i >= tv.state.signalHistoryIdx)
 		}
 	}
 
@@ -369,16 +367,12 @@ func (tv *Television) Signal(sig SignalAttributes) error {
 	// record the current signal settings so they can be used for reference
 	tv.state.lastSignal = sig
 
-	e := signalHistoryEntry{
-		x:   tv.state.horizPos,
-		y:   tv.state.scanline,
-		sig: sig,
-	}
-
+	sig.horizPos = tv.state.horizPos
+	sig.scanline = tv.state.scanline
 	if tv.state.signalHistoryIdx >= len(tv.state.signalHistory) {
-		tv.state.signalHistory = append(tv.state.signalHistory, e)
+		tv.state.signalHistory = append(tv.state.signalHistory, sig)
 	} else {
-		tv.state.signalHistory[tv.state.signalHistoryIdx] = e
+		tv.state.signalHistory[tv.state.signalHistoryIdx] = sig
 	}
 	tv.state.signalHistoryIdx++
 
@@ -433,6 +427,7 @@ func (tv *Television) newFrame(synced bool) error {
 	}
 
 	// reset signal history for next frame
+	tv.state.signalHistoryLastLen = tv.state.signalHistoryIdx
 	tv.state.signalHistoryIdx = 0
 
 	return nil
@@ -483,7 +478,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 	// allocate enough memory for a TV screen that stays within the limits of
 	// the specification
-	tv.state.signalHistory = make([]signalHistoryEntry, HorizClksScanline*(tv.state.bottom-tv.state.top))
+	tv.state.signalHistory = make([]SignalAttributes, HorizClksScanline*(tv.state.bottom-tv.state.top))
 	tv.state.signalHistoryIdx = 0
 
 	return nil

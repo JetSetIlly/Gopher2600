@@ -145,6 +145,11 @@ type SignalAttributes struct {
 
 	// which equates to 30Khz
 	AudioUpdate bool
+
+	// the position on the screen this signal was applied to. added by the
+	// television implementation.
+	horizPos int
+	scanline int
 }
 
 func (a SignalAttributes) String() string {
