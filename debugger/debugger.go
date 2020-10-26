@@ -190,7 +190,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	})
 
 	// setup reflection monitor
-	if b, ok := scr.(reflection.Broker); ok {
+	if b, ok := scr.(reflection.IdentifyReflector); ok {
 		dbg.reflect = reflection.NewMonitor(dbg.VCS, b.GetReflectionRenderer())
 	}
 

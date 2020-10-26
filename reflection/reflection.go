@@ -28,8 +28,8 @@ type Renderer interface {
 	Reflect(LastResult) error
 }
 
-// Broker implementations can identify a reflection.Renderer.
-type Broker interface {
+// IdentifyReflector implementations can identify a reflection.Renderer.
+type IdentifyReflector interface {
 	GetReflectionRenderer() Renderer
 }
 

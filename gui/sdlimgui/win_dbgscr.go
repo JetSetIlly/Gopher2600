@@ -437,7 +437,7 @@ func (win *winDbgScr) render() {
 		overlayPixels = win.scr.crit.cropOverlayPixels
 	} else {
 		if win.debugColors {
-			pixels = win.scr.crit.debugPixels
+			pixels = win.scr.crit.elementPixels
 		} else {
 			pixels = win.scr.crit.pixels
 		}

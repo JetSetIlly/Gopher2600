@@ -26,6 +26,8 @@ import (
 type Monitor struct {
 	vcs      *hardware.VCS
 	renderer Renderer
+
+	history []LastResult
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type.
@@ -33,6 +35,7 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 	mon := &Monitor{
 		vcs:      vcs,
 		renderer: renderer,
+		history:  make([]LastResult, 0),
 	}
 
 	return mon

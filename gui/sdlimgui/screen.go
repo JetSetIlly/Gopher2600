@@ -65,16 +65,15 @@ type screenCrit struct {
 	pixels *image.RGBA
 
 	// backingPixels are what we plot pixels to while we wait for a frame to
-	// complete. see NewFrame() and render() functions below for how we achieve
-	// this.
+	// complete.
 	backingPixels         [2]*image.RGBA
 	backingPixelsCurrent  int
 	backingPixelsToRender int
 	backingPixelsUpdate   bool
 
-	// debug colors and overlay colors are only used in the debugger. we're not
-	// worried about drawing to them directly
-	debugPixels   *image.RGBA
+	// element colors and overlay colors are only used in the debugger so we
+	// don't need to replicate the "backing pixels" idea.
+	elementPixels *image.RGBA
 	overlayPixels *image.RGBA
 
 	// the selected overlay
@@ -121,10 +120,10 @@ func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanline
 	for i := range scr.crit.backingPixels {
 		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 	}
-	scr.crit.debugPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
 
-	// allocate disasm info
+	// allocate reflection info
 	scr.crit.reflection = make([][]reflection.LastResult, television.HorizClksScanline)
 	for x := 0; x < television.HorizClksScanline; x++ {
 		scr.crit.reflection[x] = make([]reflection.LastResult, spec.ScanlinesTotal)
@@ -140,29 +139,20 @@ func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanline
 		},
 	}
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropElementPixels = scr.crit.debugPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
 
-	// clear pixels. SetPixel() alters the value of lastX and lastY. we don't
-	// really want it to do that however, so we note these value and restore
-	// them after the clearing loops
-	lastX := scr.crit.lastX
-	lastY := scr.crit.lastY
-
+	// clear pixels
 	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
 		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.debugPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-
-			// backing pixels too
+			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			for i := range scr.crit.backingPixels {
 				scr.crit.backingPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			}
 		}
 	}
-
-	scr.crit.lastX = lastX
-	scr.crit.lastY = lastY
 
 	// end critical section
 	scr.crit.section.Unlock()
@@ -195,8 +185,8 @@ func (scr *screen) NewFrame(frameNum int, isStable bool) error {
 	defer scr.crit.section.Unlock()
 
 	scr.crit.isStable = isStable
-
 	scr.crit.backingPixelsUpdate = true
+
 	if scr.crit.backingPixelsCurrent >= len(scr.crit.backingPixels)-1 {
 		copy(scr.crit.backingPixels[0].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
 		scr.crit.backingPixelsCurrent = 0
@@ -265,9 +255,9 @@ func (scr *screen) Reflect(ref reflection.LastResult) error {
 		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = ref
 	}
 
-	// set debug pixel
+	// set element pixel
 	rgb := reflection.PaletteElements[ref.VideoElement]
-	scr.crit.debugPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	scr.crit.elementPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
 
 	// write to overlay
 	scr.plotOverlay(scr.crit.lastX, scr.crit.lastY, ref)
