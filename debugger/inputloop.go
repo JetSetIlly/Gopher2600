@@ -156,7 +156,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		if haltEmulation && dbg.continueEmulation {
 			// but not for scripts
 			if inputter.IsInteractive() {
-				dbg.VCS.Rewind.CurrentState()
+				dbg.Rewind.CurrentState()
 			}
 		}
 
@@ -278,7 +278,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 
 				// update comparison point before execution continues
-				dbg.VCS.Rewind.SetComparison()
+				dbg.Rewind.SetComparison()
 			}
 		}
 
@@ -305,6 +305,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			default:
 				stepErr = fmt.Errorf("unknown quantum mode")
 			}
+
+			// update rewing state if the last CPU instruction took place during a new
+			// frame event
+			dbg.Rewind.Check()
 
 			// check step error. note that we format and store last CPU
 			// execution result whether there was an error or not. in the case

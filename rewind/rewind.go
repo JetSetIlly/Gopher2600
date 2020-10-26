@@ -13,11 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package hardware
+package rewind
 
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -52,9 +53,12 @@ func (s Snapshot) String() string {
 	return fmt.Sprintf("%d", s.TV.GetState(television.ReqFramenum))
 }
 
-type rewind struct {
-	vcs      *VCS
-	steps    []Snapshot
+// Rewind contains a history of machine states for the emulation.
+type Rewind struct {
+	vcs *hardware.VCS
+
+	// list of snapshotted entries
+	entries  []Snapshot
 	position int
 
 	// pointer to the comparison point
@@ -73,19 +77,22 @@ type rewind struct {
 // forgotten.
 const maxRewindSteps = 100
 
-func newRewind(vcs *VCS) *rewind {
-	r := &rewind{
-		vcs:   vcs,
-		steps: make([]Snapshot, 0, maxRewindSteps),
+// NewRewind is the preferred method of initialisation for the Rewind type.
+func NewRewind(vcs *hardware.VCS) *Rewind {
+	r := &Rewind{
+		vcs:     vcs,
+		entries: make([]Snapshot, 0, maxRewindSteps),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
 	return r
 }
 
-// Reset rewind system to zero, taking a snapshot of the current state.
-func (r *rewind) Reset() {
-	r.steps = r.steps[:0]
+// Reset rewind system removes all entries and takes a snapshot of the current
+// state. This should be called whenever a new cartridge is attached to the
+// emulation.
+func (r *Rewind) Reset() {
+	r.entries = r.entries[:0]
 	r.append(Snapshot{
 		CPU:       r.vcs.CPU.Snapshot(),
 		Mem:       r.vcs.Mem.Snapshot(),
@@ -99,12 +106,13 @@ func (r *rewind) Reset() {
 	r.newFrame = false
 
 	// first comparison is to the snapshot of the reset machine
-	r.comparison = &r.steps[0]
+	r.comparison = &r.entries[0]
 }
 
-// ResolveNewFrame is called after every CPU instruction to check whether
-// a new frame has been triggered since the last call.
-func (r *rewind) ResolveNewFrame() {
+// Check should be called after every CPU instruction to check whether a new
+// frame has been triggered since the last call. Delaying a call to this
+// function may result in sub-optimal results.
+func (r *Rewind) Check() {
 	if !r.newFrame {
 		r.justAddedFrame = false
 		return
@@ -124,7 +132,10 @@ func (r *rewind) ResolveNewFrame() {
 	})
 }
 
-func (r *rewind) CurrentState() {
+// CurrentState takes a snapshot of the emulation's current state. It will do
+// nothing if the last call to ResolveNewFrame() resulted in a snapshot being
+// taken.
+func (r *Rewind) CurrentState() {
 	if r.justAddedFrame {
 		return
 	}
@@ -140,46 +151,49 @@ func (r *rewind) CurrentState() {
 	})
 }
 
-func (r *rewind) append(s Snapshot) {
-	if r.position == len(r.steps) {
+func (r *Rewind) append(s Snapshot) {
+	if r.position == len(r.entries) {
 		r.trim()
-		r.steps = append(r.steps, s)
+		r.entries = append(r.entries, s)
 	} else {
-		r.steps = append(r.steps[:r.position], s)
+		r.entries = append(r.entries[:r.position], s)
 	}
 
 	// maintain maximum length
-	if len(r.steps) > maxRewindSteps {
-		r.steps = r.steps[1:]
+	if len(r.entries) > maxRewindSteps {
+		r.entries = r.entries[1:]
 	}
 
-	r.position = len(r.steps)
+	r.position = len(r.entries)
 }
 
-func (r *rewind) trim() {
-	if len(r.steps) < 1 {
+// chop off the most recent entry if the isCurrent flag is set.
+func (r *Rewind) trim() {
+	if len(r.entries) < 1 {
 		return
 	}
 
-	if r.steps[len(r.steps)-1].isCurrent {
-		r.steps = r.steps[:len(r.steps)-1]
-		r.position = len(r.steps)
+	if r.entries[len(r.entries)-1].isCurrent {
+		r.entries = r.entries[:len(r.entries)-1]
+		r.position = len(r.entries)
 	}
 }
 
-// Returns current state of the rewind. First return value is total number of
-// states and the second value is the current position.
-func (r rewind) State() (int, int) {
-	return len(r.steps), r.position - 1
+// State returns the number number of snapshotted entries in the rewind system
+// and the current state being pointed to (the state that is currently plumbed
+// into the emulation).
+func (r Rewind) State() (int, int) {
+	return len(r.entries), r.position - 1
 }
 
-// Move timeline to to specified position.
-func (r *rewind) SetPosition(pos int) {
-	if pos >= len(r.steps) {
-		pos = len(r.steps) - 1
+// SetPosition sets the rewind system to the specified position. That state
+// will be plumbed into the emulation.
+func (r *Rewind) SetPosition(pos int) {
+	if pos >= len(r.entries) {
+		pos = len(r.entries) - 1
 	}
 
-	s := r.steps[pos]
+	s := r.entries[pos]
 
 	// plumb in snapshots of stored states. we don't want the machine to change
 	// what we have stored in our state array (we learned that lesson the hard
@@ -198,28 +212,28 @@ func (r *rewind) SetPosition(pos int) {
 }
 
 // GotoCurrent sets the position to the last in the timeline.
-func (r *rewind) GotoCurrent() {
-	r.SetPosition(len(r.steps))
+func (r *Rewind) GotoCurrent() {
+	r.SetPosition(len(r.entries))
 }
 
 // GotoFrame searches the timeline for the frame number. Goes to nearest frame
 // if frame number is not present. Returns true if exact frame number was found
 // and false if not.
-func (r *rewind) GotoFrame(frame int) bool {
+func (r *Rewind) GotoFrame(frame int) bool {
 	// binary search for frame number
 	b := 0
-	t := len(r.steps) - 1
+	t := len(r.entries) - 1
 	for b <= t {
 		m := (t + b) / 2
 
-		if r.steps[m].TV.GetState(television.ReqFramenum) == frame {
+		if r.entries[m].TV.GetState(television.ReqFramenum) == frame {
 			r.SetPosition(m)
 			return true
 		}
 
-		if r.steps[m].TV.GetState(television.ReqFramenum) < frame {
+		if r.entries[m].TV.GetState(television.ReqFramenum) < frame {
 			b = m + 1
-		} else if r.steps[m].TV.GetState(television.ReqFramenum) > frame {
+		} else if r.entries[m].TV.GetState(television.ReqFramenum) > frame {
 			t = m - 1
 		}
 	}
@@ -229,17 +243,17 @@ func (r *rewind) GotoFrame(frame int) bool {
 }
 
 // SetComparison points comparison to the most recent rewound entry.
-func (r *rewind) SetComparison() {
-	r.comparison = &r.steps[len(r.steps)-1]
+func (r *Rewind) SetComparison() {
+	r.comparison = &r.entries[len(r.entries)-1]
 }
 
 // GetComparison gets a reference to current comparison point.
-func (r *rewind) GetComparison() *Snapshot {
+func (r *Rewind) GetComparison() *Snapshot {
 	return r.comparison
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *rewind) NewFrame(frameNum int, isStable bool) error {
+func (r *Rewind) NewFrame(frameNum int, isStable bool) error {
 	r.newFrame = true
 	return nil
 }

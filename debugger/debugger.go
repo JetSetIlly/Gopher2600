@@ -38,6 +38,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
@@ -134,6 +135,8 @@ type Debugger struct {
 
 	// halt the emulation immediately. used by HALT command.
 	haltImmediately bool
+
+	Rewind *rewind.Rewind
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -156,6 +159,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
+	// plug in rewind system
+	dbg.Rewind = rewind.NewRewind(dbg.VCS)
+
 	// replace player 1 port with savekey
 	if useSavekey {
 		err = dbg.VCS.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
@@ -173,7 +179,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// set up debugging interface to memory. note that we're reaching deep into
 	// another pointer to get the symtable for the memoryDebug instance. this
 	// is dangerous if we don't care to reset the symtable when disasm changes.
-	// As it is, we only change the disasm poointer in the loadCartridge()
+	// As it is, we only change the disasm poointer in the attachCartridge()
 	// function.
 	dbg.dbgmem = &memoryDebug{vcs: dbg.VCS, symbols: dbg.Disasm.Symbols}
 
@@ -249,7 +255,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	}
 	defer dbg.term.CleanUp()
 
-	err = dbg.loadCartridge(cartload)
+	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -288,7 +294,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	return nil
 }
 
-// loadCartridge makes sure that the cartridge loaded into vcs memory and the
+// attachCartridge makes sure that the cartridge loaded into vcs memory and the
 // available disassembly/symbols are in sync.
 //
 // NEVER call vcs.AttachCartridge() or setup.AttachCartridge() except through
@@ -296,7 +302,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 //
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
-func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
+func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 	// set OnLoaded function for specific cartridge formats
 	cartload.OnLoaded = func(cart mapper.CartMapper) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
@@ -334,6 +340,9 @@ func (dbg *Debugger) loadCartridge(cartload cartridgeloader.Loader) error {
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
 		return err
 	}
+
+	// attaching a new cartridge always causes the rewind system to reset
+	dbg.Rewind.Reset()
 
 	symbols, err := symbols.ReadSymbolsFile(dbg.VCS.Mem.Cart)
 	if err != nil {

@@ -131,7 +131,7 @@ func (win *winControl) draw() {
 
 	if imgui.SliderIntV("##rewind", &pos, 0, n, "") {
 		win.img.lz.Dbg.PushRawEvent(func() {
-			win.img.lz.Dbg.VCS.Rewind.SetPosition(int(pos))
+			win.img.lz.Dbg.Rewind.SetPosition(int(pos))
 		})
 	}
 

@@ -41,8 +41,6 @@ type VCS struct {
 	Mem  *memory.Memory
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
-
-	Rewind *rewind
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -74,8 +72,6 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	vcs.Rewind = newRewind(vcs)
 
 	return vcs, nil
 }
@@ -121,9 +117,6 @@ func (vcs *VCS) Reset() error {
 			return err
 		}
 	}
-
-	// for simplicit we're not allowing the rewind state to surive a reset
-	vcs.Rewind.Reset()
 
 	return nil
 }

@@ -275,16 +275,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		arg, ok := tokens.Get()
 		if ok {
 			if arg == "CURRENT" {
-				dbg.dbgmem.vcs.Rewind.GotoCurrent()
+				dbg.Rewind.GotoCurrent()
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				dbg.dbgmem.vcs.Rewind.GotoFrame(frame)
+				dbg.Rewind.GotoFrame(frame)
 			}
 		}
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
-		err := dbg.loadCartridge(cartridgeloader.NewLoader(cart, "AUTO"))
+		err := dbg.attachCartridge(cartridgeloader.NewLoader(cart, "AUTO"))
 		if err != nil {
 			return false, err
 		}
