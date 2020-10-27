@@ -426,6 +426,8 @@ func (tv *Television) newFrame(synced bool) error {
 	return nil
 }
 
+// setPendindPixels forwards all pixels in the signalHistory buffer (between
+// the *from and *to values) to all pixel renderers.
 func (tv *Television) setPendingPixels() error {
 	for i := tv.state.pendingSetPixelFrom; i < tv.state.pendingSetPixelTo; i++ {
 		sig := tv.state.signalHistory[i]

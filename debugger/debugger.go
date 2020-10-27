@@ -228,7 +228,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// connect gui
 	err = scr.ReqFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		if !curated.Is(err, gui.UnsupportedGuiFeature) {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 	}
 
 	// allocate memory for user input
@@ -240,7 +242,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// try to add debugger (self) to gui context
 	err = dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		if !curated.Is(err, gui.UnsupportedGuiFeature) {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 	}
 
 	return dbg, nil
@@ -319,7 +323,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 				fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
 				err := dbg.scr.ReqFeature(gui.ReqPlusROMFirstInstallation, &fi)
 				if err != nil {
-					return err
+					if !curated.Is(err, gui.UnsupportedGuiFeature) {
+						return curated.Errorf("debugger: %v", err)
+					}
 				}
 			}
 		}
@@ -328,7 +334,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 
 	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		if !curated.Is(err, gui.UnsupportedGuiFeature) {
+			return curated.Errorf("debugger: %v", err)
+		}
 	}
 	defer func() {
 		// we know the gui supports ReqChangingCartridge feature because we've

@@ -13,10 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package sdldebug implements the GUI interface. Suitable for applications
-// that require a screen and debugging overlays. Currently, it can show:
-//
-//	- alternative "debug" colours
-//	- show a "meta-pixel" overlay (see debugger.reflection package)
-//	- show an unmasked screen, showing off-screen sprite pixels when using debug colors
-package sdldebug
+package gui
+
+import "github.com/jetsetilly/gopher2600/curated"
+
+type Stub struct{}
+
+func (s Stub) ReqFeature(request FeatureReq, args ...interface{}) error {
+	return curated.Errorf(UnsupportedGuiFeature, request)
+}

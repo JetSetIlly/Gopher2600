@@ -31,7 +31,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/plainterm"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/gui/deprecated/sdldebug"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hiscore"
@@ -396,32 +395,29 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	defer tv.End()
 
 	var term terminal.Terminal
+	var scr gui.GUI
 
 	// create gui
 	if *termType == "IMGUI" {
 		sync.creator <- func() (GuiCreator, error) {
 			return sdlimgui.NewSdlImgui(tv, false)
 		}
-	} else {
-		// notify main thread of new gui creator
-		sync.creator <- func() (GuiCreator, error) {
-			return sdldebug.NewSdlDebug(tv, 2.0)
+
+		// wait for creator result
+		select {
+		case g := <-sync.creation:
+			scr = g.(gui.GUI)
+		case err := <-sync.creationError:
+			return err
 		}
-	}
 
-	// wait for creator result
-	var scr gui.GUI
-	select {
-	case g := <-sync.creation:
-		scr = g.(gui.GUI)
-	case err := <-sync.creationError:
-		return err
-	}
-
-	// if gui implements the terminal.Broker interface use that terminal
-	// as a preference
-	if b, ok := scr.(terminal.Broker); ok {
-		term = b.GetTerminal()
+		// if gui implements the terminal.Broker interface use that terminal
+		// as a preference
+		if b, ok := scr.(terminal.Broker); ok {
+			term = b.GetTerminal()
+		}
+	} else {
+		scr = gui.Stub{}
 	}
 
 	// if the GUI does not supply a terminal then use a color or plain terminal
