@@ -88,8 +88,14 @@ const superchipRAMsize = 128
 
 // look for empty area (representing RAM) in binary data.
 func hasEmptyArea(d []uint8) bool {
-	for i := 0; i < superchipRAMsize; i++ {
-		if d[i] != 0x00 {
+	// if the first byte in the cartridge is repeated 'superchipRAMsize' times
+	// then we deem it to be an empty area.
+	//
+	// for example: the Fatal Run (NTSC) ROM uses FF rather than 00 to fill the
+	// empty space.
+	b := d[0]
+	for i := 1; i < superchipRAMsize; i++ {
+		if d[i] != b {
 			return false
 		}
 	}
