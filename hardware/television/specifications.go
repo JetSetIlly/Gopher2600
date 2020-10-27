@@ -70,6 +70,10 @@ type Spec struct {
 
 	// the number of frames per second required by the specification
 	FramesPerSecond float32
+
+	// if the generated image is exactly ScanlinesTotal in height then how many
+	// pixels would that be. used for frame rate measurement.
+	IdealPixelsPerFrame int
 }
 
 // GetColor translates a signals to the color type.
@@ -120,6 +124,7 @@ func init() {
 
 	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
 	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
+	SpecNTSC.IdealPixelsPerFrame = SpecNTSC.ScanlinesTotal * HorizClksScanline
 
 	SpecPAL = Spec{
 		ID:                "PAL",
@@ -135,4 +140,5 @@ func init() {
 
 	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
+	SpecNTSC.IdealPixelsPerFrame = SpecPAL.ScanlinesTotal * HorizClksScanline
 }

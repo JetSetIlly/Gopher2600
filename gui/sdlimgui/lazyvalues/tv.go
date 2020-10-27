@@ -67,8 +67,7 @@ func (lz *LazyTV) push() {
 	lz.isStable.Store(lz.val.Dbg.VCS.TV.IsStable())
 	lz.actualFPS.Store(lz.val.Dbg.VCS.TV.GetActualFPS())
 
-	// note that the requested fps value is taken from the debugger and not the TV interface
-	lz.reqFPS.Store(lz.val.Dbg.GetReqFPS())
+	lz.reqFPS.Store(lz.val.Dbg.VCS.TV.GetReqFPS())
 }
 
 func (lz *LazyTV) update() {

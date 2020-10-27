@@ -20,100 +20,104 @@ import (
 	"time"
 )
 
+type limitScale int
+
+const (
+	scaleFrame limitScale = iota
+	scaleScanline
+	scalePixel
+)
+
 type limiter struct {
+	tv *Television
+
 	// whether to wait for fps limited each frame
 	limit bool
 
-	// the number of scanline since last limit operation
-	scanlines int
-
 	// the requested number of frames per second
-	requested         float32
-	scanlinesPerFrame int
+	requested float32
 
-	// actual calculation
+	// event pulse
+	pulse *time.Ticker
+	scale limitScale
+
+	// measurement
 	actual         float32
 	actualCt       int
 	actualCtTarget int
-	actualRefTime  time.Time
-
-	// channels
-	sync    chan bool
-	reqRate chan time.Duration
+	actualTime     time.Time
 }
 
-func (lmtr *limiter) init() {
+func (lmtr *limiter) init(tv *Television) {
+	lmtr.tv = tv
 	lmtr.limit = true
-	lmtr.actualRefTime = time.Now()
-	lmtr.sync = make(chan bool)
-	lmtr.reqRate = make(chan time.Duration)
-
-	go func() {
-		// new ticker with an arbitrary value. it'll get changed soon enough
-		tck := time.NewTicker(1)
-
-		for {
-			select {
-			case <-tck.C:
-				select {
-				case lmtr.sync <- true:
-
-				// listen for limtReqRate signals too while signalling the
-				// limitTick channel.
-				//
-				// if we don't do this here, it's possible for the limitTick to
-				// deadlock, even with very large buffers on limitReqRate. an
-				// exceedingly large buffer might work but it's too risky
-				//
-				// we could add a small buffer to the limitTick channel but
-				// any kind of buffering seems to upset the accuracy of
-				// time.Ticker's self regulation.
-				case d := <-lmtr.reqRate:
-					tck.Stop()
-					tck = time.NewTicker(d)
-				}
-
-			// listen for limtReqRate signals too while signalling the
-			// limitTick channel. we're doing this here in addition to above
-			// because this is also a source for deadlocking and just generally
-			// slow response times if the Ticker duration is very long.
-			case d := <-lmtr.reqRate:
-				tck.Stop()
-				tck = time.NewTicker(d)
-			}
-		}
-	}()
+	lmtr.actualTime = time.Now()
 }
 
-// set target rate and the number of scanlines considered to be a frame.
-func (lmtr *limiter) setRate(fps float32, scanlinesPerFrame int) {
+// there's no science behind when we flip from scales these values are based simply on
+// what looks effective and what seems to be useable.
+const (
+	threshScanlineScale float32 = 10.0
+	thresPixelScale     float32 = 1.0
+)
+
+func (lmtr *limiter) setRate(fps float32) {
+	// if number is negative then default to ideal FPS rate
 	if fps < 0 {
+		fps = lmtr.tv.state.spec.FramesPerSecond
+	}
+
+	// not selected rate
+	lmtr.requested = fps
+
+	// set scale and duration to wait according to requested FPS rate
+	if fps < thresPixelScale {
+		lmtr.scale = scalePixel
+		dur := time.Duration(279000 * fps)
+		lmtr.pulse = time.NewTicker(dur)
+	} else if fps < threshScanlineScale {
+		lmtr.scale = scaleScanline
+		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.ScanlinesTotal))
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+		lmtr.pulse = time.NewTicker(dur)
+	} else {
+		lmtr.scale = scaleFrame
+		rate := float32(1.0) / fps
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+		lmtr.pulse = time.NewTicker(dur)
+	}
+
+	// restart acutal FPS rate measurement values
+	lmtr.actualCt = 0
+	lmtr.actualCtTarget = int(lmtr.requested) / 2
+	lmtr.actualTime = time.Now()
+}
+
+func (lmtr *limiter) checkFrame() {
+	if lmtr.scale != scaleFrame || !lmtr.limit {
 		return
 	}
 
-	lmtr.requested = fps
-	lmtr.scanlinesPerFrame = scanlinesPerFrame
-
-	rate, _ := time.ParseDuration(fmt.Sprintf("%fs", float32(1.0)/lmtr.requested))
-	lmtr.reqRate <- rate
-
-	lmtr.actualCtTarget = int(lmtr.requested) / 2
-	lmtr.actualCt = 0
-	lmtr.actualRefTime = time.Now()
+	<-lmtr.pulse.C
+	lmtr.measureActual()
 }
 
-// check fps rate and pause if necessary. we call this every scanline iteration
-// and not every frame iteration. new frames are unpredictble, scanlines are
-// like clockwork.
-func (lmtr *limiter) checkRate() {
-	lmtr.scanlines++
-	if lmtr.scanlines > lmtr.scanlinesPerFrame {
-		lmtr.scanlines = 0
-		if lmtr.limit {
-			<-lmtr.sync
-		}
-		lmtr.measureActual()
+func (lmtr *limiter) checkScanline() {
+	if lmtr.scale != scaleScanline || !lmtr.limit {
+		return
 	}
+
+	<-lmtr.pulse.C
+	lmtr.measureActual()
+}
+
+func (lmtr *limiter) checkPixel() {
+	if lmtr.scale != scalePixel || !lmtr.limit {
+		return
+	}
+
+	<-lmtr.pulse.C
+	lmtr.measureActual()
 }
 
 // called every scanline (although internally limited) to calculate the actual
@@ -122,22 +126,17 @@ func (lmtr *limiter) measureActual() {
 	lmtr.actualCt++
 	if lmtr.actualCt >= lmtr.actualCtTarget {
 		t := time.Now()
-		lmtr.actual = float32(lmtr.actualCtTarget) / float32(t.Sub(lmtr.actualRefTime).Seconds())
+		lmtr.actual = float32(lmtr.actualCtTarget) / float32(t.Sub(lmtr.actualTime).Seconds())
 
-		// actualCtTarget is the number of frames to count before taking the
-		// acutal measurement. we set this to the new actual value, which means
-		// we'll be remeasuring every second or so. if actual is less than 1
-		// howevre, we set actualCtTarget to 1, which means we'll be
-		// re-measuring every frame.
-		if lmtr.actual > 1 {
-			lmtr.actualCtTarget = int(lmtr.actual)
-		} else {
-			lmtr.actualCtTarget = 1
+		switch lmtr.scale {
+		case scaleScanline:
+			lmtr.actual /= float32(lmtr.tv.state.spec.ScanlinesTotal)
+		case scalePixel:
+			lmtr.actual /= float32(lmtr.tv.state.spec.IdealPixelsPerFrame)
 		}
 
-		// not start time for next calculation
-		lmtr.actualRefTime = t
-
+		// reset time and count ready for next measurement
+		lmtr.actualTime = t
 		lmtr.actualCt = 0
 	}
 }

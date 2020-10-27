@@ -163,7 +163,7 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	// initialise frame rate limiter
-	tv.lmtr.init()
+	tv.lmtr.init(tv)
 	tv.SetFPS(-1)
 
 	// empty list of renderers
@@ -309,9 +309,6 @@ func (tv *Television) Signal(sig SignalAttributes) error {
 				return err
 			}
 		}
-
-		// checkRate evey scanline. see checkRate() commentary for why this is
-		tv.lmtr.checkRate()
 	}
 
 	// check vsync signal at the time of the flyback
@@ -362,6 +359,15 @@ func (tv *Television) Signal(sig SignalAttributes) error {
 		tv.state.pendingSetPixelTo++
 	}
 
+	if tv.lmtr.scale == scalePixel {
+		err := tv.setPendingPixels()
+		if err != nil {
+			return err
+		}
+	}
+
+	tv.lmtr.checkPixel()
+
 	return nil
 }
 
@@ -373,6 +379,16 @@ func (tv *Television) newScanline() error {
 			return err
 		}
 	}
+
+	if tv.lmtr.scale == scaleScanline {
+		err := tv.setPendingPixels()
+		if err != nil {
+			return err
+		}
+	}
+
+	tv.lmtr.checkScanline()
+
 	return nil
 }
 
@@ -405,9 +421,11 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.syncedFrame = synced
 
 	// set pixels for all renderers
-	err = tv.setPendingPixels()
-	if err != nil {
-		return err
+	if tv.lmtr.scale == scaleFrame {
+		err = tv.setPendingPixels()
+		if err != nil {
+			return err
+		}
 	}
 
 	// process all FrameTriggers
@@ -422,6 +440,8 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.signalHistoryIdx = 0
 	tv.state.pendingSetPixelFrom = 0
 	tv.state.pendingSetPixelTo = 0
+
+	tv.lmtr.checkFrame()
 
 	return nil
 }
@@ -506,10 +526,6 @@ func (tv Television) GetSpec() Spec {
 // Pause indicates that emulation has been paused. All renderers will pause
 // rendering and pending pixels pushed.
 func (tv *Television) Pause(pause bool) error {
-	for _, r := range tv.renderers {
-		r.PauseRendering(pause)
-	}
-
 	if pause {
 		return tv.setPendingPixels()
 	}
@@ -519,11 +535,10 @@ func (tv *Television) Pause(pause bool) error {
 
 // SetFPSCap whether the emulation should wait for FPS limiter.
 //
-// Reasons for turning the cap
-// off include performance measurement. The debugger also turns the cap off and
-// replaces it with its own. The FPS limiter in this television implementation
-// works at the frame level which is not fine grained enough for effective
-// limiting of rates less than 1fps.
+// Reasons for turning the cap off include performance measurement. The
+// debugger also turns the cap off and replaces it with its own. The FPS
+// limiter in this television implementation works at the frame level which is
+// not fine grained enough for effective limiting of rates less than 1fps.
 func (tv *Television) SetFPSCap(limit bool) {
 	tv.lmtr.limit = limit
 }
@@ -531,10 +546,8 @@ func (tv *Television) SetFPSCap(limit bool) {
 // Request the number frames per second. This overrides the frame rate of
 // the specification. A negative  value restores the spec's frame rate.
 func (tv *Television) SetFPS(fps float32) {
-	if fps == -1 {
-		fps = tv.state.spec.FramesPerSecond
-	}
-	tv.lmtr.setRate(fps, tv.state.spec.ScanlinesTotal)
+	_ = tv.setPendingPixels()
+	tv.lmtr.setRate(fps)
 }
 
 // The requested number of frames per second. Compare with GetActualFPS()

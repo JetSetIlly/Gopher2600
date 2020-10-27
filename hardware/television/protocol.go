@@ -98,10 +98,6 @@ type PixelRenderer interface {
 	// this will always be true.
 	SetPixel(sig SignalAttributes, current bool) error
 
-	// Inform the pixel renderer that the emulation and therefore output to the
-	// TV has been paused
-	PauseRendering(paused bool)
-
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
 	// EndRendering() has been called

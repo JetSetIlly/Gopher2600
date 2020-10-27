@@ -134,10 +134,6 @@ func (dig *Video) SetPixel(sig television.SignalAttributes, _ bool) error {
 	return nil
 }
 
-// PauseRendering implements television.PixelRenderer interface.
-func (dig *Video) PauseRendering(_ bool) {
-}
-
 // EndRendering implements television.PixelRenderer interface.
 func (dig *Video) EndRendering() error {
 	return nil

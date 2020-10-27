@@ -239,11 +239,6 @@ func (scr *screen) SetPixel(sig television.SignalAttributes, current bool) error
 	return nil
 }
 
-// Pause implements the television.PixelRenderer interface.
-func (scr *screen) PauseRendering(paused bool) {
-	scr.img.paused = paused
-}
-
 // EndRendering implements the television.PixelRenderer interface.
 func (scr *screen) EndRendering() error {
 	return nil

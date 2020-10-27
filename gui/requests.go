@@ -33,6 +33,11 @@ const (
 	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
 	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
 
+	// notify gui of paused emulation. note that the TV implementation also has
+	// a Pause() function which should probably be called alongside this
+	// request.
+	ReqPause FeatureReq = "ReqPause" // bool
+
 	// the following requests should set or toggle visual elements of the
 	// debugger.
 	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool

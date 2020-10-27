@@ -71,9 +71,6 @@ type Debugger struct {
 	// required
 	reflect *reflection.Monitor
 
-	// frame limiter
-	lmtr *limiter
-
 	// halt conditions
 	breakpoints *breakpoints
 	traps       *traps
@@ -182,12 +179,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// As it is, we only change the disasm poointer in the attachCartridge()
 	// function.
 	dbg.dbgmem = &memoryDebug{vcs: dbg.VCS, symbols: dbg.Disasm.Symbols}
-
-	// set up frame limiter
-	dbg.lmtr = newLimiter(tv, func() error {
-		_, err := dbg.checkEvents(nil)
-		return err
-	})
 
 	// setup reflection monitor
 	if b, ok := scr.(reflection.IdentifyReflector); ok {
@@ -407,23 +398,4 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 	}
 
 	return continueEmulation, nil
-}
-
-// SetFPS requests the number frames per second that the emulation should aim
-// for. This overrides the frame rate of the specification. A negative FPS
-// value restores the specifcications frame rate.
-//
-// Note that this is only a request, the emulation may not be able to
-// achieve that rate.
-//
-// *Use this in preference to SetFPS() from the television implementation*.
-func (dbg *Debugger) SetFPS(fps float32) {
-	dbg.lmtr.setFPS(fps)
-}
-
-// GetReqFPS returens the requested number of frames per second. The limiter
-// type has no GetActualFPS() function. Use the equivalent function from the
-// television implementation.
-func (dbg *Debugger) GetReqFPS() float32 {
-	return dbg.lmtr.getReqFPS()
 }

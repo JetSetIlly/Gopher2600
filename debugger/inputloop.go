@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
@@ -191,6 +192,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				if err != nil {
 					return err
 				}
+				err = dbg.scr.ReqFeature(gui.ReqPause, true)
+				if err != nil {
+					return err
+				}
 			}
 
 			// reset run until halt flag - it will be set again if the parsed
@@ -271,6 +276,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// stepping by scanline, for example, looks ugly
 				if dbg.stepTraps.isEmpty() {
 					err = dbg.tv.Pause(false)
+					if err != nil {
+						return err
+					}
+					err = dbg.scr.ReqFeature(gui.ReqPause, false)
 					if err != nil {
 						return err
 					}
