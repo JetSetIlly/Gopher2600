@@ -46,10 +46,6 @@ const (
 	ReqIncScale        FeatureReq = "ReqIncScale"        // none
 	ReqDecScale        FeatureReq = "ReqDecScale"        // none
 
-	// pause is set when the debugger has paused it's loop. the gui can then
-	// present information differently as necessary.
-	ReqSetPause FeatureReq = "ReqSetPause" // bool
-
 	// the add VCS request is used to associate the gui with an emulated VCS.
 	// a debugger does not need to send this request if it already sends a
 	// ReqAddDebugger request (which it should).

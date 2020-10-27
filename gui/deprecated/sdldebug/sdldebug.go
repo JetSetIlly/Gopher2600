@@ -16,6 +16,7 @@
 package sdldebug
 
 import (
+	"image/color"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -28,7 +29,7 @@ import (
 
 // SdlDebug is a simple SDL implementation of the television.PixelRenderer interfac.
 type SdlDebug struct {
-	*television.Television
+	tv *television.Television
 
 	// functions that need to be performed in the main thread should be queued
 	// for service
@@ -100,7 +101,7 @@ const windowTitleCaptured = "Gopher2600 [captured]"
 // NewSdlDebug is the preferred method of initialisation for SdlDebug.
 func NewSdlDebug(tv *television.Television, scale float32) (*SdlDebug, error) {
 	scr := &SdlDebug{
-		Television: tv,
+		tv:         tv,
 		service:    make(chan func(), 1),
 		serviceErr: make(chan error, 1),
 		featureReq: make(chan featureRequest, 1),
@@ -137,10 +138,10 @@ func NewSdlDebug(tv *television.Television, scale float32) (*SdlDebug, error) {
 	}
 
 	// register ourselves as a television.Renderer
-	scr.AddPixelRenderer(scr)
+	scr.tv.AddPixelRenderer(scr)
 
 	// resize window
-	spec := scr.GetSpec()
+	spec := scr.tv.GetSpec()
 	err = scr.resize(spec.ScanlineTop, spec.ScanlinesVisible)
 	if err != nil {
 		return nil, curated.Errorf("sdldebug: %v", err)
@@ -189,7 +190,7 @@ func (scr SdlDebug) showWindow(show bool) {
 // the desired window width is different depending on whether the frame is
 // cropped or uncropped.
 func (scr SdlDebug) windowWidth() (int32, float32) {
-	spec := scr.GetSpec()
+	spec := scr.tv.GetSpec()
 	scale := scr.pixelScale * pixelWidth * spec.AspectBias
 
 	if scr.cropped {
@@ -206,7 +207,7 @@ func (scr SdlDebug) windowHeight() (int32, float32) {
 		return int32(float32(scr.scanlines) * scr.pixelScale), scr.pixelScale
 	}
 
-	spec := scr.GetSpec()
+	spec := scr.tv.GetSpec()
 	return int32(float32(spec.ScanlinesTotal) * scr.pixelScale), scr.pixelScale
 }
 
@@ -233,7 +234,7 @@ func (scr *SdlDebug) setWindow(scale float32) error {
 			W: television.HorizClksVisible, H: scr.scanlines,
 		}
 	} else {
-		spec := scr.GetSpec()
+		spec := scr.tv.GetSpec()
 		scr.cpyRect = &sdl.Rect{
 			X: 0, Y: 0,
 			W: television.HorizClksScanline, H: int32(spec.ScanlinesTotal),
@@ -255,7 +256,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 	// maximum size allowed by the specification. we need to remake them here
 	// because the specification may have changed as part of the resize() event
 
-	spec := scr.GetSpec()
+	spec := scr.tv.GetSpec()
 	scr.pixels = newPixels(television.HorizClksScanline, spec.ScanlinesTotal)
 
 	scr.textures, err = newTextures(scr.renderer, television.HorizClksScanline, spec.ScanlinesTotal)
@@ -270,7 +271,7 @@ func (scr *SdlDebug) resize(topScanline, numScanlines int) error {
 
 	// setWindow dimensions. see commentary for Resize() function in
 	// PixelRenderer interface definition
-	if !scr.IsStable() {
+	if !scr.tv.IsStable() {
 		scr.setWindow(-1)
 	}
 
@@ -308,7 +309,7 @@ func (scr *SdlDebug) update() error {
 		return err
 	}
 
-	spec := scr.GetSpec()
+	spec := scr.tv.GetSpec()
 
 	// render screen guides
 	if !scr.cropped {
@@ -406,26 +407,31 @@ func (scr *SdlDebug) NewFrame(frameNum int, _ bool) error {
 	return scr.textures.flip()
 }
 
+// UpdatingPixels implements television.PixelRenderer interface.
+func (scr *SdlDebug) UpdatingPixels(_ bool) {
+}
+
 // SetPixel implements television.PixelRenderer interface.
-func (scr *SdlDebug) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (scr *SdlDebug) SetPixel(sig television.SignalAttributes, current bool) error {
+	var col color.RGBA
+
 	// handle VBLANK by setting pixels to black
-	if vblank {
-		red = 0
-		green = 0
-		blue = 0
+	if !sig.VBlank {
+		spec := scr.tv.GetSpec()
+		col = spec.GetColor(sig.Pixel)
 	}
 
-	i := (y*int(television.HorizClksScanline) + x) * pixelDepth
+	i := (sig.Scanline*int(television.HorizClksScanline) + sig.HorizPos) * pixelDepth
 	if i <= scr.pixels.length()-pixelDepth {
-		scr.pixels.regular[i] = red
-		scr.pixels.regular[i+1] = green
-		scr.pixels.regular[i+2] = blue
+		scr.pixels.regular[i] = col.R
+		scr.pixels.regular[i+1] = col.G
+		scr.pixels.regular[i+2] = col.B
 		scr.pixels.regular[i+3] = 255
 	}
 
 	// update cursor position
-	scr.lastX = x
-	scr.lastY = y
+	scr.lastX = sig.HorizPos
+	scr.lastY = sig.Scanline
 
 	return nil
 }
@@ -461,22 +467,22 @@ func (scr *SdlDebug) Reflect(result reflection.LastResult) error {
 	return nil
 }
 
-// NewScanline implements television.PixelRenderer interface
-//
-// UNUSED.
+// NewScanline implements television.PixelRenderer interface.
 func (scr *SdlDebug) NewScanline(scanline int) error {
 	return nil
 }
 
-// EndRendering implements television.PixelRenderer interface
-//
-// UNUSED.
+// PauseRendering implements television.PixelRenderer interface.
+func (scr *SdlDebug) PauseRendering(paused bool) {
+	scr.paused = paused
+	scr.update()
+}
+
+// EndRendering implements television.PixelRenderer interface.
 func (scr *SdlDebug) EndRendering() error {
 	return nil
 }
 
-// Refresh implements television.PixelRenderer interface
-//
-// UNUSED.
+// Refresh implements television.PixelRenderer interface.
 func (scr *SdlDebug) Refresh(_ bool) {
 }

@@ -141,7 +141,6 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	// connect pixel renderer/referesher to television and texture renderer to
 	// pixel renderer
 	tv.AddPixelRenderer(img.screen)
-	tv.AddPixelRefresher(img.screen)
 	img.screen.addTextureRenderer(img.wm.dbgScr)
 	img.screen.addTextureRenderer(img.wm.playScr)
 
@@ -189,10 +188,6 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	}
 
 	img.context.Destroy()
-}
-
-func (img *SdlImgui) pause(set bool) {
-	img.paused = set
 }
 
 func (img *SdlImgui) draw() {

@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
@@ -188,7 +187,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 
 				// pause tv when emulation has halted
-				err = dbg.scr.ReqFeature(gui.ReqSetPause, true)
+				err = dbg.tv.Pause(true)
 				if err != nil {
 					return err
 				}
@@ -271,7 +270,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				// unpause GUI if there are no step traps. unpausing a GUI when
 				// stepping by scanline, for example, looks ugly
 				if dbg.stepTraps.isEmpty() {
-					err = dbg.scr.ReqFeature(gui.ReqSetPause, false)
+					err = dbg.tv.Pause(false)
 					if err != nil {
 						return err
 					}

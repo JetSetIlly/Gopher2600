@@ -53,6 +53,10 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
+	// copy of the spec being used by the TV. the TV notifies us through the
+	// Resize() function
+	spec television.Spec
+
 	// whether the current frame was generated from a stable television state
 	isStable bool
 
@@ -113,6 +117,7 @@ func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanline
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
 
+	scr.crit.spec = spec
 	scr.crit.topScanline = topScanline
 	scr.crit.scanlines = visibleScanlines
 
@@ -203,16 +208,9 @@ func (scr *screen) NewScanline(scanline int) error {
 	return nil
 }
 
-// SetPixel implements the television.PixelRenderer interface.
-func (scr *screen) SetPixel(x int, y int, red byte, green byte, blue byte, vblank bool) error {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
-	return scr.RefreshPixel(x, y, red, green, blue, vblank, false)
-}
-
-// Refresh implements the television.PixelRefresh interface.
-func (scr *screen) Refresh(refreshing bool) {
-	if refreshing {
+// UpdatingPixels implements the television PixelRenderer and PixelRefresh interfaces.
+func (scr *screen) UpdatingPixels(updating bool) {
+	if updating {
 		scr.crit.section.Lock()
 	} else {
 		scr.crit.backingPixelsUpdate = true
@@ -220,24 +218,30 @@ func (scr *screen) Refresh(refreshing bool) {
 	}
 }
 
-// RefreshPixel implements the television.PixelRefresh interface.
-func (scr *screen) RefreshPixel(x int, y int, red byte, green byte, blue byte, vblank bool, old bool) error {
+// SetPixel implements the television.PixelRenderer interface.
+//
+// Critical section must be locked before calling this function.
+func (scr *screen) SetPixel(sig television.SignalAttributes, current bool) error {
+	col := color.RGBA{}
+
 	// handle VBLANK by setting pixels to black
-	if vblank {
-		red = 0
-		green = 0
-		blue = 0
+	if !sig.VBlank {
+		col = scr.crit.spec.GetColor(sig.Pixel)
 	}
 
-	rgb := color.RGBA{red, green, blue, 255}
-
-	if !old {
-		scr.crit.lastX = x
-		scr.crit.lastY = y
+	if current {
+		scr.crit.lastX = sig.HorizPos
+		scr.crit.lastY = sig.Scanline
 	}
-	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(x, y, rgb)
+
+	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(sig.HorizPos, sig.Scanline, col)
 
 	return nil
+}
+
+// Pause implements the television.PixelRenderer interface.
+func (scr *screen) PauseRendering(paused bool) {
+	scr.img.paused = paused
 }
 
 // EndRendering implements the television.PixelRenderer interface.

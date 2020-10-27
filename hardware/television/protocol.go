@@ -15,7 +15,9 @@
 
 package television
 
-import "strings"
+import (
+	"strings"
+)
 
 // TelevisionTIA exposes only the functions required by the TIA.
 type TelevisionTIA interface {
@@ -61,7 +63,12 @@ type PixelRenderer interface {
 	NewFrame(frameNum int, isStable bool) error
 	NewScanline(scanline int) error
 
-	// setPixel() is called every cycle regardless of the state of VBLANK and
+	// Mark the start and end of an update event from the television.
+	// SetPixel() should only be called between calls of UpdatingPixels(true)
+	// and UpdatingPixels(false)
+	UpdatingPixels(updating bool)
+
+	// SetPixel() is called every cycle regardless of the state of VBLANK and
 	// HBLANK.
 	//
 	// things to consider:
@@ -86,28 +93,19 @@ type PixelRenderer interface {
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
 	//
-	// Set refreshing flag to true when called between Refresh(true) and
-	// Refresh(false)
-	SetPixel(x, y int, red, green, blue byte, vblank bool) error
+	// current flag states that this pixel should be considered to be the most
+	// recent outputted by the television for this frame. In most instances,
+	// this will always be true.
+	SetPixel(sig SignalAttributes, current bool) error
+
+	// Inform the pixel renderer that the emulation and therefore output to the
+	// TV has been paused
+	PauseRendering(paused bool)
 
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
 	// EndRendering() has been called
 	EndRendering() error
-}
-
-// PixelRefresher implementations are prepared to accept pixels outside of the
-// normal PixelRenderer sequence.
-type PixelRefresher interface {
-	// Mark the start and end of a refresh event from the television. These
-	// events occur when the television wants to dump many pixels at once.
-	// Use SetPixel() with a refreshing flag of true between calls to
-	// Refresh(true) and Refresh(false)
-	Refresh(refreshing bool)
-
-	// RefreshPixel should only be called between two call of Refresh() as
-	// described above
-	RefreshPixel(x, y int, red, green, blue byte, vblank bool, stale bool) error
 }
 
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
@@ -148,8 +146,8 @@ type SignalAttributes struct {
 
 	// the position on the screen this signal was applied to. added by the
 	// television implementation.
-	horizPos int
-	scanline int
+	HorizPos int
+	Scanline int
 }
 
 func (a SignalAttributes) String() string {

@@ -111,21 +111,31 @@ func (dig *Video) NewScanline(scanline int) error {
 	return nil
 }
 
+// UpdatingPixels implements television.PixelRenderer interface.
+func (dig *Video) UpdatingPixels(_ bool) {
+}
+
 // SetPixel implements television.PixelRenderer interface.
-func (dig *Video) SetPixel(x, y int, red, green, blue byte, vblank bool) error {
+func (dig *Video) SetPixel(sig television.SignalAttributes, _ bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
-	i += television.HorizClksScanline * y * pixelDepth
-	i += x * pixelDepth
+	i += television.HorizClksScanline * sig.Scanline * pixelDepth
+	i += sig.HorizPos * pixelDepth
 
 	if i <= len(dig.pixels)-pixelDepth {
+		col := dig.spec.GetColor(sig.Pixel)
+
 		// setting every pixel regardless of vblank value
-		dig.pixels[i] = red
-		dig.pixels[i+1] = green
-		dig.pixels[i+2] = blue
+		dig.pixels[i] = col.R
+		dig.pixels[i+1] = col.G
+		dig.pixels[i+2] = col.B
 	}
 
 	return nil
+}
+
+// PauseRendering implements television.PixelRenderer interface.
+func (dig *Video) PauseRendering(_ bool) {
 }
 
 // EndRendering implements television.PixelRenderer interface.

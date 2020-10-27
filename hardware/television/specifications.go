@@ -72,8 +72,8 @@ type Spec struct {
 	FramesPerSecond float32
 }
 
-// getColor translates a signals to the color type.
-func (spec *Spec) getColor(col ColorSignal) color.RGBA {
+// GetColor translates a signals to the color type.
+func (spec *Spec) GetColor(col ColorSignal) color.RGBA {
 	// we're usng the ColorSignal to index an array so we need to be extra
 	// careful to make sure the value is valid. if it's not a valid index then
 	// assume the intention was video black

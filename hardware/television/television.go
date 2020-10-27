@@ -14,15 +14,15 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // ROMs used to test PAL switching and resizing:
-// * Pitfall
-// * Hero
-// * Chiphead
-// * Bang!
-// * Ladybug
-// * Hack Em Hangly Pacman
-// * Andrew Davies' Chess
-// * Communist Mutants From Space
-// * Mega Bitmap Demo
+//	- Pitfall
+//	- Hero
+//	- Chiphead
+//	- Bang!
+//	- Ladybug
+//	- Hack Em Hangly Pacman
+//	- Andrew Davies' Chess
+//	- Communist Mutants From Space
+//	- Mega Bitmap Demo
 
 package television
 
@@ -42,6 +42,12 @@ const leadingFrames = 5
 
 // the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
+
+// the maximum number of scanlines allowed by the television implementation.
+const maxScanlinesAbsolute = 400
+
+// the number of entries in signal history.
+const maxSignalHistory = HorizClksScanline * maxScanlinesAbsolute
 
 type State struct {
 	// television specification (NTSC or PAL)
@@ -87,20 +93,17 @@ type State struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signalHistory []SignalAttributes
+	signalHistory [maxSignalHistory]SignalAttributes
 
 	// the index to write the next signal
 	signalHistoryIdx int
 
-	// the value of signalHistoryIdx before it was reset. used to limit extend
-	// of copy in State.Snapshot()
-	signalHistoryLastLen int
+	pendingSetPixelFrom int
+	pendingSetPixelTo   int
 }
 
 func (s *State) Snapshot() *State {
 	n := *s
-	n.signalHistory = make([]SignalAttributes, n.signalHistoryLastLen)
-	copy(n.signalHistory, s.signalHistory)
 	return &n
 }
 
@@ -134,9 +137,6 @@ type Television struct {
 
 	// list of renderer implementations to consult
 	renderers []PixelRenderer
-
-	// list of refresher implementations to consult
-	refreshers []PixelRefresher
 
 	// list of frametrigger implementations to consult
 	frameTriggers []FrameTrigger
@@ -191,19 +191,18 @@ func (tv *Television) Plumb(s *State) {
 
 	tv.state = s
 
-	for _, r := range tv.refreshers {
-		r.Refresh(true)
+	for _, r := range tv.renderers {
+		r.UpdatingPixels(true)
 	}
 
 	for i, e := range tv.state.signalHistory {
-		col := tv.state.spec.getColor(e.Pixel)
-		for _, r := range tv.refreshers {
-			r.RefreshPixel(e.horizPos, e.scanline, col.R, col.G, col.B, e.VBlank, i >= tv.state.signalHistoryIdx)
+		for _, r := range tv.renderers {
+			r.SetPixel(e, i < tv.state.signalHistoryIdx)
 		}
 	}
 
-	for _, r := range tv.refreshers {
-		r.Refresh(false)
+	for _, r := range tv.renderers {
+		r.UpdatingPixels(false)
 	}
 }
 
@@ -212,12 +211,6 @@ func (tv *Television) Plumb(s *State) {
 func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 	tv.renderers = append(tv.renderers, r)
 	tv.frameTriggers = append(tv.frameTriggers, r)
-}
-
-// AddPixelRefresh registers an implementation of PixelRefresher. Multiple
-// implemntations can be added.
-func (tv *Television) AddPixelRefresher(r PixelRefresher) {
-	tv.refreshers = append(tv.refreshers, r)
 }
 
 // AddFrameTrigger registers an implementation of FrameTrigger. Multiple
@@ -262,13 +255,13 @@ func (tv Television) End() error {
 	var err error
 
 	// call new frame for all renderers
-	for f := range tv.renderers {
-		err = tv.renderers[f].EndRendering()
+	for _, r := range tv.renderers {
+		err = r.EndRendering()
 	}
 
 	// flush audio for all mixers
-	for f := range tv.mixers {
-		err = tv.mixers[f].EndMixing()
+	for _, m := range tv.mixers {
+		err = m.EndMixing()
 	}
 
 	return err
@@ -278,8 +271,8 @@ func (tv Television) End() error {
 func (tv *Television) Signal(sig SignalAttributes) error {
 	// mix audio before we do anything else
 	if sig.AudioUpdate {
-		for f := range tv.mixers {
-			err := tv.mixers[f].SetAudio(sig.AudioData)
+		for _, m := range tv.mixers {
+			err := m.SetAudio(sig.AudioData)
 			if err != nil {
 				return err
 			}
@@ -354,35 +347,28 @@ func (tv *Television) Signal(sig SignalAttributes) error {
 
 	// doing nothing with CBURST signal
 
-	// decode color using the regular color signal
-	col := tv.state.spec.getColor(sig.Pixel)
-	for f := range tv.renderers {
-		err := tv.renderers[f].SetPixel(tv.state.horizPos, tv.state.scanline,
-			col.R, col.G, col.B, sig.VBlank)
-		if err != nil {
-			return err
-		}
-	}
+	// augment television signal before sending to pixel renderer
+	sig.HorizPos = tv.state.horizPos
+	sig.Scanline = tv.state.scanline
 
 	// record the current signal settings so they can be used for reference
+	// during the next call to Signal()
 	tv.state.lastSignal = sig
 
-	sig.horizPos = tv.state.horizPos
-	sig.scanline = tv.state.scanline
-	if tv.state.signalHistoryIdx >= len(tv.state.signalHistory) {
-		tv.state.signalHistory = append(tv.state.signalHistory, sig)
-	} else {
+	// record signal history
+	if tv.state.signalHistoryIdx < maxSignalHistory {
 		tv.state.signalHistory[tv.state.signalHistoryIdx] = sig
+		tv.state.signalHistoryIdx++
+		tv.state.pendingSetPixelTo++
 	}
-	tv.state.signalHistoryIdx++
 
 	return nil
 }
 
 func (tv *Television) newScanline() error {
 	// notify renderers of new scanline
-	for f := range tv.renderers {
-		err := tv.renderers[f].NewScanline(tv.state.scanline)
+	for _, r := range tv.renderers {
+		err := r.NewScanline(tv.state.scanline)
 		if err != nil {
 			return err
 		}
@@ -418,17 +404,42 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.resizer.prepare(tv)
 	tv.state.syncedFrame = synced
 
+	// set pixels for all renderers
+	err = tv.setPendingPixels()
+	if err != nil {
+		return err
+	}
+
 	// process all FrameTriggers
-	for f := range tv.frameTriggers {
-		err = tv.frameTriggers[f].NewFrame(tv.state.frameNum, tv.IsStable())
+	for _, r := range tv.frameTriggers {
+		err = r.NewFrame(tv.state.frameNum, tv.IsStable())
 		if err != nil {
 			return err
 		}
 	}
 
 	// reset signal history for next frame
-	tv.state.signalHistoryLastLen = tv.state.signalHistoryIdx
 	tv.state.signalHistoryIdx = 0
+	tv.state.pendingSetPixelFrom = 0
+	tv.state.pendingSetPixelTo = 0
+
+	return nil
+}
+
+func (tv *Television) setPendingPixels() error {
+	for i := tv.state.pendingSetPixelFrom; i < tv.state.pendingSetPixelTo; i++ {
+		sig := tv.state.signalHistory[i]
+		for _, r := range tv.renderers {
+			r.UpdatingPixels(true)
+			err := r.SetPixel(sig, true)
+			if err != nil {
+				return err
+			}
+			r.UpdatingPixels(false)
+		}
+	}
+
+	tv.state.pendingSetPixelFrom = tv.state.pendingSetPixelTo
 
 	return nil
 }
@@ -469,17 +480,12 @@ func (tv *Television) SetSpec(spec string) error {
 	tv.state.bottom = tv.state.spec.ScanlineBottom
 	tv.resizer.prepare(tv)
 
-	for f := range tv.renderers {
-		err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+	for _, r := range tv.renderers {
+		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
 		if err != nil {
 			return err
 		}
 	}
-
-	// allocate enough memory for a TV screen that stays within the limits of
-	// the specification
-	tv.state.signalHistory = make([]SignalAttributes, HorizClksScanline*(tv.state.bottom-tv.state.top))
-	tv.state.signalHistoryIdx = 0
 
 	return nil
 }
@@ -493,6 +499,20 @@ func (tv *Television) GetReqSpecID() string {
 // GetSpec() rather than keeping a private pointer to the specification.
 func (tv Television) GetSpec() Spec {
 	return tv.state.spec
+}
+
+// Pause indicates that emulation has been paused. All renderers will pause
+// rendering and pending pixels pushed.
+func (tv *Television) Pause(pause bool) error {
+	for _, r := range tv.renderers {
+		r.PauseRendering(pause)
+	}
+
+	if pause {
+		return tv.setPendingPixels()
+	}
+
+	return nil
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter.

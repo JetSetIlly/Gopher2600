@@ -85,9 +85,6 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqSetScale:
 		img.setScale(request.args[0].(float32), false)
 
-	case gui.ReqSetPause:
-		img.pause(request.args[0].(bool))
-
 	case gui.ReqAddVCS:
 		img.vcs = request.args[0].(*hardware.VCS)
 

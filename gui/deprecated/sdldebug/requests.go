@@ -64,10 +64,6 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 			scr.showWindow(false)
 		}
 
-	case gui.ReqSetPause:
-		scr.paused = request.args[0].(bool)
-		scr.update()
-
 	case gui.ReqSetCropping:
 		scr.cropped = request.args[0].(bool)
 		scr.setWindow(-1)
@@ -115,6 +111,9 @@ func (scr *SdlDebug) serviceFeatureRequests(request featureRequest) {
 
 	case gui.ReqChangingCartridge:
 		// gui doesn't need to know when the cartridge is being changed
+
+	case gui.ReqAddDebugger:
+		// do nothing
 
 	default:
 		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)

@@ -156,12 +156,20 @@ func (lmtr *limiter) NewScanline(_ int) error {
 	return lmtr.limit()
 }
 
+// UpdatingPixels implements television.PixelRenderer interface.
+func (lmtr *limiter) UpdatingPixels(_ bool) {
+}
+
 // SetPixel implements television.PixelRenderer.
-func (lmtr *limiter) SetPixel(_ int, _ int, _ byte, _ byte, _ byte, _ bool) error {
+func (lmtr *limiter) SetPixel(_ television.SignalAttributes, _ bool) error {
 	if lmtr.throt != throtColClock {
 		return nil
 	}
 	return lmtr.limit()
+}
+
+// Pause implements television.PixelRenderer.
+func (lmtr *limiter) PauseRendering(_ bool) {
 }
 
 // EndRendering implements television.PixelRenderer.
