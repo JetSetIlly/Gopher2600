@@ -73,15 +73,14 @@ type Rewind struct {
 	justAddedFrame bool
 }
 
-// the maximum number of steps to store before the earliest steps are
-// forgotten.
-const maxRewindSteps = 100
+// the maximum number of entries to store before the earliest steps are forgotten.
+const maxEntries = 300
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
 func NewRewind(vcs *hardware.VCS) *Rewind {
 	r := &Rewind{
 		vcs:     vcs,
-		entries: make([]Snapshot, 0, maxRewindSteps),
+		entries: make([]Snapshot, 0, maxEntries),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
@@ -160,7 +159,7 @@ func (r *Rewind) append(s Snapshot) {
 	}
 
 	// maintain maximum length
-	if len(r.entries) > maxRewindSteps {
+	if len(r.entries) > maxEntries {
 		r.entries = r.entries[1:]
 	}
 

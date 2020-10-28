@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -1555,6 +1556,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				dbg.printLine(terminal.StyleLog, s.String())
 			}
 		}
+
+	case cmdMemUsage:
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+
+		s := strings.Builder{}
+
+		s.WriteString(fmt.Sprintf("Alloc = %v MB\n", m.Alloc/1048576))
+		s.WriteString(fmt.Sprintf("  TotalAlloc = %v MB\n", m.TotalAlloc/1048576))
+		s.WriteString(fmt.Sprintf("  Sys = %v MB\n", m.Sys/1048576))
+		s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
+
+		dbg.printLine(terminal.StyleLog, s.String())
 	}
 
 	return false, nil

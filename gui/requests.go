@@ -38,8 +38,7 @@ const (
 	// request.
 	ReqPause FeatureReq = "ReqPause" // bool
 
-	// the following requests should set or toggle visual elements of the
-	// debugger.
+	// the following requests should set or toggle visual elements of the debugger.
 	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
 	ReqToggleDbgColors FeatureReq = "ReqToggleDbgColors" // none
 	ReqSetCropping     FeatureReq = "ReqSetCropping"     // bool
@@ -79,11 +78,7 @@ const (
 	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
 
 	// special request for PlusROM cartridges.
-	ReqPlusROMFirstInstallation = "ReqPlusROMFirstInstallation" // ReqPlusROMFirstInstallation
-
-	// ------------------------------------------------------
-	// the following requests are deprecated.
-	ReqSetVisibleOnStable FeatureReq = "ReqSetVisibleOnStable" // none
+	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // PlusROMFirstInstallation
 )
 
 // PlusROMFirstInstallation is used to pass information to the GUI as part of

@@ -46,6 +46,11 @@ profile_display: generate lint vet test
 	./gopher2600 performance --display --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
 
+mem_profile_debug: generate lint vet test
+	go build -gcflags $(compileFlags)
+	./gopher2600 debug --profile $(profilingRom)
+	go tool pprof --alloc-space -http : ./gopher2600 debug.mem.profile
+
 build_assertions: generate lint vet test
 	go build -gcflags $(compileFlags) -tags=assertions
 

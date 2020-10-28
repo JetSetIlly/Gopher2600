@@ -71,8 +71,9 @@ const (
 	cmdClear = "CLEAR"
 
 	// meta.
-	cmdPrefs = "PREFS"
-	cmdLog   = "LOG"
+	cmdPrefs    = "PREFS"
+	cmdLog      = "LOG"
+	cmdMemUsage = "MEMUSAGE"
 )
 
 const cmdHelp = "HELP"
@@ -136,6 +137,7 @@ var commandTemplate = []string{
 	// meta
 	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR|SYMBOLS])",
 	cmdLog + " (LAST|RECENT|CLEAR)",
+	cmdMemUsage,
 }
 
 // list of commands that should not be executed when recording/playing scripts.

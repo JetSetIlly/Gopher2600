@@ -137,6 +137,7 @@ type SignalAttributes struct {
 	Pixel     ColorSignal
 	AudioData uint8
 
+	// whether the AudioData is valid. should be true only every 114th clock,
 	// which equates to 30Khz
 	AudioUpdate bool
 
