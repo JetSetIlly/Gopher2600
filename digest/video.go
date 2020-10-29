@@ -21,6 +21,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // Video is an implementation of the television.PixelRenderer interface with an
@@ -31,7 +33,7 @@ import (
 // a cryptographic task.
 type Video struct {
 	*television.Television
-	spec     television.Spec
+	spec     specification.Spec
 	digest   [sha1.Size]byte
 	pixels   []byte
 	frameNum int
@@ -55,7 +57,7 @@ func NewVideo(tv *television.Television) (*Video, error) {
 
 	// allocate enough pixels for entire frame
 	dig.spec = dig.GetSpec()
-	l += ((television.HorizClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
+	l += ((specification.HorizClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return dig, nil
@@ -79,7 +81,7 @@ func (dig *Video) ResetDigest() {
 // digest is immune from changes to the frame resizing method used by the
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
-func (dig *Video) Resize(spec television.Spec, _, _ int) error {
+func (dig *Video) Resize(spec specification.Spec, _, _ int) error {
 	if spec.ID == dig.spec.ID {
 		return nil
 	}
@@ -87,7 +89,7 @@ func (dig *Video) Resize(spec television.Spec, _, _ int) error {
 	// allocate enough pixels for entire frame
 	dig.spec = spec
 	l := len(dig.digest)
-	l += ((television.HorizClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
+	l += ((specification.HorizClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return nil
@@ -116,10 +118,10 @@ func (dig *Video) UpdatingPixels(_ bool) {
 }
 
 // SetPixel implements television.PixelRenderer interface.
-func (dig *Video) SetPixel(sig television.SignalAttributes, _ bool) error {
+func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
-	i += television.HorizClksScanline * sig.Scanline * pixelDepth
+	i += specification.HorizClksScanline * sig.Scanline * pixelDepth
 	i += sig.HorizPos * pixelDepth
 
 	if i <= len(dig.pixels)-pixelDepth {

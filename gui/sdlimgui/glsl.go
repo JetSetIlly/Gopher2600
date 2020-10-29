@@ -25,7 +25,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/gui/shaders"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type glsl struct {
@@ -218,13 +218,13 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				rnd.img.screen.crit.section.Lock()
 
 				// screen geometry
-				gl.Uniform1f(rnd.attribHblank, television.HorizClksHBlank*horizScaling)
+				gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)
 				gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
 				gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
 
 				// the coordinates of the last plot
 				if rnd.img.wm.dbgScr.cropped {
-					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-television.HorizClksHBlank)*horizScaling)
+					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-specification.HorizClksHBlank)*horizScaling)
 				} else {
 					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
 				}

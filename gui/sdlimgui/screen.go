@@ -20,7 +20,8 @@ import (
 	"image/color"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
@@ -55,7 +56,7 @@ type screenCrit struct {
 
 	// copy of the spec being used by the TV. the TV notifies us through the
 	// Resize() function
-	spec television.Spec
+	spec specification.Spec
 
 	// whether the current frame was generated from a stable television state
 	isStable bool
@@ -103,7 +104,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr := &screen{img: img}
 
 	// start off by showing entirity of NTSC screen
-	scr.resize(television.SpecNTSC, television.SpecNTSC.ScanlineTop, television.SpecNTSC.ScanlinesVisible)
+	scr.resize(specification.SpecNTSC, specification.SpecNTSC.ScanlineTop, specification.SpecNTSC.ScanlinesVisible)
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
@@ -113,7 +114,7 @@ func newScreen(img *SdlImgui) *screen {
 }
 
 // resize() is called by Resize() or resizeThread() depending on thread context.
-func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanlines int) {
+func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanlines int) {
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
 
@@ -121,25 +122,25 @@ func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanline
 	scr.crit.topScanline = topScanline
 	scr.crit.scanlines = visibleScanlines
 
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	for i := range scr.crit.backingPixels {
-		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
+		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	}
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, television.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 
 	// allocate reflection info
-	scr.crit.reflection = make([][]reflection.LastResult, television.HorizClksScanline)
-	for x := 0; x < television.HorizClksScanline; x++ {
+	scr.crit.reflection = make([][]reflection.LastResult, specification.HorizClksScanline)
+	for x := 0; x < specification.HorizClksScanline; x++ {
 		scr.crit.reflection[x] = make([]reflection.LastResult, spec.ScanlinesTotal)
 	}
 
 	// create a cropped image from the main
 	r := image.Rectangle{
-		image.Point{television.HorizClksHBlank,
+		image.Point{specification.HorizClksHBlank,
 			scr.crit.topScanline,
 		},
-		image.Point{television.HorizClksHBlank + television.HorizClksVisible,
+		image.Point{specification.HorizClksHBlank + specification.HorizClksVisible,
 			scr.crit.topScanline + scr.crit.scanlines,
 		},
 	}
@@ -174,7 +175,7 @@ func (scr *screen) resize(spec television.Spec, topScanline int, visibleScanline
 // Resize implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread.
-func (scr *screen) Resize(spec television.Spec, topScanline int, visibleScanlines int) error {
+func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanlines int) error {
 	scr.img.service <- func() {
 		scr.resize(spec, topScanline, visibleScanlines)
 		scr.img.serviceErr <- nil
@@ -221,8 +222,8 @@ func (scr *screen) UpdatingPixels(updating bool) {
 // SetPixel implements the television.PixelRenderer interface.
 //
 // Critical section must be locked before calling this function.
-func (scr *screen) SetPixel(sig television.SignalAttributes, current bool) error {
-	col := color.RGBA{}
+func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
+	col := color.RGBA{R: 0, G: 0, B: 0, A: 255}
 
 	// handle VBLANK by setting pixels to black
 	if !sig.VBlank {

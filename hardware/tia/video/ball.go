@@ -19,7 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
@@ -43,7 +44,7 @@ var ballSizesBrief = []string{
 
 // BallSprite represents the moveable ball sprite in the VCS graphical display.
 type BallSprite struct {
-	tv         television.TelevisionSprite
+	tv         signal.TelevisionSprite
 	hblank     *bool
 	hmoveLatch *bool
 
@@ -91,7 +92,7 @@ type BallSprite struct {
 	Enclockifier enclockifier
 }
 
-func newBallSprite(label string, tv television.TelevisionSprite, hblank *bool, hmoveLatch *bool) *BallSprite {
+func newBallSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *BallSprite {
 	bs := &BallSprite{
 		tv:         tv,
 		hblank:     hblank,
@@ -189,10 +190,10 @@ func (bs *BallSprite) rsync(adjustment int) {
 	bs.ResetPixel -= adjustment
 	bs.HmovedPixel -= adjustment
 	if bs.ResetPixel < 0 {
-		bs.ResetPixel += television.HorizClksVisible
+		bs.ResetPixel += specification.HorizClksVisible
 	}
 	if bs.HmovedPixel < 0 {
-		bs.HmovedPixel += television.HorizClksVisible
+		bs.HmovedPixel += specification.HorizClksVisible
 	}
 }
 
@@ -219,7 +220,7 @@ func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		// adjust for screen boundary
 		if bs.HmovedPixel < 0 {
-			bs.HmovedPixel += television.HorizClksVisible
+			bs.HmovedPixel += specification.HorizClksVisible
 		}
 	}
 
@@ -263,8 +264,8 @@ func (bs *BallSprite) prepareForHMOVE() {
 		bs.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if bs.HmovedPixel > television.HorizClksVisible {
-			bs.HmovedPixel -= television.HorizClksVisible
+		if bs.HmovedPixel > specification.HorizClksVisible {
+			bs.HmovedPixel -= specification.HorizClksVisible
 		}
 	}
 }
@@ -312,7 +313,7 @@ func (bs *BallSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel = bs.tv.GetState(television.ReqHorizPos)
+	bs.ResetPixel = bs.tv.GetState(signal.ReqHorizPos)
 
 	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
@@ -320,8 +321,8 @@ func (bs *BallSprite) _futureResetPosition() {
 		bs.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if bs.ResetPixel > television.HorizClksVisible {
-			bs.ResetPixel -= television.HorizClksVisible
+		if bs.ResetPixel > specification.HorizClksVisible {
+			bs.ResetPixel -= specification.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
@@ -50,7 +51,7 @@ func (s Snapshot) String() string {
 	if s.isCurrent {
 		return "c"
 	}
-	return fmt.Sprintf("%d", s.TV.GetState(television.ReqFramenum))
+	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
 }
 
 // Rewind contains a history of machine states for the emulation.
@@ -225,14 +226,14 @@ func (r *Rewind) GotoFrame(frame int) bool {
 	for b <= t {
 		m := (t + b) / 2
 
-		if r.entries[m].TV.GetState(television.ReqFramenum) == frame {
+		if r.entries[m].TV.GetState(signal.ReqFramenum) == frame {
 			r.SetPosition(m)
 			return true
 		}
 
-		if r.entries[m].TV.GetState(television.ReqFramenum) < frame {
+		if r.entries[m].TV.GetState(signal.ReqFramenum) < frame {
 			b = m + 1
-		} else if r.entries[m].TV.GetState(television.ReqFramenum) > frame {
+		} else if r.entries[m].TV.GetState(signal.ReqFramenum) > frame {
 			t = m - 1
 		}
 	}

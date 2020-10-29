@@ -15,6 +15,8 @@
 
 package television
 
+import "github.com/jetsetilly/gopher2600/hardware/television/signal"
+
 // FrameResizeID identifies the resizing method.
 type FrameResizeID string
 
@@ -33,7 +35,7 @@ type resizer interface {
 	id() FrameResizeID
 
 	// examine signal for resizing possibility. called on every Signal()
-	examine(tv *Television, sig SignalAttributes)
+	examine(tv *Television, sig signal.SignalAttributes)
 
 	// commit resizing possiblity. called on every newFrame()
 	commit(tv *Television) error
@@ -52,7 +54,7 @@ func (sr simpleResizer) id() FrameResizeID {
 	return FrameResizerSimple
 }
 
-func (sr *simpleResizer) examine(tv *Television, sig SignalAttributes) {
+func (sr *simpleResizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// if vblank is off at any point of then extend the bottom of the screen.
 	// we'll commit the resize procedure in the newFrame() function
 	//

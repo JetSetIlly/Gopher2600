@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/setup"
 )
 
@@ -52,7 +53,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 	}
 
 	// get starting frame number (should be 0)
-	startFrame := tv.GetState(television.ReqFramenum)
+	startFrame := tv.GetState(signal.ReqFramenum)
 
 	// run for specified period of time
 	runner := func() error {
@@ -89,7 +90,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 
 					// timerChan has returned false so start measurement of
 					// performance by noting the current television frame
-					startFrame = tv.GetState(television.ReqFramenum)
+					startFrame = tv.GetState(signal.ReqFramenum)
 				default:
 					return true, nil
 				}
@@ -113,7 +114,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 	}
 
 	// get ending frame number
-	endFrame := vcs.TV.GetState(television.ReqFramenum)
+	endFrame := vcs.TV.GetState(signal.ReqFramenum)
 
 	// calculate performance
 	numFrames := endFrame - startFrame

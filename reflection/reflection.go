@@ -18,7 +18,7 @@ package reflection
 import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
@@ -45,7 +45,7 @@ type LastResult struct {
 	Bank         mapper.BankInfo
 	IsRAM        bool
 	VideoElement video.Element
-	TV           television.SignalAttributes
+	TV           signal.SignalAttributes
 	Hblank       bool
 	Collision    string
 	Hmove        Hmove

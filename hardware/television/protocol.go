@@ -16,19 +16,9 @@
 package television
 
 import (
-	"strings"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
-
-// TelevisionTIA exposes only the functions required by the TIA.
-type TelevisionTIA interface {
-	Signal(SignalAttributes) error
-	GetState(StateReq) int
-}
-
-// TelevisionSprite exposes only the functions required by the video sprites.
-type TelevisionSprite interface {
-	GetState(StateReq) int
-}
 
 // PixelRenderer implementations displays, or otherwise works with, visual
 // information from a television. For example digest.Video.
@@ -57,7 +47,7 @@ type PixelRenderer interface {
 	//
 	// Renderers should make sure that any data structures that depend on the
 	// specification being used are still adequate.
-	Resize(spec Spec, topScanline, visibleScanlines int) error
+	Resize(spec specification.Spec, topScanline, visibleScanlines int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
 	NewFrame(frameNum int, isStable bool) error
@@ -96,7 +86,7 @@ type PixelRenderer interface {
 	// current flag states that this pixel should be considered to be the most
 	// recent outputted by the television for this frame. In most instances,
 	// this will always be true.
-	SetPixel(sig SignalAttributes, current bool) error
+	SetPixel(sig signal.SignalAttributes, current bool) error
 
 	// some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
@@ -121,56 +111,3 @@ type AudioMixer interface {
 	// EndMixing() has been called
 	EndMixing() error
 }
-
-// ColorSignal represents the signal that is sent from the VCS to the.
-type ColorSignal int
-
-// VideoBlack is the PixelSignal value that indicates no VCS pixel is to be shown.
-const VideoBlack ColorSignal = -1
-
-// SignalAttributes represents the data sent to the television.
-type SignalAttributes struct {
-	VSync     bool
-	VBlank    bool
-	CBurst    bool
-	HSync     bool
-	Pixel     ColorSignal
-	AudioData uint8
-
-	// whether the AudioData is valid. should be true only every 114th clock,
-	// which equates to 30Khz
-	AudioUpdate bool
-
-	// the position on the screen this signal was applied to. added by the
-	// television implementation.
-	HorizPos int
-	Scanline int
-}
-
-func (a SignalAttributes) String() string {
-	s := strings.Builder{}
-	if a.VSync {
-		s.WriteString("VSYNC ")
-	}
-	if a.VBlank {
-		s.WriteString("VBLANK ")
-	}
-	if a.CBurst {
-		s.WriteString("CBURST ")
-	}
-	if a.HSync {
-		s.WriteString("HSYNC ")
-	}
-	return s.String()
-}
-
-// StateReq is used to identify which television attribute is being asked
-// with the GetState() function.
-type StateReq int
-
-// List of valid state requests.
-const (
-	ReqFramenum StateReq = iota
-	ReqScanline
-	ReqHorizPos
-)

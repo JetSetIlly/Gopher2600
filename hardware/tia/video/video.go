@@ -17,7 +17,7 @@ package video
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
@@ -104,7 +104,7 @@ type Video struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus, tv television.TelevisionSprite, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
 	return &Video{
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),

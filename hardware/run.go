@@ -17,7 +17,7 @@ package hardware
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
@@ -89,7 +89,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (b
 		continueCheck = func(frame int) (bool, error) { return true, nil }
 	}
 
-	frameNum := vcs.TV.GetState(television.ReqFramenum)
+	frameNum := vcs.TV.GetState(signal.ReqFramenum)
 	targetFrame := frameNum + numFrames
 
 	cont := true
@@ -99,7 +99,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (b
 			return err
 		}
 
-		frameNum = vcs.TV.GetState(television.ReqFramenum)
+		frameNum = vcs.TV.GetState(signal.ReqFramenum)
 
 		cont, err = continueCheck(frameNum)
 		if err != nil {

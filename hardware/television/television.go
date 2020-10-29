@@ -31,6 +31,8 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // the number of additional lines over the NTSC spec that is allowed before the
@@ -47,11 +49,11 @@ const stabilityThreshold = 20
 const maxScanlinesAbsolute = 400
 
 // the number of entries in signal history.
-const maxSignalHistory = HorizClksScanline * maxScanlinesAbsolute
+const maxSignalHistory = specification.HorizClksScanline * maxScanlinesAbsolute
 
 type State struct {
 	// television specification (NTSC or PAL)
-	spec Spec
+	spec specification.Spec
 
 	// auto flag indicates that the tv type/specification should switch if it
 	// appears to be outside of the current spec.
@@ -81,7 +83,7 @@ type State struct {
 	syncedFrame bool
 
 	// record of signal attributes from the last call to Signal()
-	lastSignal SignalAttributes
+	lastSignal signal.SignalAttributes
 
 	// vsyncCount records the number of consecutive colorClocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
@@ -93,7 +95,7 @@ type State struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signalHistory [maxSignalHistory]SignalAttributes
+	signalHistory [maxSignalHistory]signal.SignalAttributes
 
 	// the index to write the next signal
 	signalHistoryIdx int
@@ -108,14 +110,14 @@ func (s *State) Snapshot() *State {
 }
 
 // Returns state information.
-func (s *State) GetState(request StateReq) int {
+func (s *State) GetState(request signal.StateReq) int {
 	switch request {
-	case ReqFramenum:
+	case signal.ReqFramenum:
 		return s.frameNum
-	case ReqScanline:
+	case signal.ReqScanline:
 		return s.scanline
-	case ReqHorizPos:
-		return s.horizPos - HorizClksHBlank
+	case signal.ReqHorizPos:
+		return s.horizPos - specification.HorizClksHBlank
 	}
 	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
 }
@@ -174,7 +176,7 @@ func NewTelevision(spec string) (*Television, error) {
 
 func (tv Television) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-HorizClksHBlank))
+	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-specification.HorizClksHBlank))
 	return s.String()
 }
 
@@ -240,7 +242,7 @@ func (tv *Television) Reset() error {
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
 	tv.state.vsyncCount = 0
-	tv.state.lastSignal = SignalAttributes{}
+	tv.state.lastSignal = signal.SignalAttributes{}
 
 	return nil
 }
@@ -268,7 +270,7 @@ func (tv Television) End() error {
 }
 
 // Signal updates the current state of the television.
-func (tv *Television) Signal(sig SignalAttributes) error {
+func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// mix audio before we do anything else
 	if sig.AudioUpdate {
 		for _, m := range tv.mixers {
@@ -290,7 +292,7 @@ func (tv *Television) Signal(sig SignalAttributes) error {
 	// back-porch are 'together' at the beginning of the scanline. this isn't
 	// strictly technically correct but it's convenient to think about
 	// scanlines in this way (rather than having a split front and back porch)
-	if tv.state.horizPos >= HorizClksScanline {
+	if tv.state.horizPos >= specification.HorizClksScanline {
 		tv.state.horizPos = 0
 
 		// bump scanline counter
@@ -402,7 +404,7 @@ func (tv *Television) newFrame(synced bool) error {
 	if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
 		if tv.state.auto && !tv.state.syncedFrame && tv.state.scanline > excessScanlinesNTSC {
 			// flip from NTSC to PAL
-			if tv.state.spec.ID == SpecNTSC.ID {
+			if tv.state.spec.ID == specification.SpecNTSC.ID {
 				_ = tv.SetSpec("PAL")
 			}
 		}
@@ -473,12 +475,12 @@ func (tv Television) IsStable() bool {
 }
 
 // Returns a copy of SignalAttributes for reference.
-func (tv *Television) GetLastSignal() SignalAttributes {
+func (tv *Television) GetLastSignal() signal.SignalAttributes {
 	return tv.state.lastSignal
 }
 
 // Returns state information.
-func (tv *Television) GetState(request StateReq) int {
+func (tv *Television) GetState(request signal.StateReq) int {
 	return tv.state.GetState(request)
 }
 
@@ -486,13 +488,13 @@ func (tv *Television) GetState(request StateReq) int {
 func (tv *Television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
-		tv.state.spec = SpecNTSC
+		tv.state.spec = specification.SpecNTSC
 		tv.state.auto = false
 	case "PAL":
-		tv.state.spec = SpecPAL
+		tv.state.spec = specification.SpecPAL
 		tv.state.auto = false
 	case "AUTO":
-		tv.state.spec = SpecNTSC
+		tv.state.spec = specification.SpecNTSC
 		tv.state.auto = true
 	default:
 		return curated.Errorf("television: unsupported spec (%s)", spec)
@@ -519,7 +521,7 @@ func (tv *Television) GetReqSpecID() string {
 
 // Returns the television's current specification. Renderers should use
 // GetSpec() rather than keeping a private pointer to the specification.
-func (tv Television) GetSpec() Spec {
+func (tv Television) GetSpec() specification.Spec {
 	return tv.state.spec
 }
 

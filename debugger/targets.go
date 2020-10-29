@@ -21,7 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // targetValue represents the value that is to be monitored.
@@ -118,7 +118,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Frame",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(television.ReqFramenum)
+					return dbg.VCS.TV.GetState(signal.ReqFramenum)
 				},
 			}
 
@@ -126,7 +126,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Scanline",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(television.ReqScanline)
+					return dbg.VCS.TV.GetState(signal.ReqScanline)
 				},
 			}
 
@@ -134,7 +134,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Horiz Pos",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(television.ReqHorizPos)
+					return dbg.VCS.TV.GetState(signal.ReqHorizPos)
 				},
 			}
 

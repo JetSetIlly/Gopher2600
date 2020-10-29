@@ -16,7 +16,7 @@
 package sdlimgui
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -223,8 +223,8 @@ func newColors() *imguiColors {
 	// convert 2600 colours to format usable by imgui
 
 	// convert to imgiu.Vec4 first...
-	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(television.PaletteNTSC))
-	for _, c := range television.PaletteNTSC {
+	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
+	for _, c := range specification.PaletteNTSC {
 		v := imgui.Vec4{
 			float32(c.R) / 255,
 			float32(c.G) / 255,
@@ -234,8 +234,8 @@ func newColors() *imguiColors {
 		vec4PaletteNTSC = append(vec4PaletteNTSC, v)
 	}
 
-	vec4PalettePAL := make([]imgui.Vec4, 0, len(television.PalettePAL))
-	for _, c := range television.PalettePAL {
+	vec4PalettePAL := make([]imgui.Vec4, 0, len(specification.PalettePAL))
+	for _, c := range specification.PalettePAL {
 		v := imgui.Vec4{
 			float32(c.R) / 255,
 			float32(c.G) / 255,

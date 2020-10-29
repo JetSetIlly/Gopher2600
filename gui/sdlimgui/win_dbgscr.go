@@ -22,7 +22,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
@@ -113,7 +113,7 @@ func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 
 func (win *winDbgScr) init() {
 	win.overlayComboDim = imguiGetFrameDim("", reflection.OverlayList...)
-	win.specComboDim = imguiGetFrameDim("", television.SpecList...)
+	win.specComboDim = imguiGetFrameDim("", specification.SpecList...)
 }
 
 func (win *winDbgScr) destroy() {
@@ -225,7 +225,7 @@ func (win *winDbgScr) draw() {
 	// tv status line
 	imgui.PushItemWidth(win.specComboDim.X)
 	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
-		for _, s := range television.SpecList {
+		for _, s := range specification.SpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 			}
@@ -300,7 +300,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		sz := win.scr.crit.cropPixels.Bounds().Size()
 		mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
 		mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
-		mp.X += float32(television.HorizClksHBlank)
+		mp.X += float32(specification.HorizClksHBlank)
 		mp.Y += float32(win.scr.crit.topScanline)
 	} else {
 		sz := win.scr.crit.pixels.Bounds().Size()
@@ -327,7 +327,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	defer imgui.EndTooltip()
 
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mousHorizPos-television.HorizClksHBlank))
+	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mousHorizPos-specification.HorizClksHBlank))
 
 	if win.overlay {
 		switch win.scr.crit.overlay {

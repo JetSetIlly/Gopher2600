@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -30,7 +30,7 @@ import (
 
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
-	tv  television.TelevisionTIA
+	tv  signal.TelevisionTIA
 	mem bus.ChipBus
 
 	// the VBLANK register also affects the input sub-system
@@ -44,7 +44,7 @@ type TIA struct {
 
 	// the last signal sent to the television. many signal attributes are
 	// sustained over many cycles; we use this to store that information
-	sig television.SignalAttributes
+	sig signal.SignalAttributes
 
 	// for clarity we think of tia video and audio as sub-systems
 	Video *video.Video
@@ -115,7 +115,7 @@ func (tia TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv television.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *TIA {
+func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *TIA {
 	tia := &TIA{
 		tv:      tv,
 		mem:     mem,
@@ -285,7 +285,7 @@ func (tia *TIA) resolveDelayedEvents() {
 		// adjust video elements by the number of visible pixels that have
 		// been consumed. adding one to the value because the tv pixel we
 		// want to hit has not been reached just yet
-		adj := tia.tv.GetState(television.ReqHorizPos) + 1
+		adj := tia.tv.GetState(signal.ReqHorizPos) + 1
 		if adj > 0 {
 			tia.Video.RSYNC(adj)
 		}
@@ -488,9 +488,14 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the video
 		// black signal instead
-		tia.sig.Pixel = television.VideoBlack
+		//
+		// we should probably send VideoBlack in the case of VBLANK but for
+		// historic reasons (to do with how we handle debug colours) we leave
+		// it up to PixelRenderer implementations to switch to VideoBlack on
+		// VBLANK.
+		tia.sig.Pixel = signal.VideoBlack
 	} else {
-		tia.sig.Pixel = television.ColorSignal(pixelColor)
+		tia.sig.Pixel = signal.ColorSignal(pixelColor)
 	}
 
 	if readMemory {

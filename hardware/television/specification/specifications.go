@@ -13,9 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package television
+// Package specification contains the definitions, including colour, of the PAL
+// and NTSC television protocols supported by the emulation.
+package specification
 
-import "image/color"
+import (
+	"image/color"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+)
 
 // SpecList is the list of specifications that the television may adopt.
 var SpecList = []string{"NTSC", "PAL"}
@@ -77,11 +83,11 @@ type Spec struct {
 }
 
 // GetColor translates a signals to the color type.
-func (spec *Spec) GetColor(col ColorSignal) color.RGBA {
+func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
 	// we're usng the ColorSignal to index an array so we need to be extra
 	// careful to make sure the value is valid. if it's not a valid index then
 	// assume the intention was video black
-	if col == VideoBlack {
+	if col == signal.VideoBlack {
 		return videoBlack
 	}
 	return spec.Colors[col]

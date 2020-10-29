@@ -18,7 +18,8 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // LazyTV lazily accesses tv information from the emulator.
@@ -35,9 +36,9 @@ type LazyTV struct {
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
 
-	Spec       television.Spec
+	Spec       specification.Spec
 	TVstr      string
-	LastSignal television.SignalAttributes
+	LastSignal signal.SignalAttributes
 	Frame      int
 	Scanline   int
 	HP         int
@@ -55,13 +56,13 @@ func (lz *LazyTV) push() {
 	lz.tvStr.Store(lz.val.Dbg.VCS.TV.String())
 	lz.lastSignal.Store(lz.val.Dbg.VCS.TV.GetLastSignal())
 
-	frame := lz.val.Dbg.VCS.TV.GetState(television.ReqFramenum)
+	frame := lz.val.Dbg.VCS.TV.GetState(signal.ReqFramenum)
 	lz.frame.Store(frame)
 
-	scanline := lz.val.Dbg.VCS.TV.GetState(television.ReqScanline)
+	scanline := lz.val.Dbg.VCS.TV.GetState(signal.ReqScanline)
 	lz.scanline.Store(scanline)
 
-	hp := lz.val.Dbg.VCS.TV.GetState(television.ReqHorizPos)
+	hp := lz.val.Dbg.VCS.TV.GetState(signal.ReqHorizPos)
 	lz.hP.Store(hp)
 
 	lz.isStable.Store(lz.val.Dbg.VCS.TV.IsStable())
@@ -71,9 +72,9 @@ func (lz *LazyTV) push() {
 }
 
 func (lz *LazyTV) update() {
-	lz.Spec, _ = lz.spec.Load().(television.Spec)
+	lz.Spec, _ = lz.spec.Load().(specification.Spec)
 	lz.TVstr, _ = lz.tvStr.Load().(string)
-	lz.LastSignal, _ = lz.lastSignal.Load().(television.SignalAttributes)
+	lz.LastSignal, _ = lz.lastSignal.Load().(signal.SignalAttributes)
 	lz.Frame, _ = lz.frame.Load().(int)
 	lz.Scanline, _ = lz.scanline.Load().(int)
 	lz.HP, _ = lz.hP.Load().(int)

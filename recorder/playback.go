@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 type playbackEntry struct {
@@ -62,14 +62,14 @@ type Playback struct {
 }
 
 func (plb Playback) String() string {
-	currFrame := plb.digest.GetState(television.ReqFramenum)
+	currFrame := plb.digest.GetState(signal.ReqFramenum)
 	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
 }
 
 // EndFrame returns true if emulation has gone past the last frame of the
 // playback.
 func (plb Playback) EndFrame() (bool, error) {
-	currFrame := plb.digest.GetState(television.ReqFramenum)
+	currFrame := plb.digest.GetState(signal.ReqFramenum)
 	if currFrame > plb.endFrame {
 		return true, nil
 	}
@@ -265,9 +265,9 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	}
 
 	// get current state of the television
-	frame := plb.vcs.TV.GetState(television.ReqFramenum)
-	scanline := plb.vcs.TV.GetState(television.ReqScanline)
-	horizpos := plb.vcs.TV.GetState(television.ReqHorizPos)
+	frame := plb.vcs.TV.GetState(signal.ReqFramenum)
+	scanline := plb.vcs.TV.GetState(signal.ReqScanline)
+	horizpos := plb.vcs.TV.GetState(signal.ReqHorizPos)
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]

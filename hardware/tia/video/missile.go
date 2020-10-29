@@ -19,7 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
@@ -48,7 +49,7 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tv         television.TelevisionSprite
+	tv         signal.TelevisionSprite
 	hblank     *bool
 	hmoveLatch *bool
 
@@ -91,7 +92,7 @@ type MissileSprite struct {
 	Enclockifier enclockifier
 }
 
-func newMissileSprite(label string, tv television.TelevisionSprite, hblank *bool, hmoveLatch *bool) *MissileSprite {
+func newMissileSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *MissileSprite {
 	ms := &MissileSprite{
 		tv:         tv,
 		hblank:     hblank,
@@ -215,10 +216,10 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	ms.ResetPixel -= adjustment
 	ms.HmovedPixel -= adjustment
 	if ms.ResetPixel < 0 {
-		ms.ResetPixel += television.HorizClksVisible
+		ms.ResetPixel += specification.HorizClksVisible
 	}
 	if ms.HmovedPixel < 0 {
-		ms.HmovedPixel += television.HorizClksVisible
+		ms.HmovedPixel += specification.HorizClksVisible
 	}
 }
 
@@ -246,7 +247,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 		ms.pclk.Reset()
 
 		// missile-to-player also resets position information
-		ms.ResetPixel = ms.tv.GetState(television.ReqHorizPos)
+		ms.ResetPixel = ms.tv.GetState(signal.ReqHorizPos)
 		ms.HmovedPixel = ms.ResetPixel
 	}
 
@@ -260,7 +261,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 
 		// adjust for screen boundary
 		if ms.HmovedPixel < 0 {
-			ms.HmovedPixel += television.HorizClksVisible
+			ms.HmovedPixel += specification.HorizClksVisible
 		}
 	}
 
@@ -330,8 +331,8 @@ func (ms *MissileSprite) prepareForHMOVE() {
 		ms.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if ms.HmovedPixel > television.HorizClksVisible {
-			ms.HmovedPixel -= television.HorizClksVisible
+		if ms.HmovedPixel > specification.HorizClksVisible {
+			ms.HmovedPixel -= specification.HorizClksVisible
 		}
 	}
 }
@@ -379,7 +380,7 @@ func (ms *MissileSprite) resetPosition() {
 func (ms *MissileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.ResetPixel = ms.tv.GetState(television.ReqHorizPos)
+	ms.ResetPixel = ms.tv.GetState(signal.ReqHorizPos)
 
 	if ms.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
@@ -387,8 +388,8 @@ func (ms *MissileSprite) _futureResetPosition() {
 		ms.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if ms.ResetPixel > television.HorizClksVisible {
-			ms.ResetPixel -= television.HorizClksVisible
+		if ms.ResetPixel > specification.HorizClksVisible {
+			ms.ResetPixel -= specification.HorizClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at
