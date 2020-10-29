@@ -111,3 +111,14 @@ type AudioMixer interface {
 	// EndMixing() has been called
 	EndMixing() error
 }
+
+type ReflectionSynchronising interface {
+	SetPendingReflectionPixel(idx int) error
+	NewFrame()
+}
+
+// the maximum number of scanlines allowed by the television implementation.
+const MaxScanlinesAbsolute = 400
+
+// the number of entries in signal history.
+const MaxSignalHistory = specification.HorizClksScanline * MaxScanlinesAbsolute

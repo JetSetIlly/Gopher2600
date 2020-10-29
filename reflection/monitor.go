@@ -18,7 +18,18 @@ package reflection
 import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
+
+type State struct {
+	History    [television.MaxSignalHistory]Reflection
+	HistoryIdx int
+}
+
+func (s *State) Snapshot() *State {
+	n := *s
+	return &n
+}
 
 // Monitor should be run (with the Check() function) every video cycle. The
 // (reflection) Renderer's Reflect() function is consequently also called every
@@ -26,25 +37,30 @@ import (
 type Monitor struct {
 	vcs      *hardware.VCS
 	renderer Renderer
-
-	history []LastResult
+	state    *State
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type.
 func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
-	mon := &Monitor{
+	return &Monitor{
 		vcs:      vcs,
 		renderer: renderer,
-		history:  make([]LastResult, 0),
+		state:    &State{},
 	}
+}
 
-	return mon
+func (mon *Monitor) Snapshot() *State {
+	return mon.state.Snapshot()
+}
+
+func (mon *Monitor) Plumb(s *State) {
+	mon.state = s
 }
 
 // Check should be called every video cycle to record the current state of the
 // emulation/system.
 func (mon *Monitor) Check(bank mapper.BankInfo) error {
-	res := LastResult{
+	res := Reflection{
 		CPU:          mon.vcs.CPU.LastResult,
 		WSYNC:        !mon.vcs.CPU.RdyFlg,
 		Bank:         bank,
@@ -65,10 +81,24 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 		res.Hmove.RippleCt = mon.vcs.TIA.HmoveCt
 	}
 
-	// send reflection
-	if err := mon.renderer.Reflect(res); err != nil {
-		return nil
+	if mon.state.HistoryIdx < television.MaxSignalHistory {
+		mon.state.History[mon.state.HistoryIdx] = res
+		mon.state.HistoryIdx++
 	}
 
 	return nil
+}
+
+// SetPendingReflectionPixel implements the television.ReflectionSynchronising interface.
+func (mon *Monitor) SetPendingReflectionPixel(idx int) error {
+	if err := mon.renderer.Reflect(mon.state.History[idx]); err != nil {
+		return err
+	}
+	mon.state.HistoryIdx = idx
+	return nil
+}
+
+// NewFrame implements the television.ReflectionSynchronising interface.
+func (mon *Monitor) NewFrame() {
+	mon.state.HistoryIdx = 0
 }

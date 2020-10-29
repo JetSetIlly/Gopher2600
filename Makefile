@@ -33,7 +33,8 @@ test:
 race: generate lint vet test
 # disable checkptr because the opengl implementation will trigger it and cause
 # a lot of output noise
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Pitfall.bin
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug $(profilingRom)
+#go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug roms/Demos/chiphead-release/Chiphead.bin
 #go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 
 profile: generate lint vet test
@@ -49,7 +50,7 @@ profile_display: generate lint vet test
 mem_profile_debug: generate lint vet test
 	go build -gcflags $(compileFlags)
 	./gopher2600 debug --profile $(profilingRom)
-	go tool pprof --alloc-space -http : ./gopher2600 debug.mem.profile
+	go tool pprof -http : ./gopher2600 debug.mem.profile
 
 build_assertions: generate lint vet test
 	go build -gcflags $(compileFlags) -tags=assertions

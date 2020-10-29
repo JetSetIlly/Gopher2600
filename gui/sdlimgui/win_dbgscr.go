@@ -312,7 +312,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	win.mouseScanline = int(mp.Y)
 
 	// get reflection information
-	var ref reflection.LastResult
+	var ref reflection.Reflection
 
 	if win.mousHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mousHorizPos]) {
 		ref = win.scr.crit.reflection[win.mousHorizPos][win.mouseScanline]
@@ -444,9 +444,6 @@ func (win *winDbgScr) render() {
 		overlayPixels = win.scr.crit.overlayPixels
 	}
 
-	win.scr.crit.section.Unlock()
-	// end of critical section
-
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
@@ -479,6 +476,9 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlayPixels.Pix))
 	}
+
+	win.scr.crit.section.Unlock()
+	// end of critical section
 
 	// set screen image scaling (and image padding) based on the current window size
 	win.setScaleFromWindow(win.contentDim)

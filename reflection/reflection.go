@@ -25,7 +25,7 @@ import (
 // Renderer implementations accepts ReflectPixel values and associates it in
 // some way with the most recent television signal.
 type Renderer interface {
-	Reflect(LastResult) error
+	Reflect(Reflection) error
 }
 
 // IdentifyReflector implementations can identify a reflection.Renderer.
@@ -33,30 +33,33 @@ type IdentifyReflector interface {
 	GetReflectionRenderer() Renderer
 }
 
-// LastResult packages together the details of the the last video step. It
+// Reflection packages together the details of the the last video step. It
 // includes the CPU execution result, the bank from which the instruction
-// originate, the video element that produced the last video pixel on
-// screen; and the raw television signal most recently sent (a PixelRenderer
-// only receives distilled information from the television implementation so
-// this is not redundant information).
-type LastResult struct {
+// originates, the video element that produced the last video pixel on screen;
+// among other information.
+//
+// Note that ordering of the structure is important. There's a saving of about
+// 2MB per frame compared to the unoptimal ordering.
+type Reflection struct {
 	CPU          execution.Result
-	WSYNC        bool
 	Bank         mapper.BankInfo
-	IsRAM        bool
 	VideoElement video.Element
 	TV           signal.SignalAttributes
-	Hblank       bool
-	Collision    string
 	Hmove        Hmove
+	WSYNC        bool
+	IsRAM        bool
+	Hblank       bool
 	Unchanged    bool
+	Collision    string
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
 // to distil into a single variable.
+//
+// Ordering of the structure is important.
 type Hmove struct {
-	Delay    bool
 	DelayCt  int
+	Delay    bool
 	Latch    bool
 	RippleCt uint8
 }

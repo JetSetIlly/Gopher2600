@@ -85,7 +85,7 @@ type screenCrit struct {
 	overlay string
 
 	// 2d array of disasm entries. resized at the same time as overlayPixels resize
-	reflection [][]reflection.LastResult
+	reflection [][]reflection.Reflection
 
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
@@ -130,9 +130,9 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 
 	// allocate reflection info
-	scr.crit.reflection = make([][]reflection.LastResult, specification.HorizClksScanline)
+	scr.crit.reflection = make([][]reflection.Reflection, specification.HorizClksScanline)
 	for x := 0; x < specification.HorizClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.LastResult, spec.ScanlinesTotal)
+		scr.crit.reflection[x] = make([]reflection.Reflection, spec.ScanlinesTotal)
 	}
 
 	// create a cropped image from the main
@@ -221,7 +221,7 @@ func (scr *screen) UpdatingPixels(updating bool) {
 
 // SetPixel implements the television.PixelRenderer interface.
 //
-// Critical section must be locked before calling this function.
+// Must be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	col := color.RGBA{R: 0, G: 0, B: 0, A: 255}
 
@@ -246,21 +246,23 @@ func (scr *screen) EndRendering() error {
 }
 
 // Reflect implements reflection.Renderer interface.
-func (scr *screen) Reflect(ref reflection.LastResult) error {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
+//
+// Must be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
+func (scr *screen) Reflect(ref reflection.Reflection) error {
+	x := ref.TV.HorizPos
+	y := ref.TV.Scanline
 
-	// store LastResult instance
-	if scr.crit.lastX < len(scr.crit.reflection) && scr.crit.lastY < len(scr.crit.reflection[scr.crit.lastX]) {
-		scr.crit.reflection[scr.crit.lastX][scr.crit.lastY] = ref
+	// store Reflection instance
+	if x < len(scr.crit.reflection) && y < len(scr.crit.reflection[x]) {
+		scr.crit.reflection[x][y] = ref
 	}
 
 	// set element pixel
 	rgb := reflection.PaletteElements[ref.VideoElement]
-	scr.crit.elementPixels.SetRGBA(scr.crit.lastX, scr.crit.lastY, rgb)
+	scr.crit.elementPixels.SetRGBA(x, y, rgb)
 
 	// write to overlay
-	scr.plotOverlay(scr.crit.lastX, scr.crit.lastY, ref)
+	scr.plotOverlay(x, y, ref)
 
 	return nil
 }
@@ -275,7 +277,7 @@ func (scr *screen) replotOverlay() {
 }
 
 // plotOverlay should be called from within a scr.crit.section Lock().
-func (scr *screen) plotOverlay(x, y int, ref reflection.LastResult) {
+func (scr *screen) plotOverlay(x, y int, ref reflection.Reflection) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
 	case "WSYNC":

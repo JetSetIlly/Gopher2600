@@ -45,12 +45,6 @@ const leadingFrames = 5
 // the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
 
-// the maximum number of scanlines allowed by the television implementation.
-const maxScanlinesAbsolute = 400
-
-// the number of entries in signal history.
-const maxSignalHistory = specification.HorizClksScanline * maxScanlinesAbsolute
-
 type State struct {
 	// television specification (NTSC or PAL)
 	spec specification.Spec
@@ -95,7 +89,7 @@ type State struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signalHistory [maxSignalHistory]signal.SignalAttributes
+	signalHistory [MaxSignalHistory]signal.SignalAttributes
 
 	// the index to write the next signal
 	signalHistoryIdx int
@@ -145,6 +139,9 @@ type Television struct {
 
 	// list of audio mixers to consult
 	mixers []AudioMixer
+
+	// a single registered reflector
+	reflector ReflectionSynchronising
 
 	state *State
 }
@@ -201,6 +198,9 @@ func (tv *Television) Plumb(s *State) {
 		for _, r := range tv.renderers {
 			r.SetPixel(e, i < tv.state.signalHistoryIdx)
 		}
+		if tv.reflector != nil {
+			tv.reflector.SetPendingReflectionPixel(i)
+		}
 	}
 
 	for _, r := range tv.renderers {
@@ -225,6 +225,12 @@ func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 // implemntations can be added.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
+}
+
+// AddReflector registers an implementation of ReflectionSynchronising. Only
+// one can be added. Subsequence calls replaces existing implementations.
+func (tv *Television) AddReflector(r ReflectionSynchronising) {
+	tv.reflector = r
 }
 
 // Reset the television to an initial state.
@@ -355,7 +361,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.state.signalHistoryIdx < maxSignalHistory {
+	if tv.state.signalHistoryIdx < MaxSignalHistory {
 		tv.state.signalHistory[tv.state.signalHistoryIdx] = sig
 		tv.state.signalHistoryIdx++
 		tv.state.pendingSetPixelTo++
@@ -443,6 +449,11 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.pendingSetPixelFrom = 0
 	tv.state.pendingSetPixelTo = 0
 
+	// reset reflector for new frame
+	if tv.reflector != nil {
+		tv.reflector.NewFrame()
+	}
+
 	tv.lmtr.checkFrame()
 
 	return nil
@@ -458,6 +469,9 @@ func (tv *Television) setPendingPixels() error {
 			err := r.SetPixel(sig, true)
 			if err != nil {
 				return err
+			}
+			if tv.reflector != nil {
+				tv.reflector.SetPendingReflectionPixel(i)
 			}
 			r.UpdatingPixels(false)
 		}

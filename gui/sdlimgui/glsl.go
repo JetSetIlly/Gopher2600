@@ -208,14 +208,14 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 					gl.Uniform1i(rnd.attribPixelPerfect, 0)
 				}
 
+				// critical section
+				rnd.img.screen.crit.section.Lock()
+
 				// the resolution information is used to scale the Last
 				gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
 				gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
 				gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
 				gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
-
-				// critical section
-				rnd.img.screen.crit.section.Lock()
 
 				// screen geometry
 				gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)

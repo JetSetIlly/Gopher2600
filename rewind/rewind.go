@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/reflection"
 )
 
 // Snapshot contains pointers to areas of the VCS emulation. They can be read
@@ -36,6 +37,9 @@ type Snapshot struct {
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
 	TV   *television.State
+
+	// must be checked for nil
+	Reflection *reflection.State
 
 	// as a consequence of how cartridge mappers have been implemented, it is
 	// not possible to offer anything more than an interface to snapshotted
@@ -57,11 +61,12 @@ func (s Snapshot) String() string {
 // the maximum number of entries to store before the earliest steps are forgotten. there
 // is an overhead of two entries to facilitate appending etc.
 const overhead = 2
-const maxEntries = 100 + overhead
+const maxEntries = 20 + overhead
 
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
 	vcs *hardware.VCS
+	ref *reflection.Monitor
 
 	// list of snapshotted entries
 	entries [maxEntries]*Snapshot
@@ -82,9 +87,10 @@ type Rewind struct {
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
-func NewRewind(vcs *hardware.VCS) *Rewind {
+func NewRewind(vcs *hardware.VCS, reflector *reflection.Monitor) *Rewind {
 	r := &Rewind{
 		vcs: vcs,
+		ref: reflector,
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
@@ -106,6 +112,10 @@ func (r *Rewind) Reset() {
 		TV:        r.vcs.TV.Snapshot(),
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
+	}
+
+	if r.ref != nil {
+		s.Reflection = r.ref.Snapshot()
 	}
 
 	r.prev = maxEntries
@@ -136,6 +146,11 @@ func (r *Rewind) Check() {
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: false,
 	}
+
+	if r.ref != nil {
+		s.Reflection = r.ref.Snapshot()
+	}
+
 	r.trim()
 	r.append(s)
 }
@@ -157,6 +172,11 @@ func (r *Rewind) CurrentState() {
 		cart:      r.vcs.Mem.Cart.Snapshot(),
 		isCurrent: true,
 	}
+
+	if r.ref != nil {
+		s.Reflection = r.ref.Snapshot()
+	}
+
 	r.trim()
 	r.append(s)
 }
@@ -241,11 +261,16 @@ func (r Rewind) plumb(idx int) {
 	r.vcs.Mem = s.Mem.Snapshot()
 	r.vcs.RIOT = s.RIOT.Snapshot()
 	r.vcs.TIA = s.TIA.Snapshot()
+
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
 	r.vcs.TV.Plumb(s.TV.Snapshot())
 	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
+
+	if r.ref != nil && s.Reflection != nil {
+		r.ref.Plumb(s.Reflection.Snapshot())
+	}
 }
 
 // GotoCurrent sets the position to the last in the timeline.

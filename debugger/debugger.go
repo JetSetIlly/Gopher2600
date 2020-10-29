@@ -156,9 +156,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
-	// plug in rewind system
-	dbg.Rewind = rewind.NewRewind(dbg.VCS)
-
 	// replace player 1 port with savekey
 	if useSavekey {
 		err = dbg.VCS.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
@@ -183,7 +180,11 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// setup reflection monitor
 	if b, ok := scr.(reflection.IdentifyReflector); ok {
 		dbg.reflect = reflection.NewMonitor(dbg.VCS, b.GetReflectionRenderer())
+		dbg.tv.AddReflector(dbg.reflect)
 	}
+
+	// plug in rewind system
+	dbg.Rewind = rewind.NewRewind(dbg.VCS, dbg.reflect)
 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)
