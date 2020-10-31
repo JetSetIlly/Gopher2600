@@ -77,3 +77,11 @@ cross_windows: generate lint vet test
 
 cross_windows_static: generate lint vet test
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" go build -tags "static release" -ldflags "-s -w" .
+
+check_gotip:
+ifeq (, $(shell which gotip))
+	$(error gotip not installed)
+endif
+
+build_with_gotip: check_gotip generate lint vet test
+	gotip build -gcflags $(compileFlags)

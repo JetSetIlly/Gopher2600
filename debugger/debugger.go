@@ -52,7 +52,7 @@ type Debugger struct {
 	VCS    *hardware.VCS
 	Disasm *disassembly.Disassembly
 
-	// the bank and the formatted result of the last step (cpu or video)
+	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
 	lastResult *disassembly.Entry
 
@@ -184,7 +184,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// plug in rewind system
-	dbg.Rewind = rewind.NewRewind(dbg.VCS, dbg.reflect)
+	dbg.Rewind = rewind.NewRewind(dbg.VCS, dbg)
 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)

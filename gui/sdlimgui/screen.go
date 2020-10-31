@@ -221,7 +221,7 @@ func (scr *screen) UpdatingPixels(updating bool) {
 
 // SetPixel implements the television.PixelRenderer interface.
 //
-// Must be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
+// Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	col := color.RGBA{R: 0, G: 0, B: 0, A: 255}
 
@@ -247,7 +247,7 @@ func (scr *screen) EndRendering() error {
 
 // Reflect implements reflection.Renderer interface.
 //
-// Must be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
+// Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) Reflect(ref reflection.Reflection) error {
 	x := ref.TV.HorizPos
 	y := ref.TV.Scanline

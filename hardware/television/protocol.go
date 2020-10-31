@@ -113,8 +113,8 @@ type AudioMixer interface {
 }
 
 type ReflectionSynchronising interface {
-	SetPendingReflectionPixel(idx int) error
-	NewFrame()
+	SyncReflectionPixel(idx int) error
+	SyncFrame()
 }
 
 // the maximum number of scanlines allowed by the television implementation.

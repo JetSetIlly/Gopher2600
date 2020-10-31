@@ -86,16 +86,6 @@ type State struct {
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
-
-	// list of signals sent to pixel renderers since the beginning of the
-	// current frame
-	signalHistory [MaxSignalHistory]signal.SignalAttributes
-
-	// the index to write the next signal
-	signalHistoryIdx int
-
-	pendingSetPixelFrom int
-	pendingSetPixelTo   int
 }
 
 func (s *State) Snapshot() *State {
@@ -144,6 +134,16 @@ type Television struct {
 	reflector ReflectionSynchronising
 
 	state *State
+
+	// list of signals sent to pixel renderers since the beginning of the
+	// current frame
+	signalHistory [MaxSignalHistory]signal.SignalAttributes
+
+	// the index to write the next signal
+	signalHistoryIdx int
+
+	pendingSetPixelFrom int
+	pendingSetPixelTo   int
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -187,25 +187,7 @@ func (tv *Television) Plumb(s *State) {
 	if s == nil {
 		return
 	}
-
 	tv.state = s
-
-	for _, r := range tv.renderers {
-		r.UpdatingPixels(true)
-	}
-
-	for i, e := range tv.state.signalHistory {
-		for _, r := range tv.renderers {
-			r.SetPixel(e, i < tv.state.signalHistoryIdx)
-		}
-		if tv.reflector != nil {
-			tv.reflector.SetPendingReflectionPixel(i)
-		}
-	}
-
-	for _, r := range tv.renderers {
-		r.UpdatingPixels(false)
-	}
 }
 
 // AddPixelRenderer registers an implementation of PixelRenderer. Multiple
@@ -361,10 +343,10 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.state.signalHistoryIdx < MaxSignalHistory {
-		tv.state.signalHistory[tv.state.signalHistoryIdx] = sig
-		tv.state.signalHistoryIdx++
-		tv.state.pendingSetPixelTo++
+	if tv.signalHistoryIdx < MaxSignalHistory {
+		tv.signalHistory[tv.signalHistoryIdx] = sig
+		tv.signalHistoryIdx++
+		tv.pendingSetPixelTo++
 	}
 
 	if tv.lmtr.scale == scalePixel {
@@ -445,13 +427,13 @@ func (tv *Television) newFrame(synced bool) error {
 	}
 
 	// reset signal history for next frame
-	tv.state.signalHistoryIdx = 0
-	tv.state.pendingSetPixelFrom = 0
-	tv.state.pendingSetPixelTo = 0
+	tv.signalHistoryIdx = 0
+	tv.pendingSetPixelFrom = 0
+	tv.pendingSetPixelTo = 0
 
 	// reset reflector for new frame
 	if tv.reflector != nil {
-		tv.reflector.NewFrame()
+		tv.reflector.SyncFrame()
 	}
 
 	tv.lmtr.checkFrame()
@@ -462,8 +444,8 @@ func (tv *Television) newFrame(synced bool) error {
 // setPendindPixels forwards all pixels in the signalHistory buffer (between
 // the *from and *to values) to all pixel renderers.
 func (tv *Television) setPendingPixels() error {
-	for i := tv.state.pendingSetPixelFrom; i < tv.state.pendingSetPixelTo; i++ {
-		sig := tv.state.signalHistory[i]
+	for i := tv.pendingSetPixelFrom; i < tv.pendingSetPixelTo; i++ {
+		sig := tv.signalHistory[i]
 		for _, r := range tv.renderers {
 			r.UpdatingPixels(true)
 			err := r.SetPixel(sig, true)
@@ -471,13 +453,13 @@ func (tv *Television) setPendingPixels() error {
 				return err
 			}
 			if tv.reflector != nil {
-				tv.reflector.SetPendingReflectionPixel(i)
+				tv.reflector.SyncReflectionPixel(i)
 			}
 			r.UpdatingPixels(false)
 		}
 	}
 
-	tv.state.pendingSetPixelFrom = tv.state.pendingSetPixelTo
+	tv.pendingSetPixelFrom = tv.pendingSetPixelTo
 
 	return nil
 }
@@ -545,8 +527,12 @@ func (tv *Television) Pause(pause bool) error {
 	if pause {
 		return tv.setPendingPixels()
 	}
-
 	return nil
+}
+
+// ForceDraw pushes all pending pixels to the pixel renderers.
+func (tv *Television) ForceDraw() error {
+	return tv.setPendingPixels()
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter.

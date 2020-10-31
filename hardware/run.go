@@ -74,7 +74,6 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 				return err
 			}
 		}
-
 		cont, err = continueCheck()
 	}
 

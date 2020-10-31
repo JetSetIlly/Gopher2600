@@ -17,6 +17,7 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -64,4 +65,36 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 	default:
 		logger.Log("debugger", "dropped raw event push")
 	}
+}
+
+// RunUntilTVState will run the emulation from it's current state to the
+// specificied frame/scanline/horizpos breakpoint. If the breakpoint can't be
+// reached for some reason then false is returned.
+func (dbg *Debugger) RunUntilTVState(frame int, scanline int, horizpos int) bool {
+	nf := dbg.VCS.TV.GetState(signal.ReqFramenum)
+	ny := dbg.VCS.TV.GetState(signal.ReqScanline)
+	nx := dbg.VCS.TV.GetState(signal.ReqHorizPos)
+
+	if nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx > horizpos) {
+		return false
+	}
+
+	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+
+	for !(nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx > horizpos)) {
+		err := dbg.VCS.Step(func() error {
+			return dbg.reflect.Check(dbg.lastBank)
+		})
+		if err != nil {
+			return false
+		}
+
+		dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+
+		nf = dbg.VCS.TV.GetState(signal.ReqFramenum)
+		nx = dbg.VCS.TV.GetState(signal.ReqHorizPos)
+		ny = dbg.VCS.TV.GetState(signal.ReqScanline)
+	}
+
+	return true
 }

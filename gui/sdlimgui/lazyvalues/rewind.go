@@ -31,7 +31,7 @@ type LazyRewind struct {
 
 	NumStates  int
 	CurrState  int
-	Comparison *rewind.Snapshot
+	Comparison *rewind.State
 }
 
 func newLazyRewind(val *LazyValues) *LazyRewind {
@@ -48,5 +48,5 @@ func (lz *LazyRewind) push() {
 func (lz *LazyRewind) update() {
 	lz.NumStates, _ = lz.numStates.Load().(int)
 	lz.CurrState, _ = lz.currState.Load().(int)
-	lz.Comparison, _ = lz.comparison.Load().(*rewind.Snapshot)
+	lz.Comparison, _ = lz.comparison.Load().(*rewind.State)
 }

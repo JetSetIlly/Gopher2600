@@ -21,23 +21,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
-type State struct {
-	History    [television.MaxSignalHistory]Reflection
-	HistoryIdx int
-}
-
-func (s *State) Snapshot() *State {
-	n := *s
-	return &n
-}
-
 // Monitor should be run (with the Check() function) every video cycle. The
 // (reflection) Renderer's Reflect() function is consequently also called every
 // video cycle with a populated instance of LastResult.
 type Monitor struct {
-	vcs      *hardware.VCS
-	renderer Renderer
-	state    *State
+	vcs        *hardware.VCS
+	renderer   Renderer
+	history    [television.MaxSignalHistory]Reflection
+	historyIdx int
 }
 
 // NewMonitor is the preferred method of initialisation for the Monitor type.
@@ -45,16 +36,7 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 	return &Monitor{
 		vcs:      vcs,
 		renderer: renderer,
-		state:    &State{},
 	}
-}
-
-func (mon *Monitor) Snapshot() *State {
-	return mon.state.Snapshot()
-}
-
-func (mon *Monitor) Plumb(s *State) {
-	mon.state = s
 }
 
 // Check should be called every video cycle to record the current state of the
@@ -81,24 +63,24 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 		res.Hmove.RippleCt = mon.vcs.TIA.HmoveCt
 	}
 
-	if mon.state.HistoryIdx < television.MaxSignalHistory {
-		mon.state.History[mon.state.HistoryIdx] = res
-		mon.state.HistoryIdx++
+	if mon.historyIdx < television.MaxSignalHistory {
+		mon.history[mon.historyIdx] = res
+		mon.historyIdx++
 	}
 
 	return nil
 }
 
-// SetPendingReflectionPixel implements the television.ReflectionSynchronising interface.
-func (mon *Monitor) SetPendingReflectionPixel(idx int) error {
-	if err := mon.renderer.Reflect(mon.state.History[idx]); err != nil {
+// SyncReflectionPixel implements the television.ReflectionSynchronising interface.
+func (mon *Monitor) SyncReflectionPixel(idx int) error {
+	if err := mon.renderer.Reflect(mon.history[idx]); err != nil {
 		return err
 	}
-	mon.state.HistoryIdx = idx
+	mon.historyIdx = idx
 	return nil
 }
 
-// NewFrame implements the television.ReflectionSynchronising interface.
-func (mon *Monitor) NewFrame() {
-	mon.state.HistoryIdx = 0
+// SyncFrame implements the television.ReflectionSynchronising interface.
+func (mon *Monitor) SyncFrame() {
+	mon.historyIdx = 0
 }
