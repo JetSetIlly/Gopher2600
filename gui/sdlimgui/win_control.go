@@ -134,26 +134,23 @@ func (win *winControl) draw() {
 
 	// pause emulation if rewind slider is clicked. take a note of whether
 	// the emulation was running and resume once mouse is unclicked.
-	//
-	// (note that the check to resume is run every iteration the mouse isn't
-	// down. this is because there is no IsAnyMouseUp() in dear imgui and
-	// IsItemHovered() is only useful when clicking down - once the slider has
-	// been clicked and the mouse held down, we can move the slider even if
-	// the mouse is no longer hovering.)
-	if imgui.IsAnyMouseDown() {
+	if imgui.IsMouseDown(0) {
 		if imgui.IsItemHovered() {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				if !win.img.paused {
-					win.resumeAfterRewind = true
-					win.img.term.pushCommand("HALT")
-				}
-			})
+			if !win.img.paused {
+				win.resumeAfterRewind = true
+				win.img.term.pushCommand("HALT")
+			}
+			win.img.noShowScreenDraw = true
 		}
-	} else if win.resumeAfterRewind {
-		win.resumeAfterRewind = false
-		win.img.lz.Dbg.PushRawEvent(func() {
+		win.img.noShowScreenDraw = pos != n
+	}
+
+	if imgui.IsMouseReleased(0) {
+		if win.resumeAfterRewind {
+			win.resumeAfterRewind = false
 			win.img.term.pushCommand("RUN")
-		})
+		}
+		win.img.noShowScreenDraw = false
 	}
 
 	imgui.End()

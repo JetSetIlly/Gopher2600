@@ -81,6 +81,11 @@ type SdlImgui struct {
 	// is emulation running
 	paused bool
 
+	// do not show screen draw even if emulation is not paused. this is to make
+	// sure the rewind slider doesn't cause ugly screen redraws when the
+	// emulation is paused.
+	noShowScreenDraw bool
+
 	// mouse coords at last frame
 	mx, my int32
 

@@ -16,10 +16,12 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type term struct {
@@ -56,7 +58,9 @@ func newTerm() *term {
 		// side-channel terminal input from other areas of the GUI. for
 		// example, we can have a menu item that writes "QUIT" to the side
 		// channel, with predictable results.
-		sideChan: make(chan string, 1),
+		//
+		// assigning a generous buffer. see pushCommand() for commentary.
+		sideChan: make(chan string, 10),
 
 		promptChan: make(chan terminal.Prompt, 1),
 
@@ -159,8 +163,15 @@ func (trm *term) IsInteractive() bool {
 // complete string is pushed (without a newline character please). the
 // pushCommand() is a conveniently placed function to do this.
 func (trm *term) pushCommand(input string) {
-	// there shouldn't be a problem with channel blocking even though we're
-	// issuing and consuming on the same thread. if there is however, we can
-	// wrap this channel write in a go call
-	trm.sideChan <- input
+	select {
+	case trm.sideChan <- input:
+	default:
+		// hopefully the side channel buffer is deep enough so that we don't
+		// ever have to drop input before the buffer can emptied in TermRead().
+		//
+		// in most instances a depth of one is sufficient but occasionally it
+		// is not (eg. the HALT/RUN commands sent by the rewind slider in
+		// win_control)
+		logger.Log("sdlimgui", fmt.Sprintf("dropping %s from side channel. channel buffer too short.", input))
+	}
 }
