@@ -123,10 +123,7 @@ func (win *winControl) draw() {
 
 	imgui.Text("Rewind")
 
-	n := int32(win.img.lz.Rewind.NumStates) - 1
-	if n < 0 {
-		n = 0
-	}
+	n := int32(win.img.lz.Rewind.NumStates)
 	pos := int32(win.img.lz.Rewind.CurrState)
 
 	if imgui.SliderIntV("##rewind", &pos, 0, n, "") {

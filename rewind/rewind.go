@@ -18,6 +18,7 @@ package rewind
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -187,7 +188,7 @@ func (r *Rewind) append(s *State) {
 	// append at current position
 	e := r.pos + 1
 	if e >= maxEntries {
-		e -= maxEntries
+		e = 0
 	}
 
 	// update entry
@@ -237,7 +238,7 @@ func (r Rewind) State() (int, int) {
 		n += maxEntries
 	}
 
-	i := r.pos - r.start - 1
+	i := r.pos - r.start
 	if i < 0 {
 		i += maxEntries
 	}
@@ -248,7 +249,7 @@ func (r Rewind) State() (int, int) {
 // SetPosition sets the rewind system to the specified position. That state
 // will be plumbed into the emulation.
 func (r *Rewind) SetPosition(pos int) {
-	pos += r.start + 1
+	pos += r.start
 	if pos >= maxEntries {
 		pos -= maxEntries
 	}
@@ -275,8 +276,7 @@ func (r Rewind) plumb(pos int) {
 	// the previous state (to the one we want). after plumbing, we'll allow the
 	// emulation to run to the breakpoint (specified above) of the state we do
 	// want.
-	replayFrame := r.entries[pos].level != levelReset
-	if replayFrame {
+	if r.entries[pos].level != levelReset {
 		pos--
 		if pos < 0 {
 			pos += maxEntries
@@ -301,11 +301,16 @@ func (r Rewind) plumb(pos int) {
 	r.vcs.TV.Plumb(s.TV.Snapshot())
 
 	// run emulation until we reach the breakpoint of the snapshot we want
-	if replayFrame {
+	if r.entries[pos].level != levelReset {
 		_ = r.runner.RunUntilTVState(bf, by, bx)
 		if current {
 			_ = r.vcs.TV.ForceDraw()
 		}
+	} else {
+		// we can't run emulation but we still want an updated TV image.
+		// because the machine is in the freshly reset state, we can just reset
+		// the TV.
+		r.vcs.TV.Reset()
 	}
 
 	// make sure newFrame flag is false
@@ -324,29 +329,60 @@ func (r *Rewind) GotoCurrent() {
 // GotoFrame searches the timeline for the frame number. Goes to nearest frame
 // if frame number is not present. Returns true if exact frame number was found
 // and false if not.
-func (r *Rewind) GotoFrame(frame int) bool {
-	exactMatch := false
-	p := r.start
+func (r *Rewind) GotoFrame(frame int) (int, error) {
+	var fn int
 
-	for i := 0; i < maxEntries; i++ {
+	// if requested frame is before the earliest stored frame then plumb in the
+	// earliest frame
+	fn = r.entries[r.start].TV.GetState(signal.ReqFramenum)
+	if frame < fn {
+		r.plumb(r.start)
+		return fn, nil
+	}
+
+	// if requested frame is later than the most recently stored frame then
+	// plumb in the latest frame
+	e := r.end - 1
+	if e < 0 {
+		e += maxEntries
+	}
+
+	fn = r.entries[e].TV.GetState(signal.ReqFramenum)
+	if frame > fn {
+		r.plumb(e)
+		return fn, nil
+	}
+
+	// linear search is sufficient (+ not sure how best to implement a binary
+	// search on a circular array)
+
+	// search from start to end of the circle OR the end of the array
+	for i := r.start; i < r.end || i < len(r.entries); i++ {
 		if r.entries[i] != nil {
-			fn := r.entries[i].TV.GetState(signal.ReqFramenum)
-
+			fn = r.entries[i].TV.GetState(signal.ReqFramenum)
 			if frame == fn {
-				p = i
-				exactMatch = true
-				break // for loop
-			}
-
-			if frame > fn {
-				p = i
+				r.plumb(i)
+				return fn, nil
 			}
 		}
 	}
 
-	r.plumb(p)
+	// not found yet so search from start of array to end of circle
+	for i := 0; i < r.end; i++ {
+		if r.entries[i] != nil {
+			fn = r.entries[i].TV.GetState(signal.ReqFramenum)
+			if frame == fn {
+				r.plumb(i)
+				return fn, nil
+			}
+		}
+	}
 
-	return exactMatch
+	// not plumbing anything so returning whatever the current frame is and an
+	// error saying the rewind history has holes in it - the boundary checks at
+	// the beginning of the function should be sufficient
+	return r.vcs.TV.GetState(signal.ReqFramenum),
+		curated.Errorf("rewind", "stored rewind history doesn't appear to be continuous")
 }
 
 // SetComparison points comparison to the most recent rewound entry.

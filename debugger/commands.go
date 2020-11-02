@@ -272,14 +272,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			}
 		}
 
-	case cmdTimeline:
+	case cmdRewind:
 		arg, ok := tokens.Get()
 		if ok {
 			if arg == "CURRENT" {
 				dbg.Rewind.GotoCurrent()
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				dbg.Rewind.GotoFrame(frame)
+				frame, err := dbg.Rewind.GotoFrame(frame)
+				if err != nil {
+					return false, err
+				}
+				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
 			}
 		}
 

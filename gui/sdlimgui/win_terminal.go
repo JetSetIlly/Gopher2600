@@ -195,8 +195,8 @@ func (win *winTerm) draw() {
 			// only add if input is not the same as the last history entry
 			if len(win.history) == 0 || win.input != win.history[len(win.history)-1] {
 				win.history = append(win.history, win.input)
-				win.historyIdx = len(win.history) - 1
 			}
+			win.historyIdx = len(win.history) - 1
 		}
 
 		win.input = ""

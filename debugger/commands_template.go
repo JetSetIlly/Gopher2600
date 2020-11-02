@@ -20,12 +20,12 @@ const (
 	cmdReset = "RESET"
 	cmdQuit  = "QUIT"
 
-	cmdRun      = "RUN"
-	cmdStep     = "STEP"
-	cmdHalt     = "HALT"
-	cmdQuantum  = "QUANTUM"
-	cmdScript   = "SCRIPT"
-	cmdTimeline = "TIMELINE"
+	cmdRun     = "RUN"
+	cmdStep    = "STEP"
+	cmdHalt    = "HALT"
+	cmdQuantum = "QUANTUM"
+	cmdScript  = "SCRIPT"
+	cmdRewind  = "REWIND"
 
 	cmdInsert      = "INSERT"
 	cmdCartridge   = "CARTRIDGE"
@@ -87,7 +87,7 @@ var commandTemplate = []string{
 	cmdHalt,
 	cmdQuantum + " (CPU|VIDEO)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
-	cmdTimeline + " [%<frame>N|CURRENT]",
+	cmdRewind + " [%<frame>N|CURRENT]",
 
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (BANK|STATIC|REGISTERS|RAM)",
