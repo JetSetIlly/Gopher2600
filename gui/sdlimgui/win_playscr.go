@@ -110,7 +110,11 @@ func (win *winPlayScr) draw() {
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
-	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
+
+	// capture mouse on double click
+	if !win.img.hasModal && imgui.IsMouseDoubleClicked(0) {
+		win.img.setCapture(true)
+	}
 
 	imgui.PopStyleColorV(2)
 

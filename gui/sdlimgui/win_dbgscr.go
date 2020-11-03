@@ -178,6 +178,12 @@ func (win *winDbgScr) draw() {
 		imgui.Image(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
 	}
 
+	// capture mouse on double click and run emulation
+	if !win.img.hasModal && imgui.IsMouseDoubleClicked(0) {
+		win.img.setCapture(true)
+		win.img.term.pushCommand("RUN")
+	}
+
 	// [A] add the remaining horiz/vert padding around screen image [see B below]
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 

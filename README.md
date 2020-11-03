@@ -163,8 +163,9 @@ The joystick is operated via the cursor keys on the keyboard and the spacebar in
 
 The paddle is available by operating the mouse. To activate the paddle, click
 in the play window and waggle the mouse a few times. Note that once the window
-has been clicked, the mouse will be captured and the pointer will disappear. To
-"release" the mouse, click the right-mouse button.
+has been double-clicked, the mouse will be captured and the pointer will
+disappear. To "release" the mouse, click the right-mouse button or the escape
+key.
 
 #### Joystick (left player)
 
@@ -177,10 +178,9 @@ Not yet emulated
 
 #### Paddle (left player)
 
-* Left mouse button in window to capture mouse (waggle mouse to activate paddle)
+* Double-click left mouse button in window to capture mouse (waggle mouse to activate paddle)
 * Mouse left/right motion for paddle motion 
 * Left mouse button for paddle's fire button
-* Right mouse button to leave "paddle mode"
 
 #### Paddle (right player)
 
@@ -213,7 +213,12 @@ To run the debugger use the DEBUG submode
 
 	> gopher2600 debug roms/Pitfall.bin
 
-The default debugging mode display a windowed interface. A thorough explanation of the interface is not yet available but it is should be self-explanatory. Note that the ROM can be "played" by clicking on the screen image in  the `TV Screen` window. This will "capture" the mouse and allow the emulated VCS to be interacted with in the normal way. Click the right mouse button to release the captured mouse.
+The default debugging mode display a windowed interface. A thorough explanation
+of the interface is not yet available but it is should be self-explanatory.
+Note that the ROM can be "played" by double-clicking on the screen image in
+the `TV Screen` window. This will "capture" the mouse, run the emulation and
+allow the emulated VCS to be interacted with in the normal way. Click the right
+mouse button or the escape key to release the captured mouse.
 
 In addition to the controller and panel input described above, the following keys are also available during mouse capture:
 
@@ -222,6 +227,9 @@ In addition to the controller and panel input described above, the following key
 * F10 Toggle debugging overlay
 * \+ Increase screen size
 * \- Decrease screen size
+* Escape to leave capture mode
+
+When not in capture mode, the Escape key runs/halts the emulation.
 
 #### Debugger Terminal
 

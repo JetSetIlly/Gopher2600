@@ -25,9 +25,11 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/veandco/go-sdl2/sdl"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -266,16 +268,28 @@ func (img *SdlImgui) isCaptured() bool {
 func (img *SdlImgui) setCapture(set bool) {
 	if img.isPlaymode() {
 		img.wm.playScr.isCaptured = set
-		return
+	} else {
+		img.wm.dbgScr.isCaptured = set
 	}
-	img.wm.dbgScr.isCaptured = set
-}
 
-func (img *SdlImgui) isHovered() bool {
-	if img.isPlaymode() {
-		return true
+	err := sdl.CaptureMouse(set)
+	if err != nil {
+		logger.Log("sdlimgui", err.Error())
 	}
-	return img.wm.dbgScr.isHovered && !img.wm.dbgScr.isPopup
+
+	img.plt.window.SetGrab(set)
+
+	if set {
+		_, err = sdl.ShowCursor(sdl.DISABLE)
+		if err != nil {
+			logger.Log("sdlimgui", err.Error())
+		}
+	} else {
+		_, err = sdl.ShowCursor(sdl.ENABLE)
+		if err != nil {
+			logger.Log("sdlimgui", err.Error())
+		}
+	}
 }
 
 // scaling of the tv screen also depends on whether playmode is active

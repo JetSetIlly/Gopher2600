@@ -68,52 +68,69 @@ func (img *SdlImgui) Service() {
 				}
 
 			case *sdl.KeyboardEvent:
-				if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
-					mod := gui.KeyModNone
 
-					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-						sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-						mod = gui.KeyModAlt
-					} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-						sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-						mod = gui.KeyModShift
-					} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-						sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-						mod = gui.KeyModCtrl
-					}
-
-					switch ev.Type {
-					case sdl.KEYDOWN:
-						if ev.Repeat == 0 {
-							select {
-							case img.events <- gui.EventKeyboard{
-								Key:  sdl.GetKeyName(ev.Keysym.Sym),
-								Mod:  mod,
-								Down: true}:
-							default:
-								logger.Log("sdlimgui", "dropped key down event")
-							}
-						}
-					case sdl.KEYUP:
-						if ev.Repeat == 0 {
-							select {
-							case img.events <- gui.EventKeyboard{
-								Key:  sdl.GetKeyName(ev.Keysym.Sym),
-								Mod:  mod,
-								Down: false}:
-							default:
-								logger.Log("sdlimgui", "dropped key up event")
-							}
+				// for simplicity we'll handle some keys within the GUI and
+				// pass everything else to the registered events channel
+				switch sdl.GetKeyName(ev.Keysym.Sym) {
+				case "Escape":
+					if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
+						if img.isCaptured() {
+							img.setCapture(false)
+						} else if img.paused {
+							img.term.pushCommand("RUN")
+						} else {
+							img.term.pushCommand("HALT")
 						}
 					}
-				} else {
-					switch ev.Type {
-					case sdl.KEYDOWN:
-						img.io.KeyPress(int(ev.Keysym.Scancode))
-						img.updateKeyModifier()
-					case sdl.KEYUP:
-						img.io.KeyRelease(int(ev.Keysym.Scancode))
-						img.updateKeyModifier()
+
+				default:
+					if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
+						mod := gui.KeyModNone
+
+						if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+							sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+							mod = gui.KeyModAlt
+						} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+							sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+							mod = gui.KeyModShift
+						} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+							sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+							mod = gui.KeyModCtrl
+						}
+
+						switch ev.Type {
+						case sdl.KEYDOWN:
+							if ev.Repeat == 0 {
+								select {
+								case img.events <- gui.EventKeyboard{
+									Key:  sdl.GetKeyName(ev.Keysym.Sym),
+									Mod:  mod,
+									Down: true}:
+								default:
+									logger.Log("sdlimgui", "dropped key down event")
+								}
+							}
+						case sdl.KEYUP:
+							if ev.Repeat == 0 {
+								select {
+								case img.events <- gui.EventKeyboard{
+									Key:  sdl.GetKeyName(ev.Keysym.Sym),
+									Mod:  mod,
+									Down: false}:
+								default:
+									logger.Log("sdlimgui", "dropped key up event")
+								}
+							}
+						}
+					} else {
+						switch ev.Type {
+						case sdl.KEYDOWN:
+							img.io.KeyPress(int(ev.Keysym.Scancode))
+							img.updateKeyModifier()
+						case sdl.KEYUP:
+							img.io.KeyRelease(int(ev.Keysym.Scancode))
+							img.updateKeyModifier()
+						}
 					}
 				}
 
@@ -124,17 +141,6 @@ func (img *SdlImgui) Service() {
 				switch ev.Button {
 				case sdl.BUTTON_LEFT:
 					button = gui.MouseButtonLeft
-					if !img.hasModal && img.isHovered() {
-						img.setCapture(true)
-						err := sdl.CaptureMouse(true)
-						if err == nil {
-							img.plt.window.SetGrab(true)
-							_, err = sdl.ShowCursor(sdl.DISABLE)
-							if err != nil {
-								logger.Log("sdlimgui", err.Error())
-							}
-						}
-					}
 
 				case sdl.BUTTON_RIGHT:
 					button = gui.MouseButtonRight
@@ -142,14 +148,6 @@ func (img *SdlImgui) Service() {
 					// right mouse button releases a captured mouse
 					if img.isCaptured() && ev.Type == sdl.MOUSEBUTTONUP {
 						img.setCapture(false)
-						err := sdl.CaptureMouse(false)
-						if err == nil {
-							img.plt.window.SetGrab(false)
-							_, err = sdl.ShowCursor(sdl.ENABLE)
-							if err != nil {
-								logger.Log("sdlimgui", err.Error())
-							}
-						}
 					}
 				}
 
