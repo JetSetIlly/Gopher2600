@@ -19,7 +19,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -75,10 +74,7 @@ func NewPreferences() (*Preferences, error) {
 	}
 	err = p.dsk.Load(true)
 	if err != nil {
-		// ignore missing prefs file errors
-		if !curated.Is(err, prefs.NoPrefsFile) {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	return p, nil

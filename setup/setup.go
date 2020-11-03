@@ -62,7 +62,7 @@ func initDBSession(db *database.Session) error {
 func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 	err := vcs.AttachCartridge(cartload)
 	if err != nil {
-		return err
+		return curated.Errorf("setup: %v", err)
 	}
 
 	dbPth, err := paths.ResourcePath("", setupDBFile)

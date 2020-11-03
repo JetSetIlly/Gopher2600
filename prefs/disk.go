@@ -104,11 +104,6 @@ func (dsk *Disk) Reset() error {
 	return nil
 }
 
-// Sentinal error returned if prefs file does not exist.
-const (
-	NoPrefsFile = "prefs: file does not exist (%s)"
-)
-
 // Save current preference values to disk.
 func (dsk *Disk) Save() (rerr error) {
 	// load entirity of currently saved prefs file to a temporary entryMap
@@ -117,9 +112,7 @@ func (dsk *Disk) Save() (rerr error) {
 	// load *all* existing entries to temporary entryMap
 	_, err := load(dsk.path, &entries, false)
 	if err != nil {
-		if !curated.Is(err, NoPrefsFile) {
-			return curated.Errorf("prefs: %v", err)
-		}
+		return curated.Errorf("prefs: %v", err)
 	}
 
 	// copy live values to entryMap, overwriting existing entries
@@ -200,7 +193,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return numLoaded, curated.Errorf(NoPrefsFile, path)
+			return 0, nil
 		}
 		return numLoaded, curated.Errorf("prefs: %v", err)
 	}

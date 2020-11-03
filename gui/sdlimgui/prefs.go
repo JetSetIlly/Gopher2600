@@ -17,7 +17,6 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -93,10 +92,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 	// load preferences from disk
 	err = img.prefs.Load(true)
 	if err != nil {
-		// ignore missing prefs file errors
-		if !curated.Is(err, prefs.NoPrefsFile) {
-			return err
-		}
+		return err
 	}
 
 	return nil

@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -63,9 +62,7 @@ func NewDisassembly() (*Disassembly, error) {
 
 	dsm.Prefs, err = newPreferences(dsm)
 	if err != nil {
-		if !curated.Is(err, prefs.NoPrefsFile) {
-			return nil, curated.Errorf("disassembly: %v", err)
-		}
+		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	return dsm, nil
