@@ -25,12 +25,10 @@ import (
 type LazyRewind struct {
 	val *LazyValues
 
-	numStates  atomic.Value // int
-	currState  atomic.Value // int
-	comparison atomic.Value // *hardware.Snapshot
+	summary    atomic.Value // rewind.Summary
+	comparison atomic.Value // *rewind.Snapshot
 
-	NumStates  int
-	CurrState  int
+	Summary    rewind.Frames
 	Comparison *rewind.State
 }
 
@@ -39,14 +37,11 @@ func newLazyRewind(val *LazyValues) *LazyRewind {
 }
 
 func (lz *LazyRewind) push() {
-	n, c := lz.val.Dbg.Rewind.State()
-	lz.numStates.Store(n)
-	lz.currState.Store(c)
+	lz.summary.Store(lz.val.Dbg.Rewind.GetFrames())
 	lz.comparison.Store(lz.val.Dbg.Rewind.GetComparison())
 }
 
 func (lz *LazyRewind) update() {
-	lz.NumStates, _ = lz.numStates.Load().(int)
-	lz.CurrState, _ = lz.currState.Load().(int)
+	lz.Summary, _ = lz.summary.Load().(rewind.Frames)
 	lz.Comparison, _ = lz.comparison.Load().(*rewind.State)
 }

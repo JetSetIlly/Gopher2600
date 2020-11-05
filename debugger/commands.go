@@ -273,16 +273,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 	case cmdRewind:
+		// note that we calling the rewind.Goto*() functions directly and not
+		// using the debugger.PushRewind() function.
 		arg, ok := tokens.Get()
 		if ok {
-			if arg == "CURRENT" {
-				dbg.Rewind.GotoCurrent()
+			if arg == "LAST" {
+				dbg.Rewind.GotoLast()
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				frame, err := dbg.Rewind.GotoFrame(frame)
-				if err != nil {
-					return false, err
-				}
+				frame = dbg.Rewind.GotoFrame(frame)
 				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
 			}
 		}

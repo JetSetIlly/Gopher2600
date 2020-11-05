@@ -133,7 +133,9 @@ type Debugger struct {
 	// halt the emulation immediately. used by HALT command.
 	haltImmediately bool
 
-	Rewind *rewind.Rewind
+	// the rewind system stores and restores machine state.
+	Rewind    *rewind.Rewind
+	rewinding chan bool
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -185,6 +187,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 	// plug in rewind system
 	dbg.Rewind = rewind.NewRewind(dbg.VCS, dbg)
+	dbg.rewinding = make(chan bool, 1)
 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)

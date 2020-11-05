@@ -72,7 +72,8 @@ exit.
 When manually writing a script in text editor it is sometimes useful to write
 comments.  Comments are line oriented and are indicated by the # character.`,
 
-	cmdRewind: `Rewind emulation to the numbered frame or to CURRENT. If numbered frame is not in rewind history,
+	cmdRewind: `Rewind emulation to the numbered frame or to LAST, which will
+be 'current' execution state. If numbered frame is not in rewind history,
 emulation will move to the nearest frame that is.`,
 
 	cmdInsert: `Insert cartridge into emulation. Cartridge names (with paths) beginning with

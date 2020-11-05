@@ -157,7 +157,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			// but not for scripts
 			if inputter.IsInteractive() {
 				if !videoCycle {
-					dbg.Rewind.CurrentState()
+					dbg.Rewind.ExecutionState()
 				}
 			}
 		}

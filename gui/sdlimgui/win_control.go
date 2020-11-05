@@ -123,13 +123,12 @@ func (win *winControl) draw() {
 
 	imgui.Text("Rewind")
 
-	n := int32(win.img.lz.Rewind.NumStates)
-	pos := int32(win.img.lz.Rewind.CurrState)
+	s := int32(win.img.lz.Rewind.Summary.Start)
+	e := int32(win.img.lz.Rewind.Summary.End)
+	f := int32(win.img.lz.Rewind.Summary.Current)
 
-	if imgui.SliderIntV("##rewind", &pos, 0, n, "") {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			win.img.lz.Dbg.Rewind.SetPosition(int(pos))
-		})
+	if imgui.SliderIntV("##rewind", &f, s, e, "") {
+		win.img.lz.Dbg.PushRewind(int(f), f == e)
 	}
 
 	// pause emulation if rewind slider is clicked. take a note of whether
@@ -140,9 +139,7 @@ func (win *winControl) draw() {
 				win.resumeAfterRewind = true
 				win.img.term.pushCommand("HALT")
 			}
-			win.img.noShowScreenDraw = true
 		}
-		win.img.noShowScreenDraw = pos != n
 	}
 
 	if imgui.IsMouseReleased(0) {
@@ -150,7 +147,6 @@ func (win *winControl) draw() {
 			win.resumeAfterRewind = false
 			win.img.term.pushCommand("RUN")
 		}
-		win.img.noShowScreenDraw = false
 	}
 
 	imgui.End()

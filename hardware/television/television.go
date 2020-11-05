@@ -93,7 +93,8 @@ func (s *State) Snapshot() *State {
 	return &n
 }
 
-// Returns state information.
+// Returns state information. Not that ReqHorizPos counts from
+// "-specifcation.HorizClksHblank" and not zero as you might expect.
 func (s *State) GetState(request signal.StateReq) int {
 	switch request {
 	case signal.ReqFramenum:

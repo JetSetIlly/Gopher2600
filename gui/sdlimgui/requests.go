@@ -58,6 +58,9 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqPause:
 		img.paused = request.args[0].(bool)
 
+	case gui.ReqRewinding:
+		img.rewinding = request.args[0].(bool)
+
 	case gui.ReqSetDbgColors:
 		img.wm.dbgScr.debugColors = request.args[0].(bool)
 
