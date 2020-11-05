@@ -104,8 +104,16 @@ func (dsk *Disk) Reset() error {
 	return nil
 }
 
+// DisableSaving is useful for testing when a blanket prohibition on saving to
+// disk is required.
+var DisableSaving = false
+
 // Save current preference values to disk.
 func (dsk *Disk) Save() (rerr error) {
+	if DisableSaving {
+		return nil
+	}
+
 	// load entirity of currently saved prefs file to a temporary entryMap
 	entries := make(entryMap)
 

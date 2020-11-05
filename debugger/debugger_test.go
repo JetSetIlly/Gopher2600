@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/prefs"
 )
 
 type mockGUI struct{}
@@ -135,6 +136,8 @@ func (trm *mockTerm) testSequence() {
 }
 
 func TestDebugger_withNonExistantInitScript(t *testing.T) {
+	prefs.DisableSaving = true
+
 	trm := newMockTerm(t)
 
 	tv, err := television.NewTelevision("NTSC")
@@ -156,6 +159,8 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 }
 
 func TestDebugger(t *testing.T) {
+	prefs.DisableSaving = true
+
 	trm := newMockTerm(t)
 	tv, err := television.NewTelevision("NTSC")
 	if err != nil {

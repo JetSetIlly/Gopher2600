@@ -28,7 +28,7 @@ lint: check_lint
 	golangci-lint run --sort-results
 
 test:
-	go test -tags=testing ./...
+	go test ./...
 
 race: generate lint vet test
 # disable checkptr because the opengl implementation will trigger it and cause
