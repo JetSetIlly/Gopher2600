@@ -55,7 +55,9 @@ mem_profile_debug: generate lint vet test
 build_assertions: generate lint vet test
 	go build -gcflags $(compileFlags) -tags=assertions
 
-build: generate lint vet test
+# deliberately not having many prerequisites for build (people may want to
+# build without having the other tests)
+build: generate 
 	go build -gcflags $(compileFlags)
 
 release: generate lint vet test
