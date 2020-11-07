@@ -179,7 +179,7 @@ func (win *winDbgScr) draw() {
 	}
 
 	// capture mouse on double click and run emulation
-	if !win.img.hasModal && imgui.IsMouseDoubleClicked(0) {
+	if !win.img.hasModal && imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 		win.img.setCapture(true)
 		win.img.term.pushCommand("RUN")
 	}
