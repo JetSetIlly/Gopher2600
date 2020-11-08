@@ -220,6 +220,10 @@ func (win *winDbgScr) draw() {
 	// draw tool tip
 	if win.isHovered {
 		win.drawReflectionTooltip(mouseOrigin)
+
+		if imgui.IsMouseReleased(0) {
+			win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mousHorizPos-specification.HorizClksHBlank)
+		}
 	}
 
 	// start of tool bar

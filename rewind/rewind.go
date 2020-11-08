@@ -402,6 +402,38 @@ func (r *Rewind) GotoFrame(frame int) int {
 	return r.vcs.TV.GetState(signal.ReqFramenum)
 }
 
+// GotoFrameCoords of current frame.
+func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) {
+	idx := r.curr
+
+	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
+	idx = r.curr - 1
+	if idx < 0 {
+		idx += maxEntries
+
+		// TODO: more elegant handling of early frames
+		if r.entries[idx] == nil {
+			return
+		}
+	}
+
+	// plumb in snapshots of stored states. thi
+	s := r.entries[idx]
+	r.vcs.CPU = s.CPU.Snapshot()
+	r.vcs.Mem = s.Mem.Snapshot()
+	r.vcs.RIOT = s.RIOT.Snapshot()
+	r.vcs.TIA = s.TIA.Snapshot()
+	r.vcs.CPU.Plumb(r.vcs.Mem)
+	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
+	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
+	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
+	r.vcs.TV.Plumb(s.TV.Snapshot())
+
+	// run emulation until we reach the breakpoint
+	_ = r.runner.CatchUpLoop(frame, scanline, horizpos)
+	_ = r.vcs.TV.ForceDraw()
+}
+
 // SetComparison points comparison to the most recent rewound entry.
 func (r *Rewind) SetComparison() {
 	r.comparison = r.entries[r.curr]

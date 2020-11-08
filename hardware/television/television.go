@@ -533,7 +533,14 @@ func (tv *Television) Pause(pause bool) error {
 
 // ForceDraw pushes all pending pixels to the pixel renderers.
 func (tv *Television) ForceDraw() error {
-	return tv.setPendingPixels()
+	err := tv.setPendingPixels()
+	if err != nil {
+		return err
+	}
+	tv.signalHistoryIdx = 0
+	tv.pendingSetPixelFrom = 0
+	tv.pendingSetPixelTo = 0
+	return nil
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter.

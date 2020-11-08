@@ -87,3 +87,13 @@ func (dbg *Debugger) PushRewind(fn int, last bool) {
 		dbg.scr.ReqFeature(gui.ReqRewinding, false)
 	})
 }
+
+// PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call
+// to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
+func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
+	dbg.PushRawEvent(func() {
+		dbg.scr.ReqFeature(gui.ReqRewinding, true)
+		dbg.Rewind.GotoFrameCoords(scanline, horizpos)
+		dbg.scr.ReqFeature(gui.ReqRewinding, false)
+	})
+}
