@@ -86,8 +86,12 @@ type State struct {
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
 	bottom int
+
+	// frame resizer
+	resizer resizer
 }
 
+// Snapshot makes a copy of the television state.
 func (s *State) Snapshot() *State {
 	n := *s
 	return &n
@@ -116,9 +120,6 @@ type Television struct {
 	// test recreation etc.
 	reqSpecID string
 
-	// frame resizer
-	resizer resizer
-
 	// framerate limiter
 	lmtr limiter
 
@@ -138,20 +139,15 @@ type Television struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signalHistory [MaxSignalHistory]signal.SignalAttributes
-
+	signals [MaxSignalHistory]signal.SignalAttributes
 	// the index to write the next signal
-	signalHistoryIdx int
-
-	pendingSetPixelFrom int
-	pendingSetPixelTo   int
+	signalIdx int
 }
 
 // NewReference creates a new instance of the reference television type,
 // satisfying the Television interface.
 func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
-		resizer:   &simpleResizer{},
 		reqSpecID: strings.ToUpper(spec),
 		state:     &State{},
 	}
@@ -189,6 +185,11 @@ func (tv *Television) Plumb(s *State) {
 		return
 	}
 	tv.state = s
+
+	// resize renderers to match current state
+	for _, r := range tv.renderers {
+		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+	}
 }
 
 // AddPixelRenderer registers an implementation of PixelRenderer. Multiple
@@ -271,7 +272,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	}
 
 	// examine signal for resizing possibility
-	tv.resizer.examine(tv, sig)
+	tv.state.resizer.examine(tv, sig)
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.state.horizPos++
@@ -344,11 +345,14 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.signalHistoryIdx < MaxSignalHistory {
-		tv.signalHistory[tv.signalHistoryIdx] = sig
-		tv.signalHistoryIdx++
-		tv.pendingSetPixelTo++
+	if tv.signalIdx >= MaxSignalHistory {
+		err := tv.setPendingPixels()
+		if err != nil {
+			return err
+		}
 	}
+	tv.signals[tv.signalIdx] = sig
+	tv.signalIdx++
 
 	if tv.lmtr.scale == scalePixel {
 		err := tv.setPendingPixels()
@@ -400,7 +404,7 @@ func (tv *Television) newFrame(synced bool) error {
 	}
 
 	// commit any resizing that maybe pending
-	err := tv.resizer.commit(tv)
+	err := tv.state.resizer.commit(tv)
 	if err != nil {
 		return err
 	}
@@ -408,7 +412,7 @@ func (tv *Television) newFrame(synced bool) error {
 	// prepare for next frame
 	tv.state.frameNum++
 	tv.state.scanline = 0
-	tv.resizer.prepare(tv)
+	tv.state.resizer.prepare(tv)
 	tv.state.syncedFrame = synced
 
 	// set pixels for all renderers
@@ -421,16 +425,14 @@ func (tv *Television) newFrame(synced bool) error {
 
 	// process all FrameTriggers
 	for _, r := range tv.frameTriggers {
-		err = r.NewFrame(tv.state.frameNum, tv.IsStable())
+		err = r.NewFrame(tv.IsStable())
 		if err != nil {
 			return err
 		}
 	}
 
 	// reset signal history for next frame
-	tv.signalHistoryIdx = 0
-	tv.pendingSetPixelFrom = 0
-	tv.pendingSetPixelTo = 0
+	tv.signalIdx = 0
 
 	// reset reflector for new frame
 	if tv.reflector != nil {
@@ -445,13 +447,13 @@ func (tv *Television) newFrame(synced bool) error {
 // setPendindPixels forwards all pixels in the signalHistory buffer (between
 // the *from and *to values) to all pixel renderers.
 func (tv *Television) setPendingPixels() error {
-	for i := tv.pendingSetPixelFrom; i < tv.pendingSetPixelTo; i++ {
-		sig := tv.signalHistory[i]
+	for i := 0; i < tv.signalIdx; i++ {
+		sig := tv.signals[i]
 		for _, r := range tv.renderers {
 			r.UpdatingPixels(true)
 			err := r.SetPixel(sig, true)
 			if err != nil {
-				return err
+				return curated.Errorf("television", err)
 			}
 			if tv.reflector != nil {
 				tv.reflector.SyncReflectionPixel(i)
@@ -460,7 +462,8 @@ func (tv *Television) setPendingPixels() error {
 		}
 	}
 
-	tv.pendingSetPixelFrom = tv.pendingSetPixelTo
+	// reset signal history
+	tv.signalIdx = 0
 
 	return nil
 }
@@ -499,7 +502,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 	tv.state.top = tv.state.spec.ScanlineTop
 	tv.state.bottom = tv.state.spec.ScanlineBottom
-	tv.resizer.prepare(tv)
+	tv.state.resizer.prepare(tv)
 
 	for _, r := range tv.renderers {
 		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
@@ -537,20 +540,15 @@ func (tv *Television) ForceDraw() error {
 	if err != nil {
 		return err
 	}
-	tv.signalHistoryIdx = 0
-	tv.pendingSetPixelFrom = 0
-	tv.pendingSetPixelTo = 0
 	return nil
 }
 
-// SetFPSCap whether the emulation should wait for FPS limiter.
-//
-// Reasons for turning the cap off include performance measurement. The
-// debugger also turns the cap off and replaces it with its own. The FPS
-// limiter in this television implementation works at the frame level which is
-// not fine grained enough for effective limiting of rates less than 1fps.
-func (tv *Television) SetFPSCap(limit bool) {
+// SetFPSCap whether the emulation should wait for FPS limiter. Returns the
+// setting as it was previously.
+func (tv *Television) SetFPSCap(limit bool) bool {
+	cap := tv.lmtr.limit
 	tv.lmtr.limit = limit
+	return cap
 }
 
 // Request the number frames per second. This overrides the frame rate of

@@ -47,10 +47,12 @@ type PixelRenderer interface {
 	//
 	// Renderers should make sure that any data structures that depend on the
 	// specification being used are still adequate.
+	//
+	// Renderers must be prepared to resize to either a smaller of larger size.
 	Resize(spec specification.Spec, topScanline, visibleScanlines int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
-	NewFrame(frameNum int, isStable bool) error
+	NewFrame(isStable bool) error
 	NewScanline(scanline int) error
 
 	// Mark the start and end of an update event from the television.
@@ -97,7 +99,7 @@ type PixelRenderer interface {
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
 // subset of PixelRenderer.
 type FrameTrigger interface {
-	NewFrame(frameNum int, isStable bool) error
+	NewFrame(isStable bool) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An

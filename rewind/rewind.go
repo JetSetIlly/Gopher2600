@@ -34,6 +34,10 @@ import (
 type Runner interface {
 	// CatchUpLoop implementations will run the emulation until the TV returns
 	// frame/scanline/horizpos values of at least the specified values.
+	//
+	// Note that the TV's frame limiter is turned off before CatchUpLoop() is
+	// called by the rewind system (and turned back to the previous setting
+	// afterwards).
 	CatchUpLoop(frame int, scanline int, horizpos int) error
 }
 
@@ -328,6 +332,10 @@ func (r *Rewind) plumb(idx int, frame int) error {
 		return nil
 	}
 
+	// turn off TV's fps frame limiter
+	cap := r.vcs.TV.SetFPSCap(false)
+	defer r.vcs.TV.SetFPSCap(cap)
+
 	// run emulation until we reach the breakpoint of the snapshot we want
 	err := r.runner.CatchUpLoop(frame, by, bx)
 	if err != nil {
@@ -418,8 +426,11 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	// frame to which to run the catch-up loop
 	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
 
-	// start catch-up loop from previous frame
-	idx = r.curr - 1
+	// start catch-up loop from two frames before the one we want. we do this
+	// so that the pixelrenderer has a chance to get copies of the pixels of
+	// the previous frame. inefficient but this function is not a performance
+	// bottleneck
+	idx = r.curr - 2
 	if idx < 0 {
 		idx += maxEntries
 		if r.entries[idx] == nil {
@@ -438,6 +449,10 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
 	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
 	r.vcs.TV.Plumb(s.TV.Snapshot())
+
+	// turn off TV's fps frame limiter
+	cap := r.vcs.TV.SetFPSCap(false)
+	defer r.vcs.TV.SetFPSCap(cap)
 
 	// run emulation until we reach the breakpoint
 	err := r.runner.CatchUpLoop(frame, scanline, horizpos)
@@ -463,7 +478,7 @@ func (r *Rewind) GetComparison() *State {
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *Rewind) NewFrame(frameNum int, isStable bool) error {
+func (r *Rewind) NewFrame(isStable bool) error {
 	r.newFrame = true
 	return nil
 }

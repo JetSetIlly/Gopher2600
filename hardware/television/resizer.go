@@ -17,44 +17,12 @@ package television
 
 import "github.com/jetsetilly/gopher2600/hardware/television/signal"
 
-// FrameResizeID identifies the resizing method.
-type FrameResizeID string
-
-// List of valid values for FrameResizeID.
-const (
-	FrameResizerNone   FrameResizeID = "FrameResizerNone"
-	FrameResizerSimple FrameResizeID = "FrameResizerSimple"
-)
-
-// !!TODO: more sophisticated resizer implementations
-
-// the resizer interfaces specifies the operations required by a mechanism that
-// will alter the visible frame of the television.
-type resizer interface {
-	// the id of the resizer implementation
-	id() FrameResizeID
-
-	// examine signal for resizing possibility. called on every Signal()
-	examine(tv *Television, sig signal.SignalAttributes)
-
-	// commit resizing possiblity. called on every newFrame()
-	commit(tv *Television) error
-
-	// preapare for next frame
-	prepare(tv *Television)
-}
-
-// simpleResizer is the simplest functional and non-trivial implementation of
-// the resizer interface.
-type simpleResizer struct {
+// resize is the simplest resizing method I can come up with.
+type resizer struct {
 	bottom int
 }
 
-func (sr simpleResizer) id() FrameResizeID {
-	return FrameResizerSimple
-}
-
-func (sr *simpleResizer) examine(tv *Television, sig signal.SignalAttributes) {
+func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// if vblank is off at any point of then extend the bottom of the screen.
 	// we'll commit the resize procedure in the newFrame() function
 	//
@@ -76,7 +44,7 @@ func (sr *simpleResizer) examine(tv *Television, sig signal.SignalAttributes) {
 	}
 }
 
-func (sr *simpleResizer) commit(tv *Television) error {
+func (sr *resizer) commit(tv *Television) error {
 	// always perform resize operation
 	if tv.state.syncedFrameNum <= leadingFrames || sr.bottom == tv.state.bottom {
 		return nil
@@ -106,6 +74,6 @@ func (sr *simpleResizer) commit(tv *Television) error {
 	return nil
 }
 
-func (sr *simpleResizer) prepare(tv *Television) {
+func (sr *resizer) prepare(tv *Television) {
 	sr.bottom = tv.state.bottom
 }

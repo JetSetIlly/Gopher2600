@@ -221,8 +221,12 @@ func (win *winDbgScr) draw() {
 	if win.isHovered {
 		win.drawReflectionTooltip(mouseOrigin)
 
-		if imgui.IsMouseReleased(0) {
-			win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mousHorizPos-specification.HorizClksHBlank)
+		// mouse click will cause the rewind goto coords to run only when the
+		// emulation is paused
+		if win.img.paused {
+			if imgui.IsMouseReleased(0) {
+				win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mousHorizPos-specification.HorizClksHBlank)
+			}
 		}
 	}
 

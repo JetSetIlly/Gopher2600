@@ -71,10 +71,8 @@ type screenCrit struct {
 
 	// backingPixels are what we plot pixels to while we wait for a frame to
 	// complete.
-	backingPixels         [2]*image.RGBA
-	backingPixelsCurrent  int
-	backingPixelsToRender int
-	backingPixelsUpdate   bool
+	backingPixels       *image.RGBA
+	backingPixelsUpdate bool
 
 	// element colors and overlay colors are only used in the debugger so we
 	// don't need to replicate the "backing pixels" idea.
@@ -115,17 +113,26 @@ func newScreen(img *SdlImgui) *screen {
 
 // resize() is called by Resize() or resizeThread() depending on thread context.
 func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanlines int) {
+	// never resize below the visible scanlines according to the specification
+	if visibleScanlines < spec.ScanlinesVisible {
+		return
+	}
+
 	scr.crit.section.Lock()
 	// we need to be careful with this lock (so no defer)
+
+	// do nothing if resize values are the same as previously
+	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.scanlines == visibleScanlines {
+		scr.crit.section.Unlock()
+		return
+	}
 
 	scr.crit.spec = spec
 	scr.crit.topScanline = topScanline
 	scr.crit.scanlines = visibleScanlines
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	for i := range scr.crit.backingPixels {
-		scr.crit.backingPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	}
+	scr.crit.backingPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 
@@ -154,9 +161,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			for i := range scr.crit.backingPixels {
-				scr.crit.backingPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
+			scr.crit.backingPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 		}
 	}
 
@@ -186,20 +191,12 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanl
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the #mainthread.
-func (scr *screen) NewFrame(frameNum int, isStable bool) error {
+func (scr *screen) NewFrame(isStable bool) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
 	scr.crit.isStable = isStable
 	scr.crit.backingPixelsUpdate = true
-
-	if scr.crit.backingPixelsCurrent >= len(scr.crit.backingPixels)-1 {
-		copy(scr.crit.backingPixels[0].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
-		scr.crit.backingPixelsCurrent = 0
-	} else {
-		copy(scr.crit.backingPixels[scr.crit.backingPixelsCurrent+1].Pix, scr.crit.backingPixels[scr.crit.backingPixelsCurrent].Pix)
-		scr.crit.backingPixelsCurrent++
-	}
 
 	return nil
 }
@@ -235,7 +232,7 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 		scr.crit.lastY = sig.Scanline
 	}
 
-	scr.crit.backingPixels[scr.crit.backingPixelsCurrent].SetRGBA(sig.HorizPos, sig.Scanline, col)
+	scr.crit.backingPixels.SetRGBA(sig.HorizPos, sig.Scanline, col)
 
 	return nil
 }
@@ -309,14 +306,19 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.Reflection) {
 // texture renderers can share the underlying pixels in the screen instance.
 func (scr *screen) addTextureRenderer(r textureRenderers) {
 	scr.renderers = append(scr.renderers, r)
+	r.resize()
 }
 
 func (scr *screen) render() {
+	// not rendering if rewinding is currently active
+	if scr.img.rewinding {
+		return
+	}
+
 	// critical section
 	scr.crit.section.Lock()
 	if scr.crit.backingPixelsUpdate {
-		copy(scr.crit.pixels.Pix, scr.crit.backingPixels[scr.crit.backingPixelsToRender].Pix)
-		scr.crit.backingPixelsToRender = scr.crit.backingPixelsCurrent
+		copy(scr.crit.pixels.Pix, scr.crit.backingPixels.Pix)
 		scr.crit.backingPixelsUpdate = false
 	}
 	scr.crit.section.Unlock()
