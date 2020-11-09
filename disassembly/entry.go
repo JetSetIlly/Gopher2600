@@ -342,41 +342,39 @@ func (l Operand) checkString() (string, bool) {
 
 	// use symbol for the operand if available/appropriate. we should only do
 	// this if operand has been decoded
-	if l.result.Final {
-		if l.result.Defn.AddressingMode == instructions.Immediate {
-			// TODO: immediate symbols
+	if l.result.Defn.AddressingMode == instructions.Immediate {
+		// TODO: immediate symbols
 
-		} else if l.result.ByteCount > 1 {
-			// instruction data is only valid if bytecount is 2 or more
+	} else if l.result.ByteCount > 1 {
+		// instruction data is only valid if bytecount is 2 or more
 
-			operand := l.result.InstructionData
+		operand := l.result.InstructionData
 
-			switch l.result.Defn.Effect {
-			case instructions.Flow:
-				if l.result.Defn.IsBranch() {
-					operand = absoluteBranchDestination(l.result.Address, operand)
+		switch l.result.Defn.Effect {
+		case instructions.Flow:
+			if l.result.Defn.IsBranch() {
+				operand = absoluteBranchDestination(l.result.Address, operand)
 
-					// look up mock program counter value in symbol table
-					if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
-						s = v
-					}
-				} else if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
-					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+				// look up mock program counter value in symbol table
+				if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
+					s = v
 				}
-			case instructions.Read:
-				mappedOperand, _ := memorymap.MapAddress(operand, true)
-				if v, ok := l.dsm.Symbols.Read.Entries[mappedOperand]; ok {
-					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
-				}
+			} else if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
+				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+			}
+		case instructions.Read:
+			mappedOperand, _ := memorymap.MapAddress(operand, true)
+			if v, ok := l.dsm.Symbols.Read.Entries[mappedOperand]; ok {
+				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+			}
 
-			case instructions.Write:
-				fallthrough
+		case instructions.Write:
+			fallthrough
 
-			case instructions.RMW:
-				mappedOperand, _ := memorymap.MapAddress(operand, false)
-				if v, ok := l.dsm.Symbols.Write.Entries[mappedOperand]; ok {
-					s = addrModeDecoration(v, l.result.Defn.AddressingMode)
-				}
+		case instructions.RMW:
+			mappedOperand, _ := memorymap.MapAddress(operand, false)
+			if v, ok := l.dsm.Symbols.Write.Entries[mappedOperand]; ok {
+				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 		}
 	}
