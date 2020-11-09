@@ -18,6 +18,7 @@ package rewind
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -33,7 +34,7 @@ import (
 type Runner interface {
 	// CatchUpLoop implementations will run the emulation until the TV returns
 	// frame/scanline/horizpos values of at least the specified values.
-	CatchUpLoop(frame int, scanline int, horizpos int) bool
+	CatchUpLoop(frame int, scanline int, horizpos int) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -74,6 +75,9 @@ func (s State) String() string {
 // is an overhead of two entries to facilitate appending etc.
 const overhead = 2
 const maxEntries = 200 + overhead
+
+// how often a frame snapshot of the system be taken. See debugger.PushRewind()
+// for why this should always be 1 for now.
 const frequency = 1
 
 // Rewind contains a history of machine states for the emulation.
@@ -261,7 +265,7 @@ func (r Rewind) GetFrames() Frames {
 	}
 }
 
-func (r *Rewind) plumb(idx int, frame int) {
+func (r *Rewind) plumb(idx int, frame int) error {
 	r.curr = idx
 
 	// plumb will run the emulation to the specified frame, breaking on the
@@ -321,27 +325,35 @@ func (r *Rewind) plumb(idx int, frame int) {
 	// updated TV image because the machine is in the freshly reset state
 	if r.entries[idx].level == levelReset {
 		r.vcs.TV.Reset()
-		return
+		return nil
 	}
 
 	// run emulation until we reach the breakpoint of the snapshot we want
-	_ = r.runner.CatchUpLoop(frame, by, bx)
-	_ = r.vcs.TV.ForceDraw()
+	err := r.runner.CatchUpLoop(frame, by, bx)
+	if err != nil {
+		return curated.Errorf("rewind", err)
+	}
+	err = r.vcs.TV.ForceDraw()
+	if err != nil {
+		return curated.Errorf("rewind", err)
+	}
+
+	return nil
 }
 
 // GotoLast sets the position to the last in the timeline.
-func (r *Rewind) GotoLast() {
+func (r *Rewind) GotoLast() error {
 	idx := r.end - 1
 	if idx < 0 {
 		idx += maxEntries
 	}
 	fn := r.entries[idx].TV.GetState(signal.ReqFramenum)
-	r.plumb(idx, fn)
+	return r.plumb(idx, fn)
 }
 
 // GotoFrame searches the timeline for the frame number. If the precise frame
 // number can not be found the nearest frame will be plumbed in.
-func (r *Rewind) GotoFrame(frame int) int {
+func (r *Rewind) GotoFrame(frame int) (int, error) {
 	// initialise binary search
 	s := r.start
 	e := r.end - 1
@@ -355,13 +367,11 @@ func (r *Rewind) GotoFrame(frame int) int {
 	// up to the requested frame)
 	fn := r.entries[r.start].TV.GetState(signal.ReqFramenum)
 	if frame <= fn {
-		r.plumb(r.start, fn)
-		return fn
+		return fn, r.plumb(r.start, fn)
 	}
 	fn = r.entries[e].TV.GetState(signal.ReqFramenum)
 	if frame >= fn {
-		r.plumb(e, fn)
-		return fn
+		return fn, r.plumb(e, fn)
 	}
 
 	// because r.entries is a cirular array, there's an additional step to the
@@ -386,8 +396,7 @@ func (r *Rewind) GotoFrame(frame int) int {
 		// check for match taking into consideration the gaps introduced by the
 		// frequency value
 		if frame >= fn && frame <= fn+frequency-1 {
-			r.plumb(m, frame)
-			return fn
+			return fn, r.plumb(m, frame)
 		}
 
 		if frame < fn {
@@ -399,11 +408,11 @@ func (r *Rewind) GotoFrame(frame int) int {
 	}
 
 	// no change
-	return r.vcs.TV.GetState(signal.ReqFramenum)
+	return r.vcs.TV.GetState(signal.ReqFramenum), nil
 }
 
 // GotoFrameCoords of current frame.
-func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) {
+func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	idx := r.curr
 
 	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
@@ -413,7 +422,7 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) {
 
 		// TODO: more elegant handling of early frames
 		if r.entries[idx] == nil {
-			return
+			return nil
 		}
 	}
 
@@ -430,8 +439,15 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) {
 	r.vcs.TV.Plumb(s.TV.Snapshot())
 
 	// run emulation until we reach the breakpoint
-	_ = r.runner.CatchUpLoop(frame, scanline, horizpos)
-	_ = r.vcs.TV.ForceDraw()
+	err := r.runner.CatchUpLoop(frame, scanline, horizpos)
+	if err != nil {
+		return curated.Errorf("rewind", err)
+	}
+	err = r.vcs.TV.ForceDraw()
+	if err != nil {
+		return curated.Errorf("rewind", err)
+	}
+	return nil
 }
 
 // SetComparison points comparison to the most recent rewound entry.

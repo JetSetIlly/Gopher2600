@@ -133,7 +133,7 @@ type Debugger struct {
 	// halt the emulation immediately. used by HALT command.
 	haltImmediately bool
 
-	// the rewind system stores and restores machine state.
+	// the Rewind system stores and restores machine state.
 	Rewind    *rewind.Rewind
 	rewinding chan bool
 }

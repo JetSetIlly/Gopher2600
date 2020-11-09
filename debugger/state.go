@@ -17,7 +17,6 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -65,35 +64,4 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 	default:
 		logger.Log("debugger", "dropped raw event push")
 	}
-}
-
-// PushRewind is a special case of PushRawEvent(). It prevents too many pushed
-// Rewind.Goto*() function calls. To be used from the GUI thread.
-func (dbg *Debugger) PushRewind(fn int, last bool) {
-	select {
-	case dbg.rewinding <- true:
-	default:
-		return
-	}
-
-	dbg.PushRawEvent(func() {
-		dbg.scr.ReqFeature(gui.ReqRewinding, true)
-		if last {
-			dbg.Rewind.GotoLast()
-		} else {
-			dbg.Rewind.GotoFrame(fn)
-		}
-		<-dbg.rewinding
-		dbg.scr.ReqFeature(gui.ReqRewinding, false)
-	})
-}
-
-// PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call
-// to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
-func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
-	dbg.PushRawEvent(func() {
-		dbg.scr.ReqFeature(gui.ReqRewinding, true)
-		dbg.Rewind.GotoFrameCoords(scanline, horizpos)
-		dbg.scr.ReqFeature(gui.ReqRewinding, false)
-	})
 }

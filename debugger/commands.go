@@ -281,7 +281,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				dbg.Rewind.GotoLast()
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				frame = dbg.Rewind.GotoFrame(frame)
+				var err error
+				frame, err = dbg.Rewind.GotoFrame(frame)
+				if err != nil {
+					return false, err
+				}
 				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
 			}
 		}
