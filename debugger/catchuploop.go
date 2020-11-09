@@ -16,6 +16,7 @@
 package debugger
 
 import (
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -33,10 +34,16 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) bool {
 		return false
 	}
 
+	var err error
+
 	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+	dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+	if err != nil {
+		return false
+	}
 
 	for !(nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)) {
-		err := dbg.VCS.Step(func() error {
+		err = dbg.VCS.Step(func() error {
 			return dbg.reflect.Check(dbg.lastBank)
 		})
 		if err != nil {
@@ -44,6 +51,10 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) bool {
 		}
 
 		dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+		if err != nil {
+			return false
+		}
 
 		nf = dbg.VCS.TV.GetState(signal.ReqFramenum)
 		ny = dbg.VCS.TV.GetState(signal.ReqScanline)
