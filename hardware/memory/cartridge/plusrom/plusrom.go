@@ -33,6 +33,9 @@ type PlusROM struct {
 	child mapper.CartMapper
 	Prefs *Preferences
 	net   *network
+
+	// rewind boundary is indicated on very network activity
+	rewindBoundary bool
 }
 
 func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) error) (mapper.CartMapper, error) {
@@ -162,6 +165,7 @@ func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
 		// 1FF2 contains the next byte of the response from the host, every
 		// read will increment the receive buffer pointer (receive buffer is
 		// max 256 bytes also!)
+		cart.rewindBoundary = true
 		return cart.net.recv(), nil
 
 	case 0x0ff3:
@@ -178,12 +182,14 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 	switch addr {
 	case 0x0ff0:
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
+		cart.rewindBoundary = true
 		cart.net.send(data, false)
 		return nil
 
 	case 0x0ff1:
 		// 1FF1 is for writing a byte to the send buffer and submit the buffer
 		// to the back end API
+		cart.rewindBoundary = true
 		cart.net.send(data, true)
 		return nil
 	}
@@ -281,4 +287,13 @@ func (cart *PlusROM) GetTapeState() (bool, mapper.CartTapeState) {
 		return sb.GetTapeState()
 	}
 	return false, mapper.CartTapeState{}
+}
+
+// RewindBoundary implements the mapper.CartRewindBoundary interface.
+func (cart *PlusROM) RewindBoundary() bool {
+	if cart.rewindBoundary {
+		cart.rewindBoundary = false
+		return true
+	}
+	return false
 }

@@ -246,3 +246,10 @@ type CartSnapshot interface {
 	// make another copy of the snapshot
 	Snapshot() CartSnapshot
 }
+
+// CartRewindBoundary are implemented by cartridge mappers that require special
+// handling from the rewind system. For some cartridge types it is not
+// appropriate to allow rewind history to survive past a certain point.
+type CartRewindBoundary interface {
+	RewindBoundary() bool
+}

@@ -354,3 +354,13 @@ func (cart Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 func (cart Cartridge) CopyBanks() ([]mapper.BankContent, error) {
 	return cart.mapper.CopyBanks(), nil
 }
+
+// RewindBoundary returns true if the cartridge indicates that something has
+// happened that should not be part of the rewind history. Returns false if
+// cartridge mapper does not care about the rewind sub-system.
+func (cart Cartridge) RewindBoundary() bool {
+	if rb, ok := cart.mapper.(mapper.CartRewindBoundary); ok {
+		return rb.RewindBoundary()
+	}
+	return false
+}

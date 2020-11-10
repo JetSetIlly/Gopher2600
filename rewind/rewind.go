@@ -64,6 +64,7 @@ type snapshotLevel int
 // List of valid SnapshotLevel values.
 const (
 	levelReset snapshotLevel = iota
+	levelBoundary
 	levelFrame
 	levelExecution
 )
@@ -110,6 +111,8 @@ type Rewind struct {
 	// normal circumstances this field will be true one CPU instruction before
 	// being reset.
 	justAddedFrame bool
+
+	restartNextFrame bool
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
@@ -127,11 +130,15 @@ func NewRewind(vcs *hardware.VCS, runner Runner) *Rewind {
 // execution state. This should be called whenever a new cartridge is attached
 // to the emulation.
 func (r *Rewind) Reset() {
+	r.restart(levelReset)
+}
+
+func (r *Rewind) restart(level snapshotLevel) {
 	r.justAddedFrame = true
 	r.newFrame = false
 
 	s := &State{
-		level: levelReset,
+		level: level,
 		CPU:   r.vcs.CPU.Snapshot(),
 		Mem:   r.vcs.Mem.Snapshot(),
 		RIOT:  r.vcs.RIOT.Snapshot(),
@@ -140,6 +147,8 @@ func (r *Rewind) Reset() {
 		cart:  r.vcs.Mem.Cart.Snapshot(),
 	}
 
+	r.start = 0
+	r.end = 0
 	r.curr = maxEntries
 	r.append(s)
 
@@ -151,14 +160,23 @@ func (r *Rewind) Reset() {
 // frame has been triggered since the last call. Delaying a call to this
 // function may result in sub-optimal results.
 func (r *Rewind) Check() {
+	r.restartNextFrame = r.restartNextFrame || r.vcs.Mem.Cart.RewindBoundary()
+
 	if !r.newFrame {
 		r.justAddedFrame = false
 		return
 	}
-
 	r.newFrame = false
 
+	if r.restartNextFrame {
+		r.restartNextFrame = false
+		r.restart(levelBoundary)
+		return
+	}
+
 	// add state only if frequency check passes
+	//
+	// TODO: frequency check may not be accurate if levelBoundary has been inserted
 	if r.prev < len(r.entries) && r.entries[r.prev].level != levelExecution {
 		if r.vcs.TV.GetState(signal.ReqFramenum)%frequency != 0 {
 			return
@@ -294,11 +312,11 @@ func (r *Rewind) plumb(idx int, frame int) error {
 		}
 	}
 
-	// if this isn't a snapshot of freshly reset machine then move position to
-	// the previous state (to the one we want). after plumbing, we'll allow the
+	// if this isn't a VCS reset entry or a boundary, then move position to the
+	// previous state (to the one we want). after plumbing, we'll allow the
 	// emulation to run to the breakpoint (specified above) of the state we do
 	// want.
-	if r.entries[idx].level != levelReset {
+	if r.entries[idx].level != levelReset && r.entries[idx].level != levelBoundary {
 		idx--
 		if idx < 0 {
 			idx += maxEntries
@@ -324,13 +342,6 @@ func (r *Rewind) plumb(idx int, frame int) error {
 
 	// make sure newFrame flag is false
 	r.newFrame = false
-
-	// not running emulation in the event of a reset but we still want an
-	// updated TV image because the machine is in the freshly reset state
-	if r.entries[idx].level == levelReset {
-		r.vcs.TV.Reset()
-		return nil
-	}
 
 	// turn off TV's fps frame limiter
 	cap := r.vcs.TV.SetFPSCap(false)
@@ -478,7 +489,7 @@ func (r *Rewind) GetComparison() *State {
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *Rewind) NewFrame(isStable bool) error {
+func (r *Rewind) NewFrame(_ bool) error {
 	r.newFrame = true
 	return nil
 }
