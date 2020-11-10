@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/debugger"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -117,19 +119,33 @@ func (win *winControl) draw() {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(-1) })
 	}
 
+	// rewind sub-system
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
 
-	imgui.Text("Rewind")
-
+	imguiText("Rewind:")
 	s := int32(win.img.lz.Rewind.Summary.Start)
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.Rewind.Summary.Current)
 
-	if imgui.SliderIntV("##rewind", &f, s, e, "") {
+	// forward/backwards buttons
+	imgui.SameLine()
+	if imgui.Button("<") {
+		f := f - 1
 		win.img.lz.Dbg.PushRewind(int(f), f == e)
 	}
+	imgui.SameLine()
+	if imgui.Button(">") {
+		f := f + 1
+		win.img.lz.Dbg.PushRewind(int(f), f == e)
+	}
+
+	// rewind slider
+	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", f)) {
+		win.img.lz.Dbg.PushRewind(int(f), f == e)
+	}
+	align := imguiRightAlignInt32(e)
 
 	// pause emulation if rewind slider is clicked. take a note of whether
 	// the emulation was running and resume once mouse is unclicked.
@@ -142,12 +158,19 @@ func (win *winControl) draw() {
 		}
 	}
 
+	// resume emulation if appropriate
 	if imgui.IsMouseReleased(0) {
 		if win.resumeAfterRewind {
 			win.resumeAfterRewind = false
 			win.img.term.pushCommand("RUN")
 		}
 	}
+
+	// rewind frame information
+	imgui.Text(fmt.Sprintf("%d", s))
+	imgui.SameLine()
+	imgui.SetCursorPos(align)
+	imgui.Text(fmt.Sprintf("%d", e))
 
 	imgui.End()
 }

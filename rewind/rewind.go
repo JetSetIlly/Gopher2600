@@ -415,18 +415,19 @@ func (r *Rewind) GotoFrame(frame int) (int, error) {
 func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	idx := r.curr
 
+	// frame to which to run the catch-up loop
 	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
+
+	// start catch-up loop from previous frame
 	idx = r.curr - 1
 	if idx < 0 {
 		idx += maxEntries
-
-		// TODO: more elegant handling of early frames
 		if r.entries[idx] == nil {
-			return nil
+			idx = r.curr
 		}
 	}
 
-	// plumb in snapshots of stored states. thi
+	// plumb in snapshots of stored states
 	s := r.entries[idx]
 	r.vcs.CPU = s.CPU.Snapshot()
 	r.vcs.Mem = s.Mem.Snapshot()
@@ -447,6 +448,7 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}
+
 	return nil
 }
 

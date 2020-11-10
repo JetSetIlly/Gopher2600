@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"math"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -51,6 +52,43 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 // characters are of the same width.
 func imguiTextWidth(length int) float32 {
 	return imguiGetFrameDim(strings.Repeat("X", length)).X
+}
+
+// return coordinates for right alignment of previous imgui widget. alignment
+// assumes widget being aligned will have frame padding.
+func imguiRightAlignInt32(n int32) imgui.Vec2 {
+	// take a note of whether number is negative
+	neg := n < 0
+
+	// absolute value of number
+	n = int32(math.Abs(float64(n)))
+
+	// number of decimal digits in number. adding one to avoid (for example) 10 == 1 digit
+	w := math.Ceil(math.Log10(float64(n + 1)))
+
+	// correct -Inf to 1
+	if w <= 0 {
+		w = 1
+	}
+
+	// additional space for negative symbol
+	if neg {
+		w++
+	}
+
+	// this dearimgui dance gets the X position of the end of the last widget.
+	// leaving us with c, a Vec2 with the correct Y position
+	c := imgui.CursorPos()
+	imgui.SameLine()
+	x := imgui.CursorPosX()
+	imgui.SetCursorPos(c)
+	c = imgui.CursorPos()
+
+	// the X coordinate can be set by subtracting the width of the text from
+	// the stored x value
+	c.X = x - imguiTextWidth(int(w)) + imgui.CurrentStyle().FramePadding().X
+
+	return c
 }
 
 // draw toggle button at current cursor position. returns true if toggle has
