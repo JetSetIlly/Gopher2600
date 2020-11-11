@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/gui"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -75,13 +76,13 @@ func (win *winControl) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{651, 228}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	if win.img.paused {
-		if imguiBooleanButtonV(win.img.cols, true, "Run", win.runButtonDim) {
-			win.img.term.pushCommand("RUN")
-		}
-	} else {
+	if win.img.state == gui.StateRunning {
 		if imguiBooleanButtonV(win.img.cols, false, "Halt", win.runButtonDim) {
 			win.img.term.pushCommand("HALT")
+		}
+	} else {
+		if imguiBooleanButtonV(win.img.cols, true, "Run", win.runButtonDim) {
+			win.img.term.pushCommand("RUN")
 		}
 	}
 
@@ -138,7 +139,9 @@ func (win *winControl) drawRewind() {
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.Rewind.Summary.Current)
 
-	win.rewindTarget = f
+	if !win.rewindWaiting {
+		win.rewindTarget = f
+	}
 
 	// forward/backwards buttons
 	imgui.SameLine()
@@ -162,7 +165,7 @@ func (win *winControl) drawRewind() {
 	// the emulation was running and resume once mouse is unclicked.
 	if imgui.IsMouseDown(0) {
 		if imgui.IsItemHovered() {
-			if !win.img.paused {
+			if win.img.state == gui.StateRunning {
 				win.resumeAfterRewind = true
 				win.img.term.pushCommand("HALT")
 			}

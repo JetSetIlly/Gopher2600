@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -76,7 +77,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiText("HMOVE")
 	imgui.SameLine()
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
-	if imguiHexInput("##hmove", !win.img.paused, 1, &hmove) {
+	if imguiHexInput("##hmove", win.img.state != gui.StatePaused, 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
 		}
@@ -187,7 +188,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiText("NUSIZ")
 	imgui.SameLine()
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
-	if imguiHexInput("##nusiz", !win.img.paused, 2, &nusiz) {
+	if imguiHexInput("##nusiz", win.img.state != gui.StatePaused, 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				ps.SetNUSIZ(uint8(v))

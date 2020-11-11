@@ -194,7 +194,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				if err != nil {
 					return err
 				}
-				err = dbg.scr.ReqFeature(gui.ReqPause, true)
+				err = dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
 				if err != nil {
 					return err
 				}
@@ -281,7 +281,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 					if err != nil {
 						return err
 					}
-					err = dbg.scr.ReqFeature(gui.ReqPause, false)
+					err = dbg.scr.ReqFeature(gui.ReqState, gui.StateRunning)
 					if err != nil {
 						return err
 					}

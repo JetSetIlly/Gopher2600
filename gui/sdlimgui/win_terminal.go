@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 
@@ -159,7 +160,7 @@ func (win *winTerm) draw() {
 	// one possibility is to build the prompt dynamically from the information
 	// we have from the lazy system, and not using the prompt received through
 	// the prompt channel at all
-	if win.img.paused {
+	if win.img.state == gui.StatePaused {
 		// !!TODO: fancier prompt for GUI terminal
 		imguiText(strings.TrimSpace(win.prompt.String()))
 	} else {

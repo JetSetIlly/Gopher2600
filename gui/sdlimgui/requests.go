@@ -55,11 +55,8 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	case gui.ReqToggleVisibility:
 		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
-	case gui.ReqPause:
-		img.paused = request.args[0].(bool)
-
-	case gui.ReqRewinding:
-		img.rewinding = request.args[0].(bool)
+	case gui.ReqState:
+		img.state = request.args[0].(gui.EmulationState)
 
 	case gui.ReqSetDbgColors:
 		img.wm.dbgScr.debugColors = request.args[0].(bool)

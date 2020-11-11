@@ -78,7 +78,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			<-dbg.rewinding
 		}()
 
-		dbg.scr.ReqFeature(gui.ReqRewinding, true)
+		dbg.scr.ReqFeature(gui.ReqState, gui.StateRewinding)
 		if last {
 			err := dbg.Rewind.GotoLast()
 			if err != nil {
@@ -90,7 +90,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 				logger.Log("debugger", err.Error())
 			}
 		}
-		dbg.scr.ReqFeature(gui.ReqRewinding, false)
+		dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
 	})
 
 	return false
@@ -100,11 +100,11 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 // to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
 func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 	dbg.PushRawEvent(func() {
-		dbg.scr.ReqFeature(gui.ReqRewinding, true)
+		dbg.scr.ReqFeature(gui.ReqState, gui.StateGotoCoords)
 		err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
 		if err != nil {
 			logger.Log("debugger", err.Error())
 		}
-		dbg.scr.ReqFeature(gui.ReqRewinding, false)
+		dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
 	})
 }

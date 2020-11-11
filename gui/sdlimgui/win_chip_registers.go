@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
@@ -99,7 +100,7 @@ func (win *winChipRegisters) draw() {
 func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 	s := fmt.Sprintf("%02x", val)
 	imguiText(label)
-	if imguiHexInput(fmt.Sprintf("##%s", label), !win.img.paused, 2, &s) {
+	if imguiHexInput(fmt.Sprintf("##%s", label), win.img.state != gui.StatePaused, 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {
 			panic(err)

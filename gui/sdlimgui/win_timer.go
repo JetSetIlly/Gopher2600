@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 
 	"github.com/inkyblackness/imgui-go/v2"
@@ -80,7 +81,7 @@ func (win *winTimer) draw() {
 	imgui.SameLine()
 	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
 	imguiText("Value")
-	if imguiHexInput("##value", !win.img.paused, 2, &value) {
+	if imguiHexInput("##value", win.img.state != gui.StatePaused, 2, &value) {
 		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.SetValue(uint8(v)) })
 		}
@@ -89,7 +90,7 @@ func (win *winTimer) draw() {
 	imgui.SameLine()
 	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
 	imguiText("Ticks")
-	if imguiHexInput("##remaining", !win.img.paused, 4, &remaining) {
+	if imguiHexInput("##remaining", win.img.state != gui.StatePaused, 4, &remaining) {
 		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.RIOT.Timer.TicksRemaining = int(v) })
 		}

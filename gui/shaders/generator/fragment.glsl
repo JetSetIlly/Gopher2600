@@ -3,7 +3,7 @@
 
 uniform int ImageType;
 uniform int PixelPerfect;
-uniform int ShowScreenDraw; // false <= 0; true > 0
+uniform int DrawMode; // 0 == running; 1 = show drawing; 2 = "goto coords"
 uniform int Cropped; // false <= 0; true > 0
 uniform vec2 ScreenDim;
 uniform vec2 CropScreenDim;
@@ -100,12 +100,9 @@ void main()
 			}
 		}
 
-		// when ShowScreenDraw is true then there's some additional image
-		// processing we need to perform:
-		//	- fade anything left over from previous frame
-		//	- draw cursor indicator
-		if (ShowScreenDraw > 0) {
-			
+		// when DrawMode is greater than 0 then there's some additional image
+		// processing we need to perform
+		if (DrawMode == 1) {
 			// draw cursor if pixel is at the last x/y position
 			if (lastY >= 0 && lastX >= 0) {
 				if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
@@ -127,7 +124,6 @@ void main()
 			// for cropped screens there are a few more conditions that we need to
 			// consider for drawing an off-screen cursor
 			if (Cropped > 0) {
-
 				// when VBLANK is active but HBLANK is off
 				if (isNearEqual(coords.x, lastX, cursorSize * texelX/2)) {
 					// top of screen
@@ -180,6 +176,18 @@ void main()
 				}
 			}
 		}
+
+		// special handling for "Goto Coords" mode. the effect we want is for
+		// the selected coords to be obvious immediately. we don't want to see
+		// any screen drawing but we do want the alpha fade.
+		if (DrawMode == 2) {
+			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
+				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+				Out_Color.a = 0.5;
+				return;
+			}
+		}
+
 	} else {
 		texelX = ScalingX / CropScreenDim.x;
 		texelY = ScalingY / CropScreenDim.y;

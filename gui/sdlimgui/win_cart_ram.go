@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -130,7 +131,7 @@ func (win *winCartRAM) drawBank(bank int) {
 
 		// editable byte
 		b := fmt.Sprintf("%02x", win.img.lz.Cart.RAM[bank].Data[i])
-		if imguiHexInput(fmt.Sprintf("##%d", i), !win.img.paused, 2, &b) {
+		if imguiHexInput(fmt.Sprintf("##%d", i), win.img.state != gui.StatePaused, 2, &b) {
 			if v, err := strconv.ParseUint(b, 16, 8); err == nil {
 				a := i
 				k := bank

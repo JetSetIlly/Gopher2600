@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -58,19 +59,19 @@ type glsl struct {
 	attribImageType int32 // uniform
 
 	// the following attrib variables are strictly for the screen texture
-	attribPixelPerfect   int32 // uniform
-	attribScreenDim      int32 // uniform
-	attribCropScreenDim  int32 // uniform
-	attribShowScreenDraw int32 // uniform
-	attribScalingX       int32 // uniform
-	attribScalingY       int32 // uniform
-	attribCropped        int32 // uniform
-	attribLastX          int32 // uniform
-	attribLastY          int32 // uniform
-	attribHblank         int32 // uniform
-	attribTopScanline    int32 // uniform
-	attribBotScanline    int32 // uniform
-	attribAnimTime       int32 // uniform
+	attribPixelPerfect  int32 // uniform
+	attribScreenDim     int32 // uniform
+	attribCropScreenDim int32 // uniform
+	attribDrawMode      int32 // uniform
+	attribScalingX      int32 // uniform
+	attribScalingY      int32 // uniform
+	attribCropped       int32 // uniform
+	attribLastX         int32 // uniform
+	attribLastY         int32 // uniform
+	attribHblank        int32 // uniform
+	attribTopScanline   int32 // uniform
+	attribBotScanline   int32 // uniform
+	attribAnimTime      int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -222,23 +223,45 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
 				gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
 
-				// the coordinates of the last plot
-				if rnd.img.wm.dbgScr.cropped {
-					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX-specification.HorizClksHBlank)*horizScaling)
+				// the coordinates of the last plot. specual handling for StateGotoCoords
+				var cursorX int
+				var cursorY int
+				if rnd.img.state == gui.StateGotoCoords {
+					cursorX = rnd.img.screen.gotoCoordsX
+					cursorY = rnd.img.screen.gotoCoordsY
 				} else {
-					gl.Uniform1f(rnd.attribLastX, float32(rnd.img.screen.crit.lastX)*horizScaling)
+					cursorX = rnd.img.screen.crit.lastX
+					cursorY = rnd.img.screen.crit.lastY
 				}
-				gl.Uniform1f(rnd.attribLastY, float32(rnd.img.screen.crit.lastY)*vertScaling)
+
+				// scale cordinates. horizontal scaling depends on whether the
+				// screen is cropped
+				if rnd.img.wm.dbgScr.cropped {
+					gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
+				} else {
+					gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
+				}
+				gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
 
 				rnd.img.screen.crit.section.Unlock()
 				// end of critical section
 
-				// set ShowScreenDraw if emulation is paused or a low frame
-				// rate has been requested
-				if (rnd.img.paused || rnd.img.lz.TV.ReqFPS < 3.0) && !rnd.img.rewinding {
-					gl.Uniform1i(rnd.attribShowScreenDraw, 1)
-				} else {
-					gl.Uniform1i(rnd.attribShowScreenDraw, -1)
+				// set DrawMode according to emulation state
+				switch rnd.img.state {
+				case gui.StatePaused:
+					gl.Uniform1i(rnd.attribDrawMode, 1)
+				case gui.StateRunning:
+					// if FPS is low enough then show screen draw even though
+					// emulation is running
+					if rnd.img.lz.TV.ReqFPS < 3.0 {
+						gl.Uniform1i(rnd.attribDrawMode, 1)
+					} else {
+						gl.Uniform1i(rnd.attribDrawMode, 0)
+					}
+				case gui.StateRewinding:
+					gl.Uniform1i(rnd.attribDrawMode, 0)
+				case gui.StateGotoCoords:
+					gl.Uniform1i(rnd.attribDrawMode, 2)
 				}
 
 				if rnd.img.wm.dbgScr.cropped {
@@ -331,7 +354,7 @@ func (rnd *glsl) setup() {
 	rnd.attribPixelPerfect = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PixelPerfect"+"\x00"))
 	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
 	rnd.attribCropScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropScreenDim"+"\x00"))
-	rnd.attribShowScreenDraw = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowScreenDraw"+"\x00"))
+	rnd.attribDrawMode = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("DrawMode"+"\x00"))
 	rnd.attribScalingX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingX"+"\x00"))
 	rnd.attribScalingY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingY"+"\x00"))
 	rnd.attribCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Cropped"+"\x00"))

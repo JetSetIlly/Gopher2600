@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/jetsetilly/gopher2600/gui"
 )
 
 const winCartTapeTitle = "Cassette Tape"
@@ -63,7 +64,7 @@ func (win *winCartTape) draw() {
 	// counter information
 	imguiText("Counter")
 	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
-	if imguiDecimalInput("##counter", !win.img.paused, 8, &counter) {
+	if imguiDecimalInput("##counter", win.img.state != gui.StatePaused, 8, &counter) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			c, err := strconv.ParseInt(counter, 10, 64)
 			if err == nil {

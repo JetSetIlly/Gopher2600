@@ -76,7 +76,7 @@ func (img *SdlImgui) Service() {
 					if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
 						if img.isCaptured() {
 							img.setCapture(false)
-						} else if img.paused {
+						} else if img.state == gui.StatePaused {
 							img.term.pushCommand("RUN")
 						} else {
 							img.term.pushCommand("HALT")

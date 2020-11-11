@@ -80,11 +80,8 @@ type SdlImgui struct {
 	// gui.ReqSetEventChan
 	events chan gui.Event
 
-	// is emulation running
-	paused bool
-
-	// debugger is in a rewinding state
-	rewinding bool
+	// is emulation running or paused, etc.
+	state gui.EmulationState
 
 	// mouse coords at last frame
 	mx, my int32

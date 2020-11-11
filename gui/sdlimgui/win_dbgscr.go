@@ -22,6 +22,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
@@ -57,7 +58,7 @@ type winDbgScr struct {
 	isPopup bool
 
 	// horizPos and scanline equivalent position of the mouse. only updated when isHovered is true
-	mousHorizPos  int
+	mouseHorizPos int
 	mouseScanline int
 
 	// height of tool bar at bottom of window. valid after first frame.
@@ -202,11 +203,11 @@ func (win *winDbgScr) draw() {
 		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
 			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
 		}
-		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.mousHorizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.mousHorizPos))
+		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.mouseHorizPos)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.mouseHorizPos))
 		}
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.mouseScanline, win.mousHorizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.mouseScanline, win.mousHorizPos))
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.mouseScanline, win.mouseHorizPos)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.mouseScanline, win.mouseHorizPos))
 		}
 		imgui.EndPopup()
 	} else {
@@ -223,9 +224,11 @@ func (win *winDbgScr) draw() {
 
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
-		if win.img.paused {
+		if win.img.state == gui.StatePaused {
 			if imgui.IsMouseReleased(0) {
-				win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mousHorizPos-specification.HorizClksHBlank)
+				win.img.screen.gotoCoordsX = win.mouseHorizPos
+				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
+				win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mouseHorizPos-specification.HorizClksHBlank)
 			}
 		}
 	}
@@ -261,7 +264,7 @@ func (win *winDbgScr) draw() {
 	// fps indicator
 	imgui.SameLineV(0, 20)
 	imgui.AlignTextToFramePadding()
-	if win.img.paused {
+	if win.img.state != gui.StateRunning {
 		imguiText("no fps")
 	} else {
 		if win.img.lz.TV.ReqFPS < 1.0 {
@@ -322,14 +325,14 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
 	}
 
-	win.mousHorizPos = int(mp.X)
+	win.mouseHorizPos = int(mp.X)
 	win.mouseScanline = int(mp.Y)
 
 	// get reflection information
 	var ref reflection.Reflection
 
-	if win.mousHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mousHorizPos]) {
-		ref = win.scr.crit.reflection[win.mousHorizPos][win.mouseScanline]
+	if win.mouseHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mouseHorizPos]) {
+		ref = win.scr.crit.reflection[win.mouseHorizPos][win.mouseScanline]
 	}
 
 	// present tooltip showing pixel coords and CPU state
@@ -341,7 +344,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	defer imgui.EndTooltip()
 
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mousHorizPos-specification.HorizClksHBlank))
+	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mouseHorizPos-specification.HorizClksHBlank))
 
 	if win.overlay {
 		switch win.scr.crit.overlay {

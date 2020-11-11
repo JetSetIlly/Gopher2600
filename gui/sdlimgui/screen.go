@@ -20,6 +20,7 @@ import (
 	"image/color"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -46,6 +47,11 @@ type screen struct {
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
+
+	// the mouse coords used in the most recent call to PushGotoCoords(). only
+	// read/write by the GUI thread so doesn't need to be in critical section.
+	gotoCoordsX int
+	gotoCoordsY int
 }
 
 // for clarity, variables accessed in the critical section are encapsulated in
@@ -326,7 +332,7 @@ func (scr *screen) addTextureRenderer(r textureRenderers) {
 
 func (scr *screen) render() {
 	// not rendering if rewinding is currently active
-	if scr.img.rewinding {
+	if scr.img.state == gui.StateRewinding || scr.img.state == gui.StateGotoCoords {
 		return
 	}
 

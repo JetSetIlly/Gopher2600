@@ -21,6 +21,15 @@ import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 // eg. toggling the overlay.
 type FeatureReq string
 
+type EmulationState int
+
+const (
+	StatePaused EmulationState = iota
+	StateRunning
+	StateRewinding
+	StateGotoCoords
+)
+
 // List of valid feature requests. argument must be of the type specified or
 // else the interface{} type conversion will fail and the application will
 // probably crash.
@@ -33,15 +42,9 @@ const (
 	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
 	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
 
-	// notify gui of paused emulation. note that the TV implementation also has
-	// a Pause() function which should probably be called alongside this
-	// request.
-	ReqPause FeatureReq = "ReqPause" // bool
-
-	// notify gui that screen is being updated but not in the normal way. if
-	// gui has been notified of pause (ReqPause) then the gui should behave as
-	// though the emulation is running until ReqRendering==false.
-	ReqRewinding FeatureReq = "ReqRewinding" // bool
+	// notify GUI of emulation state. the GUI should use this to alter how
+	// infomration, particularly the display of the PixelRenderer.
+	ReqState FeatureReq = "ReqState" // EmulationState
 
 	// the following requests should set or toggle visual elements of the debugger.
 	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
