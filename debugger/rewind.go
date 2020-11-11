@@ -66,18 +66,18 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) error {
 
 // PushRewind is a special case of PushRawEvent(). It prevents too many pushed
 // Rewind.Goto*() function calls. To be used from the GUI thread.
-func (dbg *Debugger) PushRewind(fn int, last bool) {
-	// Note that this method is only good enough for a rewind frequency of 3-4
-	// frames and even then there is a weird "bouncing" effect when rewinding
-	// backwards. For this reason rewind frequency should be 1 until we find a
-	// better method.
+func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	select {
 	case dbg.rewinding <- true:
 	default:
-		return
+		return true
 	}
 
 	dbg.PushRawEvent(func() {
+		defer func() {
+			<-dbg.rewinding
+		}()
+
 		dbg.scr.ReqFeature(gui.ReqRewinding, true)
 		if last {
 			err := dbg.Rewind.GotoLast()
@@ -90,9 +90,10 @@ func (dbg *Debugger) PushRewind(fn int, last bool) {
 				logger.Log("debugger", err.Error())
 			}
 		}
-		<-dbg.rewinding
 		dbg.scr.ReqFeature(gui.ReqRewinding, false)
 	})
+
+	return false
 }
 
 // PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call

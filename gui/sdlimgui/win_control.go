@@ -38,6 +38,8 @@ type winControl struct {
 	img *SdlImgui
 
 	resumeAfterRewind bool
+	rewindTarget      int32
+	rewindWaiting     bool
 
 	// widget dimensions
 	stepButtonDim imgui.Vec2
@@ -119,31 +121,40 @@ func (win *winControl) draw() {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(-1) })
 	}
 
-	// rewind sub-system
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
 
+	// rewind sub-system
+	win.drawRewind()
+
+	imgui.End()
+}
+
+func (win *winControl) drawRewind() {
 	imguiText("Rewind:")
+
 	s := int32(win.img.lz.Rewind.Summary.Start)
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.Rewind.Summary.Current)
 
+	win.rewindTarget = f
+
 	// forward/backwards buttons
 	imgui.SameLine()
-	if imgui.Button("<") {
-		f := f - 1
-		win.img.lz.Dbg.PushRewind(int(f), f == e)
+	if imgui.Button("<") && f > 0 {
+		win.rewindTarget = f - 1
+		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 	}
 	imgui.SameLine()
-	if imgui.Button(">") {
-		f := f + 1
-		win.img.lz.Dbg.PushRewind(int(f), f == e)
+	if imgui.Button(">") && f < e {
+		win.rewindTarget = f + 1
+		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 	}
 
-	// rewind slider
-	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", f)) {
-		win.img.lz.Dbg.PushRewind(int(f), f == e)
+	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", win.rewindTarget)) || win.rewindWaiting {
+		win.rewindTarget = f
+		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(f), f == e)
 	}
 	align := imguiRightAlignInt32(e)
 
@@ -171,8 +182,6 @@ func (win *winControl) draw() {
 	imgui.SameLine()
 	imgui.SetCursorPos(align)
 	imgui.Text(fmt.Sprintf("%d", e))
-
-	imgui.End()
 }
 
 func (win *winControl) drawQuantumToggle() {
