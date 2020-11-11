@@ -32,6 +32,7 @@ import (
 //		...
 //	}
 type PixelRenderer interface {
+
 	// Resize is called when the television implementation detects that extra
 	// scanlines are required in the display.
 	//
@@ -90,9 +91,12 @@ type PixelRenderer interface {
 	// this will always be true.
 	SetPixel(sig signal.SignalAttributes, current bool) error
 
-	// some renderers may need to conclude and/or dispose of resources gently.
+	// Reset all pixels. Called when TV is reset.
+	Reset()
+
+	// Some renderers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the PixelRenderer should be considered unusable after
-	// EndRendering() has been called
+	// EndRendering() has been called.
 	EndRendering() error
 }
 

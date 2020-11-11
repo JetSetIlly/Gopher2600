@@ -136,11 +136,11 @@ func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
 	return nil
 }
 
+// Reset implements television.PixelRenderer interface.
+func (dig *Video) Reset() {
+}
+
 // EndRendering implements television.PixelRenderer interface.
 func (dig *Video) EndRendering() error {
 	return nil
-}
-
-// Refresh implements television.PixelRenderer interface.
-func (dig *Video) Refresh(_ bool) {
 }

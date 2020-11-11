@@ -81,8 +81,8 @@ func (s State) String() string {
 const overhead = 2
 const maxEntries = 200 + overhead
 
-// how often a frame snapshot of the system be taken. See debugger.PushRewind()
-// for why this should always be 1 for now.
+// how often a frame snapshot of the system be taken. the higher the number,
+// the more laggy the rewind system will feel, particularly in a GUI.
 const frequency = 1
 
 // Rewind contains a history of machine states for the emulation.
@@ -107,12 +107,15 @@ type Rewind struct {
 	// a new frame has been triggerd. resolve as soon as possible.
 	newFrame bool
 
-	// the last call to append() was a successful ResolveNewFrame(). under
-	// normal circumstances this field will be true one CPU instruction before
-	// being reset.
+	// a snapshot has just been added by the Check() function. we use this to
+	// prevent another snapshot being taken by ExecutionState().
 	justAddedFrame bool
 
-	restartNextFrame bool
+	// the number frames since snapshot (not counting levelExecution snapshots)
+	framesSinceSnapshot int
+
+	// a rewind boundary has been detected. call restart() on next frame.
+	boundaryNextFrame bool
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
@@ -134,8 +137,9 @@ func (r *Rewind) Reset() {
 }
 
 func (r *Rewind) restart(level snapshotLevel) {
-	r.justAddedFrame = true
 	r.newFrame = false
+	r.justAddedFrame = true
+	r.framesSinceSnapshot = 0
 
 	s := &State{
 		level: level,
@@ -160,7 +164,7 @@ func (r *Rewind) restart(level snapshotLevel) {
 // frame has been triggered since the last call. Delaying a call to this
 // function may result in sub-optimal results.
 func (r *Rewind) Check() {
-	r.restartNextFrame = r.restartNextFrame || r.vcs.Mem.Cart.RewindBoundary()
+	r.boundaryNextFrame = r.boundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
 
 	if !r.newFrame {
 		r.justAddedFrame = false
@@ -168,22 +172,20 @@ func (r *Rewind) Check() {
 	}
 	r.newFrame = false
 
-	if r.restartNextFrame {
-		r.restartNextFrame = false
+	if r.boundaryNextFrame {
+		r.boundaryNextFrame = false
 		r.restart(levelBoundary)
 		return
 	}
 
 	// add state only if frequency check passes
-	//
-	// TODO: frequency check may not be accurate if levelBoundary has been inserted
-	if r.prev < len(r.entries) && r.entries[r.prev].level != levelExecution {
-		if r.vcs.TV.GetState(signal.ReqFramenum)%frequency != 0 {
-			return
-		}
+	r.framesSinceSnapshot++
+	if r.framesSinceSnapshot%frequency != 0 {
+		return
 	}
 
 	r.justAddedFrame = true
+	r.framesSinceSnapshot = 0
 
 	s := &State{
 		level: levelFrame,
@@ -296,16 +298,16 @@ func (r *Rewind) plumb(idx int, frame int) error {
 	// if the target is the "execution" frame then we'll update these values
 	// later.
 	//
-	// note that bx is not zero but negative HorizClksHBlank. this is because
+	// note that horizpos is not zero but negative HorizClksHBlank. this is because
 	// television.GetState(ReqHorizPos) returns values counting from that value
 	// and not zero, as you might expect.
-	bx := -specification.HorizClksHBlank
-	by := 0
+	horizpos := -specification.HorizClksHBlank
+	scanline := 0
 
 	// use a more specific breakpoint if entry is an "execution" entry
 	if r.entries[idx].level == levelExecution {
-		by = r.entries[idx].TV.GetState(signal.ReqScanline)
-		bx = r.entries[idx].TV.GetState(signal.ReqHorizPos)
+		scanline = r.entries[idx].TV.GetState(signal.ReqScanline)
+		horizpos = r.entries[idx].TV.GetState(signal.ReqHorizPos)
 		idx--
 		if idx < 0 {
 			idx += maxEntries
@@ -323,6 +325,10 @@ func (r *Rewind) plumb(idx int, frame int) error {
 		}
 	}
 
+	return r.plumbCoords(idx, frame, scanline, horizpos)
+}
+
+func (r *Rewind) plumbCoords(idx, frame, scanline, horizpos int) error {
 	// plumb in snapshots of stored states.
 	s := r.entries[idx]
 
@@ -343,12 +349,20 @@ func (r *Rewind) plumb(idx int, frame int) error {
 	// make sure newFrame flag is false
 	r.newFrame = false
 
+	if r.entries[idx].level == levelReset {
+		err := r.vcs.TV.Reset()
+		if err != nil {
+			return curated.Errorf("rewind", err)
+		}
+		return nil
+	}
+
 	// turn off TV's fps frame limiter
 	cap := r.vcs.TV.SetFPSCap(false)
 	defer r.vcs.TV.SetFPSCap(cap)
 
 	// run emulation until we reach the breakpoint of the snapshot we want
-	err := r.runner.CatchUpLoop(frame, by, bx)
+	err := r.runner.CatchUpLoop(frame, scanline, horizpos)
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}
@@ -449,33 +463,7 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 		}
 	}
 
-	// plumb in snapshots of stored states
-	s := r.entries[idx]
-	r.vcs.CPU = s.CPU.Snapshot()
-	r.vcs.Mem = s.Mem.Snapshot()
-	r.vcs.RIOT = s.RIOT.Snapshot()
-	r.vcs.TIA = s.TIA.Snapshot()
-	r.vcs.CPU.Plumb(r.vcs.Mem)
-	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
-	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
-	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
-	r.vcs.TV.Plumb(s.TV.Snapshot())
-
-	// turn off TV's fps frame limiter
-	cap := r.vcs.TV.SetFPSCap(false)
-	defer r.vcs.TV.SetFPSCap(cap)
-
-	// run emulation until we reach the breakpoint
-	err := r.runner.CatchUpLoop(frame, scanline, horizpos)
-	if err != nil {
-		return curated.Errorf("rewind", err)
-	}
-	err = r.vcs.TV.ForceDraw()
-	if err != nil {
-		return curated.Errorf("rewind", err)
-	}
-
-	return nil
+	return r.plumbCoords(idx, frame, scanline, horizpos)
 }
 
 // SetComparison points comparison to the most recent rewound entry.

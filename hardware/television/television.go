@@ -234,6 +234,11 @@ func (tv *Television) Reset() error {
 	tv.state.vsyncCount = 0
 	tv.state.lastSignal = signal.SignalAttributes{}
 
+	for _, r := range tv.renderers {
+		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+		r.Reset()
+	}
+
 	return nil
 }
 

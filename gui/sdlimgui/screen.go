@@ -237,6 +237,21 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	return nil
 }
 
+// Reset implements the television.PixelRenderer interface.
+func (scr *screen) Reset() {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	// simplest method of resetting all pixels to black
+	for i := 0; i < len(scr.crit.backingPixels.Pix)-3; i += 4 {
+		scr.crit.backingPixels.Pix[i] = 0
+		scr.crit.backingPixels.Pix[i+1] = 0
+		scr.crit.backingPixels.Pix[i+2] = 0
+		scr.crit.backingPixels.Pix[i+3] = 255
+	}
+	scr.crit.backingPixelsUpdate = true
+}
+
 // EndRendering implements the television.PixelRenderer interface.
 func (scr *screen) EndRendering() error {
 	return nil
