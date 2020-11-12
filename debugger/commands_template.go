@@ -87,7 +87,7 @@ var commandTemplate = []string{
 	cmdHalt,
 	cmdQuantum + " (CPU|VIDEO)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
-	cmdRewind + " [%<frame>N|LAST]",
+	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
 
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (BANK|STATIC|REGISTERS|RAM)",

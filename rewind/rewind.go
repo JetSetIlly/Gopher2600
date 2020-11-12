@@ -17,6 +17,7 @@ package rewind
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
@@ -71,7 +72,12 @@ const (
 )
 
 func (s State) String() string {
-	if s.level == levelExecution {
+	switch s.level {
+	case levelReset:
+		return "r"
+	case levelBoundary:
+		return "b"
+	case levelExecution:
 		return "c"
 	}
 	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
@@ -133,6 +139,32 @@ func NewRewind(vcs *hardware.VCS, runner Runner) *Rewind {
 	r.vcs.TV.AddFrameTrigger(r)
 
 	return r
+}
+
+func (r *Rewind) String() string {
+	s := strings.Builder{}
+
+	i := r.start
+	for i < r.end && i < len(r.entries) {
+		e := r.entries[i]
+		if e != nil {
+			s.WriteString(fmt.Sprintf("%s ", e.String()))
+		}
+		i++
+	}
+
+	if i != r.end {
+		i = 0
+		for i < r.end {
+			e := r.entries[i]
+			if e != nil {
+				s.WriteString(fmt.Sprintf("%s ", e.String()))
+			}
+			i++
+		}
+	}
+
+	return s.String()
 }
 
 // Reset rewind system removes all entries and takes a snapshot of the

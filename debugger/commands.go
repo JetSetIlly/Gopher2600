@@ -290,6 +290,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 			if arg == "LAST" {
 				dbg.Rewind.GotoLast()
+			} else if arg == "SUMMARY" {
+				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
 			} else {
 				frame, _ := strconv.Atoi(arg)
 				err := dbg.Rewind.GotoFrame(frame)
