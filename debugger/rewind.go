@@ -21,15 +21,14 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CatchupLoop is an implementation of the rewind.Runner interface.
 //
-// Runs the emulation from it's current state until the specificied frame,
-// scanline and horizpos has been reached.
-func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) error {
+// Runs the emulation from it's current state until the supplied continueCheck
+// callback function returns false.
+func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	var err error
 
 	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
@@ -38,11 +37,7 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) error {
 		return nil
 	}
 
-	nf := dbg.VCS.TV.GetState(signal.ReqFramenum)
-	ny := dbg.VCS.TV.GetState(signal.ReqScanline)
-	nx := dbg.VCS.TV.GetState(signal.ReqHorizPos)
-
-	for !(nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)) {
+	for continueCheck() {
 		err = dbg.VCS.Step(func() error {
 			return dbg.reflect.Check(dbg.lastBank)
 		})
@@ -55,10 +50,6 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, horizpos int) error {
 		if err != nil {
 			return err
 		}
-
-		nf = dbg.VCS.TV.GetState(signal.ReqFramenum)
-		ny = dbg.VCS.TV.GetState(signal.ReqScanline)
-		nx = dbg.VCS.TV.GetState(signal.ReqHorizPos)
 	}
 
 	return nil
@@ -85,7 +76,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 				logger.Log("debugger", err.Error())
 			}
 		} else {
-			_, err := dbg.Rewind.GotoFrame(fn)
+			err := dbg.Rewind.GotoFrame(fn)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}

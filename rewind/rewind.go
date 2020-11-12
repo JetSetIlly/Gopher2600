@@ -28,17 +28,18 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Runner provides the rewind package the opportunity to run the emulation.
 type Runner interface {
-	// CatchUpLoop implementations will run the emulation until the TV returns
-	// frame/scanline/horizpos values of at least the specified values.
+	// CatchUpLoop implementations will run the emulation until continueCheck
+	// returns false.
 	//
 	// Note that the TV's frame limiter is turned off before CatchUpLoop() is
 	// called by the rewind system (and turned back to the previous setting
 	// afterwards).
-	CatchUpLoop(frame int, scanline int, horizpos int) error
+	CatchUpLoop(continueCheck func() bool) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -76,10 +77,14 @@ func (s State) String() string {
 	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
 }
 
-// the maximum number of entries to store before the earliest steps are forgotten. there
-// is an overhead of two entries to facilitate appending etc.
+// the maximum number of entries to store before the earliest steps are forgotten.
+const maxEntries = 100
+
+// an overhead of two is required. (1) to accommodate the end index required for
+// effective appending; (2) we can't generate a screen for the first entry in
+// the history, unless it's a reset entry, so we do not allow the rewind system
+// to move to that frame.
 const overhead = 2
-const maxEntries = 200 + overhead
 
 // how often a frame snapshot of the system be taken. the higher the number,
 // the more laggy the rewind system will feel, particularly in a GUI.
@@ -91,27 +96,27 @@ type Rewind struct {
 	runner Runner
 
 	// circular arry of snapshotted entries
-	entries [maxEntries]*State
+	entries []*State
 	start   int
 	end     int
 
-	// the position of the current rewind entry and the position previous to
-	// that. the previous position (prev) can be used to recrete the image that
-	// would be seen at the rewind position (curr)
-	curr int
-	prev int
+	// the point at which new entries will be added
+	splice int
 
 	// pointer to the comparison point
 	comparison *State
 
-	// a new frame has been triggerd. resolve as soon as possible.
+	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
 
 	// a snapshot has just been added by the Check() function. we use this to
-	// prevent another snapshot being taken by ExecutionState().
+	// prevent another snapshot being taken by ExecutionState(). rarely comes
+	// into play but it prevents what would essentially be a duplicate entry
+	// being added.
 	justAddedFrame bool
 
-	// the number frames since snapshot (not counting levelExecution snapshots)
+	// the number frames since snapshot (not counting levelExecution
+	// snapshots)
 	framesSinceSnapshot int
 
 	// a rewind boundary has been detected. call restart() on next frame.
@@ -121,8 +126,9 @@ type Rewind struct {
 // NewRewind is the preferred method of initialisation for the Rewind type.
 func NewRewind(vcs *hardware.VCS, runner Runner) *Rewind {
 	r := &Rewind{
-		vcs:    vcs,
-		runner: runner,
+		vcs:     vcs,
+		runner:  runner,
+		entries: make([]*State, maxEntries+overhead),
 	}
 	r.vcs.TV.AddFrameTrigger(r)
 
@@ -137,11 +143,35 @@ func (r *Rewind) Reset() {
 }
 
 func (r *Rewind) restart(level snapshotLevel) {
+	// nillify all entries
+	for i := range r.entries {
+		r.entries[i] = nil
+	}
+
 	r.newFrame = false
 	r.justAddedFrame = true
 	r.framesSinceSnapshot = 0
 
-	s := &State{
+	// this arrangement of the three history indexes means that there is no
+	// special conditions in the append() function.
+	//
+	// start and end are equal to begin with. the first call to append() below
+	// will add the new State at the current end point and then advance the end
+	// index ready for the next append(). this means that the entry appended
+	// will be a index start
+	r.start = 1
+	r.end = 1
+
+	// the splice point is checked to see if it is an execution
+	// entry and is chopped off if it is. the insertion of a sparse boundary
+	// entry means we don't have to check for nil
+	//
+	// the append function will move the splice index to start
+	r.splice = 0
+	r.entries[r.splice] = &State{level: levelBoundary}
+
+	// add current state as first entry
+	r.append(&State{
 		level: level,
 		CPU:   r.vcs.CPU.Snapshot(),
 		Mem:   r.vcs.Mem.Snapshot(),
@@ -149,15 +179,14 @@ func (r *Rewind) restart(level snapshotLevel) {
 		TIA:   r.vcs.TIA.Snapshot(),
 		TV:    r.vcs.TV.Snapshot(),
 		cart:  r.vcs.Mem.Cart.Snapshot(),
-	}
-
-	r.start = 0
-	r.end = 0
-	r.curr = maxEntries
-	r.append(s)
+	})
 
 	// first comparison is to the snapshot of the reset machine
-	r.comparison = r.entries[0]
+	r.comparison = r.entries[r.start]
+
+	// this isn't really neede but if feels good to remove the boundary entry
+	// added at the initial splice index.
+	r.entries[0] = nil
 }
 
 // Check should be called after every CPU instruction to check whether a new
@@ -197,7 +226,6 @@ func (r *Rewind) Check() {
 		cart:  r.vcs.Mem.Cart.Snapshot(),
 	}
 
-	r.trim()
 	r.append(s)
 }
 
@@ -219,117 +247,61 @@ func (r *Rewind) ExecutionState() {
 		cart:  r.vcs.Mem.Cart.Snapshot(),
 	}
 
-	r.trim()
 	r.append(s)
 }
 
 func (r *Rewind) append(s *State) {
+	// chop off the end entry if it is in execution entry. we must do this
+	// before any further appending. this is enough to ensure that there is
+	// never more than one execution entry in the history.
+	if r.entries[r.splice].level == levelExecution {
+		r.end = r.splice
+		if r.splice == 0 {
+			r.splice = len(r.entries) - 1
+		} else {
+			r.splice--
+		}
+	}
+
 	// append at current position
-	e := r.curr + 1
-	if e >= maxEntries {
+	e := r.splice + 1
+	if e >= len(r.entries) {
 		e = 0
 	}
 
 	// update entry
 	r.entries[e] = s
 
-	// note the previous position
-	r.prev = r.curr
-
 	// new position is the update point
-	r.curr = e
+	r.splice = e
 
 	// next update point is recent update point plus one
-	r.end = r.curr + 1
-	if r.end >= maxEntries {
+	r.end = r.splice + 1
+	if r.end >= len(r.entries) {
 		r.end = 0
 	}
 
 	// push start index along
 	if r.end == r.start {
 		r.start++
-		if r.start >= maxEntries {
+		if r.start >= len(r.entries) {
 			r.start = 0
 		}
 	}
 }
 
-// chop off the most end entry if it is levelExecution.
-func (r *Rewind) trim() {
-	if r.entries[r.curr].level == levelExecution {
-		r.end = r.curr
-		if r.curr == 0 {
-			r.curr = maxEntries - 1
-		} else {
-			r.curr--
-		}
-	}
-}
-
-// Frames of the current state of the rewind system.
-type Frames struct {
-	Start   int
-	End     int
-	Current int
-}
-
-// GetFrames returns the number number of snapshotted entries in the rewind system
-// and the current state being pointed to (the state that is currently plumbed
-// into the emulation).
-func (r Rewind) GetFrames() Frames {
-	e := r.end - 1
-	if e < 0 {
-		e += maxEntries
+func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
+	// no change if index is less than 0
+	if idx < 0 {
+		return nil
 	}
 
-	return Frames{
-		Start:   r.entries[r.start].TV.GetState(signal.ReqFramenum),
-		End:     r.entries[e].TV.GetState(signal.ReqFramenum),
-		Current: r.vcs.TV.GetState(signal.ReqFramenum),
-	}
-}
+	// current index is the index we're plumbing in. this has nothing to do
+	// with the frame number (especially important to remember if frequency is
+	// greater than 1)
+	r.splice = idx
 
-func (r *Rewind) plumb(idx int, frame int) error {
-	r.curr = idx
-
-	// plumb will run the emulation to the specified frame, breaking on the
-	// first scanline/horizpos it encounters.
-	//
-	// if the target is the "execution" frame then we'll update these values
-	// later.
-	//
-	// note that horizpos is not zero but negative HorizClksHBlank. this is because
-	// television.GetState(ReqHorizPos) returns values counting from that value
-	// and not zero, as you might expect.
-	horizpos := -specification.HorizClksHBlank
-	scanline := 0
-
-	// use a more specific breakpoint if entry is an "execution" entry
-	if r.entries[idx].level == levelExecution {
-		scanline = r.entries[idx].TV.GetState(signal.ReqScanline)
-		horizpos = r.entries[idx].TV.GetState(signal.ReqHorizPos)
-		idx--
-		if idx < 0 {
-			idx += maxEntries
-		}
-	}
-
-	// if this isn't a VCS reset entry or a boundary, then move position to the
-	// previous state (to the one we want). after plumbing, we'll allow the
-	// emulation to run to the breakpoint (specified above) of the state we do
-	// want.
-	if r.entries[idx].level != levelReset && r.entries[idx].level != levelBoundary {
-		idx--
-		if idx < 0 {
-			idx += maxEntries
-		}
-	}
-
-	return r.plumbCoords(idx, frame, scanline, horizpos)
-}
-
-func (r *Rewind) plumbCoords(idx, frame, scanline, horizpos int) error {
-	// plumb in snapshots of stored states.
+	// plumb in selected entry
 	s := r.entries[idx]
 
 	// take another snapshot of the state before plumbing. we don't want the
@@ -346,23 +318,29 @@ func (r *Rewind) plumbCoords(idx, frame, scanline, horizpos int) error {
 	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
 	r.vcs.TV.Plumb(s.TV.Snapshot())
 
-	// make sure newFrame flag is false
-	r.newFrame = false
-
-	if r.entries[idx].level == levelReset {
+	// if this is a reset entry then TV must be reset
+	if s.level == levelReset {
 		err := r.vcs.TV.Reset()
 		if err != nil {
 			return curated.Errorf("rewind", err)
 		}
-		return nil
 	}
 
 	// turn off TV's fps frame limiter
 	cap := r.vcs.TV.SetFPSCap(false)
 	defer r.vcs.TV.SetFPSCap(cap)
 
-	// run emulation until we reach the breakpoint of the snapshot we want
-	err := r.runner.CatchUpLoop(frame, scanline, horizpos)
+	startingFrame := r.vcs.TV.GetState(signal.ReqFramenum)
+	continueCheck := func() bool {
+		nf := r.vcs.TV.GetState(signal.ReqFramenum)
+		ny := r.vcs.TV.GetState(signal.ReqScanline)
+		nx := r.vcs.TV.GetState(signal.ReqHorizPos)
+		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)
+		return !tooFar
+	}
+
+	// run emulation until continueCheck returns false
+	err := r.runner.CatchUpLoop(continueCheck)
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}
@@ -371,6 +349,9 @@ func (r *Rewind) plumbCoords(idx, frame, scanline, horizpos int) error {
 		return curated.Errorf("rewind", err)
 	}
 
+	// update frames since snapshot. reckoning
+	r.framesSinceSnapshot = r.vcs.TV.GetState(signal.ReqFramenum) - startingFrame - 1
+
 	return nil
 }
 
@@ -378,42 +359,100 @@ func (r *Rewind) plumbCoords(idx, frame, scanline, horizpos int) error {
 func (r *Rewind) GotoLast() error {
 	idx := r.end - 1
 	if idx < 0 {
-		idx += maxEntries
+		idx += len(r.entries)
 	}
-	fn := r.entries[idx].TV.GetState(signal.ReqFramenum)
-	return r.plumb(idx, fn)
+
+	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
+	horizpos := -specification.HorizClksHBlank
+	scanline := 0
+
+	// use more specific scanline/horizpos values if entry is an "execution" entry
+	if r.entries[idx].level == levelExecution {
+		scanline = r.entries[idx].TV.GetState(signal.ReqScanline)
+		horizpos = r.entries[idx].TV.GetState(signal.ReqHorizPos)
+	}
+
+	// make adjustments to the index so we plumbing from a suitable place
+	idx--
+	if idx < 0 {
+		idx += len(r.entries)
+	}
+
+	// boundary checks to make sure we haven't gone back past the beginning of
+	// the circular array
+	if r.entries[idx] == nil {
+		idx = r.start
+	}
+
+	return r.plumb(idx, frame, scanline, horizpos)
 }
 
 // GotoFrame searches the timeline for the frame number. If the precise frame
 // number can not be found the nearest frame will be plumbed in.
-func (r *Rewind) GotoFrame(frame int) (int, error) {
+func (r *Rewind) GotoFrame(frame int) error {
+	var idx int
+	var last bool
+	idx, frame, last = r.findFrameIndex(frame)
+
+	// it is more appropriate to plumb with GotoLast() if last is true
+	if last {
+		return r.GotoLast()
+	}
+
+	// plumb in index. the frame argument to the plumb() function is
+	// the frame that has been requested, not the search frame
+	return r.plumb(idx, frame, 0, -specification.HorizClksHBlank)
+}
+
+// find index nearest to the requested frame. returns the index and the frame
+// number that is actually possible with the rewind system.
+//
+// the last value indicates that the requested frame is past the end of the
+// history. in those instances, the returned frame number can be used for the
+// plumbing operation or because last==true the GotoLast() can be used for a
+// more natural feeling result.
+func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
+	// the binary search is looking for the frame before the one that has been
+	// requested. this is so that we can generate the pixels that will be on
+	// the screen at the beginning of the request frame.
+	sf := frame
+	if sf > 0 {
+		sf--
+	}
+
 	// initialise binary search
 	s := r.start
 	e := r.end - 1
 	if e < 0 {
-		e += maxEntries
+		e += len(r.entries)
 	}
 
-	// check whether request is out of bounds. plumb in nearest entry (using
-	// the stored frame number rather than the requested frame number because
-	// we don't want the plumb() function to run the emulation to try to catch
-	// up to the requested frame)
-	fn := r.entries[r.start].TV.GetState(signal.ReqFramenum)
-	if frame <= fn {
-		return fn, r.plumb(r.start, fn)
+	// check whether request is out of bounds of the rewind history. if it is
+	// then plumb in the nearest entry
+	fn := r.entries[s].TV.GetState(signal.ReqFramenum)
+	if sf < fn {
+		return s, fn + 1, false
 	}
+
 	fn = r.entries[e].TV.GetState(signal.ReqFramenum)
-	if frame >= fn {
-		return fn, r.plumb(e, fn)
+	if sf >= fn {
+		e--
+		if e < 0 {
+			e += len(r.entries)
+		}
+		if r.entries[e] == nil {
+			return r.start, fn, true
+		}
+		return e, fn, true
 	}
 
 	// because r.entries is a cirular array, there's an additional step to the
 	// binary search. if start (lower) is greater then end (upper) then check
 	// which half of the circular array to concentrate on.
 	if r.start > e {
-		fn := r.entries[maxEntries-1].TV.GetState(signal.ReqFramenum)
-		if frame <= fn {
-			e = maxEntries - 1
+		fn := r.entries[len(r.entries)-1].TV.GetState(signal.ReqFramenum)
+		if sf <= fn {
+			e = len(r.entries) - 1
 		} else {
 			e = r.start - 1
 			s = 0
@@ -422,53 +461,42 @@ func (r *Rewind) GotoFrame(frame int) (int, error) {
 
 	// normal binary search
 	for s <= e {
-		m := (s + e) / 2
+		idx := (s + e) / 2
 
-		fn := r.entries[m].TV.GetState(signal.ReqFramenum)
+		fn := r.entries[idx].TV.GetState(signal.ReqFramenum)
 
-		// check for match taking into consideration the gaps introduced by the
-		// frequency value
-		if frame >= fn && frame <= fn+frequency-1 {
-			return fn, r.plumb(m, frame)
+		// check for match, taking into consideration the gaps introduced by
+		// the frequency value
+		if sf >= fn && sf <= fn+frequency-1 {
+			return idx, frame, false
 		}
 
-		if frame < fn {
-			e = m - 1
+		if sf < fn {
+			e = idx - 1
 		}
-		if frame > fn {
-			s = m + 1
+		if sf > fn {
+			s = idx + 1
 		}
 	}
 
-	// no change
-	return r.vcs.TV.GetState(signal.ReqFramenum), nil
+	logger.Log("rewind", "seemingly impossible failure of binary search")
+	return e, frame, false
 }
 
 // GotoFrameCoords of current frame.
 func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
-	idx := r.curr
-
 	// frame to which to run the catch-up loop
-	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
+	frame := r.vcs.TV.GetState(signal.ReqFramenum)
 
-	// start catch-up loop from two frames before the one we want. we do this
-	// so that the pixelrenderer has a chance to get copies of the pixels of
-	// the previous frame. inefficient but this function is not a performance
-	// bottleneck
-	idx = r.curr - 2
-	if idx < 0 {
-		idx += maxEntries
-		if r.entries[idx] == nil {
-			idx = r.curr
-		}
-	}
+	// get nearest index of entry from which we can (re)generate the current frame
+	idx, _, _ := r.findFrameIndex(frame)
 
-	return r.plumbCoords(idx, frame, scanline, horizpos)
+	return r.plumb(idx, frame, scanline, horizpos)
 }
 
 // SetComparison points comparison to the most recent rewound entry.
 func (r *Rewind) SetComparison() {
-	r.comparison = r.entries[r.curr]
+	r.comparison = r.entries[r.splice]
 }
 
 // GetComparison gets a reference to current comparison point.
@@ -480,4 +508,38 @@ func (r *Rewind) GetComparison() *State {
 func (r *Rewind) NewFrame(_ bool) error {
 	r.newFrame = true
 	return nil
+}
+
+// Summary of the current state of the rewind system.
+type Summary struct {
+	Start   int
+	End     int
+	Current int
+}
+
+// GetSummary returns the number number of snapshotted entries in the rewind
+// system and the current state being pointed to (the state that is currently
+// plumbed into the emulation).
+func (r Rewind) GetSummary() Summary {
+	e := r.end - 1
+	if e < 0 {
+		e += len(r.entries)
+	}
+
+	// because of how we generate visual state we cannot generate the image for
+	// the first frame in the history unless the first entry represents a
+	// machine reset
+	//
+	// this has a consequence when the first time the circular array wraps
+	// around for the first time (the number of available entries drops by one)
+	sf := r.entries[r.start].TV.GetState(signal.ReqFramenum)
+	if r.entries[r.start].level != levelReset {
+		sf++
+	}
+
+	return Summary{
+		Start:   sf,
+		End:     r.entries[e].TV.GetState(signal.ReqFramenum),
+		Current: r.vcs.TV.GetState(signal.ReqFramenum),
+	}
 }

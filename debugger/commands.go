@@ -36,6 +36,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -179,6 +180,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		dbg.Rewind.Reset()
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
@@ -277,15 +279,24 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		// using the debugger.PushRewind() function.
 		arg, ok := tokens.Get()
 		if ok {
+			// adjust gui state for rewinding event. put back into a suitable
+			// state afterwards.
+			dbg.scr.ReqFeature(gui.ReqState, gui.StateRewinding)
+			if dbg.runUntilHalt {
+				defer dbg.scr.ReqFeature(gui.ReqState, gui.StateRunning)
+			} else {
+				defer dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
+			}
+
 			if arg == "LAST" {
 				dbg.Rewind.GotoLast()
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				var err error
-				frame, err = dbg.Rewind.GotoFrame(frame)
+				err := dbg.Rewind.GotoFrame(frame)
 				if err != nil {
 					return false, err
 				}
+				frame = dbg.VCS.TV.GetState(signal.ReqFramenum)
 				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
 			}
 		}
