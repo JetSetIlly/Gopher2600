@@ -55,26 +55,41 @@ func (p *Bool) String() string {
 // value to false.
 func (p *Bool) Set(v Value) error {
 	p.crit.Lock()
-	defer p.crit.Unlock()
+	// no defer: we have to be careful when we unlock so as not to call
+	// deadlocks in the callback function
 
+	// new value
+	var nv bool
 	switch v := v.(type) {
 	case bool:
-		p.value = v
+		nv = v
 	case string:
 		switch strings.ToLower(v) {
 		case "true":
-			p.value = true
+			nv = true
 		default:
-			p.value = false
+			nv = false
 		}
 	default:
+		p.crit.Unlock()
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
 	}
 
+	// value hasn't changed so do not do anything
+	if nv == p.value {
+		p.crit.Unlock()
+		return nil
+	}
+
+	// store new value
+	p.value = nv
+
 	if p.callback != nil {
+		p.crit.Unlock()
 		return p.callback(p.value)
 	}
 
+	p.crit.Unlock()
 	return nil
 }
 
@@ -134,17 +149,30 @@ func (p *String) SetMaxLen(max int) {
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v Value) error {
 	p.crit.Lock()
-	defer p.crit.Unlock()
+	// no defer: we have to be careful when we unlock so as not to call
+	// deadlocks in the callback function
 
-	p.value = fmt.Sprintf("%s", v)
-	if p.maxLen > 0 && len(p.value) > p.maxLen {
-		p.value = p.value[:p.maxLen]
+	// new value
+	nv := fmt.Sprintf("%s", v)
+	if p.maxLen > 0 && len(nv) > p.maxLen {
+		nv = nv[:p.maxLen]
 	}
 
+	// value hasn't changed so do not do anything
+	if nv == p.value {
+		p.crit.Unlock()
+		return nil
+	}
+
+	// store new value
+	p.value = nv
+
 	if p.callback != nil {
+		p.crit.Unlock()
 		return p.callback(p.value)
 	}
 
+	p.crit.Unlock()
 	return nil
 }
 
@@ -188,25 +216,41 @@ func (p *Int) String() string {
 // Set new value to Int type. New value can be an int or string.
 func (p *Int) Set(v Value) error {
 	p.crit.Lock()
-	defer p.crit.Unlock()
+	// no defer: we have to be careful when we unlock so as not to call
+	// deadlocks in the callback function
 
+	// new value
+	var nv int
 	switch v := v.(type) {
 	case int:
-		p.value = v
+		nv = v
 	case string:
 		var err error
-		p.value, err = strconv.Atoi(v)
+		nv, err = strconv.Atoi(v)
 		if err != nil {
+			p.crit.Unlock()
 			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 		}
 	default:
+		p.crit.Unlock()
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 	}
 
+	// value hasn't changed so do not do anything
+	if nv == p.value {
+		p.crit.Unlock()
+		return nil
+	}
+
+	// update stored value
+	p.value = nv
+
 	if p.callback != nil {
+		p.crit.Unlock()
 		return p.callback(p.value)
 	}
 
+	p.crit.Unlock()
 	return nil
 }
 
