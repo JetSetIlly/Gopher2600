@@ -1476,6 +1476,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		if !ok {
 			dbg.printLine(terminal.StyleFeedback, dbg.VCS.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Disasm.Prefs.String())
+			dbg.printLine(terminal.StyleFeedback, dbg.Rewind.Prefs.String())
 			return false, nil
 		}
 
@@ -1489,6 +1490,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			if err != nil {
 				return false, curated.Errorf("%v", err)
 			}
+			err = dbg.Rewind.Prefs.Load()
+			if err != nil {
+				return false, curated.Errorf("%v", err)
+			}
+			return false, nil
 
 		case "SAVE":
 			err := dbg.VCS.Prefs.Save()
@@ -1499,6 +1505,26 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			if err != nil {
 				return false, curated.Errorf("%v", err)
 			}
+			err = dbg.Rewind.Prefs.Save()
+			if err != nil {
+				return false, curated.Errorf("%v", err)
+			}
+			return false, nil
+
+		case "REWIND":
+			option, _ := tokens.Get()
+			option = strings.ToUpper(option)
+			switch option {
+			case "MAX":
+				arg, _ := tokens.Get()
+				max, _ := strconv.Atoi(arg)
+				return false, dbg.Rewind.Prefs.MaxEntries.Set(max)
+			case "FREQ":
+				arg, _ := tokens.Get()
+				freq, _ := strconv.Atoi(arg)
+				return false, dbg.Rewind.Prefs.Freq.Set(freq)
+			}
+			return false, nil
 		}
 
 		var err error

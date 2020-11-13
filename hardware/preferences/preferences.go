@@ -64,11 +64,11 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.randstate", &p.RandomState)
+	err = p.dsk.Add("hardware.randState", &p.RandomState)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.randpins", &p.RandomPins)
+	err = p.dsk.Add("hardware.randPins", &p.RandomPins)
 	if err != nil {
 		return nil, err
 	}

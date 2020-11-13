@@ -134,8 +134,8 @@ var commandTemplate = []string{
 	cmdDrop + " [BREAK|TRAP|WATCH|TRACE] %<number in list>N",
 	cmdClear + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 
-	// meta
-	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR|SYMBOLS])",
+	// emulation
+	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [RANDSTART|RANDPINS|FXXXMIRROR|SYMBOLS]|REWIND [MAX %<entries>N|FREQ %<frames>N])",
 	cmdLog + " (LAST|RECENT|CLEAR)",
 	cmdMemUsage,
 }

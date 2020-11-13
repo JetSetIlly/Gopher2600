@@ -41,7 +41,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		return err
 	}
 
-	err = img.prefs.Add(fmt.Sprintf("%s.windowsize", group), prefs.NewGeneric(
+	err = img.prefs.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
 		func(s string) error {
 			var w, h int32
 			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
@@ -60,7 +60,7 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		return err
 	}
 
-	err = img.prefs.Add(fmt.Sprintf("%s.windowpos", group), prefs.NewGeneric(
+	err = img.prefs.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
 		func(s string) error {
 			var x, y int32
 			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)

@@ -55,6 +55,48 @@ func (win *winPrefs) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{10, 10}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winPrefsTile, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
+	win.drawGeneral()
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	imgui.Text("Rewind")
+	imgui.Spacing()
+	win.drawRewind()
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	win.drawDiskButtons()
+
+	imgui.End()
+}
+
+func (win *winPrefs) drawRewind() {
+	m := int32(win.img.lz.Prefs.RewindMaxEntries)
+	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m)) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", m))
+	}
+
+	imgui.Spacing()
+	imguiIndentText("Changing the max entries slider may cause")
+	imguiIndentText("some of your rewind history to be lost.")
+
+	imgui.Spacing()
+	imgui.Spacing()
+
+	f := int32(win.img.lz.Prefs.RewindFreq)
+	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f)) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", f))
+	}
+
+	imgui.Spacing()
+	imguiIndentText("Higher rewind frequencies may cause the")
+	imguiIndentText("rewind controls to feel sluggish.")
+}
+
+func (win *winPrefs) drawGeneral() {
 	if imgui.Checkbox("Random State (on startup)", &win.img.lz.Prefs.RandomState) {
 		win.img.term.pushCommand("PREFS TOGGLE RANDSTART")
 	}
@@ -78,7 +120,9 @@ func (win *winPrefs) draw() {
 			logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
 		}
 	}
+}
 
+func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
 		err := win.img.prefs.Save()
 		if err != nil {
@@ -95,6 +139,4 @@ func (win *winPrefs) draw() {
 		}
 		win.img.term.pushCommand("PREFS LOAD")
 	}
-
-	imgui.End()
 }

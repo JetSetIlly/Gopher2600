@@ -165,6 +165,13 @@ func imguiText(text string) {
 	imgui.SameLine()
 }
 
+func imguiIndentText(text string) {
+	p := imgui.CursorPos()
+	p.X += 10
+	imgui.SetCursorPos(p)
+	imgui.Text(text)
+}
+
 // returns a Vec2 suitable for use as a position vector when opening a imgui
 // window. The X and Y are set such that 0.0 <= value <= 1.0
 //

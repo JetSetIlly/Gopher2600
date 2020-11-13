@@ -65,10 +65,19 @@ type snapshotLevel int
 
 // List of valid SnapshotLevel values.
 const (
+	// reset and boundary entries should only even appear once at the start of
+	// the history, it at all.
 	levelReset snapshotLevel = iota
 	levelBoundary
+
+	// there can be many frame entries in the rewind history.
 	levelFrame
+
+	// execution entries should only ever appear once at the end of the
+	// history, if at all.
 	levelExecution
+
+	// adhoc entries should never appear in the history.
 	levelAdhoc
 )
 
@@ -86,25 +95,19 @@ func (s State) String() string {
 	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
 }
 
-// the maximum number of entries to store before the earliest steps are forgotten.
-const maxEntries = 100
-
 // an overhead of two is required. (1) to accommodate the end index required for
 // effective appending; (2) we can't generate a screen for the first entry in
 // the history, unless it's a reset entry, so we do not allow the rewind system
 // to move to that frame.
 const overhead = 2
 
-// how often a frame snapshot of the system be taken. the higher the number,
-// the more laggy the rewind system will feel, particularly in a GUI.
-//
-// 5 is probably the maximum you'd want to go for now.
-const frequency = 5
-
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
 	vcs    *hardware.VCS
 	runner Runner
+
+	// prefs for the rewind system
+	Prefs *Preferences
 
 	// circular arry of snapshotted entries
 	entries []*State
@@ -139,15 +142,28 @@ type Rewind struct {
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
-func NewRewind(vcs *hardware.VCS, runner Runner) *Rewind {
+func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 	r := &Rewind{
-		vcs:     vcs,
-		runner:  runner,
-		entries: make([]*State, maxEntries+overhead),
+		vcs:    vcs,
+		runner: runner,
 	}
-	r.vcs.TV.AddFrameTrigger(r)
 
-	return r
+	var err error
+
+	r.Prefs, err = newPreferences(r)
+	if err != nil {
+		return nil, curated.Errorf("rewind", err)
+	}
+
+	r.vcs.TV.AddFrameTrigger(r)
+	r.allocate()
+
+	return r, nil
+}
+
+func (r *Rewind) allocate() {
+	r.entries = make([]*State, r.Prefs.MaxEntries.Get().(int)+overhead)
+	r.restart(levelBoundary)
 }
 
 func (r *Rewind) String() string {
@@ -254,7 +270,7 @@ func (r *Rewind) Check() {
 
 	// add state only if frequency check passes
 	r.framesSinceSnapshot++
-	if r.framesSinceSnapshot%frequency != 0 {
+	if r.framesSinceSnapshot%r.Prefs.Freq.Get().(int) != 0 {
 		return
 	}
 
@@ -373,7 +389,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 
 	// snapshot adhoc frame as soon as convenient. not required when snapshot
 	// frequency is one
-	adhocSnapshotted := frequency == 1
+	adhocSnapshotted := r.Prefs.Freq.Get().(int) == 1
 
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
@@ -514,7 +530,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
-		if sf >= fn && sf <= fn+frequency-1 {
+		if sf >= fn && sf <= fn+r.Prefs.Freq.Get().(int)-1 {
 			return idx, frame, false
 		}
 

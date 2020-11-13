@@ -186,7 +186,10 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// plug in rewind system
-	dbg.Rewind = rewind.NewRewind(dbg.VCS, dbg)
+	dbg.Rewind, err = rewind.NewRewind(dbg.VCS, dbg)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
 	dbg.rewinding = make(chan bool, 1)
 
 	// set up breakpoints/traps
