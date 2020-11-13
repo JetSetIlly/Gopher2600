@@ -139,7 +139,20 @@ func (win *winControl) drawRewind() {
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.Rewind.Summary.Current)
 
-	if !win.rewindWaiting {
+	// rewindWaiting and rewindTarget is the key to making sure the slider
+	// always shows the correct position. there are some instances were the
+	// slider might appear to jump but it's very difficult to avoid that. we're
+	// fighting against the lazy evaluation scheme with this one and while it
+	// might be possible to get around any latent visual artefacts, it it would
+	// be too much complexity for such a small gain. this is fine.
+	if win.rewindWaiting {
+		if f == win.rewindTarget {
+			win.rewindWaiting = false
+			win.rewindTarget = f
+		} else {
+			f = win.rewindTarget
+		}
+	} else {
 		win.rewindTarget = f
 	}
 
@@ -155,10 +168,13 @@ func (win *winControl) drawRewind() {
 		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 	}
 
+	// rewind slider
 	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", win.rewindTarget)) || win.rewindWaiting {
 		win.rewindTarget = f
 		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(f), f == e)
 	}
+
+	// alignment information for frame number indicators below
 	align := imguiRightAlignInt32(e)
 
 	// pause emulation if rewind slider is clicked. take a note of whether

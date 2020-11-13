@@ -116,4 +116,20 @@
 // be other ways of achieving the same effect, but whatever way we do it the
 // additional context provided by the disassembly.Entry is required.
 //
+//
+// Ensuring Up-To-Date Information
+// -------------------------------
+//
+// Sometimes the GUI wants up-to-date information and nothing else will do.
+// This is particularly important when the GUI is interacting directly with the
+// emulation. For example, the rewind slider can stutter between the moment of
+// selection/release and the the moment when the emulation has caught-up with
+// the request.
+//
+// In these instances, the lazy type can be instructed to "wait" for up-to-date
+// values. Currently only the LazyRewind type supports this and can accessed by
+// setting the Wait flag to true.
+//
+// Use of "wait" should be kept to a minimum to ensure system responsiveness.
+//
 package lazyvalues

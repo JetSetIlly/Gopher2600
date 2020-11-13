@@ -33,7 +33,9 @@ type LazyRewind struct {
 }
 
 func newLazyRewind(val *LazyValues) *LazyRewind {
-	return &LazyRewind{val: val}
+	return &LazyRewind{
+		val: val,
+	}
 }
 
 func (lz *LazyRewind) push() {
