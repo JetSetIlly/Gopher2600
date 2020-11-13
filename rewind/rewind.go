@@ -69,6 +69,7 @@ const (
 	levelBoundary
 	levelFrame
 	levelExecution
+	levelAdhoc
 )
 
 func (s State) String() string {
@@ -78,6 +79,8 @@ func (s State) String() string {
 	case levelBoundary:
 		return "b"
 	case levelExecution:
+		return "e"
+	case levelAdhoc:
 		return "c"
 	}
 	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
@@ -94,7 +97,9 @@ const overhead = 2
 
 // how often a frame snapshot of the system be taken. the higher the number,
 // the more laggy the rewind system will feel, particularly in a GUI.
-const frequency = 1
+//
+// 5 is probably the maximum you'd want to go for now.
+const frequency = 5
 
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
@@ -111,6 +116,10 @@ type Rewind struct {
 
 	// pointer to the comparison point
 	comparison *State
+
+	// adhoc is a special snapshot of a state that cannot be found in the
+	// entries array. it is used to speed up consecutive calls to GotoCoords()
+	adhoc *State
 
 	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
@@ -167,6 +176,18 @@ func (r *Rewind) String() string {
 	return s.String()
 }
 
+func (r *Rewind) snapshot(level snapshotLevel) *State {
+	return &State{
+		level: level,
+		CPU:   r.vcs.CPU.Snapshot(),
+		Mem:   r.vcs.Mem.Snapshot(),
+		RIOT:  r.vcs.RIOT.Snapshot(),
+		TIA:   r.vcs.TIA.Snapshot(),
+		TV:    r.vcs.TV.Snapshot(),
+		cart:  r.vcs.Mem.Cart.Snapshot(),
+	}
+}
+
 // Reset rewind system removes all entries and takes a snapshot of the
 // execution state. This should be called whenever a new cartridge is attached
 // to the emulation.
@@ -203,15 +224,7 @@ func (r *Rewind) restart(level snapshotLevel) {
 	r.entries[r.splice] = &State{level: levelBoundary}
 
 	// add current state as first entry
-	r.append(&State{
-		level: level,
-		CPU:   r.vcs.CPU.Snapshot(),
-		Mem:   r.vcs.Mem.Snapshot(),
-		RIOT:  r.vcs.RIOT.Snapshot(),
-		TIA:   r.vcs.TIA.Snapshot(),
-		TV:    r.vcs.TV.Snapshot(),
-		cart:  r.vcs.Mem.Cart.Snapshot(),
-	})
+	r.append(r.snapshot(level))
 
 	// first comparison is to the snapshot of the reset machine
 	r.comparison = r.entries[r.start]
@@ -248,17 +261,7 @@ func (r *Rewind) Check() {
 	r.justAddedFrame = true
 	r.framesSinceSnapshot = 0
 
-	s := &State{
-		level: levelFrame,
-		CPU:   r.vcs.CPU.Snapshot(),
-		Mem:   r.vcs.Mem.Snapshot(),
-		RIOT:  r.vcs.RIOT.Snapshot(),
-		TIA:   r.vcs.TIA.Snapshot(),
-		TV:    r.vcs.TV.Snapshot(),
-		cart:  r.vcs.Mem.Cart.Snapshot(),
-	}
-
-	r.append(s)
+	r.append(r.snapshot(levelFrame))
 }
 
 // ExecutionState takes a snapshot of the emulation's ExecutionState state. It will do
@@ -269,17 +272,7 @@ func (r *Rewind) ExecutionState() {
 		return
 	}
 
-	s := &State{
-		level: levelExecution,
-		CPU:   r.vcs.CPU.Snapshot(),
-		Mem:   r.vcs.Mem.Snapshot(),
-		RIOT:  r.vcs.RIOT.Snapshot(),
-		TIA:   r.vcs.TIA.Snapshot(),
-		TV:    r.vcs.TV.Snapshot(),
-		cart:  r.vcs.Mem.Cart.Snapshot(),
-	}
-
-	r.append(s)
+	r.append(r.snapshot(levelExecution))
 }
 
 func (r *Rewind) append(s *State) {
@@ -322,20 +315,36 @@ func (r *Rewind) append(s *State) {
 	}
 }
 
+// plumb in state found at index. splice point will be updated. remaining
+// arguments as in plumbState().
 func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
-	// no change if index is less than 0
-	if idx < 0 {
-		return nil
-	}
-
 	// current index is the index we're plumbing in. this has nothing to do
 	// with the frame number (especially important to remember if frequency is
 	// greater than 1)
 	r.splice = idx
 
-	// plumb in selected entry
 	s := r.entries[idx]
+	startingFrame := s.TV.GetState(signal.ReqFramenum)
 
+	// plumb in selected entry
+	err := r.plumbState(s, frame, scanline, horizpos)
+	if err != nil {
+		return err
+	}
+
+	// update frames since snapshot
+	r.framesSinceSnapshot = r.vcs.TV.GetState(signal.ReqFramenum) - startingFrame - 1
+
+	return nil
+}
+
+// plumb in state supplied as the argument. catch-up loop will halt as soon as
+// possible after frame/scanline/horizpos is reached or surpassed
+//
+// note that this will not update the splice point up update the
+// framesSinceSnapshot value. use plumb() with an index into the history for
+// that.
+func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 	// take another snapshot of the state before plumbing. we don't want the
 	// machine to change what we have stored in our state array (we learned
 	// that lesson the hard way :-)
@@ -362,11 +371,20 @@ func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
 	cap := r.vcs.TV.SetFPSCap(false)
 	defer r.vcs.TV.SetFPSCap(cap)
 
-	startingFrame := r.vcs.TV.GetState(signal.ReqFramenum)
+	// snapshot adhoc frame as soon as convenient. not required when snapshot
+	// frequency is one
+	adhocSnapshotted := frequency == 1
+
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
 		ny := r.vcs.TV.GetState(signal.ReqScanline)
 		nx := r.vcs.TV.GetState(signal.ReqHorizPos)
+
+		if !adhocSnapshotted && nf == frame-1 {
+			r.adhoc = r.snapshot(levelAdhoc)
+			adhocSnapshotted = true
+		}
+
 		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)
 		return !tooFar
 	}
@@ -380,9 +398,6 @@ func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}
-
-	// update frames since snapshot. reckoning
-	r.framesSinceSnapshot = r.vcs.TV.GetState(signal.ReqFramenum) - startingFrame - 1
 
 	return nil
 }
@@ -522,6 +537,17 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 
 	// get nearest index of entry from which we can (re)generate the current frame
 	idx, _, _ := r.findFrameIndex(frame)
+
+	// if found index does not point to an immediately suitable state then try
+	// the adhoc state if available
+	if frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
+		if r.adhoc != nil && r.adhoc.TV.GetState(signal.ReqFramenum) == frame-1 {
+			return r.plumbState(r.adhoc, frame, scanline, horizpos)
+		}
+	}
+
+	// we've not used adhoc this time so nillify it
+	r.adhoc = nil
 
 	return r.plumb(idx, frame, scanline, horizpos)
 }
