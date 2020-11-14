@@ -1,6 +1,3 @@
-// bending and colour splitting in fragment shader cribbed from shadertoy
-// project: https://www.shadertoy.com/view/4sf3Dr
-
 uniform int ImageType;
 uniform int PixelPerfect;
 uniform int DrawMode; // 0 == running; 1 = show drawing; 2 = "goto coords"
@@ -15,6 +12,7 @@ uniform float Hblank;
 uniform float TopScanline;
 uniform float BotScanline;
 uniform float AnimTime;
+uniform float NoiseSeed;
 
 uniform sampler2D Texture;
 in vec2 Frag_UV;
@@ -27,6 +25,24 @@ bool isNearEqual(float x, float y, float epsilon)
 }
 
 const float cursorSize = 1.0;
+
+#define INPUT_GAMMA 2.4
+#define OUTPUT_GAMMA 2.2
+#define MASK_BRIGHTNESS 0.70
+#define SCANLINE_BRIGHTNESS 0.30
+#define NOISE_LEVEL 0.8
+
+// Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
+// Coprighted to dcerisano@standard3d.com not sure of the licence
+
+// Gold Noise ©2015 dcerisano@standard3d.com
+// - based on the Golden Ratio
+// - uniform normalized distribution
+// - fastest static noise generator function (also runs at low precision)
+float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+float gold_noise(in vec2 xy){
+	return fract(tan(distance(xy*PHI, xy)*NoiseSeed)*xy.x);
+}
 
 void main()
 {
@@ -193,9 +209,11 @@ void main()
 		texelY = ScalingY / CropScreenDim.y;
 	}
 
+	// set basic color
+	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
 	if (PixelPerfect == 1) {
-		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 		return;
 	}
 
@@ -207,17 +225,33 @@ void main()
 	}
 
 	// basic CRT effects
+	// -----------------
+	// some ideas taken from the crt-pi.glsl shader which is part of lib-retro
+	//
+	// https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
+	
+	// noise
+	Out_Color.rgba *= max(NOISE_LEVEL, gold_noise(gl_FragCoord.xy));
 
-	// split color channels
-	vec2 split;
-	split.x = 0.0001;
-	split.y = 0.001;
-	if (coords.x > split.x && coords.y > split.y) {
-		Out_Color.r = texture(Texture, vec2(coords.x-split.x, coords.y)).r;
-		Out_Color.g = texture(Texture, vec2(coords.x, coords.y-split.y)).g;
-		Out_Color.b = texture(Texture, vec2(coords.x+split.x, coords.y)).b;
-		Out_Color.a = Frag_Color.a;
+	// input gamma
+	Out_Color = pow(Out_Color, vec3(INPUT_GAMMA);
+	
+	// masking
+	vec3 mask;
+	if (fract(gl_FragCoord.x * 0.5) < 0.5) {
+		mask = vec3(MASK_BRIGHTNESS, 1.0, MASK_BRIGHTNESS);
+	} else {
+		mask = vec3(1.0, MASK_BRIGHTNESS, 1.0);
 	}
+	Out_Color = vec4(Out_Color.rgb * mask, 1.0);
+
+	// scanline effect
+	if (fract(gl_FragCoord.y * 0.5) < 0.5) {
+		Out_Color.a = Out_Color.a * SCANLINE_BRIGHTNESS;
+	}
+
+	// output gamma
+	Out_Color = pow(Out_Color, vec3(1.0/OUTPUT_GAMMA))
 
 	// vignette effect
 	float vignette;
@@ -234,26 +268,4 @@ void main()
 		vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
 	}
 	Out_Color.rgb *= pow(vignette, 0.10) * 1.2;
-
-	// scanline effect
-	float oneLine = gl_FragCoord.y/gl_FragCoord.y;
-	if ( isNearEqual(mod(gl_FragCoord.y, 3.0*oneLine), 0.0, oneLine) ) {
-		Out_Color.a = Frag_Color.a * 0.85;
-	}
-
-	// bend screen
-	/* if (ImageType == 3) { */
-	/* 	float xbend = 6.0; */
-	/* 	float ybend = 5.0; */
-	/* 	coords = (coords - 0.5) * 1.85; */
-	/* 	coords *= 1.11; */	
-	/* 	coords.x *= 1.0 + pow((abs(coords.y) / xbend), 2.0); */
-	/* 	coords.y *= 1.0 + pow((abs(coords.x) / ybend), 2.0); */
-	/* 	coords  = (coords / 2.05) + 0.5; */
-
-	/* 	// crop tiling */
-	/* 	if (coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0 ) { */
-	/* 		discard; */
-	/* 	} */
-	/* } */
 }

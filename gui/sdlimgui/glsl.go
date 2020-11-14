@@ -72,6 +72,7 @@ type glsl struct {
 	attribTopScanline   int32 // uniform
 	attribBotScanline   int32 // uniform
 	attribAnimTime      int32 // uniform
+	attribNoiseSeed     int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -275,6 +276,9 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				anim = math.Abs(anim)
 				gl.Uniform1f(rnd.attribAnimTime, float32(anim))
 
+				// random seed for noise generator
+				gl.Uniform1f(rnd.attribNoiseSeed, float32(time.Now().Nanosecond())/1000000000.0)
+
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
@@ -364,6 +368,7 @@ func (rnd *glsl) setup() {
 	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
 	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
 	rnd.attribAnimTime = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("AnimTime"+"\x00"))
+	rnd.attribNoiseSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseSeed"+"\x00"))
 
 	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
 	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))

@@ -456,9 +456,15 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
-
+*
 For testing instrumenation:
 
-* github.com/bradleyjkemp/memviz v0.2.3
+* https://github.com/bradleyjkemp/memviz v0.2.3
+
+Some ideas for the fragment shader taken from:
+
+* https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
+* https://www.shadertoy.com/view/ltB3zD
+
 
 
