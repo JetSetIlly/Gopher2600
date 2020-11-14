@@ -584,16 +584,20 @@ func (r *Rewind) NewFrame(_ bool) error {
 	return nil
 }
 
-// Summary of the current state of the rewind system.
+// Summary of the current state of the rewind system. The frame numbers for the
+// snapshots at the start and end of the rewind history.
+//
+// Useful for GUIs for example, to present the range of frame numbers that are
+// available in the rewind history.
+//
+// Note that there is no information about what type of snapshots the start and
+// end frames are. This is intentional - I'm not sure that information would be
+// useful.
 type Summary struct {
-	Start   int
-	End     int
-	Current int
+	Start int
+	End   int
 }
 
-// GetSummary returns the number number of snapshotted entries in the rewind
-// system and the current state being pointed to (the state that is currently
-// plumbed into the emulation).
 func (r Rewind) GetSummary() Summary {
 	e := r.end - 1
 	if e < 0 {
@@ -612,8 +616,7 @@ func (r Rewind) GetSummary() Summary {
 	}
 
 	return Summary{
-		Start:   sf,
-		End:     r.entries[e].TV.GetState(signal.ReqFramenum),
-		Current: r.vcs.TV.GetState(signal.ReqFramenum),
+		Start: sf,
+		End:   r.entries[e].TV.GetState(signal.ReqFramenum),
 	}
 }

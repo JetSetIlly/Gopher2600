@@ -137,7 +137,7 @@ func (win *winControl) drawRewind() {
 
 	s := int32(win.img.lz.Rewind.Summary.Start)
 	e := int32(win.img.lz.Rewind.Summary.End)
-	f := int32(win.img.lz.Rewind.Summary.Current)
+	f := int32(win.img.lz.TV.Frame)
 
 	// rewindWaiting and rewindTarget is the key to making sure the slider
 	// always shows the correct position. there are some instances were the
