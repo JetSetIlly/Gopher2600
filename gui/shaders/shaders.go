@@ -19,9 +19,6 @@ void main()
 `
 
 const Fragment = "#version 150" + `
-// bending and colour splitting in fragment shader cribbed from shadertoy
-// project: https://www.shadertoy.com/view/4sf3Dr
-
 uniform int ImageType;
 uniform int PixelPerfect;
 uniform int DrawMode; // 0 == running; 1 = show drawing; 2 = "goto coords"
@@ -50,9 +47,14 @@ bool isNearEqual(float x, float y, float epsilon)
 
 const float cursorSize = 1.0;
 
+#define INPUT_GAMMA 2.4
+#define OUTPUT_GAMMA 2.2
 #define MASK_BRIGHTNESS 0.70
 #define SCANLINE_BRIGHTNESS 0.30
 #define NOISE_LEVEL 0.8
+
+// Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
+// Coprighted to dcerisano@standard3d.com not sure of the licence
 
 // Gold Noise ©2015 dcerisano@standard3d.com
 // - based on the Golden Ratio
@@ -212,7 +214,9 @@ void main()
 			}
 		}
 
-		// special handling for "Goto Coords" mode
+		// special handling for "Goto Coords" mode. the effect we want is for
+		// the selected coords to be obvious immediately. we don't want to see
+		// any screen drawing but we do want the alpha fade.
 		if (DrawMode == 2) {
 			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
 				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
@@ -242,12 +246,16 @@ void main()
 	}
 
 	// basic CRT effects
+	// -----------------
+	// some ideas taken from the crt-pi.glsl shader which is part of lib-retro
+	//
+	// https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 	
 	// noise
 	Out_Color.rgba *= max(NOISE_LEVEL, gold_noise(gl_FragCoord.xy));
 
 	// input gamma
-	Out_Color *= Out_Color;
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(INPUT_GAMMA));
 	
 	// masking
 	vec3 mask;
@@ -264,7 +272,7 @@ void main()
 	}
 
 	// output gamma
-	Out_Color = sqrt(Out_Color);
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(1.0/OUTPUT_GAMMA));
 
 	// vignette effect
 	float vignette;

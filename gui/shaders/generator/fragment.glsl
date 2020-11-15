@@ -234,7 +234,7 @@ void main()
 	Out_Color.rgba *= max(NOISE_LEVEL, gold_noise(gl_FragCoord.xy));
 
 	// input gamma
-	Out_Color = pow(Out_Color, vec3(INPUT_GAMMA);
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(INPUT_GAMMA));
 	
 	// masking
 	vec3 mask;
@@ -251,7 +251,7 @@ void main()
 	}
 
 	// output gamma
-	Out_Color = pow(Out_Color, vec3(1.0/OUTPUT_GAMMA))
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(1.0/OUTPUT_GAMMA));
 
 	// vignette effect
 	float vignette;
