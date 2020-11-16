@@ -24,25 +24,37 @@ import (
 
 type featureRequest struct {
 	request gui.FeatureReq
-	args    []interface{}
+	args    []gui.FeatureReqData
 }
 
-// ReqFeature implements gui.GUI interface.
-func (img *SdlImgui) ReqFeature(request gui.FeatureReq, args ...interface{}) (returnedErr error) {
-	img.featureReq <- featureRequest{request: request, args: args}
-	return <-img.featureErr
+// GetFeature implements gui.GUI interface.
+func (img *SdlImgui) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
+	img.featureGet <- featureRequest{request: request}
+	return <-img.featureGetData, <-img.featureGetErr
+}
+
+// featureRequests have been handed over to the featureGet channel. we service
+// any requests on that channel here.
+func (img *SdlImgui) serviceGetFeature(request featureRequest) {
+	switch request.request {
+	case gui.ReqState:
+		img.featureGetData <- img.state
+		img.featureGetErr <- nil
+	default:
+		img.featureGetData <- nil
+		img.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
+	}
+}
+
+// SetFeature implements gui.GUI interface.
+func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData) error {
+	img.featureSet <- featureRequest{request: request, args: args}
+	return <-img.featureSetErr
 }
 
 // featureRequests have been handed over to the featureReq channel. we service
 // any requests on that channel here.
-func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
-	// lazy (but clear) handling of type assertion errors
-	defer func() {
-		if r := recover(); r != nil {
-			panic(r)
-		}
-	}()
-
+func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	var err error
 
 	switch request.request {
@@ -114,8 +126,8 @@ func (img *SdlImgui) serviceFeatureRequests(request featureRequest) {
 	}
 
 	if err == nil {
-		img.featureErr <- nil
+		img.featureSetErr <- nil
 	} else {
-		img.featureErr <- curated.Errorf("sdlimgui: %v", err)
+		img.featureSetErr <- curated.Errorf("sdlimgui: %v", err)
 	}
 }

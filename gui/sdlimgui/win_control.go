@@ -38,9 +38,8 @@ type winControl struct {
 	windowManagement
 	img *SdlImgui
 
-	resumeAfterRewind bool
-	rewindTarget      int32
-	rewindWaiting     bool
+	rewindWaiting bool
+	rewindTarget  int32
 
 	// widget dimensions
 	stepButtonDim imgui.Vec2
@@ -139,23 +138,6 @@ func (win *winControl) drawRewind() {
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.TV.Frame)
 
-	// rewindWaiting and rewindTarget is the key to making sure the slider
-	// always shows the correct position. there are some instances were the
-	// slider might appear to jump but it's very difficult to avoid that. we're
-	// fighting against the lazy evaluation scheme with this one and while it
-	// might be possible to get around any latent visual artefacts, it it would
-	// be too much complexity for such a small gain. this is fine.
-	if win.rewindWaiting {
-		if f == win.rewindTarget {
-			win.rewindWaiting = false
-			win.rewindTarget = f
-		} else {
-			f = win.rewindTarget
-		}
-	} else {
-		win.rewindTarget = f
-	}
-
 	// forward/backwards buttons
 	imgui.SameLine()
 	if imgui.Button("<") && f > 0 {
@@ -169,32 +151,15 @@ func (win *winControl) drawRewind() {
 	}
 
 	// rewind slider
-	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", win.rewindTarget)) || win.rewindWaiting {
-		win.rewindTarget = f
-		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(f), f == e)
+	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", f)) || win.rewindWaiting {
+		if !win.rewindWaiting {
+			win.rewindTarget = f
+		}
+		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 	}
 
 	// alignment information for frame number indicators below
 	align := imguiRightAlignInt32(e)
-
-	// pause emulation if rewind slider is clicked. take a note of whether
-	// the emulation was running and resume once mouse is unclicked.
-	if imgui.IsMouseDown(0) {
-		if imgui.IsItemHovered() {
-			if win.img.state == gui.StateRunning {
-				win.resumeAfterRewind = true
-				win.img.term.pushCommand("HALT")
-			}
-		}
-	}
-
-	// resume emulation if appropriate
-	if imgui.IsMouseReleased(0) {
-		if win.resumeAfterRewind {
-			win.resumeAfterRewind = false
-			win.img.term.pushCommand("RUN")
-		}
-	}
 
 	// rewind frame information
 	imgui.Text(fmt.Sprintf("%d", s))

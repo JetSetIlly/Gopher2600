@@ -65,3 +65,11 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 		logger.Log("debugger", "dropped raw event push")
 	}
 }
+
+func (dbg *Debugger) PushRawEventReturn(f func()) {
+	select {
+	case dbg.events.RawEventsReturn <- f:
+	default:
+		logger.Log("debugger", "dropped raw event (with return) push")
+	}
+}

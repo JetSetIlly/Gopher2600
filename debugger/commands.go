@@ -71,10 +71,10 @@ func init() {
 }
 
 // parseCommand tokenises the input and processes the tokens.
-func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) (bool, error) {
+func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
 	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
 	if err != nil {
-		return false, err
+		return err
 	}
 	return dbg.processTokens(tokens)
 }
@@ -126,7 +126,7 @@ func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
 	var err error
 
 	for _, t := range tokenGrp {
-		_, err = dbg.processTokens(t)
+		err = dbg.processTokens(t)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
 	return nil
 }
 
-func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
+func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately
 	tokens.Reset()
@@ -142,7 +142,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 	switch command {
 	default:
-		return false, curated.Errorf("%s is not yet implemented", command)
+		return curated.Errorf("%s is not yet implemented", command)
 
 	case cmdHelp:
 		keyword, ok := tokens.Get()
@@ -156,7 +156,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 		dbg.scriptScribe.Rollback()
 
-		return false, nil
+		return nil
 
 	case cmdQuit:
 		if dbg.scriptScribe.IsActive() {
@@ -169,23 +169,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			dbg.scriptScribe.Rollback()
 			err := dbg.scriptScribe.EndSession()
 			if err != nil {
-				return false, err
+				return err
 			}
 		} else {
 			dbg.running = false
 		}
 
 	case cmdReset:
-		err := dbg.VCS.Reset()
-		if err != nil {
-			return false, err
-		}
-		dbg.Rewind.Reset()
-		dbg.printLine(terminal.StyleFeedback, "machine reset")
+		// resetting in the middle of a CPU instruction requires the input loop
+		// to be unwound before continuing
+		dbg.restartInputLoop(func() error {
+			err := dbg.VCS.Reset()
+			if err != nil {
+				return err
+			}
+			dbg.Rewind.Reset()
+			dbg.printLine(terminal.StyleFeedback, "machine reset")
+			return nil
+		})
 
 	case cmdRun:
 		dbg.runUntilHalt = true
-		return true, nil
+		dbg.continueEmulation = true
+		return nil
 
 	case cmdHalt:
 		dbg.haltImmediately = true
@@ -207,12 +213,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			tokens.Unget()
 			err := dbg.stepTraps.parseCommand(tokens)
 			if err != nil {
-				return false, curated.Errorf("unknown step mode (%s)", mode)
+				return curated.Errorf("unknown step mode (%s)", mode)
 			}
 			dbg.runUntilHalt = true
 		}
 
-		return true, nil
+		dbg.continueEmulation = true
+		return nil
 
 	case cmdQuantum:
 		mode, _ := tokens.Get()
@@ -234,25 +241,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			saveFile, _ := tokens.Get()
 			err = dbg.scriptScribe.StartSession(saveFile)
 			if err != nil {
-				return false, err
+				return err
 			}
 
 			// we don't want SCRIPT RECORD command to appear in the
 			// script
 			dbg.scriptScribe.Rollback()
 
-			return false, nil
+			return nil
 
 		case "END":
 			dbg.scriptScribe.Rollback()
 			err := dbg.scriptScribe.EndSession()
-			return false, err
+			return err
 
 		default:
 			// run a script
 			scr, err := script.RescribeScript(option)
 			if err != nil {
-				return false, err
+				return err
 			}
 
 			if dbg.scriptScribe.IsActive() {
@@ -262,7 +269,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				// commands from that script
 				err := dbg.scriptScribe.StartPlayback()
 				if err != nil {
-					return false, err
+					return err
 				}
 
 				defer dbg.scriptScribe.EndPlayback()
@@ -270,7 +277,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
-				return false, err
+				return err
 			}
 		}
 
@@ -279,35 +286,40 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		// using the debugger.PushRewind() function.
 		arg, ok := tokens.Get()
 		if ok {
-			// adjust gui state for rewinding event. put back into a suitable
-			// state afterwards.
-			dbg.scr.ReqFeature(gui.ReqState, gui.StateRewinding)
-			if dbg.runUntilHalt {
-				defer dbg.scr.ReqFeature(gui.ReqState, gui.StateRunning)
-			} else {
-				defer dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
-			}
-
-			if arg == "LAST" {
-				dbg.Rewind.GotoLast()
-			} else if arg == "SUMMARY" {
-				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
-			} else {
-				frame, _ := strconv.Atoi(arg)
-				err := dbg.Rewind.GotoFrame(frame)
-				if err != nil {
-					return false, err
+			// rewinding in the middle of a CPU instruction requires the input loop
+			// to be unwound before continuing
+			dbg.restartInputLoop(func() error {
+				// adjust gui state for rewinding event. put back into a suitable
+				// state afterwards.
+				dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+				if dbg.runUntilHalt {
+					defer dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+				} else {
+					defer dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
 				}
-				frame = dbg.VCS.TV.GetState(signal.ReqFramenum)
-				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
-			}
+
+				if arg == "LAST" {
+					dbg.Rewind.GotoLast()
+				} else if arg == "SUMMARY" {
+					dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
+				} else {
+					frame, _ := strconv.Atoi(arg)
+					err := dbg.Rewind.GotoFrame(frame)
+					if err != nil {
+						return err
+					}
+					frame = dbg.VCS.TV.GetState(signal.ReqFramenum)
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
+				}
+				return nil
+			})
 		}
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
 		err := dbg.attachCartridge(cartridgeloader.NewLoader(cart, "AUTO"))
 		if err != nil {
-			return false, err
+			return err
 		}
 		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
 
@@ -385,7 +397,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			if patched {
 				dbg.printLine(terminal.StyleError, "error during patching. cartridge might be unusable.")
 			}
-			return false, nil
+			return nil
 		}
 		if patched {
 			dbg.printLine(terminal.StyleFeedback, "cartridge patched")
@@ -417,7 +429,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, err
+			return err
 		}
 
 		dbg.printLine(terminal.StyleFeedback, s.String())
@@ -426,7 +438,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		output := &strings.Builder{}
 		err := linter.Lint(dbg.Disasm, output)
 		if err != nil {
-			return false, err
+			return err
 		}
 		dbg.printLine(terminal.StyleFeedback, output.String())
 
@@ -447,7 +459,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		output := &strings.Builder{}
 		err := dbg.Disasm.Grep(output, scope, search, false)
 		if err != nil {
-			return false, err
+			return err
 		}
 		if output.Len() == 0 {
 			dbg.printLine(terminal.StyleError, "%s not found in disassembly", search)
@@ -484,7 +496,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			found, table, symbol, address := dbg.Disasm.Symbols.Search(symbol, symbols.UnspecifiedSymTable)
 			if !found {
 				dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
-				return false, nil
+				return nil
 			}
 
 			option, ok := tokens.Get()
@@ -518,7 +530,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 				dbg.printLine(terminal.StyleFeedback, "command on halt: %s", strings.TrimSuffix(s.String(), "; "))
 			}
-			return false, nil
+			return nil
 		}
 
 		var input string
@@ -528,14 +540,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "OFF":
 			dbg.commandOnHalt = dbg.commandOnHalt[:0]
 			dbg.printLine(terminal.StyleFeedback, "no command on halt")
-			return false, nil
+			return nil
 
 		case "ON":
 			dbg.commandOnHalt = dbg.commandOnHaltStored
 			for _, c := range dbg.commandOnHalt {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on halt: %s", c)
 			}
-			return false, nil
+			return nil
 
 		default:
 			// token isn't one we recognise so push it back onto the token queue
@@ -556,7 +568,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnHalt = existingOnHalt
-				return false, err
+				return err
 			}
 			dbg.commandOnHalt = append(dbg.commandOnHalt, toks)
 		}
@@ -572,7 +584,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		dbg.printLine(terminal.StyleFeedback, "command on halt: %s", strings.TrimSuffix(s.String(), "; "))
 
-		return false, nil
+		return nil
 
 	case cmdOnStep:
 		if tokens.Remaining() == 0 {
@@ -586,7 +598,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 				dbg.printLine(terminal.StyleFeedback, "command on step: %s", strings.TrimSuffix(s.String(), "; "))
 			}
-			return false, nil
+			return nil
 		}
 
 		var input string
@@ -596,14 +608,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "OFF":
 			dbg.commandOnStep = dbg.commandOnStep[:0]
 			dbg.printLine(terminal.StyleFeedback, "auto-command on step: OFF")
-			return false, nil
+			return nil
 
 		case "ON":
 			dbg.commandOnStep = dbg.commandOnStepStored
 			for _, c := range dbg.commandOnStep {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on step: %s", c)
 			}
-			return false, nil
+			return nil
 
 		default:
 			// token isn't one we recognise so push it back onto the token queue
@@ -624,7 +636,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnStep = existingOnStep
-				return false, err
+				return err
 			}
 			dbg.commandOnStep = append(dbg.commandOnStep, toks)
 		}
@@ -640,7 +652,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		dbg.printLine(terminal.StyleFeedback, "command on step: %s", strings.TrimSuffix(s.String(), "; "))
 
-		return false, nil
+		return nil
 
 	case cmdOnTrace:
 		if tokens.Remaining() == 0 {
@@ -654,7 +666,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				}
 				dbg.printLine(terminal.StyleFeedback, "command on trace: %s", strings.TrimSuffix(s.String(), "; "))
 			}
-			return false, nil
+			return nil
 		}
 
 		var input string
@@ -664,14 +676,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "OFF":
 			dbg.commandOnTrace = dbg.commandOnTrace[:0]
 			dbg.printLine(terminal.StyleFeedback, "auto-command on trace: OFF")
-			return false, nil
+			return nil
 
 		case "ON":
 			dbg.commandOnTrace = dbg.commandOnTraceStored
 			for _, c := range dbg.commandOnTrace {
 				dbg.printLine(terminal.StyleFeedback, "auto-command on trace: %s", c)
 			}
-			return false, nil
+			return nil
 
 		default:
 			// token isn't one we recognise so push it back onto the token queue
@@ -691,7 +703,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnTrace = existingOnTrace
-				return false, err
+				return err
 			}
 			dbg.commandOnTrace = append(dbg.commandOnTrace, toks)
 			fmt.Println(toks)
@@ -708,12 +720,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 		dbg.printLine(terminal.StyleFeedback, "command on trace: %s", strings.TrimSuffix(s.String(), "; "))
 
-		return false, nil
+		return nil
 
 	case cmdLast:
 		if dbg.lastResult == nil || dbg.lastResult.Result.Defn == nil {
 			dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
-			return false, nil
+			return nil
 		}
 
 		// whether to show bytecode
@@ -728,7 +740,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "%s", dbg.VCS.CPU.LastResult.Defn)
 				}
-				return false, nil
+				return nil
 
 			case "BYTECODE":
 				bytecode = true
@@ -927,7 +939,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		ai := dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
 			dbg.printLine(terminal.StyleError, fmt.Sprintf(pokeError, a))
-			return false, nil
+			return nil
 		}
 		addr := ai.mappedAddress
 
@@ -985,7 +997,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 					// unknown specifciations already handled by ValidateTokens()
 					err := dbg.tv.SetSpec(newspec)
 					if err != nil {
-						return false, err
+						return err
 					}
 				}
 
@@ -1060,35 +1072,35 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		action = strings.ToUpper(action)
 		switch action {
 		case "ON":
-			err = dbg.scr.ReqFeature(gui.ReqSetVisibility, true)
+			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
 
 		case "OFF":
-			err = dbg.scr.ReqFeature(gui.ReqSetVisibility, false)
+			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
 
 		case "SCALE":
 			scl, ok := tokens.Get()
 			if !ok {
-				return false, curated.Errorf("value required for %s %s", cmdDisplay, action)
+				return curated.Errorf("value required for %s %s", cmdDisplay, action)
 			}
 
 			var scale float64
 			scale, err = strconv.ParseFloat(scl, 32)
 			if err != nil {
-				return false, curated.Errorf("%s %s value not valid (%s)", cmdDisplay, action, scl)
+				return curated.Errorf("%s %s value not valid (%s)", cmdDisplay, action, scl)
 			}
 
-			err = dbg.scr.ReqFeature(gui.ReqSetScale, float32(scale))
+			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
 
 		case "MASKING":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.ReqFeature(gui.ReqSetCropping, false)
+				err = dbg.scr.SetFeature(gui.ReqSetCropping, false)
 			case "ON":
-				err = dbg.scr.ReqFeature(gui.ReqSetCropping, true)
+				err = dbg.scr.SetFeature(gui.ReqSetCropping, true)
 			default:
-				err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
+				err = dbg.scr.SetFeature(gui.ReqToggleCropping)
 			}
 
 		case "DEBUG":
@@ -1096,42 +1108,42 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.ReqFeature(gui.ReqSetDbgColors, false)
+				err = dbg.scr.SetFeature(gui.ReqSetDbgColors, false)
 			case "ON":
-				err = dbg.scr.ReqFeature(gui.ReqSetDbgColors, true)
+				err = dbg.scr.SetFeature(gui.ReqSetDbgColors, true)
 			default:
-				err = dbg.scr.ReqFeature(gui.ReqToggleDbgColors)
+				err = dbg.scr.SetFeature(gui.ReqToggleDbgColors)
 			}
 		case "OVERLAY":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)
 			switch action {
 			case "OFF":
-				err = dbg.scr.ReqFeature(gui.ReqSetOverlay, false)
+				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
 			case "ON":
-				err = dbg.scr.ReqFeature(gui.ReqSetOverlay, true)
+				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
 			default:
-				err = dbg.scr.ReqFeature(gui.ReqToggleOverlay)
+				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 			}
 		default:
-			err = dbg.scr.ReqFeature(gui.ReqToggleVisibility)
+			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
 			if err != nil {
-				return false, err
+				return err
 			}
 		}
 
 		if err != nil {
 			if curated.Is(err, gui.UnsupportedGuiFeature) {
-				return false, curated.Errorf("display does not support feature %s", action)
+				return curated.Errorf("display does not support feature %s", action)
 			}
-			return false, err
+			return err
 		}
 
 	case cmdPlusROM:
 		plusrom, ok := dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM)
 		if !ok {
 			dbg.printLine(terminal.StyleError, "not a plusrom cartridge")
-			return false, nil
+			return nil
 		}
 
 		option, _ := tokens.Get()
@@ -1141,21 +1153,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			nick, _ := tokens.Get()
 			err := plusrom.Prefs.Nick.Set(nick)
 			if err != nil {
-				return false, err
+				return err
 			}
 			err = plusrom.Prefs.Save()
 			if err != nil {
-				return false, err
+				return err
 			}
 		case "ID":
 			id, _ := tokens.Get()
 			err := plusrom.Prefs.ID.Set(id)
 			if err != nil {
-				return false, err
+				return err
 			}
 			err = plusrom.Prefs.Save()
 			if err != nil {
-				return false, err
+				return err
 			}
 		case "HOST":
 			ai := plusrom.CopyAddrInfo()
@@ -1201,7 +1213,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 		var p ports.Peripheral
@@ -1223,7 +1235,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		mode, ok := tokens.Get()
 		if !ok {
 			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
-			return false, nil
+			return nil
 		}
 
 		var err error
@@ -1274,7 +1286,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
@@ -1331,7 +1343,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, err
+			return err
 		}
 
 	case cmdKeyboard:
@@ -1357,31 +1369,31 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, err
+			return err
 		}
 
 	case cmdBreak:
 		err := dbg.breakpoints.parseCommand(tokens)
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 	case cmdTrap:
 		err := dbg.traps.parseCommand(tokens)
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 	case cmdWatch:
 		err := dbg.watches.parseCommand(tokens)
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 	case cmdTrace:
 		err := dbg.traces.parseCommand(tokens)
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 	case cmdList:
@@ -1411,7 +1423,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return false, curated.Errorf("drop attribute must be a number (%s)", s)
+			return curated.Errorf("drop attribute must be a number (%s)", s)
 		}
 
 		drop = strings.ToUpper(drop)
@@ -1419,25 +1431,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		case "BREAK":
 			err := dbg.breakpoints.drop(num)
 			if err != nil {
-				return false, err
+				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "breakpoint #%d dropped", num)
 		case "TRAP":
 			err := dbg.traps.drop(num)
 			if err != nil {
-				return false, err
+				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "trap #%d dropped", num)
 		case "WATCH":
 			err := dbg.watches.drop(num)
 			if err != nil {
-				return false, err
+				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "watch #%d dropped", num)
 		case "TRACE":
 			err := dbg.traces.drop(num)
 			if err != nil {
-				return false, err
+				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "trace #%d dropped", num)
 		default:
@@ -1477,39 +1489,39 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			dbg.printLine(terminal.StyleFeedback, dbg.VCS.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Disasm.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Rewind.Prefs.String())
-			return false, nil
+			return nil
 		}
 
 		switch action {
 		case "LOAD":
 			err := dbg.VCS.Prefs.Load()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
 			err = dbg.Disasm.Prefs.Load()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
 			err = dbg.Rewind.Prefs.Load()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
-			return false, nil
+			return nil
 
 		case "SAVE":
 			err := dbg.VCS.Prefs.Save()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
 			err = dbg.Disasm.Prefs.Save()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
 			err = dbg.Rewind.Prefs.Save()
 			if err != nil {
-				return false, curated.Errorf("%v", err)
+				return curated.Errorf("%v", err)
 			}
-			return false, nil
+			return nil
 
 		case "REWIND":
 			option, _ := tokens.Get()
@@ -1518,13 +1530,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 			case "MAX":
 				arg, _ := tokens.Get()
 				max, _ := strconv.Atoi(arg)
-				return false, dbg.Rewind.Prefs.MaxEntries.Set(max)
+				return dbg.Rewind.Prefs.MaxEntries.Set(max)
 			case "FREQ":
 				arg, _ := tokens.Get()
 				freq, _ := strconv.Atoi(arg)
-				return false, dbg.Rewind.Prefs.Freq.Set(freq)
+				return dbg.Rewind.Prefs.Freq.Set(freq)
 			}
-			return false, nil
+			return nil
 		}
 
 		var err error
@@ -1575,7 +1587,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		}
 
 		if err != nil {
-			return false, curated.Errorf("%v", err)
+			return curated.Errorf("%v", err)
 		}
 
 	case cmdLog:
@@ -1617,5 +1629,5 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) (bool, error) {
 		dbg.printLine(terminal.StyleLog, s.String())
 	}
 
-	return false, nil
+	return nil
 }

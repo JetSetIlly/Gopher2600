@@ -21,7 +21,6 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CatchupLoop is an implementation of the rewind.Runner interface.
@@ -64,24 +63,31 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 		return true
 	}
 
-	dbg.PushRawEvent(func() {
-		defer func() {
-			<-dbg.rewinding
-		}()
+	dbg.PushRawEventReturn(func() {
+		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
 
-		dbg.scr.ReqFeature(gui.ReqState, gui.StateRewinding)
-		if last {
-			err := dbg.Rewind.GotoLast()
-			if err != nil {
-				logger.Log("debugger", err.Error())
+		f := func() error {
+			if last {
+				err := dbg.Rewind.GotoLast()
+				if err != nil {
+					return err
+				}
+			} else {
+				err := dbg.Rewind.GotoFrame(fn)
+				if err != nil {
+					return err
+				}
 			}
-		} else {
-			err := dbg.Rewind.GotoFrame(fn)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
+
+			dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+
+			dbg.runUntilHalt = false
+			<-dbg.rewinding
+
+			return nil
 		}
-		dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
+
+		dbg.restartInputLoop(f)
 	})
 
 	return false
@@ -90,12 +96,23 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 // PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call
 // to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
 func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
-	dbg.PushRawEvent(func() {
-		dbg.scr.ReqFeature(gui.ReqState, gui.StateGotoCoords)
-		err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
-		if err != nil {
-			logger.Log("debugger", err.Error())
+	dbg.runUntilHalt = false
+
+	dbg.PushRawEventReturn(func() {
+		dbg.scr.SetFeature(gui.ReqState, gui.StateGotoCoords)
+
+		f := func() error {
+			err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
+			if err != nil {
+				return err
+			}
+
+			dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			dbg.runUntilHalt = false
+
+			return nil
 		}
-		dbg.scr.ReqFeature(gui.ReqState, gui.StatePaused)
+
+		dbg.restartInputLoop(f)
 	})
 }

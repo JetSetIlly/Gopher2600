@@ -128,17 +128,21 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			trm.lastSideChan = s
 			return n + 1, nil
 
+		case <-events.IntEvents:
+			return 0, curated.Errorf(terminal.UserAbort)
+
+		case ev := <-events.RawEvents:
+			ev()
+
+		case ev := <-events.RawEventsReturn:
+			ev()
+			return 0, nil
+
 		case ev := <-events.GuiEvents:
 			err := events.GuiEventHandler(ev)
 			if err != nil {
 				return 0, nil
 			}
-
-		case ev := <-events.RawEvents:
-			ev()
-
-		case <-events.IntEvents:
-			return 0, curated.Errorf(terminal.UserAbort)
 		}
 	}
 }

@@ -19,6 +19,12 @@ import "github.com/jetsetilly/gopher2600/curated"
 
 type Stub struct{}
 
-func (s Stub) ReqFeature(request FeatureReq, args ...interface{}) error {
+// SetFeature implements the GUI interface.
+func (s Stub) SetFeature(request FeatureReq, args ...FeatureReqData) error {
 	return curated.Errorf(UnsupportedGuiFeature, request)
+}
+
+// GetFeature implements the GUI interface.
+func (s Stub) GetFeature(request FeatureReq) (FeatureReqData, error) {
+	return nil, curated.Errorf(UnsupportedGuiFeature, request)
 }

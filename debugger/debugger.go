@@ -104,6 +104,10 @@ type Debugger struct {
 	// record user input to a script file
 	scriptScribe script.Scribe
 
+	// the Rewind system stores and restores machine state.
+	Rewind    *rewind.Rewind
+	rewinding chan bool
+
 	// \/\/\/ inputLoop \/\/\/
 
 	// buffer for user input
@@ -111,12 +115,6 @@ type Debugger struct {
 
 	// any error from previous emulation step
 	lastStepError bool
-
-	// we accumulate break, trap and watch messsages until we can service them
-	// if the strings are empty then no break/trap/watch event has occurred
-	breakMessages string
-	trapMessages  string
-	watchMessages string
 
 	// whether the debugger is to continue with the debugging loop
 	// set to false only when debugger is to finish
@@ -133,9 +131,10 @@ type Debugger struct {
 	// halt the emulation immediately. used by HALT command.
 	haltImmediately bool
 
-	// the Rewind system stores and restores machine state.
-	Rewind    *rewind.Rewind
-	rewinding chan bool
+	// some operations require that the input loop be restarted to make sure
+	// continued operation is not inside a video cycle loop
+	inputLoopRestart   bool
+	inputLoopOnRestart func() error
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -217,14 +216,15 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		GuiEvents:       make(chan gui.Event, 10),
 		GuiEventHandler: dbg.guiEventHandler,
 		IntEvents:       make(chan os.Signal, 1),
-		RawEvents:       make(chan func(), 1024),
+		RawEvents:       make(chan func(), 10),
+		RawEventsReturn: make(chan func(), 10),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = scr.ReqFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
+	err = scr.SetFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)
@@ -238,7 +238,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
 	// try to add debugger (self) to gui context
-	err = dbg.scr.ReqFeature(gui.ReqAddDebugger, dbg)
+	err = dbg.scr.SetFeature(gui.ReqAddDebugger, dbg)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)
@@ -286,14 +286,38 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 	}()
 
-	// prepare and run main input loop. inputLoop will not return until
-	// debugging session is to be terminated
-	err = dbg.inputLoop(dbg.term, false)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+	// inputloop will continue until debugger is to be terminated
+	done := false
+	for !done {
+		err = dbg.inputLoop(dbg.term, false)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
+
+		// handle inputLoopRestart and any on-restart function
+		if dbg.inputLoopRestart {
+			if dbg.inputLoopOnRestart != nil {
+				err := dbg.inputLoopOnRestart()
+				if err != nil {
+					logger.Log("input loop restart", err.Error())
+				}
+			}
+
+			dbg.inputLoopRestart = false
+			dbg.inputLoopOnRestart = nil
+		} else {
+			done = true
+		}
 	}
 
 	return nil
+}
+
+// in the event that the input loop needs to be unwound and restarted then use
+// the restartInputLoop() function for convenience.
+func (dbg *Debugger) restartInputLoop(onRestart func() error) {
+	dbg.inputLoopRestart = true
+	dbg.inputLoopOnRestart = onRestart
 }
 
 // attachCartridge makes sure that the cartridge loaded into vcs memory and the
@@ -319,7 +343,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			if pr.Prefs.NewInstallation {
 				fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
-				err := dbg.scr.ReqFeature(gui.ReqPlusROMFirstInstallation, &fi)
+				err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
 				if err != nil {
 					if !curated.Is(err, gui.UnsupportedGuiFeature) {
 						return curated.Errorf("debugger: %v", err)
@@ -330,7 +354,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		return nil
 	}
 
-	err := dbg.scr.ReqFeature(gui.ReqChangingCartridge, true)
+	err := dbg.scr.SetFeature(gui.ReqChangingCartridge, true)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return curated.Errorf("debugger: %v", err)
@@ -339,9 +363,10 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 	defer func() {
 		// we know the gui supports ReqChangingCartridge feature because we've
 		// just used it
-		_ = dbg.scr.ReqFeature(gui.ReqChangingCartridge, false)
+		_ = dbg.scr.SetFeature(gui.ReqChangingCartridge, false)
 	}()
 
+	// reset of vcs is implied with attach cartridge
 	err = setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
 		return err
@@ -378,13 +403,12 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 //
 // returns a boolean stating whether the emulation should continue with the
 // next step.
-func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool, error) {
+func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error {
 	var err error
-	var continueEmulation bool
 
 	// ignore comments
 	if strings.HasPrefix(input, "#") {
-		return false, nil
+		return nil
 	}
 
 	// divide input if necessary
@@ -393,16 +417,13 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) (bool
 	// loop through commands
 	for i := 0; i < len(commands); i++ {
 		// parse command
-		continueEmulation, err = dbg.parseCommand(commands[i], interactive, !auto)
+		err = dbg.parseCommand(commands[i], interactive, !auto)
 		if err != nil {
 			// we don't want to record bad commands in script
 			dbg.scriptScribe.Rollback()
-			return false, err
+			return err
 		}
-
-		// !!TODO: if continueEmulation is true but there are more commands to
-		// parse, what should we do?
 	}
 
-	return continueEmulation, nil
+	return nil
 }

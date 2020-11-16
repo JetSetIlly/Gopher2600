@@ -29,8 +29,10 @@ import (
 func (img *SdlImgui) Service() {
 	// run any outstanding feature requests
 	select {
-	case r := <-img.featureReq:
-		img.serviceFeatureRequests(r)
+	case r := <-img.featureSet:
+		img.serviceSetFeature(r)
+	case r := <-img.featureGet:
+		img.serviceGetFeature(r)
 	default:
 	}
 

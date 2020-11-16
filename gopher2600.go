@@ -318,13 +318,13 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		case g := <-sync.creation:
 			scr = g.(gui.GUI)
 
-			err = scr.ReqFeature(gui.ReqSetPlaymode, true)
+			err = scr.SetFeature(gui.ReqSetPlaymode, true)
 			if err != nil {
 				return err
 			}
 
 			if *crt {
-				err = scr.ReqFeature(gui.ReqCRTeffects, true)
+				err = scr.SetFeature(gui.ReqCRTeffects, true)
 				if err != nil {
 					return err
 				}
@@ -340,7 +340,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		// set scaling value
 		if *scaling > 0.0 {
-			err = scr.ReqFeature(gui.ReqSetScale, float32(*scaling))
+			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
 			if err != nil {
 				return err
 			}
@@ -356,7 +356,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// save preferences before finishing successfully
-		err = scr.ReqFeature(gui.ReqSavePrefs)
+		err = scr.SetFeature(gui.ReqSavePrefs)
 		if err != nil {
 			return err
 		}
@@ -486,7 +486,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	// save preferences before finishing successfully
-	err = scr.ReqFeature(gui.ReqSavePrefs)
+	err = scr.SetFeature(gui.ReqSavePrefs)
 	if err != nil {
 		return err
 	}
@@ -590,7 +590,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 			// set scaling value
 			if *scaling > 0.0 {
-				err = scr.ReqFeature(gui.ReqSetScale, float32(*scaling))
+				err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
 				if err != nil {
 					return err
 				}

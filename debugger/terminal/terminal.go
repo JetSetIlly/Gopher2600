@@ -52,7 +52,13 @@ type ReadEvents struct {
 	GuiEvents       chan gui.Event
 	GuiEventHandler func(gui.Event) error
 	IntEvents       chan os.Signal
-	RawEvents       chan func()
+
+	// RawEvents allows functions to be pushed into the debugger goroutine
+	RawEvents chan func()
+
+	// RawEventsReturn is a variation of RawEvents that returns control to the
+	// input loop as soon as the function is run
+	RawEventsReturn chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

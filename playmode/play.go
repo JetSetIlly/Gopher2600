@@ -81,7 +81,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 				waitForEmulationStart = make(chan error)
 
 				fi := gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr}
-				err := scr.ReqFeature(gui.ReqPlusROMFirstInstallation, &fi)
+				err := scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
 				if err != nil {
 					return err
 				}
@@ -95,7 +95,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		return curated.Errorf("playmode: %v", err)
 	}
 
-	err = scr.ReqFeature(gui.ReqAddVCS, vcs)
+	err = scr.SetFeature(gui.ReqAddVCS, vcs)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
@@ -184,13 +184,13 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// connect gui
-	err = scr.ReqFeature(gui.ReqSetEventChan, pl.guiChan)
+	err = scr.SetFeature(gui.ReqSetEventChan, pl.guiChan)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
 
 	// request television visibility
-	err = scr.ReqFeature(gui.ReqSetVisibility, true)
+	err = scr.SetFeature(gui.ReqSetVisibility, true)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}

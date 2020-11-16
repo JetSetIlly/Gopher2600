@@ -21,8 +21,15 @@ import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 // eg. toggling the overlay.
 type FeatureReq string
 
+// FeatureReqData represents the information associated with a FeatureReq. See
+// commentary for the defined FeatureReq values for the underlying type.
+type FeatureReqData interface{}
+
+// EmulationState indicates to the GUI that the debugger is in a particular
+// state.
 type EmulationState int
 
+// List of valid emulation states.
 const (
 	StatePaused EmulationState = iota
 	StateRunning

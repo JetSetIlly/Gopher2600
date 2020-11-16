@@ -115,7 +115,7 @@ func (mc *CPU) String() string {
 // Reset reinitialises all registers.
 func (mc *CPU) Reset() {
 	mc.LastResult.Reset()
-	mc.LastResult.Final = true
+	mc.Interrupted = true
 
 	if mc.prefs != nil && mc.prefs.RandomState.Get().(bool) {
 		mc.PC.Load(uint16(mc.prefs.RandSrc.Intn(0xffff)))
@@ -1649,7 +1649,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	}
 
 	// finalise result
-	mc.LastResult.Final = true
+	if mc.LastResult.Defn != nil {
+		mc.LastResult.Final = true
+	}
 
 	// validity check. there's no need to enable unless you've just added a new
 	// opcode and wanting to check the validity of the definition.

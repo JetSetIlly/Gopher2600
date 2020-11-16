@@ -30,8 +30,12 @@ import (
 
 type mockGUI struct{}
 
-func (g *mockGUI) ReqFeature(request gui.FeatureReq, args ...interface{}) error {
+func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData) error {
 	return nil
+}
+
+func (g *mockGUI) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
+	return nil, nil
 }
 
 type mockTerm struct {

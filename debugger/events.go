@@ -48,13 +48,13 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 				// debugging helpers
 				case "F12":
 					// toggle croppint
-					err = dbg.scr.ReqFeature(gui.ReqToggleCropping)
+					err = dbg.scr.SetFeature(gui.ReqToggleCropping)
 				case "F11":
 					// toggle debugging colours
-					err = dbg.scr.ReqFeature(gui.ReqToggleDbgColors)
+					err = dbg.scr.SetFeature(gui.ReqToggleDbgColors)
 				case "F10":
 					// toggle overlay
-					err = dbg.scr.ReqFeature(gui.ReqToggleOverlay)
+					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
 
 				// screen scaling
 				case "=":
@@ -62,10 +62,10 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 					fallthrough
 				case "+":
 					// increase scaling
-					err = dbg.scr.ReqFeature(gui.ReqIncScale)
+					err = dbg.scr.SetFeature(gui.ReqIncScale)
 				case "-":
 					// decrease window scanling
-					err = dbg.scr.ReqFeature(gui.ReqDecScale)
+					err = dbg.scr.SetFeature(gui.ReqDecScale)
 				}
 			}
 		}
@@ -74,7 +74,7 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 		switch ev.Button {
 		case gui.MouseButtonRight:
 			if ev.Down {
-				_, err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, ev.Scanline, ev.HorizPos), false, false)
+				err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, ev.Scanline, ev.HorizPos), false, false)
 				if err == nil {
 					logger.Log("mouse break", fmt.Sprintf("on sl->%d and hp->%d", ev.Scanline, ev.HorizPos))
 				}
@@ -93,58 +93,47 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 	return err
 }
 
-// returns true if the terminal needs reading.
-func (dbg *Debugger) checkEvents(inputter terminal.Input) (bool, error) {
-	var err error
-
-	if inputter != nil && inputter.TermReadCheck() {
-		return true, nil
-	}
-
-	done := false
-	for !done {
-		// check interrupt channel and run any functions we find in there
+func (dbg *Debugger) checkEvents() error {
+	for {
 		select {
 		case <-dbg.events.IntEvents:
-			// #ctrlc halt emulation
+			// note that ctrl-c signals do not always reach
+			// this far into the program.  for instance, the colorterm
+			// implementation of UserRead() puts the terminal into raw
+			// mode and so must handle ctrl-c events differently.
+
+			// if the emulation is running freely then stop emulation
 			if dbg.runUntilHalt {
-				// stop emulation at the next step
 				dbg.runUntilHalt = false
-
-				// !!TODO: rather than halting immediately set a flag that says to
-				// halt at the next manual-break point. if there is no manual break
-				// point then stop immediately (or end of current frame might be
-				// better)
-			} else {
-				// runUntilHalt is false which means that the emulation is
-				// not running. at this point, an input loop is probably
-				// running.
-				//
-				// note that ctrl-c signals do not always reach
-				// this far into the program.  for instance, the colorterm
-				// implementation of UserRead() puts the terminal into raw
-				// mode and so must handle ctrl-c events differently.
-
-				if dbg.scriptScribe.IsActive() {
-					// unlike in the equivalent code in the QUIT command, there's
-					// no need to call Rollback() here because the ctrl-c event
-					// will not be recorded to the script
-					err = dbg.scriptScribe.EndSession()
-				} else {
-					dbg.running = false
-				}
+				return nil
 			}
 
+			// stop script scribe if it one is active
+			if dbg.scriptScribe.IsActive() {
+				// unlike in the equivalent code in the QUIT command, there's
+				// no need to call Rollback() here because the ctrl-c event
+				// will not be recorded to the script
+				return dbg.scriptScribe.EndSession()
+			}
+
+			// end debugger
+			dbg.running = false
+
 		case ev := <-dbg.events.GuiEvents:
-			err = dbg.guiEventHandler(ev)
+			err := dbg.guiEventHandler(ev)
+			if err != nil {
+				return err
+			}
 
 		case ev := <-dbg.events.RawEvents:
 			ev()
 
+		case ev := <-dbg.events.RawEventsReturn:
+			ev()
+			return nil
+
 		default:
-			done = true
+			return nil
 		}
 	}
-
-	return false, err
 }

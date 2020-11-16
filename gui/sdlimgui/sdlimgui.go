@@ -71,10 +71,14 @@ type SdlImgui struct {
 	service    chan func()
 	serviceErr chan error
 
-	// ReqFeature() hands off requests to the featureReq channel for servicing.
-	// think of this as a special instance of the service chan
-	featureReq chan featureRequest
-	featureErr chan error
+	// ReqFeature() and GetFeature() hands off requests to the featureReq
+	// channel for servicing. think of this as a special instance of the
+	// service chan
+	featureSet     chan featureRequest
+	featureSetErr  chan error
+	featureGet     chan featureRequest
+	featureGetData chan gui.FeatureReqData
+	featureGetErr  chan error
 
 	// events channel is not created but assigned with the feature request
 	// gui.ReqSetEventChan
@@ -101,13 +105,16 @@ type SdlImgui struct {
 // MUST ONLY be called from the #mainthread.
 func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
-		context:    imgui.CreateContext(nil),
-		io:         imgui.CurrentIO(),
-		tv:         tv,
-		service:    make(chan func(), 1),
-		serviceErr: make(chan error, 1),
-		featureReq: make(chan featureRequest, 1),
-		featureErr: make(chan error, 1),
+		context:        imgui.CreateContext(nil),
+		io:             imgui.CurrentIO(),
+		tv:             tv,
+		service:        make(chan func(), 1),
+		serviceErr:     make(chan error, 1),
+		featureSet:     make(chan featureRequest, 1),
+		featureSetErr:  make(chan error, 1),
+		featureGet:     make(chan featureRequest, 1),
+		featureGetData: make(chan gui.FeatureReqData, 1),
+		featureGetErr:  make(chan error, 1),
 	}
 
 	var err error
