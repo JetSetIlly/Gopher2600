@@ -51,7 +51,7 @@ const float cursorSize = 1.0;
 #define OUTPUT_GAMMA 2.2
 #define MASK_BRIGHTNESS 0.70
 #define SCANLINE_BRIGHTNESS 0.30
-#define NOISE_LEVEL 0.8
+#define NOISE_LEVEL 0.85
 
 // Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
 // Coprighted to dcerisano@standard3d.com not sure of the licence
