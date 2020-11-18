@@ -172,12 +172,27 @@ func (win *winDbgScr) draw() {
 	// note the current cursor position. we'll use this to
 	mouseOrigin := imgui.CursorScreenPos()
 
+	// push style info for screen and overlay ImageButton(). we're using
+	// ImageButton because an Image will not capture mouse events and pass them
+	// to the parent window. this means that a click-drag on the screen/overlay
+	// will move the window, which we don't want.
+	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
+	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
+
+	// screen texture
+	imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
+
 	// overlay texture on top of screen texture
-	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
 	if win.overlay {
 		imgui.SetCursorScreenPos(mouseOrigin)
-		imgui.Image(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
+		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
 	}
+
+	// pop style info for screen and overlay textures
+	imgui.PopStyleVar()
+	imgui.PopStyleColorV(3)
 
 	// capture mouse on double click and run emulation
 	if !win.img.hasModal && imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {

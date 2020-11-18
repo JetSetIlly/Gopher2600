@@ -35,8 +35,9 @@ type imguiColors struct {
 	Border        imgui.Vec4
 
 	// additional general colors
-	True  imgui.Vec4
-	False imgui.Vec4
+	True        imgui.Vec4
+	False       imgui.Vec4
+	Transparent imgui.Vec4
 
 	// playscreen color
 	PlayWindowBg     imgui.Vec4
@@ -132,8 +133,9 @@ func newColors() *imguiColors {
 		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
 
 		// additional general colors
-		True:  imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		False: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		True:        imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		False:       imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		Transparent: imgui.Vec4{0.0, 0.0, 0.0, 0.0},
 
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{1.0, 0.5, 0.5, 1.0},
