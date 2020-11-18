@@ -168,10 +168,8 @@ func NewTelevision(spec string) (*Television, error) {
 	return tv, nil
 }
 
-func (tv Television) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-specification.HorizClksHBlank))
-	return s.String()
+func (tv *Television) String() string {
+	return fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-specification.HorizClksHBlank)
 }
 
 // Snapshot makes a copy of the television state.
