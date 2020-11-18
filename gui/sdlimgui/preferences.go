@@ -29,26 +29,33 @@ const (
 	prefsGrpPlaymode prefGroup = "sdlimgui.playmode"
 )
 
+type Preferences struct {
+	img *SdlImgui
+	dsk *prefs.Disk
+}
+
 // preferences change subtly when switching between debugger and play modes.
-func (img *SdlImgui) initPrefs(group prefGroup) error {
+func newPreferences(img *SdlImgui, group prefGroup) (*Preferences, error) {
+	p := &Preferences{img: img}
+
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	img.prefs, err = prefs.NewDisk(pth)
+	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = img.prefs.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
+	err = p.dsk.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
 		func(s string) error {
 			var w, h int32
 			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
 			if err != nil {
 				return err
 			}
-			img.plt.window.SetSize(w, h)
+			p.img.plt.window.SetSize(w, h)
 			return nil
 		},
 		func() string {
@@ -57,10 +64,10 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		},
 	))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = img.prefs.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
+	err = p.dsk.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
 		func(s string) error {
 			var x, y int32
 			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)
@@ -81,19 +88,33 @@ func (img *SdlImgui) initPrefs(group prefGroup) error {
 		},
 	))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = img.prefs.Add(fmt.Sprintf("%s.terminalOnError", group), &img.wm.term.openOnError)
+	err = p.dsk.Add(fmt.Sprintf("%s.terminalOnError", group), &img.wm.term.openOnError)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// load preferences from disk
-	err = img.prefs.Load(true)
+	err = p.dsk.Load(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+// Load disassembly preferences and apply to the current disassembly.
+func (p *Preferences) load() error {
+	err := p.dsk.Load(false)
 	if err != nil {
 		return err
 	}
-
 	return nil
+}
+
+// Save current disassembly preferences to disk.
+func (p *Preferences) save() error {
+	return p.dsk.Save()
 }

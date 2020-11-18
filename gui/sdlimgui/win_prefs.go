@@ -124,7 +124,7 @@ func (win *winPrefs) drawGeneral() {
 
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
-		err := win.img.prefs.Save()
+		err := win.img.prefs.save()
 		if err != nil {
 			logger.Log("sdlimgui", fmt.Sprintf("could not save preferences: %v", err))
 		}
@@ -133,7 +133,7 @@ func (win *winPrefs) drawDiskButtons() {
 
 	imgui.SameLine()
 	if imgui.Button("Restore") {
-		err := win.img.prefs.Load(false)
+		err := win.img.prefs.load()
 		if err != nil {
 			logger.Log("sdlimgui", fmt.Sprintf("could not restore preferences: %v", err))
 		}

@@ -36,10 +36,10 @@ type winDbgScr struct {
 	scr *screen
 
 	// how to present the screen in the window
-	debugColors  bool
-	cropped      bool
-	pixelPerfect bool
-	overlay      bool
+	debugColors bool
+	cropped     bool
+	crt         bool
+	overlay     bool
 
 	// textures
 	screenTexture  uint32
@@ -89,11 +89,11 @@ type winDbgScr struct {
 
 func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
 	win := &winDbgScr{
-		img:          img,
-		scr:          img.screen,
-		scaling:      2.0,
-		pixelPerfect: true,
-		cropped:      true,
+		img:     img,
+		scr:     img.screen,
+		scaling: 2.0,
+		crt:     false,
+		cropped: true,
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -301,7 +301,7 @@ func (win *winDbgScr) draw() {
 		win.setCropping(win.cropped)
 	}
 	imgui.SameLine()
-	imgui.Checkbox("Pixel Perfect", &win.pixelPerfect)
+	imgui.Checkbox("CRT Effects", &win.crt)
 	imgui.SameLine()
 	imgui.Checkbox("Overlay", &win.overlay)
 	imgui.SameLine()

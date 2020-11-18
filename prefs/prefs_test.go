@@ -149,6 +149,38 @@ func TestString(t *testing.T) {
 	cmpTmpFile(t, fn, "foo :: bar\n")
 }
 
+func TestFloat(t *testing.T) {
+	fn := getTmpPrefFile(t)
+	defer delTmpPrefFile(t, fn)
+
+	dsk, err := prefs.NewDisk(fn)
+	if err != nil {
+		t.Errorf("error preparing disk: %v", err)
+		return
+	}
+
+	var v prefs.Float
+	err = dsk.Add("foo", &v)
+	test.ExpectedSuccess(t, err)
+
+	err = v.Set("bar")
+	test.ExpectedFailure(t, err)
+
+	err = v.Set(1.0)
+	test.ExpectedSuccess(t, err)
+
+	err = v.Set(2.0)
+	test.ExpectedSuccess(t, err)
+
+	err = v.Set(-3.0)
+	test.ExpectedSuccess(t, err)
+
+	err = dsk.Save()
+	if err != nil {
+		t.Errorf("error saving disk: %v", err)
+	}
+}
+
 func TestInt(t *testing.T) {
 	fn := getTmpPrefFile(t)
 	defer delTmpPrefFile(t, fn)

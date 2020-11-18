@@ -21,13 +21,13 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
-	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/veandco/go-sdl2/sdl"
 
@@ -92,7 +92,8 @@ type SdlImgui struct {
 	mx, my int32
 
 	// the preferences we'll be saving to disk
-	prefs *prefs.Disk
+	prefs    *Preferences
+	crtPrefs *crt.Preferences
 
 	// hasModal should be true for the duration of when a modal popup is on the screen
 	hasModal bool
@@ -164,7 +165,13 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 
 	// initialise debugger preferences. in the event of playmode being set this
 	// will immediately be replaced but frankly doing it this way is cleaner
-	err = img.initPrefs(prefsGrpDebugger)
+	img.prefs, err = newPreferences(img, prefsGrpDebugger)
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
+
+	// initialise crt preferences
+	img.crtPrefs, err = crt.NewPreferences()
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
@@ -232,14 +239,16 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
 		if !img.isPlaymode() {
 			if img.prefs != nil {
-				err := img.prefs.Save()
+				err := img.prefs.save()
 				if err != nil {
 					return err
 				}
 			}
-			err := img.initPrefs(prefsGrpPlaymode)
+
+			var err error
+			img.prefs, err = newPreferences(img, prefsGrpPlaymode)
 			if err != nil {
-				return err
+				return curated.Errorf("sdlimgui: %v", err)
 			}
 
 			img.wm.playScr.setOpen(true)
@@ -247,14 +256,17 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	} else {
 		if img.isPlaymode() {
 			if img.prefs != nil {
-				if err := img.prefs.Save(); err != nil {
+				if err := img.prefs.save(); err != nil {
 					return err
 				}
 			}
-			err := img.initPrefs(prefsGrpDebugger)
+
+			var err error
+			img.prefs, err = newPreferences(img, prefsGrpDebugger)
 			if err != nil {
-				return err
+				return curated.Errorf("sdlimgui: %v", err)
 			}
+
 			img.wm.playScr.setOpen(false)
 		}
 	}

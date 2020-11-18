@@ -276,6 +276,88 @@ func (p *Int) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
 
+// Int implements a string type in the prefs system.
+type Float struct {
+	pref
+	crit     sync.Mutex
+	value    float64
+	callback func(value Value) error
+}
+
+func (p *Float) String() string {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
+	return fmt.Sprintf("%.2f", p.value)
+}
+
+// Set new value to Int type. New value can be an int or string.
+func (p *Float) Set(v Value) error {
+	p.crit.Lock()
+	// no defer: we have to be careful when we unlock so as not to call
+	// deadlocks in the callback function
+
+	// new value
+	var nv float64
+	switch v := v.(type) {
+	case float64:
+		nv = v
+	case float32:
+		nv = float64(v)
+	case int:
+		nv = float64(v)
+	case string:
+		var err error
+		nv, err = strconv.ParseFloat(v, 64)
+		if err != nil {
+			p.crit.Unlock()
+			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
+		}
+	default:
+		p.crit.Unlock()
+		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
+	}
+
+	// value hasn't changed so do not do anything
+	if nv == p.value {
+		p.crit.Unlock()
+		return nil
+	}
+
+	// update stored value
+	p.value = nv
+
+	if p.callback != nil {
+		p.crit.Unlock()
+		return p.callback(p.value)
+	}
+
+	p.crit.Unlock()
+	return nil
+}
+
+// Get returns the raw pref value.
+func (p *Float) Get() Value {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
+	return p.value
+}
+
+// Reset sets the int value to zero.
+func (p *Float) Reset() error {
+	return p.Set(0.0)
+}
+
+// RegisterCallback sets the callback function to be called when the value has
+// changed. Not required but is useful in some contexts.
+func (p *Float) RegisterCallback(f func(value Value) error) {
+	p.crit.Lock()
+	defer p.crit.Unlock()
+
+	p.callback = f
+}
+
 // Generic is a general purpose prefererences type, useful for values that
 // cannot be represented by a single live value.  You must use the NewGeneric()
 // function to initialise a new instance of Generic.

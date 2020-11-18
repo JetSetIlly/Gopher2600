@@ -89,7 +89,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.wm.dbgScr.overlay = !img.wm.dbgScr.overlay
 
 	case gui.ReqCRTeffects:
-		img.wm.dbgScr.pixelPerfect = !request.args[0].(bool)
+		img.wm.dbgScr.crt = request.args[0].(bool)
 
 	case gui.ReqIncScale:
 		img.setScale(0.1, true)
@@ -111,7 +111,10 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		err = img.setPlaymode(request.args[0].(bool))
 
 	case gui.ReqSavePrefs:
-		err = img.prefs.Save()
+		err = img.prefs.save()
+		if err == nil {
+			err = img.crtPrefs.Save()
+		}
 
 	case gui.ReqChangingCartridge:
 		// a new cartridge requires us to reset the lazy system (see the

@@ -25,7 +25,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/gui/shaders"
+	"github.com/jetsetilly/gopher2600/gui/crt/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -59,7 +59,6 @@ type glsl struct {
 	attribImageType int32 // uniform
 
 	// the following attrib variables are strictly for the screen texture
-	attribPixelPerfect  int32 // uniform
 	attribScreenDim     int32 // uniform
 	attribCropScreenDim int32 // uniform
 	attribDrawMode      int32 // uniform
@@ -72,7 +71,18 @@ type glsl struct {
 	attribTopScanline   int32 // uniform
 	attribBotScanline   int32 // uniform
 	attribAnimTime      int32 // uniform
-	attribNoiseSeed     int32 // uniform
+	attribRandSeed      int32 // uniform
+
+	attribCRT                 int32 // uniform
+	attribInputGamma          int32 // uniform
+	attribOutputGamma         int32 // uniform
+	attribMask                int32 // uniform
+	attribScanlines           int32 // uniform
+	attribNoise               int32 // uniform
+	attribMaskBrightness      int32 // uniform
+	attribScanlinesBrightness int32 // uniform
+	attribNoiseLevel          int32 // uniform
+	attribVignette            int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -118,6 +128,13 @@ func (rnd *glsl) destroy() {
 func (rnd *glsl) preRender() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
+}
+
+func boolToInt32(v bool) int32 {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
@@ -202,13 +219,17 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				vertScaling := rnd.img.wm.dbgScr.getScaling(false)
 				horizScaling := rnd.img.wm.dbgScr.getScaling(true)
 
-				// pixel perfect rendering or whether to apply the CRT
-				// filters
-				if rnd.img.wm.dbgScr.pixelPerfect {
-					gl.Uniform1i(rnd.attribPixelPerfect, 1)
-				} else {
-					gl.Uniform1i(rnd.attribPixelPerfect, 0)
-				}
+				// crt preferences
+				gl.Uniform1i(rnd.attribCRT, boolToInt32(rnd.img.wm.dbgScr.crt))
+				gl.Uniform1f(rnd.attribInputGamma, float32(rnd.img.crtPrefs.InputGamma.Get().(float64)))
+				gl.Uniform1f(rnd.attribOutputGamma, float32(rnd.img.crtPrefs.OutputGamma.Get().(float64)))
+				gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
+				gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
+				gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+				gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
+				gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+				gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
+				gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
 
 				// critical section
 				rnd.img.screen.crit.section.Lock()
@@ -276,8 +297,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				anim = math.Abs(anim)
 				gl.Uniform1f(rnd.attribAnimTime, float32(anim))
 
-				// random seed for noise generator
-				gl.Uniform1f(rnd.attribNoiseSeed, float32(time.Now().Nanosecond())/1000000000.0)
+				// random seed (for noise generator)
+				gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
 
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
@@ -355,7 +376,6 @@ func (rnd *glsl) setup() {
 
 	// get references to shader attributes and uniforms variables
 	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
-	rnd.attribPixelPerfect = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PixelPerfect"+"\x00"))
 	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
 	rnd.attribCropScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropScreenDim"+"\x00"))
 	rnd.attribDrawMode = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("DrawMode"+"\x00"))
@@ -368,7 +388,18 @@ func (rnd *glsl) setup() {
 	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
 	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
 	rnd.attribAnimTime = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("AnimTime"+"\x00"))
-	rnd.attribNoiseSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseSeed"+"\x00"))
+	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
+
+	rnd.attribCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CRT"+"\x00"))
+	rnd.attribInputGamma = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("InputGamma"+"\x00"))
+	rnd.attribOutputGamma = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("OutputGamma"+"\x00"))
+	rnd.attribMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Mask"+"\x00"))
+	rnd.attribScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Scanlines"+"\x00"))
+	rnd.attribNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Noise"+"\x00"))
+	rnd.attribMaskBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskBrightness"+"\x00"))
+	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
+	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
+	rnd.attribVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Vignette"+"\x00"))
 
 	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
 	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))

@@ -1,5 +1,4 @@
 uniform int ImageType;
-uniform int PixelPerfect;
 uniform int DrawMode; // 0 == running; 1 = show drawing; 2 = "goto coords"
 uniform int Cropped; // false <= 0; true > 0
 uniform vec2 ScreenDim;
@@ -12,7 +11,18 @@ uniform float Hblank;
 uniform float TopScanline;
 uniform float BotScanline;
 uniform float AnimTime;
-uniform float NoiseSeed;
+uniform float RandSeed;
+
+uniform int CRT;
+uniform float InputGamma; 
+uniform float OutputGamma; 
+uniform int Mask;
+uniform int Scanlines;
+uniform int Noise;
+uniform float MaskBrightness;
+uniform float ScanlinesBrightness;
+uniform float NoiseLevel;
+uniform int Vignette;
 
 uniform sampler2D Texture;
 in vec2 Frag_UV;
@@ -26,12 +36,6 @@ bool isNearEqual(float x, float y, float epsilon)
 
 const float cursorSize = 1.0;
 
-#define INPUT_GAMMA 2.4
-#define OUTPUT_GAMMA 2.2
-#define MASK_BRIGHTNESS 0.70
-#define SCANLINE_BRIGHTNESS 0.30
-#define NOISE_LEVEL 0.85
-
 // Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
 // Coprighted to dcerisano@standard3d.com not sure of the licence
 
@@ -41,7 +45,7 @@ const float cursorSize = 1.0;
 // - fastest static noise generator function (also runs at low precision)
 float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
 float gold_noise(in vec2 xy){
-	return fract(tan(distance(xy*PHI, xy)*NoiseSeed)*xy.x);
+	return fract(tan(distance(xy*PHI, xy)*RandSeed)*xy.x);
 }
 
 void main()
@@ -212,7 +216,7 @@ void main()
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
-	if (PixelPerfect == 1) {
+	if (CRT == 0) {
 		return;
 	}
 
@@ -230,41 +234,58 @@ void main()
 	// https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 	
 	// noise
-	Out_Color.rgba *= max(NOISE_LEVEL, gold_noise(gl_FragCoord.xy));
+	if (Noise == 1) {
+		float r;
+		r = gold_noise(gl_FragCoord.xy);
+		if (r < 0.33) {
+			Out_Color.r *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
+		} else if (r < 0.66) {
+			Out_Color.g *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
+		} else {
+			Out_Color.b *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
+		}
+
+	}
 
 	// input gamma
-	Out_Color.rgb = pow(Out_Color.rgb, vec3(INPUT_GAMMA));
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(InputGamma));
 	
 	// masking
-	vec3 mask;
-	if (fract(gl_FragCoord.x * 0.5) < 0.5) {
-		mask = vec3(MASK_BRIGHTNESS, 1.0, MASK_BRIGHTNESS);
-	} else {
-		mask = vec3(1.0, MASK_BRIGHTNESS, 1.0);
+	if (Mask == 1) {
+		vec3 mask;
+		if (fract(gl_FragCoord.x * 0.5) < 0.5) {
+			mask = vec3(MaskBrightness, 1.0, MaskBrightness);
+		} else {
+			mask = vec3(1.0, MaskBrightness, 1.0);
+		}
+		Out_Color = vec4(Out_Color.rgb * mask, 1.0);
 	}
-	Out_Color = vec4(Out_Color.rgb * mask, 1.0);
 
 	// scanline effect
-	if (fract(gl_FragCoord.y * 0.5) < 0.5) {
-		Out_Color.a = Out_Color.a * SCANLINE_BRIGHTNESS;
+	if (Scanlines == 1) {
+		if (fract(gl_FragCoord.y * 0.5) < 0.5) {
+			Out_Color.a = Out_Color.a * ScanlinesBrightness;
+		}
 	}
 
 	// output gamma
-	Out_Color.rgb = pow(Out_Color.rgb, vec3(1.0/OUTPUT_GAMMA));
+	Out_Color.rgb = pow(Out_Color.rgb, vec3(1.0/OutputGamma));
 
 	// vignette effect
-	float vignette;
-	if (Cropped > 0) {
-		vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
-	} else {
-		// f is used to factor the vignette value. In the "cropped" branch we
-		// use a factor value of 10. to visually mimic the vignette effect a
-		// value of about 25 is required (using Pitfall as a template). I don't
-		// understand this well enough to say for sure what the relationship
-		// between 25 and 10 is, but the following ratio between
-		// cropped/uncropped widths gives us a value of 23.5
-		float f =ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
-		vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
+	if (Vignette == 1) {
+		float vignette;
+		if (Cropped > 0) {
+			vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
+		} else {
+			// f is used to factor the vignette value. In the "cropped" branch we
+			// use a factor value of 10. to visually mimic the vignette effect a
+			// value of about 25 is required (using Pitfall as a template). I don't
+			// understand this well enough to say for sure what the relationship
+			// between 25 and 10 is, but the following ratio between
+			// cropped/uncropped widths gives us a value of 23.5
+			float f =ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
+			vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
+		}
+		Out_Color.rgb *= pow(vignette, 0.10) * 1.2;
 	}
-	Out_Color.rgb *= pow(vignette, 0.10) * 1.2;
 }
