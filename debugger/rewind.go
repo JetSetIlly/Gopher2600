@@ -64,6 +64,9 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	}
 
 	dbg.PushRawEventReturn(func() {
+		<-dbg.rewinding
+
+		state, _ := dbg.scr.GetFeature(gui.ReqState)
 		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
 
 		f := func() error {
@@ -79,11 +82,9 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 				}
 			}
 
-			dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			dbg.scr.SetFeature(gui.ReqState, state)
 
 			dbg.runUntilHalt = false
-			<-dbg.rewinding
-
 			return nil
 		}
 
@@ -99,6 +100,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 	dbg.runUntilHalt = false
 
 	dbg.PushRawEventReturn(func() {
+		state, _ := dbg.scr.GetFeature(gui.ReqState)
 		dbg.scr.SetFeature(gui.ReqState, gui.StateGotoCoords)
 
 		f := func() error {
@@ -107,7 +109,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 				return err
 			}
 
-			dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			dbg.scr.SetFeature(gui.ReqState, state)
 			dbg.runUntilHalt = false
 
 			return nil

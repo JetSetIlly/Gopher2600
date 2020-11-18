@@ -138,24 +138,44 @@ func (win *winControl) drawRewind() {
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.TV.Frame)
 
+	changedThisFrame := false
+
 	// forward/backwards buttons
 	imgui.SameLine()
-	if imgui.Button("<") && f > 0 {
-		win.rewindTarget = f - 1
+	if imgui.Button("<") && win.rewindTarget > 0 {
+		win.rewindTarget--
 		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		changedThisFrame = true
 	}
 	imgui.SameLine()
-	if imgui.Button(">") && f < e {
-		win.rewindTarget = f + 1
+	if imgui.Button(">") && win.rewindTarget < e {
+		win.rewindTarget++
 		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		changedThisFrame = true
+	}
+
+	// the < and > buttons above will affect the label of the slide below if
+	// we're not careful. use either f or rewindTarget for label, depending on
+	// whether either of those buttons have ben pressed this frame.
+	var label string
+	if changedThisFrame {
+		label = fmt.Sprintf("%d", f)
+	} else {
+		label = fmt.Sprintf("%d", win.rewindTarget)
 	}
 
 	// rewind slider
-	if imgui.SliderIntV("##rewind", &f, s, e, fmt.Sprintf("%d", f)) || win.rewindWaiting {
-		if !win.rewindWaiting {
-			win.rewindTarget = f
+	if imgui.SliderIntV("##rewind", &f, s, e, label) || win.rewindWaiting {
+		if win.rewindTarget != f {
+			win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(f), f == e)
+			if !win.rewindWaiting {
+				win.rewindTarget = f
+			}
 		}
-		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+	}
+
+	if !imgui.IsItemActive() {
+		win.rewindTarget = f
 	}
 
 	// alignment information for frame number indicators below

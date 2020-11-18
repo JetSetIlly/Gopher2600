@@ -84,7 +84,8 @@ type SdlImgui struct {
 	// gui.ReqSetEventChan
 	events chan gui.Event
 
-	// is emulation running or paused, etc.
+	// the gui renders differently depending on EmulationState. use setState()
+	// to set the value
 	state gui.EmulationState
 
 	// mouse coords at last frame
@@ -214,12 +215,13 @@ func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 	return img.screen
 }
 
-// the following functions are used to differentiate play-mode from debug-mode.
-// any operation that is dependent on playmode state should be abstracted to a
-// function and placed below.
-//
-// for simplicity, play-mode is defined as being on when playScr is open
+// set emulation state and handle any changes.
+func (img *SdlImgui) setState(state gui.EmulationState) {
+	img.state = state
+	img.screen.render()
+}
 
+// is the gui in playmode or not.
 func (img *SdlImgui) isPlaymode() bool {
 	return img.wm != nil && img.wm.playScr.isOpen()
 }

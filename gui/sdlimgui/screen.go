@@ -331,7 +331,9 @@ func (scr *screen) addTextureRenderer(r textureRenderers) {
 }
 
 func (scr *screen) render() {
-	// not rendering if rewinding is currently active
+	// not rendering if gui.state is Rewinding or GotoCoords. render will be
+	// called automatically when state changes from either of these two states
+	// to something else
 	if scr.img.state == gui.StateRewinding || scr.img.state == gui.StateGotoCoords {
 		return
 	}

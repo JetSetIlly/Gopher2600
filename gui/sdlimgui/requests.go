@@ -68,7 +68,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
 	case gui.ReqState:
-		img.state = request.args[0].(gui.EmulationState)
+		img.setState(request.args[0].(gui.EmulationState))
 
 	case gui.ReqSetDbgColors:
 		img.wm.dbgScr.debugColors = request.args[0].(bool)
