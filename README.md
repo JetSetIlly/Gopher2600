@@ -6,11 +6,12 @@
 
 The accuracy of the emulation is very high although this is difficult to prove. Certainly, there are no known outstanding issues in the TIA or RIOT.
 
-The 6507 emulation is also very accurate although, at the time of writing, not all undocumentated opcodes are implemented. That said, the emulation method used for the CPU means adding a missing opcode is trivial.
+The 6507 emulation is also very accurate although, at the time of writing, not all undocumented opcodes are implemented. That said, the emulation method used for the CPU means adding a missing opcode is trivial.
 
 The emulator also comes with a powerful [graphical debugger](#debugger). This is still in active development with many planned additional features but currently it features:
 
 * CPU and Video stepping
+* [Interactive rewinding](#rewinding)
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
 * Interactive TV Screen
 * Specialist windows for specific cartridge types (eg. Supercharger)
@@ -43,7 +44,7 @@ The following screenshot shows the fabled _ET_ ROM. In this case the ROM has bee
 
 The next three images show the "TV screen" of the graphical debugger in various states. In the first screenshot, we see _Barnstormer_ with the "debug colours" turned on. This idea was taken from the Stella emulator and indeed, these are the same colours used in that emulator. Unlike Stella however, we can also see the off-screen areas of the tv image, and in particular, the sprites as they "appear" off-screen. 
 
-<img src=".screenshots/barnstormer_debug_colors.png" width="400" alt="barnstormer with debug colors"/>
+<img src=".screenshots/barnstormer_debug_colours.png" width="400" alt="barnstormer with debug colours"/>
 
 The next two screenshots show the `Gopher2600's` overlay feature. An overlay is a way of adding information to the TV screen with the aim of helping the debugging process.
 
@@ -142,7 +143,7 @@ Once compiled run the executable with the help flag:
 
 	> gopher2600 -help
 
-This will list the available sub-modes. USe the -help flag to get information
+This will list the available sub-modes. Use the -help flag to get information
 about a sub-mode. For example:
 
 	> gopher2600 debug -help
@@ -203,7 +204,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 * F1 Panel Select
 * F2 Panel Reset
-* F3 Color Toggle
+* F3 Colour Toggle
 * F4 Player 0 Pro Toggle
 * F5 Player 0 Pro Toggle
 
@@ -223,7 +224,7 @@ mouse button or the escape key to release the captured mouse.
 In addition to the controller and panel input described above, the following keys are also available during mouse capture:
 
 * F12 (backtick) Toggle screen masking
-* F11 Toggle debugging colors
+* F11 Toggle debugging colours
 * F10 Toggle debugging overlay
 * \+ Increase screen size
 * \- Decrease screen size
@@ -244,16 +245,16 @@ The rest of the section will give a brief run down of debugger features.
 	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
 	          GREP          HALT          HELP        INSERT      KEYBOARD
 	          LAST          LINT          LIST           LOG        MEMMAP
-	       MISSILE        ONHALT        ONSTEP       ONTRACE         PANEL
-	         PATCH          PEEK        PLAYER     PLAYFIELD       PLUSROM
-	          POKE         PREFS       QUANTUM          QUIT           RAM
-	         RESET          RIOT           RUN        SCRIPT          STEP
-	         STICK        SYMBOL           TIA         TRACE          TRAP
-	            TV         WATCH
+	      MEMUSAGE       MISSILE        ONHALT        ONSTEP       ONTRACE
+	         PANEL         PATCH          PEEK        PLAYER     PLAYFIELD
+	       PLUSROM          POKE         PREFS       QUANTUM          QUIT
+	           RAM         RESET        REWIND          RIOT           RUN
+	        SCRIPT          STEP         STICK        SYMBOL           TIA
+	         TRACE          TRAP            TV         WATCH
 
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
-Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be writted `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH NUSIZ0` will halt execution whenever address 0x04 (or any of its mirrors) is written to. 
+Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be written `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH NUSIZ0` will halt execution whenever address 0x04 (or any of its mirrors) is written to. 
 
 Watches are one of the three facilities that will halt execution of the emulator. The other two are `TRAP` and `BREAK`. Both of these commands will halt execution when a "target" changes or meets some condition. An example of a target is the Programmer Counter or the Scanline value. See `HELP BREAK` and `HELP TRAP` for more information.
 
@@ -262,6 +263,51 @@ Whenever the emulation does halt, the `ONHALT` command will run. For example, a 
 The debugger can step forward either, one CPU instruction at a time, or by one video cycle at a time. We can change this mode with the `QUANTUM` command. We can also conveniently use the `STEP` command, for example `STEP VIDEO`, performing the quantum change and stepping forward in one go. The `STEP` command can also be used to run until the next time a target changes. For example, `STEP SCANLINE`. Using `STEP` in this way is often more useful than setting up a `TRAP`.
 
 Scripts can be recorded and played back with the `SCRIPT` command. All commands are available when in script recording mode, except `RUN` and further `SCRIPT RECORD` command. Playing back a script while recording a new script is possible.
+
+#### Rewinding
+
+`Gopher2600` allows emulation state to be rewound to an earlier frame, scanline
+or colour-clock. Rewinding by frame is best done through the `Control` window of
+the debugger. 
+
+<img src=".screenshots/control_window.png" height="200" alt="control window"/>
+
+The slider can be scrolled to any frame between the two limits indicated.
+Alternatively, a single frame can be stepped back and forward using the arrow
+buttons.
+
+Rewinding to a scanline/colour-clock is done by clicking the left mouse button
+on the debug screen, at the position required. This will change the state of
+the emulation accordingly. This can be done with any frame in the rewind
+history without damaging the rewind history.
+
+The rewind history will be cropped and continue from the current point whenever
+the emulation is run or stepped.
+
+The number of rewind states stored can be set via the preferences window (or
+through the terminal). In addition the snapshot frequency can also be altered.
+The frequency defines how many frames must pass before another snapshot is
+taken. This affects the number of frames that can be stored. For example, if
+number of states is 100 and frequency is 1 then one-hundred frames can be
+stored in the rewind history. On the other hand, if the number of states is 100
+and frequency is 5 then five-hundred frames can be stored.
+
+The rewind frequency does not affect the granularity of the rewind history.
+This means that you can rewind to any frame in the rewind history even if no no
+explicit snapshot has been taken.
+
+The downside of large frequencies is that input events (from a joystick for
+example) may be lost if they occurred between snapshots. Future versions of
+`Gopher2600` will correct this.
+
+Rewind is also not currently available in playmode. Again, future version of
+`Gopher2600` will allow this.
+
+Video quantum is also not fully supported. While the rewind system will work
+when in video-stepping mode you can not currently interactively alter the
+screen position to the level of an individual colour-clock. Left-clicking on the
+screen, as described above, will 'quantise' to the next CPU instruction. Future
+versions of `Gopher2600` will correct this.
 
 ## Configuration Directory
 
@@ -328,6 +374,10 @@ servers.)
 
 You can change your username through the debugger, either through the PlusROM
 preferences window or through the [terminal](#debugger-terminal) with the `PLUSROM` command.
+
+`PlusROM` cartridges are [rewindable](#rewinding) but cannot be rewound
+backwards past a network event 'boundary'. This to prevent resending of already
+sent network data.
 
 ## Recording Gameplay
 
@@ -425,7 +475,7 @@ This area of the emulation will be expanded upon in the future.
 See the https://github.com/JetSetIlly/Gopher2600-Utils/ repository for examples of tools
 that use `Gopher2600`.
 
-## Futher Help
+## Further Help
 
 In addition to this readme, more information can be found with the command line `-help` system.
 Many modes and sub-modes will accept operational flags. Specifying the `-help` flag will print
@@ -434,7 +484,7 @@ a brief summary of available options.
 Help on debugger commands is available with the `HELP` command at the debugger command line.
 
 More information is available in the Go source files and can be viewed with the
-Go documenation system. With `godoc` installed:
+Go documentation system. With `godoc` installed:
 
 	> GOMOD=$(pwd) godoc -http=localhost:1234 -index >/dev/null &
 
