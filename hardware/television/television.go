@@ -139,7 +139,7 @@ type Television struct {
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
-	signals [MaxSignalHistory]signal.SignalAttributes
+	signals []signal.SignalAttributes
 	// the index to write the next signal
 	signalIdx int
 }
@@ -150,6 +150,7 @@ func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
 		reqSpecID: strings.ToUpper(spec),
 		state:     &State{},
+		signals:   make([]signal.SignalAttributes, MaxSignalHistory),
 	}
 
 	// set specification
