@@ -188,7 +188,7 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 
 // read8Bit returns 8bit value from the specified address
 //
-// side-effects
+// side-effects:
 //	* calls endCycle after memory read
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
@@ -211,7 +211,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 
 // read8BitZero returns 8bit value from the specified zero-page address
 //
-// side-effects
+// side-effects:
 //	* calls endCycle after memory read
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
@@ -250,7 +250,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 
 // read16Bit returns 16bit value from the specified address
 //
-// side-effects
+// side-effects:
 //	* calls endCycle after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
@@ -286,7 +286,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 // read8BitPC reads 8 bits from the memory location pointed to by PC
 //
-// side-effects
+// side-effects:
 //	* updates program counter
 //	* calls endCycle at end of function
 //	* updates LastResult.ByteCount
@@ -328,7 +328,7 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 
 // read16BitPC reads 16 bits from the memory location pointed to by PC
 //
-// side-effects
+// side-effects:
 //	* updates program counter
 //	* calls endCycle after each 8 bit read
 //	* updates LastResult.ByteCount

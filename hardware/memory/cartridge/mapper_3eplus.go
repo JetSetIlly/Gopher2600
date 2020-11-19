@@ -38,7 +38,7 @@ type m3ePlus struct {
 	state *m3ePlusState
 }
 
-// should work with any size cartridge that is a multiple of 1024
+// should work with any size cartridge that is a multiple of 1024:
 //  - tested with chess3E+20200519_3PQ6_SQ.bin
 //	https://atariage.com/forums/topic/299157-chess/?do=findComment&comment=4541517
 //

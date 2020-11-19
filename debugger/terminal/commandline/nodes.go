@@ -92,8 +92,7 @@ func (n node) usageString() string {
 //		TEST [1 2 3 4 5]
 //
 // note: string should not be called directly except as a recursive call
-// or as an initial call from String() and usageString()
-//
+// or as an initial call from String() and usageString().
 func (n node) string(useLabels bool, fromBranch bool) string {
 	s := strings.Builder{}
 

@@ -37,8 +37,7 @@ import (
 // interfere with the TIA addresses, which it does; however you just use $40 to
 // $7F instead! :-)  $3F does not have a corresponding TIA register, so writing
 // here has no effect other than switching banks.  Very clever; especially
-// since you can implement this with only one chip! (a 74LS173)
-//
+// since you can implement this with only one chip! (a 74LS173).
 //
 // cartridges:
 //	- Miner2049
@@ -56,8 +55,8 @@ type tigervision struct {
 	state *tigervisionState
 }
 
-// should work with any size cartridge that is a multiple of 2048
-//  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo)
+// should work with any size cartridge that is a multiple of 2048:
+//  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
 func newTigervision(data []byte) (mapper.CartMapper, error) {
 	cart := &tigervision{
 		mappingID:   "3F",

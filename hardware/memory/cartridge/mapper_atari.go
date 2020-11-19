@@ -246,7 +246,7 @@ func (cart *atari) AddSuperchip() {
 	}
 }
 
-// atari4k is the original and most straightforward format
+// atari4k is the original and most straightforward format:
 //  - Pitfall
 //  - River Raid
 //  - Barnstormer
@@ -295,7 +295,7 @@ func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return cart.atari.Write(addr, data, passive, poke)
 }
 
-// atari2k is the half-size cartridge of 2048 bytes
+// atari2k is the half-size cartridge of 2048 bytes:
 //	- Combat
 //  - Dragster
 //  - Outlaw
@@ -345,7 +345,7 @@ func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) err
 	return cart.atari.Write(addr, data, passive, poke)
 }
 
-// atari8k (F8)
+// atari8k (F8):
 //	- ET
 //  - Krull
 //  - etc.
@@ -433,7 +433,7 @@ func (cart atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
 
-// atari16k (F6)
+// atari16k (F6):
 //	- Crystal Castle
 //	- RS Boxing
 //  - Midnite Magic

@@ -24,7 +24,7 @@ import (
 )
 
 // Interval indicates how often (in CPU cycles) the timer value decreases.
-// the following rules apply
+// the following rules apply:
 //		* set to 1, 8, 64 or 1024 depending on which address has been
 //			written to by the CPU
 //		* is used to reset the cyclesRemaining
