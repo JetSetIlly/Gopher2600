@@ -71,6 +71,7 @@ type windowManager struct {
 	term    *winTerm
 	dbgScr  *winDbgScr
 	playScr *winPlayScr
+	disasm  *winDisasm
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -218,6 +219,7 @@ func newWindowManager(img *SdlImgui) (*windowManager, error) {
 	// elsewhere in the system
 	wm.dbgScr = wm.windows[winDbgScrTitle].(*winDbgScr)
 	wm.term = wm.windows[winTermTitle].(*winTerm)
+	wm.disasm = wm.windows[winDisasmTitle].(*winDisasm)
 
 	// create play window. this is a very special window that never appears
 	// directly in an any menu

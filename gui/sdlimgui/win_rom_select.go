@@ -41,6 +41,9 @@ type winSelectROM struct {
 	showAllFiles bool
 	showHidden   bool
 
+	scrollToTop  bool
+	centreOnFile bool
+
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
 }
@@ -50,6 +53,8 @@ func newFileSelector(img *SdlImgui) (managedWindow, error) {
 		img:          img,
 		showAllFiles: false,
 		showHidden:   false,
+		scrollToTop:  true,
+		centreOnFile: true,
 	}
 
 	path, err := os.Getwd()
@@ -75,8 +80,13 @@ func (win *winSelectROM) destroy() {
 
 func (win *winSelectROM) draw() {
 	if !win.open {
+		// set centreOnFile to true, ready for next time window is open
+		win.centreOnFile = true
 		return
 	}
+
+	// reset centreOnFile at end of draw
+	defer func() { win.centreOnFile = false }()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{70, 58}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{375, 397}, imgui.ConditionFirstUseEver)
@@ -89,6 +99,7 @@ func (win *winSelectROM) draw() {
 		if err != nil {
 			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
 		}
+		win.scrollToTop = true
 	}
 
 	imgui.SameLine()
@@ -96,6 +107,11 @@ func (win *winSelectROM) draw() {
 
 	height := imgui.WindowHeight() - imgui.CursorPosY() - win.controlHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
 	imgui.BeginChildV("##selector", imgui.Vec2{X: 0, Y: height}, true, 0)
+
+	if win.scrollToTop {
+		imgui.SetScrollY(0)
+		win.scrollToTop = false
+	}
 
 	// list directories
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
@@ -121,6 +137,7 @@ func (win *winSelectROM) draw() {
 				if err != nil {
 					logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
 				}
+				win.scrollToTop = true
 			}
 		}
 	}
@@ -156,6 +173,10 @@ func (win *winSelectROM) draw() {
 
 		if fi.Mode().IsRegular() {
 			selected := f.Name() == filepath.Base(win.selectedFile)
+
+			if selected && win.centreOnFile {
+				imgui.SetScrollHereY(0.0)
+			}
 
 			if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
 				win.selectedFile = filepath.Join(win.currPath, f.Name())

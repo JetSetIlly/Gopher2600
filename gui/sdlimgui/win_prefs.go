@@ -111,6 +111,11 @@ func (win *winPrefs) drawGeneral() {
 
 	if imgui.Checkbox("Use Symbols", &win.img.lz.Prefs.Symbols) {
 		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
+
+		// if disassembly has address labels then turning symbols off may alter
+		// the vertical scrolling of the disassembly window. set alignOnPC to
+		// true to force preference change to take effect
+		win.img.wm.disasm.alignOnPC = true
 	}
 
 	termOnError := win.img.wm.term.openOnError.Get().(bool)

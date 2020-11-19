@@ -16,7 +16,6 @@
 package crt
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -131,18 +130,10 @@ func (p *Preferences) SetDefaults() {
 
 // Load disassembly preferences and apply to the current disassembly.
 func (p *Preferences) Load() error {
-	err := p.dsk.Load(false)
-	if err != nil {
-		return curated.Errorf("crt prefs: %v", err)
-	}
-	return nil
+	return p.dsk.Load(false)
 }
 
 // Save current disassembly preferences to disk.
 func (p *Preferences) Save() error {
-	err := p.dsk.Save()
-	if err != nil {
-		return curated.Errorf("crt prefs: %v", err)
-	}
-	return nil
+	return p.dsk.Save()
 }

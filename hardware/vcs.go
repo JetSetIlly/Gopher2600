@@ -60,7 +60,7 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 
 	vcs.Mem = memory.NewMemory(vcs.Prefs)
 	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)
-	vcs.RIOT = riot.NewRIOT(vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.RIOT = riot.NewRIOT(vcs.Prefs, vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
 
 	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)

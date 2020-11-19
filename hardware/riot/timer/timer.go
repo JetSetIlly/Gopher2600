@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // Interval indicates how often (in CPU cycles) the timer value decreases.
@@ -61,6 +62,8 @@ func (in Interval) String() string {
 type Timer struct {
 	mem bus.ChipBus
 
+	prefs *preferences.Preferences
+
 	// the interval value most recently requested by the CPU
 	Divider Interval
 
@@ -84,13 +87,19 @@ type Timer struct {
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type.
-func NewTimer(mem bus.ChipBus) *Timer {
+func NewTimer(prefs *preferences.Preferences, mem bus.ChipBus) *Timer {
 	tmr := &Timer{
+		prefs:          prefs,
 		mem:            mem,
 		Divider:        T1024T,
 		TicksRemaining: int(T1024T),
 		INTIMvalue:     0,
 		pa7:            true,
+	}
+
+	if tmr.prefs.RandomState.Get().(bool) {
+		tmr.INTIMvalue = uint8(tmr.prefs.RandSrc.Intn(0xff))
+		tmr.TicksRemaining = tmr.prefs.RandSrc.Intn(0xffff)
 	}
 
 	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)

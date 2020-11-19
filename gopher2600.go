@@ -725,6 +725,9 @@ sense and will be ignored.
 Available modes are VIDEO, PLAYBACK and LOG. If not mode is explicitly given then
 VIDEO will be used for ROM files and PLAYBACK will be used for playback recordings.
 
+Value for the -state flag can be one of TV, PORTS, TIMER, CPU and can be used
+with the default VIDEO mode.
+
 The -log flag intructs the program to echo the log to the console. Do not confuse this
 with the LOG mode. Note that asking for log output will suppress regression progress meters.`)
 

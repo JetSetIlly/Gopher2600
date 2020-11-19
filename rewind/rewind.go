@@ -163,7 +163,7 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 
 func (r *Rewind) allocate() {
 	r.entries = make([]*State, r.Prefs.MaxEntries.Get().(int)+overhead)
-	r.restart(levelBoundary)
+	r.restart(levelReset)
 }
 
 func (r *Rewind) String() string {
@@ -265,6 +265,7 @@ func (r *Rewind) Check() {
 	if r.boundaryNextFrame {
 		r.boundaryNextFrame = false
 		r.restart(levelBoundary)
+		logger.Log("rewind", fmt.Sprintf("boundary added at frame %d", r.vcs.TV.GetState(signal.ReqFramenum)))
 		return
 	}
 

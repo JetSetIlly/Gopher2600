@@ -90,11 +90,7 @@ func newPreferences() (*Preferences, error) {
 
 // Load disassembly preferences and apply to the current disassembly.
 func (p *Preferences) Load() error {
-	err := p.dsk.Load(false)
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.dsk.Load(false)
 }
 
 // Save current disassembly preferences to disk.
