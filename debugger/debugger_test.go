@@ -34,6 +34,9 @@ func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData)
 	return nil
 }
 
+func (g *mockGUI) SetFeatureNoError(request gui.FeatureReq, args ...gui.FeatureReqData) {
+}
+
 func (g *mockGUI) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
 	return nil, nil
 }

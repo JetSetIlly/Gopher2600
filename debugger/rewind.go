@@ -21,6 +21,7 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CatchupLoop is an implementation of the rewind.Runner interface.
@@ -37,6 +38,10 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	}
 
 	for continueCheck() {
+		// raw events will go unserviced while this loop is running. it some
+		// ways it would be nice to see updates but in other ways it feels
+		// janky
+
 		err = dbg.VCS.Step(func() error {
 			return dbg.reflect.Check(dbg.lastBank)
 		})
@@ -63,33 +68,43 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 		return true
 	}
 
-	dbg.PushRawEventReturn(func() {
-		<-dbg.rewinding
+	doRewind := func() error {
+		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StateRewinding)
 
-		state, _ := dbg.scr.GetFeature(gui.ReqState)
-		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
-
-		f := func() error {
-			if last {
-				err := dbg.Rewind.GotoLast()
-				if err != nil {
-					return err
-				}
-			} else {
-				err := dbg.Rewind.GotoFrame(fn)
-				if err != nil {
-					return err
-				}
+		if last {
+			err := dbg.Rewind.GotoLast()
+			if err != nil {
+				return err
 			}
-
-			dbg.scr.SetFeature(gui.ReqState, state)
-
-			dbg.runUntilHalt = false
-			return nil
+		} else {
+			err := dbg.Rewind.GotoFrame(fn)
+			if err != nil {
+				return err
+			}
 		}
 
-		dbg.restartInputLoop(f)
-	})
+		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StatePaused)
+		dbg.runUntilHalt = false
+
+		return nil
+	}
+
+	if dbg.isVideoCycleInputLoop {
+		dbg.PushRawEventReturn(func() {
+			<-dbg.rewinding
+
+			dbg.restartInputLoop(doRewind)
+		})
+	} else {
+		dbg.PushRawEventReturn(func() {
+			<-dbg.rewinding
+
+			err := doRewind()
+			if err != nil {
+				logger.Log("rewind", err.Error())
+			}
+		})
+	}
 
 	return false
 }
@@ -101,7 +116,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 
 	dbg.PushRawEventReturn(func() {
 		state, _ := dbg.scr.GetFeature(gui.ReqState)
-		dbg.scr.SetFeature(gui.ReqState, gui.StateGotoCoords)
+		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StateGotoCoords)
 
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
@@ -109,7 +124,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 				return err
 			}
 
-			dbg.scr.SetFeature(gui.ReqState, state)
+			dbg.scr.SetFeatureNoError(gui.ReqState, state)
 			dbg.runUntilHalt = false
 
 			return nil

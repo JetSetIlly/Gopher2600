@@ -24,6 +24,10 @@ func (s Stub) SetFeature(request FeatureReq, args ...FeatureReqData) error {
 	return curated.Errorf(UnsupportedGuiFeature, request)
 }
 
+// SetFeatureNoError implements the GUI interface.
+func (s Stub) SetFeatureNoError(request FeatureReq, args ...FeatureReqData) {
+}
+
 // GetFeature implements the GUI interface.
 func (s Stub) GetFeature(request FeatureReq) (FeatureReqData, error) {
 	return nil, curated.Errorf(UnsupportedGuiFeature, request)

@@ -32,6 +32,8 @@ import (
 // is true then user will be prompted every video cycle; when false the user
 // is prompted every cpu cycle.
 func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
+	dbg.isVideoCycleInputLoop = videoCycle
+
 	// to speed things a bit we only check for input events every
 	// "inputCtDelay" iterations.
 	const inputCtDelay = 50
@@ -229,6 +231,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			if err != nil {
 				return err
 			}
+
+			// make sure videocyle info is current
+			dbg.isVideoCycleInputLoop = videoCycle
 
 			// check exit video loop
 			if dbg.inputLoopRestart {

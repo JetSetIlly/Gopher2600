@@ -40,6 +40,10 @@ type Runner interface {
 	// Note that the TV's frame limiter is turned off before CatchUpLoop() is
 	// called by the rewind system (and turned back to the previous setting
 	// afterwards).
+	//
+	// CatchUpLoop may choose to service events (GUI events etc.) while it is
+	// iterating but depending on required performance this may not be
+	// necessary.
 	CatchUpLoop(continueCheck func() bool) error
 }
 

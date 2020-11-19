@@ -110,6 +110,9 @@ type Debugger struct {
 
 	// \/\/\/ inputLoop \/\/\/
 
+	// is current inputloop inside a video cycle
+	isVideoCycleInputLoop bool
+
 	// buffer for user input
 	input []byte
 
@@ -310,6 +313,20 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 	}
 
+	return nil
+}
+
+// reset of VCS should go through this function to makes sure debugger is reset
+// accordingly also. note that debugging features (breakpoints, etc.) are not
+// reset.
+func (dbg *Debugger) reset() error {
+	err := dbg.VCS.Reset()
+	if err != nil {
+		return err
+	}
+	dbg.Rewind.Reset()
+	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
+	dbg.printLine(terminal.StyleFeedback, "machine reset")
 	return nil
 }
 

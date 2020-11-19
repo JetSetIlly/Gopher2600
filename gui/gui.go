@@ -17,8 +17,15 @@ package gui
 
 // GUI defines the operations that can be performed on visual user interfaces.
 type GUI interface {
-	// send a request to set a gui feature
+	// Send a request to set a GUI feature.
 	SetFeature(request FeatureReq, args ...FeatureReqData) error
+
+	// Same as SetFeature() but not waiting for the result. Useful in time
+	// critical situations when you are absolutely sure there will be no
+	// errors that need handling.
+	SetFeatureNoError(request FeatureReq, args ...FeatureReqData)
+
+	// Return current state of GUI feautre.
 	GetFeature(request FeatureReq) (FeatureReqData, error)
 }
 

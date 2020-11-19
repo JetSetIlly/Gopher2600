@@ -52,6 +52,14 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqDa
 	return <-img.featureSetErr
 }
 
+// SetFeatureNoError implements gui.GUI interface.
+func (img *SdlImgui) SetFeatureNoError(request gui.FeatureReq, args ...gui.FeatureReqData) {
+	img.featureSet <- featureRequest{request: request, args: args}
+	go func() {
+		<-img.featureSetErr
+	}()
+}
+
 // featureRequests have been handed over to the featureReq channel. we service
 // any requests on that channel here.
 func (img *SdlImgui) serviceSetFeature(request featureRequest) {
