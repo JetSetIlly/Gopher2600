@@ -1,103 +1,28 @@
 # Gopher2600
 
-`Gopher2600` is an emulator for the Atari 2600. Whilst the performance is not as efficient as some other emulators it is none-the-less suitable for playing games, on a reasonably modern computer, at the required 60fps. (The development machine for `Gopher2600` has been an i3-3225, dating from around 2012.)
+`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips are well represented. The key features of the emulator:
 
-<img src=".screenshots/crt_official_frogger.png" alt="gopher2600 showing Official Frogger with CRT effects"/>
+* [Support for many of the known cartridge formats](#supported-cartridge-formats)
+* [Gameplay recording and playback](#recording-gameplay)
+* Support for (and auto-detection of) [keypad,paddle and joystick](#hand-controllers)
+* Network access through [PlusROM](#plusrom) emulation
+* [Savekey](#savekey) support
 
-The accuracy of the emulation is very high although this is difficult to prove. Certainly, there are no known outstanding issues in the TIA or RIOT.
-
-The 6507 emulation is also very accurate although, at the time of writing, not all undocumented opcodes are implemented. That said, the emulation method used for the CPU means adding a missing opcode is trivial.
-
-The emulator also comes with a powerful [graphical debugger](#debugger). This is still in active development with many planned additional features but currently it features:
+The graphical [debugger](#debugger) is still in development but the current features include:
 
 * CPU and Video stepping
-* [Interactive rewinding](#rewinding)
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
-* Interactive TV Screen
-* Specialist windows for specific cartridge types (eg. Supercharger)
+* [Interactive rewinding](#rewinding)
+* Specialist windows for specific cartridge types (eg. supercharger tape)
 * Script recording and playback
-* Line terminal interface for harder to reach parts of the emulation
-
-<img src=".screenshots/dear_debugger.png" height="400" alt="gopher2600's graphical debugger"/>
-
-In addition to the debugger, `Gopher2600` can [record and playback gameplay sessions](#recording-gameplay). This powerful feature efficiently records user input to a text file, suitable for passing along to other people for viewing.
-
-The gameplay playback feature is also used in the inbuilt [regression database](#regression-database). This database allow for easy testing of the emulator's integrity and was of invaluable use during development of the emulator. This feature will also be of use perhaps when developing new ROMs for the Atari 2600 - a way of recording the ideal output of the ROM for future comparison.
-
-The Atari 2600 comes with a variety of [hand controllers](#hand-controllers) and `Gopher2600` does it's very best to automatically select the correct input device. `Gopher2600` also supports the [SaveKey](#savekey) peripheral.
-
-`Gopher2600` supports a variety of cartridge formats including [Supercharger](#supercharger-roms) from MP3 or WAV files. It supports `DPC+` format although there is no support for the ARM as yet. Most other formats are also supported
-
-For network access `Gopher2600` supports [PlusROM](#plusrom) functionality.
-
-`Gopher2600` is in active development and feature requests are welcomed.
+* Line [terminal](#debugger-terminal) interface for harder to reach parts of the emulation
+* [Regression Database](#regression-database)
 
 ## Screenshots
 
-A variety of screenshots from various points in the emulator's development.
-
-<img src=".screenshots/barnstormer.png" height="200" alt="barnstormer"/> <img src=".screenshots/pole_position.png" height="200" alt="pole position"/> <img src=".screenshots/ateam.png" height="200" alt="ateam"/> <img src=".screenshots/he_man_title.png" height="200" alt="he man title screen"/>
-
-The following screenshot shows the fabled _ET_ ROM. In this case the ROM has been patched to fix some notorious issues with the original game. Notice, the colour of _ET_ and how he is standing in front of the pit? The patches in question were taken from http://www.neocomputer.org/projects/et/ and automatically applied. Auto-patching of ROMs is a feature of the emulator
-
-<img src=".screenshots/et_with_patch.png" height="200" alt="et with patch"/>
-
-The next three images show the "TV screen" of the graphical debugger in various states. In the first screenshot, we see _Barnstormer_ with the "debug colours" turned on. This idea was taken from the Stella emulator and indeed, these are the same colours used in that emulator. Unlike Stella however, we can also see the off-screen areas of the tv image, and in particular, the sprites as they "appear" off-screen. 
-
-<img src=".screenshots/barnstormer_debug_colours.png" width="400" alt="barnstormer with debug colours"/>
-
-The next two screenshots show the `Gopher2600's` overlay feature. An overlay is a way of adding information to the TV screen with the aim of helping the debugging process.
-
-The first screenshot shows the `WSYNC` overlay. This overlay shows us graphically the scanlines on which WSYNC has been triggered. In Atari 2600 programming terms, the WSYNC is a way of synchronising the CPU with the TIA. The downside of the WSYNC is that CPU cycles are wasted - something that is not always obvious when looking at the ROM's assembly.
-
-The second screenshot shows _Pitfall 2_ and we can see straight away that fewer CPU cycles are wasted, simply by the shorter and less frequent blue bars extending to the right of the screen.
-
-<img src=".screenshots/pitfall_overlay.png" width="400" alt="pitfall with overlay"/> <img src=".screenshots/pitfall2_overlay.png" width="400" alt="pitfall with overlay"/> 
-
-## Resources used
-
-The Stella project (https://stella-emu.github.io/) was used as a reference for
-video output. I made the decision not to use or even to look at any of Stella's
-implementation details. The exception to this was a peek at the audio
-sub-system. Primarily however, `Gopher2600's` audio implementation references Ron
-Fries' original TIASound.c file.
-
-Many notes and clues from the AtariAge message boards. Most significantly the
-following threads proved very useful indeed:
-
-* "Cosmic Ark Star Field Revisited"
-* "Properly model NUSIZ during player decode and draw"
-* "Requesting help in improving TIA emulation in Stella" 
-* "3F Bankswitching"
-
-And from and old mailing list:
-
-* "Games that do bad things to HMOVE..." https://www.biglist.com/lists/stella/archives/199804/msg00198.html
-
-These mailing lists and forums have supplied me with many useful test ROMs. I
-will package these up and distribute them sometime in the future (assuming I
-can get the required permissions).
-
-Extensive references have been made to Andrew Towers' "Atari 2600 TIA Hardware
-Notes v1.0"
-
-Cartridge format information was found in Kevin Horton's "Cart Information
-v6.0" file (sometimes named bankswitch_sizes.txt)
-
-The "Stella Programmer's Guide" by Steve Wright is of course a key document,
-used frequently throughout development.
-
-The 6507 information was taken from Leventhal's "6502 Assembly Language
-Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
-
-US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
-(the format used in Pitfall 2)
-
-DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
-
-The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
-
-Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
+<img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
+<img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
+<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/> <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
 
 ## Compilation
 
@@ -124,7 +49,7 @@ directly
 `Gopher2600` makes use of SDL2. The SDL2 go binding used by the project requires a minimum
 SDL2 version of `2.0.10`.
 
-## Cross-Compilation
+### Cross-Compilation
 
 Native compilation of a Windows executable has not yet been tried. But
 cross-compilation does work via the Makefile:
@@ -158,38 +83,19 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Joystick, paddle and keyboard inputs are supported. Currently, only joysticks and paddles for the left player are available however. 
+Joystick, paddle and keypad inputs are supported. Currently, only joysticks and paddles for the left player are available. 
 
-The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button.
+The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button. Gamepad support will be added in the future.
 
-The paddle is available by operating the mouse. To activate the paddle, click
-in the play window and waggle the mouse a few times. Note that once the window
+The paddle is available by operating the mouse. To activate the paddle, double-click
+the play window and waggle the mouse a few times. Note that once the window
 has been double-clicked, the mouse will be captured and the pointer will
 disappear. To "release" the mouse, click the right-mouse button or the escape
 key.
 
-#### Joystick (left player)
+### Keypad
 
-* Cursor keys for stick direction
-* Space bar for fire
-
-#### Joystick (right player)
-
-Not yet emulated
-
-#### Paddle (left player)
-
-* Double-click left mouse button in window to capture mouse (waggle mouse to activate paddle)
-* Mouse left/right motion for paddle motion 
-* Left mouse button for paddle's fire button
-
-#### Paddle (right player)
-
-Not yet emulated
-
-#### Keyboard
-
-Keyboards for both player 0 and player 1 are supported. 
+Keypads for both player 0 and player 1 are supported. 
 
 |   |p0|   |   |p1|   |
 |:-:|:-:|:-:|:-:|:-:|:-:|
@@ -210,27 +116,46 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 ## Debugger
 
-To run the debugger use the DEBUG submode
+To run the debugger use the `DEBUG` submode
 
 	> gopher2600 debug roms/Pitfall.bin
 
-The default debugging mode display a windowed interface. A thorough explanation
-of the interface is not yet available but it is should be self-explanatory.
-Note that the ROM can be "played" by double-clicking on the screen image in
-the `TV Screen` window. This will "capture" the mouse, run the emulation and
-allow the emulated VCS to be interacted with in the normal way. Click the right
-mouse button or the escape key to release the captured mouse.
+<img src=".screenshots/debugger_frogger.png" height="400" alt="gopher2600 debugging GUI"/>
 
-In addition to the controller and panel input described above, the following keys are also available during mouse capture:
+Becaus the debugger is still in development, full documentation not yet available. But breifly the features we can see in this screeshot are:
 
-* F12 (backtick) Toggle screen masking
-* F11 Toggle debugging colours
-* F10 Toggle debugging overlay
-* \+ Increase screen size
-* \- Decrease screen size
-* Escape to leave capture mode
+The menu-bar across the top of the screen shows the `Debugger`, `VCS` and in this instance a `Cartridge` menu
 
-When not in capture mode, the Escape key runs/halts the emulation.
+* From `Debugger` menu you can open the preferences windows the terminal and others.
+* The `VCS` menu contains options to open windows that relate to the VCS itself.
+	* Many of them are already open but other, less frequently required windows are also available
+* The `Cartridge` menu appears when the loaded cartridge type has additional features. For example:
+	* Cartridge memory and or registers
+	* In this case, this is the menu for the `Supercharger` format.
+* At the very right of the menu bar we can see the file path for the loaded cartridge
+
+Below the menu-bar are the debugging windows. In this screenshot we can see:
+
+* The `TV Screen`. This shows the television output from the VCS.
+	* The screen is 'interactive' and will show information about the pixel underneath the cursor
+	* Clicking the screen will move the VCS emulation to the point where the VCS is outputting that pixel. This is part of the [rewind](#rewinding) system.
+	* Also available are a variety of `overlays`. Click the overlay toggle and select which overlay you want to show by selecting with the button to its right (labelled `WSYNC` in the screenshot).
+* The `Audio` window shows the waveform of the recent sound output.
+* The `Control` window allow you to `Run/Halt`, `Step` and also `rewind` through the emulation.
+	* The toggle to right of the `Run` button will put the emulation into `video-cycle` mode. This will allow you to step by a single color-clock at a time, rather than a single CPU instruction.
+* The `Timer` window shows the current state of the RIOT Timer.
+* The `CPU` window shows the current state of the 6507.
+* The `Disassembly` window shows the disassembled ROM.
+	* If a 'DASM' generated symbol file is available then that will be used.
+	* If a symbols file isn't available then the standard symbols will be used. This includes symbols for special cartridge areas that might exists. For example, a hotspot address for switching banks will be indicated with `BANK1`, `BANK2`, etc. instead of the address.
+	* If the cartridge does contain more than one bank then the banks will be viewable by selecting the relevant tab. In the screenshot above, the cartridge contains four banks.
+	* Add or remove a `PC Breakpoint` by clicking on the disasm entry.
+* The `RAM` window shows the contents of the VCS RAM. Cartidge RAM if available will be show in the `Cartridge RAM` window. Not shown but available through the cartridge menu when appropriate.
+	* The highlighted bytes indicate those bytes that have changed since the emulation last halted.	
+* The `TIA` window details the six graphical parts of the VCS's graphics chip.
+	* The state of the `TIA` can be changed manually but note that the changes will not be retained when the emulation next updates that part of the TIA. This will likely change in future versions of the program.
+
+Note that much of the information presented in the windows is editable in-place. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiement.
 
 #### Debugger Terminal
 
@@ -470,10 +395,78 @@ level documentation: https://godoc.org/github.com/JetSetIlly/Gopher2600/setup
 
 This area of the emulation will be expanded upon in the future.
 
+## Supported Cartridge Formats
+
+`Gopher2600` currently supports the following formats:
+
+* Atari 2k/4k/16/32k
+* all of the above with the `superchip`
+* CBS (FA)
+* Tigervision (3F)
+* Parker Bros (E0)
+* M-Network (E7)
+* DPC
+
+In also supports the `Supercharger` format in both the `.bin` format and is also able to load from an `MP3` recording of the supercharger tape.
+
+Modern formats supported:
+
+* 3E
+* 3E+
+* DF
+* DPC+
+
+The `DPC+` is supported but the emulator does not currently emulate the `ARM7` present in the `Harmony` cartridge. This is planned for the future.
+
 ## Gopher2600 Tools
 
 See the https://github.com/JetSetIlly/Gopher2600-Utils/ repository for examples of tools
 that use `Gopher2600`.
+
+## Resources used
+
+The Stella project (https://stella-emu.github.io/) was used as a reference for
+video output. I made the decision not to use or even to look at any of Stella's
+implementation details. The exception to this was a peek at the audio
+sub-system. Primarily however, `Gopher2600's` audio implementation references Ron
+Fries' original TIASound.c file.
+
+Many notes and clues from the AtariAge message boards. Most significantly the
+following threads proved very useful indeed:
+
+* "Cosmic Ark Star Field Revisited"
+* "Properly model NUSIZ during player decode and draw"
+* "Requesting help in improving TIA emulation in Stella" 
+* "3F Bankswitching"
+
+And from and old mailing list:
+
+* "Games that do bad things to HMOVE..." https://www.biglist.com/lists/stella/archives/199804/msg00198.html
+
+These mailing lists and forums have supplied me with many useful test ROMs. I
+will package these up and distribute them sometime in the future (assuming I
+can get the required permissions).
+
+Extensive references have been made to Andrew Towers' "Atari 2600 TIA Hardware
+Notes v1.0"
+
+Cartridge format information was found in Kevin Horton's "Cart Information
+v6.0" file (sometimes named bankswitch_sizes.txt)
+
+The "Stella Programmer's Guide" by Steve Wright is of course a key document,
+used frequently throughout development.
+
+The 6507 information was taken from Leventhal's "6502 Assembly Language
+Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
+
+US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
+(the format used in Pitfall 2)
+
+DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
+
+The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
+
+Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
 
 ## Further Help
 
@@ -506,8 +499,8 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
-*
-For testing instrumenation:
+
+For testing instrumentation:
 
 * https://github.com/bradleyjkemp/memviz v0.2.3
 
