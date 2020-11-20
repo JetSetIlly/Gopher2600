@@ -40,14 +40,14 @@ const audioBufferStart = sha1.Size
 // Note that the use of SHA-1 is fine for this application because this is not a
 // cryptographic task.
 type Audio struct {
-	television.Television
+	*television.Television
 	digest   [sha1.Size]byte
 	buffer   []uint8
 	bufferCt int
 }
 
 // NewAudio is the preferred method of initialisation for the Audio2Wav type.
-func NewAudio(tv television.Television) (*Audio, error) {
+func NewAudio(tv *television.Television) (*Audio, error) {
 	dig := &Audio{Television: tv}
 
 	// register ourselves as a television.AudioMixer

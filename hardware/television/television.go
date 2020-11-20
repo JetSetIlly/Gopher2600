@@ -247,7 +247,7 @@ func (tv *Television) Reset() error {
 //
 // for simplicity, the Television should be considered unusable
 // after EndRendering() has been called.
-func (tv Television) End() error {
+func (tv *Television) End() error {
 	var err error
 
 	// call new frame for all renderers
@@ -474,7 +474,7 @@ func (tv *Television) setPendingPixels() error {
 
 // IsStable returns true if the television thinks the image being sent by
 // the VCS is stable.
-func (tv Television) IsStable() bool {
+func (tv *Television) IsStable() bool {
 	return tv.state.syncedFrameNum >= stabilityThreshold
 }
 
@@ -525,7 +525,7 @@ func (tv *Television) GetReqSpecID() string {
 
 // Returns the television's current specification. Renderers should use
 // GetSpec() rather than keeping a private pointer to the specification.
-func (tv Television) GetSpec() specification.Spec {
+func (tv *Television) GetSpec() specification.Spec {
 	return tv.state.spec
 }
 
