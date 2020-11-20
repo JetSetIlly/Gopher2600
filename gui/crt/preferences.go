@@ -33,6 +33,7 @@ type Preferences struct {
 	MaskBrightness      prefs.Float
 	ScanlinesBrightness prefs.Float
 	NoiseLevel          prefs.Float
+	MaskScanlineScaling prefs.Int
 
 	Vignette prefs.Bool
 }
@@ -49,8 +50,10 @@ const (
 	noise               = true
 	maskBrightness      = 0.70
 	scanlinesBrightness = 0.70
-	noiseLevel          = 0.15
-	vignette            = true
+	noiseLevel          = 0.10
+	maskScanlineScaling = 1
+
+	vignette = true
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -97,11 +100,14 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.maskScanlineScaling", &p.MaskScanlineScaling)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.noiseLevel", &p.NoiseLevel)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("crt.vignette", &p.Vignette)
 	if err != nil {
 		return nil, err
@@ -124,6 +130,7 @@ func (p *Preferences) SetDefaults() {
 	p.Noise.Set(noise)
 	p.MaskBrightness.Set(maskBrightness)
 	p.ScanlinesBrightness.Set(scanlinesBrightness)
+	p.MaskScanlineScaling.Set(maskScanlineScaling)
 	p.NoiseLevel.Set(noiseLevel)
 	p.Vignette.Set(vignette)
 }

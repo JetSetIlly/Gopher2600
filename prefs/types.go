@@ -222,6 +222,10 @@ func (p *Int) Set(v Value) error {
 	// new value
 	var nv int
 	switch v := v.(type) {
+	case int64:
+		nv = int(v)
+	case int32:
+		nv = int(v)
 	case int:
 		nv = v
 	case string:

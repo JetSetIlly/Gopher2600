@@ -83,6 +83,7 @@ type glsl struct {
 	attribScanlinesBrightness int32 // uniform
 	attribNoiseLevel          int32 // uniform
 	attribVignette            int32 // uniform
+	attribMaskScanlineScaling int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -230,6 +231,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 				gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
 				gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
+				gl.Uniform1i(rnd.attribMaskScanlineScaling, int32(rnd.img.crtPrefs.MaskScanlineScaling.Get().(int)))
 
 				// critical section
 				rnd.img.screen.crit.section.Lock()
@@ -309,6 +311,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 					gl.Uniform1i(rnd.attribImageType, 2)
 				case rnd.img.wm.playScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, 3)
+				case rnd.img.wm.crtPrefs.crtTexture:
+					gl.Uniform1i(rnd.attribImageType, 4)
 				default:
 					gl.Uniform1i(rnd.attribImageType, 0)
 				}
@@ -400,6 +404,7 @@ func (rnd *glsl) setup() {
 	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
 	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
 	rnd.attribVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Vignette"+"\x00"))
+	rnd.attribMaskScanlineScaling = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskScanlineScaling"+"\x00"))
 
 	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
 	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))

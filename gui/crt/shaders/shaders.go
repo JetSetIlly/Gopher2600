@@ -44,6 +44,7 @@ uniform float MaskBrightness;
 uniform float ScanlinesBrightness;
 uniform float NoiseLevel;
 uniform int Vignette;
+uniform int MaskScanlineScaling;
 
 uniform sampler2D Texture;
 in vec2 Frag_UV;
@@ -237,7 +238,7 @@ void main()
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
-	if (CRT == 0) {
+	if (CRT == 0 && ImageType != 4) {
 		return;
 	}
 
@@ -254,6 +255,8 @@ void main()
 	//
 	// https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 	
+	int scaling = MaskScanlineScaling + 1;	
+	
 	// noise
 	if (Noise == 1) {
 		float r;
@@ -265,7 +268,6 @@ void main()
 		} else {
 			Out_Color.b *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
 		}
-
 	}
 
 	// input gamma
@@ -274,7 +276,11 @@ void main()
 	// masking
 	if (Mask == 1) {
 		vec3 mask;
-		if (fract(gl_FragCoord.x * 0.5) < 0.5) {
+
+		/* if (fract(gl_FragCoord.x * 0.5) < 0.5) { */
+
+		float oneCol = gl_FragCoord.x/gl_FragCoord.x;
+		if ( isNearEqual(mod(gl_FragCoord.x, scaling*oneCol), 0.0, oneCol) ) {
 			mask = vec3(MaskBrightness, 1.0, MaskBrightness);
 		} else {
 			mask = vec3(1.0, MaskBrightness, 1.0);
@@ -284,7 +290,10 @@ void main()
 
 	// scanline effect
 	if (Scanlines == 1) {
-		if (fract(gl_FragCoord.y * 0.5) < 0.5) {
+		/* if (fract(gl_FragCoord.y * 0.5) < 0.5) { */
+
+		float oneLine = gl_FragCoord.y/gl_FragCoord.y;
+		if ( isNearEqual(mod(gl_FragCoord.y, scaling*oneLine), 0.0, oneLine) ) {
 			Out_Color.a = Out_Color.a * ScanlinesBrightness;
 		}
 	}

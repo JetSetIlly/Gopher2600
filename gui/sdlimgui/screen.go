@@ -149,14 +149,10 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	}
 
 	// create a cropped image from the main
-	r := image.Rectangle{
-		image.Point{specification.HorizClksHBlank,
-			scr.crit.topScanline,
-		},
-		image.Point{specification.HorizClksHBlank + specification.HorizClksVisible,
-			scr.crit.topScanline + scr.crit.scanlines,
-		},
-	}
+	r := image.Rect(
+		specification.HorizClksHBlank, scr.crit.topScanline,
+		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.scanlines,
+	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(r).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
