@@ -24,6 +24,65 @@ The graphical [debugger](#debugger) is still in development but the current feat
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
 <img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/> <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
 
+## Scope of the project
+
+`Gopher2600` was started as for fun and educational purposes, as way of
+learning more about the `Atari 2600` and also about the
+[Go programming language](https://golang.org/).
+
+The original intent was to provide a tool for static analysis of a 6507
+program. I soon realised that I would need to emulate more and more of the
+2600 and not just the CPU. Eventually, I realised I would also need a way of see the
+video output from the TIA. At this point it became obvious that I was indeed
+writing a complete 2600 emulator.
+
+Because of its origins, any flaws or limitations in the design should be borne
+in mind while the project is still in development. I am open to any suggestions
+on how to improve the project.
+
+### Self-reflection
+
+There are some design decisions that would perhaps be made differently if I had
+known where the program was going. For instance, because the project was a way
+of learning a new programming language I chose to implement my own "database"
+to [store regression test information](#regression-database). A more natural
+choice would be to use SQlite but actually the current solution works quite
+well.
+
+A couple of packages may well be useful in other projects. The `prefs` package
+is quite versatile. With a bit of work it could be generalised and put to use
+in other projects. I think though, this package is a natural candidate to be
+rewritten with type parameters. Not yet available in Go but scheduled for
+release in 2022.
+
+I would also replace the `commandline` package. It works quite nicely but as
+you would expect from a home-baked solution there are limitations to the
+parser. It should be rewritten with `flex` & `yacc`.
+
+### Performance
+
+The development machine for `Gopher2600` was an i3-3225 with 16GB of RAM. Host
+operating system throughout the development has been a GNU/Linux system.
+
+In playmode I can get a sustained frame rate of 60fps. However, video output is
+not properly vsynced and the audio buffer is not handled very well, sometimes
+running out of bits, resulting in pops and stutters in the sound.
+
+In debug mode, I can get around 35fps - good enough for development work.
+
+To get a performance rating for your installation you can run the following:
+
+	> gopher2600 performance -display -fpscap=false
+
+Which gives the maximum frame rate with the display.
+
+Memory usage is around 40MB of system memory in playmode and around 120MB in
+debug mode. This can vary on the ROM used however. It shouldn't ever be a
+problem on modern hardware.
+
+A `statsview` is also available. See the section below on [Statistics Viewer](#statistics-viewer) for
+details.
+
 ## Compilation
 
 The project has most recently been tested with Go v1.15. Earlier versions may work
@@ -407,7 +466,7 @@ This area of the emulation will be expanded upon in the future.
 * M-Network (E7)
 * DPC
 
-In also supports the `Supercharger` format in both the `.bin` format and is also able to load from an `MP3` recording of the supercharger tape.
+In also supports the [Supercharger](#supercharger-roms) format in both the `.bin` format and is also able to load from an `MP3` recording of the supercharger tape.
 
 Modern formats supported:
 
@@ -417,6 +476,25 @@ Modern formats supported:
 * DPC+
 
 The `DPC+` is supported but the emulator does not currently emulate the `ARM7` present in the `Harmony` cartridge. This is planned for the future.
+
+## Statistics Viewer
+
+Playmode and debug mode can both be launched with a statistics viewer available
+locally on your machine `localhost:12600/debug/statsview`.
+
+	> gopher2600 -statsserver <rom>
+	
+	> gopher2600 debug -statsserver <rom>
+
+The screen below shows an example of the available statistics. In this
+instance, this is the debugger running a 4k Atari cartridge (specifically,
+Pitfall).
+
+<img src=".screenshots/statsserver_debug.png" width="600" alt="stats server example charts (for the debugger)"/> 
+
+For people who really want to dig deep into the running program,
+`localhost:12600/debug/pprof/` gives more raw, but still useful
+information.
 
 ## Gopher2600 Tools
 
@@ -499,6 +577,10 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
+
+Stats server provided by:
+
+* https://github.com/go-echarts/statsview
 
 For testing instrumentation:
 

@@ -7,6 +7,7 @@ go 1.15
 //replace	github.com/inkyblackness/imgui-go/v2 v2.5.0 => /home/steve/Go/steve_forks/imgui-go
 
 require (
+	github.com/go-echarts/statsview v0.3.0
 	github.com/bradleyjkemp/memviz v0.2.3
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
