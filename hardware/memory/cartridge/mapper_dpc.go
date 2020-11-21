@@ -76,12 +76,12 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart dpc) String() string {
+func (cart *dpc) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart dpc) ID() string {
+func (cart *dpc) ID() string {
 	return cart.mappingID
 }
 
@@ -283,12 +283,12 @@ func (cart *dpc) bankswitch(addr uint16, passive bool) bool {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart dpc) NumBanks() int {
+func (cart *dpc) NumBanks() int {
 	return 2
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart dpc) GetBank(addr uint16) mapper.BankInfo {
+func (cart *dpc) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
 }
 
@@ -345,7 +345,7 @@ func (cart *dpc) Step() {
 }
 
 // GetRegisters implements the mapper.CartRegisters interface.
-func (cart dpc) GetRegisters() mapper.CartRegisters {
+func (cart *dpc) GetRegisters() mapper.CartRegisters {
 	return mapper.CartRegisters(cart.state.registers)
 }
 
@@ -405,7 +405,7 @@ func (cart *dpc) PutRegister(register string, data string) {
 }
 
 // GetStatic implements the mapper.CartDebugBus interface.
-func (cart dpc) GetStatic() []mapper.CartStatic {
+func (cart *dpc) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 1)
 	s[0].Label = "Gfx"
 	s[0].Data = make([]byte, len(cart.static))
@@ -428,7 +428,7 @@ func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart dpc) CopyBanks() []mapper.BankContent {
+func (cart *dpc) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = mapper.BankContent{Number: b,
@@ -440,7 +440,7 @@ func (cart dpc) CopyBanks() []mapper.BankContent {
 }
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart dpc) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *dpc) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},

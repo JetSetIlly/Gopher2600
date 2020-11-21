@@ -75,17 +75,17 @@ func (cart *Cartridge) Reset() {
 	}
 }
 
-func (cart Cartridge) String() string {
+func (cart *Cartridge) String() string {
 	return cart.Filename
 }
 
 // MappingSummary returns a current string summary of the mapper.
-func (cart Cartridge) MappingSummary() string {
+func (cart *Cartridge) MappingSummary() string {
 	return cart.mapper.String()
 }
 
 // ID returns the cartridge mapping ID.
-func (cart Cartridge) ID() string {
+func (cart *Cartridge) ID() string {
 	return cart.mapper.ID()
 }
 
@@ -260,13 +260,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 }
 
 // NumBanks returns the number of banks in the catridge.
-func (cart Cartridge) NumBanks() int {
+func (cart *Cartridge) NumBanks() int {
 	return cart.mapper.NumBanks()
 }
 
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
-func (cart Cartridge) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 	if addr&memorymap.OriginCart != memorymap.OriginCart {
 		return mapper.BankInfo{NonCart: true}
 	}
@@ -285,19 +285,19 @@ func (cart Cartridge) GetBank(addr uint16) mapper.BankInfo {
 // tigervision (3F) mapping listens for address 0x003f, which is in the TIA
 // address space. When this address is triggered, the tigervision cartridge
 // will use whatever is on the data bus to switch banks.
-func (cart Cartridge) Listen(addr uint16, data uint8) {
+func (cart *Cartridge) Listen(addr uint16, data uint8) {
 	cart.mapper.Listen(addr, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
 // change its state as a result. In fact, very few cartridges care about this.
-func (cart Cartridge) Step() {
+func (cart *Cartridge) Step() {
 	cart.mapper.Step()
 }
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
 // if cartridge has no registers.
-func (cart Cartridge) GetRegistersBus() mapper.CartRegistersBus {
+func (cart *Cartridge) GetRegistersBus() mapper.CartRegistersBus {
 	if bus, ok := cart.mapper.(mapper.CartRegistersBus); ok {
 		return bus
 	}
@@ -306,7 +306,7 @@ func (cart Cartridge) GetRegistersBus() mapper.CartRegistersBus {
 
 // GetStaticBus returns interface to the static area of the cartridge or nil if
 // cartridge has no static area.
-func (cart Cartridge) GetStaticBus() mapper.CartStaticBus {
+func (cart *Cartridge) GetStaticBus() mapper.CartStaticBus {
 	if bus, ok := cart.mapper.(mapper.CartStaticBus); ok {
 		return bus
 	}
@@ -314,7 +314,7 @@ func (cart Cartridge) GetStaticBus() mapper.CartStaticBus {
 }
 
 // GetRAMbus returns interface to ram busor  nil if catridge contains no RAM.
-func (cart Cartridge) GetRAMbus() mapper.CartRAMbus {
+func (cart *Cartridge) GetRAMbus() mapper.CartRAMbus {
 	if bus, ok := cart.mapper.(mapper.CartRAMbus); ok {
 		return bus
 	}
@@ -322,7 +322,7 @@ func (cart Cartridge) GetRAMbus() mapper.CartRAMbus {
 }
 
 // GetTapeBus returns interface to a tape bus or nil if catridge has no tape.
-func (cart Cartridge) GetTapeBus() mapper.CartTapeBus {
+func (cart *Cartridge) GetTapeBus() mapper.CartTapeBus {
 	if bus, ok := cart.mapper.(mapper.CartTapeBus); ok {
 		return bus
 	}
@@ -331,7 +331,7 @@ func (cart Cartridge) GetTapeBus() mapper.CartTapeBus {
 
 // GetContainer returns interface to cartridge container or nil if cartridge is
 // not in a container.
-func (cart Cartridge) GetContainer() mapper.CartContainer {
+func (cart *Cartridge) GetContainer() mapper.CartContainer {
 	if cc, ok := cart.mapper.(mapper.CartContainer); ok {
 		return cc
 	}
@@ -340,7 +340,7 @@ func (cart Cartridge) GetContainer() mapper.CartContainer {
 
 // GetCartHotspots returns interface to hotspots bus or nil if cartridge has no
 // hotspots it wants to report.
-func (cart Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
+func (cart *Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 	if cc, ok := cart.mapper.(mapper.CartHotspotsBus); ok {
 		return cc
 	}
@@ -351,14 +351,14 @@ func (cart Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 // next bank in the sequence, call the function with the instance of
 // mapper.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
-func (cart Cartridge) CopyBanks() ([]mapper.BankContent, error) {
+func (cart *Cartridge) CopyBanks() ([]mapper.BankContent, error) {
 	return cart.mapper.CopyBanks(), nil
 }
 
 // RewindBoundary returns true if the cartridge indicates that something has
 // happened that should not be part of the rewind history. Returns false if
 // cartridge mapper does not care about the rewind sub-system.
-func (cart Cartridge) RewindBoundary() bool {
+func (cart *Cartridge) RewindBoundary() bool {
 	if rb, ok := cart.mapper.(mapper.CartRewindBoundary); ok {
 		return rb.RewindBoundary()
 	}

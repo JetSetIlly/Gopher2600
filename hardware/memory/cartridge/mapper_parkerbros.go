@@ -75,12 +75,12 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart parkerBros) String() string {
+func (cart *parkerBros) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d, %d, %d", cart.mappingID, cart.description, cart.state.segment[0], cart.state.segment[1], cart.state.segment[2], cart.state.segment[3])
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart parkerBros) ID() string {
+func (cart *parkerBros) ID() string {
 	return cart.mappingID
 }
 
@@ -205,12 +205,12 @@ func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart parkerBros) NumBanks() int {
+func (cart *parkerBros) NumBanks() int {
 	return 8
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart parkerBros) GetBank(addr uint16) mapper.BankInfo {
+func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
 	if addr >= 0x0000 && addr <= 0x03ff {
 		seg = 0
@@ -246,7 +246,7 @@ func (cart *parkerBros) Step() {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart parkerBros) CopyBanks() []mapper.BankContent {
+func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 
 	// banks 0 to len-1 can occupy any of the three segments
@@ -278,7 +278,7 @@ func (cart parkerBros) CopyBanks() []mapper.BankContent {
 }
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		// segment 0
 		0x0fe0: {Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
@@ -313,7 +313,7 @@ func (cart parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
 

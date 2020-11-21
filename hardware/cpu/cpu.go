@@ -142,7 +142,7 @@ func (mc *CPU) Reset() {
 }
 
 // HasReset checks whether the CPU has recently been reset.
-func (mc CPU) HasReset() bool {
+func (mc *CPU) HasReset() bool {
 	return mc.LastResult.Address == 0 && mc.LastResult.Defn == nil
 }
 

@@ -112,8 +112,6 @@ func (mem *Memory) GetArea(area memorymap.Area) bus.DebugBus {
 
 // read maps an address to the normalised for all memory areas.
 func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
-	// optimisation: called a lot. pointer to Memory to prevent duffcopy
-
 	ma, ar := memorymap.MapAddress(address, true)
 	area := mem.GetArea(ar)
 
@@ -160,16 +158,17 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 		}
 	}
 
+	// see the commentary for the Listen() function in the Cartridge interface
+	// for an explanation for what is going on here.
+	mem.Cart.Listen(address, data)
+
+	// the following is only used by the debugger
 	mem.LastAccessAddress = address
 	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = false
 	mem.LastAccessValue = data
 	mem.LastAccessID = mem.accessCount
 	mem.accessCount++
-
-	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here.
-	mem.Cart.Listen(address, data)
 
 	return data, err
 }

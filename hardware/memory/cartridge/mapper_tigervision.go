@@ -81,12 +81,12 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart tigervision) String() string {
+func (cart *tigervision) String() string {
 	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.state.segment[0], cart.state.segment[1])
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart tigervision) ID() string {
+func (cart *tigervision) ID() string {
 	return cart.mappingID
 }
 
@@ -132,7 +132,7 @@ func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart tigervision) NumBanks() int {
+func (cart *tigervision) NumBanks() int {
 	return len(cart.banks)
 }
 
@@ -188,7 +188,7 @@ func (cart *tigervision) Step() {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart tigervision) CopyBanks() []mapper.BankContent {
+func (cart *tigervision) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 
 	// banks 0 to len-1 can occupy any of the first three segments

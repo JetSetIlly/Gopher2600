@@ -62,24 +62,24 @@ func (ram *RAM) Reset() {
 	}
 }
 
-func (ram RAM) String() string {
+func (ram *RAM) String() string {
 	return hex.Dump(ram.RAM)
 }
 
 // Peek is the implementation of memory.DebugBus. Address must be
 // normalised.
-func (ram RAM) Peek(address uint16) (uint8, error) {
+func (ram *RAM) Peek(address uint16) (uint8, error) {
 	return ram.Read(address)
 }
 
 // Poke is the implementation of memory.DebugBus. Address must be
 // normalised.
-func (ram RAM) Poke(address uint16, value uint8) error {
+func (ram *RAM) Poke(address uint16, value uint8) error {
 	return ram.Write(address, value)
 }
 
 // Read is an implementatio of memory.ChipBus. Address must be normalised.
-func (ram RAM) Read(address uint16) (uint8, error) {
+func (ram *RAM) Read(address uint16) (uint8, error) {
 	return ram.RAM[address^memorymap.OriginRAM], nil
 }
 

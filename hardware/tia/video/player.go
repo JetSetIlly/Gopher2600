@@ -176,11 +176,11 @@ func (ps *PlayerSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 }
 
 // Label returns the label for the sprite.
-func (ps PlayerSprite) Label() string {
+func (ps *PlayerSprite) Label() string {
 	return ps.label
 }
 
-func (ps PlayerSprite) String() string {
+func (ps *PlayerSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
 	normalisedHmove := int(ps.Hmove) - 8

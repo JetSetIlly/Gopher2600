@@ -105,12 +105,12 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart dpcPlus) String() string {
+func (cart *dpcPlus) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart dpcPlus) ID() string {
+func (cart *dpcPlus) ID() string {
 	return cart.mappingID
 }
 
@@ -592,12 +592,12 @@ func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart dpcPlus) NumBanks() int {
+func (cart *dpcPlus) NumBanks() int {
 	return len(cart.banks)
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart dpcPlus) GetBank(addr uint16) mapper.BankInfo {
+func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
 }
 
@@ -649,7 +649,7 @@ func (cart *dpcPlus) Step() {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart dpcPlus) CopyBanks() []mapper.BankContent {
+func (cart *dpcPlus) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = mapper.BankContent{Number: b,
@@ -661,7 +661,7 @@ func (cart dpcPlus) CopyBanks() []mapper.BankContent {
 }
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart dpcPlus) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *dpcPlus) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -713,7 +713,7 @@ func (cart dpcPlus) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},

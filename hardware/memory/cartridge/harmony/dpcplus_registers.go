@@ -211,7 +211,7 @@ func (rng *randomNumberFetcher) prev() {
 }
 
 // GetRegisters implements the bus.CartDebugBus interface.
-func (cart dpcPlus) GetRegisters() mapper.CartRegisters {
+func (cart *dpcPlus) GetRegisters() mapper.CartRegisters {
 	return cart.state.registers
 }
 

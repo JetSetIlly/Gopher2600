@@ -96,11 +96,11 @@ type TIA struct {
 }
 
 // Label returns an identifying label for the TIA.
-func (tia TIA) Label() string {
+func (tia *TIA) Label() string {
 	return "TIA"
 }
 
-func (tia TIA) String() string {
+func (tia *TIA) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f",
 		tia.hsync, tia.pclk,

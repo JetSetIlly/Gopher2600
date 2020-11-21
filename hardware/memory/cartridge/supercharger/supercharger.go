@@ -94,7 +94,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	return cart, nil
 }
 
-func (cart Supercharger) String() string {
+func (cart *Supercharger) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s [%s] ", cart.mappingID, cart.description))
 	s.WriteString(cart.state.registers.BankString())
@@ -102,7 +102,7 @@ func (cart Supercharger) String() string {
 }
 
 // ID implements the cartMapper interface.
-func (cart Supercharger) ID() string {
+func (cart *Supercharger) ID() string {
 	return cart.mappingID
 }
 
@@ -219,12 +219,12 @@ func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool
 }
 
 // NumBanks implements the cartMapper interface.
-func (cart Supercharger) NumBanks() int {
+func (cart *Supercharger) NumBanks() int {
 	return numRAMBanks
 }
 
 // GetBank implements the cartMapper interface.
-func (cart Supercharger) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	switch cart.state.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
@@ -293,7 +293,7 @@ func (cart *Supercharger) Step() {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart Supercharger) CopyBanks() []mapper.BankContent {
+func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.state.ram)+1)
 
 	c[0] = mapper.BankContent{Number: 0,
@@ -318,7 +318,7 @@ func (cart Supercharger) CopyBanks() []mapper.BankContent {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.
-func (cart Supercharger) GetRAM() []mapper.CartRAM {
+func (cart *Supercharger) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, len(cart.state.ram))
 
 	for i := 0; i < len(cart.state.ram); i++ {
@@ -430,7 +430,7 @@ func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
 }
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "CONFIG", Action: mapper.HotspotFunction},
 		0x1ff9: {Symbol: "TAPE", Action: mapper.HotspotFunction},
@@ -438,6 +438,6 @@ func (cart Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return nil
 }

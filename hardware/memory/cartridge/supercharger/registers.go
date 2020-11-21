@@ -74,7 +74,7 @@ func (r Registers) String() string {
 
 // BankString is like string but just the bank information. we use this when
 // building the mapper summary, the String() function is too verbose for that.
-func (r Registers) BankString() string {
+func (r *Registers) BankString() string {
 	s := strings.Builder{}
 
 	s.WriteString("banks: [")

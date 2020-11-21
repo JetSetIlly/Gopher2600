@@ -30,12 +30,12 @@ func newEjected() *ejected {
 	return &ejected{}
 }
 
-func (cart ejected) String() string {
+func (cart *ejected) String() string {
 	return "ejected"
 }
 
 // ID implements the cartMapper interface.
-func (cart ejected) ID() string {
+func (cart *ejected) ID() string {
 	return "-"
 }
 
@@ -63,12 +63,12 @@ func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
 }
 
 // NumBanks implements the cartMapper interface.
-func (cart ejected) NumBanks() int {
+func (cart *ejected) NumBanks() int {
 	return 0
 }
 
 // GetBank implements the cartMapper interface.
-func (cart ejected) GetBank(_ uint16) mapper.BankInfo {
+func (cart *ejected) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
@@ -86,6 +86,6 @@ func (cart *ejected) Step() {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart ejected) CopyBanks() []mapper.BankContent {
+func (cart *ejected) CopyBanks() []mapper.BankContent {
 	return nil
 }

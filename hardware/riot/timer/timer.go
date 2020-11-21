@@ -1,4 +1,4 @@
-// This file is part of Gopher2600.
+// Tjis file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ func (tmr *Timer) Plumb(mem bus.ChipBus) {
 	tmr.mem = mem
 }
 
-func (tmr Timer) String() string {
+func (tmr *Timer) String() string {
 	return fmt.Sprintf("INTIM=%#02x remn=%#02x intv=%s TIMINT=%v",
 		tmr.INTIMvalue,
 		tmr.TicksRemaining,
@@ -128,7 +128,7 @@ func (tmr Timer) String() string {
 	)
 }
 
-func (tmr Timer) timintValue() uint8 {
+func (tmr *Timer) timintValue() uint8 {
 	v := uint8(0)
 	if tmr.expired {
 		v |= 0x80

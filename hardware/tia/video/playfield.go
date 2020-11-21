@@ -137,11 +137,11 @@ func (pf *Playfield) Plumb(pclk *phaseclock.PhaseClock, hsync *polycounter.Polyc
 	pf.hsync = hsync
 }
 
-func (pf Playfield) Label() string {
+func (pf *Playfield) Label() string {
 	return "Playfield"
 }
 
-func (pf Playfield) String() string {
+func (pf *Playfield) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%04b", pf.PF0>>4))
 	s.WriteString(fmt.Sprintf(" %08b", pf.PF1))

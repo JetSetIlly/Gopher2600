@@ -59,7 +59,7 @@ func (riot *RIOT) Plumb(mem bus.ChipBus, tiaMem bus.ChipBus) {
 	riot.Ports.Plumb(mem, tiaMem)
 }
 
-func (riot RIOT) String() string {
+func (riot *RIOT) String() string {
 	s := strings.Builder{}
 	s.WriteString(riot.Timer.String())
 	return s.String()

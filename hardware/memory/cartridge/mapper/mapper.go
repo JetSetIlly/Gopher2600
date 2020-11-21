@@ -16,7 +16,6 @@
 package mapper
 
 import (
-	"fmt"
 	"math/rand"
 )
 
@@ -122,7 +121,7 @@ type CartRegistersBus interface {
 // CartRegisters conceptualises the cartridge specific registers that are
 // inaccessible through normal addressing.
 type CartRegisters interface {
-	fmt.Stringer
+	String() string
 }
 
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM

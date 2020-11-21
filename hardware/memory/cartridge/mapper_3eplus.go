@@ -73,7 +73,7 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart m3ePlus) String() string {
+func (cart *m3ePlus) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
 	for i := range cart.state.segment {
@@ -88,7 +88,7 @@ func (cart m3ePlus) String() string {
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart m3ePlus) ID() string {
+func (cart *m3ePlus) ID() string {
 	return cart.mappingID
 }
 
@@ -181,7 +181,7 @@ func (cart *m3ePlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart m3ePlus) NumBanks() int {
+func (cart *m3ePlus) NumBanks() int {
 	return len(cart.banks)
 }
 
@@ -240,7 +240,7 @@ func (cart *m3ePlus) Step() {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.
-func (cart m3ePlus) GetRAM() []mapper.CartRAM {
+func (cart *m3ePlus) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, len(cart.state.ram))
 
 	for i := range cart.state.ram {
@@ -282,7 +282,7 @@ func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart m3ePlus) CopyBanks() []mapper.BankContent {
+func (cart *m3ePlus) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = mapper.BankContent{Number: b,

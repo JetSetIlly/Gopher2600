@@ -119,11 +119,11 @@ func (bs *BallSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 }
 
 // Label returns the label for the sprite.
-func (bs BallSprite) Label() string {
+func (bs *BallSprite) Label() string {
 	return bs.label
 }
 
-func (bs BallSprite) String() string {
+func (bs *BallSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
 	normalisedHmove := int(bs.Hmove) - 8

@@ -27,7 +27,7 @@ type AddrInfo struct {
 	Path string
 }
 
-func (ai AddrInfo) String() string {
+func (ai *AddrInfo) String() string {
 	return fmt.Sprintf("http://%s/%s", ai.Host, ai.Path)
 }
 

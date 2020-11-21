@@ -30,7 +30,7 @@ type DPCplusStatic struct {
 }
 
 // GetStatic implements the bus.CartDebugBus interface.
-func (cart dpcPlus) GetStatic() []mapper.CartStatic {
+func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 3)
 
 	s[0].Label = "ARM"

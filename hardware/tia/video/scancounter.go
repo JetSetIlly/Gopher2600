@@ -63,13 +63,13 @@ func (sc *scanCounter) start() {
 }
 
 // IsActive returns true is scan counter is currently outputting pixels.
-func (sc scanCounter) IsActive() bool {
+func (sc *scanCounter) IsActive() bool {
 	return sc.Pixel != -1
 }
 
 // IsLatching returns true if scan counter is about to commence outputting
 // pixels.
-func (sc scanCounter) IsLatching() bool {
+func (sc *scanCounter) IsLatching() bool {
 	return sc.latch > 0
 }
 

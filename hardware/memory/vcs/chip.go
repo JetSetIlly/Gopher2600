@@ -63,7 +63,7 @@ func (area *ChipMemory) Snapshot() *ChipMemory {
 }
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
-func (area ChipMemory) Peek(address uint16) (uint8, error) {
+func (area *ChipMemory) Peek(address uint16) (uint8, error) {
 	sym := addresses.Read[address]
 	if sym == "" {
 		return 0, curated.Errorf(bus.AddressError, address)
@@ -83,7 +83,7 @@ func (area *ChipMemory) Reset() {
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
-func (area ChipMemory) Poke(address uint16, value uint8) error {
+func (area *ChipMemory) Poke(address uint16, value uint8) error {
 	area.memory[address^area.origin] = value
 	return nil
 }

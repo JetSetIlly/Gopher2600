@@ -38,31 +38,31 @@ readme_spell: check_pandoc
 test:
 	go test ./...
 
-race: generate vet test
+race: generate test
 # disable checkptr because the opengl implementation will trigger it and cause
 # a lot of output noise
 	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug $(profilingRom)
 
-profile: generate vet test
+profile: generate test
 	go build -gcflags $(compileFlags)
-	./gopher2600 performance --profile $(profilingRom)
+	./gopher2600 performance --profile --fpscap=false $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
 
-profile_display: generate vet test
+profile_display: generate test
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --display --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 cpu.profile
 
-mem_profile_debug: generate vet test
+mem_profile_debug: generate test
 	go build -gcflags $(compileFlags)
 	./gopher2600 debug --profile $(profilingRom)
 	go tool pprof -http : ./gopher2600 debug.mem.profile
 
-build_assertions: generate vet test
+build_assertions: generate test
 	go build -gcflags $(compileFlags) -tags=assertions
 
 
-# deliberately not having vet and test dependecies for remaining targets
+# deliberately not having test dependecies for remaining targets
 
 build: generate 
 	go build -gcflags $(compileFlags)

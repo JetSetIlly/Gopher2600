@@ -119,11 +119,11 @@ func (ms *MissileSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 }
 
 // Label returns the label for the sprite.
-func (ms MissileSprite) Label() string {
+func (ms *MissileSprite) Label() string {
 	return ms.label
 }
 
-func (ms MissileSprite) String() string {
+func (ms *MissileSprite) String() string {
 	// the hmove value as maintained by the sprite type is normalised for
 	// for purposes of presentation
 	normalisedHmove := int(ms.Hmove) - 8

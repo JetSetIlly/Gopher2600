@@ -106,7 +106,7 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart mnetwork) String() string {
+func (cart *mnetwork) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
 	s.WriteString(fmt.Sprintf(" Bank: %d [%d] ", cart.state.bank, len(cart.banks)-1))
@@ -118,7 +118,7 @@ func (cart mnetwork) String() string {
 }
 
 // ID implements the mapper.CartMapper interface.
-func (cart mnetwork) ID() string {
+func (cart *mnetwork) ID() string {
 	return cart.mappingID
 }
 
@@ -268,7 +268,7 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
-func (cart mnetwork) NumBanks() int {
+func (cart *mnetwork) NumBanks() int {
 	return 8 // eight banks of 2k
 }
 
@@ -309,7 +309,7 @@ func (cart *mnetwork) Step() {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.
-func (cart mnetwork) GetRAM() []mapper.CartRAM {
+func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, num256ByteRAMbanks+1)
 
 	r[0] = mapper.CartRAM{
@@ -343,7 +343,7 @@ func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 }
 
 // IterateBank implements the mapper.CartMapper interface.
-func (cart mnetwork) CopyBanks() []mapper.BankContent {
+func (cart *mnetwork) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 
 	for b := 0; b < len(cart.banks)-1; b++ {
@@ -363,7 +363,7 @@ func (cart mnetwork) CopyBanks() []mapper.BankContent {
 }
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1fe0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1fe1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -381,7 +381,7 @@ func (cart mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart mnetwork) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
+func (cart *mnetwork) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
 
