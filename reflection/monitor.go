@@ -49,7 +49,7 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 		VideoElement: mon.vcs.TIA.Video.LastElement,
 		TV:           mon.vcs.TV.GetLastSignal(),
 		Hblank:       mon.vcs.TIA.Hblank,
-		Collision:    mon.vcs.TIA.Video.Collisions.Activity.String(),
+		Collision:    mon.vcs.TIA.Video.Collisions.String(),
 		Unchanged:    mon.vcs.TIA.Video.Unchanged,
 	}
 

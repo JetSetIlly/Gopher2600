@@ -42,9 +42,31 @@ type Collisions struct {
 	CXBLPF uint8
 	CXPPMM uint8
 
-	// Active is set if there is any collision at all
-	Activity strings.Builder
+	// collisions is a bit mask of the collision combination from
+	// the last video cycle
+	collisions uint16
 }
+
+// bits used in the collisions bit-mask. this has nothing to do with the VCS
+// but it is the cheapest way of representing the combinations. the string
+// value interprets these bits into a human-useful form.
+const (
+	M0P1 = 0b0000000000000001
+	M0P0 = 0b0000000000000010
+	M0PF = 0b0000000000000100
+	M0BL = 0b0000000000001000
+	M1P0 = 0b0000000000010000
+	M1P1 = 0b0000000000100000
+	M1PF = 0b0000000001000000
+	M1BL = 0b0000000010000000
+	P0PF = 0b0000000100000000
+	P0BL = 0b0000001000000000
+	P1PF = 0b0000010000000000
+	P1BL = 0b0000100000000000
+	BLPF = 0b0001000000000000
+	P0P1 = 0b0010000000000000
+	M0M1 = 0b0100000000000000
+)
 
 func newCollisions(mem bus.ChipBus) *Collisions {
 	col := &Collisions{mem: mem}
@@ -82,20 +104,74 @@ func (col *Collisions) Clear() {
 	col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
 }
 
+// String returns a string representation of all the collision bits from the
+// last video cycle.
+func (col *Collisions) String() string {
+	s := strings.Builder{}
+
+	if col.collisions&M0P1 == 0b0000000000000001 {
+		s.WriteString("M0 ^ P1")
+	}
+	if col.collisions&M0P0 == 0b0000000000000010 {
+		s.WriteString("M0 ^ P0")
+	}
+	if col.collisions&M0PF == 0b0000000000000100 {
+		s.WriteString("M0 ^ PF")
+	}
+	if col.collisions&M0BL == 0b0000000000001000 {
+		s.WriteString("M0 ^ BL")
+	}
+	if col.collisions&M1P0 == 0b0000000000010000 {
+		s.WriteString("M1 ^ P0")
+	}
+	if col.collisions&M1P1 == 0b0000000000100000 {
+		s.WriteString("M1 ^ P1")
+	}
+	if col.collisions&M1PF == 0b0000000001000000 {
+		s.WriteString("M1 ^ PF")
+	}
+	if col.collisions&M1BL == 0b0000000010000000 {
+		s.WriteString("M1 ^ BL")
+	}
+	if col.collisions&P0PF == 0b0000000100000000 {
+		s.WriteString("P0 ^ PF")
+	}
+	if col.collisions&P0BL == 0b0000001000000000 {
+		s.WriteString("P0 ^ BL")
+	}
+	if col.collisions&P1PF == 0b0000010000000000 {
+		s.WriteString("P1 ^ PF")
+	}
+	if col.collisions&P1BL == 0b0000100000000000 {
+		s.WriteString("P1 ^ BL")
+	}
+	if col.collisions&BLPF == 0b0001000000000000 {
+		s.WriteString("BL ^ PF")
+	}
+	if col.collisions&P0P1 == 0b0010000000000000 {
+		s.WriteString("P0 ^ P1")
+	}
+	if col.collisions&M0M1 == 0b0100000000000000 {
+		s.WriteString("M0 ^ M1")
+	}
+
+	return s.String()
+}
+
 // optimised tick of collision registers. memory is only written to when
 // necessary.
 func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
-	col.Activity.Reset()
+	col.collisions = 0
 
 	if m0 {
 		if p1 || p0 {
 			if p1 {
 				col.CXM0P |= 0x80
-				col.Activity.WriteString("M0 ^ P1")
+				col.collisions |= M0P1
 			}
 			if p0 {
 				col.CXM0P |= 0x40
-				col.Activity.WriteString("M0 ^ P0")
+				col.collisions |= M0P0
 			}
 			col.mem.ChipWrite(addresses.CXM0P, col.CXM0P)
 		}
@@ -103,11 +179,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf || bl {
 			if pf {
 				col.CXM0FB |= 0x80
-				col.Activity.WriteString("M0 ^ PF")
+				col.collisions |= M0PF
 			}
 			if bl {
 				col.CXM0FB |= 0x40
-				col.Activity.WriteString("M1 ^ BL")
+				col.collisions |= M0BL
 			}
 			col.mem.ChipWrite(addresses.CXM0FB, col.CXM0FB)
 		}
@@ -117,11 +193,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if p1 || p0 {
 			if p0 {
 				col.CXM1P |= 0x80
-				col.Activity.WriteString("M1 ^ P0")
+				col.collisions |= M1P0
 			}
 			if p1 {
 				col.CXM1P |= 0x40
-				col.Activity.WriteString("M1 ^ P1")
+				col.collisions |= M1P1
 			}
 			col.mem.ChipWrite(addresses.CXM1P, col.CXM1P)
 		}
@@ -129,11 +205,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf || bl {
 			if pf {
 				col.CXM1FB |= 0x80
-				col.Activity.WriteString("M1 ^ PF")
+				col.collisions |= M1PF
 			}
 			if bl {
 				col.CXM1FB |= 0x40
-				col.Activity.WriteString("M1 ^ BL")
+				col.collisions |= M1BL
 			}
 			col.mem.ChipWrite(addresses.CXM1FB, col.CXM1FB)
 		}
@@ -143,11 +219,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf || bl {
 			if pf {
 				col.CXP0FB |= 0x80
-				col.Activity.WriteString("P0 ^ PF")
+				col.collisions |= P0PF
 			}
 			if bl {
 				col.CXP0FB |= 0x40
-				col.Activity.WriteString("P0 ^ BL")
+				col.collisions |= P0BL
 			}
 			col.mem.ChipWrite(addresses.CXP0FB, col.CXP0FB)
 		}
@@ -157,11 +233,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf || bl {
 			if pf {
 				col.CXP1FB |= 0x80
-				col.Activity.WriteString("P1 ^ PF")
+				col.collisions |= P1PF
 			}
 			if bl {
 				col.CXP1FB |= 0x40
-				col.Activity.WriteString("P1 ^ BL")
+				col.collisions |= P1BL
 			}
 			col.mem.ChipWrite(addresses.CXP1FB, col.CXP1FB)
 		}
@@ -169,7 +245,7 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 
 	if bl && pf {
 		col.CXBLPF |= 0x80
-		col.Activity.WriteString("BL ^ PF")
+		col.collisions |= BLPF
 		col.mem.ChipWrite(addresses.CXBLPF, col.CXBLPF)
 	}
 	// no bit 6 for CXBLPF
@@ -177,11 +253,11 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 	if (p0 && p1) || (m0 && m1) {
 		if p0 && p1 {
 			col.CXPPMM |= 0x80
-			col.Activity.WriteString("P0 ^ P1")
+			col.collisions |= P0P1
 		}
 		if m0 && m1 {
 			col.CXPPMM |= 0x40
-			col.Activity.WriteString("M0 ^ M1")
+			col.collisions |= M0M1
 		}
 		col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
 	}
@@ -191,79 +267,79 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 // version above is "optimised" but the reference implementation below is maybe
 // easier to understand.
 func (col *Collisions) tickReference(p0, p1, m0, m1, bl, pf bool) { // nolint: unused
-	col.Activity.Reset()
+	col.collisions = 0
 
 	if m0 && p1 {
 		col.CXM0P |= 0x80
-		col.Activity.WriteString("M0 ^ P1")
+		col.collisions |= M0P1
 	}
 	if m0 && p0 {
 		col.CXM0P |= 0x40
-		col.Activity.WriteString("M0 ^ P0")
+		col.collisions |= M0P0
 	}
 
 	if m1 && p0 {
 		col.CXM1P |= 0x80
-		col.Activity.WriteString("M1 ^ P0")
+		col.collisions |= M1P0
 	}
 	if m1 && p1 {
 		col.CXM1P |= 0x40
-		col.Activity.WriteString("M1 ^ P1")
+		col.collisions |= M1P1
 	}
 
 	// use active bit when comparing with playfield
 	if p0 && pf {
 		col.CXP0FB |= 0x80
-		col.Activity.WriteString("P0 ^ PF")
+		col.collisions |= P0PF
 	}
 	if p0 && bl {
 		col.CXP0FB |= 0x40
-		col.Activity.WriteString("P0 ^ BL")
+		col.collisions |= P0BL
 	}
 
 	// use active bit when comparing with playfield
 	if p1 && pf {
 		col.CXP1FB |= 0x80
-		col.Activity.WriteString("P1 ^ PF")
+		col.collisions |= P1PF
 	}
 	if p1 && bl {
 		col.CXP1FB |= 0x40
-		col.Activity.WriteString("P1 ^ BL")
+		col.collisions |= P1BL
 	}
 
 	// use active bit when comparing with playfield
 	if m0 && pf {
 		col.CXM0FB |= 0x80
-		col.Activity.WriteString("M0 ^ PF")
+		col.collisions |= M0PF
 	}
 	if m0 && bl {
 		col.CXM0FB |= 0x40
-		col.Activity.WriteString("M1 ^ BL")
+		col.collisions |= M0BL
 	}
 
 	// use active bit when comparing with playfield
 	if m1 && pf {
 		col.CXM1FB |= 0x80
-		col.Activity.WriteString("M1 ^ PF")
+		col.collisions |= M1PF
 	}
 	if m1 && bl {
 		col.CXM1FB |= 0x40
-		col.Activity.WriteString("M1 ^ BL")
+		col.collisions |= M1BL
 	}
 
 	if bl && pf {
 		col.CXBLPF |= 0x80
-		col.Activity.WriteString("BL ^ PF")
+		col.collisions |= BLPF
 	}
 	// no bit 6 for CXBLPF
 
 	if p0 && p1 {
 		col.CXPPMM |= 0x80
-		col.Activity.WriteString("P0 ^ P1")
+		col.collisions |= P0P1
 	}
 	if m0 && m1 {
 		col.CXPPMM |= 0x40
-		col.Activity.WriteString("M0 ^ M1")
+		col.collisions |= M0M1
 	}
 
 	col.mem.ChipWrite(addresses.CXM0P, col.CXM0P)

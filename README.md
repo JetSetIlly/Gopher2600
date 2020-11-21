@@ -80,7 +80,7 @@ Memory usage is around 40MB of system memory in playmode and around 120MB in
 debug mode. This can vary on the ROM used however. It shouldn't ever be a
 problem on modern hardware.
 
-A `statsview` is also available. See the section below on [Statistics Viewer](#statistics-viewer) for
+A `statsview` is also available. See the section below on the [Statistics Viewer](#statistics-viewer) for
 details.
 
 ## Compilation
