@@ -451,10 +451,10 @@ func (tv *Television) newFrame(synced bool) error {
 // setPendindPixels forwards all pixels in the signalHistory buffer (between
 // the *from and *to values) to all pixel renderers.
 func (tv *Television) setPendingPixels() error {
-	for i := 0; i < tv.signalIdx; i++ {
-		sig := tv.signals[i]
-		for _, r := range tv.renderers {
-			r.UpdatingPixels(true)
+	for _, r := range tv.renderers {
+		r.UpdatingPixels(true)
+		for i := 0; i < tv.signalIdx; i++ {
+			sig := tv.signals[i]
 			err := r.SetPixel(sig, true)
 			if err != nil {
 				return curated.Errorf("television", err)
@@ -462,8 +462,8 @@ func (tv *Television) setPendingPixels() error {
 			if tv.reflector != nil {
 				tv.reflector.SyncReflectionPixel(i)
 			}
-			r.UpdatingPixels(false)
 		}
+		r.UpdatingPixels(false)
 	}
 
 	// reset signal history
@@ -507,6 +507,7 @@ func (tv *Television) SetSpec(spec string) error {
 	tv.state.top = tv.state.spec.ScanlineTop
 	tv.state.bottom = tv.state.spec.ScanlineBottom
 	tv.state.resizer.prepare(tv)
+	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 
 	for _, r := range tv.renderers {
 		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
