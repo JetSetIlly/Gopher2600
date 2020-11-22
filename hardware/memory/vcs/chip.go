@@ -74,11 +74,7 @@ func (area *ChipMemory) Peek(address uint16) (uint8, error) {
 // Reset contents of ChipMemory.
 func (area *ChipMemory) Reset() {
 	for i := range area.memory {
-		if area.prefs != nil && area.prefs.RandomState.Get().(bool) {
-			area.memory[i] = uint8(area.prefs.RandSrc.Intn(0xff))
-		} else {
-			area.memory[i] = 0
-		}
+		area.memory[i] = 0
 	}
 }
 

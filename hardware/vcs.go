@@ -105,6 +105,7 @@ func (vcs *VCS) Reset() error {
 
 	vcs.Mem.Reset()
 	vcs.CPU.Reset()
+	vcs.RIOT.Timer.Reset()
 
 	// reset of ports must happen after reset of memory because ports will
 	// update memory to the current state of the peripherals

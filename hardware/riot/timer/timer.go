@@ -89,23 +89,32 @@ type Timer struct {
 // NewTimer is the preferred method of initialisation of the Timer type.
 func NewTimer(prefs *preferences.Preferences, mem bus.ChipBus) *Timer {
 	tmr := &Timer{
-		prefs:          prefs,
-		mem:            mem,
-		Divider:        T1024T,
-		TicksRemaining: int(T1024T),
-		INTIMvalue:     0,
-		pa7:            true,
+		prefs:   prefs,
+		mem:     mem,
+		Divider: T1024T,
 	}
 
+	tmr.Reset()
+
+	return tmr
+}
+
+// Reset timer to an initial state.
+func (tmr *Timer) Reset() {
+	tmr.pa7 = true
+
 	if tmr.prefs.RandomState.Get().(bool) {
-		tmr.INTIMvalue = uint8(tmr.prefs.RandSrc.Intn(0xff))
+		tmr.Divider = T1024T
 		tmr.TicksRemaining = tmr.prefs.RandSrc.Intn(0xffff)
+		tmr.INTIMvalue = uint8(tmr.prefs.RandSrc.Intn(0xff))
+	} else {
+		tmr.Divider = T1024T
+		tmr.TicksRemaining = int(T1024T)
+		tmr.INTIMvalue = 0
 	}
 
 	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
 	tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
-
-	return tmr
 }
 
 // Snapshot creates a copy of the RIOT Timer in its current state.

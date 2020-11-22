@@ -18,7 +18,6 @@ package regression
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"os/signal"
 	"sort"
@@ -105,11 +104,6 @@ func RegressList(output io.Writer) error {
 
 // RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
-	// tests must be determinate so we set math.rand seed to something we know.
-	// reseed with clock on completion
-	rand.Seed(1)
-	defer rand.Seed(int64(time.Now().Second()))
-
 	if output == nil {
 		return fmt.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
 	}
@@ -188,11 +182,6 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 // list specified which entries to test. an empty keys list means that every
 // entry should be tested.
 func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
-	// tests must be determinate so we set math.rand seed to something we know.
-	// reseed with clock on completion
-	rand.Seed(1)
-	defer rand.Seed(int64(time.Now().Second()))
-
 	if output == nil {
 		return fmt.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
 	}
