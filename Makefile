@@ -1,7 +1,7 @@
 compileFlags = '-c 3 -B -wb=false'
 profilingRom = roms/Pitfall.bin
 
-.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profil_debug build_assertions build release check_upx release_upx cross_windows cross_windows_static check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profil_debug build_assertions build release release_statsview check_upx release_upx release_upx_statsview cross_windows cross_windows_statsview cross_windows_static cross_windows_static_statsview check_gotip build_with_gotip
 
 all:
 	@echo "use release target to build release binary"
@@ -67,8 +67,14 @@ build_assertions: generate vet test
 build: generate 
 	go build -gcflags $(compileFlags)
 
+build_statsview: generate 
+	go build -gcflags $(compileFlags) -tags="statsview"
+
 release: generate 
 	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
+
+release_statsview: generate 
+	go build -gcflags $(compileFlags) -tags="release statsview"
 
 check_upx:
 ifeq (, $(shell which upx))
@@ -81,11 +87,23 @@ release_upx: check_upx generate
 	cp gopher2600.upx gopher2600
 	rm gopher2600.upx
 
+release_upx_statsview: check_upx generate 
+	go build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release statsview"
+	upx -o gopher2600.upx gopher2600
+	cp gopher2600.upx gopher2600
+	rm gopher2600.upx
+
 cross_windows: generate 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -gcflags $(compileFlags) -ldflags="-s -w" .
 
+cross_windows_statsview: generate 
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release statsview" -gcflags $(compileFlags) -ldflags="-s -w" .
+
 cross_windows_static: generate 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" go build -tags "static release" -gcflags $(compileFlags) -ldflags "-s -w" .
+
+cross_windows_static_statsview: generate 
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" go build -tags "static release statsview" -gcflags $(compileFlags) -ldflags "-s -w" .
 
 check_gotip:
 ifeq (, $(shell which gotip))

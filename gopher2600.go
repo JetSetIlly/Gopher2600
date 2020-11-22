@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-echarts/statsview"
-	"github.com/go-echarts/statsview/viewer"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -43,6 +41,7 @@ import (
 	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
+	"github.com/jetsetilly/gopher2600/statsview"
 	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
@@ -272,7 +271,11 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
-	statsServer := md.AddBool("statsserver", false, fmt.Sprintf("run stats server (%s)", statsServerAddress))
+
+	stats := &[]bool{false}[0]
+	if statsview.Available() {
+		stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
+	}
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -286,8 +289,8 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		logger.SetEcho(nil)
 	}
 
-	if *statsServer {
-		launchStatsServer()
+	if *stats {
+		statsview.Launch(os.Stdout)
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -389,15 +392,19 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
-	statsServer := md.AddBool("statsserver", false, fmt.Sprintf("run stats server (%s)", statsServerAddress))
+
+	stats := &[]bool{false}[0]
+	if statsview.Available() {
+		stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
+	}
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
 	}
 
-	if *statsServer {
-		launchStatsServer()
+	if *stats {
+		statsview.Launch(os.Stdout)
 	}
 
 	tv, err := television.NewTelevision(*spec)
@@ -900,18 +907,4 @@ type nopWriter struct{}
 
 func (*nopWriter) Write(p []byte) (n int, err error) {
 	return 0, nil
-}
-
-const statsServerAddress = "localhost:12600"
-const statsServerURL = "/debug/statsview"
-
-// launch a goroutine running the stats viewer https://github.com/go-echarts/statsview
-func launchStatsServer() {
-	go func() {
-		viewer.SetConfiguration(viewer.WithAddr(statsServerAddress))
-		mgr := statsview.New()
-		mgr.Start()
-	}()
-
-	fmt.Printf("stats server available at %s%s\n", statsServerAddress, statsServerURL)
 }
