@@ -63,8 +63,15 @@ type Spec struct {
 	// or
 	//
 	//	Bottom = Total - Overscan
-	ScanlineTop    int
-	ScanlineBottom int
+	AtariSafeTop    int
+	AtariSafeBottom int
+
+	// resizing of the TV is problematic because we can't rely on the VBLANK to
+	// tell us when the pixels are meant to be in view. The NewSafeTop
+	// an NewSafeBottom are the min/max values that the resizer should
+	// allow.
+	NewSafeTop    int
+	NewSafeBottom int
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -128,8 +135,8 @@ func init() {
 		AspectBias:        0.91,
 	}
 
-	SpecNTSC.ScanlineTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
-	SpecNTSC.ScanlineBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
+	SpecNTSC.AtariSafeTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
+	SpecNTSC.AtariSafeBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 	SpecNTSC.IdealPixelsPerFrame = SpecNTSC.ScanlinesTotal * HorizClksScanline
 
 	SpecPAL = Spec{
@@ -144,7 +151,15 @@ func init() {
 		AspectBias:        1.09,
 	}
 
-	SpecPAL.ScanlineTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
-	SpecPAL.ScanlineBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
-	SpecNTSC.IdealPixelsPerFrame = SpecPAL.ScanlinesTotal * HorizClksScanline
+	SpecPAL.AtariSafeTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
+	SpecPAL.AtariSafeBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
+	SpecPAL.IdealPixelsPerFrame = SpecPAL.ScanlinesTotal * HorizClksScanline
+
+	// NewSafe values:
+	// - Spike's Peak likes a bottom scanline of 249 (NTSC). this is the largest requirement I've seen.
+	// - Using the same difference of 13 for PAL NewSafeBottom
+	SpecNTSC.NewSafeTop = 20
+	SpecNTSC.NewSafeBottom = 249
+	SpecPAL.NewSafeTop = 20
+	SpecPAL.NewSafeBottom = 299
 }

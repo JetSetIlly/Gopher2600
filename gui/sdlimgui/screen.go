@@ -108,7 +108,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr := &screen{img: img}
 
 	// start off by showing entirity of NTSC screen
-	scr.resize(specification.SpecNTSC, specification.SpecNTSC.ScanlineTop, specification.SpecNTSC.ScanlinesVisible)
+	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.ScanlinesVisible)
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0

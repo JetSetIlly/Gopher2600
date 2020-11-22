@@ -13,17 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// ROMs used to test PAL switching and resizing:
-//	- Pitfall
-//	- Hero
-//	- Chiphead
-//	- Bang!
-//	- Ladybug
-//	- Hack Em Hangly Pacman
-//	- Andrew Davies' Chess
-//	- Communist Mutants From Space
-//	- Mega Bitmap Demo
-
 package television
 
 import (
@@ -230,6 +219,7 @@ func (tv *Television) Reset() error {
 	tv.state.frameNum = 0
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
+	tv.state.syncedFrame = false
 	tv.state.vsyncCount = 0
 	tv.state.lastSignal = signal.SignalAttributes{}
 
@@ -392,11 +382,6 @@ func (tv *Television) newScanline() error {
 }
 
 func (tv *Television) newFrame(synced bool) error {
-	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
-	if tv.state.syncedFrame {
-		tv.state.syncedFrameNum++
-	}
-
 	// specification change
 	if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
 		if tv.state.auto && !tv.state.syncedFrame && tv.state.scanline > excessScanlinesNTSC {
@@ -406,6 +391,12 @@ func (tv *Television) newFrame(synced bool) error {
 			}
 		}
 	}
+
+	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
+	if synced {
+		tv.state.syncedFrameNum++
+	}
+	tv.state.syncedFrame = synced
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv)
@@ -417,7 +408,6 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.frameNum++
 	tv.state.scanline = 0
 	tv.state.resizer.prepare(tv)
-	tv.state.syncedFrame = synced
 
 	// set pixels for all renderers
 	if tv.lmtr.scale == scaleFrame {
@@ -504,8 +494,8 @@ func (tv *Television) SetSpec(spec string) error {
 		return curated.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	tv.state.top = tv.state.spec.ScanlineTop
-	tv.state.bottom = tv.state.spec.ScanlineBottom
+	tv.state.top = tv.state.spec.AtariSafeTop
+	tv.state.bottom = tv.state.spec.AtariSafeBottom
 	tv.state.resizer.prepare(tv)
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 

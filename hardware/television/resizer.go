@@ -15,56 +15,100 @@
 
 package television
 
-import "github.com/jetsetilly/gopher2600/hardware/television/signal"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
 
-// resize is the simplest resizing method I can come up with.
+// resizer handles the expansion of the visible area of the TV screen
+//
+// ROMs used to test resizing:
+//  * good base cases
+//		- Pitfall
+//		- Hero
+//
+//  *  changes size after setup phase
+//		- Ladybug
+//
+//  * as above + it throws in an unsynced frame every now and again
+//		- Hack Em Hangly Pacman
+//
+//  * lots of unsynced frames during computer "thinking" period
+//		- Andrew Davies' Chess
+//
+//	* unsynced frames every other frame
+//		- Mega Bitmap Demo
+//
+//  * does not set VBLANK for pixels that are clearly not meant to be seen
+//  these ROMs rely on the NewSafeTop and NewSafeBottom values
+//		- Communist Mutants From Space
+//		- Tapper
+//		- Spike's Peak
+//
+//   * does not set VBLANK but we can crop more aggressively by assuming that a scanline
+//   consisting only of black pixels should not be seen
+//		- Legacy of the Beast
 type resizer struct {
+	top    int
 	bottom int
 }
 
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
-	// if vblank is off at any point of then extend the bottom of the screen.
-	// we'll commit the resize procedure in the newFrame() function
+	// ignore any frame that isn't "synced" is also not allowed to resize the
+	// TV. the best example of this is Andrew Davie's chess which simply does
+	// not care about frames during the computer's thinking time.
 	//
-	// comparing against current bottom scanline, rather than ideal bottom
-	// scanline of the specification. this means that a screen will never
-	// "shrink" until the specification is changed either manually or
-	// automatically.
-	//
-	// we mitigate this by not initiating a resize event until after the setup
-	// phase (as quantified by the leadingFrames value). any problems with ROMs
-	// that erroneously trigger a resize through rogue frames will have to be
-	// dealt with by some sort of count (ie. the new size has to be "held" for
-	// N number of frames before we resize). Earlier versions of this file did
-	// do that but we removed it due to no evidence that it was required.
-	if !sig.VBlank {
-		if tv.state.scanline > sr.bottom {
+	// the "mega bitmap demo" (atext.bin) is by comparison is a ROM that spits
+	// out unsynced frames every other frame
+	if !tv.state.syncedFrame {
+		return
+	}
+
+	// if vblank is off at any point after than HBLANK period then tentatively
+	// extend the top/bottom of the screen. we'll commit the resize procedure
+	// in the newFrame() function
+	if tv.state.horizPos > specification.HorizClksHBlank && !sig.VBlank && sig.Pixel > 0 {
+		// comparing against current top/bottom scanline, rather than ideal
+		// top/bottom scanline of the specification. this means that a screen will
+		// never "shrink" until the specification is changed either manually or
+		// automatically.
+		//
+		// we also limit to the top/bottom scanlines to a safe area. the atari
+		// safe area is too conservative so we've defined our own.
+		if tv.state.scanline < sr.top && tv.state.scanline >= tv.state.spec.NewSafeTop {
+			sr.top = tv.state.scanline
+		} else if tv.state.scanline > sr.bottom && tv.state.scanline <= tv.state.spec.NewSafeBottom {
 			sr.bottom = tv.state.scanline
 		}
 	}
 }
 
 func (sr *resizer) commit(tv *Television) error {
-	// always perform resize operation
-	if tv.state.syncedFrameNum <= leadingFrames || sr.bottom == tv.state.bottom {
+	// do not allow resizing to take place for the first few frames of a ROM.
+	// these frames tend to be set up frames and can be wildly unstable.
+	if tv.state.syncedFrameNum <= leadingFrames {
 		return nil
 	}
 
-	diff := sr.bottom - tv.state.bottom
-
-	// reduce top by same amount as bottom
-	tv.state.top -= diff
-	if tv.state.top < 0 {
-		tv.state.top = 0
+	// return if there's nothing to do
+	if sr.bottom == tv.state.bottom && sr.top == tv.state.top {
+		return nil
 	}
 
-	// new bottom value is what we detected
-	tv.state.bottom = sr.bottom
+	// update bottom value
+	if sr.bottom != tv.state.bottom {
+		tv.state.bottom = sr.bottom
+	}
 
-	// call Resize() for all attached pixel rendered
+	// update top value
+	if sr.top != tv.state.top {
+		tv.state.top = sr.top
+	}
+
+	// something has changed so call Resize() for all attached pixel renderers
 	if tv.state.top < tv.state.bottom {
 		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top+1)
 			if err != nil {
 				return err
 			}
@@ -76,4 +120,5 @@ func (sr *resizer) commit(tv *Television) error {
 
 func (sr *resizer) prepare(tv *Television) {
 	sr.bottom = tv.state.bottom
+	sr.top = tv.state.top
 }
