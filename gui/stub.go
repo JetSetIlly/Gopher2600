@@ -15,13 +15,11 @@
 
 package gui
 
-import "github.com/jetsetilly/gopher2600/curated"
-
 type Stub struct{}
 
 // SetFeature implements the GUI interface.
 func (s Stub) SetFeature(request FeatureReq, args ...FeatureReqData) error {
-	return curated.Errorf(UnsupportedGuiFeature, request)
+	return nil
 }
 
 // SetFeatureNoError implements the GUI interface.
@@ -30,5 +28,5 @@ func (s Stub) SetFeatureNoError(request FeatureReq, args ...FeatureReqData) {
 
 // GetFeature implements the GUI interface.
 func (s Stub) GetFeature(request FeatureReq) (FeatureReqData, error) {
-	return nil, curated.Errorf(UnsupportedGuiFeature, request)
+	return nil, nil
 }

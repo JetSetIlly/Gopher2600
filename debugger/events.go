@@ -90,7 +90,13 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 		return err
 	}
 
-	return err
+	if err != nil {
+		if !curated.Is(err, gui.UnsupportedGuiFeature) {
+			return curated.Errorf("debugger: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (dbg *Debugger) checkEvents() error {

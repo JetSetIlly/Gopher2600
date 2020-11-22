@@ -123,6 +123,7 @@ func (win *winCRTPrefs) draw() {
 	if imgui.Checkbox("Vignette##vignette", &b) {
 		win.img.crtPrefs.Vignette.Set(b)
 	}
+
 	imgui.Spacing()
 	imgui.Spacing()
 
@@ -133,7 +134,7 @@ func (win *winCRTPrefs) draw() {
 	imgui.SameLine()
 
 	imgui.BeginGroup()
-	imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{300, 300})
+	imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{330, 330})
 	imgui.EndGroup()
 
 	imgui.Spacing()
@@ -146,13 +147,15 @@ func (win *winCRTPrefs) draw() {
 }
 
 func (win *winCRTPrefs) drawGamma() {
+	imgui.Text("Input Gamma")
 	f := float32(win.img.crtPrefs.InputGamma.Get().(float64))
-	if imgui.SliderFloatV("Input Gamma##input Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
+	if imgui.SliderFloatV("##input Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
 		win.img.crtPrefs.InputGamma.Set(f)
 	}
 
+	imgui.Text("Output Gamma")
 	f = float32(win.img.crtPrefs.OutputGamma.Get().(float64))
-	if imgui.SliderFloatV("Output Gamma##output Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
+	if imgui.SliderFloatV("##output Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
 		win.img.crtPrefs.OutputGamma.Set(f)
 	}
 }
@@ -163,7 +166,7 @@ func (win *winCRTPrefs) drawMask() {
 		win.img.crtPrefs.Mask.Set(b)
 	}
 	f := float32(win.img.crtPrefs.MaskBrightness.Get().(float64))
-	if imgui.SliderFloatV("Brightness##maskbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
+	if imgui.SliderFloatV("##maskbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
 		win.img.crtPrefs.MaskBrightness.Set(f)
 	}
 }
@@ -174,14 +177,15 @@ func (win *winCRTPrefs) drawScanlines() {
 		win.img.crtPrefs.Scanlines.Set(b)
 	}
 	f := float32(win.img.crtPrefs.ScanlinesBrightness.Get().(float64))
-	if imgui.SliderFloatV("Brightness##scanlinesbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
+	if imgui.SliderFloatV("##scanlinesbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
 		win.img.crtPrefs.ScanlinesBrightness.Set(f)
 	}
 }
 
 func (win *winCRTPrefs) drawMaskScanlineScaling() {
 	f := int32(win.img.crtPrefs.MaskScanlineScaling.Get().(int))
-	if imgui.SliderIntV("Mask/Scanline Scaling##scaling", &f, 1, 3, "%d") {
+	imgui.Text("Mask/Scanline Scaling")
+	if imgui.SliderIntV("##scaling", &f, 1, 3, "%d") {
 		win.img.crtPrefs.MaskScanlineScaling.Set(f)
 	}
 }
@@ -192,7 +196,7 @@ func (win *winCRTPrefs) drawNoise() {
 		win.img.crtPrefs.Noise.Set(b)
 	}
 	f := float32(win.img.crtPrefs.NoiseLevel.Get().(float64))
-	if imgui.SliderFloatV("Level##noiselevel", &f, 0.0, 0.2, "%.2f", 1.0) {
+	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 0.2, "%.2f", 1.0) {
 		win.img.crtPrefs.NoiseLevel.Set(f)
 	}
 }

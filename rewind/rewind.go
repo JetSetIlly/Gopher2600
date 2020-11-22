@@ -441,7 +441,7 @@ func (r *Rewind) GotoLast() error {
 	}
 
 	// make adjustments to the index so we plumbing from a suitable place
-	idx--
+	idx -= 2
 	if idx < 0 {
 		idx += len(r.entries)
 	}
