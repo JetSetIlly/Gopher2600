@@ -486,7 +486,7 @@ locally on your machine `localhost:12600/debug/statsview`.
 	
 	> gopher2600 debug -statsview <rom>
 
-The screen below shows an example of the available statistics. In this
+The screen below shows an example of the featured statistics. In this
 instance, this is the debugger running a 4k Atari cartridge (specifically,
 Pitfall).
 
@@ -496,7 +496,10 @@ For people who really want to dig deep into the running program,
 `localhost:12600/debug/pprof/` gives more raw, but still useful
 information.
 
-Note that this feature requires you run a suitably compiled executable.
+Note that this feature requires you run a suitably [compiled](#compilation) executable. The easiest
+way to do this is to use the Makefile.
+
+	> make release_statsview
 
 ## Gopher2600 Tools
 
