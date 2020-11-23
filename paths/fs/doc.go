@@ -13,32 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// +build !release
-
-package paths
-
-import (
-	"os"
-	"path"
-
-	"github.com/jetsetilly/gopher2600/paths/fs"
-)
-
-const gopherConfigDir = ".gopher2600"
-
-// the non-release version of getBasePath looks for and if necessary creates
-// the gopherConfigDir (and child directories) in the current working
-// directory.
-func getBasePath(subPth string) (string, error) {
-	pth := path.Join(gopherConfigDir, subPth)
-
-	if _, err := os.Stat(pth); err == nil {
-		return pth, nil
-	}
-
-	if err := fs.MkdirAll(pth, 0700); err != nil {
-		return "", err
-	}
-
-	return pth, nil
-}
+// Package fs is an abstraction for OS/filesystem functions that may be
+// missing or require special handling. For example, WASM.
+package fs

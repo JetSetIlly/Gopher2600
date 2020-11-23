@@ -13,32 +13,43 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// +build !release
+// +build wasm
 
-package paths
+package fs
 
 import (
 	"os"
-	"path"
-
-	"github.com/jetsetilly/gopher2600/paths/fs"
 )
 
-const gopherConfigDir = ".gopher2600"
+// MkdirAll is a stub function.
+func MkdirAll(pth string, perm os.FileMode) error {
+	return nil
+}
 
-// the non-release version of getBasePath looks for and if necessary creates
-// the gopherConfigDir (and child directories) in the current working
-// directory.
-func getBasePath(subPth string) (string, error) {
-	pth := path.Join(gopherConfigDir, subPth)
+// File is a stub type.
+type File struct{}
 
-	if _, err := os.Stat(pth); err == nil {
-		return pth, nil
-	}
+// Close is a stub function.
+func (f *File) Close() error {
+	return nil
+}
 
-	if err := fs.MkdirAll(pth, 0700); err != nil {
-		return "", err
-	}
+// Read is a stub function.
+func (f *File) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
 
-	return pth, nil
+// Write is a stub function.
+func (f *File) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
+// Open is a stub function.
+func Open(pth string) (*File, error) {
+	return &File{}, nil
+}
+
+// Create is a stub function.
+func Create(pth string) (*File, error) {
+	return &File{}, nil
 }

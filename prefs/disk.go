@@ -24,6 +24,7 @@ import (
 	"unicode"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/paths/fs"
 )
 
 // DefaultPrefsFile is the default filename of the global preferences file.
@@ -130,7 +131,7 @@ func (dsk *Disk) Save() (rerr error) {
 	}
 
 	// create a new prefs file
-	f, err := os.Create(dsk.path)
+	f, err := fs.Create(dsk.path)
 	if err != nil {
 		return curated.Errorf("prefs: %v", err)
 	}
@@ -197,7 +198,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	var numLoaded int
 
 	// open existing prefs file
-	f, err := os.Open(path)
+	f, err := fs.Open(path)
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
@@ -212,7 +213,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 
 	// check validity of file by checking the first line
 	scanner.Scan()
-	if scanner.Text() != WarningBoilerPlate {
+	if len(scanner.Text()) > 0 && scanner.Text() != WarningBoilerPlate {
 		return 0, curated.Errorf("prefs: %v", fmt.Errorf("not a valid prefs file (%s)", path))
 	}
 

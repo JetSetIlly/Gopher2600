@@ -321,8 +321,7 @@ func TestBoolAndString(t *testing.T) {
 		return
 	}
 
-	// compate file. the file should contain contents set by both disk
-	// instances
+	// compare file. the file should contain contents set by both disk instances
 	cmpTmpFile(t, fn, "foo :: bar\ntest :: true\n")
 }
 

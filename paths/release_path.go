@@ -20,6 +20,8 @@ package paths
 import (
 	"os"
 	"path"
+
+	"github.com/jetsetilly/gopher2600/paths/fs"
 )
 
 const gopherConfigDir = "gopher2600"
@@ -40,7 +42,7 @@ func getBasePath(subPth string) (string, error) {
 		return pth, nil
 	}
 
-	if err := os.MkdirAll(pth, 0700); err != nil {
+	if err := fs.MkdirAll(pth, 0700); err != nil {
 		return "", err
 	}
 
