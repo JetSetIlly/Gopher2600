@@ -200,6 +200,92 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 
 	gl.ActiveTexture(gl.TEXTURE0)
 
+	// !!TODO: different scaling values for different screen windows
+	vertScaling := rnd.img.wm.dbgScr.getScaling(false)
+	horizScaling := rnd.img.wm.dbgScr.getScaling(true)
+
+	// crt preferences
+	gl.Uniform1i(rnd.attribCRT, boolToInt32(rnd.img.wm.dbgScr.crt))
+	gl.Uniform1f(rnd.attribInputGamma, float32(rnd.img.crtPrefs.InputGamma.Get().(float64)))
+	gl.Uniform1f(rnd.attribOutputGamma, float32(rnd.img.crtPrefs.OutputGamma.Get().(float64)))
+	gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
+	gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
+	gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
+	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
+	gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
+	gl.Uniform1i(rnd.attribMaskScanlineScaling, int32(rnd.img.crtPrefs.MaskScanlineScaling.Get().(int)))
+
+	// critical section
+	rnd.img.screen.crit.section.Lock()
+
+	// the resolution information is used to scale the Last
+	gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
+	gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+	gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
+	gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
+
+	// screen geometry
+	gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)
+	gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
+	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
+
+	// the coordinates of the last plot. specual handling for StateGotoCoords
+	var cursorX int
+	var cursorY int
+	if rnd.img.state == gui.StateGotoCoords {
+		cursorX = rnd.img.screen.gotoCoordsX
+		cursorY = rnd.img.screen.gotoCoordsY
+	} else {
+		cursorX = rnd.img.screen.crit.lastX
+		cursorY = rnd.img.screen.crit.lastY
+	}
+
+	// scale cordinates. horizontal scaling depends on whether the
+	// screen is cropped
+	if rnd.img.wm.dbgScr.cropped {
+		gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
+	} else {
+		gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
+	}
+	gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
+
+	rnd.img.screen.crit.section.Unlock()
+	// end of critical section
+
+	// set DrawMode according to emulation state
+	switch rnd.img.state {
+	case gui.StatePaused:
+		gl.Uniform1i(rnd.attribDrawMode, 1)
+	case gui.StateRunning:
+		// if FPS is low enough then show screen draw even though
+		// emulation is running
+		if rnd.img.lz.TV.ReqFPS < 3.0 {
+			gl.Uniform1i(rnd.attribDrawMode, 1)
+		} else {
+			gl.Uniform1i(rnd.attribDrawMode, 0)
+		}
+	case gui.StateRewinding:
+		gl.Uniform1i(rnd.attribDrawMode, 0)
+	case gui.StateGotoCoords:
+		gl.Uniform1i(rnd.attribDrawMode, 2)
+	}
+
+	if rnd.img.wm.dbgScr.cropped {
+		gl.Uniform1i(rnd.attribCropped, 1)
+	} else {
+		gl.Uniform1i(rnd.attribCropped, -1)
+	}
+
+	// animation time
+	anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
+	anim = math.Abs(anim)
+	gl.Uniform1f(rnd.attribAnimTime, float32(anim))
+
+	// random seed (for noise generator)
+	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
+
 	for _, list := range drawData.CommandLists() {
 		var indexBufferOffset uintptr
 
@@ -211,97 +297,10 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
-		// !!TODO: different scaling values for different screen windows
-
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
-				vertScaling := rnd.img.wm.dbgScr.getScaling(false)
-				horizScaling := rnd.img.wm.dbgScr.getScaling(true)
-
-				// crt preferences
-				gl.Uniform1i(rnd.attribCRT, boolToInt32(rnd.img.wm.dbgScr.crt))
-				gl.Uniform1f(rnd.attribInputGamma, float32(rnd.img.crtPrefs.InputGamma.Get().(float64)))
-				gl.Uniform1f(rnd.attribOutputGamma, float32(rnd.img.crtPrefs.OutputGamma.Get().(float64)))
-				gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
-				gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
-				gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
-				gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
-				gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
-				gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
-				gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
-				gl.Uniform1i(rnd.attribMaskScanlineScaling, int32(rnd.img.crtPrefs.MaskScanlineScaling.Get().(int)))
-
-				// critical section
-				rnd.img.screen.crit.section.Lock()
-
-				// the resolution information is used to scale the Last
-				gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
-				gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
-				gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
-				gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
-
-				// screen geometry
-				gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)
-				gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
-				gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
-
-				// the coordinates of the last plot. specual handling for StateGotoCoords
-				var cursorX int
-				var cursorY int
-				if rnd.img.state == gui.StateGotoCoords {
-					cursorX = rnd.img.screen.gotoCoordsX
-					cursorY = rnd.img.screen.gotoCoordsY
-				} else {
-					cursorX = rnd.img.screen.crit.lastX
-					cursorY = rnd.img.screen.crit.lastY
-				}
-
-				// scale cordinates. horizontal scaling depends on whether the
-				// screen is cropped
-				if rnd.img.wm.dbgScr.cropped {
-					gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
-				} else {
-					gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
-				}
-				gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
-
-				rnd.img.screen.crit.section.Unlock()
-				// end of critical section
-
-				// set DrawMode according to emulation state
-				switch rnd.img.state {
-				case gui.StatePaused:
-					gl.Uniform1i(rnd.attribDrawMode, 1)
-				case gui.StateRunning:
-					// if FPS is low enough then show screen draw even though
-					// emulation is running
-					if rnd.img.lz.TV.ReqFPS < 3.0 {
-						gl.Uniform1i(rnd.attribDrawMode, 1)
-					} else {
-						gl.Uniform1i(rnd.attribDrawMode, 0)
-					}
-				case gui.StateRewinding:
-					gl.Uniform1i(rnd.attribDrawMode, 0)
-				case gui.StateGotoCoords:
-					gl.Uniform1i(rnd.attribDrawMode, 2)
-				}
-
-				if rnd.img.wm.dbgScr.cropped {
-					gl.Uniform1i(rnd.attribCropped, 1)
-				} else {
-					gl.Uniform1i(rnd.attribCropped, -1)
-				}
-
-				// animation time
-				anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
-				anim = math.Abs(anim)
-				gl.Uniform1f(rnd.attribAnimTime, float32(anim))
-
-				// random seed (for noise generator)
-				gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
-
 				// notify the shader which texture to work with
 				textureID := uint32(cmd.TextureID())
 				switch textureID {

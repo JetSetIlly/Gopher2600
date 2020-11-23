@@ -448,17 +448,18 @@ func (win *winDbgScr) setCropping(set bool) {
 	win.createTextures = true
 }
 
+// resize() implements the textureRenderer interface.
 func (win *winDbgScr) resize() {
 	win.createTextures = true
 }
 
-// render is called by service loop.
+// render() implements the textureRenderer interface.
+//
+// render is called by service loop (via screen.render()). must be inside
+// screen critical section.
 func (win *winDbgScr) render() {
 	var pixels *image.RGBA
 	var overlayPixels *image.RGBA
-
-	// critical section
-	win.scr.crit.section.Lock()
 
 	if win.cropped {
 		if win.debugColors {
@@ -508,9 +509,6 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlayPixels.Pix))
 	}
-
-	win.scr.crit.section.Unlock()
-	// end of critical section
 
 	// set screen image scaling (and image padding) based on the current window size
 	win.setScaleFromWindow(win.contentDim)

@@ -99,7 +99,6 @@ type mainSync struct {
 	creationError chan error
 }
 
-// #mainthread
 func main() {
 	sync := &mainSync{
 		state:         make(chan stateRequest),
@@ -305,9 +304,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
-		// set fps cap
-		tv.SetFPSCap(*fpsCap)
-
 		// add wavwriter mixer if wav argument has been specified
 		if *wav != "" {
 			aw, err := wavwriter.New(*wav)
@@ -343,6 +339,10 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		case err := <-sync.creationError:
 			return err
 		}
+
+		// set fps cap
+		tv.SetFPSCap(*fpsCap)
+		scr.SetFeature(gui.ReqVSync, *fpsCap)
 
 		// turn off fallback ctrl-c handling. this so that the playmode can
 		// end playback recordings gracefully
@@ -590,6 +590,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
+		// fpscap for tv (see below for gui vsync option)
 		tv.SetFPSCap(*fpsCap)
 
 		if *display {
@@ -606,6 +607,9 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			case err := <-sync.creationError:
 				return err
 			}
+
+			// fpscap for gui (see above for tv option)
+			scr.SetFeature(gui.ReqVSync, *fpsCap)
 
 			// set scaling value
 			if *scaling > 0.0 {

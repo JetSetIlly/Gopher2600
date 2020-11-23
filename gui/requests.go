@@ -53,6 +53,10 @@ const (
 	// infomration, particularly the display of the PixelRenderer.
 	ReqState FeatureReq = "ReqState" // EmulationState
 
+	// whether gui should use vsync or not. not all gui modes have to obey this
+	// but for presentation/play modes it's a good idea to have it set.
+	ReqVSync FeatureReq = "ReqVSync" // bool
+
 	// the following requests should set or toggle visual elements of the debugger.
 	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
 	ReqToggleDbgColors FeatureReq = "ReqToggleDbgColors" // none

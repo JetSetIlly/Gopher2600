@@ -425,9 +425,6 @@ func (tv *Television) newFrame(synced bool) error {
 		}
 	}
 
-	// reset signal history for next frame
-	tv.signalIdx = 0
-
 	// reset reflector for new frame
 	if tv.reflector != nil {
 		tv.reflector.SyncFrame()

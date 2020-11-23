@@ -87,29 +87,27 @@ func (win *winPlayScr) draw() {
 		return
 	}
 
-	// actual display
-	w := win.getScaledWidth()
-	h := win.getScaledHeight()
-
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
-	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
-
-	imgui.SetNextWindowPosV(imgui.Vec2{0, 0}, 0, imgui.Vec2{0, 0})
 	dimen := win.img.plt.displaySize()
 	win.winDim = imgui.Vec2{dimen[0], dimen[1]}
 	imgui.SetNextWindowSizeV(win.winDim, 0)
 
+	imgui.SetNextWindowPosV(imgui.Vec2{0, 0}, 0, imgui.Vec2{0, 0})
+
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
+
 	// we don't want to ever show scrollbars
 	imgui.BeginV(winPlayScrTitle, &win.open,
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-			imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoFocusOnAppearing)
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
 	// note size of window
 	win.contentDim = imgui.ContentRegionAvail()
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
-	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
+
+	// actual display
+	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{win.getScaledWidth(), win.getScaledHeight()})
 
 	// capture mouse on double click
 	if !win.img.hasModal && imgui.IsMouseDoubleClicked(0) {
@@ -121,18 +119,19 @@ func (win *winPlayScr) draw() {
 	imgui.End()
 }
 
+// resize() implements the textureRenderer interface.
 func (win *winPlayScr) resize() {
 	win.createTextures = true
 }
 
-// render is called by service loop.
+// render() implements the textureRenderer interface.
+//
+// render is called by service loop (via screen.render()). must be inside
+// screen critical section.
 func (win *winPlayScr) render() {
 	if !win.open {
 		return
 	}
-
-	// critical section
-	win.scr.crit.section.Lock()
 
 	// set screen image scaling (and image padding) based on the current window size
 	win.setScaleFromWindow(win.contentDim)
@@ -140,50 +139,41 @@ func (win *winPlayScr) render() {
 	// get pixels
 	pixels := win.scr.crit.cropPixels
 
-	// make a note of fram stability for later on outside of the critical section
-	isStable := win.scr.crit.isStable
-
-	win.scr.crit.section.Unlock()
-	// end of critical section
-
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
 	gl.ActiveTexture(gl.TEXTURE0)
 
-	// only draw image if television frame is stable
-	if isStable {
-		if win.createTextures {
-			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(pixels.Pix))
+	if win.createTextures {
+		win.createTextures = false
 
-			win.createTextures = false
-		} else {
-			gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-			gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-				0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(pixels.Pix))
-		}
+		// (re)create textures
+		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
+	} else if win.scr.crit.isStable {
+		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
 	}
 }
 
+// must be called from with a critical section.
 func (win *winPlayScr) getScaledWidth() float32 {
-	// must be called from with a critical section
 	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
 }
 
+// must be called from with a critical section.
 func (win *winPlayScr) getScaledHeight() float32 {
-	// must be called from with a critical section
 	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
 }
 
+// must be called from with a critical section.
 func (win *winPlayScr) setScaleFromWindow(sz imgui.Vec2) {
-	// must be called from with a critical section
-
 	winAspectRatio := sz.X / sz.Y
 
 	imageW := float32(win.scr.crit.cropPixels.Bounds().Size().X)

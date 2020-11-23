@@ -78,6 +78,11 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqState:
 		img.setState(request.args[0].(gui.EmulationState))
 
+	case gui.ReqVSync:
+		img.screen.crit.section.Lock()
+		img.screen.crit.vsync = request.args[0].(bool)
+		img.screen.crit.section.Unlock()
+
 	case gui.ReqSetDbgColors:
 		img.wm.dbgScr.debugColors = request.args[0].(bool)
 

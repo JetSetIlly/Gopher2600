@@ -30,6 +30,7 @@ type platform struct {
 	img    *SdlImgui
 	window *sdl.Window
 	time   uint64
+	mode   sdl.DisplayMode
 }
 
 // newPlatform is the preferred method of initialisation for the platform type.
@@ -38,7 +39,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, fmt.Errorf("SDL: %v", err)
+		return nil, fmt.Errorf("sdl: %v", err)
 	}
 
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -53,6 +54,13 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		img: img,
 	}
 
+	plt.mode, err = sdl.GetCurrentDisplayMode(0)
+	if err != nil {
+		sdl.Quit()
+		return nil, fmt.Errorf("sdl: %v", err)
+	}
+	logger.Log("sdl", fmt.Sprintf("refresh rate: %dHz", plt.mode.RefreshRate))
+
 	// map sdl key codes to imgui codes
 	plt.setKeyMapping()
 
@@ -63,25 +71,22 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	if err != nil {
 		sdl.Quit()
-		return nil, fmt.Errorf("SDL: %v", err)
+		return nil, fmt.Errorf("sdl: %v", err)
 	}
 
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
 		err = plt.destroy()
-		return nil, fmt.Errorf("SDL: %v", err)
+		return nil, fmt.Errorf("sdl: %v", err)
 	}
 	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
 		err = plt.destroy()
-		return nil, fmt.Errorf("SDL: %v", err)
+		return nil, fmt.Errorf("sdl: %v", err)
 	}
 
-	if sdl.GLSetSwapInterval(-1) != nil {
-		_ = sdl.GLSetSwapInterval(1)
-
-		// if we can't set VSYNC then that's too bad. log it and carry on
-		logger.Log("SDL", "cannot set GLSwapInterval() for SDL GUI")
+	if sdl.GLSetSwapInterval(1) != nil {
+		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
 	return plt, nil
@@ -128,10 +133,9 @@ func (plt *platform) newFrame() {
 		deltaTime = float32(currentTime-plt.time) / float32(frequency)
 		plt.img.io.SetDeltaTime(deltaTime)
 	} else {
-		deltaTime = 1.0 / 60.0
+		deltaTime = 1.0 / float32(plt.mode.RefreshRate)
 	}
 	sdl.Delay(uint32(deltaTime))
-
 	plt.time = currentTime
 
 	// If a mouse press event came, always pass it as "mouse held this frame",

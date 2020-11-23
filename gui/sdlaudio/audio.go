@@ -74,10 +74,10 @@ func NewAudio() (*Audio, error) {
 
 	aud.spec = actualSpec
 
-	logger.Log("sdl audio", fmt.Sprintf("frequency: %d samples/sec", aud.spec.Freq))
-	logger.Log("sdl audio", fmt.Sprintf("format: %d", aud.spec.Format))
-	logger.Log("sdl audio", fmt.Sprintf("channels: %d", aud.spec.Channels))
-	logger.Log("sdl audio", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
+	logger.Log("sdl: audio:", fmt.Sprintf("frequency: %d samples/sec", aud.spec.Freq))
+	logger.Log("sdl: audio:", fmt.Sprintf("format: %d", aud.spec.Format))
+	logger.Log("sdl: audio:", fmt.Sprintf("channels: %d", aud.spec.Channels))
+	logger.Log("sdl: audio:", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
 
 	// fill buffers with silence
 	for i := range aud.buffer {
@@ -128,7 +128,7 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 			}
 			aud.bufferCt = 0
 		} else if remaining > maxQueueLength {
-			// if length of SDL audio queue is getting too long then clear it
+			// if length of sdl: audio: queue is getting too long then clear it
 			//
 			// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
 			//

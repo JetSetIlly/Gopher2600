@@ -31,7 +31,7 @@ import (
 const pixelWidth = 2
 
 // textureRenderers can share the underlying pixels of the screen type instance.
-type textureRenderers interface {
+type textureRenderer interface {
 	render()
 	resize()
 }
@@ -43,7 +43,9 @@ type screen struct {
 
 	// list of renderers to call from render. renderers are added with
 	// addTextureRenderer()
-	renderers []textureRenderers
+	renderers  []textureRenderer
+	emuWait    chan bool
+	emuWaitAck chan bool
 
 	// aspect bias is taken from the television specification
 	aspectBias float32
@@ -60,6 +62,9 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
+	// whether to follow vsync rules or not
+	vsync bool
+
 	// copy of the spec being used by the TV. the TV notifies us through the
 	// Resize() function
 	spec specification.Spec
@@ -75,10 +80,15 @@ type screenCrit struct {
 	// debug screen.
 	pixels *image.RGBA
 
-	// backingPixels are what we plot pixels to while we wait for a frame to
-	// complete.
-	backingPixels       *image.RGBA
-	backingPixelsUpdate bool
+	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
+	bufferPixels [5]*image.RGBA
+	bufferUpdate bool
+
+	// which buffer we'll be plotting to and which bufffer we'll be rendering
+	// from. in playmode we make sure these two indexes never meet. in
+	// debugmode we plot and render from the same index, it doesn't matter.
+	plotIdx   int
+	renderIdx int
 
 	// element colors and overlay colors are only used in the debugger so we
 	// don't need to replicate the "backing pixels" idea.
@@ -105,7 +115,11 @@ type screenCrit struct {
 }
 
 func newScreen(img *SdlImgui) *screen {
-	scr := &screen{img: img}
+	scr := &screen{
+		img:        img,
+		emuWait:    make(chan bool),
+		emuWaitAck: make(chan bool),
+	}
 
 	// start off by showing entirity of NTSC screen
 	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.ScanlinesVisible)
@@ -138,9 +152,12 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	scr.crit.scanlines = visibleScanlines
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	scr.crit.backingPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+
+	for i := range scr.crit.bufferPixels {
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+	}
 
 	// allocate reflection info
 	scr.crit.reflection = make([][]reflection.Reflection, specification.HorizClksScanline)
@@ -149,13 +166,13 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	}
 
 	// create a cropped image from the main
-	r := image.Rect(
+	crop := image.Rect(
 		specification.HorizClksHBlank, scr.crit.topScanline,
 		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.scanlines,
 	)
-	scr.crit.cropPixels = scr.crit.pixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(r).(*image.RGBA)
-	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(r).(*image.RGBA)
+	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
 	// clear pixels
 	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
@@ -163,7 +180,13 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.backingPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+		}
+	}
+	for i := range scr.crit.bufferPixels {
+		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
 		}
 	}
 
@@ -181,7 +204,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 
 // Resize implements the television.PixelRenderer interface
 //
-// MUST NOT be called from the #mainthread.
+// MUST NOT be called from the gui thread.
 func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanlines int) error {
 	scr.img.service <- func() {
 		scr.resize(spec, topScanline, visibleScanlines)
@@ -192,13 +215,40 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanl
 
 // NewFrame implements the television.PixelRenderer interface
 //
-// MUST NOT be called from the #mainthread.
+// MUST NOT be called from the gui thread.
 func (scr *screen) NewFrame(isStable bool) error {
+	// unlocking must be done carefully
 	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
 
 	scr.crit.isStable = isStable
-	scr.crit.backingPixelsUpdate = true
+
+	if scr.img.isPlaymode() {
+		scr.crit.plotIdx++
+		if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
+			scr.crit.plotIdx = 0
+		}
+
+		scr.crit.bufferUpdate = true
+
+		// if plot index has crash into the render index then
+		if scr.crit.plotIdx == scr.crit.renderIdx {
+			// we must unlock or the gui thread will not be able to process
+			// channel
+			if scr.crit.vsync {
+				scr.crit.section.Unlock()
+				scr.emuWait <- true
+				<-scr.emuWaitAck
+				scr.emuWait <- true
+				<-scr.emuWaitAck
+			} else {
+				scr.crit.section.Unlock()
+			}
+		} else {
+			scr.crit.section.Unlock()
+		}
+	} else {
+		scr.crit.section.Unlock()
+	}
 
 	return nil
 }
@@ -212,10 +262,14 @@ func (scr *screen) NewScanline(scanline int) error {
 func (scr *screen) UpdatingPixels(updating bool) {
 	if updating {
 		scr.crit.section.Lock()
-	} else {
-		scr.crit.backingPixelsUpdate = true
-		scr.crit.section.Unlock()
+		return
 	}
+
+	if !scr.img.isPlaymode() {
+		scr.crit.bufferUpdate = true
+	}
+
+	scr.crit.section.Unlock()
 }
 
 // SetPixel implements the television.PixelRenderer interface.
@@ -234,7 +288,7 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 		scr.crit.lastY = sig.Scanline
 	}
 
-	scr.crit.backingPixels.SetRGBA(sig.HorizPos, sig.Scanline, col)
+	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.HorizPos, sig.Scanline, col)
 
 	return nil
 }
@@ -242,16 +296,17 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 // Reset implements the television.PixelRenderer interface.
 func (scr *screen) Reset() {
 	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
 
 	// simplest method of resetting all pixels to black
-	for i := 0; i < len(scr.crit.backingPixels.Pix)-3; i += 4 {
-		scr.crit.backingPixels.Pix[i] = 0
-		scr.crit.backingPixels.Pix[i+1] = 0
-		scr.crit.backingPixels.Pix[i+2] = 0
-		scr.crit.backingPixels.Pix[i+3] = 255
+	for i := range scr.crit.bufferPixels {
+		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
+		}
 	}
-	scr.crit.backingPixelsUpdate = true
+
+	scr.crit.section.Unlock()
 }
 
 // EndRendering implements the television.PixelRenderer interface.
@@ -321,11 +376,12 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.Reflection) {
 }
 
 // texture renderers can share the underlying pixels in the screen instance.
-func (scr *screen) addTextureRenderer(r textureRenderers) {
+func (scr *screen) addTextureRenderer(r textureRenderer) {
 	scr.renderers = append(scr.renderers, r)
 	r.resize()
 }
 
+// called by service loop.
 func (scr *screen) render() {
 	// not rendering if gui.state is Rewinding or GotoCoords. render will be
 	// called automatically when state changes from either of these two states
@@ -334,15 +390,49 @@ func (scr *screen) render() {
 		return
 	}
 
-	// critical section
+	// we have to be very particular about how we unlock this
 	scr.crit.section.Lock()
-	if scr.crit.backingPixelsUpdate {
-		copy(scr.crit.pixels.Pix, scr.crit.backingPixels.Pix)
-		scr.crit.backingPixelsUpdate = false
-	}
-	scr.crit.section.Unlock()
-	// end of critical section
 
+	if !scr.crit.bufferUpdate {
+		scr.crit.section.Unlock()
+		return
+	}
+
+	if scr.img.isPlaymode() && scr.crit.vsync {
+		// advance render index. keep note of existing index in case we
+		// bump into the plotting index.
+		v := scr.crit.renderIdx
+		scr.crit.renderIdx++
+		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+			scr.crit.renderIdx = 0
+		}
+
+		// if render index has bumped into the plotting index then revert
+		// render index
+		if scr.crit.renderIdx == scr.crit.plotIdx {
+			scr.crit.renderIdx = v
+			scr.crit.section.Unlock()
+			return
+		}
+
+		// copy render pixes to safe copy that we use to copy to the screen
+		// textures
+		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		scr.crit.section.Unlock()
+
+		// let the emulator thread know it's okay to continue
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
+		}
+	} else {
+		// for non-playmode we use the plotIdx directly, without any buffering
+		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
+		scr.crit.section.Unlock()
+	}
+
+	// update attached renderers
 	for _, r := range scr.renderers {
 		r.render()
 	}

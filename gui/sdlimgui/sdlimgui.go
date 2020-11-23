@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"io"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -51,6 +52,9 @@ type SdlImgui struct {
 	lz  *lazyvalues.LazyValues
 	tv  *television.Television
 	vcs *hardware.VCS
+
+	// is gui in playmode. use setPlaymode() and isPlaymode() to access this
+	playmode atomic.Value
 
 	// terminal interface to the debugger
 	term *term
@@ -104,7 +108,7 @@ type SdlImgui struct {
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
-// MUST ONLY be called from the #mainthread.
+// MUST ONLY be called from the gui thread.
 func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context:        imgui.CreateContext(nil),
@@ -118,6 +122,9 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 		featureGetData: make(chan gui.FeatureReqData, 1),
 		featureGetErr:  make(chan error, 1),
 	}
+
+	// not in playmode by default
+	img.playmode.Store(false)
 
 	var err error
 
@@ -190,7 +197,7 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 
 // Destroy implements GuiCreator interface
 //
-// MUST ONLY be called from the #mainthread.
+// MUST ONLY be called from the gui thread.
 func (img *SdlImgui) Destroy(output io.Writer) {
 	img.wm.destroy()
 	err := img.audio.EndMixing()
@@ -230,14 +237,14 @@ func (img *SdlImgui) setState(state gui.EmulationState) {
 
 // is the gui in playmode or not.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.wm != nil && img.wm.playScr.isOpen()
+	return img.playmode.Load().(bool)
 }
 
 // set playmode and handle the changeover gracefully. this includes the saving
 // and loading of preference groups.
 func (img *SdlImgui) setPlaymode(set bool) error {
 	if set {
-		if !img.isPlaymode() {
+		if !img.playmode.Load().(bool) {
 			if img.prefs != nil {
 				err := img.prefs.save()
 				if err != nil {
@@ -254,7 +261,7 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 			img.wm.playScr.setOpen(true)
 		}
 	} else {
-		if img.isPlaymode() {
+		if img.playmode.Load().(bool) {
 			if img.prefs != nil {
 				if err := img.prefs.save(); err != nil {
 					return err
@@ -270,6 +277,8 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 			img.wm.playScr.setOpen(false)
 		}
 	}
+
+	img.playmode.Store(set)
 
 	return nil
 }

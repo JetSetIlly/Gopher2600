@@ -43,7 +43,7 @@ test:
 race: generate test
 # disable checkptr because the opengl implementation will trigger it and cause
 # a lot of output noise
-	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go debug $(profilingRom)
+	go run -race -gcflags=all=-d=checkptr=0 gopher2600.go $(profilingRom)
 
 profile: generate test
 	go build -gcflags $(compileFlags)
