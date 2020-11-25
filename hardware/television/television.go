@@ -282,11 +282,20 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		// bump scanline counter
 		tv.state.scanline++
 
-		// reached end of screen without synchronisation. fly-back naturally.
+		// reached end of screen without VSYNC sequence
 		if tv.state.scanline > tv.state.spec.ScanlinesTotal {
-			err := tv.newFrame(false)
-			if err != nil {
-				return err
+			// fly-back naturally if VBlank is off. a good example of a ROM
+			// that requires this is Andrew Davies' Chess (3e+ test rom)
+			if !tv.state.lastSignal.VBlank {
+				err := tv.newFrame(false)
+				if err != nil {
+					return err
+				}
+			} else {
+				// wait until VSYNC sequence is encountered. note that newFrame
+				// is not called because it is assumed that the ROM will
+				// eventually send one and is just late.
+				tv.state.scanline = tv.state.spec.ScanlinesTotal
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
