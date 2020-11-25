@@ -185,6 +185,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 		return false, "", curated.Errorf("video: %v", err)
 	}
 	defer tv.End()
+	tv.SetFPSCap(false)
 
 	dig, err := digest.NewVideo(tv)
 	if err != nil {

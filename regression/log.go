@@ -132,6 +132,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 		return false, "", curated.Errorf("log: %v", err)
 	}
 	defer tv.End()
+	tv.SetFPSCap(false)
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(tv)

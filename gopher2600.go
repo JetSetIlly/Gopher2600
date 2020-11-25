@@ -635,16 +635,9 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	return nil
 }
 
-type yesReader struct{}
-
-func (*yesReader) Read(p []byte) (n int, err error) {
-	p[0] = 'y'
-	return 1, nil
-}
-
 func regress(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
-	md.AddSubModes("RUN", "LIST", "DELETE", "ADD")
+	md.AddSubModes("RUN", "LIST", "DELETE", "ADD", "REDUX")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -724,6 +717,25 @@ func regress(md *modalflag.Modes, sync *mainSync) error {
 
 	case "ADD":
 		return regressAdd(md)
+
+	case "REDUX":
+		md.NewMode()
+
+		answerYes := md.AddBool("yes", false, "always answer yes to confirmation")
+
+		p, err := md.Parse()
+		if err != nil || p != modalflag.ParseContinue {
+			return err
+		}
+
+		var confirmation io.Reader
+		if *answerYes {
+			confirmation = &yesReader{}
+		} else {
+			confirmation = os.Stdin
+		}
+
+		return regression.RegressRedux(md.Output, confirmation)
 	}
 
 	return nil
@@ -911,4 +923,12 @@ type nopWriter struct{}
 
 func (*nopWriter) Write(p []byte) (n int, err error) {
 	return 0, nil
+}
+
+// yesReader always returns 'y' when it is read.
+type yesReader struct{}
+
+func (*yesReader) Read(p []byte) (n int, err error) {
+	p[0] = 'y'
+	return 1, nil
 }

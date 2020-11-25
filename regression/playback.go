@@ -115,6 +115,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", curated.Errorf("playback: %v", err)
 	}
 	defer tv.End()
+	tv.SetFPSCap(false)
 
 	_, err = digest.NewVideo(tv)
 	if err != nil {

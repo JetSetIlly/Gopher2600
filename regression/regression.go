@@ -73,24 +73,18 @@ func initDBSession(db *database.Session) error {
 		return err
 	}
 
-	// make sure regression script directory exists
-	// if err := os.MkdirAll(paths.ResourcePath(regressionScripts), 0755); err != nil {
-	// 	msg := fmt.Sprintf("regression script directory: %s", err)
-	// 	return curated.Errorf("regression: %v", msg)
-	// }
-
 	return nil
 }
 
 // RegressList displays all entries in the database.
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+		return curated.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: list: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
@@ -99,18 +93,21 @@ func RegressList(output io.Writer) error {
 	}
 	defer db.EndSession(false)
 
-	return db.List(output)
+	return db.ForEach(func(key int, e database.Entry) error {
+		output.Write([]byte(fmt.Sprintf("%03d %s\n", key, e.String())))
+		return nil
+	})
 }
 
 // RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
 	if output == nil {
-		return fmt.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
+		return curated.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: add: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
@@ -131,20 +128,101 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	return db.Add(reg)
 }
 
-// RegressDelete removes a cartridge from the regression db.
-func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
+// RegressRedux removes and adds an entry using the same parameters.
+func RegressRedux(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return fmt.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
+		return curated.Errorf("regression: redux: io.Writer should not be nil (use a nopWriter)")
 	}
 
-	v, err := strconv.Atoi(key)
-	if err != nil {
-		return curated.Errorf("regression: invalid key [%s]", key)
+	if confirmation == nil {
+		return curated.Errorf("regression: redux: io.Reader should not be nil")
+	}
+
+	output.Write([]byte("redux is a dangerous operation. it will rerun all compatible regression entries.\n"))
+	output.Write([]byte("redux? (y/n): "))
+	if !confirm(confirmation) {
+		return nil
+	}
+
+	output.Write([]byte("sure? (y/n): "))
+	if !confirm(confirmation) {
+		return nil
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: redux: %v", err)
+	}
+
+	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
+	if err != nil {
+		return err
+	}
+	defer db.EndSession(true)
+
+	return db.ForEach(func(key int, e database.Entry) error {
+		switch reg := e.(type) {
+		case *VideoRegression:
+			err = redux(db, output, key, reg)
+			if err != nil {
+				return curated.Errorf("regression: redux: %v", err)
+			}
+
+		case *LogRegression:
+			err = redux(db, output, key, reg)
+			if err != nil {
+				return curated.Errorf("regression: redux: %v", err)
+			}
+
+		default:
+			output.Write([]byte(fmt.Sprintf("skipped: %s\n", reg)))
+		}
+
+		return nil
+	})
+}
+
+func redux(db *database.Session, output io.Writer, key int, reg Regressor) error {
+	err := db.Delete(key)
+	if err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf("reduxing: %s", reg)
+
+	_, _, err = reg.regress(true, output, msg, func() bool { return false })
+	if err != nil {
+		return err
+	}
+
+	output.Write([]byte(ansiClearLine))
+	output.Write([]byte(fmt.Sprintf("\rreduxed: %s\n", reg)))
+
+	err = db.Add(reg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// RegressDelete removes a cartridge from the regression db.
+func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
+	if output == nil {
+		return curated.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
+	}
+
+	if confirmation == nil {
+		return curated.Errorf("regression: delete: io.Reader should not be nil")
+	}
+
+	v, err := strconv.Atoi(key)
+	if err != nil {
+		return curated.Errorf("regression: delete: invalid key [%s]", key)
+	}
+
+	dbPth, err := paths.ResourcePath("", regressionDBFile)
+	if err != nil {
+		return curated.Errorf("regression: delete: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
@@ -155,21 +233,13 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: delete: %v", err)
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
-
-	confirm := make([]byte, 32)
-	_, err = confirmation.Read(confirm)
-	if err != nil {
-		return err
-	}
-
-	if confirm[0] == 'y' || confirm[0] == 'Y' {
+	if confirm(confirmation) {
 		err = db.Delete(v)
 		if err != nil {
-			fmt.Println(1)
 			return err
 		}
 		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
@@ -183,17 +253,17 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 // entry should be tested.
 func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	if output == nil {
-		return fmt.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
+		return curated.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := paths.ResourcePath("", regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: run: %v", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: run: %v", err)
 	}
 	defer db.EndSession(false)
 
@@ -202,7 +272,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	for k := range filterKeys {
 		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
-			return curated.Errorf("regression: invalid key [%s]", filterKeys[k])
+			return curated.Errorf("regression: run: invalid key [%s]", filterKeys[k])
 		}
 		keysV = append(keysV, v)
 	}
@@ -301,8 +371,22 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 
 	// filter out regressionQuitEarly errors
 	if err != nil && !curated.Is(err, regressionQuitEarly) {
-		return curated.Errorf("regression: %v", err)
+		return curated.Errorf("regression: run: %v", err)
 	}
 
 	return nil
+}
+
+// returns true if response from user begins with 'y' or 'Y'.
+func confirm(confirmation io.Reader) bool {
+	confirm := make([]byte, 32)
+	_, err := confirmation.Read(confirm)
+	if err != nil {
+		return false
+	}
+
+	if confirm[0] == 'y' || confirm[0] == 'Y' {
+		return true
+	}
+	return false
 }

@@ -17,7 +17,6 @@ package database
 
 import (
 	"fmt"
-	"io"
 	"sort"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -55,40 +54,6 @@ func (db Session) SortedKeyList() []int {
 	return keyList
 }
 
-// List the enties in key order.
-func (db Session) List(output io.Writer) error {
-	if db.NumEntries() == 0 {
-		if _, err := output.Write([]byte("database is empty\n")); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	keyList := db.SortedKeyList()
-
-	for k := range keyList {
-		key := keyList[k]
-		ent := db.entries[key]
-
-		if _, err := output.Write([]byte(fmt.Sprintf("%03d ", key))); err != nil {
-			return err
-		}
-
-		if _, err := output.Write([]byte(ent.String())); err != nil {
-			return err
-		}
-		if _, err := output.Write([]byte("\n")); err != nil {
-			return err
-		}
-	}
-
-	if _, err := output.Write([]byte(fmt.Sprintf("Total: %d\n", db.NumEntries()))); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Add an entry to the db.
 func (db *Session) Add(ent Entry) error {
 	var key int
@@ -122,6 +87,18 @@ func (db *Session) Delete(key int) error {
 	}
 
 	delete(db.entries, key)
+
+	return nil
+}
+
+func (db Session) ForEach(f func(key int, e Entry) error) error {
+	keyList := db.SortedKeyList()
+
+	for k := range keyList {
+		key := keyList[k]
+		ent := db.entries[key]
+		f(key, ent)
+	}
 
 	return nil
 }
